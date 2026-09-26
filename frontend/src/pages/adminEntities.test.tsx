@@ -1960,40 +1960,27 @@ describe('the country an event is filed in', () => {
   })
 })
 
+/**
+ * WHAT A COMPETITION'S ADDRESS IS REFUSED FOR BY THE FORM, and only that.
+ *
+ * <p>A league is filed under an id nobody sees and answers at an address somebody chose:
+ * `runtrace-2027` is not what the rule would make of "RunTrace liga 2027". So the form
+ * asks for it, like a written page, rather than deriving it from the name, which would
+ * take the address away from everyone who has it (PENDING, and the rule for teams and
+ * events of 03.08.2026).
+ *
+ * <p><b>THREE CASES STOOD HERE AND ARE IN `admin/adminLeagues.test.tsx` SINCE
+ * 25.09.2026</b>, which is the day this screen stopped writing into the session and began
+ * calling `LeagueWriteApi` (PDL P28c point 2). They were: a competition entered by hand
+ * answering at its address, an address another competition already holds, and a
+ * competition saved again on its own address. Every one of them is now an answer from the
+ * ROUTE rather than from a list this browser happens to hold, so they are measured where
+ * there is a server to answer them, and they are not measured twice.
+ *
+ * <p>What is left here is what the FORM decides on its own and never sends: a required
+ * field left empty, and an address that is not shaped like one.
+ */
 describe('the address of a league', () => {
-  /* A league is filed under an id nobody sees and answers at an address somebody
-     chose: `runtrace-2027` is not what the rule would make of "RunTrace liga
-     2027". So the form asks for it, like a written page, rather than deriving it
-     from the name, which would take the address away from everyone who has it
-     (PENDING, and the rule for teams and events of 03.08.2026). */
-  it('is asked for on the form, and a league entered by hand answers at it', async () => {
-    const user = setupUser()
-    renderAt('/sr/administracija/lige', 'superadmin')
-
-    await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
-    await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
-    await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-    await user.type(screen.getByLabelText(/^Sezona/), '2027')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await screen.findByRole('status', { name: 'Sačuvano' })
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    const listed = within(await screen.findByRole('table', { name: 'Lige' }))
-
-    /* The address is on the record, and it leads somewhere: a league entered by
-       hand used to get an empty one and stand at /liga/, which is no league at
-       all.
-
-       What the address answers with is not read here. Nothing the administration
-       creates reaches a public screen at all, because those read the file and
-       not what this visit has added to it; that is older and wider than this
-       form and is written down as its own job (PENDING, R7). */
-    expect(listed.getByRole('link', { name: '/liga/vojvodjanska-2027' })).toHaveAttribute(
-      'href',
-      '/sr/liga/vojvodjanska-2027',
-    )
-  })
-
   it('is not saved without one, since a league without an address is at /liga/', async () => {
     /* The whole of what this rule is for. Without it the address saves empty,
        the list draws a link to /liga/, and the league is the one thing the
@@ -2034,35 +2021,49 @@ describe('the address of a league', () => {
     )
   })
 
-  it('is refused where another league already answers at it', async () => {
+  it('refuses a dash at either end and two of them together, as the schema does', async () => {
+    /* THE THREE SHAPES THE FORM LET THROUGH UNTIL 25.09.2026, and it is measured rather
+       than tidy. It carried `^[a-z0-9-]+$` while `league_slug_shape` (V14, line 47) and
+       `LeagueWriteApi.AN_ADDRESS` both carry `^[a-z0-9]+(-[a-z0-9]+)*$`, so `zimska-`,
+       `-zimska`, `zimska--2027` and a bare `-` passed the field and met the route. Two
+       different expressions for one question, which is the same three-answers-to-one
+       shape PDL P15a point 1 settled for the season: the route decides and the form
+       agrees with it.
+
+       The sentence for `theAddressIsNotShaped` stays on the screen all the same, because
+       the form is the floor and never the decision (`admin/leagueWrites.ts`). */
     const user = setupUser()
 
     renderAt('/sr/administracija/lige', 'superadmin')
 
     await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
-    await user.type(screen.getByLabelText(/^Naziv lige/), 'Druga liga')
-    await user.type(screen.getByLabelText(/^Adresa/), 'runtrace-2027')
+    await user.type(screen.getByLabelText(/^Naziv lige/), 'Zimska liga')
     await user.type(screen.getByLabelText(/^Sezona/), '2027')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByText(/već zauzeta/)).toBeVisible()
-    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
-  })
+    for (const shape of ['zimska-', '-zimska', 'zimska--2027', '-']) {
+      const address = screen.getByLabelText(/^Adresa/)
 
-  it('lets a league be saved again without its own address getting in the way', async () => {
-    /* Compared by identity rather than by address, every league refused the
-       address it already answers at. */
-    const user = setupUser()
+      await user.clear(address)
+      await user.type(address, shape)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    renderAt('/sr/administracija/lige', 'superadmin')
+      expect(screen.queryByRole('status', { name: 'Sačuvano' }), shape).toBeNull()
+      expect(screen.getByLabelText(/^Adresa/), shape).toHaveAccessibleDescription(
+        /nije u očekivanom obliku/,
+      )
+    }
 
-    const row = at((await table('Lige')).getAllByRole('row'), 1)
+    /* And the shape the schema does take still goes through the field, so the four above
+       are refused for what they are rather than by a rule that refuses everything. */
+    const address = screen.getByLabelText(/^Adresa/)
 
-    await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
-    await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
+    await user.clear(address)
+    await user.type(address, 'zimska-2027')
 
-    expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
-  })
+    expect(screen.getByLabelText(/^Adresa/)).not.toHaveAccessibleDescription(
+      /nije u očekivanom obliku/,
+    )
+  }, SLOW)
 })
 
 describe('teams', () => {

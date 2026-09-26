@@ -388,6 +388,61 @@ class TeamApi {
 	 */
 	static final String OVER_THE_TEAMS = "entity:teams";
 
+	/**
+	 * WHO IS A STANDING MEMBER OF WHICH TEAM, AS ONE SELECT THAT MORE THAN ONE RESOURCE
+	 * BUILDS ITS {@code standing} OUT OF.
+	 *
+	 * <p><b>It is a constant rather than a sentence repeated because the rule it carries has
+	 * three conditions and every one of them was decided separately.</b> {@code season_to is
+	 * null} is „the team he has", read off the record and never off the season (PDL
+	 * „Inkrement 133", 05.09.2026); {@code c.active} is the lapsed fee reaching the roster
+	 * (PDL P13, 19.09.2026); {@code member_number is not null} is V16's difference between
+	 * somebody who registered and a MEMBER. Written out a second time in
+	 * {@link TeamWriteApi}, one of the three would be the one that drifts, and the drift
+	 * would read as „the administration and the team's own page disagree about who runs it".
+	 *
+	 * <p><b>What holds it is not this note.</b>
+	 * {@code theDeleteRouteAndTheListAgreeOnWhoAdministersEachTeam} asks both resources over
+	 * one fixture with four teams arranged along both arms of the rule, so taking a
+	 * condition out of this string moves both answers together or fails.
+	 *
+	 * <p>The columns are what the expressions below need and nothing more: the team it is
+	 * about, who he is, and the two the tie is broken by.
+	 */
+	static final String WHO_STANDS_IN_A_TEAM =
+			" select m.team_id, c.id, c.member_number, m.season_from"
+					+ " from team_membership m"
+					+ " join competitor c on c.id = m.competitor_id"
+					+ " where m.season_to is null and c.active and c.member_number is not null";
+
+	/**
+	 * AND WHICH ONE OF THEM ADMINISTERS THE TEAM ALIASED {@code t}, WHICH IS THE OTHER HALF
+	 * OF THE SAME FACT.
+	 *
+	 * <p>PDL „Inkrement 133", 04.09.2026: „Administrator tima je onaj ko je tim osnovao", and
+	 * „kad se mesto isprazni preuzima ga clan koji je najduze u timu", the tie broken by
+	 * „manji broj clana". The seat is read through {@code standing} rather than off
+	 * {@code t.admin_id} alone, so a seat naming somebody who has left or whose fee has
+	 * lapsed simply misses it and the title passes on, which is PDL P13's „Isto kao kad je
+	 * otisao".
+	 *
+	 * <p><b>It answers the team's key or NULL</b>, null being a team nobody administers at
+	 * all - an empty seat over a team with no standing member. Every caller decides for
+	 * itself what to make of that, because the two callers make opposite things of it: the
+	 * list turns it into FALSE for the reader, and the delete route turns it into a refusal.
+	 *
+	 * <p><b>It needs a {@code standing} in scope and a team aliased {@code t}</b>, which is
+	 * what makes it a fragment rather than a query. That is the price of the one home; the
+	 * floor named above is what stops the price being paid twice.
+	 */
+	static final String WHO_ADMINISTERS_IT =
+			" coalesce((select seat.id from standing seat"
+					+ " where seat.team_id = t.id and seat.id = t.admin_id),"
+					+ " (select longest.id from standing longest"
+					+ " where longest.team_id = t.id"
+					+ " order by longest.season_from, longest.member_number"
+					+ " limit 1))";
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
@@ -540,11 +595,7 @@ class TeamApi {
 						   there" - and nothing ties that column to `active`, so the two conditions
 						   are independent and the fixture holds a row that satisfies one and not
 						   the other. */
-						"with standing as ("
-						+ " select m.team_id, c.id, c.member_number, m.season_from"
-						+ " from team_membership m"
-						+ " join competitor c on c.id = m.competitor_id"
-						+ " where m.season_to is null and c.active and c.member_number is not null)"
+						"with standing as (" + WHO_STANDS_IN_A_TEAM + ")"
 						+ " select t.id, t.slug, t.name,"
 						/* The town in the two shapes V11 allows, and the country off whichever
 						   of them the team used. The same three columns and the same coalesce as
@@ -616,13 +667,8 @@ class TeamApi {
 						   null: null would take the key out and tell a signed in member what only a
 						   visitor is told. */
 						+ " case when cast(:me as bigint) is null then null"
-						+ "      else coalesce(:me = coalesce("
-						+ "        (select seat.id from standing seat"
-						+ "          where seat.team_id = t.id and seat.id = t.admin_id),"
-						+ "        (select longest.id from standing longest"
-						+ "          where longest.team_id = t.id"
-						+ "          order by longest.season_from, longest.member_number"
-						+ "          limit 1)), false) end as administered_by_me,"
+						+ "      else coalesce(:me = " + WHO_ADMINISTERS_IT + ", false)"
+						+ "      end as administered_by_me,"
 						/* AND WHO SITS IN THE SEAT, WHICH IS A FACT ABOUT THE TEAM AND NOT
 						   ABOUT THE CALLER - the whole difference between this field and the
 						   one above it. That one is the caller's own fact; this is a fact about

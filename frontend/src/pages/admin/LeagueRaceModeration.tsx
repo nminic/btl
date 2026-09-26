@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Resource } from '../../components/Resource'
-import { arrivedResource } from '../../data/client'
 import { raceLabel } from '../../data/raceLabel'
 import type { League, Race } from '../../data/types'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
@@ -8,7 +7,7 @@ import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { racesByEvent } from '../league/leagueCounting'
 import { askTheServer, type Answer } from '../account/askTheServer'
-import { countedRacesOf } from './leagueCounted'
+import { WHEN_MODERATING_LEAGUE_RACES } from './leagueWrites'
 import '../Leagues.css'
 
 /**
@@ -34,18 +33,41 @@ import '../Leagues.css'
  * refused by the database through `league_race`'s composite keys (V19) and comes back as a
  * sentence saying which.
  *
- * **WHAT IS COUNTED IS READ OFF THE ANSWER AND THEN KEPT HERE.** `data/client.ts` caches a
- * resource for the whole visit and nothing in the application clears it („nothing in the
- * application calls this"), so after a write there is nothing to re-read: what is held is
- * what the server has just accepted. It is seeded from `raceIds` on the served competition
- * (`leagueCounted.ts`, which says why that is read there rather than off the shared type).
+ * **WHAT IS COUNTED IS READ OFF THE ANSWER AND THEN KEPT HERE.** A screen that is still
+ * mounted never asks its resource again, so after a write there is nothing to re-read: what
+ * is held is what the server has just accepted. What it starts from is `raceIds` on the
+ * served competition, handed down by the screen that is holding that answer
+ * (`AdminLeagues.tsx`, through `leagueCounted.ts`, which says why the field is read off the
+ * answer rather than off the shared type).
+ *
+ * **IT IS HANDED DOWN AND NO LONGER FETCHED OUT OF `data/client.ts`'s CACHE, SINCE
+ * 25.09.2026, AND THAT IS A MEASUREMENT.** The seed used to be `arrivedResource('leagues')`,
+ * read at every mount out of the module the resource is cached in - and on 25.09.2026 the
+ * screen above began CLEARING that very entry once one of its own writes went through
+ * (`clearResourceCache('leagues')`). Closing the editor after a save swaps the whole subtree,
+ * so every one of these panels mounted again and read an empty cache: a competition that
+ * counts races drew „no race has been given to this competition yet", with no control to take
+ * one out, while `AdminLeagues` beside it still held the served answer in full. The answer is
+ * one home reached one way - the list the screen was served - rather than two readers of one
+ * store, one of whom empties it.
  */
-export function LeagueRaceModeration({ league }: { league: League }) {
+export function LeagueRaceModeration({
+  league,
+  /**
+   * Which races the served answer says this competition counts.
+   *
+   * **Read once, as this mounts, exactly as it was before it became a prop.** What comes
+   * after is this panel's own: a race entered or taken out is put in below, inside the branch
+   * that ran only because the route said the write went through.
+   */
+  counted: whenItMounted,
+}: {
+  league: League
+  counted: number[]
+}) {
   const { locale, t } = useI18n()
   const [open, setOpen] = useState(false)
-  const [counted, setCounted] = useState<number[]>(() =>
-    countedRacesOf(arrivedResource<unknown>('leagues'), league.id),
-  )
+  const [counted, setCounted] = useState<number[]>(whenItMounted)
   /** The day chosen in the first box, and the empty string until somebody chooses one. */
   const [day, setDay] = useState('')
   /** One race of that day, or the empty string, which means the whole of it. */
@@ -62,16 +84,25 @@ export function LeagueRaceModeration({ league }: { league: League }) {
   /**
    * The sentence for a refusal the route named.
    *
-   * **Asked of the dictionary rather than of a list written here**, which is what keeps this
-   * from being a second list of the route's refusals: a reason the dictionary has is said in
-   * words, and one it has not falls to the sentence that fits any of them. `translate`
-   * answers a missing key with the key itself, which is what that comparison reads.
+   * **It probed the dictionary until 25.09.2026 and now reads a table** (`leagueWrites.ts`,
+   * `WHEN_MODERATING_LEAGUE_RACES`). The words that come out are the same six; what changes
+   * is that there is now something a guard can hold. Probing built the key out of the reason
+   * and read a key coming back unchanged as „no words for this", so a reason the server
+   * added and a key somebody deleted were ONE answer, and neither could ever be reported.
+   * `pages/account/refusals.test.ts` reads the eleven names `LeagueWriteApi` declares and
+   * fails on the day a twelfth is written.
+   *
+   * **The fallback stays exactly as it was**, because it is a real state and not a gap: a
+   * screen one release behind its server must say something rather than nothing, and
+   * `unknown` is that sentence.
    */
   function sentenceFor(reason: string | null): string {
-    const key = `admin.leagueRefused.${reason ?? 'unknown'}`
-    const written = t(key)
+    const known =
+      reason !== null && Object.hasOwn(WHEN_MODERATING_LEAGUE_RACES, reason)
+        ? WHEN_MODERATING_LEAGUE_RACES[reason]
+        : undefined
 
-    return written === key ? t('admin.leagueRefused.unknown') : written
+    return known === undefined ? t('admin.leagueRefused.unknown') : t(known)
   }
 
   async function answered(asking: Promise<Answer>, done: () => void): Promise<void> {
