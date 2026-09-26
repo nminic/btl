@@ -9,10 +9,12 @@ import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Portal;
 import com.btl.portal.domain.member.ReferralCode;
 import com.btl.portal.domain.registration.Guardianship;
+import com.btl.portal.domain.registration.WhatAFieldMeans;
 import com.btl.portal.domain.registration.WhatRegistrationAsksFor;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import com.btl.portal.mail.Postman;
+import com.btl.portal.web.ATownFromTheCodebookOrTyped.Town;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -257,16 +259,6 @@ class RegistrationApi {
 	 */
 	static final Set<String> NOT_COLLECTED_YET = Set.of("photo");
 
-	/** Letters and digits, at most twenty, which is {@code competitor_document_number_shape}. */
-	private static final Pattern A_DOCUMENT_NUMBER = Pattern.compile("^[0-9A-Za-z]{1,20}$");
-
-	/** The seven the form offers, which is {@code competitor_shirt_size_known}. */
-	private static final Set<String> SHIRT_SIZES =
-			Set.of("XS", "S", "M", "L", "XL", "XXL", "XXXL");
-
-	/** The two the form offers, which is {@code competitor_gender_known}. */
-	private static final Set<String> GENDERS = Set.of("M", "F");
-
 	private final JdbcClient db;
 
 	private final Postman postman;
@@ -291,6 +283,16 @@ class RegistrationApi {
 	private final Portal portal;
 
 	/**
+	 * One home for „where is he from", asked by this route and by
+	 * {@link CompetitorWriteApi#enter}.
+	 *
+	 * <p>It was a private method here until 25.09.2026, when a second route began
+	 * collecting the same form. {@link ATownFromTheCodebookOrTyped} carries the owner's
+	 * decision of 11.08.2026 and the reason it is one class rather than two methods.
+	 */
+	private final ATownFromTheCodebookOrTyped towns;
+
+	/**
 	 * @param address where the portal lives, which is what the link in the message hangs
 	 *                off. {@link WhatTheMessageSays} says at length why it may never be
 	 *                taken off the incoming request: a host is written by whoever sent
@@ -304,13 +306,14 @@ class RegistrationApi {
 	 *                relay's key.
 	 */
 	RegistrationApi(JdbcClient db, Postman postman, Clock clock,
-			TransactionTemplate inOneTransaction,
+			TransactionTemplate inOneTransaction, ATownFromTheCodebookOrTyped towns,
 			@Value("${btl.portal.address}") String address) {
 
 		this.db = db;
 		this.postman = postman;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
+		this.towns = towns;
 		this.portal = new Portal(address);
 
 		/* READ ONCE, HERE, AND NOT ON EVERY REGISTRATION. The controller is a singleton,
@@ -375,10 +378,6 @@ class RegistrationApi {
 	record Refused(String reason) {
 	}
 
-	/** A town, once it is one: the codebook's row, or a name typed with its country. */
-	private record Town(Long placeId, String city, Long countryId) {
-	}
-
 	@PostMapping("/api/registration")
 	ResponseEntity<Refused> register(@RequestBody Typed typed, HttpServletRequest asking) {
 		/* No check for the whole form being absent, for the reason `SignInApi` gives at
@@ -386,7 +385,7 @@ class RegistrationApi {
 		   away with 400 before this method runs. `aRequestWithNoFormAtAllNeverReachesUs`
 		   is what holds that guarantee. */
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
-		LocalDate born = theDay(typed.birthDate(), today);
+		LocalDate born = WhatAFieldMeans.theDay(typed.birthDate(), today);
 
 		if (born == null) {
 			return no(THE_FORM_IS_NOT_COMPLETE);
@@ -396,7 +395,7 @@ class RegistrationApi {
 		   town" is a question about the codebook and not about the form: a number nothing
 		   maps and a name with no country are both "no town", and both have to be refused
 		   before the INSERT rather than by it. */
-		Town town = theTown(typed);
+		Town town = towns.of(typed.placeId(), typed.city(), typed.country());
 		/* AS THE ROW WILL CARRY IT, which is folded and not merely stripped.
 		   `WhatAnAddressLooksLike.asItIsStored` says at length why, and what it cost
 		   while it was only stripped: signing in looked for the address literally, so
@@ -415,7 +414,9 @@ class RegistrationApi {
 		Map<String, String> filledIn = whatHeFilledIn(typed, town, address);
 
 		for (String field : asked) {
-			if (!NOT_COLLECTED_YET.contains(field) && isNothing(filledIn.get(field))) {
+			if (!NOT_COLLECTED_YET.contains(field)
+					&& WhatAFieldMeans.isNothing(filledIn.get(field))) {
+
 				return no(THE_FORM_IS_NOT_COMPLETE);
 			}
 		}
@@ -428,7 +429,9 @@ class RegistrationApi {
 		   `competitor_document` unlooked at, where `competitor_document_number_shape` would
 		   refuse it as an error in the middle of a transaction rather than as an answer to
 		   the person. Asked here, both ages get the same refusal. */
-		if (!isNothing(typed.idNumber()) && theDocument(typed) == null) {
+		if (!WhatAFieldMeans.isNothing(typed.idNumber())
+				&& WhatAFieldMeans.theDocument(typed.idNumber()) == null) {
+
 			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -627,9 +630,9 @@ class RegistrationApi {
 						town.placeId(), town.city(), town.countryId(),
 						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
 						typed.firstSeason2027(), ReferralCode.fresh().written(),
-						whoBrought(typed), theBio(typed),
+						whoBrought(typed), WhatAFieldMeans.theBio(typed.bio()),
 						java.sql.Date.valueOf(born), typed.fatherName().strip(),
-						typed.address().strip(), thePhone(typed), typed.shirtSize(), now)
+						typed.address().strip(), WhatAFieldMeans.thePhone(typed.phone()), typed.shirtSize(), now)
 				.query(Long.class)
 				.single();
 
@@ -640,7 +643,7 @@ class RegistrationApi {
 		db.sql("update account set competitor_id = ? where id = ?")
 				.params(competitor, account.orElseThrow()).update();
 
-		String document = theDocument(typed);
+		String document = WhatAFieldMeans.theDocument(typed.idNumber());
 
 		if (document != null) {
 			/* IN ITS OWN TABLE AND NOT ON THE MEMBER. ADL A12 and A41: the number of the
@@ -715,7 +718,7 @@ class RegistrationApi {
 	 * zabelezena kao preporuka" since before this route existed.
 	 */
 	private Long whoBrought(Typed typed) {
-		if (isNothing(typed.referredBy())) {
+		if (WhatAFieldMeans.isNothing(typed.referredBy())) {
 			return null;
 		}
 
@@ -811,165 +814,20 @@ class RegistrationApi {
 		filledIn.put("lastName", typed.lastName());
 		filledIn.put("fatherName", typed.fatherName());
 		filledIn.put("birthDate", typed.birthDate());
-		filledIn.put("gender", chosenFrom(GENDERS, typed.gender()));
+		filledIn.put("gender", WhatAFieldMeans.theGender(typed.gender()));
 		filledIn.put("firstSeason2027", typed.firstSeason2027() == null ? null : "izabrano");
 		filledIn.put("email", WhatAnAddressLooksLike.itDoes(address) ? address : null);
 		filledIn.put("password", typed.password());
 		filledIn.put("passwordRepeat", typed.passwordRepeat());
 		filledIn.put("address", typed.address());
 		filledIn.put("city", town == null ? null : "izabrano");
-		filledIn.put("shirtSize", chosenFrom(SHIRT_SIZES, typed.shirtSize()));
+		filledIn.put("shirtSize", WhatAFieldMeans.theShirtSize(typed.shirtSize()));
 		filledIn.put("healthStatement", Boolean.TRUE.equals(typed.healthStatement()) ? "da" : null);
-		filledIn.put("idNumber", theDocument(typed));
+		filledIn.put("idNumber", WhatAFieldMeans.theDocument(typed.idNumber()));
 		filledIn.put("parentConsent", typed.parentConsent());
-		filledIn.put("parentRelation", theRelation(typed));
+		filledIn.put("parentRelation", WhatAFieldMeans.theRelation(typed.parentRelation()));
 
 		return filledIn;
-	}
-
-	/**
-	 * The day somebody was born, or nothing when what arrived is not a day.
-	 *
-	 * <p><b>A day in the future is not one either</b>, and it is refused here rather than
-	 * left to {@link Guardianship}: that class throws for a date after the day it is asked
-	 * about, in as many words - „nobody is a given age before he is born" - and a request
-	 * carrying tomorrow would otherwise be a 500 rather than a form the portal will not
-	 * take. Today itself is allowed: a registration for somebody born this morning is
-	 * nonsense a person will notice and is not a shape the server has to have an opinion
-	 * about.
-	 */
-	private static LocalDate theDay(String written, LocalDate today) {
-		if (written == null) {
-			return null;
-		}
-
-		try {
-			LocalDate born = LocalDate.parse(written.strip());
-
-			return born.isAfter(today) ? null : born;
-		} catch (DateTimeException notADay) {
-			return null;
-		}
-	}
-
-	/**
-	 * The town, or nothing when what arrived is not one.
-	 *
-	 * <p>Exactly one of the two shapes, which is the schema's own pair of checks read as a
-	 * question instead of as a refusal: a row of the codebook, whose country is the
-	 * codebook's and is not asked for, or a name typed by hand with the country of whoever
-	 * typed it. A number nothing maps and a country code nothing maps are both no town,
-	 * because a foreign key that cannot be resolved would otherwise be an error inside the
-	 * INSERT rather than an answer to the person.
-	 */
-	private Town theTown(Typed typed) {
-		boolean fromTheCodebook = typed.placeId() != null;
-		boolean typedByHand = !isNothing(typed.city()) && !isNothing(typed.country());
-
-		if (fromTheCodebook == typedByHand) {
-			return null;
-		}
-
-		if (fromTheCodebook) {
-			/* AND THE COUNTRY IS NOT TAKEN FROM THE REQUEST, which is the owner's decision
-			   of 11.08.2026: a town of the codebook „nosi svoju drzavu, koja se ne menja".
-			   Accepting one alongside would be the portal letting somebody put Belgrade in
-			   France. The schema says the same thing as
-			   `competitor_typed_town_names_its_country`. */
-			if (!isNothing(typed.city()) || !isNothing(typed.country())) {
-				return null;
-			}
-
-			return db.sql("select id from place where geonames_id = ?")
-					.param(typed.placeId()).query(Long.class).optional()
-					.map(one -> new Town(one, null, null)).orElse(null);
-		}
-
-		return db.sql("select id from country where code = ?")
-				.param(typed.country().strip()).query(Long.class).optional()
-				.map(one -> new Town(null, typed.city().strip(), one)).orElse(null);
-	}
-
-	/**
-	 * The value when it is one of the ones the form offers, and nothing otherwise.
-	 *
-	 * <p><b>The null is tested here and not left to the set</b>, and that is a fault this
-	 * route had until it was measured: {@code Set.of(...)} is an immutable set, and
-	 * immutable sets throw {@link NullPointerException} when they are ASKED whether they
-	 * hold null - they do not answer false. So a form that left the gender out altogether
-	 * came back a 500 instead of "the form is not complete", and only because a case took
-	 * every field away one at a time did it show. A field left out and a field carrying a
-	 * value nobody could have chosen are the same answer here, which is the whole reason
-	 * this returns the value or nothing rather than a boolean.
-	 */
-	private static String chosenFrom(Set<String> offered, String value) {
-		return value != null && offered.contains(value) ? value : null;
-	}
-
-	/** The identity number when it is one, and nothing when it is not. */
-	private static String theDocument(Typed typed) {
-		if (isNothing(typed.idNumber())) {
-			return null;
-		}
-
-		String written = typed.idNumber().strip();
-
-		return A_DOCUMENT_NUMBER.matcher(written).matches() ? written : null;
-	}
-
-	/**
-	 * The relation when it is one the form offers, and nothing otherwise.
-	 *
-	 * <p><b>The enum is read rather than its three values written out here.</b>
-	 * {@link Guardianship.Relation} is the list, {@code parental_consent_relation_known}
-	 * is the same list in SQL, and {@code GuardianshipMatchesTheSchemaTest} is what keeps
-	 * those two from drifting; a third copy in this file would be a list nothing holds to
-	 * the other two, and a fourth relation added tomorrow would be one this route went on
-	 * refusing.
-	 */
-	private static String theRelation(Typed typed) {
-		for (Guardianship.Relation relation : Guardianship.Relation.values()) {
-			if (relation.code().equals(typed.parentRelation())) {
-				return relation.code();
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * The biography, which is never null in the row and may be empty.
-	 *
-	 * <p>V7: „`bio` is NOT NULL and may be empty, and that is the difference between it
-	 * and a name: twenty of the thirty two members in the shipped data have written none,
-	 * and an empty biography is a state the profile has to look right in."
-	 */
-	private static String theBio(Typed typed) {
-		return isNothing(typed.bio()) ? "" : typed.bio().strip();
-	}
-
-	/**
-	 * The telephone number, which is null when there is none and never an empty string.
-	 *
-	 * <p>V8, beside the column: „Optional, and the only optional field of the thirteen, so
-	 * an empty string would be a second way of saying the same absence. There is one way:
-	 * no phone is NULL." {@code competitor_phone_not_blank} is what refuses the other.
-	 */
-	private static String thePhone(Typed typed) {
-		return isNothing(typed.phone()) ? null : typed.phone().strip();
-	}
-
-	/**
-	 * Whether a field was filled in at all.
-	 *
-	 * <p>Absent, empty, and a run of spaces are one answer and not three: JSON has a null,
-	 * a form has an empty box, and a person has a space bar, and a guard written against
-	 * one of the three lets the other two through to a column whose {@code btrim(...) <> ''}
-	 * would then refuse them as an error. That is the same list of shapes
-	 * {@code SignInApiTest.aFormWithNothingInItIsRefusedBeforeAnythingIsCompared} keeps.
-	 */
-	private static boolean isNothing(String value) {
-		return value == null || value.isBlank();
 	}
 
 	private static ResponseEntity<Refused> no(String reason) {
