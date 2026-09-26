@@ -210,6 +210,43 @@ describe('the moderators screen', () => {
     server.stop()
   }, SLOW)
 
+  /**
+   * A REFUSED NAME CHANGE SAYS WHY, ON THE FORM, AND LEAVES THE ROW AS IT WAS.
+   *
+   * The same branch `saveOne` already had for a refused `POST` (`says a taken address is
+   * taken`), now measured for the `PUT` beside it: an edit that comes back refused shows
+   * the route's own reason rather than the „saved" screen, and the list this reader goes
+   * back to still carries the old name, because nothing was written.
+   */
+  it('says why a name change was refused, and leaves the row exactly as it was', async () => {
+    const server = serving(() => refused('aRightTheMatrixDoesNotHold'))
+    const user = setupUser()
+
+    renderAt('/sr/administracija/moderatori', 'superadmin')
+
+    const rows = within(await screen.findByRole('table', { name: 'Moderatori' }))
+
+    await user.click(await rows.findByRole('button', { name: 'Otvori: Zoran Vuković' }))
+    await user.clear(screen.getByLabelText(/^Ime/))
+    await user.type(screen.getByLabelText(/^Ime/), 'Zorana')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Portal ne poznaje to pravo.')
+    /* Still on the form, not the „saved" screen - a refusal is not a confirmation. */
+    expect(screen.getByLabelText(/^Ime/)).toHaveValue('Zorana')
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
+
+    /* Nothing was written, so the list still reads the name the server always had. */
+    expect(listed.getByText('Zoran')).toBeVisible()
+    expect(listed.queryByText('Zorana')).toBeNull()
+
+    server.stop()
+  }, SLOW)
+
   it('sends a new one to POST /api/moderators with the three typed fields', async () => {
     const server = serving(() =>
       new Response(JSON.stringify({ id: 501, email: 'novi.moderator@primer.rs' }), {
