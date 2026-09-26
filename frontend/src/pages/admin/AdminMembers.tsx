@@ -125,13 +125,36 @@ export function AdminMembers() {
       return
     }
 
-    /* BOTH, AND THE SECOND IS NOT DECORATION. A member who was the last of his
-       team takes the team with him (`CompetitorWriteApi`, and PR 367), so a
-       screen of teams remounted after this would otherwise draw a team the
-       server has already forgotten. Counted rather than copied off another
-       screen: the moderators clear one and the teams clear two. */
+    /* SEVEN, NOT TWO, AND COUNTED AGAINST THE SCHEMA RATHER THAN AGAINST WHAT THIS
+       SCREEN HAPPENS TO DRAW. A member who was the last of his team takes the team
+       with him (`CompetitorWriteApi`, and PR 367) - that is the two this used to clear -
+       but `competitor` has five more foreign keys pointing at it, and every one of them
+       is a resource this portal caches for the length of a visit:
+       `result.competitor_id` cascades (V7:557), both `racing_pair.man_id` and
+       `.woman_id` cascade (V12:114-118), `attending.competitor_id` cascades (V7:594),
+       `event_comment.competitor_id` sets null while V33's trigger rewrites `who` to
+       `<Obrisani član>`/`<Obrisana članica>` in the same statement (V7:646, V33:89), and
+       `verification.competitor_id` cascades (V9:67).
+
+       Left uncleared, none of the five is asked for again this visit - `useResource`
+       reads `arrivedResource` once, on mount - so an administrator who deletes a member
+       and then opens the standing, a team's pairs, the attendance list, an event's
+       comments or the verification queue would go on reading a row for somebody the
+       server has already forgotten, and a decision on a verification row would then aim
+       at a queue entry the server no longer holds. That is the exact fault PR 367
+       closed for `teams`, five resources wide.
+
+       `ducats` is the one resource this deletion does NOT touch, and that is measured
+       rather than an oversight: `GET /api/ducats` serves the catalogue of tiers
+       (`DucatApi:152`, `from ducat`), never `ducat_award`, so nothing a competitor's
+       deletion changes is in it. */
     clearResourceCache('competitors')
     clearResourceCache('teams')
+    clearResourceCache('results')
+    clearResourceCache('pairs')
+    clearResourceCache('attendance')
+    clearResourceCache('comments')
+    clearResourceCache('verification')
     setRefused(null)
     setSaid(t('admin.memberGone'))
 

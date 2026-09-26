@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { clearResourceCache } from '../../data/client'
+import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from '../../data/client'
 import type { Competitor } from '../../data/types'
 import { person } from '../../test/plate'
 import { renderAt } from '../../test/render'
@@ -40,6 +40,11 @@ describe('the members screen', () => {
   ]
 
   const TEAMS = [{ id: 3, name: 'Trkači', slug: 'trkaci', organiserMemberNumber: '000004' }]
+
+  /** The five `AdminMembers.tsx`'s own note names as cascading off a deleted competitor
+   *  (V7:557, V12:114-118, V7:594, V7:646+V33:89, V9:67), beside `competitors` and
+   *  `teams`, which the case below already counts by hand. */
+  const ALSO_CLEARED: ResourceName[] = ['results', 'pairs', 'attendance', 'comments', 'verification']
 
   /**
    * The three served above, with whatever a case wants said about a write.
@@ -261,6 +266,18 @@ describe('the members screen', () => {
    * says nothing about it, and `Competitor` has no field that could. The sentence can only
    * have come from the answer, which is the axis - a screen that worked the reason out for
    * itself would be a second rule over one the route already holds.
+   *
+   * <p><b>TWO SOURCES, ONE VALUE, WHICH IS WHY THE SECOND ASSERTION EXISTS (PR 382's
+   * review).</b> `WHEN_DELETING_A_MEMBER`'s own note says the Serbian sentence the route
+   * names and its dictionary translation are, in this locale, THE SAME STRING. So a mapped
+   * answer and an UNMAPPED one both put that sentence in front of a reader here: mapped, it
+   * is the whole alert; unmapped, `ServerSaid`'s honest branch wraps it in „Server je odbio
+   * zahtev uz razlog …, koji ovaj ekran ne prepoznaje." Read as a substring, as the first
+   * assertion below does, the wrapped sentence STILL contains the bare one, so
+   * `refusals={{}}` passed all thirteen cases in this file the day this was found. The
+   * second assertion names the one phrase that can only be there if the map was never
+   * asked, and the case after this one moves to English, where the two sources no longer
+   * agree on a single word.
    */
   it('says why a deletion was refused, in the words the ROUTE named and not its own',
     async () => {
@@ -271,10 +288,56 @@ describe('the members screen', () => {
       renderAt('/sr/administracija/clanovi', 'superadmin')
 
       const row = await deleteNamed(user, 'Ana Jovanović')
+      const alert = await within(row).findByRole('alert')
 
-      expect(await within(row).findByRole('alert')).toHaveTextContent(
+      expect(alert).toHaveTextContent(
         'Nalog ovog člana administrira portal, pa se član ne može obrisati odavde.',
       )
+      /* AND NOT THE WRAPPER `ServerSaid` reaches for when the map does not know the reason -
+         the one phrase a mapped answer never carries, in either locale. Without this, the
+         assertion above is satisfied whether or not `refusals` was ever consulted, because
+         the wrapped sentence contains the bare one as a substring. */
+      expect(alert).not.toHaveTextContent('ne prepoznaje')
+
+      server.stop()
+    }, SLOW)
+
+  /**
+   * THE SAME REFUSAL, READ IN ENGLISH, WHERE THE TWO SOURCES STOP AGREEING ON EVEN ONE WORD.
+   *
+   * <p>In Serbian the mapped sentence and the fallback's echo of the raw reason share every
+   * word, which is what let `refusals={{}}` hide behind the case above. In English the
+   * dictionary's `admin.memberDeleteRefused.theAccountAdministers` is a sentence of its own
+   * - "This member's account administers the portal, so the member cannot be deleted from
+   * here." - while the fallback still quotes the reason exactly as the route sent it,
+   * UNTRANSLATED: "The server refused the request with the reason Nalog ovog člana
+   * administrira portal…, which this screen does not recognise." The two share almost no
+   * words at all, so this case would have caught `refusals={{}}` on the FIRST assertion
+   * alone; the second is kept for the same reason the Serbian case keeps it.
+   */
+  it('says why a deletion was refused in English too, rather than an untranslated Serbian '
+    + 'reason inside an English sentence', async () => {
+      const server = serving(() =>
+        refused('Nalog ovog člana administrira portal, pa se član ne može obrisati odavde.', 409),
+      )
+      const user = setupUser()
+      renderAt('/en/administracija/clanovi', 'superadmin')
+
+      const button = await screen.findByRole('button', { name: 'Delete: Ana Jovanović' })
+      const row = must(button.closest('tr'), 'the row of Ana Jovanović')
+
+      await user.click(button)
+      await user.click(
+        within(row).getByRole('button', { name: 'Confirm the deletion: Ana Jovanović' }),
+      )
+
+      const alert = await within(row).findByRole('alert')
+
+      expect(alert).toHaveTextContent(
+        "This member's account administers the portal, so the member cannot be deleted "
+          + 'from here.',
+      )
+      expect(alert).not.toHaveTextContent('does not recognise')
 
       server.stop()
     }, SLOW)
@@ -373,8 +436,17 @@ describe('the members screen', () => {
    * <p><b>The teams list is read BEFORE the deletion on purpose.</b> Asked only afterwards,
    * one read would prove nothing: a resource nobody had loaded is fetched on first sight
    * whether or not anything cleared it.
+   *
+   * <p><b>AND THE FIVE THE SCHEMA CASCADES OFF A COMPETITOR ARE GONE FROM THE CACHE TOO
+   * (PR 382's review).</b> Measured through `arrivedResource` rather than through a screen,
+   * because no one screen on this portal reads `results`, `pairs`, `attendance`, `comments`
+   * and `verification` all at once - `AdminMembers.tsx`'s own note names the migration that
+   * cascades each one off `competitor`. Loaded directly here for the same reason, and
+   * confirmed IN HAND before the deletion, so „gone afterwards" is a change this case can
+   * see rather than a guess about a resource nobody had asked for yet.
    */
-  it('reads the members again after a deletion, and the teams with them', async () => {
+  it('reads the members again after a deletion, and the teams with them, and forgets the '
+    + 'five the schema cascades from a competitor', async () => {
     const server = serving()
     const user = setupUser()
     const { router } = renderAt('/sr/administracija/timovi', 'superadmin')
@@ -387,9 +459,25 @@ describe('the members screen', () => {
 
     const beforeMembers = reads(server.asked, '/api/competitors')
 
+    await Promise.all(ALSO_CLEARED.map((name) => loadResource(name)))
+    for (const name of ALSO_CLEARED) {
+      expect(arrivedResource(name), `${name} never landed, so nothing below was measured`)
+        .toBeDefined()
+    }
+
     await deleteNamed(user, 'Ana Jovanović')
     await waitFor(() => {
       expect(writes(server.asked)).toHaveLength(1)
+    })
+
+    /* `clearResourceCache` runs synchronously once `deleteOne` reads the answer back, but
+       that answer is still a promise settling on its own schedule, so this is waited for
+       rather than read straight after the write above. */
+    await waitFor(() => {
+      for (const name of ALSO_CLEARED) {
+        expect(arrivedResource(name), `${name} was still cached after the member left`)
+          .toBeUndefined()
+      }
     })
 
     await router.navigate('/sr/administracija/timovi')
