@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
  * of its own blocks - there is one column and one renderer for it
  * ({@code Markdown.tsx}), so there is nothing else to serve.
  *
- * <p><b>SINCE 26.09.2026 A PAGE IS ASKED FOR IN A LANGUAGE</b> (owner, PDL.md:8446,
+ * <p><b>SINCE 26.09.2026 A PAGE IS ASKED FOR IN A LANGUAGE</b> (owner, PDL P18,
  * chosen from four outcomes: „sema dobija jezik, tekst se prevodi, i sve ide do
  * lansiranja"). What that changed here is one parameter and one field; the Serbian answer
  * is byte for byte the answer this route gave before, which is what
@@ -43,7 +43,7 @@ import java.util.regex.Pattern;
  * 401, so {@code /api/pages/en} is a path a visitor could not be allowed to read;
  * moving this route to {@code READ_BY_ANYBODY_UNDER_A_NAME} instead would require
  * {@code /api/pages} itself to shut, which PDL P23 forbids. A header would work and is
- * refused for the reason PDL.md:3204 gives for putting the language in the address
+ * refused for the reason PDL P18 gives for putting the language in the address
  * rather than in a cookie: anything outside the address has to be varied on at the edge,
  * „što ruši keširanje na ivici (ADL.md, A6)". A query string is part of the address, so
  * the edge holds the two languages as two resources.
@@ -67,7 +67,7 @@ class PageApi {
 	 * THE LANGUAGE THE ORIGINAL IS IN, and the answer to everything this route cannot
 	 * answer in the language it was asked for.
 	 *
-	 * <p>PDL.md:3212: „Kod pravnih tekstova mora biti izričito navedeno koja je jezička
+	 * <p>PDL P18: „Kod pravnih tekstova mora biti izričito navedeno koja je jezička
 	 * verzija merodavna, i to je <b>srpska</b>." So the Serbian is not a fallback in the
 	 * sense of a second best: it is the version that binds, it lives in the base tables
 	 * where the schema cannot let it go missing, and V35's
@@ -83,14 +83,14 @@ class PageApi {
 	 * WHAT A LANGUAGE TAG LOOKS LIKE, which is the only question this route asks about the
 	 * value it was handed.
 	 *
-	 * <p>PDL.md:3205: „Oznake jezika: {@code sr} i {@code en}. Ako se jednog dana doda
+	 * <p>PDL P18: „Oznake jezika: {@code sr} i {@code en}. Ako se jednog dana doda
 	 * crnogorski, oznaka je {@code cnr}." Two or three lower-case letters, the same
 	 * sentence V35 checks in the column.
 	 *
 	 * <p><b>Deliberately not a list of the languages the portal has.</b> A list would
 	 * have to be kept equal to {@code frontend/src/i18n/config.ts}'s {@code LOCALES}
 	 * across the boundary between the two halves of the repository, and it would answer
-	 * 400 for {@code cnr} on the day that tag is entered as data, which PDL.md:3194
+	 * 400 for {@code cnr} on the day that tag is entered as data, which PDL P18
 	 * („kao unos a ne kao razvoj") is written to prevent. Asking about the SHAPE is
 	 * complete by construction - it is answered by looking at the value - where asking
 	 * „is this one of ours" has to be kept in step with something else.
@@ -131,7 +131,7 @@ class PageApi {
 	 * @param slug     the address a human typed, and the one identity this schema still
 	 *                 checks for being taken (ADL A4d, „identitet i dalje kuca čovek:
 	 *                 adresa statične strane") - every other identity in this portal
-	 *                 is constructed and this one is not. NOT translated: PDL.md:3204
+	 *                 is constructed and this one is not. NOT translated: PDL P18
 	 *                 gives the addresses as {@code /sr/kalendar} and {@code /en/kalendar},
 	 *                 so the language is a prefix and the path itself stays Serbian
 	 * @param language the language the words of THIS page are really in, which is not
@@ -202,7 +202,7 @@ class PageApi {
 	 * implementation.</b> Asked for a language, a page answers in it only when its title
 	 * and every one of its blocks have been written in it; otherwise the whole page
 	 * answers in {@link #THE_ORIGINAL}. Eighteen articles of the rulebook in English and
-	 * the nineteenth in Serbian is not a contract anybody could rely on, and PDL.md:3183
+	 * the nineteenth in Serbian is not a contract anybody could rely on, and PDL P18
 	 * refuses the same thing one level up, where the owner was offered English on the
 	 * public pages only: „{@code /en} bi postao <b>delimično srpski</b>, što izgleda kao
 	 * kvar a ne kao odluka."
@@ -316,7 +316,7 @@ class PageApi {
 	/** Every page this table says a page takes in, by the address of the page doing the
 	 *  taking in and the address of the one taken in - so the answer never has to carry
 	 *  an internal id nobody outside this class reads. Not asked in a language: an address
-	 *  is not translated (PDL.md:3204). */
+	 *  is not translated (PDL P18). */
 	private Map<String, List<String>> includesByPage() {
 		List<IncludeLine> lines = db.sql("select p.slug, included.slug"
 						+ " from static_page_include i"

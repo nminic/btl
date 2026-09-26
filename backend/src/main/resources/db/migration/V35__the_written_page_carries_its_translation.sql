@@ -1,9 +1,16 @@
 /* THE WRITTEN PAGES GET A SECOND LANGUAGE, AND THE SERBIAN STAYS WHERE IT IS.
  *
- * PDL.md:8446, owner, 26.09.2026, chosen from four outcomes he was shown: "sema dobija
- * jezik, tekst se prevodi, i sve ide do lansiranja". His own words on the same day:
- * "HOCES PREVESTI SAM JER JA TAKO KAZEM". English is a condition of launch (owner,
- * 11.08.2026, PDL.md:3193) and 30.09.2026 is the date.
+ * PDL.md, section "Pravni tekstovi se prevode na engleski do 30.09.2026, i prevodim ih JA",
+ * owner, 26.09.2026, chosen from four outcomes he was shown: "sema dobija jezik, tekst se
+ * prevodi, i sve ide do lansiranja". His own words on the same day: "HOCES PREVESTI SAM JER
+ * JA TAKO KAZEM". English is a condition of launch (owner, 11.08.2026, PDL P18) and
+ * 30.09.2026 is the date.
+ *
+ * DECISIONS ARE CITED BY THEIR MARK AND THEIR SENTENCE HERE, NOT BY A LINE NUMBER, and that
+ * is measured rather than stylistic: the journals grow, so the numbers move. V24 cites
+ * ADL A4d for a sentence that is at 404 today and PDL P28a for one that is at 4720,
+ * and both were right when they were written. A mark (P18, A7, A4d) and the words themselves
+ * are what stay findable.
  *
  * THIS MIGRATION CARRIES NO TEXT. The two tables below arrive empty and the translation
  * itself is a migration of its own. That is not tidiness: it is what lets this one merge
@@ -14,7 +21,7 @@
  * with the reason recorded there rather than in a generator.
  *
  * WHY A ROW PER LANGUAGE AND NOT A COLUMN PER LANGUAGE, and this is decided rather than
- * preferred. PDL.md:3194: "Sistem mora da podnese dodavanje treceg jezika kad god
+ * preferred. PDL P18: "Sistem mora da podnese dodavanje treceg jezika kad god
  * zatreba, kao unos a ne kao razvoj." A title_en beside title makes Montenegrin a
  * MIGRATION, which is development, and the decision refuses that in as many words. With a
  * row per language the third tag is an insert, and this file never has to be followed by
@@ -24,7 +31,7 @@
  * hold a row per language and is the one this file refuses. Two reasons, both measured:
  *
  *   1. A page would exist twice, so static_page_slug_unique (V24) would have to go - and
- *      ADL.md:359 names it as the one uniqueness left in this portal that a human still
+ *      ADL A4d names it as the one uniqueness left in this portal that a human still
  *      types: "Provera jedinstvenosti ostaje samo tamo gde identitet i dalje kuca covek:
  *      adresa staticne strane."
  *   2. Worse, position and gallery would then be written once per language and could
@@ -36,27 +43,35 @@
  * static_page_section.heading and static_page_section.body - and everything else about a
  * page is language-independent, each for a reason with a source:
  *
- *   - slug is NOT translated. PDL.md:3204 gives the addresses as /sr/kalendar and
+ *   - slug is NOT translated. PDL P18 gives the addresses as /sr/kalendar and
  *     /en/kalendar: the language is a PREFIX and the path itself stays Serbian, which is
  *     what frontend/src/app/routeObjects.tsx already does.
  *   - position is the order a document is read in, which belongs to the document and not
  *     to the language.
  *   - gallery is the NAME of a drawing from a list closed at two (V24,
- *     static_page_section_gallery_known, and ADL.md:558). It is an identifier the frontend
+ *     static_page_section_gallery_known, and ADL A7). It is an identifier the frontend
  *     resolves to a component (DucatGallery, PriceTable), so it has no column here and is
  *     never translated. WHAT DOES HAVE TO SURVIVE TRANSLATION is the line inside body
- *     holding nothing but the gallery mark, which is where the drawing stands (ADL.md:566,
- *     frontend/src/components/PageSectionBody.tsx). Lost, the drawing silently leaves the
- *     English page; translated, the reader is shown the literal characters, which that
- *     component calls "the one thing the mark must never do". A case in PageApiTest holds
- *     every translation of every section that carries a drawing to carrying that line, and
- *     it reads the gallery column rather than a list of positions, so a third drawing
- *     added tomorrow is covered without being named.
+ *     holding nothing but the gallery mark, which is where the drawing stands (ADL A7,
+ *     frontend/src/components/PageSectionBody.tsx). WHAT GOES WRONG IF IT IS LOST IS NOT
+ *     WHAT IT LOOKS LIKE. ADL A7, 21.08.2026, says it in as many words: "Bez tog reda crtez
+ *     nije izgubljen nego stoji ispod celog teksta, dakle tacno tamo odakle ga je vlasnik
+ *     pomerio." So the English page would quietly go back to the layout the owner moved the
+ *     drawing away from - a silent return to the old arrangement, not a blank space, and
+ *     that is the reason a guard is worth having. Translated instead of copied, the reader
+ *     is shown the literal characters, which PageSectionBody calls "the one thing the mark
+ *     must never do". The same decision names a third way to lose it without deleting it:
+ *     the mark counts only as a WHOLE line, so anything before it on that line, a zero
+ *     width character included, looks right in a diff and reads as ordinary text. A case in
+ *     PageApiTest holds every translation of every section that carries a drawing to
+ *     carrying a line that is exactly the mark once stripped, which refuses that third way
+ *     too, and it reads the gallery column rather than a list of positions, so a third
+ *     drawing added tomorrow is covered without being named.
  *   - includes is a list of addresses, so it needs no translation of its own. The boundary
  *     it leaves is written at the foot of this file.
  *
  * THE SERBIAN IS NOT MOVED, and that is the whole reason these are called translations.
- * PDL.md:3212: "Kod pravnih tekstova mora biti izricito navedeno koja je jezicka verzija
+ * PDL P18: "Kod pravnih tekstova mora biti izricito navedeno koja je jezicka verzija
  * merodavna, i to je srpska." The base tables hold the ORIGINAL and these two hold
  * translations OF it, so the authoritative text is the one the schema cannot let go
  * missing - V24's not null on title, heading and body all stand untouched. It is also what
@@ -73,7 +88,7 @@ create table static_page_translation (
     constraint static_page_translation_pk primary key (id),
 
     /* Cascaded rather than restricted, the same direction static_page_section_page_fk
-       takes: an administrator may delete a written page (PDL.md:4376), and a translation
+       takes: an administrator may delete a written page (PDL P28a), and a translation
        of a page that is gone is not a record that stops anybody. */
     constraint static_page_translation_page_fk foreign key (page_id)
         references static_page (id) on delete cascade,
@@ -81,16 +96,16 @@ create table static_page_translation (
     constraint static_page_translation_once_per_language unique (page_id, language),
 
     /* ONE ORIGINAL, AND THE REST ARE TRANSLATIONS. Serbian lives in static_page.title
-       (PDL.md:3212 makes it the authoritative version), so a row here spelling sr would be
+       (PDL P18 makes it the authoritative version), so a row here spelling sr would be
        a second home for it, which is the fault this whole shape exists to avoid. */
     constraint static_page_translation_not_serbian check (language <> 'sr'),
 
     /* THE SHAPE OF A LANGUAGE TAG HAS A SOURCE, so it is checked rather than guessed - the
        opposite of slug, which V24 deliberately left unchecked because no decision named a
-       shape for it. PDL.md:3205: "Oznake jezika: sr i en. Ako se jednog dana doda
+       shape for it. PDL P18: "Oznake jezika: sr i en. Ako se jednog dana doda
        crnogorski, oznaka je cnr." Two or three lower-case letters. Deliberately NOT a
        closed list of the tags that exist today: in ('en') would send the third language
-       back through a migration and break PDL.md:3194.
+       back through a migration and break PDL P18.
 
        NO COLLATE ON THE RANGE, AND THAT IS A MEASUREMENT RATHER THAN AN OMISSION. A range
        inside a bracket expression can be resolved by the collation, so the first draft of
@@ -153,7 +168,7 @@ create table static_page_section_translation (
    A PAGE THAT TAKES IN ANOTHER (static_page_include) can be translated while the page it
    takes in is not, and the reader would then get English blocks followed by Serbian ones
    in one article. That is the outcome the owner REFUSED on 26.09.2026 when he was offered
-   "samo javne strane na engleskom": PDL.md:3183, "/en bi postao delimicno srpski, sto
+   "samo javne strane na engleskom": PDL P18, "/en bi postao delimicno srpski, sto
    izgleda kao kvar a ne kao odluka." It is left open rather than solved because no page
    uses includes today - the table has no rows, and the one page it was written for is
    drawn by the front page component directly (V24's header) - so there is no behaviour
@@ -163,5 +178,5 @@ create table static_page_section_translation (
 
    THE NAME OF A PRICE LIST ROW HAS THE SAME PROBLEM AND IS NOT FIXED HERE. V34 gave
    price_row a name column, one Serbian text with collate sr_latn and no English twin, and
-   the price list is public by PDL.md:803. That is a different resource with a different
+   the price list is public by PDL P8. That is a different resource with a different
    route and belongs to whoever writes it. */

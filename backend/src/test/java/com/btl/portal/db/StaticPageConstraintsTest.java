@@ -241,7 +241,7 @@ class StaticPageConstraintsTest extends DatabaseTest {
 								+ "union all "
 								+ "select id, 'en', 'Drugo' from static_page where slug = 'pravilnik'"),
 				/* `sr` is the one tag this table exists to refuse: the Serbian lives in
-				   static_page.title and PDL.md:3212 makes it the version that binds, so a row
+				   static_page.title and PDL P18 makes it the version that binds, so a row
 				   here would be a second home for one fact. It IS shaped like a tag, so it
 				   trips this and not the shape check. */
 				Violation.of("static_page_translation_not_serbian",

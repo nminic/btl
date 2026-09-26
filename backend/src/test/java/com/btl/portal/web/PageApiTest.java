@@ -539,7 +539,7 @@ class PageApiTest {
 	 *
 	 * <p><b>Absent and {@code sr} are asked separately because they are two states of one
 	 * axis</b>, not one. The portal will send the tag explicitly on every address
-	 * (PDL.md:3204 puts the language in the address for Serbian too), while every reader
+	 * (PDL P18 puts the language in the address for Serbian too), while every reader
 	 * written before today sends nothing; a route that defaulted the absent case to English
 	 * would break the first and not the second, and only one of these two cases would see it.
 	 */
@@ -574,11 +574,11 @@ class PageApiTest {
 	 * so they get one rule and one field. The alternative was a list of the tags the portal
 	 * has, which would have to be kept in step with
 	 * {@code frontend/src/i18n/config.ts} across the two halves of the repository and would
-	 * answer 400 for {@code cnr} on the day that tag is entered as data, which PDL.md:3194
+	 * answer 400 for {@code cnr} on the day that tag is entered as data, which PDL P18
 	 * („kao unos a ne kao razvoj") exists to prevent.
 	 *
 	 * <p>{@code cnr} is asked alongside {@code de} because it is three letters and because
-	 * PDL.md:3205 names it as the next tag: „Ako se jednog dana doda crnogorski, oznaka je
+	 * PDL P18 names it as the next tag: „Ako se jednog dana doda crnogorski, oznaka je
 	 * {@code cnr}."
 	 */
 	@ParameterizedTest
@@ -614,7 +614,7 @@ class PageApiTest {
 	 *
 	 * <p><b>Why the rule is the page and not the block.</b> Eighteen articles of the
 	 * rulebook in English and the nineteenth in Serbian is not a contract anybody could rely
-	 * on, and PDL.md:3183 refuses the same thing one level up, where the owner was offered
+	 * on, and PDL P18 refuses the same thing one level up, where the owner was offered
 	 * English on the public pages only: „{@code /en} bi postao <b>delimično srpski</b>, što
 	 * izgleda kao kvar a ne kao odluka." What it buys is that the translation may arrive a
 	 * block and a commit at a time with no reader ever seeing half of a legal text.
@@ -667,7 +667,7 @@ class PageApiTest {
 	/**
 	 * A VALUE THAT IS NOT SHAPED LIKE A LANGUAGE TAG IS REFUSED, AND WITH NO BODY.
 	 *
-	 * <p>The shape is PDL.md:3205's: „Oznake jezika: {@code sr} i {@code en}. Ako se jednog
+	 * <p>The shape is PDL P18's: „Oznake jezika: {@code sr} i {@code en}. Ako se jednog
 	 * dana doda crnogorski, oznaka je {@code cnr}." Two or three lower-case letters, which
 	 * is a question about the value itself and so cannot be incomplete in any direction -
 	 * unlike „is this one of ours", which would have to be kept in step with a list living
@@ -683,7 +683,7 @@ class PageApiTest {
 	 *
 	 * <p><b>The last row is the one worth reading twice.</b> {@code en-GB} is a real BCP-47
 	 * tag and a plausible thing to send; it is refused because this portal's tags are the
-	 * three PDL.md:3205 names and nothing about a region has been decided. The empty value
+	 * three PDL P18 names and nothing about a region has been decided. The empty value
 	 * is what a switch sends when it has nothing selected, and it is not the same request as
 	 * sending no parameter at all - {@code theOriginalComesBackWhenNoLanguageIsAskedFor...}
 	 * holds that one to 200.
@@ -709,6 +709,108 @@ class PageApiTest {
 	}
 
 	/**
+	 * TWO TRANSLATIONS OF ONE PAGE DO NOT ANSWER FOR EACH OTHER, AND A THIRD THAT IS ONLY A
+	 * TITLE ANSWERS FOR NOBODY.
+	 *
+	 * <p><b>This case was written from a hole, not from a failure.</b> Every case above it
+	 * writes exactly one language, and with one language written there are three separate
+	 * places where the route could stop asking WHICH language and no case could tell:
+	 *
+	 * <ol>
+	 * <li>the page's own join. Unfiltered, asking for a tag finds another tag's title.</li>
+	 * <li>the block join. Unfiltered, a block comes back once per language that has it.</li>
+	 * <li>the join inside the completeness test. Unfiltered, „every block has words" is
+	 * satisfied by words in SOME OTHER language, and the page is then served as whole with
+	 * nothing to serve.</li>
+	 * </ol>
+	 *
+	 * <p>Each of the three survives every other case in this file, because with only English
+	 * written there is no second language for an unfiltered join to reach. All three stop
+	 * surviving here.
+	 *
+	 * <p><b>Latent today and not tomorrow</b>, which is why it is worth a case rather than a
+	 * note: PDL P18 plans the third language as an ENTRY („kao unos a ne kao razvoj"), so
+	 * the day somebody types one is the day an unfiltered join starts handing one language's
+	 * words to another's reader - on a legal text.
+	 *
+	 * <p><b>The three tags are deliberately in three different states.</b> English and German
+	 * are both whole and must answer their own words; French is a title with no blocks behind
+	 * it and must answer in the original, which is the state that catches the third join. The
+	 * count of pages is asserted for each, because an unfiltered join duplicates a ROW rather
+	 * than changing a value, and a map keyed by address would quietly collapse the duplicate.
+	 */
+	@Test
+	void twoTranslationsOfOnePageDoNotAnswerForEachOther() throws Exception {
+		englishTitleFor("uslovi-koriscenja");
+		assertThat(englishBlocksFor("uslovi-koriscenja", 12)).isEqualTo(12);
+
+		/* A SECOND LANGUAGE, WHOLE, with words of its own. */
+		assertThat(db.sql("insert into static_page_translation (page_id, language, title)"
+						+ " select id, 'de', 'Deutscher Titel' from static_page"
+						+ " where slug = 'uslovi-koriscenja'")
+				.update()).isOne();
+		assertThat(db.sql("insert into static_page_section_translation"
+						+ " (section_id, language, heading, body)"
+						+ " select s.id, 'de', 'Deutsche Ueberschrift ' || s.position,"
+						+ "   'Deutscher Text ' || s.position"
+						+ " from static_page_section s"
+						+ " join static_page p on p.id = s.page_id"
+						+ " where p.slug = 'uslovi-koriscenja'")
+				.update()).isEqualTo(12);
+
+		/* A THIRD LANGUAGE THAT IS A TITLE AND NOTHING ELSE. */
+		assertThat(db.sql("insert into static_page_translation (page_id, language, title)"
+						+ " select id, 'fr', 'Titre francais' from static_page"
+						+ " where slug = 'uslovi-koriscenja'")
+				.update()).isOne();
+
+		JsonNode english = answerIn("en");
+		JsonNode german = answerIn("de");
+		JsonNode french = answerIn("fr");
+
+		for (JsonNode ours : List.of(english, german, french)) {
+			assertThat(ours.size())
+					.as("a page came back more than once, which is what a join that stopped"
+							+ " asking which language would do")
+					.isEqualTo(SLUGS.size());
+			assertThat(fieldOf(ours, "uslovi-koriscenja", "heading"))
+					.as("the page came back with more blocks than it has, so its blocks arrived"
+							+ " once per language rather than once")
+					.hasSize(12);
+		}
+
+		assertThat(pageNamed(english, "uslovi-koriscenja").path("title").asString())
+				.isEqualTo(ENGLISH_TITLE + "uslovi-koriscenja");
+		assertThat(fieldOf(english, "uslovi-koriscenja", "heading"))
+				.as("asked in English the page answered with another language's blocks")
+				.isEqualTo(expected(ENGLISH_HEADING, 12));
+
+		assertThat(pageNamed(german, "uslovi-koriscenja").path("title").asString())
+				.as("asked in German the page answered with the English title")
+				.isEqualTo("Deutscher Titel");
+		assertThat(fieldOf(german, "uslovi-koriscenja", "heading"))
+				.as("asked in German the page answered with the English blocks")
+				.isEqualTo(expected("Deutsche Ueberschrift ", 12));
+
+		/* AND THE TAG THAT HAS ONLY A TITLE FALLS BACK WHOLE, rather than being called
+		   complete because some OTHER language has the blocks. */
+		assertThat(languagesOf(french))
+				.as("a tag with a title and no blocks was served as though it were whole, so its"
+						+ " reader is handed a legal text with nothing in it or somebody else's"
+						+ " words in it")
+				.containsEntry("uslovi-koriscenja", PageApi.THE_ORIGINAL);
+		assertThat(pageNamed(french, "uslovi-koriscenja").path("title").asString())
+				.as("the French title reached a page that could not be served in French")
+				.isEqualTo(pageNamed(mock(), "uslovi-koriscenja").path("title").asString());
+		assertThat(fieldOf(french, "uslovi-koriscenja", "heading"))
+				.as("asked in French the page handed over another language's blocks")
+				.doesNotContain(ENGLISH_HEADING + "1", "Deutsche Ueberschrift 1");
+
+		assertThat(languagesOf(english)).containsEntry("uslovi-koriscenja", "en");
+		assertThat(languagesOf(german)).containsEntry("uslovi-koriscenja", "de");
+	}
+
+	/**
 	 * EVERY TRANSLATED BLOCK THAT CARRIES A DRAWING STILL CARRIES THE MARK THAT PLACES IT,
 	 * AND THE NAME OF THE DRAWING IS NOT TRANSLATED.
 	 *
@@ -716,9 +818,22 @@ class PageApiTest {
 	 * The name of the drawing is a column of its own and V35 gives the translation no place
 	 * to hold it, so it cannot be got wrong. Where the drawing STANDS is a line inside the
 	 * words, holding nothing but the mark (ADL A7, 21.08.2026), so it travels through the
-	 * translation like any other text. Dropped, the drawing leaves the English page and no
-	 * test of the words would notice; translated, the reader is shown the literal characters,
+	 * translation like any other text.
+	 *
+	 * <p><b>And what goes wrong if it is dropped is not what it looks like</b>, which is worth
+	 * naming because the wrong version of this sentence makes the guard look cosmetic. The
+	 * same decision says it outright: „Bez tog reda crtež <b>nije izgubljen nego stoji ispod
+	 * celog teksta</b>, dakle tačno tamo odakle ga je vlasnik pomerio." The drawing does not
+	 * disappear; the English page silently goes back to the arrangement the owner moved it
+	 * away from. Translated instead of copied, the reader is shown the literal characters,
 	 * which {@code PageSectionBody.tsx} calls „the one thing the mark must never do".
+	 *
+	 * <p><b>The third way to lose it is not to delete it</b>, and this case refuses that too.
+	 * ADL A7 again: the mark counts only while it is a whole line, so `[[gallery]]` behind a
+	 * zero width character „izgleda u uređivaču i u diffu isto kao ispravan red, a portal ga
+	 * čita kao običan tekst". What is asserted below is a line that EQUALS the mark once
+	 * stripped, and {@link String#strip()} does not remove a zero width space, so such a line
+	 * fails here rather than reaching a reader.
 	 *
 	 * <p><b>Which blocks are asked about is read off the {@code gallery} column, not off a
 	 * list of positions.</b> That is the floor this guard stands on: the rulebook carries two
