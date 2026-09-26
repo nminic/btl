@@ -1416,11 +1416,13 @@ describe('payment payloads', () => {
      dinar account at a Serbian bank, which from abroad is the slowest and
      dearest way there is (owner, 31.07.2026). */
   it('offers the slip only inside Serbia, and PayPal only outside it', () => {
-    expect(methodsFor('RS')).toEqual(['ips', 'card'])
-    expect(methodsFor('ME')).toEqual(['paypal', 'card'])
-    expect(methodsFor('HR')).toEqual(['paypal', 'card'])
-    expect(methodsFor('BA')).toEqual(['paypal', 'card'])
-    expect(methodsFor('DE')).toEqual(['paypal', 'card'])
+    /* Card left both lists on 26.09.2026: no provider was ever chosen, so it was a
+       heading and a note and nothing a member could act on (PDL.md:1659). */
+    expect(methodsFor('RS')).toEqual(['ips'])
+    expect(methodsFor('ME')).toEqual(['paypal'])
+    expect(methodsFor('HR')).toEqual(['paypal'])
+    expect(methodsFor('BA')).toEqual(['paypal'])
+    expect(methodsFor('DE')).toEqual(['paypal'])
   })
 })
 

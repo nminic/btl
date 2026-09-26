@@ -1,7 +1,6 @@
-import { Fragment } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
-import { countryName } from '../../data/countryName'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
 import { QrCode } from '../../components/QrCode'
@@ -176,6 +175,34 @@ export function Membership() {
      inside it, so this screen is the one that changes most with the date. It
      reads the same clock as everything else (src/clock). */
   const today = useToday()
+
+  /* The referral link, built here rather than where it is drawn: it needs only the
+     locale and the session's own code, neither of which waits on the resources below,
+     and the copy button needs the exact same string the paragraph prints. Built twice
+     it could say two different things; built once, both read the one variable. */
+  const referralLink = `${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`
+
+  /* WHAT THE COPY BUTTON SAYS AFTER IT IS PRESSED, in the portal's own shape for a
+     quiet confirmation (`admin/AdminPricing.tsx`, `said`/`setSaid`): one string,
+     empty until something happens, read out by an `aria-live` region that is in the
+     page from the first render rather than mounted on demand - a region added only
+     after the fact can miss its own first announcement.
+
+     `navigator.clipboard` both CAN BE ABSENT (older browsers, a page not served over
+     https) and CAN REFUSE (a user or a browser policy denying the permission), and
+     the two look the same from here: a rejected promise either way. Both get a
+     sentence on screen, per WCAG 2.2 AA - neither leaves the member pressing a
+     button that answers nothing. */
+  const [copyStatus, setCopyStatus] = useState('')
+
+  async function copyReferralLink(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setCopyStatus(t('membership.linkCopied'))
+    } catch {
+      setCopyStatus(t('membership.copyFailed'))
+    }
+  }
 
   if (who.memberNumber === null) {
     return who.instead
@@ -461,6 +488,26 @@ export function Membership() {
                 <>
                   <p className="member__note">{t('membership.renewalOpen')}</p>
 
+                  {/* THESE TWO RADIOS ARE A DRAFT, NOT DECORATION, and this comment exists
+                      because they were almost read as the opposite on 26.09.2026 - counted
+                      among "controls that do nothing" alongside the Renew button below,
+                      since neither is wired to a route today.
+
+                      They are not the same case. PDL.md §9 ("Izbor kategorije je clanov unos
+                      do 1.1. u 10:00, a portal ga primenjuje na zamrzavanju"), owner,
+                      26.09.2026: „Clan moze da stiklira... sta god hoce sve do zamrzavanja
+                      sezone 1.1. u 10 ujutru. Dotle zavisno od toga sta izabere, on se
+                      prikazuje u adekvatnim porecima za narednu sezonu." And, sharper than
+                      first drafted: „racunaj da clan bira ono sto ZELI, ali ga superadmin /
+                      moderator verifikacijom necega moze gurnuti u starosnu kategoriju ako
+                      odobri rezultat kojim prelaz 12 bodova" - what is kept is the WISH, not
+                      the category, because the category is derived from it and a right the
+                      server checks.
+
+                      So a route for this choice is coming, as its own increment right after
+                      this one. Until it lands, these stay exactly as they render today:
+                      unwired, but blueprint rather than dead weight. Do not remove them on
+                      the strength of the Renew button's fate below - ask first. */}
                   <fieldset className="renewal">
                     <legend>{t('membership.chooseCategory', { season: nextSeason })}</legend>
 
@@ -501,9 +548,16 @@ export function Membership() {
                     </p>
                   </fieldset>
 
-                  <button type="button" className="button button--primary">
-                    {t('membership.renew', { season: nextSeason })}
-                  </button>
+                  {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026. The button had
+                      no `onClick`, no enclosing `<form>` and no route to reach: renewing has
+                      never been the member's own action on this portal, paying is, and a
+                      moderator is the one who records that a payment arrived
+                      (`PaymentApi`, `@RightIsNeeded("queue:payments")`) - the member is never
+                      signed in to do it himself. A control promising an action that does not
+                      exist here is worse than none (PDL.md:1659, owner: „Kontrola koja ništa
+                      ne radi je gora nego da je nema"), so this says what actually happens
+                      next instead of offering a press that went nowhere. */}
+                  <p className="member__note">{t('membership.renew')}</p>
 
                   {/* The slip belongs to renewing, not to a screen of its own: the
                       member has just chosen a category and the next thing they need
@@ -514,13 +568,6 @@ export function Membership() {
                       (owner, 30.07.2026). The line above about membership not
                       being on sale is the one September before the launch, and
                       not the day the list ran out. */}
-                  {/* Which ways of paying this member is offered, and why. It
-                      belongs to the ways and not to the slip: a member abroad
-                      sees no slip at all and still needs to know that PayPal and
-                      a card are what their country gets. */}
-                  <p className="member__note">
-                    {t('membership.byCountry', { country: countryName(myCountry) })}
-                  </p>
 
                   {/* The slip itself, and only where it can be paid. PDL P8,
                       owner 31.07.2026: „QR kod postoji samo za uplate iz Srbije.
@@ -528,8 +575,10 @@ export function Membership() {
                       Only the drawn code was hidden, so a member abroad still got
                       the heading, the association's dinar account, the reference
                       and an amount, which is the whole of the slip and the very
-                      route that decision removed. The terms say the same in
-                      writing: outside Serbia it is PayPal or a card. */}
+                      route that decision removed. The sentence that used to say so in
+                      writing (byCountry) is gone since 26.09.2026, owner: „Načini plaćanja
+                      zavise od države na tvom profilu (Srbija). obriši ovu liniju" - what
+                      abroad gets instead is said beside PayPal further down. */}
                   {/* AND ONLY WHERE THERE IS AN AMOUNT TO PUT ON IT, which is the walk
                       of the list of none or one. A slip is four facts and a sum, and the
                       one thing a bank cannot do without is the sum, so an answer holding
@@ -538,96 +587,90 @@ export function Membership() {
                       into it: „a member abroad sees no slip" and „there is no price to
                       put on one" are two different reasons, and one condition covering
                       both would let a case pass for the wrong one. */}
+                  {/* ONE WALK AND NOT TWO, since 26.09.2026 - the written slip and the QR
+                      code used to be two separate `due.map` calls back to back, paired only
+                      by DOM position, which holds while `due` never carries more than one
+                      row (it does not: `PriceListRowsTest` on the server) but would put row
+                      one's text beside row two's code the day it ever did. A single `.map`
+                      over `row` makes the written half and the drawn half of the SAME row
+                      one unit, so the pairing cannot come apart. It is also what „sa desne
+                      strane u nivou detalja za uplatu" (owner, 26.09.2026) asks for: the two
+                      are one slip in two forms, laid out as a pair rather than a stack
+                      (Member.css, `.pay__slip`, two columns from `51.25em`, one below
+                      `700px`... one column). */}
                   {methods.includes('ips') &&
                     due.map((row) => (
-                    <Fragment key={row.key}>
-                  <h3 className="profile__section">{t('membership.payNow')}</h3>
+                    <div className="pay__slip" key={row.key}>
+                      <div className="pay__slipText">
+                        <h3 className="profile__section">{t('membership.payNow')}</h3>
 
-                  {/* The same four facts the code carries, in writing, because a
-                      code is no use to somebody typing a payment into their bank
-                      on a telephone they are also holding the code on (owner,
-                      31.07.2026). The reference is what the statement is
-                      reconciled by, so it is called out under them. */}
-                  <dl className="pay__details">
-                    <dt>{t('membership.toWhom')}</dt>
-                    <dd>
-                      {RECIPIENT_NAME}
-                      <span className="pay__seat">{RECIPIENT_ADDRESS}</span>
-                    </dd>
-                    <dt>{t('membership.account')}</dt>
-                    <dd>{RECIPIENT_ACCOUNT}</dd>
-                    <dt>{t('membership.reference')}</dt>
-                    <dd>
-                      <strong>{reference}</strong>
-                    </dd>
-                    <dt>{t('membership.purposeLabel')}</dt>
-                    <dd>{purpose}</dd>
-                    {/* The amount, which this list did not have at all. It exists
-                        for somebody typing the payment into their bank by hand,
-                        and the one thing a bank cannot do without is the sum. A
-                        junior member had it worse than nobody: the only figure
-                        they could read on this screen was the grown one, and the
-                        right one was inside the code, where only a camera
-                        reaches. */}
-                    <dt>{t('membership.amountLabel')}</dt>
-                    <dd>
-                      <strong>{inTheirCurrency(myCountry, row, locale)}</strong>
-                    </dd>
-                  </dl>
+                        {/* The same four facts the code carries, in writing, because a
+                            code is no use to somebody typing a payment into their bank
+                            on a telephone they are also holding the code on (owner,
+                            31.07.2026). The reference is what the statement is
+                            reconciled by, so it is called out under them. */}
+                        <dl className="pay__details">
+                          <dt>{t('membership.toWhom')}</dt>
+                          <dd>
+                            {RECIPIENT_NAME}
+                            <span className="pay__seat">{RECIPIENT_ADDRESS}</span>
+                          </dd>
+                          <dt>{t('membership.account')}</dt>
+                          <dd>{RECIPIENT_ACCOUNT}</dd>
+                          <dt>{t('membership.reference')}</dt>
+                          <dd>
+                            <strong>{reference}</strong>
+                          </dd>
+                          <dt>{t('membership.purposeLabel')}</dt>
+                          <dd>{purpose}</dd>
+                          {/* The amount, which this list did not have at all. It exists
+                              for somebody typing the payment into their bank by hand,
+                              and the one thing a bank cannot do without is the sum. A
+                              junior member had it worse than nobody: the only figure
+                              they could read on this screen was the grown one, and the
+                              right one was inside the code, where only a camera
+                              reaches. */}
+                          <dt>{t('membership.amountLabel')}</dt>
+                          <dd>
+                            <strong>{inTheirCurrency(myCountry, row, locale)}</strong>
+                          </dd>
+                        </dl>
 
-                  <p className="member__note">{t('membership.referenceNote')}</p>
-                    </Fragment>
-                    ))}
+                        <p className="member__note">{t('membership.referenceNote')}</p>
+                      </div>
 
-                  {/* Every way of paying is one way of doing what the slip
-                      above is for, so they sit under it rather than beside
-                      it. As third level headings they read as four more
-                      sections of the renewal, which they are not. */}
-                  {/* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is
-                      the sharpest end of the whole increment. `PricingWriteApi` names it
-                      in its own heading: while this read the bundled constant, an
-                      administrator who raised the fee raised what the next payment was
-                      BOOKED at and left the code asking for the old figure - so a member
-                      scanned a request for one sum and was recorded as owing another. */}
-                  {methods.includes('ips') &&
-                    due.map((row) => (
-                    <div className="pay" key={row.key}>
-                      <h4>{t('membership.ips')}</h4>
-                      <p className="member__note">{t('membership.ipsNote')}</p>
-                      <div className="pay__code">
-                        <QrCode
-                          text={ipsPayload({
-                            account: RECIPIENT_ACCOUNT,
-                            recipient: RECIPIENT,
-                            amountRsd: row.rsd,
-                            purpose,
-                            reference,
-                          })}
-                          label={t('membership.ipsQrLabel')}
-                        />
-                        <details>
-                          <summary>{t('membership.showPayload')}</summary>
-                          <pre className="pay__payload">
-                            {ipsPayload({
+                      {/* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is
+                          the sharpest end of the whole increment. `PricingWriteApi` names it
+                          in its own heading: while this read the bundled constant, an
+                          administrator who raised the fee raised what the next payment was
+                          BOOKED at and left the code asking for the old figure - so a member
+                          scanned a request for one sum and was recorded as owing another. */}
+                      <div className="pay">
+                        <h4>{t('membership.ips')}</h4>
+                        <p className="member__note">{t('membership.ipsNote')}</p>
+                        <div className="pay__code">
+                          <QrCode
+                            text={ipsPayload({
                               account: RECIPIENT_ACCOUNT,
                               recipient: RECIPIENT,
                               amountRsd: row.rsd,
                               purpose,
                               reference,
                             })}
-                          </pre>
-                        </details>
+                            label={t('membership.ipsQrLabel')}
+                          />
+                        </div>
                       </div>
                     </div>
                     ))}
 
-                  {methods.includes('card') && (
-                    <div className="pay">
-                      <h4>{t('membership.card')}</h4>
-                      <p className="member__note">{t('membership.cardNote')}</p>
-                    </div>
-                  )}
-
+                  {/* CARD LEFT, since 26.09.2026 (PDL.md:1659). No provider was ever chosen
+                      (`membership.cardNote` said so in as many words), so this was a heading
+                      and a note and nothing a member could act on - the owner is sending a
+                      real PayPal account for payment from abroad instead. `methodsFor`
+                      (data/paymentQr.ts) no longer offers `'card'` to anybody, Serbia
+                      included, where it sat beside the slip for the same reason: a way to
+                      pay that was never actually built. */}
                   {methods.includes('paypal') && (
                     <div className="pay">
                       <h4>{t('membership.paypal')}</h4>
@@ -655,11 +698,16 @@ export function Membership() {
                   ? t('membership.transferOpen', { season: nextSeason })
                   : t('membership.transferShut')}
               </p>
-              {windowOpen && (
-                <button type="button" className="button button--secondary">
-                  {t('membership.askToJoin')}
-                </button>
-              )}
+              {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026, and for the same
+                  reason as the Renew button above (PDL.md:1659). This one had no route in
+                  EITHER direction: `POST /api/teams` (`TeamWriteApi`) proposes a brand new
+                  team, not joining one that exists, and nothing on the backend writes
+                  `team_application` or `team_invitation` at all - `GET /api/me/applications`
+                  (`MyApplicationsApi`) only reads them, and no frontend screen calls even
+                  that yet. So joining a team is not a member's action on the portal today,
+                  from neither side of it, and the sentence says what is actually true rather
+                  than promise a press that had nowhere to go. */}
+              {windowOpen && <p className="member__note">{t('membership.askToJoin')}</p>}
             </section>
 
             {/* The referral programme, and the balance it pays into.
@@ -716,7 +764,35 @@ export function Membership() {
                   Written out because a `${undefined}` in an address is a link a reader
                   would copy and send on, and the empty string is a link that plainly
                   does not work rather than one that looks as if it might. */}
-              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`}</p>
+              <p className="pay__payload">
+                <span className="pay__link">{referralLink}</span>
+                {/* The graphic at the end of the box (owner, 26.09.2026), never on its
+                    own: an icon with no name is a button a screen reader announces as
+                    just „button", so the name it needs is here (`aria-label`) rather
+                    than left to the picture, per WCAG 2.2 AA. What it does on either
+                    outcome is said below, not just here. */}
+                <button
+                  type="button"
+                  className="copyLink"
+                  aria-label={t('membership.copyReferralLink')}
+                  onClick={() => {
+                    void copyReferralLink()
+                  }}
+                >
+                  <svg className="copyLink__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <rect x="7.5" y="7.5" width="9" height="9" rx="1.5" />
+                    <path d="M4.5 12.5h-1a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" />
+                  </svg>
+                </button>
+              </p>
+              {/* Said once, quietly, in the portal's own shape for a confirmation nobody
+                  has to be looking at the button to hear (`admin/AdminPricing.tsx`,
+                  `said`). Present from the first render and empty until pressed, so the
+                  first real change is not the region's own first mount - a live region
+                  that only exists once there is something to say can miss saying it. */}
+              <p aria-live="polite" className="visually-hidden">
+                {copyStatus}
+              </p>
               {credited.map((row) => (
                 <p className="membership__balance" key={row.key}>
                   <strong>

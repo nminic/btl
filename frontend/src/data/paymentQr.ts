@@ -104,7 +104,7 @@ export function ipsPayload(payment: IpsPayment): string {
   return parts.join('|')
 }
 
-export type PaymentMethod = 'ips' | 'paypal' | 'card'
+export type PaymentMethod = 'ips' | 'paypal'
 
 /**
  * What a member is offered, by the country on their profile.
@@ -116,11 +116,15 @@ export type PaymentMethod = 'ips' | 'paypal' | 'card'
  *
  * The slip with the code must never appear for anybody else (owner,
  * 31.07.2026): it pays into a dinar account at a Serbian bank, and from abroad
- * that is the slowest and dearest way there is. Abroad it is PayPal or a card,
- * and nothing else.
+ * that is the slowest and dearest way there is.
+ *
+ * A card was a third member of this list until 26.09.2026. The owner removed
+ * it (no provider was ever chosen, so the whole section was a heading and a
+ * note saying so) and is sending a real PayPal account for payment from
+ * abroad instead, so abroad is PayPal alone now and not PayPal-or-card.
  */
 export function methodsFor(country: string): PaymentMethod[] {
-  return paysInDinars(country) ? ['ips', 'card'] : ['paypal', 'card']
+  return paysInDinars(country) ? ['ips'] : ['paypal']
 }
 
 /**
