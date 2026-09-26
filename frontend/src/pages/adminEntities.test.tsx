@@ -2132,12 +2132,18 @@ describe('the written pages', () => {
        because none of them ever reached a route and never will (ADL.md,
        resolved 18.09.2026). What is measured instead is the sentence that took
        their place (`AdminPricing.tsx`'s `admin.pricingFixed` is the same shape,
-       for the same reason). */
+       for the same reason), and that every one of the four controls that used
+       to write here is gone rather than merely quiet: brought any one of them
+       back, or taken the sentence away again, is what this is meant to catch. */
     renderAt('/sr/administracija/strane', 'superadmin')
 
-    await screen.findByRole('table', { name: 'Statične strane' })
+    const rows = await table('Statične strane')
 
     expect(screen.getByText('Sadržaj ovih strana se ne uređuje kroz portal.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Nova strana' })).not.toBeInTheDocument()
+    expect(rows.queryByRole('button', { name: /^Otvori:/ })).not.toBeInTheDocument()
+    expect(rows.queryByRole('button', { name: /^Obriši:/ })).not.toBeInTheDocument()
+    expect(rows.queryByRole('button', { name: /^Naslov:/ })).not.toBeInTheDocument()
   })
 
   it('is closed to a competitor', async () => {
