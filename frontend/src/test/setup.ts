@@ -163,13 +163,37 @@ function whatMeAnswers(): Response {
        the cookie naming nobody, answered 401 above. */
     ...(mine === undefined
       ? { member: { memberNumber: whoTheCookieNames.memberNumber } }
-      : { member: { referredCount: 0, ...asAnswered(mine, myOwnRecordFromMe) } }),
+      : { member: { ...asAnswered(mine, myOwnRecordFromMe), referredCount: broughtIn(members, mine) } }),
   }
 
   return new Response(JSON.stringify(asAnswered(answered, whoIAm)), {
     status: 200,
     headers: { 'content-type': 'application/json' },
   })
+}
+
+/**
+ * How many this member brought in whose fee is standing, worked out the way the server
+ * works it out.
+ *
+ * **This lived in `test/serverAnswers.ts` until 25.09.2026, beside the answer to
+ * `/api/competitors`, because that is the answer that carried the count.** P26a moved the
+ * count to `/api/me`, so it moved here with it: the arithmetic belongs beside the door
+ * that answers it, and the old home no longer has a reader for it.
+ *
+ * **Written down as an arithmetic rather than as a figure**, so that a change to the seed
+ * moves the answer and every case together, which is the whole reason the portal's cases
+ * read the generated data at all. It answered a flat nought here until this move, which
+ * was harmless only because nothing read it: the real count arrived on the other door.
+ *
+ * Both halves are the SQL's (`MeApi`, „`where brought.referred_by = c.id and
+ * brought.active`"): everybody this member's code brought, and of those only the ones
+ * whose fee is standing. The file says `referredBy` in codes where the column says keys,
+ * which is the one difference between the two and the reason `referred_by` may not leave
+ * the server at all (V7).
+ */
+function broughtIn(file: Record<string, unknown>[], me: Record<string, unknown>): number {
+  return file.filter((one) => one.referredBy === me.referralCode && one.active === true).length
 }
 
 /* The data layer fetches /api/<name>, which on QA is Spring and in development is

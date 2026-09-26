@@ -543,7 +543,24 @@ export type SessionValue = {
     /** Null for all three of the ways there is no number; `session/theServer.ts` names
      *  them, and `pages/member/memberScreen.tsx` carries what the portal draws for each. */
     memberNumber: string | null
+    /** Where he lives, the season he started in and the team he is in: the three facts
+     *  P8a took off the public list FOR THIS SCREEN (25.09.2026). They are still on that
+     *  list, and that is the difference from the four around them; what they are not is
+     *  reachable by the one man „Moja članarina" is for, because the list ends
+     *  `where c.active` and his fee has lapsed. Null for a visitor, for an account that
+     *  races for nobody, and for a value of a sort this portal does not read; `teamId` is
+     *  null for a member with no team as well, which is ordinary and which
+     *  `session/theServer.ts` writes out as a boundary. */
+    country: string | null
+    firstSeason: number | null
+    teamId: number | null
     membershipBasis: MembershipBasis | null
+    /** The caller's own link and his count of whom he brought in, which are the two
+     *  facts P26a gave one home (25.09.2026) and that home is `GET /api/me`. Null for
+     *  a visitor, for an account that races for nobody, and for a value the answer
+     *  carries that is not of the sort this portal reads. */
+    referralCode: string | null
+    referredCount: number | null
   }) => void
   /**
    * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, as the server answered it, or null where
@@ -556,13 +573,81 @@ export type SessionValue = {
    * field from a member even on his own row; `/api/me` is where the first half lives
    * (`session/theServer.ts` writes out what reading it the other way cost).
    *
-   * **Only this one of the seven the answer carries**, because only this one has no
-   * other door. The member number, the country, the first season and the team are on
-   * the public list; the referral code and the count are on the caller's own row of it.
-   * A field remembered here with no reader would be a second home for a fact that
-   * already has one.
+   * **ONE OF SIX OF THE SEVEN THE ANSWER CARRIES, and it was the only one until
+   * 25.09.2026.** The rule it was written under was „a field is remembered here when it
+   * has NO OTHER DOOR", and that rule is no longer the whole of it: the country, the
+   * first season and the team below are remembered here although `/api/competitors`
+   * carries all three. **The rule that replaces it is one sentence wider and is the
+   * owner's (PDL P8a): a door that cannot answer the caller is not a door.** That list
+   * ends `where c.active`, so for the member whose fee has lapsed it answers nothing at
+   * all - and he is the man „Moja članarina" exists for.
+   *
+   * **This paragraph said „the member number, the country, the first season and the team
+   * are on the public list", and the sentence is corrected rather than deleted**, because
+   * a sentence naming where a fact lives is an instruction to the next reader about where
+   * to go and get it. All four are still ON that list; what changed is that three of them
+   * are no longer READ off it by this screen.
    */
   myMembershipBasis: MembershipBasis | null
+  /**
+   * WHERE THE CALLER LIVES, as the server answered it, or null where it did not say.
+   *
+   * **Read by „Moja članarina" and by nothing else**, where it decides three things at
+   * once: which ways of paying he is offered, whether he is shown a payment slip at all,
+   * and which currency every figure on the screen is in (PDL P8, owner 31.07.2026: „QR
+   * kod postoji samo za uplate iz Srbije"). That is why it may not fall back to anything:
+   * a country the screen guessed is a member in North Macedonia handed a dinar slip.
+   */
+  myCountry: string | null
+  /**
+   * THE FIRST SEASON THE CALLER RACED, as the server answered it, or null where it did
+   * not say.
+   *
+   * One sentence on one screen reads it, „Član od {season}. sezone.", and it is the
+   * sentence a member whose fee has lapsed is shown while he renews.
+   */
+  myFirstSeason: number | null
+  /**
+   * THE TEAM THE CALLER IS IN, as the server answered it, or null where he is in none.
+   *
+   * **Null is the ordinary answer here and not an absence**, which is what makes this
+   * field different from the two above it: sixteen of the thirty two members in the data
+   * are in no team. The screen says so in as many words („Trenutno nisi ni u jednom
+   * timu."), so there is nothing for it to fall back to and nothing it could be wrong
+   * about.
+   */
+  myTeamId: number | null
+  /**
+   * THE CALLER'S OWN REFERRAL LINK, as the server answered it, or null where it did not
+   * say.
+   *
+   * **Here since 25.09.2026 and for the same reason the basis above is here: no other
+   * door.** It was answered on the caller's own row of `/api/competitors` from
+   * 20.09.2026 and „Moja članarina" read it off there. The owner took it off that list
+   * (PDL P26a) because the list ends `where c.active`, so the member whose fee has
+   * LAPSED - the one V24 section 6 promises the link to, on the page he opens to renew -
+   * was answered nothing at all.
+   *
+   * **What it is NOT is a credential this portal guards.** It is the member's to hand
+   * out; what makes it his is that the server answers it to him and to nobody else, and
+   * that is kept on the server rather than here.
+   */
+  myReferralCode: string | null
+  /**
+   * HOW MANY THE CALLER BROUGHT IN WHOSE FEE IS STANDING, or null where the answer did
+   * not say.
+   *
+   * **Null and nought are two different sentences and the screen tells them apart.** „I
+   * was not told" is a visitor or an account that races for nobody; „you brought in
+   * nobody" is a member with an empty balance. A field that turned the first into the
+   * second would promise a balance to somebody the answer never mentioned.
+   *
+   * **It arrives counted and is never counted here**, which is a measurement from
+   * 21.09.2026 rather than a preference: the two halves the count needs are whose code
+   * brought whom and whose fee is standing, and `/api/competitors` answers neither to
+   * anybody. Both are known in one place, which is the database.
+   */
+  myReferredCount: number | null
   /**
    * The one question the header asks, answered once here.
    *

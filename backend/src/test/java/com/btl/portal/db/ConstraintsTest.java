@@ -102,8 +102,8 @@ class ConstraintsTest extends DatabaseTest {
 			"insert into place (geonames_id, name, country_id, english_name, rank) "
 					+ "select 99000001, 'Probno Mesto', id, 'Probe Town', 900001 from country where code = 'RS'";
 	private static final String GOOD_PRICE_ROW =
-			"insert into price_row (key, kind, day_from, day_to, eur, rsd, ranking, sort_order) "
-					+ "values ('probe', 'period', '02-01', '02-02', 1, 120, true, 9001)";
+			"insert into price_row (key, kind, day_from, day_to, eur, rsd, ranking, sort_order, label) "
+					+ "values ('probe', 'period', '02-01', '02-02', 1, 120, true, 9001, 'Naziv probe')";
 
 	static List<Violation> violations() {
 		return List.of(
@@ -192,9 +192,9 @@ class ConstraintsTest extends DatabaseTest {
 
 				// -------------------------------------------------------------- price_row
 				Violation.of("price_row_pk",
-						priceRow("id, key, kind, day_from, day_to, eur, rsd, ranking, sort_order",
-								"select id, 'probe', 'period', '02-01', '02-02', 1, 120, true, 9001 "
-										+ "from price_row where key = 'early'")),
+						priceRow("id, key, kind, day_from, day_to, eur, rsd, ranking, sort_order, label",
+								"select id, 'probe', 'period', '02-01', '02-02', 1, 120, true, 9001,"
+										+ " 'Naziv probe' from price_row where key = 'early'")),
 				Violation.of("price_row_key_unique", priceRow("'early', 'period', '02-01', '02-02', 1, 120, true, 9001")),
 				Violation.of("price_row_sort_order_unique", priceRow("'probe', 'period', '02-01', '02-02', 1, 120, true, 1")),
 				Violation.of("price_row_kind_known", priceRow("'probe', 'discount', null, null, 1, 120, null, 9001")),
@@ -217,9 +217,18 @@ class ConstraintsTest extends DatabaseTest {
 				Violation.of("price_row_only_fee_has_no_rsd", priceRow("'probe', 'level', null, null, 20, null, null, 9001")),
 				Violation.of("price_row_only_period_is_ranked", priceRow("'probe', 'level', null, null, 20, 2400, true, 9001")),
 				Violation.of("price_row_only_period_is_ranked", priceRow("'probe', 'period', '02-01', '02-02', 1, 120, null, 9001")),
+				/* A row with no name at all, and a row whose name is spaces. Both directions of
+				   what V34 says a name is, and they are two different faults: NOT NULL alone
+				   would take „   ", which draws as an empty cell in the table a visitor reads
+				   under Clan 14 and reads as a column nobody filled in. */
+				Violation.of("price_row_label_not_blank",
+						named("'probe', 'period', '02-01', '02-02', 1, 120, true, 9001", "'   '")),
+				Violation.notNull("price_row_label_not_null", "label",
+						named("'probe', 'period', '02-01', '02-02', 1, 120, true, 9001", "null")),
 				Violation.notNull("price_row_id_not_null", "id",
-						priceRow("id, key, kind, day_from, day_to, eur, rsd, ranking, sort_order",
-								"values (null, 'probe', 'period', '02-01', '02-02', 1, 120, true, 9001)")),
+						priceRow("id, key, kind, day_from, day_to, eur, rsd, ranking, sort_order, label",
+								"values (null, 'probe', 'period', '02-01', '02-02', 1, 120, true, 9001,"
+										+ " 'Naziv probe')")),
 				Violation.notNull("price_row_key_not_null", "key",
 						priceRow("null, 'period', '02-01', '02-02', 1, 120, true, 9001")),
 				Violation.notNull("price_row_kind_not_null", "kind", priceRow("'probe', null, null, null, 1, 120, null, 9001")),
@@ -229,8 +238,22 @@ class ConstraintsTest extends DatabaseTest {
 						priceRow("'probe', 'period', '02-01', '02-02', 1, 120, true, null")));
 	}
 
+	/**
+	 * A probe row spoiled in one of the eight columns that are not its NAME.
+	 *
+	 * <p>V34 gave {@code price_row} a ninth column and it is NOT NULL, so every case above
+	 * would otherwise name {@code price_row_label_not_null} instead of the constraint it is
+	 * about. The name it gets here is one that breaks nothing; the two cases that ARE about the
+	 * name spell it out through {@link #named}.
+	 */
 	private static String priceRow(String values) {
-		return priceRow("key, kind, day_from, day_to, eur, rsd, ranking, sort_order", "values (" + values + ")");
+		return named(values, "'Naziv probe'");
+	}
+
+	/** The same probe row with the name said out loud, for the two cases about the name. */
+	private static String named(String values, String label) {
+		return priceRow("key, kind, day_from, day_to, eur, rsd, ranking, sort_order, label",
+				"values (" + values + ", " + label + ")");
 	}
 
 	private static String priceRow(String columns, String source) {

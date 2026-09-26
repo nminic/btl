@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
+import { did, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 
@@ -314,6 +315,13 @@ describe('a change waiting on the queue of teams', () => {
     /* Approved anyway it wrote into an identity nothing answers to, settled the item,
        and told the member their team had been changed (review, 05.09.2026). The card
        says so instead, and the control that would take the decision is dead. */
+
+    /* AND THE DELETION IN THE MIDDLE OF THIS WALK GOES THROUGH THE ROUTE SINCE 26.09.2026,
+       because Dunav is a SERVED team and `admin/AdminTeams.tsx` sends
+       `DELETE /api/teams/{id}` for one of those. Without an answer the request came back 404
+       off the disc reader (whose pattern does not match an address with an id) and the team
+       was never deleted at all, so the card had nothing to report. */
+    const server = serverThat((_, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
     const user = setupUser()
     const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
 
@@ -333,6 +341,15 @@ describe('a change waiting on the queue of teams', () => {
     await user.click(within(row).getByRole('button', { name: /^Obriši/ }))
     await user.click(within(row).getByRole('button', { name: /^Potvrdi brisanje/ }))
 
+    /* THE DELETION IS REALLY THROUGH BEFORE THE WALK GOES ON, because it lands on the answer
+       rather than on the press. Navigating away first would leave the rest of this case
+       measuring a team that had not been deleted yet. */
+    await waitFor(() => {
+      expect(
+        within(screen.getByRole('table', { name: 'Timovi' })).queryByText('Dunavski trkači'),
+      ).toBeNull()
+    })
+
     await router.navigate('/sr/administracija/verifikacija/timovi')
 
     const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
@@ -340,6 +357,8 @@ describe('a change waiting on the queue of teams', () => {
 
     expect(card.getByText(/je u međuvremenu obrisan/)).toBeVisible()
     expect(card.getByRole('button', { name: 'Odobri' })).toHaveAttribute('aria-disabled', 'true')
+
+    server.stop()
   }, SLOW)
 
   it('writes into the team it is about when it is approved, rather than making a second one', async () => {

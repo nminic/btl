@@ -71,7 +71,6 @@ const person = (memberNumber: string, gender: 'M' | 'F'): Competitor => ({
   firstSeason2027: false,
   firstSeason: 2019,
   membershipBasis: 'payment',
-  referralCode: 'proba0000',
   teamId: null,
   teamSince: null,
   profileHidden: false,

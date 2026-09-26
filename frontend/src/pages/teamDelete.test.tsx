@@ -1,8 +1,18 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
+import { did, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
+
+/** A resource, answered the way the server answers one. */
+const listOf = (what: unknown): Response =>
+  new Response(JSON.stringify(what), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
 
 /* A day inside the transfer window, because founding a team is only offered there
    (owner, 05.09.2026), and the half of this that matters most is what the founder of
@@ -112,13 +122,69 @@ describe('a team its administrator takes down', () => {
     expect(await screen.findByLabelText(/Naziv tima/)).toBeVisible()
   }, SLOW)
 
+  /**
+   * THE OTHER PLACE A TEAM CAN BE DELETED, AND SINCE 26.09.2026 IT GOES THROUGH THE ROUTE.
+   *
+   * <p>The claim has not moved: two buttons that delete one thing must not delete two
+   * different amounts of it. Administration has always been able to delete a team, and it
+   * left the people in it pointing at a record that was gone - the portal went on refusing
+   * them a new team, because `teamId` still named one, while their profile showed no club,
+   * because `teams.find` answered nothing (review, 05.09.2026).
+   *
+   * <p><b>What moved is WHO does it.</b> `admin/AdminTeams.tsx` now sends
+   * `DELETE /api/teams/{id}` for a team the database handed out, and the roster is emptied by
+   * the route rather than by the screen: the memberships cascade (V11), and the screen drops
+   * both `teams` and `competitors` so the next read is the server's. So the server in front of
+   * this case has to do what the route does, and the walk afterwards is unchanged - which is
+   * the point of leaving the walk exactly as it was.
+   *
+   * <p><b>And the request itself is asserted, not only its effect.</b> Without that this case
+   * could be satisfied entirely by the fake server's own bookkeeping, and would go on passing
+   * if the screen stopped asking anybody anything.
+   */
   it('takes the roster with it from the other place a team can be deleted too', async () => {
-    /* Two buttons that delete one thing must not delete two different amounts of it.
-       Administration has always been able to delete a team, and it left the people in it
-       pointing at a record that was gone: the portal went on refusing them a new team,
-       because `teamId` still named one, while their profile showed no club, because
-       `teams.find` answered nothing. Found by measurement, not by a screen (review,
-       05.09.2026). */
+    /* THE TWO ANSWERS THE ROUTE CHANGES, READ OFF THE GENERATED FILES AND NOT WRITTEN OUT.
+       Which team Dunav is and who is in it are facts about the seed; a fixture that restated
+       them would pass the day the seed moved and the portal did not. */
+    const teams: { id: number; slug: string }[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'public/mock/teams.json'), 'utf-8'),
+    )
+    const members: { memberNumber: string; teamId: number | null; active: boolean }[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+    )
+    const dunav = must(
+      teams.find((one) => one.slug === 'dunavski-trkaci'),
+      'Dunavski trkači in the generated teams',
+    )
+
+    let standing = teams
+    let roster = members
+
+    const server = serverThat((path, init) => {
+      const how = init?.method ?? 'GET'
+
+      if (how === 'GET' && path === '/api/teams') {
+        return listOf(standing)
+      }
+
+      if (how === 'GET' && path === '/api/competitors') {
+        return listOf(roster.filter((one) => one.active))
+      }
+
+      if (how === 'DELETE' && path === `/api/teams/${String(dunav.id)}`) {
+        /* WHAT THE ROUTE REALLY DOES TO BOTH TABLES. The team goes and the memberships of
+           everybody in it cascade; a fake server that forgot only the team would let a screen
+           pass while leaving every member of it pointing at a team that is not there, which
+           is the exact fault this case was written for. */
+        standing = standing.filter((one) => one.id !== dunav.id)
+        roster = roster.map((one) => (one.teamId === dunav.id ? { ...one, teamId: null } : one))
+
+        return did()
+      }
+
+      return how === 'GET' ? null : did()
+    })
+
     const user = setupUser()
     const { router } = renderAt('/sr/administracija/timovi', 'superadmin', '000001', undefined, DAY)
 
@@ -131,11 +197,22 @@ describe('a team its administrator takes down', () => {
     await user.click(within(row).getByRole('button', { name: /^Obriši: Dunavski trkači/ }))
     await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Dunavski trkači/ }))
 
+    /* THE SCREEN ASKED THE ROUTE, at the address of the team in the row and nowhere else. */
+    await waitFor(() => {
+      expect(
+        server.asked
+          .filter((one) => (one.init?.method ?? 'GET') !== 'GET')
+          .map((one) => `${String(one.init?.method)} ${one.path}`),
+      ).toEqual([`DELETE /api/teams/${String(dunav.id)}`])
+    })
+
     await router.navigate('/sr/timovi')
 
     /* The same answer the team's own page gives: nobody is left in a team that is gone,
        so the way to found one opens again. */
     expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
+
+    server.stop()
   }, SLOW)
 
   it('takes the roster with it even when that roster exists only in this visit', async () => {

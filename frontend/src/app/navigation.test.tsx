@@ -4,6 +4,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import WRITTEN from '../../public/mock/pages.json'
+import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 
 describe('navigation', () => {
@@ -106,7 +107,13 @@ describe('navigation', () => {
         'true',
       ),
     )
-    expect(screen.getByRole('heading', { level: 1, name: 'Top liste' })).toBeVisible()
+    /* The same screen, in the other language. Held by the English word rather than by
+       the Serbian one since 26.09.2026: before that /en drew the Serbian dictionary, so
+       „Top liste" was what stayed on the page and the heading could not tell a screen
+       that had followed the switch from one that had not. It can now, and this is the
+       leg that says so. */
+    expect(screen.getByRole('heading', { level: 1, name: en.topBoards.title })).toBeVisible()
+    expect(screen.queryByRole('heading', { level: 1, name: sr.topBoards.title })).toBeNull()
   })
 
   it('declares the language the text is actually written in', async () => {
@@ -116,9 +123,11 @@ describe('navigation', () => {
     await user.click(await screen.findByRole('button', { name: 'Jezik' }))
     await user.click(screen.getByRole('option', { name: 'English' }))
 
-    // /en still shows Serbian words until an English dictionary exists, and
-    // lang="en" over Serbian text is read out with English phonetics.
-    await waitFor(() => expect(document.documentElement.lang).toBe('sr'))
+    /* English words, so `lang="en"`. Until 26.09.2026 this had to stay „sr": /en drew
+       the Serbian dictionary, and `lang="en"` over Serbian text is read out by a screen
+       reader with English phonetics, which is unintelligible. The rule that decides is
+       `dictionaryLocale`, and it is the same rule either way round. */
+    await waitFor(() => expect(document.documentElement.lang).toBe('en'))
   })
 
   /* What each screen is called in the browser tab, what it says about itself to
