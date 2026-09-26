@@ -586,6 +586,13 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"static_page_include.static_page_include_page_fk cascade",
 				// V24. A page's own blocks go with it; nothing keeps a section past its page.
 				"static_page_section.static_page_section_page_fk cascade",
+				/* V35. Both CASCADE, the same direction static_page_section_page_fk takes one
+				   line up: a translation of a page, or of a block, that has been deleted is not
+				   a record that stops an administrator from deleting it. The Serbian is what
+				   binds (PDL.md:3212) and it goes with the page; a translation of text that no
+				   longer exists is text with nothing to translate. */
+				"static_page_section_translation.static_page_section_translation_section_fk cascade",
+				"static_page_translation.static_page_translation_page_fk cascade",
 				"team.team_admin_fk set null",
 				"team.team_country_fk restrict",
 				"team.team_logo_fk set null",

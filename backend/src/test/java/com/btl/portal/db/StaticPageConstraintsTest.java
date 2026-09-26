@@ -14,23 +14,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Every constraint the three tables of V24 carry, with the row that breaks it.
+ * Every constraint the three tables of V24 and the two of V35 carry, with the row that
+ * breaks it.
  *
  * <p>The same shape as {@link RoleAndRightConstraintsTest}, and for the same reason:
  * a constraint nobody has broken on purpose is an intention rather than a
  * constraint. So each one below gets a row that it, and only it, must reject, and
  * the failure has to name it.
  *
- * <p><b>Two tables of the three start with no row at all</b> (no page uses
- * {@code includes} today; see V24's header), so a violation cannot be built the way
- * {@code ConstraintsTest} builds {@code country_pk} - by selecting the id of an
- * existing row. Where that matters ({@code static_page_include_pk}, its two unique
- * keys) the violation inserts two rows of its own in one statement, a literal id or a
- * repeated pair, and lets the second collide with the first rather than with seeded
- * data.
+ * <p><b>Three of the five start with no row at all</b> - {@code static_page_include},
+ * because no page uses {@code includes} today (see V24's header), and the two
+ * translation tables, because V35 carries no text and the translation is a migration of
+ * its own. So a violation on those cannot be built the way {@code ConstraintsTest} builds
+ * {@code country_pk}, by selecting the id of an existing row. Where that matters (each
+ * empty table's primary key and its unique keys) the violation inserts two rows of its own
+ * in one statement, a literal id or a repeated pair, and lets the second collide with the
+ * first rather than with seeded data.
  *
  * <p>The floor under the list is
- * {@link #everyConstraintOnTheThreeTablesHasARowThatBreaksIt()}, which reads
+ * {@link #everyConstraintOnTheFiveTablesHasARowThatBreaksIt()}, which reads
  * {@code pg_constraint} back for {@link #TABLES}. PostgreSQL 18 records NOT NULL
  * there like any other constraint, so the floor covers those as well and not only
  * the CHECKs, the keys and the foreign keys.
@@ -54,13 +56,14 @@ class StaticPageConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * The three tables V24 adds.
+	 * The three tables V24 adds and the two V35 adds.
 	 *
 	 * Package visible because
 	 * {@link ConstraintsTest#everyTableInTheSchemaIsClaimedByAConstraintTest()} adds
 	 * this list to its own and compares the two against {@code pg_tables}.
 	 */
-	static final List<String> TABLES = List.of("static_page", "static_page_section", "static_page_include");
+	static final List<String> TABLES = List.of("static_page", "static_page_section", "static_page_include",
+			"static_page_translation", "static_page_section_translation");
 
 	/* A row of each table that breaks nothing: every violation below is one of these
 	   with a single field spoiled, or a second row that collides with it on purpose,
@@ -76,6 +79,29 @@ class StaticPageConstraintsTest extends DatabaseTest {
 			"insert into static_page_include (page_id, position, included_page_id) "
 					+ "select a.id, 900, b.id from static_page a, static_page b "
 					+ "where a.slug = 'pravilnik' and b.slug = 'politika-privatnosti'";
+	/* `en` throughout the two translation fixtures, because it is the tag the portal is
+	   actually getting (owner, 26.09.2026) and the only one V35 will hold before launch. The
+	   shape check is asked about separately, with a tag nobody would write on purpose. */
+	private static final String GOOD_TRANSLATION =
+			"insert into static_page_translation (page_id, language, title) "
+					+ "select id, 'en', 'Proba' from static_page where slug = 'pravilnik'";
+	private static final String GOOD_SECTION_TRANSLATION =
+			"insert into static_page_section_translation (section_id, language, heading, body) "
+					+ "select s.id, 'en', 'Proba', 'Tekst' from static_page_section s "
+					+ "join static_page p on p.id = s.page_id "
+					+ "where p.slug = 'pravilnik' and s.position = 1";
+
+	/* One seeded block, named by the PAIR that identifies it - the address of its page and
+	   its position - because a block has no address of its own. That is the same pair the
+	   translation itself has to be written by, so these two constants are also the shape
+	   V35's header hands a translator. */
+	private static final String A_SECTION = aSectionAt(1);
+	private static final String ANOTHER_SECTION = aSectionAt(2);
+
+	private static String aSectionAt(int position) {
+		return "(select s.id from static_page_section s join static_page p on p.id = s.page_id"
+				+ " where p.slug = 'pravilnik' and s.position = " + position + ")";
+	}
 
 	static List<Violation> violations() {
 		return List.of(
@@ -192,7 +218,107 @@ class StaticPageConstraintsTest extends DatabaseTest {
 								+ "where a.slug = 'pravilnik' and b.slug = 'politika-privatnosti'"),
 				Violation.notNull("static_page_include_included_page_id_not_null", "included_page_id",
 						"insert into static_page_include (page_id, position, included_page_id) "
-								+ "select id, 1, null from static_page where slug = 'pravilnik'"));
+								+ "select id, 1, null from static_page where slug = 'pravilnik'"),
+
+				// ------------------------------------------------- static_page_translation
+				/* Empty before this test runs, like static_page_include above, so the key and
+				   the unique key are each broken by one statement writing two rows. The two
+				   rows differ in the OTHER dimension each time, so each statement trips one
+				   constraint: same id and different pages for the key, same page and same
+				   language for the unique key. */
+				Violation.of("static_page_translation_pk",
+						"insert into static_page_translation (id, page_id, language, title) "
+								+ "select 555555, id, 'en', 'Proba' from static_page where slug = 'pravilnik' "
+								+ "union all "
+								+ "select 555555, id, 'en', 'Proba' from static_page "
+								+ "where slug = 'uslovi-koriscenja'"),
+				Violation.of("static_page_translation_page_fk",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "values (-1, 'en', 'Proba')"),
+				Violation.of("static_page_translation_once_per_language",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "select id, 'en', 'Proba' from static_page where slug = 'pravilnik' "
+								+ "union all "
+								+ "select id, 'en', 'Drugo' from static_page where slug = 'pravilnik'"),
+				/* `sr` is the one tag this table exists to refuse: the Serbian lives in
+				   static_page.title and PDL.md:3212 makes it the version that binds, so a row
+				   here would be a second home for one fact. It IS shaped like a tag, so it
+				   trips this and not the shape check. */
+				Violation.of("static_page_translation_not_serbian",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "select id, 'sr', 'Proba' from static_page where slug = 'pravilnik'"),
+				/* Spelt in capitals, which is the mistake a hand actually makes, and it is not
+				   `sr`, so it trips the shape and nothing else. */
+				Violation.of("static_page_translation_language_shape",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "select id, 'EN', 'Proba' from static_page where slug = 'pravilnik'"),
+				Violation.of("static_page_translation_title_not_blank",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "select id, 'en', '   ' from static_page where slug = 'pravilnik'"),
+				Violation.notNull("static_page_translation_id_not_null", "id",
+						"insert into static_page_translation (id, page_id, language, title) "
+								+ "select null, id, 'en', 'Proba' from static_page where slug = 'pravilnik'"),
+				Violation.notNull("static_page_translation_page_id_not_null", "page_id",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "values (null, 'en', 'Proba')"),
+				Violation.notNull("static_page_translation_language_not_null", "language",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "select id, null, 'Proba' from static_page where slug = 'pravilnik'"),
+				Violation.notNull("static_page_translation_title_not_null", "title",
+						"insert into static_page_translation (page_id, language, title) "
+								+ "select id, 'en', null from static_page where slug = 'pravilnik'"),
+
+				// ----------------------------------------- static_page_section_translation
+				Violation.of("static_page_section_translation_pk",
+						"insert into static_page_section_translation "
+								+ "(id, section_id, language, heading, body) values "
+								+ "(555555, " + A_SECTION + ", 'en', 'Proba', 'Tekst'), "
+								+ "(555555, " + ANOTHER_SECTION + ", 'en', 'Proba', 'Tekst')"),
+				Violation.of("static_page_section_translation_section_fk",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) "
+								+ "values (-1, 'en', 'Proba', 'Tekst')"),
+				Violation.of("static_page_section_translation_once_per_language",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", 'en', 'Proba', 'Tekst'), "
+								+ "(" + A_SECTION + ", 'en', 'Drugo', 'Tekst')"),
+				Violation.of("static_page_section_translation_not_serbian",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", 'sr', 'Proba', 'Tekst')"),
+				Violation.of("static_page_section_translation_language_shape",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", 'EN', 'Proba', 'Tekst')"),
+				Violation.of("static_page_section_translation_heading_not_blank",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", 'en', '   ', 'Tekst')"),
+				Violation.of("static_page_section_translation_body_not_blank",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", 'en', 'Proba', '   ')"),
+				Violation.notNull("static_page_section_translation_id_not_null", "id",
+						"insert into static_page_section_translation "
+								+ "(id, section_id, language, heading, body) values "
+								+ "(null, " + A_SECTION + ", 'en', 'Proba', 'Tekst')"),
+				Violation.notNull("static_page_section_translation_section_id_not_null", "section_id",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) "
+								+ "values (null, 'en', 'Proba', 'Tekst')"),
+				Violation.notNull("static_page_section_translation_language_not_null", "language",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", null, 'Proba', 'Tekst')"),
+				Violation.notNull("static_page_section_translation_heading_not_null", "heading",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", 'en', null, 'Tekst')"),
+				Violation.notNull("static_page_section_translation_body_not_null", "body",
+						"insert into static_page_section_translation "
+								+ "(section_id, language, heading, body) values "
+								+ "(" + A_SECTION + ", 'en', 'Proba', null)"));
 	}
 
 	@ParameterizedTest
@@ -212,7 +338,7 @@ class StaticPageConstraintsTest extends DatabaseTest {
 	 * {@code pg_index} is needed.
 	 */
 	@Test
-	void everyConstraintOnTheThreeTablesHasARowThatBreaksIt() {
+	void everyConstraintOnTheFiveTablesHasARowThatBreaksIt() {
 		String tables = TABLES.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
 
 		List<String> declared = db
@@ -237,7 +363,8 @@ class StaticPageConstraintsTest extends DatabaseTest {
 	 * everything and the whole file would still pass.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = { GOOD_PAGE, GOOD_SECTION, GOOD_INCLUDE })
+	@ValueSource(strings = { GOOD_PAGE, GOOD_SECTION, GOOD_INCLUDE, GOOD_TRANSLATION,
+			GOOD_SECTION_TRANSLATION })
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isEqualTo(1);
 	}

@@ -306,6 +306,21 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("static_page_include_once_per_page", false,
 					"whether one page already takes another in is looked up, not counted from one end"),
 
+			/* V35. The same split once more, and NEITHER order is deferrable because neither
+			   table holds an order at all: a translation is identified by what it translates
+			   and the language it is in, and the order a page's blocks are read in stays on
+			   the block (V35's header: position is the document's and not the language's). */
+			new Key("static_page_translation_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("static_page_translation_once_per_language", false,
+					"one page has one title per language, and which language is looked up rather"
+							+ " than counted"),
+			new Key("static_page_section_translation_pk", false,
+					"a surrogate key nothing outside the portal sees, so nothing moves it"),
+			new Key("static_page_section_translation_once_per_language", false,
+					"one block has one set of words per language, and which language is looked up"
+							+ " rather than counted"),
+
 			/* V30. One surrogate, following the shape V10 and V11 both already have, and the
 			   key that says "one waits once" over the new pointer - the same reason
 			   `verification_result_submission_unique` and `verification_team_proposal_unique`
