@@ -212,7 +212,7 @@ describe('one decision for a whole queue', () => {
 
       expect(asked).toHaveLength(1)
       expect(first(asked)).toContain(String(before))
-      expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+      expect(await screen.findByText('Nema nijedne stavke na čekanju.')).toBeVisible()
       /* Every one of them decided, read off the session rather than off a table
          of settled items: a queue shows what is waiting and nothing else since
          06.08.2026. */

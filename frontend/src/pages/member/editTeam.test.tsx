@@ -279,7 +279,7 @@ describe('a change waiting on the queue of teams', () => {
 
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
 
-    expect(screen.getByRole('link', { name: /Izmena tima je vraćena/ })).toBeVisible()
+    expect(await screen.findByRole('link', { name: /Izmena tima je vraćena/ })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Predlog tima je vraćen/ })).toBeNull()
   }, SLOW)
 
@@ -366,7 +366,7 @@ describe('a change waiting on the queue of teams', () => {
 
     /* One row of that name, and the town it was changed to. Counted, because a
        creation would leave the old row standing beside a new one. */
-    expect(table.getAllByText('Dunavski trkači')).toHaveLength(1)
+    expect(await table.findAllByText('Dunavski trkači')).toHaveLength(1)
     expect(table.getByText('Sremski Karlovci')).toBeVisible()
     expect(table.queryByText('Novi Sad')).toBeNull()
   })

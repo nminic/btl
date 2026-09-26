@@ -508,7 +508,7 @@ describe('a member who has founded one team', () => {
 
       /* One of the two, not both: the first one settled puts its member into a team,
          and the second is refused by the same rule the door keeps. */
-      expect(listed.getByText('Timočka trkačka družina')).toBeVisible()
+      expect(await listed.findByText('Timočka trkačka družina')).toBeVisible()
       expect(listed.queryByText('Moravski maratonci')).toBeNull()
     } finally {
       confirm.mockRestore()
@@ -536,7 +536,7 @@ describe('a member who has founded one team', () => {
       const heading = await screen.findByRole('heading', { name: 'Moravski maratonci' })
       const card = within(must(heading.closest('li'), 'the card of the second proposal'))
 
-      expect(card.getByText(/već u timu/)).toBeVisible()
+      expect(await card.findByText(/već u timu/)).toBeVisible()
     } finally {
       confirm.mockRestore()
     }
@@ -680,7 +680,7 @@ describe('a team the moment it is approved', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Timočka trkačka družina' }),
     ).toBeVisible()
-    expect(screen.getByText(/1 član/)).toBeVisible()
+    expect(await screen.findByText(/1 član/)).toBeVisible()
     expect(screen.queryByText(/0 članova/)).toBeNull()
     /* And in **this** season the team has nobody, because a team founded in the
        window scores from 1 January: the count above is who is in the team, the table
@@ -1226,7 +1226,7 @@ describe('what a moderator may do before accepting a proposal', () => {
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      expect(screen.getByText(/^Rešen.* 2 stavk/)).toBeVisible()
+      expect(await screen.findByText(/^Rešen.* 2 stavk/)).toBeVisible()
 
       await router.navigate('/sr/administracija/timovi')
       const listed = () => within(screen.getByRole('table', { name: 'Timovi' }))
@@ -1277,7 +1277,7 @@ describe('what a moderator may do before accepting a proposal', () => {
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
       /* One of the two, and the other left standing with the reason on it. */
-      expect(screen.getByText(/^Rešen.* 1 stavk/)).toBeVisible()
+      expect(await screen.findByText(/^Rešen.* 1 stavk/)).toBeVisible()
 
       await router.navigate('/sr/administracija/timovi')
       const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
@@ -1455,7 +1455,7 @@ describe('what a moderator may do before accepting a proposal', () => {
       await open()
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      expect(screen.getByText(/^Rešen.* 1 stavk/)).toBeVisible()
+      expect(await screen.findByText(/^Rešen.* 1 stavk/)).toBeVisible()
       expect(card(/dunavski trkači/)).toBeVisible()
     } finally {
       confirm.mockRestore()

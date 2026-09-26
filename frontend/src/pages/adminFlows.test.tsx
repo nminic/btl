@@ -2326,7 +2326,7 @@ describe('verification', () => {
       await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
     }
 
-    expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+    expect(await screen.findByText('Nema nijedne stavke na čekanju.')).toBeVisible()
     expect(nav().getByRole('link', { name: /Trkački profil/ })).toBeVisible()
   })
 
@@ -2893,7 +2893,7 @@ describe('the five queues read from the file', () => {
     await user.click(first(screen.getAllByRole('button', { name: /^Obriši: / })))
     await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
     expect(
       within(screen.getByRole('list', { name: 'session decisions' })).getAllByRole('listitem'),
     ).toHaveLength(1)
@@ -2968,7 +2968,7 @@ describe('the five queues read from the file', () => {
     await user.type(reason, 'Napiši nešto o sebi, ovo je prepisano sa tuđeg profila.')
     await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     /* And the reason is written down where a refusal is written down, so the
        member can be told what to change. */
@@ -3113,7 +3113,7 @@ describe('the five queues read from the file', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Tekst o sebi je vraćen' }),
     ).toBeVisible()
-    expect(screen.getByText(/prepisano sa tuđeg profila/)).toBeVisible()
+    expect(await screen.findByText(/prepisano sa tuđeg profila/)).toBeVisible()
     /* And it is not the other heading, which is the mistake the one place that
        knows both was written to stop (queues.ts, `returned`). */
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
@@ -3173,7 +3173,7 @@ describe('the five queues read from the file', () => {
       await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
       await user.click(screen.getByRole('link', { name: new RegExp(heading) }))
 
-      expect(screen.getByRole('heading', { level: 1, name: heading })).toBeVisible()
+      expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
       expect(screen.getByText(/evo zašto/)).toBeVisible()
 
       /* And it is not one of the others, which is the whole point: the fault is
@@ -3279,7 +3279,7 @@ describe('the five queues read from the file', () => {
        went. Without this the test can pass because nothing was refused at all,
        which is how its first two versions passed while the recipient was an
        empty string. */
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     /* Read as somebody else, in the same visit, and through the control the
        member would press rather than by pushing an address: the two are not the
@@ -3434,7 +3434,7 @@ describe('the five queues read from the file', () => {
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
     expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('2'))
       .toBeVisible()
   })
@@ -3718,12 +3718,25 @@ describe('the five queues read from the file', () => {
        two presses and the emptiness this test is about would never be reached. */
     const user = await open('profiles', 'Trkački profil')
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+    /* ONE PRESS AT A TIME, EACH WAITED OUT, and that is a measurement of 26.09.2026
+       rather than caution. A decision now goes to the server before anything local
+       happens (`admin/PendingQueue.tsx`), so the card it settles leaves the queue a
+       turn AFTER the press. Four presses in a row therefore handed `first(...)` the
+       same card twice, the queue never emptied, and it did so INTERMITTENTLY - two
+       full runs of the suite passed before one failed in 221ms - which is worse than
+       never, because it reads as somebody else's flake.
+     *
+       The count is read off the screen rather than written as four, so a fifth
+       waiting profile in the generated file makes this press five times instead of
+       leaving a card behind and failing on a number nobody would look at. */
+    for (let left = screen.getAllByRole('button', { name: 'Odobri' }).length; left > 0; left -= 1) {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+      await waitFor(() =>
+        expect(screen.queryAllByRole('button', { name: 'Odobri' })).toHaveLength(left - 1),
+      )
+    }
 
-    expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+    expect(await screen.findByText('Nema nijedne stavke na čekanju.')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
   })
 
