@@ -448,7 +448,7 @@ class DucatConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void theFifteenAreTheFifteenThePortalDraws() throws Exception {
-		java.nio.file.Path drawn = java.nio.file.Path.of("..", "frontend", "public", "mock", "ducats.json");
+		java.nio.file.Path drawn = java.nio.file.Path.of("..", "frontend", "src", "test", "mock", "ducats.json");
 
 		assertThat(drawn)
 				.as("the portal's own copy is not where this expects it, so the two are no longer tied")

@@ -32,13 +32,13 @@ type Result = {
    accepts on its own, so the two `as` here were the ban in ADL A14 rule 1 broken
    for nothing. */
 const results: Result[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/results.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/results.json'), 'utf-8'),
 )
 
 type Race = { id: string; date: string; distanceKm: number }
 
 const races: Race[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/races.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'),
 )
 
 /**
