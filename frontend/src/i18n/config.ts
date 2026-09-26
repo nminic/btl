@@ -68,7 +68,20 @@ export function isLocale(value: string | undefined): value is Locale {
  * This table moves together with DICTIONARIES above; a test holds the two to each
  * other, and `bothDictionaries.test.ts` holds which way they point. The first cannot
  * tell one state from the other: it passes whichever way both of them lean, which is
- * right while either way could be true and not enough once only one is. */
+ * right while either way could be true and not enough once only one is.
+ *
+ * **What this table does not buy, written down rather than guarded.** With only `sr`
+ * and `en` in `LOCALES`, and both mapped to themselves, no case in the package can
+ * tell a reader that calls `dictionaryLocale(locale)` apart from one that reads
+ * `locale` directly - both answer the same today. The four production readers
+ * (`format.ts`'s `formatDayInSentence`, `useRouteChrome.ts` twice, `head.ts`'s
+ * `applyHead`) have to keep going through this function rather than the address's own
+ * locale regardless, because the day a third locale is entered ahead of its
+ * dictionary (PDL P18) is the day the two stop agreeing, and inlining `locale` at any
+ * of them would pass every case that exists today and be wrong from the day that
+ * entry is made. Not written as a test here, on purpose: a locale added only to make
+ * this case possible would be a fifth reader invented for the guard rather than for
+ * the portal, which is not a state to write a test against. */
 const TEXT_LOCALES: Record<Locale, Locale> = {
   sr: 'sr',
   en: 'en',

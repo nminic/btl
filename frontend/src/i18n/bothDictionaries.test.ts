@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { dictionaryFor, dictionaryLocale, type Locale } from './config'
 import sr from './sr.json'
+import heldEnglish from '../test/englishDictionary.snapshot.json'
 import { translate, type Dictionary } from './translate'
 
 /**
@@ -392,6 +393,27 @@ if (english === null) {
       expect(dictionaryFor('en')).not.toBe(dictionaryFor('sr'))
       expect(dictionaryLocale('en')).toBe('en')
       expect(dictionaryLocale('sr')).toBe('sr')
+    })
+
+    it('is held to its own words, sentence by sentence', () => {
+      /* Every case above asks a *shape* of the English dictionary - the same names as
+         Serbian, the same gaps, the same plural coverage, the league's name kept where
+         it is meant to be and nowhere else - and a sentence can move backwards without
+         changing any of that shape at all. Measured: `status.pending` set back to an
+         earlier "Awaiting check" passes every case above, because none of them reads
+         what a sentence, once chosen, still says. `review.waiting` carries that same
+         earlier text and is only caught because a different, unrelated case
+         (`rateEvent.test.tsx`) happens to look for it by a name that reads in both
+         languages; `status.pending` has no such case, and none is owed to it just to
+         close this hole.
+
+         The remedy already exists in the portal, for the Serbian side:
+         `dictionary.snapshot.json`, held byte for byte against `sr.json` by
+         `componentWords.test.ts`, so that changing a Serbian sentence is always a
+         change to two files and never an accident. `englishDictionary.snapshot.json`
+         is the same lock on the English side, and this is the only place that reads
+         it. */
+      expect(book).toEqual(heldEnglish)
     })
   })
 }
