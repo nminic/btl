@@ -1209,7 +1209,7 @@
     "period": "Period in the year",
     "everyPayment": "Every payment",
     "processingFeeHeading": "Payment processing charge",
-    "processingFee": "A payment in euros is larger on the statement by a payment processing charge of {fee} EUR. The charge is not part of the fee and is not entered in the price list.",
+    "processingFee": "A payment in euros is larger on the statement by the payment processing charge. The charge is not part of the fee and is not counted into it.",
     "raceTaken": "This event already has a race of that length on that day. Nobody can tell apart two races that differ in nothing at all.",
     "referral": "Referral",
     "corrected": "Corrected",
