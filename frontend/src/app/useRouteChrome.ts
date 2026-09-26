@@ -68,8 +68,10 @@ export function useRouteChrome(): { pageTitle: string; declare: DeclareMeta } {
   }
 
   useEffect(() => {
-    // The dictionary language, not the address language: /en still shows
-    // Serbian words until an English dictionary exists.
+    // The dictionary's language, not the address's: `dictionaryLocale`
+    // (i18n/config.ts) is how a locale would read as another one's words while
+    // its own dictionary is not ready, which is not sr/en today but was /en's
+    // own state before 26.09.2026.
     document.documentElement.lang = dictionaryLocale(locale)
   }, [locale])
 

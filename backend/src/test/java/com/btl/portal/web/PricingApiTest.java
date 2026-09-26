@@ -74,6 +74,18 @@ class PricingApiTest {
 	/** Four periods, one level, one fee, one referral: ADL A36 O12, and V4's check. */
 	private static final int ROWS = 7;
 
+	/**
+	 * How many fields a row of the answer carries: eight since V34 gave it a name.
+	 *
+	 * <p>Named rather than written twice, because two cases below count it and they counted
+	 * it differently - one as a product and one as the number of pairs - so the day a ninth
+	 * field arrives one of the two could have been moved and not the other.
+	 */
+	private static final int FIELDS = 8;
+
+	/** Eight fields is twenty-eight pairs, and this is that arithmetic said once. */
+	private static final int PAIRS = FIELDS * (FIELDS - 1) / 2;
+
 	@Autowired
 	private MockMvc http;
 
@@ -142,7 +154,7 @@ class PricingApiTest {
 
 	/** The row under a key, as the schema holds it, read by the column names V4 gives. */
 	private Map<String, Object> held(String key) {
-		return db.sql("select key, kind, day_from as \"from\", day_to as \"to\", eur, rsd, ranking"
+		return db.sql("select key, label, kind, day_from as \"from\", day_to as \"to\", eur, rsd, ranking"
 						+ " from price_row where key = ?")
 				.param(key)
 				.query()
@@ -212,9 +224,9 @@ class PricingApiTest {
 		}
 
 		assertThat(compared)
-				.as("seven rows times the seven fields of a price row were not compared, so this case"
+				.as("seven rows times the eight fields of a price row were not compared, so this case"
 						+ " measures less than it says")
-				.isEqualTo(ROWS * 7);
+				.isEqualTo(ROWS * FIELDS);
 	}
 
 	/**
@@ -227,9 +239,14 @@ class PricingApiTest {
 	 * price out of the euro column would pass it without a word, and the member paying
 	 * from abroad would be charged the dinar figure.
 	 *
-	 * <p>Seven fields is twenty-one pairs, and none of them is asked about by name: the
+	 * <p>Eight fields is twenty-eight pairs, and none of them is asked about by name: the
 	 * fields are read off the answer, so a field added tomorrow is either told apart
 	 * from every other one here or it says so.
+	 *
+	 * <p><b>{@code key} and {@code label} are the pair this earns its keep on since V34.</b>
+	 * They are two names for one row - one the portal's, one the reader's - and they are
+	 * adjacent in the record and in the SELECT, which is exactly where a column read for
+	 * another one happens. The seven rows tell them apart in all seven.
 	 */
 	@Test
 	void noTwoFieldsOfTheAnswerCarryTheSameValueInEveryRow() throws Exception {
@@ -261,8 +278,8 @@ class PricingApiTest {
 		}
 
 		assertThat(pairs)
-				.as("the answer no longer has seven fields, so the number of pairs compared moved with it")
-				.isEqualTo(21);
+				.as("the answer no longer has eight fields, so the number of pairs compared moved with it")
+				.isEqualTo(PAIRS);
 	}
 
 	/** AND NOTHING THE ANSWER CARRIES IS THE SAME IN EVERY ROW, which is the floor
