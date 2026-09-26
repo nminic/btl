@@ -1208,6 +1208,7 @@
     "pricingFixed": "The periods are fixed and repeat every year, so rows are neither added nor deleted. What changes is the prices and the names of the periods.",
     "period": "Period in the year",
     "everyPayment": "Every payment",
+    "processingFeeHeading": "Payment processing charge",
     "processingFee": "A payment in euros is larger on the statement by a payment processing charge of {fee} EUR. The charge is not part of the fee and is not entered in the price list.",
     "raceTaken": "This event already has a race of that length on that day. Nobody can tell apart two races that differ in nothing at all.",
     "referral": "Referral",
@@ -1247,7 +1248,16 @@
     },
     "leagueGone": "The competition has been deleted.",
     "leagueSavedUnseen": "The competition has been saved, but the portal cannot show it in this list. Refresh the page.",
-    "leagueTextSaved": "The change has been saved."
+    "leagueTextSaved": "The change has been saved.",
+    "priceSaved": "The price has been saved.",
+    "priceRefused": {
+      "theFormIsNotComplete": "A name, a price in euros or a price in dinars is missing.",
+      "theNameIsLongerThanTheFormAllows": "A name may have at most 80 characters.",
+      "theAmountIsNotKeptExactly": "A price may have at most two decimal places and must not be negative.",
+      "theAmountIsMoreThanARowMayCost": "The price is larger than the largest allowed: 1,000 EUR and 200,000 RSD.",
+      "theFeeHasNoDinarPrice": "The payment processing charge has no dinar price, because it is not paid to the intermediary in dinars.",
+      "theReferralIsSettled": "The referral amount has been fixed since 1 October for the season being renewed, and changes only for the next season."
+    }
   },
   "ducats": {
     "title": "Ducats",
