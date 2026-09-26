@@ -150,13 +150,14 @@ export function membersAsServed(mine?: string): { lapsed: string[]; stop: () => 
      kept now is the KEYS of the record the server declares (`test/theAnswer.ts`), so a
      field the answer has not got has no key to be copied into and nothing has to
      remember it. */
+  /* EVERY ROW THE SAME SINCE 25.09.2026, and the caller is still named because a case
+     that asks „as whom" and gets „it makes no difference" is the claim P26a bought.
+     Until that day his own row carried two fields more and the count had to be worked
+     out here the way the server's SQL works it out; `meAnswering` is where both live
+     now, because `/api/me` is where the server answers them. */
   const answered = file
     .filter((one) => one.active)
-    .map((row) =>
-      row.memberNumber === mine
-        ? { ...asAnswered(row, myOwnRow), referredCount: broughtIn(file, row) }
-        : asAnswered(row, aCompetitor),
-    )
+    .map((row) => asAnswered(row, row.memberNumber === mine ? myOwnRow : aCompetitor))
 
   const { stop } = serverThat((path) =>
     path === '/api/competitors'
@@ -170,25 +171,14 @@ export function membersAsServed(mine?: string): { lapsed: string[]; stop: () => 
   return { lapsed, stop }
 }
 
-/** The generated record, in the names the answer does not carry. */
+/**
+ * The generated record, in the names the answer does not carry.
+ *
+ * `referralCode` and `referredBy` are both here and both are the file's: since 25.09.2026
+ * neither leaves through this resource for anybody, and the count they used to produce is
+ * `/api/me`'s (`test/setup.ts`, `broughtIn`).
+ */
 type FileMember = {
   memberNumber: string
   active: boolean
-  referralCode: string
-  referredBy: string | null
-}
-
-/**
- * How many this member brought in whose fee is standing, worked out the way the
- * server works it out.
- *
- * Both halves are the SQL's, said over the generated file rather than copied as a
- * number: everybody this member's code brought, and of those only the ones whose
- * fee is standing (`CompetitorApi`, „and brought.active"). Written down as an
- * arithmetic rather than as a figure so that a change to the seed moves the answer
- * and the case together, which is the whole reason the portal's cases read the
- * generated data at all.
- */
-function broughtIn(file: FileMember[], me: { referralCode: string }): number {
-  return file.filter((one) => one.referredBy === me.referralCode && one.active).length
 }

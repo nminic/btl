@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { SLOW } from '../test/slow'
+import type { ReactNode } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import type { Result } from '../data/types'
@@ -23,6 +24,7 @@ import { AsksTheServerWhoIAm, expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { theCookieNames } from '../test/setup'
+import { myOwnRecordFromMe } from '../test/theAnswer'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
 
@@ -109,7 +111,7 @@ function pricesWith(row: string, amounts: { eur: number; rsd: number | null }) {
    needs somebody who actually pays. Of the thirty, three do, and this is the
    grown one of them living in Serbia. His membership is not active, which this
    screen has no branch for and which none of these tests is about. */
-function renderMembershipOn(today: string, memberNumber = '000032') {
+function renderMembershipOn(today: string, memberNumber = '000032', probe: ReactNode = null) {
   /* **AND THE COOKIE NAMES HIM, which this screen needs and `renderAt` does for every
      case that goes through the router.** How a member's own fee is held reaches him
      through `GET /api/me` and through nothing else: `/api/competitors` decides that
@@ -128,6 +130,14 @@ function renderMembershipOn(today: string, memberNumber = '000032') {
             <SessionProvider initialMemberNumber={memberNumber}>
               {/* The shell'''s own question, which this render is outside of. */}
               <AsksTheServerWhoIAm />
+              {/* Something drawn beside the screen inside the same session, which is the
+                  shape `renderAt` already uses for the same need: administration changes a
+                  row of the price list and this screen is read after it. Here rather than
+                  in a render of its own, since 25.09.2026, because the wiring the screen
+                  needs is no longer one prop - it is a cookie, a role and the shell's own
+                  question - and two cases that wrote it out by hand were reading a session
+                  with no record in it at all. */}
+              {probe}
               <Membership />
             </SessionProvider>
           </RoleProvider>
@@ -363,7 +373,7 @@ describe('membership', () => {
        away: written as a number with a sentence beside it, moving that member to
        `feeExempt` in the seed would let the swap of sources pass again, with nothing but
        prose saying why it should not. */
-    const whoPaysInTheFile = must(
+    const payerInTheFile: { memberNumber: string; country: string; firstSeason: number } = must(
       JSON.parse(
         readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
       ).find(
@@ -371,7 +381,8 @@ describe('membership', () => {
           one.membershipBasis === 'payment' && one.active,
       ),
       'a member the generated file calls a payer',
-    ).memberNumber
+    )
+    const whoPaysInTheFile = payerInTheFile.memberNumber
     /* **AND THE ANSWER NAMES HIM, since 24.09.2026.** The record used to carry the basis
        alone, which no real answer ever does: `MeApi.MyOwnRecord` sends the number beside
        it for anybody who has one. That was harmless while the portal read past the number
@@ -387,6 +398,20 @@ describe('membership', () => {
               account: 1,
               member: {
                 memberNumber: String(whoPaysInTheFile),
+                /* **AND THE REST OF THE RECORD, since 25.09.2026 (PDL P8a).** The screen
+                   reads five facts off this answer now and not one, so a `member` carrying
+                   the basis alone is no longer a fee-exempt member at all - it is an answer
+                   that named somebody and did not say where he lives, which is a state of
+                   its own and has a case of its own („says so when the answer names a member
+                   and carries no record"). Left as it was, THIS case measured that state
+                   instead of the one it is about, and said nothing about the fee.
+
+                   The country is the file's own rather than a constant, because the fee
+                   being nothing has to be read on a screen that is otherwise the payer's:
+                   `RS` is what draws the slip, so every sentence this case denies is one
+                   the screen would really have drawn. */
+                country: payerInTheFile.country,
+                firstSeason: payerInTheFile.firstSeason,
                 membershipBasis: 'feeExempt',
               },
             }),
@@ -542,14 +567,30 @@ describe('membership', () => {
     try {
       const credited = 4
 
+      /* **AND THE COOKIE NAMES HIM AND THE SHELL'S OWN QUESTION IS ASKED, both of which
+         this case needs since 25.09.2026.** The count was on the caller's own row of
+         `/api/competitors` until that day and `membersAsServed` put it there; P26a moved
+         it to `GET /api/me`, which nothing asks for outside `Shell`
+         (`session/useTheServersSession.ts`) and which the harness answers off the
+         generated file for whoever the cookie names (`test/setup.ts`). Without either
+         half the session holds null and this screen draws a balance of nought - which is
+         exactly the state the sum below exists to tell apart, so the case would have gone
+         on passing for the wrong reason if the number were smaller. */
+      theCookieNames({ role: 'competitor', memberNumber: '000001' })
+
       render(
         <ClockProvider simulatedDay="2026-11-01">
           <I18nProvider locale="sr">
             <MemoryRouter>
-              <SessionProvider initialMemberNumber="000001">
-                <Deleting memberNumber="000009" />
-                <Membership />
-              </SessionProvider>
+              {/* The answer names a ROLE as well as a member, and the thing that asks for
+                  it writes that role down, so it is drawn inside one. */}
+              <RoleProvider initialRole="competitor">
+                <SessionProvider initialMemberNumber="000001">
+                  <AsksTheServerWhoIAm />
+                  <Deleting memberNumber="000009" />
+                  <Membership />
+                </SessionProvider>
+              </RoleProvider>
             </MemoryRouter>
           </I18nProvider>
         </ClockProvider>,
@@ -849,30 +890,295 @@ describe('membership', () => {
     expect(await screen.findByText(/Član od .* sezone/)).toBeVisible()
   })
 
-  it('says so when the member does not exist', async () => {
-    /* **NAMED BY THE SESSION AND MISSING FROM THE LIST, which is a state a real member is
-       really in and not a hole in the harness.** `CompetitorApi` ends `where c.active`, so
-       a member whose fee has lapsed is answered by `/api/me` and is absent from
-       `/api/competitors`. That is the person this screen exists for: „Moja clanarina" is
-       where he goes to renew. The harness answers it that way since 24.09.2026
-       (`test/setup.ts`), which is the day the portal began reading the number off the
-       answer rather than off the prop below. */
-    renderAt('/sr/moja-clanarina', 'competitor', 'M9999')
+  /* **THE MEMBER WHOSE FEE HAS LAPSED, ON THE PAGE HE OPENS IN ORDER TO PAY IT.** This is
+     what PDL P8a is about and what the screen could not do until 25.09.2026.
 
-    expect(await screen.findByRole('heading', { name: 'Ovog profila nema.' })).toBeVisible()
+     **The public list is answered as the real server answers it** and that is the whole
+     point of the setup: `CompetitorApi` ends `where c.active`, so he has no row on it,
+     and `membersAsServed` is the one place that knows the generated file and the server's
+     answer differ. Read off that list he was `undefined`, and the page he opens to renew
+     told him his profile did not exist.
 
-    /* **AND A WAY OUT, which this screen did not have until 25.09.2026.** Measured that
-       day with the answer the real server gives a member whose fee has lapsed - named by
-       `/api/me`, absent from `/api/competitors` - this page carried the heading above and
-       ZERO links and ZERO buttons. He is the person PDL P8 sends here to renew, and the
-       portal had just stopped drawing him the other ten screens' way home as well.
+     **So every value on this screen is one the public list could not have supplied**, and
+     that is the swap of sources written into the setup instead of asserted afterwards:
+     there is no row of his anywhere in the answer to that address. `GET /api/me` answers
+     one row and that row is his, standing fee or not. */
+  it('draws the whole renewal for the member the public list does not carry', async () => {
+    const { lapsed, stop } = membersAsServed('000032')
 
-       Read inside `main` rather than on the page, because the sign of the league in the
-       header is a way to the front page too and would answer this without the screen
-       having changed at all. */
-    const mine = within(screen.getByRole('main'))
+    try {
+      /* The setup is what it claims to be, read off the same file the answer is built
+         from rather than asserted in the comment above. */
+      expect(lapsed, 'the answer really leaves him out').toContain('000032')
 
-    expect(mine.getByRole('link', { name: 'Naslovna strana' })).toHaveAttribute('href', '/sr')
+      renderMembershipOn('2026-11-01', '000032')
+
+      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      /* And not the other screen, which is the one he would be on if any of the five
+         facts below had been looked for in a list he is not in. */
+      expect(
+        screen.queryByRole('heading', { name: 'Tvoji podaci o članstvu nisu stigli' }),
+      ).not.toBeInTheDocument()
+
+      /* Renewal itself: the heading and the button that opens it. */
+      expect(screen.getByRole('heading', { name: 'Obnova članarine za 2027.' })).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Obnovi za 2027.' })).toBeVisible()
+
+      /* **His first season**, which is 2016 in the seed and is on no row the answer to the
+         public list does carry. */
+      expect(screen.getByText('Član od 2016. sezone.')).toBeVisible()
+      /* **His team, which is none.** Sixteen of the thirty two are in none, so this is the
+         ordinary answer and not a hole: what would be wrong is a team named for a man the
+         answer says is in one. */
+      expect(screen.getByText('Trenutno nisi ni u jednom timu.')).toBeVisible()
+      /* **His country**, which decides that there is a slip at all and that the figure on
+         it is in dinars (PDL P8, owner 31.07.2026). */
+      expect(screen.getByRole('heading', { name: 'Uplatnica' })).toBeVisible()
+      expect(
+        must(
+          screen.getByText('Iznos').nextElementSibling?.textContent,
+          'the amount beside its label',
+        ),
+      ).toMatch(/RSD$/)
+      /* **And his own referral link**, which V24 section 6 promises him on exactly this
+         page and which P26a moved here for exactly this reason. */
+      expect(screen.getByText(/registracija\?preporuka=a92a9c8493cecc3e/)).toBeVisible()
+    } finally {
+      stop()
+    }
+  })
+
+  /* **AND THE SAME THING FOR A MEMBER WHO IS ON BOTH DOORS, WHICH IS THE ONLY WAY TO
+     MEASURE WHICH DOOR IS READ.**
+
+     The case above is satisfied by a screen that reads the list and falls back to the
+     answer; this one is not. `000031` has a row on the public list - RS, first season
+     2027, in Dunavski trkači - and `GET /api/me` is made to say something else about
+     every one of the three. What is drawn is what the answer said, so the swap of sources
+     is what the case turns on rather than something the setup arranged to be invisible.
+
+     **Two rows and not one, because the team has two states and they are not one fact.** A
+     team the answer names while the list names another, and NO team at all while the list
+     has him in one, which is the state `MeApi.MyOwnRecord` spells by leaving the key out
+     (`@JsonInclude(NON_NULL)`) and the commonest one on this screen. */
+  it.each([
+    [
+      'a country, a season and a team it disagrees with on every one',
+      { country: 'MK', firstSeason: 2019, teamId: 2 },
+      {
+        country: 'Severna Makedonija',
+        season: 'Član od 2019. sezone.',
+        team: 'Trenutno si u timu Nišavski maraton klub.',
+        slip: false,
+      },
+    ],
+    [
+      'no team at all, while the list has him in one',
+      { country: 'RS', firstSeason: 2016 },
+      {
+        country: 'Srbija',
+        season: 'Član od 2016. sezone.',
+        team: 'Trenutno nisi ni u jednom timu.',
+        slip: true,
+      },
+    ],
+  ])(
+    'reads his own record off the answer and not off his row in the list, given %s',
+    async (_what, answered, drawn) => {
+      /* Installed before the list, so the list's server sits in front of this one and
+         everything neither of them names still reaches the disc reader. Stopped in the
+         other order, for the same reason. */
+      const me = serverThat((path) =>
+        path === '/api/me'
+          ? new Response(
+              JSON.stringify({
+                role: 'competitor',
+                account: 1,
+                member: {
+                  memberNumber: '000031',
+                  membershipBasis: 'payment',
+                  referralCode: '2480ede2bd9a787a',
+                  referredCount: 0,
+                  ...answered,
+                },
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            )
+          : null,
+      )
+      const list = membersAsServed('000031')
+
+      try {
+        renderMembershipOn('2026-11-01', '000031')
+
+        expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+
+        expect(
+          screen.getByText(
+            `Načini plaćanja zavise od države na tvom profilu (${drawn.country}).`,
+          ),
+        ).toBeVisible()
+        expect(screen.getByText(drawn.season)).toBeVisible()
+        expect(screen.getByText(drawn.team)).toBeVisible()
+        /* The slip follows the country and is the third reading of it on one screen: a man
+           the answer puts abroad may not be shown one at all, in any form (PDL P8). */
+        expect(screen.queryByRole('heading', { name: 'Uplatnica' }) !== null).toBe(drawn.slip)
+      } finally {
+        list.stop()
+        me.stop()
+      }
+    },
+  )
+
+  /* **WHAT THE OWNER DECIDED TO LEAVE AS IT IS, MEASURED RATHER THAN ASSUMED** (PDL P8a,
+     25.09.2026: `/api/results` carries a lapsed member's earlier seasons and not the one
+     running, and „to ostaje kako jeste").
+
+     Until today that decision cost nothing on this screen, because a lapsed member never
+     reached the choice of category at all. He does now, and that choice is decided by
+     `bestOfficialSeason` over whatever `/api/results` answered - so a result of his in the
+     season now running cannot be seen here, and the beginner category stays open to a man
+     who has just left it.
+
+     **Two renders of one member on one day, differing only in whether that row is in the
+     answer**, because the boundary is about the door and not about the man: served, the
+     screen shuts the category; withheld, it does not. Written down here rather than left
+     for somebody to meet on QA. */
+  it.each([
+    ['carries his result from the season now running', true, 'toBeDisabled'],
+    ['withholds it, which is what the route really does for him', false, 'toBeEnabled'],
+  ])(
+    'decides the beginner category on what the answer %s',
+    async (_what, served, expected) => {
+      const { stop } = membersAsServed('000032')
+
+      /* One render and one assertion per case rather than two of each inside one, and
+         that is a measurement: the resource cache is emptied before every CASE
+         (`test/setup.ts`) and not between two renders inside one, so a second render
+         here was handed the first render's answer and the row that had been withheld was
+         still in it. */
+      async function draw(): Promise<void> {
+        renderMembershipOn('2027-11-01', '000032')
+
+        await screen.findByRole('heading', { name: /Obnova članarine/ })
+
+        const beginner = screen.getByLabelText('U početničkoj kategoriji')
+
+        if (expected === 'toBeDisabled') {
+          expect(beginner).toBeDisabled()
+        } else {
+          expect(beginner).toBeEnabled()
+        }
+      }
+
+      try {
+        await (served
+          ? withOneMoreResult({ memberNumber: '000032', date: '2027-04-15', points: 12 }, draw)
+          : draw())
+      } finally {
+        stop()
+      }
+    },
+  )
+
+  /* **THE ANSWER NAMED A MEMBER AND CARRIED NO RECORD, WHICH IS A DIFFERENT PERSON FROM
+     THE ONE THIS CASE USED TO BE ABOUT.**
+
+     It was „says so when the member does not exist", and the man standing there was the
+     member whose fee had LAPSED: named by `/api/me`, absent from `/api/competitors`, and
+     told „Ovog profila nema." on the page PDL P8 sends him to in order to renew. He is not
+     here any more - the first case above draws him the whole renewal - so what is left is
+     an answer this portal does not know: a server one release ahead, a proxy answering
+     something else, an address that is not ours. It cannot happen against this backend,
+     where `MeApi` writes „never absent" against both of these fields, and it is drawn
+     rather than asserted for exactly that reason (ADL A14).
+
+     **Both halves of the condition and not one**, because they are two facts and either can
+     be the one that did not arrive. The country decides the currency and whether there is a
+     slip at all; the season is a sentence of its own.
+
+     **AND EACH ROW USED TO DROP FIVE KEYS TO NAME ONE, which measured neither.** `member: {
+     memberNumber, <the one field named> }` was short `membershipBasis`, `teamId`,
+     `referralCode` and `referredCount` as well, on both rows, alongside whichever of
+     `country` and `firstSeason` the row was supposedly about. A review proved that by two
+     swaps, both green over the whole package: the crafted 200 below replaced with a bare
+     `new Response(null, { status: 401 })`, and the guard on `Membership.tsx:221` widened to
+     `myMembershipBasis === null || myCountry === null || myFirstSeason === undefined`.
+     Neither swap could fail, because nothing below read a fact that only a named member's
+     record can carry - the heading is drawn off `initialMemberNumber` (a prop, not the
+     answer) and off two fields a visit starts at `null` anyway, which a refusal the server
+     never sent reaches exactly the way a refusal it did send does.
+
+     **So every row now carries the whole record and drops the one key it names**
+     (`test/theAnswer.ts`'s `myOwnRecordFromMe`, the same seven the contract test holds
+     against the backend), and the case reads back a fact the session has no door to but
+     this answer - the basis and the link, which this screen draws nowhere on this branch -
+     so satisfying it by silence is no longer available. */
+  function memberMissingOneFact(key: 'country' | 'firstSeason'): Record<string, unknown> {
+    const whole = { ...myOwnRecordFromMe, memberNumber: '000032' }
+
+    return Object.fromEntries(Object.entries(whole).filter(([name]) => name !== key))
+  }
+
+  /** Read off the session rather than off `Membership`, which draws neither field on this
+   *  branch: they have no door here but `GET /api/me`, so finding them proves the answer
+   *  named him rather than a 401, or the visit's own starting state, having done it. */
+  function CarriedOnlyByTheAnswer() {
+    const { myMembershipBasis, myReferralCode } = useSession()
+
+    return (
+      <p>
+        basis {myMembershipBasis ?? 'none'} link {myReferralCode ?? 'none'}
+      </p>
+    )
+  }
+
+  it.each([
+    ['no country', memberMissingOneFact('country')],
+    ['no first season', memberMissingOneFact('firstSeason')],
+  ])('says so when the answer names a member and carries %s', async (_what, member) => {
+    const { stop } = serverThat((path) =>
+      path === '/api/me'
+        ? new Response(JSON.stringify({ role: 'competitor', account: 1, member }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderMembershipOn('2026-11-01', '000032', <CarriedOnlyByTheAnswer />)
+
+      expect(
+        await screen.findByRole('heading', { name: 'Tvoji podaci o članstvu nisu stigli' }),
+      ).toBeVisible()
+      expect(screen.getByText(/Portal ne može da pročita tvoj članski zapis/)).toBeVisible()
+
+      /* **And nothing of the renewal**, which is the half that says this is a refusal and
+         not a screen missing one sentence. */
+      expect(screen.queryByRole('heading', { name: /Obnova članarine/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+
+      /* **AND THE REST OF THE RECORD REALLY ARRIVED**, which a 401 cannot satisfy and the
+         two lines above cannot tell apart from one: `myMembershipBasis` and `myReferralCode`
+         have no other door than this answer, so finding the real fixture values here is
+         finding proof the answer was read rather than merely awaited. */
+      expect(
+        screen.getByText(
+          `basis ${myOwnRecordFromMe.membershipBasis} link ${myOwnRecordFromMe.referralCode}`,
+        ),
+      ).toBeVisible()
+
+      /* **AND A WAY OUT, which this branch has carried since 25.09.2026.** Measured that
+         day on the answer the real server gives: the page carried zero links and zero
+         buttons, and the man reading it was the one the portal had just stopped telling
+         anything else. Read on the page itself rather than inside `main`, because this
+         render mounts the screen alone: there is no header here, so the sign of the league
+         that would answer this without the screen having changed is not on it. */
+      expect(screen.getByRole('link', { name: 'Naslovna strana' })).toHaveAttribute('href', '/sr')
+    } finally {
+      stop()
+    }
   })
 })
 

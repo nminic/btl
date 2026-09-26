@@ -49,7 +49,16 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
     signIn: vi.fn(),
     account: null,
     theServerSignedMeIn: vi.fn(),
-  myMembershipBasis: null,
+    myMembershipBasis: null,
+    /* Null all three, because this session is built for a screen that reads none of
+       them: what „Moja članarina" gets off `GET /api/me` since 25.09.2026 has no
+       reader here. Named rather than left out because the type names them, which is the
+       only thing that tells anybody a field was added to the answer. */
+    myCountry: null,
+    myFirstSeason: null,
+    myTeamId: null,
+    myReferralCode: null,
+    myReferredCount: null,
     signedIn: { as: 'member', memberNumber: '000007' },
     signOut: vi.fn(),
     withdraw: vi.fn(),

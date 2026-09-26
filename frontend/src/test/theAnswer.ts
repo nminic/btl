@@ -35,11 +35,14 @@ import type {
 /**
  * A member as a VISITOR is answered one, which is fourteen names and no more.
  *
- * The three conditional fields are not here and that is the shape rather than a
- * shortfall: `referralCode` and `referredCount` answer null unless the row is the
- * caller's own, `membershipBasis` answers null unless the CALLER is the
- * administration, and `@JsonInclude(NON_NULL)` leaves a null key out altogether
- * (`CompetitorApi`).
+ * The one conditional field is not here and that is the shape rather than a shortfall:
+ * `membershipBasis` answers null unless the CALLER is the administration, and
+ * `@JsonInclude(NON_NULL)` leaves a null key out altogether (`CompetitorApi`).
+ *
+ * **There were three of them until 25.09.2026.** `referralCode` and `referredCount`
+ * answered null unless the row was the caller's own; P26a took both off this resource
+ * for every caller, so a visitor's fourteen names are now everybody's fourteen names
+ * and the only thing that still depends on who is asking is the basis.
  */
 export const aCompetitor = {
   memberNumber: '000001',
@@ -59,8 +62,22 @@ export const aCompetitor = {
 }
 
 /**
- * The same member's row as HE is answered it: his own code and his own count beside
- * the fourteen.
+ * The same member's row as HE is answered it, WHICH SINCE 25.09.2026 IS THE FOURTEEN AND
+ * NOTHING ELSE.
+ *
+ * **It is kept as its own name although it now equals `aCompetitor`, and that is the
+ * point rather than an oversight.** Four files read „the caller's own row" through this
+ * name, and what they are saying is „the row belonging to whoever is asking". That
+ * sentence is still worth being able to write; what changed is the answer to it, and a
+ * spread that adds nothing is the plainest way to say so. `servedShape.test.ts` requires
+ * the two to agree field for field, so the day something is added to one of them without
+ * the other it fails rather than drifts.
+ *
+ * **What it carried and why both went.** His own `referralCode` and `referredCount`,
+ * answered on his row and on no other. The owner took them off the public list on
+ * 25.09.2026 (PDL P26a) because that query ends `where c.active` and a member whose fee
+ * has lapsed never had a row for them to be put on - and he is the man V24 section 6
+ * promises the link to. Both are on `myOwnRecordFromMe` below, which is `/api/me`.
  *
  * **And NOT his basis, which is the correction of 21.09.2026 and the reason a screen
  * was wrong.** The condition on that field is the CALLER and never the row - written
@@ -72,8 +89,6 @@ export const aCompetitor = {
  */
 export const myOwnRow = {
   ...aCompetitor,
-  referralCode: '7f07b38ff7ee7543',
-  referredCount: 4,
 }
 
 /**
@@ -293,9 +308,11 @@ export const readAsFee: Price = aProcessingFee
  * fails by name, and a name the server has that is missing here fails the same way.
  *
  * **Not handed to a type, and that is said rather than left as an omission.** The portal
- * has no type for this record: it reads ONE field off it, how the caller's own membership
- * is held (`session/theServer.ts`), because that is the only one of the seven with no
- * other door. A type here would be six names nothing reads.
+ * has no type for this record: it reads THREE fields off it (`session/theServer.ts`) -
+ * how the caller's own membership is held, his own referral link and his count of whom he
+ * brought in - because those three are the ones with no other door. It read one until
+ * 25.09.2026, when P26a took the other two off `/api/competitors`. A type here would be
+ * four names nothing reads.
  */
 export const myOwnRecordFromMe = {
   memberNumber: '000001',

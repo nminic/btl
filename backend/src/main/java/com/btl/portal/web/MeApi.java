@@ -80,25 +80,37 @@ import org.springframework.web.bind.annotation.RestController;
  * <li><b>His referral code, and the count of who he has brought in.</b> These were
  * left out with the sentence „ANSWERED ALREADY, by {@link CompetitorApi}, on the
  * caller's own row", and that sentence does not survive a probe. That route
- * computes both inside a query that ends {@code where c.active}, so a member whose
- * fee has lapsed is not among its rows at all and his row never reaches the
+ * computed both inside a query that ends {@code where c.active}, so a member whose
+ * fee has lapsed is not among its rows at all and his row never reached the
  * {@code case} that would have filled them in: signed in with his own cookie he
- * asks {@code /api/competitors} and gets back neither field, while an active member
- * gets both. He is exactly the person V24 section 6 promises them to - „a koji vam
+ * asked {@code /api/competitors} and got back neither field, while an active member
+ * got both. He is exactly the person V24 section 6 promises them to - „a koji vam
  * stoji ispisan na vasoj strani 'Moja clanarina', uz sam link" - and that page is
  * where he goes to renew. It is also the case this class makes for itself two
- * paragraphs up: this route exists BECAUSE {@link CompetitorApi} leaves him off.</li>
+ * paragraphs up: this route exists BECAUSE {@link CompetitorApi} leaves him off.
+ * <b>The owner read that measurement and took the other door away</b> (PDL P26a,
+ * 25.09.2026), so this is not one of two answers any more but the only one.</li>
  * </ul>
  *
- * <p><b>AND THE BOUNDARY THAT COMES WITH THE SECOND ONE, named here rather than
- * left for a review to find: for a member whose fee is standing those two facts now
- * have TWO HOMES.</b> {@link CompetitorApi} answers them on the caller's own row
- * and this one answers them on his record. Two homes are what lets two answers
- * disagree, so the counting clause here is that one's word for word - as
- * {@code season_to is null} already is between these two - and a case measures that
- * the two doors really do still say the same thing. Which door keeps the fact is
- * one increment over both together and wants the owner's word on whether a public
- * list is the place for a member's private link at all; it is not this PR.
+ * <p><b>AND THAT BOUNDARY IS CLOSED AS OF 25.09.2026: those two facts have ONE home
+ * and it is this one.</b> It was written here on 21.09.2026 as two homes waiting for
+ * a decision - „which door keeps the fact ... wants the owner's word on whether a
+ * public list is the place for a member's private link at all". The owner gave it
+ * (PDL P26a): the link „se sklanja sa javne liste takmicara" and stays only on „Moja
+ * clanarina". {@link CompetitorApi} answers neither field to anybody any more, and
+ * the case that held the two doors together went with the second door rather than
+ * being loosened - measured first, three mutations, before it was touched.
+ *
+ * <p><b>What the counting clause is now, said because it used to be said the other
+ * way.</b> It was „{@link CompetitorApi}'s word for word", which was the cheapest
+ * thing that stopped two homes drifting. There is no second clause to agree with;
+ * this is the clause. What holds it is behaviour rather than a twin:
+ * {@code andHowManyHeBroughtInWhoseFeeStands} arranges the fixture so that every
+ * wrong way of counting answers a different number, and
+ * {@code aMemberWhoseFeeHasLapsedIsStillHandedHisOwnRecord} asks the same of the one
+ * member the other door could never reach. Measured 25.09.2026: dropping
+ * {@code and brought.active} from this clause fails both, independently of the case
+ * that compared the doors.
  *
  * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
  * COMFORTABLE: no pattern over the English above measures anything.</b> What the
@@ -136,11 +148,15 @@ class MeApi {
 	/**
 	 * THE CALLER'S OWN RECORD, and only what is his own to see about himself.
 	 *
-	 * <p>Six of these seven are facts a member whose fee is standing can already read
-	 * elsewhere: four of them Article 73 makes public about everybody, and two more
-	 * {@link CompetitorApi} hands the caller on his own row. The SEVENTH, the basis his
-	 * membership is held on, leaves nowhere else at all and is here on the owner's word
-	 * of 20.09.2026. What this route adds is not secrecy but ADDRESSING: the caller no
+	 * <p>Four of these seven are facts Article 73 makes public about everybody, so a
+	 * member whose fee is standing can read them elsewhere. <b>THE OTHER THREE LEAVE THE
+	 * SERVER THROUGH THIS ROUTE AND NO OTHER</b>: the basis his membership is held on,
+	 * here since 20.09.2026 on the owner's word, and his referral link and his count of
+	 * whom he brought in, which became this route's alone on 25.09.2026 (PDL P26a).
+	 * <b>That sentence read „two more {@link CompetitorApi} hands the caller on his own
+	 * row" until that day</b>, and it is corrected rather than deleted because what
+	 * changed is a fact about the portal and not a wording. What this route adds is
+	 * therefore no longer only ADDRESSING for two of them: the caller no
 	 * longer has to find himself in a public list by a number his browser remembered,
 	 * which is a lookup that answers nothing at all for the three people it matters
 	 * most to - the moderator who is on no list, the registered person who has no
@@ -189,10 +205,11 @@ class MeApi {
 	 *                     ... Ko se registrovao preko linka a clanarina mu nikad nije
 	 *                     aktivirana, ne donosi nista." {@code referred_by} is the KEY of the
 	 *                     member who brought this one in and not his code (V7), so the count
-	 *                     is on the key. <b>The clause is {@link CompetitorApi}'s word for
-	 *                     word</b>, for the reason {@code season_to is null} is: two homes for
-	 *                     one fact may answer differently, and identical text is the cheapest
-	 *                     thing that stops them. Never absent: a {@code count} answers a
+	 *                     is on the key. <b>THE CLAUSE WAS {@link CompetitorApi}'S WORD FOR
+	 *                     WORD UNTIL 25.09.2026 AND IS NOW SIMPLY THE CLAUSE</b>: P26a took
+	 *                     the second home away, so there is nothing left for it to agree
+	 *                     with, and what holds it is the pair of cases named on this class
+	 *                     rather than a twin. Never absent: a {@code count} answers a
 	 *                     number even when nobody was brought in
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
@@ -236,10 +253,14 @@ class MeApi {
 						/* HIS OWN, and there is one row here, so there is no shape in which
 						   somebody else's could come out of it. */
 						+ " c.membership_basis, c.referral_code,"
-						/* AND HOW MANY HE HAS BROUGHT IN WHOSE FEE IS STANDING. Word for word
-						   `CompetitorApi`'s, which is the point rather than an accident: that
-						   route computes the same two facts for the caller and the day the two
-						   clauses differ the portal answers one member two numbers.
+						/* AND HOW MANY HE HAS BROUGHT IN WHOSE FEE IS STANDING.
+
+						   THIS SAID „word for word `CompetitorApi`'s" UNTIL 25.09.2026, and the
+						   twin it named is gone: P26a took both facts off the public list, so
+						   this is the only clause there is. What stops it drifting is no longer
+						   a second copy to compare with but the fixture underneath
+						   `andHowManyHeBroughtInWhoseFeeStands`, arranged so that every wrong
+						   way of counting answers a different number.
 
 						   Cast, because `count(*)` is a bigint and what comes back is read as
 						   a whole number that fits the portal's own type. */
