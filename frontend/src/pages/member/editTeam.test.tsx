@@ -374,6 +374,62 @@ describe('a change waiting on the queue of teams', () => {
     }
   }, SLOW)
 
+  it('is handed back locally too, unlike a served proposal beside it', async () => {
+    /* The other door onto the same VISOK 2 boundary: `handBack` reads
+       `isProposal` separately from `approveAll`, because the two functions do
+       not share a call - measured directly, a mutation that put `prop-1` back
+       on the route inside `approveAll` alone left this door's own case green.
+       So this is not the case above with „Odbij" in place of „Odobri", it is
+       the only case that would have caught that mutation at all. */
+    const user = setupUser()
+    const server = serverThat((path, init) =>
+      init?.method === 'POST' && path.includes('/decision')
+        ? new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+      await user.clear(await screen.findByLabelText(/^Mesto/))
+      await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+      await router.navigate('/sr/administracija/verifikacija/timovi')
+
+      const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+      const ours = within(
+        must(oursHeading.closest('li'), 'the card of the change this visit just made'),
+      )
+
+      await user.click(ours.getByRole('button', { name: 'Odbij' }))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Mesto se ne poklapa sa prijavom.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      /* Queried only now, after the card above is gone, the same way the
+         approval case beside this one reaches for it. */
+      const servedHeading = screen.getByRole('heading', { name: 'Timočka trkačka družina' })
+      const served = within(
+        must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'),
+      )
+
+      await user.click(served.getByRole('button', { name: 'Odbij' }))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Nepotpun opis tima.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      const sent = server.asked.filter((one) => one.path.includes('/decision'))
+
+      expect(sent).toHaveLength(1)
+      expect(sent[0]?.path).toBe('/api/verification/ver-tim-1/decision')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('cannot be approved once the team it names has been deleted', async () => {
     /* Approved anyway it wrote into an identity nothing answers to, settled the item,
        and told the member their team had been changed (review, 05.09.2026). The card
