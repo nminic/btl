@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -161,6 +163,19 @@ class PricingWriteApiTest {
 	private static final BigDecimal NEW_EUR = new BigDecimal("41.00");
 
 	private static final BigDecimal NEW_RSD = new BigDecimal("4900.00");
+
+	/**
+	 * THE NAME THE CASES ABOUT THE NAME WRITE, AND IT IS NONE OF THE SEVEN THE LIST CARRIES.
+	 *
+	 * <p><b>Which is the whole of why it is a constant rather than a string typed twice.</b>
+	 * „The name changed" and „the name did not change" have to be two different readings, and
+	 * they are the same reading the moment what is sent is a name some row already wears - not
+	 * only the row being written but ANY of them, because one case reads
+	 * {@link #namesInOrder()} over the whole list.
+	 * {@code nothingActedOnIsTheFirstOrTheOnlyOneOfItsKind} is where that is asked rather than
+	 * assumed.
+	 */
+	private static final String NEW_LABEL = "Probni naziv perioda";
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
@@ -319,6 +334,20 @@ class PricingWriteApiTest {
 						.query(Long.class).single())
 				.as("something answers to the key this file uses for a row that is not there")
 				.isZero();
+
+		/* AND THE NAME THE CASES ABOUT THE NAME SEND IS NOBODY'S NAME. Two readings of one
+		   value is the fault this asks about: were `NEW_LABEL` the name some row already wears,
+		   „this row was renamed" and „this row was not renamed" would come out the same text,
+		   and so would „no OTHER row was renamed", which one case reads over all seven. */
+		assertThat(namesInOrder())
+				.as("the name the cases about the name write is already on a row of the price list,"
+						+ " so a rename and a row left alone are one answer")
+				.doesNotContain(NEW_LABEL);
+		assertThat(namesInOrder())
+				.as("two rows of the price list carry the same name, so a statement with no WHERE"
+						+ " could rename one of them and nothing here would see it")
+				.doesNotHaveDuplicates()
+				.hasSize(7);
 	}
 
 	/**
@@ -415,6 +444,175 @@ class PricingWriteApiTest {
 				.as("the price list is not the seven rows it was, in the order it had, and PDL:827"
 						+ " says rows are neither added nor taken away")
 				.isEqualTo(before);
+	}
+
+	/**
+	 * THE NAME IS CHANGED AND NEITHER AMOUNT MOVES WITH IT, WHICH IS THE OTHER DIRECTION OF THE
+	 * CASE ABOVE AND NOT A SECOND COPY OF IT.
+	 *
+	 * <p><b>Owner, 30.07.2026 (PDL:827): menjaju se samo cene <b>i nazivi perioda</b>.</b> Two
+	 * things this route writes, so there are two ways for it to be wrong and they are opposite:
+	 * a statement that wrote the name out of the amount, and one that wrote the amount while
+	 * pretending to write the name. The case above holds the first direction with the amounts
+	 * moving and everything else still; this holds the second with the name moving and
+	 * everything else still, and neither of them can stand for the other.
+	 *
+	 * <p><b>The amounts sent are the ones the row already has</b>, which is what makes this a
+	 * rename and nothing besides. Read out of the table rather than written here, because an
+	 * amount typed in would be a second home for a figure V34 loads.
+	 *
+	 * <p><b>The whole row is compared, by the columns the database names</b>, exactly as above:
+	 * a statement that also reached the window or the order fails here, whichever column it was.
+	 */
+	@Test
+	void theNameIsChangedAndNeitherAmountMovesWithIt() throws Exception {
+		List<String> before = keysInOrder();
+		Map<String, Object> was = rowOf(ACTED);
+		Map<String, Object> theTwinWas = rowOf(THE_TWIN);
+		List<BigDecimal> amounts = amountsOf(ACTED);
+
+		MockHttpServletResponse answer =
+				change(ACTED, NEW_LABEL, amounts.getFirst(), amounts.getLast(), mayCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+
+		JsonNode said = read(answer);
+
+		assertThat(said.path("key").asString()).isEqualTo(ACTED);
+		assertThat(said.path("label").asString())
+				.as("the answer does not carry the name the row now has, so a screen redrawing from"
+						+ " it would show what was typed rather than what was kept")
+				.isEqualTo(NEW_LABEL);
+
+		Map<String, Object> now = rowOf(ACTED);
+
+		assertThat(now.get("label")).isEqualTo(NEW_LABEL);
+
+		assertThat(now.keySet())
+				.as("the price list gained or lost a column, so the comparison below is over a"
+						+ " different row than the one that was read")
+				.isEqualTo(was.keySet());
+		assertThat(whatDiffers(was, now))
+				.as("something besides the name moved, and a rename must not touch an amount a"
+						+ " member is charged")
+				.containsExactly("label");
+
+		assertThat(rowOf(THE_TWIN))
+				.as("the row that carries the same two amounts was renamed as well, so the statement"
+						+ " is writing more rows than the one it was asked about")
+				.isEqualTo(theTwinWas);
+
+		assertThat(keysInOrder())
+				.as("the price list is not the seven rows it was, in the order it had")
+				.isEqualTo(before);
+	}
+
+	/**
+	 * A NAME WRAPPED IN SPACES IS A NAME, AND IT IS KEPT WITHOUT THEM.
+	 *
+	 * <p><b>The third state of one question, and the one that is easy to lose.</b> A name may be
+	 * absent, it may be nothing but spaces, and it may be a name with spaces around it - and the
+	 * first two are refused while the third is written. A route that treated the third as the
+	 * second would turn an administrator away over a character he cannot see.
+	 *
+	 * <p><b>Both halves are asserted and they are not the same half.</b> That the request is
+	 * ACCEPTED is one; that what lands in the column is the stripped text is the other, and only
+	 * the second one falls over when {@code strip()} is taken out of the statement.
+	 *
+	 * <p><b>And the answer is read back as well</b>, because a route that stripped on the way
+	 * into the column and echoed the request on the way out would leave the screen drawing
+	 * spaces around a name the table does not have.
+	 */
+	@Test
+	void aNameWrappedInSpacesIsKeptWithoutThem() throws Exception {
+		List<BigDecimal> amounts = amountsOf(ACTED);
+
+		MockHttpServletResponse answer = change(ACTED, "   " + NEW_LABEL + "   ",
+				amounts.getFirst(), amounts.getLast(), mayCookie);
+
+		assertThat(answer.getStatus())
+				.as("a name with spaces around it was refused, so an administrator is turned away"
+						+ " over characters he cannot see")
+				.isEqualTo(200);
+
+		assertThat(read(answer).path("label").asString())
+				.as("the answer carries the name as it was TYPED rather than as it was kept")
+				.isEqualTo(NEW_LABEL);
+		assertThat(nameOf(ACTED))
+				.as("the name went into the column with the spaces still on it, so the price table"
+						+ " draws a cell that begins somewhere a reader cannot predict")
+				.isEqualTo(NEW_LABEL);
+	}
+
+	/**
+	 * A FORM WITH NO NAME IN IT IS REFUSED, AND BOTH WAYS OF HAVING NO NAME ARE ONE SENTENCE.
+	 *
+	 * <p>Absent and blank, which V34 refuses from two directions - {@code
+	 * price_row_label_not_null} and {@code price_row_label_not_blank} - and which without this
+	 * would both arrive as a 500 off the second of them. The sentence is the one the form's other
+	 * required fields already get: {@code theFormIsNotComplete}, because a required field with
+	 * nothing in it sends an administrator to the same box whichever kind of nothing it holds.
+	 *
+	 * <p><b>Nothing is written, and that is the half a status code does not say.</b> The whole row
+	 * is compared, so a refusal that had already run the statement fails here.
+	 */
+	@ParameterizedTest
+	@NullSource
+	@ValueSource(strings = { "", "   ", "\t\n" })
+	void aFormWithNoNameInItIsRefusedAndNothingIsWritten(String label) throws Exception {
+		Map<String, Object> was = rowOf(ACTED);
+
+		MockHttpServletResponse answer = change(ACTED, label, NEW_EUR, NEW_RSD, mayCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.contains(PricingWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(rowOf(ACTED))
+				.as("the row was written although the form was refused, so a name nobody typed and"
+						+ " two amounts that were never accepted are on the price list")
+				.isEqualTo(was);
+	}
+
+	/**
+	 * A NAME LONGER THAN THE BOX ON THE FORM IS REFUSED, AND THE LENGTH ITSELF IS TAKEN.
+	 *
+	 * <p><b>Both sides of the boundary in one case</b>, because a refusal written one character
+	 * out fails in only one direction and a case measuring one side cannot tell which. Exactly
+	 * {@link PricingWriteApi#AS_LONG_AS_THE_FORM_ALLOWS} characters is written; one more is
+	 * refused.
+	 *
+	 * <p><b>The number is read off the route and never typed here</b>, so the day it moves this
+	 * case moves with it. What holds it to the form is {@code WhatARowIsCalledTest}, which is
+	 * the other half of this guard: that one says the two numbers agree, this one says the route
+	 * acts on its own.
+	 *
+	 * <p><b>And the accepted name is measured AFTER stripping</b> - a full box plus a trailing
+	 * space is a name that fits, which is the shape {@code MeWriteApi} settled for a biography
+	 * and the reason the refusal is written over {@code strip()} rather than over what arrived.
+	 */
+	@Test
+	void aNameLongerThanTheFormAllowsIsRefusedAndTheLengthItselfIsTaken() throws Exception {
+		int longest = PricingWriteApi.AS_LONG_AS_THE_FORM_ALLOWS;
+		String fits = "N".repeat(longest);
+		Map<String, Object> was = rowOf(ACTED);
+
+		MockHttpServletResponse refused =
+				change(ACTED, fits + "N", NEW_EUR, NEW_RSD, mayCookie);
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(refused.getContentAsString())
+				.contains(PricingWriteApi.THE_NAME_IS_LONGER_THAN_THE_FORM_ALLOWS);
+		assertThat(rowOf(ACTED))
+				.as("a name past the box went onto the price list anyway")
+				.isEqualTo(was);
+
+		assertThat(change(ACTED, fits + "   ", NEW_EUR, NEW_RSD, mayCookie).getStatus())
+				.as("a name that fills the box and ends in a space was refused, so the length is"
+						+ " being measured over what ARRIVED rather than over what is kept")
+				.isEqualTo(200);
+		assertThat(nameOf(ACTED))
+				.as("the longest name the form draws was not kept as it stands")
+				.isEqualTo(fits);
 	}
 
 	/**
@@ -638,7 +836,12 @@ class PricingWriteApiTest {
 		clock.moveTo(AS_THE_WINDOW_OPENS);
 		Map<String, Object> was = rowOf(PricingWriteApi.A_REFERRAL);
 
-		MockHttpServletResponse inOctober = change(PricingWriteApi.A_REFERRAL,
+		/* THE NAME IS SENT CHANGED TOO, AND THAT IS WHAT MAKES THE ROW COMPARISON BELOW MEASURE
+		   THE WHOLE REFUSAL. Since V34 this route writes a name as well as two amounts, and
+		   {@link PricingWriteApi#change} shuts the WHOLE request after the window opens - which
+		   is the one reading of PDL:8149 that does not accept half a form. A request that sent
+		   the name the row already has could not tell a refusal from a rename that landed. */
+		MockHttpServletResponse inOctober = change(PricingWriteApi.A_REFERRAL, NEW_LABEL,
 				new BigDecimal("7.00"), new BigDecimal("840.00"), mayCookie);
 
 		assertThat(inOctober.getStatus())
@@ -648,7 +851,8 @@ class PricingWriteApiTest {
 		assertThat(inOctober.getContentAsString())
 				.contains(PricingWriteApi.THE_REFERRAL_IS_SETTLED_FOR_THE_COMING_SEASON);
 		assertThat(rowOf(PricingWriteApi.A_REFERRAL))
-				.as("the referral was refused at midnight in Belgrade and written anyway")
+				.as("the referral was refused at midnight in Belgrade and written anyway - the name"
+						+ " or an amount or both, since the row is compared whole")
 				.isEqualTo(was);
 
 		/* AND THE DEADLINE IS THE REFERRAL'S AND NOT THE WHOLE LIST'S. */
@@ -670,7 +874,8 @@ class PricingWriteApiTest {
 	void aRowThatIsNotThereIsAnsweredWithNothing() throws Exception {
 		List<String> before = keysInOrder();
 
-		MockHttpServletResponse answer = change(NO_SUCH_ROW, NEW_EUR, NEW_RSD, mayCookie);
+		MockHttpServletResponse answer =
+				change(NO_SUCH_ROW, NEW_LABEL, NEW_EUR, NEW_RSD, mayCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(404);
 		assertThat(answer.getContentAsString())
@@ -678,6 +883,10 @@ class PricingWriteApiTest {
 						+ " that exists could have")
 				.isEmpty();
 		assertThat(keysInOrder()).isEqualTo(before);
+		assertThat(namesInOrder())
+				.as("a key nothing answers to renamed a row of the price list, so the statement is"
+						+ " reaching further than the WHERE it was given")
+				.doesNotContain(NEW_LABEL);
 	}
 
 	/**
@@ -696,14 +905,22 @@ class PricingWriteApiTest {
 	 * <p>What this file cannot measure is the two answers being the same BYTES; MockMvc does
 	 * not run the container's ERROR dispatch. {@code RightsOverRealHttpTest} reads that off a
 	 * socket for every guarded route.
+	 *
+	 * <p><b>The name is sent CHANGED as well as the amounts, and that is not decoration.</b> The
+	 * tick guards a whole request, and since V34 a request carries a name too. Sent as the name
+	 * the row already has, a door that refused the amounts and wrote the name would leave the row
+	 * exactly as it was and this case would be green. The same reasoning applies to the two cases
+	 * below it and to the row that is not there.
 	 */
 	@Test
 	void aModeratorHoldingAnotherTickIsToldNoMoreThanSomebodyAskingForNothing() throws Exception {
 		List<String> before = keysInOrder();
 		Map<String, Object> was = rowOf(ACTED);
 
-		MockHttpServletResponse refused = change(ACTED, NEW_EUR, NEW_RSD, anotherTickCookie);
-		MockHttpServletResponse notThere = change(NO_SUCH_ROW, NEW_EUR, NEW_RSD, mayCookie);
+		MockHttpServletResponse refused =
+				change(ACTED, NEW_LABEL, NEW_EUR, NEW_RSD, anotherTickCookie);
+		MockHttpServletResponse notThere =
+				change(NO_SUCH_ROW, NEW_LABEL, NEW_EUR, NEW_RSD, mayCookie);
 
 		assertThat(refused.getStatus())
 				.as("a moderator who may not set prices was told something different from what an"
@@ -723,7 +940,8 @@ class PricingWriteApiTest {
 	void aPlainMemberIsRefusedAndNothingIsWritten() throws Exception {
 		Map<String, Object> was = rowOf(ACTED);
 
-		assertThat(change(ACTED, NEW_EUR, NEW_RSD, memberCookie).getStatus()).isEqualTo(404);
+		assertThat(change(ACTED, NEW_LABEL, NEW_EUR, NEW_RSD, memberCookie).getStatus())
+				.isEqualTo(404);
 		assertThat(rowOf(ACTED)).isEqualTo(was);
 	}
 
@@ -741,7 +959,7 @@ class PricingWriteApiTest {
 	void nobodySignedInIsAskedToSignInAndNothingIsWritten() throws Exception {
 		Map<String, Object> was = rowOf(ACTED);
 
-		assertThat(change(ACTED, NEW_EUR, NEW_RSD, null).getStatus()).isEqualTo(401);
+		assertThat(change(ACTED, NEW_LABEL, NEW_EUR, NEW_RSD, null).getStatus()).isEqualTo(401);
 		assertThat(rowOf(ACTED)).isEqualTo(was);
 	}
 
@@ -1015,11 +1233,32 @@ class PricingWriteApiTest {
 				.toList();
 	}
 
+	/**
+	 * A REQUEST THAT SENDS THE NAME THE ROW ALREADY HAS, which is what keeps every case about
+	 * the AMOUNTS about the amounts.
+	 *
+	 * <p>The form requires all three fields (V34, {@code admin-cena.form.json}), so a body with
+	 * no name in it is a refusal and not a shorter way of saying the same thing. Sending the
+	 * name UNCHANGED is what an administrator who only touched a price actually sends, and it
+	 * is what lets {@code whatDiffers} keep answering {@code eur, rsd} above.
+	 *
+	 * <p><b>Read out of the table rather than written here on purpose.</b> A name written into
+	 * this helper would be a second home for one of the seven, and the row this file writes is
+	 * not always the same row - the fee and the referral have their own cases. The cases that
+	 * are ABOUT the name send it through {@link #change(String, String, BigDecimal, BigDecimal,
+	 * String)} and never through this.
+	 */
 	private MockHttpServletResponse change(String key, BigDecimal eur, BigDecimal rsd, String cookie)
 			throws Exception {
+		return change(key, nameOf(key), eur, rsd, cookie);
+	}
+
+	private MockHttpServletResponse change(String key, String label, BigDecimal eur, BigDecimal rsd,
+			String cookie) throws Exception {
 		MockHttpServletRequestBuilder asking = put("/api/pricing/" + key).with(csrf())
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(new ObjectMapper().writeValueAsString(new PricingWriteApi.Amounts(eur, rsd)));
+				.content(new ObjectMapper()
+						.writeValueAsString(new PricingWriteApi.TheForm(label, eur, rsd)));
 
 		return http.perform(cookie == null ? asking
 						: asking.cookie(new Cookie(SessionCookie.NAME, cookie)))
@@ -1077,6 +1316,17 @@ class PricingWriteApiTest {
 	private BigDecimal euroOf(String key) {
 		return db.sql("select eur from price_row where key = ?").param(key)
 				.query(BigDecimal.class).single();
+	}
+
+	/** What one row is called, as the table holds it. */
+	private String nameOf(String key) {
+		return db.sql("select label from price_row where key = ?").param(key)
+				.query(String.class).single();
+	}
+
+	/** What every row is called, in the order the list has them. */
+	private List<String> namesInOrder() {
+		return db.sql("select label from price_row order by sort_order").query(String.class).list();
 	}
 
 	private long idOf(String key) {
