@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
-import { tellTheServer, type Answer } from '../account/askTheServer'
+import { askTheServer, type Answer } from '../account/askTheServer'
 import { SHORTEST_PASSWORD } from '../account/passwordRule'
 import { ServerSaid } from '../account/ServerSaid'
 import { WHEN_CHANGING_MY_PASSWORD } from './myAccount'
@@ -73,7 +73,7 @@ export function ChangePassword() {
        they agree is the server's question, and a screen that sent one value twice would make
        every mismatch a success. */
     setAnswer(
-      await tellTheServer(
+      await askTheServer(
         '/api/me/password',
         { oldPassword: old, password: fresh, passwordRepeat: repeated },
         'PUT',

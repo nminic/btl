@@ -6,6 +6,7 @@ import { at, first, must } from '../../test/at'
 import { loadResource } from '../../data/client'
 import { emptyValues } from '../../forms/validate'
 import { expectFrontPage, renderAt } from '../../test/render'
+import { answeredWith, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { categoryOf } from '../../data/raceCategory'
 import {
@@ -136,6 +137,33 @@ describe('every entity has a form for a record that does not exist yet', () => {
 })
 
 describe('every entity can be opened and changed whole', () => {
+  /**
+   * A SERVER IN FRONT OF THE ONE ENTITY THAT HAS ROUTES, and in front of nothing else.
+   *
+   * <p>Five of the six still keep a change as an overlay on the session, which happens
+   * inside the press. The competitions call `PUT /api/leagues/{id}` since 25.09.2026 (PDL
+   * P28c point 2), so for that one row of this table „it was saved" is an ANSWER, and the
+   * case has to wait for it rather than read the screen in the same tick.
+   *
+   * <p><b>Narrowed to that one address on purpose.</b> A blanket answer to every write
+   * would be this file quietly standing in for `test/setup.ts` for five entities that send
+   * nothing, and the day one of them starts sending, its first request would be answered
+   * „done" by a fixture nobody wrote for it.
+   */
+  let stop = (): void => {}
+
+  beforeEach(() => {
+    ;({ stop } = serverThat((path, init) =>
+      init?.method !== undefined && init.method !== 'GET' && path.startsWith('/api/leagues')
+        ? answeredWith(200)
+        : null,
+    ))
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
   it.each(SCREENS)('$path keeps the change after the way back', async ({ entity, path, list }) => {
     const user = setupUser()
     const changed = 'Provera unosa'
@@ -153,8 +181,9 @@ describe('every entity can be opened and changed whole', () => {
     await user.click(open(title).getByRole('button', { name: t('form.submit') }))
 
     // What was saved is read back, field by field, rather than announced as
-    // "saved" and left to be trusted.
-    const saved = screen.getByRole('status', { name: t('admin.form.saved') })
+    // "saved" and left to be trusted. Awaited, because for one of the six the
+    // confirmation is the server's answer and not the press (see the server above).
+    const saved = await screen.findByRole('status', { name: t('admin.form.saved') })
     expect(within(saved).getByText(changed)).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
@@ -975,10 +1004,21 @@ describe('which field of a form carries the address', () => {
   })
 
   it('is what two records are refused for sharing', () => {
-    expect(takenAddress(LEAGUES, { slug: 'runtrace-2027' }, ['runtrace-2027'])).toEqual({
+    /* ASKED OF A WRITTEN PAGE AND NO LONGER OF A COMPETITION (25.09.2026). The two were
+       this function's only two entities until the screen of competitions began calling
+       `LeagueWriteApi` (PDL P28c point 2). `AdminLeagues.tsx` stopped handing in a list of
+       addresses that day, because such a list can only ever be INCOMPLETE - what this
+       browser was served plus what this visit made, against a table every administrator
+       writes into - so it refused some collisions and let others through to a route that
+       refuses all of them by name. A case asserting the league branch would be measuring
+       a combination the portal no longer makes, which is a guard that cannot fail.
+
+       `addressField(LEAGUES)` above is still live and is still asked on every save: the
+       editor reads it to keep a record from competing with its own address. */
+    expect(takenAddress(PAGES, { slug: 'pravilnik' }, ['pravilnik'])).toEqual({
       slug: { key: 'form.errors.taken' },
     })
-    expect(takenAddress(LEAGUES, { slug: 'runtrace-2028' }, ['runtrace-2027'])).toEqual({})
+    expect(takenAddress(PAGES, { slug: 'statut' }, ['pravilnik'])).toEqual({})
     /* And an event is refused by its own rule, on the date, not by this one
        (entityForms.ts, `eventClash`). */
     expect(takenAddress(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})
