@@ -8,7 +8,7 @@
  */
 
 /**
- * WHAT `PUT /api/pricing/{key}` TAKES, which is `PricingWriteApi.Amounts` and nothing
+ * WHAT `PUT /api/pricing/{key}` TAKES, which is `PricingWriteApi.TheForm` and nothing
  * besides.
  *
  * <p><b>Two amounts and never one with a rate on it.</b> Owner, 25.09.2026 (PDL P12d),
@@ -18,15 +18,21 @@
  * multiplies anything by anything, and the seven rows all sitting at 120 dinars to the euro
  * today is how the numbers were first worked out rather than a rule anybody enforces.
  *
- * <p><b>There is no third field, and its absence is a PLAN.</b>
- * `admin-cena.form.json` asks for `label` as well and it has nowhere to go: `price_row` has
- * no column for a name yet, and the six names a reader sees stand in `i18n/sr.json` under
- * `pricing.rows.*`. Owner, 25.09.2026 (PDL P12b): the name becomes a column he edits from
- * the administration, and it arrives together with this screen rather than before it -
- * `b102-ime-reda-cenovnika` is that branch, and this gains a third field on the day it
- * lands.
+ * <p><b>And the name, since V34 (25.09.2026, PDL P12b).</b> `price_row` has a column for it
+ * now and `PUT /api/pricing/{key}` writes it on every save, so this record grew the third
+ * field `admin-cena.form.json` had been asking for since before the column existed.
  */
-export type Amounts = {
+export type TheForm = {
+  /**
+   * The empty string where the field was left empty, and never a space.
+   *
+   * <p><b>The opposite choice from `eur` below, and for the same reason `leagueWrites.ts`
+   * already made it</b>: `PricingWriteApi.isNothing` refuses `null` and `''` with the one
+   * sentence `theFormIsNotComplete`, exactly as `LeagueWriteApi` does for a league's name,
+   * so there is nothing a null buys here that the empty string does not. `strip()` on the
+   * far side takes care of a name of nothing but spaces.
+   */
+  label: string
   /**
    * Nothing where the field was left empty, and never nought.
    *
@@ -42,25 +48,49 @@ export type Amounts = {
    * value its own route will not take.
    */
   eur: number | null
+  /**
+   * Nothing where the field was left empty, and nothing where the row is the fee.
+   *
+   * <p><b>Optional on the form since the fee got its own button (PDL P12b, 2).</b>
+   * `admin-cena.form.json` no longer marks this required, because the one row with no
+   * dinar side (`price_row_only_fee_has_no_rsd`) uses the same form as the six that have
+   * one. A blank box is therefore reachable from the screen on every row now, and the
+   * route is what tells a period's blank apart from the fee's: `theFormIsNotComplete` on
+   * the six, silently kept on the seventh.
+   */
   rsd: number | null
 }
 
 /**
- * The two amounts read off the form.
+ * The name and the two amounts, read off the form.
  *
- * <p><b>Whether the form can really send a blank is not this function's business.</b>
- * `admin-cena.form.json` marks both required and `forms/validate.ts` refuses an empty
- * required field before anything is sent, so the null above is normally unreachable from
- * the screen. It is written all the same, and the precedent says why in as many words
- * (`WHEN_WRITING_A_LEAGUE`, on `theFormIsNotComplete`): „nearly unreachable from the form,
- * which refuses an empty required field before it sends, and answered because the request
- * can still lose a race against what the screen believes stands."
+ * <p><b>Whether the form can really send a blank name or euro price is not this
+ * function's business.</b> Both are still marked required in `admin-cena.form.json` and
+ * `forms/validate.ts` refuses an empty required field before anything is sent, so the two
+ * are normally unreachable from the screen. Written all the same, and the precedent says
+ * why in as many words (`WHEN_WRITING_A_LEAGUE`, on `theFormIsNotComplete`): „nearly
+ * unreachable from the form, which refuses an empty required field before it sends, and
+ * answered because the request can still lose a race against what the screen believes
+ * stands."
+ *
+ * <p><b>The dinar price is a different case since PDL P12b, 2</b>: the form no longer
+ * requires it, so a blank box reaches this function on every row, including the six for
+ * which it is a real omission - the form cannot tell a period's blank from the fee's, and
+ * the route is what does.
  *
  * <p><b>`Number.isFinite` and not `!Number.isNaN`</b>, so that a field holding `Infinity`
  * is nothing rather than an amount the route is asked to keep exactly.
  */
-export function amountsFrom(values: Record<string, string | boolean>): Amounts {
-  return { eur: amount(values.eur), rsd: amount(values.rsd) }
+export function amountsFrom(values: Record<string, string | boolean>): TheForm {
+  return { label: text(values.label), eur: amount(values.eur), rsd: amount(values.rsd) }
+}
+
+/** The name as typed, or the empty string where the field was left empty or was never a
+ *  string at all - a checkbox has no business landing in a text field, and this is the
+ *  value {@link TheForm#label} itself already says a route refuses the same way as
+ *  absence. */
+function text(typed: string | boolean | undefined): string {
+  return typeof typed === 'string' ? typed : ''
 }
 
 function amount(typed: string | boolean | undefined): number | null {
@@ -74,21 +104,26 @@ function amount(typed: string | boolean | undefined): number | null {
 }
 
 /**
- * THE FIVE REFUSALS A PRICE BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
+ * THE SIX REFUSALS A PRICE BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
  *
  * <p><b>Written out by hand and held to the server in the same commit</b>, which is what
  * `CLAUDE.md` asks of any list a guard depends on: `pages/account/refusals.test.ts` reads
  * `PricingWriteApi.java`, takes every reason constant it declares, and fails when one is
- * not here or when one here is not there. A sixth reason added on the server is therefore a
- * red gate on the day it is written rather than a reader shown a code he cannot read.
+ * not here or when one here is not there. A seventh reason added on the server is therefore
+ * a red gate on the day it is written rather than a reader shown a code he cannot read.
  *
- * <p><b>Two of the five cannot be reached from this screen TODAY, and both are answered
- * anyway.</b> `theFeeHasNoDinarPrice` needs the processing fee to have a button, and it has
- * none until it has a name (PDL P12b, `b102-ime-reda-cenovnika`);
- * `theAmountIsMoreThanARowMayCost` is the ceiling `admin-cena.form.json` already carries as
- * `max`, so the form turns it back first. Neither is a reason to leave a sentence out: the
- * form is the floor and the route decides (PDL P12c), and a request that goes round the
- * screen or loses a race meets the route with nothing in between.
+ * <p><b>Two of the six cannot be reached from this screen TODAY, and both are answered
+ * anyway.</b> `theAmountIsMoreThanARowMayCost` is the ceiling `admin-cena.form.json` already
+ * carries as `max`, and `theNameIsLongerThanTheFormAllows` is the same shape on `maxLength`
+ * (`WhatARowIsCalledTest` on the server holds the two numbers equal): the form turns both
+ * back before a request is sent. Neither is a reason to leave a sentence out: the form is
+ * the floor and the route decides (PDL P12c), and a request that goes round the screen or
+ * loses a race meets the route with nothing in between.
+ *
+ * <p><b>`theFeeHasNoDinarPrice` is reachable from this screen since the fee got its own
+ * button (PDL P12b, 2).</b> The dinar box is no longer required on the form, which is what
+ * makes it reachable: an administrator who types a figure into it for the processing fee is
+ * turned back here rather than by `price_row_only_fee_has_no_rsd` as a 500.
  *
  * <p><b>`theReferralIsSettledForTheComingSeason` arrives under 409 and the rest under
  * 400, and this table does not know which.</b> `askTheServer` reads both numbers the same
@@ -97,6 +132,12 @@ function amount(typed: string | boolean | undefined): number | null {
  */
 export const WHEN_WRITING_A_PRICE: Record<string, string> = {
   theFormIsNotComplete: 'admin.priceRefused.theFormIsNotComplete',
+  /* As many characters in the name as the form's own box holds, and the box is the floor:
+     `forms/validate.ts` refuses a `maxLength` box before anything is sent, so this is
+     nearly unreachable from the screen for the same reason `theAmountIsMoreThanARowMayCost`
+     below is - and answered for the same reason too, because the request can still lose a
+     race against what the screen believes the box holds. */
+  theNameIsLongerThanTheFormAllows: 'admin.priceRefused.theNameIsLongerThanTheFormAllows',
   /* An amount with more para than `numeric(10,2)` keeps, or a negative one. Its own
      sentence and not the ceiling's, because the two send an administrator to two different
      places: this says „take a para off it" and that says „that is more than a membership

@@ -10,7 +10,6 @@ import {
   pricedInBoth,
   ranksByPeriod,
   windowOf,
-  type PricedInBoth,
 } from '../../data/priceList'
 import { usePricing } from '../../data/useResource'
 import type { FormValues } from '../../forms/types'
@@ -42,10 +41,6 @@ import '../member/Member.css'
 
 /** An overlay holding nothing, which is what this screen starts every visit with. */
 const NOTHING_YET: Overlay = { edits: {}, creations: {}, deletions: {} }
-
-/** A row carries the words that name its period, so the table has something to
- *  show and the form something to change. */
-type PriceListRow = PricedInBoth & { label: string }
 
 /* And the referral, which is a number an administrator sets on this screen
    (owner, 12.08.2026) and not a price of membership at all: nobody pays it, it
@@ -79,15 +74,19 @@ type PriceListRow = PricedInBoth & { label: string }
  * Član 14 (`components/PriceTable.tsx`) and „Moja članarina" (`pages/member/Membership.tsx`,
  * which fills in the IPS QR code) - so the gap closes at RUN TIME and not only in the source.
  *
- * <p><b>WHAT THIS SCREEN STILL CANNOT DO, and both are the same missing column.</b> The
- * processing fee has no button (owner, 25.09.2026, PDL P12b: „Taksa dobija svoje dugme") and
- * a row whose key this build has no word for is drawn under its key. Both wait on the name
- * becoming a column - the six names a reader sees are still `i18n/sr.json`, under
- * `pricing.rows.*`, and the fee is the seventh row with no name anywhere. The owner chose on
- * 25.09.2026 that the column arrives „zajedno sa ekranom cenovnika, ne pre", and
- * `b102-ime-reda-cenovnika` is the branch carrying it; a seventh key in the dictionary was
- * deliberately NOT written, because that is the second home for a name the decision exists
- * to avoid.
+ * <p><b>WHAT THIS SCREEN COULD NOT DO UNTIL V34, AND BOTH WERE THE SAME MISSING COLUMN.</b>
+ * The processing fee had no button and a row whose key this build had no word for was drawn
+ * under its key, because the name of a row was not yet a field anywhere this screen could
+ * reach: the six a reader saw stood only in `i18n/sr.json`, under `pricing.rows.*`, and the
+ * fee had none at all. `price_row.label` closes both at once (PDL P12b, owner 25.09.2026):
+ * every row draws its own name now, the fee's own button among them, with its dinar price
+ * left optional rather than refused (PDL P12b, 2).
+ *
+ * <p><b>BOUNDARY, named rather than left to be found:</b> `pricing.rows.*` still stands in
+ * `i18n/sr.json`, with no reader left in the portal's own code. It is not deleted here
+ * because PR 375 (the English dictionary) carries its own `pricing.rows` block, and deleting
+ * now would collide with it over the same keys. Both dictionaries and the guard over them in
+ * `i18n/keys.test.ts:170` are cleaned up together once 375 is merged, and not before.
  */
 export function AdminPricing() {
   const { locale, t } = useI18n()
@@ -204,18 +203,27 @@ export function AdminPricing() {
             )
           }
 
-          const base: PriceListRow[] = pricedInBoth(served).map((row) => ({
-            ...row,
-            label: t(`pricing.rows.${row.key}`),
-          }))
-          /* One pass over the overlay for all of them, so an edit typed into any is read
-             back the same way. Split after it, not before. */
-          const all = recordsOf(PRICING, base, written)
+          /* THE LABEL COMES OFF THE ANSWER NOW, SINCE V34, and no longer off the dictionary:
+             `label` is a field of `Price` itself, so every row already carries it and there
+             is nothing left here to add before the tables draw it - it used to be built by
+             looking the key up in `pricing.rows.*`. */
+          /* ONE PASS OVER THE OVERLAY FOR ALL SEVEN, BEFORE `pricedInBoth` SPLITS THEM BY
+             WHETHER THERE IS A DINAR SIDE, so an edit typed into any of them is read back
+             the same way. **This order is now load-bearing and not merely tidy**: the fee
+             has no dinar side (`price_row_only_fee_has_no_rsd`) and `pricedInBoth` drops
+             exactly that row, so merging it after the split would mean nothing typed into
+             the fee's own button ever reached the overlay at all. */
+          const all = recordsOf(PRICING, served, written)
+          const bothCurrencies = pricedInBoth(all)
           /* By KIND and no longer by key (`data/priceList.ts`). Held as four separate
              constants, the portal could not draw a row it had no constant for, so the
              eighth row somebody adds arrives on no screen at all. */
-          const rows = all.filter((row) => row.kind === A_PERIOD || row.kind === A_LEVEL)
-          const referral = ofKind(all, A_REFERRAL)
+          const rows = bothCurrencies.filter((row) => row.kind === A_PERIOD || row.kind === A_LEVEL)
+          const referral = ofKind(bothCurrencies, A_REFERRAL)
+          /* THE ONE ROW `pricedInBoth` DROPS, so it is read off the merge directly and
+             never off `bothCurrencies`. Walked as a list of none or one, so an answer
+             carrying no fee draws no fee section, the same idiom the referral above uses. */
+          const fee = ofKind(all, A_FEE)
           /* Whether the amount one referral brings may still be set for the season that
              is about to be renewed. One place decides it, beside the rest of the year's
              dates (data/season.ts), because the moment is the same one the renewal window
@@ -353,22 +361,64 @@ export function AdminPricing() {
                 </section>
               ))}
 
-              {/* What arrives on the statement is the fee plus the fee for processing
-                  it, where the money comes from abroad (PDL P8, 03.08.2026). Whoever
-                  records a payment has to be able to tell three euro of processing from
-                  three euro of overpayment, and the table above quotes membership
-                  alone.
+              {/* THE FEE'S OWN BUTTON, SINCE V34 AND PDL P12b, 2 (owner, 25.09.2026): „Taksa
+                  dobija svoje dugme, sa dinarskom cenom kao neobaveznom." Until the column
+                  existed the fee had no name a screen could put on a button at all, so it
+                  drew as a note alone; the name and the button arrive together, the same
+                  wave `b102-ime-reda-cenovnika` was written for.
 
-                  Read off the served row rather than a constant, like every other amount
-                  on this screen, and still a NOTE rather than a row with a button: the
-                  owner gave it a button on 25.09.2026 and it needs a name to carry one,
-                  which is the column `b102-ime-reda-cenovnika` brings. Walked as a list
-                  of none or one, so an answer that carries no fee says nothing about a
-                  fee. */}
-              {ofKind(served, A_FEE).map((fee) => (
-                <p className="member__note" key={fee.key}>
-                  {t('admin.processingFee', { fee: money(fee.eur, locale) })}
-                </p>
+                  What arrives on the statement is the fee plus the fee for processing it,
+                  where the money comes from abroad (PDL P8, 03.08.2026). Whoever records a
+                  payment has to be able to tell three euro of processing from three euro of
+                  overpayment, and the table above quotes membership alone.
+
+                  Walked as a list of none or one, so an answer that carries no fee draws no
+                  section about one, the same idiom the referral above uses. */}
+              {fee.map((row) => (
+                <section
+                  className="member__panel"
+                  aria-labelledby="pricing-fee"
+                  key={row.key}
+                >
+                  <h2 className="profile__section" id="pricing-fee">
+                    {t('admin.processingFeeHeading')}
+                  </h2>
+                  <p className="member__note">{t('admin.processingFee')}</p>
+
+                  <div className="table-scroll">
+                    <table className="table">
+                      <caption className="visually-hidden">
+                        {t('admin.processingFeeHeading')}
+                      </caption>
+                      <thead>
+                        <tr>
+                          {/* No RSD column: the fee is the one row with no dinar side
+                              (`price_row_only_fee_has_no_rsd`), because there is no
+                              payment intermediary there to pay (PDL, owner 04.08.2026). A
+                              column it can never answer is a column that reads as data
+                              gone missing rather than a price that does not exist, the
+                              same reason the public table leaves this row out of its own
+                              two-currency table entirely (`components/PriceTable.tsx`). */}
+                          <th scope="col">{t('admin.field.rowLabel')}</th>
+                          <th scope="col">EUR</th>
+                          <th scope="col">{t('admin.form.record')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>{row.label}</td>
+                          <td>{money(row.eur, locale)}</td>
+                          <td>
+                            <OpenRecord
+                              name={row.label}
+                              onOpen={() => setEditing({ record: row })}
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               ))}
 
               {/* Said once and politely: the table beside it has already changed, and a

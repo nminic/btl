@@ -270,6 +270,7 @@ export const readAsLeague: League = aLeague
  */
 export const aPricePeriod = {
   key: 'early',
+  label: '1. do 5. oktobra',
   kind: 'period',
   from: '10-01',
   to: '10-05',
@@ -280,6 +281,7 @@ export const aPricePeriod = {
 
 export const aProcessingFee = {
   key: 'processing',
+  label: 'Taksa za obradu plaćanja',
   kind: 'fee',
   from: null,
   to: null,

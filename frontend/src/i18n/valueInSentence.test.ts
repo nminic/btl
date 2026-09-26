@@ -277,13 +277,6 @@ describe('a sentence with a value put into it', () => {
          number: a year written in figures has no case to be wrong in. */
       'admin.noEventsOfSeason',
       'admin.ofMany',
-      /* The processing fee, and it goes through `money` since 26.09.2026 like every other
-         amount on that screen. It was the one figure there read off a bare constant -
-         `PROCESSING_FEE_EUR` - while the rest of the table came from the price list, so it
-         was also the one that never had a thousands separator or a decimal to get wrong.
-         It is a row of the served price list now (`data/priceList.ts`), and an amount the
-         server sends is formatted for the locale it is read in (ADL A35). */
-      'admin.processingFee <- money',
       'admin.racesOf',
       'admin.referralOpen',
       'admin.referralRunning',

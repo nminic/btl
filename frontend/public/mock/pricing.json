@@ -1,9 +1,9 @@
 [
-  { "key": "early", "kind": "period", "from": "10-01", "to": "10-05", "eur": 35, "rsd": 4200, "ranking": true },
-  { "key": "regular", "kind": "period", "from": "10-06", "to": "11-30", "eur": 40, "rsd": 4800, "ranking": true },
-  { "key": "late", "kind": "period", "from": "12-01", "to": "12-31", "eur": 50, "rsd": 6000, "ranking": true },
-  { "key": "season", "kind": "period", "from": "01-01", "to": "09-30", "eur": 40, "rsd": 4800, "ranking": false },
-  { "key": "junior", "kind": "level", "from": null, "to": null, "eur": 20, "rsd": 2400, "ranking": null },
-  { "key": "processing", "kind": "fee", "from": null, "to": null, "eur": 3, "rsd": null, "ranking": null },
-  { "key": "referral", "kind": "referral", "from": null, "to": null, "eur": 5, "rsd": 600, "ranking": null }
+  { "key": "early", "label": "1. do 5. oktobra", "kind": "period", "from": "10-01", "to": "10-05", "eur": 35, "rsd": 4200, "ranking": true },
+  { "key": "regular", "label": "6. oktobra do 30. novembra", "kind": "period", "from": "10-06", "to": "11-30", "eur": 40, "rsd": 4800, "ranking": true },
+  { "key": "late", "label": "1. do 31. decembra", "kind": "period", "from": "12-01", "to": "12-31", "eur": 50, "rsd": 6000, "ranking": true },
+  { "key": "season", "label": "1. januara do 30. septembra", "kind": "period", "from": "01-01", "to": "09-30", "eur": 40, "rsd": 4800, "ranking": false },
+  { "key": "junior", "label": "Uzrast do 14 godina", "kind": "level", "from": null, "to": null, "eur": 20, "rsd": 2400, "ranking": null },
+  { "key": "processing", "label": "Taksa za obradu plaćanja", "kind": "fee", "from": null, "to": null, "eur": 3, "rsd": null, "ranking": null },
+  { "key": "referral", "label": "Preporuka novog člana", "kind": "referral", "from": null, "to": null, "eur": 5, "rsd": 600, "ranking": null }
 ]

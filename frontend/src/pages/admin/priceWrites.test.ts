@@ -12,12 +12,14 @@ import cena from '../../forms/definitions/admin-cena.form.json'
  * real state of the product (Pravilnik član 15). So a form that lost its euro field would
  * have set the fee to nothing at all, and nobody would have been told.
  */
-describe('the two amounts the form sends', () => {
-  it('is the two numbers that were typed, and nothing else off the form', () => {
-    /* The name is on the form and has nowhere to go: `price_row` has no column for one until
-       `b102-ime-reda-cenovnika` lands (owner, 25.09.2026, PDL P12b). Sent all the same it
-       would be a field the route ignores while a reader believes he renamed something. */
+describe('the name and the two amounts the form sends', () => {
+  it('is the name and the two numbers that were typed, and nothing else off the form', () => {
+    /* THE NAME TRAVELS NOW, SINCE V34 (25.09.2026, PDL P12b): `price_row` has a column for
+       it and `PUT /api/pricing/{key}` writes it on every save, so a name left off the wire
+       would be the route silently keeping the row's old one while a reader believes he
+       renamed it. */
     expect(amountsFrom({ label: 'Rani upis', eur: '35', rsd: '4200' })).toEqual({
+      label: 'Rani upis',
       eur: 35,
       rsd: 4200,
     })
@@ -28,7 +30,11 @@ describe('the two amounts the form sends', () => {
        round it (`PricingWriteApi`, `theAmountIsNotKeptExactly`). Nothing here may round
        either: a price the portal quietly changed on the way out is the fault that refusal
        exists for. */
-    expect(amountsFrom({ eur: '35.50', rsd: '4260.75' })).toEqual({ eur: 35.5, rsd: 4260.75 })
+    expect(amountsFrom({ label: 'Rani upis', eur: '35.50', rsd: '4260.75' })).toEqual({
+      label: 'Rani upis',
+      eur: 35.5,
+      rsd: 4260.75,
+    })
   })
 
   it('sends nothing rather than nought where a field was left empty', () => {
@@ -36,10 +42,32 @@ describe('the two amounts the form sends', () => {
        explicitly not 0, because 0 is a price and null is „the form is not finished". A
        whitespace-only field is the same thing; `forms/validate.ts` already trims a required
        field, and a value that reaches here untrimmed must not become a price either. */
-    expect(amountsFrom({ eur: '', rsd: '4200' })).toEqual({ eur: null, rsd: 4200 })
-    expect(amountsFrom({ eur: '35', rsd: '   ' })).toEqual({ eur: 35, rsd: null })
+    expect(amountsFrom({ label: 'Rani upis', eur: '', rsd: '4200' })).toEqual({
+      label: 'Rani upis',
+      eur: null,
+      rsd: 4200,
+    })
+    expect(amountsFrom({ label: 'Rani upis', eur: '35', rsd: '   ' })).toEqual({
+      label: 'Rani upis',
+      eur: 35,
+      rsd: null,
+    })
     expect(amountsFrom({}).eur).toBeNull()
     expect(amountsFrom({}).eur).not.toBe(0)
+  })
+
+  it('sends the empty string rather than nothing where the name was left empty', () => {
+    /* THE OPPOSITE CHOICE FROM `eur` AND `rsd` ABOVE, and for the same reason
+       `leagueWrites.ts` already made it for a league's name: `PricingWriteApi.isNothing`
+       refuses `null` and `''` with the identical sentence `theFormIsNotComplete`, so there
+       is nothing a null buys here that the empty string does not, and `''` is what a text
+       field this route will not take without becomes. */
+    expect(amountsFrom({ eur: '35', rsd: '4200' }).label).toBe('')
+    expect(amountsFrom({ label: '   ', eur: '35', rsd: '4200' }).label).toBe('   ')
+    /* A checkbox has no business landing in a text field, and this is the one state
+       `text()` and `amount()` answer identically: neither treats a boolean as its own
+       value. */
+    expect(amountsFrom({ label: true, eur: '35', rsd: '4200' }).label).toBe('')
   })
 
   it('sends nothing where the value is not a number at all', () => {

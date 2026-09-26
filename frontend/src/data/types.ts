@@ -626,17 +626,22 @@ export type League = {
  * to keep equal, and the day they disagree there is nothing to say which of them the
  * reader should believe." So nothing that draws this list may sort it.
  *
- * **And there is no name on it YET, which is a plan and not a gap.** Owner, 25.09.2026
- * (PDL P12b): the name of a period becomes a column an administrator edits, and it
- * arrives together with this screen. The six names a reader sees stand in
- * `i18n/sr.json` under `pricing.rows.*` until then, and the seventh row - the processing
- * fee - has no name anywhere, which is why it has no button on the administrator's screen
- * yet either. `b102-ime-reda-cenovnika` is the branch that closes both.
+ * **And there is a name on it since V34 (25.09.2026, PDL P12b), which was a plan and is
+ * now a field.** Owner: the name of a row becomes a column an administrator edits through
+ * `PUT /api/pricing/{key}`, rather than text of the portal changed through a pull request.
+ * The six period and level names stood in `i18n/sr.json` under `pricing.rows.*` before the
+ * column existed, and the seventh - the processing fee - had no name anywhere at all, which
+ * is why it had no button on the administrator's screen either; both read `label` now.
  */
 export type Price = {
   /** The name the row is known by, unique across the list, and what `PUT
    *  /api/pricing/{key}` addresses it as. */
   key: string
+  /** What the row is called, in the words a reader sees. A column since V34 (PDL P12b,
+   *  owner 25.09.2026) and no longer text of the portal: the administration changes it
+   *  through `PUT /api/pricing/{key}`, and it is never blank
+   *  (`price_row_label_not_blank`). */
+  label: string
   /** One of `period`, `level`, `fee`, `referral`. */
   kind: string
   /** The day of the year the window opens, `MM-DD`, and null on every kind but a

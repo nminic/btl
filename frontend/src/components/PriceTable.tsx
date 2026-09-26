@@ -44,6 +44,19 @@ import './Markdown.css'
  * table up under Član 14 they stand a line away from the prose they copy: the
  * first was word for word the sentence above it. The words are the article's,
  * the figures are this table's, and neither says the other's part.
+ *
+ * **THE FIRST COLUMN READS `row.label` SINCE V34 (26.09.2026), AND UNTIL THAT DAY IT READ
+ * `pricing.rows.*` OUT OF THE BUNDLE.** The name of a row is a column an administrator
+ * edits now (PDL P12b, owner 25.09.2026), served by the same route as the amounts beside
+ * it, so a name changed through `PUT /api/pricing/{key}` reaches this table the moment the
+ * next visitor reads it rather than waiting for a build.
+ *
+ * **BOUNDARY, named rather than left to be found:** `pricing.rows.*` still stands in
+ * `i18n/sr.json`, with no reader left in the portal's own code. It is not deleted here
+ * because PR 375 (the English dictionary) carries its own `pricing.rows` block, and
+ * deleting now would collide with it over the same keys. The six keys, their English
+ * twin and the guard over both in `i18n/keys.test.ts:170` are removed together once 375
+ * is merged, and not before.
  */
 
 /**
@@ -100,7 +113,7 @@ export function PriceTable() {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.key}>
-                    <td>{t(`pricing.rows.${row.key}`)}</td>
+                    <td>{row.label}</td>
                     <td>{windowOf(row) ?? t('pricing.everyPayment')}</td>
                     <td>{money(row.eur, locale)}</td>
                     <td>{money(row.rsd, locale)}</td>

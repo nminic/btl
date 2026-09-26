@@ -148,17 +148,19 @@ describe('the reasons the server can name', () => {
        different dictionary keys, because what the reader has to do about it differs, and
        the union is what this gate counts. */
     ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 11],
-    /* THE SEVENTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS IT. `PricingWriteApi` has
+    /* THE SEVENTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS IT. `PricingWriteApi` had
        named five reasons since PR 370 and nothing on this side could read any of them,
        because no screen called the route at all - `grep -rn "api/pricing" frontend/src`
        came back empty.
 
-       SEVEN CONSTANTS AND FIVE REASONS, which is the first time those two numbers differ
-       on this list: see `NOT_A_REASON` above. Two of the five cannot be reached from the
-       screen today and both are answered anyway, for the reason `WHEN_WRITING_A_PRICE`
-       gives: the form is the floor and the route decides (PDL P12c), so a request that
-       goes round the screen meets the route with nothing in between. */
-    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 7],
+       EIGHT CONSTANTS AND SIX REASONS since V34 (26.09.2026), which is the first time
+       those two numbers differ on this list: see `NOT_A_REASON` above. `theNameIsLonger-
+       ThanTheFormAllows` is V34's own sixth, alongside the column it measures the length
+       of. Two of the six cannot be reached from the screen today and both are answered
+       anyway, for the reason `WHEN_WRITING_A_PRICE` gives: the form is the floor and the
+       route decides (PDL P12c), so a request that goes round the screen meets the route
+       with nothing in between. */
+    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 8],
   ]
 
   /** What a file declares that really is a refusal, which is every constant bar the ones

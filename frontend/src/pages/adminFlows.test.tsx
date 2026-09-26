@@ -483,11 +483,12 @@ describe('the price list', () => {
        year with no price at all. */
     expect(screen.queryByRole('button', { name: /^Nov/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Obriši:/ })).not.toBeInTheDocument()
-    /* Five in the table and a sixth under it: the amount of a referral is set
-       on this screen too (owner, 12.08.2026) and goes through the same form,
-       which asks for a name, euro and dinars and nothing else. */
+    /* Five in the table, a sixth under it for the referral (owner, 12.08.2026: „ovo
+       admin treba da konfiguriše na strani cenovnika takođe") and a seventh since V34
+       for the processing fee (PDL P12b, 2): all three go through the same form, which
+       asks for a name, euro and an optional dinar price and nothing else. */
     expect(within(table).getAllByRole('button', { name: /^Otvori:/ }).length).toBe(5)
-    expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(6)
+    expect(screen.getAllByRole('button', { name: /^Otvori:/ }).length).toBe(7)
   })
 
   it('sets the referral amount here as well, apart from the prices', async () => {
@@ -672,19 +673,27 @@ describe('the price list', () => {
   it('says what a payment from abroad carries on top of the price', async () => {
     /* Whoever records a payment sees three euro more on the statement than the
        table quotes, and has to be able to tell processing from overpayment
-       (PDL P8, 03.08.2026). The fee is not a row of the price list, because it
-       is not membership. */
+       (PDL P8, 03.08.2026). The fee is a row of the price list (`kind: 'fee'`)
+       and not a period of membership, which is why it is not a sixth column of
+       the table above but its own section, exactly the shape the referral
+       already has. */
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     const table = await screen.findByRole('table', { name: 'Cenovnik' })
+    /* THE AMOUNT IS IN THE FEE'S OWN TABLE NOW, SINCE V34, and no longer typed into the
+       note: the fee reads `label` and `eur` off the server exactly like every other row
+       (`data/priceList.ts`), and a figure repeated in the note beside it would be a
+       second home for the one amount that landed on `PricingWriteApi` first. */
+    const feeTable = await screen.findByRole('table', { name: 'Taksa za obradu' })
     const note = screen.getByText(/taksu za obradu plaćanja/)
 
-    expect(note).toHaveTextContent(`${PROCESSING_FEE_EUR} EUR`)
+    expect(within(feeTable).getByText(String(PROCESSING_FEE_EUR))).toBeVisible()
     expect(note).toHaveTextContent('nije članarina')
-    /* And no row of the list has the fee inside it: a cell of exactly "3" is a
+    /* And no row of the MAIN list has the fee added into it: a cell of exactly "3" is a
        cell no price list would ever have, so looking for one proved nothing.
        What could go wrong is a price with the fee added, and that is what is
-       looked for. */
+       looked for. The fee's own table is deliberately outside this `within`, because
+       its whole point is to show that exact figure. */
     for (const price of PRICES) {
       expect(within(table).queryByText(String(price.eur + PROCESSING_FEE_EUR))).toBeNull()
     }
@@ -733,15 +742,22 @@ describe('the price list', () => {
          row (`PricingWriteApi`). Held whole rather than by `startsWith`, so a request to
          `/api/pricing/early/something` is not read as this one. */
       expect(sent.path).toBe('/api/pricing/early')
-      expect(JSON.parse(String(sent.init?.body))).toEqual({ eur: 33, rsd: 4200 })
+      /* THE NAME TRAVELS TOO, SINCE V34, read back off the form exactly as `EntityEditor`
+         pre-filled it from the row being changed: this case only clears and retypes the
+         euro field, so the name on the wire is the row's own, „1. do 5. oktobra". */
+      expect(JSON.parse(String(sent.init?.body))).toEqual({
+        label: '1. do 5. oktobra',
+        eur: 33,
+        rsd: 4200,
+      })
 
-      /* AND NOTHING ELSE TRAVELS. The form asks for a name as well and there is nowhere
-         for it to go yet - `price_row` has no column for one until
-         `b102-ime-reda-cenovnika` lands (owner, 25.09.2026, PDL P12b) - so a `label` on the
-         wire would be a field the route ignores and a reader would think he had renamed
-         something. The window, the kind, the key and the right to be ranked are not prices
-         and this route cannot write any of them. */
-      expect(Object.keys(JSON.parse(String(sent.init?.body))).sort()).toEqual(['eur', 'rsd'])
+      /* AND NOTHING ELSE TRAVELS. The window, the kind, the key and the right to be
+         ranked are not prices and this route cannot write any of them. */
+      expect(Object.keys(JSON.parse(String(sent.init?.body))).sort()).toEqual([
+        'eur',
+        'label',
+        'rsd',
+      ])
     } finally {
       stop()
     }
@@ -905,6 +921,98 @@ describe('the price list', () => {
 
       expect(said).toHaveTextContent(/dve decimale/)
       expect(said).not.toHaveTextContent(/1.000 EUR/)
+    } finally {
+      stop()
+    }
+  })
+
+  /**
+   * `theFeeHasNoDinarPrice` IS REACHABLE FROM THIS SCREEN FOR THE FIRST TIME, SINCE V34.
+   *
+   * <p><b>Until the fee had its own button there was no way to reach this refusal from a
+   * screen at all.</b> `priceWrites.ts` named it and answered it since PR 370, „two of the
+   * five cannot be reached from this screen TODAY, and both are answered anyway" - and this
+   * was one of the two, because nothing here could open the fee's record to put a dinar
+   * price on it. The dinar box is optional now rather than absent (PDL P12b, 2), which is
+   * what makes it reachable: an administrator can type a figure into it for the one row
+   * `price_row_only_fee_has_no_rsd` forbids one on.
+   *
+   * <p><b>Answered here rather than by the 500 the constraint would otherwise give</b>, the
+   * same shape `RaceWriteApi` uses for a limit that belongs to a timed race: a figure typed
+   * into a box the screen showed is a mistake an administrator can act on, and a constraint
+   * violation is not.
+   */
+  it('says the fee has no dinar price when one is typed into its optional box', async () => {
+    const user = setupUser()
+    const { stop } = serverThat((path, init) =>
+      path === '/api/pricing/processing' && init?.method === 'PUT'
+        ? refused('theFeeHasNoDinarPrice')
+        : null,
+    )
+
+    try {
+      renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+      await screen.findByRole('table', { name: 'Cenovnik' })
+      await user.click(screen.getByRole('button', { name: 'Otvori: Taksa za obradu plaćanja' }))
+
+      /* The box is there and takeable at all, which is the fact this whole case is about:
+         until V34 the fee had no button to reach it through. */
+      const rsd = screen.getByLabelText(/Iznos u dinarima/)
+
+      await user.type(rsd, '360')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/nema dinarsku cenu/)
+    } finally {
+      stop()
+    }
+  })
+
+  /**
+   * THE OTHER HALF OF THE SAME CHANGE: A BLANK DINAR BOX IS NOW A SAVE THAT GOES THROUGH,
+   * NOT ONE THE FORM REFUSES BEFORE IT IS EVEN SENT.
+   *
+   * <p><b>Measured on the wire and not only on the screen staying open.</b> `forms/validate.ts`
+   * would have refused an empty required field before anything was sent, so a case that
+   * only watched for „Sačuvano" could pass on a request that never left - the same shape
+   * `WHEN_WRITING_A_LEAGUE`'s own precedent warns about. Reading the body says the request
+   * really carried `rsd: null` rather than the fee having quietly kept whatever the last
+   * successful save left in the overlay.
+   */
+  it('saves the fee with no dinar price at all, which the optional box now allows', async () => {
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      path === '/api/pricing/processing' && init?.method === 'PUT'
+        ? new Response(
+            JSON.stringify({ key: 'processing', label: 'Taksa za obradu plaćanja', eur: 3, rsd: null }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+      await screen.findByRole('table', { name: 'Cenovnik' })
+      await user.click(screen.getByRole('button', { name: 'Otvori: Taksa za obradu plaćanja' }))
+
+      /* Left exactly as the fee's own record opened it: no dinar price to begin with,
+         and none typed now either. */
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      const sent = must(
+        asked.find((one) => one.init?.method === 'PUT'),
+        'the request that saved the fee',
+      )
+
+      expect(JSON.parse(String(sent.init?.body))).toEqual({
+        label: 'Taksa za obradu plaćanja',
+        eur: 3,
+        rsd: null,
+      })
     } finally {
       stop()
     }
