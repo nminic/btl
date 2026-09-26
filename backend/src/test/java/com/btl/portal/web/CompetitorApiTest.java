@@ -1016,7 +1016,7 @@ class CompetitorApiTest {
 	/**
 	 * A MEMBER'S PORTRAIT IS THE ADDRESS OF HIS OWN PICTURE, AND THE SQUARE IS HIS OWN TOO.
 	 *
-	 * <p>PDL P28c, owner, 26.09.2026: „po odobravanju slike ona tog trenutka pocinje da se vidi
+	 * <p>PDL P28f, owner, 26.09.2026: „po odobravanju slike ona tog trenutka pocinje da se vidi
 	 * na svim avatar mestima". Nothing can draw one until this route answers it, which is the
 	 * second of the four pieces of work that decision names.
 	 *
@@ -1233,6 +1233,7 @@ class CompetitorApiTest {
 				.as("a visitor was answered no portrait for a member who does NOT hide her"
 						+ " profile, so what is being withheld is the session and not the hiding")
 				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HER_PORTRAIT);
+		theSquareIsThatPicturesOwn(recordOf(null, "000012"), HER_PORTRAIT, "a visitor");
 	}
 
 	/**

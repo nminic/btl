@@ -201,13 +201,13 @@ import java.util.List;
  * is asking.
  *
  * <p><b>AND SINCE 26.09.2026 THE PORTRAIT LEAVES HERE, which is the one home of what a
- * member looks like.</b> PDL P28c, owner: „po odobravanju slike ona tog trenutka pocinje da
+ * member looks like.</b> PDL P28f, owner: „po odobravanju slike ona tog trenutka pocinje da
  * se vidi na svim avatar mestima (u rang listama, profilnoj sekciji, gornjem desnom
  * zaglavlju ulogovanog korisnika itd.)" Every circle in the portal is drawn by
  * {@code frontend/src/components/Portrait.tsx}, which takes a whole {@code Competitor}, and
  * the header of the signed in member finds its own record in this very answer
  * ({@code frontend/src/app/AccountMenu.tsx}). So there is one route to teach and not nine,
- * and P28c says so in as many words: „Krug dobija JEDAN dom."
+ * and P28f says so in as many words: „Krug dobija JEDAN dom."
  *
  * <p><b>The address is the DIGEST and never {@code photo.id}</b>, and it is
  * {@link PhotoApi}'s arrangement arriving at its second publisher rather than a choice made
