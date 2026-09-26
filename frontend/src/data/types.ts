@@ -611,6 +611,56 @@ export type League = {
 }
 
 /**
+ * ONE ROW OF THE PRICE LIST, AS `GET /api/pricing` REALLY ANSWERS IT.
+ *
+ * **The shape is the answer's and never the portal's own.** `PriceRow` in
+ * `data/pricing.ts` is the older of the two and writes `''` for a row with no window and
+ * `false` for a row with no say in the standing; the answer writes `null` for both, and
+ * `PricingApi` says at length why - „copying it here would be answering „no period" and
+ * „not ranked" where the truth is „the question does not apply"". So this is a separate
+ * type rather than a widening of that one: a null read through a field typed `string`
+ * draws „undefined - undefined" in a cell, which is how the two spellings of absence part
+ * company.
+ *
+ * **`kind` is what tells the rows apart, and it is the field the screens split on.**
+ * The portal used to split by holding four separate constants - the periods, the junior
+ * level, the referral and the fee - so a row it had no constant for could not be drawn at
+ * all. Read by kind, a row is placed by what the schema says it is
+ * (`price_row_kind_known`, V4) rather than by whether this build happens to know its key.
+ *
+ * **There is no `sortOrder`, and the ORDER of the list is the answer instead.** That is
+ * `PricingApi`'s own decision and the three codebooks before it made the same one: „a
+ * position said twice - once by where a row is and once by a number on it - is two things
+ * to keep equal, and the day they disagree there is nothing to say which of them the
+ * reader should believe." So nothing that draws this list may sort it.
+ *
+ * **And there is no name on it YET, which is a plan and not a gap.** Owner, 25.09.2026
+ * (PDL P12b): the name of a period becomes a column an administrator edits, and it
+ * arrives together with this screen. The six names a reader sees stand in
+ * `i18n/sr.json` under `pricing.rows.*` until then, and the seventh row - the processing
+ * fee - has no name anywhere, which is why it has no button on the administrator's screen
+ * yet either. `b102-ime-reda-cenovnika` is the branch that closes both.
+ */
+export type Price = {
+  /** The name the row is known by, unique across the list, and what `PUT
+   *  /api/pricing/{key}` addresses it as. */
+  key: string
+  /** One of `period`, `level`, `fee`, `referral`. */
+  kind: string
+  /** The day of the year the window opens, `MM-DD`, and null on every kind but a
+   *  period. A day of the year and never a date, because the list repeats every year. */
+  from: string | null
+  to: string | null
+  eur: number
+  /** Null on the processing fee alone: there is no payment intermediary on the dinar
+   *  side to pay (PDL, owner 04.08.2026), and V4 holds that in both directions. */
+  rsd: number | null
+  /** Whether what this buys carries a place in the standing, and null on every kind but
+   *  a period - a level, a fee and a referral do not answer the question. */
+  ranking: boolean | null
+}
+
+/**
  * Somebody the superadmin has made a moderator (PDL P21, P28a).
  *
  * Three things are asked for and the fourth is given rather than typed. There is
@@ -659,8 +709,13 @@ export type PageSection = {
    * `prices` is here for the same reason `ducats` is. The statute puts the
    * amount of the fee with the management board (član 24), so the rulebook names
    * that decision and shows the table under it; typed into the text it would be
-   * a third copy of figures that already live in `data/pricing.ts`, and the copy
-   * that drifts is the one a member reads.
+   * a copy of figures the portal already has, and the copy that drifts is the one a
+   * member reads.
+   *
+   * **Where those figures come from moved on 26.09.2026** and this sentence used to
+   * name `data/pricing.ts`. `components/PriceTable.tsx` reads `GET /api/pricing` now,
+   * so the table under Član 14 shows what the administration really set rather than
+   * what this build shipped. See {@link Price}.
    */
   gallery?: 'ducats' | 'prices' | null
 }

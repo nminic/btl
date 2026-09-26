@@ -1,4 +1,11 @@
-import type { Competitor, League, RacingPair, ServedPendingItem, Team } from '../data/types'
+import type {
+  Competitor,
+  League,
+  Price,
+  RacingPair,
+  ServedPendingItem,
+  Team,
+} from '../data/types'
 
 /**
  * WHAT THE BACKEND ANSWERS WITH, WRITTEN DOWN ONCE.
@@ -222,6 +229,52 @@ export const readAsWaitingItem: ServedPendingItem = aWaitingItem
 export const readAsWaitingItemWithNoNumber: ServedPendingItem = aWaitingItemAboutNobody
 export const readAsPair: RacingPair = aPair
 export const readAsLeague: League = aLeague
+
+/**
+ * TWO ROWS OF THE PRICE LIST, as `GET /api/pricing` answers them, and two rather than one
+ * because the two shapes of that answer differ by THREE NULLS.
+ *
+ * <p>A period carries a window of the year, a dinar price and an answer about the standing.
+ * The processing fee carries none of the three, and V4 holds each of them in both
+ * directions - {@code price_row_period_has_days}, {@code price_row_only_fee_has_no_rsd},
+ * {@code price_row_only_period_is_ranked}. Written down as one row only, the shape the
+ * screens really have to survive would have been the one not held.
+ *
+ * <p><b>The nulls are the point rather than a detail.</b> `PricingApi` says why it answers
+ * them instead of copying the portal's own spelling: „The portal's own type writes
+ * {@code ''} and {@code false} in those places, which is an artefact of a TypeScript field
+ * nobody made optional and not a decision anybody took, and copying it here would be
+ * answering „no period" and „not ranked" where the truth is „the question does not apply"."
+ * Read through a field typed `string`, that null drew „undefined - undefined" in a cell.
+ *
+ * <p><b>The amounts are whole numbers here and the column is `numeric(10,2)`</b>, which is
+ * the state the list really ships in (V4) rather than a simplification: every one of the
+ * seven rows is whole today, and `PricingApi` writes down that the schema does not say it
+ * has to stay that way. `pages/memberFlows.test.tsx` is where a price with para is served,
+ * because that is a question about a SENTENCE and not about a shape.
+ */
+export const aPricePeriod = {
+  key: 'early',
+  kind: 'period',
+  from: '10-01',
+  to: '10-05',
+  eur: 35,
+  rsd: 4200,
+  ranking: true,
+}
+
+export const aProcessingFee = {
+  key: 'processing',
+  kind: 'fee',
+  from: null,
+  to: null,
+  eur: 3,
+  rsd: null,
+  ranking: null,
+}
+
+export const readAsPrice: Price = aPricePeriod
+export const readAsFee: Price = aProcessingFee
 
 /**
  * THE CALLER'S OWN RECORD, as `GET /api/me` answers it.

@@ -8,6 +8,8 @@ import {
   aCompetitorToTheAdministration,
   aLeague,
   aPair,
+  aPricePeriod,
+  aProcessingFee,
   aTeam,
   aTeamWithNoMark,
   aWaitingItem,
@@ -15,8 +17,10 @@ import {
   readAsWaitingItem,
   readAsWaitingItemWithNoNumber,
   readAsAdministrationsRow,
+  readAsFee,
   readAsLeague,
   readAsMyOwnRow,
+  readAsPrice,
   readAsPair,
   readAsTeam,
   readAsTeamWithNoMark,
@@ -410,6 +414,19 @@ describe('the answer the backend gives', () => {
     expect(readAsTeamWithNoMark.foundedByMe).toBe(false)
     expect(readAsPair.memberNumbers).toHaveLength(2)
     expect(readAsLeague.eventIds).toEqual([273])
+    /* THE FIFTEENTH, AND ITS THREE NULLS ARE THE WHOLE OF WHY IT IS WRITTEN DOWN TWICE.
+       A period answers all seven fields; the processing fee answers four of them and says
+       „the question does not apply" to the other three, which is V4's own shape in both
+       directions and `PricingApi`'s own words. Read through a `string` instead of a
+       `string | null`, that first null is what draws „undefined - undefined" in a cell of
+       the public price table. */
+    expect(readAsPrice.from).toBe('10-01')
+    expect(readAsPrice.rsd).toBe(4200)
+    expect(readAsPrice.ranking).toBe(true)
+    expect(readAsFee.from).toBeNull()
+    expect(readAsFee.to).toBeNull()
+    expect(readAsFee.rsd).toBeNull()
+    expect(readAsFee.ranking).toBeNull()
   })
 
   it('agrees with the served file about the sort of every field they share', () => {
@@ -425,6 +442,13 @@ describe('the answer the backend gives', () => {
       ['ducats', [aDucat]],
       ['attendance', [anAttendance]],
       ['comments', [aComment, anOrphanedComment]],
+      /* Both shapes of the price list against the served file, and the pair matters here
+         more than anywhere else on this list: the fee is the only row of the seven whose
+         three nulls have to survive the round trip, and a file that had written `''` and
+         `false` in their place - which is what `data/pricing.ts` spells - would satisfy
+         every type in the portal while drawing „undefined - undefined" on the page the
+         rulebook publishes. */
+      ['pricing', [aPricePeriod, aProcessingFee]],
       ['moderators', [aModerator]],
     ]
 
@@ -586,6 +610,11 @@ describe('the answer the backend gives', () => {
          `{queue, waiting}` wrapper as an item. The answer is a flat list of items now,
          so there is a shape to write down, and it is written down. */
       'verification',
+      /* THE SIXTEENTH NAME AND THE FIFTEENTH RESOURCE, added 26.09.2026 with the screens
+         that read it. It arrives measured on the day it arrives, which is the whole of what
+         this list is for: `/api/pricing` had been answered and unread for weeks, so there
+         was never a moment when the two ends could have been held against each other. */
+      'pricing',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

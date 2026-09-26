@@ -1,10 +1,9 @@
-import { JUNIOR_ROW, PRICES, type PriceRow, ranksByPeriod } from '../data/pricing'
-import { applyChanges } from '../forms/records'
+import { Resource } from './Resource'
+import { A_LEVEL, A_PERIOD, pricedInBoth, ranksByPeriod, windowOf } from '../data/priceList'
+import type { Price } from '../data/types'
+import { usePricing } from '../data/useResource'
 import { money } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
-import { useOverlay } from '../pages/admin/overlay'
-import { PRICING } from '../pages/admin/entityForms'
-import { recordKey } from '../session/context'
 /* The sheets this table's own classes come from, and both are needed. `table`
    and `table-scroll` are the shared ones; `markdown__table` is what dresses a
    table as part of a document rather than as a standing, and it lives in
@@ -28,10 +27,14 @@ import './Markdown.css'
  * copies of a price is three chances for one of them to be wrong, and the one a
  * member acts on is whichever they happened to open.
  *
- * The rows come off `data/pricing.ts`, the same constant the member screen and
- * the administration read, with the administrator's changes laid over them. A
- * price typed into administration has to show here too, or the rulebook is the
- * copy that drifts.
+ * **THE ROWS COME OFF `GET /api/pricing` SINCE 26.09.2026, AND UNTIL THAT DAY THEY CAME
+ * OFF A CONSTANT COMPILED INTO THE BUNDLE.** `data/pricing.ts` was the home, with the
+ * administrator's changes laid over it out of the session - which never reached a server,
+ * so „the administrator's changes" lasted exactly as long as one visit in one browser. What
+ * that cost once the route existed is the boundary `PricingWriteApi` names in its own
+ * heading: an administrator raised a price, the next member was CHARGED the new one, and
+ * this table - the one the rulebook publishes - went on showing the old. Read from the
+ * route, the page under Član 14 says what the association really decided.
  *
  * The figures and nothing else. Three notes stood around this table until
  * 21.08.2026, saying who sets the fee, what a payment from abroad costs to
@@ -47,11 +50,11 @@ import './Markdown.css'
  * What the ranking column says for a band.
  *
  * The row that has no answer of its own points at the periods above it; see
- * `ranksByPeriod` in `data/pricing.ts`, which both this table and the administrator's
+ * `ranksByPeriod` in `data/priceList.ts`, which both this table and the administrator's
  * read, so the page that publishes a price and the screen that sets it cannot say
  * different things about it.
  */
-function ranks(row: PriceRow, say: (key: string) => string): string {
+function ranks(row: Price, say: (key: string) => string): string {
   if (ranksByPeriod(row)) {
     return say('pricing.rankingByPeriod')
   }
@@ -59,50 +62,56 @@ function ranks(row: PriceRow, say: (key: string) => string): string {
   return row.ranking ? say('pricing.yes') : say('pricing.no')
 }
 
-/** mm-dd as a day is read: 10-05 is the fifth of October. */
-function day(monthDay: string): string {
-  const [month, date] = monthDay.split('-')
-
-  return `${Number(date)}.${Number(month)}.`
-}
-
-function period(row: PriceRow, always: string): string {
-  return row.from === '' ? always : `${day(row.from)} - ${day(row.to)}`
-}
-
 export function PriceTable() {
   const { t, locale } = useI18n()
-  const { edits } = useOverlay()
+  const state = usePricing()
 
-  const rows = [...PRICES, JUNIOR_ROW].map((row) =>
-    applyChanges(row, edits[recordKey(PRICING.id, row.key)]),
-  )
-
+  /* `inline`, because this is a part of a page rather than a page: the rulebook
+     around it is already drawn, and a sheet over the whole screen while the prices
+     arrive would take the article away from somebody reading it. The same reason
+     `DucatGallery` gives, and the ducats are the other gallery of this same page. */
   return (
-    <div className="table-scroll">
-      <table className="table markdown__table">
-        <caption className="visually-hidden">{t('pricing.title')}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t('pricing.periodName')}</th>
-            <th scope="col">{t('pricing.period')}</th>
-            <th scope="col">EUR</th>
-            <th scope="col">RSD</th>
-            <th scope="col">{t('pricing.ranking')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.key}>
-              <td>{t(`pricing.rows.${row.key}`)}</td>
-              <td>{period(row, t('pricing.everyPayment'))}</td>
-              <td>{money(row.eur, locale)}</td>
-              <td>{money(row.rsd, locale)}</td>
-              <td>{ranks(row, t)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Resource state={state} inline label={t('pricing.title')}>
+      {(served) => {
+        /* By KIND, which is what tells the rows apart (ADL A36 O12). The fee is left out
+           because it has no dinar side and this table has a dinar column - „a member who
+           pays 40 and 3 has paid the same membership as a member who paid 4.800 dinars"
+           (PDL P8) - and the referral because nobody pays it at all: it is credited, and a
+           credit has no window in the year and no bearing on the right to be ranked.
+           Both were left out by being absent from a constant before this; now they are
+           left out by name, which is the same table for a reason somebody can read. */
+        const rows = pricedInBoth(served).filter(
+          (row) => row.kind === A_PERIOD || row.kind === A_LEVEL,
+        )
+
+        return (
+          <div className="table-scroll">
+            <table className="table markdown__table">
+              <caption className="visually-hidden">{t('pricing.title')}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('pricing.periodName')}</th>
+                  <th scope="col">{t('pricing.period')}</th>
+                  <th scope="col">EUR</th>
+                  <th scope="col">RSD</th>
+                  <th scope="col">{t('pricing.ranking')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.key}>
+                    <td>{t(`pricing.rows.${row.key}`)}</td>
+                    <td>{windowOf(row) ?? t('pricing.everyPayment')}</td>
+                    <td>{money(row.eur, locale)}</td>
+                    <td>{money(row.rsd, locale)}</td>
+                    <td>{ranks(row, t)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }}
+    </Resource>
   )
 }

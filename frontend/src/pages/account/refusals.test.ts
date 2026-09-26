@@ -13,6 +13,8 @@ import {
   WHEN_MODERATING_LEAGUE_RACES,
   WHEN_WRITING_A_LEAGUE,
 } from '../admin/leagueWrites'
+import { WHEN_WRITING_A_PRICE } from '../admin/priceWrites'
+import { must } from '../../test/at'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -79,6 +81,32 @@ function reasonsIn(file: string): string[] {
  * and a reason added to either route still has to arrive as a red gate with a number in the
  * message.
  */
+/**
+ * THE CONSTANTS THESE CLASSES DECLARE THAT ARE NOT REASONS AT ALL, named per file.
+ *
+ * <p><b>Why this list exists, and it is a measurement of 26.09.2026 rather than a
+ * convenience.</b> {@link reasonsIn} reads every `static final String` a class declares,
+ * which is the only question a guard on this side of the repo can ask - there is no Java
+ * compiler in this run, and „which of these reaches the `Refused` record" would mean
+ * following a value through code, the shape `CLAUDE.md` says has no floor. That proxy held
+ * for the first six files, whose every such constant is a refusal. `PricingWriteApi`
+ * declares two that are not: `A_FEE = "fee"` and `A_REFERRAL = "referral"` are the KINDS of
+ * row it treats differently, and V4's `price_row_kind_known` is where they come from.
+ *
+ * <p><b>The floor under this list is the count beside it and not a second opinion about
+ * it.</b> `howMany` is over every constant the file declares, this one included, so a
+ * constant added to one of these classes - reason or not - fails the case with the number in
+ * the message, and somebody decides once which of the two it is. A list that could grow
+ * silently would be the thing this whole file exists to refuse.
+ *
+ * <p><b>And it is checked to be pulling its weight:</b> a name written here that the file
+ * does not declare fails too, so a constant renamed on the server does not leave an
+ * exemption standing for a string that no longer exists.
+ */
+const NOT_A_REASON: Record<string, string[]> = {
+  'PricingWriteApi.java': ['fee', 'referral'],
+}
+
 describe('the reasons the server can name', () => {
   const routes: [file: string, screens: Record<string, string>[], howMany: number][] = [
     /* The counts are here so that a regular expression which stopped matching cannot
@@ -120,16 +148,37 @@ describe('the reasons the server can name', () => {
        different dictionary keys, because what the reader has to do about it differs, and
        the union is what this gate counts. */
     ['LeagueWriteApi.java', [WHEN_WRITING_A_LEAGUE, WHEN_MODERATING_LEAGUE_RACES], 11],
+    /* THE SEVENTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS IT. `PricingWriteApi` has
+       named five reasons since PR 370 and nothing on this side could read any of them,
+       because no screen called the route at all - `grep -rn "api/pricing" frontend/src`
+       came back empty.
+
+       SEVEN CONSTANTS AND FIVE REASONS, which is the first time those two numbers differ
+       on this list: see `NOT_A_REASON` above. Two of the five cannot be reached from the
+       screen today and both are answered anyway, for the reason `WHEN_WRITING_A_PRICE`
+       gives: the form is the floor and the route decides (PDL P12c), so a request that
+       goes round the screen meets the route with nothing in between. */
+    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 7],
   ]
 
-  it.each(routes)('are all answered on the screen that meets %s', (file, screens, howMany) => {
-    const reasons = reasonsIn(file)
+  /** What a file declares that really is a refusal, which is every constant bar the ones
+   *  named above. */
+  function refusalsIn(file: string): string[] {
+    const exempt = NOT_A_REASON[file] ?? []
 
-    expect(reasons, `${file} names no reason at all, so this measures nothing`).toHaveLength(
+    return reasonsIn(file).filter((one) => !exempt.includes(one))
+  }
+
+  it.each(routes)('are all answered on the screen that meets %s', (file, screens, howMany) => {
+    /* THE COUNT IS OVER EVERY CONSTANT AND NOT OVER THE REFUSALS, which is what makes
+       `NOT_A_REASON` a list with a floor rather than a list: a constant added to one of
+       these classes moves this number whether or not it is a reason, so it cannot be
+       exempted by accident - only by somebody writing it down. */
+    expect(reasonsIn(file), `${file} names no reason at all, so this measures nothing`).toHaveLength(
       howMany,
     )
     expect(
-      reasons.filter((reason) => !screens.some((screen) => Object.hasOwn(screen, reason))),
+      refusalsIn(file).filter((reason) => !screens.some((screen) => Object.hasOwn(screen, reason))),
     ).toEqual([])
   })
 
@@ -141,5 +190,53 @@ describe('the reasons the server can name', () => {
     const claimed = routes.flatMap(([, screens]) => screens.flatMap((one) => Object.keys(one)))
 
     expect(claimed.filter((reason) => !known.has(reason))).toEqual([])
+  })
+
+  /**
+   * EVERY EXEMPTION IS LOAD-BEARING, and this is the floor that makes `NOT_A_REASON` a list
+   * with a bottom rather than a list.
+   *
+   * <p><b>Found by a mutation before any review saw it, on 26.09.2026.</b> The first draft of
+   * this file held two things about an exemption: that the constant is one the class really
+   * declares, and that the count beside it covers every constant whether exempt or not. Both
+   * are true and neither is enough - adding a REAL reason to the list
+   * (`theFormIsNotComplete`) satisfied the first, moved neither count, and quietly took that
+   * reason out of the gate. A screen could then drop its sentence and nothing would say so.
+   *
+   * <p><b>What is asked instead is what an exemption is FOR.</b> The only constant that needs
+   * one is a constant that would otherwise fail the case above: one no screen answers, because
+   * it is not a refusal at all. So a name here whose reason IS answered on a screen is an
+   * exemption doing nothing, and it is refused - which is exactly the mutation, and it is the
+   * whole class of that mutation rather than that one name.
+   *
+   * <p><b>And it is a question about one lookup, not about following a value.</b> „Does any
+   * screen that meets this file claim this name" is read off the dictionaries; it needs no
+   * Java parsed and nothing traced from a constant to the place it is answered with, which is
+   * the shape `CLAUDE.md` says has no bottom.
+   */
+  it('excuses only a constant that no screen answers, and none that any screen does', () => {
+    for (const [file, exempt] of Object.entries(NOT_A_REASON)) {
+      const declared = reasonsIn(file)
+      const screens = must(
+        routes.find(([named]) => named === file),
+        `${file} is excused from a gate it is not on`,
+      )[1]
+
+      /* A name left here after the server renamed or dropped it is an exemption standing for
+         a string that does not exist, and it would silently excuse the next constant spelt
+         the same way. */
+      expect(exempt.filter((one) => !declared.includes(one)), `${file}: not declared`).toEqual([])
+
+      /* And the half the mutation found: an exemption for something a screen does answer is
+         an exemption that hides a live reason. */
+      expect(
+        exempt.filter((one) => screens.some((screen) => Object.hasOwn(screen, one))),
+        `${file}: answered on a screen, so it is a reason and may not be excused`,
+      ).toEqual([])
+    }
+
+    /* And that the walk above walked something: an empty table would satisfy every line
+       of it. */
+    expect(Object.keys(NOT_A_REASON)).not.toEqual([])
   })
 })

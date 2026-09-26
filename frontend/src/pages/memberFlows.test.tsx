@@ -7,11 +7,13 @@ import type { Result } from '../data/types'
 import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
 import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
-import { JUNIOR, PROCESSING_FEE_EUR } from '../data/pricing'
+/* The bundled list, read only to NAME the figures this screen must no longer show: the
+   served answer is moved away from them, and the assertions say so in both directions. */
+import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL } from '../data/pricing'
+import servedPrices from '../../public/mock/pricing.json'
 import { formatShortDate } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { NOTIFICATION_KEYS, recordKey } from '../session/context'
-import { PRICING } from './admin/entityForms'
+import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { useSession } from '../session/useSession'
@@ -72,23 +74,33 @@ function Deleting({ memberNumber }: { memberNumber: string }) {
   )
 }
 
-/** The one thing administration does that this file is about: it changes the
- *  referral amount, the way the price list screen changes it. */
-function Administration({
-  eur = '7',
-  rsd = '840',
-  name = 'izmeni preporuku',
-}: {
-  eur?: string
-  rsd?: string
-  name?: string
-}) {
-  const { editRecord } = useSession()
-
-  return (
-    <button type="button" onClick={() => editRecord(recordKey(PRICING.id, 'referral'), { eur, rsd })}>
-      {name}
-    </button>
+/**
+ * THE PRICE LIST AS THE SERVER ANSWERS IT, WITH ONE ROW MOVED.
+ *
+ * <p><b>This replaced a fake `Administration` button on 26.09.2026, and the difference is
+ * the whole increment.</b> That button called `editRecord` to put a figure into the SESSION,
+ * which is where the price list lived: two screens in one session, and nothing between them
+ * and a server. So „administration set it and the member reads it" was measurable and was
+ * also a statement about a browser - a price the owner really changed through
+ * `PUT /api/pricing/{key}` reached neither screen.
+ *
+ * <p><b>What is served here differs from `data/pricing.ts` on purpose</b>, which is the
+ * only way a case on this screen can say which door a figure came through: the bundled
+ * constant and the served file carry the same seven amounts, because
+ * `ThePriceListHasOneHomeTest` requires the repository's two halves to agree. So a case that
+ * serves the same figures cannot tell a screen reading the route from one reading the
+ * bundle.
+ */
+function pricesWith(row: string, amounts: { eur: number; rsd: number | null }) {
+  return serverThat((path) =>
+    path === '/api/pricing'
+      ? new Response(
+          JSON.stringify(
+            servedPrices.map((one) => (one.key === row ? { ...one, ...amounts } : one)),
+          ),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      : null,
   )
 }
 
@@ -726,61 +738,99 @@ describe('membership', () => {
     }
   })
 
-  it('promises what administration set, not what the file says', async () => {
-    /* The amount is a row of the price list and an administrator changes it
-       there (AdminPricing). Read off the constant instead, this screen went on
-       promising the old figure while the price list showed the new one, and the
-       words above that table said it did not.
+  it('promises what the server answers, not what the bundle shipped', async () => {
+    /* The amount is a row of the price list and an administrator changes it there
+       (AdminPricing). Read off the constant, this screen went on promising the old figure
+       while the table showed the new one, and the words above that table said it did not.
 
-       The change is made the way that screen makes it, through the session, and
-       this screen is read after it: one session, two screens, which is the whole
-       of what „the price list is the source" means. */
-    render(
-      <ClockProvider simulatedDay="2027-06-01">
-        <I18nProvider locale="sr">
-          <MemoryRouter>
-            <SessionProvider initialMemberNumber="000001">
-              <Administration />
-              <Membership />
-            </SessionProvider>
-          </MemoryRouter>
-        </I18nProvider>
-      </ClockProvider>,
-    )
+       **Held in BOTH directions, which is what makes it a measurement.** „Promises 840 RSD"
+       alone would pass on a screen drawing both figures, and „does not promise 600" alone
+       would pass on a screen that promises nothing at all. */
+    const { stop } = pricesWith('referral', { eur: 7, rsd: 840 })
 
-    const user = setupUser()
+    try {
+      expect(REFERRAL.rsd, 'the bundled figure has to differ, or this measures nothing').not.toBe(
+        840,
+      )
 
-    await screen.findByText(/donosi ti 600 RSD na balans/)
-    await user.click(screen.getByRole('button', { name: 'izmeni preporuku' }))
+      renderAt('/sr/moja-clanarina', 'competitor', '000001', undefined, '2027-06-01')
 
-    expect(await screen.findByText(/donosi ti 840 RSD na balans/)).toBeVisible()
+      expect(await screen.findByText(/donosi ti 840 RSD na balans/)).toBeVisible()
+      expect(screen.queryByText(/donosi ti 600 RSD na balans/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
   })
 
   it('promises the amount as it stands, and does not round it to a whole', async () => {
-    /* The price list takes any number the form takes, and the form takes 5,5.
-       Written through the portal's own way of writing numbers, which rounds to
-       whole unless told otherwise, the price list said 5,5 and this screen
-       promised „6 EUR". A promise the terms of use point at is not a place to
-       round. */
-    render(
-      <ClockProvider simulatedDay="2027-06-01">
-        <I18nProvider locale="sr">
-          <MemoryRouter>
-            <SessionProvider initialMemberNumber="000007">
-              <Administration eur="5.5" rsd="612.5" name="izmeni na pola" />
-              <Membership />
-            </SessionProvider>
-          </MemoryRouter>
-        </I18nProvider>
-      </ClockProvider>,
-    )
+    /* `price_row.rsd` is `numeric(10,2)` and the route keeps two decimals exactly - it
+       refuses a third rather than letting PostgreSQL round it (`PricingWriteApi`,
+       `theAmountIsNotKeptExactly`). Written through the portal's own way of writing numbers,
+       which rounds to whole unless told otherwise, the price list said 5,5 and this screen
+       promised „6 EUR". A promise the terms of use point at is not a place to round. */
+    const { stop } = pricesWith('referral', { eur: 5.5, rsd: 612.5 })
 
-    const user = setupUser()
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', '000007', undefined, '2027-06-01')
 
-    await screen.findByText(/donosi ti 5 EUR na balans/)
-    await user.click(screen.getByRole('button', { name: 'izmeni na pola' }))
+      expect(await screen.findByText(/donosi ti 5,50 EUR na balans/)).toBeVisible()
+      expect(screen.queryByText(/donosi ti 6 EUR na balans/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
 
-    expect(await screen.findByText(/donosi ti 5,50 EUR na balans/)).toBeVisible()
+  /**
+   * THE AMOUNT INSIDE THE QR CODE IS THE ONE THE SERVER SENT, and this is the case the whole
+   * increment exists for.
+   *
+   * <p><b>`PricingWriteApi` named this as the boundary that decides whether its own route
+   * may be released.</b> The amount had four homes, the route could reach one of them, and
+   * this screen read another: „an administrator who raises a price here raises what the next
+   * member is CHARGED while the page he reads and the code he scans still say the old
+   * number." A member therefore scanned a request for one sum and was booked as owing
+   * another.
+   *
+   * <p><b>Read out of the code itself rather than off the screen beside it.</b> The written
+   * amount and the code are two different renderings of one figure, and it was the CODE that
+   * was right and the writing that was missing once already - „the only figure they could
+   * read on this screen was the grown one, and the right one was inside the code, where only
+   * a camera reaches". So both are asserted, and the code is decoded.
+   *
+   * <p><b>44 EUR and 5.280 RSD are in no row of the bundle</b>, and are not one worked out
+   * from the other at any rate the league has ever used either: PDL P12d, owner 25.09.2026,
+   * refusing the recommendation that the route convert one into the other.
+   */
+  it('puts the price the server sent into the QR code, not the one the bundle shipped', async () => {
+    const { stop } = pricesWith('early', { eur: 44, rsd: 5280 })
+
+    try {
+      const early = must(
+        PRICES.find((one) => one.key === 'early'),
+        'the early band of the bundled list',
+      )
+
+      expect(early.rsd, 'the bundled figure has to differ, or this measures nothing').not.toBe(5280)
+
+      /* Early October, inside the first band, so `early` is the period in force and the
+         renewal window is open. 000032 pays and lives in Serbia, which is what it takes to
+         be shown a slip at all. */
+      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-10-03')
+
+      const code = await screen.findByRole('img', { name: /QR/ })
+      const payload = readQr(code)
+
+      expect(payload).toContain('I:RSD5280,00')
+      expect(payload, 'the bundled figure must not be what a member scans').not.toContain(
+        `I:RSD${early.rsd},00`,
+      )
+
+      /* And the writing beside it says the same thing, because a member typing the payment
+         into a bank by hand never sees the code at all. */
+      expect(screen.getByText('5.280 RSD')).toBeVisible()
+    } finally {
+      stop()
+    }
   })
 
   it('credits a member from abroad in euro, on both lines', async () => {
