@@ -3,19 +3,40 @@ import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import type { Moderator } from '../../data/types'
 import { useModerators } from '../../data/useResource'
-import type { FormValues } from '../../forms/types'
+import { moderator } from '../../forms/definitions'
+import type { FormDef, FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
-import type { Rights } from '../../session/context'
+import { recordKey, type Rights } from '../../session/context'
 import { useSession } from '../../session/useSession'
-import { DeleteRecord, EntityBar, EntityEditor, NEW_RECORD_ID, type Saving } from './EntityEditor'
+import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { MODERATORS, recordsOf, type Editing, type Overlay } from './entityForms'
-import { emailIn, identityIn, invitedFrom, ticksIn, WHEN_WRITING_A_MODERATOR } from './moderatorWrites'
+import {
+  changedFrom,
+  emailIn,
+  identityIn,
+  invitedFrom,
+  ticksIn,
+  WHEN_WRITING_A_MODERATOR,
+} from './moderatorWrites'
 import { allowed, grantedCount, RIGHTS } from './rights'
 import { RightsMatrix } from './RightsMatrix'
 import '../member/Member.css'
 import './Rights.css'
+
+/**
+ * The moderator's own form, without the address - PDL, 26.09.2026, „Izabrao ime da, adresa
+ * ne". Modeled on `AdminEvents.tsx`'s own `copyOfEvent`, which narrows a form the same way
+ * for the same reason: a save writes the fields the form carries, so what is not asked
+ * keeps what the record already had, and `ModeratorWriteApi.change` refuses an address by
+ * name regardless of what any form sends - this is one half of never asking, not the only
+ * thing standing between a superadmin and that mistake.
+ */
+const editModerator: FormDef = {
+  ...moderator,
+  fields: moderator.fields.filter((one) => one.name !== 'email'),
+}
 
 /** An overlay holding nothing, which is what this screen starts every visit with
  *  (the name, the address and the existence of a row - see `rightsOverlay` below
@@ -41,33 +62,35 @@ const NO_RIGHTS_YET: Rights = {}
  * 24.09.2026: „Svi ekrani administracije prestaju da pisu u sesijski sloj i
  * pocinju da zovu rute"). `ModeratorApi`/`ModeratorWriteApi` answer three routes
  * and this screen now uses all three: `POST /api/moderators` makes one and sends
- * him his invitation, `PUT /api/moderators/{id}` replaces his whole row of ticks,
- * and `DELETE /api/moderators/{id}` takes his moderatorship away (never his
- * account - see that route's own javadoc). Reading the list already went to the
- * server before this: `useModerators()` has been `GET /api/moderators` since ADL
- * A50, and only the four writes below are what changes here.
+ * him his invitation, `PUT /api/moderators/{id}` replaces his whole row of ticks
+ * and, since 26.09.2026, his name beside them, and `DELETE /api/moderators/{id}`
+ * takes his moderatorship away (never his account - see that route's own
+ * javadoc). Reading the list already went to the server before this:
+ * `useModerators()` has been `GET /api/moderators` since ADL A50, and only the
+ * writes below are what changes here.
  *
- * **A NAMED BOUNDARY: THIS SCREEN CANNOT CHANGE AN EXISTING MODERATOR'S NAME OR
- * ADDRESS, AND THAT IS NOT AN OVERSIGHT.** PDL P21 says the superadmin „menja"
- * moderators as well as their rights, and until B106 the session let him try:
+ * **HIS NAME MAY BE CHANGED HERE, SINCE 26.09.2026; HIS ADDRESS NEVER, AND THAT
+ * IS NOT AN OVERSIGHT.** PDL P21 says the superadmin „menja" moderators as well
+ * as their rights, and until B106 the session let him try changing both:
  * `EditableCell` on all three columns, and the full form behind „Otvori". Both
  * wrote into the session overlay and neither ever reached the database - the
  * change was lost on the next refresh, which is a screen showing a control that
- * does nothing. `ModeratorWriteApi` says why there is no route for it yet, in its
- * own words: „`{@link #add}` WRITES a name and an address, once; `{@link
- * #change}` carries the row of boxes and nothing else, so the day an edit is
- * written it belongs in that same method rather than in a third one. Until then
- * a request naming them is refused by the shape of `{@link Ticks}`, which has no
- * field for either." So this screen shows an existing moderator's name and
- * address as plain text, and its only action on an existing row is the one the
- * server can carry out: deleting his moderatorship. Whether a moderator's name
- * or address should ever be editable through the portal, and what that would do
- * to an account whose address changes, is a question for the owner and is left
- * open in the PR rather than answered here.
+ * does nothing. The owner then chose, on three offered outcomes: „Izabrao ime
+ * da, adresa ne ... Greška u imenu se ispravlja kroz portal; adresa se ne menja
+ * jer je to prijava" (26.09.2026). So an existing moderator's row still shows
+ * his name as plain text - `AdminLeagues.tsx` keeps its own name the same way,
+ * on the very form that changes it - and „Otvori" now opens `editModerator`,
+ * the one form on this screen with no field for an address at all.
+ * `ModeratorWriteApi.change` refuses a request naming one regardless of what
+ * any form sends (its own javadoc carries the reason: the address is what a
+ * moderator signs in with, and moving it would let whoever changed it read the
+ * next password reset link meant for the man who used to hold it), so leaving
+ * the field off this form is this screen's own half of never asking, not the
+ * only thing standing in the way.
  *
  * A moderator is entered the way the other six entities are, by the one
  * renderer reading one JSON definition - `EntityEditor` with `save` handed in,
- * the same shape `AdminLeagues.tsx` uses. The rights are not on that form on
+ * the same shape `AdminLeagues.tsx` uses. The rights are not on either form on
  * purpose: they are the matrix, and a second place to set them would be a
  * second answer to the same question.
  *
@@ -107,6 +130,21 @@ export function AdminModerators() {
   const { t } = useI18n()
   const { remove, setRight } = useSession()
   const [editing, setEditing] = useState<Editing | null>(null)
+
+  /**
+   * WHICH MODERATOR'S NAME IS BEING CHANGED, KEPT FULLY TYPED RATHER THAN READ
+   * OUT OF `editing.record`.
+   *
+   * `Editing` is shared with six entities that are not moderators, so its
+   * `record` is `Record<string, unknown>` - correct for them, and a value ADL
+   * A14 would have this screen narrow out of `unknown` for a row that already
+   * IS a `Moderator` the moment „Otvori" is pressed. Set beside `editing` in the
+   * same press and read only when `editing.mode === 'one'`, so `saveOne` always
+   * has a properly typed row to compute the rights this save must resend
+   * unchanged - never `null` there in practice, but `null` while nothing is
+   * open or a new moderator is being made, where no such row exists yet.
+   */
+  const [editingModerator, setEditingModerator] = useState<Moderator | null>(null)
   const state = useModerators()
 
   const [written, setWritten] = useState<Overlay>(NOTHING_YET)
@@ -134,19 +172,58 @@ export function AdminModerators() {
   }
 
   /**
-   * MAKING ONE, WHO SETS HIS OWN PASSWORD THROUGH A LINK THE ROUTE SENDS HIM.
+   * MAKING ONE, WHO SETS HIS OWN PASSWORD THROUGH A LINK THE ROUTE SENDS HIM -
+   * OR CHANGING THE NAME OF ONE WHO ALREADY EXISTS, SINCE 26.09.2026.
    *
-   * `POST` answers 201 with `{id, email}` (`ModeratorWriteApi.Made`) and never
-   * with a row he can be drawn from otherwise; the two other fields for this
-   * visit's own row come off what was typed, exactly as `AdminLeagues.saveOne`
-   * reads `text` rather than the answer for everything the answer does not
-   * carry. The address is the one exception: read back off the answer rather
-   * than off what was typed, because the row folds it to lower case
-   * (`WhatAnAddressLooksLike.asItIsStored`) and a screen that echoed the typed
-   * spelling would show one the database does not hold the moment the two
-   * differ by case.
+   * **Changing a name is a `PUT` that answers with nothing this screen reads
+   * back**, the same shape `AdminLeagues.saveOne` already uses for its own
+   * `PUT`: what goes into the row afterwards is what was typed, which this
+   * screen already holds as `text`, not a name `Ticked` was never given a
+   * field to carry. The rights sent alongside it are read off
+   * `editingModerator` through `allowed()` and `rightsOverlay` - the same two
+   * sources `toggleRight` below reads - so a name change never resends a stale
+   * row of boxes that forgot a tick confirmed earlier in this same visit.
+   *
+   * **Making one is unchanged from B106.** `POST` answers 201 with `{id,
+   * email}` (`ModeratorWriteApi.Made`) and never with a row he can be drawn
+   * from otherwise; the two other fields for this visit's own row come off
+   * what was typed, exactly as `AdminLeagues.saveOne` reads `text` rather than
+   * the answer for everything the answer does not carry. The address is the
+   * one exception: read back off the answer rather than off what was typed,
+   * because the row folds it to lower case (`WhatAnAddressLooksLike.asItIsStored`)
+   * and a screen that echoed the typed spelling would show one the database
+   * does not hold the moment the two differ by case.
    */
   async function saveOne(values: FormValues, text: Record<string, string>): Promise<Saving> {
+    if (editingModerator !== null) {
+      const rights = RIGHTS.map((one) => one.key).filter((key) =>
+        allowed(editingModerator, key, rightsOverlay),
+      )
+      const answer = await askTheServer(
+        `/api/moderators/${editingModerator.id}`,
+        changedFrom(values, rights),
+        'PUT',
+      )
+
+      if (answer.got !== 'done') {
+        return { said: saying(answer) }
+      }
+
+      /* THE NEXT MOUNT READS THE SERVER, not this visit's first answer - the
+         same reason the branch below clears its own cache. */
+      clearResourceCache('moderators')
+
+      setWritten((was) => ({
+        ...was,
+        edits: {
+          ...was.edits,
+          [recordKey(MODERATORS.id, String(editingModerator.id))]: text,
+        },
+      }))
+
+      return { written: String(editingModerator.id) }
+    }
+
     /* Kept rather than re-read off `text`: `Invited.email` is a plain `string`
        (built once, in `invitedFrom`, with its own fallback for a field the form
        left out), where `text.email` is `string | undefined` under
@@ -245,6 +322,13 @@ export function AdminModerators() {
    * exists for) keeps the one that was not pressed: a version of this that
    * tracked only the pressed box would satisfy „rights are kept" while quietly
    * dropping every other one on the next press.
+   *
+   * <p>**The name travels with every press, unchanged, since 26.09.2026.**
+   * `ModeratorWriteApi.change` now requires it exactly as it already required
+   * `rights` - a `PUT` that lost either field on the way is refused rather than
+   * read as „leave it" - so a press on the matrix, which never asks about a
+   * name at all, resends the one this screen already has on `moderator` rather
+   * than omitting it.
    */
   async function toggleRight(moderator: Moderator, right: string, granted: boolean): Promise<void> {
     const nextRights = RIGHTS.map((one) => one.key).filter((key) =>
@@ -255,7 +339,7 @@ export function AdminModerators() {
 
     const answer = await askTheServer(
       `/api/moderators/${moderator.id}`,
-      { rights: nextRights },
+      { firstName: moderator.firstName, lastName: moderator.lastName, rights: nextRights },
       'PUT',
     )
 
@@ -325,8 +409,16 @@ export function AdminModerators() {
               <EntityEditor
                 entity={MODERATORS}
                 editing={editing}
+                /* NO ADDRESS FIELD WHEN AN EXISTING ROW IS OPEN - see the class
+                   comment and `editModerator`'s own. Creating one still asks
+                   for all three, since that address is what the invitation is
+                   sent to and there is no row yet whose address could move. */
+                form={editing.mode === 'one' ? editModerator : undefined}
                 save={saveOne}
-                onDone={() => setEditing(null)}
+                onDone={() => {
+                  setEditing(null)
+                  setEditingModerator(null)
+                }}
               />
             )
           }
@@ -354,8 +446,11 @@ export function AdminModerators() {
                   <tbody>
                     {rows.map((one) => (
                       <tr key={one.id}>
-                        {/* Read, not edited in place - see the class comment for
-                            why there is no route to write either back to. */}
+                        {/* Read here, and changed on the form behind „Otvori" -
+                            the same division `AdminLeagues.tsx` keeps for its
+                            own name. The address beside it stays read-only
+                            everywhere: there is no form on this screen, new or
+                            open, that ever asks for a change to one. */}
                         <td>{one.firstName}</td>
                         <td>{one.lastName}</td>
                         <td className="moderators__email">{one.email}</td>
@@ -365,22 +460,16 @@ export function AdminModerators() {
                             : t('rights.granted', { count: grantedCount(one, rightsOverlay) })}
                         </td>
                         <td>
-                          <span className="entity-row-actions">
-                            <DeleteRecord
-                              name={`${one.firstName} ${one.lastName}`}
-                              onDelete={() => {
-                                /* The row about to go is where the focus is,
-                                   moved here exactly as `RowActions.deleteRow`
-                                   moves it for the other six entities - this
-                                   screen cannot use that component because it
-                                   always draws an „Otvori" as well, and there is
-                                   nothing behind one here (see the class
-                                   comment). */
-                                document.getElementById(NEW_RECORD_ID)?.focus()
-                                void deleteOne(one)
-                              }}
-                            />
-                          </span>
+                          <RowActions
+                            entity={MODERATORS}
+                            record={one}
+                            name={`${one.firstName} ${one.lastName}`}
+                            onOpen={() => {
+                              setEditingModerator(one)
+                              setEditing({ mode: 'one', record: one })
+                            }}
+                            deleteRecord={() => void deleteOne(one)}
+                          />
                           {refused !== null && refused.id === one.id && saying(refused.answer)}
                         </td>
                       </tr>
