@@ -63,6 +63,14 @@ describe('a team taken away from the administration', () => {
   const LAST_SERVED_NAME = 'Dunavski trkači'
 
   /**
+   * What the FIRST SERVED team is called on the server after somebody else renames it.
+   *
+   * Nothing in this browser writes this name, which is the whole of its use: it can only
+   * ever be drawn by asking the server a second time.
+   */
+  const RENAMED_MEANWHILE = 'Vardarski krug i prijatelji'
+
+  /**
    * THE FOUR TEAMS, IN AN ORDER THAT IS NOT THEIR NAME ORDER.
    *
    * By name they run Dunavski, Moravski, Savski, Vardarski; served, they run exactly
@@ -469,6 +477,22 @@ describe('a team taken away from the administration', () => {
           teams = teams.filter((one) => one.id !== gone)
           members = members.map((one) => (one.teamId === gone ? { ...one, teamId: null } : one))
 
+          /* AND ONE THING THIS SCREEN DID NOT DO, which is what makes the cache measurable at
+             all. Another administrator renames a DIFFERENT team while this deletion is in
+             flight; nothing in this browser knows about it, so the only way the new name can
+             ever be drawn is if the resource is asked for again.
+
+             **Without this the cache of teams had no guard, and it was a mutation that said
+             so rather than a reading.** The deleted row is ALSO filtered out by the session's
+             own overlay, which outlives the screen being unmounted - so „the row is still
+             gone" is true whether the cache was dropped or not, and the case that asserted it
+             went on passing with `clearResourceCache('teams')` taken out. Two sources for one
+             value, which is the fault the journal names: the assertion has to read something
+             only the second answer can carry. */
+          teams = teams.map((one) =>
+            one.id === FIRST_SERVED ? { ...one, name: RENAMED_MEANWHILE } : one,
+          )
+
           return did()
         }
 
@@ -491,6 +515,54 @@ describe('a team taken away from the administration', () => {
       await router.navigate('/sr/administracija/timovi')
     }
 
+    /**
+     * THE TEAMS ARE READ OFF THE SERVER AGAIN, AND THIS IS THE CASE THAT CAN TELL.
+     *
+     * <p><b>Why „the deleted row is still gone" cannot be that case, which is a measurement
+     * rather than a worry.</b> A confirmed deletion is written into the session's overlay as
+     * well (`AdminTeams.deleteOne` calls `remove`), and that overlay outlives this screen
+     * being unmounted - it lives above the router. So the row is filtered out of the next
+     * mount whether the resource was re-fetched or not, and a mutation taking
+     * `clearResourceCache('teams')` out of the screen left the whole package green.
+     *
+     * <p>What only the second answer can carry is a change THIS BROWSER NEVER MADE: another
+     * administrator renaming a different team while the deletion was in flight. Read off the
+     * cache, the old name is drawn; read off the server, the new one is.
+     */
+    it('reads the teams off the server again, and not the answer this visit already had',
+      async () => {
+        const server = servingWithMemory()
+        const user = setupUser()
+        const { router } = renderAt(
+          '/sr/administracija/timovi', 'superadmin', null, undefined, IN_WINDOW,
+        )
+
+        /* THE OLD NAME IS WHAT THIS VISIT WAS SERVED, said before anything happens so that the
+           assertion at the end is a CHANGE rather than a coincidence. */
+        expect(
+          within(await screen.findByRole('table', { name: 'Timovi' })).getByText(
+            FIRST_SERVED_NAME,
+          ),
+        ).toBeVisible()
+
+        await deleteNamed(user, ITS_NAME)
+        await waitFor(() => {
+          expect(within(screen.getByRole('table', { name: 'Timovi' })).queryByText(ITS_NAME))
+            .toBeNull()
+        })
+
+        await awayAndBack(router)
+
+        const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
+
+        await waitFor(() => {
+          expect(listed.queryByText(RENAMED_MEANWHILE)).not.toBeNull()
+        })
+        expect(listed.queryByText(FIRST_SERVED_NAME)).toBeNull()
+
+        server.stop()
+      }, SLOW)
+
     it('does not bring a deleted team back', async () => {
       const server = servingWithMemory()
       const user = setupUser()
@@ -509,7 +581,11 @@ describe('a team taken away from the administration', () => {
       const listed = within(await screen.findByRole('table', { name: 'Timovi' }))
 
       expect(listed.queryByText(ITS_NAME)).toBeNull()
-      expect(listed.getByText(FIRST_SERVED_NAME)).toBeVisible()
+      /* One the deletion did not touch, so „the row went" is not „the table emptied". The
+         EMPTY one rather than the first served, because the first is the one the case above
+         has renamed on the server to measure the cache, and a name that moves is no use as
+         the thing that stayed. */
+      expect(listed.getByText(EMPTY_NAME)).toBeVisible()
 
       server.stop()
     }, SLOW)
