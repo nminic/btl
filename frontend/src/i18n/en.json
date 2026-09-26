@@ -983,7 +983,7 @@
     "comment": "Comment"
   },
   "status": {
-    "pending": "Awaiting check",
+    "pending": "Waiting to be checked",
     "approved": "Approved",
     "rejected": "Refused"
   },
@@ -1046,7 +1046,7 @@
   },
   "review": {
     "title": "The queue for checking results",
-    "waiting": "Awaiting check",
+    "waiting": "Waiting to be checked",
     "empty": "There is no result waiting at all.",
     "approve": "Approve",
     "sendBack": "Refuse",
