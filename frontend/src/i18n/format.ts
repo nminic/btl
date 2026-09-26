@@ -212,19 +212,34 @@ export function formatDate(isoDate: string, locale: string): string {
  * `format.test.ts`.
  *
  * **It reads the language of the sentence, not the language of the address**, and that
- * distinction is the whole of what this function has to get right. `/en` is a live route
- * with a language switch pointing at it, and it draws the **Serbian** dictionary until an
- * English one exists (`i18n/config.ts`, ADL A2) — so a sentence there is Serbian while
- * `formatDate(d, 'en')` answers „October 1, 2026". Written with the address's language,
+ * distinction is the whole of what this function has to get right. It used to matter
+ * because `/en` drew the Serbian dictionary, so a sentence there was Serbian while
+ * `formatDate(d, 'en')` answered „October 1, 2026"; written with the address's language,
  * the rule below made „Octobera 1, 2026" of it, a word in no language at all (review,
- * 05.09.2026). `dictionaryLocale` is the portal's own name for that difference and this
- * asks it, so the date is in the same language as the words around it.
+ * 05.09.2026). `dictionaryLocale` is the portal's own name for that difference.
  *
- * The day an English dictionary arrives, this is the place that needs a second answer:
- * the rule below is Serbian and would make „Octobera" of „October" again.
+ * **It still matters, for the opposite reason, since 26.09.2026.** English now has a
+ * dictionary of its own (`i18n/config.ts`), so the two languages have parted and the
+ * rule is applied to Serbian and to nothing else. Measured on the day the dictionaries
+ * were wired: with the rule applied to whatever `formatDate` returns, `/en` answered
+ * **„Octobera 1, 2026"**, exactly the word the note above says is in no language.
+ * English needs no rule at all here — „it opens on October 1, 2026" is already the form
+ * a verb governs — so what a third language needs is a decision for the day it arrives
+ * and not a guess made now.
+ *
+ * The language is asked **once** and both the formatter and the rule read that one
+ * answer, so an address whose words are in another language cannot get one language's
+ * month with the other language's grammar.
  */
 export function formatDayInSentence(isoDate: string, locale: Locale): string {
-  return formatDate(isoDate, dictionaryLocale(locale)).replace(/\p{L}+/u, (month) =>
+  const written = dictionaryLocale(locale)
+  const day = formatDate(isoDate, written)
+
+  if (written !== 'sr') {
+    return day
+  }
+
+  return day.replace(/\p{L}+/u, (month) =>
     month.endsWith('bar') ? `${month.slice(0, -3)}bra` : `${month}a`,
   )
 }
