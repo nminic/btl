@@ -48,7 +48,12 @@ class HowLongALinkLastsMatchesTheSchemaTest extends DatabaseTest {
 			   table is therefore expected here rather than a mistake, and it is why the
 			   sentence below asks after the TABLE's default rather than after a number
 			   written beside the message. */
-			Message.INVITED_AS_A_MODERATOR, "password_reset_token");
+			Message.INVITED_AS_A_MODERATOR, "password_reset_token",
+			/* AND SO DOES THE MEMBER'S, FOR THE SAME REASON AND BY THE OWNER'S OWN CHOICE
+			   OF 25.09.2026 between one hour in this row and a longer life somewhere else.
+			   Three messages naming two tables is therefore the expected shape here, and the
+			   biconditional below is what keeps that from meaning „any two may collide". */
+			Message.INVITED_AS_A_MEMBER, "password_reset_token");
 
 	/** How long the column's own default actually gives, asked of PostgreSQL. */
 	private Duration whatTheSchemaGives(String table) {

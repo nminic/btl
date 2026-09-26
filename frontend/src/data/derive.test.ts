@@ -57,7 +57,6 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   firstSeason2027: false,
   firstSeason: 2027,
   membershipBasis: 'payment',
-  referralCode: 'proba0000',
   teamId: null,
   teamSince: null,
   profileHidden: false,
