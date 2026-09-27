@@ -495,25 +495,35 @@ class PhotoApi {
 	 * {@code aWaitingPictureOfAHiddenMemberIsStillAnsweredToItsModerator} is what pins that,
 	 * rather than this paragraph asserting it.
 	 *
-	 * <p><b>The WHOLE picture and never the crop</b>, exactly as {@link #photo} serves it.
-	 * PDL P11: „Odseceni deo se ne baca. Slika ostaje cela, a isecak se pamti pored nje." A
-	 * route that cut the bytes would be the one place the crop is burnt in, which ADL A17
-	 * refuses. <b>What that means for the moderator, named rather than left to be found:</b>
-	 * he is shown the photograph, not the circle the profile will draw from it. Serving him
-	 * the circle would mean the three fractions on {@code /api/verification}'s answer, which
-	 * is a change to that answer's shape and therefore to the portal's contract, and it is
-	 * not in this increment.
+	 * <p><b>THE WHOLE PICTURE AND NEVER THE CROP, AND THAT IS A DECISION RATHER THAN THIS
+	 * INCREMENT'S EDGE. [IZVEDENO 27.09.2026 - my reasoning and NOT the owner's word, and it
+	 * is marked so because he was never asked.]</b> The moderator decides what enters the
+	 * portal, so it is more use to him to see what falls OUTSIDE the circle than less: what he
+	 * is judging is the photograph, and anything the circle hides is exactly what he could not
+	 * otherwise refuse. The circle is the MEMBER's choice over his own picture and it applies
+	 * when the picture is approved, which makes it his decision and not part of the one being
+	 * taken here.
 	 *
-	 * <p><b>THE BOUNDARY THIS ROUTE DOES NOT CLOSE, and it is a decision nobody is
-	 * serving.</b> The owner decided on 24.09.2026 that „Dok slika ceka odobrenje, clan vidi
-	 * svoju novu sliku sa oznakom da ceka; svi ostali vide staru ili nijednu". This is not
-	 * that: it is keyed to {@code verification.id}, which the member does not know, and it is
-	 * guarded by a queue right, which he does not hold - so a member asking about his own
-	 * waiting picture is answered 404 here, like anybody else without the tick. Nothing on
-	 * the server answers it anywhere else either, measured: {@code MeApi} names a photograph
-	 * nowhere and {@code MePhotoApi} maps only {@code POST} and {@code DELETE}. Named here
-	 * because it is the same fault in the other direction - a browser showing what the
-	 * server never sent - and it is recorded in {@code PENDING.md} as its own job.
+	 * <p>The mechanics agree with the decision rather than forcing it, and that is worth
+	 * separating. PDL P11 - „Odseceni deo se ne baca. Slika ostaje cela, a isecak se pamti
+	 * pored nje" - and ADL A17 both refuse a route that burns a crop into bytes, so cutting
+	 * here was never available; what was available was answering the three fractions BESIDE
+	 * the picture, on {@code /api/verification}, and that is what the paragraph above turns
+	 * down. Doing it would also change that answer's shape and therefore the portal's
+	 * contract, but the reason it is not done is the first one and not the cost.
+	 *
+	 * <p><b>AND THE MEMBER WHOSE PICTURE IT IS DOES NOT SEE IT EITHER, WHICH IS A DECISION
+	 * AND NOT A GAP IN THIS ROUTE. [ODLUKA 27.09.2026, owner]</b> His words: „Clan i ne treba
+	 * da vidi svoju sliku dok nije odobrena. Kad je bude ugledao po prvi put tad ce znati da
+	 * je slika i odobrena." So a member asking about his own waiting picture is answered 404
+	 * here, exactly like anybody else holding no tick, and that is the whole of the rule
+	 * rather than the edge of this one's reach.
+	 *
+	 * <p><b>This OVERTURNS his decision of 24.09.2026</b> („Dok slika ceka odobrenje, clan
+	 * vidi svoju novu sliku sa oznakom da ceka"), and the overturned half is named here
+	 * because a sentence describing it as still open would be an instruction to build it. The
+	 * picture appearing IS the notice now: seeing it for the first time is how a member learns
+	 * it was approved, so there is nothing for a „waiting" mark to say.
 	 *
 	 * @param id       {@code verification.id}, taken as a {@code long} because that is what
 	 *                 {@code VerificationWriteApi} takes for the same key. <b>What that
