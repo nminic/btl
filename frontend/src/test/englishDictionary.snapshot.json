@@ -1266,6 +1266,7 @@
       "theAmountIsNotKeptExactly": "A price may have at most two decimal places and must not be negative.",
       "theAmountIsMoreThanARowMayCost": "The price is larger than the largest allowed: 1,000 EUR and 200,000 RSD.",
       "theFeeHasNoDinarPrice": "The payment processing charge has no dinar price, because it is not paid to the intermediary in dinars.",
+      "theRowIsFreeInOneCurrencyOnly": "A price list row is either free in both currencies or has an amount in both. Nought in one alone is not accepted.",
       "theReferralIsSettled": "The referral amount has been fixed since 1 October for the season being renewed, and changes only for the next season."
     },
     "moderatorSaveRefused": {
@@ -1548,7 +1549,6 @@
     "sentAlt": "The picture you sent for approval, with the part that will be seen framed",
     "sending": "The picture is being sent...",
     "sendRefused": {
-      "aPictureAlreadyWaits": "Your previous picture is still waiting for a moderator's decision. You may send a new one once it has been decided.",
       "theFormIsNotComplete": "The picture did not reach the server. Choose it again and send it.",
       "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
       "thisIsNotAPicture": "This file is not a picture, whatever it is called. Send a photograph, in JPG or PNG form for instance.",

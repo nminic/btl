@@ -104,7 +104,7 @@ function amount(typed: string | boolean | undefined): number | null {
 }
 
 /**
- * THE SIX REFUSALS A PRICE BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
+ * THE SEVEN REFUSALS A PRICE BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
  *
  * <p><b>Written out by hand and held to the server in the same commit</b>, which is what
  * `CLAUDE.md` asks of any list a guard depends on: `pages/account/refusals.test.ts` reads
@@ -112,7 +112,7 @@ function amount(typed: string | boolean | undefined): number | null {
  * not here or when one here is not there. A seventh reason added on the server is therefore
  * a red gate on the day it is written rather than a reader shown a code he cannot read.
  *
- * <p><b>Two of the six cannot be reached from this screen TODAY, and both are answered
+ * <p><b>Two of the seven cannot be reached from this screen TODAY, and both are answered
  * anyway.</b> `theAmountIsMoreThanARowMayCost` is the ceiling `admin-cena.form.json` already
  * carries as `max`, and `theNameIsLongerThanTheFormAllows` is the same shape on `maxLength`
  * (`WhatARowIsCalledTest` on the server holds the two numbers equal): the form turns both
@@ -146,6 +146,12 @@ export const WHEN_WRITING_A_PRICE: Record<string, string> = {
   theAmountIsNotKeptExactly: 'admin.priceRefused.theAmountIsNotKeptExactly',
   theAmountIsMoreThanARowMayCost: 'admin.priceRefused.theAmountIsMoreThanARowMayCost',
   theFeeHasNoDinarPrice: 'admin.priceRefused.theFeeHasNoDinarPrice',
+  /* V40's `price_row_free_in_both_or_priced_in_both`, PDL 20b, owner 27.09.2026: a row is free in
+     both currencies or priced in both. REACHABLE FROM THIS SCREEN, and the form is no floor under
+     it: nought is a perfectly good number in a `min="0"` box, so the two amount boxes cannot ask
+     this question between them and the route is the only thing that can. Before V40 the screen
+     saved such a row and said nothing, and the 500 arrived later, on somebody else's activation. */
+  theRowIsFreeInOneCurrencyOnly: 'admin.priceRefused.theRowIsFreeInOneCurrencyOnly',
   /* PDL P16, owner 16.08.2026: „administrator podesava do 1.10. u 00 po CET za predstojecu
      godinu", and after it „iznos za tu godinu stoji". The screen tells the button off
      before this is ever reached (`OpenRecord`, `settled`), and the sentence exists because
