@@ -57,10 +57,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * koja je PALA nije primenjena, pa se sme menjati u mestu", which is not a
  * loosening but the case the rule never named - the boundary is merge BECAUSE merge
  * is when QA comes to remember the checksum, and a migration that failed never got
- * that far. The condition is <b>checked</b> against {@code flyway_schema_history} on
- * every reachable database and never assumed, and the changed file has to carry a
- * sentence saying why. From the day V35 succeeds on QA it is as immutable as the
- * rest, and a correction is the next migration.
+ * that far. The condition is <b>checked</b> against Flyway's own history table - the
+ * one {@link DatabaseTest#flywayTable()} names, since it is a setting and this is
+ * Java - on every reachable database, and never assumed; and the changed file has to
+ * carry a sentence saying why. From the day V35 succeeds on QA it is as immutable as
+ * the rest, and a correction is the next migration.
  */
 class MigrationsAreImmutableTest extends DatabaseTest {
 
