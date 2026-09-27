@@ -1,4 +1,41 @@
 /*
+ * THIS FILE WAS CHANGED AFTER IT WAS MERGED, AND THAT IS NOT A PRECEDENT. READ THIS FIRST.
+ * ========================================================================================
+ *
+ * ADL A2: a migration is immutable from the day it merges to `main`. This file merged on
+ * 27.09.2026 (#391) and was changed the same day, under the one case A2 names for it, its
+ * addendum of 27.09.2026: "migracija koja je PALA nije primenjena, pa se sme menjati u
+ * mestu ... granica je spajanje ZATO STO spajanje znaci da QA dolazi da pamti kontrolnu
+ * sumu. Migracija koja padne je cela transakcijski DDL, pa pad znaci `rollback` i NIJEDAN
+ * RED SE NE UPISE, ni sa `success = false`."
+ *
+ * That is this file exactly: it merged, it FAILED on QA, and therefore no database ever
+ * came to hold its checksum. A2 requires the condition to be CHECKED against
+ * `flyway_schema_history` rather than assumed, and requires this sentence to be here.
+ *
+ * WHAT WAS MEASURED, three places, before a line was touched:
+ *
+ *   - QA: `select version from flyway_schema_history order by installed_rank desc` tops out
+ *     at 34, and `docker logs qa-backend` repeats
+ *     `ERROR: check constraint "membership_free_of_the_fee_says_who" of relation
+ *     "membership" is violated by some row` out of DbMigrate.doMigrateGroup. The backend
+ *     never started, so the portal was down, not merely un-migrated.
+ *   - The local development database (compose volume `btl_postgres-data`): no
+ *     `flyway_schema_history` table at all and nought tables in `public`.
+ *   - From a test: only a fresh Testcontainers `postgres:18`, thrown away after every run.
+ *     A2's own measure already excludes those - "primenjena samo u Testcontainers bazama koje
+ *     se bacaju posle svakog prolaza" - and MigrationsAreImmutableTest's javadoc says why a
+ *     green build is evidence about nothing here.
+ *
+ * AND THERE WAS NO OTHER WAY, which A2 says in the same addendum: a later migration cannot
+ * repair this one, because Flyway fails HERE and never reaches it. Editing this file was not
+ * the cheaper of two options, it was the only one that runs.
+ *
+ * SO: THE NEXT PERSON DOES NOT GET TO DO THIS. The exception is about a migration that
+ * FAILED, not about one that is inconvenient. From the day this file succeeds on QA it is as
+ * immutable as every other, and a correction is the next migration.
+ *
+ *
  * FREEING A MEMBER OF THE FEE SAYS WHO DID IT AND WHEN.
  *
  * THE DECISION, owner 27.09.2026, chosen between three outcomes offered to him and carrying
@@ -78,16 +115,66 @@ alter table membership
  * is neither what `on delete set null` says nor what PDL P23 allows. V9 measured that delete
  * coming back naming its own constraint. A name cannot be taken away by deleting anything, so
  * the two never disagree.
+ *
+ *
+ * AND IT IS `not valid`, WHICH IS A STATEMENT ABOUT TIME AND NOT A WEAKENING.
+ * -------------------------------------------------------------------------
+ * This is the pair that failed on QA, and the two words were added on 27.09.2026 for a reason
+ * that is worth having in front of you rather than in a commit message.
+ *
+ * WHAT IS THERE. One membership, entered before these three columns existed: season 2027, basis
+ * `feeExempt`, no payment, and therefore no trail, because on the day it was written there was
+ * nowhere to put one. Measured, not estimated: one such row.
+ *
+ * WHAT WAS REFUSED, and this is the important half. The other way to get the migration through
+ * was to fill that row in. Nothing could be filled in that would be true: NOBODY granted that
+ * exemption on the portal, because the portal could not record granting one until this file.
+ * Writing any name there would be a FALSE RECORD OF A DECISION - the one thing these columns
+ * exist to make reliable - and it would be a false record on the owner's own membership. A
+ * schema is allowed to know less; it is not allowed to say something that did not happen.
+ *
+ * SO `not valid` SAYS EXACTLY WHAT IS TRUE: an exemption entered from the day the trail exists
+ * names who entered it, and one entered before that cannot. PostgreSQL enforces it on every
+ * `insert` and every `update` from this moment and leaves the rows that were already there
+ * alone. The half that had to survive does survive, measured: a NEW `feeExempt` row with no
+ * name is still refused, and TheTrailArrivesOverMembershipsAlreadyThereTest is where that is
+ * held down together with the migration running over the row at all.
+ *
+ * WHAT IS GIVEN UP, recorded as a boundary rather than left to be discovered: no constraint in
+ * the schema asserts anything about that one row. It is one row today.
+ *
+ * AND ONE CONSEQUENCE THAT IS EASY TO MISS, so it is measured and written here. A `not valid`
+ * CHECK is still enforced on an `update` of a row - including an update that touches none of
+ * these three columns - so that legacy row can be read and DELETED but not UPDATED. Measured:
+ * `update membership set basis = 'feeExempt' where season = 2027`, which changes nothing at
+ * all, is refused. Whether that can be reached was measured too, and today it cannot: there
+ * is no JPA entity over `membership`, and the whole of `src/main` holds exactly two writes to
+ * it, both inserts, at MembershipWriteApi.java:271 and PaymentApi.java:442. There is no
+ * `update membership` and no `delete from membership` anywhere. On top of that
+ * MembershipWriteApi already answers 200 and writes nothing when a `feeExempt` row for that
+ * season is standing (MembershipWriteApi.java:241-243), which is the path that legacy row is
+ * actually on. The day something does need to update a membership, it has to deal with this,
+ * and this paragraph is how it finds out instead of getting a 500.
+ *
+ * WHY ONLY THIS PAIR IS `not valid`. Measured statement by statement against a database
+ * carrying both bases, rather than assumed from the one error QA happened to print first: the
+ * foreign key passes because `decided_by` is null on every legacy row and a null satisfies a
+ * key; `membership_on_a_payment_names_no_decision` passes because a legacy membership held on
+ * a payment carries all three of these columns empty, which is the side it asks for; and
+ * `membership_decided_by_name_not_blank` passes because null is not blank. So the other four
+ * statements below are `valid` and stay `valid`, and the test named above asserts that in the
+ * catalogue so nobody can quietly widen this.
  */
 alter table membership
     add constraint membership_free_of_the_fee_says_who
-        check (basis <> 'feeExempt' or decided_by_name is not null);
+        check (basis <> 'feeExempt' or decided_by_name is not null) not valid;
 
 /* And when. `decided_at` is nobody's foreign key, so this one may be written over the column
-   the question is actually about. */
+   the question is actually about. `not valid` for the reason above, and it is the pair rather
+   than one of them: the legacy row names neither, so validating either one refuses it. */
 alter table membership
     add constraint membership_free_of_the_fee_says_when
-        check (basis <> 'feeExempt' or decided_at is not null);
+        check (basis <> 'feeExempt' or decided_at is not null) not valid;
 
 /*
  * AND A MEMBERSHIP HELD ON A PAYMENT CARRIES NO TRAIL HERE, which is the half that keeps these
