@@ -107,7 +107,18 @@ class CompetitorApiTest {
 	 */
 	private static final String THE_COUNT_SHE_BROUGHT_IN = "referredCount";
 
-	/** Where a member's portrait is asked for, which the served file does not carry yet. */
+	/**
+	 * Where a member's portrait is asked for.
+	 *
+	 * <p>{@code competitors.json} did not carry it until 27.09.2026, when b124 gave the
+	 * frontend's own fixture real photographs to render `Portrait` against; the two
+	 * fields below were named to {@code Answers.everyFieldThePortalReadsIsAnswered} as
+	 * something this resource answers on purpose although the fixture did not have it
+	 * yet. That naming is gone from the three cases below rather than kept alongside a
+	 * fixture that now agrees: a name still listed there after the fixture caught up
+	 * would fail {@code Answers}' own check that nothing named as an exception is one
+	 * (`%s already serves %s, so naming it as something extra says nothing`).
+	 */
 	private static final String THE_PORTRAIT = "photo";
 
 	/** And which circle of it is drawn, the other half of the same fact. */
@@ -761,7 +772,6 @@ class CompetitorApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors", answer(), "competitors.json",
-				Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
 				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
@@ -1738,7 +1748,7 @@ class CompetitorApiTest {
 
 		Answers.everyFieldThePortalReadsIsAnswered("/api/competitors asked by the member himself",
 				new ObjectMapper().createArrayNode().add(recordOf(HER_OWN_ACCOUNT, "000012")),
-				"competitors.json", Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
+				"competitors.json",
 				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				HOW_THE_MEMBERSHIP_IS_HELD, WHETHER_THE_FEE_IS_STANDING);
 	}
@@ -2058,7 +2068,6 @@ class CompetitorApiTest {
 		Answers.everyFieldThePortalReadsIsAnswered(
 				"/api/competitors asked by a moderator over the members",
 				answerFor(THE_MODERATOR_OVER_THE_MEMBERS), "competitors.json",
-				Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
 				THE_REFERRAL_CODE,
 				WHO_HANDED_OUT_THE_CODE, WHETHER_THE_FEE_IS_STANDING);
 
@@ -2066,7 +2075,7 @@ class CompetitorApiTest {
 				"/api/competitors asked by a moderator over the members, on his own record",
 				new ObjectMapper().createArrayNode().add(
 						recordOf(THE_ADMINISTRATOR_ON_THE_LIST, hisMemberNumber())),
-				"competitors.json", Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT),
+				"competitors.json",
 				THE_REFERRAL_CODE, WHO_HANDED_OUT_THE_CODE,
 				WHETHER_THE_FEE_IS_STANDING);
 	}

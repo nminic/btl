@@ -41,11 +41,12 @@ export function ProfileHead({
           one shape in one place, so a photograph arriving in it arrives
           everywhere at once (components/Portrait.tsx).
 
-          A photograph is what it is for and initials are what it holds today: the
-          member record carries no picture yet, so every circle on the portal is a
-          monogram on that member's own colour. The owner asked for exactly that
-          fallback, and it is the whole of what is drawn until the picture has
-          somewhere to live. */}
+          A photograph where this member has had one approved, and initials where
+          they have not, which is most of the league: the record has carried the
+          portrait since 26.09.2026 (PDL P28f) and `components/Portrait.tsx`
+          decides between the two. The owner asked for exactly that fallback, so
+          the monogram is the other half of the circle rather than a stand-in
+          waiting to be removed. */}
       <Portrait competitor={competitor} />
 
       <div className="profile__identity">

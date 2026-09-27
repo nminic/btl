@@ -141,6 +141,31 @@ export const MEMBERS: EntityDef = {
     referredBy: null,
     profileHidden: false,
     birthdayShown: 'none',
+    /* The portrait and its square, neither of which any field here asks for and both of
+       which the record carries since 26.09.2026 (PDL P28f). An administrator never types
+       one: a member sends a picture and a moderator approves it (`MePhotoApi`,
+       `VerificationWriteApi`), so this is exactly the „every field the record has,
+       including the ones no field asks for" case the team above is under.
+
+       **And the fault it prevents has already happened once, to a team.** `Portrait`
+       decides between a photograph and a monogram by asking whether `photo` is null, and a
+       field that is simply ABSENT is `undefined`, which is not null: without these two
+       lines every member entered in the administration would draw an empty picture element
+       where their initials belong. That is the measurement written on `logo` in `TEAMS`
+       and in `entityForms.test.tsx`, word for word, on a different record.
+
+       **BOTH ARE `null`, AND THE SQUARE IS NOT `WHOLE` THE WAY A TEAM'S IS.** The first
+       draft of this line copied `TEAMS` and was caught by
+       `entityForms.test.tsx`: „a field the data ever leaves empty is a field a record is
+       allowed not to have". The two records differ, and the difference is in the answer
+       rather than in the taste. Every served team carries a square whether or not it has a
+       logo, so `WHOLE` is right there. `CompetitorApi` reads a member's two off one JOINED
+       row of `photo`, so they „go out together or neither does": thirty of the thirty two
+       served members answer null for both. A `WHOLE` here would claim a square for a member
+       with no picture to cut, which is the exact thing `data/types.ts` writes out under
+       `Team.crop` as the reason that field is nullable at all. */
+    photo: null,
+    crop: null,
   },
 }
 

@@ -61,15 +61,24 @@ import { pictureToSend, THE_PICTURE_GOES_TO, WHEN_SENDING_A_PICTURE } from './ph
  * the screen, „a panel je umeo da u istom dahu kaže ,Nemaš sliku' i ,čeka
  * odobrenje'", and **„Kontrola koja ništa ne radi je gora nego da je nema."**
  *
- * What holds that shut is one measured fact: `Competitor` carries no picture
- * (`data/types.ts`), so THIS SCREEN CANNOT KNOW WHETHER ONE IS STANDING when it
- * draws. `/api/competitors` has served the portrait since 26.09.2026 and PDL P28f
- * keeps the frontend type as work still owed, point 2; `MePhotoApi` answers what is
- * standing only AFTER a send, and what is waiting only after a removal, so neither
- * answer helps the first render. A „Ukloni sliku" drawn now would be the 15.08.2026
- * control again, word for word. It comes back with the branch that teaches
- * `Competitor` the picture, which is the same branch that teaches every avatar to
- * draw one (PDL P28f, point 3).
+ * **What held it shut was one measured fact, and that fact fell on 27.09.2026:**
+ * `Competitor` carried no picture, so this screen could not know whether one was
+ * standing when it drew. It carries `photo` now (`data/types.ts`), served since
+ * 26.09.2026, and this screen is handed the member's own record - so the thing that
+ * was missing is here.
+ *
+ * **The control still does not come back, and that is now a DECISION rather than a
+ * limit.** The branch that taught the type was scoped to the circle: „srednje i niske
+ * ne diraj" is the standing rule, and a control is neither. What „Ukloni sliku" should
+ * do is a product question with more than one answer - whether removing is itself a
+ * thing a moderator approves, what a member sees between pressing and the removal
+ * taking effect, and what happens to a picture already waiting - and PDL P11 records
+ * that the last attempt failed precisely by answering those badly. `DELETE /api/me/photo`
+ * exists and waits (`MePhotoApi.remove`); what is missing is the owner's sentence, not
+ * the field.
+ *
+ * What this branch did change here is the one sentence that had become false: the panel
+ * no longer tells a member the portal has no photograph when his own is on the screen.
  */
 export function ProfilePicture({ me }: { me: Competitor }) {
   const { t } = useI18n()
@@ -230,10 +239,27 @@ export function ProfilePicture({ me }: { me: Competitor }) {
 
       {waiting === undefined ? (
         <>
-          {/* What is true of this portal, rather than a guess at what the
-              member has: there are no photographs on it yet, and the circle
-              beside every name holds initials. */}
-          <p className="member__note">{t('picture.none')}</p>
+          {/* „Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji
+              inicijali" - WHICH IS NOW A SENTENCE ABOUT THIS MEMBER AND NOT ABOUT THE
+              PORTAL, so it is asked of his own record.
+
+              It was true of the portal itself until 26.09.2026 and needed no condition:
+              no record carried a picture at all. `/api/competitors` answers `photo`
+              since then (PDL P28f) and every circle draws it, so for a member whose
+              portrait was approved this panel would tell him the portal has no
+              photograph while his own looks back at him from the header of the same
+              page. That is the shape PDL P11 rejected once already, over the withdrawn
+              „Ukloni sliku": a screen that „u istom dahu kaže ,Nemaš sliku' i ,čeka
+              odobrenje'".
+
+              **Said or not said, rather than said differently**, and that is a boundary
+              rather than a preference: a second sentence is a new line in the dictionary
+              and in the English one beside it, and what it should say to a member who
+              already has a picture is the owner's to write, not this branch's to invent.
+              He is not left guessing in the meantime - the circle with his own face in
+              it is on this very screen, in the header - and „Izaberi novu sliku" under
+              it already reads as it should for somebody who has one. */}
+          {me.photo === null && <p className="member__note">{t('picture.none')}</p>}
 
           <RequiredNote />
 
