@@ -113,6 +113,20 @@ class TeamJoiningWriteApiTest {
 	/** Stands in {@link #A_THIRD_TEAM} and leads it, so „the other teams" is never one. */
 	private static final String THIRD = "000700";
 
+	/**
+	 * A THIRD STANDING MEMBER OF {@link #THE_TEAM}, AND THE FIXTURE HAS THREE ON PURPOSE.
+	 *
+	 * <p>With two, "the administrator" and "a member who is not" are one row each, so "not the
+	 * administrator" is satisfied by whichever of the two is left - and a route reading "the
+	 * member with the larger number", or "the second row of the team", would answer exactly as
+	 * one reading the seat. A third non-administrator separates the seat from any ordering, and
+	 * BOTH non-administrators are asked, so no single row can stand in for the rule.
+	 *
+	 * <p>He joins later than {@link #PLAIN}, so the order by season is total and
+	 * {@code WHO_ADMINISTERS_IT} never reaches its tie-break here.
+	 */
+	private static final String ANOTHER_PLAIN = "001000";
+
 	/** In no team, and the one whose question of the identical shape must be left alone. */
 	private static final String NOBODY_ELSE = "000800";
 
@@ -235,6 +249,7 @@ class TeamJoiningWriteApiTest {
 		competitor(PLAIN, true);
 		competitor(OUTSIDER, true);
 		competitor(THIRD, true);
+		competitor(ANOTHER_PLAIN, true);
 		competitor(NOBODY_ELSE, true);
 		competitor(LAPSED, false);
 
@@ -247,6 +262,7 @@ class TeamJoiningWriteApiTest {
 		inATeam(FIRST_WRITTEN, A_FIRST_TEAM, A_SEASON_ALREADY_RUNNING);
 		inATeam(LEADER, THE_TEAM, A_SEASON_ALREADY_RUNNING);
 		inATeam(PLAIN, THE_TEAM, A_SEASON_STILL_TO_COME);
+		inATeam(ANOTHER_PLAIN, THE_TEAM, A_SEASON_STILL_TO_COME + 1);
 		inATeam(OUTSIDER, THE_OTHER_TEAM, A_SEASON_ALREADY_RUNNING);
 		inATeam(THIRD, A_THIRD_TEAM, A_SEASON_ALREADY_RUNNING);
 
@@ -254,6 +270,7 @@ class TeamJoiningWriteApiTest {
 		account("ja@primer.rs", ME);
 		account("vodja@primer.rs", LEADER);
 		account("clan@primer.rs", PLAIN);
+		account("treci-clan@primer.rs", ANOTHER_PLAIN);
 		account("sa-strane@primer.rs", OUTSIDER);
 		account("treci@primer.rs", THIRD);
 		account("neko-drugi@primer.rs", NOBODY_ELSE);
@@ -998,26 +1015,23 @@ class TeamJoiningWriteApiTest {
 	/* ------------------------------------------------------------------ inviting */
 
 	/**
-	 * ANY MEMBER OF THE TEAM ASKS SOMEBODY IN, WHICH IS THE OWNER'S PARENTHESIS AND THE ONE
-	 * THING THIS INCREMENT WAS NEARLY WRITTEN THE WRONG WAY ROUND.
+	 * WHOEVER LEADS THE TEAM ASKS SOMEBODY IN, AND THE QUESTION ARRIVES AS A QUESTION.
 	 *
-	 * <p>{@code PDL.md:6676}: „vidi ga bilo koji član tog tima, ne samo administrator.
-	 * Vlasnikova zagrada „(bilo koji član)" je izričita i obara pretpostavku da poziv šalje
-	 * administrator." Both runs send the same invitation, one as the leader and one as a member
-	 * who is not, and both must be 201 - while the case above has the same {@link #PLAIN}
-	 * refused when he tries to DECIDE an application.
+	 * <p>{@code PDL.md:8693}, the owner of 27.09.2026: „Poziv u tim salje **samo administrator
+	 * tog tima**", taken off Article 53 of the rulebook ({@code V24__static_pages.sql:811}) and
+	 * overturning his own decision of 05.09.2026.
+	 *
+	 * <p><b>This case USED TO RUN TWICE - as the leader and as a member who is not - and demanded
+	 * 201 from both.</b> It is turned round rather than deleted: the run that asserted a plain
+	 * member may invite is now {@link #aMemberOfTheTeamWhoDoesNotLeadItAsksNobodyIn}, which
+	 * demands 404 from two different plain members.
 	 *
 	 * <p>The message that carries it points at the invitation, which is what V13 built
 	 * {@code message.team_invitation_id} for and what puts two buttons under it.
-	 *
-	 * @param as who presses „Pozovi u tim"
 	 */
-	@ParameterizedTest
-	@ValueSource(strings = { LEADER, PLAIN })
-	void anyMemberOfTheTeamAsksSomebodyInAndTheQuestionArrivesAsAQuestion(String as)
-			throws Exception {
-
-		MockHttpServletResponse answer = invite(THE_TEAM, asking(ME), as);
+	@Test
+	void whoeverLeadsTheTeamAsksSomebodyInAndTheQuestionArrivesAsAQuestion() throws Exception {
+		MockHttpServletResponse answer = invite(THE_TEAM, asking(ME), LEADER);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -1044,6 +1058,33 @@ class TeamJoiningWriteApiTest {
 				.isOne();
 		assertThat(howManyWentToTheLeague()).isZero();
 		assertThat(membershipsOf(ME)).as("asking is not joining").isEmpty();
+	}
+
+	/**
+	 * A MEMBER OF THE TEAM WHO DOES NOT LEAD IT ASKS NOBODY IN, which is the owner's reversal of
+	 * 27.09.2026 and the half of the old case that demanded 201.
+	 *
+	 * <p>{@code PDL.md:8693}. Until that day {@code PDL.md:6676} said the opposite in as many
+	 * words, with his parenthesis „(bilo koji clan)" recorded as explicitly overturning the
+	 * obvious reading. The conflict was found by reading Article 53 of the rulebook in order to
+	 * translate it, and he chose the rulebook.
+	 *
+	 * <p><b>Both non-administrators of the team are asked, which is why the fixture has
+	 * three</b> ({@link #ANOTHER_PLAIN}).
+	 *
+	 * @param as a member standing in {@link #THE_TEAM} who is not the one who leads it
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { PLAIN, ANOTHER_PLAIN })
+	void aMemberOfTheTeamWhoDoesNotLeadItAsksNobodyIn(String as) throws Exception {
+		MockHttpServletResponse answer = invite(THE_TEAM, asking(ME), as);
+
+		assertThat(answer.getStatus()).isEqualTo(404);
+		assertThat(answer.getContentAsString())
+				.as("an address this member may not use carries no explanation")
+				.isEmpty();
+		assertThat(howManyInvitations()).isZero();
+		assertThat(inboxOf(ME)).isEmpty();
 	}
 
 	@Test
@@ -1363,20 +1404,23 @@ class TeamJoiningWriteApiTest {
 	/* ------------------------------------------------- taking an invitation back */
 
 	/**
-	 * THE TEAM TAKES ITS OWN QUESTION BACK, WHICH ANY MEMBER OF IT MAY DO.
+	 * THE TEAM TAKES ITS OWN QUESTION BACK, AND ONLY WHOEVER LEADS IT MAY.
 	 *
-	 * <p><b>Owner, 27.09.2026: „Hoću da može da povuče poziv."</b> Both runs press it, one as
-	 * the leader and one as a member who is not, because {@code team_invitation} records no
-	 * sender at all - so there is no column a condition about who sent it could read.
+	 * <p><b>Owner, 27.09.2026: „Hoću da može da povuče poziv."</b> That it is the
+	 * administrator's alone is {@code PDL.md:8699}, marked in the journal as derived from the
+	 * decision above rather than as a sentence of his: the right to take a question back follows
+	 * the right to send it.
+	 *
+	 * <p><b>This case USED TO RUN TWICE and demanded 204 from a plain member as well.</b> Turned
+	 * round rather than deleted: that run is now
+	 * {@link #aMemberOfTheTeamWhoDoesNotLeadItTakesNothingBack}.
 	 *
 	 * <p>The invited member keeps the message, and the SECOND invitation to him is left
 	 * standing, so „the row named" is told from „every invitation he has".
-	 *
-	 * @param as who presses it
 	 */
-	@ParameterizedTest
-	@ValueSource(strings = { LEADER, PLAIN })
-	void anyMemberOfTheTeamTakesItsInvitationBackAndTheMessageStays(String as) throws Exception {
+	@Test
+	void whoeverLeadsTheTeamTakesItsInvitationBackAndTheMessageStays() throws Exception {
+		String as = LEADER;
 		long invitation = invitationTo(ME, THE_TEAM, 2028);
 		long asked = messageCarrying(ME, invitation);
 		long fromTheThird = invitationTo(ME, A_THIRD_TEAM, 2028);
@@ -1438,6 +1482,30 @@ class TeamJoiningWriteApiTest {
 
 		assertThat(takeBack(THE_TEAM, invitation, ME).getStatus()).isEqualTo(404);
 		assertThat(invitationStands(invitation)).isTrue();
+	}
+
+	/**
+	 * AND A MEMBER OF THE TEAM WHO DOES NOT LEAD IT TAKES NOTHING BACK, which is
+	 * {@code PDL.md:8699} and the half of the old case that demanded 204.
+	 *
+	 * <p>Both non-administrators are asked, for the reason {@link #ANOTHER_PLAIN} gives, and the
+	 * message is asserted to KEEP its pointer: a refused request must leave the question a
+	 * question, which is the half a status code alone would not say.
+	 *
+	 * @param as a member standing in {@link #THE_TEAM} who is not the one who leads it
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { PLAIN, ANOTHER_PLAIN })
+	void aMemberOfTheTeamWhoDoesNotLeadItTakesNothingBack(String as) throws Exception {
+		long invitation = invitationTo(ME, THE_TEAM, 2028);
+		long asked = messageCarrying(ME, invitation);
+
+		assertThat(takeBack(THE_TEAM, invitation, as).getStatus()).isEqualTo(404);
+
+		assertThat(invitationStands(invitation)).isTrue();
+		assertThat(pointerOf(asked))
+				.as("a refused request must leave the question a question")
+				.isEqualTo(invitation);
 	}
 
 	@Test

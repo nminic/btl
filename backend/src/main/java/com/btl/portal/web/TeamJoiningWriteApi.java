@@ -38,11 +38,26 @@ import java.util.Optional;
  * <li><b>An APPLICATION is decided by whoever leads that team.</b> {@code PDL.md:6699}:
  * „**[ODLUKA 05.09.2026] Prijavu u tim odobrava administrator tog tima.** Ne moderator: ko
  * je u čijem timu nije stvar lige nego tima."
- * <li><b>An INVITATION is SENT by any member of the team at all, and the owner said so in a
- * parenthesis that exists to overturn the obvious reading.</b> {@code PDL.md:6676}:
- * „**[ODLUKA 05.09.2026] „Pozovi u tim" stoji na profilnoj strani drugog člana**, i vidi ga
- * **bilo koji član tog tima**, ne samo administrator. Vlasnikova zagrada „(bilo koji član)"
- * je izričita i obara pretpostavku da poziv šalje administrator."
+ * <li><b>An INVITATION IS SENT BY WHOEVER LEADS THE TEAM, AND SO IS TAKING ONE BACK.</b>
+ * {@code PDL.md:8693}: „**[ODLUKA 27.09.2026, vlasnik]** Poziv u tim salje **samo
+ * administrator tog tima**", and beside it {@code PDL.md:8699}: „**[IZVEDENO, ne pitano]
+ * Povlacenje poziva takodje sme samo administrator.** Pravo da se poziv povuce prati pravo da
+ * se posalje; da ga zadrzi bilo koji clan, tim bi mogao da ponisti odluku coveka koji je
+ * jedini smeo da je donese."
+ * <p><b>THIS OVERTURNS THE OWNER'S OWN DECISION OF 05.09.2026 AND THE WAY THIS CLASS WAS
+ * FIRST WRITTEN, so what it replaced is named rather than quietly gone.</b>
+ * {@code PDL.md:6676} used to say the button was seen by „bilo koji clan tog tima, ne samo
+ * administrator", with his parenthesis „(bilo koji clan)" recorded as explicitly overturning
+ * the obvious reading; that line is struck through and dated in the journal.
+ * <p><b>How the conflict was found is the part worth keeping.</b> Not by review and not by
+ * searching: by reading the source text of the rulebook in order to translate it. <b>Article
+ * 53</b> ({@code V24__static_pages.sql:811}) has said all along „Administrator tima odobrava
+ * zahteve za uclanjenje i salje pozive. Uclanjenje ide u oba smera: takmicar salje zahtev, ili
+ * administrator tima salje poziv", and the owner, shown both texts side by side, chose the
+ * rulebook. <b>No guard here could have seen it:</b> the rulebook is prose in a database
+ * column and this code is written from the journal, so the two can disagree for weeks and
+ * every case stays green. That is a gap in the process rather than in this class, and
+ * {@code PDL.md:8688} records it as one.
  * <li><b>And an INVITATION is answered by the one person it names.</b>
  * {@code PDL.md:6701}: „**[ODLUKA 05.09.2026] Poziv u tim prihvata pozvani član.** Niko ne
  * sme da upiše promenu koja se tiče drugog čoveka bez njegove reči, pa ni član tima koji
@@ -626,17 +641,22 @@ class TeamJoiningWriteApi {
 	}
 
 	/**
-	 * A TEAM ASKING SOMEBODY IN, AND ANY MEMBER OF IT MAY ASK.
+	 * A TEAM ASKING SOMEBODY IN, AND ONLY WHOEVER LEADS IT MAY ASK.
 	 *
-	 * <p>{@code PDL.md:6676}, quoted on this class: the owner's parenthesis „(bilo koji
-	 * član)" is explicit and overturns the assumption that the administrator sends it. Who
-	 * counts as a member of it is {@link TeamApi#WHO_STANDS_IN_A_TEAM}, which already carries
-	 * all three of the conditions that make somebody a standing member - an open membership,
-	 * a fee that has not lapsed, and a member number - so a lapsed member cannot invite and
-	 * neither can somebody who has left.
+	 * <p>{@code PDL.md:8693}, quoted in full on this class: „Poziv u tim salje **samo
+	 * administrator tog tima**", the owner's decision of 27.09.2026 taken off Article 53 of the
+	 * rulebook and overturning his own of 05.09.2026. <b>A member who merely stands in the team
+	 * is answered 404 here</b>, and the same man is answered 404 by {@link #decide} - which is
+	 * no longer a difference between the two directions but one rule read twice.
+	 *
+	 * <p>Who leads it is {@link #heAdministersThisTeam}, which is
+	 * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#WHO_STANDS_IN_A_TEAM} and nothing
+	 * written here: the roster carries the fee and the member number as well as the open
+	 * membership, so a lapsed administrator invites nobody and the title has already passed on
+	 * to whoever has been in the team longest.
 	 *
 	 * <p><b>The order of the refusals is not interchangeable and it is
-	 * {@link TeamWriteApi#leave}'s own reason.</b> Whether he belongs to this team is answered
+	 * {@link TeamWriteApi#leave}'s own reason.</b> Whether he leads this team is answered
 	 * BEFORE the window, „because a caller this address is not for must be told the same thing
 	 * on every day of the year: told „the window is shut" in June, an address he has no
 	 * business at would have answered a question about somebody else's team." Swapped, the 409
@@ -665,7 +685,7 @@ class TeamJoiningWriteApi {
 	}
 
 	private ResponseEntity<?> inviting(long me, long team, String memberNumber) {
-		if (!heStandsInThisTeam(me, team)) {
+		if (!heAdministersThisTeam(me, team)) {
 			return away();
 		}
 
@@ -786,19 +806,26 @@ class TeamJoiningWriteApi {
 	}
 
 	/**
-	 * A TEAM TAKING ITS OWN INVITATION BACK, WHICH ANY MEMBER OF IT MAY DO.
+	 * A TEAM TAKING ITS OWN INVITATION BACK, WHICH ONLY WHOEVER LEADS IT MAY DO.
 	 *
 	 * <p><b>Owner, 27.09.2026, in as many words: „Hoću da može da povuče poziv."</b> Until
 	 * that day nothing was recorded either way, and the boundary was going to be written down
 	 * as an absence.
 	 *
-	 * <p><b>Any member of the team and not only whoever sent it, and that is read off the
-	 * schema rather than out of symmetry.</b> {@code team_invitation} carries no sender at
-	 * all, deliberately - {@code PDL.md:6778} sends the outcome „onome ko vodi tim u trenutku
-	 * odgovora... ne onome ko je poziv poslao", because „poziv je mogao poslati bilo koji član
-	 * tima" - so there is no column a condition about the sender could read. Whoever may ask
-	 * may take it back. <b>This last step is my reasoning over that decision rather than a
-	 * sentence of the owner's</b>, and is marked as such.
+	 * <p><b>And it is the administrator's alone, which is recorded rather than reasoned out
+	 * here.</b> {@code PDL.md:8699}: „**[IZVEDENO, ne pitano] Povlacenje poziva takodje sme
+	 * samo administrator.** Pravo da se poziv povuce prati pravo da se posalje; da ga zadrzi
+	 * bilo koji clan, tim bi mogao da ponisti odluku coveka koji je jedini smeo da je donese."
+	 * The journal marks it as derived from the decision above rather than as a sentence of his,
+	 * and it is asked of {@link #heAdministersThisTeam} - the same reading {@link #invite} and
+	 * {@link #decide} use, so the three cannot drift.
+	 *
+	 * <p><b>Nothing here reads WHO SENT the invitation, and there is no column that could.</b>
+	 * {@code team_invitation} records no sender on purpose: {@code PDL.md:6778} sends the
+	 * outcome „onome ko vodi tim u trenutku odgovora... ne onome ko je poziv poslao". Under the
+	 * decision of 27.09.2026 the one who sends and the one who takes back are the same SEAT,
+	 * but not always the same PERSON - the title passes when somebody leaves - so what is asked
+	 * is the seat and never a memory of who typed.
 	 *
 	 * <p><b>No window</b>, for the reason „Odbij" has none: it writes nothing about a squad.
 	 * A team that asked the wrong man must not wait until October to undo it, which is the
@@ -810,9 +837,10 @@ class TeamJoiningWriteApi {
 	 * that would otherwise have taken it out of his inbox, and the owner's decision that it
 	 * must not.
 	 *
-	 * <p><b>404 for four callers:</b> an invitation that is not there, one belonging to
-	 * another team, a caller who does not stand in that team - the invited member included,
-	 * whose road out is „Odbij" and not this one - and an account naming no member.
+	 * <p><b>404 for five callers:</b> an invitation that is not there, one belonging to another
+	 * team, a member of that team who does not lead it, a caller who has nothing to do with it -
+	 * the invited member included, whose road out is „Odbij" and not this one - and an account
+	 * naming no member.
 	 */
 	@DeleteMapping("/api/teams/{id}/invitations/{invitation}")
 	ResponseEntity<?> takeBack(@AuthenticationPrincipal WhoIsAsking.Member asking,
@@ -828,7 +856,7 @@ class TeamJoiningWriteApi {
 	}
 
 	private ResponseEntity<?> takingBack(long me, long team, long invitation) {
-		if (!heStandsInThisTeam(me, team)) {
+		if (!heAdministersThisTeam(me, team)) {
 			return away();
 		}
 
@@ -1016,20 +1044,31 @@ class TeamJoiningWriteApi {
 	}
 
 	/**
-	 * WHETHER HE IS A STANDING MEMBER OF THIS TEAM, asked of the portal's one answer to that
+	 * WHETHER HE IS THE ONE WHO LEADS THIS TEAM, asked of the portal's one answer to that
 	 * question.
 	 *
-	 * <p>{@link TeamApi#WHO_STANDS_IN_A_TEAM} carries all three conditions and every one of
-	 * them was decided separately - an open membership, a fee that has not lapsed, a member
-	 * number - so this is one rule with a third reader rather than a second rule.
-	 * {@link TeamWriteApi} is the other, and its own note says why that is the right shape.
+	 * <p><b>It asked whether he merely STOOD in the team until 27.09.2026</b>, which was the
+	 * owner's decision of 05.09.2026 and is now his own reversal - see the note on
+	 * {@link #invite}. What replaced it is not a new rule: it is
+	 * {@link TeamApi#WHO_ADMINISTERS_IT} over {@link TeamApi#WHO_STANDS_IN_A_TEAM}, the same
+	 * pair {@link #applicationHeMayDecide} already asks and the same pair
+	 * {@code GET /api/teams} answers {@code administeredByMe} from. Three readers of one rule
+	 * rather than a second rule, which is what {@link TeamWriteApi} says about being the
+	 * second of them.
+	 *
+	 * <p>Both of its conditions matter and neither is spelt here: the seat is read THROUGH
+	 * {@code standing}, so a seat naming somebody who has left or whose fee has lapsed simply
+	 * misses it and the title passes on, and the {@code coalesce} makes a team nobody
+	 * administers at all FALSE rather than null - the same value the list answers.
 	 */
-	private boolean heStandsInThisTeam(long me, long team) {
+	private boolean heAdministersThisTeam(long me, long team) {
 		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
-						+ " select exists(select 1 from standing where team_id = ? and id = ?)")
-				.params(team, me)
+						+ " select coalesce(" + TeamApi.WHO_ADMINISTERS_IT + " = ?, false)"
+						+ " from team t where t.id = ?")
+				.params(me, team)
 				.query(Boolean.class)
-				.single();
+				.optional()
+				.orElse(false);
 	}
 
 	/**
