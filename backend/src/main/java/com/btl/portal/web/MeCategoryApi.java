@@ -86,9 +86,13 @@ class MeCategoryApi {
 	 *                           thinks of it
 	 * @param firstSeasonAllowed whether the beginners' category is open to him at all, worked
 	 *                           out now and never stored
-	 * @param category           the code he will actually run under: the wish AND the right.
-	 *                           The same string the tables and the public file key on, so a
-	 *                           screen showing it shows what everybody else sees
+	 * @param category           the code he will actually run under: the wish AND the right,
+	 *                           the right measured off the seasons BEFORE {@code season} and
+	 *                           never off {@code season} itself ({@link BestOfficialSeason}) -
+	 *                           a season's own still-growing total cannot close it on him,
+	 *                           only a season already behind it can. The same string the
+	 *                           tables and the public file key on, so a screen showing it
+	 *                           shows what everybody else sees
 	 * @param open               whether he may still change it, which is false from 10:00 on
 	 *                           1 January of that season
 	 */

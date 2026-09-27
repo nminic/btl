@@ -37,13 +37,27 @@ import java.math.BigDecimal;
  * same question the same way ({@code seasonOf}, the year of the result's date), so the two
  * sides cannot disagree about which season a run belongs to.
  *
- * <p><b>THE RUNNING SEASON COUNTS, and it is meant to.</b> Points never go down, so a
- * season already over the threshold is certain to finish over it, and waiting for the year
- * to end would leave the category open to somebody who has plainly left it. This is also
- * the shape the owner's decision of 26.09.2026 needs: „ga superadmin / moderator
- * verifikacijom necega moze gurnuti u starosnu kategoriju ako odobri rezultat kojim prelaz
- * 12 bodova." Nothing here is triggered BY a verification - the answer simply changes the
- * moment the row it approved exists, which is why the right is never stored.
+ * <p><b>THE RUNNING SEASON COUNTS TOWARD THE SEASON AFTER IT, AND NEVER TOWARD ITSELF.</b>
+ * A season's own category was already decided off the seasons before it (PDL P7: „cela
+ * sezona je u kategoriji koja je dodeljena na njenom pocetku"), and a season is never
+ * before itself - so the year {@link SeasonClock#seasonBeingPaidFor} names is the one
+ * boundary this method must never cross. The portal got exactly this wrong once: a query
+ * with no upper bound let {@code season}'s own still-growing total decide {@code season},
+ * which meant every member's first season closed on him from the inside, months before it
+ * ended, and PDL P7 says the opposite in as many words - „nijedna zvanicna BTL sezona nije
+ * zavrsena sa 12 ili vise bodova" is what shuts the category, and a season that is still
+ * being run has not finished.
+ *
+ * <p><b>Toward the NEXT season, points never go down</b>, so a season already over the
+ * threshold is certain to finish over it, and waiting for the year to end would leave that
+ * next season's category open to somebody who has plainly left it. This is also the shape
+ * the owner's decision of 26.09.2026 needs: „ga superadmin / moderator verifikacijom necega
+ * moze gurnuti u starosnu kategoriju ako odobri rezultat kojim prelaz 12 bodova", spelt out
+ * the same day for which season moves - „ako odobrenje prevede clanov zbir tekuce sezone na
+ * 12 ili vise, pocetnicka mu se za NAREDNU sezonu zatvara istog trenutka." Nothing here is
+ * triggered BY a verification - the answer simply changes the moment the row it approved
+ * exists, which is why the right is never stored, and what it changes is the season AFTER
+ * the one the row belongs to, never that season itself.
  *
  * <p><b>Which is why this is a new home on this side and not a second one.</b> Measured
  * before it was written: {@code Category.firstSeasonAllowed} and {@code Category.codeFor}
@@ -68,10 +82,19 @@ class BestOfficialSeason {
 
 	/**
 	 * @param competitor {@code competitor.id}, never a value the caller supplies
-	 * @return the highest single-season total, or zero where there is no official season at
-	 *         all. Zero rather than nothing, because a member who has taken no points in an
-	 *         official season has taken no points in one, and that is the ordinary state of
-	 *         every member until 2027 is over - not a case for a caller to unwrap.
+	 * @param season     the season the question is being asked FOR
+	 *                   ({@link SeasonClock#seasonBeingPaidFor}), which is never one of the
+	 *                   seasons counted: a season's category is decided off the seasons
+	 *                   BEFORE it, and a season is never before itself. This is the bound
+	 *                   that was missing when the portal asked this without it - the query
+	 *                   summed a season against its own still-growing total and closed it
+	 *                   on him from the inside.
+	 * @return the highest single-season total among seasons from
+	 *         {@link SeasonClock#FIRST_SEASON} up to but NOT including {@code season}, or
+	 *         zero where there is no such season at all. Zero rather than nothing, because a
+	 *         member who has taken no points in an official season before this one has taken
+	 *         no points in one, and that is the ordinary state of every member through the
+	 *         whole of 2027 - not a case for a caller to unwrap.
 	 *
 	 *         <p>{@code single()} is safe here and it is the {@code coalesce} that makes it
 	 *         so: {@code max} over no rows is one row holding null, which is exactly what
@@ -79,12 +102,13 @@ class BestOfficialSeason {
 	 *         that measurement), so the null is turned into the answer in SQL rather than in
 	 *         Java.
 	 */
-	BigDecimal pointsFor(long competitor) {
+	BigDecimal pointsFor(long competitor, int season) {
 		return db.sql("select coalesce(max(total), 0) from ("
 						+ " select sum(points) as total from result"
 						+ " where competitor_id = ? and extract(year from race_date) >= ?"
+						+ " and extract(year from race_date) < ?"
 						+ " group by extract(year from race_date)) each_season")
-				.params(competitor, SeasonClock.FIRST_SEASON)
+				.params(competitor, SeasonClock.FIRST_SEASON, season)
 				.query(BigDecimal.class)
 				.single();
 	}

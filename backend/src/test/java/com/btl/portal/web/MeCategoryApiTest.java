@@ -52,7 +52,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *     against.
  * </ul>
  *
- * <p><b>FIVE MEMBERS, AND THE ONE UNDER TEST IS NEVER THE FIRST BY KEY NOR THE ONLY ONE OF HIS
+ * <p><b>SIX MEMBERS, AND THE ONE UNDER TEST IS NEVER THE FIRST BY KEY NOR THE ONLY ONE OF HIS
  * KIND.</b> Each is here against a specific way a wrong answer would look right:
  *
  * <ul>
@@ -61,11 +61,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *     member any way other than off the session, answers {@code true} where the truth is
  *     {@code false}.
  * <li><b>{@link #HE_ASKS} has points in three years and his best single season is under the
- *     threshold while his TOTAL is over it.</b> 50 points in 2026, 7 in 2027 and 7 in 2028: a
- *     query sunming across seasons answers 64 and shuts the category, a query that forgot the
+ *     threshold while his TOTAL is over it.</b> 50 points in 2026, 7 in 2027 and 9 in 2028: a
+ *     query summing across seasons answers 66 and shuts the category, a query that forgot the
  *     league begins in 2027 answers 50 and shuts it, and only „the best single OFFICIAL
- *     season" answers 7 and leaves it open. Both of those wrong answers really happened - the
- *     summing one closed the category to thirty of thirty two members on 15.08.2026.
+ *     season" answers 9 and leaves it open. Both of those wrong answers really happened - the
+ *     summing one closed the category to thirty of thirty two members on 15.08.2026. His two
+ *     official seasons carry two different figures rather than the same one twice, so a case
+ *     asking which season the query read cannot be answered by coincidence.
  * <li><b>{@link #JUST_UNDER} and {@link #OVER_THE_LINE} sit either side of the threshold by a
  *     hundredth</b>, 11.99 and 12.00, so the comparison is measured at the boundary and in
  *     both directions rather than with a comfortable gap.
@@ -77,6 +79,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *     exactly as everybody else. Twenty nine of the thirty two members in the shipped data are
  *     freed of the fee, and the draft box this route replaces was drawn only for members who
  *     are not - so this is the case that would have been the whole portal.
+ * <li><b>{@link #STILL_RUNNING} is over the threshold in the season that has not ended</b>, 7.00
+ *     in 2027 and 13.00 in 2028: the season still running must never close on its own total, and
+ *     the SAME row must close the season after it once that season is behind him rather than
+ *     current. See {@link #aSeasonStillRunningNeverClosesItselfAndClosesTheNextOneOnceItIsBehind}.
  * </ul>
  *
  * <p>Genders and years of birth differ so that the derived codes differ: a case comparing one
@@ -114,6 +120,14 @@ class MeCategoryApiTest {
 
 	/** Pays nothing ever, and it makes no difference to anything here. */
 	private static final String FREED_OF_THE_FEE = "000045";
+
+	/**
+	 * Seven points in an official season already behind him, and thirteen - past the
+	 * threshold - in the one still running: open only if the running season's own total is
+	 * kept out of its own answer.
+	 * See {@link #aSeasonStillRunningNeverClosesItselfAndClosesTheNextOneOnceItIsBehind}.
+	 */
+	private static final String STILL_RUNNING = "000046";
 
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
@@ -180,12 +194,14 @@ class MeCategoryApiTest {
 		competitor(JUST_UNDER, "Treca", "Za Dlaku", "F", "2005-01-01", true, "payment");
 		competitor(OVER_THE_LINE, "Cetvrti", "Presao", "M", "1970-01-01", true, "payment");
 		competitor(FREED_OF_THE_FEE, "Peta", "Ne Placa", "F", "1995-01-01", false, "feeExempt");
+		competitor(STILL_RUNNING, "Sesti", "Jos Trci", "M", "1995-01-01", true, "payment");
 
 		account(FIRST_BY_KEY + "@primer.rs", "competitor", FIRST_BY_KEY);
 		account(HE_ASKS + "@primer.rs", "competitor", HE_ASKS);
 		account(JUST_UNDER + "@primer.rs", "competitor", JUST_UNDER);
 		account(OVER_THE_LINE + "@primer.rs", "competitor", OVER_THE_LINE);
 		account(FREED_OF_THE_FEE + "@primer.rs", "competitor", FREED_OF_THE_FEE);
+		account(STILL_RUNNING + "@primer.rs", "competitor", STILL_RUNNING);
 		account(MODERATOR_WHO_DOES_NOT_RACE, "moderator", null);
 
 		/* THREE YEARS, AND ONE OF THEM IS NOT A SEASON. A race in 2026 is what the portal
@@ -199,10 +215,17 @@ class MeCategoryApiTest {
 
 		aRunBy(HE_ASKS, "Trka pre lige", "2026-05-10", "50.00");
 		aRunBy(HE_ASKS, "Trka prve sezone", "2027-05-10", "7.00");
-		aRunBy(HE_ASKS, "Trka druge sezone", "2028-05-10", "7.00");
+		aRunBy(HE_ASKS, "Trka druge sezone", "2028-05-10", "9.00");
 
 		aRunBy(JUST_UNDER, "Trka prve sezone", "2027-05-10", "11.99");
 		aRunBy(OVER_THE_LINE, "Trka prve sezone", "2027-05-10", "12.00");
+
+		/* SEVEN IN THE SEASON BEHIND HIM, THIRTEEN IN THE ONE STILL RUNNING. Two different
+		   numbers in two different seasons and not the same figure twice, so a case asking
+		   which one the query read is answered rather than left guessing at a tie - see
+		   aSeasonStillRunningNeverClosesItselfAndClosesTheNextOneOnceItIsBehind. */
+		aRunBy(STILL_RUNNING, "Trka prve sezone", "2027-05-10", "7.00");
+		aRunBy(STILL_RUNNING, "Trka druge sezone", "2028-05-10", "13.00");
 	}
 
 	/**
@@ -264,17 +287,17 @@ class MeCategoryApiTest {
 	/**
 	 * THE BEST SINGLE OFFICIAL SEASON, WHICH IS NEITHER A TOTAL NOR ALL OF HISTORY.
 	 *
-	 * <p>{@link #HE_ASKS} has 50 points before the league, 7 in 2027 and 7 in 2028. Three
-	 * answers are possible and two of them are faults this portal has really had: 64 (summed
+	 * <p>{@link #HE_ASKS} has 50 points before the league, 7 in 2027 and 9 in 2028. Three
+	 * answers are possible and two of them are faults this portal has really had: 66 (summed
 	 * across seasons, which shut the category to thirty of thirty two members on 15.08.2026),
-	 * 50 (counting the imported history, the same fault by another road) and 7. Only the third
+	 * 50 (counting the imported history, the same fault by another road) and 9. Only the third
 	 * leaves the beginners' category open, so one boolean tells all three apart.
 	 */
 	@Test
 	void theRightIsReadOffTheBestSingleOfficialSeasonAndNotOffASumNorOffHistory() throws Exception {
 		assertThat(answerFor(HE_ASKS).path("firstSeasonAllowed")
 				.asBoolean())
-				.as("his 7 points in a season were read as 64 across seasons, or as the 50 he "
+				.as("his 9 points in a season were read as 66 across seasons, or as the 50 he "
 						+ "took before the league existed")
 				.isTrue();
 	}
@@ -412,6 +435,11 @@ class MeCategoryApiTest {
 	 * {@code open: false} - and this is the case that tells {@code seasonBeingPaidFor} from
 	 * {@code transfersTakeEffect}, which answers 2029 on this day too and would leave the choice
 	 * open for six more months.
+	 *
+	 * <p><b>And his right is asked here too, off a fixture that cannot answer by coincidence.</b>
+	 * {@link #HE_ASKS} carries 7.00 in 2027 and 9.00 in 2028 - two different figures rather than
+	 * the same one twice - so this assertion is answered by the season the query actually read
+	 * rather than by two seasons that happen to agree.
 	 */
 	@Test
 	void outsideTheWindowTheSeasonBeingChosenIsTheOneBeingRunAndItsDeadlineHasGone()
@@ -429,6 +457,66 @@ class MeCategoryApiTest {
 				.as("the deadline for 2028 passed on 1 January 2028 and the member was still "
 						+ "being offered the choice in June")
 				.isFalse();
+		assertThat(inJune.path("firstSeasonAllowed").asBoolean())
+				.as("neither of his two seasons is over the threshold, whichever the query read")
+				.isTrue();
+	}
+
+	/**
+	 * A SEASON STILL RUNNING NEVER CLOSES ITSELF, AND CLOSES THE ONE AFTER IT ONCE IT IS BEHIND.
+	 *
+	 * <p><b>{@link #STILL_RUNNING} has 7.00 points in 2027 and 13.00 in 2028</b> - under the
+	 * threshold in the season behind him, over it in the season still running. The two moments
+	 * below ask about the SAME two rows and get opposite answers, because what changes between
+	 * them is not the data but which season {@link SeasonClock#seasonBeingPaidFor} names.
+	 *
+	 * <p><b>Four recorded decisions say a season never closes on its own still-growing total,
+	 * and this case is all four at once</b> (PDL P7):
+	 *
+	 * <ul>
+	 * <li>owner, 11.08.2026: „ukoliko taj clan nema ni jednu raniju sezonu u kojoj je imao 12
+	 *     ili vise bodova" - only a RANIJA (earlier) season counts, and 2028 is not earlier than
+	 *     itself in June 2028;
+	 * <li>the same decision, in its own next sentence: a season closes the category only once
+	 *     it is „zavrsena" (finished) with 12 or more, and a season still being run has not
+	 *     finished;
+	 * <li>P7 on the threshold moving mid-season: „Prag od 12 bodova ne pomera kategoriju usred
+	 *     sezone... cela sezona je u kategoriji koja je dodeljena na njenom pocetku" - 2028's own
+	 *     category was decided in October 2027, off 2027 alone, before a single point of 2028
+	 *     existed to move it;
+	 * <li>owner, 26.09.2026: „Ako odobrenje prevede clanov zbir tekuce sezone na 12 ili vise,
+	 *     pocetnicka mu se za NAREDNU sezonu zatvara istog trenutka" - the thirteen belongs to
+	 *     2029's answer, not 2028's, and it closes 2029 the moment the row exists rather than
+	 *     waiting for 2028 to end.
+	 * </ul>
+	 *
+	 * <p><b>Measured against the fault as it really shipped:</b> a query with no upper bound
+	 * summed 2028 against its own running total and answered {@code false} in June, months
+	 * before the season it was supposedly finished with had ended.
+	 */
+	@Test
+	void aSeasonStillRunningNeverClosesItselfAndClosesTheNextOneOnceItIsBehind() throws Exception {
+		JsonNode fromOctober = answerFor(STILL_RUNNING);
+
+		assertThat(fromOctober.path("season").asInt()).isEqualTo(THE_SEASON_BEING_CHOSEN);
+		assertThat(fromOctober.path("firstSeasonAllowed").asBoolean())
+				.as("by October 2028 his season is behind him and its 13.00 must close 2029")
+				.isFalse();
+		assertThat(fromOctober.path("category").asString())
+				.as("he is 34 in 2029 and the category his 2028 total closed is his age band")
+				.isEqualTo("M25-39");
+
+		clock.moveTo(Instant.parse("2028-06-15T12:00:00Z"));
+		JsonNode inJune = answerFor(STILL_RUNNING);
+
+		assertThat(inJune.path("season").asInt()).isEqualTo(2028);
+		assertThat(inJune.path("firstSeasonAllowed").asBoolean())
+				.as("his 13.00 is 2028's own still-growing total and must not close 2028 on him;"
+						+ " only his 7.00 from 2027 counts toward it")
+				.isTrue();
+		assertThat(inJune.path("category").asString())
+				.as("open in June, closed by October: the same wish, two different rights")
+				.isEqualTo("M R");
 	}
 
 	/**

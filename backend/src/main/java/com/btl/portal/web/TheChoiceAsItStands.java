@@ -73,7 +73,7 @@ class TheChoiceAsItStands {
 		int season = SeasonClock.seasonBeingPaidFor(now);
 
 		Member whoHeIs = memberRow(me);
-		BigDecimal best = bestOfficialSeason.pointsFor(me);
+		BigDecimal best = bestOfficialSeason.pointsFor(me, season);
 		boolean allowed = Category.firstSeasonAllowed(best);
 
 		return new MeCategoryApi.Choice(season, whoHeIs.firstSeason(), allowed,
