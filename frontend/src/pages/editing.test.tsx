@@ -11,12 +11,28 @@ import { SLOW } from '../test/slow'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 
+/**
+ * THE CELL IS MEASURED THROUGH THE SCREEN OF TEAMS SINCE B107, AND THIS IS THE SECOND TIME
+ * IT HAS MOVED.
+ *
+ * <p>It was the events screen until 11.08.2026 and the members screen until 26.09.2026. Both
+ * times the reason was the same shape: the screen stopped having a cell, and the cases had to
+ * follow it rather than be deleted with it. The members screen lost its town cell because
+ * there is no `PUT /api/competitors/{memberNumber}` for it to write to (see the note on
+ * `admin/AdminMembers.tsx`), so the cell was writing a correction nobody could keep.
+ *
+ * <p><b>`admin/AdminTeams.tsx:338` is where it lives now</b>, and it is the same field under
+ * the same label - `city`, „Mesto" - so nothing about these three cases changes except the
+ * address they open. The first move taught this file what happens otherwise, and that note
+ * is still below on the Enter case: a screen losing a caller quietly loses a guard, and
+ * Enter went untested for a month and a half that way.
+ */
 describe('changing data in administration', () => {
   it('changes a value in the row it sits in, and keeps it', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/clanovi', 'superadmin')
+    renderAt('/sr/administracija/timovi', 'superadmin')
 
-    const table = await screen.findByRole('table', { name: 'Članovi' })
+    const table = await screen.findByRole('table', { name: 'Timovi' })
     const row = at(within(table).getAllByRole('row'), 1)
     // Named, because the row also carries the control that opens the whole
     // record on a form.
@@ -39,9 +55,9 @@ describe('changing data in administration', () => {
        one field). Enter went untested with it, which is how a screen losing a
        caller quietly loses a guard. */
     const user = setupUser()
-    renderAt('/sr/administracija/clanovi', 'superadmin')
+    renderAt('/sr/administracija/timovi', 'superadmin')
 
-    const table = await screen.findByRole('table', { name: 'Članovi' })
+    const table = await screen.findByRole('table', { name: 'Timovi' })
     const row = at(within(table).getAllByRole('row'), 1)
 
     await user.click(within(row).getByRole('button', { name: /^Mesto:/ }))
@@ -54,9 +70,9 @@ describe('changing data in administration', () => {
 
   it('lets an edit be abandoned', async () => {
     const user = setupUser()
-    renderAt('/sr/administracija/clanovi', 'superadmin')
+    renderAt('/sr/administracija/timovi', 'superadmin')
 
-    const table = await screen.findByRole('table', { name: 'Članovi' })
+    const table = await screen.findByRole('table', { name: 'Timovi' })
     const row = at(within(table).getAllByRole('row'), 1)
     const before = must(
       within(row).getByRole('button', { name: /^Mesto:/ }).textContent,
