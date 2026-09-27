@@ -1031,6 +1031,7 @@
     "firstSeasonBand": "In the rookie category",
     "firstSeasonOpen": "The rookie category is still open to you, because you have not finished any official season with {points} points or more.",
     "firstSeasonClosed": "The rookie category is closed to you, because you finished an official season with {points} points or more. Leaving it cannot be undone.",
+    "choiceRefused": "Your choice was not saved, because the deadline passed at 10.00 on 1 January. Your category stays as it was.",
     "renew": "The payment details are below. As soon as the payment arrives, the moderator confirms it and your membership renews.",
     "transferWindow": "Transfer window",
     "noTeam": "You are not in any team at the moment.",

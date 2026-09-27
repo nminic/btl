@@ -5,8 +5,7 @@ import { useSession } from '../../session/useSession'
 import { CopyField } from '../../components/CopyField'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
-import { bestOfficialSeason } from '../../data/derive'
-import { firstSeasonAllowed, FIRST_SEASON_POINTS } from '../../data/categories'
+import { FIRST_SEASON_POINTS } from '../../data/categories'
 import { inYearlyWindow, seasonRunning } from '../../data/season'
 import { useResults } from '../../data/useResource'
 import {
@@ -33,6 +32,7 @@ import { combineResources, usePricing, useTeams } from '../../data/useResource'
 import { formatNumber, money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useMemberScreen } from './memberScreen'
+import { useMyCategory } from './useMyCategory'
 import './Member.css'
 
 /* The account, the name and the seat are the association's own and live with the
@@ -177,6 +177,23 @@ export function Membership() {
      reads the same clock as everything else (src/clock). */
   const today = useToday()
 
+  /* THE CATEGORY BOX READS THE SERVER AND NOTHING ELSE, since 27.09.2026.
+   *
+     It is not one of the three resources above and must not be: those are public
+     collections with a mock behind them, and this is one member's own answer on
+     `/api/me/category`. It is also why this box no longer waits on anything the three
+     carry - it draws as soon as its own read comes back, or not at all.
+   *
+     WHAT MOVED TO THE SERVER AND WHY EACH HALF HAD TO. `firstSeasonAllowed` was worked
+     out here off `bestOfficialSeason(results, memberNumber)`, and PDL P7 (owner,
+     11.08.2026) says whose question it is: „Ko sme da bude u pocetnickoj kategoriji
+     proverava portal, ne clan." And `open` could never have been answered here at all:
+     the deadline is 10:00 on 1 January (`SeasonClock.categoryMayBeChosenFor`) and this
+     portal's clock reads whole days with no notion of an hour (`data/season.ts`). Drawn
+     under `inYearlyWindow` the box vanished at midnight on 1 January and took the last
+     ten hours of the member's own deadline with it. */
+  const { standing, choosing, refusal, choose } = useMyCategory()
+
   /* The referral link, built here rather than where it is drawn: it needs only the
      locale and the session's own code, neither of which waits on the resources below,
      and the copy button needs the exact same string the paragraph prints. Built twice
@@ -252,18 +269,14 @@ export function Membership() {
 
   return (
     <Resource state={state}>
-      {([results, teams, prices]) => {
-        /* What the beginners' category is decided by, and it is not what this
-           member has taken altogether.
-
-           It was: the sum of every result they have, which in this portal means
-           the history imported from 2010 to 2026. Measured against the data,
-           that closed the category to thirty of the thirty two members over
-           races run before the league existed, while the owner's decision
-           (11.08.2026) closes it to nobody until an official season has been
-           finished with twelve points. Both halves of the rule live in
-           `bestOfficialSeason`. */
-        const points = bestOfficialSeason(results, memberNumber)
+      {/* THE FIRST RESOURCE IS FETCHED AND NO LONGER READ, and that is a boundary rather
+          than an oversight. The list of results was here for one line - the sum that
+          decided the beginners' category - and that question is the server's since
+          27.09.2026 (see `useMyCategory` above). Dropping the resource itself needs a
+          two-resource combiner and `data/useResource.ts` has only three and four
+          (`combineResources`, `combineFour`), so it would be a change to a module every
+          screen reads. Left as a hole here, named, and worth its own increment. */}
+      {([, teams, prices]) => {
         /* The season the renewal is for, which is never the one already
            running: in August 2027 the renewal that opens in October is for
            2028, and the heading said 2027. */
@@ -487,6 +500,107 @@ export function Membership() {
               )}
             </section>
 
+            {/* THE CHOICE OF CATEGORY IS A SECTION OF ITS OWN, AND NOT PART OF RENEWING.
+                PDL §12, owner 27.09.2026: „Clanove radnje na strani clanarine su tacno dve:
+                uplata (izvan portala) i izbor kategorije." Two acts, so two sections - and
+                nested inside the renewal's own conditions it was gated on both of them by
+                accident:
+
+                - `feeExempt` hid it from a member freed of the fee, which is TWENTY NINE of
+                  the thirty two members in the shipped data. The owner's sentence of
+                  26.09.2026 names payment and dismisses it in the same breath: „Clan je nov,
+                  uplatio je clanarinu (ili nije), ali moze da bira u koju ce kategoriju."
+                - `windowOpen` is `inYearlyWindow`, which shuts at the end of 31 December,
+                  while the member's own deadline is 10:00 on 1 January. Ten hours of it were
+                  unreachable, on the one morning of the year every input arrives at once.
+
+                Now it is drawn exactly when the server says there is a choice to draw, which
+                is the only side that can answer either question. */}
+            {standing !== null && (
+              <section className="member__panel" aria-labelledby="membership-category">
+                <h2 className="profile__section" id="membership-category">
+                  {t('membership.chooseCategory', { season: standing.season })}
+                </h2>
+
+                {/* THE HEADING IS THE GROUP'S NAME, rather than a `<legend>` repeating it.
+                    Written both ways first: a section labelled by its heading AND a fieldset
+                    with a legend of the same words made a screen reader say the question
+                    twice, once for the region and once on entering the group. Pointed at the
+                    heading the group has a name and the words exist once. */}
+                <fieldset className="renewal" aria-labelledby="membership-category">
+
+                  {/* CHECKED OFF THE ANSWER AND NOT `defaultChecked`, which is the whole of
+                      what wiring these changed. PDL §13, owner 27.09.2026: the age category
+                      „svakako treba da bude automatski izabrana od pocetka, a korisnik uvek
+                      moze da prebaci na ovu drugu opciju" - so the default is the age band
+                      and it is the SERVER's default, written down in the column at
+                      registration. Left on `defaultChecked` the box opened on the age band
+                      every visit, and a member who chose the beginners' category in October
+                      came back in November to find his own screen disagreeing with the
+                      portal. */}
+                  <div className="field field--checkbox">
+                    <div className="field__confirm">
+                      <input
+                        className="field__control"
+                        type="radio"
+                        id="cat-age"
+                        name="category"
+                        checked={!standing.firstSeason}
+                        disabled={!standing.open || choosing}
+                        onChange={() => void choose(false)}
+                      />
+                      <label className="field__label" htmlFor="cat-age">
+                        {t('membership.ageBand')}
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* DISABLED FOR TWO DIFFERENT REASONS AND BOTH COME FROM THE SERVER: he has
+                      left the beginners' category for good (PDL P7, „izlazak je nepovratan"),
+                      or his deadline has passed. Kept as one condition because a disabled
+                      control says only „not now" either way, and the sentence underneath is
+                      what says which. */}
+                  <div className="field field--checkbox">
+                    <div className="field__confirm">
+                      <input
+                        className="field__control"
+                        type="radio"
+                        id="cat-first"
+                        name="category"
+                        checked={standing.firstSeason}
+                        disabled={!standing.firstSeasonAllowed || !standing.open || choosing}
+                        onChange={() => void choose(true)}
+                      />
+                      <label className="field__label" htmlFor="cat-first">
+                        {t('membership.firstSeasonBand')}
+                      </label>
+                    </div>
+                  </div>
+
+                  <p className="member__note">
+                    {standing.firstSeasonAllowed
+                      ? t('membership.firstSeasonOpen', { points: FIRST_SEASON_POINTS })
+                      : t('membership.firstSeasonClosed', { points: FIRST_SEASON_POINTS })}
+                  </p>
+
+                  {/* WHAT THE SERVER REFUSED, SAID OUT LOUD. The one refusal this route makes
+                      that a reader can meet is `theChoiceIsShut`: his deadline passed between
+                      the box being drawn and his pressing it. Swallowed, the radio would move
+                      back on its own and nothing would say why, which PDL.md:1659 calls worse
+                      than no control at all.
+
+                      `role="status"` rather than an alert: it answers something he did, and
+                      the focus stays where he put it (WCAG 2.2 SC 4.1.3, the same shape
+                      `PersonalData.tsx` uses for its own saved sentence). */}
+                  {refusal !== null && (
+                    <p className="member__note" role="status">
+                      {t('membership.choiceRefused')}
+                    </p>
+                  )}
+                </fieldset>
+              </section>
+            )}
+
             <section className="member__panel" aria-labelledby="membership-renewal">
               <h2 className="profile__section" id="membership-renewal">
                 {t('membership.renewal', { season: nextSeason })}
@@ -504,66 +618,6 @@ export function Membership() {
               ) : windowOpen ? (
                 <>
                   <p className="member__note">{t('membership.renewalOpen')}</p>
-
-                  {/* THESE TWO RADIOS ARE A DRAFT, NOT DECORATION, and this comment exists
-                      because they were almost read as the opposite on 26.09.2026 - counted
-                      among "controls that do nothing" alongside the Renew button below,
-                      since neither is wired to a route today.
-
-                      They are not the same case. PDL.md §9 ("Izbor kategorije je clanov unos
-                      do 1.1. u 10:00, a portal ga primenjuje na zamrzavanju"), owner,
-                      26.09.2026: „Clan moze da stiklira... sta god hoce sve do zamrzavanja
-                      sezone 1.1. u 10 ujutru. Dotle zavisno od toga sta izabere, on se
-                      prikazuje u adekvatnim porecima za narednu sezonu." And, sharper than
-                      first drafted: „racunaj da clan bira ono sto ZELI, ali ga superadmin /
-                      moderator verifikacijom necega moze gurnuti u starosnu kategoriju ako
-                      odobri rezultat kojim prelaz 12 bodova" - what is kept is the WISH, not
-                      the category, because the category is derived from it and a right the
-                      server checks.
-
-                      So a route for this choice is coming, as its own increment right after
-                      this one. Until it lands, these stay exactly as they render today:
-                      unwired, but blueprint rather than dead weight. Do not remove them on
-                      the strength of the Renew button's fate below - ask first. */}
-                  <fieldset className="renewal">
-                    <legend>{t('membership.chooseCategory', { season: nextSeason })}</legend>
-
-                    <div className="field field--checkbox">
-                      <div className="field__confirm">
-                        <input
-                          className="field__control"
-                          type="radio"
-                          id="cat-age"
-                          name="category"
-                          defaultChecked
-                        />
-                        <label className="field__label" htmlFor="cat-age">
-                          {t('membership.ageBand')}
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="field field--checkbox">
-                      <div className="field__confirm">
-                        <input
-                          className="field__control"
-                          type="radio"
-                          id="cat-first"
-                          name="category"
-                          disabled={!firstSeasonAllowed(points)}
-                        />
-                        <label className="field__label" htmlFor="cat-first">
-                          {t('membership.firstSeasonBand')}
-                        </label>
-                      </div>
-                    </div>
-
-                    <p className="member__note">
-                      {firstSeasonAllowed(points)
-                        ? t('membership.firstSeasonOpen', { points: FIRST_SEASON_POINTS })
-                        : t('membership.firstSeasonClosed', { points: FIRST_SEASON_POINTS })}
-                    </p>
-                  </fieldset>
 
                   {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026. The button had
                       no `onClick`, no enclosing `<form>` and no route to reach: renewing has
