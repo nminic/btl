@@ -59,6 +59,36 @@ export const aCompetitor = {
   teamSince: 2014,
   profileHidden: false,
   birthdayShown: 'none' as const,
+  /* The portrait and its square, answered since 26.09.2026 (PDL P28f) and the same
+     arrangement a team's mark is under above: both halves come off one JOINED row of
+     `photo`, every column of which is NOT NULL (V8), so they go out together or neither
+     does. The address is the DIGEST of the content and never `photo.id`, which is
+     countable (`PhotoApi`) - a different digest from the team's, because no two roles on
+     this file may share one value. */
+  photo: '/api/photos/3c9e5f41',
+  crop: { x: 0.42, y: 0.18, size: 0.64 },
+}
+
+/**
+ * And a member with no portrait, which is the OTHER state of those two fields and has to be
+ * written down beside the row above rather than inferred from it.
+ *
+ * **It is two facts wearing one shape and that is the decision**: a member who has sent
+ * nothing, and a member who hides his profile read by somebody with no session. Owner,
+ * 26.09.2026 (PDL P28f), requires „Oba slucaja dobijaju isti ishod", because an answer that
+ * told them apart would name him as one of the members who hide. So there is no third sample
+ * to write: the portal cannot see a difference and neither can this.
+ *
+ * The same shape as `aTeamWithNoMark`, and for the same reason it is a named row rather than
+ * a `Partial` written at a call site: the two nothings travel together.
+ */
+export const aCompetitorWithNoPortrait = {
+  ...aCompetitor,
+  memberNumber: '000009',
+  firstName: 'Strahinja',
+  lastName: 'Vukićević',
+  photo: null,
+  crop: null,
 }
 
 /**
@@ -165,6 +195,7 @@ export const aLeague = {
 export const readAsVisitorsMember: Competitor = aCompetitor
 export const readAsMyOwnRow: Competitor = myOwnRow
 export const readAsAdministrationsRow: Competitor = aCompetitorToTheAdministration
+export const readAsMemberWithNoPortrait: Competitor = aCompetitorWithNoPortrait
 /**
  * ONE ITEM WAITING FOR A MODERATOR, as `/api/verification` answers it since
  * 22.09.2026.

@@ -452,6 +452,70 @@ class TeamWriteApiTest {
 				.query(Boolean.class).single();
 	}
 
+	/**
+	 * AN OPEN INVITATION A TEAM HAS SENT, AND THE MESSAGE THAT CARRIES IT INTO AN INBOX.
+	 *
+	 * <p>Two rows and not one, because what the cases about them measure is exactly the
+	 * difference: {@code team_invitation_team_fk} and {@code message_team_invitation_fk} are
+	 * both {@code on delete cascade} (V12 and V13), so a team going reaches {@code message}
+	 * down a chain, and the owner decided on 06.09.2026 that the message is not the portal's
+	 * to delete. The season is {@link #A_SEASON_STILL_TO_COME} rather than a literal because
+	 * nothing here reads it; it only has to be a season the league has
+	 * ({@code team_invitation_season_not_before_the_league}).
+	 *
+	 * <p><b>Both identities are handed back and the assertions compare against the one from the
+	 * INSERT</b>, never against a value read back out of the row being asked about: „the
+	 * pointer still names this invitation" and „the pointer names whatever it names" are two
+	 * different claims and only the first one measures anything.
+	 *
+	 * @param teamSlug     the team doing the asking
+	 * @param memberNumber the member asked, who must be somebody the case does NOT delete:
+	 *                     {@code message_to_fk} is {@code on delete cascade} too, so an
+	 *                     invitation to the member being removed would have its message taken
+	 *                     by HIM and the case would measure nothing
+	 */
+	private AnInvitationSent anInvitationInTheInboxOf(String teamSlug, String memberNumber) {
+		long invitation = db.sql("insert into team_invitation (team_id, competitor_id, season)"
+						+ " values ((select id from team where slug = ?),"
+						+ " (select id from competitor where member_number = ?), ?) returning id")
+				.params(teamSlug, memberNumber, A_SEASON_STILL_TO_COME)
+				.query(Long.class)
+				.single();
+
+		long message = db.sql("insert into message (to_id, from_id, from_name, subject, body,"
+						+ " team_invitation_id)"
+						+ " values ((select id from competitor where member_number = ?), null,"
+						+ " 'Balkanska trkacka liga', 'Poziv u tim', 'Tekst poziva.', ?)"
+						+ " returning id")
+				.params(memberNumber, invitation)
+				.query(Long.class)
+				.single();
+
+		return new AnInvitationSent(invitation, message);
+	}
+
+	/** The two rows {@link #anInvitationInTheInboxOf} writes, named so a case can read either. */
+	private record AnInvitationSent(long invitation, long message) {
+	}
+
+	/** Whether the invitation row itself is still there, which the team's going takes. */
+	private boolean invitationStands(long invitation) {
+		return db.sql("select exists(select 1 from team_invitation where id = ?)").param(invitation)
+				.query(Boolean.class).single();
+	}
+
+	/** Whether that message is still in the inbox at all, which is the owner's sentence. */
+	private boolean messageStands(long message) {
+		return db.sql("select exists(select 1 from message where id = ?)").param(message)
+				.query(Boolean.class).single();
+	}
+
+	/** And whether it is still a question, which is what the pointer means (V13). */
+	private Long pointerOf(long message) {
+		return db.sql("select team_invitation_id from message where id = ?").param(message)
+				.query(Long.class).optional().orElse(null);
+	}
+
 	/** An open membership, which is what an approval writes ({@code Membership.open}). */
 	private void inATeam(String memberNumber, String teamSlug, int seasonFrom) {
 		db.sql("insert into team_membership (competitor_id, team_id, season_from)"
@@ -1355,6 +1419,94 @@ class TeamWriteApiTest {
 				.as("the team he was the last of is still on the list, or a team that had"
 						+ " nothing to do with him went instead")
 				.containsExactlyInAnyOrder(TAKEN_ADDRESS, THE_OTHER_TEAM);
+	}
+
+	/**
+	 * AND THE MESSAGE THAT TEAM HAD PUT IN SOMEBODY ELSE'S INBOX STAYS THERE, WHICH IS AN
+	 * OWNER'S DECISION AND WAS A HOLE DOWN ALL THREE ROADS AT ONCE.
+	 *
+	 * <p>PDL, 06.09.2026: „**Poruka sa pozivom ostaje u sandučetu, sa razlogom umesto
+	 * dugmadi.** Ne briše se: brisanje poruke iz tuđeg sandučeta je brisanje istorije, a
+	 * pitanje „šta se desilo sa onim pozivom" mora da ima odgovor." A chain of two cascades
+	 * took it instead - V12's {@code team_invitation_team_fk} and V13's
+	 * {@code message_team_invitation_fk} - and {@link ATeamGoesWithItsLastMember} now empties
+	 * the pointer first, which is {@code TeamJoiningWriteApi.theInvitationIsOver}'s shape.
+	 *
+	 * <p><b>BOTH HALVES OF WHAT „STAYS" MEANS, because either on its own would pass the wrong
+	 * code.</b> The row is still in his inbox AND it is no longer a question: a statement that
+	 * deleted the invitation without emptying the pointer takes the row, and one that left the
+	 * pointer alone would leave a button pointing at a team that is not there, which is what
+	 * V13's own note refuses.
+	 *
+	 * <p><b>The man asked is {@link #ME} and not the man leaving</b>, which is the axis this
+	 * case cannot do without: {@code message_to_fk} is {@code on delete cascade} as well, so an
+	 * invitation to somebody the request removes would lose its message to HIM and the
+	 * assertion would be about the wrong cascade.
+	 *
+	 * <p><b>And a second team is holding a second invitation the whole time</b>
+	 * ({@link #THE_OTHER_TEAM}, untouched by this request), so „his message survived" is told
+	 * from „nothing in the table was touched", and a statement emptying every pointer there is
+	 * fails on it.
+	 */
+	@Test
+	void theInvitationThatTeamHadSentStaysInTheInboxWhenTheTeamGoes() throws Exception {
+		AnInvitationSent his = anInvitationInTheInboxOf(HIS_TEAM, ME);
+		AnInvitationSent somebodyElses = anInvitationInTheInboxOf(THE_OTHER_TEAM, FIRST_WRITTEN);
+
+		assertThat(leaveAs(HAS_A_TEAM, HIS_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(teamsThatExist()).as("the team did not go, so this case measures nothing")
+				.containsExactlyInAnyOrder(TAKEN_ADDRESS, THE_OTHER_TEAM);
+
+		assertThat(messageStands(his.message()))
+				.as("the invited member's message was deleted out of his inbox with the team")
+				.isTrue();
+		assertThat(pointerOf(his.message()))
+				.as("the message still offers a button about an invitation into a team that is"
+						+ " gone")
+				.isNull();
+		assertThat(invitationStands(his.invitation()))
+				.as("the invitation row outlived the team that sent it")
+				.isFalse();
+
+		assertThat(messageStands(somebodyElses.message()))
+				.as("a message about a team this request never touched went too")
+				.isTrue();
+		assertThat(pointerOf(somebodyElses.message()))
+				.as("a live invitation of a standing team lost its buttons")
+				.isEqualTo(somebodyElses.invitation());
+	}
+
+	/**
+	 * AND A TEAM THAT STAYS KEEPS ITS QUESTION A QUESTION, WHICH IS THE OTHER SIDE OF THE SAME
+	 * CONDITION AND THE ONE AN EMPTYING WITHOUT IT WOULD BREAK.
+	 *
+	 * <p>{@code goIfEmpty} is asked about this team either way - the route calls it after every
+	 * leave - and the team is spared because somebody is still in it. The emptying must be
+	 * spared with it: run unconditionally, it would take the buttons off an invitation of a
+	 * team that is standing, every time anybody left it. That is why the condition is one
+	 * string read by both statements ({@code ATeamGoesWithItsLastMember.AND_NOBODY_IS_LEFT})
+	 * rather than written out beside one of them.
+	 *
+	 * <p><b>The team-mate is written by this case rather than put in the fixture</b>, the same
+	 * reason {@link #alsoInTheTeam} gives for the two cases that already use him.
+	 */
+	@Test
+	void aTeamKeptByAnotherMemberKeepsItsInvitationAQuestion() throws Exception {
+		alsoInTheTeam(A_TEAM_MATE, HIS_TEAM, A_SEASON_STILL_TO_COME);
+
+		AnInvitationSent open = anInvitationInTheInboxOf(HIS_TEAM, ME);
+
+		assertThat(leaveAs(HAS_A_TEAM, HIS_TEAM).getStatus()).isEqualTo(204);
+
+		assertThat(teamsThatExist()).as("the team went, so there is no standing team to measure")
+				.containsExactlyInAnyOrder(TAKEN_ADDRESS, HIS_TEAM, THE_OTHER_TEAM);
+
+		assertThat(messageStands(open.message())).isTrue();
+		assertThat(pointerOf(open.message()))
+				.as("a standing team's open invitation stopped being a question because"
+						+ " somebody else left it")
+				.isEqualTo(open.invitation());
 	}
 
 	/**
@@ -2298,6 +2450,48 @@ class TeamWriteApiTest {
 		assertThat(Files.exists(file))
 				.as("the deleted team's logo file survived the team it belonged to")
 				.isFalse();
+	}
+
+	/**
+	 * AND THE MESSAGE IT HAD PUT IN SOMEBODY'S INBOX STAYS, THROUGH THE THIRD ROAD AND THE ONE
+	 * WHERE NOBODY'S MEMBERSHIP MOVES AT ALL.
+	 *
+	 * <p>The owner's sentence of 06.09.2026 is quoted on
+	 * {@link #theInvitationThatTeamHadSentStaysInTheInboxWhenTheTeamGoes}, which measures the
+	 * same thing down the road a member empties a team by. This is the road the administration
+	 * presses on, and it is the branch where {@code AND_NOBODY_IS_LEFT} is NOT part of either
+	 * statement - the team still has three members when it goes - so the two cases exercise the
+	 * emptying with the condition and without it.
+	 *
+	 * <p><b>{@link #ME} is asked and he is in no team</b>, so nothing about him is removed by
+	 * this request and his inbox is not a cascade of his own.
+	 */
+	@Test
+	void theInvitationItHadSentStaysInTheInboxWhenTheTeamIsDeletedOnPurpose() throws Exception {
+		aTeamWithTwoMembersAndEverythingHangingOffIt();
+
+		AnInvitationSent asked = anInvitationInTheInboxOf(A_TEAM_WITH_TWO, ME);
+		AnInvitationSent elsewhere = anInvitationInTheInboxOf(THE_OTHER_TEAM, FIRST_WRITTEN);
+
+		assertThat(deleteTheTeamAs(MODERATOR_OVER_TEAMS, teamId(A_TEAM_WITH_TWO)).getStatus())
+				.isEqualTo(204);
+
+		assertThat(messageStands(asked.message()))
+				.as("the invited member's message was deleted out of his inbox with the team")
+				.isTrue();
+		assertThat(pointerOf(asked.message()))
+				.as("the message still offers a button about a team that is gone")
+				.isNull();
+		assertThat(invitationStands(asked.invitation()))
+				.as("the invitation row outlived the team that sent it")
+				.isFalse();
+
+		assertThat(messageStands(elsewhere.message()))
+				.as("a message about a team this request never touched went too")
+				.isTrue();
+		assertThat(pointerOf(elsewhere.message()))
+				.as("a live invitation of a standing team lost its buttons")
+				.isEqualTo(elsewhere.invitation());
 	}
 
 	/**

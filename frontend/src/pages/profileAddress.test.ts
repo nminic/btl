@@ -25,6 +25,8 @@ const someone = (over: Partial<Competitor> = {}): Competitor => ({
   teamSince: null,
   profileHidden: false,
   birthdayShown: 'none',
+  photo: null,
+  crop: null,
   bio: '',
   ...over,
 })

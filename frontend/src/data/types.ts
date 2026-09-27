@@ -276,14 +276,70 @@ export type Competitor = {
    */
   teamSince: number | null
   /**
-   * The racing biography, as published.
+   * The racing biography, as published, or null for a member who hides their profile when
+   * the reader has no session.
    *
    * Written by the member, and approved as written or refused with a reason and
    * handed back (PDL P11, P22, 06.08.2026), so what is here is what the member
    * wrote. Empty for most of them, which is the state the profile has to look
-   * right in.
+   * right in - and a DIFFERENT state from null, because the column itself is never empty
+   * on the server: hiding is the only reason this answers null (PDL, 06.09.2026 names the
+   * biography beside the photo among what hiding hides; CompetitorApi's own note says why
+   * it is a case rather than a fifth state to draw).
+   *
+   * Null and not the empty string, the same reasoning `photo` and `logo` already carry on
+   * this file: the two must not collide, or a member who has written nothing would read as
+   * a member who is hiding. `profile/visible.ts`'s `reachable` is the one place that decides
+   * whether a reader may reach a profile at all, by the identical rule, so the only screen
+   * that reads this field (`CompetitorProfile.tsx`) never actually sees it null - which is a
+   * property of that screen's own guard, not of this type, so this stays honest about every
+   * OTHER reader of the same list.
    */
-  bio: string
+  bio: string | null
+  /**
+   * Where this member's approved portrait is asked for, or null for a member who has none.
+   *
+   * **The whole address as the answer gives it, never a name to build one out of.** It is
+   * `/api/photos/<digest>` on the server and `/mock/...` out of the seeded file, so the two
+   * prefixes differ and nothing on the portal may compose either: `CompetitorApi` builds it
+   * from `A_PICTURE_IS_ASKED_FOR_AT` plus the digest of the CONTENT, deliberately not
+   * `photo.id`, because an identity is countable and a visitor walking 1, 2, 3 would learn
+   * how many pictures the portal holds (`PhotoApi`). A screen that assembled the address
+   * would be a second home for that decision, and the one of the two that knows least.
+   *
+   * **Null ALSO for a member who hides his profile from a reader with no session, and that
+   * collision is the decision rather than a looseness.** Owner, 26.09.2026 (PDL P28f): the
+   * digest „se zadrzava od neprijavljenog", and `PhotoApi` refuses the same portrait to the
+   * same caller, because the digest IS the whole permission - it asked nobody who they
+   * were. PDL requires that „Oba slucaja dobijaju isti ishod": told apart, the absence
+   * would say „this member has a picture and I am not showing it to you", which names him
+   * as one of the members who hide. So `photo` and `crop` carry the same shape as `bio`
+   * above, for the same reason and by the same sentence.
+   *
+   * **Who that is measured against is the ACCOUNT and not the membership** (PDL, 27.09.2026,
+   * point 17), and the hiding runs one way only: toward a reader with no session. Owner, the
+   * same day: „Prema clanu se ne krije nista." A signed in member sees every other member's
+   * portrait whatever either of them chose.
+   *
+   * Null and never the empty path, the same reasoning `Team.logo` carries below: a member
+   * who has none is not a member whose portrait is the empty address.
+   */
+  photo: string | null
+  /**
+   * Which square of that portrait the circle shows (components/crop.ts).
+   *
+   * The other half of `photo` and never answered without it: `CompetitorApi` reads both off
+   * one JOINED row of `photo`, every column of which is NOT NULL (V8), so the two „go out
+   * together or neither does".
+   *
+   * Typed `Crop | null` rather than `Crop` for the reason `Team.crop` writes out at length:
+   * a non-null type here would claim a square for a member who has no picture to cut.
+   * Nothing breaks at the place that reads it either way, because `cropIn` has answered
+   * `WHOLE` for a record with no square since the day a missing key took a whole table into
+   * the error boundary - but the type is a sentence about the answer, and the answer has
+   * nothing here for most members.
+   */
+  crop: Crop | null
 }
 
 /* ~~A race has no name of its own (owner, 11.08.2026).~~ **Overturned 23.08.2026

@@ -201,13 +201,23 @@ async function openTheInvitation(user: ReturnType<typeof setupUser>) {
 }
 
 describe('who is offered „Pozovi u tim"', () => {
-  it('is offered to any member of a team, on the profile of somebody who has none', async () => {
+  it('is offered to any member of a team, which is a rule the owner has since overturned', async () => {
     renderAt(FREE, 'competitor', '000007', undefined, IN_WINDOW)
 
-    /* 000007 does not lead Dunavski trkači; 000001 has been in it since 2014 and does. The
-       owner's parenthesis on 05.09.2026 was „(bilo koji član)", so this case is walked as the
-       member who is not the administrator on purpose: read as an administrator's act, it would
-       still pass while the rule it enforces had gone. */
+    /* **THIS CASE HOLDS AN OVERTURNED RULE IN PLACE AND SAYS SO, WHICH IS THE WHOLE OF WHY IT
+       IS STILL WRITTEN THIS WAY ROUND.** 000007 does not lead Dunavski trkači; 000001 has been
+       in it since 2014 and does. It was walked as the member who is NOT the administrator on
+       purpose, on the owner's parenthesis „(bilo koji član)" of 05.09.2026 — and he overturned
+       that on 27.09.2026 (`PDL.md:8703`): „Samo administrator tima, kako pise u Pravilniku."
+
+       The server followed that day and answers this member 404
+       (`TeamJoiningWriteApi.invite`, and `aMemberOfTheTeamWhoDoesNotLeadItAsksNobodyIn`); the
+       screen has not, so what this asserts is what the screen DOES and no longer what the
+       portal has decided. `profile/InviteToTeam.tsx` carries the defect, the one-line fix and
+       the measurement of what turning it round costs: 24 of the 35 cases in this file, because
+       000007 is the inviter through the whole walk, and two cases whose axis the reversal
+       itself removes. A green case that quietly enforced the old rule is how an overturned
+       decision gets put back, so the silence is what is fixed here and not the colour. */
     expect(await screen.findByRole('button', { name: 'Pozovi u tim' })).toBeVisible()
   })
 
