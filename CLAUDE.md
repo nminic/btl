@@ -822,9 +822,40 @@ nad onim sto je nova vrsta stvari:
 | nov atribut u nacrtanom izvoru (`aria-*`, `data-*`) | `src/styles/writtenInCode.test.ts` |
 | nov kljuc recnika | `src/i18n/` i oba snimka recnika |
 | nova mapa odbijanja sa ekrana | `src/pages/account/refusals.test.ts` |
+| **izmena u `test/mock` ili u recniku koji DRUGA STRANA cita** | **podove te druge strane** (`backend` `Answers`, i obrnuto `refusals.test.ts`) |
 
 **Tri fajla vise, ne 208.** Cena je nekoliko sekundi, a hvata tacno onu klasu koju usko merenje ne
 moze da vidi.
+
+### Poslednji red te tabele je zaradjen istog dana, i klasa ide PREKO GRANICE SLOJEVA
+
+Frontend kapija je posle gornjih ispravki bila zelena i grana je gurnuta. **Bekend CI je onda pao**, i
+pad je bio tacan:
+
+    PaymentsDueApiTest.everyFieldTheScreenReadsIsAnsweredAndTheThreeNewOnesAreNamed
+    [payments.json already serves currency, so naming it as something extra says nothing]
+
+**Sta se desilo.** Kad je ruta pocela da servira `currency`, `expected` i `balance`, mock
+`frontend/src/test/mock/payments.json` ih jos nije nosio, pa su bili registrovani kao
+**`alsoAnswered`** — oblik koji `Answers` ima tacno za „server nosi, servirani fajl jos ne". Grana koja
+crta ekran je **mock popravila**, i time je ta registracija prestala da tvrdi bilo sta. **Nije greska
+nego posledica ispravke, i zatvara se u grani koja je cinjenicu promenila.**
+
+- **Bekend test koji cita frontend mock je pod nad klasom, ali ZA DRUGU STRANU.** `Answers` cita
+  `frontend/src/test/mock/*.json`, dakle „pusti podove nad klasom stvari koju dodajem" ga **ne
+  hvata** ako klasu trazis samo u `frontend/`. To je druga instanca iste klase u jednom danu.
+- **I ide u OBA smera.** Odeljak 21 je isti oblik naopako: **bekend** grana je obrisala konstantu i
+  oborila **frontend** pod (`refusals.test.ts`). Ovde je **frontend** grana popravila mock i oborila
+  **bekend** pod. Dakle pravilo nije o jednom sloju nego o **cinjenici koja ima dva citaoca u dva
+  sloja**.
+- **Ispravka je bila TIGHTENING, ne olabavljenje**, i to vredi znati jer izgleda obrnuto: prazan
+  `alsoAnswered` pomera ta tri imena iz `mayBeAnswered` u `mustBeAnswered`, pa ruta koja prestane da
+  odgovori jednim od njih **od sada pada**, a ranije je to bilo samo dopusteno.
+- **Izmereno:** 4 od 4 mutacije uhvacene, 38 slucajeva po prolazu; vracanje bilo kog od tri imena u
+  `alsoAnswered` pada bas onom recenicom koju pod sam pise.
+
+**Provera koja iz ovoga sledi:** menjam li fajl koji **drugi sloj** cita? `test/mock` i recnici su
+oba takva. Ako jesam, pod te druge strane ide uz moje merenje, i to **pre** nego sto grana ode na CI.
 
 ### Tri pada doslovno, jer klasa bez instance ne pomaze
 
