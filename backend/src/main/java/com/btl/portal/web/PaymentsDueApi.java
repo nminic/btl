@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
+import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -15,6 +16,7 @@ import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, WORKED OUT AND NEVER QUEUED.
@@ -177,37 +179,16 @@ import java.util.Map;
 @RestController
 class PaymentsDueApi {
 
-	/**
-	 * THE ONE COUNTRY THAT IS BILLED IN DINARS, and it is a codebook key rather than a price.
-	 *
-	 * <p><b>DERIVED from three written decisions and not one of them says it in these words</b>,
-	 * so where it comes from is set out here rather than left to be reconstructed. PDL 31.07.2026:
-	 * „cena proizlazi iz toga gde član živi i portal je izračuna sam" - the country decides and
-	 * nobody chooses. PDL 31.07.2026 again: „QR kod postoji samo za uplate iz Srbije. Član van
-	 * Srbije ga ne vidi uopšte... Udruženje ima jedan račun, u dinarima, kod srpske banke" - the
-	 * dinar account is the Serbian one. PDL 20a, 27.09.2026: „Srbin placa IPS uplatnicom,
-	 * inostranstvo PayPal-om." The three together leave one mapping: Serbia is the dinar side and
-	 * everywhere else is the euro side.
-	 *
-	 * <p><b>Kosovo needs no sentence of its own, which is worth writing down because it looks as
-	 * though it would.</b> {@code country_code_not_kosovo} (V2) refuses {@code XK} outright and
-	 * says why in the migration: Kosovo „is carried as part of Serbia" and the generator that
-	 * builds the town codebook „rewrites it to RS on the way in". So a town there already carries
-	 * this code and is already billed in dinars, by the codebook rather than by anything here.
-	 *
-	 * <p><b>A literal and not an amount, which is the line ADL A12 actually draws.</b> That
-	 * decision forbids „broj upisan u kodu" and gives its own scope - „da se cenovnik i ono sto
-	 * portal objavljuje ne raziđu". Not one price is written here; this is the NAME of a row of
-	 * {@code country}, the same kind of thing {@link BalanceBook}'s {@code REFERRAL} is and for the
-	 * reason written there. What holds it against the codebook rather than against a memory is
-	 * {@code PaymentsDueApiTest}, which reaches this currency through a town of the codebook AND
-	 * through a town somebody typed, because V7 allows the country to arrive by either road.
+	/*
+	 * THE ONE COUNTRY THAT IS BILLED IN DINARS USED TO LIVE HERE, as `BILLED_IN_DINARS = "RS"` beside
+	 * `DINARS` and `EURO`, with the whole derivation on it. It moved to `domain.pricing.Currency` on
+	 * 28.09.2026 and the derivation went with it, because V42 gave the rule four more callers: the book
+	 * of balance has to know which money to write a line in and which lines are a member's balance, the
+	 * invoice which column of the price list to read, `PaymentApi` what a moderator's typed amount is
+	 * in, and `MeWriteApi` whether a member editing his own record has changed the money he is billed
+	 * in. This route still asks the question - it selects the country for every row of the screen and
+	 * hands it to `Currency.of` - and it no longer answers it.
 	 */
-	private static final String BILLED_IN_DINARS = "RS";
-
-	private static final String DINARS = "RSD";
-
-	private static final String EURO = "EUR";
 
 	private final JdbcClient db;
 
@@ -372,20 +353,27 @@ class PaymentsDueApi {
 	private List<Due> notActiveIn(int season, String term) {
 		List<OnTheList> rows = whoIsNotActiveIn(season, term);
 
+		/* EVERY MEMBER'S MONEY FIRST, because since V42 it is what the book is asked IN and not only
+		   what the label is marked with. The country is already on the row - this route selects it for
+		   exactly this purpose - so `Currency.of` is applied here rather than asked of the database a
+		   second time per person. */
+		Map<Long, Currency> monies = rows.stream().collect(
+				Collectors.toMap(OnTheList::id, one -> Currency.of(one.countryCode())));
+
 		/* THE BOOK AND THE PRICE LIST, ONE READING EACH FOR THE WHOLE ANSWER. Read per row, the
 		   book would be one statement per person and the price list could cross an
 		   administrator's edit half way down one list, so two members of one age would be
 		   quoted two different prices under one heading. */
-		Map<Long, Balance.Money> books = book.forEveryOneOf(rows.stream().map(OnTheList::id).toList());
+		Map<Long, Balance.Money> books = book.forEveryOneOf(monies);
 		List<MembershipPrice.Row> priceList = priceRows.all();
 
 		MonthDay today = MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
 
 		return rows.stream().map(one -> {
-			boolean euro = !BILLED_IN_DINARS.equals(one.countryCode());
+			Currency his = monies.get(one.id());
 
 			MembershipPrice.Price price = MembershipPrice.on(priceList, today,
-					one.birthDate().getYear(), season, euro);
+					one.birthDate().getYear(), season, his);
 
 			/* WHAT HE SENDS AND NOT WHAT THE MEMBERSHIP COSTS, which is the owner's choice of
 			   27.09.2026 and the whole reason this is an addition rather than a column: „„Ocekivan
@@ -394,10 +382,8 @@ class PaymentsDueApi {
 			   currencies rather than branching on one of them. */
 			BigDecimal expected = price.amount().add(price.fee());
 
-			Balance.Money his = books.get(one.id());
-
 			return new Due(one.id(), one.memberNumber(), one.firstName(), one.lastName(), one.city(),
-					euro ? EURO : DINARS, expected, euro ? his.eur() : his.rsd());
+					his.name(), expected, books.get(one.id()).amount());
 		}).toList();
 	}
 

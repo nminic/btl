@@ -240,14 +240,22 @@ class MembershipWriteApi {
 	 */
 	private final MembershipInvoice invoice;
 
+	/**
+	 * <p>Asked for one thing only: the money a NOTHING has to be said in on the ground that spends
+	 * nothing. On the ground that does spend, the invoice has already read it.
+	 */
+	private final CurrencyOfMember currencyOf;
+
 	MembershipWriteApi(JdbcClient db, Clock clock, MemberNumbers numbers,
-			TransactionTemplate inOneTransaction, BalanceBook book, MembershipInvoice invoice) {
+			TransactionTemplate inOneTransaction, BalanceBook book, MembershipInvoice invoice,
+			CurrencyOfMember currencyOf) {
 		this.db = db;
 		this.clock = clock;
 		this.numbers = numbers;
 		this.inOneTransaction = inOneTransaction;
 		this.book = book;
 		this.invoice = invoice;
+		this.currencyOf = currencyOf;
 	}
 
 	/**
@@ -340,13 +348,19 @@ class MembershipWriteApi {
 		   propada nikad i prenosi se iz sezone u sezonu" - so it keeps, and waits for a season in
 		   which he is no longer exempt.
 
-		   THE INVOICE IS ASKED ONLY ON THE GROUND THAT SPENDS, and that is not a saving: it is the
-		   one place in the portal that reads the fee in BOTH currencies off ONE row of the price
-		   list, a rule it holds in as many words („ASKED TWICE, ONCE PER CURRENCY"). Working the
-		   pair out here instead would be a second home for it. */
+		   THE INVOICE IS ASKED ONLY ON THE GROUND THAT SPENDS, and that is not a saving: it is the one
+		   place in the portal that reads the member's country, picks the column of the price list that
+		   money applies to, and sums the lines of his book in it. Working that out here instead would
+		   be a second home for the one fact this branch turns on.
+
+		   AND NOTHING AT ALL STILL HAS TO NAME A CURRENCY, which is what changed with V42: a
+		   `Balance.Money` is an amount AND a money, so there is no currency-free NOTHING to hand over
+		   any more. His own is what is named, because it is the money the line would have been written
+		   in had there been one - and `GrantingAMembership` asks nothing of it beyond whether it is
+		   money at all. */
 		Balance.Money offTheBook = ground == GrantingAMembership.Ground.THE_BALANCE
 				? whatHisBalanceWouldPay(competitor.get().id())
-				: Balance.Money.NOTHING;
+				: Balance.Money.nothingIn(currencyOf.of(competitor.get().id()));
 
 		GrantingAMembership.Asking question = new GrantingAMembership.Asking(ground, held,
 				aPaymentWasReversed(competitor.get().id(), season), offTheBook,
@@ -376,16 +390,24 @@ class MembershipWriteApi {
 	/**
 	 * WHAT HIS BALANCE WOULD PAY FOR THIS SEASON, and the arithmetic is NOT here.
 	 *
-	 * <p>{@link GrantingAMembership#whatComesOffTheBook} owns it, and owns at length the reason it
-	 * is not {@link Balance.Settlement#fromTheBalance()}: on this door a SHORT balance is let
-	 * through on purpose („Odobri umanjen iznos iz balansa"), and per-currency {@code min} answers
-	 * a pair that stands in no single ratio the moment his book covers the fee in one currency and
-	 * not the other.
+	 * <p>{@link Balance.Settlement#fromTheBalance()} owns it, which is {@code min(balance, fee)} - and
+	 * since V42 that is the answer on BOTH doors rather than only on the member's own.
+	 *
+	 * <p><b>It was a rule of its own until then, and the reason it is worth recording is that the rule
+	 * was right.</b> While a balance was a PAIR, {@code min} taken per currency answered „40 EUR and
+	 * 600 RSD" for a book of 50/600 against a fee of 40/4.800 - leaving ten euro of his book standing
+	 * while taking every dinar of it, at a rate of fifteen to one that the portal is forbidden to
+	 * apply. So {@code GrantingAMembership.whatComesOffTheBook} carried a binary rule instead: covered
+	 * in both currencies, take the fee; otherwise take the WHOLE book. Case 5 („Odobri umanjen iznos iz
+	 * balansa") is what made that state reachable, because this door lets a SHORT balance through on
+	 * purpose where the member's own door refuses it.
+	 *
+	 * <p><b>One amount has no such state, so the rule collapsed into the ordinary one and the method
+	 * holding it was deleted rather than shortened.</b> The owner decided that on 27.09.2026 (PDL 25);
+	 * a short balance is now simply spent to the end, which is exactly what case 5 asks for.
 	 */
 	private Balance.Money whatHisBalanceWouldPay(long competitorId) {
-		MembershipInvoice.Invoice owed = invoice.forMember(competitorId);
-
-		return GrantingAMembership.whatComesOffTheBook(owed.settled().fee(), owed.settled().balance());
+		return invoice.forMember(competitorId).settled().fromTheBalance();
 	}
 
 	/**

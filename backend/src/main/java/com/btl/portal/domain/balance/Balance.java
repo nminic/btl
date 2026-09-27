@@ -248,9 +248,15 @@ public final class Balance {
 	 *
 	 * @param today    the settlement his fee and his book would produce right now
 	 * @param promised what the code said, from {@code balance_promise}
-	 * @throws IllegalArgumentException when the promise is in a currency that is not the fee's, which
-	 *                                 is the state {@code MyMembershipApi} refuses by discarding a
-	 *                                 promise minted before a change of country
+	 * @throws IllegalArgumentException when the promise is in a currency that is not the fee's. <b>That
+	 *                                 is a state the portal makes UNREACHABLE rather than one anybody
+	 *                                 handles</b>, and the difference is deliberate:
+	 *                                 {@code MeWriteApi} deletes every promise a member holds the
+	 *                                 moment the money he is billed in changes, so a promise reaching
+	 *                                 here is always in today's money. Written as a branch instead it
+	 *                                 would be a branch nothing can enter, which no case in this portal
+	 *                                 could cover and no mutation could find; left as a refusal it is
+	 *                                 loud if that deletion is ever lost
 	 */
 	public static Settlement asThePromiseStands(Settlement today, Money promised) {
 		Objects.requireNonNull(today, "today");

@@ -356,10 +356,18 @@ class BalanceBook {
 	 * now stands. That is the right outcome and not a loss - the pinning exists so that two slips he
 	 * could be holding say one number, and after a change of country there is no old slip he could
 	 * hold.
+	 *
+	 * <p><b>EVERY SEASON'S AND NOT JUST THE ONE ON SALE, AND THAT IS WHY THERE IS NO SEASON
+	 * PARAMETER.</b> V38 names the state that makes the difference: „a promise for season S and a
+	 * promise for S+1 can both stand, because minting one does not spend anything". A change of country
+	 * happens at ONE instant, so every promise standing at that instant was minted in the money he has
+	 * just left, and there is no promise of his that this should spare. Taking a season would leave the
+	 * other row standing in a currency nothing can pay, and would leave a branch in this class for a
+	 * state that cannot arise.
 	 */
-	void forgetThePromise(long competitorId, int season) {
-		db.sql("delete from balance_promise where competitor_id = ? and season = ?")
-				.params(competitorId, season)
+	void forgetEveryPromise(long competitorId) {
+		db.sql("delete from balance_promise where competitor_id = ?")
+				.param(competitorId)
 				.update();
 	}
 

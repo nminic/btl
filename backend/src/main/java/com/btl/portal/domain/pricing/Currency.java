@@ -47,13 +47,37 @@ public enum Currency {
 	RSD;
 
 	/**
-	 * The country whose members are billed in dinars, as {@code country.code} spells it (V2, ISO
-	 * 3166-1 alpha-2).
+	 * THE ONE COUNTRY THAT IS BILLED IN DINARS, as {@code country.code} spells it (V2, ISO 3166-1
+	 * alpha-2).
 	 *
-	 * <p>A literal because it IS a literal: the code of a row in a codebook, the same kind of thing
-	 * {@code BalanceBook.REFERRAL} is and for the reason given there. What keeps it honest is
+	 * <p><b>DERIVED from three written decisions and not one of them says it in these words</b>, so
+	 * where it comes from is set out here rather than left to be reconstructed. PDL 31.07.2026: „cena
+	 * proizlazi iz toga gde član živi i portal je izračuna sam" - the country decides and nobody
+	 * chooses. PDL 31.07.2026 again: „QR kod postoji samo za uplate iz Srbije. Član van Srbije ga ne
+	 * vidi uopšte... Udruženje ima jedan račun, u dinarima, kod srpske banke" - the dinar account is
+	 * the Serbian one. PDL 20a, 27.09.2026: „Srbin placa IPS uplatnicom, inostranstvo PayPal-om." The
+	 * three together leave one mapping: Serbia is the dinar side and everywhere else is the euro side.
+	 * And PDL 25, 27.09.2026, says the same thing of the balance in the owner's own words: „Ukoliko je
+	 * Srbija, to su dinari, ukoliko nije to su evri za sada."
+	 *
+	 * <p><b>Kosovo needs no sentence of its own, which is worth writing down because it looks as though
+	 * it would.</b> {@code country_code_not_kosovo} (V2) refuses {@code XK} outright and says why in
+	 * the migration: Kosovo „is carried as part of Serbia" and the generator that builds the town
+	 * codebook „rewrites it to RS on the way in". So a town there already carries this code and is
+	 * already billed in dinars, by the codebook rather than by anything here.
+	 *
+	 * <p><b>A literal and not an amount, which is the line ADL A12 actually draws.</b> That decision
+	 * forbids „broj upisan u kodu" and gives its own scope - „da se cenovnik i ono sto portal objavljuje
+	 * ne raziđu". Not one price is written here; this is the NAME of a row of {@code country}, the same
+	 * kind of thing {@code BalanceBook.REFERRAL} is and for the reason written there. What holds it
+	 * against the codebook rather than against a memory is
 	 * {@code CurrencyTest.dinarsAreTheCountryTheCodebookCallsSerbia}, which asks the {@code country}
-	 * table for the row rather than trusting these two letters.
+	 * table for the row, and {@code PaymentsDueApiTest}, which reaches this currency through a town of
+	 * the codebook AND through a town somebody typed, because V7 allows the country to arrive by either
+	 * road.
+	 *
+	 * <p><b>This lived in {@code PaymentsDueApi} until 28.09.2026</b>, where it had one caller and
+	 * belonged. V42 gave it five, so it moved rather than being copied.
 	 */
 	private static final String BILLED_IN_DINARS = "RS";
 

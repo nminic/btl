@@ -4,6 +4,7 @@ import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.member.MemberNumber;
 import com.btl.portal.domain.payment.RecordingAPayment;
 import com.btl.portal.domain.payment.RecordingAPayment.Outcome;
+import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.http.HttpStatus;
@@ -195,7 +196,28 @@ class PaymentApi {
 
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
-	static final String THE_CURRENCY_IS_NOT_KNOWN = "theCurrencyIsNotKnown";
+	/**
+	 * WHAT WAS TYPED INTO THE AMOUNT FIELD IS NOT A PAYMENT, and „nothing typed" is one of the ways.
+	 *
+	 * <p><b>Owner, 27.09.2026 (PDL, section 19, point 5), choosing between three outcomes:</b> a typed
+	 * NOUGHT means the same as an empty field. „Prazno polje i ukucana nula vode na isti prompt, onaj o
+	 * oslobodjenju od clanarine ... ne pise se nijedan red uplate, sema se ne dira, i znacenje je isto
+	 * kao ono sto covek misli kad ukuca nulu." PDL records the alternative he refused with the cost that
+	 * was shown to him: nought written as a payment of nought „bi trazila novu migraciju koja labavi
+	 * `V16:105`", and „u knjigama bi stajala uplata koja se nikad nije desila".
+	 *
+	 * <p><b>So this route refuses three things with one word, and they are one state and not three.</b>
+	 * No amount at all, a typed nought and a negative number all mean „no money arrived", and money
+	 * arriving is the only thing this route is for. The road for that state is the other one: cases 4, 5
+	 * and 6 of section 19 are prompts about an exemption or a balance, and {@code POST /api/memberships}
+	 * is where they are answered. {@code payment_amount_positive} (V16) and
+	 * {@code payment_received_positive} (V42) are the same sentence where it cannot be got around.
+	 *
+	 * <p><b>The boundary the owner named and accepted:</b> „moderator koji je hteo da kaze „platio je
+	 * nula jer koristi balans" dobija prompt o oslobodjenju, a ne o balansu. Za taj slucaj vec postoji
+	 * kucica za balans, pa put postoji; samo nije kroz polje za iznos."
+	 */
+	static final String THE_AMOUNT_IS_NOT_MONEY = "theAmountIsNotMoney";
 
 	static final String THE_METHOD_IS_NOT_KNOWN = "theMethodIsNotKnown";
 
@@ -217,9 +239,6 @@ class PaymentApi {
 	 * fact its own caller has no right to read.
 	 */
 	static final String THE_MEMBERSHIP_IS_ALREADY_HELD = "theMembershipIsAlreadyHeld";
-
-	/** {@code payment_currency_known}, V16. */
-	private static final Set<String> CURRENCIES = Set.of("EUR", "RSD");
 
 	/**
 	 * {@code payment_method_known}, V39: the two ways the money arrives.
@@ -278,8 +297,18 @@ class PaymentApi {
 
 	private final BalanceBook book;
 
+	/**
+	 * WHICH MONEY THIS MEMBER IS BILLED IN, since the request stopped saying so.
+	 *
+	 * <p>Everything this route compares is in one currency - what was expected, what arrived and what
+	 * his book holds - and a single lookup is what makes them one currency rather than three that
+	 * happen to agree.
+	 */
+	private final CurrencyOfMember currencyOf;
+
 	PaymentApi(JdbcClient db, Clock clock, MemberNumbers numbers, TransactionTemplate inOneTransaction,
-			MemberOfAccount memberOfAccount, PriceRows priceRows, BalanceBook book) {
+			MemberOfAccount memberOfAccount, PriceRows priceRows, BalanceBook book,
+			CurrencyOfMember currencyOf) {
 		this.db = db;
 		this.clock = clock;
 		this.numbers = numbers;
@@ -287,6 +316,7 @@ class PaymentApi {
 		this.memberOfAccount = memberOfAccount;
 		this.priceRows = priceRows;
 		this.book = book;
+		this.currencyOf = currencyOf;
 	}
 
 	/**
@@ -300,18 +330,47 @@ class PaymentApi {
 	 * here needs a moderator to know which season he is looking at, only which
 	 * competitor and how the money arrived.
 	 *
+	 * <p><b>AND THERE IS NO {@code currency} HERE EITHER, SINCE 28.09.2026, AND THAT IS THE
+	 * SAME KIND OF CHANGE.</b> It used to be taken and validated, on the reasoning that it
+	 * said „which of the association's two accounts the money is in, a fact about the bank
+	 * statement and not a choice of price". That fact is still true and is still recorded;
+	 * what changed is that it is DERIVED and no longer asked. The owner, PDL section 19:
+	 * „Prazno polje sa oznakom valute pored njega. Valuta <b>zavisi od zemlje clana</b>." A
+	 * Serbian member pays an IPS slip into the dinar account and everybody else pays PayPal
+	 * in euro (PDL 20a), so the country decides which account it can possibly have landed
+	 * in, and {@link Currency#of} is the one place that says so.
+	 *
+	 * <p><b>Why derived is stronger than validated here, and it is measured rather than
+	 * preferred.</b> The screen already draws {@code expected} in the currency of the
+	 * member's country ({@link PaymentsDueApi}, PR 403). Had this kept taking one, the
+	 * request could name the OTHER money while the label the moderator is reading names his
+	 * - one fact with two homes, and the comparison „is this less than expected" would then
+	 * be crossing currencies by a factor of a hundred and twenty. Refusing a mismatch was
+	 * the other outcome available; deriving it makes the state <b>unreachable</b> instead of
+	 * refused, which is the better of the two for the same money.
+	 *
 	 * @param competitorId {@code competitor.id}, never the member number - the
 	 *                     population this route exists for is exactly the one that
 	 *                     may not have one yet
-	 * @param currency     which of the association's two accounts the money is in,
-	 *                     {@code EUR} or {@code RSD} - a fact about the bank
-	 *                     statement, not a choice of price
+	 * @param received     what actually arrived, as the moderator read it off the bank
+	 *                     statement and typed it into the field beside „Ocekivan iznos"
+	 *                     (owner, 27.09.2026, PDL 19). In the member's own money, which is
+	 *                     not asked for. Null, nought and a negative are one state and are
+	 *                     refused as {@link #THE_AMOUNT_IS_NOT_MONEY}
+	 * @param useTheBalance whether the tick box „ukljuci balans (iznos balansa)" was left
+	 *                     ticked. <b>Asked for and never guessed</b>, the same refusal
+	 *                     {@code GrantingAMembership} makes of its own prompt: the screen
+	 *                     defaults it to ticked (PDL 19), so a request that leaves it out is
+	 *                     a caller that has not said which way, and defaulting either way
+	 *                     would spend or withhold a member's money because a field was
+	 *                     misspelled
 	 * @param method       how it arrived, one of the two V39 lists
 	 * @param reference    the poziv na broj, when the statement carries one; null for
 	 *                     a first payment, which has no number yet to write on a slip
 	 *                     (V16)
 	 */
-	record Confirm(Long competitorId, String currency, String method, String reference) {
+	record Confirm(Long competitorId, BigDecimal received, Boolean useTheBalance, String method,
+			String reference) {
 	}
 
 	/** Why a confirmation was refused. */
@@ -324,8 +383,9 @@ class PaymentApi {
 	 *                      already {@code recorded} for somebody who somehow still
 	 *                      carries none
 	 */
-	record Confirmed(long paymentId, String memberNumber, BigDecimal amount, BigDecimal fee, String currency,
-			Balance.Money fromTheBalance) {
+	record Confirmed(long paymentId, String memberNumber, BigDecimal amount, BigDecimal fee,
+			String currency, BigDecimal received, Balance.Money fromTheBalance,
+			Balance.Money creditedToTheBalance) {
 	}
 
 	private record CompetitorRow(long id, LocalDate birthDate, String memberNumber) {
@@ -339,12 +399,18 @@ class PaymentApi {
 	ResponseEntity<?> confirm(@RequestBody Confirm typed,
 			@AuthenticationPrincipal WhoIsAsking.Member asking) {
 
-		if (typed.competitorId() == null || isNothing(typed.currency()) || isNothing(typed.method())) {
+		if (typed.competitorId() == null || typed.useTheBalance() == null
+				|| isNothing(typed.method())) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		if (!CURRENCIES.contains(typed.currency())) {
-			return no(HttpStatus.BAD_REQUEST, THE_CURRENCY_IS_NOT_KNOWN);
+		/* AND THE AMOUNT IS ITS OWN REFUSAL RATHER THAN PART OF „THE FORM IS NOT COMPLETE", because an
+		   empty field and a typed nought are the SAME state (owner, PDL 19 point 5) and that state is
+		   not an incomplete form - it is a request that belongs at the other door. A caller told only
+		   that his form is incomplete would fill the field in with nought and be told the same thing
+		   again. */
+		if (typed.received() == null || typed.received().signum() <= 0) {
+			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_MONEY);
 		}
 
 		if (!METHODS.contains(typed.method())) {
@@ -390,9 +456,14 @@ class PaymentApi {
 		Outcome outcome = RecordingAPayment.decide(new RecordingAPayment.Payment(
 				existing.map(ExistingPayment::state).orElse(RecordingAPayment.AWAITED), numberHeAlreadyHas));
 
+		/* WHICH MONEY EVERY NUMBER BELOW IS IN, read once and from his country. Asked after the
+		   competitor is known to exist, because `CurrencyOfMember` refuses to answer about somebody who
+		   does not and the refusal above is the better answer to that. */
+		Currency his = currencyOf.of(competitor.get().id());
+
 		return switch (outcome) {
 			case A_REVERSAL_IS_NOT_UNDONE_HERE -> no(HttpStatus.CONFLICT, THE_PAYMENT_WAS_REVERSED);
-			case ALREADY_RECORDED -> alreadyRecorded(existing.orElseThrow(), competitor.get());
+			case ALREADY_RECORDED -> alreadyRecorded(existing.orElseThrow(), competitor.get(), his);
 			case RECORD_IT, RECORD_IT_AND_NUMBER_HIM -> {
 				/* THE REFERENCE IS CHECKED HERE, ONLY ONCE THE OUTCOME IS KNOWN, AND
 				   THAT ORDER IS DELIBERATE. Checked before the outcome, a SECOND
@@ -416,7 +487,7 @@ class PaymentApi {
 				if (theSeasonIsAlreadyHeld(competitor.get().id(), season)) {
 					yield no(HttpStatus.CONFLICT, THE_MEMBERSHIP_IS_ALREADY_HELD);
 				}
-				yield recordIt(typed, season, reference, competitor.get(), asking,
+				yield recordIt(typed, season, reference, competitor.get(), asking, his,
 						outcome == Outcome.RECORD_IT_AND_NUMBER_HIM);
 			}
 		};
@@ -447,32 +518,51 @@ class PaymentApi {
 	 * statement is reconciled in bulk and the same file can be imported twice, and a
 	 * moderator's second click on a row that no longer waits is the same case.
 	 */
-	private ResponseEntity<?> alreadyRecorded(ExistingPayment existing, CompetitorRow competitor) {
-		record Amounts(BigDecimal amount, BigDecimal fee, String currency, int season) {
+	private ResponseEntity<?> alreadyRecorded(ExistingPayment existing, CompetitorRow competitor,
+			Currency his) {
+
+		record Amounts(BigDecimal amount, BigDecimal fee, String currency, BigDecimal received,
+				int season) {
 		}
 
-		Amounts amounts = db.sql("select amount, fee, currency, season from payment where id = ?")
+		Amounts amounts = db.sql("select amount, fee, currency, received, season"
+						+ " from payment where id = ?")
 				.param(existing.id())
-				.query((row, i) -> new Amounts(row.getBigDecimal(1), row.getBigDecimal(2), row.getString(3),
-						row.getInt(4)))
+				.query((row, i) -> new Amounts(row.getBigDecimal(1), row.getBigDecimal(2),
+						row.getString(3), row.getBigDecimal(4), row.getInt(5)))
 				.single();
 
 		/* WHAT THE BALANCE PAID WHEN THIS WAS RECORDED, read back rather than recomputed. This
 		   branch writes nothing, so recomputing would answer with TODAY'S balance - which has since
 		   had this very spend taken out of it - and report a smaller number than the one the member
 		   was actually credited. The book is the record of what happened; asking it is the only
-		   answer that stays true. */
-		return ResponseEntity.ok(new Confirmed(existing.id(), competitor.memberNumber(), amounts.amount(),
-				amounts.fee(), amounts.currency(), book.whatAMembershipTook(competitor.id(), amounts.season())));
+		   answer that stays true.
+
+		   AND THE CURRENCY THE ROW WAS WRITTEN IN IS ANSWERED, not the one he is billed in today, for
+		   the same reason: `whatAMembershipTook` reads the line's own money and falls back to his only
+		   when there is no line to read. A member who has changed country since is told what was
+		   actually taken off him.
+
+		   NOTHING IS SAID ABOUT A CREDIT ON A REPEAT, and that is a boundary rather than an omission:
+		   a surplus is one `overpayment` line among however many his book has collected since, and
+		   there is no key from a payment to the line it produced. Reporting „what this booking
+		   credited" would mean either inventing that key or recomputing from today's price list, and
+		   recomputing is exactly what the paragraph above refuses. So the repeat answers nothing in
+		   his money, and the number the moderator needs - what arrived - is `received`, which IS on
+		   the row. */
+		return ResponseEntity.ok(new Confirmed(existing.id(), competitor.memberNumber(),
+				amounts.amount(), amounts.fee(), amounts.currency(), amounts.received(),
+				book.whatAMembershipTook(competitor.id(), amounts.season(), his),
+				Balance.Money.nothingIn(his)));
 	}
 
 	private ResponseEntity<?> recordIt(Confirm typed, int season, String reference, CompetitorRow competitor,
-			WhoIsAsking.Member asking, boolean numbering) {
+			WhoIsAsking.Member asking, Currency his, boolean numbering) {
 
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
 		List<MembershipPrice.Row> rows = priceRows.all();
 		MembershipPrice.Price price = MembershipPrice.on(rows, MonthDay.from(today),
-				competitor.birthDate().getYear(), season, "EUR".equals(typed.currency()));
+				competitor.birthDate().getYear(), season, his);
 
 		long priceRowId = db.sql("select id from price_row where key = ?")
 				.param(price.key()).query(Long.class).single();
@@ -491,12 +581,22 @@ class PaymentApi {
 					.param(competitor.id()).update();
 		}
 
+		/* `amount` IS WHAT THE PRICE LIST CHARGED AND `received` IS WHAT ARRIVED, and they are two
+		   facts rather than one said twice. V16 writes „What was ASKED and in what money" beside the
+		   first, and the paragraph at the head of this class gives the whole reason the reduced figure
+		   must not go there: „the books would show a membership sold for less than the price list says
+		   it costs, and there would be nowhere to see that the association settled part of it out of
+		   what it already owed the member." V42 added the second column so that the owner's
+		   specification of 27.09.2026 - a moderator typing what the statement shows - could be recorded
+		   without either sentence becoming false. */
 		long paymentId = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
-						+ " amount, currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, 'recorded', ?, ?, ?)"
+						+ " amount, currency, fee, method, state, recorded_at, recorded_by,"
+						+ " recorded_by_name, received)"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, 'recorded', ?, ?, ?, ?)"
 						+ " returning id")
 				.params(competitor.id(), season, reference, priceRowId, price.amount(),
-						typed.currency(), price.fee(), typed.method(), now, asking.account(), recordedByName)
+						his.name(), price.fee(), typed.method(), now, asking.account(), recordedByName,
+						typed.received())
 				.query(Long.class).single();
 
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, ?, 'payment', ?)")
@@ -505,24 +605,59 @@ class PaymentApi {
 		/* AND NOW, AND NOT ONE MOMENT EARLIER, THE BALANCE IS SPENT. Owner, 26.09.2026: „balans se
 		   skida tek kad uplata bude proknjizena. Ako clan ne plati, balans mu ostaje."
 
-		   WHAT IS TAKEN IS WHAT THE CODE PROMISED, NOT WHAT THE BOOK SAYS TODAY. Owner, 27.09.2026:
-		   „skida se ono sto je kod obecao, ne ono sto balans stoji na dan knjizenja" - so a member
-		   whose balance grew between minting and paying keeps the growth, and one whose balance was
-		   spent by another season in the meantime is honoured only as far as there is money. That cap
-		   is the whole of `Balance.honouring`, which is also where the reason for it is written.
+		   WHAT DECIDES HOW MUCH IS THE TICK BOX ON THE MODERATOR'S SCREEN, AND IT USED TO BE WHAT THE
+		   QR CODE PROMISED. Owner, 27.09.2026 (PDL 23a), chosen between three outcomes: „Na
+		   moderatorovom ekranu odlucuje kucica i iznos u njenoj labeli, ne ono sto je QR kod obecao.
+		   Clanovo sopstveno placanje po QR kodu se ne dira."
 
-		   AND AN ABSENT PROMISE IS NOT A PROMISE OF NOTHING, it is nobody ever having been offered a
-		   discount: he was shown the price list's own figure and paid it, so his book is untouched.
-		   `GET /api/me/membership` is the only place a reduced amount is computed and it records
-		   every one it computes, which is what makes this the same fact rather than two. */
-		Balance.Money fromTheBalance = book.promised(competitor.id(), season)
-				.map(promised -> Balance.honouring(promised, book.of(competitor.id())))
-				.orElse(Balance.Money.NOTHING);
+		   WHY THE OLD SHAPE HAD TO GO AND NOT MERELY BE ADDED TO. Until this branch the deduction was
+		   `book.promised(...).map(promised -> Balance.honouring(promised, book.of(...)))` with
+		   `Money.NOTHING` when no promise stood. Two things follow from that and the owner was shown
+		   both before choosing: un-ticking the box would have done NOTHING AT ALL, and - the commoner
+		   case by far - a member nobody ever opened the membership screen for has no promise, so his
+		   balance would never come off however plainly the label beside the tick showed it. The screen
+		   would say one thing and the route do another. So `Balance.honouring` was DELETED rather than
+		   left uncalled, because a method nothing calls is a rule the next reader thinks is in force.
 
-		/* A row that moves nothing is refused by `balance_entry_a_membership_takes` (V38), and it is
+		   AND THE MEMBER'S OWN DOOR IS UNTOUCHED, which is the other half of his sentence. `GET
+		   /api/me/membership` still mints a promise and still pins it for the season, and `POST
+		   /api/me/membership` still spends what is in the book inside one transaction. What a member was
+		   TOLD is still what he is held to; the moderator is held to what he ticks.
+
+		   HOW MUCH THE TICK IS WORTH IS THE SHORTFALL AND NOT THE WHOLE FEE, which is cases 2 and 3 of
+		   section 19: „manji, balans pokriva razliku ... balans se umanjuje", and when the balance runs
+		   out first, „balans se trosi do kraja, pa se pita o ostatku". So the balance is measured
+		   against what is still owed after the money that arrived, capped at what there is. A member who
+		   paid in full (case 1) or over (case 7) is owed nothing more, so the same line takes nothing off
+		   his book even with the box ticked, and that is one formula covering four of the seven cases
+		   rather than four branches. */
+		Balance.Money expected = new Balance.Money(price.amount().add(price.fee()), his);
+		Balance.Money received = new Balance.Money(typed.received(), his);
+
+		Balance.Money fromTheBalance = typed.useTheBalance()
+				? Balance.against(Balance.whatIsStillOwed(expected, received),
+						book.of(competitor.id(), his)).fromTheBalance()
+				: Balance.Money.nothingIn(his);
+
+		/* A row that moves nothing is refused by `balance_entry_a_membership_takes` (V42), and it is
 		   refused on purpose: a member with an empty book has nothing to record. */
-		if (!fromTheBalance.isNothing()) {
+		if (fromTheBalance.isMoney()) {
 			book.spentOnAMembership(competitor.id(), season, fromTheBalance, asking.account(), recordedByName);
+		}
+
+		/* AND WHAT ARRIVED OVER AND ABOVE WHAT WAS EXPECTED GOES BACK ONTO HIS BOOK. Owner, 27.09.2026
+		   (PDL 19, case 7): „veci od ocekivanog ... aktivacija prolazi, visak ulazi u balans kao
+		   kredit", chosen over two others because „balans vec postoji kao mesto gde stoji clanov novac
+		   kod nas, pa se visak ne izmislja nigde drugde i clan ne gubi ono sto je poslao."
+
+		   IT DOES NOT DEPEND ON THE TICK BOX, and that is worth saying because the tick sits right
+		   beside it on the screen. The box says whether his balance may PAY; a surplus is money he has
+		   actually sent, and declining to record it because a box was cleared would be the association
+		   keeping it. */
+		Balance.Money credited = Balance.whatArrivedInExcess(expected, received);
+
+		if (credited.isMoney()) {
+			book.creditedAnOverpayment(competitor.id(), season, credited, asking.account(), recordedByName);
 		}
 
 		/* AND WHOEVER BROUGHT HIM IN IS PAID, at this moment and for this reason: PDL, „Iznos leže
@@ -532,7 +667,7 @@ class PaymentApi {
 		book.aReferralWasActivated(competitor.id(), asking.account(), recordedByName);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Confirmed(paymentId, memberNumber,
-				price.amount(), price.fee(), typed.currency(), fromTheBalance));
+				price.amount(), price.fee(), his.name(), typed.received(), fromTheBalance, credited));
 	}
 
 	private static boolean isNothing(String value) {
