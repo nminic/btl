@@ -324,12 +324,12 @@ class BalanceBecameOneAmountTest extends DatabaseTest {
 	 *
 	 * <p>The rows were written under V38's rules and are alive under V42's, so the fact that they
 	 * PASSED is already a statement - but only that they do not break anything. This asks the other
-	 * direction: a line in a money the portal does not bill in, and a line of nought written under the
-	 * new reason, are both refused ON THE CONVERTED TABLE. A migration that added the columns and
-	 * forgot the constraints would pass every case above and fail this one.
+	 * direction: a line in a money the portal does not bill in is refused ON THE CONVERTED TABLE. A
+	 * migration that added the columns and forgot the constraints would pass every case above and fail
+	 * this one.
 	 */
 	@Test
-	void theconstraintsBindTheTableThatWasConverted() {
+	void amoneyThePortalDoesNotBillInIsRefusedOnTheConvertedTable() {
 		theMigration();
 
 		assertThatThrownBy(() -> db.sql("insert into balance_entry (competitor_id, amount, currency,"
@@ -337,6 +337,21 @@ class BalanceBecameOneAmountTest extends DatabaseTest {
 						+ whoIs(BILLED_IN_EURO) + ", 5, 'USD', 'referral', " + whoIs(BILLED_IN_DINARS)
 						+ ", " + AN_INSTANT + ", 'Prvi Blagajnik')").update())
 				.hasMessageContaining("balance_entry_currency_known");
+	}
+
+	/**
+	 * AND A CONVERSION OF NOTHING IS REFUSED ON IT TOO, which is a second case rather than a second
+	 * assertion.
+	 *
+	 * <p>The same reason {@code BalanceConstraintsTest} gives for splitting its own pair: the first
+	 * refusal aborts the transaction, so anything after it in one method is answered „current
+	 * transaction is aborted" and the second assertion measures the first one's aftermath instead of
+	 * its own constraint. Measured, not reasoned about - written as one method this failed with SQL
+	 * state 25P02 and the constraint name nowhere in the message.
+	 */
+	@Test
+	void aconversionOfNothingIsRefusedOnTheConvertedTable() {
+		theMigration();
 
 		assertThatThrownBy(() -> db.sql("insert into balance_entry (competitor_id, amount, currency,"
 						+ " reason, occurred_at, recorded_by_name) values ("
