@@ -1060,6 +1060,18 @@ class TeamJoiningWriteApi {
 	 * {@code standing}, so a seat naming somebody who has left or whose fee has lapsed simply
 	 * misses it and the title passes on, and the {@code coalesce} makes a team nobody
 	 * administers at all FALSE rather than null - the same value the list answers.
+	 *
+	 * <p><b>WHICH ARM OF THAT RULE THIS SUITE MEASURES, named rather than left to be found, and
+	 * it was a mutation that exposed it.</b> Replacing {@link TeamApi#WHO_ADMINISTERS_IT} with
+	 * {@code t.admin_id} alone turns ten cases red here - but only because no team in
+	 * {@code TeamJoiningWriteApiTest} ever NAMES a seat, so every administrator in it is
+	 * resolved by the other arm, „whoever has been in the team longest". The arm that reads a
+	 * named {@code admin_id} is exercised where the rule lives: {@code TeamApiTest} sets that
+	 * column (its own helper at line 568) and
+	 * {@code TeamWriteApiTest.theDeleteRouteAndTheListAgreeOnWhoAdministersEachTeam} asks two
+	 * readers of it over one fixture. <b>What keeps the third reader honest is the constant and
+	 * not a case per reader:</b> all three read the same string, so a change to the rule moves
+	 * them together or fails somewhere.
 	 */
 	private boolean heAdministersThisTeam(long me, long team) {
 		return db.sql("with standing as (" + TeamApi.WHO_STANDS_IN_A_TEAM + ")"
