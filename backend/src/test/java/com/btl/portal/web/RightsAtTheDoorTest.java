@@ -427,6 +427,17 @@ class RightsAtTheDoorTest {
 					"PUT /api/me/password", "POST /api/me/photo", "DELETE /api/me/photo",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
+					/* AND THE PICTURE A QUEUE ROW IS ABOUT, ADDED 27.09.2026 WITH B131. Here
+					   for the three writes' reason and for no new one: THE PRIVILEGE IS
+					   DECIDED BY THE ROW. `verification.right_code` carries it, so one code
+					   written on the route could only ever be one of the five queues. The
+					   route lives in `PhotoApi` because `bytesOf` is the one place in the
+					   portal that reads a picture off the disk, which is a question about
+					   where bytes come from and not about who may have them; the address is
+					   on no open list either way, so an unauthenticated caller is 401 from
+					   the chain exactly as he is for `/api/verification` itself. See
+					   `PhotoApi.waitingOn`. */
+					"GET /api/verification/{id}/photo",
 					/* DELETING A TEAM, AND THIS ONE IS HERE FOR A REASON NO OTHER LINE ON THIS
 					   LIST CARRIES: it has TWO ways in and `RightIsNeeded` can only express
 					   one of them. PDL P13b, owner, 25.09.2026: „Superadmin i moderator sa

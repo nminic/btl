@@ -189,6 +189,19 @@ import java.util.List;
  * every name, so a field that went missing for some other reason cannot hide behind the
  * list.
  *
+ * <p><b>WHICH IS STILL TRUE OF A DIGEST AND IS NO LONGER TRUE OF THE PICTURE, since ADL
+ * A60's dopuna of 27.09.2026.</b> The sentence above is kept because it is still exactly why
+ * no DIGEST is answered here: {@code GET /api/photos/{name}} refuses a picture only a queue
+ * row holds, so a digest in this answer really would draw a broken frame. What changed is
+ * that the picture has an address of its own - {@code PhotoApi.waitingOn}, {@code GET
+ * /api/verification/{id}/photo} - open to the moderator who may decide about that row and
+ * answering 404 to everybody else. The owner's reason for it was that he approved a
+ * photograph on QA WITHOUT SEEING IT, this queue never having drawn one. <b>This paragraph
+ * exists because the one above it, left alone, reads as „the moderator cannot be shown the
+ * picture"</b>, which is the fault that increment closed rather than a rule it kept. The
+ * {@code photoId} this answer already carries is the key of the row, not an address, and
+ * still nothing the portal reads.
+ *
  * <p><b>WHAT USED TO COST AN ACTION AND NOT AN EMPTY BOX, until 22.09.2026 (ADL A64).</b>
  * That is measured rather than described, and it is kept here rather than deleted because
  * the shape of the fault is worth knowing even solved: a blank never arrived as a gap on a
