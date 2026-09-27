@@ -96,8 +96,48 @@ class MembershipConstraintsTest extends DatabaseTest {
 		return "insert into membership (" + COLUMNS + ") values (" + values + ")";
 	}
 
+	/**
+	 * THE SAME ROW WITH THE TRAIL V35 ASKS FOR, and a second helper rather than four more
+	 * columns on the first one.
+	 *
+	 * <p>Every case above this line measures something that has nothing to do with the trail -
+	 * the key, the receipt, the season, the word the basis is spelt with - and rewriting all of
+	 * them to carry three more values would have changed what they are made of in order to add
+	 * a column they never ask about. So the cases that must name a trail name one, and the rest
+	 * are untouched.
+	 *
+	 * <p><b>What this helper being NECESSARY says about V35, which is worth writing down:</b>
+	 * `membership_free_of_the_fee_says_who` makes every row that frees somebody of the fee
+	 * without saying who did it ILLEGAL, and that included several fixtures here which had been
+	 * legal since V22. They were not wrong then and they are not wrong now; the rule they break
+	 * is new, and it is the owner's of 27.09.2026. A fixture that could still write an exemption
+	 * with no trail would mean the schema was not carrying his decision at all.
+	 *
+	 * @param values the four columns {@link #COLUMNS} names, and then who and when
+	 */
+	private static String withATrail(String values) {
+		return "insert into membership (" + COLUMNS + ", decided_by, decided_by_name, decided_at)"
+				+ " values (" + values + ")";
+	}
+
+	/** Who entered it and when, the shape V35 takes: an account that is there and an instant. */
+	private static final String A_TRAIL = AN_ACCOUNT + ", 'Blagajnik Probni', " + AN_INSTANT;
+
+	/**
+	 * AND THE SAME ROW NAMING THE LINE IN THE BOOK THAT PAID FOR IT (V36), which is the third basis.
+	 *
+	 * <p><b>It carries the trail of {@link #withATrail} as well, and that is not tidiness.</b> One of
+	 * the rows below holds {@code feeExempt} while naming a book entry - it has to, because what it
+	 * measures is that a basis which is NOT {@code balance} may not name one - and since V35 an
+	 * exemption written without a trail is refused. Without these three columns here that row would
+	 * break three constraints and PostgreSQL would report one of them, so the case would name a thing
+	 * it is not about.
+	 *
+	 * @param values the four columns {@link #COLUMNS} names, then the book entry, then who and when
+	 */
 	private static String membershipNaming(String values) {
-		return "insert into membership (" + COLUMNS_WITH_THE_BOOK + ") values (" + values + ")";
+		return "insert into membership (" + COLUMNS_WITH_THE_BOOK
+				+ ", decided_by, decided_by_name, decided_at) values (" + values + ")";
 	}
 
 	/** His own receipt, for the year it was paid for. */
@@ -110,7 +150,8 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 * <p>A different season from the one the probe holds for him, so accepting it says something:
 	 * the key refuses a second row for ONE season and not a second season.
 	 */
-	private static final String GOOD_LET_IN_FREE = membership(A_MEMBER + ", 2028, 'feeExempt', null");
+	private static final String GOOD_LET_IN_FREE =
+			withATrail(A_MEMBER + ", 2028, 'feeExempt', null, " + A_TRAIL);
 
 	/** And somebody else, on his own receipt, for the season the first man is let in free. */
 	private static final String GOOD_ANOTHER_MEMBER =
@@ -171,17 +212,21 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	static List<Violation> violations() {
 		return List.of(
+				/* THESE FOUR CARRY A TRAIL, and not for tidiness: without one they would break
+				   `membership_free_of_the_fee_says_who` as well as the constraint each is about,
+				   and a row that breaks two says nothing about either - PostgreSQL reports one of
+				   them and the case would be measuring whichever it happened to report. */
 				Violation.notNull("membership_competitor_id_not_null", "competitor_id",
-						membership("null, 2027, 'feeExempt', null")),
+						withATrail("null, 2027, 'feeExempt', null, " + A_TRAIL)),
 				/* A membership for somebody who is not there. */
 				Violation.of("membership_competitor_fk",
-						membership("999999, 2027, 'feeExempt', null")),
+						withATrail("999999, 2027, 'feeExempt', null, " + A_TRAIL)),
 
 				Violation.notNull("membership_season_not_null", "season",
-						membership(A_MEMBER + ", null, 'feeExempt', null")),
+						withATrail(A_MEMBER + ", null, 'feeExempt', null, " + A_TRAIL)),
 				/* The league begins in 2027 and there is no season before it. */
 				Violation.of("membership_season_not_before_the_league",
-						membership(A_MEMBER + ", 2026, 'feeExempt', null")),
+						withATrail(A_MEMBER + ", 2026, 'feeExempt', null, " + A_TRAIL)),
 
 				Violation.notNull("membership_basis_not_null", "basis",
 						membership(A_MEMBER + ", 2027, null, null")),
@@ -194,7 +239,8 @@ class MembershipConstraintsTest extends DatabaseTest {
 				   reaches for the moment he wants to record a change of basis - would still refuse
 				   an identical row and let this one through, so an identical row would measure
 				   nothing. */
-				Violation.of("membership_pk", membership(A_MEMBER + ", 2029, 'feeExempt', null")),
+				Violation.of("membership_pk",
+						withATrail(A_MEMBER + ", 2029, 'feeExempt', null, " + A_TRAIL)),
 
 				/* BOTH HALVES OF A12, and they fail differently. Held on a payment and naming
 				   none is the member who appears in the report of takings with nothing behind
@@ -204,7 +250,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 				Violation.of("membership_basis_says_whether_a_payment_is_named",
 						membership(A_MEMBER + ", 2027, 'payment', null")),
 				Violation.of("membership_basis_says_whether_a_payment_is_named",
-						membership(A_MEMBER + ", 2027, 'feeExempt', " + HIS_2027)),
+						withATrail(A_MEMBER + ", 2027, 'feeExempt', " + HIS_2027 + ", " + A_TRAIL)),
 
 				/* AND THE RECEIPT IS HIS, FOR THAT SEASON. Three ways to be wrong and all three
 				   are the same key: a receipt that is not there at all, another member's receipt,
@@ -216,24 +262,69 @@ class MembershipConstraintsTest extends DatabaseTest {
 				Violation.of("membership_payment_fk",
 						membership(A_MEMBER + ", 2027, 'payment', " + HIS_2029)),
 
+				/* V35, AND THE FOUR BREAK IN FOUR DIFFERENT DIRECTIONS.
+				   Each row below breaks exactly ONE of them: the first names the moment and not
+				   the person, the second the person and not the moment, so neither can be
+				   satisfied by the other's half. That matters here more than usual, because a
+				   single row missing both would break two constraints and prove nothing about
+				   which. */
+				Violation.of("membership_free_of_the_fee_says_who",
+						withATrail(A_MEMBER + ", 2028, 'feeExempt', null, null, null, " + AN_INSTANT)),
+				Violation.of("membership_free_of_the_fee_says_when",
+						withATrail(A_MEMBER + ", 2028, 'feeExempt', null, " + AN_ACCOUNT
+								+ ", 'Blagajnik Probni', null")),
+
+				/* A blank name is a trail that looks like one and names nobody. `says_who` is
+				   satisfied by it - a blank string is not null - so this row breaks the other
+				   constraint alone, which is the whole reason both exist. */
+				Violation.of("membership_decided_by_name_not_blank",
+						withATrail(A_MEMBER + ", 2028, 'feeExempt', null, " + AN_ACCOUNT + ", '   ', "
+								+ AN_INSTANT)),
+
+				/* AND THE OTHER DIRECTION, which is what stops these columns becoming a second
+				   home for what `payment` already says. The receipt is HIS and for THAT season, so
+				   the composite key and `membership_basis_says_whether_a_payment_is_named` are
+				   both satisfied and the trail beside it is the only thing wrong. */
+				Violation.of("membership_on_a_payment_names_no_decision",
+						withATrail(ANOTHER_MEMBER + ", 2027, 'payment', " + ANOTHER_MEMBERS_2027
+								+ ", " + A_TRAIL)),
+
+				/* AND THE ACCOUNT IN THE TRAIL HAS TO BE AN ACCOUNT. The name and the moment are
+				   both there, so the two `free_of_the_fee` constraints are satisfied and this is
+				   the only thing the row breaks - which is what makes it a case about the key
+				   rather than about the trail being filled in.
+
+				   THIS ROW WAS NOT WRITTEN FROM MEMORY. It was written because
+				   `everyConstraintOnTheMembershipHasARowThatBreaksIt` refused the commit without
+				   it: V35 adds four checks and a KEY, and the floor named the fifth one back. It
+				   is worth recording that the floor found it rather than the author, because that
+				   is the whole reason the floor compares in both directions. */
+				Violation.of("membership_decided_by_fk",
+						withATrail(A_MEMBER + ", 2028, 'feeExempt', null, 999999,"
+								+ " 'Blagajnik Probni', " + AN_INSTANT))),
+
 				/* AND BOTH HALVES OF THE SAME SENTENCE ABOUT THE BOOK (V36), which arrived with the
 				   third basis. Held on the balance and naming no line is the member let in with nothing
 				   anywhere to say what paid for him, which is what ADL's „aktivacija nosi dokaz" refuses;
 				   held on something else and naming a line is a withdrawal counted against a season it
 				   did not buy.
 
-				   NEITHER ROW BREAKS V22'S OWN CONSTRAINT AS WELL, and that is what makes each of them
-				   measure one thing: for 'balance' with no receipt, (basis = 'payment') and
-				   (payment_id is not null) are both false and agree; for 'feeExempt' naming a line the
-				   same two are both false again. */
+				   EACH OF THE THREE BREAKS EXACTLY ONE CONSTRAINT, and since V35 that costs more than
+				   it did. For 'balance' with no receipt, V22's (basis = 'payment') and (payment_id is
+				   not null) are both false and agree, and no trail is owed because the basis is not an
+				   exemption. The middle row is the one V35 changed: 'feeExempt' naming a line owes a
+				   trail, so it carries one - without it the row would break `..._says_who`,
+				   `..._says_when` AND the sentence it is actually about, and PostgreSQL would name
+				   whichever it reached first. */
 				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
-						membershipNaming(A_MEMBER + ", 2030, 'balance', null, null")),
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, null, null, null, null")),
 				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
-						membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, " + HIS_BOOK_ENTRY)),
+						membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, " + HIS_BOOK_ENTRY
+								+ ", " + A_TRAIL)),
 
 				/* And the line it names has to be there. */
 				Violation.of("membership_balance_entry_fk",
-						membershipNaming(A_MEMBER + ", 2030, 'balance', null, 999999")));
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, 999999, null, null, null")));
 	}
 
 	@ParameterizedTest
@@ -272,7 +363,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 * before V36, because every membership had to name a payment or be a gift.
 	 */
 	private static final String GOOD_OUT_OF_THE_BOOK =
-			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY);
+			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY + ", null, null, null");
 
 	static List<String> legitimateRows() {
 		return List.of(GOOD_ON_HIS_OWN_RECEIPT, GOOD_LET_IN_FREE, GOOD_ANOTHER_MEMBER,

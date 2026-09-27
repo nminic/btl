@@ -150,6 +150,30 @@ class PaymentApiTest {
 	}
 
 	/**
+	 * A MEMBERSHIP THE ASSOCIATION GRANTED WITHOUT A FEE, WRITTEN THE WAY THE SCHEMA
+	 * ALLOWS IT RATHER THAN THROUGH A ROUTE.
+	 *
+	 * <p>{@code V22} names both halves of this row: {@code membership_basis_known}
+	 * allows {@code feeExempt} beside {@code payment}, and
+	 * {@code membership_basis_says_whether_a_payment_is_named} requires the receipt to
+	 * be absent exactly when the basis is not a payment. So this is not a contrived
+	 * row: it is the only shape the table will take for somebody who does not pay.
+	 *
+	 * <p><b>And it carries WHO and WHEN, because since {@code V35} it has to.</b>
+	 * {@code membership_free_of_the_fee_says_who} and its pair make an exemption with
+	 * no trail illegal (owner, 27.09.2026), so a helper that wrote one would be
+	 * writing a row the schema refuses rather than the row this route will meet.
+	 */
+	private void freeOfTheFee(long competitorId, int season) {
+		db.sql("insert into membership (competitor_id, season, basis, payment_id,"
+						+ " decided_by, decided_by_name, decided_at)"
+						+ " values (?, ?, 'feeExempt', null,"
+						+ " (select id from account where email = ?), 'Blagajnik Probni', ?)")
+				.params(competitorId, season, MODERATOR, Timestamp.from(NOW))
+				.update();
+	}
+
+	/**
 	 * A FIRST TIME PAYER IS GIVEN A NUMBER, RECORDED AND ACTIVATED, ALL IN ONE
 	 * ANSWER.
 	 *
@@ -352,6 +376,153 @@ class PaymentApiTest {
 		assertThat(db.sql("select active from competitor where id = ?").param(id)
 				.query(Boolean.class).single()).as("a refused reversal changed the competitor").isFalse();
 		assertThat(membershipCount()).as("a refused reversal wrote a membership anyway").isZero();
+	}
+
+	/**
+	 * A SEASON ALREADY HELD WITHOUT A FEE IS REFUSED, AND THE KEY IS NEVER REACHED.
+	 *
+	 * <p>{@code membership_pk} is {@code (competitor_id, season)}, so the row the
+	 * administration writes when it frees somebody of the fee occupies exactly the
+	 * place {@code recordIt} would insert into. Before this guard the route read
+	 * {@code payment} only, found nothing waiting, drew a number, wrote the payment and
+	 * then met the key - a 500 with a member number already spent on it, which the
+	 * sequence never gives back.
+	 *
+	 * <p><b>The refusal says the season is held and never on what ground, and that is
+	 * asserted over the whole body rather than over the reason.</b> The tick that opens
+	 * this route is {@code queue:payments}, while the basis is read under
+	 * {@code entity:members} (PDL 28.07.2026), so a body mentioning the basis would be
+	 * this route answering a question its caller may not ask. Reading the raw text
+	 * refuses it however it might be spelt or whatever field it arrived in.
+	 *
+	 * <p><b>Two competitors, and the one this case is about is neither the first by id
+	 * nor the only one carrying a membership.</b> The other man holds one too, for a
+	 * DIFFERENT season, so „he has a membership row" and „he has one for THIS season"
+	 * cannot stand in for each other - and the case below pays for that other man to
+	 * prove the difference is the one the guard actually reads.
+	 */
+	@Test
+	void aSeasonAlreadyHeldWithoutAFeeIsRefusedRatherThanMeetingTheKey() throws Exception {
+		long heldElsewhere = competitor("b3", "008008", true, "1990-05-15");
+		long id = competitor("b4", null, false, "1990-05-15");
+
+		freeOfTheFee(heldElsewhere, 2029);
+		freeOfTheFee(id, 2028);
+
+		MockHttpServletResponse answer = confirm(json(
+				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+				.isEqualTo(PaymentApi.THE_MEMBERSHIP_IS_ALREADY_HELD);
+
+		assertThat(answer.getContentAsString())
+				.as("the refusal told a moderator holding only queue:payments HOW the membership"
+						+ " is held, which is read under entity:members and not under his tick")
+				.doesNotContain("feeExempt").doesNotContain("payment");
+
+		assertThat(paymentCount()).as("a refused confirmation wrote a payment anyway").isZero();
+		assertThat(membershipCount()).as("a refused confirmation touched the membership rows")
+				.isEqualTo(2);
+
+		assertThat(db.sql("select basis, payment_id from membership where competitor_id = ?"
+						+ " and season = 2028").param(id)
+						.query((row, i) -> row.getString(1) + " " + row.getObject(2)).single())
+				.as("the membership the administration granted was written over by a fee")
+				.isEqualTo("feeExempt null");
+
+		assertThat(db.sql("select member_number, active from competitor where id = ?").param(id)
+						.query((row, i) -> row.getObject(1) + " " + row.getBoolean(2)).single())
+				.as("a refused confirmation numbered him or activated him")
+				.isEqualTo("null false");
+	}
+
+	/**
+	 * AND A MEMBERSHIP IN ANOTHER SEASON DOES NOT BLOCK THIS ONE.
+	 *
+	 * <p><b>This is the guard on the guard above, and it is a replacement of the SOURCE
+	 * rather than a deleted assertion.</b> Written without the season - „does he hold a
+	 * membership at all" - the query would refuse every renewal the portal has, because
+	 * a man renewing holds last season's membership by construction. So the same
+	 * fixture is used and the OTHER man is paid for: he carries a row for 2029 and none
+	 * for 2028, and the day the season drops out of that query this case answers 409.
+	 */
+	@Test
+	void aMembershipInAnotherSeasonDoesNotBlockThisOne() throws Exception {
+		long heldElsewhere = competitor("b5", "008008", true, "1990-05-15");
+		long other = competitor("b6", null, false, "1990-05-15");
+
+		freeOfTheFee(other, 2029);
+		freeOfTheFee(heldElsewhere, 2030);
+
+		MockHttpServletResponse answer = confirm(json(
+				new PaymentApi.Confirm(other, "EUR", "card", null)), moderatorCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+
+		PaymentApi.Confirmed body = mapper.readValue(answer.getContentAsString(), PaymentApi.Confirmed.class);
+
+		assertThat(db.sql("select basis, payment_id from membership where competitor_id = ?"
+						+ " and season = 2028").param(other)
+						.query((row, i) -> row.getString(1) + " " + row.getLong(2)).single())
+				.isEqualTo("payment " + body.paymentId());
+
+		assertThat(db.sql("select basis from membership where competitor_id = ? and season = 2029")
+						.param(other).query(String.class).single())
+				.as("the season he was already free of was rewritten by a payment for another one")
+				.isEqualTo("feeExempt");
+	}
+
+	/**
+	 * AND THE QUESTION IS THE KEY AND NOT THE BASIS, WHICH ONLY THIS CASE CAN SHOW.
+	 *
+	 * <p><b>Why it had to be written: without it the guard has no floor at all.</b> The
+	 * two cases above pass unchanged if {@code theSeasonIsAlreadyHeld} is narrowed to
+	 * „{@code and basis = 'feeExempt'}", because {@code feeExempt} is the only basis
+	 * either of them puts in the way. A guard whose shape no case can distinguish from
+	 * a narrower one is a guard that measures its outcome and not its question, and the
+	 * branch in flight adding {@code 'balance'} is exactly the mutation that would then
+	 * arrive unmeasured.
+	 *
+	 * <p><b>The state this uses is legal and named, not contrived.</b> A {@code payment}
+	 * left {@code awaited} is what {@code V16}'s own {@code default 'awaited'} leaves
+	 * room for, and {@code membership_payment_fk} asks for the receipt's identity and
+	 * never its state - so a membership naming a payment that has not been recognised
+	 * is a row the schema takes. Reaching this route with it, the outcome is
+	 * {@code RECORD_IT_AND_NUMBER_HIM}, the same as for somebody with no payment at
+	 * all, so the guard is asked with a membership whose basis is {@code payment}.
+	 *
+	 * <p>Narrowed to the basis, this case does not merely answer 201 instead: it answers
+	 * 500, because {@code recordIt} then meets {@code payment_one_a_season} on the way
+	 * to the key it was going to meet anyway.
+	 */
+	@Test
+	void aSeasonHeldOnAPaymentNotYetRecognisedIsRefusedToo() throws Exception {
+		long id = competitor("b7", null, false, "1990-05-15");
+
+		long awaited = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
+						+ " amount, currency, fee, method, state) values"
+						+ " (?, 2028, '20280077', (select id from price_row where key = 'early'),"
+						+ " 35.00, 'EUR', 3.00, 'card', 'awaited') returning id")
+				.param(id).query(Long.class).single();
+
+		db.sql("insert into membership (competitor_id, season, basis, payment_id)"
+						+ " values (?, 2028, 'payment', ?)")
+				.params(id, awaited).update();
+
+		MockHttpServletResponse answer = confirm(json(
+				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
+
+		assertThat(answer.getStatus())
+				.as("a season already held was recorded over, or the key was met and answered 500")
+				.isEqualTo(409);
+		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+				.isEqualTo(PaymentApi.THE_MEMBERSHIP_IS_ALREADY_HELD);
+
+		assertThat(db.sql("select state from payment where id = ?").param(awaited)
+				.query(String.class).single()).isEqualTo("awaited");
+		assertThat(paymentCount()).as("a second payment was written for a season already held")
+				.isEqualTo(1);
 	}
 
 	/**

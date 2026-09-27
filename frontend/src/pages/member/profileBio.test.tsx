@@ -22,7 +22,7 @@ import { setupUser } from '../../test/user'
  */
 
 const members: Competitor[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
 )
 
 /** Somebody who has written one, and somebody who has not, taken out of the

@@ -327,7 +327,6 @@ describe('a sentence with a value put into it', () => {
       'leagues.countingOf',
       'leagues.season',
       'membership.active',
-      'membership.byCountry',
       'membership.chooseCategory',
       /* The same fee said to the member, and the same move on the same day: it was
          `PROCESSING_FEE_EUR` written straight into the sentence and it is the served row
@@ -340,7 +339,6 @@ describe('a sentence with a value put into it', () => {
       'membership.junior <- money',
       'membership.priceNow <- money',
       'membership.referralNote',
-      'membership.renew',
       'membership.renewal',
       'membership.transferOpen',
       'messages.unread',

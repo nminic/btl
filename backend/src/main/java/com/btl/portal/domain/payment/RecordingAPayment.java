@@ -8,11 +8,23 @@ import java.util.Set;
 /**
  * What happens the moment somebody says the money arrived.
  *
- * <p><b>This is where a member number comes from, and nowhere else.</b> PDL P8,
- * 31.07.2026: „Clanski broj se dodeljuje automatski u trenutku EVIDENTIRANJA
- * UPLATE", and the consequence it draws itself, „registrovan a neplacen clan nema
- * clanski broj". So a person who registered and has not paid is a row in
- * {@code competitor} with no number, which is why V16 made that column nullable.
+ * <p><b>This decides WHETHER a payment hands a member number out, which is not the
+ * same as being the only thing that ever hands one out.</b> It read „and nowhere
+ * else" until 27.09.2026, and that was true for as long as a fee was the only way to
+ * become a member. PDL P8, 31.07.2026: „Clanski broj se dodeljuje automatski u
+ * trenutku EVIDENTIRANJA UPLATE", and the consequence it draws itself, „registrovan a
+ * neplacen clan nema clanski broj". So a person who registered and has not paid is a
+ * row in {@code competitor} with no number, which is why V16 made that column
+ * nullable, and all of that still holds of the payment path - a man in the queue has
+ * no number until somebody says the money came.
+ *
+ * <p><b>What changed is the other ground.</b> PDL:760 makes the number a consequence
+ * of the ACTIVATION rather than of the fee („evidentirana uplata ili [oslobodjenje],
+ * cime clan dobija clanski broj"), and PDL:808 says of a member the association has
+ * freed of the fee that he „ima clanski broj i pravo rangiranja". So the
+ * administration freeing somebody of the fee hands one out too, without any payment
+ * for this class to judge. The statement both grounds share is
+ * {@code MemberNumbers}.
  *
  * <p><b>A number is handed out once and then never again to the same person.</b>
  * Somebody paying for his second season already has one and keeps it; so does

@@ -25,7 +25,7 @@ import sr from '../../i18n/sr.json'
  */
 
 const members: Competitor[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
 )
 
 /**

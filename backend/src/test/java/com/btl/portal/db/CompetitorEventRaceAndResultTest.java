@@ -538,6 +538,11 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   not at all. */
 				"membership.membership_balance_entry_fk cascade",
 				"membership.membership_competitor_fk cascade",
+				/* V35. The account that entered an exemption EMPTIES and the name it was entered
+				   under stays, which is the same sentence V9 wrote for a decision and V16 for a
+				   receipt: a moderator has the same right to have his account deleted as anybody
+				   else (PDL P23), and the exemption stays given. */
+				"membership.membership_decided_by_fk set null",
 				"membership.membership_payment_fk cascade",
 				"message.message_from_fk set null",
 				"message.message_pair_invite_fk cascade",
