@@ -111,9 +111,21 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
     path: `${ADDRESS}/rezultati`,
     outcome: 'sendBack',
   },
+  /**
+   * THE ONE ENTRY THAT IS NO LONGER A QUEUE, and it keeps its place here because a TAB is
+   * still what it is: an address, a name and a right.
+   *
+   * <p><b>It has no `returnedKey` and no `outcome` that can be reached, and the absence is
+   * the owner's decision of 27.09.2026 rather than a gap.</b> „Reda za verifikaciju uplate
+   * NEMA i ne uvodi se. Nista se ne upisuje, nista ne trigeruje, nijedan clan nista ne
+   * pritiska." Nobody sends anything in, so there is nothing to hand back and nobody to write
+   * to: a heading for a returned submission would be the portal telling a member his
+   * submission was refused about a submission he never made. `outcome` stays only because the
+   * type requires every queue to answer the question rather than inherit somebody else's
+   * answer, and the screen offers no control that reaches it.
+   */
   payments: {
     id: 'payments',
-    returnedKey: 'verification.paymentReturned',
     labelKey: 'verification.payments',
     sourceKey: 'verification.fromPayments',
     path: `${ADDRESS}/uplate`,
@@ -321,6 +333,20 @@ export function outcomeFor(queue: Queue, item: { kind: ItemKind }): QueueOutcome
 export type Waiting = {
   /** Results a competitor sent in during this visit and nobody has judged. */
   pendingResults: number
+  /**
+   * HOW MANY ACCOUNTS ARE NOT A MEMBER FOR THE SEASON, which is the length of a DERIVED list
+   * and not of anything waiting in a file.
+   *
+   * <p><b>Its own field for the same reason `pendingResults` has one, and the reason is a
+   * measurement rather than symmetry.</b> Since 27.09.2026 the Uplate tab reads
+   * `GET /api/payments` and nothing writes `verification.queue = 'payments'` anywhere in the
+   * backend - five places write that table and not one of them writes that word. So counted
+   * with the other three, this tab would read a permanent NOUGHT while the screen behind it
+   * listed people, and the owner's decision of 29.08.2026 („Neka ostane vidljiva i neka pise
+   * 0") is what makes that reading actively harmful: a nought is the ordinary sight in this
+   * column now, so a moderator has no way to tell „nothing to do" from „nobody counted".
+   */
+  notMembersYet: number
   items: PendingItem[]
   decisions: Decisions
 }
@@ -331,15 +357,29 @@ export type Waiting = {
  * in the navigation are the same number, and two ways of counting it would
  * eventually be two different numbers.
  *
- * One of the five is counted from something other than the file of waiting
- * items, and that is results, which a competitor sends in during the visit.
- * Memberships were the second until the member number became something the system
- * hands out (PDL P8, 30.07.2026): a registration with no number is not a member
- * and cannot be counted off the member list, so it waits in the file like
- * everything else and the general rule reaches it.
+ * TWO of the five are counted from something other than the file of waiting items, and they
+ * are the two that never had an item in it. Results a competitor sends in during the visit,
+ * so they live in the session. And payments are a DERIVED list since 27.09.2026: nothing
+ * writes that queue, so the file answers nought for it for ever, and a tab reading nought
+ * above a screen listing twenty people is worse than no number at all.
+ *
+ * Memberships were the second of those two once before, and came back into the file when the
+ * member number became something the system hands out (PDL P8, 30.07.2026). They are out of it
+ * again for a different reason: not because a number is missing, but because there is no item.
  */
-export function countFor({ pendingResults, items, decisions }: Waiting, queue: Queue): number {
-  return queue.id === 'results' ? pendingResults : waitingIn(items, decisions, queue.id).length
+export function countFor(
+  { pendingResults, notMembersYet, items, decisions }: Waiting,
+  queue: Queue,
+): number {
+  if (queue.id === 'results') {
+    return pendingResults
+  }
+
+  if (queue.id === 'payments') {
+    return notMembersYet
+  }
+
+  return waitingIn(items, decisions, queue.id).length
 }
 
 /**

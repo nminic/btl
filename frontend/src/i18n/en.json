@@ -1288,7 +1288,18 @@
       "anonymisingIsNotWrittenYet": "Anonymising an account has not been written yet. For now a member can only be deleted.",
       "theAccountAdministers": "This member's account administers the portal, so the member cannot be deleted from here."
     },
-    "memberGone": "The member has been deleted."
+    "memberGone": "The member has been deleted.",
+    "paymentRefused": {
+      "theFormIsNotComplete": "The portal did not pass on who is being activated. Refresh the page and try again.",
+      "theCurrencyIsNotKnown": "The portal sent a currency the server does not accept. Refresh the page and try again.",
+      "theMethodIsNotKnown": "The portal sent a payment method the server does not accept. Refresh the page and try again.",
+      "theReferenceIsNotShaped": "The payment reference is not of the right shape.",
+      "theCompetitorDoesNotExist": "The server no longer knows this member. Refresh the page: the list has changed in the meantime.",
+      "theReferenceIsTaken": "That payment reference is already recorded against another payment.",
+      "thePaymentWasReversed": "The payment for this season was reversed, so the membership is not activated from here. A reversal is turned back by a decision, not by a click on a list.",
+      "theMembershipIsAlreadyHeld": "This member already holds a membership for this season.",
+      "theFeeIsAlreadyRecorded": "This member's payment is already recorded, so he cannot be exempted from the fee."
+    }
   },
   "ducats": {
     "title": "Ducats",
@@ -1423,6 +1434,10 @@
     "sentByAnonymous": "Reported by a visitor without an account",
     "activatePayment": "Record the payment",
     "activateFeeExempt": "Exempt from the fee",
+    "paymentsSeason": "Not members for the {season} season",
+    "paymentsSearch": "Search by member number, given name or surname",
+    "paymentsNobodyDue": "Every account holds a membership for this season.",
+    "paymentsNoSearchHit": "No account matches this search.",
     "body": {
       "leagues": "Competition description",
       "teams": "The reasoning",
@@ -1449,7 +1464,6 @@
     "confirmDelete": "Delete the comment",
     "pictureAlt": "The picture sent by {who}, with the part that will be seen framed",
     "resultReturned": "The result has been sent back",
-    "paymentReturned": "The application has been sent back",
     "teamReturned": "The team proposal has been sent back",
     "teamChangeReturned": "The change to the team has been sent back",
     "bioReturned": "The text about yourself has been sent back",
@@ -1457,12 +1471,6 @@
     "noRecipient": "This item has no member for an answer to reach, so it is not refused from this queue. Approve it or report the fault; a message without a recipient would go to the whole League.",
     "numbersGiven": "The member numbers given",
     "noNumbersYet": "No number has been given on this screen yet.",
-    "activateAllPayment": "Activate all on the basis of payment",
-    "activateAllAsk": {
-      "one": "Activate {count} membership on the basis of payment? Each one gets a member number and this cannot be undone.",
-      "few": "Activate {count} memberships on the basis of payment? Each one gets a member number and this cannot be undone.",
-      "other": "Activate {count} memberships on the basis of payment? Each one gets a member number and this cannot be undone."
-    },
     "approveAllDone": {
       "one": "{count} item has been settled.",
       "few": "{count} items have been settled.",

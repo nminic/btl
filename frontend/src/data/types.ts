@@ -1059,3 +1059,70 @@ export type ServedPendingItem = Omit<
   PendingItem,
   'id' | 'memberNumber' | 'email' | 'picture' | 'crop' | 'currentDate' | 'proposedDate'
 > & { id: number; memberNumber: string | null; photoId: number | null }
+
+/**
+ * ONE ACCOUNT WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, exactly as
+ * `GET /api/payments` answers it and with nothing added.
+ *
+ * **Five fields, and the route's own note says each one had to earn its place.** What is
+ * NOT here is the point of the type: no address, no postal address, no telephone, no date
+ * of birth, no country, no basis of membership, and no amount, currency, method or day.
+ * The screen therefore cannot draw any of them by accident - the compiler refuses it -
+ * which is what the shape of a type is for. The screen it replaces drew two of them
+ * (`account.email` and the country), off a queue item that carried a richer stand-in.
+ *
+ * **The town IS here and its reason is NEW rather than inherited, which is written down
+ * because the old reason is still readable two files away** (`VerificationApi`, which
+ * says a town is drawn „because how a member pays follows the country they live in").
+ * That reason fell with the owner's decision of 27.09.2026: „Molim te pojasni mi zasto je
+ * bitno?? Novac je legao, mogu da ga aktiviram." Nothing about money is decided from a
+ * town any more. It stays for a different job: nothing stops two people sharing a first
+ * and last name, most of this list has no member number to tell them apart, and a
+ * moderator booking the wrong row books one man's money to another. The town is what he
+ * can read.
+ */
+export type MembershipDue = {
+  /**
+   * `competitor.id`, and the whole purpose of the route.
+   *
+   * **Never the member number, and that is a rule rather than a preference.** Activation
+   * takes this and nothing else that identifies anybody, and the population this list
+   * exists for is exactly the one that may hold no number yet.
+   */
+  competitorId: number
+  /**
+   * His, or BLANK where he has none - never null.
+   *
+   * The route answers `coalesce(c.member_number, '')`, so the nothing has already been
+   * turned into the portal's own empty on the far side. Blank rather than absent is the
+   * route's own choice and it says so; what matters here is that a cell is drawn without
+   * asking whether the field is there.
+   */
+  memberNumber: string
+  firstName: string
+  lastName: string
+  /** Out of the codebook or as he typed it, whichever of the two holds it. The schema
+   *  makes exactly one of them present, so this can neither be empty nor be two things. */
+  city: string
+}
+
+/**
+ * THE WHOLE ANSWER, and the season is on it rather than on any row.
+ *
+ * **Which is a fact about the question and not about anybody**, and reading it from here
+ * is the one thing that keeps the portal from having a second answer to it. `data/season.ts`
+ * exports `seasonRunning` and `transfersTakeEffect` and has no `seasonBeingPaidFor`, and
+ * neither of the two it has would do: one answers 2026 in October 2026, a year the schema
+ * refuses to hold a membership in, and the other is a year ahead from January to September.
+ * So a screen that worked the year out for itself would name a different season from the
+ * one the route is listing, and from the one the write is about.
+ *
+ * **An empty list is the ordinary state of a working portal and never a fault.** Owner,
+ * 27.09.2026: „NIKO SE NE DOVODI U PORTAL DOK SE SAM NE PRIJAVI KAD DODJE VREME." The
+ * import of past competitors makes no accounts, so on the first day this answers with
+ * nothing and fills as people register themselves.
+ */
+export type Outstanding = {
+  season: number
+  accounts: MembershipDue[]
+}

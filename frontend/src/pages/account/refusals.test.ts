@@ -19,6 +19,7 @@ import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
+import { WHEN_CONFIRMING_A_PAYMENT, WHEN_FREEING_OF_THE_FEE } from '../admin/paymentWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -122,6 +123,16 @@ const NOT_A_REASON: Record<string, string[]> = {
      `<Obrisana članica>` and `M` are what stands where a deleted member's name stood, and
      the letter the route reads his gender off to choose between the first two. */
   'CompetitorWriteApi.java': ['delete', 'anonymise', '<Obrisani član>', '<Obrisana članica>', 'M'],
+  /* `MembershipWriteApi` declares one that is not a refusal: `feeExempt` is the BASIS it writes
+     into `membership.basis`, one of the values V22 allows, so it is what the route WRITES rather
+     than why it turned anybody away - the same kind of constant as `PricingWriteApi`'s two kinds
+     of row and `CompetitorWriteApi`'s two words for an account.
+
+     It is caught by `reasonsIn` although it is declared `private`, because that function reads
+     the shape of the declaration and `private static final String` contains
+     `static final String`. Measured rather than assumed: without this line the gate reports
+     `feeExempt` as a reason no screen answers. */
+  'MembershipWriteApi.java': ['feeExempt'],
 }
 
 /**
@@ -264,6 +275,30 @@ describe('the reasons the server can name', () => {
        answers prose here where every other route answers a code, and why the screen maps it
        rather than letting `ServerSaid` print it. */
     ['CompetitorWriteApi.java', [WHEN_DELETING_A_MEMBER], 14],
+    /* THE TENTH AND ELEVENTH, ADDED 27.09.2026 WITH THE SCREEN THAT MEETS BOTH. Activating a
+       membership is two acts at two addresses and one screen sends both, so the two files are
+       registered separately and each is counted on its own: `POST /api/payments` for a fee that
+       arrived, `POST /api/memberships` for a member the association frees of it. Between them
+       they had named twelve reasons and nothing on this side could read one of them, because no
+       screen called either route: `grep -rn "api/payments\|api/memberships" frontend/src` came
+       back empty, tests included.
+
+       THREE NAMES ARE DECLARED BY BOTH FILES AND THAT IS WHY THE GATE IS PER FILE.
+       `theFormIsNotComplete`, `theCompetitorDoesNotExist` and `thePaymentWasReversed` are in
+       both dictionaries, two of them drawing the same sentence because the reader has the same
+       nothing to do about it. Counted over the union of the files this would have passed with
+       one of the two dictionaries missing entirely; counted per file, each one has to claim its
+       own.
+
+       AND FIVE OF THE EIGHT CANNOT BE REACHED FROM THE SCREEN, which is the shape
+       `WHEN_WRITING_A_PRICE` and `WHEN_DELETING_A_MEMBER` already keep and state the reason for:
+       the screen is the floor and the route decides. Three of those five are about a currency, a
+       method and a reference that this screen deliberately never sends - see the note on
+       `A_FEE_THAT_ARRIVED` for why it refuses to send them and what PDL section 14 says is owed
+       on the route instead. The day the route stops requiring them, the count below moves and
+       this gate is what says so. */
+    ['PaymentApi.java', [WHEN_CONFIRMING_A_PAYMENT], 8],
+    ['MembershipWriteApi.java', [WHEN_FREEING_OF_THE_FEE], 5],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

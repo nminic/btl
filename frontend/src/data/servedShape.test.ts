@@ -32,7 +32,9 @@ import type {
   Attending,
   BtlEvent,
   EventComment,
+  MembershipDue,
   Moderator,
+  Outstanding,
   Race,
   Result,
   StaticPage,
@@ -284,6 +286,35 @@ const readAsAttendance: Attending = anAttendance
 const readAsComment: EventComment = aComment
 const readAsModerator: Moderator = aModerator
 
+/**
+ * THE SIXTEENTH RESOURCE, whose answer is a record and not a list.
+ *
+ * <p>Written here rather than in `test/theAnswer.ts` with the other samples, and the reason is
+ * the one that file gives for holding them: the harness that stands in for the server has to
+ * read the same thing this holds. Nothing stands in for this one - `test/setup.ts` answers it
+ * off the disc like every other resource, and the cases that want a different answer build one
+ * themselves - so a second home for it would be a second home for nothing.
+ */
+const anOutstandingAnswer = {
+  season: 2027,
+  accounts: [
+    { competitorId: 41, memberNumber: '', firstName: 'Ana', lastName: 'Ilić', city: 'Novi Sad' },
+  ],
+}
+
+/** One of its accounts, for the half the record above cannot say: an empty `accounts` would
+ *  satisfy it completely. */
+const anAccountNotYetAMember = {
+  competitorId: 41,
+  memberNumber: '',
+  firstName: 'Ana',
+  lastName: 'Ilić',
+  city: 'Novi Sad',
+}
+
+const readAsOutstanding: Outstanding = anOutstandingAnswer
+const readAsAccountNotYetAMember: MembershipDue = anAccountNotYetAMember
+
 /** Every row of what the portal serves today, by resource. */
 function servedRows(name: ResourceName): Record<string, unknown>[] {
   const file = readFileSync(join(process.cwd(), 'src', 'test', 'mock', `${name}.json`), 'utf8')
@@ -311,6 +342,30 @@ function servedRows(name: ResourceName): Record<string, unknown>[] {
  *  than about what a column holds. */
 function servedRow(name: ResourceName): Record<string, unknown> {
   return must(servedRows(name)[0], `a first row of ${name}`)
+}
+
+/**
+ * THE WHOLE ANSWER, for the one resource that does not answer with a list.
+ *
+ * <p><b>`payments` is that one and it is the reason this function exists.</b> Fifteen
+ * resources answer with an array of rows and {@link servedRows} refuses anything else,
+ * deliberately: a served file that had become a list of numbers would otherwise be compared
+ * against nothing and agree with everything. `GET /api/payments` answers a RECORD - the season
+ * once, and the accounts under it - because the season is a fact about the question rather than
+ * about any row, and a screen that worked the year out for itself would name a different one.
+ *
+ * <p>So the refusal above stays exactly as strict as it was, and the resource whose answer is
+ * not a list is read by a function that says so in its name.
+ */
+function servedAnswer(name: ResourceName): Record<string, unknown> {
+  const file = readFileSync(join(process.cwd(), 'src', 'test', 'mock', `${name}.json`), 'utf8')
+  const answer: unknown = JSON.parse(file)
+
+  if (answer === null || typeof answer !== 'object' || Array.isArray(answer)) {
+    throw new Error(`${name}.json is not a record`)
+  }
+
+  return { ...answer }
 }
 
 /** What sort of thing a value is, in the words a JSON answer can be told apart by:
@@ -467,6 +522,35 @@ describe('the answer the backend gives', () => {
     for (const [name, answers] of against) {
       expect(shared(answers, servedRows(name)), name).toEqual([])
     }
+  })
+
+  it('reads the one answer that is a record and not a list, through the types the screen reads it by', () => {
+    /* THE SIXTEENTH RESOURCE, AND THE FIRST WHOSE ANSWER IS NOT A LIST. Held the same way as
+       the fifteen: the sample is written as a plain value and handed to a name that carries
+       the type, so a field of the wrong sort or one the type needs and the answer has not got
+       is a build that does not finish.
+
+       WHAT THIS CATCHES THAT NO OTHER CASE WOULD. The screen of payments reads the SEASON off
+       this answer, and it is the only place it can: `data/season.ts` exports `seasonRunning`
+       and `transfersTakeEffect` and neither of the two is the season being paid for. So an
+       answer that stopped carrying `season` would send that screen back to working the year
+       out for itself, and the year it would work out is measurably a different one. */
+    expect(missing(anOutstandingAnswer, servedAnswer('payments'))).toEqual([])
+
+    /* AND THE ROW INSIDE IT, because the record above says nothing about what an account
+       carries: a `accounts: []` in the file would satisfy the line above completely. The blank
+       member number is the state most of this list is in and it is a VALUE rather than an
+       absent field - the route answers `coalesce(c.member_number, '')` - so the sort of it is
+       what is held here. */
+    const served: unknown = servedAnswer('payments').accounts
+    const accounts = Array.isArray(served) ? served : []
+    const account = must(accounts[0], 'a first account of payments')
+
+    if (account === null || typeof account !== 'object') {
+      throw new Error('an account of payments.json is not a record')
+    }
+
+    expect(shared([anAccountNotYetAMember], [{ ...account }]), 'payments.accounts').toEqual([])
   })
 
   it('names what it does not serve, which is the half nobody has decided yet', () => {
@@ -639,6 +723,13 @@ describe('the answer the backend gives', () => {
          this list is for: `/api/pricing` had been answered and unread for weeks, so there
          was never a moment when the two ends could have been held against each other. */
       'pricing',
+      /* THE SEVENTEENTH NAME AND THE SIXTEENTH RESOURCE, added 27.09.2026 with the screen that
+         reads it, and the first one on this list whose answer is a RECORD rather than a list of
+         rows. It has its own case above for that reason. Like `pricing`, it was answered before
+         anything asked for it: `/api/payments` has served this since PR 393 and the screen of
+         payments went on drawing rows out of the `verification` fixture, a queue nothing has
+         ever written. */
+      'payments',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

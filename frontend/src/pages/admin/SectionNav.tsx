@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { usePermittedEntities, usePermittedQueues } from './mayOpen'
 import { usePending } from './pending'
+import { usePaymentsDue } from '../../data/useResource'
 import { countFor } from './queues'
 import './SectionNav.css'
 
@@ -236,6 +237,11 @@ function QueuesSector() {
   const { t } = useI18n()
   const { submissions, decisions } = useSession()
   const items = usePending()
+  /* The Uplate tab is counted off the derived list and not off the file, because nothing
+     writes that queue any more (`queues.ts`, `notMembersYet`). Asked here beside the file so
+     the number beside a queue, the number on the screen and the number beside Verification
+     stay one number. */
+  const due = usePaymentsDue()
   const queues = usePermittedQueues()
 
   if (queues.length === 0) {
@@ -247,6 +253,10 @@ function QueuesSector() {
      it, which is the work itself. */
   const waiting = {
     pendingResults: submissions.filter((one) => one.status === 'pending').length,
+    /* Read for what it is worth, like the file beside it: a derived list still on its way
+       counts as nought, which is the same reading every other queue gets while it waits and
+       is what keeps this section from holding up the work behind it. */
+    notMembersYet: dataOr(due, { season: 0, accounts: [] }).accounts.length,
     items: dataOr(items, []),
     decisions,
   }

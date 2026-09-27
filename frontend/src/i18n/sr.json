@@ -1288,7 +1288,18 @@
       "anonymisingIsNotWrittenYet": "Anonimizacija naloga još nije napisana. Član se za sada može samo obrisati.",
       "theAccountAdministers": "Nalog ovog člana administrira portal, pa se član ne može obrisati odavde."
     },
-    "memberGone": "Član je obrisan."
+    "memberGone": "Član je obrisan.",
+    "paymentRefused": {
+      "theFormIsNotComplete": "Portal nije prosledio ko se aktivira. Osveži stranu pa pokušaj ponovo.",
+      "theCurrencyIsNotKnown": "Portal je poslao valutu koju server ne prihvata. Osveži stranu pa pokušaj ponovo.",
+      "theMethodIsNotKnown": "Portal je poslao način uplate koji server ne prihvata. Osveži stranu pa pokušaj ponovo.",
+      "theReferenceIsNotShaped": "Poziv na broj nije ispravnog oblika.",
+      "theCompetitorDoesNotExist": "Ovog člana server više ne poznaje. Osveži stranu: spisak je u međuvremenu izmenjen.",
+      "theReferenceIsTaken": "Taj poziv na broj je već upisan uz drugu uplatu.",
+      "thePaymentWasReversed": "Uplata za ovu sezonu je stornirana, pa se članstvo ne aktivira odavde. Storno se poništava odlukom, ne klikom sa spiska.",
+      "theMembershipIsAlreadyHeld": "Ovaj član već ima članstvo za ovu sezonu.",
+      "theFeeIsAlreadyRecorded": "Ovom članu je uplata već evidentirana, pa se ne može osloboditi članarine."
+    }
   },
   "ducats": {
     "title": "Dukati",
@@ -1423,6 +1434,10 @@
     "sentByAnonymous": "Prijavio posetilac bez naloga",
     "activatePayment": "Evidentiraj uplatu",
     "activateFeeExempt": "Oslobodi članarine",
+    "paymentsSeason": "Nisu članovi za sezonu {season}",
+    "paymentsSearch": "Pretraga po članskom broju, imenu ili prezimenu",
+    "paymentsNobodyDue": "Svi nalozi imaju članstvo za ovu sezonu.",
+    "paymentsNoSearchHit": "Nijedan nalog ne odgovara ovoj pretrazi.",
     "body": {
       "leagues": "Opis lige",
       "teams": "Obrazloženje",
@@ -1449,7 +1464,6 @@
     "confirmDelete": "Obriši komentar",
     "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
     "resultReturned": "Rezultat je vraćen",
-    "paymentReturned": "Prijava je vraćena",
     "teamReturned": "Predlog tima je vraćen",
     "teamChangeReturned": "Izmena tima je vraćena",
     "bioReturned": "Tekst o sebi je vraćen",
@@ -1457,12 +1471,6 @@
     "noRecipient": "Ova stavka nema člana kome bi odgovor stigao, pa se sa ovog reda ne odbija. Odobri je ili prijavi grešku; poruka bez primaoca išla bi celoj ligi.",
     "numbersGiven": "Dodeljeni članski brojevi",
     "noNumbersYet": "Još nijedan broj nije dodeljen na ovom ekranu.",
-    "activateAllPayment": "Aktiviraj sve po osnovu uplate",
-    "activateAllAsk": {
-      "one": "Aktivirati {count} članstvo po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
-      "few": "Aktivirati {count} članstva po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
-      "other": "Aktivirati {count} članstava po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati."
-    },
     "approveAllDone": {
       "one": "Rešena je {count} stavka.",
       "few": "Rešene su {count} stavke.",
