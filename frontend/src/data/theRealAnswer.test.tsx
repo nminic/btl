@@ -586,43 +586,20 @@ describe('a queue of things waiting, on the answer the server gives', () => {
     }
   })
 
-  it('leaves a registration without an address rather than inventing one', async () => {
-    /* **THE ADDRESS IS THE ONE OF THE SIX THAT IS NOT A MISSING COLUMN**: `account.email`
-       exists and is reachable through `account.competitor_id`, so what the payments tab
-       may say about it is a decision and it is the owner's (`PENDING.md`). Until he takes
-       it the card has to be plainly without one, which is a different thing from a card
-       with a plausible address on it that belongs to nobody: a moderator activates a
-       membership by reading exactly that line (PDL P8).
-
-       Asked as „nothing on this row is an address" rather than as a list of addresses to
-       refuse, because the question is about the shape and not about a value. Every
-       address has the sign in it and nothing else on this row does. */
-    const { stop } = answering(queueAsServed(), '/api/verification')
-
-    try {
-      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-      const table = await screen.findByRole('table', { name: /Uplate/ })
-      const row = must(
-        within(table)
-          .getAllByRole('row')
-          .find((one) => (one.textContent ?? '').includes('Miodrag Stanković')),
-        'the registration waiting for its fee',
-      )
-
-      expect(row.textContent ?? '').not.toContain('@')
-
-      /* **And the town beside it IS drawn, which is the other half of this round.** The
-         query read `team_proposal` alone, so this column was empty on every row while
-         `competitor` carried the columns to fill it (V7). Read here off what the answer
-         carries, and off the schema on the side that decides it
-         (`VerificationApiTest.aRegistrationAnswersWithTheTownItsSenderLivesIn...`). */
-      expect(within(row).getByText('Kraljevo')).toBeVisible()
-    } finally {
-      stop()
-    }
-  })
-
+  /* A CASE STOOD HERE ABOUT THE ADDRESS ON A PAYMENTS ROW, and both halves of what it held
+   * have moved rather than gone (27.09.2026).
+   *
+   * It read the payments tab off `GET /api/verification` and held that the row carried no
+   * address - `account.email` being the one of the six missing fields that is a DECISION rather
+   * than a missing column - and that the town beside it was drawn. The screen does not read that
+   * answer at all any more: the tab is a derived list off `GET /api/payments`, which serves five
+   * fields and no address, so what was a decision waiting to be taken is now simply not served.
+   *
+   * Both halves are measured in `pages/admin/adminPayments.test.tsx`: nothing shaped like an
+   * address anywhere on the screen, and the town in its own cell on every row, with the reason
+   * it is there at all rewritten - it separates two people of one name, and no longer has
+   * anything to do with how somebody pays.
+   */
   it('says a waiting comment carries no marks where the member gave none', async () => {
     /* **The three marks of a comment answer for real now, off `comment_submission`**
        (ADL A64 A1, 22.09.2026); until then `verification` had no column for a mark and

@@ -5,8 +5,7 @@ import { person } from '../../test/plate'
 import { renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
-import { first, must } from '../../test/at'
-import { QUEUE } from './queues'
+import { must } from '../../test/at'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -546,63 +545,21 @@ describe('the members screen', () => {
    * visit, the number is freed by an answer from the server and taken by a different flow
    * entirely, which is the shape the portal really has now.
    */
-  it('activates a membership after a deletion, without the deleted row coming back with it',
-    async () => {
-      const remembered = [...MEMBERS]
-      const server = serverThat((path, init) => {
-        const how = init?.method ?? 'GET'
-
-        if (path === '/api/competitors' && how === 'GET') {
-          return new Response(JSON.stringify(remembered), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        }
-
-        if (how === 'DELETE') {
-          remembered.splice(
-            remembered.findIndex((one) => one.memberNumber === DELETED),
-            1,
-          )
-
-          return did()
-        }
-
-        return how === 'GET' ? null : did()
-      })
-      clearResourceCache()
-      const user = setupUser()
-      const { router } = renderAt('/sr/administracija/clanovi', 'superadmin')
-
-      await deleteNamed(user, 'Ana Jovanović')
-
-      const listed = within(await screen.findByRole('table', { name: 'Članovi' }))
-
-      await waitFor(() => {
-        expect(listed.queryByText(/Jovanović/)).toBeNull()
-      })
-
-      /* The same visit, walked the way an administrator walks it: no reload, so what the
-         queue counts as taken is what this screen has just changed. */
-      await router.navigate(`/sr/${QUEUE.payments.path}`)
-      await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
-      await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-
-      await router.navigate('/sr/administracija/clanovi')
-
-      const after = within(await screen.findByRole('table', { name: 'Članovi' }))
-
-      /* Whoever was just activated is in the list, and the member who was deleted has not
-         come back wearing his number. Read as „his name is nowhere" rather than „the row
-         count is right", because the count would be satisfied by the wrong member standing
-         in for him. */
-      expect(after.queryByText(/Jovanović/)).toBeNull()
-      expect(after.getByText(/Vuković/)).toBeVisible()
-      expect(after.getByText(/Petrović/)).toBeVisible()
-
-      server.stop()
-    }, SLOW)
-
+  /* A CASE STOOD HERE THAT WALKED FROM THIS SCREEN TO THE PAYMENTS TAB AND ACTIVATED A
+   * MEMBERSHIP, to hold that a member deleted a moment earlier did not come back wearing the
+   * number the activation handed out. It is gone with the mechanism it was about (27.09.2026).
+   *
+   * The number used to be worked out IN THE BROWSER, by `admin/memberNumbers.ts`, which counted
+   * what it could see and read this screen's own deletions to know which numbers were free -
+   * that is why the two screens had to be walked in one visit. The module is deleted: both
+   * routes that activate a membership draw the number from a sequence on the server, for the
+   * reason V16 gives, namely that a query reads what is there and what is there is missing
+   * exactly the people who have left.
+   *
+   * What this case really guarded on THIS screen - that a deletion clears every cache a deleted
+   * competitor appears in, so no later screen reads a row the server has forgotten - is held by
+   * the cases above, one per resource, against the seven foreign keys `AdminMembers.tsx` names.
+   */
   it('says one sentence out loud once a member is gone, and moves the focus off the row',
     async () => {
       const server = serving()

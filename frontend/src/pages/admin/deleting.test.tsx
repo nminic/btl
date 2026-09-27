@@ -306,47 +306,24 @@ describe('one decision for a whole queue', () => {
     }
   })
 
-  it('hands every activated membership its own number, not one number to all of them', async () => {
-    /* The fault a loop would have walked straight into. A number is worked out
-       against everything already spoken for, and what is spoken for is read off
-       the session as this render sees it; the session does not change while a
-       loop runs. Twenty activations in a loop are twenty members answering to
-       000032, which is the exact fault the numbering was moved into one module
-       to stop (memberNumbers.ts, PDL P8). */
-    const user = setupUser()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin', null, undefined, null, <Decided />)
-
-      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
-      const before = within(waiting).getAllByRole('row').slice(1).length
-      expect(before).toBeGreaterThan(1)
-
-      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
-
-      /* Read off the screen, which is where the administrator reads it: every
-         number handed out, one to a line, beside the name it went to. The
-         session is read as well, since the ground of the membership is written
-         there and drawn nowhere. */
-      const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
-      const numbers = said
-        .getAllByRole('listitem')
-        .map((one) => String(one.textContent).replace(/^.*· /, ''))
-      const lines = within(screen.getByRole('list', { name: 'session decisions' }))
-        .getAllByRole('listitem')
-        .map((one) => String(one.textContent))
-
-      expect(numbers).toHaveLength(before)
-      expect(new Set(numbers).size).toBe(before)
-      /* And every one of them is a membership on the ground of a fee, which is
-         what the words on the button say it writes down. */
-      expect(lines.filter((line) => line.includes('payment'))).toHaveLength(before)
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
+  /* THREE CASES ABOUT THE MONEY QUEUE'S SWEEP STOOD IN THIS DESCRIBE AND ARE GONE
+   * (27.09.2026), because the sweep is gone: „Aktiviraj sve po osnovu uplate" is not on the
+   * screen of payments any more. They held that every activated membership got its OWN number
+   * rather than one number for all of them, that the line afterwards named the number really
+   * settled, and that answering the question with no activated nobody.
+   *
+   * WHY THE CONTROL WENT, and it is a decision rather than a simplification. On a queue a row
+   * meant „somebody says the money arrived", so one press was one decision taken many times.
+   * The screen is a DERIVED list of whoever is not a member yet, so a row now means the
+   * opposite - no money has arrived - and the same press would activate every debtor at once
+   * and spend a member number on each. The sequence only counts up (V16), so a number spent in
+   * error is spent for good, and the text of the question promised exactly that it could not be
+   * undone.
+   *
+   * The ABSENCE is measured, in `pages/admin/adminPayments.test.tsx`: no control on that screen
+   * activates anybody, one at a time or all at once. The sweep itself is still measured here on
+   * the queues that still have one, which is what the remaining cases of this describe are.
+   */
   it('says what it did and takes the focus, rather than leaving it nowhere', async () => {
     /* The button is drawn only while something is waiting, so the sweep takes it
        off the screen in the same render that empties the queue. Without an
@@ -378,55 +355,6 @@ describe('one decision for a whole queue', () => {
       expect(said).toBeVisible()
       expect(said).toHaveFocus()
     } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('says what it did on the money queue too, with the number it really settled', async () => {
-    /* The same line on all three screens, and the number on it comes off the
-       queue rather than out of the air: written as a nought it would have said
-       "Rešeno je 0 stavki." after activating everybody, and nothing here would
-       have noticed. */
-    const user = setupUser()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
-      const before = within(waiting).getAllByRole('row').slice(1).length
-
-      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
-
-      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
-
-      expect(said).toBeVisible()
-      expect(said).toHaveFocus()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('activates nobody when the question about the money is answered no', async () => {
-    /* The one queue where saying yes by accident hands out member numbers, so
-       the way out of the question is the half worth pinning. */
-    const user = setupUser()
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-
-    try {
-      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
-
-      const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
-      const before = within(waiting).getAllByRole('row').slice(1).length
-
-      await user.click(screen.getByRole('button', { name: 'Aktiviraj sve po osnovu uplate' }))
-
-      expect(
-        within(await screen.findByRole('table', { name: 'Uplate i aktivacija članova' }))
-          .getAllByRole('row')
-          .slice(1),
-      ).toHaveLength(before)
-      } finally {
       confirm.mockRestore()
     }
   })
