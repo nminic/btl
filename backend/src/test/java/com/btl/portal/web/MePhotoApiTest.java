@@ -791,6 +791,59 @@ class MePhotoApiTest {
 				.isGreaterThan(WhatAPictureIs.AT_MOST_BYTES);
 	}
 
+	/**
+	 * AND THE EDGE LETS THROUGH MORE THAN THE CONTAINER TAKES, the fourth floor and the
+	 * one nothing named until a review of PR 381 (27.09.2026) measured it.
+	 *
+	 * <p>nginx sits in front of the two floors above and its own default, one megabyte,
+	 * answered before either of them ever saw a request: measured before the line this
+	 * reads existed, {@code grep -rn "client_max_body_size"} over the whole repository
+	 * found nothing at all, so an ordinary photograph off a telephone never reached this
+	 * class's own paragraph, and the member read nginx's plain 413 instead, with advice
+	 * to retry an upload that could never succeed.
+	 *
+	 * <p>Read the file rather than trusted, the way
+	 * {@link #theContainerLetsThroughMoreThanThePortalTakes} reads the settings rather
+	 * than trusting the paragraph above it, and PARSED rather than searched, for the
+	 * reason {@code WhatAPictureIsTest.theTypesItRecognisesAreExactlyTheOnesTheColumnHolds}
+	 * gives for parsing the migration instead of grepping it: a search is satisfied by a
+	 * line somebody commented out. nginx's own units - {@code k} and {@code m} - are not
+	 * {@link org.springframework.util.unit.DataSize}'s {@code KB} and {@code MB}, so this
+	 * converts them itself rather than reusing the read above.
+	 */
+	@Test
+	void theEdgeLetsThroughMoreThanTheContainerTakes(
+			@Autowired org.springframework.core.env.Environment settings) throws Exception {
+
+		Path conf = Path.of("..", "frontend", "nginx-to-backend.conf");
+		String written = Files.readString(conf);
+		java.util.regex.Matcher directive = java.util.regex.Pattern
+				.compile("client_max_body_size\\s+(\\d+)([a-zA-Z]?)\\s*;")
+				.matcher(written);
+
+		assertThat(directive.find())
+				.as("%s sets no client_max_body_size nginx can read, so nginx's own default"
+						+ " of one megabyte answers before either paragraph above ever sees a"
+						+ " request", conf)
+				.isTrue();
+
+		long amount = Long.parseLong(directive.group(1));
+		String unit = directive.group(2);
+		long edge = unit.equalsIgnoreCase("k") ? amount * 1024
+				: unit.equalsIgnoreCase("m") ? amount * 1024 * 1024
+				: amount;
+
+		long container = org.springframework.util.unit.DataSize
+				.parse(settings.getProperty("spring.servlet.multipart.max-file-size", "1MB"))
+				.toBytes();
+
+		assertThat(edge)
+				.as("nginx refuses a file the container would have taken, so neither the"
+						+ " container's own limit nor the portal's sentence about it ever"
+						+ " decides anything")
+				.isGreaterThan(container);
+	}
+
 	/* ------------------------------------------------------------------------------------
 	   TAKING ONE DOWN.
 	   ------------------------------------------------------------------------------------ */
