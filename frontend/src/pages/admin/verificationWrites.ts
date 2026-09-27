@@ -81,15 +81,15 @@ export function decisionPath(id: string): string {
  * The one address a waiting picture is asked for, to the moderator who may decide
  * the row it is standing in.
  *
- * <p>Read rather than written, and kept beside {@link decisionPath} for the identical
+ * <p>Read rather than written, and kept beside `decisionPath` for the identical
  * reason: a queue card and its picture are two things this screen reads about ONE row,
  * and an address built twice - once here, once where the `<img>` is drawn - is two
  * places that could spell the row's identity differently.
  *
- * <p><b>The identity is the item's own `id`, never {@code photoId}.</b> {@code
- * PhotoApi.waitingOn} takes {@code verification.id} and looks the picture up FROM it
+ * <p><b>The identity is the item's own `id`, never `photoId`.</b> `PhotoApi.waitingOn`
+ * takes `verification.id` and looks the picture up FROM it
  * (`join photo p on p.id = v.photo_id where v.id = :id`), so the address never carries
- * the picture's own key at all; whether to ask this address is what {@code photoId}
+ * the picture's own key at all; whether to ask this address is what `photoId`
  * answers, and asking it is what this function does. A row with no picture is answered
  * 404 by the same route a moderator with no right over it is, and this file has no
  * business telling the two apart - see `admin/PendingQueue.tsx`'s `WaitingPicture`.
