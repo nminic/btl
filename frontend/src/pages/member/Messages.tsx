@@ -34,7 +34,11 @@ export function Messages({ only }: { only?: string[] } = {}) {
   return who.memberNumber === null ? (
     who.instead
   ) : (
-    <TheWholeInbox only={only} mine={who.memberNumber} />
+    /* Keyed on the member, for the reason `app/MessagesMenu.tsx` gives beside the same key:
+       `useResource`'s state is read once, at mount, and a caller who changes without
+       navigating away would otherwise be left reading who was signed in before. Review of
+       PR 406. */
+    <TheWholeInbox key={who.memberNumber} only={only} mine={who.memberNumber} />
   )
 }
 

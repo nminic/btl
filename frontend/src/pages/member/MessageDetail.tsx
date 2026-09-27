@@ -32,7 +32,15 @@ export function MessageDetail() {
   /* The gate before the asking, for the reason written over `Messages.tsx`: an account that
      races for nobody is told `/api/inbox` is not there, so asking first would spend a refused
      request and hand this screen an error to draw over a sentence that is already right. */
-  return who.memberNumber === null ? who.instead : <TheMessageAsked mine={who.memberNumber} />
+  return who.memberNumber === null ? (
+    who.instead
+  ) : (
+    /* Keyed on the member, the same guard `app/MessagesMenu.tsx` carries and for the same
+       reason: without it, a caller who changes here without navigating away would go on
+       reading the message list `useResource` fetched for whoever it was before. Review of
+       PR 406. */
+    <TheMessageAsked key={who.memberNumber} mine={who.memberNumber} />
+  )
 }
 
 /**

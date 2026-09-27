@@ -32,7 +32,12 @@ export function MessagesMenu() {
      it gets: „there is nothing here" is true for both, and the difference between having none
      and having one that is empty is not a difference a header can usefully draw. */
   return signedIn !== null && signedIn.as === 'member' ? (
-    <HisOwnInbox mine={signedIn.memberNumber} />
+    /* Keyed on the member, so a caller who changes without signing out is handed a FRESH
+       `HisOwnInbox` and not the one already mounted for whoever it was before. Without this,
+       `app/Shell.tsx` never unmounts the panel across the switch - `signedIn !== null` stays
+       true throughout - and `useResource`'s `useState` reads the cache once, at mount, and
+       never again while the same instance lives on. Review of PR 406. */
+    <HisOwnInbox key={signedIn.memberNumber} mine={signedIn.memberNumber} />
   ) : (
     <ThePanel lines={[]} />
   )

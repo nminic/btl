@@ -12,6 +12,7 @@ import { setupUser } from '../../test/user'
 import { clearResourceCache } from '../../data/client'
 import { SLOW } from '../../test/slow'
 import sr from '../../i18n/sr.json'
+import { useSession } from '../../session/useSession'
 
 /**
  * THE INBOX AS THE SERVER REALLY KEEPS IT.
@@ -249,6 +250,54 @@ let whoseMailIsBeingServed = HIS_ADDRESS
 /** Him, as `GET /api/me` answers him. */
 function him(): { role: string; account: number; member: { memberNumber: string } } {
   return { role: 'competitor', account: 1, member: { memberNumber: '000007' } }
+}
+
+/**
+ * SOMEBODY ELSE SIGNING IN WITHOUT SIGNING OUT FIRST, through the portal's own live writer
+ * and not a fake session object.
+ *
+ * The shape is `pages/member/pictureIsOneRow.test.tsx`'s `SignInAs`, copied rather than
+ * reinvented, for the same reason that file gives: `theServerSignedMeIn` is the very call
+ * `member/SignIn.tsx` makes with the answer to `GET /api/me`, `SessionProvider` sits above
+ * the router so it never comes down, and the sign in screen can be walked to while somebody
+ * is signed in. A shared laptop at a race is the ordinary case.
+ *
+ * What this probe does beyond that one, and why: it also moves `whoseMailIsBeingServed`,
+ * because unlike the picture queue that file measures, this file's whole point is that
+ * `GET /api/inbox` answers a DIFFERENT body per caller, and the fake server above keys that
+ * answer on this module variable rather than on a cookie. A real sign in changes both in one
+ * request; this button changes both in one click, so a case built on it measures whether the
+ * SCREEN reacts to the switch, not whether the fake server can.
+ */
+function SignInAsWithoutSigningOut({
+  memberNumber,
+  address,
+}: {
+  memberNumber: string
+  address: string
+}) {
+  const { theServerSignedMeIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        whoseMailIsBeingServed = address
+        theServerSignedMeIn({
+          account: 2,
+          memberNumber,
+          country: null,
+          firstSeason: null,
+          teamId: null,
+          membershipBasis: null,
+          referralCode: null,
+          referredCount: null,
+        })
+      }}
+    >
+      sign in as somebody else, in place
+    </button>
+  )
 }
 
 function theEnvelope(): Promise<HTMLElement> {
@@ -604,6 +653,87 @@ describe('the inbox across signing out and signing back in', () => {
        visit was holding was dropped and asked for again. */
     expect(asksFor('/api/inbox')).toBeGreaterThan(1)
   }, SLOW * 2)
+})
+
+describe('the inbox when somebody else signs in without signing out first', () => {
+  /* VISOK, review of PR 406. `app/Shell.tsx` draws `<MessagesMenu />` for every non-empty
+     `signedIn`, and `member/SignIn.tsx` carries no guard of its own against being reached
+     while somebody is already signed in - so one visit can hold two members without the
+     header ever unmounting. `data/useResource.ts` reads its cached answer once, in
+     `useState(() => atHand(name))`, and never again while the SAME component instance stays
+     mounted: `theInboxNowBelongsTo` clears the cache the moment the caller changes, but
+     nothing told the already mounted panel to read it again. Measured on the head of this
+     branch before the fix below: the panel went on naming HIS message after SHE had signed
+     in, `GET /api/inbox` was asked once and only for him, and the envelope counted his
+     unread mail as hers. */
+  it('the panel above every screen answers for whoever is signed in now, not whoever it was drawn for first', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt('/sr', 'competitor', '000007', undefined, null, (
+      <SignInAsWithoutSigningOut memberNumber="000009" address={HER_ADDRESS} />
+    ))
+
+    await user.click(await theEnvelope())
+    expect(await screen.findByRole('link', { name: new RegExp(FORGED.subject) })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+    await user.click(await theEnvelope())
+
+    expect(await screen.findByRole('link', { name: new RegExp(HERS.subject) })).toBeVisible()
+    expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
+    expect(asksFor('/api/inbox')).toBeGreaterThan(1)
+  }, SLOW)
+
+  /* The same fault, on the screen rather than the panel: `Messages.tsx`'s `TheWholeInbox`
+     calls `useInbox(mine)` once and, without the fix, holds the same `useResource` instance
+     across a caller switch that never routes it away. Reached on `/sr/poruke` and never
+     navigated off it, so the remount routing would otherwise give this screen for free
+     cannot be the reason this one passes. */
+  it('the inbox screen does not go on showing what was fetched for the person before', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, (
+      <SignInAsWithoutSigningOut memberNumber="000009" address={HER_ADDRESS} />
+    ))
+
+    expect(await screen.findByRole('link', { name: FORGED.subject })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+    expect(await screen.findByRole('link', { name: HERS.subject })).toBeVisible()
+    expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
+  }, SLOW)
+
+  /* And the third door, `MessageDetail.tsx`'s `TheMessageAsked`: opened on HIS message and
+     never routed anywhere else, so a remount from routing cannot save this one either. The
+     right answer is not her message appearing in his place - her served inbox never held
+     this id - it is this address no longer answering for a message that has stopped being
+     this caller's. */
+  it('a message on screen stops being reachable the moment it stops being this caller’s', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt(`/sr/poruke/${String(FORGED.id)}`, 'competitor', '000007', undefined, null, (
+      <SignInAsWithoutSigningOut memberNumber="000009" address={HER_ADDRESS} />
+    ))
+
+    expect(await screen.findByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
+    expect(screen.getByText(FORGED.body)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' }),
+    ).toBeVisible()
+    expect(
+      screen.queryByRole('heading', { level: 1, name: FORGED.subject }),
+    ).not.toBeInTheDocument()
+  }, SLOW)
 })
 
 describe('an account the league has given no number', () => {
