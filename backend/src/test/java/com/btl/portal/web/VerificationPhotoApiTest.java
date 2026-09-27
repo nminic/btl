@@ -125,6 +125,18 @@ class VerificationPhotoApiTest {
 	private static final Written OF_A_HIDDEN_MEMBER = new Written("d4".repeat(32), "image/jpeg",
 			new byte[] {(byte) 0xFF, (byte) 0xD8, 'h', 'i', 'd'});
 
+	/**
+	 * AND ONE WHOSE ROW IS THERE AND WHOSE FILE IS NOT, which is a state this portal EXPECTS
+	 * rather than an odd one.
+	 *
+	 * <p>{@code deploy/README.md} says QA is refreshed by throwing the volume away while the
+	 * rows stay, so every picture on the portal is one of these the morning after. Its decoy
+	 * IS written, so a route that resolved anything the caller said would find something to
+	 * answer and the case about it would go green for the wrong reason.
+	 */
+	private static final Written WITHOUT_ITS_FILE = new Written("e5".repeat(32), "image/png",
+			new byte[] {(byte) 0x89, 'P', 'N', 'G', 0x00, 'g', 'o', 'n', 'e'});
+
 	/** The moderator the profiles queue belongs to. */
 	private static final String MAY_THE_PROFILES = "profili@primer.rs";
 
@@ -193,11 +205,13 @@ class VerificationPhotoApiTest {
 		   privilege is ever asked as a condition over `account_admin_right`. */
 		account(HOLDS_EVERYTHING, "superadmin", "000902");
 
-		write(WAITING);
-		write(ALSO_WAITING);
-		write(IN_THE_COMMENTS_QUEUE);
-		write(OF_A_HIDDEN_MEMBER);
+		write(WAITING, WITH_ITS_FILE);
+		write(ALSO_WAITING, WITH_ITS_FILE);
+		write(IN_THE_COMMENTS_QUEUE, WITH_ITS_FILE);
+		write(OF_A_HIDDEN_MEMBER, WITH_ITS_FILE);
+		write(WITHOUT_ITS_FILE, AND_ITS_FILE_IS_GONE);
 
+		rows.put(WITHOUT_ITS_FILE.digest(), waitingRow("profiles", "000905", WITHOUT_ITS_FILE));
 		rows.put(WAITING.digest(), waitingRow("profiles", "000901", WAITING));
 		rows.put(ALSO_WAITING.digest(), waitingRow("profiles", "000902", ALSO_WAITING));
 		rows.put(IN_THE_COMMENTS_QUEUE.digest(),
@@ -523,6 +537,78 @@ class VerificationPhotoApiTest {
 	}
 
 	/**
+	 * A ROW WHOSE FILE IS GONE IS ANSWERED AS AN ID NOBODY WROTE, AND THIS ONE DOES SPEAK TO
+	 * THE OPERATOR.
+	 *
+	 * <p><b>It is the mirror of the silence asserted above, and the pair is the whole point.</b>
+	 * Having no picture is an ordinary state and says nothing; a row that NAMES a picture whose
+	 * file cannot be read is a backup that did not cover the volume (ADL A43, 2, „rezervna
+	 * kopija mora da pokrije i volumen, a danas ne pokriva nista"), and that is worth a line.
+	 * Asserting only one of the two would let the route answer both states the same way, which
+	 * is what {@code left join} did until the case above was written.
+	 *
+	 * <p><b>This case exists because the GATE asked for it and not because it was foreseen.</b>
+	 * The first full run came back with every one of 3196 cases green and the threshold at 0,99
+	 * on lines and branches, and the missed line was this route's own {@code bytes.isEmpty()}
+	 * refusal. Nothing in the fixture had ever left a file out, so a branch the portal reaches
+	 * every morning after QA is refreshed had no case at all - which is exactly what the
+	 * hundred per cent is for, and what no mutation could have found: a mutation measures
+	 * whether something that RUNS has a guard, never whether something runs.
+	 *
+	 * <p>The caller is told what a caller of an id nobody wrote is told, so a row and its
+	 * absence cannot be told apart from outside - the same sentence
+	 * {@code PhotoApiTest.aRowWhoseFileIsGoneCostsTheLogOneLineAndNotAStack} holds for the
+	 * digest route, and the stack is kept off this line for the reason measured there.
+	 */
+	@Test
+	void aRowWhoseFileIsGoneIsAnsweredAsNothingAndIsReportedOnce() throws Exception {
+		Logger speaking = (Logger) LoggerFactory.getLogger(PhotoApi.class);
+		ListAppender<ILoggingEvent> heard = new ListAppender<>();
+
+		heard.start();
+		speaking.addAppender(heard);
+
+		try {
+			MockHttpServletResponse answer =
+					asked(rows.get(WITHOUT_ITS_FILE.digest()), MAY_THE_PROFILES);
+
+			assertThat(answer.getStatus())
+					.as("a queue row naming a picture whose file cannot be read was not answered"
+							+ " 404, so a missing file has become a sentence about the database"
+							+ " that any caller can read")
+					.isEqualTo(404);
+			assertThat(whatCameBack(answer))
+					.as("a row whose file is gone is told apart from an id nobody wrote, which"
+							+ " says „this id names a picture somebody is having moderated\" to a"
+							+ " caller who was to learn nothing")
+					.isEqualTo(whatCameBack(asked(nobodysRow(), MAY_THE_PROFILES)));
+
+			assertThat(heard.list)
+					.as("nothing was said to whoever runs the server about a row that names a"
+							+ " file which is not there, so the one place this fault exists no"
+							+ " longer reports it and a lost volume looks like an empty queue")
+					.hasSize(1);
+
+			ILoggingEvent said = heard.list.get(0);
+
+			assertThat(said.getThrowableProxy())
+					.as("the exception was handed to the logger, so every one of these answers"
+							+ " prints its whole stack into a log nothing rotates - measured at"
+							+ " about twenty kilobytes per request of under two hundred bytes")
+					.isNull();
+			assertThat(said.getFormattedMessage())
+					.as("the line names neither the picture nor the folder, which is what an"
+							+ " operator needs and the only thing the stack carried that it does"
+							+ " not")
+					.contains(String.valueOf(photos.get(WITHOUT_ITS_FILE.digest())))
+					.contains(FOLDER.toString());
+		} finally {
+			speaking.detachAppender(heard);
+			heard.stop();
+		}
+	}
+
+	/**
 	 * AND NOBODY WHO IS NOT SIGNED IN GETS AS FAR AS THE ROUTE.
 	 *
 	 * <p>The 401 is the chain's and not this route's: the address is on no open list, so
@@ -580,7 +666,12 @@ class VerificationPhotoApiTest {
 				.param(number).query(Boolean.class).single();
 	}
 
-	private void write(Written picture) {
+	/** What {@link #write} does about the file, named so the call sites read as sentences. */
+	private static final boolean WITH_ITS_FILE = true;
+
+	private static final boolean AND_ITS_FILE_IS_GONE = false;
+
+	private void write(Written picture, boolean withItsFile) {
 		long id = db
 				.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
 						+ " crop_diameter) values (?, ?, ?, 0.25, 0.75, 0.40) returning id")
@@ -589,7 +680,9 @@ class VerificationPhotoApiTest {
 
 		photos.put(picture.digest(), id);
 
-		onDisk(String.valueOf(id), picture.bytes());
+		if (withItsFile) {
+			onDisk(String.valueOf(id), picture.bytes());
+		}
 
 		/* THE DECOY. A file named after the DIGEST, which is the one string a server building
 		   its path out of anything the caller said would land on. Its bytes are this picture's
@@ -678,24 +771,38 @@ class VerificationPhotoApiTest {
 	 * <p>Written as a case rather than trusted: a fixture that quietly stopped writing the
 	 * decoy would leave every assertion about bytes passing while measuring nothing, because
 	 * „read by the row's key" and „read by the address" would land on the same file.
+	 *
+	 * <p><b>And ONE picture has only its decoy, which is asserted here rather than left as a
+	 * gap in this list.</b> {@link #WITHOUT_ITS_FILE} is the row whose file is gone, and its
+	 * decoy is present on purpose: a route that resolved the address would find that file and
+	 * answer 200, so the case about a missing file would pass while measuring the opposite of
+	 * what it claims. Named in this list so the fixture states which file is absent instead of
+	 * the absence looking like an oversight.
 	 */
 	@Test
-	void everyPictureHasBothItsFileAndTheDecoyThatSeparatesTheTwoSources() throws Exception {
+	void everyPictureHasItsDecoyAndOnlyOneOfThemHasLostItsFile() throws Exception {
 		List<String> expected = new ArrayList<>();
+
+		for (Written picture : List.of(WAITING, ALSO_WAITING, IN_THE_COMMENTS_QUEUE,
+				OF_A_HIDDEN_MEMBER, WITHOUT_ITS_FILE)) {
+
+			expected.add(picture.digest());
+		}
 
 		for (Written picture : List.of(WAITING, ALSO_WAITING, IN_THE_COMMENTS_QUEUE,
 				OF_A_HIDDEN_MEMBER)) {
 
 			expected.add(String.valueOf(photos.get(picture.digest())));
-			expected.add(picture.digest());
 		}
 
 		try (Stream<Path> there = Files.list(FOLDER)) {
 			assertThat(there.map(one -> one.getFileName().toString())
 					.sorted(Comparator.naturalOrder()).toList())
-					.as("the folder does not hold exactly one file per picture and one decoy"
-							+ " beside it, so every assertion about which bytes came back is"
-							+ " measuring a folder nobody set up")
+					.as("the folder does not hold a decoy for every picture, a real file for the"
+							+ " four that have one, and NOTHING named after the row whose file is"
+							+ " gone - so either the assertions about which bytes came back are"
+							+ " measuring a folder nobody set up, or the missing file is not"
+							+ " missing")
 					.containsExactlyInAnyOrderElementsOf(expected);
 		}
 	}
