@@ -210,7 +210,27 @@ class MeApi {
 	 *                     the second home away, so there is nothing left for it to agree
 	 *                     with, and what holds it is the pair of cases named on this class
 	 *                     rather than a twin. Never absent: a {@code count} answers a
-	 *                     number even when nobody was brought in
+	 *                     number even when nobody was brought in.
+	 *
+	 *                     <p><b>AND IT IS NOT HIS BALANCE, WHICH IS THE CORRECTION OF
+	 *                     27.09.2026.</b> Until then the screen multiplied this count by the
+	 *                     referral row of the price list and called the product a balance, and
+	 *                     that was wrong in two ways at once. It counts members whose fee is
+	 *                     standing NOW, while PDL 11.08.2026 says „Balans ne propada nikad i
+	 *                     prenosi se iz sezone u sezonu" - so a referral that lapses would take
+	 *                     back a reward that was earned; and a product of a count knows nothing
+	 *                     of what has been SPENT, which since 26.09.2026 is a thing that happens.
+	 *
+	 *                     <p><b>The balance itself is NOT answered here, and that is deliberate.</b>
+	 *                     It is served by {@code GET /api/me/membership}, which is the route the one
+	 *                     screen that shows a balance ({@code pages/member/Membership.tsx}) has to
+	 *                     call anyway for the fee and the payment code. This route is read by every
+	 *                     request whether the screen wants it or not, and the reasoning
+	 *                     {@link MyApplicationsApi} is written with applies exactly: reading the
+	 *                     book here would cost every caller of {@code /api/me} a query for a
+	 *                     question one screen asks. So the count keeps its own meaning, which is
+	 *                     worth showing („you have brought in six people"), and the money has one
+	 *                     home and it is the book
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
@@ -241,6 +261,7 @@ class MeApi {
 	 * case here for none.
 	 */
 	private MyOwnRecord recordOf(long me) {
+
 		return db.sql("select c.member_number,"
 						/* The town's country when the town came out of the codebook, and the
 						   typed one otherwise, which is the same coalesce `CompetitorApi`

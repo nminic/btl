@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.member.MemberNumber;
 import com.btl.portal.domain.payment.RecordingAPayment;
 import com.btl.portal.domain.payment.RecordingAPayment.Outcome;
@@ -83,6 +84,30 @@ import java.util.regex.Pattern;
  * increment's brief asks for it and there is no case anywhere in the repository
  * that exercises un-reversing a payment.
  * </ul>
+ *
+ * <p><b>AND SINCE 26.09.2026 THIS IS ALSO THE MOMENT A BALANCE IS SPENT, AND THE
+ * ONLY ONE ON THIS ROAD.</b> The owner that day: „QR se kuje na iznos minus balans,
+ * ali se balans <b>skida tek kad uplata bude proknjizena</b>. Ako clan ne plati,
+ * balans mu ostaje." So nothing is taken off anybody's book while a payment is merely
+ * expected; the line is written here, beside the {@code membership} row, or not at all.
+ * The cost the owner was shown and accepted is that between minting a code and paying
+ * it the balance still stands, so two codes can promise the same money twice - an open
+ * boundary, named in PDL and not closed by this class.
+ *
+ * <p><b>WHAT THIS ROUTE DOES NOT DO IS REDUCE {@code payment.amount}.</b> The row keeps
+ * the whole membership fee, because that is what he was CHARGED and ADL says an amount
+ * comes off the price list; what the balance discharged is its own line in
+ * {@code balance_entry}, and the cash that actually arrived is the difference between
+ * them. Written the other way round - the reduced figure in {@code payment.amount} - the
+ * books would show a membership sold for less than the price list says it costs, and
+ * there would be nowhere to see that the association settled part of it out of what it
+ * already owed the member.
+ *
+ * <p><b>AND IT IS WHERE A REFERRER GETS PAID.</b> PDL: „Iznos leže na balans automatski,
+ * u trenutku kad se novom članu aktivira članarina, ne u trenutku registracije", and the
+ * owner, 13.08.2026, that an honorary activation earns it too - so the condition is
+ * activation and nothing about money. {@link MyMembershipWriteApi} carries the same call
+ * for the same reason, because it is the other door to the same fact.
  *
  * <p><b>THE AMOUNT AND THE CURRENCY COME FROM THE PRICE LIST, NEVER FROM THE
  * REQUEST.</b> ADL A12: an amount is {@code numeric} and never a number written
@@ -228,11 +253,22 @@ class PaymentApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	PaymentApi(JdbcClient db, Clock clock, MemberNumbers numbers, TransactionTemplate inOneTransaction) {
+	private final MemberOfAccount memberOfAccount;
+
+	private final PriceRows priceRows;
+
+
+	private final BalanceBook book;
+
+	PaymentApi(JdbcClient db, Clock clock, MemberNumbers numbers, TransactionTemplate inOneTransaction,
+			MemberOfAccount memberOfAccount, PriceRows priceRows, BalanceBook book) {
 		this.db = db;
 		this.clock = clock;
 		this.numbers = numbers;
 		this.inOneTransaction = inOneTransaction;
+		this.memberOfAccount = memberOfAccount;
+		this.priceRows = priceRows;
+		this.book = book;
 	}
 
 	/**
@@ -270,7 +306,8 @@ class PaymentApi {
 	 *                      already {@code recorded} for somebody who somehow still
 	 *                      carries none
 	 */
-	record Confirmed(long paymentId, String memberNumber, BigDecimal amount, BigDecimal fee, String currency) {
+	record Confirmed(long paymentId, String memberNumber, BigDecimal amount, BigDecimal fee, String currency,
+			Balance.Money fromTheBalance) {
 	}
 
 	private record CompetitorRow(long id, LocalDate birthDate, String memberNumber) {
@@ -393,31 +430,36 @@ class PaymentApi {
 	 * moderator's second click on a row that no longer waits is the same case.
 	 */
 	private ResponseEntity<?> alreadyRecorded(ExistingPayment existing, CompetitorRow competitor) {
-		record Amounts(BigDecimal amount, BigDecimal fee, String currency) {
+		record Amounts(BigDecimal amount, BigDecimal fee, String currency, int season) {
 		}
 
-		Amounts amounts = db.sql("select amount, fee, currency from payment where id = ?")
+		Amounts amounts = db.sql("select amount, fee, currency, season from payment where id = ?")
 				.param(existing.id())
-				.query((row, i) -> new Amounts(row.getBigDecimal(1), row.getBigDecimal(2), row.getString(3)))
+				.query((row, i) -> new Amounts(row.getBigDecimal(1), row.getBigDecimal(2), row.getString(3),
+						row.getInt(4)))
 				.single();
 
+		/* WHAT THE BALANCE PAID WHEN THIS WAS RECORDED, read back rather than recomputed. This
+		   branch writes nothing, so recomputing would answer with TODAY'S balance - which has since
+		   had this very spend taken out of it - and report a smaller number than the one the member
+		   was actually credited. The book is the record of what happened; asking it is the only
+		   answer that stays true. */
 		return ResponseEntity.ok(new Confirmed(existing.id(), competitor.memberNumber(), amounts.amount(),
-				amounts.fee(), amounts.currency()));
+				amounts.fee(), amounts.currency(), book.whatAMembershipTook(competitor.id(), amounts.season())));
 	}
 
 	private ResponseEntity<?> recordIt(Confirm typed, int season, String reference, CompetitorRow competitor,
 			WhoIsAsking.Member asking, boolean numbering) {
 
 		LocalDate today = LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE);
-		List<MembershipPrice.Row> rows = priceRows();
+		List<MembershipPrice.Row> rows = priceRows.all();
 		MembershipPrice.Price price = MembershipPrice.on(rows, MonthDay.from(today),
 				competitor.birthDate().getYear(), season, "EUR".equals(typed.currency()));
 
 		long priceRowId = db.sql("select id from price_row where key = ?")
 				.param(price.key()).query(Long.class).single();
 
-		String recordedByName = db.sql("select first_name || ' ' || last_name from account where id = ?")
-				.param(asking.account()).query(String.class).single();
+		String recordedByName = memberOfAccount.nameOf(asking.account());
 
 		Timestamp now = Timestamp.from(clock.instant());
 
@@ -442,17 +484,37 @@ class PaymentApi {
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, ?, 'payment', ?)")
 				.params(competitor.id(), season, paymentId).update();
 
-		return ResponseEntity.status(HttpStatus.CREATED)
-				.body(new Confirmed(paymentId, memberNumber, price.amount(), price.fee(), typed.currency()));
-	}
+		/* AND NOW, AND NOT ONE MOMENT EARLIER, THE BALANCE IS SPENT. Owner, 26.09.2026: „balans se
+		   skida tek kad uplata bude proknjizena. Ako clan ne plati, balans mu ostaje."
 
-	/** The seven rows of the price list, in the shape {@link MembershipPrice} reads them in. */
-	private List<MembershipPrice.Row> priceRows() {
-		return db.sql("select key, kind, day_from, day_to, eur, rsd, ranking from price_row order by sort_order")
-				.query((row, i) -> new MembershipPrice.Row(row.getString(1), row.getString(2),
-						row.getString(3), row.getString(4), row.getBigDecimal(5), row.getBigDecimal(6),
-						row.getObject(7, Boolean.class)))
-				.list();
+		   WHAT IS TAKEN IS WHAT THE CODE PROMISED, NOT WHAT THE BOOK SAYS TODAY. Owner, 27.09.2026:
+		   „skida se ono sto je kod obecao, ne ono sto balans stoji na dan knjizenja" - so a member
+		   whose balance grew between minting and paying keeps the growth, and one whose balance was
+		   spent by another season in the meantime is honoured only as far as there is money. That cap
+		   is the whole of `Balance.honouring`, which is also where the reason for it is written.
+
+		   AND AN ABSENT PROMISE IS NOT A PROMISE OF NOTHING, it is nobody ever having been offered a
+		   discount: he was shown the price list's own figure and paid it, so his book is untouched.
+		   `GET /api/me/membership` is the only place a reduced amount is computed and it records
+		   every one it computes, which is what makes this the same fact rather than two. */
+		Balance.Money fromTheBalance = book.promised(competitor.id(), season)
+				.map(promised -> Balance.honouring(promised, book.of(competitor.id())))
+				.orElse(Balance.Money.NOTHING);
+
+		/* A row that moves nothing is refused by `balance_entry_a_membership_takes` (V38), and it is
+		   refused on purpose: a member with an empty book has nothing to record. */
+		if (!fromTheBalance.isNothing()) {
+			book.spentOnAMembership(competitor.id(), season, fromTheBalance, asking.account(), recordedByName);
+		}
+
+		/* AND WHOEVER BROUGHT HIM IN IS PAID, at this moment and for this reason: PDL, „Iznos leže
+		   na balans automatski, u trenutku kad se novom članu aktivira članarina, ne u trenutku
+		   registracije". Once per member brought in however many seasons he goes on to pay for, and
+		   what holds that is `balance_entry_one_a_referral` (V38) rather than a question asked here. */
+		book.aReferralWasActivated(competitor.id(), asking.account(), recordedByName);
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(new Confirmed(paymentId, memberNumber,
+				price.amount(), price.fee(), typed.currency(), fromTheBalance));
 	}
 
 	private static boolean isNothing(String value) {

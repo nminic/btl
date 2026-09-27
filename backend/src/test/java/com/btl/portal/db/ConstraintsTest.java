@@ -341,7 +341,8 @@ class ConstraintsTest extends DatabaseTest {
 						LeagueConstraintsTest.TABLES, DucatConstraintsTest.TABLES,
 						PaymentConstraintsTest.TABLES, MembershipConstraintsTest.TABLES,
 						FrozenSeasonConstraintsTest.TABLES,
-						AuthenticationConstraintsTest.TABLES, StaticPageConstraintsTest.TABLES)
+						AuthenticationConstraintsTest.TABLES, StaticPageConstraintsTest.TABLES,
+						BalanceConstraintsTest.TABLES)
 				.flatMap(List::stream)
 				.toList();
 

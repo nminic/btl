@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -704,5 +705,278 @@ class PaymentApiTest {
 
 		assertThat(answer.getStatus()).isEqualTo(404);
 		assertThat(paymentCount()).isZero();
+	}
+
+	/* ------------------------------------------------------------------------------------------
+	 * AND SINCE 26.09.2026, WHAT THE BOOK OF BALANCE DOES WHEN THE MONEY LANDS
+	 * --------------------------------------------------------------------------------------- */
+
+	/** One line in the book: what V4's referral row is worth, for one member brought in. */
+	private void rewardFor(long referrer, long broughtIn) {
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,"
+						+ " occurred_at, recorded_by, recorded_by_name)"
+						+ " select ?, reward.eur, reward.rsd, 'referral', ?, ?,"
+						+ " (select id from account where email = ?), 'Blagajnik Probni'"
+						+ " from (select eur, rsd from price_row where key = 'referral') reward")
+				.params(referrer, broughtIn, Timestamp.from(NOW.minus(Duration.ofDays(30))), MODERATOR)
+				.update();
+	}
+
+	/** What a code shown to him said his balance would cover. */
+	private void promised(long competitor, int season, String eur, String rsd) {
+		db.sql("insert into balance_promise (competitor_id, season, eur, rsd, promised_at)"
+						+ " values (?, ?, ?::numeric, ?::numeric, ?)")
+				.params(competitor, season, eur, rsd, Timestamp.from(NOW.minus(Duration.ofDays(1))))
+				.update();
+	}
+
+	private BigDecimal bookOf(long competitor) {
+		return db.sql("select coalesce(sum(rsd), 0) from balance_entry where competitor_id = ?")
+				.param(competitor).query(BigDecimal.class).single();
+	}
+
+	private String whatTheMembershipTook(long competitor) {
+		return db.sql("select coalesce((select eur || ' ' || rsd || ' ' || season from balance_entry"
+						+ " where competitor_id = ? and reason = 'membership'), 'nothing taken')")
+				.param(competitor).query(String.class).single();
+	}
+
+	/**
+	 * WHAT IS TAKEN OFF THE BOOK IS WHAT THE CODE PROMISED, NOT WHAT THE BALANCE STANDS AT TODAY.
+	 *
+	 * <p><b>Owner, 27.09.2026, on his own numbers:</b> a code minted for 3.600 against a balance of
+	 * 600, a seventh referral activated before the money lands so the balance is 1.200, and then the
+	 * 3.600 arrives. <b>600 comes off and 600 stays.</b> He refused taking today's balance, with the
+	 * cost stated: the association's liability would fall by twice the discount it gave.
+	 *
+	 * <p><b>THE PROMISE AND THE BALANCE ARE TWO DIFFERENT NUMBERS HERE AND THAT IS THE CASE.</b>
+	 * The book holds two rewards and the promise names one, so "take the promise" answers 600 and
+	 * "take today's balance" answers 1.200. Built with a balance that had not moved, the two would
+	 * answer alike and this would measure nothing.
+	 */
+	@Test
+	void whatIsTakenOffTheBookIsWhatWasPromisedAndNotTodaysBalance() throws Exception {
+		long id = competitor("c1", null, false, "1990-05-15");
+		long oneHeBroughtIn = competitor("c2", "004001", true, "1991-05-15");
+		long anotherHeBroughtIn = competitor("c3", "004002", true, "1992-05-15");
+
+		rewardFor(id, oneHeBroughtIn);
+		promised(id, 2028, "5", "600");
+		rewardFor(id, anotherHeBroughtIn);
+
+		assertThat(bookOf(id))
+				.as("the fixture has no balance that grew, so the two readings agree and the case"
+						+ " cannot tell them apart")
+				.isEqualByComparingTo("1200");
+
+		MockHttpServletResponse answer = confirm(json(
+				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+
+		assertThat(whatTheMembershipTook(id))
+				.as("today's balance was taken instead of the promise, so the association gave away"
+						+ " twice the discount it offered")
+				.isEqualTo("-5.00 -600.00 2028");
+
+		assertThat(bookOf(id))
+				.as("what was promised came off and the rest is his for next year")
+				.isEqualByComparingTo("600.00");
+	}
+
+	/**
+	 * AND THE PAYMENT ROW STILL CARRIES THE WHOLE FEE, because that is what he was CHARGED.
+	 *
+	 * <p>ADL says an amount comes off the price list. What the balance discharged is its own line in
+	 * the book, and the cash that arrived is the difference between the two. Written the other way
+	 * round the books would show a membership sold for less than the price list says it costs, with
+	 * nowhere to see that the association settled part of it out of what it already owed him.
+	 */
+	@Test
+	void thePaymentStillCarriesTheWholeFeeAndTheBookCarriesTheDiscount() throws Exception {
+		long id = competitor("c4", null, false, "1990-05-15");
+		long oneHeBroughtIn = competitor("c5", "004003", true, "1991-05-15");
+
+		rewardFor(id, oneHeBroughtIn);
+		promised(id, 2028, "5", "600");
+
+		MockHttpServletResponse answer = confirm(json(
+				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+
+		PaymentApi.Confirmed body = mapper.readValue(answer.getContentAsString(),
+				PaymentApi.Confirmed.class);
+
+		assertThat(body.amount())
+				.as("the fee was reduced on the receipt, so the books no longer say what a membership"
+						+ " costs")
+				.isEqualByComparingTo("4200.00");
+		assertThat(body.fromTheBalance().rsd()).isEqualByComparingTo("600");
+
+		assertThat(db.sql("select amount from payment where id = ?").param(body.paymentId())
+						.query(BigDecimal.class).single())
+				.isEqualByComparingTo("4200.00");
+	}
+
+	/**
+	 * A MEMBER NOBODY EVER SHOWED A REDUCED INVOICE TO KEEPS HIS WHOLE BALANCE.
+	 *
+	 * <p><b>An absent promise is not a promise of nothing</b>, it is nobody having been offered a
+	 * discount: he was shown the price list's own figure and paid it. He holds a balance here, which
+	 * is what makes the case say something - a route reading the book instead of the promise would
+	 * take 600 off a man who paid in full.
+	 */
+	@Test
+	void amemberWhoWasNeverPromisedAnythingKeepsHisWholeBalance() throws Exception {
+		long id = competitor("c6", null, false, "1990-05-15");
+		long oneHeBroughtIn = competitor("c7", "004004", true, "1991-05-15");
+
+		rewardFor(id, oneHeBroughtIn);
+
+		MockHttpServletResponse answer = confirm(json(
+				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(whatTheMembershipTook(id))
+				.as("a balance was spent for a member who was never offered it off his invoice")
+				.isEqualTo("nothing taken");
+		assertThat(bookOf(id)).isEqualByComparingTo("600");
+	}
+
+	/**
+	 * AND A PROMISE IS HONOURED ONLY AS FAR AS THERE IS MONEY, which is the boundary that needs two
+	 * seasons rather than two codes.
+	 *
+	 * <p>Minting spends nothing, so a code for one season and a code for another can both stand and
+	 * the one booked second can find the money gone. Honouring the promise regardless would drive
+	 * the book below zero, which is the association recording that it paid out more than it owed.
+	 */
+	@Test
+	void apromiseIsHonouredOnlyAsFarAsTheBookGoes() throws Exception {
+		long id = competitor("c8", null, false, "1990-05-15");
+		long oneHeBroughtIn = competitor("c9", "004005", true, "1991-05-15");
+
+		rewardFor(id, oneHeBroughtIn);
+		promised(id, 2028, "35", "4200");
+
+		MockHttpServletResponse answer = confirm(json(
+				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(whatTheMembershipTook(id))
+				.as("a promise larger than the book was honoured in full, so the book went negative")
+				.isEqualTo("-5.00 -600.00 2028");
+		assertThat(bookOf(id)).isEqualByComparingTo("0.00");
+	}
+
+	/**
+	 * AND TWO CODES FOR ONE SEASON TAKE THE BALANCE ONCE, WHICH IS WHAT NARROWS THE OPEN BOUNDARY.
+	 *
+	 * <p>PDL 26.09.2026 leaves open that "dva koda kovana istog dana obecavaju isti novac dvaput".
+	 * This case DESCRIBES what the schema already does about it rather than adding a guard: the
+	 * second confirmation of the same season writes nothing at all, because
+	 * {@code payment_one_a_season} allows one payment and the season comes from the day the money is
+	 * booked. So the balance is taken once however many codes were minted, and what is left open
+	 * needs two SEASONS and the 1 October turn.
+	 */
+	@Test
+	void twoCodesForOneSeasonTakeTheBalanceOnce() throws Exception {
+		long id = competitor("d1", null, false, "1990-05-15");
+		long oneHeBroughtIn = competitor("d2", "004006", true, "1991-05-15");
+
+		rewardFor(id, oneHeBroughtIn);
+		promised(id, 2028, "5", "600");
+
+		assertThat(confirm(json(new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie)
+				.getStatus()).isEqualTo(201);
+
+		MockHttpServletResponse again = confirm(json(
+				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+
+		assertThat(again.getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select count(*) from balance_entry where competitor_id = ? and reason ="
+						+ " 'membership'").param(id).query(Long.class).single())
+				.as("the balance was taken twice for one season")
+				.isOne();
+
+		assertThat(bookOf(id)).isEqualByComparingTo("0.00");
+
+		/* AND THE SECOND ANSWER SAYS WHAT THE FIRST ONE DID, read back out of the book rather than
+		   recomputed: today's balance is zero because this very spend emptied it, so a route that
+		   worked the number out again would report nothing where 600 was actually given. */
+		assertThat(mapper.readValue(again.getContentAsString(), PaymentApi.Confirmed.class)
+						.fromTheBalance().rsd())
+				.isEqualByComparingTo("600.00");
+	}
+
+	/**
+	 * AND A REWARD OF NOTHING PAYS NOBODY, WITHOUT THE ROUTE FALLING OVER.
+	 *
+	 * <p><b>The half of the same fault that is worse than the migration's.</b> V4 lets a price row be
+	 * ZERO and `PUT /api/pricing/{key}` has no lower bound, while `balance_entry_a_referral_adds`
+	 * (V38) demands strictly more - so without the condition this route would answer <b>500 for every
+	 * member anybody brought in</b>, from the moment an administrator sets the referral to nought
+	 * through his own screen. A migration fails once and says so in a log; this fails per person and
+	 * quietly.
+	 *
+	 * <p>The referrer is here and really did bring him in, so the case is about the AMOUNT and not
+	 * about there being nobody to pay: with the reward left alone this same fixture pays him 600.
+	 */
+	@Test
+	void arewardOfNothingPaysNobodyAndTheRouteStillAnswers() throws Exception {
+		long referrer = competitor("d5", "004008", true, "1980-05-15");
+		long newcomer = competitor("d6", null, false, "1990-05-15");
+
+		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
+		db.sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
+
+		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "slip", null)), moderatorCookie)
+						.getStatus())
+				.as("the route fell over on a reward the price list says is worth nothing")
+				.isEqualTo(201);
+
+		assertThat(bookOf(referrer))
+				.as("a line was written for a reward worth nothing")
+				.isEqualByComparingTo("0");
+	}
+
+	/**
+	 * AND WHOEVER BROUGHT THE PAYER IN IS PAID, ONCE, HOWEVER MANY SEASONS HE GOES ON TO PAY FOR.	/**
+	 * AND WHOEVER BROUGHT THE PAYER IN IS PAID, ONCE, HOWEVER MANY SEASONS HE GOES ON TO PAY FOR.
+	 *
+	 * <p>PDL: „Iznos leže na balans automatski, u trenutku kad se novom članu aktivira članarina, ne
+	 * u trenutku registracije", and „Svaki član koji se registruje preko tog linka donosi
+	 * preporučiocu 600 RSD" - one member, one reward. What holds the second half is
+	 * {@code balance_entry_one_a_referral} (V38) rather than a question this route asks.
+	 */
+	@Test
+	void whoeverBroughtThePayerInIsPaidOnce() throws Exception {
+		long referrer = competitor("d3", "004007", true, "1980-05-15");
+		long newcomer = competitor("d4", null, false, "1990-05-15");
+
+		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
+
+		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "slip", null)), moderatorCookie)
+				.getStatus()).isEqualTo(201);
+
+		assertThat(bookOf(referrer))
+				.as("the man who brought him in was not paid when the membership was activated")
+				.isEqualByComparingTo("600");
+
+		/* HIS SECOND SEASON EARNS NOBODY A SECOND REWARD. Confirming again for the same season is
+		   ALREADY_RECORDED and writes nothing, so what he already holds is moved out of the way
+		   instead: that is the only road this fixture has to a SECOND activation of one person.
+		   The membership goes first, because `membership_payment_fk` names the receipt together
+		   with whose it is and for which season - measured, not guessed: moving the payment first
+		   is refused by that key. */
+		db.sql("delete from membership where competitor_id = ?").param(newcomer).update();
+		db.sql("update payment set season = 2029 where competitor_id = ?").param(newcomer).update();
+
+		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "slip", null)), moderatorCookie)
+				.getStatus()).isEqualTo(201);
+
+		assertThat(bookOf(referrer))
+				.as("one member brought in earned two rewards")
+				.isEqualByComparingTo("600");
 	}
 }

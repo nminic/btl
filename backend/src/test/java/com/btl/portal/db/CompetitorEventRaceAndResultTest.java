@@ -452,6 +452,22 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				// mine: an intention is nothing once either end of it is gone
 				"attending.attending_competitor_fk cascade",
 				"attending.attending_event_fk cascade",
+				/* V38. The book of balance goes with the member it is about: a liability of the
+				   association towards somebody who is gone is not a liability, which is the direction
+				   `membership_competitor_fk` takes for the same reason. But the CREDIT survives the
+				   person it was earned FOR - V7's own sentence about `competitor.referred_by`, „the
+				   credit survives" - because somebody who brought in a member who later left did the
+				   thing he was paid for. And the account that wrote a line may go while the line still
+				   says who wrote it, which is why `recorded_by_name` is frozen beside the key, exactly
+				   as `payment_recorded_by_fk` already does it.
+				   TWO RULES HAD TO GIVE WAY FOR THE SET NULL TO BE POSSIBLE AT ALL, and both were found
+				   by a case rather than in production: a trigger refusing every `update` made the
+				   cascade itself fail, and a check demanding that a reward always name somebody made it
+				   fail one layer further down. See V38 and `BalanceConstraintsTest`. */
+				"balance_entry.balance_entry_competitor_fk cascade",
+				"balance_entry.balance_entry_recorded_by_fk set null",
+				"balance_entry.balance_entry_referred_fk set null",
+				"balance_promise.balance_promise_competitor_fk cascade",
 				// O6: the next running of the race stays, its link empties
 				"btl_event.btl_event_copied_from_fk set null",
 				/* A codebook never disappears under a row that names it, and RESTRICT
@@ -517,6 +533,10 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   What survives a deleted member is the frozen season, and it survives WITHOUT
 				   him: those four keys are `set null` below and the trigger of V17 empties the
 				   name beside them (FrozenSeasonConstraintsTest). */
+				/* And the line in the book that paid for a season goes with the season, for the reason
+				   V22 gives about the receipt: evidence and the membership it evidences go together or
+				   not at all. */
+				"membership.membership_balance_entry_fk cascade",
 				"membership.membership_competitor_fk cascade",
 				/* V35. The account that entered an exemption EMPTIES and the name it was entered
 				   under stays, which is the same sentence V9 wrote for a decision and V16 for a
