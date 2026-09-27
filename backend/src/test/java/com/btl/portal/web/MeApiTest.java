@@ -309,6 +309,7 @@ class MeApiTest {
 		account(THE_SECOND_RECRUITS_ACCOUNT, "competitor");
 		belongsTo(THE_SECOND_RECRUITS_ACCOUNT, THE_SECOND_BROUGHT_BY_ME);
 		account(RACES_FOR_NOBODY, "moderator");
+
 	}
 
 	/**

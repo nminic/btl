@@ -120,7 +120,20 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   was allowed for this one file: it had merged but never applied anywhere, because it
 			   failed on QA. Nothing else in this list has ever been repinned. */
 			new Applied("35", "V35__freeing_a_member_of_the_fee_says_who_and_when.sql", 1372522848),
-			new Applied("37", "V37__the_written_page_carries_its_translation.sql", 1461414038));
+			new Applied("37", "V37__the_written_page_carries_its_translation.sql", 1461414038),
+			/* RENUMBERED 36 -> 38 on 27.09.2026, and the CHECKSUM IS UNCHANGED BY THAT because Flyway
+			   computes it over the CONTENT and not the name. Which is why this row still pins both:
+			   the number and the script are what a renumbering moves, and renaming the file back
+			   without editing this line has to fail here.
+
+			   AND 36 IS A GAP THAT NOTHING FILLS, which is a fact about this list rather than a defect
+			   in it. Three branches held a migration at once and the ones that were ready first took
+			   37; nothing in this repo asks the numbers to be contiguous - Flyway asks only that what
+			   it APPLIES be increasing, and this is a list of pairs rather than a sequence. Measured
+			   rather than assumed: it is this very list that would have to say otherwise, and the
+			   assertion below is `containsExactlyElementsOf`, which is about ORDER and never about
+			   arithmetic between neighbours. */
+			new Applied("38", "V38__the_balance_is_a_book.sql", 2032527406));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

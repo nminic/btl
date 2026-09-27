@@ -4,8 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -38,6 +41,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * composite key says instead of a service remembering to check.
  */
 class MembershipConstraintsTest extends DatabaseTest {
+
+	@Autowired
+	JdbcTemplate jdbc;
 
 	record Violation(String constraint, String evidence, String sql) {
 
@@ -84,6 +90,13 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	private static final String COLUMNS = "competitor_id, season, basis, payment_id";
 
+	/** V38's fifth column, used only by the rows that are about it. */
+	private static final String COLUMNS_WITH_THE_BOOK = COLUMNS + ", balance_entry_id";
+
+	/** A line in the book of balance that really is his, for a season he is not yet a member of. */
+	private static final String HIS_BOOK_ENTRY =
+			"(select id from balance_entry where competitor_id = " + A_MEMBER + " and season = 2030)";
+
 	private static String membership(String values) {
 		return "insert into membership (" + COLUMNS + ") values (" + values + ")";
 	}
@@ -114,6 +127,23 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	/** Who entered it and when, the shape V35 takes: an account that is there and an instant. */
 	private static final String A_TRAIL = AN_ACCOUNT + ", 'Blagajnik Probni', " + AN_INSTANT;
+
+	/**
+	 * AND THE SAME ROW NAMING THE LINE IN THE BOOK THAT PAID FOR IT (V38), which is the third basis.
+	 *
+	 * <p><b>It carries the trail of {@link #withATrail} as well, and that is not tidiness.</b> One of
+	 * the rows below holds {@code feeExempt} while naming a book entry - it has to, because what it
+	 * measures is that a basis which is NOT {@code balance} may not name one - and since V35 an
+	 * exemption written without a trail is refused. Without these three columns here that row would
+	 * break three constraints and PostgreSQL would report one of them, so the case would name a thing
+	 * it is not about.
+	 *
+	 * @param values the four columns {@link #COLUMNS} names, then the book entry, then who and when
+	 */
+	private static String membershipNaming(String values) {
+		return "insert into membership (" + COLUMNS_WITH_THE_BOOK
+				+ ", decided_by, decided_by_name, decided_at) values (" + values + ")";
+	}
 
 	/** His own receipt, for the year it was paid for. */
 	private static final String GOOD_ON_HIS_OWN_RECEIPT =
@@ -157,6 +187,14 @@ class MembershipConstraintsTest extends DatabaseTest {
 		payment("001001", 2027, "20271001");
 
 		db.sql(membership(A_MEMBER + ", 2029, 'payment', " + HIS_2029)).update();
+
+		/* ONE LINE IN THE BOOK OF BALANCE, HIS, naming a season he holds no membership for. The
+		   season matters: a row that named 2029 would let the legitimate case below be satisfied by
+		   the membership already standing there instead of by the one it inserts. */
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season, occurred_at,"
+						+ " recorded_by, recorded_by_name) values (" + A_MEMBER + ", -5, -600, 'membership',"
+						+ " 2030, " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni')")
+				.update();
 	}
 
 	private void competitor(String number, String first, String last, String code, String basis) {
@@ -176,6 +214,20 @@ class MembershipConstraintsTest extends DatabaseTest {
 						+ ", " + AN_ACCOUNT + ", 'Blagajnik Probni')")
 				.params(number, season, reference).update();
 	}
+
+	/**
+	 * HELD ON AN EXEMPTION AND NAMING A LINE IN THE BOOK, which only `balance` may do.
+	 *
+	 * <p><b>A constant rather than the same row written twice, and a mutation is why.</b> It is used
+	 * by the violations list AND by the case that claims it breaks exactly one constraint. Written out
+	 * in both places, taking the trail off the list left the case untouched and the whole file green,
+	 * so the claim could not see the thing it is about.
+	 *
+	 * <p>The trail is what makes it break ONE constraint: since V35 an exemption without one breaks
+	 * three, and PostgreSQL names whichever it reaches first.
+	 */
+	private static final String NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS =
+			membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, " + HIS_BOOK_ENTRY + ", " + A_TRAIL);
 
 	static List<Violation> violations() {
 		return List.of(
@@ -268,7 +320,29 @@ class MembershipConstraintsTest extends DatabaseTest {
 				   is the whole reason the floor compares in both directions. */
 				Violation.of("membership_decided_by_fk",
 						withATrail(A_MEMBER + ", 2028, 'feeExempt', null, 999999,"
-								+ " 'Blagajnik Probni', " + AN_INSTANT)));
+								+ " 'Blagajnik Probni', " + AN_INSTANT)),
+
+				/* AND BOTH HALVES OF THE SAME SENTENCE ABOUT THE BOOK (V38), which arrived with the
+				   third basis. Held on the balance and naming no line is the member let in with nothing
+				   anywhere to say what paid for him, which is what ADL's „aktivacija nosi dokaz" refuses;
+				   held on something else and naming a line is a withdrawal counted against a season it
+				   did not buy.
+
+				   EACH OF THE THREE BREAKS EXACTLY ONE CONSTRAINT, and since V35 that costs more than
+				   it did. For 'balance' with no receipt, V22's (basis = 'payment') and (payment_id is
+				   not null) are both false and agree, and no trail is owed because the basis is not an
+				   exemption. The middle row is the one V35 changed: 'feeExempt' naming a line owes a
+				   trail, so it carries one - without it the row would break `..._says_who`,
+				   `..._says_when` AND the sentence it is actually about, and PostgreSQL would name
+				   whichever it reached first. */
+				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, null, null, null, null")),
+				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
+						NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS),
+
+				/* And the line it names has to be there. */
+				Violation.of("membership_balance_entry_fk",
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, 999999, null, null, null")));
 	}
 
 	@ParameterizedTest
@@ -277,6 +351,38 @@ class MembershipConstraintsTest extends DatabaseTest {
 		assertThatThrownBy(() -> db.sql(violation.sql()).update())
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining(violation.evidence());
+	}
+
+	/**
+	 * AND THE ROW THAT NAMES A BOOK ENTRY ON THE WRONG BASIS BREAKS THAT AND NOTHING ELSE.
+	 *
+	 * <p><b>This case exists because a mutation SURVIVED without it.</b> The row above holds
+	 * {@code feeExempt} while naming a book entry, and since V35 an exemption owes a trail - so
+	 * without one it breaks THREE constraints. Taking its trail away left the whole file green,
+	 * because {@code theConstraintRejectsTheRowThatBreaksIt} asks only that the refusal MENTIONS the
+	 * constraint it is about, and PostgreSQL happened to reach that one first. The comment beside the
+	 * row claimed „each of the three breaks exactly one constraint" and nothing measured it.
+	 *
+	 * <p>So the claim is measured here, in the one direction that can fail: the refusal must NOT name
+	 * either of the two V35 puts on an exemption. Which constraint PostgreSQL reports when a row
+	 * breaks several is its business and not something to assert; that it breaks only one is this
+	 * branch's business and is what this asks.
+	 */
+	@Test
+	void theRowThatNamesABookEntryOnTheWrongBasisBreaksThatAloneSinceV35() {
+		/* TAKE THE ONE CONSTRAINT AWAY AND THE ROW MUST GO IN. That is what „breaks exactly one"
+		   MEANS, and it is the only form of the question that can fail: asking the refusal which
+		   constraint it names cannot tell, because PostgreSQL reports the first one it reaches and it
+		   reaches this one - measured, the mutation that took the trail off this row passed an
+		   assertion written that way. Dropped inside the case and rolled back with it, so no other
+		   case here ever sees a schema this one took apart. */
+		jdbc.execute("alter table membership drop constraint"
+				+ " membership_basis_says_whether_a_book_entry_is_named");
+
+		assertThat(db.sql(NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS).update())
+				.as("with the one constraint gone the row is still refused, so it was breaking"
+						+ " something else as well and the case above names a thing it is not about")
+				.isOne();
 	}
 
 	/** The floor under the list above, read out of the database. */
@@ -300,8 +406,18 @@ class MembershipConstraintsTest extends DatabaseTest {
 		assertThat(covered).containsExactlyInAnyOrderElementsOf(declared);
 	}
 
+	/**
+	 * Let in on his own balance, naming the line that paid for it (V38, owner 26.09.2026).
+	 *
+	 * <p>A season of its own, and no receipt: this is the shape that had no way to be written down
+	 * before V38, because every membership had to name a payment or be a gift.
+	 */
+	private static final String GOOD_OUT_OF_THE_BOOK =
+			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY + ", null, null, null");
+
 	static List<String> legitimateRows() {
-		return List.of(GOOD_ON_HIS_OWN_RECEIPT, GOOD_LET_IN_FREE, GOOD_ANOTHER_MEMBER);
+		return List.of(GOOD_ON_HIS_OWN_RECEIPT, GOOD_LET_IN_FREE, GOOD_ANOTHER_MEMBER,
+				GOOD_OUT_OF_THE_BOOK);
 	}
 
 	@ParameterizedTest
@@ -364,15 +480,76 @@ class MembershipConstraintsTest extends DatabaseTest {
 		}
 	}
 
-	/** And the other direction, which is the one a rule widened here alone gets wrong. */
+	/**
+	 * THE WORDS THE TWO COLUMNS DO NOT SHARE, and there is exactly one.
+	 *
+	 * <p><b>This list is the narrowing of 27.09.2026 and it has a floor under it rather than a
+	 * promise</b>, which is {@link #theOnlyWordTheTwoColumnsDoNotShareIsThePerSeasonOne}: the
+	 * difference between the two rules is read out of the catalogue and compared with this, so a
+	 * FOURTH word added to one column alone turns that case red and asks for a decision instead of
+	 * being waved through by this one.
+	 */
+	private static final Set<String> ONLY_A_SEASON_CAN_STAND_ON = Set.of("balance");
+
+	/**
+	 * And the other direction, which is the one a rule widened here alone gets wrong - <b>less the
+	 * one word that belongs to a SEASON and not to a PERSON.</b>
+	 *
+	 * <p><b>Why this direction stopped being total, and it is a decision rather than a workaround.</b>
+	 * The owner, 26.09.2026: „Balans veci ili jednak clanarini: clanstvo se aktivira iz balansa." So
+	 * a season can stand on a balance. {@code competitor.membership_basis} is not that fact: PDL
+	 * 06.09.2026 says it „nosi oslobodjenje od clanarine", and the owner on 20.09.2026 gave the
+	 * reason a member is shown his own - „inace ne razume zasto mu portal ne trazi uplatu". It
+	 * answers <b>does this person pay or is he let in free</b>, which is a standing property, and a
+	 * man who settles a season out of his balance is <b>paying</b>; he is not exempt from anything.
+	 *
+	 * <p><b>And the alternative was measured to be worse.</b> Widening V7 to take 'balance' would put
+	 * a word in the per-person column that nothing could ever mean by it: that column says whether a
+	 * person is charged at all, and a man who settles ONE SEASON out of his balance is charged and
+	 * pays. The word would describe no person, only a season, which is the column beside it. It would
+	 * also turn two other floors red for a reason that is not theirs:
+	 * {@code MeApiTest.aMemberIsHandedHisOwnBasisAndTheOtherWordIsNotIt} asserts V7 names exactly
+	 * two words so that a third demands a third caller, and {@link #bothRulesAboutABasisAreStillThere}
+	 * counts them.
+	 *
+	 * <p><b>What holds the half of this case that is still live</b> is
+	 * {@link #everyBasisTheCompetitorNamesTheMembershipTakes} in the other direction, the floor
+	 * under it, and - for the sentence this narrowing rests on - the behaviour itself:
+	 * {@code MyMembershipWriteApiTest.beingLetInOnTheBalanceLeavesTheStandingBasisAlone} activates a
+	 * membership out of the book and demands that {@code competitor.membership_basis} still says
+	 * 'payment' afterwards. If that word ever does have to reach the person, that case turns red
+	 * first.
+	 */
 	@Test
 	void everyBasisTheMembershipNamesTheCompetitorTakes() {
 		for (String basis : basesNamedIn("membership_basis_known")) {
+			if (ONLY_A_SEASON_CAN_STAND_ON.contains(basis)) {
+				continue;
+			}
 			assertThat(ruleTakes("competitor_membership_basis_known", "membership_basis", basis))
 					.as("this table takes the basis '%s' and V7 refuses it, so the same fact has"
 							+ " two vocabularies", basis)
 					.isTrue();
 		}
+	}
+
+	/**
+	 * THE FLOOR UNDER THE EXEMPTION ABOVE, and it is the catalogue that answers rather than a
+	 * sentence.
+	 *
+	 * <p>Whatever {@code membership_basis_known} names and {@code competitor_membership_basis_known}
+	 * does not must be exactly the one word a decision was made about. A fourth basis added to the
+	 * season alone lands here, red, on the day it is added.
+	 */
+	@Test
+	void theOnlyWordTheTwoColumnsDoNotShareIsThePerSeasonOne() {
+		Set<String> theSeasonAlone = new HashSet<>(basesNamedIn("membership_basis_known"));
+		theSeasonAlone.removeAll(basesNamedIn("competitor_membership_basis_known"));
+
+		assertThat(theSeasonAlone)
+				.as("a basis a season can stand on that a person cannot, which is either a decision"
+						+ " or a mistake and has to be one of them on purpose")
+				.containsExactlyInAnyOrderElementsOf(ONLY_A_SEASON_CAN_STAND_ON);
 	}
 
 	/**
