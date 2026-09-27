@@ -209,10 +209,11 @@ class MembershipConstraintsTest extends DatabaseTest {
 	/** A recognised payment, because an awaited one is not a membership of anything. */
 	private void payment(String number, int season, String reference) {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
-						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
+						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name,"
+						+ " received)"
 						+ " values ((select id from competitor where member_number = ?), ?, ?, "
 						+ A_PRICE_ROW + ", 4200.00, 'RSD', 0, 'ips', 'recorded', " + AN_INSTANT
-						+ ", " + AN_ACCOUNT + ", 'Blagajnik Probni')")
+						+ ", " + AN_ACCOUNT + ", 'Blagajnik Probni', 4200.00)")
 				.params(number, season, reference).update();
 	}
 

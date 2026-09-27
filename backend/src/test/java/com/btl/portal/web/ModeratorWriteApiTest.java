@@ -1435,10 +1435,11 @@ class ModeratorWriteApiTest {
 	/** And a payment he recognised, which is the same shape one table along. */
 	private void recorded(long account, long runner) {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
-						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
+						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name,"
+						+ " received)"
 						+ " values (?, 2028, ?, (select id from price_row where key = 'early'),"
 						+ " 35.00, 'EUR', 3.00, 'paypal', 'recorded',"
-						+ " timestamptz '2027-10-02 09:00:00+00', ?, ?)")
+						+ " timestamptz '2027-10-02 09:00:00+00', ?, ?, 38.00)")
 				.params(runner, THE_REFERENCE_HE_RECOGNISED, account, THE_NAME_HE_RECORDED_UNDER)
 				.update();
 	}

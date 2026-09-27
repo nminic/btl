@@ -585,10 +585,10 @@ class MembershipWriteApiTest {
 	void aRecordedFeeIsNotForgivenQuietly() throws Exception {
 		long paymentId = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
 						+ " amount, currency, fee, method, state, recorded_at, recorded_by,"
-						+ " recorded_by_name) values (?, 2027, '20270091',"
+						+ " recorded_by_name, received) values (?, 2027, '20270091',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
 						+ " 'paypal', 'recorded', ?, (select id from account where email = ?),"
-						+ " 'Blagajnik Probic') returning id")
+						+ " 'Blagajnik Probic', 38.00) returning id")
 				.params(him, Timestamp.from(IN_JUNE_2027), CASHIER).query(Long.class).single();
 
 		db.sql("insert into membership (competitor_id, season, basis, payment_id)"
@@ -617,10 +617,13 @@ class MembershipWriteApiTest {
 	@Test
 	void aReversedPaymentIsNotSettledHereEither() throws Exception {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
-						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
+						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name,"
+						+ " received)"
 						+ " values (?, 2027, '20270092',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
-						+ " 'paypal', 'reversed', ?, null, 'Blagajnik Probic')")
+						/* A REVERSAL KEEPS WHAT ARRIVED, for the reason it keeps its day: the money did
+						   arrive, and then it went back. */
+						+ " 'paypal', 'reversed', ?, null, 'Blagajnik Probic', 38.00)")
 				.params(him, Timestamp.from(IN_JUNE_2027)).update();
 
 		MockHttpServletResponse answer = freeHim(him, cashierCookie);

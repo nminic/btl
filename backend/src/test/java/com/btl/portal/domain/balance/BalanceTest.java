@@ -38,8 +38,17 @@ class BalanceTest {
 	private static final Balance.Money A_MEMBERSHIP_IN_EURO = euro("35.00");
 
 	/** V4's referral row, in dinars: 600 per member brought in. */
+	/**
+	 * <p><b>Written to two decimals, which is not cosmetic.</b> A {@code Money} is a record, so
+	 * {@code equals} compares its {@code BigDecimal} by {@code equals} too - and that is scale
+	 * sensitive, so {@code 4200} and {@code 4200.00} are two different values to it while being one
+	 * number. Every amount the portal ever holds comes out of a {@code numeric(10,2)} column and
+	 * therefore carries two decimals; a fixture writing fewer would be asserting about a shape the
+	 * database cannot produce, and {@link Balance.Money#atMost} answering „the other one" would read as
+	 * a wrong answer rather than as the same number differently spelled.
+	 */
 	private static Balance.Money broughtIn(int howMany) {
-		return dinars(String.valueOf(600 * howMany));
+		return dinars(String.format("%d.00", 600 * howMany));
 	}
 
 	private static Balance.Money dinars(String amount) {

@@ -415,10 +415,11 @@ class PaymentApiTest {
 		long id = competitor("a5", "007007", false, "1990-05-15");
 
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount, currency,"
-						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name) values"
+						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name, received)"
+						+ " values"
 						+ " (?, 2028, '20280070', (select id from price_row where key = 'early'),"
 						+ " 35.00, 'EUR', 3.00, 'paypal', 'reversed', timestamptz '2027-10-02 09:00:00+00',"
-						+ " null, 'Blagajnik Probni')")
+						+ " null, 'Blagajnik Probni', 38.00)")
 				.param(id).update();
 
 		MockHttpServletResponse answer = confirm(json(

@@ -1490,11 +1490,11 @@ class PricingWriteApiTest {
 	private long payment(long competitor, String priceRow, BigDecimal amount, String currency,
 			BigDecimal fee) {
 		return db.sql("insert into payment (competitor_id, season, price_row_id, amount, currency,"
-						+ " fee, method, state, recorded_at, recorded_by_name)"
+						+ " fee, method, state, recorded_at, recorded_by_name, received)"
 						+ " values (?, ?, (select id from price_row where key = ?), ?, ?, ?, 'ips',"
-						+ " 'recorded', ?, 'Probni Probic') returning id")
+						+ " 'recorded', ?, 'Probni Probic', ?::numeric + ?::numeric) returning id")
 				.params(competitor, SeasonClock.seasonBeingPaidFor(IN_MARCH.atZone(SeasonClock.ZONE)),
-						priceRow, amount, currency, fee, Timestamp.from(IN_MARCH))
+						priceRow, amount, currency, fee, Timestamp.from(IN_MARCH), amount, fee)
 				.query(Long.class).single();
 	}
 }

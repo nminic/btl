@@ -94,6 +94,33 @@ alter table balance_entry
 
 
 /*
+ * AND THE LINE THAT SAYS A BOOK ENTRY IS WRITTEN ONCE HAS TO BE STOOD DOWN WHILE THIS RUNS, WHICH IS
+ * NOT A LOOPHOLE BUT THE CONSEQUENCE OF SOMETHING V38 CHOSE ON PURPOSE.
+ *
+ * `a_balance_entry_is_written_once` (V38) compares `to_jsonb(new)` against `to_jsonb(old)` rather than
+ * naming columns, and V38 says exactly why: „asks PostgreSQL what the row is rather than listing what
+ * the row has, so a column added to this table tomorrow is protected the day it arrives and not the
+ * day somebody remembers to add it here." That is the right design and it is doing its job here: the
+ * backfill below IS an `update`, so the trigger refuses it, `ERROR: balance_entry_is_written_once:
+ * balance entry 3 cannot be changed once written`.
+ *
+ * MEASURED AND NOT REASONED ABOUT: this was found by `db/BalanceBecameOneAmountTest`, which is the case
+ * the rule of 27.09.2026 asks for - a migration measured over rows its own tests did not make. On QA it
+ * would have passed, because the book is empty there; on any database holding one line it would have
+ * stopped Flyway and put the backend into a restart loop, which is what V35 did on 27.09.2026.
+ *
+ * WHAT IS BEING STOOD DOWN AND WHAT IS NOT. „Immutable" means nobody rewrites what a line SAYS about
+ * money, and nothing below changes what any line says: the amount that survives is one of the two
+ * numbers already on the row, and the currency names which of them it was. Changing the SHAPE of a
+ * table is not amending an entry, and the trigger cannot tell the two apart because it was deliberately
+ * written not to look. So it is disabled for the length of one statement and enabled again immediately,
+ * inside the same transaction Flyway runs this migration in - if anything below fails, the trigger comes
+ * back with the rollback and no window exists in which the book is unguarded.
+ */
+alter table balance_entry disable trigger balance_entry_is_written_once;
+
+
+/*
  * AND WHICH OF THE TWO HALVES SURVIVES IS DECIDED BY THE MEMBER'S COUNTRY, never by which column
  * happens to be larger and never by a rate.
  *
@@ -130,6 +157,10 @@ where whose.id = e.competitor_id;
 alter table balance_entry
     alter column amount set not null,
     alter column currency set not null;
+
+
+/* AND THE GUARD IS BACK, before anything else in this file runs. */
+alter table balance_entry enable trigger balance_entry_is_written_once;
 
 
 /*

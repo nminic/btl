@@ -1425,10 +1425,10 @@ class PaymentsDueApiTest {
 	/** A membership standing on a recorded payment, which is the ordinary way one is held. */
 	private void membershipOnAPayment(long member, int season) {
 		long payment = db.sql("insert into payment (competitor_id, season, price_row_id, amount,"
-						+ " currency, fee, method, state, recorded_at, recorded_by_name)"
+						+ " currency, fee, method, state, recorded_at, recorded_by_name, received)"
 						+ " values (?, ?, (select id from price_row order by sort_order limit 1),"
-						+ " 30.00, 'EUR', 3.00, 'ips', 'recorded', ?, 'Moderator Koji Je Proknjizio')"
-						+ " returning id")
+						+ " 30.00, 'EUR', 3.00, 'ips', 'recorded', ?, 'Moderator Koji Je Proknjizio',"
+						+ " 33.00) returning id")
 				.params(member, season, Timestamp.from(IN_OCTOBER_2026))
 				.query(Long.class).single();
 
