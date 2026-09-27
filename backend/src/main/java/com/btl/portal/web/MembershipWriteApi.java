@@ -21,11 +21,10 @@ import java.util.Optional;
  * THE ADMINISTRATION FREEING SOMEBODY OF THE FEE, WHICH UNTIL NOW IT COULD NOT DO AT ALL.
  *
  * <p><b>The gap this closes was named in the journal and in the schema long before it was
- * built.</b> PDL:3473 (B50, 13.09.2026): „ekrana za dodelu [oslobodjenja] nema, pa
- * [oslobodjen] clan danas nema zapis ni za jednu sezonu. To je bezopasnija od dve greske
- * (ispadne iz lige umesto da ostane zauvek), ali je STVARNA RUPA i stoji imenovana i u
- * migraciji i u opisu PR-a." {@code V22} allowed the row from the day it was written and
- * nothing could write one; this is the route that does.
+ * built.</b> PDL:3473 (B50, 13.09.2026), struck through and closed by this very PR: „ekrana
+ * za dodelu [oslobodjenja] nema, pa [oslobodjen] clan danas nema zapis ni za jednu sezonu."
+ * {@code V22} allowed the row from the day it was written and nothing could write one; this
+ * is the route that does.
  *
  * <p><b>WHAT IT IS CALLED, AND THE WORD THAT MAY NOT BE USED.</b> PDL:5954, the new Statute
  * of 17.08.2026: „Nema vise 'pocasnog clanstva'. Nov Statut ima JEDNU vrstu clanstva (clan
