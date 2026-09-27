@@ -691,10 +691,19 @@ class MePhotoApiTest {
 	 * what separates them is WHICH picture that row is about. The fixture's picture and the one
 	 * sent here have different digests by construction ({@code picture()} says why), so the
 	 * assertion below fails against a route that left the first standing.
+	 *
+	 * <p><b>AND THE KEY THE ANSWER CARRIES IS ASSERTED, which the mutation series asked for
+	 * rather than review.</b> Swapping the answered key for the new picture's
+	 * ({@code waiting = photo}) left the whole file green: every case here read the queue through
+	 * the database and none read the number the screen is handed, so a route that answered a
+	 * {@code photo.id} where a {@code verification.id} belongs had no guard at all. Both are
+	 * positive numbers, so the existing „is positive" beside the first send could never have caught
+	 * it.
 	 */
 	@Test
 	void aSecondPictureOverwritesTheOneThatWaits() throws Exception {
 		String wasWaiting = theWaitingRowOf(WHOSE_PICTURE_WAITS).get(6);
+		long wasTheRow = theQueueRowOf(WHOSE_PICTURE_WAITS);
 
 		MockHttpServletResponse answer = sending(WHOSE_PICTURE_WAITS,
 				aJpeg("druga slika, poslata dok prva ceka"));
@@ -708,6 +717,11 @@ class MePhotoApiTest {
 				.as("the row still names the picture it named before, so nothing was overwritten")
 				.isNotEqualTo(wasWaiting)
 				.isEqualTo(answerIn(answer).path("digest").asString());
+		assertThat(answerIn(answer).path("waiting").asLong())
+				.as("the answer hands the screen a number that is not the queue row it was already"
+						+ " standing in, so what a later request would ask about is not what the"
+						+ " moderator is looking at")
+				.isEqualTo(wasTheRow);
 	}
 
 	/**
