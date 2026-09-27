@@ -1108,12 +1108,22 @@ export type ServedPendingItem = Omit<
  * ONE ACCOUNT WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, exactly as
  * `GET /api/payments` answers it and with nothing added.
  *
- * **Five fields, and the route's own note says each one had to earn its place.** What is
- * NOT here is the point of the type: no address, no postal address, no telephone, no date
- * of birth, no country, no basis of membership, and no amount, currency, method or day.
- * The screen therefore cannot draw any of them by accident - the compiler refuses it -
- * which is what the shape of a type is for. The screen it replaces drew two of them
- * (`account.email` and the country), off a queue item that carried a richer stand-in.
+ * **Eight fields, and the route's own note says each one had to earn its place.** What is
+ * NOT here is still the point of the type: no address, no postal address, no telephone, no
+ * date of birth, no country, no basis of membership, and no method or day. The screen
+ * therefore cannot draw any of them by accident - the compiler refuses it - which is what
+ * the shape of a type is for. The screen it replaces drew two of them (`account.email` and
+ * the country), off a queue item that carried a richer stand-in.
+ *
+ * **Five until 28.09.2026, and the sentence that stood here said „no amount, currency" among
+ * the things deliberately absent. That is now FALSE and is rewritten rather than left**, which
+ * is the class `CLAUDE.md` names: a sentence asserting an overturned state is an instruction to
+ * the next reader to restore it. The owner's definitive specification of this screen (PDL
+ * section 19, dictated 27.09.2026) asks the row for three things the five could not carry -
+ * „Labela „Ocekivan iznos: IZNOS"", „Prazno polje sa oznakom valute pored njega. Valuta zavisi
+ * od zemlje clana", and „Kucica „ukljuci balans (iznos balansa)"" - and `GET /api/payments`
+ * has served all three since PR 403. The type was the one place still saying they do not
+ * exist.
  *
  * **The town IS here and its reason is NEW rather than inherited, which is written down
  * because the old reason is still readable two files away** (`VerificationApi`, which
@@ -1148,6 +1158,55 @@ export type MembershipDue = {
   /** Out of the codebook or as he typed it, whichever of the two holds it. The schema
    *  makes exactly one of them present, so this can neither be empty nor be two things. */
   city: string
+  /**
+   * `'RSD'` or `'EUR'`, and NEVER a choice anybody makes.
+   *
+   * Worked out from where he lives, which is the owner's sentence: „Valuta zavisi od zemlje
+   * clana" (PDL section 19). `PaymentsDueApi` answers dinars for Serbia and euro for
+   * everywhere else, and Kosovo needs no rule of its own because the town codebook already
+   * carries it as `RS`.
+   *
+   * **Typed as the string the route sends rather than as a union of the two**, which is the
+   * shape every other served word on this file has (`ServedPendingItem`, the basis of a
+   * membership). A union here would be a second home for a set the schema owns, and a third
+   * currency arriving would be a compile error on a screen rather than a sentence from the
+   * server.
+   */
+  currency: string
+  /**
+   * WHAT THE PORTAL EXPECTS HIM TO SEND, in {@link currency}.
+   *
+   * **The fee plus the processing charge, not the fee**, which is the owner's own choice of
+   * 27.09.2026: „„Ocekivan iznos" je ono sto clan SALJE, dakle sa uracunatom taksom." For a
+   * member abroad on a fee of forty with a charge of three, this is forty-three. On the dinar
+   * side the charge is nought, so the same field is right in both currencies without the
+   * screen knowing which side it is on.
+   *
+   * **Never worked out here.** Which row of the price list applies is a question about the day
+   * and about a year of birth, and one of the two lives nowhere on this type - the date of
+   * birth is deliberately not served.
+   */
+  expected: number
+  /**
+   * WHAT HIS BOOK ADDS UP TO TODAY, in the same {@link currency}, and it is the number the
+   * tick box carries in its own label (PDL section 19, point 3).
+   *
+   * **Never negative and never absent, and both halves of that are measured rather than
+   * assumed.** `Balance.Money` refuses a negative amount in its constructor, and
+   * `BalanceBook.forEveryOneOf` answers `NOTHING` for a member with no entry at all - which is
+   * most of this list. So nought is the only empty state there is, and a screen asking whether
+   * this is there is asking a question with one answer.
+   *
+   * **ONE amount in ONE currency, which is what the SCREEN sees, and the server still decides
+   * by the pair.** `PaymentsDueApi` picks the column his country names, so this is already the
+   * shape PDL section 25 asks for („balans je uvek u valuti zavisno od drzave... nije ni bitno
+   * koliko je to u drugoj valuti"). `balance_entry` is not: V38 holds `eur` and `rsd` side by
+   * side and `balance_entry_a_membership_takes` demands both move, so
+   * `POST /api/memberships` refuses a one-sided book that this field shows as money. That gap
+   * is named on `admin/activation.ts` and is answered by saying what the server said rather
+   * than by predicting it here.
+   */
+  balance: number
 }
 
 /**
