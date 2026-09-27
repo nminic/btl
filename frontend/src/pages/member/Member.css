@@ -196,8 +196,50 @@
   border: 1px solid var(--border);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.pay__link {
+  flex: 1 1 auto;
+  min-inline-size: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* The copy graphic at the end of the link box (owner, 26.09.2026). Sized above
+   the 24px WCAG 2.2 AA minimum target even though it looks small, and never
+   the only carrier of what it does - the name is on the button (`aria-label`),
+   not on the icon. */
+.copyLink {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-6);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.copyLink:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.copyLink__icon {
+  inline-size: 1rem;
+  block-size: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .pay__code {
@@ -207,14 +249,29 @@
   align-items: flex-start;
 }
 
-.pay__code summary {
-  cursor: pointer;
-  font-size: 0.82rem;
-  color: var(--text-muted);
+/* The written slip and its QR code, side by side where there is room for it
+   (owner, 26.09.2026: "sa desne strane u nivou detalja za uplatu"). One column
+   below `51.25em` - the same first two-column step `Profile.css` already uses
+   - because the written half carries a full postal address and a squeezed
+   second column would wrap it into the QR column's space and force the page
+   wider than the viewport, which PDL P24 does not allow at any width. */
+.pay__slip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-16);
 }
 
-.pay__code .pay__payload {
-  margin-top: var(--space-6);
+@media (min-width: 51.25em) {
+  .pay__slip {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.pay__slipText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
 }
 
 .renewal {
