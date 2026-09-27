@@ -1281,7 +1281,13 @@
     "teamDeleteRefused": {
       "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
     },
-    "teamGone": "Tim je obrisan."
+    "teamGone": "Tim je obrisan.",
+    "memberDeleteRefused": {
+      "theAccountMustBeDecided": "Portal nije prosledio odluku o nalogu. Osveži stranu pa pokušaj ponovo.",
+      "anonymisingIsNotWrittenYet": "Anonimizacija naloga još nije napisana. Član se za sada može samo obrisati.",
+      "theAccountAdministers": "Nalog ovog člana administrira portal, pa se član ne može obrisati odavde."
+    },
+    "memberGone": "Član je obrisan."
   },
   "ducats": {
     "title": "Dukati",
@@ -1527,7 +1533,15 @@
     "send": "Pošalji na odobrenje",
     "chooseFirst": "Izaberi sliku da bi mogao da je pošalješ.",
     "chosenAlt": "Slika koju si izabrao, sa uokvirenim delom koji će se videti",
-    "sentAlt": "Slika koju si poslao na odobrenje, sa uokvirenim delom koji će se videti"
+    "sentAlt": "Slika koju si poslao na odobrenje, sa uokvirenim delom koji će se videti",
+    "sending": "Slika se šalje...",
+    "sendRefused": {
+      "aPictureAlreadyWaits": "Tvoja prethodna slika još čeka odluku moderatora. Kad o njoj odluči, možeš da pošalješ novu.",
+      "theFormIsNotComplete": "Slika nije stigla do servera. Izaberi je ponovo i pošalji.",
+      "thePictureIsTooBig": "Slika je prevelika za portal. Izaberi manju ili je smanji pre slanja.",
+      "thisIsNotAPicture": "Ovaj fajl nije slika, kako se god zove. Pošalji fotografiju, na primer u JPG ili PNG obliku.",
+      "theCropIsNotACircle": "Isečak nije ispravan. Namesti krug ponovo i pošalji."
+    }
   },
   "account": {
     "personalTitle": "Lični podaci",

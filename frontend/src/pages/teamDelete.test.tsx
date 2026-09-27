@@ -147,10 +147,10 @@ describe('a team its administrator takes down', () => {
        Which team Dunav is and who is in it are facts about the seed; a fixture that restated
        them would pass the day the seed moved and the portal did not. */
     const teams: { id: number; slug: string }[] = JSON.parse(
-      readFileSync(join(process.cwd(), 'public/mock/teams.json'), 'utf-8'),
+      readFileSync(join(process.cwd(), 'src/test/mock/teams.json'), 'utf-8'),
     )
     const members: { memberNumber: string; teamId: number | null; active: boolean }[] = JSON.parse(
-      readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+      readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
     )
     const dunav = must(
       teams.find((one) => one.slug === 'dunavski-trkaci'),

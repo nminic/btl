@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 final class Answers {
 
 	/** What the portal serves today, which is the shape every screen reads by. */
-	private static final Path MOCK = Path.of("..", "frontend", "public", "mock");
+	private static final Path MOCK = Path.of("..", "frontend", "src", "test", "mock");
 
 	private Answers() {
 	}

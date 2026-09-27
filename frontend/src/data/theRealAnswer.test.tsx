@@ -48,7 +48,7 @@ import type { Competitor, Team } from './types'
 /** The generated members, as JSON rather than as the type: this file is about the
  *  difference between the two, so it starts from what is really on the disc. */
 const generated: Record<string, unknown>[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
 )
 
 /**
@@ -518,7 +518,7 @@ describe('a racing pair, on the answer the server gives', () => {
  */
 function queueAsServed(): Record<string, unknown>[] {
   const file: Record<string, unknown>[] = JSON.parse(
-    readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'),
+    readFileSync(join(process.cwd(), 'src/test/mock/verification.json'), 'utf-8'),
   )
 
   return file.map((row, nth) => ({
@@ -687,7 +687,7 @@ describe('a queue of things waiting, on the answer the server gives', () => {
  *  rosters and the seats stay the portal's own. */
 function teamsAsAMemberIsAnswered(reader: string): Record<string, unknown>[] {
   const file: Record<string, unknown>[] = JSON.parse(
-    readFileSync(join(process.cwd(), 'public/mock/teams.json'), 'utf-8'),
+    readFileSync(join(process.cwd(), 'src/test/mock/teams.json'), 'utf-8'),
   )
 
   return file.map(({ organizerMemberNumber: seat, ...rest }) => ({

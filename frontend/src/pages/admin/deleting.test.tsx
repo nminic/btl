@@ -20,53 +20,25 @@ import { Verification } from './Verification'
 /* Deleting a record, and the two things it must not quietly do: leave the
  * identity behind, and leave the record behind. */
 
-describe('a record entered under an identity a deletion had just freed', () => {
-  it('is in the list, and does not inherit what was written against the old one', async () => {
-    /* The fault this is here for: deletions were one flat list of identities and
-       the list of records was filtered by it after the entries of this visit had
-       been merged in. So a member entered on a number a deletion had freed
-       saved, confirmed, and was then not in the list, and the next member was
-       handed the same number again, and again after that. The overlay of changes
-       is keyed by the identity, so had the record survived it would have been
-       wearing the town and the name of the member who was deleted. */
-    const user = setupUser()
-    renderAt('/sr/administracija/clanovi', 'superadmin')
+/**
+ * „A RECORD ENTERED UNDER AN IDENTITY A DELETION HAD JUST FREED" MOVED TO
+ * `adminMemberWrites.test.tsx` ON 26.09.2026, AND BOTH OF ITS ENDS CHANGED ON THE WAY.
+ *
+ * <p>It deleted a member and then entered one on the member form, which was the second place
+ * that handed member numbers out. That form is gone (PDL P8b, and the note on
+ * `admin/AdminMembers.tsx`), so the case had no second end - but nothing it measures has gone
+ * anywhere: the deletion is a real `DELETE /api/competitors/{memberNumber}` now, and numbers
+ * are still handed out when a membership is activated (`admin/memberNumbers.ts:121`, ADL A4d).
+ *
+ * <p>So it lives there as „hands a number a deletion freed to an activation, without the old
+ * row coming with it", walked across two screens in one visit. The fault underneath is
+ * unchanged and is worth restating where somebody looking for it would come: deletions were
+ * one flat list of identities and the list of records was filtered by it AFTER this visit's
+ * entries had been merged in, so a member arriving on a freed number saved, confirmed, and was
+ * then not in the list - and the overlay of changes being keyed by the identity, a record that
+ * survived would have worn the deleted member's town and name.
+ */
 
-    const table = () => within(screen.getByRole('table', { name: 'Članovi' }))
-    await screen.findByRole('table', { name: 'Članovi' })
-
-    // Change something about the first member, then delete them.
-    const remove = first(table().getAllByRole('button', { name: /^Obriši:/ }))
-    const name = must(remove.getAttribute('aria-label'), 'a name on the delete control').replace('Obriši: ', '')
-    const before = table().getAllByRole('row').length
-
-    await user.click(remove)
-    await user.click(table().getByRole('button', { name: `Potvrdi brisanje: ${name}` }))
-
-    expect(table().getAllByRole('row')).toHaveLength(before - 1)
-    expect(table().queryByText(name)).not.toBeInTheDocument()
-
-    // And enter a new one, which is handed the number that has just come free.
-    await user.click(screen.getByRole('button', { name: 'Novi član' }))
-    await user.type(screen.getByLabelText(/^Ime/), 'Probni')
-    await user.type(screen.getByLabelText(/^Prezime/), 'Novak')
-    await user.selectOptions(screen.getByLabelText(/^Pol/), 'M')
-    await user.selectOptions(screen.getByLabelText(/^Uzrasna kategorija/), '25-39')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-    await user.type(screen.getByLabelText(/^U ligi od sezone/), '2027')
-    await user.selectOptions(screen.getByLabelText(/^Osnov članstva/), 'payment')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-
-    await screen.findByRole('status', { name: 'Sačuvano' })
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    const after = within(await screen.findByRole('table', { name: 'Članovi' }))
-
-    expect(after.getByText('Probni Novak')).toBeVisible()
-    expect(after.queryByText(name)).not.toBeInTheDocument()
-  }, SLOW)
-})
 
 describe('a record entered during this visit and then deleted', () => {
   it('goes altogether, rather than being filtered out of a list it is still in', async () => {
@@ -243,7 +215,7 @@ describe('one decision for a whole queue', () => {
 
       expect(asked).toHaveLength(1)
       expect(first(asked)).toContain(String(before))
-      expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+      expect(await screen.findByText('Nema nijedne stavke na čekanju.')).toBeVisible()
       /* Every one of them decided, read off the session rather than off a table
          of settled items: a queue shows what is waiting and nothing else since
          06.08.2026. */
@@ -291,7 +263,7 @@ describe('one decision for a whole queue', () => {
          from there is a word the biography never had. */
       /* The id of each waiting biography, read off the queue before the sweep so
          the assertion below can name them rather than count them. */
-      const queue = JSON.parse(readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'))
+      const queue = JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock/verification.json'), 'utf-8'))
       /* Both sorts, and not the biographies alone. Written for biographies only,
          this lost the cover the old counting assertion had for pictures by
          accident: a review made the sweep skip every photograph and all 1906
@@ -393,8 +365,15 @@ describe('one decision for a whole queue', () => {
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
       /* One, two and five are three different sentences in Serbian, so what is
-         matched is the shape rather than one of the three. */
-      const said = screen.getByText(new RegExp(`^Rešen.* ${before} stavk`))
+         matched is the shape rather than one of the three.
+       *
+         AWAITED since 26.09.2026, and it is the only assertion in this file that
+         had to be: the sweep now asks the route about each card before it settles
+         any (`admin/PendingQueue.tsx`, `approveAll`), so the number on this line
+         is set a turn later than the press. The other thirteen cases here read
+         things the overlay puts on screen and pass unchanged; this one reads the
+         line the count itself creates, and read straight away it found nothing. */
+      const said = await screen.findByText(new RegExp(`^Rešen.* ${before} stavk`))
 
       expect(said).toBeVisible()
       expect(said).toHaveFocus()

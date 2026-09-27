@@ -17,7 +17,7 @@ import {
 /* The bundled list, read only to NAME the figures this screen must no longer show: the
    served answer is moved away from them, and the assertions say so in both directions. */
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL } from '../data/pricing'
-import servedPrices from '../../public/mock/pricing.json'
+import servedPrices from '../test/mock/pricing.json'
 import { formatShortDate } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { NOTIFICATION_KEYS } from '../session/context'
@@ -383,7 +383,7 @@ describe('membership', () => {
        prose saying why it should not. */
     const payerInTheFile: { memberNumber: string; country: string; firstSeason: number } = must(
       JSON.parse(
-        readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+        readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
       ).find(
         (one: { membershipBasis: string; active: boolean }) =>
           one.membershipBasis === 'payment' && one.active,
