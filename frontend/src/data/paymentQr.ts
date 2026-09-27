@@ -1,3 +1,5 @@
+import { CONTACT_ADDRESS } from '../app/routes'
+
 /* The payload behind the payment QR code.
  *
  * One standard, and only inside one country: NBS IPS, for a member paying from
@@ -30,6 +32,21 @@
 export const RECIPIENT_NAME = 'Sportsko udruženje BTL'
 export const RECIPIENT_ADDRESS = 'Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd'
 export const RECIPIENT_ACCOUNT = '105000000000328471'
+
+/**
+ * Where a member abroad's PayPal payment goes (owner, 27.09.2026, PDL „Plaćanje iz
+ * inostranstva: PayPal").
+ *
+ * The same mailbox the site's own contact link already reads (`CONTACT_ADDRESS`,
+ * `app/routes.ts`), and not a second literal carrying the same string: the owner
+ * wrote the address with „lige" in his message, the portal spells the domain „liga"
+ * in 35 other places, and asked directly he confirmed „liga" - the spelling
+ * `CONTACT_ADDRESS` already carries, checked once at the one other place this exact
+ * string had to be exactly right. A member abroad sends real money to whatever this
+ * constant holds; a second copy of the address is a second place its spelling could
+ * drift from what he confirmed.
+ */
+export const PAYPAL_ADDRESS = CONTACT_ADDRESS
 
 /**
  * What the member writes in the reference field, and what the administrator
@@ -104,7 +121,7 @@ export function ipsPayload(payment: IpsPayment): string {
   return parts.join('|')
 }
 
-export type PaymentMethod = 'ips' | 'paypal' | 'card'
+export type PaymentMethod = 'ips' | 'paypal'
 
 /**
  * What a member is offered, by the country on their profile.
@@ -116,11 +133,15 @@ export type PaymentMethod = 'ips' | 'paypal' | 'card'
  *
  * The slip with the code must never appear for anybody else (owner,
  * 31.07.2026): it pays into a dinar account at a Serbian bank, and from abroad
- * that is the slowest and dearest way there is. Abroad it is PayPal or a card,
- * and nothing else.
+ * that is the slowest and dearest way there is.
+ *
+ * A card was a third member of this list until 26.09.2026. The owner removed
+ * it (no provider was ever chosen, so the whole section was a heading and a
+ * note saying so) and is sending a real PayPal account for payment from
+ * abroad instead, so abroad is PayPal alone now and not PayPal-or-card.
  */
 export function methodsFor(country: string): PaymentMethod[] {
-  return paysInDinars(country) ? ['ips', 'card'] : ['paypal', 'card']
+  return paysInDinars(country) ? ['ips'] : ['paypal']
 }
 
 /**
@@ -134,4 +155,40 @@ export function methodsFor(country: string): PaymentMethod[] {
  */
 export function paysInDinars(country: string): boolean {
   return country === 'RS'
+}
+
+/**
+ * WHAT A PAYPAL "SEND MONEY" BUTTON WOULD BE BUILT FROM, prepared and not drawn
+ * (owner, 27.09.2026, „Oblik dugmeta").
+ *
+ * Nothing on the membership screen calls this yet. The owner wants to try PayPal's
+ * classic hosted button first, carrying the amount, the currency and the note as one
+ * link a member presses rather than three facts they copy by hand - but whether his
+ * own account still accepts that form is a fact about PayPal's side and „ne moze da
+ * se izmeri odavde" (PDL, same decision): PayPal has spent years closing this exact
+ * button to new accounts, and this portal cannot ask his account whether it is one of
+ * them. Layer 1 (`Membership.tsx`) needs none of that and works from the first day;
+ * this is Layer 2, ready to be called from one place once he has pressed it himself
+ * and it worked.
+ *
+ * `_xclick` is PayPal's own Website Payments Standard command for a single payment to
+ * one address. `item_name` and not only `custom`: `item_name` is the one field PayPal
+ * shows the PAYER before they pay, and the owner's own words for this decision were
+ * „pa uplata sama kaže čija je" - a note only the merchant ever reads afterwards does
+ * not do that.
+ */
+export function paypalPaymentLink(payment: {
+  address: string
+  amountEur: number
+  note: string
+}): string {
+  const params = new URLSearchParams({
+    cmd: '_xclick',
+    business: payment.address,
+    item_name: payment.note,
+    amount: payment.amountEur.toFixed(2),
+    currency_code: 'EUR',
+  })
+
+  return `https://www.paypal.com/cgi-bin/webscr?${params.toString()}`
 }

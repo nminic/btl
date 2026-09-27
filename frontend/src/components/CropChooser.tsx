@@ -237,18 +237,37 @@ export function CropChooser({ id, label, alt, asked = true, chosen, onChange }: 
   )
 }
 
-/** A picture a member has chosen but not yet sent: what it is called, what it
- *  is, and which square of it counts. */
-export type Chosen = { name: string; picture: string; crop: Crop }
+/**
+ * A picture a member has chosen but not yet sent: what it is called, what it
+ * is, which square of it counts, and - since 26.09.2026 - the file itself.
+ *
+ * **Why the file is here as well as the data URL, which reads like two homes for
+ * one thing and is not.** They answer two different questions and neither can
+ * answer the other's. The data URL is what can be DRAWN: `CropWindow` puts it in
+ * an `img` on this screen and on the moderator's, and it is the only form a
+ * picture takes that survives being put in a record. The file is what can be
+ * SENT: `POST /api/me/photo` decides the type by looking at the bytes
+ * (`WhatAPictureIs.sniff`, ADL A12a), so it has to be handed the bytes the
+ * browser read rather than a base64 rendering of them turned back into bytes with
+ * a type and a name invented on the way.
+ *
+ * **It is a `File` and not a `Blob`**, because that is what the browser hands over
+ * and nothing here needs to make one.
+ */
+export type Chosen = { name: string; picture: string; crop: Crop; file: File }
 
 /**
- * The file the browser just handed over, read into something that can be shown.
+ * The file the browser just handed over, read into something that can be shown
+ * and kept so that it can also be sent.
  *
- * Read here and not sent as a file, because until F5 there is nowhere to send a
- * file to. The browser reads it off the member's own disc into text, and that
- * text is what travels to the moderator's screen, so the flow the owner asked
- * for can be walked from end to end before there is a server that stores
- * anything.
+ * **This said „Read here and not sent as a file, because until F5 there is nowhere
+ * to send a file to", and that went out of date on 26.09.2026.** There is an
+ * address now - `POST /api/me/photo`, which `MePhotoApi` has served since before
+ * this branch - and `pages/member/ProfilePicture.tsx` sends to it. A sentence
+ * saying a thing cannot be done is an instruction to the next reader not to try,
+ * so it is corrected here rather than deleted. What it was right about survives:
+ * the data URL is still what travels to the moderator's screen, because the queue
+ * he reads is still the portal's own overlay.
  *
  * Nothing at all rather than half of something, if the browser hands back no
  * text: a name with no picture behind it would light up a send button and put
@@ -267,8 +286,15 @@ function take(file: File | undefined, onChange: (chosen: Chosen | null) => void)
     onChange(
       typeof reader.result === 'string'
         ? /* The whole picture to begin with, every time. A crop carried over
-             from the last file would cut the new one somewhere nobody looked. */
-          { name: file.name, picture: reader.result, crop: WHOLE }
+             from the last file would cut the new one somewhere nobody looked.
+
+             `file` IS THE ONE THE READER WAS GIVEN, and there is no second place it
+             could come from: it is the argument of this function, so the picture
+             that is drawn and the picture that is sent are read out of the same
+             handle the browser passed in. Held on the record rather than looked up
+             again off the field, because a field cleared by being redrawn (the
+             `key` above) has no files on it by then. */
+          { name: file.name, picture: reader.result, crop: WHOLE, file }
         : null,
     )
   }

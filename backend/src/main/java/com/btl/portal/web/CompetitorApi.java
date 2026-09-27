@@ -160,11 +160,14 @@ import java.util.List;
  * not" - and PDL records the two homes as a boundary rather than passing over them.
  * This resource answers the field the PORTAL reads, and the portal reads the column:
  * {@code frontend/src/data/types.ts} declares {@code membershipBasis} and
- * {@code AdminMembers.tsx} draws it as a tag. Reading the table instead would answer
- * nothing at all for anybody honorary, because the screen that grants an honorary
- * membership does not exist yet and no such row is ever written (PDL, B50). Moving
- * the fact is the increment that removes {@code competitor.active}, and it moves both
- * homes and all eight readers at once.
+ * {@code AdminMembers.tsx} draws it as a tag. Until 27.09.2026 there was a second
+ * reason - that no row of the table existed for anybody the fee had been forgiven,
+ * „because the screen that grants an honorary membership does not exist yet and no such
+ * row is ever written (PDL, B50)". {@link MembershipWriteApi} writes them now, and it
+ * writes BOTH homes for exactly this reason, so what this resource answers is unchanged
+ * and the boundary is again the one it always was: the column is what the portal reads.
+ * Moving the fact is still the increment that removes {@code competitor.active}, and it
+ * moves both homes and all eight readers at once.
  *
  * <p><b>What is NOT answered here, and why each one is a decision rather than an
  * oversight.</b> {@code referredBy} itself - the code of whoever brought the CALLER
