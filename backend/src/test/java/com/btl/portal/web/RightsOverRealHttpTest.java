@@ -803,6 +803,25 @@ class RightsOverRealHttpTest {
 	 * {@link #mappingFor}, every pair named here is asked of the dispatcher and fails loudly
 	 * if it is not really mapped, so a typo or a renamed route cannot pass in silence even
 	 * though the choice of which pairs to list stays a human one.
+	 *
+	 * <p><b>A PATH WHOSE VARIABLE IS NOT THE LAST SEGMENT IS NOT MEASURED HERE, AND THAT IS
+	 * MECHANICAL RATHER THAN A GAP LEFT TO FIND.</b> {@link #twinOf} respells only the LAST
+	 * segment of a path. {@code POST /api/inbox/{id}/read} carries its variable one segment
+	 * earlier than that, so its twin is {@code /api/inbox/{id}/zzzz} - the same literal
+	 * {@code {id}} at the same place on both sides. Whatever that literal text does happens
+	 * IDENTICALLY to the real address and to its twin, before either request ever reaches the
+	 * route's own refusal, so "the two answers agree" holds no matter what that refusal does.
+	 * Measured 28.09.2026: adding that pair here left this case green whether
+	 * {@code InboxReadApi#away} answers with {@code sendError} or with {@code setStatus} - the
+	 * one difference every pair actually measured by this list catches.
+	 *
+	 * <p><b>So this list measures {@code sendError} for an address with NO variable in it,
+	 * said outright rather than claimed for every route.</b> That is not an invitation to grow
+	 * {@link #twinOf} for the next route whose variable sits in the middle: the five pairs
+	 * above work exactly because none of them has this shape, and a mechanism widened to cover
+	 * a sixth carries real risk of regressing the five that already pass for the right reason.
+	 * Whoever adds a route shaped like {@code /api/inbox/{id}/read} should know this list does
+	 * not measure it, not change what already works.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "GET /api/me/notifications",
