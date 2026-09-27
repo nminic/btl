@@ -186,15 +186,10 @@ describe('activating a membership from the payments screen', () => {
          43,50 rather than 43.5: the portal writes Serbian. */
       expect(within(row).getByText('43,50 EUR')).toBeVisible()
 
-      /* The field, found BY ITS LABEL and never by a class, and empty to begin with. */
-      /* ASKED FOR BY THE NAME IT REALLY HAS, and the currency is part of that name: a reader
-         who cannot see the mark beside the box would otherwise be typing an amount into a field
-         whose currency nobody told him, on a screen where the other five rows may be in the
-         other one. */
-      /* ASKED FOR BY THE NAME IT REALLY HAS, and the currency is part of that name: a reader
-         who cannot see the mark beside the box would otherwise be typing an amount into a field
-         whose currency nobody told him, on a screen where the other five rows may be in the
-         other one. */
+      /* THE FIELD, FOUND BY ITS LABEL AND NEVER BY A CLASS, and empty to begin with. The
+         currency is part of the name it really has: a reader who cannot see the mark beside the
+         box would otherwise be typing an amount into a field whose currency nobody told him, on
+         a screen where the other five rows may be in the other one. */
       const field = within(row).getByLabelText('Uplaćeno (EUR)')
 
       expect(field).toHaveValue('')
@@ -203,6 +198,8 @@ describe('activating a membership from the payments screen', () => {
       const box = within(row).getByLabelText('uključi balans (12,75 EUR)')
 
       expect(box).toBeChecked()
+
+      server.stop()
     })
 
     /**

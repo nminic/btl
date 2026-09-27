@@ -445,9 +445,43 @@ describe('a sentence with a value put into it', () => {
       'units.memberCount',
       'verification.approveAllAsk',
       'verification.approveAllDone',
+      /* „{whose}, sezona {season}." - the name and the year under the question asking whether
+         a season is to be granted free of the fee. Both stand as the thing being NAMED, which
+         is the nominative and is what a name arrives as; a year in figures has no case to be
+         wrong in. The season is written straight in for the same reason
+         `verification.paymentsSeason` is - see the note on it below - and the name comes off
+         the served row rather than off a session, because the moderator is being asked about
+         somebody who is not him. */
+      'verification.askExemptionWhose',
+      /* „Aktivacija članstva: {whose}, sezona {season}." - the same pair after a colon, which
+         is again the nominative. Two sentences and not one because they head two different
+         questions, and the owner's grid asks them of different rows. */
+      'verification.askGround',
+      /* „Balans: {amount}" and „Očekivan iznos: {amount}". The amount arrives already written
+         with its currency („12,75 EUR"), which is the shape `pages/member/Membership.tsx`
+         already writes for the member's own side of this. After a colon it is the thing being
+         named, so the nominative, and the currency is a code that never declines.
+         AND THE AMOUNT IS NEVER A BARE NUMBER: it is put together by one helper on the screen
+         so that the number and the currency cannot come apart, which matters because the two
+         currencies stand in NO ratio anywhere in this portal - there is no rate in it at all. */
+      'verification.askGroundBalance',
+      'verification.askGroundExpected',
       'verification.deleteNamed',
       'verification.foldCardNamed',
+      /* „uključi balans ({amount})" - the owner's own label for the tick box, with the amount
+         in brackets so it is read as an aside rather than as part of the instruction. In
+         brackets it is the nominative. The value is the member's balance IN HIS CURRENCY, and
+         that is the owner's decision of 27.09.2026 rather than a choice made here: when the
+         balance covers a difference, both numbers have to be in one currency for the taking
+         away to be visible at all. */
+      'verification.includeBalance',
       'verification.openCardNamed',
+      /* „Uplaćeno ({currency})" - the name of the field the moderator types into, and the
+         value is a currency CODE rather than an amount, so there is nothing to format and no
+         case to get wrong. It is in the name rather than only beside the box because a reader
+         who cannot see the mark would otherwise be told which amount to type and not in what,
+         on a screen where the row above may be in the other currency. */
+      'verification.paidIn',
       /* A YEAR, AND IT IS THE ONE VALUE HERE THAT MUST NOT GO THROUGH A FORMATTER. The
          season arrives off the answer as a number, and `formatNumber` would write 2.027 in
          Serbian, which is a thousands separator inside a year. Written straight into the
