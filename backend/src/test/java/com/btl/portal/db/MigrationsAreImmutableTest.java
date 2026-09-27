@@ -119,7 +119,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* CHANGED IN PLACE on 27.09.2026, from -1373574365, and the paragraph above is why that
 			   was allowed for this one file: it had merged but never applied anywhere, because it
 			   failed on QA. Nothing else in this list has ever been repinned. */
-			new Applied("35", "V35__freeing_a_member_of_the_fee_says_who_and_when.sql", 1372522848));
+			new Applied("35", "V35__freeing_a_member_of_the_fee_says_who_and_when.sql", 1372522848),
+			new Applied("37", "V37__the_written_page_carries_its_translation.sql", 1461414038));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

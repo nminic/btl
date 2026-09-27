@@ -68,9 +68,10 @@ import { translate, type Dictionary } from './translate'
  *    the Serbian version is the binding one goes beside them
  *    (`registration.healthStatement`, `healthStatementLink`, `parentConsent`,
  *    `parentConsentHint`). The note is a new key and its Serbian half goes in with it.
- *    The written legal pages themselves are not translated at all and are not in any
- *    dictionary: they are served by the backend, they need a paid human translation,
- *    and the Serbian text is what binds (`PDL.md:3174`).
+ *    The written legal pages themselves are not in any dictionary: they are served by
+ *    the backend. The Serbian text is what binds, and since 27.09.2026 it is only the
+ *    English pages that say so - the Serbian text itself is left untouched (owner,
+ *    27.09.2026).
  *
  * **And five things measured on the way, so nobody pays for them twice.**
  *
