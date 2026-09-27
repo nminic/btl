@@ -330,7 +330,20 @@ class KeysAndIndexesTest extends DatabaseTest {
 			   with the tab (V31). */
 			new Key("comment_submission_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("verification_comment_submission_unique", false,
-					"one comment waits once; a pointer is looked up as it is written and carries no order"));
+					"one comment waits once; a pointer is looked up as it is written and carries no order"),
+
+			/* V38. The book of balance, and what the code a member is looking at promises him. */
+			new Key("balance_entry_pk", false,
+					"a surrogate key a membership names when it stands on the balance; a line in a book is"
+							+ " written once and never moved, so there is no order to maintain"),
+			new Key("balance_entry_one_a_referral", false,
+					"ONE REWARD PER PERSON BROUGHT IN however many seasons he then pays for: the rule is the"
+							+ " key rather than a question the service asks, and it is answered as each line is"
+							+ " written rather than at the end of anything"),
+			new Key("balance_promise_pk", false,
+					"the member and the season, because he is looking at one screen showing one amount; the"
+							+ " next code REPLACES the last through an upsert onto this key, which is what"
+							+ " settles two codes minted for one season"));
 
 	/** One index of the schema that no key owns, and what it is for. */
 	record Index(String name, String forWhat) {
@@ -342,6 +355,9 @@ class KeysAndIndexesTest extends DatabaseTest {
 	}
 
 	private static final List<Index> INDEXES = List.of(
+			new Index("balance_entry_competitor_idx",
+					"the one question the book is asked in anger: what this member's balance adds up to,"
+							+ " which every invoice and every activation asks before it does anything"),
 			new Index("place_country_idx", "narrowing the town field by the country already chosen on the form"),
 			new Index("role_only_one_holds_every_right",
 					"at most one role may hold every right; a partial index because a unique constraint takes no WHERE"),

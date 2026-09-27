@@ -68,4 +68,28 @@ class MemberOfAccount {
 				.list()
 				.get(0);
 	}
+
+	/**
+	 * THE NAME TO FREEZE BESIDE A RECORD OF WHO DID SOMETHING, and it is here rather than in each
+	 * caller for the reason this class's own note gives about one lookup in one place.
+	 *
+	 * <p><b>Why a name is ever copied out of {@code account} at all.</b> V16 keeps
+	 * {@code payment.recorded_by_name} beside {@code payment.recorded_by} because the key is
+	 * {@code on delete set null} and the record must still say who wrote it once the account is
+	 * gone; V38 keeps {@code balance_entry.recorded_by_name} for the identical reason, and ADL asks
+	 * for „ko" in the book in those words. So the same one-column {@code select} was needed in two
+	 * controllers, which is exactly what this class exists to prevent.
+	 *
+	 * @param account {@code account.id}, read off {@link WhoIsAsking.Member} and never from a
+	 *                request
+	 * @return first and last name with one space between them. Never blank, which
+	 *         {@code account_first_name_not_blank} and {@code account_last_name_not_blank} (V6, and
+	 *         the columns B56 made NOT NULL) are what guarantee rather than anything here.
+	 */
+	String nameOf(long account) {
+		return db.sql("select first_name || ' ' || last_name from account where id = ?")
+				.param(account)
+				.query(String.class)
+				.single();
+	}
 }
