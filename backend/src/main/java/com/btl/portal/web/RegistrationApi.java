@@ -135,20 +135,26 @@ import java.util.regex.Pattern;
  *     {@code competitor.photo_id} is nullable, so the row is
  *     legitimate without one, and a member without a picture is a state the portal has
  *     to be able to draw in any case.
- * <li><b>The day registration opens, which is the one rule here that is NOT
- *     enforced.</b> The owner moved that window on 14.09.2026, on three offered
+ * <li><b>The day registration opens, which nothing enforces any more, on either side
+ *     of the wire.</b> The owner moved that window on 14.09.2026, on three offered
  *     outcomes, and his decision in his own words is „Prozor se pomera: portal je
  *     vidljiv od 30.09.2026, registracija se otvara 01.10.2026." Nothing in this class
- *     asks what day it is before it writes, and that is written down here rather than
- *     left to be found.
+ *     asks what day it is before it writes, and since 27.09.2026 neither does the
+ *     screen that used to (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA", owner
+ *     27.09.2026): that is written down here rather than left to be found.
  *     <p>The sentence this replaces is worth naming because it is the shape the lock
  *     must NOT be built to: an earlier decision made 15 to 30 September a period of
  *     insight in which registration could not be begun at all, and it was overturned
  *     on 14.09.2026 for a reason that is about this code - in that window the public
  *     site is still the OLD portal, so a lock written to those dates would have shut
  *     nothing but QA, which is the one installation the owner tests on.
- *     <p>When the lock is written it is its own increment and it needs a switch, so
- *     that the same build can be shut on production and open on QA. The dates above
+ *     <p>~~When the lock is written it is its own increment and it needs a switch, so
+ *     that the same build can be shut on production and open on QA.~~ That was the
+ *     shape offered for it, one of three outcomes put to the owner on 27.09.2026; he
+ *     chose a different one, in his own words: „Zapravo bih najradije da skinem tu
+ *     zabranu i da mogu prijave odmah da krenu, a svakako niko nece pristupiti ovome
+ *     pre nego sto sajt bude live 1.10." (PDL, „Zabrana registracije pre 01.10.2026 se
+ *     SKIDA"). No lock is built here, with a switch or without one. The dates above
  *     are cited by their decision and by the words the owner used, and never by a line
  *     number: a journal is appended to and its line numbers move on the next
  *     dictation, while a date and the opening words of a decision are what finds it in
