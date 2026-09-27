@@ -139,7 +139,7 @@ public final class ActivatingFromBalance {
 		   a price above what a row may cost, and nothing below - so an administrator editing the
 		   period to nought through his own screen is the road. Without this the balance covers the
 		   fee by `0 >= 0`, the route reaches the book, and
-		   `balance_entry_a_membership_takes` (V36) refuses an entry that moves nothing: every member
+		   `balance_entry_a_membership_takes` (V38) refuses an entry that moves nothing: every member
 		   on the portal would be answered 500.
 
 		   LAST OF THE THREE, and the order is measured rather than tidy: a member whose season is

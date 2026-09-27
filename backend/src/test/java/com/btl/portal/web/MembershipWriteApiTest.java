@@ -320,7 +320,7 @@ class MembershipWriteApiTest {
 	 * the referrer's book stayed empty, and the same man through the payments door answered 409 - so
 	 * the reward was not merely late but <b>lost for good</b>, because nothing may settle one season
 	 * twice. Two sentences in this branch claimed otherwise: {@code BalanceBook} said it was called
-	 * from „every place a membership is activated", and V36's carry said such a referral would be
+	 * from „every place a membership is activated", and V38's carry said such a referral would be
 	 * rewarded by this route „the day it exists" - and the route existed already.
 	 *
 	 * <p><b>THE REFERRER IS NEITHER THE SUBJECT NOR THE FIRST ROW.</b> He is created LAST, and the
@@ -375,7 +375,7 @@ class MembershipWriteApiTest {
 
 	/**
 	 * AND A SECOND SEASON FREE OF THE FEE EARNS HIS REFERRER NOTHING FURTHER, which is
-	 * {@code balance_entry_one_a_referral} (V36) holding rather than a question this route asks.
+	 * {@code balance_entry_one_a_referral} (V38) holding rather than a question this route asks.
 	 *
 	 * <p>PDL ties the reward to bringing somebody in, once, however many seasons he goes on to hold.
 	 * The second grant is for a DIFFERENT season, because the same one answers 200 and writes nothing
