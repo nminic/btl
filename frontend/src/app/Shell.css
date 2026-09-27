@@ -457,9 +457,16 @@
 }
 
 /* Hovering gives it the same blue the rectangles beside it take, drawn as a
-   ring around the circle. A border would be invisible: the circle is already
-   filled with that blue, so the ring needs the header's own colour between the
-   two before the blue can be seen at all.
+   ring around the circle (owner, 30.07.2026, `PDL.md:3828`).
+
+   **The reason that decision gives for a ring rather than a border was „krug je
+   već ispunjen tom plavom, pa se okvir ne bi ni video", and that half of it stopped
+   being true of a MEMBER on 27.09.2026.** His circle is now his own colour, or his
+   photograph, so a border would in fact be visible on it. What the decision ASKS
+   for is unchanged and is what stands here: the same blue as the rectangles beside
+   it, as a ring. The ring form is the one that works on any fill, which is why it
+   survives the change that undid its own justification - and it had to be undone by
+   somebody, because a photograph in that circle is not blue either.
 
    Both forms, because both are pressed by the same button: one selector missing
    here is a header where hovering does something for an administrator and nothing

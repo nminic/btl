@@ -191,6 +191,31 @@ describe('the circle of a member whose portrait was approved', () => {
     }
   })
 
+  it('still carries that member’s own colour, which something outside it reads', () => {
+    /* **Written because a mutation survived**: `style={own}` taken off the circle with a
+       picture in it left every case here green. Behind an opaque photograph the colour shows
+       nothing, so it reads as decoration - and it is not.
+   *
+       Two readers outside this component. The card of a competitor draws its ring in that
+       colour at a third of its strength (`pages/Competitors.css`), so without it a member
+       with a portrait wears a ring in the fallback hue of 214 while the member beside him
+       wears his own. And a portrait sent as a PNG with transparency stands on it.
+   *
+       Asked of the property and not of a pixel, because jsdom applies no stylesheet: what is
+       held is that the circle carries the variable the sheet reads, and that it carries THIS
+       member's value rather than the one above him on the list. */
+    const { container } = theWholeList()
+
+    const circles = [...container.querySelectorAll('.portrait')]
+    const hue = (at: number) =>
+      must(circles[at], `circle ${String(at)}`).getAttribute('style')
+
+    expect(hue(2), 'the subject’s circle carries no colour of its own').toContain('--face-hue')
+    /* And not the first record's, which is what makes this a statement about whose colour it
+       is rather than about whether there is one. */
+    expect(hue(2)).not.toBe(hue(0))
+  })
+
   it('is fetched when it comes near rather than with the page', () => {
     /* A standing is a row per member and each of these is a request nobody has asked for yet.
        The same attribute, for the same reason, as a team's mark, where a review measured that
