@@ -136,6 +136,82 @@ describe('b130: one upload, two cards', () => {
     }
   }, SLOW)
 
+  it('never asks the queue again after an upload, so the row the server just made cannot arrive', async () => {
+    /* THE OTHER HALF. `client.ts` caches one request per resource per visit, and the
+       only screens that clear it are the five that write through a route themselves.
+       A member sending a picture does not, so a queue this visit has already read
+       holds the list from BEFORE the upload - and the twin is then the only card
+       about it on screen. */
+    const user = setupUser()
+    const reads: string[] = []
+    /* THE SERVER CHANGES WHEN THE UPLOAD HAPPENS, exactly as QA's did: the row is
+       there from the moment `POST /api/me/photo` answered and not before. Written as
+       one server rather than two constants, because a list that already held the row
+       would let the assertion below pass off the FIRST read. */
+    let uploaded = false
+    const server = serverThat((path, init) => {
+      if (path === '/api/me/photo' && init?.method === 'POST') {
+        uploaded = true
+
+        return did()
+      }
+
+      if (path === '/api/verification' && init?.method === undefined) {
+        reads.push(path)
+
+        return new Response(JSON.stringify(uploaded ? [...DISC, THE_SERVER_ROW] : DISC), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      return null
+    })
+
+    try {
+      const { router } = renderAt(
+        '/sr/administracija/verifikacija/trkacki-profil',
+        'superadmin',
+        '000007',
+      )
+
+      await screen.findByRole('list', { name: /Čeka/ })
+      expect(reads).toHaveLength(1)
+
+      await router.navigate('/sr/podesavanja')
+
+      const panel = await panelFor()
+
+      await user.upload(
+        await panel.findByLabelText(/Izaberi novu sliku/),
+        new File(['slika'], 'nova-slika.jpg', { type: 'image/jpeg' }),
+      )
+      await measurePicture()
+      await panel.findByLabelText('Veličina isečka')
+      await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await waitFor(() => (expect(screen.getByText(/čeka odobrenje/)).toBeVisible()))
+
+      await router.navigate('/sr/administracija/verifikacija/trkacki-profil')
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      /* THE TWIN PROVES THE QUEUE REALLY DREW ITSELF AGAIN, and it is read before the
+         count for that reason: `expect(reads).toHaveLength(1)` twice over would be
+         satisfied by the FIRST read alone, so a walk that never reached the queue a
+         second time would pass this case without measuring anything. The twin is minted
+         by the upload, so a queue showing it is a queue that read the session after the
+         upload happened. */
+      expect(screen.getByText(/nova-slika\.jpg/)).toBeVisible()
+      /* And the row the server made for that same upload is NOT here, though the
+         address would have answered with it. */
+      expect(screen.queryByText(/sa-servera\.jpg/)).toBeNull()
+      /* Still one. The upload wrote a row on the server and nothing on this side
+         went back to look. */
+      expect(reads).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('sends NOTHING when the twin is APPROVED either, so the act is not what parts them', async () => {
     const user = setupUser()
     const server = theQueue()
