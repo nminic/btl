@@ -76,7 +76,7 @@ class MemberOfAccount {
 	 * <p><b>Why a name is ever copied out of {@code account} at all.</b> V16 keeps
 	 * {@code payment.recorded_by_name} beside {@code payment.recorded_by} because the key is
 	 * {@code on delete set null} and the record must still say who wrote it once the account is
-	 * gone; V36 keeps {@code balance_entry.recorded_by_name} for the identical reason, and ADL asks
+	 * gone; V38 keeps {@code balance_entry.recorded_by_name} for the identical reason, and ADL asks
 	 * for „ko" in the book in those words. So the same one-column {@code select} was needed in two
 	 * controllers, which is exactly what this class exists to prevent.
 	 *

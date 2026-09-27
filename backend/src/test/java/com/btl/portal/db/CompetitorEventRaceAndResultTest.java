@@ -452,7 +452,7 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				// mine: an intention is nothing once either end of it is gone
 				"attending.attending_competitor_fk cascade",
 				"attending.attending_event_fk cascade",
-				/* V36. The book of balance goes with the member it is about: a liability of the
+				/* V38. The book of balance goes with the member it is about: a liability of the
 				   association towards somebody who is gone is not a liability, which is the direction
 				   `membership_competitor_fk` takes for the same reason. But the CREDIT survives the
 				   person it was earned FOR - V7's own sentence about `competitor.referred_by`, „the
@@ -463,7 +463,7 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				   TWO RULES HAD TO GIVE WAY FOR THE SET NULL TO BE POSSIBLE AT ALL, and both were found
 				   by a case rather than in production: a trigger refusing every `update` made the
 				   cascade itself fail, and a check demanding that a reward always name somebody made it
-				   fail one layer further down. See V36 and `BalanceConstraintsTest`. */
+				   fail one layer further down. See V38 and `BalanceConstraintsTest`. */
 				"balance_entry.balance_entry_competitor_fk cascade",
 				"balance_entry.balance_entry_recorded_by_fk set null",
 				"balance_entry.balance_entry_referred_fk set null",

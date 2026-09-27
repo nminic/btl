@@ -149,7 +149,7 @@ class MyMembershipApiTest {
 	}
 
 	/**
-	 * A BOOK WITH ONE LINE PER MEMBER BROUGHT IN, which is the shape V36's own backfill writes.
+	 * A BOOK WITH ONE LINE PER MEMBER BROUGHT IN, which is the shape V38's own backfill writes.
 	 *
 	 * <p>Each line names a real competitor as the one brought in, because
 	 * {@code balance_entry_referral_names_the_member} demands it and
@@ -328,6 +328,18 @@ class MyMembershipApiTest {
 	 * <p>The owner's „veci ili <b>jednak</b>". <b>This case falls the moment the boundary becomes
 	 * „greater".</b> And the processing fee goes with the transfer that is no longer happening,
 	 * which is reasoning rather than a written decision and is named as such in {@link Balance}.
+	 *
+	 * <p><b>AND IT IS READ TWICE, WITH NOTHING MOVING IN BETWEEN, WHICH IS THE WHOLE OF THE SECOND
+	 * HALF OF THIS CASE.</b> One look is not enough and that was measured rather than suspected: the
+	 * route used to write a promise of NOUGHT for him, a nought is also what a member with an empty
+	 * book is promised, and {@code balance_promise} carries no reason to tell the two apart. So the
+	 * second look read „the code promised nothing", settled that against the fee, and served him
+	 * {@code toTransfer} of the WHOLE 35 and 4.200 with a 3.00 processing fee beside it - while
+	 * {@code coveredByTheBalance} stayed true. The portal billing in full, plus a bank charge, a man
+	 * whose balance had already paid it, and no screen anywhere could have shown anything else.
+	 *
+	 * <p><b>Every assertion is made on BOTH looks and the two are compared to each other</b>, so a
+	 * route that serves one thing first and another afterwards cannot satisfy this from either side.
 	 */
 	@Test
 	void sevenMembersBroughtInLeaveNothingToTransferAndNoFeeToProcess() throws Exception {
@@ -343,6 +355,31 @@ class MyMembershipApiTest {
 		assertThat(owed.path("processingFeeEur").asDouble())
 				.as("a fee for processing a transfer that is not happening")
 				.isZero();
+
+		/* THE SECOND LOOK, over a book that has not moved a dinar. */
+		JsonNode again = invoiceOf(BROUGHT_IN_SEVEN);
+
+		assertThat(again.path("balance").path("rsd").decimalValue())
+				.as("his book moved between the two looks, so this case is no longer about a second"
+						+ " look at an unchanged book")
+				.isEqualByComparingTo(owed.path("balance").path("rsd").decimalValue());
+
+		assertThat(again.path("toTransfer").path("rsd").asDouble())
+				.as("a second look billed him the whole fee for a membership his balance had covered")
+				.isZero();
+		assertThat(again.path("toTransfer").path("eur").asDouble()).isZero();
+
+		assertThat(again.path("processingFeeEur").asDouble())
+				.as("a bank charge appeared on a second reading of an invoice that asks for no transfer")
+				.isZero();
+
+		assertThat(again.path("coveredByTheBalance").asBoolean())
+				.as("the one field that drives the button stopped agreeing with the amounts beside it")
+				.isTrue();
+
+		assertThat(again.path("fromTheBalance").path("rsd").decimalValue())
+				.as("what his balance pays changed although his balance did not")
+				.isEqualByComparingTo(owed.path("fromTheBalance").path("rsd").decimalValue());
 	}
 
 	/**
@@ -404,19 +441,40 @@ class MyMembershipApiTest {
 	}
 
 	/**
-	 * AND A MEMBER WHOSE BALANCE COVERS IT IS PROMISED NOTHING, because he is shown no code at all.
+	 * AND A MEMBER WHOSE BALANCE COVERS IT GETS NO ROW AT ALL, because he is shown no code at all.
 	 *
 	 * <p>Were a promise written for him anyway, a stray transfer arriving for a member who did not
 	 * have to pay would record a payment of the full fee AND take the fee off his balance, charging
 	 * him twice for one season.
+	 *
+	 * <p><b>NO ROW AND NOT A ROW OF NOUGHT, and the difference is a whole finding.</b> This case used
+	 * to assert {@code „0.00 0.00"} - a row saying nought - and that was wrong in a way one look could
+	 * not see. Nought is also what a member with an EMPTY BOOK is promised, so one value meant two
+	 * things in a table that carries nothing to tell them apart, and the only reading available to a
+	 * second look („the code promised nothing") is right for the empty book and bills the covered man
+	 * in full. The rule that replaces it has no second meaning: <b>a row stands exactly when a code
+	 * stands</b>, so its presence alone says the number is fixed.
+	 *
+	 * <p><b>The nought row itself is not gone</b>, and {@code apromiseOfNoughtPinsTheSeasonExactlyAs
+	 * ARealOneDoes} is the case that keeps it: an empty book is not covered, so it is minted a code
+	 * for the whole fee and nought is honestly what that code promised.
+	 *
+	 * <p><b>Read TWICE</b>, because „written on the first look" and „written on any look" are two
+	 * different claims and only the second read tells them apart.
 	 */
 	@Test
 	void amemberWhoNeedsNoCodeIsPromisedNothing() throws Exception {
 		invoiceOf(BROUGHT_IN_SEVEN);
 
 		assertThat(promiseTo(BROUGHT_IN_SEVEN))
-				.as("a member with no code to pay was promised his fee off the book anyway")
-				.isEqualTo("0.00 0.00");
+				.as("a member with no code to pay had a row written against a code that was never minted")
+				.isEqualTo("nothing promised");
+
+		invoiceOf(BROUGHT_IN_SEVEN);
+
+		assertThat(promiseTo(BROUGHT_IN_SEVEN))
+				.as("the second look wrote the row the first one rightly left out")
+				.isEqualTo("nothing promised");
 	}
 
 	/** And looking twice leaves one note, saying the same thing. */
@@ -438,14 +496,30 @@ class MyMembershipApiTest {
 	 *
 	 * <p>The row is written for the season on sale and not for another one, because a membership of
 	 * a DIFFERENT season must not answer this: „alreadyAMember" is about the one being bought.
+	 *
+	 * <p><b>AND THE ROW IS HELD ON HIS OWN BALANCE, NEVER FREE OF THE FEE, which is the difference
+	 * between measuring this field and measuring nothing.</b> An exemption IS a membership, so a
+	 * fixture that makes somebody a member by freeing him leaves {@code alreadyAMember} and
+	 * {@code exemptFromTheFee} true at once - and this route answers 404 to the second, so the case
+	 * would not even reach its assertion. It used to be written that way, which was harmless only
+	 * while „exempt" was read off the per-person column.
+	 *
+	 * <p><b>The exemption for 2029 at the end is therefore doing two jobs at once and both are
+	 * live:</b> a membership of another season must not make him a member of this one, and an
+	 * EXEMPTION of another season must not make him exempt from this one. The second is the owner's
+	 * „BESPLATNI CLANOVI NISU BESPLATNI DOZIVOTNO" (27.09.2026) said from the reading side - and if it
+	 * failed, {@code invoiceOf} would be parsing the body of a 404.
 	 */
 	@Test
 	void amemberWhoIsAlreadyInForThisSeasonIsToldSo() throws Exception {
 		assertThat(invoiceOf(BROUGHT_IN_SIX).path("alreadyAMember").asBoolean()).isFalse();
 
-		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ")"
-						+ " values ((select id from competitor where member_number = ?), ?, " + A_TRAIL + ")")
-				.params(BROUGHT_IN_SIX, THE_SEASON_ON_SALE).update();
+		alreadyInOnHisOwnBalance(BROUGHT_IN_SIX, THE_SEASON_ON_SALE);
+
+		assertThat(statusOf(PATH, SIGNS_IN_AS.get(BROUGHT_IN_SIX)))
+				.as("a member already in on his own balance was answered as though he had been freed"
+						+ " of the fee")
+				.isEqualTo(200);
 
 		assertThat(invoiceOf(BROUGHT_IN_SIX).path("alreadyAMember").asBoolean()).isTrue();
 
@@ -453,9 +527,11 @@ class MyMembershipApiTest {
 						+ " (select id from competitor where member_number = ?) and season = ?")
 				.params(BROUGHT_IN_SIX, THE_SEASON_ON_SALE).update();
 
-		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ")"
-						+ " values ((select id from competitor where member_number = ?), 2029, " + A_TRAIL + ")")
-				.param(BROUGHT_IN_SIX).update();
+		freeOfTheFeeFor(BROUGHT_IN_SIX, 2029);
+
+		assertThat(statusOf(PATH, SIGNS_IN_AS.get(BROUGHT_IN_SIX)))
+				.as("an exemption for another season freed him of the one on sale")
+				.isEqualTo(200);
 
 		assertThat(invoiceOf(BROUGHT_IN_SIX).path("alreadyAMember").asBoolean())
 				.as("a membership of another season answered for the one on sale")
@@ -563,10 +639,49 @@ class MyMembershipApiTest {
 	}
 
 	/**
+	 * THE MANAGING BOARD FREES HIM OF ONE NAMED SEASON, which is the only shape an exemption has.
+	 *
+	 * <p>The owner, 27.09.2026: „red u {@code membership} postoji za svaku sezonu posebno, a
+	 * {@code feeExempt} je osnov TOG reda, ne svojstvo coveka." The season is a PARAMETER for exactly
+	 * that reason - every case that says „this season" has to be able to say „another one" with the
+	 * same call.
+	 */
+	private void freeOfTheFeeFor(String memberNumber, int season) {
+		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ")"
+						+ " values ((select id from competitor where member_number = ?), ?, " + A_TRAIL + ")")
+				.params(memberNumber, season).update();
+	}
+
+	/**
+	 * AND A MEMBERSHIP HE LET HIMSELF IN ON, which is „already a member" WITHOUT being free of the
+	 * fee.
+	 *
+	 * <p><b>The two have to be separable or no case measures either.</b> An exemption IS a membership,
+	 * so a fixture that makes somebody a member by freeing him leaves {@code alreadyAMember} and
+	 * {@code exemptFromTheFee} true together, and whichever of the two a route read, the case would
+	 * pass. This is the shape {@code POST /api/me/membership} writes itself: a {@code membership} on
+	 * the basis {@code balance}, naming the line in the book that paid for it, which
+	 * {@code membership_basis_says_whether_a_book_entry_is_named} (V38) requires.
+	 */
+	private void alreadyInOnHisOwnBalance(String memberNumber, int season) {
+		long entry = db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+						+ " occurred_at, recorded_by, recorded_by_name)"
+						+ " values ((select id from competitor where member_number = ?), -5, -600,"
+						+ " 'membership', ?, ?, (select id from account where email = ?),"
+						+ " 'Blagajnik Probni') returning id")
+				.params(memberNumber, season, Timestamp.from(NOW), A_MODERATOR_WHO_DOES_NOT_RACE)
+				.query(Long.class).single();
+
+		db.sql("insert into membership (competitor_id, season, basis, balance_entry_id)"
+						+ " values ((select id from competitor where member_number = ?), ?, 'balance', ?)")
+				.params(memberNumber, season, entry).update();
+	}
+
+	/**
 	 * A BALANCE THAT GROWS AFTER THE CODE WAS MINTED DOES NOT MOVE WHAT THE CODE PROMISED, and this
 	 * is the owner's own scenario of 27.09.2026 walked end to end.
 	 *
-	 * <p><b>His words, and V36 quotes them over this very table:</b> „skida se ono sto je kod obecao,
+	 * <p><b>His words, and V38 quotes them over this very table:</b> „skida se ono sto je kod obecao,
 	 * ne ono sto balans stoji na dan knjizenja." The case he was shown: a code minted for 3.600
 	 * against a balance of 600, a seventh referral activated before the money arrives so the balance
 	 * becomes 1.200, and then the 3.600 lands. <b>600 comes off and 600 stays.</b> He refused taking
@@ -755,6 +870,15 @@ class MyMembershipApiTest {
 	 * free season would leave the outcome satisfied by two things at once; and „nothing came off his
 	 * book" says nothing about a book with nothing in it.
 	 *
+	 * <p><b>THE EXEMPTION IS A ROW FOR THE SEASON ON SALE AND NOT A COLUMN ON HIM</b>, which is the
+	 * owner's decision of 27.09.2026 in his own capital letters: „BESPLATNI CLANOVI NISU BESPLATNI
+	 * DOZIVOTNO. Admin moze da odobri (jednu po jednu) godinu clanarine, ne postaju ljudi besplatni
+	 * zauvek!" This case used to free him by writing {@code competitor.membership_basis}, and that
+	 * fixture was measuring the wrong source: the column is written once and never taken back, so it
+	 * answered this 404 for every season after the one he was given. The two directions it was blind
+	 * to have cases of their own, {@code acolumnSayingFeeExemptDoesNotFreeHimOfASeasonHeHoldsNoRowFor}
+	 * and {@code anexemptionForOneSeasonDoesNotFreeHimOfTheNext}.
+	 *
 	 * <p><b>THE OPEN PART, named rather than settled:</b> what his own screen should show him instead
 	 * of an invoice. His basis already reaches it through {@code /api/me}, and a field on this answer
 	 * would be the cheap way to say more - deliberately not invented here.
@@ -774,7 +898,7 @@ class MyMembershipApiTest {
 		   would insert one again rather than being saved by `on conflict do nothing`. */
 		db.sql("delete from balance_promise where competitor_id = ?").param(id).update();
 
-		db.sql("update competitor set membership_basis = 'feeExempt' where id = ?").param(id).update();
+		freeOfTheFeeFor("007103", THE_SEASON_ON_SALE);
 
 		assertThat(statusOf(PATH, him))
 				.as("a member who owes nothing was still handed an invoice")
@@ -790,12 +914,98 @@ class MyMembershipApiTest {
 						+ " balance from no balance at all")
 				.isEqualByComparingTo("600.00");
 
-		/* AND A BOOKING FOR HIM TAKES NOTHING, which is the harm the missing read actually did. */
-		assertThat(bookedFor(id)).isEqualTo(201);
+		/* AND NOBODY CAN BOOK MONEY AGAINST THE SEASON HE WAS GIVEN, which is where the harm used to
+		   land. The refusal is `theMembershipIsAlreadyHeld` and it comes from the payments door rather
+		   than from here - an exemption IS a membership, so that door has nothing left to record.
+		   Before the fix this file wrote the exemption into a column, no `membership` row existed at
+		   all, the booking went through with 201, and the balance came off a man the Board had freed. */
+		assertThat(bookedFor(id))
+				.as("money was booked against a season the Board had already given him")
+				.isEqualTo(409);
 
 		assertThat(bookAddsUpTo(id))
 				.as("a season he was given was charged to his balance anyway")
 				.isEqualByComparingTo("600.00");
+	}
+
+	/**
+	 * A COLUMN SAYING {@code feeExempt} FREES HIM OF NO SEASON HE HOLDS NO ROW FOR, and this is the
+	 * direction that had the portal unable to bill a man ever again.
+	 *
+	 * <p><b>The owner, 27.09.2026:</b> „BESPLATNI CLANOVI NISU BESPLATNI DOZIVOTNO. Admin moze da
+	 * odobri (jednu po jednu) godinu clanarine, ne postaju ljudi besplatni zauvek!" And in the same
+	 * entry, the shape: „red u {@code membership} postoji za svaku sezonu posebno, a {@code feeExempt}
+	 * je osnov TOG reda, ne svojstvo coveka."
+	 *
+	 * <p><b>Why the column is what it is here.</b> {@code MembershipWriteApi} writes BOTH homes when
+	 * the administration frees somebody - the row for that season and the column on him - and
+	 * <b>nothing ever writes the column back</b>. So this is not a contrived state: it is exactly what
+	 * every member freed of one season looks like in every season afterwards.
+	 *
+	 * <p><b>And he is served a WHOLE invoice rather than merely a 200</b>, because „he is billed" is
+	 * the claim: the fee, the transfer and the processing fee are all there and none of them is
+	 * nought.
+	 */
+	@Test
+	void acolumnSayingFeeExemptDoesNotFreeHimOfASeasonHeHoldsNoRowFor() throws Exception {
+		String him = aMemberOfHisOwn("007105", 0);
+
+		db.sql("update competitor set membership_basis = 'feeExempt' where id = ?")
+				.param(idOf("007105")).update();
+
+		assertThat(statusOf(PATH, him))
+				.as("one season the Board gave him freed him of every season after it, and the portal"
+						+ " could no longer bill him at all")
+				.isEqualTo(200);
+
+		JsonNode owed = invoiceFor(him);
+
+		assertThat(owed.path("alreadyAMember").asBoolean())
+				.as("he holds no row for this season, so nothing here says he is already in")
+				.isFalse();
+
+		assertThat(owed.path("fee").path("rsd").asDouble()).isEqualTo(4200.0);
+		assertThat(owed.path("toTransfer").path("rsd").asDouble())
+				.as("he was billed nothing for a season he owes in full")
+				.isEqualTo(4200.0);
+		assertThat(owed.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+	}
+
+	/**
+	 * AND AN EXEMPTION FOR ONE SEASON DOES NOT FREE HIM OF THE NEXT, which is the same decision read
+	 * from the other end.
+	 *
+	 * <p>He holds a real {@code feeExempt} row, with the trail V38 asks for, <b>for the season before
+	 * the one on sale</b>. So the fact is genuinely there - this is not „no exemption anywhere" - and
+	 * the only thing that may not carry forward is the year.
+	 *
+	 * <p><b>Why both of these and not one.</b> A route reading the season's row answers both
+	 * correctly; a route reading the column answers both wrongly; but a route that simply stopped
+	 * asking about exemptions at all would pass these two and fail only
+	 * {@code amemberFreedOfTheFeeIsToldThereIsNoInvoiceHere}. The three together have no answer but
+	 * the right one.
+	 */
+	@Test
+	void anexemptionForOneSeasonDoesNotFreeHimOfTheNext() throws Exception {
+		String him = aMemberOfHisOwn("007106", 0);
+
+		freeOfTheFeeFor("007106", THE_SEASON_ON_SALE - 1);
+
+		assertThat(statusOf(PATH, him))
+				.as("a season he was given carried forward into one he owes")
+				.isEqualTo(200);
+
+		JsonNode owed = invoiceFor(him);
+
+		assertThat(owed.path("season").asInt())
+				.as("the invoice is about the season on sale, so „the previous one" means something here")
+				.isEqualTo(THE_SEASON_ON_SALE);
+
+		assertThat(owed.path("alreadyAMember").asBoolean())
+				.as("last season's membership answered for this one")
+				.isFalse();
+
+		assertThat(owed.path("toTransfer").path("rsd").asDouble()).isEqualTo(4200.0);
 	}
 
 	/**

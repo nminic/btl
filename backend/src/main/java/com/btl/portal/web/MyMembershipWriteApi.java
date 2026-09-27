@@ -59,7 +59,7 @@ import org.springframework.web.bind.annotation.RestController;
  * somebody has to open and close on purpose cannot be widened by accident.
  *
  * <p><b>AND THE BOOK IS WRITTEN BEFORE THE MEMBERSHIP, because the membership names the entry.</b>
- * V36 gives {@code membership} a {@code balance_entry_id} and
+ * V38 gives {@code membership} a {@code balance_entry_id} and
  * {@code membership_basis_says_whether_a_book_entry_is_named} refuses a {@code balance} membership
  * that names none, so the order is not a preference.
  *

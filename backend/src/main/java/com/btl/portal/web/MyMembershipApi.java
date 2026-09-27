@@ -38,14 +38,21 @@ import java.math.BigDecimal;
  * not race has no membership to buy, and 404 rather than an empty answer because there is no
  * resource here to describe.
  *
- * <p><b>AND SO IS A MEMBER THE MANAGING BOARD FREED OF THE FEE, for that same sentence rather than
- * by analogy: he has no membership to buy either.</b> {@code MembershipInvoice} computes
+ * <p><b>AND SO IS A MEMBER THE MANAGING BOARD FREED OF THIS SEASON'S FEE, for that same sentence
+ * rather than by analogy: he has no membership to buy either.</b> {@code MembershipInvoice} computes
  * {@code exemptFromTheFee} and both writing routes turn on it, so this one reading it is what stops
  * one fact having two homes that disagree - and they did disagree, measurably: the route served such
  * a member a slip for the whole membership, wrote a promise against it, and let a booking take his
  * balance off him for a season he had been given. {@link MyMembershipWriteApi} refuses him 409
  * {@code thereIsNoFeeToPay} „and HIS BALANCE IS NOT TOUCHED"; this is the same refusal said in the
  * only way a GET can say it.
+ *
+ * <p><b>„FREED OF THE FEE" IS ALWAYS ABOUT THE SEASON ON SALE AND NEVER ABOUT THE MAN.</b> The
+ * owner, 27.09.2026: „BESPLATNI CLANOVI NISU BESPLATNI DOZIVOTNO. Admin moze da odobri (jednu po
+ * jednu) godinu clanarine, ne postaju ljudi besplatni zauvek!" So the 404 below turns on the
+ * {@code membership} row for THIS season standing on {@code feeExempt}, and a member freed of an
+ * earlier season is served the invoice for this one like anybody else. What this was before is in
+ * {@link MembershipInvoice}, with what it cost.
  *
  * <p><b>THE SEASON IS THE ONE ON SALE TODAY AND IS NOT ASKED FOR</b>
  * ({@link SeasonClock#seasonBeingPaidFor}, through {@link MembershipInvoice}), the same call
@@ -116,8 +123,8 @@ class MyMembershipApi {
 
 		MembershipInvoice.Invoice owed = invoice.forMember(me);
 
-		/* A MEMBER THE MANAGING BOARD FREED OF THE FEE HAS NO MEMBERSHIP TO BUY, so there is no
-		   invoice here to describe and the answer is the one this route already gives for that
+		/* A MEMBER THE MANAGING BOARD FREED OF THIS SEASON'S FEE HAS NO MEMBERSHIP TO BUY, so there
+		   is no invoice here to describe and the answer is the one this route already gives for that
 		   sentence - the 404 an account naming no member gets, for the identical reason.
 
 		   IT IS A REFUSAL RATHER THAN AN INVOICE OF NOUGHT, and that is chosen. `MyMembership`
@@ -134,6 +141,12 @@ class MyMembershipApi {
 		   membership, had a promise recorded against it, and had his balance taken off him when
 		   somebody booked that transfer - the portal charging him for a season the Managing Board had
 		   given him. One fact, one branch, two homes that disagreed.
+
+		   AND ONE ROUND LATER THE FACT ITSELF MOVED, which is a second thing and not the same one:
+		   the branch was right and what it asked was wrong. It asked `competitor.membership_basis`,
+		   a column written once per PERSON and never taken back, so one granted season answered this
+		   404 for every season after it and the portal could no longer bill a man it had freed once.
+		   It now asks the `membership` row for the season on sale.
 
 		   THE OPEN PART, named rather than settled: what his own screen should show him instead. A
 		   field on this answer would be the cheap way and it is deliberately not invented here. */
@@ -167,16 +180,31 @@ class MyMembershipApi {
 		   still let himself in through `POST /api/me/membership`, which mints no code and reads no
 		   promise. That is why `coveredByTheBalance` below is today's answer and not the promise's.
 
-		   NOTHING IS PROMISED WHEN THE BALANCE COVERS THE WHOLE FEE, because then there is no code:
-		   the way in is `POST /api/me/membership`, which spends the fee out of the book itself. Were
-		   a promise written here anyway, a stray transfer arriving for a member who did not need to
-		   pay would both record a payment of the full fee AND take the fee off his balance, charging
-		   him twice for one season. Nought is still a ROW, though, and that is what pins him. */
+		   AND NO ROW AT ALL WHEN THE BALANCE COVERS THE WHOLE FEE, because then there is no code to
+		   promise anything ABOUT. A row is written exactly when one is minted, so its presence says
+		   „this season's code stands at this number" and nothing else - which is what
+		   `BalanceBook.promised` is read for. „Covered" and „no code" are one state and not two:
+		   `Balance.against` leaves `toTransfer` at nothing precisely when the balance reaches the fee
+		   in both currencies, so there is no covered member holding a slip for anything.
+
+		   WHAT IT WAS BEFORE AND WHY IT HAD TO CHANGE, said out loud because it was money. A nought
+		   WAS written for him, and a nought is also what a member with an empty book is promised - so
+		   one row meant two different things and carried nothing to tell them apart. The second look
+		   could only read it one way: `Balance.asThePromiseStands` settles nought against the fee and
+		   gets „the code promised nothing", which is right for the empty book and wrong for the
+		   covered man. Measured on one member looked at TWICE, nothing else moving: `toTransfer` went
+		   from nothing to the whole 4.200 and 35, the processing fee appeared beside it, and
+		   `coveredByTheBalance` stayed true - the portal billing in full, plus a bank charge, a man
+		   whose balance had already paid. The nought that pins a member is the one minted on an empty
+		   book, and that one is still written: an empty book is not covered, so it takes the branch
+		   below. */
 		Balance.Settlement settled = book.promised(me, owed.season())
 				.map(standing -> Balance.asThePromiseStands(owed.settled(), standing))
 				.orElseGet(() -> {
-					book.promise(me, owed.season(), owed.settled().coveredByTheBalance()
-							? Balance.Money.NOTHING : owed.settled().fromTheBalance());
+					if (!owed.settled().coveredByTheBalance()) {
+						book.promise(me, owed.season(), owed.settled().fromTheBalance());
+					}
+
 					return owed.settled();
 				});
 

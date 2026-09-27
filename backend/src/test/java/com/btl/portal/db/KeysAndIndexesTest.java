@@ -317,7 +317,7 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("verification_comment_submission_unique", false,
 					"one comment waits once; a pointer is looked up as it is written and carries no order"),
 
-			/* V36. The book of balance, and what the code a member is looking at promises him. */
+			/* V38. The book of balance, and what the code a member is looking at promises him. */
 			new Key("balance_entry_pk", false,
 					"a surrogate key a membership names when it stands on the balance; a line in a book is"
 							+ " written once and never moved, so there is no order to maintain"),

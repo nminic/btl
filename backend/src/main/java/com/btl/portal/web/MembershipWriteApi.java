@@ -102,7 +102,7 @@ import java.util.Optional;
  *
  * <p><b>AND WHOEVER BROUGHT HIM IN IS PAID HERE, which is an obligation this branch's own book
  * creates rather than anything this route wanted.</b> The owner, 13.08.2026: „OK je da se za
- * preporuku dobije balans cak i ako je preporucen clan dobio pocasnu aktivaciju." {@code V36} opens
+ * preporuku dobije balans cak i ako je preporucen clan dobio pocasnu aktivaciju." {@code V38} opens
  * the book and ties the reward to activation, and this is the third of the three places a
  * {@code membership} row is written - so leaving it out would make a reward depend on which door
  * the newcomer came through, which no decision says, and here it would be lost for good because
@@ -303,7 +303,7 @@ class MembershipWriteApi {
 		   the grant answered 201, the referrer's book stayed empty, and the same man through the
 		   payments door answered 409.
 
-		   V36's carry says of this exact case that it leaves such a referral „rewarded by whatever
+		   V38's carry says of this exact case that it leaves such a referral „rewarded by whatever
 		   route records that exemption, the day it exists". This is that route and that day.
 
 		   `on conflict (referred_competitor_id) do nothing` inside `aReferralWasActivated` is what

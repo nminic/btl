@@ -27,7 +27,7 @@ import java.time.Clock;
  * never negative; the book records a movement and a spend moves down. Rather than letting four
  * callers each remember to put the minus in, they hand over what was earned or spent and this
  * class turns it into a line. {@code balance_entry_a_referral_adds} and
- * {@code balance_entry_a_membership_takes} (V36) then refuse anything this class gets wrong,
+ * {@code balance_entry_a_membership_takes} (V38) then refuse anything this class gets wrong,
  * which is the point of writing the sign into the schema as well as here.
  */
 @Component
@@ -35,7 +35,7 @@ class BalanceBook {
 
 	/**
 	 * {@code price_row.key} of the row that says what one brought in member is worth (V4: five
-	 * euro, six hundred dinars). The key is a literal here for the same reason V36's backfill
+	 * euro, six hundred dinars). The key is a literal here for the same reason V38's backfill
 	 * writes it as one: it is the NAME of a row in a codebook, and a codebook key is exactly the
 	 * kind of thing that is written down rather than derived.
 	 */
@@ -138,11 +138,19 @@ class BalanceBook {
 	 * microseconds apart, so they promise the same amount and only {@code promised_at} would differ.
 	 *
 	 * <p><b>Nothing here refuses a promise of nothing</b>, and that is deliberate: a member whose
-	 * book is empty, or whose balance covers the whole fee so that there is no code at all, has
-	 * nought written down and it is that row which pins him for the season. Were it left out, his
-	 * SECOND look would write the first real promise while his first slip - the one for the whole fee
-	 * - was still live, and paying that slip would take a discount off his book he had already paid
-	 * in cash.
+	 * book is empty was minted a code for the whole fee, so nought is what that code promised, and it
+	 * is that row which pins him for the season. Were it left out, his SECOND look would write the
+	 * first real promise while his first slip - the one for the whole fee - was still live, and paying
+	 * that slip would take a discount off his book he had already paid in cash.
+	 *
+	 * <p><b>BUT A MEMBER WHOSE BALANCE COVERS THE WHOLE FEE IS NOT CALLED WITH NOUGHT, AND THAT IS
+	 * WHY NOUGHT MEANS ONE THING.</b> For him there is no code at all, so there is nothing for a row
+	 * to be about; {@link MyMembershipApi} calls this only when a code is minted. An earlier draft of
+	 * this branch wrote nought for him too, and the two noughts were indistinguishable in a table
+	 * that carries no reason - so his second look read „the code promised nothing", took his
+	 * discount away and billed him the whole fee with a bank charge on top. The rule that comes out
+	 * of it is the one this method's own reader relies on: <b>a row stands exactly when a code
+	 * stands</b> ({@link #promised}).
 	 */
 	void promise(long competitorId, int season, Balance.Money amount) {
 		db.sql("insert into balance_promise (competitor_id, season, eur, rsd, promised_at)"
@@ -220,7 +228,7 @@ class BalanceBook {
 	 * who already holds the season.
 	 *
 	 * <p><b>WHAT STOPS A FOURTH DOOR ARRIVING SILENTLY is the basis, and it is already floored.</b> A
-	 * membership stands on one of the words {@code membership_basis_known} (V36) names, and
+	 * membership stands on one of the words {@code membership_basis_known} (V38) names, and
 	 * {@code MembershipConstraintsTest} reads those words out of {@code pg_constraint} and compares
 	 * them with V7's - so a FOURTH basis turns a case red and asks for a decision once, rather than
 	 * being waved through. <b>The limit of that, named rather than left to be found:</b> a fourth door
@@ -229,7 +237,7 @@ class BalanceBook {
 	 *
 	 * <p><b>ONCE PER MEMBER BROUGHT IN, AND THE SCHEMA IS WHAT SAYS SO.</b> A member who pays for
 	 * a second season does not earn his referrer a second reward, and rather than each caller
-	 * checking, {@code balance_entry_one_a_referral} (V36) holds it: the insert below is written
+	 * checking, {@code balance_entry_one_a_referral} (V38) holds it: the insert below is written
 	 * {@code on conflict do nothing}, so the second season is silent instead of an error, and the
 	 * rule cannot be got around by any future caller that forgets it.
 	 *
@@ -246,7 +254,7 @@ class BalanceBook {
 						+ " cross join (select eur, rsd from price_row where key = ?) reward"
 						/* AND THE REWARD IS WORTH SOMETHING. V4 lets a price row be ZERO and
 						   `PUT /api/pricing/{key}` has no lower bound, while
-						   `balance_entry_a_referral_adds` (V36) demands strictly more - so without
+						   `balance_entry_a_referral_adds` (V38) demands strictly more - so without
 						   this the route would answer 500 for every member anybody brought in, on
 						   the day an administrator sets the referral to nought through his own
 						   screen. The migration's own carry carries the identical condition, and

@@ -104,7 +104,7 @@ class ActivatingFromBalanceTest {
 	 * negative price and one above what a row may cost, and nothing in between - so one edit of the
 	 * period row through his own screen is all it takes. Without this the balance covers the fee by
 	 * {@code 0 >= 0}, the route reaches the book, and
-	 * {@code balance_entry_a_membership_takes} (V36) refuses an entry that moves nothing: EVERY member
+	 * {@code balance_entry_a_membership_takes} (V38) refuses an entry that moves nothing: EVERY member
 	 * on the portal is answered 500. The floor under that constraint's half of it is
 	 * {@code BalanceConstraintsTest}, which writes the nought row and watches PostgreSQL refuse it.
 	 *
@@ -151,16 +151,55 @@ class ActivatingFromBalanceTest {
 	 * answered 500. {@code PaymentApi} lists this state as one it leaves unguarded because nothing
 	 * could reach it; this class is what reaches it.
 	 *
-	 * <p><b>Asked with every other fact pointing at a different answer</b> - exempt AND short - so
-	 * that the season is proved to be judged first rather than by luck of ordering.
+	 * <p><b>Asked with the MONEY pointing at a different answer, in both directions</b> - once short and
+	 * once covering - so that the season is proved to be judged ahead of the balance rather than by
+	 * luck of ordering.
+	 *
+	 * <p><b>And asked of a member who is NOT exempt, which is the one fact that may not be added
+	 * here.</b> Since 27.09.2026 an exemption is a {@code membership} row for one season (the owner:
+	 * „red u {@code membership} postoji za svaku sezonu posebno"), so „exempt" and „already a member"
+	 * are no longer independent - the first implies the second, and the first is judged first. A member
+	 * carrying both therefore belongs to {@code anexemptionIsJudgedAheadOfTheBareMembershipItImplies}
+	 * and asserting {@code ALREADY_A_MEMBER} of him is what this case used to do.
 	 */
 	@Test
 	void amemberOfThisSeasonAlreadyIsToldThatAndNotWhyElseHeMightBeRefused() {
-		assertThat(ActivatingFromBalance.decide(asking(true, true, short_(), HE_HAS_ONE)))
+		assertThat(ActivatingFromBalance.decide(asking(true, false, short_(), HE_HAS_ONE)))
 				.isEqualTo(ActivatingFromBalance.Outcome.ALREADY_A_MEMBER);
 
 		assertThat(ActivatingFromBalance.decide(asking(true, false, covered(), null)))
 				.isEqualTo(ActivatingFromBalance.Outcome.ALREADY_A_MEMBER);
+	}
+
+	/**
+	 * AND WHEN BOTH ARE TRUE THE ANSWER NAMES THE REASON, NOT THE BARE FACT.
+	 *
+	 * <p><b>This is the one case that pins the ORDER, and the order carries weight it did not carry
+	 * before.</b> Until 27.09.2026 being freed of the fee was read off {@code
+	 * competitor.membership_basis}, a column standing per PERSON, so the two facts were independent and
+	 * either could be true without the other. The owner then settled that an exemption is granted „jednu
+	 * po jednu godinu" and lives in {@code membership.basis} - which makes every exempt member a member
+	 * of that season by construction. From that day the two clauses overlap completely in one direction.
+	 *
+	 * <p><b>Two things follow and both are measured here.</b> A member who owes nothing is told so,
+	 * which is more use to him than „that season is taken"; and {@link
+	 * ActivatingFromBalance.Outcome#HE_OWES_NOTHING} keeps a road from the exemption at all. Asked the
+	 * other way round, {@code alreadyAMember} would answer for every exempt member and this outcome
+	 * would be reachable from the route by ONE road only, a fee of nothing - a branch production cannot
+	 * enter, which no coverage threshold in this portal can see because this very file enters it
+	 * directly.
+	 *
+	 * <p><b>Asked with the balance in both states</b>, so the answer is proved to come from the
+	 * exemption and not from the money.
+	 */
+	@Test
+	void anexemptionIsJudgedAheadOfTheBareMembershipItImplies() {
+		assertThat(ActivatingFromBalance.decide(asking(true, true, short_(), HE_HAS_ONE)))
+				.as("he was told the season is taken, which says nothing about a fee he does not owe")
+				.isEqualTo(ActivatingFromBalance.Outcome.HE_OWES_NOTHING);
+
+		assertThat(ActivatingFromBalance.decide(asking(true, true, covered(), null)))
+				.isEqualTo(ActivatingFromBalance.Outcome.HE_OWES_NOTHING);
 	}
 
 	/**

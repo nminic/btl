@@ -914,7 +914,7 @@ class PaymentApiTest {
 	 *
 	 * <p><b>The half of the same fault that is worse than the migration's.</b> V4 lets a price row be
 	 * ZERO and `PUT /api/pricing/{key}` has no lower bound, while `balance_entry_a_referral_adds`
-	 * (V36) demands strictly more - so without the condition this route would answer <b>500 for every
+	 * (V38) demands strictly more - so without the condition this route would answer <b>500 for every
 	 * member anybody brought in</b>, from the moment an administrator sets the referral to nought
 	 * through his own screen. A migration fails once and says so in a log; this fails per person and
 	 * quietly.
@@ -947,7 +947,7 @@ class PaymentApiTest {
 	 * <p>PDL: „Iznos leže na balans automatski, u trenutku kad se novom članu aktivira članarina, ne
 	 * u trenutku registracije", and „Svaki član koji se registruje preko tog linka donosi
 	 * preporučiocu 600 RSD" - one member, one reward. What holds the second half is
-	 * {@code balance_entry_one_a_referral} (V36) rather than a question this route asks.
+	 * {@code balance_entry_one_a_referral} (V38) rather than a question this route asks.
 	 */
 	@Test
 	void whoeverBroughtThePayerInIsPaidOnce() throws Exception {

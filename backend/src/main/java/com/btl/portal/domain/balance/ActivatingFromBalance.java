@@ -64,7 +64,10 @@ public final class ActivatingFromBalance {
 	 *
 	 * @param alreadyAMember     a {@code membership} row already stands for him and this season,
 	 *                           on any basis
-	 * @param exemptFromTheFee   {@code competitor.membership_basis} is {@code feeExempt}
+	 * @param exemptFromTheFee   that row stands on {@code feeExempt}, which is the Managing Board
+	 *                           freeing him of THIS season's fee. Never a fact about the person:
+	 *                           the owner, 27.09.2026, „BESPLATNI CLANOVI NISU BESPLATNI
+	 *                           DOZIVOTNO"
 	 * @param balance            what {@link Balance#against} made of his book and his fee
 	 * @param numberHeAlreadyHas his member number, or {@code null} if he has never had one
 	 */
@@ -102,21 +105,32 @@ public final class ActivatingFromBalance {
 	/**
 	 * Judged in this order, and the order is the reason each refusal says what it says.
 	 *
-	 * <p>The season first, because „already a member" is the only one of the three refusals that
-	 * is about THIS SEASON and it is the one a second click produces; then the person, because
-	 * being exempt is a fact about him that outlives any season; then the money. Asked the other
-	 * way round, an exempt member who is already in would be told his balance is short, which is
-	 * both true and beside the point.
+	 * <p><b>THE REASON BEFORE THE BARE FACT, then the money.</b> Being freed of the fee and being
+	 * a member already are both about THIS SEASON and the first implies the second - an exemption
+	 * IS a membership, granted one year at a time (the owner, 27.09.2026: „red u {@code membership}
+	 * postoji za svaku sezonu posebno, a {@code feeExempt} je osnov TOG reda, ne svojstvo
+	 * coveka"). So the exemption is asked first, because it is the one that names WHY the season is
+	 * already settled, and a refusal that names the reason is worth more to the man reading it than
+	 * one that names only the fact. Then the money, last, for the reason the clause below gives.
+	 *
+	 * <p><b>THIS ORDER IS WHAT KEEPS BOTH REFUSALS ALIVE, and that is measured rather than
+	 * preferred.</b> The other way round, {@code alreadyAMember} would answer for every exempt
+	 * member and {@link Outcome#HE_OWES_NOTHING} would be reachable from this door by one road
+	 * only - a fee of nothing - so the branch below would be a branch production cannot enter,
+	 * which no test in this portal can see and no mutation can find. <b>And nothing any member is
+	 * told changes:</b> until the season's own row became the source, an exempt member was already
+	 * answered {@code HE_OWES_NOTHING} here, off {@code competitor.membership_basis}. This order is
+	 * what preserves his answer while the fact underneath it is corrected.
 	 */
 	public static Outcome decide(Asking asking) {
 		Objects.requireNonNull(asking, "asking");
 
-		if (asking.alreadyAMember()) {
-			return Outcome.ALREADY_A_MEMBER;
-		}
-
 		if (asking.exemptFromTheFee()) {
 			return Outcome.HE_OWES_NOTHING;
+		}
+
+		if (asking.alreadyAMember()) {
+			return Outcome.ALREADY_A_MEMBER;
 		}
 
 		/* A MEMBERSHIP THE PRICE LIST SAYS IS WORTH NOTHING IS THE SAME REFUSAL, and it is a second
@@ -128,11 +142,12 @@ public final class ActivatingFromBalance {
 		   `balance_entry_a_membership_takes` (V36) refuses an entry that moves nothing: every member
 		   on the portal would be answered 500.
 
-		   AFTER being exempt and not before it, and the order is measured rather than tidy: an exempt
-		   member whose fee is also nought must be refused for the reason that is about HIM, because
-		   that one outlives any price list. Both roads end in this outcome, so the two are told apart
-		   only by a case that puts a NON-exempt member in front of a fee of nothing and an exempt one
-		   in front of a fee that is money. */
+		   LAST OF THE THREE, and the order is measured rather than tidy: a member whose season is
+		   already settled - freed of the fee or in on a payment - must be refused for THAT reason and
+		   not told the price list happens to be free today, because a price list is edited and a
+		   settled season is not. Both roads end in this outcome, so the two are told apart only by a
+		   case that puts a NON-exempt member in front of a fee of nothing and an exempt one in front
+		   of a fee that is money. */
 		if (asking.balance().fee().isNothing()) {
 			return Outcome.HE_OWES_NOTHING;
 		}

@@ -501,7 +501,7 @@ class PaymentApi {
 				.map(promised -> Balance.honouring(promised, book.of(competitor.id())))
 				.orElse(Balance.Money.NOTHING);
 
-		/* A row that moves nothing is refused by `balance_entry_a_membership_takes` (V36), and it is
+		/* A row that moves nothing is refused by `balance_entry_a_membership_takes` (V38), and it is
 		   refused on purpose: a member with an empty book has nothing to record. */
 		if (!fromTheBalance.isNothing()) {
 			book.spentOnAMembership(competitor.id(), season, fromTheBalance, asking.account(), recordedByName);
@@ -510,7 +510,7 @@ class PaymentApi {
 		/* AND WHOEVER BROUGHT HIM IN IS PAID, at this moment and for this reason: PDL, „Iznos leže
 		   na balans automatski, u trenutku kad se novom članu aktivira članarina, ne u trenutku
 		   registracije". Once per member brought in however many seasons he goes on to pay for, and
-		   what holds that is `balance_entry_one_a_referral` (V36) rather than a question asked here. */
+		   what holds that is `balance_entry_one_a_referral` (V38) rather than a question asked here. */
 		book.aReferralWasActivated(competitor.id(), asking.account(), recordedByName);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Confirmed(paymentId, memberNumber,

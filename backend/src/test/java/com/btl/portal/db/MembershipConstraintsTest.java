@@ -90,7 +90,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 	private static final String COLUMNS = "competitor_id, season, basis, payment_id";
 
-	/** V36's fifth column, used only by the rows that are about it. */
+	/** V38's fifth column, used only by the rows that are about it. */
 	private static final String COLUMNS_WITH_THE_BOOK = COLUMNS + ", balance_entry_id";
 
 	/** A line in the book of balance that really is his, for a season he is not yet a member of. */
@@ -129,7 +129,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 	private static final String A_TRAIL = AN_ACCOUNT + ", 'Blagajnik Probni', " + AN_INSTANT;
 
 	/**
-	 * AND THE SAME ROW NAMING THE LINE IN THE BOOK THAT PAID FOR IT (V36), which is the third basis.
+	 * AND THE SAME ROW NAMING THE LINE IN THE BOOK THAT PAID FOR IT (V38), which is the third basis.
 	 *
 	 * <p><b>It carries the trail of {@link #withATrail} as well, and that is not tidiness.</b> One of
 	 * the rows below holds {@code feeExempt} while naming a book entry - it has to, because what it
@@ -322,7 +322,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 						withATrail(A_MEMBER + ", 2028, 'feeExempt', null, 999999,"
 								+ " 'Blagajnik Probni', " + AN_INSTANT)),
 
-				/* AND BOTH HALVES OF THE SAME SENTENCE ABOUT THE BOOK (V36), which arrived with the
+				/* AND BOTH HALVES OF THE SAME SENTENCE ABOUT THE BOOK (V38), which arrived with the
 				   third basis. Held on the balance and naming no line is the member let in with nothing
 				   anywhere to say what paid for him, which is what ADL's „aktivacija nosi dokaz" refuses;
 				   held on something else and naming a line is a withdrawal counted against a season it
@@ -407,10 +407,10 @@ class MembershipConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * Let in on his own balance, naming the line that paid for it (V36, owner 26.09.2026).
+	 * Let in on his own balance, naming the line that paid for it (V38, owner 26.09.2026).
 	 *
 	 * <p>A season of its own, and no receipt: this is the shape that had no way to be written down
-	 * before V36, because every membership had to name a payment or be a gift.
+	 * before V38, because every membership had to name a payment or be a gift.
 	 */
 	private static final String GOOD_OUT_OF_THE_BOOK =
 			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY + ", null, null, null");

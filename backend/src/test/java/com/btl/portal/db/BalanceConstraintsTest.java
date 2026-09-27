@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * EVERY CONSTRAINT V36'S TWO TABLES CARRY, and the sentences they are made of.
+ * EVERY CONSTRAINT V38'S TWO TABLES CARRY, and the sentences they are made of.
  *
  * <p><b>The book of balance</b> ({@code balance_entry}) is what ADL asks for in those words:
  * „obaveza udruzenja, ne broj u koloni: trazi knjigu promena (ko, kada, koliko, iz kog razloga),
@@ -50,7 +50,7 @@ class BalanceConstraintsTest extends DatabaseTest {
 		}
 	}
 
-	/** The two tables V36 adds. */
+	/** The two tables V38 adds. */
 	static final List<String> TABLES = List.of("balance_entry", "balance_promise");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
@@ -109,7 +109,7 @@ class BalanceConstraintsTest extends DatabaseTest {
 	static List<Violation> violations() {
 		return List.of(
 				/* THE KEY, both ways it can be wrong. A line with no key is a line nothing can name,
-				   and the membership that stands on a balance names one by it (V36). The duplicate
+				   and the membership that stands on a balance names one by it (V38). The duplicate
 				   row differs from the one already standing in the member CREDITED as well, so a key
 				   widened to take anything else in would still refuse it. */
 				Violation.notNull("balance_entry_id_not_null", "id",

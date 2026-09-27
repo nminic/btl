@@ -10,15 +10,15 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * WHAT V36 DOES TO THE REFERRALS THAT ARE ALREADY THERE, run against a real database.
+ * WHAT V38 DOES TO THE REFERRALS THAT ARE ALREADY THERE, run against a real database.
  *
- * <p><b>Why this exists.</b> V36 opens the book of balance with one line for every referral that has
+ * <p><b>Why this exists.</b> V38 opens the book of balance with one line for every referral that has
  * already earned its reward. Every test starts from an empty database, so by the time the suite can
  * look there is no referral and no line: a correct carry and a missing one leave {@code balance_entry}
  * equally empty, and deleting the whole {@code insert} is green. A migration whose only measurement
  * is "the schema afterwards" is a migration whose data half nobody has run.
  *
- * <p><b>How the two halves are made.</b> Everything V36 creates is taken away as a fixture, the rows
+ * <p><b>How the two halves are made.</b> Everything V38 creates is taken away as a fixture, the rows
  * a portal really holds are written, and then THE MIGRATION ITSELF is executed - the file Flyway
  * resolved and applied, never a copy of its statements ({@link DatabaseTest#migrationSql}). It all
  * happens inside the test's transaction and is rolled back. The shape is
@@ -65,7 +65,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	/** He registered through the link and never paid, so he has earned nobody anything. */
 	private static final String NEVER_PAID = "003003";
 
-	/** The association let him in free, which V36 says out loud that it leaves alone. */
+	/** The association let him in free, which V38 says out loud that it leaves alone. */
 	private static final String LET_IN_FREE = "003004";
 
 	/** A second referrer, so that "the referrer" is not the only row that can be credited. */
@@ -74,17 +74,17 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	private static final String BROUGHT_IN_BY_THE_OTHER = "003006";
 
 	/**
-	 * Everything V36 creates, taken away so it has something to create and fill.
+	 * Everything V38 creates, taken away so it has something to create and fill.
 	 *
 	 * <p>The order is forced and a fixture that got it wrong would fail the migration rather than let
 	 * it pass quietly, which is the same property {@link MembershipCarriedOverTest} relies on: the
 	 * column on {@code membership} names {@code balance_entry}, so it goes before the table does.
 	 *
-	 * <p>And {@code membership_basis_known} is put back the way V22 wrote it, because V36 drops it and
+	 * <p>And {@code membership_basis_known} is put back the way V22 wrote it, because V38 drops it and
 	 * writes a wider one; left widened, the migration would be running against a schema that already
 	 * had half of it.
 	 */
-	private void whatV36Creates() {
+	private void whatTheMigrationCreates() {
 		/* THE COLUMN, AND WITH IT EVERYTHING THAT DEPENDS ON IT - one statement rather than three
 		   naming the two constraints by hand, because a hand-written list of dependencies goes stale
 		   the day a fourth thing points at this column and PostgreSQL already knows what does.
@@ -99,12 +99,12 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		jdbc.execute("alter table membership drop column balance_entry_id cascade");
 
 		/* Both tables in one statement, and `cascade` takes their triggers with them. The functions
-		   do NOT go with the tables, so they are named - they are what V36 created, not what depends
+		   do NOT go with the tables, so they are named - they are what V38 created, not what depends
 		   on something it created. */
 		jdbc.execute("drop table balance_entry, balance_promise cascade");
 		jdbc.execute("drop function a_balance_entry_is_written_once(), a_reward_says_who_earned_it()");
 
-		/* AND THE ONE THING V36 DID NOT CREATE BUT WIDENED, which is why it is restated rather than
+		/* AND THE ONE THING V38 DID NOT CREATE BUT WIDENED, which is why it is restated rather than
 		   dropped: `membership_basis_known` existed before it and has to go back to the two words
 		   V22 gave it. Measured against the V35 on `main` rather than assumed: V35 adds three columns
 		   and five constraints and does not touch this one, so V22's form is still the form to
@@ -187,8 +187,8 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 * is a value that belongs to one payment and not to the fixture as a whole.
 	 */
 	@BeforeEach
-	void whatThePortalHoldsBeforeV36() {
-		whatV36Creates();
+	void whatThePortalHoldsBeforeTheMigration() {
+		whatTheMigrationCreates();
 
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Prvi', 'Blagajnik',"
 				+ " 'blagajnik@primer.rs', (select id from role where code = 'moderator'))").update();
@@ -223,8 +223,8 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		membershipFreeOfTheFee(LET_IN_FREE, 2027);
 	}
 
-	private void v36() {
-		jdbc.execute(migrationSql("36"));
+	private void theMigration() {
+		jdbc.execute(migrationSql("38"));
 	}
 
 	/**
@@ -237,7 +237,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void everyReferralThatHasEarnedGetsOneLineAndOnlyOne() {
-		v36();
+		theMigration();
 
 		assertThat(linesWritten()).containsExactly(
 				THE_REFERRER + " <- " + PAID_FOR_TWO_SEASONS
@@ -250,14 +250,14 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 * AND WHAT HAS NOT EARNED IS LEFT OUT, in both of the ways that happens.
 	 *
 	 * <p>PDL, 13.08.2026: „Ko se registrovao preko linka a clanarina mu nikad nije aktivirana, ne
-	 * donosi nista." And the one freed of the fee is V36's own named boundary: he has a membership
+	 * donosi nista." And the one freed of the fee is V38's own named boundary: he has a membership
 	 * and no
 	 * payment, so there is no account that ever recognised anything for him, and inventing one would
 	 * put a name in an immutable book that never did the thing.
 	 */
 	@Test
 	void areferralThatHasNotEarnedIsLeftOut() {
-		v36();
+		theMigration();
 
 		assertThat(db.sql("select count(*) from balance_entry e join competitor c"
 						+ " on c.id = e.referred_competitor_id where c.member_number = ?")
@@ -268,7 +268,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		assertThat(db.sql("select count(*) from balance_entry e join competitor c"
 						+ " on c.id = e.referred_competitor_id where c.member_number = ?")
 						.param(LET_IN_FREE).query(Long.class).single())
-				.as("a membership held free of the fee was carried, which V36 says it leaves to"
+				.as("a membership held free of the fee was carried, which V38 says it leaves to"
 						+ " whatever route records that exemption")
 				.isZero();
 	}
@@ -281,7 +281,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void thebalanceThatComesOutOfTheCarryIsOneRewardPerManBroughtIn() {
-		v36();
+		theMigration();
 
 		assertThat(db.sql("select coalesce(sum(rsd), 0) from balance_entry where competitor_id ="
 						+ " (select id from competitor where member_number = ?)")
@@ -299,7 +299,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void theAmountIsTheReferralRowOfThePriceListAndNotTheFee() {
-		v36();
+		theMigration();
 
 		assertThat(db.sql("select count(*) from balance_entry e, price_row r"
 						+ " where r.key = 'referral' and e.eur = r.eur and e.rsd = r.rsd")
@@ -333,7 +333,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	void arecordedPaymentWhoseModeratorIsGoneEarnsNobodyAnything() {
 		db.sql("delete from account where email = 'drugi@primer.rs'").update();
 
-		v36();
+		theMigration();
 
 		assertThat(linesWritten())
 				.as("the referral whose payment lost its moderator was carried anyway, or the one"
@@ -348,8 +348,8 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 * <p><b>This is a case about rows that already stand, which is the only kind that could have
 	 * found it.</b> `price_row_eur_not_negative` and `price_row_rsd_not_negative` (V4) allow ZERO and
 	 * `PUT /api/pricing/{key}` has no lower bound among the six things it refuses, while
-	 * `balance_entry_a_referral_adds` (V36) demands strictly more than nothing. A database holding one
-	 * earned referral while the price list says nought would therefore have made V36 FAIL, Flyway
+	 * `balance_entry_a_referral_adds` (V38) demands strictly more than nothing. A database holding one
+	 * earned referral while the price list says nought would therefore have made V38 FAIL, Flyway
 	 * stop, and the backend restart in a loop - which is exactly what V35 was measured to do on QA on
 	 * 27.09.2026, found there rather than here.
 	 *
@@ -362,7 +362,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	void arewardOfNothingCarriesNobodyALineAndTheMigrationStillApplies() {
 		db.sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
 
-		v36();
+		theMigration();
 
 		assertThat(linesWritten())
 				.as("a line was written for a reward worth nothing, or the migration refused to apply")
@@ -376,7 +376,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void whatTheCarryWroteCannotBeEdited() {
-		v36();
+		theMigration();
 
 		assertThat(org.assertj.core.api.Assertions.catchThrowable(() -> db.sql(
 						"update balance_entry set rsd = -1").update()))

@@ -186,8 +186,46 @@ class MyMembershipWriteApiTest {
 		   the boundary rather than to one side of it. */
 		brought(idOf(EXACTLY_ENOUGH), 7);
 
+		/* ALREADY IN ON HIS OWN BALANCE, AND DELIBERATELY NOT FREE OF THE FEE. An exemption IS a
+		   membership - the owner, 27.09.2026, „red u `membership` postoji za svaku sezonu posebno, a
+		   `feeExempt` je osnov TOG reda" - so a fixture that made him a member by freeing him would
+		   leave `alreadyAMember` and `exemptFromTheFee` true at once and neither refusal could be told
+		   from the other. This row was written that way until the season's own basis became the
+		   source, which was harmless only while „exempt" was read off the per-person column.
+
+		   The entry is 600 of his 4.800, so what is left is exactly the fee: he is still COVERED, and
+		   his refusal is therefore still not the money talking. */
+		alreadyInOnHisOwnBalance(idOf(ALREADY_IN_FOR_THIS_SEASON), THE_SEASON_ON_SALE);
+
+		/* AND THE ONE THE BOARD FREED HOLDS A ROW FOR THE SEASON ON SALE, because that is what being
+		   freed of THIS season's fee is. His column says so too, and nothing reads it here. */
 		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ") values (?, ?, " + A_TRAIL + ")")
-				.params(idOf(ALREADY_IN_FOR_THIS_SEASON), THE_SEASON_ON_SALE).update();
+				.params(idOf(FREED_OF_THE_FEE), THE_SEASON_ON_SALE).update();
+	}
+
+	/**
+	 * A MEMBERSHIP HE LET HIMSELF IN ON, which is „already a member" without being free of the fee.
+	 *
+	 * <p>The shape this very route writes: basis {@code balance}, naming the line in the book that
+	 * paid for it, which {@code membership_basis_says_whether_a_book_entry_is_named} (V38) requires.
+	 */
+	private void alreadyInOnHisOwnBalance(long competitorId, int season) {
+		long entry = db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+						+ " occurred_at, recorded_by, recorded_by_name)"
+						+ " values (?, -5, -600, 'membership', ?, ?,"
+						+ " (select id from account where email = ?), 'Blagajnik Probni') returning id")
+				.params(competitorId, season, Timestamp.from(NOW), A_MODERATOR_WHO_DOES_NOT_RACE)
+				.query(Long.class).single();
+
+		db.sql("insert into membership (competitor_id, season, basis, balance_entry_id)"
+						+ " values (?, ?, 'balance', ?)")
+				.params(competitorId, season, entry).update();
+	}
+
+	/** The Managing Board frees him of one NAMED season, never of him. */
+	private void freeOfTheFeeFor(long competitorId, int season) {
+		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ") values (?, ?, " + A_TRAIL + ")")
+				.params(competitorId, season).update();
 	}
 
 	private long idOf(String memberNumber) {
@@ -274,7 +312,7 @@ class MyMembershipWriteApiTest {
 	 *
 	 * <p>Read back as a STRING with all three facts in it rather than as three separate questions:
 	 * a basis asserted on its own is satisfied by a row whose evidence column names the wrong thing,
-	 * and the point of V36 is that the two go together.
+	 * and the point of V38 is that the two go together.
 	 */
 	private String membershipOf(long competitor) {
 		return db.sql("select coalesce((select basis || ' ' || coalesce(payment_id::text, 'no receipt')"
@@ -308,7 +346,7 @@ class MyMembershipWriteApiTest {
 	 *
 	 * <p>Every row this writes is asserted, and the membership's evidence is asserted to be the very
 	 * line the book gained rather than merely to be present: {@code membership_basis_says_whether_a_book_entry_is_named}
-	 * (V36) would refuse an empty one, so „not empty" says nothing on its own.
+	 * (V38) would refuse an empty one, so „not empty" says nothing on its own.
 	 *
 	 * <p><b>The surplus stays</b>, which is the owner's own words: he held 4.800 and the membership
 	 * cost 4.200, so 600 is left. The two numbers differ on purpose - a fixture where the balance
@@ -371,28 +409,52 @@ class MyMembershipWriteApiTest {
 	 *
 	 * <p>He holds a covering balance, so the refusal cannot be coming out of the money. Without this
 	 * the second row would collide with {@code membership_pk} and he would be answered 500.
+	 *
+	 * <p><b>He is in on his OWN BALANCE and not free of the fee, which is what makes this case about
+	 * {@code alreadyAMember}.</b> An exemption is a membership too, and {@code ActivatingFromBalance}
+	 * answers that one {@code thereIsNoFeeToPay} - so a fixture that freed him would be measuring the
+	 * other refusal under this name.
+	 *
+	 * <p><b>The count of lines is compared to ITSELF and not to nought</b>, because he now legitimately
+	 * carries the one his membership was bought with: what is asserted is that this request added none.
 	 */
 	@Test
 	void amemberOfThisSeasonAlreadyIsRefusedAndKeepsHisBalance() throws Exception {
 		BigDecimal before = bookOf(idOf(ALREADY_IN_FOR_THIS_SEASON));
+		long linesBefore = entriesAgainst(idOf(ALREADY_IN_FOR_THIS_SEASON));
 
 		MockHttpServletResponse refused = activate(EMAIL.get(ALREADY_IN_FOR_THIS_SEASON));
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(bodyOf(refused).path("reason").asString())
+				.as("a member already in on his own balance was told he owes no fee, which is a"
+						+ " different refusal about a different fact")
 				.isEqualTo(MyMembershipWriteApi.ALREADY_A_MEMBER);
 
 		assertThat(bookOf(idOf(ALREADY_IN_FOR_THIS_SEASON))).isEqualByComparingTo(before);
-		assertThat(entriesAgainst(idOf(ALREADY_IN_FOR_THIS_SEASON))).isZero();
+		assertThat(entriesAgainst(idOf(ALREADY_IN_FOR_THIS_SEASON))).isEqualTo(linesBefore);
 	}
 
 	/**
-	 * A MEMBER FREED OF THE FEE IS REFUSED, AND HIS BALANCE IS UNTOUCHED.
+	 * A MEMBER FREED OF THIS SEASON'S FEE IS REFUSED, AND HIS BALANCE IS UNTOUCHED.
 	 *
 	 * <p><b>Derived rather than decided, and from PDL 11.08.2026:</b> „Balans ne propada nikad i
 	 * prenosi se iz sezone u sezonu." He owes nothing, so there is nothing to take it off, and it
 	 * keeps until a season in which he is no longer exempt. He holds a COVERING balance, so his
 	 * refusal is not the money talking.
+	 *
+	 * <p><b>And the refusal is {@code thereIsNoFeeToPay} rather than {@code alreadyAMember}, which is
+	 * the order in {@code ActivatingFromBalance} and not an accident.</b> Both are true of him - an
+	 * exemption IS a membership - and the one that names WHY is the one he is told. That order is also
+	 * what keeps the branch alive at all: asked the other way round, no exempt member would ever reach
+	 * it.
+	 *
+	 * <p><b>What this fixture used to be, because it is the finding:</b> the exemption was
+	 * {@code competitor.membership_basis}, a column written once per PERSON and never taken back, and
+	 * he held no {@code membership} row at all. So „not a member" was assertable and „freed of the fee"
+	 * meant freed of every season there will ever be. It is now a row for the season on sale, and what
+	 * is asserted instead is that the row he holds is the one the Board gave him and nothing was added
+	 * beside it.
 	 */
 	@Test
 	void amemberFreedOfTheFeeIsRefusedAndHisBalanceIsUntouched() throws Exception {
@@ -402,12 +464,61 @@ class MyMembershipWriteApiTest {
 
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(bodyOf(refused).path("reason").asString())
+				.as("he was told only that the season is taken, which says nothing about a fee he does"
+						+ " not owe")
 				.isEqualTo(MyMembershipWriteApi.HE_OWES_NOTHING);
 
 		assertThat(bookOf(idOf(FREED_OF_THE_FEE)))
 				.as("an exempt member was charged for a season he was going to get free")
 				.isEqualByComparingTo(before);
-		assertThat(membershipOf(idOf(FREED_OF_THE_FEE))).isEqualTo("not a member");
+
+		assertThat(membershipOf(idOf(FREED_OF_THE_FEE)))
+				.as("the row the Board gave him was written over, or a second one appeared beside it")
+				.isEqualTo("feeExempt no receipt no entry");
+
+		assertThat(entriesAgainst(idOf(FREED_OF_THE_FEE)))
+				.as("a line was written into the book for a membership nobody bought")
+				.isZero();
+	}
+
+	/**
+	 * AND AN EXEMPTION FOR ONE SEASON DOES NOT FREE HIM OF THE NEXT, so he is LET IN rather than
+	 * refused.
+	 *
+	 * <p><b>The owner, 27.09.2026, in his own capital letters:</b> „BESPLATNI CLANOVI NISU BESPLATNI
+	 * DOZIVOTNO. Admin moze da odobri (jednu po jednu) godinu clanarine, ne postaju ljudi besplatni
+	 * zauvek!" This is that sentence at the writing door: the fact is genuinely there, with the trail
+	 * V38 asks for, and the only thing that may not carry forward is the year.
+	 *
+	 * <p><b>Why it asserts 201 and not merely „not 409".</b> „He is no longer exempt" has to reach the
+	 * end of the road: a membership is written for the season on sale, on the basis {@code balance},
+	 * and the fee comes off his book. A route that stopped refusing him but also stopped letting him
+	 * in would satisfy a weaker claim.
+	 *
+	 * <p><b>He is the one COMING BACK, who already carries a number</b>, so this case is about the
+	 * exemption and not about drawing one - that rule has cases of its own.
+	 */
+	@Test
+	void anexemptionForOneSeasonDoesNotFreeHimOfTheNext() throws Exception {
+		long him = idOf(COMING_BACK);
+
+		freeOfTheFeeFor(him, THE_SEASON_ON_SALE - 1);
+
+		BigDecimal before = bookOf(him);
+
+		MockHttpServletResponse answered = activate(EMAIL.get(COMING_BACK));
+
+		assertThat(answered.getStatus())
+				.as("a season the Board gave him last year freed him of the one he is buying")
+				.isEqualTo(201);
+
+		assertThat(membershipOf(him))
+				.as("he was let in on the wrong basis, or on none")
+				.startsWith("balance ");
+
+		assertThat(bookOf(him))
+				.as("he was let in and his balance was not asked to pay for it")
+				.isEqualByComparingTo(before.subtract(new BigDecimal("4200")));
 	}
 
 	/**
@@ -419,12 +530,12 @@ class MyMembershipWriteApiTest {
 	 * negative price and one above what a row may cost, and nothing in between - so one edit of the
 	 * period row through an administrator's own screen is all it takes. Then {@code Balance.against}
 	 * finds the balance covers the fee by {@code 0 >= 0}, the route reaches the book, and
-	 * {@code balance_entry_a_membership_takes} (V36) refuses an entry that moves nothing.
+	 * {@code balance_entry_a_membership_takes} (V38) refuses an entry that moves nothing.
 	 *
 	 * <p><b>This is NOT the {@code if} the payments route already has.</b> There a membership stands
 	 * on {@code basis = 'payment'} and the book entry may simply be left out, which is what
 	 * {@code PaymentApi} does when there is nothing to spend. Here
-	 * {@code membership_basis_says_whether_a_book_entry_is_named} (V36) REQUIRES a
+	 * {@code membership_basis_says_whether_a_book_entry_is_named} (V38) REQUIRES a
 	 * {@code balance} membership to name an entry, so there is no leaving it out: the only answer is
 	 * not to let him in.
 	 *
