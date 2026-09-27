@@ -177,32 +177,38 @@ async function fillEverythingExceptBirthDate(
   await user.click(screen.getByLabelText(/zdravstveno sposoban/))
 }
 
-describe('Registration while it is shut', () => {
-  it('offers no form at all during the period of looking around', () => {
-    renderForm('2026-09-20')
+describe('Registration is never shut', () => {
+  /* Owner, 27.09.2026 (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA"): „Zapravo bih
+     najradije da skinem tu zabranu i da mogu prijave odmah da krenu, a svakako niko nece
+     pristupiti ovome pre nego sto sajt bude live 1.10." This block held the two cases that
+     used to prove the opposite: a page saying the form was not open yet, drawn while
+     `registrationOpen(today)` read false off the browser's own clock. That branch is gone,
+     and what replaces it is not silence but its own claim, tested on both sides of the date
+     it used to divide - a form that existed on one side of 1 October only must now be shown
+     to exist on both, which is a different thing from no longer being hidden on the side it
+     was hidden on. */
+  it.each([
+    ['well before 1 October', '2026-09-20'],
+    ['after 1 October', OPEN],
+  ])('renders the form %s, not the page that used to say it was shut', (_when, today) => {
+    renderForm(today)
 
-    expect(screen.getByRole('heading', { name: 'Registracija još nije otvorena' })).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
-    /* The whole sentence and not a wildcard where the date stands. Written as
-       „otvara .*, za 11 dana", it swallowed the date, and the screen said „otvara 1.
-       oktobar 2026." — the nominative under a verb — with this green (review,
-       05.09.2026, ADL A35). */
+    expect(screen.getByRole('heading', { level: 1, name: 'Registracija' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Pošalji prijavu' })).toBeVisible()
     expect(
-      screen.getByText('Učlanjenje se otvara 1. oktobra 2026., za 11 dana.'),
-    ).toBeVisible()
+      screen.queryByRole('heading', { name: 'Registracija još nije otvorena' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('is shut on the route on a day before October', async () => {
-    /* THE DAY IS SET, AND UNTIL 21.09.2026 IT WAS NOT. `renderAt` left alone „runs on
-       the real one", and `REGISTRATION_OPENS` is 2026-10-01: this case was therefore
-       measuring the calendar rather than the route, and would have gone red on the CI on
-       the very morning registration opens, over a screen that had done nothing wrong.
-       Found by a review of this branch; the fault is older than the branch. */
+  it('renders it through the real route as well, on a day before October', async () => {
+    /* Through `renderAt` and the real route table rather than through `renderForm`, which is
+       what the deleted case „is shut on the route on a day before October" measured: a
+       review of an earlier branch found this screen's date once read off the calendar
+       rather than off the route it was meant to guard (21.09.2026). There is no date left
+       that changes the answer here, and that absence is the point being measured now. */
     renderAt('/sr/registracija', 'visitor', null, undefined, '2026-09-20')
 
-    expect(
-      await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
-    ).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Registracija' })).toBeVisible()
   })
 })
 

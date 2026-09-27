@@ -2419,13 +2419,17 @@ describe('screens that depend on the date', () => {
        so he could see a screen that only exists after a certain date before
        that date arrives.
 
-       Registration is the sharpest of them. Between 15 and 30 September the
-       portal is open for looking only and there is no form at all (PDL P8), so
-       nothing about the two states can be mistaken for the other. */
-    renderAt('/sr/registracija', 'visitor', null, undefined, '2026-09-20')
+       Registration used to be the sharpest of these, closing the whole form before 1
+       October. That ban is gone (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA",
+       owner 27.09.2026), so this reaches for the sale of membership itself instead: it
+       still reads `registrationOpen` off the same clock (data/pricing.ts) and still has
+       nothing to sell before that date. The case right above already measures the "after"
+       side of it on a fixed day; this is the same fact moved by the header's own switch
+       rather than by a fresh render, which is what this test is really about. */
+    renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2026-09-20')
 
     expect(
-      await screen.findByRole('heading', { name: 'Registracija još nije otvorena' }),
+      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 1. oktobra.'),
     ).toBeVisible()
 
     /* Day first, because the switch is the portal's own date control since
@@ -2434,9 +2438,11 @@ describe('screens that depend on the date', () => {
       target: { value: '02/10/2026' },
     })
 
-    expect(await screen.findByRole('button', { name: 'Pošalji prijavu' })).toBeVisible()
     expect(
-      screen.queryByRole('heading', { name: 'Registracija još nije otvorena' }),
+      await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.'),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 1. oktobra.'),
     ).not.toBeInTheDocument()
   }, SEVERAL_SCREENS)
 })

@@ -407,14 +407,7 @@
     "passwordRepeat": "Ponovi lozinku",
     "parentConsent": "Ime i prezime roditelja ili staratelja",
     "parentConsentHint": "Takmičar je mlađi od 16 godina, pa nalog održava roditelj ili staratelj. Upisivanjem imena potvrđuješ da podržavaš prijavu svog deteta sa unetim podacima. Za mlađe od 14 godina to je ujedno i saglasnost za članstvo.",
-    "closed": "Registracija još nije otvorena",
-    "closedText": "Od 15. do 30. septembra portal je otvoren samo za razgledanje. Kalendar i rang liste rade, ali se članstvo tada ne prodaje.",
     "opensOn": "Otvara se {date}.",
-    "opensIn": {
-      "one": "Učlanjenje se otvara {date}, za {count} dan.",
-      "few": "Učlanjenje se otvara {date}, za {count} dana.",
-      "other": "Učlanjenje se otvara {date}, za {count} dana."
-    },
     "category": "Kategorija",
     "categoryFirstSeason": "Početnička",
     "categoryByAge": "Starosna",

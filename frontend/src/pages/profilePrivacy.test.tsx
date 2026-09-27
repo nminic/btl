@@ -584,9 +584,10 @@ describe('a hidden profile is reachable from nowhere', () => {
     const user = setupUser()
 
     /* The same day the other sweep over this table reads it on, and out of the same place as the
-       table itself (`test/addresses.ts`). What a screen draws depends on the day: one of these
-       addresses opens the registration, whose heading changes when it opens, and another is a
-       profile whose owner has to be a member on it. Written out here, the day would part from the
+       table itself (`test/addresses.ts`). What a screen draws can depend on the day: one of these
+       addresses is a profile whose owner has to be a member on it. The registration screen used
+       to be another, before its own ban on a date came off (PDL, „Zabrana registracije pre
+       01.10.2026 se SKIDA", owner 27.09.2026). Written out here, the day would part from the
        table it belongs to the moment somebody moved one of them. */
     renderAt(
       where,
