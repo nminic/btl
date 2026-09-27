@@ -678,7 +678,7 @@ class PricingWriteApiTest {
 						.cookie(new Cookie(SessionCookie.NAME, booksPaymentsCookie))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(new ObjectMapper().writeValueAsString(
-								new PaymentApi.Confirm(whoPaysLater, "EUR", "slip", null))))
+								new PaymentApi.Confirm(whoPaysLater, "EUR", "ips", null))))
 				.andReturn().getResponse();
 
 		assertThat(booked.getStatus())
@@ -1380,7 +1380,7 @@ class PricingWriteApiTest {
 			BigDecimal fee) {
 		return db.sql("insert into payment (competitor_id, season, price_row_id, amount, currency,"
 						+ " fee, method, state, recorded_at, recorded_by_name)"
-						+ " values (?, ?, (select id from price_row where key = ?), ?, ?, ?, 'slip',"
+						+ " values (?, ?, (select id from price_row where key = ?), ?, ?, ?, 'ips',"
 						+ " 'recorded', ?, 'Probni Probic') returning id")
 				.params(competitor, SeasonClock.seasonBeingPaidFor(IN_MARCH.atZone(SeasonClock.ZONE)),
 						priceRow, amount, currency, fee, Timestamp.from(IN_MARCH))

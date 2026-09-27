@@ -499,7 +499,7 @@ class MembershipWriteApiTest {
 						+ " amount, currency, fee, method, state, recorded_at, recorded_by,"
 						+ " recorded_by_name) values (?, 2027, '20270091',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
-						+ " 'card', 'recorded', ?, (select id from account where email = ?),"
+						+ " 'paypal', 'recorded', ?, (select id from account where email = ?),"
 						+ " 'Blagajnik Probic') returning id")
 				.params(him, Timestamp.from(IN_JUNE_2027), CASHIER).query(Long.class).single();
 
@@ -532,7 +532,7 @@ class MembershipWriteApiTest {
 						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
 						+ " values (?, 2027, '20270092',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
-						+ " 'card', 'reversed', ?, null, 'Blagajnik Probic')")
+						+ " 'paypal', 'reversed', ?, null, 'Blagajnik Probic')")
 				.params(him, Timestamp.from(IN_JUNE_2027)).update();
 
 		MockHttpServletResponse answer = grant(him, cashierCookie);
@@ -559,7 +559,7 @@ class MembershipWriteApiTest {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
 						+ " currency, fee, method, state) values (?, 2027, '20270093',"
 						+ " (select id from price_row where key = 'season'), 35.00, 'EUR', 3.00,"
-						+ " 'card', 'awaited')")
+						+ " 'paypal', 'awaited')")
 				.param(him).update();
 
 		MockHttpServletResponse answer = grant(him, cashierCookie);

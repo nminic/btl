@@ -908,7 +908,7 @@ class PaymentsDueApiTest {
 		long payment = db.sql("insert into payment (competitor_id, season, price_row_id, amount,"
 						+ " currency, fee, method, state, recorded_at, recorded_by_name)"
 						+ " values (?, ?, (select id from price_row order by sort_order limit 1),"
-						+ " 30.00, 'EUR', 3.00, 'slip', 'recorded', ?, 'Moderator Koji Je Proknjizio')"
+						+ " 30.00, 'EUR', 3.00, 'ips', 'recorded', ?, 'Moderator Koji Je Proknjizio')"
 						+ " returning id")
 				.params(member, season, Timestamp.from(IN_OCTOBER_2026))
 				.query(Long.class).single();

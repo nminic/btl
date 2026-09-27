@@ -187,7 +187,7 @@ class PaymentApiTest {
 		long id = competitor("a1", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -234,7 +234,7 @@ class PaymentApiTest {
 		long id = competitor("a2", "005005", false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "RSD", "slip", "20280055")), moderatorCookie);
+				new PaymentApi.Confirm(id, "RSD", "ips", "20280055")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -278,7 +278,7 @@ class PaymentApiTest {
 	@Test
 	void confirmingTheSamePaymentTwiceIsHarmless() throws Exception {
 		long id = competitor("a4", null, false, "1990-05-15");
-		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, "EUR", "card", null);
+		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, "EUR", "paypal", null);
 
 		MockHttpServletResponse first = confirm(json(typed), moderatorCookie);
 		PaymentApi.Confirmed firstBody =
@@ -319,7 +319,7 @@ class PaymentApiTest {
 	@Test
 	void confirmingTheSamePaymentTwiceIsHarmlessWhenItCarriesAReference() throws Exception {
 		long id = competitor("b1", "005010", false, "1990-05-15");
-		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, "RSD", "slip", "20280051");
+		PaymentApi.Confirm typed = new PaymentApi.Confirm(id, "RSD", "ips", "20280051");
 
 		MockHttpServletResponse first = confirm(json(typed), moderatorCookie);
 		PaymentApi.Confirmed firstBody =
@@ -362,12 +362,12 @@ class PaymentApiTest {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount, currency,"
 						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name) values"
 						+ " (?, 2028, '20280070', (select id from price_row where key = 'early'),"
-						+ " 35.00, 'EUR', 3.00, 'card', 'reversed', timestamptz '2027-10-02 09:00:00+00',"
+						+ " 35.00, 'EUR', 3.00, 'paypal', 'reversed', timestamptz '2027-10-02 09:00:00+00',"
 						+ " null, 'Blagajnik Probni')")
 				.param(id).update();
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -410,7 +410,7 @@ class PaymentApiTest {
 		freeOfTheFee(id, 2028);
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -456,7 +456,7 @@ class PaymentApiTest {
 		freeOfTheFee(heldElsewhere, 2030);
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(other, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(other, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -503,7 +503,7 @@ class PaymentApiTest {
 		long awaited = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
 						+ " amount, currency, fee, method, state) values"
 						+ " (?, 2028, '20280077', (select id from price_row where key = 'early'),"
-						+ " 35.00, 'EUR', 3.00, 'card', 'awaited') returning id")
+						+ " 35.00, 'EUR', 3.00, 'paypal', 'awaited') returning id")
 				.param(id).query(Long.class).single();
 
 		db.sql("insert into membership (competitor_id, season, basis, payment_id)"
@@ -511,7 +511,7 @@ class PaymentApiTest {
 				.params(id, awaited).update();
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus())
 				.as("a season already held was recorded over, or the key was met and answered 500")
@@ -548,7 +548,7 @@ class PaymentApiTest {
 				.query(Timestamp.class).optional()).isEmpty();
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 	}
@@ -633,7 +633,7 @@ class PaymentApiTest {
 		long id = competitor("ab", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "USD", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "USD", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -657,7 +657,7 @@ class PaymentApiTest {
 		long id = competitor("ad", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "EUR", "card", "2028-070")), moderatorCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", "2028-070")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -669,10 +669,10 @@ class PaymentApiTest {
 		long first = competitor("ae", "009009", false, "1990-05-15");
 		long second = competitor("af", null, false, "1990-05-15");
 
-		confirm(json(new PaymentApi.Confirm(first, "EUR", "card", "20280090")), moderatorCookie);
+		confirm(json(new PaymentApi.Confirm(first, "EUR", "paypal", "20280090")), moderatorCookie);
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(second, "EUR", "card", "20280090")), moderatorCookie);
+				new PaymentApi.Confirm(second, "EUR", "paypal", "20280090")), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -682,7 +682,7 @@ class PaymentApiTest {
 	@Test
 	void theCompetitorMustExist() throws Exception {
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(999999L, "EUR", "card", null)), moderatorCookie);
+				new PaymentApi.Confirm(999999L, "EUR", "paypal", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -701,7 +701,7 @@ class PaymentApiTest {
 		long id = competitor("b0", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "EUR", "card", null)), noRightsCookie);
+				new PaymentApi.Confirm(id, "EUR", "paypal", null)), noRightsCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(404);
 		assertThat(paymentCount()).isZero();
@@ -770,7 +770,7 @@ class PaymentApiTest {
 				.isEqualByComparingTo("1200");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "RSD", "ips", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -801,7 +801,7 @@ class PaymentApiTest {
 		promised(id, 2028, "5", "600");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "RSD", "ips", null)), moderatorCookie);
 
 		PaymentApi.Confirmed body = mapper.readValue(answer.getContentAsString(),
 				PaymentApi.Confirmed.class);
@@ -833,7 +833,7 @@ class PaymentApiTest {
 		rewardFor(id, oneHeBroughtIn);
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "RSD", "ips", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(whatTheMembershipTook(id))
@@ -859,7 +859,7 @@ class PaymentApiTest {
 		promised(id, 2028, "35", "4200");
 
 		MockHttpServletResponse answer = confirm(json(
-				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "RSD", "ips", null)), moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(whatTheMembershipTook(id))
@@ -886,11 +886,11 @@ class PaymentApiTest {
 		rewardFor(id, oneHeBroughtIn);
 		promised(id, 2028, "5", "600");
 
-		assertThat(confirm(json(new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie)
+		assertThat(confirm(json(new PaymentApi.Confirm(id, "RSD", "ips", null)), moderatorCookie)
 				.getStatus()).isEqualTo(201);
 
 		MockHttpServletResponse again = confirm(json(
-				new PaymentApi.Confirm(id, "RSD", "slip", null)), moderatorCookie);
+				new PaymentApi.Confirm(id, "RSD", "ips", null)), moderatorCookie);
 
 		assertThat(again.getStatus()).isEqualTo(200);
 
@@ -930,7 +930,7 @@ class PaymentApiTest {
 		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
 		db.sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
 
-		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "slip", null)), moderatorCookie)
+		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "ips", null)), moderatorCookie)
 						.getStatus())
 				.as("the route fell over on a reward the price list says is worth nothing")
 				.isEqualTo(201);
@@ -956,7 +956,7 @@ class PaymentApiTest {
 
 		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
 
-		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "slip", null)), moderatorCookie)
+		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "ips", null)), moderatorCookie)
 				.getStatus()).isEqualTo(201);
 
 		assertThat(bookOf(referrer))
@@ -972,7 +972,7 @@ class PaymentApiTest {
 		db.sql("delete from membership where competitor_id = ?").param(newcomer).update();
 		db.sql("update payment set season = 2029 where competitor_id = ?").param(newcomer).update();
 
-		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "slip", null)), moderatorCookie)
+		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "ips", null)), moderatorCookie)
 				.getStatus()).isEqualTo(201);
 
 		assertThat(bookOf(referrer))
