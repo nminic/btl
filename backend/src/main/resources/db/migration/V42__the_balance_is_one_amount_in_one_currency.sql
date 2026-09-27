@@ -54,6 +54,21 @@
  *     select count(*) from membership        -> 1
  *     select count(*) from competitor        -> 1
  *
+ * AND THE OWNER SAID THE SAME THING FROM THE OTHER SIDE, on 28.09.2026, in his own words: „Niko
+ * nema nikakav balans, jer postojim samo ja u sistemu, i racunaj da je moj balans za sada 0 RSD."
+ * So the emptiness of these tables is not only measured, it is stated by the one person who could
+ * have a balance at all - which is a stronger basis for the plain constraints below than a query on
+ * its own.
+ *
+ * AND WHAT THIS MIGRATION RISKS IS THE SHAPE AND NOT THE DATA, said out loud because it was put the
+ * other way round once and the owner corrected it. He was asked about this as though data were being
+ * TRANSLATED between currencies; it is not. No row is converted here at all - the two `update`
+ * statements below have nothing to run over - and the risk is entirely in the SHAPE: three columns
+ * dropped, four added, and nine constraints written over a pair rewritten over one amount. A reader
+ * weighing whether to apply this should weigh it as a rewrite of rules, not as a movement of money.
+ * The one place money IS translated is `PUT /api/me`, in code, when a member changes country, and
+ * that is a route with its own cases and not this file.
+ *
  * QA is the ONLY database that exists; there is no production one, because the portal is not
  * launched. THAT IS WHY EVERY CONSTRAINT BELOW IS PLAIN AND NOT `not valid`: `not valid` (V35) is a
  * true sentence about a row that EXISTS and cannot be put right, and there is no such row here to
