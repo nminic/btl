@@ -384,6 +384,15 @@ export const useTeams = () => useResource<Team[]>('teams')
  * the header and the screen behind it - and a ref each would mean two of them deciding to
  * drop the same cache, which throws away the request the other one had already started.
  * One home, one decision, one request.
+ *
+ * **AND THE LIMIT, because this closes one of the two things it could have closed.** The same
+ * member signing out and back in within one visit is served what the visit already fetched:
+ * nothing calls this while nobody is signed in, so the name it holds does not change and the
+ * answer is not dropped. That is the portal's own rule for all seventeen names („One request
+ * per resource per visit", `data/client.ts`) rather than anything about this one, and what is
+ * closed here is the half that is not a staleness but a LEAK: one caller's mail reaching the
+ * next. `pages/member/inboxFromTheServer.test.tsx` says which of the two each of its cases
+ * measures.
  */
 let inboxAnsweredFor: string | undefined
 

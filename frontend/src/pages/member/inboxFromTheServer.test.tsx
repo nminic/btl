@@ -144,6 +144,32 @@ function longestLiteralIn(said: string): string {
 
 /** What a served question must not have put on the screen, said as one list rather than as
  *  one assertion per sentence. */
+/**
+ * WHETHER ANYTHING ON THIS SCREEN IS STILL WAITING FOR AN ANSWER, and this is the half of
+ * the two cases below that actually bites.
+ *
+ * **Measured, and it is why the derived list above was not enough on its own.** With the
+ * list alone, a mutation that handed a served key to `InvitationAnswer` STILL survived: the
+ * block that opens is wrapped in a `Resource` over three further resources, so at the moment
+ * the message is drawn that block is a LOADER rather than a sentence, and an absence
+ * asserted then is the absence of something that had not had time to appear.
+ *
+ * A screen drawing a message the portal can say nothing further about has nothing left to
+ * wait for, so „no loader" is true of the right code and false the instant that block is
+ * opened.
+ *
+ * **Found by its words and not by its role**, and both halves of that are measured. `role`
+ * alone is no use: `app/Shell.tsx` keeps a permanent `role="status"` for announcing a change
+ * of screen, so „is there a status" is true on every page of the portal. And the role WITH a
+ * name is no use either: `status` is not a role that takes its name from its contents, so the
+ * loader has no accessible name at all. Its words are what the portal already reads it by
+ * (`app/newScreen.test.tsx`), and the cases below give this a floor by asking for it while the
+ * screen really is waiting.
+ */
+function theLoader(): HTMLElement | null {
+  return screen.queryByText(sr.data.loading)
+}
+
 function whatTheScreenClaimsAboutAnAnswer(): string[] {
   const said = screen.getByRole('main').textContent ?? ''
 
@@ -443,6 +469,11 @@ describe('what the portal may not claim about a message the server keeps', () =>
 
     renderAt(`/sr/poruke/${String(A_QUESTION.id)}`, 'competitor', '000007')
 
+    /* THE FLOOR UNDER `theLoader`: before the inbox lands this screen really is waiting, so
+       the query below is looking for something that exists on this portal. Without this, a
+       query that matched nothing at all would make the assertion after it vacuous. */
+    expect(theLoader()).not.toBeNull()
+
     await screen.findByRole('heading', { level: 1, name: A_QUESTION.subject })
 
     /* **THE BOUNDARY THIS INCREMENT ENDS ON, written as a case so that it is a decision and
@@ -458,6 +489,7 @@ describe('what the portal may not claim about a message the server keeps', () =>
        written for: the screen drew a fourth sentence instead. The list is the dictionary's
        own, so a fifth sentence written tomorrow is already on it. */
     expect(WHAT_AN_ANSWER_WOULD_SAY.length).toBeGreaterThan(20)
+    expect(theLoader()).toBeNull()
     expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
   })
 
@@ -466,12 +498,15 @@ describe('what the portal may not claim about a message the server keeps', () =>
 
     renderAt(`/sr/poruke/${String(A_PAIR_QUESTION.id)}`, 'competitor', '000007')
 
+    expect(theLoader()).not.toBeNull()
+
     await screen.findByRole('heading', { level: 1, name: A_PAIR_QUESTION.subject })
 
     /* **Its own case and not a variant of the one above**, because the two keys are answered
        by two different screens and the compiler is the only thing keeping them apart
        (`session/context.ts` says so about its own two). A mutation that handed a served key to
        one of the two would leave the other green. */
+    expect(theLoader()).toBeNull()
     expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
   })
 })
@@ -570,6 +605,21 @@ describe('the inbox across signing out and signing back in', () => {
 })
 
 describe('an account the league has given no number', () => {
+  /* **Two cases here and not one, and the second exists because a mutation survived the
+     first.** The gate stands on both screens and each has its own; taking only the detail
+     screen's out left every case green, because the case below it walks the LIST. A gate
+     measured on one of two screens is a gate measured on one of two screens. */
+  it('opening one message is told this part is for competitors, and asks for no inbox', async () => {
+    aServerWhere({ role: 'moderator', account: 4 }, { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt(`/sr/poruke/${String(FORGED.id)}`, 'moderator', null)
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: sr.signIn.noRecord }),
+    ).toBeVisible()
+    expect((server?.asked ?? []).map((one) => one.path)).not.toContain('/api/inbox')
+  })
+
   it('is told this part is for competitors, and no inbox is asked for at all', async () => {
     aServerWhere({ role: 'moderator', account: 4 }, { [HIS_ADDRESS]: [FORGED] })
 

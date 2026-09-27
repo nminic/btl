@@ -101,11 +101,12 @@ export const RESOURCE_NAMES = [
 
      THE ONE NAME ON THIS LIST WHOSE ANSWER IS DIFFERENT FOR EVERY CALLER, and the cache
      above is keyed by name with nobody in the key. That is safe for exactly as long as a
-     visit is one person: `whoTheServerSaysIAm` is asked once a visit
-     (`session/useTheServersSession.ts`) and signing out ends the visit by reloading, so
-     no second caller reads a first caller's answer through this. It is written down
-     because it is the one thing that would have to change first if signing out ever
-     became something this application did in place. */
+     visit is one person, AND A VISIT IS NOT ONE PERSON: measured 27.09.2026, signing out and
+     signing back in happen IN PLACE - `AccountMenu` calls `signOutOfTheServer()` and
+     `signOut()`, `SignIn` calls `signInWith` and `navigate`, and not one of the four reloads
+     anything. So this name is dropped from the cache the moment the caller changes, which is
+     `theInboxNowBelongsTo` in `data/useResource.ts`, and that is the one thing on this list
+     that a name in the key would otherwise have had to buy. */
   'inbox',
   'leagues',
   'moderators',

@@ -1230,12 +1230,16 @@ export type ServedMessage = {
   /**
    * The invitation into a team this message asks about, or absent for one that only tells.
    *
-   * **Absent and not null**, because that is how the answer really arrives: Jackson omits
-   * neither, so what comes off the wire for a message that only tells is `null`, and
-   * `messagesAsRead` below is the one place that turns it into an absence. Kept apart from
-   * the field beside it rather than sharing one with a kind next to it, which is the
-   * reason `session/context.ts` gives for its own two: „the compiler is then the thing
-   * that keeps them apart".
+   * **`null` and not absent, which is how the answer really arrives**: Jackson omits neither,
+   * so a message that only tells carries `null` here rather than nothing at all.
+   *
+   * **AND NOTHING READS IT YET, which is a refusal written down rather than a gap.**
+   * `data/useResource.ts` says why at `asServed`: the screen that answers an invitation
+   * treats one it cannot find as one that is OVER, so handing it a served key would tell a
+   * member a question was closed while the server still held it open. Kept apart from the
+   * field beside it rather than sharing one with a kind next to it, which is the reason
+   * `session/context.ts` gives for its own two: „the compiler is then the thing that keeps
+   * them apart".
    */
   teamInvitationId: number | null
   /** The invitation into a racing pair this message asks about, kept apart from the one
@@ -1267,7 +1271,9 @@ export type InboxLine = {
   date: string
   read: boolean
   /** The team invitation this line asks about, for the one kind that asks rather than
-   *  tells. Absent for every other, which is what lets the screen ask about a value. */
+   *  tells. Absent for every other, which is what lets the screen ask about a value - and
+   *  absent on EVERY served line as well, whether it carries a question or not, for the
+   *  reason `data/useResource.ts` gives at `asServed`. */
   invitation?: string
   /** The racing pair invitation, kept apart from the one above for the reason
    *  `session/context.ts` gives: the compiler is then the thing that keeps the two
