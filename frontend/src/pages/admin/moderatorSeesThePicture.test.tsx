@@ -225,15 +225,22 @@ describe('the picture on a card the moderator is deciding about', () => {
     }
   })
 
-  it('still lets Odbij reach the route once the picture has failed to load', async () => {
-    /* THE OTHER HALF OF PDL.md "29.": approving is refused because a moderator who
-       cannot see the picture has nothing to approve, and that reasoning says
-       nothing about refusing it - a picture an instruction is written against is
-       exactly a picture nobody has to see first. Measured rather than assumed: a
-       gate written over the wrong state (`why !== null || decisionUnknown ||
-       deciding`, without `pictureUnavailable` named beside them) would leave this
-       button reachable regardless, and only a press that actually reaches the
-       route tells that apart from one that silently does not. */
+  it('lets neither press reach the wrong outcome once the picture has failed to load: Odobri does nothing, Odbij still works', async () => {
+    /* PDL.md "29.": approving is refused because a moderator who cannot see the
+       picture has nothing to approve, and that reasoning says nothing about
+       refusing it - a picture an instruction is written against is exactly a
+       picture nobody has to see first.
+
+       BOTH HALVES IN ONE CASE, and neither would be measured by the other:
+       `aria-disabled` alone does not stop a press from reaching the handler
+       (PendingQueue.tsx says so of `why`/`decisionUnknown` already, and
+       `pictureUnavailable` is written the identical way), so a `!pictureUnavailable`
+       quietly dropped from the `onClick` guard would leave this card's
+       `aria-disabled="true"` and its Odobri fully working - measured, not assumed,
+       by pressing it rather than only reading its attribute. And a fix that
+       swept too wide - disabling the CARD rather than the one button - would take
+       Odbij with it, which is exactly what PDL.md's four rejected outcomes warn
+       against ("krije posao iz reda"). */
     const { asked, stop } = answering([aPhotoRow])
 
     try {
@@ -243,6 +250,13 @@ describe('the picture on a card the moderator is deciding about', () => {
       await screen.findByRole('list', { name: /Čeka/ })
 
       fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
+
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      expect(
+        asked.find((one) => one.path === decisionPath('21')),
+        'Odobri must not reach the decision route while the picture is unavailable',
+      ).toBeUndefined()
 
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odbij' }))
       await user.type(screen.getByLabelText('Razlog odbijanja'), 'Slika je nejasna.')
