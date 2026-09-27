@@ -522,6 +522,26 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * changes (`onBroken` below) rather than derived from it on each read,
    * which would be the closure problem this exists to avoid, moved one line
    * over.
+   *
+   * <p><b>WHAT THIS DOES NOT CLOSE, MEASURED RATHER THAN ASSUMED.</b> A row's
+   * OWN picture failing WHILE that row's OWN single-card `approveAll([one],
+   * teams)` is awaiting the SAME row's `askTheServer` cannot be caught here,
+   * by any reading of any variable: the `onClick` guard and the loop's own
+   * skip both run - and must both have already passed, or the walk would
+   * never have reached the `await` at all - before `askTheServer` is called,
+   * so by the time a picture could fail "during" that one call, this row's
+   * decision has already left for the server. Measured directly: a request
+   * held on a controlled `Promise` already appears in a `serverThat` harness's
+   * `asked` the instant a click resolves, before any later line in the same
+   * test can fire the picture's own `error` event. Nothing after the `await`
+   * re-asks this ref either, and it should not: PDL P28f has the server
+   * showing an approved picture "tog trenutka", so a `done` answer already
+   * means the server acted on it, and skipping `settle` here would leave the
+   * screen behind what the server has already recorded rather than ahead of
+   * a race it could still have won. Closing this - if it needs closing at
+   * all, given how narrow the window is even in a real browser - is a
+   * question for the server that answers `askTheServer`, not for a client
+   * that has already asked it and cannot unask.
    */
   const brokenPicturesRef = useRef<ReadonlySet<string>>(new Set())
   /* The teams as well, for one rule: a name already in the league cannot be

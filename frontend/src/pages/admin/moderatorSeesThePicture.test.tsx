@@ -331,7 +331,7 @@ describe('the picture on a card the moderator is deciding about', () => {
        before the walk started and never after it finished. A closure over
        `brokenPictures` taken when the walk began cannot see this - only a live
        read can (`brokenPicturesRef`'s own doc in PendingQueue.tsx). */
-    let releaseBio: (() => void) | null = null
+    let releaseBio = (): void => {}
     const bioHeld = new Promise<Response>((resolve) => {
       releaseBio = () => resolve(did())
     })
@@ -369,7 +369,7 @@ describe('the picture on a card the moderator is deciding about', () => {
       ).toBeVisible()
 
       /* Only now does the walk move past the biography. */
-      releaseBio?.()
+      releaseBio()
 
       await waitFor(() => {
         expect(screen.getByText(/^Rešen/)).toBeVisible()
@@ -425,6 +425,72 @@ describe('the picture on a card the moderator is deciding about', () => {
         screen.getByRole('alert'),
         "Petar Petrović's refusal must survive a press on a different card that decided nothing",
       ).toHaveTextContent('O stavci je već odlučeno.')
+    } finally {
+      stop()
+    }
+  })
+
+  it("checks a row's own picture before asking for its own approval, and cannot check it again once that request is already out", async () => {
+    /* THE NARROWER RACE, named apart from "reads the freshest..." above: not a
+       LATER row breaking while an EARLIER row's own request is out, but THIS
+       SAME row's own picture breaking while THIS SAME row's own single-card
+       `approveAll([one], teams)` is awaiting THIS SAME row's own
+       `askTheServer`. Written because the question deserved a measurement,
+       not my own reasoning about whether `onClick` reading `brokenPicturesRef`
+       instead of `pictureUnavailable` would still matter here.
+
+       MEASURED, NOT ASSUMED: the request already stands in `asked` the instant
+       `user.click` resolves, before this test's next line can even fire the
+       picture's own `error` event. `onClick`'s guard and the loop's own skip
+       both run synchronously and must both already have passed - failing
+       either is the only way `askTheServer` is never reached - so by the time
+       a picture could fail "during" that one call, this row's request has
+       already left for the server. The mutation below (`onClick` reading
+       `pictureUnavailable` instead of the ref) is measured to leave this
+       assertion standing, because the swap only touches a check that has
+       already run by the time there is anything left to race against. */
+    let releaseOwn = (): void => {}
+    const ownHeld = new Promise<Response>((resolve) => {
+      releaseOwn = () => resolve(did())
+    })
+    const { asked, stop } = serverThat((path) => {
+      if (path === '/api/verification') {
+        return new Response(JSON.stringify([aPhotoRow]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      return path === decisionPath('21') ? ownHeld : null
+    })
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      /* Already true before the picture fails at all - the proof that there
+         is no later point left at which anything inside `onClick` could still
+         intervene. */
+      expect(
+        asked.find((one) => one.path === decisionPath('21')),
+        "this row's own decision, already asked for before its own picture could fail",
+      ).toBeDefined()
+
+      fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
+      releaseOwn()
+
+      /* And the server's own "done" is honoured once it answers, per PDL P28f
+         ("po odobravanju slika se tog trenutka pocinje da se vidi"): a
+         decision the server has already recorded is not one this screen
+         un-asks for by noticing, only after the fact, that the picture
+         failed. */
+      await waitFor(() => {
+        expect(screen.queryByRole('heading', { name: 'Neda Nedić' })).toBeNull()
+      })
     } finally {
       stop()
     }
