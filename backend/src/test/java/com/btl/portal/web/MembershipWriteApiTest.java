@@ -483,6 +483,38 @@ class MembershipWriteApiTest {
 				.doesNotContain("feeExempt").doesNotContain("basis");
 	}
 
+	/**
+	 * THE MODERATOR'S ACCOUNT MAY GO AND THE EXEMPTION STAYS, WITH HIS NAME ON IT.
+	 *
+	 * <p><b>This case exists because a mutation survived without it, and the mutation was the
+	 * one trap V9 had already paid for.</b> Written over {@code decided_by} instead of
+	 * {@code decided_by_name}, {@code membership_free_of_the_fee_says_who} contradicts its own
+	 * foreign key: {@code ON DELETE SET NULL} empties the pointer of every membership that
+	 * account ever entered, and the check then refuses exactly that - so deleting the account
+	 * would fail outright. The series found that swap passing, because nothing here had ever
+	 * deleted such an account. V9's own comment records the same finding from 11.09.2026, and
+	 * the schema half was copied correctly; what was missing was the case.
+	 *
+	 * <p>PDL P23 is what makes it a promise rather than a detail: a moderator has the same right
+	 * to have his account deleted as anybody else. The exemption WAS given, it stays given, and
+	 * it says by whom - which is the whole reason the name is a column beside the pointer.
+	 */
+	@Test
+	void theAccountThatEnteredItMayGoAndTheExemptionKeepsHisName() throws Exception {
+		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		db.sql("delete from account where email = ?").param(CASHIER).update();
+
+		assertThat(db.sql("select decided_by, decided_by_name from membership"
+						+ " where competitor_id = ? and season = 2027").param(him)
+						.query((row, i) -> row.getObject(1) + " " + row.getString(2)).single())
+				.as("the pointer was meant to empty and the name to stay")
+				.isEqualTo("null Blagajnik Probic");
+
+		assertThat(competitorRow(him)).as("deleting the moderator undid the exemption itself")
+				.matches("^[0-9]{6} true feeExempt$");
+	}
+
 	/** The superadmin passes by holding every right there is (V5, {@code rights_mode = 'all'}). */
 	@Test
 	void theSuperadminMayFreeSomebodyToo() throws Exception {
