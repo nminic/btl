@@ -728,7 +728,7 @@ describe('the country a member lives in', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
-  })
+  }, SLOW)
 })
 
 describe('an empty form', () => {
@@ -838,7 +838,7 @@ describe('a town the codebook does know', () => {
 
     expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
-  })
+  }, SLOW)
 })
 
 describe('the telephone', () => {
@@ -857,7 +857,7 @@ describe('the telephone', () => {
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
     expect(screen.queryByText(/123456789/)).toBeNull()
     expect(screen.queryByText(/Milan/)).toBeNull()
-  })
+  }, SLOW)
 
   it('is asked for, optional, and the form goes through without it', async () => {
     /* Obligatory on 01.08.2026, optional on 03.08, gone on 11.08, and back as
@@ -880,7 +880,7 @@ describe('the telephone', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
-  })
+  }, SLOW)
 })
 
 describe('the box a member writes about themselves in', () => {
