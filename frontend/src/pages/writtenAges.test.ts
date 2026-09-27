@@ -1,4 +1,4 @@
-import pages from '../../public/mock/pages.json'
+import pages from '../test/mock/pages.json'
 import { registracija } from '../forms/definitions'
 
 /* The written pages have to say what the portal does.

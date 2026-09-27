@@ -32,7 +32,7 @@ class DucatApiTest {
 
 	/** What the portal draws today, read off the working tree the same way
 	 *  {@code CountryApiTest} and {@code DucatConstraintsTest} read theirs. */
-	private static final Path DRAWN = Path.of("..", "frontend", "public", "mock", "ducats.json");
+	private static final Path DRAWN = Path.of("..", "frontend", "src", "test", "mock", "ducats.json");
 
 	/**
 	 * Fifteen families, and sixteen fields of each: the condition, what it is worth,

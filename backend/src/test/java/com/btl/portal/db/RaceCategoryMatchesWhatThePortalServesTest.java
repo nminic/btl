@@ -60,7 +60,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 
 	private static final Path SERVED =
-			Path.of("..", "frontend", "public", "mock", "races.json");
+			Path.of("..", "frontend", "src", "test", "mock", "races.json");
 
 	/** Every distance the portal serves, with the category it gives it. */
 	private static Map<BigDecimal, String> whatThePortalServes() {

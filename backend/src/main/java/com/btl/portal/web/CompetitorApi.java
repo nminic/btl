@@ -160,11 +160,14 @@ import java.util.List;
  * not" - and PDL records the two homes as a boundary rather than passing over them.
  * This resource answers the field the PORTAL reads, and the portal reads the column:
  * {@code frontend/src/data/types.ts} declares {@code membershipBasis} and
- * {@code AdminMembers.tsx} draws it as a tag. Reading the table instead would answer
- * nothing at all for anybody honorary, because the screen that grants an honorary
- * membership does not exist yet and no such row is ever written (PDL, B50). Moving
- * the fact is the increment that removes {@code competitor.active}, and it moves both
- * homes and all eight readers at once.
+ * {@code AdminMembers.tsx} draws it as a tag. Until 27.09.2026 there was a second
+ * reason - that no row of the table existed for anybody the fee had been forgiven,
+ * „because the screen that grants an honorary membership does not exist yet and no such
+ * row is ever written (PDL, B50)". {@link MembershipWriteApi} writes them now, and it
+ * writes BOTH homes for exactly this reason, so what this resource answers is unchanged
+ * and the boundary is again the one it always was: the column is what the portal reads.
+ * Moving the fact is still the increment that removes {@code competitor.active}, and it
+ * moves both homes and all eight readers at once.
  *
  * <p><b>What is NOT answered here, and why each one is a decision rather than an
  * oversight.</b> {@code referredBy} itself - the code of whoever brought the CALLER
@@ -269,11 +272,26 @@ import java.util.List;
  * <p><b>What that does NOT cover, named rather than left to be found.</b> The fee is not part
  * of this rule: {@link PhotoApi} goes on answering the portrait of a member whose fee has
  * lapsed to anybody holding the digest. It cannot be got from here - such a member is not on
- * this list at all - and no decision covers it, so nothing is invented for it. The biography
- * is the other one: PDL, 06.09.2026 names it beside the photograph among what hiding hides,
- * and this resource answers it to everybody. <b>[ODLUKA 26.09.2026, owner]</b> the same rule
- * applies to it, and it is its own increment so that this one does not grow past the change
- * it is measuring.
+ * this list at all - and no decision covers it, so nothing is invented for it.
+ *
+ * <p><b>AND SINCE THIS INCREMENT THE BIOGRAPHY IS WITHHELD BY THE SAME RULE, in its own PR so
+ * that the portrait's guard did not grow past the change it was measuring</b> (rule of
+ * 01.09.2026: a guard must not outgrow the change it measures). PDL, 06.09.2026 names the
+ * biography beside the photograph among what hiding hides, and {@code CompetitorApi} went on
+ * answering it to everybody until now - the gap PDL, 26.09.2026 names as „zateceno stanje,
+ * nadjeno merenjem uz granu iznad". <b>[ODLUKA 26.09.2026, owner]</b>: „Isto pravilo kao za
+ * fotografiju", chosen without weighing a second offer because none was asked for.
+ *
+ * <p><b>THE MECHANISM IS NOT THE PORTRAIT'S, and that is the schema's doing rather than a
+ * second choice made here.</b> {@code photo}/{@code crop} come off a JOINED row, so the join's
+ * own condition is where „no session, hidden" and „no picture at all" become one shape without
+ * a {@code case} anywhere. {@code bio} is a column of {@code competitor} itself (V7), the FROM
+ * table, which never fails to match - there is no join to carry the condition, so it stands on
+ * the SELECT expression instead, the shape {@code membershipBasis} already uses two names below
+ * for a different question (whether the CALLER is the administration, rather than whether
+ * anybody is signed in at all). See the note on {@code bio} in {@link Competitor} for the one
+ * way this still differs from the portrait: there is no "member with none" state to borrow the
+ * null from.
  *
  * <p><b>In member number order</b>, which is the one order the portal speaks of
  * them in: it is printed on the card and it never changes.
@@ -409,6 +427,17 @@ class CompetitorApi {
 	 * @param crop           the square of the portrait, or null for a member who has no
 	 *                       portrait in this answer. The other half of {@code photo} and
 	 *                       never answered without it
+	 * @param bio            what the member wrote about himself, or NULL for a member who
+	 *                       hides his profile when nobody is signed in - the same shape as
+	 *                       {@code photo} and for the same reason (PDL, 06.09.2026 names both
+	 *                       among what hiding hides). UNLIKE {@code photo}, there is no
+	 *                       "member with none" state to borrow the shape from: the column is
+	 *                       NOT NULL and may be empty (V7), so a member who has written
+	 *                       nothing already reads as {@code ""} to everybody, hiding or not,
+	 *                       and only hiding from a reader with no session answers
+	 *                       {@code null}. Withheld on the SELECT expression rather than on a
+	 *                       join, because this column stands on {@code competitor} itself,
+	 *                       the FROM table, which never fails to match
 	 * @param birthdayShown  what the member chose about their birthday, which the
 	 *                       portal needs in order to draw the card at all
 	 * @param ageBand        the band alone and never the finished code, so the sex is
@@ -455,14 +484,18 @@ class CompetitorApi {
 	 *               a signed in MEMBER is now answered what a visitor is, to the byte,
 	 *               with nothing cut out of either. That claim was not available while
 	 *               those two existed.
-	 *               <p><b>AND SINCE 26.09.2026 IT HOLDS OF EVERY FIELD BUT ONE, which is
+	 *               <p><b>AND SINCE 26.09.2026 IT HOLDS OF EVERY FIELD BUT TWO, which is
 	 *               said here rather than left for the case to carry alone.</b> A session
-	 *               now decides one thing: whether a member who hides his profile has his
-	 *               portrait answered ([ODLUKA 26.09.2026, owner]; see the note on this
-	 *               class). So the two answers are equal with the PORTRAITS BLANKED on both
-	 *               sides and with nothing else cut, and the case says so out loud - it
-	 *               first requires that the two really DO differ before the blanking, so
-	 *               the normalisation cannot become the thing that makes it pass
+	 *               now decides two things, each its own [ODLUKA 26.09.2026, owner]: whether
+	 *               a member who hides his profile has his portrait answered, and whether he
+	 *               has his biography answered (see the note on this class). So the two
+	 *               answers are equal on every OTHER name the portal reads, and the case
+	 *               NAMES the two fields it excuses rather than discovering them by what it
+	 *               declines to look at - a comparison that has to ignore something to pass
+	 *               is only as honest as the reason it gives for the difference (rule of
+	 *               14.09.2026, from a review whose only real finding was its own blind
+	 *               spot). It first requires that the two really DO differ before excusing
+	 *               either, so naming them cannot become the thing that makes the case pass
 	 */
 	@GetMapping("/api/competitors")
 	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
@@ -513,7 +546,26 @@ class CompetitorApi {
 						+ " coalesce(town.name, c.city) as city,"
 						+ " coalesce(town_country.code, typed_country.code) as country,"
 						+ " c.first_season_2027, c.first_season,"
-						+ " c.bio, m.team_id, m.season_from as team_since,"
+						/* THE BIOGRAPHY, WITHHELD BY THE SAME RULE AS THE PORTRAIT BUT NOT BY
+						   THE SAME MECHANISM, because it stands on `competitor` itself rather
+						   than on a joined row that can simply fail to match (see the note on
+						   this class and on `bio` in `Competitor`).
+
+						   THE SAME CONDITION AS THE PORTRAIT'S JOIN, `:signedIn or not
+						   profile_hidden`, and the SAME PARAMETER: nothing new is bound, because
+						   it is the same question asked twice for two different mechanisms.
+						   Written as `:administration` instead - the mistake `membership_basis`
+						   two names below makes on purpose for a different question - a signed
+						   in member would stop seeing a hiding colleague's biography although
+						   PDL, 06.09.2026 requires that he still does;
+						   `aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn` is written to
+						   catch exactly that swap.
+
+						   CAST, for the reason written beside `:administration` above: standing
+						   alone as an operand of `or` it has no neighbour to take a type from. */
+						+ " case when (cast(:signedIn as boolean) or not c.profile_hidden)"
+						+ "  then c.bio end as bio,"
+						+ " m.team_id, m.season_from as team_since,"
 						+ " c.profile_hidden, c.birthday_shown,"
 						/* THE CALLER'S OWN REFERRAL LINK AND HIS COUNT OF WHOM HE BROUGHT IN
 						   STOOD HERE UNTIL 25.09.2026, each as `case when c.id = :me then ...`.

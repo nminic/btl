@@ -755,9 +755,11 @@ class CompetitorWriteApi {
 	 *
 	 * <p><b>NO MEMBER NUMBER IS WRITTEN HERE AND {@code member_number_seq} IS NOT
 	 * ASKED.</b> PDL, 30.07.2026: the number „se dodeljuje automatski u trenutku
-	 * evidentiranja uplate... i administrator ga nikad ne kuca". {@link PaymentApi} is
-	 * where the sequence is drawn from, and a row entered here is what that class calls a
-	 * person who registered and is not yet a member.
+	 * evidentiranja uplate... i administrator ga nikad ne kuca". {@link MemberNumbers} is
+	 * where the sequence is drawn from, and the two routes that ask it are
+	 * {@link PaymentApi} and {@link MembershipWriteApi} - a fee recorded, or the
+	 * association freeing somebody of it. A row entered here is neither: it is what
+	 * {@code RecordingAPayment} calls a person who registered and is not yet a member.
 	 *
 	 * <p><b>AND NOTHING HERE MAY CLAIM HONORARY MEMBERSHIP.</b>
 	 * {@code membership_basis} is written {@code 'payment'}, the same constant
