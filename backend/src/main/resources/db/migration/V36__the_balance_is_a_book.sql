@@ -445,4 +445,17 @@ from competitor brought
 where brought.referred_by is not null
   and brought.referred_by <> brought.id
   and p.recorded_by is not null
+  /* AND THE REWARD IS WORTH SOMETHING, which is not a formality: `price_row_eur_not_negative`
+     and `price_row_rsd_not_negative` (V4) allow ZERO, and `PUT /api/pricing/{key}` has no lower
+     bound among the six things it refuses. So an administrator may set the referral to nothing
+     through his own screen - and `balance_entry_a_referral_adds` above demands strictly more than
+     nothing. Without this line the migration would FAIL on any database that holds one earned
+     referral while the price list says nought, Flyway would stop, and the backend would restart
+     in a loop. That is the shape V35 was measured to have on QA on 27.09.2026, and this is the
+     same class caught before the server rather than after it.
+     WHAT IT DECIDES, said plainly, because it is the smallest answer that keeps the constraint
+     strict: a reward of nothing earns nobody a line. It does not decide whether nought belongs on
+     the price list, which is somebody else's question and stays open. */
+  and reward.eur > 0
+  and reward.rsd > 0
 order by brought.id, p.season;

@@ -910,6 +910,38 @@ class PaymentApiTest {
 	}
 
 	/**
+	 * AND A REWARD OF NOTHING PAYS NOBODY, WITHOUT THE ROUTE FALLING OVER.
+	 *
+	 * <p><b>The half of the same fault that is worse than the migration's.</b> V4 lets a price row be
+	 * ZERO and `PUT /api/pricing/{key}` has no lower bound, while `balance_entry_a_referral_adds`
+	 * (V36) demands strictly more - so without the condition this route would answer <b>500 for every
+	 * member anybody brought in</b>, from the moment an administrator sets the referral to nought
+	 * through his own screen. A migration fails once and says so in a log; this fails per person and
+	 * quietly.
+	 *
+	 * <p>The referrer is here and really did bring him in, so the case is about the AMOUNT and not
+	 * about there being nobody to pay: with the reward left alone this same fixture pays him 600.
+	 */
+	@Test
+	void arewardOfNothingPaysNobodyAndTheRouteStillAnswers() throws Exception {
+		long referrer = competitor("d5", "004008", true, "1980-05-15");
+		long newcomer = competitor("d6", null, false, "1990-05-15");
+
+		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
+		db.sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
+
+		assertThat(confirm(json(new PaymentApi.Confirm(newcomer, "RSD", "slip", null)), moderatorCookie)
+						.getStatus())
+				.as("the route fell over on a reward the price list says is worth nothing")
+				.isEqualTo(201);
+
+		assertThat(bookOf(referrer))
+				.as("a line was written for a reward worth nothing")
+				.isEqualByComparingTo("0");
+	}
+
+	/**
+	 * AND WHOEVER BROUGHT THE PAYER IN IS PAID, ONCE, HOWEVER MANY SEASONS HE GOES ON TO PAY FOR.	/**
 	 * AND WHOEVER BROUGHT THE PAYER IN IS PAID, ONCE, HOWEVER MANY SEASONS HE GOES ON TO PAY FOR.
 	 *
 	 * <p>PDL: „Iznos leže na balans automatski, u trenutku kad se novom članu aktivira članarina, ne

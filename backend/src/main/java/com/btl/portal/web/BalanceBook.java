@@ -178,7 +178,15 @@ class BalanceBook {
 						+ " select c.referred_by, reward.eur, reward.rsd, 'referral', c.id, ?, ?, ?"
 						+ " from competitor c"
 						+ " cross join (select eur, rsd from price_row where key = ?) reward"
+						/* AND THE REWARD IS WORTH SOMETHING. V4 lets a price row be ZERO and
+						   `PUT /api/pricing/{key}` has no lower bound, while
+						   `balance_entry_a_referral_adds` (V36) demands strictly more - so without
+						   this the route would answer 500 for every member anybody brought in, on
+						   the day an administrator sets the referral to nought through his own
+						   screen. The migration's own carry carries the identical condition, and
+						   the same sentence is why: a reward of nothing earns nobody a line. */
 						+ " where c.id = ? and c.referred_by is not null"
+						+ " and reward.eur > 0 and reward.rsd > 0"
 						+ " on conflict (referred_competitor_id) do nothing")
 				.params(Timestamp.from(clock.instant()), account, accountName, REFERRAL, newMember)
 				.update();

@@ -85,18 +85,26 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 * had half of it.
 	 */
 	private void whatV36Creates() {
-		jdbc.execute("alter table membership drop constraint membership_basis_says_whether_a_book_entry_is_named");
-		jdbc.execute("alter table membership drop constraint membership_balance_entry_fk");
-		jdbc.execute("alter table membership drop column balance_entry_id");
+		/* THE COLUMN, AND WITH IT EVERYTHING THAT DEPENDS ON IT. `cascade` rather than three
+		   statements naming the two constraints by hand: a hand-written list of dependencies is a
+		   list that goes stale the day a fourth thing points at this column, and PostgreSQL already
+		   knows what points at it. */
+		jdbc.execute("alter table membership drop column balance_entry_id cascade");
+
+		/* Both tables in one statement, and `cascade` takes their triggers with them. The functions
+		   do NOT go with the tables, so they are named - they are what V36 created, not what depends
+		   on something it created. */
+		jdbc.execute("drop table balance_entry, balance_promise cascade");
+		jdbc.execute("drop function a_balance_entry_is_written_once(), a_reward_says_who_earned_it()");
+
+		/* AND THE ONE THING V36 DID NOT CREATE BUT WIDENED, which is why it is restated rather than
+		   dropped: `membership_basis_known` existed before it and has to go back to the two words
+		   V22 gave it. Measured against the V35 on `main` rather than assumed: V35 adds three columns
+		   and five constraints and does not touch this one, so V22's form is still the form to
+		   restore. */
 		jdbc.execute("alter table membership drop constraint membership_basis_known");
 		jdbc.execute("alter table membership add constraint membership_basis_known"
 				+ " check (basis in ('payment', 'feeExempt'))");
-		jdbc.execute("drop table balance_promise");
-		jdbc.execute("drop trigger balance_entry_is_written_once on balance_entry");
-		jdbc.execute("drop trigger balance_entry_says_who_earned_it on balance_entry");
-		jdbc.execute("drop table balance_entry");
-		jdbc.execute("drop function a_balance_entry_is_written_once()");
-		jdbc.execute("drop function a_reward_says_who_earned_it()");
 	}
 
 	private void competitor(String number, String last, String code, String basis, String referredBy) {
@@ -294,6 +302,68 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	}
 
 	/**
+	 * A RECORDED PAYMENT WHOSE MODERATOR IS GONE EARNS NOBODY ANYTHING, AND THE MIGRATION STILL
+	 * APPLIES.
+	 *
+	 * <p><b>The fourth state of a real database, and the only one this fixture did not already
+	 * hold.</b> The other three stand in it by construction and are named here so they are not left
+	 * unsaid: every membership it writes has no book entry, because the book does not exist until the
+	 * migration runs; every competitor in it has no account; and both accounts in it name no
+	 * competitor, which is what a moderator who does not race is.
+	 *
+	 * <p><b>What this one measures is a BEHAVIOUR and not a survival.</b> `payment_recorded_by_fk`
+	 * (V16) is ON DELETE SET NULL, so a payment whose moderator account was deleted keeps its row and
+	 * its frozen name but loses the key. The carry joins on `p.recorded_by is not null`, so that
+	 * referral drops out - a reward that was genuinely earned gets no line. That is a real
+	 * consequence and it is written down here rather than discovered later: the man who brought
+	 * somebody in loses nothing he can see today, because nothing showed him a balance before this
+	 * migration, but the line he would have had is not written.
+	 *
+	 * <p>The account deleted is the SECOND moderator, whose payment is the second referral's, so the
+	 * first referral still earns and the case shows one line where two stood rather than none.
+	 */
+	@Test
+	void arecordedPaymentWhoseModeratorIsGoneEarnsNobodyAnything() {
+		db.sql("delete from account where email = 'drugi@primer.rs'").update();
+
+		v36();
+
+		assertThat(linesWritten())
+				.as("the referral whose payment lost its moderator was carried anyway, or the one"
+						+ " that kept its moderator was dropped with it")
+				.containsExactly(THE_REFERRER + " <- " + PAID_FOR_TWO_SEASONS
+						+ " 5.00/600.00 referral 2026-10-02 Prvi Blagajnik no season");
+	}
+
+	/**
+	 * A REWARD OF NOTHING CARRIES NOBODY A LINE, AND THE MIGRATION STILL APPLIES.
+	 *
+	 * <p><b>This is a case about rows that already stand, which is the only kind that could have
+	 * found it.</b> `price_row_eur_not_negative` and `price_row_rsd_not_negative` (V4) allow ZERO and
+	 * `PUT /api/pricing/{key}` has no lower bound among the six things it refuses, while
+	 * `balance_entry_a_referral_adds` (V36) demands strictly more than nothing. A database holding one
+	 * earned referral while the price list says nought would therefore have made V36 FAIL, Flyway
+	 * stop, and the backend restart in a loop - which is exactly what V35 was measured to do on QA on
+	 * 27.09.2026, found there rather than here.
+	 *
+	 * <p><b>The fixture is the same one every other case in this file uses</b>, so the referrals it
+	 * holds really would have earned: without the condition the carry writes two lines and throws on
+	 * the first. The only thing changed is the price, and it is changed BEFORE the migration runs,
+	 * which is what „rows that already stand" means.
+	 */
+	@Test
+	void arewardOfNothingCarriesNobodyALineAndTheMigrationStillApplies() {
+		db.sql("update price_row set eur = 0, rsd = 0 where key = 'referral'").update();
+
+		v36();
+
+		assertThat(linesWritten())
+				.as("a line was written for a reward worth nothing, or the migration refused to apply")
+				.isEmpty();
+	}
+
+	/**
+	 * AND WHAT THE BOOK SAYS AFTER THE CARRY CANNOT BE EDITED	/**
 	 * AND WHAT THE BOOK SAYS AFTER THE CARRY CANNOT BE EDITED, which is ADL's „nepromenljive stavke"
 	 * and is measured here because the carry is the only thing that has ever written a row this early.
 	 */
