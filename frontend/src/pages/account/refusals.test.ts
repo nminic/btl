@@ -17,6 +17,7 @@ import { WHEN_WRITING_A_PRICE } from '../admin/priceWrites'
 import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
+import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 
 /**
@@ -108,6 +109,12 @@ function reasonsIn(file: string): string[] {
  */
 const NOT_A_REASON: Record<string, string[]> = {
   'PricingWriteApi.java': ['fee', 'referral'],
+  /* `MePhotoApi` declares one too, added 26.09.2026 with the screen that sends:
+     `THE_PROFILES_TAB = "profiles"` is the NAME OF A QUEUE, the one PDL P28a calls
+     „Profili", and it is the value the route writes into `verification.queue` and reads
+     back by. It is not a refusal and no screen answers it, which is what the third case
+     below checks about every name on this list. */
+  'MePhotoApi.java': ['profiles'],
   /* `CompetitorWriteApi` declares five that are not refusals either, and they fall into two
      kinds. `delete` and `anonymise` are the two words the DELETE's `account` parameter may
      carry (PDL P23, 14.09.2026), so they are what a request SAYS rather than why one was
@@ -232,6 +239,17 @@ describe('the reasons the server can name', () => {
        moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
        one dictionary covers all four reasons the class declares. */
     ['ModeratorWriteApi.java', [WHEN_WRITING_A_MODERATOR], 4],
+    /* THE NINTH, ADDED 26.09.2026 WITH B108, AND IT IS THE FIRST ON THIS LIST WHOSE ROUTE
+       TAKES A FILE. `MePhotoApi` had named its five since the day it was written and
+       nothing on this side could read any of them, because no screen called the route at
+       all: `grep -rn "me/photo" frontend/src` came back empty, tests included.
+
+       SIX CONSTANTS AND FIVE REASONS, which is the second file on this list where those
+       two numbers differ; `NOT_A_REASON` above says which the sixth is and why. The two
+       routes of the class are one act as far as this gate goes, because `DELETE
+       /api/me/photo` names no refusal at all - it answers 200 or an empty 404 - so the
+       one dictionary the screen hands in covers everything the file can say. */
+    ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE], 6],
     /* THE EIGHTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS HALF OF IT. `CompetitorWriteApi`
        declares fourteen constants, which is the largest number on this list and the first
        where all three categories appear at once: five that are not refusals

@@ -1523,7 +1523,15 @@
     "send": "Send for approval",
     "chooseFirst": "Choose a picture so that you can send it.",
     "chosenAlt": "The picture you chose, with the part that will be seen framed",
-    "sentAlt": "The picture you sent for approval, with the part that will be seen framed"
+    "sentAlt": "The picture you sent for approval, with the part that will be seen framed",
+    "sending": "The picture is being sent...",
+    "sendRefused": {
+      "aPictureAlreadyWaits": "Your previous picture is still waiting for a moderator's decision. You may send a new one once it has been decided.",
+      "theFormIsNotComplete": "The picture did not reach the server. Choose it again and send it.",
+      "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
+      "thisIsNotAPicture": "This file is not a picture, whatever it is called. Send a photograph, in JPG or PNG form for instance.",
+      "theCropIsNotACircle": "The crop is not right. Set the circle again and send it."
+    }
   },
   "account": {
     "personalTitle": "Personal details",
