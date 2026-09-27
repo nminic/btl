@@ -216,20 +216,36 @@ class PaymentsDueApi {
 	 * that he copies a name off a bank statement, where it is one string, so „Marko Markovic"
 	 * finding nothing would be a miss on the first day.
 	 *
-	 * <p><b>Two conditions stood here until they were measured, and they were DEAD rather than
-	 * wrong.</b> Separate readings of {@code first_name} and of {@code last_name} could not change
-	 * any answer, for the reason just given, and a mutation deleting each of them passed. That is
-	 * worse than clutter: a redundant condition is a reserve that catches exactly what a mutation
-	 * over the load-bearing one removes, so the series reads healthier than it is.
+	 * <p><b>Two of those readings were measured and stayed DEAD; the third was measured, found to
+	 * be guarding something else, and came back.</b> Separate readings of {@code first_name} and
+	 * of {@code last_name} could not change any answer, for the reason just given, and a mutation
+	 * deleting each of them passed. That is worse than clutter: a redundant condition is a reserve
+	 * that catches exactly what a mutation over the load-bearing one removes, so the series reads
+	 * healthier than it is. Both stay deleted.
 	 *
-	 * <p><b>AND A BOUNDARY, written down because no mutation can express it.</b> An explicit
-	 * {@code :term = ''} stood in front of those two and was equally dead. An EMPTY pattern matches
-	 * every non-null string, and both name columns are {@code not null} with
-	 * {@code competitor_first_name_not_blank} beside them (V7), so the joined pair always matches
-	 * it. A blank term therefore returns the whole list <b>through the same condition the name
-	 * search uses</b>, and no replacement of a source can separate the two, because by construction
-	 * they are one condition. {@code anAbsentOrBlankTermMeansTheWholeListAndIsNeverRefused}
-	 * measures the OUTCOME and not the source, and that is the most it can do.
+	 * <p><b>{@code :term = ''} is back, and the sentence that justified deleting it was measured
+	 * and is FALSE.</b> It claimed that no replacement of a source could separate „the term is
+	 * blank" from „the name search matches", because they are, by construction, one condition: an
+	 * EMPTY pattern matches every non-null string, and both name columns are {@code not null}
+	 * ({@code competitor_first_name_not_blank}, V7), so the joined pair always matches it and
+	 * deleting {@code :term = ''} changed no answer. <b>That is true only while the join above
+	 * stays INNER, and the inner-ness of the join is exactly the one fact this clause by itself
+	 * cannot express.</b> Turn it into a {@code left join} and an administrative account with no
+	 * competitor of its own carries {@code null} in every column {@code c} owns: the
+	 * {@code not exists} above is vacuously true for it ({@code m.competitor_id = null} matches no
+	 * membership), and the two {@code ilike} readings are {@code null or null}, which is not
+	 * {@code true} - so before this change the row dropped out BY ACCIDENT, on a condition whose
+	 * written purpose is the name search and not the join. {@code :term = ''} touches no column of
+	 * {@code c}, so restoring it takes that accident away: a blank search now asks the join to do
+	 * its own job, the administration surfaces the moment it is not inner, and
+	 * {@code anAccountWithNoMemberOfItsOwnIsNotOnTheListAlthoughItHasNoMembershipEither} is what
+	 * catches it. <b>The condition is still dead while the join is correct</b> - deleting it today
+	 * changes no answer, same as before, and that remains true and unremarkable. What changed is
+	 * that „dead today" stopped meaning „safe to delete": a second mutation, over the join this
+	 * query opens with, can make {@code :term = ''} the only thing standing between a blank search
+	 * and the people who run the portal appearing on a list of who owes it money.
+	 * {@code anAbsentOrBlankTermMeansTheWholeListAndIsNeverRefused} still measures the OUTCOME of
+	 * a blank term and not the source; the join is what the source now answers for.
 	 *
 	 * <p><b>What the search deliberately is not:</b> insensitive to Serbian diacritics. That wants
 	 * {@code unaccent}, V1 creates no extension at all, and a migration is not this branch's to
@@ -253,14 +269,19 @@ class PaymentsDueApi {
 						   renewed, the very person the screen exists for from October on. */
 						+ " where not exists (select 1 from membership m"
 						+ "                   where m.competitor_id = c.id and m.season = :season)"
-						/* TWO READINGS AND NOT FOUR, and the other two were removed rather
-						   than never written: a separate `c.first_name ilike ...` and
-						   `c.last_name ilike ...` cannot change this answer, because every
-						   substring of either name is a substring of the two joined. A
-						   mutation removing each of them passed, which is what dead logic
-						   looks like from outside - and worse, it is the reserve that makes
-						   a mutation over the clause that IS load-bearing look caught. */
-						+ " and (c.member_number ilike '%' || :term || '%'"
+						/* THREE READINGS AND NOT FIVE. Two, a separate `c.first_name ilike ...`
+						   and `c.last_name ilike ...`, were removed and stay removed: every
+						   substring of either name is a substring of the two joined, so a
+						   mutation deleting each of them passed, which is what dead logic looks
+						   like from outside - and worse, it was the reserve that made a mutation
+						   over the load-bearing joined reading look caught.
+						   THE THIRD, `:term = ''`, IS BACK, and not for its own sake: it is the
+						   one reading here that never touches `c`, so it is the one still true
+						   for an administrative account should the join above stop being inner.
+						   See the note on this method for what that guards and what it
+						   measurably does not. */
+						+ " and (:term = ''"
+						+ "      or c.member_number ilike '%' || :term || '%'"
 						+ "      or c.first_name || ' ' || c.last_name ilike '%' || :term || '%')"
 						/* BY THE NAME AND NOT BY THE NUMBER, and the key last so the order is
 						   total. See the note on this class for both halves. */
