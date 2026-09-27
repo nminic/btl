@@ -88,6 +88,20 @@ export const RESOURCE_NAMES = [
   'moderators',
   'pages',
   'pairs',
+  /* Whoever is not a member for the season being paid for: a DERIVED list and never a
+     queue (owner, 27.09.2026, PDL section 15). Nothing writes it and nothing triggers
+     it - paying happens entirely outside the portal, the bank shows the owner, and the
+     portal learns of it only when a moderator says so. A row leaves this list by the
+     membership being written rather than by anybody recording a decision, which is why
+     the screen clears this name after a write goes through and reads it again.
+
+     THE SIXTEENTH, AND THE ONE WHOSE ROUTE TAKES A PARAMETER THIS PORTAL NEVER SENDS.
+     `GET /api/payments` accepts `?search=`, and the screen filters the answer itself
+     instead (`admin/paymentSearch.ts` says which of the two decides and why). A cache
+     keyed by name is the reason it has to: `loadResource` holds one promise per name
+     with no parameter in the key, so a narrowed answer stored under this name would be
+     handed back to the next reader who asked for the whole list. */
+  'payments',
   /* Every town in the region from five hundred people up, and every town in the
      world from fifteen thousand up, with the country each belongs to (owner,
      10.08.2026). The codebook is 1200 KB, which is why it is a resource and not
