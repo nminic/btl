@@ -678,7 +678,11 @@ class PricingWriteApiTest {
 						.cookie(new Cookie(SessionCookie.NAME, booksPaymentsCookie))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(new ObjectMapper().writeValueAsString(
-								new PaymentApi.Confirm(whoPaysLater, "EUR", "ips", null))))
+								/* Short, with the balance switched off: this case is about which price
+								   row the payment names, and a balance or a surplus would write lines
+								   into the book that have nothing to do with that. */
+								new PaymentApi.Confirm(whoPaysLater, new BigDecimal("1.00"), false,
+										"ips", null))))
 				.andReturn().getResponse();
 
 		assertThat(booked.getStatus())

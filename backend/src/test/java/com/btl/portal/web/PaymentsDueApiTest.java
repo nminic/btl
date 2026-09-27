@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
@@ -1162,7 +1163,10 @@ class PaymentsDueApiTest {
 		}
 
 		assertThat(served).isNotNull();
-		assertThat(served).isEqualByComparingTo(book.of(surnamedNovak).eur());
+		/* ASKED IN HIS MONEY, which is what the book is now summed in: this fixture's default town is
+		   `rank = 1`, Shanghai, so he is billed in euro. Asking in the other money would answer nought
+		   and the comparison would be between two things that are both wrong. */
+		assertThat(served).isEqualByComparingTo(book.of(surnamedNovak, Currency.EUR).amount());
 	}
 
 	/**
