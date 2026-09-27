@@ -685,7 +685,12 @@ describe('activating a membership from the payments screen', () => {
 
       /* THE FOCUS IS ON THE QUESTION AND NOT ON A BUTTON. Landing on „Da" means a reader who
          presses space before reading has agreed to something. */
-      expect(sheet).toContainElement(document.activeElement as HTMLElement)
+      /* ASKED OF THE DOM AND NOT THROUGH `toContainElement`, because that matcher wants an
+         `HTMLElement` and `document.activeElement` is an `Element` - so the obvious line needs a
+         type assertion, and this portal forbids `as` (the lint rule is `consistent-type-assertions`
+         and it refused it). `contains` answers the same question without claiming anything about a
+         type, and it is true of the element itself as well, which is what the heading needs. */
+      expect(sheet.contains(document.activeElement)).toBe(true)
       expect(document.activeElement).toHaveTextContent('Odobri oslobođenje od članarine?')
 
       server.stop()
@@ -734,13 +739,13 @@ describe('activating a membership from the payments screen', () => {
 
       for (let step = 0; step < 8; step += 1) {
         await user.tab()
-        expect(sheet).toContainElement(document.activeElement as HTMLElement)
+        expect(sheet.contains(document.activeElement)).toBe(true)
       }
 
       /* And backwards, which is its own wrap and its own branch. */
       for (let step = 0; step < 8; step += 1) {
         await user.tab({ shift: true })
-        expect(sheet).toContainElement(document.activeElement as HTMLElement)
+        expect(sheet.contains(document.activeElement)).toBe(true)
       }
 
       server.stop()
