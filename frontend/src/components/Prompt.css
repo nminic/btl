@@ -66,16 +66,26 @@
   margin-block-start: var(--space-20);
 }
 
+/*
+ * THE BUTTONS SIT IN A ROW WHERE THEY FIT AND STACK WHERE THEY DO NOT, AND THERE IS NO WIDTH
+ * WRITTEN DOWN THAT DECIDES IT.
+ *
+ * The first draft asked a query at 30rem. Two things were wrong with that and the portal's own
+ * guard found both (`styles/scale.test.ts`): a breakpoint is written in `em` here and never in
+ * `rem`, because `em` in a width query is measured against the size the reader's browser starts
+ * from while `rem` follows a root a stylesheet can move; and 480px is not one of the widths this
+ * portal changes shape at, which are listed in that guard with a reason each.
+ *
+ * <b>So the query is gone rather than moved to a listed width</b>, and the result is better than
+ * what it replaces. `flex: 1 1 auto` with the wrapping above lets each button take the room its
+ * own words need: three short labels sit in a row at any width that fits them, and „Odobri
+ * umanjen iznos iz balansa" wraps to its own line on a telephone. That is a question about the
+ * LABEL, which is what actually decides it - a width would have been a guess at how long a
+ * Serbian sentence is. `grow` is what then makes a wrapped button fill its line, so a thumb
+ * cannot miss one and hit the one under it.
+ */
 .prompt__answers .button {
-  /* Each button as wide as the sheet while they are stacked, so a thumb cannot miss one and
-     hit the one under it. `flex: 1 1 100%` up to the width where they fit beside each other. */
-  flex: 1 1 100%;
-}
-
-@media (min-width: 30rem) {
-  .prompt__answers .button {
-    flex: 0 1 auto;
-  }
+  flex: 1 1 auto;
 }
 
 /*

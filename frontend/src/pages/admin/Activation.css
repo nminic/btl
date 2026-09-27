@@ -93,11 +93,18 @@
   vertical-align: top;
 }
 
-/* Wider screens have room for the box and its amount on one line, which is where the Serbian
-   „uključi balans (4.800 RSD)" stops wrapping. */
-@media (min-width: 64rem) {
-  .activate__balance {
-    max-inline-size: none;
-    white-space: nowrap;
-  }
-}
+/*
+ * AND THERE IS NO WIDTH QUERY IN THIS FILE, which is a change from the first draft and is worth
+ * saying because the obvious thing to write here is one.
+ *
+ * It said: above 64rem let „uključi balans (4.800 RSD)" stop wrapping. The portal's own guard
+ * refused it (`styles/scale.test.ts`) and was right twice over - a breakpoint here is written in
+ * `em` and not `rem`, and 1024px is not one of the widths this portal changes shape at, each of
+ * which is listed there with the reason that sets it.
+ *
+ * <b>Dropping it costs nothing, which is why it is dropped rather than moved to a listed
+ * width.</b> The label wraps onto a second line where the column is narrow and sits on one where
+ * it is not; the `18ch` above is what keeps the column narrow, and the table stands in
+ * `.table-scroll`, so a wrapped label never pushes anything off the page. A query would have been
+ * one more width the portal changes shape at, bought for a line break.
+ */

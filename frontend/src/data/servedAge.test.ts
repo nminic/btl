@@ -228,7 +228,17 @@ describe('which fields the portal serves', () => {
        address is the digest of the CONTENT and never `photo.id` (`PhotoApi`), so nothing
        countable leaves, and the three fractions are fractions of the picture's own edges
        and say nothing about the person in it. The fractions also cannot trip the rule
-       below: nothing between 0 and 1 is year-shaped. */
+       below: nothing between 0 and 1 is year-shaped.
+
+       **Three more since 28.09.2026, and none of them is about a person either: `currency`,
+       `expected` and `balance` on an account that owes for the season** (PDL section 19, the
+       owner's definitive specification of the payments screen). No new FILE, so the count below
+       is unchanged; `payments.json` grew from six paths to nine. What each of them is: the
+       currency is worked out from the member's COUNTRY and is one of two words, the expected
+       amount is what the price list says he should send, and the balance is what his own book
+       adds up to. None is countable about him, and none can be year-shaped in the way the rule
+       below cares about - a fee is thousands of dinars or tens of euro, and a balance is money
+       rather than a year. The three were added to the snapshot by hand, as this file requires. */
     expect(Object.keys(served)).toHaveLength(15)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(

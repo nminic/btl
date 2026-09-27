@@ -103,8 +103,11 @@
   ],
   "payments.json": [
     "accounts",
+    "accounts.balance",
     "accounts.city",
     "accounts.competitorId",
+    "accounts.currency",
+    "accounts.expected",
     "accounts.firstName",
     "accounts.lastName",
     "accounts.memberNumber",
