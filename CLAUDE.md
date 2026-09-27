@@ -837,7 +837,7 @@ pad je bio tacan:
 
 **Sta se desilo.** Kad je ruta pocela da servira `currency`, `expected` i `balance`, mock
 `frontend/src/test/mock/payments.json` ih jos nije nosio, pa su bili registrovani kao
-**`alsoAnswered`** — oblik koji `Answers` ima tacno za „server nosi, servirani fajl jos ne". Grana koja
+**`alsoAnswered`**, oblik koji `Answers` ima tacno za „server nosi, servirani fajl jos ne". Grana koja
 crta ekran je **mock popravila**, i time je ta registracija prestala da tvrdi bilo sta. **Nije greska
 nego posledica ispravke, i zatvara se u grani koja je cinjenicu promenila.**
 
