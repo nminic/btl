@@ -164,14 +164,16 @@ export const ON_THE_BALANCE = 'balance'
  * and have none of it taken.
  * </ol>
  *
- * <p><b>A THIRD thing would stop it even if those two were done, and it is the owner's own
- * deadline.</b> `POST /api/payments` requires `method`, the schema knows
- * `('slip', 'card', 'paypal', 'sepa')` (`V16:115`, `payment_method_known`) and does NOT know
- * `ips`, which is the only way somebody in Serbia pays. PDL 20a, 27.09.2026: „Rok: postaje zivo
- * onog dana kad prvi ekran pozove upisnu rutu, dakle sa aktivacijom na ekranu Uplate. Do tada
- * je nedostizno, posle toga je svaki upis netacan." So the first call this screen made would
- * make every method it could send a wrong one, and the migration that widens that constraint is
- * not written.
+ * <p><b>A THIRD thing stood here until 28.09.2026 and is now SETTLED, so it is written down as
+ * settled rather than left saying what is no longer true.</b> `POST /api/payments` requires
+ * `method`, and the schema used to know only `('slip', 'card', 'paypal', 'sepa')` - not `ips`,
+ * which is the only way somebody in Serbia pays, so the owner's deadline in PDL 20a („Rok:
+ * postaje zivo onog dana kad prvi ekran pozove upisnu rutu... posle toga je svaki upis
+ * netacan") would have been passed by the first call this screen ever made. PR 407 landed it:
+ * `PaymentApi.METHODS` is now `Set.of("ips", "paypal")` and the migration replaces the
+ * constraint with the same two. <b>The two above are unaffected and still block all four
+ * cases on their own</b>, which is why nothing here changes: the amount is the blocker, and it
+ * always was the larger half.
  *
  * <p><b>Why the button is therefore disabled rather than the prompt being drawn and refused.</b>
  * Three of the owner's cases end in a question, and two of those three can be acted on. The
