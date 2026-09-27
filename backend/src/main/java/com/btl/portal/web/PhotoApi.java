@@ -512,18 +512,46 @@ class PhotoApi {
 	 * down. Doing it would also change that answer's shape and therefore the portal's
 	 * contract, but the reason it is not done is the first one and not the cost.
 	 *
-	 * <p><b>AND THE MEMBER WHOSE PICTURE IT IS DOES NOT SEE IT EITHER, WHICH IS A DECISION
-	 * AND NOT A GAP IN THIS ROUTE. [ODLUKA 27.09.2026, owner]</b> His words: „Clan i ne treba
-	 * da vidi svoju sliku dok nije odobrena. Kad je bude ugledao po prvi put tad ce znati da
-	 * je slika i odobrena." So a member asking about his own waiting picture is answered 404
-	 * here, exactly like anybody else holding no tick, and that is the whole of the rule
-	 * rather than the edge of this one's reach.
+	 * <p><b>AND THE CROP IS NOT REFUSED EVERYWHERE, WHICH HAS TO BE SAID HERE OR THIS
+	 * PARAGRAPH READS AS A RULE ABOUT THE PORTAL.</b> PDL 21b gives the MEMBER his own waiting
+	 * picture „sa krugom" on the screen he sends from. So the two readers are deliberately
+	 * opposite: the member is shown what he chose, because the circle IS his choice and he is
+	 * checking it; the moderator is shown everything, because what he is judging is whether
+	 * the photograph may be on the portal at all and the circle would hide the part he could
+	 * not otherwise refuse. The route 21b needs is not written yet, and when it is, it carries
+	 * the crop rather than copying this decision.
 	 *
-	 * <p><b>This OVERTURNS his decision of 24.09.2026</b> („Dok slika ceka odobrenje, clan
-	 * vidi svoju novu sliku sa oznakom da ceka"), and the overturned half is named here
-	 * because a sentence describing it as still open would be an instruction to build it. The
-	 * picture appearing IS the notice now: seeing it for the first time is how a member learns
-	 * it was approved, so there is nothing for a „waiting" mark to say.
+	 * <p><b>AND THE MEMBER WHOSE PICTURE IT IS IS ANSWERED 404 HERE TOO, BUT THE REASON IS
+	 * THIS ROUTE'S OWNER AND NOT A RULE ABOUT HIM.</b> He holds no queue right and does not
+	 * know a {@code verification.id}, so he is refused exactly as anybody else without the
+	 * tick. <b>Saying more than that would be wrong</b>, and PDL 21 decides the two halves
+	 * separately:
+	 *
+	 * <ul>
+	 * <li><b>21a, on the PROFILE, not until approved. [ODLUKA 27.09.2026, owner]</b> „Clan i
+	 * ne treba da vidi svoju sliku dok nije odobrena. Kad je bude ugledao po prvi put tad ce
+	 * znati da je slika i odobrena." So the first appearance ON THE PROFILE is itself the
+	 * notice and no second one is made.
+	 * <li><b>21b, on the SCREEN HE SENDS FROM, he does see it. [ODLUKA 27.09.2026, owner]</b>
+	 * „ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u statusu cekanja i tu
+	 * vidim trenutno azuriranu sliku sa krugom." With the crop he set, and with a mark that it
+	 * is waiting.
+	 * </ul>
+	 *
+	 * <p><b>So 21b needs a route of its own and it is NOT this one and NOT yet written</b> -
+	 * keyed to the caller's own session rather than to a queue row, and carrying the crop
+	 * rather than refusing it. ADL A60 says so in as many words: „Ono sto clan vidi na svom
+	 * ekranu za slanje i ono sto moderator vidi u redu su dve imenovane rute sa svojim pravom,
+	 * ne sirenje pojma „javna slika"." Named here as an open increment, not as something this
+	 * route covers.
+	 *
+	 * <p><b>Both of those overturn the decision of 24.09.2026</b> („Dok slika ceka odobrenje,
+	 * clan vidi svoju novu sliku sa oznakom da ceka"), which is named because a sentence
+	 * describing it as still open would be an instruction to build it. <b>And the first
+	 * writing of the new one was WIDER than the owner meant</b> - „the member sees it nowhere"
+	 * - which 21b corrected the same day. That is recorded here because this paragraph carried
+	 * the wide version until it was measured against the log, and the wide version is the one
+	 * that reads as „no screen may ever show him his own picture".
 	 *
 	 * @param id       {@code verification.id}, taken as a {@code long} because that is what
 	 *                 {@code VerificationWriteApi} takes for the same key. <b>What that
