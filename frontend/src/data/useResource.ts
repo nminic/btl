@@ -44,52 +44,42 @@ export type ResourceState<T> =
  * `member/MessageDetail.tsx`, which asks `useInbox` for `{ reactive: false }` and so never
  * changes this hook's owner at all; its own doc has the measurement of why.
  *
- * **What changing owner does, and why it is not the effect below.** The effect runs AFTER
- * this render commits, so a caller who switches without navigating away would draw one more
- * frame of the answer that belonged to whoever asked before - a member reading a stranger's
- * subject line for exactly one paint. Adjusting `state` here, during the render itself, is
- * the pattern this file's own doc already named and deferred: „the state being adjusted
- * during the render itself. Worth writing on the day a caller needs it, and not before."
+ * **Read by the effect below, not adjusted here during the render.** A version that also
+ * reset `state` the moment `owner` changed - during the render itself, before the effect
+ * even runs - was written first, on the theory that a render showing the previous owner's
+ * answer for one frame was worth closing on its own. Measured against every case this
+ * change has (`inboxFromTheServer.test.tsx`): none of them can tell the two apart, because
+ * `act` already carries a click through the effect and the fetch it starts before handing
+ * control back, so by the time a case reads anything the effect has already run either way.
+ * A guard that cannot be told from its own absence is not a guard (ADL A2), so the simpler
+ * form is what stayed; naming the one-frame case this does not independently cover is more
+ * honest than a `useState` nothing here exercises.
  *
  * **What this does NOT do, measured rather than assumed, so the next reader does not reach
  * for it to solve the same thing it already failed to.** A `key` on the caller was tried
  * first (review of PR 406, second round): it forces a fresh read by tearing the whole
  * subtree down, `MessageDetail.tsx`'s `useCompetitors`/`useTeams`/`usePairs`/`useOverlay`
- * included. This adjusts state in place instead, which was tried next on the theory that
- * skipping that teardown would close the window - measured on `teamInvite.test.tsx`, it did
- * not: the same three cases fail the same way, on the same twenty second timeout, `TeamDetail`
- * still never called. **Both reach `NotFound` and both lose to it**, because the fault is not
- * in how fast the state gets there; it is that `NotFound`'s own `<Navigate replace>` fires
- * from an effect that can land after a DIFFERENT navigation the caller already started
- * (`router.navigate` to the team page, in that file), and whichever one the router hears
- * last is the one that sticks. That race is `member/MessageDetail.tsx`'s to answer, by not
- * reacting to owner there at all; the doc on its `TheMessageAsked` has the full measurement
- * and the reason that boundary is acceptable for now.
+ * included. Reading `owner` in the effect's own dependency list was tried next, on the
+ * theory that skipping that teardown would close the window - measured on
+ * `teamInvite.test.tsx`, it did not: the same three cases fail the same way, on the same
+ * twenty second timeout, `TeamDetail` still never called. **Both reach `NotFound` and both
+ * lose to it**, because the fault is not in how the new answer arrives; it is that
+ * `NotFound`'s own `<Navigate replace>` fires from an effect that can land after a DIFFERENT
+ * navigation the caller already started (`router.navigate` to the team page, in that file),
+ * and whichever one the router hears last is the one that sticks. That race is
+ * `member/MessageDetail.tsx`'s to answer, by not reacting to owner there at all; the doc on
+ * its `TheMessageAsked` has the full measurement and the reason that boundary is acceptable
+ * for now.
  */
 export function useResource<T>(name: ResourceName, owner?: string): ResourceState<T> {
-  /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` says
-   * otherwise below.
+  /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` changes,
+   * which the effect below now also answers to.
    *
    * Once is all that is wanted: what the first render of a screen holds is what
    * decides whether the router has a page to put a scroll position back into.
    * Reading it on every render would be reading a value nothing here is
    * subscribed to. */
   const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
-  /* The owner this instance last drew for, so a change in it can be told from a render that
-     has nothing to do with one. `useState` and not a ref, because this is the exact pattern
-     React's own docs give for adjusting state when a prop changes: a ref mutated during
-     render is for memoising a value, not for deciding whether to call `setState`. */
-  const [drawnFor, setDrawnFor] = useState(owner)
-
-  if (owner !== drawnFor) {
-    /* Both in the same render, before anything is painted: the owner this instance is now
-       answering for, and the answer read fresh rather than the one still sitting in `state`
-       from whoever it was before. `atHand` rather than a bare `loading`, so a second
-       component reading the same resource for the same new owner is not made to wait for a
-       fetch the first one already finished. */
-    setDrawnFor(owner)
-    setState(atHand<T>(name))
-  }
 
   useEffect(() => {
     /* Asked for even when the value is already in hand, and that is what closes
