@@ -317,6 +317,8 @@ describe('a season in which both a trophy and a plaque were taken', () => {
     teamSince: null,
     profileHidden: false,
     birthdayShown: 'none' as const,
+    photo: null,
+    crop: null,
     bio: '',
   })
 
@@ -822,9 +824,11 @@ describe('who the profile is about, above everything else', () => {
        that box lands is a question for a browser, and it was measured there
        (Profile.css carries the numbers).
 
-       A photograph is what the circle is for and initials are what it holds
-       today, because the member record carries no picture yet. The owner asked
-       for exactly that fallback, so the initials are held too. */
+       A photograph where one was approved and initials where none was, and this
+       member is the second of those: `000008` carries no portrait in the served
+       file, so what the circle holds here is his initials. The owner asked for
+       exactly that fallback, so the initials are held too. Which of the two forms
+       is drawn, and on what, is measured in `components/portrait.test.tsx`. */
     renderAt('/sr/takmicar/000008')
 
     const name = await screen.findByRole('heading', { level: 1, name: 'Ognjen Perišić' })

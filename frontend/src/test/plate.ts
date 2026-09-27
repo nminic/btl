@@ -12,9 +12,17 @@ import type { Competitor } from '../data/types'
  * A competitor, for the cases that need one and do not care who.
  *
  * Everything but the three arguments is a plain, unremarkable member: no hidden profile, no team,
- * no birthday shown. A case that cares about one of those sets it on the copy it makes.
+ * no birthday shown, and **no portrait**, which is the state thirty of the thirty two served
+ * members are in. A case that cares about one of those passes it in `over`, which is the shape
+ * `teamMark.test.tsx` already uses for the same reason: a member with a picture is not a different
+ * kind of member, so it is one field on the same record rather than a second factory.
  */
-export function person(memberNumber: string, firstName: string, lastName: string): Competitor {
+export function person(
+  memberNumber: string,
+  firstName: string,
+  lastName: string,
+  over: Partial<Competitor> = {},
+): Competitor {
   return {
     memberNumber,
     firstName,
@@ -31,6 +39,9 @@ export function person(memberNumber: string, firstName: string, lastName: string
     profileHidden: false,
     birthdayShown: 'none',
     bio: '',
+    photo: null,
+    crop: null,
+    ...over,
   }
 }
 
@@ -54,6 +65,12 @@ export function person(memberNumber: string, firstName: string, lastName: string
  * circle at any width, with the whole gate green, because the guard was keyed on the word `plate`.
  */
 export const PLATE_CLASSES = [
+  /* Worn by a circle that holds a PHOTOGRAPH and by nothing else the plate draws, since
+     26.09.2026 (PDL P28f). It is what cuts the picture to the square the member chose
+     (`components/Crop.css`), so the floor below has to draw a pair in which one of the two
+     carries a portrait and the other does not - otherwise „every shape this component has"
+     stops being true the day the picture arrives, and stays green while stopping. */
+  'crop-fitted',
   'face-circle',
   'plate',
   'plate--pair',

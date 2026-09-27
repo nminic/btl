@@ -20,6 +20,13 @@ import { PLATE_CLASSES, person } from '../test/plate'
    wrong one of the two is caught by any of the three. */
 const ANA = person('000011', 'Ana', 'Marković')
 const BORIS = person('000022', 'Boris', 'Petrović')
+/* A third, whose portrait was approved, for the one case that has to see both forms of the circle
+   in one render. Not one of the two above: they are read by every other case here for their
+   initials, and a photograph draws none. */
+const HAS_A_PORTRAIT = person('000033', 'Vesna', 'Ilić', {
+  photo: '/mock/photo/andjelija.svg',
+  crop: { x: 0.3, y: 0.15, size: 0.55 },
+})
 
 const circles = (container: HTMLElement) =>
   [...container.querySelectorAll('.portrait')].map(htmlElement)
@@ -128,9 +135,15 @@ describe('a competitor as a circle and a name', () => {
 
        A pair with a name over two lines is every shape this component has: the plain plate is the
        same element without one modifier, and a screen that writes its own words writes no class of
-       the plate's. */
+       the plate's.
+
+       **One of the two carries a portrait and the other does not, and that is not decoration of
+       the case.** Since 26.09.2026 the circle has two forms, a photograph and a monogram, and only
+       the first wears `crop-fitted` (PDL P28f). Drawn with two members who both have no picture,
+       this case would pass while never once seeing the class the photograph brings, and the
+       stylesheet guard beside it would go on never having heard of it. */
     const { container } = render(
-      <NamePlate competitors={[ANA, BORIS]}>
+      <NamePlate competitors={[ANA, HAS_A_PORTRAIT]}>
         <OverTwoLines competitor={ANA} />
       </NamePlate>,
     )

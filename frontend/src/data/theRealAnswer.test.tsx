@@ -750,6 +750,8 @@ describe('who administers a team, on the answer a member is given', () => {
     teamSince,
     profileHidden: false,
     birthdayShown: 'none',
+    photo: null,
+    crop: null,
     bio: '',
   })
 
