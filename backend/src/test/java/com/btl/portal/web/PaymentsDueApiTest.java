@@ -608,7 +608,20 @@ class PaymentsDueApiTest {
 	@Test
 	void theMemberNumberIsServedWhereThereIsOneAndBlankWhereThereIsNot() throws Exception {
 		assertThat(numberOf(read(booksCookie, "Nikolic"))).containsExactly("000220");
-		assertThat(numberOf(read(booksCookie, "Jovanovic"))).containsExactly("");
+
+		JsonNode nameless = read(booksCookie, "Jovanovic").get("accounts").get(0);
+		JsonNode number = nameless.path("memberNumber");
+
+		/* BLANK AND NEVER ABSENT, ASKED AS TWO THINGS, and the first of them is here because
+		   the second alone did not measure it. `asString()` answers an empty string for a null
+		   node as readily as for an empty one, so „containsExactly("")" was satisfied by both
+		   shapes and a mutation dropping the coalesce passed. This is the only reading that
+		   tells the two apart. */
+		assertThat(number.isNull() || number.isMissingNode())
+				.as("the field must carry an empty string, so a screen draws an empty cell"
+						+ " without having to ask whether it is there")
+				.isFalse();
+		assertThat(number.asString()).isEmpty();
 	}
 
 	/** AND HE IS FOUND BY IT, which is the first of the three keys the owner named. */
@@ -625,6 +638,12 @@ class PaymentsDueApiTest {
 	 * <p>The two keys the owner named after the number are „ime" and „prezime", and a search
 	 * written over one column answers one of these two men and looks right. {@code Novak} is a
 	 * given name in Serbian and a surname in Serbian, which is what makes the pair possible.
+	 *
+	 * <p><b>And this is the case that holds both keys now that the route reads the two names
+	 * JOINED rather than one at a time.</b> Separate per-column readings were removed as dead -
+	 * every substring of either name is a substring of the pair, so deleting each of them passed a
+	 * mutation - which means this pair of men is the whole of what says „ime" and „prezime" still
+	 * work. Deleting the joined reading fails here, and nothing else would say so.
 	 */
 	@Test
 	void oneTermFindsBothTheManWhoseGivenNameItIsAndTheManWhoseSurnameItIs() throws Exception {

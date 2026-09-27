@@ -81,8 +81,13 @@ import java.util.List;
  * <li><b>The name, because the owner reads a bank statement and looks for a named man.</b>
  * <li><b>The member number where there is one, blank where there is not</b>, because he named
  * it as one of the three things he would search by, so it has to be visible for a hit to be
- * confirmed by eye. Blank rather than absent, the shape {@link VerificationApi} uses for the
- * same reason: a screen draws an empty cell without having to ask whether a field is there.
+ * confirmed by eye. <b>Blank rather than absent is MY choice and not a precedent, and the
+ * difference is written down because the sentence that stood here claimed the opposite.</b> The
+ * portal does both: {@link VerificationApi} answers {@code who} and the town blank and never
+ * null, with its reason beside them, and it answers THIS field from {@code c.member_number}
+ * raw, so on the queue it is null. The reason for choosing blank here is that a table cell is
+ * drawn without asking whether a field is there, and the queue this replaces is being taken
+ * away - not that anybody else serves this field that way.
  * <li><b>The town, and its reason is NEW rather than inherited.</b> The queue drew a town
  * because PDL P8 hung the way somebody pays on it; the owner's decision of 27.09.2026 (PDL,
  * section 14) removed the amount, the currency and the method from activation - „Novac je legao,
@@ -201,15 +206,34 @@ class PaymentsDueApi {
 	 * {@code competitor_town_is_from_the_codebook_or_typed} (V7) makes exactly one of them
 	 * present, so the coalesce cannot answer empty and cannot answer twice.
 	 *
-	 * <p><b>The search is one rule over four readings and not four rules.</b> A term matches a
-	 * substring of the member number, the given name, the surname, or the two names with a space
-	 * between them. <b>The last of those is my own reasoning and not a decision</b>: the owner
-	 * named three keys, and his reason for wanting a search was that he copies a name off a bank
-	 * statement - where it is one string - so a term of „Marko Markovic" finding nothing would be
-	 * a miss on the first day. <b>What it deliberately is not:</b> insensitive to Serbian
-	 * diacritics. That wants {@code unaccent}, V1 creates no extension at all, and a migration is
-	 * not this branch's to write - so „Cacak" does not find „Čačak", and the case that measures
-	 * how far the folding does reach is in the test rather than guessed at here.
+	 * <p><b>THE SEARCH IS TWO READINGS AND IT ANSWERS THREE KEYS, which is not a coincidence but
+	 * the reason there are only two.</b> The owner named the member number, the given name and the
+	 * surname. A term matches a substring of the number, or a substring of the two names joined by
+	 * a space - and the second of those answers „ime" and „prezime" both, because every substring
+	 * of either name is a substring of the pair. <b>Joining them is my own reasoning rather than a
+	 * decision</b>, and it earns its place twice over: his reason for wanting a search at all was
+	 * that he copies a name off a bank statement, where it is one string, so „Marko Markovic"
+	 * finding nothing would be a miss on the first day.
+	 *
+	 * <p><b>Two conditions stood here until they were measured, and they were DEAD rather than
+	 * wrong.</b> Separate readings of {@code first_name} and of {@code last_name} could not change
+	 * any answer, for the reason just given, and a mutation deleting each of them passed. That is
+	 * worse than clutter: a redundant condition is a reserve that catches exactly what a mutation
+	 * over the load-bearing one removes, so the series reads healthier than it is.
+	 *
+	 * <p><b>AND A BOUNDARY, written down because no mutation can express it.</b> An explicit
+	 * {@code :term = ''} stood in front of those two and was equally dead. An EMPTY pattern matches
+	 * every non-null string, and both name columns are {@code not null} with
+	 * {@code competitor_first_name_not_blank} beside them (V7), so the joined pair always matches
+	 * it. A blank term therefore returns the whole list <b>through the same condition the name
+	 * search uses</b>, and no replacement of a source can separate the two, because by construction
+	 * they are one condition. {@code anAbsentOrBlankTermMeansTheWholeListAndIsNeverRefused}
+	 * measures the OUTCOME and not the source, and that is the most it can do.
+	 *
+	 * <p><b>What the search deliberately is not:</b> insensitive to Serbian diacritics. That wants
+	 * {@code unaccent}, V1 creates no extension at all, and a migration is not this branch's to
+	 * write - so „Cacic" does not find „Čačić", and how far the case folding DOES reach is measured
+	 * in the test rather than guessed at here.
 	 *
 	 * <p>{@code %} and {@code _} inside a term are taken as wildcards, because the pattern is
 	 * assembled in the statement. Said rather than left to be found: a name contains neither, and
@@ -228,10 +252,14 @@ class PaymentsDueApi {
 						   renewed, the very person the screen exists for from October on. */
 						+ " where not exists (select 1 from membership m"
 						+ "                   where m.competitor_id = c.id and m.season = :season)"
-						+ " and (:term = ''"
-						+ "      or c.member_number ilike '%' || :term || '%'"
-						+ "      or c.first_name ilike '%' || :term || '%'"
-						+ "      or c.last_name ilike '%' || :term || '%'"
+						/* TWO READINGS AND NOT FOUR, and the other two were removed rather
+						   than never written: a separate `c.first_name ilike ...` and
+						   `c.last_name ilike ...` cannot change this answer, because every
+						   substring of either name is a substring of the two joined. A
+						   mutation removing each of them passed, which is what dead logic
+						   looks like from outside - and worse, it is the reserve that makes
+						   a mutation over the clause that IS load-bearing look caught. */
+						+ " and (c.member_number ilike '%' || :term || '%'"
 						+ "      or c.first_name || ' ' || c.last_name ilike '%' || :term || '%')"
 						/* BY THE NAME AND NOT BY THE NUMBER, and the key last so the order is
 						   total. See the note on this class for both halves. */
