@@ -132,28 +132,30 @@ export function Prompt({
        BUTTON - so Shift+Tab off it walked out of the sheet and landed on the „Aktiviraj" that
        opened it, which is exactly the fault this guard exists to prevent. The forward wrap
        happened to work, which is what made it look right. */
-    const buttons = sheet.current?.querySelectorAll<HTMLElement>('button')
+    /* ASKED OF `currentTarget` AND NOT OF THE REF, which removes a branch rather than tidying
+       one: the handler is ON this element, so `currentTarget` is the sheet and cannot be null,
+       while `sheet.current?.` makes a question with an answer no input can produce. The 100 per
+       cent threshold is what found that, and it is the one tool that sees a branch nothing
+       reaches (`CLAUDE.md`, 25.09.2026). */
+    const sheetNow = pressed.currentTarget
+    const buttons = Array.from(sheetNow.querySelectorAll<HTMLElement>('button'))
 
-    if (buttons === undefined || buttons.length === 0) {
-      return
-    }
+    const back = pressed.shiftKey
+    /* Where the ring ends in the direction of travel, and where it starts again. Written as one
+       pair rather than as two branches of an `if`, so backwards and forwards are the same code
+       read twice and cannot drift apart. */
+    const edge = back ? buttons[0] : buttons[buttons.length - 1]
+    const wrapTo = back ? buttons[buttons.length - 1] : buttons[0]
 
-    const first = buttons[0]
-    const last = buttons[buttons.length - 1]
+    /* Backwards off the HEADING as well as off the first button: the sheet opens with the focus
+       there, so Shift+Tab as the very first press is an ordinary thing to do and there is
+       nothing before it inside the sheet. */
+    const atEdge =
+      document.activeElement === edge || (back && document.activeElement === sheetNow.firstElementChild)
 
-    if (first === undefined || last === undefined) {
-      return
-    }
-
-    /* Backwards off the first button, and backwards off the HEADING as well: the sheet opens
-       with the focus there, so Shift+Tab as the very first press is an ordinary thing to do and
-       there is nothing before it inside the sheet. */
-    if (pressed.shiftKey && (document.activeElement === first || document.activeElement === sheet.current?.firstElementChild)) {
+    if (atEdge && wrapTo !== undefined) {
       pressed.preventDefault()
-      last.focus()
-    } else if (!pressed.shiftKey && document.activeElement === last) {
-      pressed.preventDefault()
-      first.focus()
+      wrapTo.focus()
     }
   }
 

@@ -752,6 +752,39 @@ describe('activating a membership from the payments screen', () => {
     })
 
     /**
+     * <p><b>AND IT DOES NOT THROW WHEN THERE IS NOTHING TO WRAP TO.</b> A sheet with no buttons
+     * in it is not a state this screen can draw - every question has at least an answer and a way
+     * out - but the handler asks the DOM rather than the props, so the DOM is where the answer
+     * comes from and the DOM can be changed by anything. The case is here because the 100 per
+     * cent threshold reported the guard as a branch nothing reaches, and a guard nothing reaches
+     * is either dead code or an untested one; this makes it the second.
+     */
+    it('does nothing rather than throwing when the sheet holds no buttons', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Ana Ilić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const sheet = await screen.findByRole('dialog')
+
+      within(sheet)
+        .getAllByRole('button')
+        .forEach((one) => one.remove())
+
+      await user.tab({ shift: true })
+
+      /* The sheet is still standing and nothing was written: the press found nothing to move
+         the focus to and let it alone. */
+      expect(screen.getByRole('dialog')).toBeVisible()
+      expect(grantsIn(server.asked)).toEqual([])
+
+      server.stop()
+    })
+
+    /**
      * <p><b>ESCAPE IN THE SHEET DOES NOT SHUT THE MENUS BEHIND IT.</b> `app/LanguageMenu.tsx`
      * listens for Escape on the DOCUMENT in the bubble phase and is in `app/Shell.tsx`, so it is
      * on the same page as this sheet always. Without the press being stopped, one Escape

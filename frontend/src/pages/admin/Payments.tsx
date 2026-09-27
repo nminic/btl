@@ -131,6 +131,11 @@ function Row({
 
   const read = typedIn(typed)
   const what = whatToDo(read, one.expected, one.balance, including)
+  /* NARROWED ONCE, HERE, and both the button's disabling and its press read this one answer.
+     `theServerCanDoIt` is a type guard, so this is also what makes `what` something `Asking`
+     will accept: four of the owner's seven cases have no route, and `activation.ts` names what
+     is missing for them. */
+  const canAct = theServerCanDoIt(what) ? what : null
 
   const amountId = `paid-${one.competitorId}`
   const balanceId = `balance-${one.competitorId}`
@@ -268,16 +273,12 @@ function Row({
              moderator did or could put right, and the wording for such a sentence is the
              owner's to give.
 
-             The guard is asked TWICE and the second is not belt and braces: it is a type guard,
-             so it is what narrows `what` to the three cases `Asking` will accept. Written as
-             `setAsking(what)` alone this would not compile, which is the whole point of the
-             narrowing. */
-          disabled={!theServerCanDoIt(what)}
-          onClick={() => {
-            if (theServerCanDoIt(what)) {
-              setAsking(what)
-            }
-          }}
+             The guard is asked ONCE, above, and both the disabling and the press read its
+             answer. Asked again inside the press it would be a branch nothing can reach - the
+             button is disabled in exactly the case that would make it false - and the 100 per
+             cent threshold is what found that, which is the one tool that sees such a branch. */
+          disabled={canAct === null}
+          onClick={() => setAsking(canAct)}
         >
           {t('verification.activate')}
         </button>
