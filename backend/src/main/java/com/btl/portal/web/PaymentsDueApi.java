@@ -161,7 +161,8 @@ class PaymentsDueApi {
 	/**
 	 * @param season   the season the list is about, once for the whole answer because it is a
 	 *                 fact about the question and not about any row
-	 * @param accounts oldest surname first, and empty on the day the portal opens
+	 * @param accounts by surname and then given name, in the league's own alphabet, and empty on
+	 *                 the day the portal opens
 	 */
 	record Outstanding(int season, List<Due> accounts) {
 	}
