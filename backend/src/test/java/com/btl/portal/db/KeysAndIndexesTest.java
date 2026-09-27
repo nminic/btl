@@ -451,6 +451,11 @@ class KeysAndIndexesTest extends DatabaseTest {
 			   `payment` has to find; a foreign key builds no index on the referencing side. */
 			new Index("membership_season_idx", "everybody who was a member in one season"),
 			new Index("membership_payment_idx", "the membership one receipt stands behind"),
+			/* V35. The same two reasons `payment_recorded_by_idx` has, and the second one is the
+			   one that costs: `membership_decided_by_fk` is ON DELETE SET NULL, so deleting a
+			   moderator's account has to find every membership he entered, and the key of this
+			   table begins with the member rather than with him. */
+			new Index("membership_decided_by_idx", "the memberships one person entered without a fee"),
 			/* V17. The first of each pair is the whole page - one season, read and drawn - and
 			   the rest are the ends of the keys that point out of a frozen row. */
 			new Index("season_competitor_season_idx", "the frozen standings of one season"),

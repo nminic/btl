@@ -224,9 +224,14 @@ function broughtIn(file: Record<string, unknown>[], me: Record<string, unknown>)
  * Anything that is not a resource - a picture, a write, `/api/me` - has no file and
  * is answered 404 here, which is what it was before and is why `serverAnswers.ts`
  * exists. */
-const PUBLIC_DIR = join(process.cwd(), 'public')
+/* Named for what it used to be rather than renamed, on purpose: this file is shared
+   with PR 380 in flight, and a rename would touch every line below that says
+   `PUBLIC_DIR` for no reason this increment needs. The mock fixtures moved out of
+   `public/` (mock files leave the delivery, PDL „Mock fajlovi izlaze iz isporuke
+   odmah"), so this now points at `src/test`, one folder above where they live now. */
+const PUBLIC_DIR = join(process.cwd(), 'src', 'test')
 
-/** Which file under `public/` answers an address: the generated record of a
+/** Which file under `src/test/` answers an address: the generated record of a
  *  resource, and otherwise the path itself, which is how a picture is still read. */
 function fileFor(path: string): string {
   const resource = /^\/api\/([a-z]+)$/.exec(path)
@@ -250,6 +255,34 @@ function fileFor(path: string): string {
  */
 const WRITES_THAT_QUEUE = new Set(['/api/teams', '/api/comments'])
 
+/**
+ * AND THE WRITE THAT TAKES A ROW OUT OF A QUEUE, standing in for
+ * `VerificationWriteApi.decide` when a case installs no server of its own.
+ *
+ * <p>A pattern rather than a member of the set above, because the address carries the
+ * item: `POST /api/verification/{id}/decision`.
+ *
+ * <p><b>The identity is matched as text and NOT as digits, and that is a measurement of
+ * 26.09.2026 rather than laxity.</b> `ServedPendingItem.id` is a `number` - the column
+ * is a `bigserial` - but the generated `public/mock/verification.json` this stub answers
+ * every read from still carries `ver-kom-1`, `ver-sli-2` and twelve more of that shape,
+ * and not one of its fourteen ids is numeric. Written `\d+` first, this matched none of
+ * them: every card in the suite was answered 404, the screen refused all four comments
+ * („Rešeno je 0 stavki."), and it looked exactly like a screen that had stopped working.
+ * The file being older than the resource it stands in for is the same gap
+ * `serverAnswers.ts` names for `competitors.json`, and it is handled the same way -
+ * ignored, rather than tightened against.
+ *
+ * <p><b>Why this exists at all, measured rather than assumed.</b> Without it every
+ * decision on the three queues `admin/PendingQueue.tsx` serves would meet the 404 at
+ * the bottom of this stub, `askTheServer` would read it as `{got:'wrong'}`, and the
+ * seven files that press „Odobri" on a pending queue would each be measuring a refusal
+ * rather than the thing they were written for. The floor keeps them measuring what they
+ * always did; a case that wants a refusal, or wants to read what was sent, puts its own
+ * server in front (`test/serverAnswers.ts`, `test/fakeQueue.ts`).
+ */
+const A_DECISION = /^\/api\/verification\/([\w-]+)\/decision$/
+
 vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
   const asked = String(input)
 
@@ -262,6 +295,30 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       status: 201,
       headers: { 'content-type': 'application/json' },
     })
+  }
+
+  const deciding = init?.method === 'POST' ? A_DECISION.exec(asked) : null
+
+  if (deciding !== null) {
+    /* WHAT THE ROUTE REALLY ANSWERS, which is 200 and the row as it now stands:
+       `ResponseEntity.ok(new Decided(item.id(), state))`. The state is worked out from
+       the body for the same reason the identity is taken off the address - the route
+       reads it „back from the row and not from the request", and a floor that answered
+       `approved` to a refusal would be a floor no case could tell from the truth.
+
+       The identity goes back as the TEXT it arrived as rather than as a number, for the
+       reason above the pattern: the ids in the generated file are not numeric, so
+       `Number()` here would answer `NaN` and call it an identity. Nothing reads this
+       field today - `askTheServer` hands the body on and `approveAll` does not look at
+       it - so what matters is that it is not a lie. */
+    const said: unknown = JSON.parse(String(init?.body ?? '{}'))
+    const yes =
+      typeof said === 'object' && said !== null && Reflect.get(said, 'approved') === true
+
+    return new Response(
+      JSON.stringify({ id: deciding[1], state: yes ? 'approved' : 'rejected' }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    )
   }
 
   const at = fileFor(asked)

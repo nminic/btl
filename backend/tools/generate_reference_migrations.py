@@ -24,7 +24,7 @@ order its statements have to be in, and that guess was wrong until 09.09.2026.
 It writes, under `backend/src/main/resources/db/migration`:
 
     V2__country.sql     246 countries, out of frontend/src/data/countries.json
-    V3__place.sql    47,016 towns,     out of frontend/public/mock/places.json
+    V3__place.sql    47,016 towns,     out of frontend/src/test/mock/places.json
     V4__price_list.sql    7 price rows (see PRICE_ROWS below for where they come from)
 
 
@@ -57,7 +57,7 @@ hand, this script or an editor, fails the build.
 
 WHY THIS SCRIPT IS IN THE REPOSITORY at all
 -------------------------------------------
-The mock JSON under `frontend/public/mock` was committed as an artefact with its
+The mock JSON under `frontend/src/test/mock` was committed as an artefact with its
 generator kept outside the repository, and the entry in the decision journal that
 records what that cost says it plainly: when the shape of the data changes, and
 it changes for as long as the schema is being designed, there is nothing to build
@@ -91,7 +91,7 @@ sys.stderr.reconfigure(encoding='utf-8')
 
 REPO = Path(__file__).resolve().parents[2]
 COUNTRIES = REPO / 'frontend' / 'src' / 'data' / 'countries.json'
-PLACES = REPO / 'frontend' / 'public' / 'mock' / 'places.json'
+PLACES = REPO / 'frontend' / 'src' / 'test' / 'mock' / 'places.json'
 MIGRATIONS = REPO / 'backend' / 'src' / 'main' / 'resources' / 'db' / 'migration'
 
 BANNER = """--
@@ -647,7 +647,7 @@ create table price_row (
 # The seven rows of the price list.
 #
 # Their source is `frontend/src/data/pricing.ts`, which is TypeScript and not
-# data: there is no `pricing.json` under `frontend/public/mock`, so unlike the
+# data: there is no `pricing.json` under `frontend/src/test/mock`, so unlike the
 # two codebooks above this list cannot be derived from a file. It is written out
 # here, with the decision each figure comes from named, and PriceListRowsTest
 # holds the shape of it against ADL A36 O12 rather than against a source file.

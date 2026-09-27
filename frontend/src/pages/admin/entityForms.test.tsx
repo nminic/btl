@@ -1,14 +1,22 @@
-import { screen, within } from '@testing-library/react'
+import { useState } from 'react'
+import { render, screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
 import { loadResource } from '../../data/client'
 import { emptyValues } from '../../forms/validate'
+import { ClockProvider } from '../../clock/ClockProvider'
+import { I18nProvider } from '../../i18n/I18nProvider'
+import { SessionProvider } from '../../session/SessionProvider'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { answeredWith, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
+import { SLOW } from '../../test/slow'
 import { categoryOf } from '../../data/raceCategory'
+import { EditableCell } from './EditableCell'
+import { EntityEditor, RowActions } from './EntityEditor'
+import { useOverlay } from './overlay'
 import {
   ENTITY_FORMS,
   EVENTS,
@@ -21,18 +29,23 @@ import {
   addressField,
   idFor,
   recordFrom,
+  recordsOf,
   takenAddress,
   type EntityDef,
 } from './entityForms'
 
-/* The six entities entered whole, each opened whole.
+/* The five entities entered whole, each opened whole.
  *
  * The price list is not among them: its rows are given rather than entered, and
- * the screen for it is its own (adminEntities.test).
- *
+ * the screen for it is its own (adminEntities.test). Nor, since 27.09.2026, are
+ * the written pages: a written page is never entered or changed through the
+ * portal at all (ADL.md, resolved 18.09.2026, "Nijedna pisana strana se ne
+ * uredjuje u portalu"), so AdminPages.tsx dropped the form along with every
+ * other control that wrote nowhere - what that screen still shows is covered in
+ * adminEntities.test, as a plain list.
  *
  * Every screen behind Entities used to change one text field in a row and had no
- * way at all to enter a record. These tests walk all six through the same four
+ * way at all to enter a record. These tests walk all five through the same four
  * questions: does the form show every field the entity has, does an empty
  * obligatory field stop the save and say so beside itself, does a change survive
  * the way back to the list, and is every one of them shut to a competitor.
@@ -80,25 +93,49 @@ type Screen = {
   list: string
 }
 
-/* Every entity with a screen of its own. The races are not among them: a race is
-   edited inside its event, which is the only place that knows which event it is
-   (owner, 06.08.2026), and the tests for that stand in adminEntities.test. Nor
-   are the ducats, which left administration on the same day. */
+/* Every entity with a screen of its own that still enters and changes a whole
+   record through a form. The races are not among them: a race is edited inside
+   its event, which is the only place that knows which event it is (owner,
+   06.08.2026), and the tests for that stand in adminEntities.test. Nor are the
+   ducats, which left administration on the same day. Nor, since 27.09.2026, are
+   the written pages (see the file comment above). */
 const SCREENS: Screen[] = [
   { entity: MEMBERS, path: 'administracija/clanovi', list: 'Članovi' },
   { entity: EVENTS, path: 'administracija/dogadjaji', list: 'Događaji' },
   { entity: TEAMS, path: 'administracija/timovi', list: 'Timovi' },
   { entity: LEAGUES, path: 'administracija/lige', list: 'Lige' },
-  { entity: PAGES, path: 'administracija/strane', list: 'Statične strane' },
   /* The last of them. It is entered and changed by the same renderer reading the
-     same kind of JSON as the five above, which is the whole point of it being an
+     same kind of JSON as the four above, which is the whole point of it being an
      entity rather than a screen somebody wrote by hand (PDL P28a). What it may
      do is not on the form; that is the matrix below the list. */
   { entity: MODERATORS, path: 'administracija/moderatori', list: 'Moderatori' },
 ]
 
+/**
+ * FOUR OF THE FIVE, LESS THE ONE WHOSE „NEW" BUTTON HAS NOTHING BEHIND IT (26.09.2026).
+ * (Five of the six until 27.09.2026, when the written pages left `SCREENS` entirely -
+ * see the file comment above `SCREENS` itself.)
+ *
+ * <p>A member is no longer entered on this screen, and the reason is not that the work is
+ * unfinished: `POST /api/competitors` is the GROUP entry that sends invitations (PDL P8b,
+ * 25.09.2026), which is a different act from filling one record in. `admin/AdminMembers.tsx`
+ * states it in full, and the shape of the refusal is measurable rather than argued -
+ * `CompetitorWriteApi.Invited` takes eighteen fields where `admin-clan.form.json` has nine,
+ * and the form carries no email address at all, which is the one field an invitation cannot
+ * be sent without.
+ *
+ * <p><b>So this is the same narrowing `SCREENS_WITH_AN_EXISTING_ROW_TO_OPEN` below already
+ * does for a moderator, one step earlier in the record's life.</b> A moderator has a „new"
+ * form and nothing to open; a member now has neither. The floor under „and no screen quietly
+ * grows one back" is not here but in `adminMemberWrites.test.tsx`, which asks the DOM for
+ * that button by name and requires it absent - a question one look answers.
+ */
+const SCREENS_WITH_A_NEW_RECORD_FORM: Screen[] = SCREENS.filter(
+  ({ entity }) => entity !== MEMBERS,
+)
+
 describe('every entity has a form for a record that does not exist yet', () => {
-  it.each(SCREENS)('$path opens one with every field the entity has', async ({ entity, path }) => {
+  it.each(SCREENS_WITH_A_NEW_RECORD_FORM)('$path opens one with every field the entity has', async ({ entity, path }) => {
     const user = setupUser()
     const title = t(`admin.form.new.${entity.id}`)
     renderAt(`/sr/${path}`, 'superadmin')
@@ -112,7 +149,7 @@ describe('every entity has a form for a record that does not exist yet', () => {
     }
   })
 
-  it.each(SCREENS)('$path refuses to save an empty obligatory field', async ({ entity, path }) => {
+  it.each(SCREENS_WITH_A_NEW_RECORD_FORM)('$path refuses to save an empty obligatory field', async ({ entity, path }) => {
     const user = setupUser()
     const title = t(`admin.form.new.${entity.id}`)
     renderAt(`/sr/${path}`, 'superadmin')
@@ -138,7 +175,7 @@ describe('every entity has a form for a record that does not exist yet', () => {
 
 describe('every entity can be opened and changed whole', () => {
   /**
-   * SIX OF THE SEVEN, LESS THE ONE WHOSE EXISTING ROW HAS NOTHING LEFT TO OPEN.
+   * FOUR OF THE FIVE, LESS THE ONE WHOSE EXISTING ROW HAS NOTHING LEFT TO OPEN.
    *
    * <p>A moderator's name and address have no route to write to yet - `ModeratorWriteApi`
    * says so in its own words, quoted in full in `AdminModerators.tsx`'s class comment:
@@ -146,12 +183,20 @@ describe('every entity can be opened and changed whole', () => {
    * boxes and nothing else... a request naming them is refused by the shape of {@link
    * Ticks}, which has no field for either." And his rights are not on this form at all -
    * they are the matrix below the list, ticked one box at a time. So the existing row has
-   * no „Otvori" to press and this one test of the four below is narrowed to the six that
+   * no „Otvori" to press and this one test of the four below is narrowed to the four that
    * still have one; the other three `it.each(SCREENS)` blocks in this file are all about
    * the NEW-record form, which a moderator still has in full (three fields, same as ever).
+   *
+   * <p><b>AND A MEMBER SINCE 26.09.2026, FOR THE SAME REASON WORD FOR WORD.</b> There is no
+   * `PUT /api/competitors/{memberNumber}` - measured over `backend/src/main/java`, which
+   * declares three (verb, address) pairs for a member and no `PUT` among them - so a row
+   * that was opened could only keep a correction for the length of one visit. That is the
+   * fault this increment closes, so „Otvori" is gone from that screen and the town cell with
+   * it. A member is now the one entity on this list with neither half, which is why it is
+   * also out of `SCREENS_WITH_A_NEW_RECORD_FORM` above.
    */
   const SCREENS_WITH_AN_EXISTING_ROW_TO_OPEN: Screen[] = SCREENS.filter(
-    ({ entity }) => entity !== MODERATORS,
+    ({ entity }) => entity !== MODERATORS && entity !== MEMBERS,
   )
 
   /**
@@ -251,65 +296,31 @@ describe('a competitor', () => {
 })
 
 describe('a record that is entered rather than changed', () => {
-  it('joins the list it was entered on, and carries every field it was given', async () => {
-    const user = setupUser()
-    const title = t('admin.form.new.members')
-    renderAt('/sr/administracija/clanovi', 'superadmin')
-
-    await user.click(await screen.findByRole('button', { name: title }))
-    const form = open(title)
-
-    await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), 'Milica')
-    await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.ageBand'))), '25-39')
-    await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
-    await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
-    await user.click(form.getByLabelText(labelled(t('admin.field.firstSeason2027'))))
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'feeExempt')
-
+  /**
+   * THIS CASE WAS DRIVEN THROUGH THE MEMBER FORM UNTIL 26.09.2026, AND WHAT IT HELD HAS BEEN
+   * SPLIT RATHER THAN DROPPED.
+   *
+   * <p>It asked two different things in one breath: what a form WRITES into a record, and
+   * what the list then DRAWS of it. The member form is gone (PDL P8b, and the note on
+   * `admin/AdminMembers.tsx`), so the first half has no subject any more. The second half
+   * still has one, because the table is still there - so every assertion about the drawn row
+   * now stands in `adminMemberWrites.test.tsx`, over a SERVED member rather than a typed one:
+   * the beginners' category instead of her band, the town, and the basis of her membership.
+   * Read off a fixture, those assertions are stronger than they were, because a typed record
+   * and the row drawn from it could agree by both being wrong about the same field.
+   *
+   * <p>What remains here is the one claim that was never about the screen at all.
+   */
+  it('has no field for a flag nothing reads any more', () => {
     /* The form used to carry a box saying the membership was active, with a note
        that an unpaid member has an account but is visible nowhere. Nothing reads
        that flag any more: an unpaid member is not in the member list at all, they
        wait in the queue of memberships (ADL A4d), so the box was a way to put back
        into the list exactly what that change took out of it. Held on the
        definition rather than on the screen, because a field that is not there has
-       no label to ask the screen about. */
+       no label to ask the screen about - which is also why this outlived the screen
+       that used to drive it. */
     expect(MEMBERS.form.fields.map((one) => one.name)).not.toContain('active')
-
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
-
-    const saved = screen.getByRole('status', { name: t('admin.form.saved') })
-    expect(within(saved).getByText('Milica')).toBeVisible()
-    // The country is named rather than shown as a code, and a box reads yes.
-    expect(within(saved).getByText('Srbija')).toBeVisible()
-    expect(within(saved).getAllByText(t('admin.yes')).length).toBeGreaterThan(0)
-    expect(within(saved).getByText(t('admin.basisValue.feeExempt'))).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
-
-    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    // The generated members hold 000001 to 000031, so the first free one is next.
-    const row = within(must(list.getByText('000033').closest('tr'), 'tr'))
-
-    expect(row.getByText('Milica Pavlović')).toBeVisible()
-    /* The category she was entered under, which is the whole of what the portal
-       records about her age since 13.09.2026. This asked for „1991" and the note
-       beside it said the year of birth is on this screen and on no other (PDL P11,
-       P23). That was true of the screen and false of the portal: the row was drawn
-       from a file served to everybody, so the year was on every screen, and it has
-       left the record rather than the table (`data/types.ts`).
-
-       „Početnice" and not „Ž25-39": the box for the beginners' category is ticked a
-       few lines above, and a beginner carries that category instead of their band and
-       never both (owner, 03.08.2026). So this row also says the band she was entered
-       under is being read through `categoryOfMember` and the dictionary, rather than
-       printed raw. */
-    expect(row.getByText('Početnice')).toBeVisible()
-    expect(row.queryByText('Ž25-39')).not.toBeInTheDocument()
-    expect(row.getByText('Kraljevo')).toBeVisible()
-    expect(row.getByText(t('admin.basisValue.feeExempt'))).toBeVisible()
   })
 
   it('carries every field the record has, including the ones no field asks for', () => {
@@ -452,134 +463,142 @@ describe('a record that is entered rather than changed', () => {
 })
 
 describe('the identity of a record', () => {
-  /** Everything the member form does ask for, so a test can get to the save. */
-  const fillMember = async (
-    user: ReturnType<typeof setupUser>,
-    form: ReturnType<typeof open>,
-    firstName: string,
-  ) => {
-    await user.type(form.getByLabelText(labelled(t('admin.field.firstName'))), firstName)
-    await user.type(form.getByLabelText(labelled(t('admin.field.lastName'))), 'Pavlović')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.gender'))), 'F')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.ageBand'))), '25-39')
-    await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Kraljevo')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
-    await user.type(form.getByLabelText(labelled(t('admin.field.firstSeason'))), '2027')
-    await user.selectOptions(form.getByLabelText(labelled(t('admin.basis'))), 'payment')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
-  }
+  /**
+   * TWO CASES ABOUT A MEMBER NUMBER STOOD HERE UNTIL 26.09.2026, AND THIS IS WHERE THEY WENT.
+   *
+   * <p>Both drove the member form: one asked that the number is never a field on it, the
+   * other that two members entered in turn are handed two different numbers. The form is gone
+   * (PDL P8b, and the note on `admin/AdminMembers.tsx`), so „the form does not ask for it" has
+   * become vacuous - there is no form to ask - and neither case could reach a save.
+   *
+   * <p><b>Neither claim lost its floor, and that was measured rather than assumed before they
+   * were removed.</b>
+   *
+   * <ul>
+   * <li><b>„The number is handed out, not typed" is now a stronger statement</b>, and it is
+   * made where it can be: `adminMemberWrites.test.tsx` requires that screen to offer no
+   * control that makes a member at all. A field that cannot be reached cannot be typed into.
+   * <li><b>„Each one gets the next free number" is still live and still measured</b>, because
+   * handing numbers out never belonged to the form: it happens when a membership is
+   * activated (`admin/memberNumbers.ts:121`, ADL A4d), and `adminFlows.test.tsx` has „hands
+   * every activated membership its own number, not one number to all of them" over exactly
+   * that path.
+   * <li><b>And the arithmetic itself is tested directly</b>, below, in „the identity a new
+   * record is handed": five cases over `idFor` with no screen involved (four over the counter
+   * a team or an event answers to, one over the one entity that types its own - a written
+   * page's `slug` - added 27.09.2026 for the same reason this comment exists: a claim that
+   * lost its screen is measured directly rather than dropped), which is where a question
+   * about identity belongs anyway.
+   * </ul>
+   */
 
-  it('is never asked for on a new member, because the system hands it out', async () => {
+  /* "is refused for a written page whose address answers already" removed
+     27.09.2026: it drove this refusal through the New-page form, which is
+     gone along with every other control that wrote on AdminPages.tsx (ADL.md,
+     resolved 18.09.2026, a written page is never entered or changed through
+     the portal). The refusal itself is not lost - it is `takenAddress`, a pure
+     function of `entityForms.ts` still measured directly, PAGES included, in
+     "which field of a form carries the address" below. What only the UI test
+     could show, that a rejected attempt leaves no row behind, no longer has a
+     UI capable of making the attempt. */
+
+  /**
+   * TWO RECORDS ENTERED IN ONE VISIT, WHICH IS A DIFFERENT QUESTION FROM ONE.
+   *
+   * <p><b>Why it is here, and it is a measurement of 26.09.2026 rather than thoroughness.</b>
+   * When a new record is saved, `EntityEditor` works out its identity against what this
+   * visit has ALREADY made as well as against what is taken - and that first list is read by
+   * walking `creations[entity.id]`. Walked when it is empty, the walk does nothing, so the
+   * whole of that reading is exercised only by a SECOND record in one visit.
+   *
+   * <p>The second record was a member until 26.09.2026, then a written page until
+   * 27.09.2026 (this PR's own first pass, when the member form went and this moved to
+   * pages for being the last entity left that still typed its own identity). Both forms
+   * are gone now, along with the whole reason pages were chosen: a written page is never
+   * entered through the portal (ADL.md, resolved 18.09.2026), so the case moves again,
+   * this time onto a counter-assigned identity rather than a typed one.
+   *
+   * <p><b>Asked of teams instead.</b> The question was never really about typing an
+   * address - it is about `creations[entity.id]` being read at all, which `idFor`'s own
+   * unit cases below (`the identity a new record is handed`) already prove for the shape
+   * of the counter itself. What only a full `EntityEditor` render still proves, and what
+   * moves here rather than disappearing with the pages screen, is that TWO PRESSES of
+   * „Sačuvaj" in the same visit leave TWO rows rather than one overwriting the other -
+   * the wiring between the screen and `idFor`, not the arithmetic.
+   *
+   * <p><b>Listed twice is not proven distinct, so this also edits one of them</b> - the same
+   * shape as the historical fault this file already names twice over (above: „two members
+   * answered to one number... changing the city of one of them changed both, since the
+   * overlay of changes is keyed by the number"). Two rows with the SAME identity would still
+   * count and name correctly right after entry; only a later edit reaching both, because
+   * `EditableCell`/`EntityEditor` file changes under `recordKey(entity.id, id)`, would show
+   * the collision. Measured: forcing `creations[entity.id]` empty at the point `idFor` reads
+   * it makes both new teams claim „-1" and passes every assertion above unchanged, while the
+   * edit below then reaches the second team as well as the first. */
+  it('keeps the first when a second is entered in the same visit', async () => {
     const user = setupUser()
-    const title = t('admin.form.new.members')
-    renderAt('/sr/administracija/clanovi', 'superadmin')
+    const title = t('admin.form.new.teams')
+    renderAt('/sr/administracija/timovi', 'superadmin')
 
-    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    const rows = list.getAllByRole('row').length
+    const before = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const rows = before.getAllByRole('row').length
 
-    await user.click(screen.getByRole('button', { name: title }))
-    const form = open(title)
-
-    /* It was an obligatory field of six digits with a check that the number was
-       still free, because it used to be taken as typed: two members answered to
-       one number, React drew two rows with the same key, and changing the city of
-       one of them changed both, since the overlay of changes is keyed by the
-       number. The field is gone (PDL P8, 30.07.2026): the number is handed out at
-       the moment the fee is recorded and an administrator never types it. */
-    expect(form.queryByLabelText(labelled(t('admin.field.memberNumber')))).not.toBeInTheDocument()
-
-    await fillMember(user, form, 'Milica')
-
-    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toBeVisible()
-    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
-
-    /* Uniqueness survives the field going away, and it survives differently: the
-       number given is the first one nobody holds, so there is nothing left to
-       refuse. The generated members hold 000001 to 000031. */
-    const grown = within(await screen.findByRole('table', { name: 'Članovi' }))
-    expect(grown.getAllByRole('row')).toHaveLength(rows + 1)
-    expect(grown.getByText('000033')).toBeVisible()
-  })
-
-  it('is the next free number for each member entered in turn', async () => {
-    const user = setupUser()
-    const title = t('admin.form.new.members')
-    renderAt('/sr/administracija/clanovi', 'superadmin')
-
-    await screen.findByRole('table', { name: 'Članovi' })
-
-    for (const name of ['Milica', 'Jelena']) {
+    for (const name of ['Prvi novi tim', 'Drugi novi tim']) {
       await user.click(screen.getByRole('button', { name: title }))
-      await fillMember(user, open(title), name)
+
+      const form = open(title)
+
+      await user.type(form.getByLabelText(labelled(t('admin.field.teamName'))), name)
+      await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Čačak')
+      await user.selectOptions(form.getByLabelText(labelled(t('admin.field.country'))), 'RS')
+      await user.selectOptions(form.getByLabelText(labelled(t('admin.field.teamOrganizer'))), '000001')
+      await user.click(form.getByRole('button', { name: t('form.submit') }))
       await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
     }
 
-    /* The second must not read the file and hand out 000033 again: what the screen
-       shows is what counts as taken, records entered a moment ago included. */
-    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    expect(within(must(list.getByText('000033').closest('tr'), 'tr')).getByText(/Milica/)).toBeVisible()
-    expect(within(must(list.getByText('000034').closest('tr'), 'tr')).getByText(/Jelena/)).toBeVisible()
-  })
+    const list = within(await screen.findByRole('table', { name: 'Timovi' }))
 
-  it('is refused for a written page whose address answers already', async () => {
-    const user = setupUser()
-    const title = t('admin.form.new.pages')
-    renderAt('/sr/administracija/strane', 'superadmin')
+    /* Both, and the first named as well as the second: a second entry that overwrote the
+       first would leave the row count right and one of the two names missing. */
+    expect(list.getByRole('button', { name: 'Otvori: Prvi novi tim' })).toBeVisible()
+    expect(list.getByRole('button', { name: 'Otvori: Drugi novi tim' })).toBeVisible()
+    expect(list.getAllByRole('row')).toHaveLength(rows + 2)
 
-    const before = within(await screen.findByRole('table', { name: 'Statične strane' }))
-    const rows = before.getAllByRole('row').length
-
-    await user.click(screen.getByRole('button', { name: title }))
-    const form = open(title)
-
-    // Two records on /pravilnik would be one page arguing with itself.
-    await user.type(form.getByLabelText(labelled(t('admin.address'))), 'pravilnik')
-    await user.type(form.getByLabelText(labelled(t('admin.field.pageTitle'))), 'Drugi pravilnik')
-    await user.type(form.getByLabelText(labelled(t('admin.field.sectionHeading'))), 'Uvod')
-    await user.type(form.getByLabelText(labelled(t('admin.field.sectionBody'))), 'Tekst.')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
-
-    expect(document.getElementById('field-slug-error')).toHaveTextContent(t('form.errors.taken'))
-    /* And nothing was written down. Without this the test passes on the behaviour
-       it exists to forbid: the message appears and the duplicate is made anyway,
-       two records answer to /pravilnik, and one change reaches both of them,
-       because the overlay of changes is keyed by exactly that address. */
-    expect(screen.queryByText(t('admin.form.saved'))).not.toBeInTheDocument()
-
-    /* A free address saves, and the record answers to what was typed. Written
-       pages are the one entity left that names itself: a member number is handed
-       out (PDL P8) and the other six get an identity nobody types. */
-    const address = form.getByLabelText(labelled(t('admin.address')))
-    await user.clear(address)
-    await user.type(address, 'nova-strana')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
+    /* And distinct, not merely listed twice: editing the first's town must not reach
+       the second, which is what a shared identity would do. */
+    await user.click(list.getByRole('button', { name: 'Otvori: Prvi novi tim' }))
+    const editForm = open(t('admin.form.edit.teams'))
+    await user.clear(editForm.getByLabelText(labelled(t('admin.field.city'))))
+    await user.type(editForm.getByLabelText(labelled(t('admin.field.city'))), 'Vranje')
+    await user.click(editForm.getByRole('button', { name: t('form.submit') }))
     await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
 
-    const list = within(await screen.findByRole('table', { name: 'Statične strane' }))
-    const row = within(must(list.getByRole('link', { name: '/nova-strana' }).closest('tr'), 'tr'))
+    const after = within(await screen.findByRole('table', { name: 'Timovi' }))
+    const second = must(
+      after.getByText('Drugi novi tim').closest('tr'),
+      'the row of the team that was not edited',
+    )
+    expect(within(second).getByText('Čačak')).toBeVisible()
+  }, SLOW)
 
-    expect(row.getByRole('button', { name: 'Otvori: Drugi pravilnik' })).toBeVisible()
-    // Exactly one row more: the refused attempt left nothing behind either.
-    expect(list.getAllByRole('row')).toHaveLength(rows + 1)
-  })
-
-  it('does not stand in the way of the record it belongs to', async () => {
-    const user = setupUser()
-    const title = t('admin.form.edit.members')
-    renderAt('/sr/administracija/clanovi', 'superadmin')
-
-    const table = await screen.findByRole('table', { name: 'Članovi' })
-    await user.click(first(within(table).getAllByRole('button', { name: /^Otvori:/ })))
-
-    const form = open(title)
-    await user.clear(form.getByLabelText(labelled(t('admin.field.city'))))
-    await user.type(form.getByLabelText(labelled(t('admin.field.city'))), 'Vranje')
-    await user.click(form.getByRole('button', { name: t('form.submit') }))
-
-    // Its own number is in the list of the taken ones, and it is not competing
-    // with itself for it.
-    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toBeVisible()
-  })
+  /**
+   * „DOES NOT STAND IN THE WAY OF THE RECORD IT BELONGS TO" WAS HERE, OVER A MEMBER, AND IT
+   * WENT WITH „OTVORI" ON 26.09.2026.
+   *
+   * <p>It opened an existing member, changed the town and asked that the save was not refused
+   * for the number the record already holds. There is no `PUT /api/competitors/{memberNumber}`
+   * and therefore no „Otvori" on that screen any more, so the case had no door to go through.
+   *
+   * <p><b>What it guarded is `takenAddress`, and both the UI case that stood above this
+   * comment and the door this one lost are gone the same way, one PR later.</b> „is refused
+   * for a written page whose address answers already" (above, this file) drove the same
+   * question through the New-page form and was removed 27.09.2026 for the reason its own
+   * comment gives. What survives both removals is the same: `takenAddress` is a pure
+   * function of `entityForms.ts` and is measured directly, PAGES included, in „which field
+   * of a form carries the address" below - a member number was always the weaker subject for
+   * this question anyway, because it is handed out rather than typed, which is why
+   * `addressField` returns nothing for it at all (`entityForms.ts:611`).
+   */
 })
 
 /**
@@ -642,29 +661,6 @@ describe('the category of a race', () => {
        rather than of a screen now (`data/raceCategory.test.ts`), which is where it
        belongs: the boards, the filters and the ducats read it too, and none of them
        goes through this table. */
-  })
-})
-
-describe('a written page nobody has written yet', () => {
-  it('is listed, and its form opens empty instead of throwing', async () => {
-    const user = setupUser()
-    const real = globalThis.fetch
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/pages')
-        ? new Response(JSON.stringify([{ slug: 'nova', title: 'Nova strana', sections: [] }]), {
-            status: 200,
-          })
-        : real(input))
-
-    renderAt('/sr/administracija/strane', 'superadmin')
-
-    await user.click(await screen.findByRole('button', { name: 'Otvori: Nova strana' }))
-    const form = open(t('admin.form.edit.pages'))
-
-    expect(form.getByLabelText(labelled(t('admin.field.sectionHeading')))).toHaveValue('')
-    expect(form.getByLabelText(labelled(t('admin.address')))).toHaveValue('nova')
-
-    globalThis.fetch = real
   })
 })
 
@@ -859,6 +855,39 @@ describe('the identity a new record is handed', () => {
     expect(idFor(TEAMS, {}, ['-2'], [])).toBe('-3')
   })
 
+  /**
+   * AND FOR THE ONE ENTITY THAT HANDS ITS OWN OUT, WHICH SINCE 26.09.2026 IS ASKED HERE AND
+   * NOWHERE ELSE.
+   *
+   * <p>`MEMBERS` is the only entity carrying `handsOutIdentity` (`entityForms.ts:125`), and
+   * the only thing that ever reached that branch was the member form. The form is gone (PDL
+   * P8b), so the branch went from „covered by two screen cases" to unreachable in the same
+   * commit - and nothing said so: every test stayed green and the whole list of mutations
+   * stayed caught, because a mutation can only ask whether something that RUNS has a guard.
+   * The 100 per cent threshold is what reported it, which is the division `CLAUDE.md` states.
+   *
+   * <p><b>Asked directly rather than through a screen on purpose.</b> Handing a number out is
+   * arithmetic over what is taken; it belongs beside the three cases above it, and the flow
+   * that still uses it in production - activating a membership (`admin/memberNumbers.ts:121`)
+   * - is measured on its own screen in `adminFlows.test.tsx`.
+   *
+   * <p><b>And it reads `taken` rather than `made`</b>, which is the whole difference between
+   * this entity and the three cases above: a member number is decided by what has ever been
+   * spoken for, so what this visit happens to have entered is not a separate list to count.
+   */
+  it('counts up from the highest spoken for, for the one entity that hands its own out', () => {
+    expect(idFor(MEMBERS, {}, [], ['000001', '000002'])).toBe('000003')
+    /* A GAP IS STEPPED OVER RATHER THAN FILLED, and that is the decision rather than an
+       implementation detail: a number only ever counts up (PDL P8, 31.07.2026), because
+       deleting a member unties the number from the person while the number itself stays
+       spent - it stands in old results, old tables and a printed card. Reading this the
+       other way round handed the highest number straight back to the next member to join,
+       which is the one thing the rule exists to prevent. */
+    expect(idFor(MEMBERS, {}, [], ['000001', '000003'])).toBe('000004')
+    /* And what this visit made is not what decides it: only what is taken. */
+    expect(idFor(MEMBERS, {}, ['000009'], ['000001'])).toBe('000002')
+  })
+
   it('steps over anything not of that shape', () => {
     /* Approving a proposal used to file the team under an identity of its own
        making, which moved this counter for everything entered by hand. It comes
@@ -875,6 +904,24 @@ describe('the identity a new record is handed', () => {
      and nothing else. */
   it('is below nought whatever the file holds', () => {
     expect(idFor(TEAMS, {}, ['1', '2', '1167'], [])).toBe('-1')
+  })
+
+  /* THE THIRD WAY, WHICH NO SCREEN REACHES ANY MORE (27.09.2026). `idFor` answers
+   * three ways an entity comes by an identity: handed out (members), counted up
+   * from what is free (the case above), or typed where the form asks for it -
+   * `namesItself`, true of exactly one entity, a written page, because its `slug`
+   * is both its address and its idField. Written pages stopped being entered
+   * through the portal that day (ADL.md, resolved 18.09.2026), so no `it.each(SCREENS)`
+   * walk exercises this branch through a screen any longer.
+   *
+   * `namesItself` and this branch of `idFor` are not deleted along with the
+   * screen: they are `entityForms.ts`'s own claim about what a form asks for, not
+   * about which screen calls it, and deleting an assertion is not something this
+   * change was asked to do. So the claim is measured directly against the one
+   * entity it is still true of, `PAGES`, exactly as `addressField`/`takenAddress`
+   * already are below ("which field of a form carries the address"). */
+  it('is read straight off the form for the one entity that types its own', () => {
+    expect(idFor(PAGES, { slug: 'nova-strana' }, [], [])).toBe('nova-strana')
   })
 })
 
@@ -895,67 +942,64 @@ describe('a field changed in the row rather than on the form', () => {
    * does not, and it tells a wrong FAMILY apart as well - a cell handed the
    * wrong one writes and reads a key of its own just as happily.
    *
-   * **A written page since B106, not a moderator.** This measured a moderator's
-   * first name until then, and the cell and the row's own name were the same
-   * field there by coincidence - editing it moved BOTH the cell's own text and
-   * the „Otvori" button beside it, which happened to make one case prove both
-   * halves at once. Moderators no longer have a cell to write with at all
-   * (`AdminModerators.tsx`'s class comment names why), so this moved to the one
-   * remaining screen whose cell IS the row's own name: a written page's title
-   * (`AdminPages.tsx`). Teams and members also keep a cell, but theirs is a town
-   * beside a name the cell does not touch, which cannot show the „Otvori" button
-   * moving with it.
+   * MOVED OFF `AdminPages.tsx` ON 27.09.2026, ONTO A FIXTURE ENTITY RATHER THAN A
+   * SCREEN, AND THIS IS THE SECOND MOVE OF THE SAME CASE. It measured a
+   * moderator's first name until B106, then a written page's title from B106
+   * until this move: moderators lost their cell first (`AdminModerators.tsx`'s
+   * class comment names why), and a written page's title was, after that, the
+   * one remaining screen whose cell IS the row's own name - teams and members
+   * also keep a cell, but theirs is a town beside a name the cell does not
+   * touch, which cannot show the „Otvori" button moving with it.
    *
-   * **The third row on purpose.** A reader that always takes the first row would
-   * pass on the first, and the screen carries four.
-   *
-   * The sweep over the other cells is the compiler's: the family is a required
-   * prop, so a cell that does not take one does not build, and the build is in
-   * the gate. What it cannot answer is whether the family handed in is the right
-   * one, which is what this measures. That the other cells exist at all is held
-   * where they are drawn (the town of a team and of a member, `AdminTeams.tsx`
-   * and `AdminMembers.tsx`; a member's town again, `presidentAddress.test.tsx`). */
+   * Pages left too (ADL.md, resolved 18.09.2026: a written page is never
+   * entered or changed through the portal, so `AdminPages.tsx` dropped
+   * `EditableCell` along with every other control that wrote). No entity's
+   * screen puts a name in a cell at all any more, so what is measured here no
+   * longer has a screen that shows it and stands on a fixture instead: `TEAMS`,
+   * borrowed for its shape and not exercised for being a team, the same way
+   * `deleting.test.tsx` already borrows it for a case that is not about teams
+   * either. The sweep over the other cells is still the compiler's, as before:
+   * the family is a required prop, so a cell that does not take one does not
+   * build. What it cannot answer is whether the family handed in is the right
+   * one, which is what this measures. */
   it('reaches the record every other reader of it sees', async () => {
     const user = setupUser()
-    const title = t('admin.form.edit.pages')
-    renderAt('/sr/administracija/strane', 'superadmin')
+    const base = [{ id: 'tim-1', name: 'Prvobitno' }]
 
-    const table = await screen.findByRole('table', { name: 'Statične strane' })
-    const row = at(within(table).getAllByRole('row'), 3)
+    function FixtureRow() {
+      const overlay = useOverlay()
+      const row = must(recordsOf(TEAMS, base, overlay).at(0), 'the one row this fixture holds')
 
-    await user.click(
-      within(row).getByRole('button', {
-        name: `${t('admin.pageTitle')}: Reč predsednika. ${t('admin.change')}`,
-      }),
+      return (
+        <>
+          <EditableCell under={TEAMS.id} id={row.id} field="name" value={row.name} label="Naziv" />
+          <RowActions entity={TEAMS} record={row} name={row.name} onOpen={vi.fn()} />
+        </>
+      )
+    }
+
+    render(
+      <I18nProvider locale="sr">
+        <SessionProvider>
+          <FixtureRow />
+        </SessionProvider>
+      </I18nProvider>,
     )
-    await user.clear(within(row).getByRole('textbox', { name: t('admin.pageTitle') }))
-    await user.type(
-      within(row).getByRole('textbox', { name: t('admin.pageTitle') }),
-      'Reč nove predsednice',
-    )
+
+    await user.click(screen.getByRole('button', { name: `Naziv: Prvobitno. ${t('admin.change')}` }))
+    await user.clear(screen.getByRole('textbox', { name: 'Naziv' }))
+    await user.type(screen.getByRole('textbox', { name: 'Naziv' }), 'Izmenjena')
     await user.tab()
 
     /* The half that must go on working, first: without it the case below passes
-       on a screen that has stopped drawing cells altogether. */
+       on a fixture that has stopped drawing a cell altogether. */
     expect(
-      within(row).getByRole('button', {
-        name: `${t('admin.pageTitle')}: Reč nove predsednice. ${t('admin.change')}`,
-      }),
+      screen.getByRole('button', { name: `Naziv: Izmenjena. ${t('admin.change')}` }),
     ).toBeVisible()
 
     /* And the half that was broken. The name on this button is built out of the
-       record the list holds, not out of the cell. */
-    expect(
-      within(row).getByRole('button', { name: 'Otvori: Reč nove predsednice' }),
-    ).toBeVisible()
-
-    /* And the form behind it opens on the same record, which is what the next
-       person to correct that page would see. */
-    await user.click(within(row).getByRole('button', { name: 'Otvori: Reč nove predsednice' }))
-
-    expect(open(title).getByLabelText(labelled(t('admin.field.pageTitle')))).toHaveValue(
-      'Reč nove predsednice',
-    )
+       record `recordsOf` merged, not out of the cell. */
+    expect(screen.getByRole('button', { name: 'Otvori: Izmenjena' })).toBeVisible()
   })
 })
 
@@ -1057,6 +1101,75 @@ describe('which field of a form carries the address', () => {
     /* And an event is refused by its own rule, on the date, not by this one
        (entityForms.ts, `eventClash`). */
     expect(takenAddress(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})
+  })
+})
+
+describe('a record does not compete with its own address', () => {
+  /* `EntityEditor` reads `addressField` to keep a saved record from being told its
+   * own address is taken (`entityForms.ts`, `others`, comment: "A record being
+   * changed is not competing with itself"). No screen still hands this a `taken`
+   * list of more than one address to prove it against: `AdminLeagues.tsx` stopped
+   * on 25.09.2026 ("which field of a form carries the address" above explains
+   * why), and `AdminPages.tsx` stopped on 27.09.2026 along with every other
+   * control that wrote (this PR). The exclusion itself is not deleted along with
+   * either screen, so it is measured here, straight against `EntityEditor`,
+   * rather than through a screen that no longer calls it this way - the same
+   * move `EditableCell`'s own case above already made.
+   *
+   * Written with `PAGES` because its form still has the one field
+   * (`addressField(PAGES) === 'slug'`) this needs, not because the portal edits
+   * pages again: nothing here calls `usePages` or mounts `AdminPages`. */
+  it('lets a save keep the address it already had, and still refuses a different one already taken', async () => {
+    const user = setupUser()
+    const record = { slug: 'pravilnik', title: 'Pravilnik', heading: 'Uvod', body: 'Tekst.' }
+
+    function Editing() {
+      /* `EntityEditor` never resets its own „saved" state; the screens that use it
+         return to a list and mount a fresh one on the next „Otvori" instead. This
+         fixture has no list, so the key changes on `onDone` to do the same thing:
+         force a fresh instance for the second half of this case, rather than one
+         still showing the first save's confirmation. */
+      const [remount, setRemount] = useState(0)
+
+      return (
+        <EntityEditor
+          key={remount}
+          entity={PAGES}
+          editing={{ mode: 'one', record }}
+          taken={['pravilnik', 'uslovi-koriscenja']}
+          onDone={() => setRemount((n) => n + 1)}
+        />
+      )
+    }
+
+    render(
+      <I18nProvider locale="sr">
+        <ClockProvider>
+          <SessionProvider>
+            <Editing />
+          </SessionProvider>
+        </ClockProvider>
+      </I18nProvider>,
+    )
+
+    const title = t('admin.form.edit.pages')
+
+    // Saved with the address unchanged: `others` excluded it from `taken`, or this
+    // reads as the record arguing with itself over its own address.
+    await user.click(open(title).getByRole('button', { name: t('form.submit') }))
+    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    // The other address `taken` still names is refused exactly as before; nothing
+    // about excluding this record's own address widens what else is free.
+    const address = open(title).getByLabelText(labelled(t('admin.address')))
+    await user.clear(address)
+    await user.type(address, 'uslovi-koriscenja')
+    await user.click(open(title).getByRole('button', { name: t('form.submit') }))
+
+    expect(document.getElementById('field-slug-error')).toHaveTextContent(t('form.errors.taken'))
+    expect(screen.queryByText(t('admin.form.saved'))).not.toBeInTheDocument()
   })
 })
 

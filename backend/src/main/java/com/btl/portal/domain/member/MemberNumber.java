@@ -12,10 +12,12 @@ import java.util.regex.Pattern;
  * and carrying no hint of which - the form with a gender letter in it was
  * dropped on 29.07.2026 and the address may not carry one either.
  *
- * <p><b>It is handed out when somebody records that the fee arrived</b>, never
- * when somebody registers. So a registered person with no number is a real
- * state, and it is the difference between a row in {@code competitor} and a
- * MEMBER: the column has been nullable since V16 for exactly that reason.
+ * <p><b>It is handed out when a membership is ACTIVATED</b>, never when somebody
+ * registers. Two things activate one, and PDL:760 names them in one sentence: a
+ * fee somebody records, or the association freeing the member of it. So a
+ * registered person with no number is a real state, and it is the difference
+ * between a row in {@code competitor} and a MEMBER: the column has been nullable
+ * since V16 for exactly that reason.
  *
  * <p><b>A number only ever counts up.</b> Deleting a member on request takes the
  * link between the number and the person away (PDL P23), and it used to take the
