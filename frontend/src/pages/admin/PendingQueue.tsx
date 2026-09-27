@@ -485,8 +485,45 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * fact two places would otherwise carry separately is a fact that can
    * disagree, and the button needs the same answer the picture already gave,
    * not a second guess at it worked out from different props.
+   *
+   * Read by the render below to decide what to draw - the sentence, the
+   * `aria-disabled` on this card's own button - and by nothing that runs
+   * outside this render's own lifetime. `brokenPicturesRef` beside it is that
+   * second thing.
    */
   const [brokenPictures, setBrokenPictures] = useState<ReadonlySet<string>>(new Set())
+  /**
+   * THE SAME SET, ANSWERED LIVE rather than as of the render that started
+   * whoever is asking.
+   *
+   * <p><b>Why a render-time read of `brokenPictures` is not enough for
+   * `approveAll`.</b> Its walk is one server round trip per item and can be
+   * several seconds into a sweep by the time a LATER row's picture fails - a
+   * closure over `brokenPictures` from the render that started the walk
+   * answers with what had failed WHEN THE WALK BEGAN, not now. Measured
+   * rather than assumed: a picture that broke while the walk was parked on an
+   * earlier row's `await` was still approved, because that walk's own copy of
+   * `brokenPictures` never moved. `outstanding` above is the identical fix
+   * for the identical shape of problem, a fact an async walk has to read live
+   * rather than close over.
+   *
+   * <p><b>And why the single card's own `onClick` reads this too, not
+   * `pictureUnavailable`.</b> `approveAll` reports what it settled through
+   * `sayIt` UNCONDITIONALLY, including "nothing" when every item it was
+   * handed was skipped - so a press that starts a walk over one row this
+   * portal already knows cannot be decided would clear whatever OTHER card's
+   * refusal `sayIt` last set, a row that did nothing overwriting a sentence
+   * about a row that did. Refusing to start that walk at all, off the same
+   * live answer the walk itself would use, is what keeps `approveAll` and
+   * the button that calls it from ever disagreeing about this row - one live
+   * fact asked in two places, not two facts that happen to usually agree.
+   *
+   * <p>Kept in step with `brokenPictures` at the single place either of them
+   * changes (`onBroken` below) rather than derived from it on each read,
+   * which would be the closure problem this exists to avoid, moved one line
+   * over.
+   */
+  const brokenPicturesRef = useRef<ReadonlySet<string>>(new Set())
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
@@ -580,18 +617,23 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       for (const one of items) {
         /* PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the
-           same rule the single card's own Odobri already carries
-           (`pictureUnavailable`, in the card that draws this row) - „gledanje
+           same rule the single card's own Odobri already carries - „gledanje
            je uslov odobravanja" names a condition on the ACT of approving, not
            on one button, so a sweep over many rows is not a second door around
            it. Skipped exactly like a team's own `refusal` two lines down: no
            `done`, no `refusals` entry, nothing removed - the row stays in the
            queue and waits for the picture or a fresh sweep, which is the
            rejected alternative PDL.md names by its cost („krije posao iz reda").
-           Read off `brokenPictures`, never off `photoId === null`: a row with
-           no picture at all is not this decision's business, the same
-           distinction `WaitingPicture`'s own doc draws for the single card. */
-        if (brokenPictures.has(one.id)) {
+           Read off `photoId === null` never: a row with no picture at all is
+           not this decision's business, the same distinction `WaitingPicture`'s
+           own doc draws for the single card.
+
+           Read off `brokenPicturesRef`, NEVER off `brokenPictures` the state:
+           this walk asks the question again on every turn, sometimes several
+           seconds and one `await` apart, and a render-time `brokenPictures`
+           closed over when the walk began answers with what had failed THEN,
+           not now (`brokenPicturesRef`'s own doc, above). */
+        if (brokenPicturesRef.current.has(one.id)) {
           continue
         }
 
@@ -1279,8 +1321,21 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                              nothing can take, which the gate's hundred per cent
                              refuses (measured, not assumed: PR 405's own coverage
                              run named this exact line the one branch never
-                             reached). */
-                          onBroken={() => setBrokenPictures((was) => new Set(was).add(one.id))}
+                             reached).
+
+                             Both homes of the fact are written here and only
+                             here, to the identical value, so neither can be the
+                             one a reader missed: `brokenPicturesRef` first,
+                             because it is what a walk already under way and this
+                             card's own `onClick` both read live, and the state
+                             second, to ask for the render that draws the
+                             sentence and this card's `aria-disabled`. */
+                          onBroken={() => {
+                            const next = new Set(brokenPicturesRef.current).add(one.id)
+
+                            brokenPicturesRef.current = next
+                            setBrokenPictures(next)
+                          }}
                         />
 
                         {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,
@@ -1400,21 +1455,33 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    first has already carried past this point.
 
                                    NOT checked here: `why !== null` (a team it
-                                   cannot decide) and, since PDL.md "29." (owner
-                                   27.09.2026), `pictureUnavailable` (a picture it
-                                   cannot see) - the identical shape, and both are
-                                   `approveAll`'s own business rather than this
-                                   button's. Its loop already skips a team through
-                                   `refusal(...)` without stopping the walk or
-                                   counting the skip, and skips a row with no
-                                   picture to show the same way, so a second check
-                                   here would be a second home for a fact
-                                   `approveAll` already owns. This card's
-                                   `aria-disabled` reads both directly off that
-                                   same source below: the button LOOKS inert for
-                                   the identical reason the walk would skip it,
-                                   without either one deciding it twice. */
-                                if (!decisionUnknown && !outstanding.current) {
+                                   cannot decide). `approveAll`'s loop already
+                                   skips it through `refusal(...)` without
+                                   stopping the walk or counting the skip, and a
+                                   second copy of that check here would be a
+                                   second home for a fact the loop already owns.
+
+                                   CHECKED here, unlike `why`, since PDL.md "29."
+                                   (owner 27.09.2026): `brokenPicturesRef` (a
+                                   picture this row cannot show). Not for
+                                   symmetry with the loop - `approveAll` reports
+                                   what it settled through `sayIt`
+                                   UNCONDITIONALLY, including "nothing" when the
+                                   one row it was handed was skipped, so a press
+                                   that started a walk here would clear whatever
+                                   OTHER card's refusal `sayIt` last set (measured:
+                                   it did, exactly that). Refusing to start the
+                                   walk at all is the fix that leaves `sayIt`
+                                   untouched, and it reads the ref rather than
+                                   `pictureUnavailable` so this check and the
+                                   loop's can never disagree about what is broken
+                                   right now (`brokenPicturesRef`'s own doc,
+                                   above). */
+                                if (
+                                  !decisionUnknown &&
+                                  !outstanding.current &&
+                                  !brokenPicturesRef.current.has(one.id)
+                                ) {
                                   void approveAll([one], teams)
                                 }
                               }}

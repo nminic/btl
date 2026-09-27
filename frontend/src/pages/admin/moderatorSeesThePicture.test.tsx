@@ -1,7 +1,7 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
-import { serverThat } from '../../test/serverAnswers'
+import { did, refused, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { decisionPath } from './verificationWrites'
 import { QUEUE } from './queues'
@@ -320,6 +320,112 @@ describe('the picture on a card the moderator is deciding about', () => {
       expect(within(waiting).getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
     } finally {
       confirm.mockRestore()
+      stop()
+    }
+  })
+
+  it('reads the freshest broken picture during a walk already under way, not the one the walk started with', async () => {
+    /* Review's own measurement, reproduced exactly: two rows, biography FIRST
+       and photograph second; the biography's decision held open so the walk is
+       PARKED on it; the photograph's picture fails DURING that wait, never
+       before the walk started and never after it finished. A closure over
+       `brokenPictures` taken when the walk began cannot see this - only a live
+       read can (`brokenPicturesRef`'s own doc in PendingQueue.tsx). */
+    let releaseBio: (() => void) | null = null
+    const bioHeld = new Promise<Response>((resolve) => {
+      releaseBio = () => resolve(did())
+    })
+    const { asked, stop } = serverThat((path) => {
+      if (path === '/api/verification') {
+        return new Response(JSON.stringify([aBioRow, aPhotoRow]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      return path === decisionPath('22') ? bioHeld : null
+    })
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      /* Starts the walk. It reaches the biography first, asks the route, and
+         parks on `bioHeld` - not yet resolved - before it has looked at the
+         photograph at all. */
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      /* The picture fails WHILE the walk is parked there. Proven by the
+         sentence actually reaching the screen before the walk is let through,
+         not assumed from the order these two lines are written in. */
+      fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
+      expect(
+        cardOf('Neda Nedić').getByText(
+          'Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.',
+        ),
+      ).toBeVisible()
+
+      /* Only now does the walk move past the biography. */
+      releaseBio?.()
+
+      await waitFor(() => {
+        expect(screen.getByText(/^Rešen/)).toBeVisible()
+      })
+
+      expect(
+        asked.find((one) => one.path === decisionPath('21')),
+        'the photograph must not be decided: its picture had already failed by the time the walk reached it',
+      ).toBeUndefined()
+    } finally {
+      confirm.mockRestore()
+      stop()
+    }
+  })
+
+  it("does not clear another card's refusal when Odobri is pressed on a row whose picture has failed to load", async () => {
+    /* PDL.md "29." is answered by refusing to START a walk over this row at
+       all (`brokenPicturesRef` read in the button's own `onClick`), not by
+       starting one `approveAll` would then skip: `approveAll` reports what it
+       settled through `sayIt` UNCONDITIONALLY, so a walk that settles NOTHING
+       because its one row was skipped still calls `sayIt(null)` and clears
+       whatever OTHER card's refusal was on screen. Measured in both
+       directions: with the `onClick` guard reading `pictureUnavailable` (a
+       render-time value) simply removed rather than replaced by the live ref,
+       this case fails; with the ref there, it passes. */
+    const { stop } = serverThat((path) => {
+      if (path === '/api/verification') {
+        return new Response(JSON.stringify([aBioRow, aPhotoRow]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      return path === decisionPath('22') ? refused('O stavci je već odlučeno.') : null
+    })
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      await user.click(cardOf('Petar Petrović').getByRole('button', { name: 'Odobri' }))
+
+      const said = await screen.findByRole('alert')
+
+      expect(said).toHaveTextContent('O stavci je već odlučeno.')
+
+      fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      expect(
+        screen.getByRole('alert'),
+        "Petar Petrović's refusal must survive a press on a different card that decided nothing",
+      ).toHaveTextContent('O stavci je već odlučeno.')
+    } finally {
       stop()
     }
   })
