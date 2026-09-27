@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { inside, sources } from './sources'
+import { SLOW } from './slow'
 
 /**
  * That no file the portal is written in carries a character nobody can see.
@@ -111,6 +112,26 @@ function canBeSeen(one: string): boolean {
 }
 
 describe('the source of the portal', () => {
+  /**
+   * IT CARRIES ITS OWN CLOCK SINCE 27.09.2026, AND NOT BECAUSE IT GREW.
+   *
+   * <p>This is the heaviest sweep in the suite: every file under `src`, every record under
+   * `public/mock`, and the root files besides, each read whole and walked a character at a
+   * time against a Unicode property regex. Alone it takes 677 milliseconds. Inside
+   * `npm run test:coverage` - the whole suite in one pass, under v8 instrumentation, across
+   * worker threads - it went over Vitest's five-second default three runs out of three,
+   * while passing on its own twice out of twice.
+   *
+   * <p><b>The number is the one `test/slow.ts` already holds</b>, which is where the portal
+   * answered this same question nine times before: the default stays where it is and a case
+   * that really works carries its own number. That note also records the shape of this
+   * exactly - „the gate went red on a branch that touched none of the code the failing case
+   * reads".
+   *
+   * <p><b>Nothing about what is ASSERTED moves.</b> Every file is still read and every byte
+   * is still looked at; only the clock this case is measured against is the one meant for
+   * work rather than the one meant for a screen that has hung.
+   */
   it('carries no character that cannot be seen', () => {
     const here = process.cwd()
     const files = [
@@ -176,5 +197,5 @@ describe('the source of the portal', () => {
     )
 
     expect(carrying).toEqual([])
-  })
+  }, SLOW)
 })
