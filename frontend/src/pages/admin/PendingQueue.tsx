@@ -579,6 +579,22 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       let done = 0
 
       for (const one of items) {
+        /* PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the
+           same rule the single card's own Odobri already carries
+           (`pictureUnavailable`, in the card that draws this row) - „gledanje
+           je uslov odobravanja" names a condition on the ACT of approving, not
+           on one button, so a sweep over many rows is not a second door around
+           it. Skipped exactly like a team's own `refusal` two lines down: no
+           `done`, no `refusals` entry, nothing removed - the row stays in the
+           queue and waits for the picture or a fresh sweep, which is the
+           rejected alternative PDL.md names by its cost („krije posao iz reda").
+           Read off `brokenPictures`, never off `photoId === null`: a row with
+           no picture at all is not this decision's business, the same
+           distinction `WaitingPicture`'s own doc draws for the single card. */
+        if (brokenPictures.has(one.id)) {
+          continue
+        }
+
         const made = queue.id === 'teams' ? teamFrom(one, edits) : null
 
         if (

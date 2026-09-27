@@ -273,4 +273,54 @@ describe('the picture on a card the moderator is deciding about', () => {
       stop()
     }
   })
+
+  it('lets a sweep skip a row whose picture has not loaded, counts only the rest, and leaves that row waiting', async () => {
+    /* PDL.md "29.": „gledanje je uslov odobravanja" names a condition on the ACT
+       of approving, not on one button, so a sweep over many rows is not a second
+       door around it - the same reasoning `approveAll`'s own doc already applies
+       to a team it cannot decide (`refusal`, `continue`, no `done`).
+
+       BOTH HALVES IN ONE CASE, because either alone is satisfied by a wrong
+       answer: "Rešena je 1 stavka" alone would also be true of a sweep that
+       silently approved the picture too and only the biography's count survived
+       by accident, and "the picture row still waits" alone would also be true of
+       a sweep that stopped there instead of reaching the row after it - which is
+       PDL.md's own rejected outcome, a sweep that "krije posao iz reda" by never
+       reaching what follows a row it cannot decide. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { asked, stop } = answering([aPhotoRow, aBioRow])
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      const waiting = await screen.findByRole('list', { name: /Čeka/ })
+
+      fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
+
+      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      expect(
+        asked.find((one) => one.path === decisionPath('21')),
+        'the row with the unavailable picture must not be decided by the sweep',
+      ).toBeUndefined()
+
+      const settled = asked.find((one) => one.path === decisionPath('22'))
+
+      expect(settled, 'the row after it must still be decided').toBeDefined()
+      expect(JSON.parse(String(settled?.init?.body))).toEqual({ approved: true, reason: '' })
+
+      /* The count the sweep actually settled - one, not two and not nought - is
+         the one number that tells "skipped and moved on" apart from either
+         "silently approved both" or "stopped at the first". */
+      expect(screen.getByText(/^Rešen.* 1 stavk/)).toBeVisible()
+
+      /* And the skipped row is still in the list waiting, not swept away with
+         nothing decided about it. */
+      expect(within(waiting).getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
+    } finally {
+      confirm.mockRestore()
+      stop()
+    }
+  })
 })
