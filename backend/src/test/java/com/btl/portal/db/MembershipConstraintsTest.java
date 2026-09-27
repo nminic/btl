@@ -4,7 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.HashSet;
 import java.util.List;
@@ -39,6 +41,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * composite key says instead of a service remembering to check.
  */
 class MembershipConstraintsTest extends DatabaseTest {
+
+	@Autowired
+	JdbcTemplate jdbc;
 
 	record Violation(String constraint, String evidence, String sql) {
 
@@ -365,11 +370,19 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void theRowThatNamesABookEntryOnTheWrongBasisBreaksThatAloneSinceV35() {
-		assertThatThrownBy(() -> db.sql(NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS).update())
-				.isInstanceOf(DataIntegrityViolationException.class)
-				.hasMessageContaining("membership_basis_says_whether_a_book_entry_is_named")
-				.hasMessageNotContaining("membership_free_of_the_fee_says_who")
-				.hasMessageNotContaining("membership_free_of_the_fee_says_when");
+		/* TAKE THE ONE CONSTRAINT AWAY AND THE ROW MUST GO IN. That is what „breaks exactly one"
+		   MEANS, and it is the only form of the question that can fail: asking the refusal which
+		   constraint it names cannot tell, because PostgreSQL reports the first one it reaches and it
+		   reaches this one - measured, the mutation that took the trail off this row passed an
+		   assertion written that way. Dropped inside the case and rolled back with it, so no other
+		   case here ever sees a schema this one took apart. */
+		jdbc.execute("alter table membership drop constraint"
+				+ " membership_basis_says_whether_a_book_entry_is_named");
+
+		assertThat(db.sql(NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS).update())
+				.as("with the one constraint gone the row is still refused, so it was breaking"
+						+ " something else as well and the case above names a thing it is not about")
+				.isOne();
 	}
 
 	/** The floor under the list above, read out of the database. */
