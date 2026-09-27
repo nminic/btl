@@ -918,10 +918,20 @@ class PaymentsDueApiTest {
 				.params(member, season, payment).update();
 	}
 
-	/** And one held on a decision of the board, which names no payment at all (ADL A12). */
+	/**
+	 * And one held on a decision of the board, which names no payment at all (ADL A12).
+	 *
+	 * <p><b>It names who entered it and when, because V35 requires that of every exemption</b>
+	 * ({@code membership_free_of_the_fee_says_who} and {@code ..._says_when}). Those two arrived
+	 * on {@code main} while this branch was being measured: the branch touched none of their
+	 * files and was green on its own, and the two rows this helper writes would have broken the
+	 * gate the moment the two were in one schema. It is the intersection that is a TABLE rather
+	 * than a file.
+	 */
 	private void membershipFreeOfTheFee(long member, int season) {
-		db.sql("insert into membership (competitor_id, season, basis, payment_id)"
-						+ " values (?, ?, 'feeExempt', null)")
-				.params(member, season).update();
+		db.sql("insert into membership (competitor_id, season, basis, payment_id,"
+						+ " decided_by_name, decided_at)"
+						+ " values (?, ?, 'feeExempt', null, 'Moderator Koji Je Oslobodio', ?)")
+				.params(member, season, Timestamp.from(IN_OCTOBER_2026)).update();
 	}
 }
