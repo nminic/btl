@@ -17,6 +17,7 @@ import { WHEN_WRITING_A_PRICE } from '../admin/priceWrites'
 import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
+import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -107,6 +108,49 @@ function reasonsIn(file: string): string[] {
  */
 const NOT_A_REASON: Record<string, string[]> = {
   'PricingWriteApi.java': ['fee', 'referral'],
+  /* `CompetitorWriteApi` declares five that are not refusals either, and they fall into two
+     kinds. `delete` and `anonymise` are the two words the DELETE's `account` parameter may
+     carry (PDL P23, 14.09.2026), so they are what a request SAYS rather than why one was
+     turned away - the same kind of constant as `PricingWriteApi`'s two. `<Obrisani član>`,
+     `<Obrisana članica>` and `M` are what stands where a deleted member's name stood, and
+     the letter the route reads his gender off to choose between the first two. */
+  'CompetitorWriteApi.java': ['delete', 'anonymise', '<Obrisani član>', '<Obrisana članica>', 'M'],
+}
+
+/**
+ * REASONS A FILE REALLY NAMES THAT NO SCREEN ANSWERS YET, BECAUSE THE SCREEN THAT WOULD MEET
+ * THEM HAS NOT BEEN WRITTEN.
+ *
+ * <p><b>A different thing from {@link NOT_A_REASON}, and kept apart on purpose.</b> That one
+ * says „this constant is not a refusal at all". This one says „it is a refusal, it is real,
+ * and the act it belongs to has no screen" - which is a statement about the calendar rather
+ * than about the constant, and it has to expire.
+ *
+ * <p><b>Why it exists at all, measured on 26.09.2026.</b> This gate is over the FILE, which
+ * is what keeps it honest, and `CompetitorWriteApi` is the first file here with two acts of
+ * which only ONE has a screen: `DELETE /api/competitors/{memberNumber}` is sent by
+ * `admin/AdminMembers.tsx` and its three reasons are answered, while
+ * `POST /api/competitors` is the group entry that sends invitations (PDL P8b, 25.09.2026)
+ * and has no screen anywhere in `frontend/src`. The three alternatives were all worse:
+ * leaving the file off this list gives the three live reasons no floor at all; writing six
+ * sentences for a screen that does not exist invents a user interface for another
+ * increment; and filing them under `NOT_A_REASON` would be a plain lie about what they are.
+ *
+ * <p><b>The floor under it is the case below, and it has teeth in both directions.</b> A
+ * name here the file does not declare fails, so a reason renamed on the server does not
+ * leave a standing excuse. And a name here that a screen DOES answer fails too, which is
+ * what makes this list expire by itself: the day the group entry screen names its six in a
+ * dictionary, this entry has to shrink or the gate goes red.
+ */
+const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
+  'CompetitorWriteApi.java': [
+    'theGroupIsEmpty',
+    'theGroupIsTooBig',
+    'theAddressIsTwiceInTheGroup',
+    'theFormIsNotComplete',
+    'theAddressIsNotShaped',
+    'theAddressIsTaken',
+  ],
 }
 
 describe('the reasons the server can name', () => {
@@ -188,12 +232,26 @@ describe('the reasons the server can name', () => {
        moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
        one dictionary covers all four reasons the class declares. */
     ['ModeratorWriteApi.java', [WHEN_WRITING_A_MODERATOR], 4],
+    /* THE EIGHTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS HALF OF IT. `CompetitorWriteApi`
+       declares fourteen constants, which is the largest number on this list and the first
+       where all three categories appear at once: five that are not refusals
+       (`NOT_A_REASON`), six that are refusals of an act with no screen yet
+       (`NOT_YET_ON_ANY_SCREEN`), and the three the administration's screen of members
+       answers.
+
+       AND THE THREE IT ANSWERS ARE WHOLE SERBIAN SENTENCES RATHER THAN CODES, which changes
+       nothing here and is worth saying because it looks like it should. This gate is over
+       the NAMES a route declares and over whether a screen claims each one; what those
+       names LOOK like is not its question. `WHEN_DELETING_A_MEMBER` explains why the server
+       answers prose here where every other route answers a code, and why the screen maps it
+       rather than letting `ServerSaid` print it. */
+    ['CompetitorWriteApi.java', [WHEN_DELETING_A_MEMBER], 14],
   ]
 
-  /** What a file declares that really is a refusal, which is every constant bar the ones
-   *  named above. */
+  /** What a file declares that really is a refusal AND has a screen today, which is every
+   *  constant bar the ones named in the two tables above. */
   function refusalsIn(file: string): string[] {
-    const exempt = NOT_A_REASON[file] ?? []
+    const exempt = [...(NOT_A_REASON[file] ?? []), ...(NOT_YET_ON_ANY_SCREEN[file] ?? [])]
 
     return reasonsIn(file).filter((one) => !exempt.includes(one))
   }
@@ -267,5 +325,42 @@ describe('the reasons the server can name', () => {
     /* And that the walk above walked something: an empty table would satisfy every line
        of it. */
     expect(Object.keys(NOT_A_REASON)).not.toEqual([])
+  })
+
+  /**
+   * AND THE SAME FLOOR UNDER THE OTHER TABLE, which is the one that has to expire.
+   *
+   * <p>The second expectation is the whole point of it. A reason waiting here for a screen
+   * that does not exist is honest; the same reason still waiting once a screen DOES answer
+   * it is an excuse standing over a live sentence, and nothing else would notice, because
+   * `refusalsIn` filters it out before the gate above ever sees it. So the day the group
+   * entry screen names its six in a dictionary, this fails and somebody deletes the entry.
+   */
+  it('excuses only a reason no screen answers yet, and lets none of them outlive its screen', () => {
+    for (const [file, waiting] of Object.entries(NOT_YET_ON_ANY_SCREEN)) {
+      const declared = reasonsIn(file)
+      const screens = must(
+        routes.find(([named]) => named === file),
+        `${file} is excused from a gate it is not on`,
+      )[1]
+
+      expect(waiting.filter((one) => !declared.includes(one)), `${file}: not declared`).toEqual([])
+
+      expect(
+        waiting.filter((one) => screens.some((screen) => Object.hasOwn(screen, one))),
+        `${file}: a screen answers this now, so it may no longer wait for one`,
+      ).toEqual([])
+    }
+
+    /* The two tables say different things about the same kind of constant, so a name in
+       both is one of them being wrong and there is no telling which. */
+    for (const [file, waiting] of Object.entries(NOT_YET_ON_ANY_SCREEN)) {
+      expect(
+        waiting.filter((one) => (NOT_A_REASON[file] ?? []).includes(one)),
+        `${file}: called both "not a reason" and "a reason with no screen"`,
+      ).toEqual([])
+    }
+
+    expect(Object.keys(NOT_YET_ON_ANY_SCREEN)).not.toEqual([])
   })
 })

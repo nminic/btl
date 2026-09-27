@@ -1,8 +1,9 @@
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { did, serverThat } from '../../test/serverAnswers'
 
 /* Who a team names as its organiser, on the screen where that is changed.
  *
@@ -33,6 +34,15 @@ async function openDunav(user: ReturnType<typeof setupUser>) {
 describe('the organiser a team form offers', () => {
   it('holds whoever the record names, even after that member is deleted', async () => {
     const user = setupUser()
+    /* A SERVER IN FRONT OF THE DELETION, since 26.09.2026, and WITHOUT ONE THIS CASE WENT
+       ON PASSING WHILE MEASURING NOTHING. Taking a member away is
+       `DELETE /api/competitors/{memberNumber}` now; unanswered, the deletion is refused, so
+       000001 never leaves and the chooser shows him because he is still on the list rather
+       than because the record names him. Both readings say „toHaveValue('000001')", which
+       is why no assertion here could tell them apart - the coverage threshold did, by
+       reporting the one branch of `organizerOptions` that puts a held member BACK as
+       unreached. */
+    const server = serverThat((_path, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
     const { router } = renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const members = within(await screen.findByRole('table', { name: 'Članovi' }))
@@ -43,6 +53,11 @@ describe('the organiser a team form offers', () => {
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Vladan Đurišić/ }))
     await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Vladan Đurišić/ }))
+
+    /* Waited on the sentence the screen says rather than on the row going away; the note on
+       the case below sets out the two drafts of this wait that passed while measuring
+       nothing. */
+    expect(await screen.findByText('Član je obrisan.')).toBeInTheDocument()
 
     await router.navigate('/sr/administracija/timovi')
     await openDunav(user)
@@ -51,12 +66,21 @@ describe('the organiser a team form offers', () => {
        form promising a change nobody asked for: written with the list alone, it showed
        the first member on it and saved the old one. */
     expect(await chooser()).toHaveValue('000001')
+
+    server.stop()
   }, SLOW)
 
   it('offers nobody who is gone, except the one being held', async () => {
     /* The other direction, so the rule above cannot be met by offering everybody who ever
        existed. A deleted member is on this list only because this one record names them. */
     const user = setupUser()
+    /* A SERVER IN FRONT OF THE DELETION, since 26.09.2026. Taking a member away is
+       `DELETE /api/competitors/{memberNumber}` now rather than a write to the session (see
+       the note on `admin/AdminMembers.tsx`), and this whole case is about what the chooser
+       offers AFTER one has gone. Without an answer the deletion is refused, he never
+       leaves, and the case measures the chooser against a member who is still there.
+       Narrowed to the write, so everything both screens READ still comes off the disc. */
+    const server = serverThat((_path, init) => ((init?.method ?? 'GET') === 'GET' ? null : did()))
     const { router } = renderAt('/sr/administracija/clanovi', 'superadmin')
 
     const members = within(await screen.findByRole('table', { name: 'Članovi' }))
@@ -67,6 +91,21 @@ describe('the organiser a team form offers', () => {
 
     await user.click(within(row).getByRole('button', { name: /^Obriši: Vladan Đurišić/ }))
     await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje: Vladan Đurišić/ }))
+
+    /* AND WAITED FOR, ON THE SENTENCE THE SCREEN SAYS RATHER THAN ON THE ROW GOING AWAY.
+       The press is no longer the deletion; the answer is. Two earlier drafts of this wait
+       passed while measuring nothing, and both are named here because both look right:
+
+       - `queryByText(/Vladan Đurišić/)` never matches at all. His given name and his family
+         name are two text nodes inside the link, which is exactly why the search five lines
+         above reads `row.textContent` instead of asking for the text.
+       - „no row holds his name" is satisfied by the table having NO rows, and it briefly has
+         none: a confirmed deletion clears the cache of members, so the list goes back to
+         loading and the wait passed on an empty table.
+
+       „Član je obrisan." is written in the one branch the answer approved, beside the write
+       to the session itself, so it cannot be true early. */
+    expect(await screen.findByText('Član je obrisan.')).toBeInTheDocument()
 
     await router.navigate('/sr/administracija/timovi')
 
@@ -80,11 +119,13 @@ describe('the organiser a team form offers', () => {
 
     const said = await chooser()
 
-    expect(
-      within(said)
-        .queryAllByRole('option')
-        .some((one) => one.textContent?.includes('000001') === true),
-    ).toBe(false)
+    await waitFor(() => {
+      expect(
+        within(said)
+          .queryAllByRole('option')
+          .some((one) => one.textContent?.includes('000001') === true),
+      ).toBe(false)
+    })
     /* And its own organiser is still there, so the list was read rather than emptied,
        and there **once**: added without asking whether they are already offered, a
        member the record names would stand in the list twice, and a reader choosing
@@ -95,5 +136,7 @@ describe('the organiser a team form offers', () => {
         .getAllByRole('option')
         .filter((one) => one.textContent?.includes('000005') === true),
     ).toHaveLength(1)
+
+    server.stop()
   }, SLOW)
 })
