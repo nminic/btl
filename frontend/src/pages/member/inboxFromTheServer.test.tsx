@@ -439,10 +439,12 @@ describe('what the portal may not claim about a message the server keeps', () =>
        drew none at all, each pass half of this. */
     expect(screen.getAllByRole('button', { name: sr.messages.markRead })).toHaveLength(1)
 
-    const served = screen.getByRole('link', { name: FORGED.subject }).closest('li')
-
+    /* Through `rowOf` rather than `closest('li')` read here, because ADL A14 refuses a type
+       assertion anywhere under `src` and `closest` answers „or nothing": the helper turns that
+       nothing into a failure with a sentence, which is the same thing `test/at.ts`'s `must`
+       does for the portal's own lists. */
     expect(
-      within(served as HTMLElement).queryByRole('button', { name: sr.messages.markRead }),
+      within(rowOf(FORGED.subject)).queryByRole('button', { name: sr.messages.markRead }),
     ).not.toBeInTheDocument()
   })
 
