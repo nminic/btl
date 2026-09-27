@@ -20,6 +20,7 @@ import {
   type Edits,
   type Message,
   type NotificationKey,
+  type PictureSent,
   type Rights,
   type SessionValue,
   type Submission,
@@ -76,6 +77,10 @@ export function SessionProvider({
   const [decisions, setDecisions] = useState<Decisions>({})
   const [deletions, setDeletions] = useState<Deletions>({})
   const [proposals, setProposals] = useState<PendingItem[]>([])
+  /* Beside `proposals` and deliberately not in it: the server files the queue row for a
+     picture itself, so putting one here as well drew the member twice on one queue
+     (`context.ts#pictureSent`). */
+  const [pictureSent, setPictureSent] = useState<PictureSent | null>(null)
   const [going, setGoingAll] = useState<Record<string, boolean>>({})
   const [published, setPublished] = useState<{ from: string; comment: EventComment }[]>([])
   const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
@@ -204,6 +209,13 @@ export function SessionProvider({
      plainly a decision about something this visit put there. */
   const propose = useCallback((item: Omit<PendingItem, 'id'>) => {
     setProposals((current) => [{ ...item, id: `prop-${current.length + 1}` }, ...current])
+  }, [])
+
+  /* No id is minted here, unlike `propose` above, and that is the difference between the
+     two: the row this names was made by the server and is the one the moderator decides
+     (`context.ts#pictureSent`). */
+  const sendPicture = useCallback((one: PictureSent | null) => {
+    setPictureSent(one)
   }, [])
 
   /**
@@ -651,6 +663,8 @@ export function SessionProvider({
       remove,
       proposals,
       propose,
+      pictureSent,
+      sendPicture,
       published,
       publish,
     }),
@@ -716,6 +730,8 @@ export function SessionProvider({
       remove,
       proposals,
       propose,
+      pictureSent,
+      sendPicture,
       published,
       publish,
     ],
