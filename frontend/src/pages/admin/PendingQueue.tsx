@@ -1270,11 +1270,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                         <WaitingPicture
                           item={one}
                           broken={pictureUnavailable}
-                          onBroken={() =>
-                            setBrokenPictures((was) =>
-                              was.has(one.id) ? was : new Set(was).add(one.id),
-                            )
-                          }
+                          /* No `was.has(one.id)` guard: `onBroken` only ever
+                             reaches here once for a given row. The `<img>` it is
+                             wired to is what `broken` replaces with the sentence
+                             below the moment it fires, so the element that could
+                             call it again is gone before a second call could
+                             happen - a guard against that would be a branch
+                             nothing can take, which the gate's hundred per cent
+                             refuses (measured, not assumed: PR 405's own coverage
+                             run named this exact line the one branch never
+                             reached). */
+                          onBroken={() => setBrokenPictures((was) => new Set(was).add(one.id))}
                         />
 
                         {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,
@@ -1393,15 +1399,22 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    second walk over an identity or address the
                                    first has already carried past this point.
 
-                                   And held back while this row's own picture has
-                                   failed to load (PDL.md, "29. Slika koja ne moze
-                                   da se ucita", owner 27.09.2026): approving is
-                                   what a moderator does after seeing the
-                                   photograph, in his own words „videti tu sliku i
-                                   odobriti" - so a card whose picture he cannot
-                                   see is not his to approve, and this is the one
-                                   button that does. */
-                                if (!decisionUnknown && !outstanding.current && !pictureUnavailable) {
+                                   NOT checked here: `why !== null` (a team it
+                                   cannot decide) and, since PDL.md "29." (owner
+                                   27.09.2026), `pictureUnavailable` (a picture it
+                                   cannot see) - the identical shape, and both are
+                                   `approveAll`'s own business rather than this
+                                   button's. Its loop already skips a team through
+                                   `refusal(...)` without stopping the walk or
+                                   counting the skip, and skips a row with no
+                                   picture to show the same way, so a second check
+                                   here would be a second home for a fact
+                                   `approveAll` already owns. This card's
+                                   `aria-disabled` reads both directly off that
+                                   same source below: the button LOOKS inert for
+                                   the identical reason the walk would skip it,
+                                   without either one deciding it twice. */
+                                if (!decisionUnknown && !outstanding.current) {
                                   void approveAll([one], teams)
                                 }
                               }}
