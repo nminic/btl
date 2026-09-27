@@ -517,17 +517,24 @@ export function Membership() {
                 Now it is drawn exactly when the server says there is a choice to draw, which
                 is the only side that can answer either question. */}
             {standing !== null && (
-              <section className="member__panel" aria-labelledby="membership-category">
-                <h2 className="profile__section" id="membership-category">
-                  {t('membership.chooseCategory', { season: standing.season })}
-                </h2>
+              <section className="member__panel">
+                {/* THE LEGEND IS THE BOX'S NAME, EXACTLY AS IT WAS, and the first draft of
+                    this change got that wrong in a way jsdom could never see (ADL A18).
+                    It moved the question into an `<h2 className="profile__section">` and
+                    pointed the fieldset at it with `aria-labelledby` - which reads fine and
+                    left `.renewal legend` in `Member.css` matching NOTHING in the portal,
+                    seven declarations of it, with `.renewal` having exactly one user. The
+                    box lost the only styling its own name had and every case stayed green,
+                    which is the fault A18 is written about arriving through the markup
+                    instead of through the sheet.
 
-                {/* THE HEADING IS THE GROUP'S NAME, rather than a `<legend>` repeating it.
-                    Written both ways first: a section labelled by its heading AND a fieldset
-                    with a legend of the same words made a screen reader say the question
-                    twice, once for the region and once on entering the group. Pointed at the
-                    heading the group has a name and the words exist once. */}
-                <fieldset className="renewal" aria-labelledby="membership-category">
+                    So the appearance is not redesigned here at all. What this increment
+                    changes is WHERE the box stands and that it is wired; the question is
+                    still the legend, styled by the rule written for it. A heading for the
+                    section was considered and dropped for the same reason: it would have
+                    said the question a second time. */}
+                <fieldset className="renewal">
+                  <legend>{t('membership.chooseCategory', { season: standing.season })}</legend>
 
                   {/* CHECKED OFF THE ANSWER AND NOT `defaultChecked`, which is the whole of
                       what wiring these changed. PDL §13, owner 27.09.2026: the age category
