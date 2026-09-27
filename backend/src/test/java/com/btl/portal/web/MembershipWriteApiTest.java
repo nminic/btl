@@ -525,6 +525,12 @@ class MembershipWriteApiTest {
 						+ " and season = 2027").param(him).query(String.class).single())
 				.as("the trail named somebody other than whoever actually asked")
 				.isEqualTo("Vlasnik Probic");
+		assertThat(db.sql("select decided_by = (select id from account where email = ?)"
+						+ " from membership where competitor_id = ? and season = 2027")
+						.params(SUPERADMIN, him).query(Boolean.class).single())
+				.as("the pointer named the account that asked, not the lowest id in the"
+						+ " fixture (the cashier, created first in @BeforeEach)")
+				.isTrue();
 	}
 
 	/**
