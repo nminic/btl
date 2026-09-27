@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.lang.reflect.RecordComponent;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -29,6 +30,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -221,6 +223,38 @@ class MeCategoryWriteApiTest {
 				.as("a refused form still wrote false into his column, which is what a primitive "
 						+ "boolean in the form would do and what A54 was written about")
 				.isFalse();
+	}
+
+	/**
+	 * WHAT THE REFUSAL NAMES IS THE FORM'S OWN FIELDS, AND THIS IS THE FLOOR UNDER A LIST
+	 * WRITTEN BY HAND.
+	 *
+	 * <p>{@link MeCategoryWriteApi#change} refuses with {@code List.of("firstSeason")}, which
+	 * is a list of one written out in the route - and a list in a guard needs a floor in the
+	 * same commit or it is only as complete as somebody's memory. The floor is the RECORD:
+	 * {@link MeCategoryWriteApi.Wish}'s components are the names the JSON uses, so a second
+	 * field arriving tomorrow fails here on the day it is added rather than being a field the
+	 * refusal quietly does not mention.
+	 *
+	 * <p>{@code NotificationWriteApiTest} holds its own six the same way, off the columns of
+	 * the table its form is made of. This form has no table behind it - the column it writes
+	 * is one boolean on {@code competitor} - so the record is the nearest thing the language
+	 * itself says, which is what a floor has to be tied to.
+	 */
+	@Test
+	void theRefusalNamesEveryFieldTheFormHasAndNoOther() throws Exception {
+		List<String> theFormsOwnFields =
+				Arrays.stream(MeCategoryWriteApi.Wish.class.getRecordComponents())
+						.map(RecordComponent::getName)
+						.toList();
+
+		assertThat(theFormsOwnFields)
+				.as("the form has no fields at all, so the comparison below is over nothing")
+				.isNotEmpty();
+
+		assertThat(missingIn(sent(HE_CHOOSES, "{}")))
+				.as("the refusal names something other than the fields the form is made of")
+				.containsExactlyInAnyOrderElementsOf(theFormsOwnFields);
 	}
 
 	/**
