@@ -79,6 +79,18 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 	private static final String THE_MODERATOR = "(select id from account where email = 'blagajnik@primer.rs')";
 	private static final String AN_INSTANT = "timestamptz '2026-10-02 09:00:00+00'";
 
+	/**
+	 * The name a new exemption is entered under, and it is DELIBERATELY NOT THE MODERATOR'S NAME.
+	 *
+	 * <p>In the portal these two are the same string, because {@code MembershipWriteApi} writes the
+	 * account's own name into the row. That is exactly why a test must not: with the same value in
+	 * both places, an assertion about {@code membership.decided_by_name} is equally satisfied by a
+	 * query that joined to {@code account} and read the name from there, and the column that
+	 * outlives the account would stop being measured at all. The account is 'Probni Probic'; this
+	 * is not.
+	 */
+	private static final String THE_NAME_ON_THE_ROW = "'Upisao Neko Drugi'";
+
 	private static final String EXEMPT_LONG_AGO = "(select id from competitor where member_number = '001000')";
 	private static final String A_PAYER = "(select id from competitor where member_number = '001001')";
 
@@ -347,8 +359,8 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 
 		assertThat(db.sql("insert into membership (competitor_id, season, basis, payment_id,"
 						+ " decided_by, decided_by_name, decided_at) values (" + EXEMPT_LONG_AGO
-						+ ", 2028, 'feeExempt', null, " + THE_MODERATOR + ", 'Probni Probic', "
-						+ AN_INSTANT + ")").update())
+						+ ", 2028, 'feeExempt', null, " + THE_MODERATOR + ", " + THE_NAME_ON_THE_ROW
+						+ ", " + AN_INSTANT + ")").update())
 				.as("an exemption that says who and when was refused too, so nobody can be freed of"
 						+ " the fee at all")
 				.isOne();
@@ -357,7 +369,7 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 				.as("the new exemption did not land beside the old one, both of them readable, which"
 						+ " is the state this whole branch is for")
 				.containsExactly("001000 2027 feeExempt bez traga",
-						"001000 2028 feeExempt Probni Probic", "001001 2027 payment bez traga");
+						"001000 2028 feeExempt Upisao Neko Drugi", "001001 2027 payment bez traga");
 	}
 
 	/**
