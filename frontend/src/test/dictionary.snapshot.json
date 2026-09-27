@@ -1130,6 +1130,7 @@
     "address": "Adresa",
     "noAddress": "Stoji unutar drugih strana",
     "sections": "Sekcija",
+    "pagesNotEditable": "Sadržaj ovih strana se ne uređuje kroz portal.",
     "form": {
       "record": "Zapis",
       "open": "Otvori",

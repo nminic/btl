@@ -2126,18 +2126,24 @@ describe('the written pages', () => {
     expect(rows.getByRole('link', { name: '/pravilnik' })).toBeVisible()
   })
 
-  it('changes a title in place', async () => {
-    const user = setupUser()
+  it('says the content is not edited through the portal, instead of a control that wrote nowhere', async () => {
+    /* Replaces "changes a title in place" (removed 27.09.2026): the cell that
+       test typed into is gone along with every other control that wrote,
+       because none of them ever reached a route and never will (ADL.md,
+       resolved 18.09.2026). What is measured instead is the sentence that took
+       their place (`AdminPricing.tsx`'s `admin.pricingFixed` is the same shape,
+       for the same reason), and that every one of the four controls that used
+       to write here is gone rather than merely quiet: brought any one of them
+       back, or taken the sentence away again, is what this is meant to catch. */
     renderAt('/sr/administracija/strane', 'superadmin')
 
     const rows = await table('Statične strane')
-    await user.click(rows.getByRole('button', { name: /^Naslov: Opšti pravilnik/ }))
-    const field = rows.getByRole('textbox', { name: 'Naslov' })
-    await user.clear(field)
-    await user.type(field, 'Pravilnik 2027')
-    await user.tab()
 
-    expect(rows.getByRole('button', { name: /^Naslov: Pravilnik 2027/ })).toBeVisible()
+    expect(screen.getByText('Sadržaj ovih strana se ne uređuje kroz portal.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Nova strana' })).not.toBeInTheDocument()
+    expect(rows.queryByRole('button', { name: /^Otvori:/ })).not.toBeInTheDocument()
+    expect(rows.queryByRole('button', { name: /^Obriši:/ })).not.toBeInTheDocument()
+    expect(rows.queryByRole('button', { name: /^Naslov:/ })).not.toBeInTheDocument()
   })
 
   it('is closed to a competitor', async () => {
@@ -2146,6 +2152,37 @@ describe('the written pages', () => {
     expect(await screen.findByRole('heading', { level: 1 })).not.toHaveTextContent(
       'Statične strane',
     )
+  })
+
+  it('lists a page that has no sections yet, with an empty heading rather than being left off', async () => {
+    /* The read side of what the New-page form used to prove empty-handed before
+       it was removed 27.09.2026 (AdminPages.tsx, `pageRows`'s own comment: „A page
+       that has not been written yet has no sections at all, and is listed with an
+       empty heading rather than being left off"). Server data does not carry this
+       shape today - all four written pages have at least one section - so it is
+       made here rather than found, the same way the deleted form-test made it. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/api/pages')
+        ? new Response(JSON.stringify([{ slug: 'nova', title: 'Nova strana', sections: [] }]), {
+            status: 200,
+          })
+        : real(input))
+
+    try {
+      renderAt('/sr/administracija/strane', 'superadmin')
+
+      const rows = await table('Statične strane')
+      const row = must(rows.getByText('Nova strana').closest('tr'), 'the row for the new page')
+      const cells = within(row).getAllByRole('cell')
+
+      // Naslov, Adresa, Naslov prve sekcije, Sekcija, in that order.
+      expect(cells).toHaveLength(4)
+      expect(at(cells, 2).textContent).toBe('')
+      expect(at(cells, 3)).toHaveTextContent('0')
+    } finally {
+      globalThis.fetch = real
+    }
   })
 })
 
