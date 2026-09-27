@@ -263,7 +263,7 @@ describe('one decision for a whole queue', () => {
          from there is a word the biography never had. */
       /* The id of each waiting biography, read off the queue before the sweep so
          the assertion below can name them rather than count them. */
-      const queue = JSON.parse(readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'))
+      const queue = JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock/verification.json'), 'utf-8'))
       /* Both sorts, and not the biographies alone. Written for biographies only,
          this lost the cover the old counting assertion had for pictures by
          accident: a review made the sweep skip every photograph and all 1906

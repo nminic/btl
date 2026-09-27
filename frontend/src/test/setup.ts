@@ -224,9 +224,14 @@ function broughtIn(file: Record<string, unknown>[], me: Record<string, unknown>)
  * Anything that is not a resource - a picture, a write, `/api/me` - has no file and
  * is answered 404 here, which is what it was before and is why `serverAnswers.ts`
  * exists. */
-const PUBLIC_DIR = join(process.cwd(), 'public')
+/* Named for what it used to be rather than renamed, on purpose: this file is shared
+   with PR 380 in flight, and a rename would touch every line below that says
+   `PUBLIC_DIR` for no reason this increment needs. The mock fixtures moved out of
+   `public/` (mock files leave the delivery, PDL „Mock fajlovi izlaze iz isporuke
+   odmah"), so this now points at `src/test`, one folder above where they live now. */
+const PUBLIC_DIR = join(process.cwd(), 'src', 'test')
 
-/** Which file under `public/` answers an address: the generated record of a
+/** Which file under `src/test/` answers an address: the generated record of a
  *  resource, and otherwise the path itself, which is how a picture is still read. */
 function fileFor(path: string): string {
   const resource = /^\/api\/([a-z]+)$/.exec(path)
