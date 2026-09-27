@@ -10,7 +10,7 @@ import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { ClockProvider } from '../clock/ClockProvider'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
-import servedPrices from '../../public/mock/pricing.json'
+import servedPrices from '../test/mock/pricing.json'
 import { did, refused, serverThat } from '../test/serverAnswers'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/translate'
@@ -2678,7 +2678,7 @@ describe('verification', () => {
       await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
     }
 
-    expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+    expect(await screen.findByText('Nema nijedne stavke na čekanju.')).toBeVisible()
     expect(nav().getByRole('link', { name: /Trkački profil/ })).toBeVisible()
   })
 
@@ -2938,53 +2938,33 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
   })
 
-  it('gives the member form no number an activation has already handed out', async () => {
-    const user = setupUser()
-    renderAt(`/sr/${QUEUE.payments.path}`, 'superadmin')
-    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
+  /**
+   * „GIVES THE MEMBER FORM NO NUMBER AN ACTIVATION HAS ALREADY HANDED OUT" STOOD HERE UNTIL
+   * 26.09.2026, AND IT WENT BECAUSE ITS SECOND SOURCE DID.
+   *
+   * <p>It was a case about TWO places handing out member numbers without seeing each other:
+   * an activation records a fee and takes the first free number, and the member form used to
+   * take one too, so a form opened in the same visit handed out the number the activation had
+   * just given away. Two members answered to one number, and since the overlay of changes is
+   * keyed by that number, changing the town of one changed both (PDL P8, 30.07.2026; ADL A4d).
+   *
+   * <p><b>There is only one source left.</b> „Nov član" is gone from
+   * `admin/AdminMembers.tsx`, because `POST /api/competitors` is the group entry that sends
+   * invitations and not a form for one record (PDL P8b, 25.09.2026). A collision between two
+   * sources cannot be measured with one, and writing a case that pretended to would be a case
+   * about nothing.
+   *
+   * <p><b>What is left is guarded by its sibling</b>, „hands every activated membership its own
+   * number, not one number to all of them", a few cases below in this same file: that is the
+   * remaining source, and it is asked the same question over three activations in one visit.
+   * The arithmetic underneath both is tested directly in `admin/entityForms.test.tsx`, „the
+   * identity a new record is handed".
+   *
+   * <p><b>And the day the group entry screen arrives, this case comes back rather than being
+   * remembered</b> - it will be a second source again, and a group of five invitations taken
+   * in one visit is exactly the shape that used to break here.
+   */
 
-    /* An activation writes a decision and not a member, so the member form never
-       saw the number the activation had just given out: record a fee, get the
-       first free number, then enter a member without reloading and get it
-       again. Two members
-       answered to one number, and because the overlay of changes is keyed by the
-       number, changing the town of one of them changed both. That is the fault
-       the check for uniqueness used to catch before the field left the form (PDL
-       P8, 30.07.2026; ADL A4d). */
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-
-    // The same visit, walked the way an administrator walks it: no reload.
-    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-    await user.click(await screen.findByRole('link', { name: 'Članovi' }))
-
-    await user.click(await screen.findByRole('button', { name: 'Novi član' }))
-    const form = within(screen.getByRole('form', { name: 'Novi član' }))
-
-    /* Pairs rather than a list of lists. Written plainly this is `string[][]`,
-       and taking two names out of a list of unknown length is exactly the shape
-       that has to be guarded; fixed as pairs, both the label and the value the
-       loop takes apart are known to be there. */
-    for (const [label, value] of [
-      ['Ime', 'Milica'],
-      ['Prezime', 'Pavlović'],
-      ['Mesto', 'Kraljevo'],
-      ['U ligi od sezone', '2027'],
-    ] as const) {
-      await user.type(form.getByLabelText(new RegExp(`^${label}`)), value)
-    }
-    await user.selectOptions(form.getByLabelText(/^Pol/), 'F')
-    await user.selectOptions(form.getByLabelText(/^Uzrasna kategorija/), '25-39')
-    await user.selectOptions(form.getByLabelText(/^Država/), 'RS')
-    await user.selectOptions(form.getByLabelText(/^Osnov članstva/), 'payment')
-    await user.click(form.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    /* The number the activation handed out is spoken for, so the form must not
-       hand it out again: the new member is 000034. */
-    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    expect(list.queryByText('000033')).not.toBeInTheDocument()
-    expect(within(must(list.getByText('000034').closest('tr'), 'tr')).getByText(/Milica/)).toBeVisible()
-  })
 
   it('says so once every membership has been decided', async () => {
     const user = await openPayments()
@@ -3004,7 +2984,7 @@ describe('the five queues read from the file', () => {
   /** What is waiting on one queue, read off the file the screen reads. */
   const itemsOf = (queue: string): PendingItem[] =>
     JSON.parse(
-      readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'),
+      readFileSync(join(process.cwd(), 'src/test/mock/verification.json'), 'utf-8'),
     ).filter((one: PendingItem) => one.queue === queue)
 
   const open = async (queue: PendingQueueId, title: string) => {
@@ -3245,7 +3225,7 @@ describe('the five queues read from the file', () => {
     await user.click(first(screen.getAllByRole('button', { name: /^Obriši: / })))
     await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
     expect(
       within(screen.getByRole('list', { name: 'session decisions' })).getAllByRole('listitem'),
     ).toHaveLength(1)
@@ -3320,7 +3300,7 @@ describe('the five queues read from the file', () => {
     await user.type(reason, 'Napiši nešto o sebi, ovo je prepisano sa tuđeg profila.')
     await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     /* And the reason is written down where a refusal is written down, so the
        member can be told what to change. */
@@ -3465,7 +3445,7 @@ describe('the five queues read from the file', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Tekst o sebi je vraćen' }),
     ).toBeVisible()
-    expect(screen.getByText(/prepisano sa tuđeg profila/)).toBeVisible()
+    expect(await screen.findByText(/prepisano sa tuđeg profila/)).toBeVisible()
     /* And it is not the other heading, which is the mistake the one place that
        knows both was written to stop (queues.ts, `returned`). */
     expect(screen.queryByText('Profilna slika je vraćena')).not.toBeInTheDocument()
@@ -3525,7 +3505,7 @@ describe('the five queues read from the file', () => {
       await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
       await user.click(screen.getByRole('link', { name: new RegExp(heading) }))
 
-      expect(screen.getByRole('heading', { level: 1, name: heading })).toBeVisible()
+      expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
       expect(screen.getByText(/evo zašto/)).toBeVisible()
 
       /* And it is not one of the others, which is the whole point: the fault is
@@ -3631,7 +3611,7 @@ describe('the five queues read from the file', () => {
        went. Without this the test can pass because nothing was refused at all,
        which is how its first two versions passed while the recipient was an
        empty string. */
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
 
     /* Read as somebody else, in the same visit, and through the control the
        member would press rather than by pushing an address: the two are not the
@@ -3786,7 +3766,7 @@ describe('the five queues read from the file', () => {
 
     await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
     expect(within(sectionNav().getByRole('link', { name: /Novi timovi/ })).getByText('2'))
       .toBeVisible()
   })
@@ -4070,12 +4050,25 @@ describe('the five queues read from the file', () => {
        two presses and the emptiness this test is about would never be reached. */
     const user = await open('profiles', 'Trkački profil')
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+    /* ONE PRESS AT A TIME, EACH WAITED OUT, and that is a measurement of 26.09.2026
+       rather than caution. A decision now goes to the server before anything local
+       happens (`admin/PendingQueue.tsx`), so the card it settles leaves the queue a
+       turn AFTER the press. Four presses in a row therefore handed `first(...)` the
+       same card twice, the queue never emptied, and it did so INTERMITTENTLY - two
+       full runs of the suite passed before one failed in 221ms - which is worse than
+       never, because it reads as somebody else's flake.
+     *
+       The count is read off the screen rather than written as four, so a fifth
+       waiting profile in the generated file makes this press five times instead of
+       leaving a card behind and failing on a number nobody would look at. */
+    for (let left = screen.getAllByRole('button', { name: 'Odobri' }).length; left > 0; left -= 1) {
+      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
+      await waitFor(() =>
+        expect(screen.queryAllByRole('button', { name: 'Odobri' })).toHaveLength(left - 1),
+      )
+    }
 
-    expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
+    expect(await screen.findByText('Nema nijedne stavke na čekanju.')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Odobri' })).not.toBeInTheDocument()
   })
 

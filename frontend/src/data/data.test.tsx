@@ -353,7 +353,7 @@ describe('the generated data', () => {
        block on the portal that is about the file rather than about a screen. The
        screens are held to the real answer in `data/theRealAnswer.test.tsx`. */
     const onTheDisc: { active: boolean }[] = JSON.parse(
-      readFileSync(join(process.cwd(), 'public', 'mock', 'competitors.json'), 'utf-8'),
+      readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'competitors.json'), 'utf-8'),
     )
 
     expect(onTheDisc.filter((one) => !one.active).length).toBe(1)

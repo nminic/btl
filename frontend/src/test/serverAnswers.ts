@@ -138,7 +138,7 @@ export function forgetEveryCookie(): void {
  */
 export function membersAsServed(mine?: string): { lapsed: string[]; stop: () => void } {
   const file: FileMember[] = JSON.parse(
-    readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+    readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
   )
 
   const lapsed = file.filter((one) => !one.active).map((one) => one.memberNumber)

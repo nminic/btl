@@ -125,7 +125,7 @@ describe('the entities whose records are numbered', () => {
         continue
       }
 
-      const file = readFileSync(join(process.cwd(), 'public', 'mock', `${served}.json`), 'utf8')
+      const file = readFileSync(join(process.cwd(), 'src', 'test', 'mock', `${served}.json`), 'utf8')
       const rows: unknown = JSON.parse(file)
 
       if (!Array.isArray(rows)) {

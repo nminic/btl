@@ -26,7 +26,7 @@ import { setupUser } from '../../test/user'
  * what the file on disc is for.
  */
 const queue: PendingItem[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/verification.json'), 'utf-8'),
 )
 
 /** Somebody whose picture is already waiting, taken out of the file rather than
