@@ -1473,6 +1473,46 @@ describe('membership', () => {
   })
 
   /**
+   * THE BOX IS DRAWN ON A DAY THE RENEWAL WINDOW IS SHUT, AND THIS CASE EXISTS BECAUSE A
+   * MUTATION SURVIVED WITHOUT IT.
+   *
+   * <p>The whole claim of moving this question to the server is that the member's own
+   * deadline is 10:00 on 1 January while `inYearlyWindow` runs only to 31 December, so ten
+   * hours of it were unreachable. **Every other case in this file renders inside the window**
+   * - 1 November of one year or another - so putting `windowOpen &&` back in front of the box
+   * passed all 383 of them. Measured, not supposed: that mutation SURVIVED, and this is the
+   * case that makes it fall.
+   *
+   * <p>Two days outside the window rather than one: 1 January, which is the ten hours
+   * themselves, and a day in June, so the claim is „the window does not decide this" and not
+   * „the first of January is special". The server says the choice is open in both, and that
+   * is the only thing the box is allowed to read.
+   */
+  it.each(['2028-01-01', '2028-06-15'])(
+    'draws the choice of category on %s, when the renewal window is shut',
+    async (today) => {
+      const { stop } = membersAsServed('000032')
+      const category = categoryAsServed(OPEN_TO_HIM)
+
+      try {
+        renderMembershipOn(today, '000032')
+
+        /* The renewal's own sentence for a shut window, asserted first: without it the case
+           could pass on a day the window is in fact open and say nothing at all. */
+        expect(await screen.findByText(/Obnova se otvara 1. oktobra/)).toBeVisible()
+
+        expect(
+          await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+        ).toBeEnabled()
+        expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeEnabled()
+      } finally {
+        category.stop()
+        stop()
+      }
+    },
+  )
+
+  /**
    * TICKING A BOX REACHES THE ROUTE, AND WHAT COMES BACK IS WHAT THE SCREEN THEN SHOWS.
    *
    * Three things in one walk, because they are one act: the request really goes out, it
