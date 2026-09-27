@@ -1,6 +1,7 @@
 import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { inside } from '../test/sources'
 
 /**
  * NOTHING UNDER `frontend/public/` IS A `.json` FILE, so nothing the tests read off
@@ -29,6 +30,23 @@ import { describe, expect, it } from 'vitest'
  * subfolder today, but the guard that only works while that stays true is the guard
  * that already failed once here.
  *
+ * **Recursion was asked for, not yet proved, and review found the gap (27.09.2026).**
+ * `public/` holding no subfolder today means the case below never once actually
+ * exercises the `recursive` option it depends on: a sweep that silently stopped
+ * descending would read exactly as clean as one that still works. A combined
+ * mutation showed it: dropping `{ recursive: true }` from the call below AND
+ * restoring `public/mock/competitors.json` one level down each passed alone
+ * (expected either way, since neither is the fault by itself), but passed
+ * TOGETHER too, `Tests 1 passed`, because a non-recursive listing of `public/`
+ * sees only the name `mock`, which does not end in `.json`. `jsonPathsUnder`
+ * below is the fix: the one function the case above calls is called again,
+ * unchanged, against `src/test`, a root proven to nest a `.json` file today
+ * (precedent: `servedAge.test.ts:163-183`, which proves its own hand-rolled
+ * walker the same way). One function shared by both calls means a mutation that
+ * drops its recursion cannot spare one root and miss the other: `public/` stays
+ * blind exactly as before, but `src/test` can no longer find its nested file and
+ * the suite fails.
+ *
  * **Asked of `public/`, the source Vite copies from, and not of `dist/`, the build
  * it produces — and that is a measured equivalence, not a shortcut.** `vite.config.ts`
  * sets neither `publicDir` nor `build.outDir` away from Vite's defaults and adds no
@@ -52,14 +70,36 @@ import { describe, expect, it } from 'vitest'
  * `dist/` instead of `public/`, and drop the equivalence claim above once there is
  * a second source `dist/` can come from.
  */
+const PUBLIC_DIR = join(process.cwd(), 'public')
+
+/**
+ * Every `.json` path under `dir`, at any depth, named the way this platform
+ * writes one (`inside`, `test/sources.ts:60`): `readdirSync`'s own `recursive`
+ * option answers with `mock\\competitors.json` on Windows and
+ * `mock/competitors.json` elsewhere, so a literal forward slash cannot be
+ * compared against it directly.
+ *
+ * Called twice below against two different roots. That sharing, not the option
+ * by itself, is what proves recursion for `public/`: see the file comment above.
+ */
+function jsonPathsUnder(dir: string): string[] {
+  return readdirSync(dir, { recursive: true })
+    .filter((name): name is string => typeof name === 'string')
+    .filter((name) => name.endsWith('.json'))
+}
+
 describe('what the portal ships under public/', () => {
   it('carries no .json file, at any depth', () => {
-    const PUBLIC_DIR = join(process.cwd(), 'public')
+    expect(jsonPathsUnder(PUBLIC_DIR)).toEqual([])
+  })
 
-    const jsonFiles = readdirSync(PUBLIC_DIR, { recursive: true })
-      .filter((name): name is string => typeof name === 'string')
-      .filter((name) => name.endsWith('.json'))
-
-    expect(jsonFiles).toEqual([])
+  it('the recursive sweep really descends, proved against a root known to nest one', () => {
+    /* public/ has no subfolder today (file comment above), so this cannot be
+       proved there. src/test can: src/test/mock/competitors.json sits one level
+       down, the same depth every mock resource was served from before
+       26.09.2026. */
+    expect(jsonPathsUnder(join(process.cwd(), 'src', 'test'))).toContain(
+      inside('mock', 'competitors.json'),
+    )
   })
 })
