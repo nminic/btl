@@ -426,6 +426,15 @@ describe('activating a membership from the payments screen', () => {
 
       const sheet = await screen.findByRole('dialog')
 
+      /* THE SHEET NAMES THE MAN AND THE SEASON, and the season is the one off the ANSWER. Found
+         by a mutation and not by reading: fixing this title's season to a year of its own left
+         all thirty cases green, because the two amounts below were asserted and the heading was
+         not. It matters for the same reason it matters on the other question - one of these two
+         buttons grants a season free of the fee, and the owner's rule is that an exemption is
+         for ONE season („BESPLATNI CLANOVI NISU BESPLATNI DOZIVOTNO"), so the year has to be in
+         front of whoever presses it. 2031 is a year no clock here would produce. */
+      expect(sheet).toHaveAccessibleName('Aktivacija članstva: Petar Marko, sezona 2031.')
+
       /* BOTH AMOUNTS ARE IN THE SHEET AND IN HIS CURRENCY, so the moderator decides with the
          numbers in front of him rather than from the row behind the sheet. */
       expect(within(sheet).getByText('Očekivan iznos: 43,50 EUR')).toBeVisible()
