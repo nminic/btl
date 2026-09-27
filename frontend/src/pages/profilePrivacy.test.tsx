@@ -439,46 +439,45 @@ describe('hiding a profile from readers who are not signed in', () => {
   }, SLOW)
 })
 
-describe('a member entered in administration', () => {
-  it('publishes no birthday, because nobody chose one', async () => {
-    /* **A record made where no field asks the question.** The form in administration asks for
-       nine things and none of them is the birthday or the hiding, so the record is made from
-       `MEMBERS.blank`. A field missing there is `undefined`, and `undefined` is not `'none'`:
-       read as „anything but none", the year of birth of somebody who never chose was published
-       on a public page, and the profile threw before that on a biography that was not there
-       (review, 06.09.2026).
+/**
+ * TWO CASES ABOUT A FIELD THAT IS SIMPLY ABSENT STOOD HERE, AND THEIR SUBJECT WENT EXTINCT ON
+ * 26.09.2026.
+ *
+ * <p>Both were about a record made from `MEMBERS.blank`, where a field nobody asks about is
+ * `undefined` rather than a value. That is a nasty state and the cases were right to exist: read
+ * as „anything but none", the year of birth of somebody who never chose was published on a public
+ * page; and `editRecord` writes text, so with no `profileHidden` for `like` to shape against,
+ * „false" came back as the string „false", which is true - a member could tick once and never
+ * untick (reviews, 06.09.2026).
+ *
+ * <p><b>Both notes said they were walked through administration „because that is the one road by
+ * which such a record comes to exist". That road is gone.</b> „Nov član" left
+ * `admin/AdminMembers.tsx` because `POST /api/competitors` is the group entry that sends
+ * invitations rather than a form for one record (PDL P8b, 25.09.2026).
+ *
+ * <p><b>And the obvious replacement was tried and REFUSED, which is why this note is long.</b>
+ * Serving a row with those keys missing looks like a stronger subject and is not a subject at all:
+ * all three fields are required of a served competitor - `data/types.ts:235` `profileHidden:
+ * boolean`, `:266` `birthdayShown: BirthdayShown`, `:286` `bio: string` - and
+ * `CompetitorApi.java:517` selects every one of them on every row. A fixture that left them out
+ * was inventing a state the portal cannot meet, and it showed: the profile went straight to the
+ * error boundary on the missing biography, which is a case failing for a reason that can never
+ * happen in production.
+ *
+ * <p><b>What still has a floor, and it was checked before these were removed.</b> The mechanism -
+ * a blank supplying fields no form asks for - is live for the entities that still have a form,
+ * and `admin/entityForms.test.tsx` guards it over a team's logo in „carries every field the record
+ * has, including the ones no field asks for". What a member CHOOSES is still measured above, in
+ * „shows the choice that was made, not the one it started on". Only the absent state is gone, and
+ * it is gone because nothing can produce it.
+ *
+ * <p><b>The day the group entry screen arrives, this question comes back</b> - and it comes back
+ * against the SERVER, because `CompetitorWriteApi.Invited` carries neither `birthdayShown` nor
+ * `profileHidden`, so whatever the route decides for them is what every invited member starts on.
+ * That is a case about a route's defaults rather than about a blank, and it belongs to that
+ * increment.
+ */
 
-       Walked through administration rather than written into the session, because that is the
-       one road by which such a record comes to exist. */
-    const user = setupUser()
-    const { router } = renderAt('/sr/administracija/clanovi', 'superadmin', '000001')
-
-    await user.click(await screen.findByRole('button', { name: 'Novi član' }))
-
-    await user.type(await screen.findByLabelText(/^Ime$/), 'Milica')
-    await user.type(screen.getByLabelText(/^Prezime$/), 'Pavlović')
-    await user.selectOptions(screen.getByLabelText(/^Pol$/), 'F')
-    await user.selectOptions(screen.getByLabelText(/Uzrasna kategorija/), '25-39')
-    await user.type(screen.getByLabelText(/^Mesto$/), 'Kraljevo')
-    await user.selectOptions(screen.getByLabelText(/^Država$/), 'RS')
-    await user.type(screen.getByLabelText(/U ligi od sezone/), '2027')
-    await user.selectOptions(screen.getByLabelText(/Osnov članstva/), 'payment')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-
-    /* Her public page draws at all, which it did not: it threw on a biography that was not
-       there. And it says nothing she did not choose. */
-    await router.navigate('/sr/takmicar/000033')
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: /Milica Pavlović/ }),
-    ).toBeVisible()
-
-    const line = lineUnderTheName('000033')
-
-    expect(line).toMatch(/Kraljevo/)
-    expect(line).not.toMatch(/1991/)
-  }, SLOW)
-})
 
 describe('what the settings show back', () => {
   it('shows the choice that was made, not the one it started on', async () => {
@@ -501,81 +500,6 @@ describe('what the settings show back', () => {
     expect(
       await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
     ).toBeChecked()
-  }, SLOW)
-  it('can be unticked again, which a missing field would have made impossible', async () => {
-    /* **The nastiest half of a field that is not on the blank.** `editRecord` writes text, and
-       `like` puts it back into the shape the record holds it in by looking at the record. With
-       no `profileHidden` there to look at, „false" comes back as the string „false", which is
-       true: the member ticks once and can never untick, and the box shows ticked while the
-       profile stays hidden to every stranger (review, 06.09.2026).
-
-       Walked on a member entered in administration, because that is the only road to a record
-       made from the blank. */
-    const user = setupUser()
-    const { router } = renderAt(
-      '/sr/administracija/clanovi',
-      'superadmin',
-      '000001',
-      undefined,
-      undefined,
-      <>
-        <Become who="000033" />
-        <SignOut />
-      </>,
-    )
-
-    await user.click(await screen.findByRole('button', { name: 'Novi član' }))
-    await user.type(await screen.findByLabelText(/^Ime$/), 'Milica')
-    await user.type(screen.getByLabelText(/^Prezime$/), 'Pavlović')
-    await user.selectOptions(screen.getByLabelText(/^Pol$/), 'F')
-    await user.selectOptions(screen.getByLabelText(/Uzrasna kategorija/), '25-39')
-    await user.type(screen.getByLabelText(/^Mesto$/), 'Kraljevo')
-    await user.selectOptions(screen.getByLabelText(/^Država$/), 'RS')
-    await user.type(screen.getByLabelText(/U ligi od sezone/), '2027')
-    await user.selectOptions(screen.getByLabelText(/Osnov članstva/), 'payment')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-
-    /* She signs in, hides, and changes her mind. */
-    await user.click(screen.getByRole('button', { name: 'postani 000033' }))
-
-    /* **Whose screen this is, said out loud, because otherwise nothing says it.** Podešavanja
-       draws no name and no number, and all thirty two served members answer „ne prikazuj ništa"
-       and „profil nije skriven" exactly as a record made from the blank does. So every assertion
-       below can be satisfied by the wrong member: put the session on 000001 and the case goes on
-       passing while it has stopped saying anything about a blank (review, 06.09.2026).
-
-       `moj-profil` is the one address that draws whoever is signed in, so the name under it is
-       the identity itself rather than a second copy of it. */
-    await router.navigate('/sr/moj-profil')
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: /Milica Pavlović/ }),
-    ).toBeVisible()
-
-    await router.navigate('/sr/podesavanja')
-
-    const box = await screen.findByLabelText(
-      'Sakrij moj profil od posetilaca koji nisu prijavljeni',
-    )
-
-    await user.click(box)
-
-    /* That it was ever on. Both assertions below are the state a new record starts in, so
-       without this the case passes just as well on a control that never hides (review,
-       06.09.2026). */
-    expect(box).toBeChecked()
-
-    await user.click(box)
-
-    expect(box).not.toBeChecked()
-
-    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
-    await router.navigate('/sr/takmicar/000033')
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: /Milica Pavlović/ }),
-    ).toBeVisible()
-    expect(screen.queryByText(/sakrio svoj profil/)).toBeNull()
   }, SLOW)
 
 })
