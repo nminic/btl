@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
@@ -5,6 +6,7 @@ import type { FieldDef } from '../../forms/types'
 import { at, first, must } from '../../test/at'
 import { loadResource } from '../../data/client'
 import { emptyValues } from '../../forms/validate'
+import { ClockProvider } from '../../clock/ClockProvider'
 import { I18nProvider } from '../../i18n/I18nProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import { expectFrontPage, renderAt } from '../../test/render'
@@ -12,7 +14,7 @@ import { answeredWith, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { categoryOf } from '../../data/raceCategory'
 import { EditableCell } from './EditableCell'
-import { RowActions } from './EntityEditor'
+import { EntityEditor, RowActions } from './EntityEditor'
 import { useOverlay } from './overlay'
 import {
   ENTITY_FORMS,
@@ -832,6 +834,24 @@ describe('the identity a new record is handed', () => {
   it('is below nought whatever the file holds', () => {
     expect(idFor(TEAMS, {}, ['1', '2', '1167'], [])).toBe('-1')
   })
+
+  /* THE THIRD WAY, WHICH NO SCREEN REACHES ANY MORE (27.09.2026). `idFor` answers
+   * three ways an entity comes by an identity: handed out (members), counted up
+   * from what is free (the case above), or typed where the form asks for it -
+   * `namesItself`, true of exactly one entity, a written page, because its `slug`
+   * is both its address and its idField. Written pages stopped being entered
+   * through the portal that day (ADL.md, resolved 18.09.2026), so no `it.each(SCREENS)`
+   * walk exercises this branch through a screen any longer.
+   *
+   * `namesItself` and this branch of `idFor` are not deleted along with the
+   * screen: they are `entityForms.ts`'s own claim about what a form asks for, not
+   * about which screen calls it, and deleting an assertion is not something this
+   * change was asked to do. So the claim is measured directly against the one
+   * entity it is still true of, `PAGES`, exactly as `addressField`/`takenAddress`
+   * already are below ("which field of a form carries the address"). */
+  it('is read straight off the form for the one entity that types its own', () => {
+    expect(idFor(PAGES, { slug: 'nova-strana' }, [], [])).toBe('nova-strana')
+  })
 })
 
 describe('a field changed in the row rather than on the form', () => {
@@ -1010,6 +1030,75 @@ describe('which field of a form carries the address', () => {
     /* And an event is refused by its own rule, on the date, not by this one
        (entityForms.ts, `eventClash`). */
     expect(takenAddress(EVENTS, { name: 'Trka', date: '01/06/2027' }, ['trka-2027'])).toEqual({})
+  })
+})
+
+describe('a record does not compete with its own address', () => {
+  /* `EntityEditor` reads `addressField` to keep a saved record from being told its
+   * own address is taken (`entityForms.ts`, `others`, comment: "A record being
+   * changed is not competing with itself"). No screen still hands this a `taken`
+   * list of more than one address to prove it against: `AdminLeagues.tsx` stopped
+   * on 25.09.2026 ("which field of a form carries the address" above explains
+   * why), and `AdminPages.tsx` stopped on 27.09.2026 along with every other
+   * control that wrote (this PR). The exclusion itself is not deleted along with
+   * either screen, so it is measured here, straight against `EntityEditor`,
+   * rather than through a screen that no longer calls it this way - the same
+   * move `EditableCell`'s own case above already made.
+   *
+   * Written with `PAGES` because its form still has the one field
+   * (`addressField(PAGES) === 'slug'`) this needs, not because the portal edits
+   * pages again: nothing here calls `usePages` or mounts `AdminPages`. */
+  it('lets a save keep the address it already had, and still refuses a different one already taken', async () => {
+    const user = setupUser()
+    const record = { slug: 'pravilnik', title: 'Pravilnik', heading: 'Uvod', body: 'Tekst.' }
+
+    function Editing() {
+      /* `EntityEditor` never resets its own „saved" state; the screens that use it
+         return to a list and mount a fresh one on the next „Otvori" instead. This
+         fixture has no list, so the key changes on `onDone` to do the same thing:
+         force a fresh instance for the second half of this case, rather than one
+         still showing the first save's confirmation. */
+      const [remount, setRemount] = useState(0)
+
+      return (
+        <EntityEditor
+          key={remount}
+          entity={PAGES}
+          editing={{ mode: 'one', record }}
+          taken={['pravilnik', 'uslovi-koriscenja']}
+          onDone={() => setRemount((n) => n + 1)}
+        />
+      )
+    }
+
+    render(
+      <I18nProvider locale="sr">
+        <ClockProvider>
+          <SessionProvider>
+            <Editing />
+          </SessionProvider>
+        </ClockProvider>
+      </I18nProvider>,
+    )
+
+    const title = t('admin.form.edit.pages')
+
+    // Saved with the address unchanged: `others` excluded it from `taken`, or this
+    // reads as the record arguing with itself over its own address.
+    await user.click(open(title).getByRole('button', { name: t('form.submit') }))
+    expect(screen.getByRole('status', { name: t('admin.form.saved') })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: t('admin.form.back') }))
+
+    // The other address `taken` still names is refused exactly as before; nothing
+    // about excluding this record's own address widens what else is free.
+    const address = open(title).getByLabelText(labelled(t('admin.address')))
+    await user.clear(address)
+    await user.type(address, 'uslovi-koriscenja')
+    await user.click(open(title).getByRole('button', { name: t('form.submit') }))
+
+    expect(document.getElementById('field-slug-error')).toHaveTextContent(t('form.errors.taken'))
+    expect(screen.queryByText(t('admin.form.saved'))).not.toBeInTheDocument()
   })
 })
 

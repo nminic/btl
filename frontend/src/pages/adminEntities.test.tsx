@@ -2153,6 +2153,37 @@ describe('the written pages', () => {
       'Statične strane',
     )
   })
+
+  it('lists a page that has no sections yet, with an empty heading rather than being left off', async () => {
+    /* The read side of what the New-page form used to prove empty-handed before
+       it was removed 27.09.2026 (AdminPages.tsx, `pageRows`'s own comment: „A page
+       that has not been written yet has no sections at all, and is listed with an
+       empty heading rather than being left off"). Server data does not carry this
+       shape today - all four written pages have at least one section - so it is
+       made here rather than found, the same way the deleted form-test made it. */
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) =>
+      String(input).endsWith('/api/pages')
+        ? new Response(JSON.stringify([{ slug: 'nova', title: 'Nova strana', sections: [] }]), {
+            status: 200,
+          })
+        : real(input))
+
+    try {
+      renderAt('/sr/administracija/strane', 'superadmin')
+
+      const rows = await table('Statične strane')
+      const row = must(rows.getByText('Nova strana').closest('tr'), 'the row for the new page')
+      const cells = within(row).getAllByRole('cell')
+
+      // Naslov, Adresa, Naslov prve sekcije, Sekcija, in that order.
+      expect(cells).toHaveLength(4)
+      expect(at(cells, 2).textContent).toBe('')
+      expect(at(cells, 3)).toHaveTextContent('0')
+    } finally {
+      globalThis.fetch = real
+    }
+  })
 })
 
 /** Makes a copy of an event the way the button on its own page does: the same
