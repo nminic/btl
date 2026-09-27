@@ -6,6 +6,9 @@ import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -218,12 +221,79 @@ class MembershipWriteApiTest {
 				.params(competitorId, season, CASHIER, Timestamp.from(IN_JUNE_2027)).update();
 	}
 
-	private MockHttpServletResponse grant(Long competitorId, String cookie) throws Exception {
+	/**
+	 * THE TWO GROUNDS ARE NAMED AT EVERY CALL SITE AND NEITHER IS A DEFAULT, which is the point of
+	 * there being two named helpers over one builder rather than one helper with a fallback.
+	 *
+	 * <p>A helper that filled the ground in when a case did not say it would make the ground
+	 * INVISIBLE along its own axis: every case here would read as though it were about the
+	 * exemption, and a route that ignored the field and always granted one would pass all of them.
+	 */
+	private static final String FREE_OF_THE_FEE = "feeExempt";
+
+	private static final String FROM_THE_BALANCE = "balance";
+
+	private MockHttpServletResponse freeHim(Long competitorId, String cookie) throws Exception {
+		return onTheGroundOf(competitorId, FREE_OF_THE_FEE, cookie);
+	}
+
+	private MockHttpServletResponse fromHisBalance(Long competitorId, String cookie) throws Exception {
+		return onTheGroundOf(competitorId, FROM_THE_BALANCE, cookie);
+	}
+
+	private MockHttpServletResponse onTheGroundOf(Long competitorId, String ground, String cookie)
+			throws Exception {
 		return http.perform(post("/api/memberships").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, cookie))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(mapper.writeValueAsString(new MembershipWriteApi.Grant(competitorId))))
+						.content(mapper.writeValueAsString(
+								new MembershipWriteApi.Grant(competitorId, ground))))
 				.andReturn().getResponse();
+	}
+
+	/**
+	 * ONE REFERRAL EARNED, so the member has a book to spend.
+	 *
+	 * <p><b>It is written as a REFERRAL and not as a bare credit</b>, because
+	 * {@code balance_entry_reason_known} (V38) knows two reasons and
+	 * {@code balance_entry_a_referral_adds} demands both currencies be money - so this is the only
+	 * shape in which a balance can come to exist at all, which is worth meeting here rather than
+	 * inventing a row the portal could never write.
+	 *
+	 * @param eur how much, in euro, and it is deliberately NOT a fixed multiple of the dinar figure
+	 *            at every call site: see the case about a book that covers the fee in one currency
+	 *            and not the other
+	 */
+	private void earnedAReferral(long competitorId, long broughtIn, String eur, String rsd) {
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,"
+						+ " occurred_at, recorded_by_name)"
+						+ " values (?, ?::numeric, ?::numeric, 'referral', ?, ?, 'Neko Ko Je Knjizio')")
+				.params(competitorId, eur, rsd, broughtIn, Timestamp.from(IN_JUNE_2027))
+				.update();
+	}
+
+	/**
+	 * A MEMBERSHIP ALREADY SPENT PART OF HIS BOOK, FOR A SEASON OTHER THAN THE ONE UNDER TEST, so a
+	 * book can be composed to a value {@code earnedAReferral} could never write in one row on its
+	 * own.
+	 *
+	 * <p><b>Why two legal rows rather than one line at the target value.</b>
+	 * {@code balance_entry_a_referral_adds} (V38) demands both currencies of a REFERRAL be strictly
+	 * positive, so a row of, say, 15.00 EUR / 0.00 RSD is not a shape this table can hold under that
+	 * reason. The one case where the schema allows a book to carry money in only one currency is the
+	 * SUM of a referral and a spend that do not share the referral row's ratio - exactly the shape
+	 * {@code GrantingAMembership#whatComesOffTheBook} explains at length for the neighbouring case of
+	 * a fee covered in one currency and not the other.
+	 *
+	 * @param eur negative, as {@link BalanceBook#spentOnAMembership} would have written it
+	 * @param rsd negative, as {@link BalanceBook#spentOnAMembership} would have written it
+	 */
+	private void spentOnAnEarlierMembership(long competitorId, int season, String eur, String rsd) {
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+						+ " occurred_at, recorded_by_name)"
+						+ " values (?, ?::numeric, ?::numeric, 'membership', ?, ?, 'Neko Ko Je Knjizio')")
+				.params(competitorId, eur, rsd, season, Timestamp.from(IN_JUNE_2027))
+				.update();
 	}
 
 	private MembershipWriteApi.Granted granted(MockHttpServletResponse answer) throws Exception {
@@ -271,7 +341,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void aMemberIsFreedOfTheFeeNumberedAndActivated() throws Exception {
-		MockHttpServletResponse answer = grant(him, cashierCookie);
+		MockHttpServletResponse answer = freeHim(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 
@@ -339,7 +409,7 @@ class MembershipWriteApiTest {
 				.as("a line stood before the grant, so nothing below is about the grant")
 				.isEqualTo("no lines");
 
-		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(freeHim(him, cashierCookie).getStatus()).isEqualTo(201);
 
 		assertThat(bookOf(whoBroughtHimIn))
 				.as("the reward for bringing in a member freed of the fee was lost, and lost for good:"
@@ -366,7 +436,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void amemberNobodyBroughtInEarnsNobodyAnythingWhenHeIsFreed() throws Exception {
-		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(freeHim(him, cashierCookie).getStatus()).isEqualTo(201);
 
 		assertThat(db.sql("select count(*) from balance_entry").query(Long.class).single())
 				.as("a reward was written for an activation nobody had referred")
@@ -386,11 +456,11 @@ class MembershipWriteApiTest {
 		long whoBroughtHimIn = competitor("c4", "009004", true, "payment");
 		db.sql("update competitor set referred_by = ? where id = ?").params(whoBroughtHimIn, him).update();
 
-		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(freeHim(him, cashierCookie).getStatus()).isEqualTo(201);
 
 		clock.moveTo(IN_OCTOBER_2027);
 
-		assertThat(grant(him, cashierCookie).getStatus())
+		assertThat(freeHim(him, cashierCookie).getStatus())
 				.as("the next season was not a fresh grant, so this case is not about a second one")
 				.isEqualTo(201);
 
@@ -409,7 +479,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void heKeepsTheNumberHeHasAndTheSeasonHeAlreadyHoldsDoesNotBlockThisOne() throws Exception {
-		MockHttpServletResponse answer = grant(alreadyFreeElsewhere, cashierCookie);
+		MockHttpServletResponse answer = freeHim(alreadyFreeElsewhere, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(granted(answer).memberNumber()).isEqualTo("009003");
@@ -432,7 +502,7 @@ class MembershipWriteApiTest {
 	void insideTheRenewalWindowTheSeasonIsTheNextOne() throws Exception {
 		clock.moveTo(IN_OCTOBER_2027);
 
-		MockHttpServletResponse answer = grant(him, cashierCookie);
+		MockHttpServletResponse answer = freeHim(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(granted(answer).season()).isEqualTo(2028);
@@ -453,7 +523,7 @@ class MembershipWriteApiTest {
 	void beforeTheLeagueHasASeasonTheAnswerIsTheFirstOne() throws Exception {
 		clock.moveTo(IN_OCTOBER_2026);
 
-		MockHttpServletResponse answer = grant(him, cashierCookie);
+		MockHttpServletResponse answer = freeHim(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(granted(answer).season()).isEqualTo(2027);
@@ -469,12 +539,12 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void freeingHimTwiceIsHarmlessAndDrawsNoSecondNumber() throws Exception {
-		MockHttpServletResponse first = grant(him, cashierCookie);
+		MockHttpServletResponse first = freeHim(him, cashierCookie);
 		String number = granted(first).memberNumber();
 
 		long rowsAfterTheFirst = membershipCount();
 
-		MockHttpServletResponse second = grant(him, cashierCookie);
+		MockHttpServletResponse second = freeHim(him, cashierCookie);
 
 		assertThat(second.getStatus()).as("the second click was not the harmless answer").isEqualTo(200);
 		assertThat(granted(second).memberNumber()).isEqualTo(number);
@@ -506,7 +576,7 @@ class MembershipWriteApiTest {
 		db.sql("insert into membership (competitor_id, season, basis, payment_id)"
 				+ " values (?, 2027, 'payment', ?)").params(him, paymentId).update();
 
-		MockHttpServletResponse answer = grant(him, cashierCookie);
+		MockHttpServletResponse answer = freeHim(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_FEE_IS_ALREADY_RECORDED);
@@ -535,7 +605,7 @@ class MembershipWriteApiTest {
 						+ " 'paypal', 'reversed', ?, null, 'Blagajnik Probic')")
 				.params(him, Timestamp.from(IN_JUNE_2027)).update();
 
-		MockHttpServletResponse answer = grant(him, cashierCookie);
+		MockHttpServletResponse answer = freeHim(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(409);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_PAYMENT_WAS_REVERSED);
@@ -562,7 +632,7 @@ class MembershipWriteApiTest {
 						+ " 'paypal', 'awaited')")
 				.param(him).update();
 
-		MockHttpServletResponse answer = grant(him, cashierCookie);
+		MockHttpServletResponse answer = freeHim(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(granted(answer).season()).isEqualTo(2027);
@@ -581,7 +651,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void theAnswerNeverCarriesTheBasis() throws Exception {
-		MockHttpServletResponse answer = grant(him, cashierCookie);
+		MockHttpServletResponse answer = freeHim(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(answer.getContentAsString())
@@ -608,7 +678,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void theAccountThatEnteredItMayGoAndTheExemptionKeepsHisName() throws Exception {
-		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(freeHim(him, cashierCookie).getStatus()).isEqualTo(201);
 
 		db.sql("delete from account where email = ?").param(CASHIER).update();
 
@@ -625,7 +695,7 @@ class MembershipWriteApiTest {
 	/** The superadmin passes by holding every right there is (V5, {@code rights_mode = 'all'}). */
 	@Test
 	void theSuperadminMayFreeSomebodyToo() throws Exception {
-		MockHttpServletResponse answer = grant(him, superadminCookie);
+		MockHttpServletResponse answer = freeHim(him, superadminCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(db.sql("select decided_by_name from membership where competitor_id = ?"
@@ -650,30 +720,363 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void aModeratorHoldingADifferentTickIsRefused() throws Exception {
-		MockHttpServletResponse answer = grant(him, otherModeratorCookie);
+		MockHttpServletResponse answer = freeHim(him, otherModeratorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(404);
 		assertThat(membershipCount()).as("a refused moderator still wrote a membership").isEqualTo(1);
 		assertThat(competitorRow(him)).isEqualTo("none false payment");
 	}
 
-	/** The form has one field and it is the whole of it. */
+	/**
+	 * The form has TWO fields since 27.09.2026 and both are required.
+	 *
+	 * <p>The sentence here said „one field and it is the whole of it", which section 19 overturned:
+	 * the prompt has two buttons on it, so the request has to say which was pressed.
+	 */
 	@Test
 	void theFormMustNameACompetitor() throws Exception {
-		MockHttpServletResponse answer = grant(null, cashierCookie);
+		MockHttpServletResponse answer = freeHim(null, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_FORM_IS_NOT_COMPLETE);
 		assertThat(membershipCount()).isEqualTo(1);
 	}
 
+	/**
+	 * AND IT MUST NAME A GROUND, WITH NO DEFAULT, which is the half that would be expensive to get
+	 * wrong.
+	 *
+	 * <p>A route defaulting to the exemption would hand out a season free of the fee because a field
+	 * was misspelled - and the owner's rule over the whole of section 19 is that an exemption is a
+	 * deliberate act, „Admin moze da odobri (jednu po jednu) godinu clanarine". Blank and absent are
+	 * ONE answer here and both are refused, which is the other half of ADL A54.
+	 */
+	@ParameterizedTest
+	@NullSource
+	@ValueSource(strings = { "", "   " })
+	void theFormMustNameAGround(String nothing) throws Exception {
+		MockHttpServletResponse answer = onTheGroundOf(him, nothing, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(membershipCount()).isEqualTo(1);
+		assertThat(competitorRow(him)).isEqualTo("none false payment");
+	}
+
+	/**
+	 * AND A GROUND THIS ROUTE DOES NOT GRANT IS REFUSED RATHER THAN FALLING THROUGH TO ONE IT DOES.
+	 *
+	 * <p><b>{@code payment} is in the list on purpose and it is the valuable one.</b> It is a word
+	 * {@code membership_basis_known} really knows, so a route checking „is this one of the schema's
+	 * three" instead of „is this one of my two" would let a moderator write a membership standing on
+	 * a FEE with no payment row behind it - which {@code membership_basis_says_whether_a_payment_is_named}
+	 * (V22) would then refuse with a 500, and which no amount of money having arrived would justify.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "payment", "feeexempt", "FEEEXEMPT", "Balance", "honorary", "pocasni" })
+	void agroundThisRouteDoesNotGrantIsRefused(String wrong) throws Exception {
+		MockHttpServletResponse answer = onTheGroundOf(him, wrong, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_GROUND_IS_NOT_KNOWN);
+		assertThat(membershipCount()).isEqualTo(1);
+		assertThat(competitorRow(him)).isEqualTo("none false payment");
+		assertThat(bookOf(him)).isEqualTo("no lines");
+	}
+
 	/** And he has to exist, which is {@code competitor.id} and never a member number. */
 	@Test
 	void theCompetitorMustExist() throws Exception {
-		MockHttpServletResponse answer = grant(999999L, cashierCookie);
+		MockHttpServletResponse answer = freeHim(999999L, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.THE_COMPETITOR_DOES_NOT_EXIST);
 		assertThat(membershipCount()).isEqualTo(1);
+	}
+
+	/**
+	 * CASE 4: HIS BALANCE COVERS THE FEE, SO EXACTLY THE FEE COMES OFF IT.
+	 *
+	 * <p>Owner, 27.09.2026 (PDL, section 19): with no amount typed, the moderator is offered
+	 * „Odobri oslobodjenje od clanarine" / „Odobri iz balansa", and this is the second button.
+	 *
+	 * <p><b>The book is read back as LINES and not as a sum</b>, for the reason {@link #bookOf}
+	 * gives: a sum of the right size is satisfied by a line written for the wrong person or under
+	 * the wrong reason. In June 2027 the row that applies is {@code season}, 40 EUR / 4.800 RSD, and
+	 * his referral was worth more than that - so what is left over stays his, „visak ostaje za
+	 * sledecu godinu".
+	 */
+	@Test
+	void abalanceThatCoversTheFeeActivatesHimAndTakesExactlyTheFee() throws Exception {
+		earnedAReferral(him, whoPays, "50", "6000");
+
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(granted(answer).season()).isEqualTo(2027);
+		assertThat(granted(answer).memberNumber()).isNotBlank();
+
+		assertThat(bookOf(him))
+				.as("the fee and not the whole book, and the surplus stays his")
+				.isEqualTo("referral 50.00/6000.00 for " + whoPays
+						+ ", membership -40.00/-4800.00 for nobody");
+
+		assertThat(membershipOf(him, 2027)).isEqualTo("balance names an entry, no trail");
+	}
+
+	/**
+	 * CASE 5: HIS BALANCE IS SHORT OF THE FEE AND THE MODERATOR APPROVES IT ANYWAY, so the WHOLE
+	 * book comes off.
+	 *
+	 * <p>Owner, section 19: „Odobri <b>umanjen iznos</b> iz balansa". <b>This is the case that makes
+	 * this route's decision a different one from the member's own door</b>, where the identical state
+	 * is refused outright ({@code ActivatingFromBalance.THE_BALANCE_IS_NOT_ENOUGH}) because a member
+	 * may not hand himself a discount.
+	 */
+	@Test
+	void abalanceShortOfTheFeeIsApprovedByTheModeratorAndTheWholeBookComesOff() throws Exception {
+		earnedAReferral(him, whoPays, "5", "600");
+
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(bookOf(him))
+				.as("all of it, so the book is emptied rather than driven negative")
+				.isEqualTo("referral 5.00/600.00 for " + whoPays
+						+ ", membership -5.00/-600.00 for nobody");
+	}
+
+	/**
+	 * AND THE ONE STATE IN WHICH „THE WHOLE BOOK" AND „THE LESSER OF EACH" ARE DIFFERENT PAIRS.
+	 *
+	 * <p><b>This case exists because in every other fixture the two rules agree, so nothing else
+	 * here can tell them apart.</b> {@code Balance.Settlement.fromTheBalance()} is
+	 * {@code min(balance, fee)} taken per currency, which is the right answer at the member's own
+	 * door - a short balance never reaches it. Here a short balance is the POINT.
+	 *
+	 * <p>His book covers the fee in euro (50 against 40) and is short in dinars (600 against 4.800).
+	 * {@code coveredByTheBalance} asks BOTH and therefore says no, so case 5 applies and his book is
+	 * spent. Per-currency {@code min} would answer <b>40.00/-600.00</b> - leaving 10 EUR standing
+	 * while taking every dinar, at an implied rate of fifteen to one, which is the conversion ADL
+	 * forbids. The rule under test answers the whole book.
+	 *
+	 * <p><b>How a book gets into that state, because a case guarding an unreachable one is
+	 * decoration:</b> every line copies both numbers off one row of the price list, and
+	 * {@code PUT /api/pricing/{key}} moves one column without the other, so two referrals
+	 * earned either side of such an edit stand in no single ratio. One line is enough to show it.
+	 */
+	@Test
+	void abookThatCoversTheFeeInOneCurrencyOnlyGivesUpAllOfItselfAndNotTheLesserOfEach()
+			throws Exception {
+		earnedAReferral(him, whoPays, "50", "600");
+
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(bookOf(him))
+				.as("per-currency min would have taken 40.00/-600.00 and left 10 EUR standing")
+				.isEqualTo("referral 50.00/600.00 for " + whoPays
+						+ ", membership -50.00/-600.00 for nobody");
+	}
+
+	/**
+	 * AN EMPTY BOOK IS REFUSED, and the refusal is owed here rather than met in the database.
+	 *
+	 * <p>{@code balance_entry_a_membership_takes} (V38) refuses an entry that moves nothing - „an
+	 * entry that moves nothing is not a fact about money" - so without the guard this answers 500.
+	 * An empty book is the ORDINARY state of a member, not an edge: most of them have brought in
+	 * nobody.
+	 *
+	 * <p><b>Nothing at all is written, on any of the three tables</b>, which is the owner's rule over
+	 * every case of section 19: „Odluka NE... ne brise red iz tabele za aktivaciju, samo odlaze
+	 * odluku." A refusal leaves him exactly where he was, and the row he is on is DERIVED from that.
+	 */
+	@Test
+	void anEmptyBookIsRefusedRatherThanWritingALineThatMovesNothing() throws Exception {
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(refusal(answer))
+				.isEqualTo(MembershipWriteApi.NOTHING_WOULD_COME_OFF_THE_BOOK);
+		assertThat(membershipCount()).isEqualTo(1);
+		assertThat(bookOf(him)).isEqualTo("no lines");
+		assertThat(competitorRow(him))
+				.as("no number was drawn and he was not activated")
+				.isEqualTo("none false payment");
+	}
+
+	/**
+	 * A BOOK WITH MONEY IN ONLY ONE CURRENCY IS REFUSED TOO, AND NOT ONLY THE WHOLLY EMPTY ONE.
+	 *
+	 * <p><b>Found on review (PR 403): the guard above used to ask {@code offTheBook.isNothing()},
+	 * true only when BOTH halves are nothing.</b> {@code balance_entry_a_membership_takes} (V38)
+	 * refuses a spend whenever EITHER half is not strictly negative, so a book of 15.00 EUR / 0.00
+	 * RSD passed the old guard and met the constraint instead, answering 500 with
+	 * {@code DataIntegrityViolationException} rather than this route's own 409.
+	 *
+	 * <p>His book is built out of two rows the schema allows on their own - a referral of 50/600 and
+	 * an earlier membership spend of 35/600 for a different season - so 15.00/0.00 is a value this
+	 * fixture composes rather than one {@link #earnedAReferral} could write in a single row, and it
+	 * is not a value this route could ever write itself, only find already standing.
+	 *
+	 * <p><b>Nothing at all is written</b>, the same three tables {@link
+	 * #anEmptyBookIsRefusedRatherThanWritingALineThatMovesNothing} asserts of the wholly empty book -
+	 * this is the sibling finding measured, not a different refusal.
+	 */
+	@Test
+	void abookWithMoneyInOnlyOneCurrencyIsRefusedTooAndNotOnlyTheWhollyEmptyOne() throws Exception {
+		earnedAReferral(him, whoPays, "50", "600");
+		spentOnAnEarlierMembership(him, 2028, "-35", "-600");
+
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.NOTHING_WOULD_COME_OFF_THE_BOOK);
+		assertThat(membershipCount()).isEqualTo(1);
+		assertThat(bookOf(him))
+				.as("only the two rows the fixture wrote, nothing added by the route")
+				.isEqualTo("referral 50.00/600.00 for " + whoPays
+						+ ", membership -35.00/-600.00 for nobody");
+		assertThat(competitorRow(him))
+				.as("no number was drawn and he was not activated")
+				.isEqualTo("none false payment");
+	}
+
+	/**
+	 * THE PER-PERSON BASIS IS LEFT ALONE ON THIS GROUND, AND THAT IS THE SCHEMA'S DOING.
+	 *
+	 * <p>V38 widened {@code membership_basis_known} to three words and left V7:281's
+	 * {@code competitor_membership_basis_known check (membership_basis in ('payment', 'feeExempt'))}
+	 * exactly where it was. So {@code 'balance'} has no second home, and this reads the column back
+	 * to prove the route does not try - a route that did would answer 500 rather than 201, which is
+	 * the mutation this case is really about.
+	 *
+	 * <p><b>What is given up, asserted rather than only written down:</b> he goes on being called a
+	 * payer by every screen that reads that column, exactly as he already is when he lets himself in
+	 * through his own door. {@code active} is what changes, and it is what ten public readers end on.
+	 */
+	@Test
+	void thebalanceGroundActivatesHimWithoutTouchingThePerPersonBasis() throws Exception {
+		earnedAReferral(him, whoPays, "50", "6000");
+
+		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		assertThat(competitorRow(him))
+				.as("numbered and active, and the per-person basis is untouched")
+				.matches("\\d{6} true payment");
+	}
+
+	/**
+	 * THE TRAIL OF THIS GROUND IS IN THE BOOK AND NOT ON THE MEMBERSHIP, which is one home per
+	 * ground.
+	 *
+	 * <p>{@code V35} demands {@code decided_by_name} and {@code decided_at} of an EXEMPTION and of
+	 * nothing else, and {@code balance_entry.recorded_by_name} is {@code not null} on every line of
+	 * the book - „the moderator who recognised the payment that activated the newcomer, or the member
+	 * himself when he spends his own balance", V38's own words. Filling both in would make „who did
+	 * this" answerable from two tables with nothing saying which is right.
+	 *
+	 * <p><b>Both directions are read, which is what makes this a claim rather than a coincidence:</b>
+	 * the exemption's trail is on the membership and empty in the book, and the balance's is in the
+	 * book and empty on the membership.
+	 */
+	@Test
+	void eachGroundKeepsItsTrailInExactlyOnePlace() throws Exception {
+		earnedAReferral(him, whoPays, "50", "6000");
+
+		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(membershipOf(him, 2027)).isEqualTo("balance names an entry, no trail");
+		assertThat(whoWroteTheSpend(him)).isEqualTo("Blagajnik Probic");
+
+		assertThat(freeHim(whoPays, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(membershipOf(whoPays, 2027))
+				.isEqualTo("feeExempt names nothing, trail by Blagajnik Probic");
+		assertThat(bookOf(whoPays))
+				.as("an exemption takes nothing off anybody")
+				.isEqualTo("no lines");
+	}
+
+	/**
+	 * A SECOND PRESS OF THE SAME BUTTON IS HARMLESS: no second number, no second line.
+	 *
+	 * <p>The reason {@code RecordingAPayment} gives about its own repeat, and here it costs money to
+	 * get wrong in two ways at once: the member-number sequence only counts up, so a second draw
+	 * spends a number for good, and a second spend would take the fee off his book twice.
+	 */
+	@Test
+	void asecondPressOfTheBalanceButtonDrawsNoSecondNumberAndSpendsNothingFurther() throws Exception {
+		earnedAReferral(him, whoPays, "50", "6000");
+
+		MockHttpServletResponse first = fromHisBalance(him, cashierCookie);
+		String number = granted(first).memberNumber();
+
+		MockHttpServletResponse second = fromHisBalance(him, cashierCookie);
+
+		assertThat(first.getStatus()).isEqualTo(201);
+		assertThat(second.getStatus()).as("a repeat is harmless and not a refusal").isEqualTo(200);
+		assertThat(granted(second).memberNumber()).isEqualTo(number);
+		assertThat(bookOf(him))
+				.as("the fee came off once")
+				.isEqualTo("referral 50.00/6000.00 for " + whoPays
+						+ ", membership -40.00/-4800.00 for nobody");
+	}
+
+	/**
+	 * AND A SEASON HELD ON THE OTHER GROUND IS REFUSED WITHOUT SAYING WHICH GROUND IT IS.
+	 *
+	 * <p>PDL, 28.07.2026: „Osnov clanstva se nikad ne prikazuje javno... Vide ga samo Superadmin i
+	 * moderatori sa pravom nad clanovima." That right is {@code entity:members} and the tick opening
+	 * this route is {@code queue:payments}, so the refusal names the fact and not the ground.
+	 *
+	 * <p><b>Both directions, because one of them alone would let a route that always reports the same
+	 * thing pass.</b> And the WHOLE body is read rather than one field, the shape
+	 * {@link #theAnswerNeverCarriesTheBasis} already uses: a reason that does not name the ground is
+	 * no use if the body carries it in a second field.
+	 */
+	@Test
+	void aseasonHeldOnTheOtherGroundIsRefusedWithoutNamingIt() throws Exception {
+		earnedAReferral(him, whoPays, "50", "6000");
+		earnedAReferral(alreadyFreeElsewhere, him, "50", "6000");
+
+		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		MockHttpServletResponse onTheOther = freeHim(him, cashierCookie);
+
+		assertThat(onTheOther.getStatus()).isEqualTo(409);
+		assertThat(refusal(onTheOther)).isEqualTo(MembershipWriteApi.THE_MEMBERSHIP_IS_ALREADY_HELD);
+		assertThat(onTheOther.getContentAsString())
+				.as("the body must not carry the ground in any field")
+				.doesNotContain("balance").doesNotContain("feeExempt");
+
+		freeOfTheFee(whoPays, 2027);
+		MockHttpServletResponse theOtherWay = fromHisBalance(whoPays, cashierCookie);
+
+		assertThat(theOtherWay.getStatus()).isEqualTo(409);
+		assertThat(refusal(theOtherWay)).isEqualTo(MembershipWriteApi.THE_MEMBERSHIP_IS_ALREADY_HELD);
+		assertThat(theOtherWay.getContentAsString())
+				.doesNotContain("balance").doesNotContain("feeExempt");
+	}
+
+	/**
+	 * ONE MEMBERSHIP ROW AS READABLE WORDS: which ground, whether it names a book entry, and whose
+	 * trail is on it.
+	 *
+	 * <p>Read as one string rather than three assertions so that a row answering right about the
+	 * ground and wrong about the rest cannot pass half of a case.
+	 */
+	private String membershipOf(long competitorId, int season) {
+		return db.sql("select basis || ' '"
+						+ " || case when balance_entry_id is null then 'names nothing'"
+						+ "         else 'names an entry' end"
+						+ " || ', ' || coalesce('trail by ' || decided_by_name, 'no trail')"
+						+ " from membership where competitor_id = ? and season = ?")
+				.params(competitorId, season).query(String.class).single();
+	}
+
+	/** Who the BOOK says spent it, which is where this ground's trail lives. */
+	private String whoWroteTheSpend(long competitorId) {
+		return db.sql("select recorded_by_name from balance_entry"
+						+ " where competitor_id = ? and reason = 'membership'")
+				.param(competitorId).query(String.class).single();
 	}
 }

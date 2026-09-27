@@ -69,6 +69,32 @@ class BalanceTest {
 	}
 
 	/**
+	 * ONE HALF AT NOTHING IS REFUSED THE SAME AS BOTH AT NOTHING, for this question, and the two
+	 * questions are not one and the same.
+	 *
+	 * <p>Found on review of {@code GrantingAMembership.decide} (PR 403): the guard there asked
+	 * {@code !isNothing()}, true for 15.00/0.00 because one half is something - and
+	 * {@code balance_entry_a_membership_takes} (V38) refused it anyway, because it asks
+	 * {@code eur < 0 and rsd < 0}, both strictly. {@code isMoneyInBothCurrencies} is the question
+	 * that constraint actually asks, said from the amount's own side of the sign.
+	 *
+	 * <p><b>Both one-sided directions, because the finding named only one of them.</b> The
+	 * arithmetic is the same {@code &&} either way, so a wrong pass named "dinars only" would be
+	 * as real a hole as the one measured, and nothing here would show it without asking.
+	 */
+	@Test
+	void moneyInBothCurrenciesNeedsBothHalvesAndOneSidedIsRefusedEitherWay() {
+		assertThat(money("15.00", "0.00").isMoneyInBothCurrencies())
+				.as("euro only, the exact shape the finding measured")
+				.isFalse();
+		assertThat(money("0.00", "15.00").isMoneyInBothCurrencies())
+				.as("dinars only, the mirror the finding did not need to name")
+				.isFalse();
+		assertThat(money("0", "0").isMoneyInBothCurrencies()).isFalse();
+		assertThat(money("15.00", "600.00").isMoneyInBothCurrencies()).isTrue();
+	}
+
+	/**
 	 * AN EMPTY BOOK CHANGES NOTHING, and the invoice is the price list's own figure.
 	 *
 	 * <p>This is most members: nobody has brought anybody in, so there is no balance and the slip
