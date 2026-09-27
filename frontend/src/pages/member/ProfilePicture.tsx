@@ -131,14 +131,24 @@ export function ProfilePicture({ me }: { me: Competitor }) {
      shape again, by a different road. Written down rather than left to be
      discovered (PENDING, review of PR 381, and PDL P22).
    *
-     WHAT IS ASKED OF IT IS NOW ONE THING AND NOT FOUR, and that is the whole of
-     what changed on 27.09.2026. It used to be a row in `proposals`, the same list
-     the moderator's queue is merged out of, so this had to pick his own row out of
-     a list that also held everybody else's teams and biographies - by queue, by
-     sort and by member number. A picture is not in that list any more, because the
+     WHAT IS ASKED OF IT IS TWO THINGS AND NOT FOUR, and that is what changed on
+     27.09.2026. It used to be a row in `proposals`, the same list the moderator's
+     queue is merged out of, so this had to pick his own row out of a list that also
+     held everybody else's teams and biographies - by queue, by sort, by member
+     number and by decision. A picture is not in that list any more, because the
      server files the queue row for it and a second row of the browser's own drew
      the member twice in front of the moderator (`session/context.ts#pictureSent`).
-     There is one picture a visit can have sent, so there is nothing to pick.
+     The queue and the sort went with the list. **THE MEMBER DID NOT, and taking it
+     out for one round of review is the fault that round found.**
+   *
+     „There is one picture a visit can have sent, so there is nothing to pick" is
+     what stood here, and A VISIT IS NOT A MEMBER. Measured: `000007` sends,
+     `000002` signs in through `theServerSignedMeIn` during the same visit, and the
+     second man was told a picture of his was waiting and was shown THE FIRST MAN'S
+     PHOTOGRAPH. `SessionProvider` sits above the router so it never comes down, and
+     the sign in screen is walkable while somebody is signed in. The comparison is
+     the one `member/ProfileBio.tsx` makes of the same fact, and it is asked here
+     rather than cleared at sign in for the reason `session/context.ts` gives.
    *
      Decisions are read all the same, so approving a picture during this visit
      hands the control straight back rather than leaving somebody told to wait
@@ -147,7 +157,11 @@ export function ProfilePicture({ me }: { me: Competitor }) {
      same id. Under `prop-1` - which is what it was - the two never met, so a
      member went on being told to wait over a picture already decided. */
   const waiting =
-    pictureSent !== null && decisions[pictureSent.row] === undefined ? pictureSent : undefined
+    pictureSent !== null &&
+    pictureSent.member === me.memberNumber &&
+    decisions[pictureSent.row] === undefined
+      ? pictureSent
+      : undefined
 
   /* Said out loud, because the control just pressed is replaced by a sentence:
      without this the focus falls to the body and a screen reader is told nothing
@@ -224,6 +238,12 @@ export function ProfilePicture({ me }: { me: Competitor }) {
       row: String(theRowIn(answer.body) ?? ''),
       picture: picture.picture,
       crop: picture.crop,
+      /* WHOSE IT IS, so that the next member to sign in during this visit is neither told
+         it is his nor shown it (`session/context.ts#PictureSent`). Read off `me` and not off
+         the session's own number, because `me` is the record this panel is drawing and the
+         two are the same person by construction here; the comparison that uses it asks
+         `me.memberNumber` for the same reason. */
+      member: me.memberNumber,
     })
 
     /* SO THAT THE ROW JUST MADE IS ON THE QUEUE THIS VISIT, and not only on the next one.

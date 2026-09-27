@@ -461,8 +461,24 @@ export type Deletions = Record<string, string[]>
  *
  * <p>`row` is text, because a decision is filed under text (`Decisions`), and the server's key
  * is a number - turned once, where it is read, rather than at each place that asks.
+ *
+ * <p><b>`member` IS WHOSE IT IS, AND IT IS HERE BECAUSE A VISIT IS NOT A MEMBER.</b> Left out
+ * for one round of review, and the review measured what that costs: `000007` sent a picture,
+ * `000002` signed in through the portal's own writer during the same visit, and the second man
+ * was told a picture of his was waiting, WAS SHOWN THE FIRST MAN'S PHOTOGRAPH, and could not
+ * send one of his own. `SessionProvider` is mounted above the router so it never comes down,
+ * and the sign in screen is walkable while somebody is signed in; a shared laptop at a race is
+ * the ordinary case.
+ *
+ * <p><b>Read at the point of use rather than cleared at sign in, and that is the portal's own
+ * shape.</b> `member/ProfileBio.tsx` asks `one.memberNumber === me.memberNumber` of the same
+ * kind of fact on the same screen family, and `proposals` beside this is NOT among the eight
+ * facts `theServerSignedMeIn` writes even when null - it is filtered where it is read, exactly
+ * like this. The difference is not taste: a comparison at the read holds whoever wrote the
+ * member number and however they got here, while clearing depends on having enumerated every
+ * writer, which is a question about the whole file rather than about one expression.
  */
-export type PictureSent = { row: string; picture: string; crop: Crop }
+export type PictureSent = { row: string; picture: string; crop: Crop; member: string }
 
 export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
 
