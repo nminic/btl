@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { emailIn, identityIn, invitedFrom, ticksIn } from './moderatorWrites'
+import { changedFrom, emailIn, identityIn, invitedFrom, ticksIn } from './moderatorWrites'
 
 /**
  * WHAT THE SCREEN OF MODERATORS SENDS, AND WHAT IT READS BACK.
@@ -27,6 +27,38 @@ describe('what a moderator is invited with', () => {
       lastName: '',
       email: '',
     })
+  })
+})
+
+describe('what a moderator is changed with', () => {
+  it('carries the name off the form beside the rights the caller already knows he holds', () => {
+    expect(
+      changedFrom({ firstName: 'Ana', lastName: 'Jovanović' }, ['entity:events', 'queue:payments']),
+    ).toEqual({
+      firstName: 'Ana',
+      lastName: 'Jovanović',
+      rights: ['entity:events', 'queue:payments'],
+    })
+  })
+
+  it('sends an empty string for a name field the form did not carry, and never nothing at all', () => {
+    /* `ModeratorWriteApi.change` treats a blank, an empty string and an absent field as
+       one mistake with one fix - type it in - so a body that quietly dropped a field the
+       form did not populate would be answered `theFormIsNotComplete` with nothing telling
+       the superadmin which one, the same reasoning `invitedFrom`'s own case keeps. */
+    expect(changedFrom({ firstName: 'Ana' }, [])).toEqual({
+      firstName: 'Ana',
+      lastName: '',
+      rights: [],
+    })
+  })
+
+  it('carries no address field at all, whatever the form is asked to hold', () => {
+    /* Even a form that somehow held one - it never does; `editModerator` in
+       `AdminModerators.tsx` leaves the field out - would not reach the request: this
+       function does not read `values.email` in the first place. */
+    expect(changedFrom({ firstName: 'Ana', lastName: 'Jovanović', email: 'ana@primer.rs' }, []))
+      .not.toHaveProperty('email')
   })
 })
 
