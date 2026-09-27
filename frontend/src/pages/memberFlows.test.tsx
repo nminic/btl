@@ -4,7 +4,6 @@ import { SLOW } from '../test/slow'
 import type { ReactNode } from 'react'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
-import type { Result } from '../data/types'
 import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
 import {
@@ -28,7 +27,14 @@ import { first, must } from '../test/at'
 import { readQr } from '../test/readQr'
 import { AsksTheServerWhoIAm, expectFrontPage, renderAt } from '../test/render'
 import { setupUser, type Pressing } from '../test/user'
-import { membersAsServed, serverThat } from '../test/serverAnswers'
+import {
+  answeringCategory,
+  categoryAsServed,
+  membersAsServed,
+  refused,
+  serverThat,
+  type CategoryAnswered,
+} from '../test/serverAnswers'
 import { theCookieNames } from '../test/setup'
 import { myOwnRecordFromMe } from '../test/theAnswer'
 import { withClipboard } from '../test/clipboard'
@@ -56,6 +62,51 @@ import { Messages } from './member/Messages'
  * already uses for a list of screens.
  */
 const SEVERAL_SCREENS = SLOW * 2
+
+/**
+ * THE FOUR STATES `GET /api/me/category` CAN BE IN, NAMED ONCE.
+ *
+ * Every field is spelt in every one of them, because the box draws the whole of itself off
+ * this answer since 27.09.2026 and a state with a field missing is one the route cannot
+ * produce. Between the four, all four booleans take both values and the season and the code
+ * differ, so no case below can pass by reading the wrong state.
+ *
+ * `CLOSED_TO_HIM` is the one that would not have existed before: his wish stands and his
+ * right is gone, which is the state the owner's decision of 26.09.2026 creates on purpose
+ * („clan bira ono sto ZELI, ali ga ... verifikacijom necega moze gurnuti u starosnu
+ * kategoriju"), and the only one where `firstSeason` and `category` disagree.
+ */
+const OPEN_TO_HIM: CategoryAnswered = {
+  season: 2028,
+  firstSeason: false,
+  firstSeasonAllowed: true,
+  category: 'M40-54',
+  open: true,
+}
+
+const HE_WANTS_THE_BEGINNERS: CategoryAnswered = {
+  season: 2028,
+  firstSeason: true,
+  firstSeasonAllowed: true,
+  category: 'M R',
+  open: true,
+}
+
+const CLOSED_TO_HIM: CategoryAnswered = {
+  season: 2028,
+  firstSeason: true,
+  firstSeasonAllowed: false,
+  category: 'M40-54',
+  open: true,
+}
+
+const PAST_THE_DEADLINE: CategoryAnswered = {
+  season: 2029,
+  firstSeason: false,
+  firstSeasonAllowed: true,
+  category: 'M55+',
+  open: false,
+}
 
 /* THE MEMBERS WERE READ OFF THE GENERATED FILE HERE UNTIL 21.09.2026, for the two
    cases about the referral balance: they worked the credit out themselves, over
@@ -589,18 +640,24 @@ describe('membership', () => {
           )
         : null,
     )
+    /* The choice of category has its own route since 27.09.2026 and is served here for the
+       one assertion below that it survives a price list with a hole in it. */
+    const category = categoryAsServed(OPEN_TO_HIM)
 
     try {
       renderFor('000032')
 
       expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
       /* The category choice does not depend on a price and stays. */
-      expect(screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).toBeVisible()
+      expect(
+        await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+      ).toBeVisible()
 
       expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
       expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     } finally {
+      category.stop()
       stop()
     }
   })
@@ -1326,56 +1383,291 @@ describe('membership', () => {
     },
   )
 
-  /* **WHAT THE OWNER DECIDED TO LEAVE AS IT IS, MEASURED RATHER THAN ASSUMED** (PDL P8a,
-     25.09.2026: `/api/results` carries a lapsed member's earlier seasons and not the one
-     running, and „to ostaje kako jeste").
+  /* **THE BEGINNER CATEGORY IS DECIDED BY THE ROUTE AND NO LONGER BY WHAT `/api/results`
+     HAPPENS TO CARRY**, since 27.09.2026.
 
-     Until today that decision cost nothing on this screen, because a lapsed member never
-     reached the choice of category at all. He does now, and that choice is decided by
-     `bestOfficialSeason` over whatever `/api/results` answered - so a result of his in the
-     season now running cannot be seen here, and the beginner category stays open to a man
-     who has just left it.
+     This case used to render one member twice on one day, differing only in whether a result
+     of his in the running season was in the answer - because the right was worked out HERE,
+     off `bestOfficialSeason` over whatever `/api/results` served. That made the answer to „may
+     he be a beginner" a property of a list served for another purpose: PDL P8a (owner,
+     25.09.2026) has `/api/results` withhold a lapsed member's running season on purpose („to
+     ostaje kako jeste"), so the category stayed open to a man who had just left it, and this
+     file wrote that down as a boundary rather than a fault because nothing here could fix it.
 
-     **Two renders of one member on one day, differing only in whether that row is in the
-     answer**, because the boundary is about the door and not about the man: served, the
-     screen shuts the category; withheld, it does not. Written down here rather than left
-     for somebody to meet on QA. */
+     It is fixed by moving the question, which PDL P7 says was always the right home: „Ko sme
+     da bude u pocetnickoj kategoriji proverava portal, ne clan." So the two states below are
+     two ANSWERS and not two lists, and `/api/results` no longer decides anything on this
+     screen. What the server does with the sum is measured where it now lives, over a real
+     database, in `BestOfficialSeason`'s own cases.
+
+     **Both states carry the same wish and differ only in the right**, which is the axis: a
+     screen reading the wrong field would draw the same box for both. */
   it.each([
-    ['carries his result from the season now running', true, 'toBeDisabled'],
-    ['withholds it, which is what the route really does for him', false, 'toBeEnabled'],
+    ['says the right is gone', CLOSED_TO_HIM, false],
+    ['says it still stands', HE_WANTS_THE_BEGINNERS, true],
   ])(
-    'decides the beginner category on what the answer %s',
-    async (_what, served, expected) => {
+    'decides the beginner category on what the route %s',
+    async (_what, said, enabled) => {
       const { stop } = membersAsServed('000032')
-
-      /* One render and one assertion per case rather than two of each inside one, and
-         that is a measurement: the resource cache is emptied before every CASE
-         (`test/setup.ts`) and not between two renders inside one, so a second render
-         here was handed the first render's answer and the row that had been withheld was
-         still in it. */
-      async function draw(): Promise<void> {
-        renderMembershipOn('2027-11-01', '000032')
-
-        await screen.findByRole('heading', { name: /Obnova članarine/ })
-
-        const beginner = screen.getByLabelText('U početničkoj kategoriji')
-
-        if (expected === 'toBeDisabled') {
-          expect(beginner).toBeDisabled()
-        } else {
-          expect(beginner).toBeEnabled()
-        }
-      }
+      const category = categoryAsServed(said)
 
       try {
-        await (served
-          ? withOneMoreResult({ memberNumber: '000032', date: '2027-04-15', points: 12 }, draw)
-          : draw())
+        renderMembershipOn('2027-11-01', '000032')
+
+        const beginner = await screen.findByRole('radio', {
+          name: 'U početničkoj kategoriji',
+        })
+
+        if (enabled) {
+          expect(beginner).toBeEnabled()
+        } else {
+          expect(beginner).toBeDisabled()
+        }
+
+        /* AND THE WISH IS TICKED EITHER WAY, which is what makes the pair a measurement of
+           the RIGHT alone. Both answers carry `firstSeason: true`, so a screen that had wired
+           the radio to the right instead of to the wish would draw the first one unticked and
+           this line is the only thing that sees it. */
+        expect(beginner).toBeChecked()
       } finally {
+        category.stop()
         stop()
       }
     },
   )
+
+  /**
+   * A MEMBER FREED OF THE FEE GETS THE BOX, AND THAT IS TWENTY NINE OF THE THIRTY TWO.
+   *
+   * The box was nested inside the renewal's own `feeExempt ? ... : windowOpen ? ...` until
+   * 27.09.2026, so a member who owes the league nothing never saw it. The owner's sentence of
+   * 26.09.2026 names payment and dismisses it in the same breath: „Clan je nov, uplatio je
+   * clanarinu (ili nije), ali moze da bira u koju ce kategoriju." Measured against the shipped
+   * data, that gate was very nearly the whole portal.
+   *
+   * The member is `000001`, who is freed of the fee in the file, and the sentence that says so
+   * is asserted beside the box - so the case cannot pass by drawing the box for somebody who
+   * turned out to be a payer after all.
+   */
+  it('draws the choice of category for a member who is freed of the fee', async () => {
+    const { stop } = membersAsServed('000001')
+    const category = categoryAsServed(OPEN_TO_HIM)
+
+    try {
+      renderMembershipOn('2027-11-01', '000001')
+
+      expect(
+        await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+      ).toBeVisible()
+      expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeEnabled()
+      /* The renewal's own sentence for a man who owes nothing, which is what used to stand
+         where the box now also stands. Asserted so the case cannot pass by drawing the box
+         for somebody who turned out to be a payer after all. */
+      expect(
+        screen.getByText('Oslobođen si plaćanja članarine, pa nema šta da uplatiš.'),
+      ).toBeVisible()
+    } finally {
+      category.stop()
+      stop()
+    }
+  })
+
+  /**
+   * THE BOX IS DRAWN ON A DAY THE RENEWAL WINDOW IS SHUT, AND THIS CASE EXISTS BECAUSE A
+   * MUTATION SURVIVED WITHOUT IT.
+   *
+   * <p>The whole claim of moving this question to the server is that the member's own
+   * deadline is 10:00 on 1 January while `inYearlyWindow` runs only to 31 December, so ten
+   * hours of it were unreachable. **Every other case in this file renders inside the window**
+   * - 1 November of one year or another - so putting `windowOpen &&` back in front of the box
+   * passed all 383 of them. Measured, not supposed: that mutation SURVIVED, and this is the
+   * case that makes it fall.
+   *
+   * <p>Two days outside the window rather than one: 1 January, which is the ten hours
+   * themselves, and a day in June, so the claim is „the window does not decide this" and not
+   * „the first of January is special". The server says the choice is open in both, and that
+   * is the only thing the box is allowed to read.
+   */
+  it.each(['2028-01-01', '2028-06-15'])(
+    'draws the choice of category on %s, when the renewal window is shut',
+    async (today) => {
+      const { stop } = membersAsServed('000032')
+      const category = categoryAsServed(OPEN_TO_HIM)
+
+      try {
+        renderMembershipOn(today, '000032')
+
+        /* The renewal's own sentence for a shut window, asserted first: without it the case
+           could pass on a day the window is in fact open and say nothing at all. */
+        expect(await screen.findByText(/Obnova se otvara 1. oktobra/)).toBeVisible()
+
+        expect(
+          await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+        ).toBeEnabled()
+        expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeEnabled()
+      } finally {
+        category.stop()
+        stop()
+      }
+    },
+  )
+
+  /**
+   * TICKING A BOX REACHES THE ROUTE, AND WHAT COMES BACK IS WHAT THE SCREEN THEN SHOWS.
+   *
+   * Three things in one walk, because they are one act: the request really goes out, it
+   * carries the wish as a boolean under the name the route reads, and the box afterwards is
+   * drawn off the ANSWER rather than off what was sent. The third is the one that matters most
+   * and the reason the route answers the whole state: the answer here says his right is gone,
+   * so a screen folding in `{ firstSeason: true }` alone would leave the beginners' radio
+   * enabled when the server has just said it is not.
+   */
+  it('sends the chosen category and then draws what the route answered', async () => {
+    const { stop } = membersAsServed('000032')
+    const category = categoryAsServed(OPEN_TO_HIM, answeringCategory(CLOSED_TO_HIM))
+
+    try {
+      renderMembershipOn('2027-11-01', '000032')
+
+      const beginner = await screen.findByRole('radio', { name: 'U početničkoj kategoriji' })
+
+      expect(beginner).not.toBeChecked()
+
+      fireEvent.click(beginner)
+
+      /* The wish is ticked from the answer, and the radio is disabled by the same answer:
+         two fields of one body, so „it echoed the request" cannot produce this pair. */
+      expect(await screen.findByRole('radio', { name: 'U početničkoj kategoriji' })).toBeChecked()
+      expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeDisabled()
+
+      const wrote = first(category.asked.filter((one) => one.init?.method === 'PUT'))
+
+      expect(wrote.path).toBe('/api/me/category')
+      expect(JSON.parse(String(wrote.init?.body))).toEqual({ firstSeason: true })
+    } finally {
+      category.stop()
+      stop()
+    }
+  })
+
+  /**
+   * AND THE WAY BACK, WHICH IS THE HALF A SCREEN LOSES.
+   *
+   * Owner, 26.09.2026 (PDL P7 §9): „Do tog roka se izbor menja koliko god puta", and PDL §13
+   * says the switch is free in both directions. A screen wired only where the wish is turned ON
+   * passes every case above: the member starts on the age band in all of them, so nothing there
+   * ever presses the age band itself. This starts him on the beginners' category and sends him
+   * back, and the body is asserted to carry `false` - which is the one value a handler written
+   * as a copy of its neighbour would get wrong.
+   */
+  it('sends the way back when a first season member returns to his age band', async () => {
+    const { stop } = membersAsServed('000032')
+    const category = categoryAsServed(HE_WANTS_THE_BEGINNERS, answeringCategory(OPEN_TO_HIM))
+
+    try {
+      renderMembershipOn('2027-11-01', '000032')
+
+      const age = await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' })
+
+      expect(age).not.toBeChecked()
+
+      fireEvent.click(age)
+
+      expect(
+        await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+      ).toBeChecked()
+
+      const wrote = first(category.asked.filter((one) => one.init?.method === 'PUT'))
+
+      expect(JSON.parse(String(wrote.init?.body))).toEqual({ firstSeason: false })
+    } finally {
+      category.stop()
+      stop()
+    }
+  })
+
+  /**
+   * A REFUSAL IS SAID OUT LOUD, AND THE BOX GOES BACK TO WHAT THE SERVER STILL HOLDS.
+   *
+   * The one refusal a reader can meet is `theChoiceIsShut`: his deadline passed between the
+   * box being drawn and his pressing it. Swallowed, the radio would spring back on its own
+   * with nothing to explain it, which PDL.md:1659 („Kontrola koja nista ne radi je gora nego
+   * da je nema") calls worse than no control.
+   *
+   * <p>Both halves are asserted: the sentence appears, AND the wish is still the one the
+   * server holds. A screen that showed the sentence and left the new radio ticked would be
+   * telling the member two different things at once.
+   */
+  it('says so when the route refuses the choice because the deadline has passed', async () => {
+    const { stop } = membersAsServed('000032')
+    const category = categoryAsServed(OPEN_TO_HIM, refused('theChoiceIsShut', 409))
+
+    try {
+      renderMembershipOn('2027-11-01', '000032')
+
+      fireEvent.click(await screen.findByRole('radio', { name: 'U početničkoj kategoriji' }))
+
+      /* Found by ROLE and not by text alone, because what makes this sentence do its job is
+         that it is announced: `role="status"` is a live region, so a reader who has just
+         pressed a radio hears why it sprang back without the focus moving (WCAG 2.2 SC
+         4.1.3). Queried by text alone, a version that dropped the role would pass. */
+      expect(await screen.findByRole('status')).toHaveTextContent(/rok istekao 1\. januara/i)
+      expect(screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).toBeChecked()
+    } finally {
+      category.stop()
+      stop()
+    }
+  })
+
+  /**
+   * PAST THE DEADLINE THE BOX IS DRAWN AND NOTHING IN IT CAN BE PRESSED.
+   *
+   * Drawn rather than hidden, because his category for the coming season is a fact he is
+   * entitled to read: the answer still carries it (`M55+` here, which is neither of the two
+   * the other states use). What he may no longer do is change it, and `open: false` is the one
+   * field that says so - a screen reading `firstSeasonAllowed` instead would leave the age
+   * band pressable, since that right never goes away.
+   */
+  it('draws the category past the deadline with both choices out of reach', async () => {
+    const { stop } = membersAsServed('000032')
+    const category = categoryAsServed(PAST_THE_DEADLINE)
+
+    try {
+      renderMembershipOn('2027-11-01', '000032')
+
+      expect(
+        await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+      ).toBeDisabled()
+      expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeDisabled()
+    } finally {
+      category.stop()
+      stop()
+    }
+  })
+
+  /**
+   * AND WHERE THE ROUTE ANSWERS NOTHING, THERE IS NO BOX AT ALL.
+   *
+   * 404 is what an account with no member behind it gets, and it is also every other way the
+   * read can fail (`myCategory.ts` folds them into one outcome on purpose). The rest of the
+   * screen is asserted to be standing, so this measures „no box" and not „no screen".
+   */
+  it('draws no choice of category where the route answers nothing', async () => {
+    const { stop } = membersAsServed('000032')
+    const category = categoryAsServed(null)
+
+    try {
+      renderMembershipOn('2027-11-01', '000032')
+
+      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      expect(
+        screen.queryByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+      ).not.toBeInTheDocument()
+    } finally {
+      category.stop()
+      stop()
+    }
+  })
 
   /* **THE ANSWER NAMED A MEMBER AND CARRIED NO RECORD, WHICH IS A DIFFERENT PERSON FROM
      THE ONE THIS CASE USED TO BE ABOUT.**
@@ -1979,52 +2271,6 @@ afterEach(() => {
   globalThis.fetch = REAL_FETCH
 })
 
-async function withOneMoreResult(
-  row: { memberNumber: string; date: string; points: number },
-  run: () => Promise<void>,
-): Promise<void> {
-  const real = globalThis.fetch
-
-  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    const response = await real(input, init)
-
-    if (!String(input).includes('/api/results')) {
-      return response
-    }
-
-    const rows: Result[] = await response.json()
-
-    rows.push({
-      /* Below nought, so it cannot be the number of anything the file carries:
-         a `bigserial` starts at one (`admin/raceIds.ts`, `nextIdentity`). */
-      id: -1,
-      memberNumber: row.memberNumber,
-      raceId: -1,
-      raceName: 'Trka',
-      eventName: 'Trka',
-      eventSlug: 'trka',
-      date: row.date,
-      distanceKm: 10,
-      ascentM: 100,
-      descentM: 100,
-      seconds: 3000,
-      points: row.points,
-      category: 'short',
-    })
-
-    return new Response(JSON.stringify(rows), {
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-    })
-  }
-
-  try {
-    await run()
-  } finally {
-    globalThis.fetch = real
-  }
-}
-
 describe('the transfer window and renewal', () => {
   function renderMembership(today: string) {
     renderMembershipOn(today)
@@ -2041,45 +2287,62 @@ describe('the transfer window and renewal', () => {
     expect(screen.getByText(/Prelazak u drugi tim se dogovara van portala/)).toBeVisible()
   })
 
-  it('offers the first season category to somebody whose running is all from before the league', async () => {
-    /* This used to assert the opposite, and the opposite is what the screen did:
-       it summed every result a member had, which in this portal is the history
-       imported from 2010 to 2026 (P26), and closed the category to thirty of the
-       thirty two members over races run before the league existed.
+  /* **THE TWO CASES BELOW USED TO MEASURE THE RULE AND NOW MEASURE THE SENTENCE**, and that
+     is the move of 27.09.2026 rather than a loss.
 
-       The owner settled it on 11.08.2026, verbatim: „gledaju se samo zvanične
-       BTL sezone za pravilo od 12 poena u prethodnoj, tako da u prvoj sezoni u
-       teoriji svi mogu da odu u Prvu Sezonu."
+     They read: this screen summed every result a member had, which in this portal is the
+     history imported from 2010 to 2026 (P26), so it closed the category to thirty of the
+     thirty two members over races run before the league existed; the owner settled it on
+     11.08.2026 („gledaju se samo zvanične BTL sezone za pravilo od 12 poena"); and the
+     second case handed the screen one more row to prove the rule was a rule.
 
-       000032, whom this screen is rendered for, took 49.40 points in a single
-       imported season, four times the threshold, and not one of those seasons
-       is an official one. Under the old sum this radio was switched off. */
-    renderMembership('2026-11-01')
+     The rule is the server's now, which is what PDL P7 says it always was: „Ko sme da bude
+     u početničkoj kategoriji proverava portal, ne član." So the sum over official seasons,
+     the imported history that must not count and the threshold at a hundredth are measured
+     against a real database in `MeCategoryApiTest`, and what is left here is the half this
+     side owns: the right the route answers becomes the right control and the right sentence.
 
-    await screen.findByRole('heading', { name: /Obnova članarine/ })
+     **Both are kept rather than folded into one**, because they are the two sentences a
+     member can read and they contradict each other: one says the category is open and one
+     says leaving it cannot be undone. A single case could assert only one of them. */
+  it('offers the first season category where the route says the right still stands', async () => {
+    const category = categoryAsServed(OPEN_TO_HIM)
 
-    expect(screen.getByLabelText('U početničkoj kategoriji')).toBeEnabled()
-    expect(screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/)).toBeVisible()
+    try {
+      renderMembership('2026-11-01')
+
+      expect(
+        await screen.findByRole('radio', { name: 'U početničkoj kategoriji' }),
+      ).toBeEnabled()
+      expect(
+        screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/),
+      ).toBeVisible()
+      expect(
+        screen.queryByText(/jer si zvaničnu sezonu završio sa 12 i više bodova/),
+      ).not.toBeInTheDocument()
+    } finally {
+      category.stop()
+    }
   })
 
-  it('closes it to somebody who has finished one official season over the threshold', async () => {
-    /* The one state of this screen the seed cannot reach: the generated data
-       stops at 2026 on purpose, so nobody in it has an official season at all.
-       Handed one row more, the same screen shuts the category, which is what
-       says the rule is a rule and not a way of always answering yes. */
-    await withOneMoreResult(
-      { memberNumber: '000032', date: '2027-04-15', points: 12 },
-      async () => {
-        renderMembership('2026-11-01')
+  it('closes it where the route says the right is gone, and says leaving cannot be undone', async () => {
+    const category = categoryAsServed(CLOSED_TO_HIM)
 
-        await screen.findByRole('heading', { name: /Obnova članarine/ })
+    try {
+      renderMembership('2026-11-01')
 
-        expect(screen.getByLabelText('U početničkoj kategoriji')).toBeDisabled()
-        expect(
-          screen.getByText(/jer si zvaničnu sezonu završio sa 12 i više bodova/),
-        ).toBeVisible()
-      },
-    )
+      expect(
+        await screen.findByRole('radio', { name: 'U početničkoj kategoriji' }),
+      ).toBeDisabled()
+      expect(
+        screen.getByText(/jer si zvaničnu sezonu završio sa 12 i više bodova/),
+      ).toBeVisible()
+      expect(
+        screen.queryByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/),
+      ).not.toBeInTheDocument()
+    } finally {
+      category.stop()
+    }
   })
 
   it('shuts both outside the window, and says when they open', async () => {
@@ -2098,12 +2361,36 @@ describe('the transfer window and renewal', () => {
     expect(await screen.findByText('Trenutno nisi ni u jednom timu.')).toBeVisible()
   })
 
+  /**
+   * A MEMBER WHO ALREADY CHOSE THE BEGINNERS' CATEGORY FINDS IT STILL TICKED.
+   *
+   * This is what wiring the box actually bought, and the case that would have failed before
+   * it: the radios were `defaultChecked` on the age band, so a member who chose the
+   * beginners' category in October came back in November to a screen showing the other one.
+   * PDL §13 (owner, 27.09.2026) puts the default on the age band deliberately - „svakako
+   * treba da bude automatski izabrana od pocetka, a korisnik uvek moze da prebaci" - and that
+   * default is the SERVER's, written in the column at registration, not a `defaultChecked`
+   * here.
+   *
+   * <p>Both radios are asserted, not one: „his wish is ticked" and „both are ticked" are
+   * different screens and a single assertion cannot tell them apart.
+   */
   it('keeps a first season member in that choice while it is still open', async () => {
-    // 000031 has never raced, so nothing bars them.
-    renderMembershipOn('2026-11-01', '000031')
+    const category = categoryAsServed(HE_WANTS_THE_BEGINNERS)
 
-    expect(await screen.findByLabelText('U početničkoj kategoriji')).toBeEnabled()
-    expect(screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/)).toBeVisible()
+    try {
+      renderMembershipOn('2026-11-01', '000031')
+
+      expect(await screen.findByRole('radio', { name: 'U početničkoj kategoriji' })).toBeChecked()
+      expect(
+        screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+      ).not.toBeChecked()
+      expect(
+        screen.getByText(/nijednu zvaničnu sezonu nisi završio sa 12 i više bodova/),
+      ).toBeVisible()
+    } finally {
+      category.stop()
+    }
   })
 })
 
