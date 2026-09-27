@@ -556,7 +556,7 @@ class PaymentApiTest {
 	@Test
 	void theFormMustNameACompetitor() throws Exception {
 		MockHttpServletResponse answer = confirm(
-				"{\"season\":2028,\"currency\":\"EUR\",\"method\":\"card\"}", moderatorCookie);
+				"{\"season\":2028,\"currency\":\"EUR\",\"method\":\"paypal\"}", moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
@@ -584,7 +584,7 @@ class PaymentApiTest {
 
 		MockHttpServletResponse answer = confirm(
 				"{\"competitorId\":" + id + ",\"season\":2027,\"currency\":\"EUR\","
-						+ "\"method\":\"card\"}", moderatorCookie);
+						+ "\"method\":\"paypal\"}", moderatorCookie);
 
 		assertThat(answer.getStatus())
 				.as("a body naming a season was refused, so the field is back on the form")
@@ -608,7 +608,7 @@ class PaymentApiTest {
 		long id = competitor("a8", null, false, "1990-05-15");
 
 		MockHttpServletResponse answer = confirm(
-				"{\"competitorId\":" + id + ",\"season\":2028,\"currency\":\"\",\"method\":\"card\"}",
+				"{\"competitorId\":" + id + ",\"season\":2028,\"currency\":\"\",\"method\":\"paypal\"}",
 				moderatorCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
