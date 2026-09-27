@@ -203,9 +203,11 @@ describe('the picture on a profile, changed later', () => {
        which lives in `useState` exactly as `proposals` does. So it is gone the
        moment the tab is reloaded while the row it cannot see stays open on the
        server: the member who sent it meets `picture.none` on the next visit as
-       though he had sent nothing, sends again, and is refused
-       `aPictureAlreadyWaits`. No card is what is missing then, not a second one,
-       which is written down rather than left to be found (PENDING, and PDL P22).
+       though he had sent nothing, sends again, and since PDL 21c that overwrites
+       the row already waiting rather than being refused for it - „gazi trenutan
+       red kod verifikatora", „Red ostaje jedan". No card is what is missing then,
+       not a second one, which is written down rather than left to be found
+       (PENDING, and PDL P22).
      *
        WHAT CHANGED THAT DAY AND WHAT DID NOT: the panel no longer puts a card of
        its own in front of the moderator at all, because the server files the queue
@@ -263,7 +265,7 @@ describe('the picture on a profile, changed later', () => {
        in the file has to be there in the same breath. */
     const { stop } = serverThat((path, init) =>
       path === '/api/me/photo' && init?.method === 'POST'
-        ? refused('aPictureAlreadyWaits', 409)
+        ? refused('thePictureIsTooBig')
         : null,
     )
     const user = setupUser()
@@ -277,16 +279,16 @@ describe('the picture on a profile, changed later', () => {
     await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
 
     /* The server's own reason, in the words the dictionary gives that reason, and never
-       one sentence of ours over all five. */
+       one sentence of ours over all four. */
     expect(await panel.findByRole('alert')).toHaveTextContent(
-      sr.picture.sendRefused.aPictureAlreadyWaits,
+      sr.picture.sendRefused.thePictureIsTooBig,
     )
     /* The control is still there and still says what it did: a refusal he can act on is
-       answered by choosing another file or by waiting, not by being told to wait. */
+       answered by choosing another file, not by being told there is nothing to do. */
     expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
     expect(panel.queryByText(/čeka odobrenje/)).not.toBeInTheDocument()
-    /* And the picture he chose is still chosen, so he is not asked to find it again over
-       something that was not his mistake. */
+    /* And the picture he chose is still chosen, so a refusal does not send him back to
+       an empty panel with nothing picked. */
     expect(panel.getByLabelText('Veličina isečka')).toBeVisible()
 
     stop()
@@ -305,9 +307,10 @@ describe('the picture on a profile, changed later', () => {
        the only thing that can refuse it is a ref: state set during the first press is not
        readable by the second in the same turn.
      *
-       What it costs when it is missing is measured on the server rather than guessed:
-       `MePhotoApi` refuses a second picture while one waits, 409, so a double press puts
-       one picture in front of a moderator and hands the member a refusal for his own. */
+       What a missing guard would let through changed on 27.09.2026: `MePhotoApi` no
+       longer refuses a second picture while one waits, it overwrites the row with it
+       instead (PDL 21c). So the failure this ref prevents is no longer a refusal the
+       member would see - it is his own first picture being replaced without one. */
     let release: (answer: Response) => void = () => undefined
     const onItsWay = new Promise<Response>((resolve) => {
       release = resolve
