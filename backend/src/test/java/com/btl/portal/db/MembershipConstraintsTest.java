@@ -210,6 +210,20 @@ class MembershipConstraintsTest extends DatabaseTest {
 				.params(number, season, reference).update();
 	}
 
+	/**
+	 * HELD ON AN EXEMPTION AND NAMING A LINE IN THE BOOK, which only `balance` may do.
+	 *
+	 * <p><b>A constant rather than the same row written twice, and a mutation is why.</b> It is used
+	 * by the violations list AND by the case that claims it breaks exactly one constraint. Written out
+	 * in both places, taking the trail off the list left the case untouched and the whole file green,
+	 * so the claim could not see the thing it is about.
+	 *
+	 * <p>The trail is what makes it break ONE constraint: since V35 an exemption without one breaks
+	 * three, and PostgreSQL names whichever it reaches first.
+	 */
+	private static final String NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS =
+			membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, " + HIS_BOOK_ENTRY + ", " + A_TRAIL);
+
 	static List<Violation> violations() {
 		return List.of(
 				/* THESE FOUR CARRY A TRAIL, and not for tidiness: without one they would break
@@ -319,8 +333,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
 						membershipNaming(A_MEMBER + ", 2030, 'balance', null, null, null, null, null")),
 				Violation.of("membership_basis_says_whether_a_book_entry_is_named",
-						membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, " + HIS_BOOK_ENTRY
-								+ ", " + A_TRAIL)),
+						NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS),
 
 				/* And the line it names has to be there. */
 				Violation.of("membership_balance_entry_fk",
@@ -352,8 +365,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 */
 	@Test
 	void theRowThatNamesABookEntryOnTheWrongBasisBreaksThatAloneSinceV35() {
-		assertThatThrownBy(() -> db.sql(membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, "
-						+ HIS_BOOK_ENTRY + ", " + A_TRAIL)).update())
+		assertThatThrownBy(() -> db.sql(NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS).update())
 				.isInstanceOf(DataIntegrityViolationException.class)
 				.hasMessageContaining("membership_basis_says_whether_a_book_entry_is_named")
 				.hasMessageNotContaining("membership_free_of_the_fee_says_who")
