@@ -717,6 +717,19 @@ class CompetitorApiTest {
 	}
 
 	/**
+	 * EVERY MEMBER NUMBER AN ANSWER CARRIES, IN THE ORDER IT CARRIES THEM - the half a
+	 * comparison keyed by number can never see, because {@link #recordOf} always looks a
+	 * number up rather than counting how many records answer to it or in what order they
+	 * came. A join that drops a row, or one that multiplies it, changes this list while
+	 * leaving every name {@code recordOf} finds still right.
+	 */
+	private static List<String> memberNumbersOf(JsonNode answer) {
+		return StreamSupport.stream(answer.spliterator(), false)
+				.map(one -> one.path("memberNumber").asString())
+				.toList();
+	}
+
+	/**
 	 * EVERY FIELD THE PORTAL READS IS ANSWERED, EXCEPT THE FOUR THAT ARE NOT ITS
 	 * BUSINESS, and those are named here with the reason.
 	 *
@@ -1661,6 +1674,17 @@ class CompetitorApiTest {
 						+ " reaching a visitor")
 				.isNotEqualTo(whole(null));
 
+		/* AND THE TWO ANSWERS NAME THE SAME RECORDS IN THE SAME ORDER, which the loop below
+		   can never say by itself: it is keyed by the VISITOR's numbers and looks each one up
+		   on the member's side by number, so a join that drops a member's row or answers it
+		   twice would still find every number it goes looking for and call every name right
+		   (rule of 14.09.2026: what a comparison must ignore to pass is its real finding). */
+		assertThat(memberNumbersOf(answerFor(HER_OWN_ACCOUNT)))
+				.as("the member's answer does not carry the same records, in the same order, as"
+						+ " the visitor's - the number and order of rows a lookup by number below"
+						+ " can never see")
+				.containsExactlyElementsOf(memberNumbersOf(answerFor(null)));
+
 		for (JsonNode visitorRecord : answerFor(null)) {
 			String memberNumber = visitorRecord.path("memberNumber").asString();
 
@@ -1774,6 +1798,16 @@ class CompetitorApiTest {
 		   reader with no session. `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` and
 		   `aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn` walk him by name for exactly
 		   that reason; here what is measured is that NOTHING ELSE moved. */
+		/* AND HIS ANSWER NAMES THE SAME RECORDS IN THE SAME ORDER AS THE VISITOR'S, for the
+		   same reason given on `theVisitorsAnswerHasNotMoved`: the loop below is keyed by the
+		   visitor's numbers and looks each one up on his side by number, so it cannot see a
+		   join that dropped a row or answered one twice while every name it finds stays right. */
+		assertThat(memberNumbersOf(answerFor(RACES_FOR_NOBODY)))
+				.as("his answer does not carry the same records, in the same order, as the"
+						+ " visitor's - the number and order of rows a lookup by number below"
+						+ " can never see")
+				.containsExactlyElementsOf(memberNumbersOf(answerFor(null)));
+
 		for (JsonNode visitorRecord : answerFor(null)) {
 			String memberNumber = visitorRecord.path("memberNumber").asString();
 
@@ -1953,6 +1987,17 @@ class CompetitorApiTest {
 	@Test
 	void theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded() throws Exception {
 		for (String administration : THE_ADMINISTRATION) {
+			/* AND HIS ANSWER NAMES THE SAME RECORDS IN THE SAME ORDER AS THE VISITOR'S, for
+			   the same reason given on `theVisitorsAnswerHasNotMoved`: the loop below is keyed
+			   by the visitor's numbers and looks each one up on his side by number, so it
+			   cannot see a join that dropped a row or answered one twice while every name it
+			   finds stays right. */
+			assertThat(memberNumbersOf(answerFor(administration)))
+					.as("%s's answer does not carry the same records, in the same order, as the"
+							+ " visitor's - the number and order of rows a lookup by number below"
+							+ " can never see", administration)
+					.containsExactlyElementsOf(memberNumbersOf(answerFor(null)));
+
 			for (JsonNode visitorRecord : answerFor(null)) {
 				String memberNumber = visitorRecord.path("memberNumber").asString();
 
