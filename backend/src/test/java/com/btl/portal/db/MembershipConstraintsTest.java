@@ -210,7 +210,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
 						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
 						+ " values ((select id from competitor where member_number = ?), ?, ?, "
-						+ A_PRICE_ROW + ", 4200.00, 'RSD', 0, 'slip', 'recorded', " + AN_INSTANT
+						+ A_PRICE_ROW + ", 4200.00, 'RSD', 0, 'ips', 'recorded', " + AN_INSTANT
 						+ ", " + AN_ACCOUNT + ", 'Blagajnik Probni')")
 				.params(number, season, reference).update();
 	}
