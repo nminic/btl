@@ -75,8 +75,11 @@ import java.util.regex.Pattern;
  * <li>{@code verification.photo_id} - a picture WAITING for a moderator. PDL, „Profilnu
  * sliku administrator odobrava pre objave": a picture in that queue is by definition one
  * nobody has published, so serving it HERE is publishing it instead of him. <b>Since
- * 27.09.2026 it has an address of its own, and that sentence is why it is a second route
- * rather than a third {@code exists}</b>: see {@link #waitingOn} below.
+ * 27.09.2026 it has TWO addresses of its own, and that sentence is why they are routes rather
+ * than a third {@code exists}</b>: {@link #waitingOn} for the moderator who decides about it,
+ * and {@link #mineThatWaits} for the member whose picture it is (PDL 21b). Each serves one
+ * caller about one row by construction, so neither can be widened by accident, and the rule
+ * above is narrowed in exactly two named places rather than moved.
  * <li>{@code team_proposal.logo_id} - the mark of a team that has been PROPOSED. The
  * proposal is what a moderator decides on; until he does, there is no team and there is
  * nothing to draw it beside.
@@ -230,26 +233,30 @@ import java.util.regex.Pattern;
  * {@link ApiSecurity#READ_BY_ANYBODY_UNDER_A_NAME} says why the existing list could not
  * carry it: every entry there is a whole address, and this one is an address with a name in
  * it. <b>That sentence is about {@link #photo} and not about this class</b>, which since
- * 27.09.2026 maps a second route that is on no open list at all.
+ * 27.09.2026 maps two further routes that are on no open list at all.
  *
- * <p><b>AND THAT SECOND ROUTE IS WHY THIS CLASS NOW SERVES TWO KINDS OF CALLER FROM ONE
- * PLACE, which is a choice with a measurement behind it rather than a convenience.</b>
- * {@link #waitingOn} answers the picture a moderator is deciding about. It could have lived
- * in {@link VerificationApi}, whose resource it belongs to, and what decided otherwise is
- * that {@link #bytesOf} is the ONE place in this portal that reads a picture off the disk
- * for a response, and the one place {@code NOFOLLOW_LINKS} is written. A second reader would
- * split the refusal of a symbolic link across two files, so whoever hardened one would miss
- * the other. The folder setting is a different matter and is already read in four classes
+ * <p><b>AND THOSE TWO ARE WHY THIS CLASS SERVES THREE KINDS OF CALLER FROM ONE PLACE, which is
+ * a choice with a measurement behind it rather than a convenience.</b> {@link #waitingOn}
+ * answers the picture a moderator is deciding about and {@link #mineThatWaits} answers the one
+ * its own member is waiting on. Either could have lived with the resource it belongs to -
+ * {@link VerificationApi} and {@link MePhotoApi} - and what decided otherwise is that
+ * {@link #bytesOf} is the ONE place in this portal that reads a picture off the disk for a
+ * response, and the one place {@code NOFOLLOW_LINKS} is written. A second reader would split the
+ * refusal of a symbolic link across two files, so whoever hardened one would miss the other. The
+ * folder setting is a different matter and is already read in four classes
  * ({@code MePhotoApi} says so in as many words), so a fifth reader of a SETTING is the
  * pattern here and a second reader of the BYTES is not.
  *
- * <p><b>What the two routes do NOT share is the question they ask</b>, and nothing was
+ * <p><b>What the three routes do NOT share is the question they ask</b>, and nothing was
  * loosened to fit them in one class: {@link #photo} asks „does something public hold this
- * digest", {@link #waitingOn} asks „may this moderator decide about this row". They share
- * {@link #bytesOf}, {@link #nothingIsHere}, {@link #FOR_A_DAY} and the folder, all four of
- * which are about carrying bytes out and none of which is about permission.
- * {@code THE_PICTURE_A_DIGEST_NAMES} is untouched by the second route, so which pictures are
- * PUBLIC is exactly what it was.
+ * digest", {@link #waitingOn} asks „may this moderator decide about this row", and
+ * {@link #mineThatWaits} asks „is this the picture the caller himself is waiting on". They share
+ * {@link #bytesOf}, {@link #nothingIsHere} and the folder, all three of which are about carrying
+ * bytes out and none of which is about permission. <b>What they deliberately do NOT share any
+ * more is how long an answer may be kept</b>, and that split arrived with PDL 21c: see
+ * {@link #FOR_A_DAY_PRIVATELY} and {@link #NOT_KEPT_AT_ALL}, where the line is drawn by whether
+ * the ADDRESS is derived from the content. {@code THE_PICTURE_A_DIGEST_NAMES} is untouched by
+ * either of the two, so which pictures are PUBLIC is exactly what it was.
  */
 @RestController
 class PhotoApi {
@@ -290,6 +297,41 @@ class PhotoApi {
 	 * already has it. The note at the head of this class says why it is not a year.
 	 */
 	private static final Duration FOR_A_DAY = Duration.ofDays(1);
+
+	/**
+	 * What an answer ADDRESSED BY A DIGEST may be kept for, which is the day argued above.
+	 *
+	 * <p>Private rather than public, and the security round of 20.09.2026 that measured why is at
+	 * the head of this class: this is the only caching answer in the portal and the only one that
+	 * sets a cookie.
+	 */
+	private static final CacheControl FOR_A_DAY_PRIVATELY =
+			CacheControl.maxAge(FOR_A_DAY).cachePrivate();
+
+	/**
+	 * And what an answer ADDRESSED BY A ROW may be kept for, which is nothing at all.
+	 *
+	 * <p><b>This constant arrives with PDL 21c and the reason is measured rather than cautious.</b>
+	 * Until 27.09.2026 no code in this portal ever rewrote {@code verification.photo_id} to a
+	 * different picture: the only {@code update verification} anywhere under
+	 * {@code src/main/java} is the DECISION, and it sets the column to null
+	 * ({@code VerificationWriteApi}). So the bytes behind {@code /api/verification/{id}/photo}
+	 * could not change, and keeping them for a day was as safe as keeping a digest's.
+	 *
+	 * <p><b>21c is what changed that, and it changed it in the worst possible direction.</b>
+	 * „Ponovno slanje PREGAZI red koji ceka": from that day the same {@code verification.id}
+	 * names different bytes, while the address stays the same character for character. A day of
+	 * private caching would then show a moderator the picture a member has already replaced - and
+	 * approving a photograph he had not actually seen is the exact fault the owner found on QA and
+	 * the exact reason {@link #waitingOn} exists.
+	 *
+	 * <p><b>{@link CacheControl#empty()} writes NO header</b> rather than writing one that says
+	 * nothing, which leaves the field to Spring Security's own writer - the same one that puts
+	 * {@code nosniff} on everything this chain answers, and what the rest of the portal's
+	 * resources already answer with. Measured by the case that reads the header off the answer
+	 * rather than assumed from the framework.
+	 */
+	private static final CacheControl NOT_KEPT_AT_ALL = CacheControl.empty();
 
 	/**
 	 * THE PICTURE A DIGEST NAMES, IF SOMETHING THE PORTAL PUBLISHES HOLDS IT.
@@ -354,6 +396,44 @@ class PhotoApi {
 	private static final String THE_WAITING_PICTURE_OF_A_ROW =
 			"select p.id, p.media_type, v.right_code from verification v"
 			+ " join photo p on p.id = v.photo_id where v.id = :id";
+
+	/** The tab a portrait waits in, which is the one PDL P28a names „Profili". */
+	private static final String THE_PROFILES_TAB = "profiles";
+
+	/**
+	 * THE PICTURE THE CALLING ACCOUNT'S OWN MEMBER IS WAITING ON, BY ITS DIGEST.
+	 *
+	 * <p><b>Every join in it is part of the permission and none of them is a lookup beside it.</b>
+	 * The digest says WHICH picture, the queue row says it is waiting rather than published, and
+	 * the account says it is HIS - so a digest belonging to another member's waiting picture finds
+	 * no row at all and leaves through the one {@link #nothingIsHere} everything else leaves
+	 * through. A condition checked after the row came back would be a second road out.
+	 *
+	 * <p><b>{@code v.state = 'waiting'} is here for {@link MePhotoApi}'s recorded reason and is
+	 * implied by the join</b>: V9's {@code verification_decided_keeps_no_photo} means a row holding
+	 * a picture is necessarily still waiting, so no fixture can separate the two, and it stays
+	 * because it says what the clause means and goes on being right the day that constraint is
+	 * relaxed.
+	 *
+	 * <p><b>{@code order by p.id limit 1} rather than trusting there to be one row</b>, which is
+	 * {@link #THE_PICTURE_A_DIGEST_NAMES}'s reason word for word: V8 puts no unique constraint on
+	 * {@code digest} because „the digest is what says two members uploaded the same picture", so
+	 * two rows may carry one digest - and two rows through {@code .optional()} is a 500. The oldest
+	 * decides, the same tie-break the two routes beside this use.
+	 *
+	 * <p><b>The tab is asked for although a portrait is the only sort of picture on it</b>, so that
+	 * this clause says which queue it means rather than relying on there being no other queue that
+	 * holds a member's own photograph. {@code verification.right_code} is not read at all here: a
+	 * member holds no queue right and none is asked of him, which is exactly the difference between
+	 * this route and {@link #waitingOn}.
+	 */
+	private static final String THE_PICTURE_I_AM_WAITING_ON =
+			"select p.id, p.media_type from photo p"
+			+ " join verification v on v.photo_id = p.id"
+			+ " join account a on a.competitor_id = v.competitor_id"
+			+ " where p.digest = :digest and a.id = :account and v.queue = :tab"
+			+ " and v.state = 'waiting'"
+			+ " order by p.id limit 1";
 
 	private final JdbcClient db;
 
@@ -441,7 +521,99 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		return carrying(kept.get().mediaType(), bytes.get());
+		return carrying(kept.get().mediaType(), bytes.get(), FOR_A_DAY_PRIVATELY);
+	}
+
+	/**
+	 * THE BYTES OF THE PICTURE THE CALLER HIMSELF IS WAITING ON, TO HIM AND TO NOBODY ELSE.
+	 *
+	 * <p><b>ADL A60, second amendment of 27.09.2026, and it is marked there as reasoning rather
+	 * than as the owner's word.</b> What the owner decided is PDL 21b: „ukoliko udjem da posaljem
+	 * ponovo, vidim da je trenutno slika u statusu cekanja i tu vidim trenutno azuriranu sliku sa
+	 * krugom." What was measured is that this did not survive a reload - the bytes were in the
+	 * browser that sent them and no route would answer them again.
+	 *
+	 * <p><b>THIS IS THE SECOND NAMED EXCEPTION AND NOT A WIDENING, which is the whole reason it
+	 * is a route of its own.</b> A60 of 20.09.2026 still stands word for word: a picture only a
+	 * queue row holds „nije javna" and „odgovara tacno isto kao slika koje nema". {@link #photo}
+	 * still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} is untouched, so „javan nosilac"
+	 * still means exactly {@code competitor.photo_id} and {@code team.logo_id}. A60's own words
+	 * for why this is cheaper: „cuvar uske rute po konstrukciji sluzi jednom pozivaocu nad jednim
+	 * redom, pa se ne moze slucajno prosiriti."
+	 *
+	 * <p><b>THE GUARD IS THE SESSION AND THERE IS NO SECOND HALF OF IT.</b> {@link #waitingOn} is
+	 * keyed to a {@code verification.id} and shut by a right over that queue; this one is keyed to
+	 * the caller's own account, so „whose picture is this" is not a question it asks but the thing
+	 * it is written out of. A member holding another member's digest is answered exactly as a
+	 * digest nobody wrote is answered, through the same {@link #nothingIsHere}, because the row he
+	 * is asking about is not joined to HIS account at all.
+	 *
+	 * <p><b>Asked of the ACCOUNT and never of the member, which is the shape
+	 * {@code MemberOfAccount} exists for and is done here in SQL instead.</b> V23 points
+	 * {@code account.competitor_id} at the member, so one join answers „the member behind this
+	 * session" without this class learning a second collaborator - and {@link #photo}'s own note
+	 * says why that matters: an account that does not race has no member at all, and a route that
+	 * asked about the member would answer nothing for a caller who is perfectly well signed in.
+	 * Here that outcome is right rather than wrong: an account with no member has no picture
+	 * waiting either.
+	 *
+	 * <p><b>NOTHING HERE ASKS WHETHER ANYBODY IS SIGNED IN, and there must not be.</b> This
+	 * address is on no open list, so the chain answers 401 before this method runs, and
+	 * {@code ApiSecurityTest.everyRouteNobodyOpenedIsARouteNobodyCanRead} derives that from the
+	 * dispatcher rather than being told - so it covers this route by existing. Written as a branch
+	 * here it would be a branch no request can reach, which the gate's hundred per cent of
+	 * branches refuses.
+	 *
+	 * <p><b>AND THE CROP IS NOT ANSWERED HERE EITHER, though the member is the one reader who
+	 * needs it.</b> It rides beside the address on {@code GET /api/me/photo}
+	 * ({@link MePhotoApi#mine}), which is the shape PDL P28f fixed for {@link CompetitorApi} and
+	 * {@link TeamApi}: an address in one field and three fractions in another. This route answers
+	 * bytes and nothing about them, exactly as {@link #photo} does - „a caller who wants to know
+	 * anything ABOUT a picture is holding the wrong address".
+	 *
+	 * <p><b>IT IS KEPT FOR A DAY LIKE {@link #photo}'S AND UNLIKE {@link #waitingOn}'S, and the
+	 * line is drawn by the ADDRESS rather than by the reader.</b> This one carries a digest, so the
+	 * bytes behind it cannot change and the argument at the head of this class holds unchanged -
+	 * an overwrite gives the member a NEW digest and therefore a new address, and the old one stops
+	 * being named by anything. {@link #waitingOn} is the one that had to give the day up, because a
+	 * {@code verification.id} now names different bytes over time; see {@link #NOT_KEPT_AT_ALL}.
+	 *
+	 * @param digest   the digest of the content, which is an address and never a path. The same
+	 *                 shape {@link #photo} takes, refused by {@link #A_DIGEST} before anything is
+	 *                 asked of the database for the identical reason
+	 * @param asking   whose request it is, as the chain resolved it. Never null here, by the
+	 *                 paragraph above
+	 * @param response asked for so a refusal goes down the road an address that is not there
+	 *                 takes, exactly as the two routes beside it do
+	 */
+	@GetMapping("/api/me/photo/{digest}")
+	ResponseEntity<byte[]> mineThatWaits(@PathVariable String digest,
+			@AuthenticationPrincipal WhoIsAsking.Member asking, HttpServletResponse response)
+			throws IOException {
+
+		if (!A_DIGEST.matcher(digest).matches()) {
+			return nothingIsHere(response);
+		}
+
+		Optional<Kept> kept = db
+				.sql(THE_PICTURE_I_AM_WAITING_ON)
+				.param("digest", digest)
+				.param("account", asking.account())
+				.param("tab", THE_PROFILES_TAB)
+				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
+				.optional();
+
+		if (kept.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		Optional<byte[]> bytes = theFileOf(kept.get().id(), digest);
+
+		if (bytes.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		return carrying(kept.get().mediaType(), bytes.get(), FOR_A_DAY_PRIVATELY);
 	}
 
 	/**
@@ -518,8 +690,9 @@ class PhotoApi {
 	 * opposite: the member is shown what he chose, because the circle IS his choice and he is
 	 * checking it; the moderator is shown everything, because what he is judging is whether
 	 * the photograph may be on the portal at all and the circle would hide the part he could
-	 * not otherwise refuse. The route 21b needs is not written yet, and when it is, it carries
-	 * the crop rather than copying this decision.
+	 * not otherwise refuse. <b>Both halves of that now exist</b>: {@link #mineThatWaits} carries
+	 * the member's bytes and {@link MePhotoApi#mine} carries his circle beside them, so the crop
+	 * is answered where it is his and refused where it is not.
 	 *
 	 * <p><b>AND THE MEMBER WHOSE PICTURE IT IS IS ANSWERED 404 HERE TOO, BUT THE REASON IS
 	 * THIS ROUTE'S OWNER AND NOT A RULE ABOUT HIM.</b> He holds no queue right and does not
@@ -538,12 +711,13 @@ class PhotoApi {
 	 * is waiting.
 	 * </ul>
 	 *
-	 * <p><b>So 21b needs a route of its own and it is NOT this one and NOT yet written</b> -
-	 * keyed to the caller's own session rather than to a queue row, and carrying the crop
-	 * rather than refusing it. ADL A60 says so in as many words: „Ono sto clan vidi na svom
-	 * ekranu za slanje i ono sto moderator vidi u redu su dve imenovane rute sa svojim pravom,
-	 * ne sirenje pojma „javna slika"." Named here as an open increment, not as something this
-	 * route covers.
+	 * <p><b>So 21b has a route of its own and it is NOT this one</b> - {@link #mineThatWaits},
+	 * keyed to the caller's own session rather than to a queue row, and carrying the crop rather
+	 * than refusing it. ADL A60 says so in as many words: „Ono sto clan vidi na svom ekranu za
+	 * slanje i ono sto moderator vidi u redu su dve imenovane rute sa svojim pravom, ne sirenje
+	 * pojma „javna slika"." <b>The member is still 404 HERE</b>, and that sentence is what this
+	 * paragraph is about: two narrow routes are not one wide one, and neither of them knows the
+	 * other's key.
 	 *
 	 * <p><b>Both of those overturn the decision of 24.09.2026</b> („Dok slika ceka odobrenje,
 	 * clan vidi svoju novu sliku sa oznakom da ceka"), which is named because a sentence
@@ -599,15 +773,15 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		return carrying(kept.get().mediaType(), bytes.get());
+		return carrying(kept.get().mediaType(), bytes.get(), NOT_KEPT_AT_ALL);
 	}
 
 	/**
 	 * THE BYTES OF THE PICTURE A ROW NAMES, OR NOTHING AND ONE LINE TO WHOEVER RUNS THE
 	 * SERVER.
 	 *
-	 * <p><b>THE ONLY PLACE THIS FAULT EXISTS</b>, and it is one place for two routes rather
-	 * than two places saying the same thing. The caller is told what a caller of a digest
+	 * <p><b>THE ONLY PLACE THIS FAULT EXISTS</b>, and it is one place for three routes rather
+	 * than three places saying the same thing. The caller is told what a caller of a digest
 	 * nobody wrote is told, so a row and its absence cannot be told apart from outside;
 	 * whoever runs the server is told here, because a row whose file has gone is a backup
 	 * that did not cover the volume (ADL A43, 2, „rezervna kopija mora da pokrije i volumen,
@@ -633,10 +807,11 @@ class PhotoApi {
 	 * and under which folder, and all three are here.
 	 *
 	 * @param photo {@code photo.id}, which is the file's name
-	 * @param named how the caller asked for it - a digest on {@link #photo} and a queue row's
-	 *              key on {@link #waitingOn}. Carried into the line because „which picture"
-	 *              alone does not tell an operator which address is broken, and the two
-	 *              routes reach one picture by two different names
+	 * @param named how the caller asked for it - a digest on {@link #photo} and on
+	 *              {@link #mineThatWaits}, a queue row's key on {@link #waitingOn}. Carried into
+	 *              the line because „which picture" alone does not tell an operator which address
+	 *              is broken, and the three routes reach one picture by two different sorts of
+	 *              name
 	 */
 	private Optional<byte[]> theFileOf(long photo, Object named) {
 		try {
@@ -650,12 +825,16 @@ class PhotoApi {
 	}
 
 	/**
-	 * THE ONE ANSWER THAT CARRIES BYTES, so that the two routes cannot come to disagree
-	 * about how long a picture may be kept.
+	 * THE ONE ANSWER THAT CARRIES BYTES, so that the three routes cannot come to disagree
+	 * about how a picture travels.
 	 *
-	 * <p>The cache term is a DAY and PRIVATE, and the note at the head of this class is where
-	 * both halves are argued. It is kept in one place because it is the line a decision about
-	 * withdrawing a picture moves, and a second copy would be a second thing to move.
+	 * <p><b>HOW LONG IT MAY BE KEPT IS THE CALLER'S TO SAY, AND THAT IS NOT A LOOSENING BUT THE
+	 * ONLY THING THAT MAKES THE DAY TRUE.</b> The whole argument for a day (at the head of this
+	 * class) rests on one sentence: „the name is the digest of the content, so the bytes behind a
+	 * given address cannot change". That is a property of the ADDRESS and not of this method, and
+	 * two of the three routes here are addressed by a digest while one is addressed by a
+	 * {@code verification.id}. So the term travels with the address: {@link #FOR_A_DAY_PRIVATELY}
+	 * where the address is derived from the content, {@link #NOT_KEPT_AT_ALL} where it is not.
 	 *
 	 * <p><b>AND NOTHING IS WRITTEN HERE ABOUT SNIFFING, which a first draft did.</b>
 	 * {@code X-Content-Type-Options: nosniff} is on this answer already, written by the
@@ -666,11 +845,16 @@ class PhotoApi {
 	 *
 	 * @param mediaType off the row and out of nothing else, which the note at the head of
 	 *                  this class explains and V8's {@code photo_media_type_known} bounds
+	 * @param how       one of the two constants above and never a third thing invented at a call
+	 *                  site, so that „which answers may be kept" is a question with two answers
+	 *                  written down rather than one per route
 	 */
-	private static ResponseEntity<byte[]> carrying(String mediaType, byte[] bytes) {
+	private static ResponseEntity<byte[]> carrying(String mediaType, byte[] bytes,
+			CacheControl how) {
+
 		return ResponseEntity.ok()
 				.contentType(MediaType.parseMediaType(mediaType))
-				.cacheControl(CacheControl.maxAge(FOR_A_DAY).cachePrivate())
+				.cacheControl(how)
 				.body(bytes);
 	}
 
@@ -723,13 +907,14 @@ class PhotoApi {
 	}
 
 	/**
-	 * THE ONE ANSWER, so that the three ways of getting here cannot drift apart.
+	 * THE ONE ANSWER, so that the many ways of getting here cannot drift apart.
 	 *
-	 * <p>Written three times it would be three chances for one of them to become a
+	 * <p>Written out at each of them it would be as many chances for one to become a
 	 * different sentence - a status set on the response rather than sent as an error is
 	 * already a different answer on the wire, measured byte for byte on 13.09.2026 - and
-	 * the whole point is that a name of the wrong shape, a digest nobody wrote and a row
-	 * whose file has gone are indistinguishable from outside.
+	 * the whole point is that a name of the wrong shape, a digest nobody wrote, a row
+	 * whose file has gone, a queue right the caller has not got and a picture that is
+	 * somebody else's are indistinguishable from outside.
 	 */
 	private static ResponseEntity<byte[]> nothingIsHere(HttpServletResponse response)
 			throws IOException {

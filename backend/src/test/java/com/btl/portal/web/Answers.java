@@ -94,6 +94,43 @@ final class Answers {
 	}
 
 	/**
+	 * THE NAMES IN ONE RECORD OF A RESOURCE WHOSE ANSWER IS NOT A LIST, which is one resource so far.
+	 *
+	 * <p><b>{@code /api/payments} answers a RECORD</b> - the season once, and the accounts under it,
+	 * because the season is a fact about the question rather than about any row. So
+	 * {@link #servedRecords} refuses its served file, and deliberately: that refusal is what stops a
+	 * file which had become a list of numbers from being compared against nothing and agreeing with
+	 * everything.
+	 *
+	 * <p>Rather than loosening it, the rows are asked for by the name they live under. The front
+	 * end's own reader of the same file made the same choice on the same day and for the same reason,
+	 * in {@code servedShape.test.ts}: „the resource whose answer is not a list is read by a function
+	 * that says so in its name."
+	 *
+	 * @param under the field of the served record that holds the rows
+	 */
+	static Set<String> servedFieldsUnder(String file, String under) {
+		try {
+			JsonNode all = new ObjectMapper()
+					.readTree(Files.readString(MOCK.resolve(file), StandardCharsets.UTF_8));
+
+			assertThat(all.isObject())
+					.as("%s is not a record, so %s is not where its rows are", file, under)
+					.isTrue();
+
+			JsonNode rows = all.get(under);
+
+			assertThat(rows != null && rows.isArray() && !rows.isEmpty())
+					.as("%s carries no rows under %s, so there is nothing to compare", file, under)
+					.isTrue();
+
+			return fieldsOf(rows.get(0));
+		} catch (IOException cannot) {
+			throw new UncheckedIOException(cannot);
+		}
+	}
+
+	/**
 	 * EVERY FIELD THE PORTAL READS IS ONE THE SERVER ANSWERS WITH, which is the
 	 * floor for a resource whose values the schema decides rather than the file.
 	 *
@@ -148,11 +185,27 @@ final class Answers {
 	 */
 	static void everyFieldThePortalReadsIsAnswered(String path, JsonNode answered, String file,
 			Set<String> alsoAnswered, String... deliberatelyNotAnswered) {
+		againstTheseServedNames(path, answered, servedFields(file), file, alsoAnswered,
+				deliberatelyNotAnswered);
+	}
+
+	/**
+	 * THE SAME TWO FLOORS WHEN THE SERVED NAMES CAME FROM SOMEWHERE OTHER THAN A FLAT FILE.
+	 *
+	 * <p>Added for {@code /api/payments}, whose served file is a record rather than a list
+	 * ({@link #servedFieldsUnder}). Everything below is the rule as it already stood; what moved out
+	 * is only WHERE the set of served names is read from, so the nineteen callers that pass a file
+	 * are unchanged and one caller may pass the names it read another way.
+	 *
+	 * @param served what the portal serves today, however the caller came by it
+	 * @param file   named only so the messages can still say which file the names came from
+	 */
+	static void againstTheseServedNames(String path, JsonNode answered, Set<String> served,
+			String file, Set<String> alsoAnswered, String... deliberatelyNotAnswered) {
 		assertThat(answered.isArray() && !answered.isEmpty())
 				.as("%s answered with nothing, so there are no fields to compare", path)
 				.isTrue();
 
-		Set<String> served = servedFields(file);
 		Set<String> answeredFields = fieldsOf(answered.get(0));
 
 		for (String left : deliberatelyNotAnswered) {

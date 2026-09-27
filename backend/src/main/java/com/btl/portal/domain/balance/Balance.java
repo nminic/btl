@@ -74,6 +74,27 @@ public final class Balance {
 		public boolean isNothing() {
 			return eur.signum() == 0 && rsd.signum() == 0;
 		}
+
+		/**
+		 * Whether EVERY half is strictly positive: money in both currencies, and not merely
+		 * somewhere.
+		 *
+		 * <p><b>Not the negation of {@link #isNothing()} by accident, but by the constraint this
+		 * answers for.</b> {@code balance_entry_a_membership_takes} (V38) reads {@code eur < 0 and
+		 * rsd < 0} for a spend - both strictly - so a spend with ONE half at nothing and the other
+		 * positive fails it exactly as a spend of nothing at all does. The two questions therefore
+		 * differ on exactly that one-sided state: {@code isNothing} is true only when both halves
+		 * are nothing, this is true only when both are something, and a pair like 15.00/0.00
+		 * answers false to both.
+		 *
+		 * <p>Found on review ({@code GrantingAMembership.decide}, PR 403): a guard written as
+		 * {@code !isNothing()} let such a pair through and the route met the constraint instead of
+		 * answering it, in {@code NOTHING_WOULD_COME_OFF_THE_BOOK}'s own words „500". This is the
+		 * question that guard needed.
+		 */
+		public boolean isMoneyInBothCurrencies() {
+			return eur.signum() > 0 && rsd.signum() > 0;
+		}
 	}
 
 	/**

@@ -578,3 +578,215 @@ pokazivao jedan uredan `pass`.
   cekaj". Oblik „dok ijedan red **nije** pending" je zadovoljen prvim poslom koji zavrsi.
 - **I zato `gh pr checks` nikad nije cuvar petlje sam po sebi.** Dok ista visi, on je nenulti; dakle
   ne razlikuje „jos traje" od „palo" bez citanja teksta.
+
+## 16. Cetiri oblika laznog merenja nadjena 27.09.2026, sva cetiri na frontend kapiji
+
+Uz cetiri koja vec stoje gore, danas su izmerena jos cetiri. **Nijedan se ne vidi bez broja uz
+`passed`.**
+
+### 16a. `-t` filter koji ne pogodi ime: `skipped` uz izlazni kod NULA
+
+Agent je pustio `vitest -t "next member"` da izmeri jedan slucaj. Filter nije pogodio ime, pa je izlaz
+glasio **`Tests 7 skipped (7)`**, izlazni kod **0**.
+
+**To prolazi obe nase provere odjednom:** red **postoji**, broj je **iznad nule**, kod je **nula**. A
+nijedan slucaj nije bio pokrenut.
+
+- **Merilo:** broj uz **`passed`** mora biti veci od nule. `skipped`, `no tests` i `0 passed` su
+  **„nije mereno"**, bez obzira na izlazni kod.
+- **Gde se javlja:** ime slucaja se promeni, filter ostane, i od tog trenutka je svako merenje tim
+  filterom prazno a izgleda zeleno.
+
+### 16b. Odsustvo reda `All files` NE znaci da prag nije meren
+
+Agent je trazio `All files` u ispisu pokrivenosti, nije ga nasao, i procitao to kao „prag nije ni
+ocenjen". **Tabela lista samo fajlove ISPOD praga**, pa je prazna **upravo zato sto ih nema**.
+
+**Dokaz da je merenje teklo** je red `Coverage enabled with v8` **plus apsolutni brojevi u sazetku**
+(`Statements : 100% ( 5608/5608 )`), nikad prisustvo tabele.
+
+**Ovaj oblik greska vuce u OBRNUTOM smeru od ostalih:** nateruje te da **zelen** ishod proglasis
+nemerenim.
+
+### 16c. `npm run test:coverage` je DVE komande sa `&&`, pa pad prve preseca drugi dan
+
+Skript je `vitest run --coverage && npm run test:another-day`. **Prolaz koji padne na pragu nije
+izmerio drugi dan uopste**, iako izgleda kao da je pusten ceo. Ko hoce oba merena, pusta ih kao **dve
+komande sa dva izlazna koda**.
+
+### 16d. Vitest se pusta iz `frontend/`, ne iz korena worktree-a
+
+Test koji cita `src/test/mock` inace pukne sa `ENOENT: no such file or directory, scandir` i vrati
+**`Tests no tests`** uz izlazni kod 1, sto izgleda kao pad grane a nije.
+
+## 17. Git Bash pretvara obrazac sa vodecom kosom crtom u Windows putanju (27.09.2026)
+
+Kvari **prazan** ishod, dakle najgori smer: izgleda kao da necega nema.
+
+| komanda | odgovor | zasto |
+|---|---|---|
+| `git log --all -S'/decision' -- frontend/src` | **0** | obrazac pretvoren u `C:/Program Files/Git/decision` |
+| `MSYS_NO_PATHCONV=1 git log --all -S'/decision' -- frontend/src` | **6** | isti upit, bez pretvaranja |
+| `git grep "/decision" origin/main` | **0** | isto pretvaranje |
+| `git grep "api/verification/" origin/main` | **sest fajlova** | obrazac ne pocinje kosom crtom |
+
+**Uzrok je mehanicki:** Git Bash to radi svakom argumentu koji pocinje kosom crtom pre nego sto ga
+preda **nativnom** programu. `git.exe` je nativan; `grep` je MSYS pa njegov obrazac nije diran —
+**zato `grep` radi a `git grep` laze**.
+
+- Svaki `-S`, `-G` ili obrazac za `git` koji pocinje kosom crtom pise se **bez nje** ili uz
+  **`MSYS_NO_PATHCONV=1`**.
+- **Nula iz `git grep` ili `git log -S` nad takvim obrascem nije nalaz nego nemerenje.**
+- **I druga polovina iste greske:** merenje u radnom stablu koje je **13 commita iza** `origin/main`.
+  Pre svake tvrdnje o tome cega u kodu nema, `git fetch` pa pitaj **`origin/main`**, ne svoj disk.
+
+**Cena kad se ne uradi:** vlasniku je prijavljeno da ekran ne ume da upise odluku, a ume i radi.
+
+## 18. „Commituj pre prve mutacije" je pogresna formulacija: commit ide pre SVAKE serije (27.09.2026)
+
+Pravilo stoji od 18.09.2026 i danas je **cetvrti put** koga kosta rada. Prva tri puta su bili agenti
+koji nisu commitovali uopste. **Cetvrti je drugaciji:** agent je **commitovao pre prve serije**, kako
+pravilo kaze, pa **dopisao kod** i pustio **drugu** seriju bez novog commita. `git checkout HEAD --`
+je vratio fajl na stanje koje nov slucaj nije sadrzalo, i slucaj je nestao.
+
+- **Commit ide pre SVAKE serije.** „Pre prve mutacije" se cita kao jednokratna priprema, a opasnost se
+  vraca **svaki put kad se doda kod**.
+- **Provera je mehanicka:** pre serije `git status` mora da bude **prazan**.
+- **Pravilo koje se moze ispuniti a ipak izgubiti rad je pogresno napisano**, ne pogresno sprovedeno.
+
+## 19. Cekanje nadzivi agenta koji ga je pokrenuo (27.09.2026)
+
+**Dvaput u jednom danu**, i oba puta je vlasnik primetio pre mene: ujutru je prolaz stajao **10 sati i
+29 minuta**, uvece petlja **3 sata i 59 minuta**.
+
+**Izmereno kad je pogledano:** **nula** Java procesa, dakle nijedna kapija nije radila; ziv **jedan**
+agent star cetiri minuta, a ljuske od **14:31 i 14:44**. Cetiri sirocica agenata koji su odavno
+zavrsili.
+
+- **Cekanje koje agent pokrene mora da se zavrsi PRE nego sto preda izvestaj.** Ako mora da preda
+  ranije, to izricito kaze.
+- **Provera je mehanicka:** `Get-Process bash,sh` sa `StartTime` uporedjen sa spiskom zivih agenata.
+  **Svaka ljuska starija od sat vremena koja ne pripada nijednom zivom agentu je siroce i gasi se.**
+  Uz nju `Get-Process java,node`: ako ih nema, nijedna kapija ne radi i cekanje nema sta da ceka.
+
+## 20. Cetiri oblika laznog merenja u kojima je kvar u CITACU, ne u komandi (27.09.2026 uvece)
+
+Devetnaest oblika iznad kvare **komandu**: ne krene, razresi u WSL, ne prevede, preseca se na `&&`.
+Cetiri nadjena uvece 27.09.2026 su drugacija klasa: **komanda je uredno merila, a presuda o njenom
+ispisu je bila pogresna.** Zato ih nijedna postojeca provera ne hvata: sve nase provere gledaju
+**ispis**, a ovde je pokvaren **citalac ispisa**.
+
+### 20a. `grep` bez `-a` pretvara UHVACENU mutaciju u „nije mereno"
+
+Nadjeno na `b136`. Log prolaza nad razredom koji tvrdi nad **nizovima bajtova** nosi **sirove JPEG i
+PNG bajtove**, jer ih AssertJ ispise u poruku pada. `grep` fajl zato proglasi binarnim i ispise
+`Binary file ... matches` **umesto reda**, pa provera „ima li red `Tests run:` sa brojem iznad nule"
+vrati **prazno**, i presuda postane **„nije mereno"** nad mutacijom koja je uredno pala sa
+`Tests run: 12, Failures: 1` i izlaznim kodom 1.
+
+**Zasto je gori od svih osamnaest pre njega:** ostali kvare **ishod**, ovaj kvari **presudu o
+ishodu**, pa se procita kao „ovu rupu niko ne cuva" nad rupom koja **ima** cuvara. Vodi na pisanje
+testa koji vec postoji.
+
+**Lek je jedno slovo: `grep -a`**, uvek, nad svakim logom koji bi mogao da nosi binarne bajtove.
+
+### 20b. Parser koji trazi `Tests run:` na POCETKU reda nikad ne pogodi, jer surefire pise `[INFO]`
+
+Nadjeno na `b137`. Skripta je proveravala `part.startswith("Tests run:")`, a surefire ispisuje
+`[INFO] Tests run: 38, ...`. Ukupan broj je time ostajao **0**, pa je **svaka** mutacija bila
+„`Tests run: 0`", dakle **„nije mereno"** za svih sedamnaest.
+
+**Sta je radilo, i zato se tako i pise:** pravilo je formulisano tako da **odbije sud** kad ne vidi
+broj, pa je palo u **bezbednom smeru**. Da je bilo napisano obrnuto (pretpostavi izmereno), bilo bi
+prijavljeno sedamnaest uhvacenih mutacija nad merenjem koje se nije desilo.
+
+**Provera koja iz toga sledi:** **parser ispisa se pusti nad zatecenim ZELENIM I CRVENIM logom pre
+serije.** Cetiri stanja (`zelen`, `crven`, `bez reda`, `nula slucajeva`) moraju da daju cetiri
+razlicita suda. Traje deset sekundi.
+
+### 20c. `rm -rf target/classes target/test-classes` NE cisti `target/surefire-reports`
+
+Nadjeno na `b135`. Citanje brojeva iz tog foldera zato pokaze **razrede koje taj prolaz nije ni
+pokrenuo**, pa izgleda kao da je sve proslo. **Ovaj laze u ZELENOM smeru**, dakle u onom na osnovu kog
+se zakljucuje „ovu rupu niko ne cuva".
+
+**Postupak:** pre svakog prolaza u seriji brisu se **sva tri** foldera, `target/classes`,
+`target/test-classes` **i** `target/surefire-reports`.
+
+### 20d. `./mvnw -q test` na USPESNOM prolazu ne ispise zbirni red uopste
+
+Nadjeno na `b135`. Dakle **`-q` i pravilo „presuda trazi red sa brojem slucajeva" ne idu zajedno**, i
+prolaz pusten sa `-q` je po nasem merilu „nije mereno" iako je stvarno merio.
+
+**Postupak: `-q` se ne koristi u seriji mutacija.** Ispis ide u fajl pa se fajl cita; velicina loga
+nije problem koji `-q` treba da resava.
+
+## 21. Bekend grana koja BRISE konstantu mora da pusti i FRONTEND kapiju (27.09.2026)
+
+Osma klasa preseka, i razlikuje se od prethodnih sedam time da presek **nije u fajlu** nego u
+**izvedenom podu koji cita tudji izvorni kod**.
+
+**Sta se desilo.** Grana `b136` je cisto bekend: obrisala je konstantu `A_PICTURE_ALREADY_WAITS` iz
+`MePhotoApi.java`, jer je vlasnik odlucio da ponovno slanje slike **pregazi** red koji ceka umesto da
+bude odbijeno sa 409. Grana **nije dirnula nijedan frontend fajl**, pa je i njena kapija bila samo
+bekend, a nezavisna recenzija je merila bekend razrede. **Bekend CI je prosao, frontend je pao.**
+
+**Pad, doslovno:**
+
+    FAIL src/pages/account/refusals.test.ts > the reasons the server can name
+         > are all answered on the screen that meets MePhotoApi.java
+    AssertionError: expected [ 'theFormIsNotComplete', ...(6) ] to have a length of 6 but got 7
+
+    FAIL ... > and the screens claim no reason their route cannot answer
+    AssertionError: expected [ 'aPictureAlreadyWaits' ] to deeply equal []
+
+**Uzrok.** `refusals.test.ts` je **izveden pod**: cita **svaku** odbijenicu koju `MePhotoApi.java`
+deklarise i trazi da ekran nosi **tacno njih, u oba smera**. Ekran je i dalje nabrajao ukinutu, pa je
+pao sa obe strane odjednom.
+
+- **Nalaz je bio prijavljen kao NIZAK**, uz recenicu „izmerio sam da im kapija ne pada". **Ta recenica
+  je bila netacna, i to je najvazniji deo ove pouke:** mereno je nad `i18n/keys.test.ts`, koji trazi
+  da kljuc **postoji** za ono sto kod cita, a pao je **drugi** pod, onaj koji trazi **tacnu jednakost
+  skupa**. **Merenje nad jednim podom ne govori nista o drugom podu nad istom cinjenicom.**
+- **Provera koja iz ovoga sledi:** kad grana **brise ili preimenuje** konstantu, enum vrednost ili
+  ime greske na bekendu, pretrazi `frontend/src` po **imenu te konstante** i po **imenu Java fajla**
+  koji je deklarise. Svaki pod koji imenuje bekend fajl je presek, i onda kad grana ne dira nijedan
+  frontend fajl.
+- **I obrnuto:** grana koja **dodaje** konstantu obara isti pod iz drugog smera (ekran nabraja manje
+  nego server), pa pravilo vazi u oba smera.
+
+## 22. `git reset --hard` posle NEUSPELOG push-a brise commit koji si upravo napravio (27.09.2026)
+
+**Ovo je moja greska, ne agentova, i zato stoji ovde.**
+
+`gh pr update-branch` je spojio `main` u granu **na serveru**. Moj `git push` je zato odbijen
+(`non-fast-forward`), i ja sam odmah pustio `git reset --hard origin/<grana>` da uzmem serverovo
+stanje. Time je **commit sa ispravkom visokog nalaza otisao**, jer nikad nije stigao do servera.
+
+- **Uzrok nije komanda nego REDOSLED:** `update-branch` pomera granu na serveru, pa lokalna grana
+  postaje razlicita, pa push pada, pa reset uzima serverovo stanje **i odbacuje lokalno**.
+- **Nadjeno odmah** jer je `git merge-base --is-ancestor` vratilo „nije u HEAD-u", i vraceno jednim
+  `git cherry-pick`-om, jer commit i dalje stoji u objektnoj bazi.
+- **Postupak:** **push ide PRE `update-branch`-a, ne posle.** Ako je push vec odbijen, umesto reseta
+  se pusta `git merge origin/<grana>` ili se posle reseta **odmah proveri** da li je commit predak
+  HEAD-a, i cherry-pick ako nije.
+- **Provera koja je mehanicka:** posle svakog reseta nad granom na kojoj je bilo lokalnog rada,
+  `git log --oneline origin/main..HEAD` mora da nabroji **sve** commite koje ocekujes. Ako ih je
+  manje, nesto je odbaceno i stoji u reflogu.
+
+## 23. Prag pokrivenosti je nasao mrtvu granu koju spisak mutacija po konstrukciji ne vidi, drugi put istog dana (27.09.2026)
+
+Pravilo od 25.09.2026 kaze da mutacija meri **da li nesto sto radi ima cuvara**, a ne **da li nesto
+uopste radi**, i da za drugo pitanje postoji samo prag pokrivenosti. Danas je to potvrdjeno drugim
+merenjem, na `b134`.
+
+**Sta je bilo.** `useInbox` je racunao pozivaoca **iz sesije** i odgovarao `null` kad ga nema. Ta
+grana je **nedostizna**, jer sva tri poziva kapiraju pre crtanja. Nijedna od osamnaest mutacija je
+nije videla; prag je pao i imenovao je.
+
+**Resenje je bilo da broj clana postane ARGUMENT**, ne da se doda slucaj koji gadja nedostiznu granu.
+Kad grana ne moze da se dosegne kroz proizvodni put, ne pise se test koji je dosegne zaobilazno nego
+se **grana ukloni**, a pitanje preseli tamo gde odgovor vec postoji.
+
+**Merilo koje iz toga sledi:** kad kapija padne na pragu a svi testovi su zeleni, prvo pitanje nije
+„koji test nedostaje" nego **„koji kod se ne izvrsava i zasto postoji"**.

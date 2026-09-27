@@ -6,6 +6,9 @@ import org.springframework.stereotype.Component;
 
 import java.sql.Timestamp;
 import java.time.Clock;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * THE ONLY THING THAT READS OR WRITES THE BOOK OF BALANCE, so that the total on a screen and the
@@ -15,13 +18,23 @@ import java.time.Clock;
  * direktno." That sentence is only true if there is one place the deriving happens, and this is
  * it. Nothing else in the portal names {@code balance_entry}.
  *
- * <p><b>WHY THIS IS A CLASS AND NOT A QUERY IN EACH CALLER.</b> Five callers need the book: what a
+ * <p><b>WHY THIS IS A CLASS AND NOT A QUERY IN EACH CALLER.</b> Six callers need the book: what a
  * member owes ({@link MembershipInvoice}, for {@link MyMembershipApi}), his activation out of it
  * ({@link MyMembershipWriteApi}), a moderator recognising a payment ({@link PaymentApi}, which
- * both spends the payer's balance and earns the referrer's) and the administration freeing him of
- * the fee ({@link MembershipWriteApi}, which spends nothing and still earns the referrer's). The
- * same reasoning {@link MemberOfAccount} is written with: one lookup asked in one place beats the
- * identical {@code select} in five controllers, free to drift the day one is edited.
+ * both spends the payer's balance and earns the referrer's), the administration activating him
+ * without a fee ({@link MembershipWriteApi}, which earns the referrer's either way and spends the
+ * payer's only on the ground of a balance) and the screen that offers that activation
+ * ({@link PaymentsDueApi}, which only READS and is the one caller asking about many members at
+ * once). The same reasoning {@link MemberOfAccount} is written with: one lookup asked in one place
+ * beats the identical {@code select} in six controllers, free to drift the day one is edited.
+ *
+ * <p><b>AND THAT SIXTH CALLER IS WHY THERE ARE TWO READINGS OF ONE SUM RATHER THAN ONE.</b>
+ * {@link #of(long)} answers about a member and {@link #of(java.util.Collection)} about a list of
+ * them, because a screen drawing a balance beside every row would otherwise ask one question per
+ * row. They are two statements over one table and not two answers, and what holds that is
+ * {@code PaymentsDueApiTest.theBalanceOnTheRowIsTheSameSumTheBookAnswersForOneMember}: it takes the
+ * number the route served off the answer and compares it with {@link #of(long)} asked about that
+ * same member, so a sum edited into one of the two readings cannot stay in the other.
  *
  * <p><b>AND IT IS WHERE THE SIGN LIVES.</b> {@link Balance.Money} is money somebody HAS and is
  * never negative; the book records a movement and a spend moves down. Rather than letting four
@@ -64,6 +77,65 @@ class BalanceBook {
 				.param(competitorId)
 				.query((row, i) -> new Balance.Money(row.getBigDecimal(1), row.getBigDecimal(2)))
 				.single();
+	}
+
+	/**
+	 * THE SAME SUM FOR A WHOLE LIST OF MEMBERS AT ONCE, for the one caller that draws a balance
+	 * beside every row of a screen.
+	 *
+	 * <p><b>A member with no rows at all is ABSENT from the answer rather than present with
+	 * nought, and the caller is told so here rather than finding out.</b> That is what
+	 * {@code group by} does and it cannot be otherwise: there is no row to group. Most members
+	 * have brought in nobody, so absent is the ordinary case and not an edge - which is why
+	 * {@link #forEveryOneOf} exists beside this and fills it in.
+	 *
+	 * <p><b>An empty list is answered without asking the database, and that is a refusal rather
+	 * than a saving:</b> {@code in ()} is not valid SQL, so the statement below cannot be built
+	 * for it. The screen this serves „starts empty and fills" ({@link PaymentsDueApi}), so the
+	 * empty list is the state the portal opens in.
+	 */
+	private Map<Long, Balance.Money> booksOf(Collection<Long> competitorIds) {
+		if (competitorIds.isEmpty()) {
+			return Map.of();
+		}
+
+		Map<Long, Balance.Money> books = new HashMap<>();
+
+		db.sql("select competitor_id, coalesce(sum(eur), 0), coalesce(sum(rsd), 0)"
+						+ " from balance_entry where competitor_id in (:ids)"
+						+ " group by competitor_id")
+				.param("ids", competitorIds)
+				.query((row, i) -> books.put(row.getLong(1),
+						new Balance.Money(row.getBigDecimal(2), row.getBigDecimal(3))))
+				.list();
+
+		return books;
+	}
+
+	/**
+	 * THE BOOK OF EVERY MEMBER ASKED ABOUT, with an empty one for those who have no rows.
+	 *
+	 * <p><b>Every member asked about is in the answer, which is what makes this safe to read by
+	 * key.</b> The statement underneath can only answer about members who HAVE entries, and a
+	 * caller reading its map by key would get null for everybody else - which is most members -
+	 * so the filling in happens here, once, rather than at each call site with a
+	 * {@code getOrDefault} somebody has to remember. {@link Balance.Money#NOTHING} is the same
+	 * answer {@link #of(long)} gives such a member, by its own {@code coalesce}, so the two
+	 * readings agree about him too and not only about the members with money.
+	 *
+	 * @param competitorIds whoever the caller is about to serve; duplicates and an empty list are
+	 *                      both harmless
+	 */
+	Map<Long, Balance.Money> forEveryOneOf(Collection<Long> competitorIds) {
+		Map<Long, Balance.Money> books = booksOf(competitorIds);
+
+		Map<Long, Balance.Money> everyone = new HashMap<>();
+
+		for (Long one : competitorIds) {
+			everyone.put(one, books.getOrDefault(one, Balance.Money.NOTHING));
+		}
+
+		return everyone;
 	}
 
 	/**
