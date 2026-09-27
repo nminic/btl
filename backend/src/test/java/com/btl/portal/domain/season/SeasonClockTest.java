@@ -89,6 +89,99 @@ class SeasonClockTest {
 	}
 
 	/**
+	 * THE CHOICE OF CATEGORY SHUTS ON 1 JANUARY OF ITS OWN SEASON, TEN HOURS BEFORE THAT
+	 * SEASON'S PREDECESSOR FREEZES.
+	 *
+	 * <p>Two seasons rather than one, and that is what makes the {@code - 1} measurable:
+	 * asked about 2027 the answer is a moment in January 2027, and asked about 2028 it is a
+	 * moment in January 2028. A version that dropped the derivation would answer a year late
+	 * for both and this case would not be able to tell.
+	 */
+	@Test
+	void theCategoryForASeasonIsChosenUntilTenOClockOnItsFirstMorning() {
+		ZonedDateTime tenOnNewYear2027 = ZonedDateTime.of(2027, 1, 1, 10, 0, 0, 0, SeasonClock.ZONE);
+		ZonedDateTime tenOnNewYear2028 = ZonedDateTime.of(2028, 1, 1, 10, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.categoryMayBeChosenFor(2027, tenOnNewYear2027.minusSeconds(1)))
+				.as("a member choosing in the last second before the deadline was refused")
+				.isTrue();
+		assertThat(SeasonClock.categoryMayBeChosenFor(2027, tenOnNewYear2027))
+				.as("the deadline itself is still open, so the choice never shuts")
+				.isFalse();
+
+		assertThat(SeasonClock.categoryMayBeChosenFor(2028, tenOnNewYear2028.minusSeconds(1))).isTrue();
+		assertThat(SeasonClock.categoryMayBeChosenFor(2028, tenOnNewYear2028)).isFalse();
+
+		/* AND ONE INSTANT THAT TELLS THE TWO SEASONS APART, which is the ordinary state of
+		   the portal for nine months of every year: the season being run can no longer be
+		   chosen and the one after it can. A single season in this case would not be able to
+		   say that, and it is the reason two are named. */
+		ZonedDateTime midwayThrough2027 = ZonedDateTime.of(2027, 6, 1, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.categoryMayBeChosenFor(2027, midwayThrough2027))
+				.as("a member was still changing the category of a season he is already running")
+				.isFalse();
+		assertThat(SeasonClock.categoryMayBeChosenFor(2028, midwayThrough2027))
+				.as("the choice for next season was shut in the middle of this one")
+				.isTrue();
+	}
+
+	/**
+	 * THE SIX HOURS BETWEEN THE MEMBER'S DEADLINE AND THE FREEZE, WHICH IS THE CASE THE
+	 * DECISION WAS WRITTEN FOR.
+	 *
+	 * <p>Owner, 26.09.2026: „Od 10 do 16 superadmin odobrava samo sta jos treba da se odobri
+	 * i ima 6h za to." So in that stretch the member may no longer choose although the season
+	 * has not frozen, and the two answers are opposite on the same instant. A version that
+	 * asked {@link SeasonClock#tablesFreeze} instead would say the choice is still open
+	 * through all six hours - which is exactly the reading the brief for this increment took,
+	 * so it is measured rather than trusted.
+	 */
+	@Test
+	void betweenTheMembersDeadlineAndTheFreezeTheChoiceIsShutAndTheSeasonIsNot() {
+		ZonedDateTime noonOnNewYear = ZonedDateTime.of(2028, 1, 1, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.categoryMayBeChosenFor(2028, noonOnNewYear))
+				.as("the member could still choose the category of the season that has just begun, "
+						+ "two hours after his own deadline had passed")
+				.isFalse();
+		assertThat(SeasonClock.isFrozen(2027, noonOnNewYear))
+				.as("the season that has just ended froze at the member's deadline instead of six "
+						+ "hours later, so this case no longer stands between the two moments")
+				.isFalse();
+	}
+
+	/**
+	 * AND THE DEADLINE IS THE LEAGUE'S TEN O'CLOCK, WHEREVER THE MEMBER IS.
+	 *
+	 * <p>The Tokyo case is the one that matters, for the same reason the transfer window's
+	 * does: ten in the morning in Belgrade is already the evening in Tokyo, so a member there
+	 * reading his own clock would think he had until nightfall. Eight hours on the one morning
+	 * of the year when every input arrives at once is not a rounding difference.
+	 */
+	@Test
+	void theDeadlineForTheChoiceIsTheLeaguesHourWhereverTheMemberIs() {
+		/* Ten in Belgrade is 09:00 UTC in winter. A caller who is at 09:30 by his own UTC
+		   clock is half an hour past the deadline, and a version reading the hour off the
+		   caller would let him in. */
+		assertThat(SeasonClock.reportingEnds(2027).withZoneSameInstant(UTC).getHour())
+				.as("ten in Belgrade is no longer nine in UTC, so this case measures nothing")
+				.isEqualTo(9);
+
+		assertThat(SeasonClock.categoryMayBeChosenFor(2028, ZonedDateTime.of(2028, 1, 1, 9, 30, 0, 0, UTC)))
+				.as("a caller reading his own UTC clock was given half an hour he did not have")
+				.isFalse();
+		assertThat(SeasonClock.categoryMayBeChosenFor(2028, ZonedDateTime.of(2028, 1, 1, 8, 30, 0, 0, UTC)))
+				.isTrue();
+
+		/* And in Tokyo the same instant is 18:00, which is the direction that would let a
+		   member in a day early rather than out an hour late. */
+		assertThat(SeasonClock.categoryMayBeChosenFor(2028, ZonedDateTime.of(2028, 1, 1, 18, 30, 0, 0, TOKYO)))
+				.as("a member in Tokyo was still choosing after the league's morning had gone")
+				.isFalse();
+	}
+
+	/**
 	 * The transfer window is October to December, read in the league's zone.
 	 *
 	 * <p>The Tokyo case is the one that matters: the last hours of 30 September in

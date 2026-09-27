@@ -1031,6 +1031,7 @@
     "firstSeasonBand": "U početničkoj kategoriji",
     "firstSeasonOpen": "Početnička kategorija ti je još otvorena, jer nijednu zvaničnu sezonu nisi završio sa {points} i više bodova.",
     "firstSeasonClosed": "Početnička kategorija ti je zatvorena, jer si zvaničnu sezonu završio sa {points} i više bodova. Izlazak iz nje je nepovratan.",
+    "choiceRefused": "Izbor nije sačuvan, jer je rok istekao 1. januara u 10.00. Kategorija ostaje onakva kakva je bila.",
     "renew": "Podatke za uplatu vidiš u nastavku. Čim uplata stigne, moderator je potvrđuje i tvoje članstvo se produžava.",
     "transferWindow": "Prelazni rok",
     "noTeam": "Trenutno nisi ni u jednom timu.",
