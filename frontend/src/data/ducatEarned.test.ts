@@ -18,6 +18,8 @@ const member: Competitor = {
   teamSince: null,
   profileHidden: false,
   birthdayShown: 'none',
+  photo: null,
+  crop: null,
   bio: '',
 }
 

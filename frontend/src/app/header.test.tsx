@@ -152,6 +152,8 @@ describe('monogramFor', () => {
     teamSince: null,
     profileHidden: false,
     birthdayShown: 'none',
+    photo: null,
+    crop: null,
     bio: '',
   }
 
