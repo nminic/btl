@@ -1115,16 +1115,25 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             the one he could: the two halves of what the owner
                             asked for lived on two different cards.
 
-                            WHAT THE BRANCH THAT BRINGS THE PICTURE OWES. Putting
-                            the drawing back is part of its work, not a leftover:
-                            it has to serve the number of the picture out to the
-                            screen (`VerificationApi`), stop `admin/pending.ts`
-                            throwing it away (`itemFrom({ photoId: _photoId })`),
-                            and feed this frame - with `verification.pictureAlt`,
-                            which is still in the dictionary, and with the circle
-                            the member set. Until then the file name below is all
-                            a moderator gets, and that is a gap rather than a
-                            decision.
+                            WHAT IS STILL OWED, AND IT IS NOW ONLY THIS SIDE OF THE
+                            WIRE. The server's half landed the same day in PR 399
+                            (ADL A60's dopuna of 27.09.2026): the waiting picture
+                            has an address of its own, `GET
+                            /api/verification/{id}/photo` through
+                            `PhotoApi.waitingOn`, open to the moderator who may
+                            decide that row and 404 to everybody else - and the
+                            owner's reason for it was the same fault read from the
+                            other end, that he approved a photograph on QA WITHOUT
+                            SEEING IT. `VerificationApi` already answers `photoId`
+                            beside it.
+                            So what is left is here and in one more place:
+                            `admin/pending.ts` still throws that number away
+                            (`itemFrom({ photoId: _photoId, ...served })`), and
+                            this frame has to come back and be fed from that
+                            address, with `verification.pictureAlt` - still in the
+                            dictionary for it - and with the circle the member set.
+                            Until then the file name below is all a moderator gets,
+                            and that is a gap rather than a decision.
 
                             The file name stays either way. It is what the queue is
                             searched and talked about by. */}
