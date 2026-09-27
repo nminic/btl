@@ -26,8 +26,16 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * SOMEBODY SAYING THE MONEY ARRIVED, WHICH IS THE ONLY THING THAT EVER ACTIVATES A
+ * SOMEBODY SAYING THE MONEY ARRIVED, WHICH IS ONE OF THE TWO THINGS THAT ACTIVATE A
  * MEMBERSHIP ON THIS PORTAL.
+ *
+ * <p><b>It was the only one until 27.09.2026 and this heading said so.</b> The other is
+ * {@link MembershipWriteApi}: the association freeing somebody of the fee, which PDL:760
+ * names in the same breath as this one („evidentirana uplata ILI [oslobodjenje]") and which
+ * nothing could do until that day. The sentence below is unchanged and is still about this
+ * route - there is no favourable PRICE - but „the only thing that ever activates a
+ * membership" was the half that stopped being true, and it is worth saying which half: a
+ * fee is still the only thing that activates one HERE.
  *
  * <p><b>Owner, on the one question this whole class exists to answer</b> (PDL,
  * 28.07.2026): „Povlascena cena ne postoji. Ako vlasnik nekome odobri povoljnije
@@ -50,10 +58,10 @@ import java.util.regex.Pattern;
  *
  * <ul>
  * <li>{@link Outcome#RECORD_IT_AND_NUMBER_HIM} - a number is drawn from
- * {@code member_number_seq} (never computed, for the reason V16 gives: a query
- * reads what is there, and what is there is missing exactly the people who left),
- * the payment is written {@code recorded}, and a {@code membership} row is written
- * beside it naming the receipt (ADL A12).
+ * {@link MemberNumbers} (a sequence and never a query, for the reason V16 gives: a
+ * query reads what is there, and what is there is missing exactly the people who
+ * left), the payment is written {@code recorded}, and a {@code membership} row is
+ * written beside it naming the receipt (ADL A12).
  * <li>{@link Outcome#RECORD_IT} - the same two rows, and the number already on the
  * competitor is kept exactly as it is (PDL, 11.08.2026: „Clanski broj ostaje zauvek
  * vezan za tu osobu... Ako se nekad ponovo aktivira postace mu i profil ponovo
@@ -99,17 +107,46 @@ import java.util.regex.Pattern;
  * unconfirmed account - because confirming a payment is a MODERATOR's action
  * against a bank statement; the paying member is never signed in to do it.
  *
+ * <p><b>A SEASON SOMEBODY IS ALREADY A MEMBER OF IS REFUSED AND NOT WRITTEN OVER,
+ * WHICH IS THE ONE THING THIS CLASS DECIDES THAT IS NOT ABOUT MONEY.</b> The
+ * paragraph here used to say that a {@code membership} row on any basis but
+ * {@code payment} „has no code path to reach today", so confirming a payment for such
+ * a person „would collide with {@code membership_pk} rather than be decided by this
+ * class", and that the day a screen granted one was the day the decision belonged
+ * here. The mechanism of that collision was stated correctly and is worth keeping:
+ * {@code write} reads {@code payment} and never {@code membership}, so a season held
+ * on any other ground looks to it exactly like a season held by nobody, and
+ * {@code recordIt} then meets the key and answers 500.
+ *
+ * <p><b>What changed is that the row is now legal AND about to have two writers,
+ * which is why the guard is here before either of them.</b> {@code V22} allows
+ * {@code feeExempt} with no payment named, so the state is one the schema invites
+ * rather than one nothing can produce; a branch in flight adds {@code 'balance'} as a
+ * third basis; and freeing a member of the fee is the increment this guard was
+ * written alongside. Whichever of the three lands first, the 500 arrives with it.
+ *
+ * <p><b>It asks whether the KEY is taken and never what the basis IS, and both
+ * reasons for that are measured rather than tidy.</b> First, the set of bases is
+ * growing, so a guard written as „refuse when the basis is {@code feeExempt}" would
+ * hand the same 500 back on the day {@code 'balance'} arrived - the instance closed
+ * and the class left open. Second, {@code queue:payments} is not
+ * {@code entity:members}, and PDL 28.07.2026 („Osnov clanstva se nikad ne prikazuje
+ * javno... Vide ga samo Superadmin i moderatori sa pravom nad clanovima", PDL
+ * 20.09.2026 adding the member himself) means the moderator working this queue may
+ * not be told HOW a membership is held. So the refusal names that the season is
+ * already held and nothing more, which is both the safe answer and the complete one.
+ *
+ * <p><b>Refused rather than written over, and that is a decision with a named
+ * loser.</b> An {@code on conflict do update} here would let a recorded payment
+ * silently replace a membership the board granted, and nothing would be left saying
+ * the exemption had ever been there. This class already refuses to undo a reversal
+ * quietly for the same reason - „a reversal is turned back by a person, not by an
+ * import" - and an exemption overturned by a fee is the same shape of fact.
+ *
  * <p><b>WHAT IS DELIBERATELY NOT GUARDED HERE, EACH ONE NAMED RATHER THAN
  * DISCOVERED:</b>
  *
  * <ul>
- * <li>A competitor already holding a {@code membership} row for this season on
- * {@code feeExempt} has no code path to reach today - the honorary screen PDL,
- * 13.08.2026 grants „za svaku sezonu posebno" is not built (V22's own migration
- * says as much) - so confirming a payment for him would collide with
- * {@code membership_pk} rather than be decided by this class. Building a decision
- * for a state nothing can produce is exactly the guard {@code CLAUDE.md} asks not
- * to be written; the day that screen exists, this is where the decision belongs.
  * <li>Two requests confirming the identical (competitor, season) at the same
  * instant, both reading no existing row before either writes, both draw two
  * DIFFERENT numbers - the sequence guarantees that much and is what the case in
@@ -145,6 +182,17 @@ class PaymentApi {
 
 	static final String THE_PAYMENT_WAS_REVERSED = "thePaymentWasReversed";
 
+	/**
+	 * THE SEASON IS ALREADY SOMEBODY'S, AND THE REASON SAYS NO MORE THAN THAT.
+	 *
+	 * <p>It deliberately does not say on what basis it is held. The tick that opens
+	 * this route is {@code queue:payments} and the basis is read under
+	 * {@code entity:members} ({@link CompetitorApi#OVER_THE_MEMBERS}, PDL
+	 * 28.07.2026), so a reason naming the basis would be this route handing over a
+	 * fact its own caller has no right to read.
+	 */
+	static final String THE_MEMBERSHIP_IS_ALREADY_HELD = "theMembershipIsAlreadyHeld";
+
 	/** {@code payment_currency_known}, V16. */
 	private static final Set<String> CURRENCIES = Set.of("EUR", "RSD");
 
@@ -159,6 +207,19 @@ class PaymentApi {
 	private final Clock clock;
 
 	/**
+	 * WHERE A NUMBER COMES FROM, and since 27.09.2026 it is not this class.
+	 *
+	 * <p>It used to be, and the comment that stood on the method here called itself „the
+	 * one place a number is ever drawn" - true for as long as a recorded fee was the only
+	 * thing that activated a membership. {@link MembershipWriteApi} activates one too, and
+	 * PDL:760 and PDL:808 attach the number to the ACTIVATION rather than to the fee, so
+	 * two routes hand numbers out. {@link MemberNumbers} carries the whole of the reason it
+	 * is a sequence and never a query, and {@code PaymentNumberConcurrencyTest} measures it
+	 * through this route exactly as before.
+	 */
+	private final MemberNumbers numbers;
+
+	/**
 	 * Written by hand rather than left on the method, the same choice
 	 * {@link RegistrationApi} made and for the same reason: what happens to the
 	 * competitor, the payment and the membership is one thing that must all happen or
@@ -167,9 +228,10 @@ class PaymentApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
-	PaymentApi(JdbcClient db, Clock clock, TransactionTemplate inOneTransaction) {
+	PaymentApi(JdbcClient db, Clock clock, MemberNumbers numbers, TransactionTemplate inOneTransaction) {
 		this.db = db;
 		this.clock = clock;
+		this.numbers = numbers;
 		this.inOneTransaction = inOneTransaction;
 	}
 
@@ -289,10 +351,35 @@ class PaymentApi {
 				if (reference != null && referenceIsTaken(reference)) {
 					yield no(HttpStatus.CONFLICT, THE_REFERENCE_IS_TAKEN);
 				}
+
+				/* AND THE SEASON ITSELF, ASKED HERE FOR THE SAME REASON THE REFERENCE
+				   IS: this is the only branch that inserts a `membership` row, so it
+				   is the only branch the key can be taken under. `ALREADY_RECORDED`
+				   cannot reach it - a payment in that state was written by this class
+				   in one transaction with its own membership row, so the key it would
+				   find is the very row it is about to answer with. */
+				if (theSeasonIsAlreadyHeld(competitor.get().id(), season)) {
+					yield no(HttpStatus.CONFLICT, THE_MEMBERSHIP_IS_ALREADY_HELD);
+				}
 				yield recordIt(typed, season, reference, competitor.get(), asking,
 						outcome == Outcome.RECORD_IT_AND_NUMBER_HIM);
 			}
 		};
+	}
+
+	/**
+	 * WHETHER THIS (COMPETITOR, SEASON) IS ALREADY A MEMBERSHIP, WHOEVER DECIDED IT
+	 * AND ON WHATEVER GROUND.
+	 *
+	 * <p>The question is the KEY and not the basis, which is what makes it complete by
+	 * construction: {@code membership_pk} is {@code (competitor_id, season)}, so a row
+	 * this returns true for is a row the {@code insert} below cannot add, whatever
+	 * value its {@code basis} column happens to carry today or gains tomorrow.
+	 */
+	private boolean theSeasonIsAlreadyHeld(long competitorId, int season) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from membership"
+						+ " where competitor_id = ? and season = ?)")
+				.params(competitorId, season).query(Boolean.class).single());
 	}
 
 	private boolean referenceIsTaken(String reference) {
@@ -334,7 +421,7 @@ class PaymentApi {
 
 		Timestamp now = Timestamp.from(clock.instant());
 
-		String memberNumber = numbering ? drawANumber() : competitor.memberNumber();
+		String memberNumber = numbering ? numbers.draw().written() : competitor.memberNumber();
 
 		if (numbering) {
 			db.sql("update competitor set member_number = ?, active = true where id = ?")
@@ -357,22 +444,6 @@ class PaymentApi {
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Confirmed(paymentId, memberNumber, price.amount(), price.fee(), typed.currency()));
-	}
-
-	/**
-	 * THE ONE PLACE A NUMBER IS EVER DRAWN, and it is a sequence and never a query.
-	 *
-	 * <p>{@code member_number_seq} (V16) is what makes two simultaneous approvals of
-	 * two different people safe without a lock anywhere in this class: PostgreSQL
-	 * hands out each value from it exactly once, whichever of two concurrent
-	 * transactions asks first, and never the same value to both. {@code max(...) + 1}
-	 * would read what is there, which a concurrent second reader could read
-	 * identically before either has written anything back - the exact race this
-	 * method must not have.
-	 */
-	private String drawANumber() {
-		long value = db.sql("select nextval('member_number_seq')").query(Long.class).single();
-		return MemberNumber.of((int) value).written();
 	}
 
 	/** The seven rows of the price list, in the shape {@link MembershipPrice} reads them in. */
