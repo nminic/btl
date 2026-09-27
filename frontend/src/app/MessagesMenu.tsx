@@ -31,13 +31,14 @@ export function MessagesMenu() {
      header shows them is the empty panel, which is the same sentence an inbox with nothing in
      it gets: „there is nothing here" is true for both, and the difference between having none
      and having one that is empty is not a difference a header can usefully draw. */
+  /* `useInbox` reads fresh the moment `mine` changes, even without a key: `app/Shell.tsx`
+     never unmounts this panel while `signedIn` stays non-null, so a caller who changes
+     without signing out has to reach a caller-aware read inside `useResource` itself, not a
+     remount here (review of PR 406, second round - a `key` on this element was tried first
+     and reverted, because it forced `MessageDetail.tsx`'s equivalent to tear down hooks the
+     owner change had nothing to do with; `useResource`'s own doc has the measurement). */
   return signedIn !== null && signedIn.as === 'member' ? (
-    /* Keyed on the member, so a caller who changes without signing out is handed a FRESH
-       `HisOwnInbox` and not the one already mounted for whoever it was before. Without this,
-       `app/Shell.tsx` never unmounts the panel across the switch - `signedIn !== null` stays
-       true throughout - and `useResource`'s `useState` reads the cache once, at mount, and
-       never again while the same instance lives on. Review of PR 406. */
-    <HisOwnInbox key={signedIn.memberNumber} mine={signedIn.memberNumber} />
+    <HisOwnInbox mine={signedIn.memberNumber} />
   ) : (
     <ThePanel lines={[]} />
   )

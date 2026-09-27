@@ -31,14 +31,14 @@ export function Messages({ only }: { only?: string[] } = {}) {
      Gated by DRAWING the part that asks rather than by a condition inside it, because a hook
      cannot be called conditionally. The shape is `app/Shell.tsx`'s: the count of work waiting
      is read inside `AdminLink`, which is only drawn for somebody who may open administration. */
+  /* No key needed to read fresh on a caller change: `useInbox` passes `mine` to
+     `useResource` as its owner, which adjusts its own state during render rather than
+     asking this call site to force a remount (review of PR 406, second round; the
+     doc over `useResource` has the measurement of why a `key` here was reverted). */
   return who.memberNumber === null ? (
     who.instead
   ) : (
-    /* Keyed on the member, for the reason `app/MessagesMenu.tsx` gives beside the same key:
-       `useResource`'s state is read once, at mount, and a caller who changes without
-       navigating away would otherwise be left reading who was signed in before. Review of
-       PR 406. */
-    <TheWholeInbox key={who.memberNumber} only={only} mine={who.memberNumber} />
+    <TheWholeInbox only={only} mine={who.memberNumber} />
   )
 }
 

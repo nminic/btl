@@ -35,25 +35,61 @@ export type ResourceState<T> =
  * that cost was not a flash but the scroll: the router puts a reader back where
  * they were as soon as the screen commits, and a screen that is one loading box
  * tall at that moment has nowhere to be put back to (owner, 04.08.2026).
+ *
+ * @param owner **Written the day a caller needed it, which is `useInbox` and no other**
+ * (review of PR 406). Fourteen callers never pass this and are exactly as they were: every
+ * one of them reads a resource whose answer is the same for anybody asking, so there is
+ * nobody it could be owned by. `useInbox` is the one resource whose answer differs per
+ * caller (its own doc says so), and the owner it passes is the member asking - except on
+ * `member/MessageDetail.tsx`, which asks `useInbox` for `{ reactive: false }` and so never
+ * changes this hook's owner at all; its own doc has the measurement of why.
+ *
+ * **What changing owner does, and why it is not the effect below.** The effect runs AFTER
+ * this render commits, so a caller who switches without navigating away would draw one more
+ * frame of the answer that belonged to whoever asked before - a member reading a stranger's
+ * subject line for exactly one paint. Adjusting `state` here, during the render itself, is
+ * the pattern this file's own doc already named and deferred: „the state being adjusted
+ * during the render itself. Worth writing on the day a caller needs it, and not before."
+ *
+ * **What this does NOT do, measured rather than assumed, so the next reader does not reach
+ * for it to solve the same thing it already failed to.** A `key` on the caller was tried
+ * first (review of PR 406, second round): it forces a fresh read by tearing the whole
+ * subtree down, `MessageDetail.tsx`'s `useCompetitors`/`useTeams`/`usePairs`/`useOverlay`
+ * included. This adjusts state in place instead, which was tried next on the theory that
+ * skipping that teardown would close the window - measured on `teamInvite.test.tsx`, it did
+ * not: the same three cases fail the same way, on the same twenty second timeout, `TeamDetail`
+ * still never called. **Both reach `NotFound` and both lose to it**, because the fault is not
+ * in how fast the state gets there; it is that `NotFound`'s own `<Navigate replace>` fires
+ * from an effect that can land after a DIFFERENT navigation the caller already started
+ * (`router.navigate` to the team page, in that file), and whichever one the router hears
+ * last is the one that sticks. That race is `member/MessageDetail.tsx`'s to answer, by not
+ * reacting to owner there at all; the doc on its `TheMessageAsked` has the full measurement
+ * and the reason that boundary is acceptable for now.
  */
-export function useResource<T>(name: ResourceName): ResourceState<T> {
-  /* Read once, as this mounts, and never again while it is mounted.
+export function useResource<T>(name: ResourceName, owner?: string): ResourceState<T> {
+  /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` says
+   * otherwise below.
    *
    * Once is all that is wanted: what the first render of a screen holds is what
    * decides whether the router has a page to put a scroll position back into.
    * Reading it on every render would be reading a value nothing here is
-   * subscribed to.
-   *
-   * Which means this is written for a name that does not change, and every
-   * caller passes a literal one: the nine wrappers at the foot of this file, and
-   * `usePending`, which reads the queue, and `useComments`, which reads what
-   * has been published and must never read the queue (see its own doc below).
-   * Handed a name that changes, the first render under the new one
-   * would draw the old resource's data as though it were ready, and only the
-   * effect would put it right. Making that correct is not a line in the effect,
-   * which runs after that render: it is the state being adjusted during the
-   * render itself. Worth writing on the day a caller needs it, and not before. */
+   * subscribed to. */
   const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
+  /* The owner this instance last drew for, so a change in it can be told from a render that
+     has nothing to do with one. `useState` and not a ref, because this is the exact pattern
+     React's own docs give for adjusting state when a prop changes: a ref mutated during
+     render is for memoising a value, not for deciding whether to call `setState`. */
+  const [drawnFor, setDrawnFor] = useState(owner)
+
+  if (owner !== drawnFor) {
+    /* Both in the same render, before anything is painted: the owner this instance is now
+       answering for, and the answer read fresh rather than the one still sitting in `state`
+       from whoever it was before. `atHand` rather than a bare `loading`, so a second
+       component reading the same resource for the same new owner is not made to wait for a
+       fetch the first one already finished. */
+    setDrawnFor(owner)
+    setState(atHand<T>(name))
+  }
 
   useEffect(() => {
     /* Asked for even when the value is already in hand, and that is what closes
@@ -80,7 +116,7 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
     return () => {
       active = false
     }
-  }, [name])
+  }, [name, owner])
 
   return state
 }
@@ -437,8 +473,19 @@ function theInboxNowBelongsTo(whose: string): void {
  * sent on one day into an order it did not choose. Sorted on the day alone with a STABLE
  * sort, two messages of one day keep the order they arrived in, which for the served half
  * is the server's.
+ *
+ * @param reactive Defaults to true: `useResource` is given `mine` as its owner, so an
+ * already-mounted caller reads fresh the moment it changes rather than going on drawing
+ * whoever it answered for at mount (review of PR 406). `member/MessageDetail.tsx` is the one
+ * caller that passes `false`, and its own doc on `TheMessageAsked` has the full measurement
+ * of why: on that one screen, reacting to the switch correctly reaches `NotFound`, and
+ * `NotFound`'s own redirect then races a navigation the caller may already have started,
+ * which cost `teamInvite.test.tsx` three cases before this parameter existed.
  */
-export function useInbox(mine: string): ResourceState<InboxLine[]> {
+export function useInbox(
+  mine: string,
+  { reactive = true }: { reactive?: boolean } = {},
+): ResourceState<InboxLine[]> {
   const { inbox: held } = useSession()
 
   /* **WHOSE MAIL IS AN ARGUMENT AND NOT SOMETHING THIS HOOK WORKS OUT, and that is a
@@ -451,10 +498,18 @@ export function useInbox(mine: string): ResourceState<InboxLine[]> {
 
      So the caller hands over the number it already holds - `who.memberNumber` on the two
      screens, `signedIn.memberNumber` in the panel - and the signature is what keeps the
-     question from being asked twice and answered two ways. */
+     question from being asked twice and answered two ways.
+
+     Called unconditionally, whatever `reactive` is: this clears the one shared cache all
+     three callers read, and `member/MessageDetail.tsx` not reacting itself does not mean
+     the answer it eventually reads on its own next mount should still be whoever asked
+     before. */
   theInboxNowBelongsTo(mine)
 
-  const served = useResource<ServedMessage[]>('inbox')
+  /* `mine` again, as `useResource`'s owner - UNLESS this caller asked not to, in which case
+     `undefined` is what every other one of `useResource`'s fourteen callers already passes,
+     and this instance goes back to reading the cache once, at mount, same as they do. */
+  const served = useResource<ServedMessage[]>('inbox', reactive ? mine : undefined)
 
   return useMemo(() => {
     if (served.status !== 'ready') {
