@@ -257,9 +257,25 @@ class VerificationPhotoApiTest {
 	 * <p><b>Four things are asserted and each would be wrong on its own.</b> The bytes say
 	 * the file was read by the ROW'S key and not by anything the caller said - the decoy is
 	 * what makes that measurable. The type says it came off the row and was not guessed. The
-	 * cache says a day and PRIVATE, which ADL A60 argues and which this route inherits from
-	 * the one answer both routes build. And the status says the address exists for him, which
-	 * is the half every refusal below denies.
+	 * status says the address exists for him, which is the half every refusal below denies.
+	 * And the cache says NOTHING MAY BE KEPT, which is the one of the four that changed.
+	 *
+	 * <p><b>IT SAID „max-age=86400, private" UNTIL PDL 21c AND THAT WAS CORRECT UNTIL PDL 21c, so
+	 * the change is recorded here rather than quietly swapped.</b> The argument for a day rests on
+	 * one sentence at the head of {@link PhotoApi}: the bytes behind a given address cannot change.
+	 * That was true of THIS address while nothing in the portal ever rewrote
+	 * {@code verification.photo_id} to a different picture - measured over the whole of
+	 * {@code src/main/java}, the only {@code update verification} anywhere was the DECISION, and it
+	 * sets the column to null.
+	 *
+	 * <p><b>21c is what made it false, and in the worst direction.</b> „Ponovno slanje PREGAZI red
+	 * koji ceka": from that day the same {@code verification.id} names different bytes while the
+	 * address stays the same character for character. A day of private caching would then show a
+	 * moderator the picture a member had already replaced - and approving a photograph he had not
+	 * actually seen is the exact fault this route was written to close. So the term travels with the
+	 * ADDRESS and not with the reader: a digest keeps the day
+	 * ({@code MyWaitingPhotoApiTest} measures that for the member's own address), and a row keeps
+	 * nothing.
 	 */
 	@Test
 	void theModeratorOfThatQueueIsGivenTheBytesUnderTheTypeOfTheRow() throws Exception {
@@ -282,10 +298,12 @@ class VerificationPhotoApiTest {
 						+ " decides and nothing afterwards")
 				.isEqualTo(WAITING.mediaType());
 		assertThat(answer.getHeader(HttpHeaders.CACHE_CONTROL))
-				.as("the term is not a private day. Shared, an intermediary would hand one"
-						+ " caller's answer to another, and this chain puts XSRF-TOKEN on"
-						+ " everything; longer, a withdrawn picture would go on being drawn")
-				.isEqualTo("max-age=86400, private");
+				.as("THIS ANSWER MAY BE KEPT. The address is a queue row's key and PDL 21c lets a"
+						+ " member replace the picture behind it, so a browser holding this for any"
+						+ " length of time shows a moderator a photograph that has been overwritten"
+						+ " - and he approves what he has not seen, which is the whole fault this"
+						+ " route exists to close")
+				.isEqualTo("no-cache, no-store, max-age=0, must-revalidate");
 	}
 
 	/**
