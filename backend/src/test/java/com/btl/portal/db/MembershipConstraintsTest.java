@@ -301,7 +301,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 				   is the whole reason the floor compares in both directions. */
 				Violation.of("membership_decided_by_fk",
 						withATrail(A_MEMBER + ", 2028, 'feeExempt', null, 999999,"
-								+ " 'Blagajnik Probni', " + AN_INSTANT))),
+								+ " 'Blagajnik Probni', " + AN_INSTANT)),
 
 				/* AND BOTH HALVES OF THE SAME SENTENCE ABOUT THE BOOK (V36), which arrived with the
 				   third basis. Held on the balance and naming no line is the member let in with nothing

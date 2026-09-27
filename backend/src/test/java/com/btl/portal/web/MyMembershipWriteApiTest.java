@@ -104,6 +104,24 @@ class MyMembershipWriteApiTest {
 
 	private static final String A_MODERATOR_WHO_DOES_NOT_RACE = "mod@primer.rs";
 
+	/**
+	 * A MEMBERSHIP HELD FREE OF THE FEE, WITH THE TRAIL V35 ASKS FOR.
+	 *
+	 * <p>`membership_free_of_the_fee_says_who` and `..._says_when` (V35, owner 27.09.2026) refuse an
+	 * exemption that does not say who freed him and when. They are `not valid`, which spares the one
+	 * row a real database already carried and refuses every NEW one - and a fixture writes new ones.
+	 *
+	 * <p>The two constants split where the insert splits: the columns, and then everything from the
+	 * basis rightwards, so a call site names only whose membership it is and for which season.
+	 */
+	private static final String MEMBERSHIP_FREE_OF_THE_FEE = "competitor_id, season, basis,"
+			+ " payment_id, decided_by, decided_by_name, decided_at";
+
+	/** The basis, no receipt to name, and who entered it and when. */
+	private static final String A_TRAIL = "'feeExempt', null,"
+			+ " (select id from account where email = 'mod@primer.rs'), 'Probni Probic',"
+			+ " timestamptz '2026-09-20 09:00:00+00'";
+
 	@Autowired
 	private MockMvc http;
 
@@ -168,8 +186,7 @@ class MyMembershipWriteApiTest {
 		   the boundary rather than to one side of it. */
 		brought(idOf(EXACTLY_ENOUGH), 7);
 
-		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, ?,"
-						+ " 'feeExempt', null)")
+		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ") values (?, ?, " + A_TRAIL + ")")
 				.params(idOf(ALREADY_IN_FOR_THIS_SEASON), THE_SEASON_ON_SALE).update();
 	}
 

@@ -86,6 +86,24 @@ class MyMembershipApiTest {
 	/** And one who may say the money arrived, for the single case that walks the whole road. */
 	private static final String THE_PAYMENTS_QUEUE = "blagajnik@primer.rs";
 
+	/**
+	 * A MEMBERSHIP HELD FREE OF THE FEE, WITH THE TRAIL V35 ASKS FOR.
+	 *
+	 * <p>`membership_free_of_the_fee_says_who` and `..._says_when` (V35, owner 27.09.2026) refuse an
+	 * exemption that does not say who freed him and when. They are `not valid`, which spares the one
+	 * row a real database already carried and refuses every NEW one - and a fixture writes new ones.
+	 *
+	 * <p>The two constants split where the insert splits: the columns, and then everything from the
+	 * basis rightwards, so a call site names only whose membership it is and for which season.
+	 */
+	private static final String MEMBERSHIP_FREE_OF_THE_FEE = "competitor_id, season, basis,"
+			+ " payment_id, decided_by, decided_by_name, decided_at";
+
+	/** The basis, no receipt to name, and who entered it and when. */
+	private static final String A_TRAIL = "'feeExempt', null,"
+			+ " (select id from account where email = 'mod@primer.rs'), 'Probni Probic',"
+			+ " timestamptz '2026-09-20 09:00:00+00'";
+
 	@Autowired
 	private MockMvc http;
 
@@ -425,8 +443,8 @@ class MyMembershipApiTest {
 	void amemberWhoIsAlreadyInForThisSeasonIsToldSo() throws Exception {
 		assertThat(invoiceOf(BROUGHT_IN_SIX).path("alreadyAMember").asBoolean()).isFalse();
 
-		db.sql("insert into membership (competitor_id, season, basis, payment_id) values"
-						+ " ((select id from competitor where member_number = ?), ?, 'feeExempt', null)")
+		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ")"
+						+ " values ((select id from competitor where member_number = ?), ?, " + A_TRAIL + ")")
 				.params(BROUGHT_IN_SIX, THE_SEASON_ON_SALE).update();
 
 		assertThat(invoiceOf(BROUGHT_IN_SIX).path("alreadyAMember").asBoolean()).isTrue();
@@ -435,8 +453,8 @@ class MyMembershipApiTest {
 						+ " (select id from competitor where member_number = ?) and season = ?")
 				.params(BROUGHT_IN_SIX, THE_SEASON_ON_SALE).update();
 
-		db.sql("insert into membership (competitor_id, season, basis, payment_id) values"
-						+ " ((select id from competitor where member_number = ?), 2029, 'feeExempt', null)")
+		db.sql("insert into membership (" + MEMBERSHIP_FREE_OF_THE_FEE + ")"
+						+ " values ((select id from competitor where member_number = ?), 2029, " + A_TRAIL + ")")
 				.param(BROUGHT_IN_SIX).update();
 
 		assertThat(invoiceOf(BROUGHT_IN_SIX).path("alreadyAMember").asBoolean())

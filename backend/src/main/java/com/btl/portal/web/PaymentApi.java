@@ -268,7 +268,6 @@ class PaymentApi {
 		this.inOneTransaction = inOneTransaction;
 		this.memberOfAccount = memberOfAccount;
 		this.priceRows = priceRows;
-		this.numbers = numbers;
 		this.book = book;
 	}
 

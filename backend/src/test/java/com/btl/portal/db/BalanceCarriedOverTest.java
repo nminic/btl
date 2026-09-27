@@ -121,6 +121,23 @@ class BalanceCarriedOverTest extends DatabaseTest {
 				.params(number, season, reference, name).update();
 	}
 
+	/**
+	 * AND THE SAME ROW WITH THE TRAIL V35 ASKS FOR, for the one basis that owes one.
+	 *
+	 * <p>`membership_free_of_the_fee_says_who` and `..._says_when` refuse an exemption written
+	 * without saying who freed him and when (owner, 27.09.2026). They are `not valid`, which spares
+	 * the row a real database already carried and refuses every NEW one - and a fixture writes new
+	 * ones. A second method rather than three more parameters on the first, so the rows that have
+	 * nothing to do with a trail stay the shape they were.
+	 */
+	private void membershipFreeOfTheFee(String number, int season) {
+		db.sql("insert into membership (competitor_id, season, basis, payment_id, decided_by,"
+						+ " decided_by_name, decided_at) values ("
+						+ " (select id from competitor where member_number = ?), ?, 'feeExempt', null, "
+						+ AN_ACCOUNT + ", 'Prvi Blagajnik', timestamptz '2026-09-20 09:00:00+00')")
+				.params(number, season).update();
+	}
+
 	private void membership(String number, int season, String basis, String reference) {
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values ("
 						+ " (select id from competitor where member_number = ?), ?, ?, "
@@ -188,7 +205,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		membership(BROUGHT_IN_BY_THE_OTHER, 2027, "payment", "20271002");
 
 		/* HE IS A MEMBER AND THERE IS NO PAYMENT ANYWHERE, which is what being let in free MEANS. */
-		membership(LET_IN_FREE, 2027, "feeExempt", null);
+		membershipFreeOfTheFee(LET_IN_FREE, 2027);
 	}
 
 	private void v36() {

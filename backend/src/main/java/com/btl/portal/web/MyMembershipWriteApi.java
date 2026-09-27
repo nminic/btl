@@ -168,7 +168,7 @@ class MyMembershipWriteApi {
 				.params(me, owed.season(), entry)
 				.update();
 
-		String memberNumber = numbering ? numbers.draw() : owed.numberHeAlreadyHas().written();
+		String memberNumber = numbering ? numbers.draw().written() : owed.numberHeAlreadyHas().written();
 
 		if (numbering) {
 			db.sql("update competitor set member_number = ?, active = true where id = ?")
