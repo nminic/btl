@@ -1173,26 +1173,39 @@ class PaymentsDueApiTest {
 	 * {@code GET /api/payments} could have stopped serving a field the screen reads and nothing here
 	 * would have said so.
 	 *
-	 * <p><b>The three new names are declared as extra rather than added to the served file</b>, which
-	 * is the shape {@code Answers} was given on 13.09.2026 for exactly this: „A server may still
-	 * carry something the served file never had... It just has to be NAMED." The front end's own copy
-	 * still holds five fields and three of its files say so in prose; the branch that draws the
-	 * activation row is where those move, and this route may not wait for it.
+	 * <p><b>NOTHING IS DECLARED AS EXTRA ANY MORE, AND THAT IS A TIGHTENING RATHER THAN A
+	 * REMOVAL.</b> ~~The three new names are declared as extra rather than added to the served
+	 * file.~~ They were, from the commit that began serving them until 28.09.2026, and the reason
+	 * was honest: {@code frontend/src/test/mock/payments.json} still held five fields, so
+	 * {@code alsoAnswered} was the shape {@code Answers} was given on 13.09.2026 for exactly that
+	 * case („A server may still carry something the served file never had... It just has to be
+	 * NAMED.").
 	 *
-	 * <p><b>And the country is NOT among the three</b>, which is the assertion that the decision
+	 * <p><b>The branch that draws the activation row put the three into that file, so the naming
+	 * stopped saying anything and this floor said so in its own words</b> („payments.json already
+	 * serves currency, so naming it as something extra says nothing"). With the set empty the three
+	 * move out of {@code mayBeAnswered} and into {@code mustBeAnswered}: the route answering with
+	 * one of them missing is now a failure here, where before it was merely permitted. So the
+	 * floor asks MORE after this change than before it.
+	 *
+	 * <p><b>And the country is still NOT answered</b>, which is the assertion that the decision
 	 * above is really carried out: it is read to work the currency out and never served.
 	 */
 	@Test
-	void everyFieldTheScreenReadsIsAnsweredAndTheThreeNewOnesAreNamed() throws Exception {
+	void everyFieldTheScreenReadsIsAnsweredAndNothingIsCarriedInSilence() throws Exception {
 		JsonNode accounts = read(booksCookie, null).get("accounts");
 
 		/* THE SERVED NAMES ARE READ FROM UNDER `accounts`, because this resource answers a RECORD and
 		   not a list. `Answers.servedRecords` refuses such a file on purpose, and that refusal is
 		   worth keeping: it is what stops a served file which had become a list of numbers from being
 		   compared against nothing. So the rows are asked for by the name they live under. */
+		/* NOTHING NAMED AS EXTRA. `currency`, `expected` and `balance` stood here until 28.09.2026,
+		   when the screen's own branch put them into `payments.json`; a name listed as extra after
+		   the file carries it excuses nothing, which is what this guard says when it is left. They
+		   are read out of the file now, like every other name, and therefore REQUIRED rather than
+		   permitted. */
 		Answers.againstTheseServedNames(PATH, accounts,
-				Answers.servedFieldsUnder("payments.json", "accounts"), "payments.json",
-				Set.of("currency", "expected", "balance"));
+				Answers.servedFieldsUnder("payments.json", "accounts"), "payments.json", Set.of());
 
 		assertThat(Answers.fieldsOf(accounts.get(0)))
 				.as("the country is read to work the currency out and never served")
