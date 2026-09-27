@@ -9,6 +9,7 @@ import type {
   EventComment,
   League,
   Moderator,
+  Outstanding,
   Price,
   Race,
   RacingPair,
@@ -306,6 +307,23 @@ export const usePages = () => useResource<StaticPage[]>('pages')
  * was how the price list worked until 26.09.2026, and it never reached the server at all.
  */
 export const usePricing = () => useResource<Price[]>('pricing')
+/**
+ * WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, worked out by the server on every read.
+ *
+ * **Through no `useLive` and through no session overlay, and the reason is stronger here
+ * than it is for the price list.** This answer is DERIVED: a row is on it because no
+ * `membership` row exists for that person and that season, so there is nothing about it a
+ * visit could hold that would still be true. An overlay would be the portal remembering a
+ * decision, and the whole of the owner's decision of 27.09.2026 is that there is no
+ * decision to remember - „Reda za verifikaciju uplate NEMA". The screen writes to the
+ * route, clears this name, and reads the derived answer again.
+ *
+ * **It is the whole answer and not the list**, because the season is on the answer rather
+ * than on any row (`Outstanding`). A hook that unwrapped it to the array here would throw
+ * the season away and force the screen to work the year out for itself, which is the one
+ * thing `data/season.ts` cannot do correctly.
+ */
+export const usePaymentsDue = () => useResource<Outstanding>('payments')
 export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id')
 /** What a deletion of results is filed under. Named here, where the results
  *  are read, rather than spelled out at the screen that deletes them. */

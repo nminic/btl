@@ -1178,10 +1178,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                 ? 'verification.deleteNote'
                                 : 'review.reason'
                             }
-                            /* The queue draws that line for the whole screen,
-                               counting this box among the reasons to draw it, so
-                               the box does not draw a second one. */
-                            explain={false}
                             confirmKey={
                               outcomeFor(queue, one) === 'delete'
                                 ? 'verification.confirmDelete'

@@ -101,6 +101,15 @@
     "season",
     "since"
   ],
+  "payments.json": [
+    "accounts",
+    "accounts.city",
+    "accounts.competitorId",
+    "accounts.firstName",
+    "accounts.lastName",
+    "accounts.memberNumber",
+    "season"
+  ],
   "pricing.json": [
     "eur",
     "from",

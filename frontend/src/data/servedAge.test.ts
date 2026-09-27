@@ -229,7 +229,7 @@ describe('which fields the portal serves', () => {
        countable leaves, and the three fractions are fractions of the picture's own edges
        and say nothing about the person in it. The fractions also cannot trip the rule
        below: nothing between 0 and 1 is year-shaped. */
-    expect(Object.keys(served)).toHaveLength(14)
+    expect(Object.keys(served)).toHaveLength(15)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,
@@ -322,6 +322,13 @@ describe('what the portal serves about how old somebody is', () => {
     'competitors.json:teamSince',
     'leagues.json:season',
     'pairs.json:season',
+    /* THE THIRD SEASON ON THIS LIST, and it is a season in exactly the sense the two above
+       it are: the year membership is being paid FOR, which `GET /api/payments` answers once
+       for the whole list because it is a fact about the question rather than about anybody.
+       It is not a year of birth and cannot become one - it stands beside `accounts` and not
+       on any account - which is the thing this list exists to keep out. Its value in the
+       file is 2027, the first season of the league (`data/season.ts`, `FIRST_SEASON`). */
+    'payments.json:season',
     'races.json:ascentM',
     'races.json:descentM',
     'results.json:ascentM',

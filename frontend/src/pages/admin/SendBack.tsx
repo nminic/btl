@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { AskedLabel } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 
 /**
@@ -29,7 +29,6 @@ export function SendBack({
   placeholderKey = 'review.reasonPlaceholder',
   subject,
   optional = false,
-  explain = true,
   confirmKey = 'review.confirmSendBack',
   labelKey = 'review.reason',
   aboutKey = 'review.sendBackNamed',
@@ -71,10 +70,27 @@ export function SendBack({
    * button.
    */
   optional?: boolean
-  /** Whether this box says what the star means. False where whoever draws it
-   *  already draws that line for a block of fields beside this one, so one
-   *  screen carries one legend and not two. */
-  explain?: boolean
+  /*
+   * `explain` STOOD HERE AND IS GONE (27.09.2026), and it is worth saying why rather than
+   * leaving the next reader to reinvent it.
+   *
+   * It decided whether this box drew the line saying what the star means, and it was `false`
+   * „where whoever draws it already draws that line for a block of fields beside this one, so
+   * one screen carries one legend and not two". Every screen that still opens this box does
+   * exactly that: `PendingQueue.tsx` and `ReviewQueue.tsx` both draw their own `RequiredNote`
+   * over the whole screen. The one caller that did NOT was the screen of payments, which drew
+   * no legend of its own - and that screen has stopped opening this box altogether, because a
+   * derived list of whoever has not paid has nothing anybody sent in to hand back.
+   *
+   * So the `true` side of it became a branch no screen could reach, which is the one thing a
+   * list of mutations cannot see and the hundred per cent threshold can: the gate fell to
+   * 99.94 on branches with all 3323 cases green, and this line was the whole of it.
+   *
+   * WHAT COMES BACK WITH IT, if a screen ever needs it: the prop, its default, and the
+   * `explain && !optional` render. Not written now, because a screen that opens this box
+   * without a legend of its own does not exist and inventing the flag for it is inventing a
+   * user interface for nobody.
+   */
   /** The words on the confirming button, where the decision is not a refusal. */
   confirmKey?: string
   /** The words over the field, where what is asked for is not a reason. */
@@ -113,19 +129,6 @@ export function SendBack({
   return (
     <div className="review__reason" role="group" aria-label={about}>
       <p className="review__about">{about}</p>
-
-      {/* The same rule as every other field on the portal: a star where it has
-          to be written, and nothing where it may be left empty
-          (forms/AskedLabel.tsx). Five queues send back through this one box, so
-          the rule reaching it reaches all five.
-
-          And the line explaining the star stands with the star, appearing and
-          going away with it. Drawn instead by the screen around this box, on a
-          guess at whether a star is on it, it was drawn where a note may be left
-          empty and no star is, and left standing over a queue that had emptied.
-          A guess at what is on the screen is what keeps being wrong; the star
-          itself is not a guess. */}
-      {explain && !optional && <RequiredNote />}
 
       <div className="rankings__field rankings__field--wide">
         <AskedLabel id={fieldId} asked={!optional}>
