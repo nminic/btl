@@ -1422,8 +1422,10 @@
     "teamChangeAcceptedBody": "Podaci tima „{name}“ su izmenjeni. Moderator sme da ispravi ono što ste poslali pre nego što prihvati, pa pogledajte stranu tima.",
     "sentBy": "Poslao {who}, član {memberNumber}",
     "sentByAnonymous": "Prijavio posetilac bez naloga",
-    "activatePayment": "Evidentiraj uplatu",
-    "activateFeeExempt": "Oslobodi članarine",
+    "paymentsSeason": "Nisu članovi za sezonu {season}",
+    "paymentsSearch": "Pretraga po članskom broju, imenu ili prezimenu",
+    "paymentsNobodyDue": "Svi nalozi imaju članstvo za ovu sezonu.",
+    "paymentsNoSearchHit": "Nijedan nalog ne odgovara ovoj pretrazi.",
     "body": {
       "leagues": "Opis lige",
       "teams": "Obrazloženje",
@@ -1450,20 +1452,11 @@
     "confirmDelete": "Obriši komentar",
     "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
     "resultReturned": "Rezultat je vraćen",
-    "paymentReturned": "Prijava je vraćena",
     "teamReturned": "Predlog tima je vraćen",
     "teamChangeReturned": "Izmena tima je vraćena",
     "bioReturned": "Tekst o sebi je vraćen",
     "photoReturned": "Profilna slika je vraćena",
     "noRecipient": "Ova stavka nema člana kome bi odgovor stigao, pa se sa ovog reda ne odbija. Odobri je ili prijavi grešku; poruka bez primaoca išla bi celoj ligi.",
-    "numbersGiven": "Dodeljeni članski brojevi",
-    "noNumbersYet": "Još nijedan broj nije dodeljen na ovom ekranu.",
-    "activateAllPayment": "Aktiviraj sve po osnovu uplate",
-    "activateAllAsk": {
-      "one": "Aktivirati {count} članstvo po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
-      "few": "Aktivirati {count} članstva po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati.",
-      "other": "Aktivirati {count} članstava po osnovu uplate? Svako dobija članski broj i ovo se ne može opozvati."
-    },
     "approveAllDone": {
       "one": "Rešena je {count} stavka.",
       "few": "Rešene su {count} stavke.",

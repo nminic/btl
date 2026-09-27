@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { DateSwitch } from '../clock/DateSwitch'
-import { dataOr } from '../data/useResource'
+import { dataOr, usePaymentsDue } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePending } from '../pages/admin/pending'
-import { totalWaiting } from '../pages/admin/queues'
+import { notMembersYetIn, totalWaiting } from '../pages/admin/queues'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
@@ -55,6 +55,12 @@ const ADMIN = 'administracija'
 function useWaiting(): number {
   const { submissions, decisions } = useSession()
   const items = usePending()
+  /* TWO reads and not one since 27.09.2026, because one of the five queues is no longer in
+     the file: the Uplate tab is a derived list (`queues.ts`, `notMembersYet`). Left out, this
+     total would be short by however many people owe a fee, and the number over every screen on
+     the portal would disagree with the column that stands beside the work. Both are resources
+     the data layer keeps for the whole visit, so it is still one request each. */
+  const due = usePaymentsDue()
   /* Over the queues this moderator may work in and no others. A total that
      counted the rest would send him looking for work he cannot reach and is not
      shown anywhere (owner, 30.07.2026). */
@@ -63,6 +69,7 @@ function useWaiting(): number {
   return totalWaiting(
     {
       pendingResults: submissions.filter((one) => one.status === 'pending').length,
+      notMembersYet: notMembersYetIn(dataOr(due, null)),
       items: dataOr(items, []),
       decisions,
     },

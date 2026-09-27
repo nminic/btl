@@ -12,7 +12,7 @@ import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the fifteen names the backend has to answer for', () => {
+  it('is the sixteen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -40,7 +40,16 @@ describe('the list of resources', () => {
        bundle instead. So an administrator who changed a price through
        `PUT /api/pricing/{key}` changed what the next member was CHARGED and none of what
        he was SHOWN - the public table under Član 14, his own „Moja članarina", and the IPS
-       QR code he scans to pay. */
+       QR code he scans to pay.
+
+       Sixteen since 27.09.2026, when the screen of payments stopped being a queue. Owner,
+       PDL section 15: „Reda za verifikaciju uplate NEMA i ne uvodi se." `'payments'` was
+       read out of the `verification` resource, where nothing has ever written it - five
+       places write that table and not one writes that word - so the rows the screen drew
+       came from a fixture and the tab has always been empty in reality. It is a DERIVED
+       list now: whoever holds no membership for the season being paid for, worked out on
+       every read. It is also the second name here that was answered before it was ever
+       asked for, `/api/payments` having served this since PR 393. */
     expect([...RESOURCE_NAMES]).toEqual([
       'attendance',
       'ducats',
@@ -51,6 +60,7 @@ describe('the list of resources', () => {
       'moderators',
       'pages',
       'pairs',
+      'payments',
       'places',
       'pricing',
       'races',
