@@ -555,3 +555,26 @@ ogranicenju, a posle spajanja pada na **tudjem**.
   ne govori nista ni o jednom.
 - **Red spajanja se bira po tome gde popravka pada:** prva ide grana posle koje popravka pada na
   stranu koja **tek treba da prodje kapiju**, ne na onu koja je vec zelena.
+
+## 15. `gh pr checks` nenultim kodom kaze NEDOVRSENO, a kod nas nenulti kod znaci PAD (27.09.2026)
+
+Osmi oblik klase „merenje koje izgleda uredno a nije merilo ono sto tvrdi", i jedini kod kog je
+**znak obrnut** od svega ostalog kod nas.
+
+**Sta je izmereno, na PR-u 397.** Agent je cekao CI petljom napisanom kao „dok **ijedan** red nije
+`pending`". Bekend je prosao za pet minuta, uslov je time bio zadovoljen, i **petlja je izasla dok je
+frontend jos radio** — jos skoro sest minuta. Da je procitan samo tekst ispisa, prijavljen bi bio
+gotov CI nad poslom koji nije zavrsen.
+
+**Sta ga je uhvatilo:** izlazni kod procitan **iz fajla** bio je **8**, ne 0. Ispis je pritom
+pokazivao jedan uredan `pass`.
+
+- **`gh pr checks` izlaznim kodom 8 kaze „ima nedovrsenih", ne „palo je".** Svuda drugde kod nas
+  nenulti kod znaci pad, pa ko ga procita po navici zakljuci **suprotno od istine**: ili da je CI pao
+  kad nije, ili, gore, prekine cekanje i prijavi gotovo.
+- **Pravilo koje vec stoji i ovde je bilo jedino sto je radilo:** izlazni kod se cita **iz fajla**,
+  nikad kroz cev i nikad iz obavestenja o pozadinskom zadatku.
+- **Uslov cekanja se pise nad prisustvom, ne nad odsustvom:** „dok **ijedan red sadrzi** `pending`,
+  cekaj". Oblik „dok ijedan red **nije** pending" je zadovoljen prvim poslom koji zavrsi.
+- **I zato `gh pr checks` nikad nije cuvar petlje sam po sebi.** Dok ista visi, on je nenulti; dakle
+  ne razlikuje „jos traje" od „palo" bez citanja teksta.
