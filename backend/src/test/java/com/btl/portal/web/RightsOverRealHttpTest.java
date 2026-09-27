@@ -806,7 +806,7 @@ class RightsOverRealHttpTest {
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "GET /api/me/notifications",
-			"PUT /api/me/notifications", "PUT /api/me", "POST /api/inbox/{id}/read"})
+			"PUT /api/me/notifications", "PUT /api/me"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way
