@@ -1511,6 +1511,42 @@ describe('membership', () => {
   })
 
   /**
+   * AND THE WAY BACK, WHICH IS THE HALF A SCREEN LOSES.
+   *
+   * Owner, 26.09.2026 (PDL P7 §9): „Do tog roka se izbor menja koliko god puta", and PDL §13
+   * says the switch is free in both directions. A screen wired only where the wish is turned ON
+   * passes every case above: the member starts on the age band in all of them, so nothing there
+   * ever presses the age band itself. This starts him on the beginners' category and sends him
+   * back, and the body is asserted to carry `false` - which is the one value a handler written
+   * as a copy of its neighbour would get wrong.
+   */
+  it('sends the way back when a first season member returns to his age band', async () => {
+    const { stop } = membersAsServed('000032')
+    const category = categoryAsServed(HE_WANTS_THE_BEGINNERS, answeringCategory(OPEN_TO_HIM))
+
+    try {
+      renderMembershipOn('2027-11-01', '000032')
+
+      const age = await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' })
+
+      expect(age).not.toBeChecked()
+
+      fireEvent.click(age)
+
+      expect(
+        await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
+      ).toBeChecked()
+
+      const wrote = first(category.asked.filter((one) => one.init?.method === 'PUT'))
+
+      expect(JSON.parse(String(wrote.init?.body))).toEqual({ firstSeason: false })
+    } finally {
+      category.stop()
+      stop()
+    }
+  })
+
+  /**
    * A REFUSAL IS SAID OUT LOUD, AND THE BOX GOES BACK TO WHAT THE SERVER STILL HOLDS.
    *
    * The one refusal a reader can meet is `theChoiceIsShut`: his deadline passed between the
