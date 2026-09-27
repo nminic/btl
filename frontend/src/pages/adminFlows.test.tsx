@@ -22,7 +22,7 @@ import {
   type SubmissionStatus,
   type Creations,
 } from '../session/context'
-import { Decided, Inbox } from '../test/decided'
+import { Decided } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
 import { unremarked } from '../test/stylesheet'
@@ -312,12 +312,19 @@ describe('the panel', () => {
        is two numbers on one screen and the thing PDL P28a forbids. It is gone
        (owner, 06.08.2026); what is left is the header, and beside every queue
        the number waiting in it. The sum is exact because the data is fixed: an
-       "at least" here would survive the counter losing a whole queue. */
+       "at least" here would survive the counter losing a whole queue.
+
+       FIFTEEN AND NOT FOURTEEN SINCE 27.09.2026, and the extra one is not an extra item: the
+       Uplate tab is counted off the DERIVED list now rather than off the queue in the file
+       (`queues.ts`, `notMembersYet`), so its part of this sum comes from
+       `src/test/mock/payments.json` - four accounts - where it used to come from the three
+       rows the verification fixture carried under that word. Nothing in the backend has ever
+       written that word, so the old three were the fixture and nothing else. */
     renderAt('/sr/administracija/verifikacija/rezultati', 'superadmin')
 
     const said = await screen.findByRole('link', { name: /^Administracija, \d+ na čekanju$/ })
 
-    expect(said).toHaveAccessibleName('Administracija, 14 na čekanju')
+    expect(said).toHaveAccessibleName('Administracija, 15 na čekanju')
   })
 })
 
@@ -1125,128 +1132,34 @@ describe('payment payloads', () => {
     expect(count).toHaveTextContent(/Suzi pretragu/)
   })
 
-  it('says where somebody waiting to be activated is from, in words', async () => {
-    /* The town and the country under it are what a moderator has to go by before
-       the fee is recorded (PDL P8). The country arrives as a code and the card
-       used to ask the dictionary for it, which held the five of the region only;
-       it reads the file the select is filled from now (countryName), and no test
-       touched this cell at all until the ninth review said so. */
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin')
+  /* A CASE STOOD HERE ABOUT THE COUNTRY UNDER THE TOWN and it is gone with the field
+     (27.09.2026). It held that the Uplate row spelled „Srbija" rather than the code `RS` or a
+     missing dictionary key, which was right while the row came out of the verification fixture.
+     `GET /api/payments` serves five fields and the country is not one of them: its only purpose
+     was that how somebody pays follows where he lives, and the owner's decision of 27.09.2026
+     („Novac je legao, mogu da ga aktiviram") took the currency and the method out of activation
+     altogether.
 
-    const waiting = await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
-    const cells = within(waiting).getAllByRole('cell')
-
-    expect(cells.filter((cell) => cell.textContent?.includes('Srbija')).length).toBeGreaterThan(0)
-    expect(within(waiting).queryByText(/country\./)).toBeNull()
-    expect(within(waiting).queryByText(/^RS$/)).toBeNull()
-  })
+     The TOWN is still served and still drawn, for a reason that is new rather than inherited -
+     it tells two people of one name apart - and both halves are measured in
+     `pages/admin/adminPayments.test.tsx`: that the town is in its cell, and that no address and
+     no country appear anywhere on the screen. */
 
   /* The statement, as the way a hundred payments are reconciled at once (owner,
      31.07.2026). Turning the file into decisions is the server's work and the
      server does not exist yet, so what it does today is take the file and say
      so; what it can honestly refuse is a file that is not a statement at all. */
-  it('promises no message where there is nobody to send one to', async () => {
-    /* The refusal is written to whoever sent the thing in, and on this queue
-       that is usually nobody: a registration waiting for its fee has no account
-       yet, so it carries no member number (PDL P8). All three waiting in the
-       data are of that kind.
-     *
-       The words over the box therefore come from the same rule that decides
-       whether the message goes at all (queues.ts), rather than from a default
-       fixed for the whole screen. Written the other way round, a moderator was
-       told the member would read what they were writing while `notify` was never
-       called from here, which a review measured on 16.08.2026.
-     *
-       Read off the screen rather than off the rule, because what is guarded is
-       what a moderator sees. */
-    const user = setupUser()
-    renderAt('/sr/administracija/verifikacija/uplate', 'superadmin', null, undefined, null, <Inbox />)
+  /* TWO CASES STOOD HERE AND BOTH MEASURED A BOX THAT IS GONE (27.09.2026). They held the
+     words over „Odbij uz ovaj razlog" and where the message went: to nobody for a
+     registration with no number, and to the member himself for one renewing. The screen of
+     payments offers no such control any more, and the reason is the owner's decision that
+     took the queue away: nobody sends anything in here, so there is nothing to hand back and
+     nobody to write to. A reason written against one of these rows would have reached a
+     member as „your submission was sent back" about a submission he never made.
 
-    await user.click(first(await screen.findAllByRole('button', { name: 'Odbij' })))
-
-    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
-      'placeholder',
-      sr.review.reasonKeptPlaceholder,
-    )
-
-    /* And pressed, so the promise and the deed are held together: nothing may be
-       written to the empty string, which in this portal is not nobody but the
-       whole league (Message.to). */
-    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije stigla.')
-    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
-
-    const inbox = within(screen.getByRole('list', { name: 'session inbox' }))
-
-    expect(inbox.queryByText(new RegExp(sr.verification.paymentReturned))).toBeNull()
-  })
-
-  it('writes the refusal to a member who is already one', async () => {
-    /* The other half of the rule, and the seed cannot reach it: everybody
-       waiting on this queue today is registering for the first time, so nobody
-       has a number (PDL P8). A member renewing does have one, and then the
-       refusal goes to them and to nobody else.
-     *
-       Handed to the data layer as one row more, the way the seed itself is read
-       (test/setup.ts serves `public/mock` off disk), so everything else on the
-       screen is still the real thing. */
-    const real = globalThis.fetch
-
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const answer = await real(input, init)
-
-      if (!String(input).includes('/api/verification')) {
-        return answer
-      }
-
-      const rows: PendingItem[] = await answer.json()
-      const first = must(
-        rows.find((one) => one.queue === 'payments'),
-        'a payment waiting in the seed',
-      )
-
-      rows.push({ ...first, id: 'ver-upl-obnova', who: 'Strahinja Vukićević', memberNumber: '000007' })
-
-      return new Response(JSON.stringify(rows), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
-    }
-
-    try {
-      const user = setupUser()
-      /* Signed in as the very member the refusal is written to, because the
-         inbox is what a member is allowed to see and that is the honest way to
-         ask „did it arrive": the store itself is not exposed to a screen
-         (SessionProvider). An administrator who is also a member is ordinary
-         here; the owner runs the league and races in it. */
-      renderAt('/sr/administracija/verifikacija/uplate', 'superadmin', '000007', undefined, null, <Inbox />)
-
-      const card = must(
-        (await screen.findAllByRole('row')).find(
-          (one) => within(one).queryByText('Strahinja Vukićević') !== null,
-        ),
-        'the row of the member renewing',
-      )
-
-      await user.click(within(card).getByRole('button', { name: 'Odbij' }))
-
-      /* And the words over the box say a message goes, because for this one it
-         does: the same rule decides both (queues.ts). */
-      expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
-        'placeholder',
-        sr.review.reasonPlaceholder,
-      )
-
-      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije stigla do roka.')
-      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
-
-      const inbox = within(screen.getByRole('list', { name: 'session inbox' }))
-
-      expect(inbox.getByText(`000007 | ${sr.verification.paymentReturned}`)).toBeInTheDocument()
-    } finally {
-      globalThis.fetch = real
-    }
-  })
+     The RULE they were about is not gone and is not left unmeasured: `refusalTo` still
+     decides who a refusal reaches, and `ReviewQueue.tsx` still asks it on the queue of
+     results, where both halves are still live. What went is this screen's reading of it. */
 
   it('takes a statement in PDF and says what it did with it', async () => {
     const user = setupUser()
@@ -2538,8 +2451,13 @@ describe('verification', () => {
 
   it('reads every queue as nought and says nothing while the file is still on its way', async () => {
     const served = globalThis.fetch
+    /* BOTH SOURCES HELD BACK SINCE 27.09.2026, and that is what makes this case still about
+       what it was about. The Uplate tab is counted off `GET /api/payments` now and the other
+       four off the file (`queues.ts`, `notMembersYet`), so holding back the file alone would
+       have left one of the five answering a real number and the walk below would have been
+       measuring four queues while claiming five. */
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/verification')
+      String(input).endsWith('/api/verification') || String(input).endsWith('/api/payments')
         ? new Promise<Response>(() => undefined)
         : served(input))
 
@@ -2548,7 +2466,8 @@ describe('verification', () => {
          drift back into claiming the alarm covers it. `failed` is one of three
          states: a file that never answers is not a file that failed, so nothing
          is raised, and `dataOr(items, [])` counts every queue it feeds as
-         nought. Six quiet noughts, and not a word beside them.
+         nought - and `notMembersYetIn` reads nought out of an answer that has not arrived, for
+         the reason its own note gives. Five quiet noughts, and not a word beside them.
 
          It is not a regression and it is not what 29.08.2026 changed. What that
          day changed is that a nought is now the ordinary reading rather than a
@@ -2588,14 +2507,20 @@ describe('verification', () => {
       renderAt('/sr/administracija/verifikacija', 'moderator')
 
       /* Nothing here is counted off the member list any more (PDL P8, 30.07.2026),
-         so with only that file down every one of the eight numbers is right. The
-         screen still handed the list in and still said the numbers might be short
-         of the truth. An alarm that goes off when nothing is wrong is how a
-         moderator learns to ignore the one that matters. */
+         so with only that file down every one of the numbers is right. The screen still
+         handed the list in and still said the numbers might be short of the truth. An alarm
+         that goes off when nothing is wrong is how a moderator learns to ignore the one that
+         matters.
+
+         FOUR AND NOT THREE SINCE 27.09.2026: this number is the length of the DERIVED list
+         (`src/test/mock/payments.json`, four accounts) rather than the count of a queue in
+         the verification file, which nothing in the backend has ever written. The point of
+         the case is unchanged and is about the OTHER file: the member list being down must
+         not raise an alarm, because no number on this screen comes from it. */
       const memberships = await screen.findByRole('link', {
         name: /Uplate i aktivacija članova/,
       })
-      expect(within(memberships).getByText('3')).toBeVisible()
+      expect(within(memberships).getByText('4')).toBeVisible()
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     } finally {
       globalThis.fetch = served
@@ -2688,6 +2613,13 @@ describe('verification', () => {
     const user = setupUser()
     const served = globalThis.fetch
     // An empty league has nothing to approve, and a zero beside a name is noise.
+    /* AND IT ANSWERS EVERY ADDRESS WITH A LIST, WHICH SINCE 27.09.2026 MAKES THIS THE CASE
+       THAT HOLDS ONE LINE OF `queues.ts`. `GET /api/payments` answers a RECORD, so here it is
+       handed the wrong shape entirely - and `data/client.ts` puts the caller's type back onto
+       whatever came off the wire, so it arrives claiming to be one. Read as
+       `answer.accounts.length` the counter threw „Cannot read properties of undefined" and took
+       the whole administration down with it, navigation and all, through `ErrorBoundary`. That
+       is what `notMembersYetIn` is for and this is where it is measured. */
     vi.stubGlobal('fetch', async () => new Response('[]', { status: 200 }))
 
     try {
@@ -2704,283 +2636,28 @@ describe('verification', () => {
   })
 })
 
-/* The seven queues that had no screen at all. Each one is the same piece of
- * work: read what somebody sent in, and either let it out onto the portal or send
- * it back saying why. */
-describe('the queue of memberships waiting to be activated', () => {
-  const openPayments = async () => {
-    const user = setupUser()
-    renderAt(`/sr/${QUEUE.payments.path}`, 'moderator', null, undefined, null, <Decided />)
-    /* The table and not the heading. The heading is drawn before the records
-       arrive, so a test that waited on it went looking for a button that was not
-       there yet: it failed once in a run of the coverage gate and passed on the
-       next, which is the worst way for a test to fail. */
-    await screen.findByRole('table', { name: 'Uplate i aktivacija članova' })
-
-    return user
-  }
-
-  /* What the session was told, which is where a decision lives now: the queue
-     draws what is waiting and nothing else since 06.08.2026. Every line is one
-     decision, written as id, state, reason, ground, member number. */
-  const decidedLines = () =>
-    within(screen.getByRole('list', { name: 'session decisions' }))
-      .queryAllByRole('listitem')
-      .map((one) => String(one.textContent))
-
-  it('holds everyone who opened an account and has not paid yet', async () => {
-    await openPayments()
-
-    const table = screen.getByRole('table', { name: 'Uplate i aktivacija članova' })
-    // Three of them are generated, and the file holds no other membership.
-    expect(within(table).getAllByRole('row')).toHaveLength(4)
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
-  })
-
-  it('goes by the name and the address, because there is no number yet', async () => {
-    await openPayments()
-
-    const table = within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' }))
-
-    /* The member number is handed out when the fee is recorded (PDL P8,
-       30.07.2026), so a row that is still waiting has none, and the two things
-       that identify the person are the name and the address. The rows used to
-       carry 000032 to 000034, numbers nobody had given them. */
-    expect(table.getByText('Miodrag Stanković')).toBeVisible()
-    expect(table.getByText('miodrag.stankovic@primer.rs')).toBeVisible()
-    expect(table.queryByText(/^\d{6}$/)).not.toBeInTheDocument()
-  })
-
-  it('activates on a recorded payment, and on exemption from the fee', async () => {
-    const user = await openPayments()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Oslobodi članarine' })))
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 1' })).toBeVisible()
-
-    /* Both grounds exist because the fortnight before registration opens is
-       spent entering earlier competitors, and their 2027 fee is waived (PDL P8).
-       The ground is a fact about money and never leaves administration. */
-    const lines = decidedLines()
-
-    expect(lines.filter((line) => line.includes('| payment |'))).toHaveLength(1)
-    expect(lines.filter((line) => line.includes('| feeExempt |'))).toHaveLength(1)
-  })
-
-  it('shows the number it handed out on screen, beside who it went to', async () => {
-    const user = await openPayments()
-
-    /* The generated members hold 000001 to 000032, so the next free one is
-       000033, and every activation after it takes the one after that. The number
-       is what the administrator passes on to the member, so it is on screen the
-       moment it is given (PDL P8, 30.07.2026). Two of them, because one number
-       twice is the fault this is here to catch. */
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Oslobodi članarine' })))
-
-    /* On the screen and not only in the session: a member number is the first
-       thing the administrator passes on to whoever paid (PDL P8), and the table
-       of settled items that used to carry it is gone (owner, 06.08.2026). */
-    const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
-    const lines_shown = said.getAllByRole('listitem').map((one) => String(one.textContent))
-
-    /* Each number beside the name it went to: a list of numbers with nobody
-       against them is a list the administrator has to match up from memory. */
-    expect(lines_shown.filter((line) => /000033/.test(line) && /\p{L}/u.test(line))).toHaveLength(1)
-    expect(lines_shown.filter((line) => /000034/.test(line) && /\p{L}/u.test(line))).toHaveLength(1)
-
-    const lines = decidedLines()
-
-    expect(lines.some((line) => line.endsWith('000033'))).toBe(true)
-    expect(lines.some((line) => line.endsWith('000034'))).toBe(true)
-  })
-
-  it('has the region for the numbers before there is a number to put in it', async () => {
-    /* A live region added to the page together with its text is the kind a
-       screen reader misses, which is the rule the sweep line beside it keeps
-       (Swept). So it is drawn empty and says so. */
-    await openPayments()
-
-    const said = within(screen.getByRole('status', { name: 'Dodeljeni članski brojevi' }))
-
-    expect(said.getByText('Još nijedan broj nije dodeljen na ovom ekranu.')).toBeVisible()
-    expect(said.queryAllByRole('listitem')).toEqual([])
-  })
-
-  it('still says the numbers after the moderator has been somewhere else', async () => {
-    /* Held in the session and not in the screen: a number given is a number the
-       administrator writes to whoever paid, and a walk to another queue and back
-       used to take it away. */
-    const user = setupUser()
-    const { router } = renderAt(`/sr/${QUEUE.payments.path}`, 'moderator')
-
-    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-
-    await router.navigate(`/sr/${QUEUE.comments.path}`)
-    await screen.findByRole('heading', { level: 1, name: 'Komentari' })
-    await router.navigate(`/sr/${QUEUE.payments.path}`)
-
-    const said = within(
-      await screen.findByRole('status', { name: 'Dodeljeni članski brojevi' }),
-    )
-
-    expect(said.getByText('000033')).toBeVisible()
-  })
-
-  it('hands out no number to a membership it sends back', async () => {
-    const user = await openPayments()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije vidljiva na izvodu.')
-    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
-
-    /* A refusal leaves the registration waiting for a fee, so a number given
-       here would be one nobody could ever use, and the next activation would
-       have to skip it for nothing. */
-    expect(decidedLines().filter((line) => /\d{6}$/.test(line))).toEqual([])
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    expect(decidedLines().some((line) => line.endsWith('000033'))).toBe(true)
-  })
-
-  it('will not send a membership back without a reason', async () => {
-    const user = await openPayments()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-
-    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    /* Told off, not switched off: the button stays reachable so the line saying
-       why it will not go is reachable with it. */
-    expect(confirm).toHaveAttribute('aria-disabled', 'true')
-    expect(confirm).not.toBeDisabled()
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
-
-    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Uplata nije vidljiva na izvodu.')
-    await user.click(confirm)
-
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 2' })).toBeVisible()
-    expect(decidedLines().some((line) => line.includes('Uplata nije vidljiva na izvodu.'))).toBe(
-      true,
-    )
-  })
-
-  it('does not take spaces for a reason', async () => {
-    const user = await openPayments()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-
-    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    /* Three spaces are not a reason. The rule is one rule on all seven queues,
-       and it is the rule the forms already use (src/forms/validate.ts). */
-    await user.type(screen.getByLabelText('Razlog odbijanja'), '   ')
-    /* Told off, not switched off: the button stays reachable so the line saying
-       why it will not go is reachable with it. */
-    expect(confirm).toHaveAttribute('aria-disabled', 'true')
-    expect(confirm).not.toBeDisabled()
-
-    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Izvod ne pokazuje uplatu.   ')
-    await user.click(confirm)
-
-    // And what is written down has no spaces hanging off it either.
-    expect(decidedLines().some((line) => line.includes('| Izvod ne pokazuje uplatu. |'))).toBe(
-      true,
-    )
-  })
-
-  it('says whose membership is being refused, and forgets it once it is settled', async () => {
-    const user = await openPayments()
-
-    /* Asked for by the name written in it rather than by its place in the table.
-       What this test is about is that the box and the buttons are on the same
-       person, so the person is what the row is found by, and a table that no
-       longer holds him fails saying his name. Held rather than asked for twice,
-       because the second click is what takes the row out of the table. */
-    const row = within(
-      within(screen.getByRole('table', { name: 'Uplate i aktivacija članova' })).getByRole('row', {
-        name: /Miodrag Stanković/,
-      }),
-    )
-
-    await user.click(row.getByRole('button', { name: 'Odbij' }))
-
-    /* The box hangs below the table, so on a list of twenty there is nothing on
-       screen that says whose membership it decides unless it says so itself. The
-       name is what it says, because a member number is exactly what a row here
-       does not have yet (PDL P8, 30.07.2026). */
-    const box = screen.getByRole('group', { name: /Odbijanje/ })
-    expect(box).toHaveAccessibleName('Odbijanje: Miodrag Stanković')
-    expect(within(box).getByText(/Miodrag Stanković/)).toBeVisible()
-    // And the field it opens on has the focus, not the document body.
-    expect(screen.getByLabelText('Razlog odbijanja')).toHaveFocus()
-
-    /* The row is decided by the buttons beside it while the box is open. Before,
-       the box stayed open over a member who was already active, and confirming it
-       replaced the activation with a refusal, quietly, and the ground of the
-       membership went with it. */
-    await user.click(row.getByRole('button', { name: 'Evidentiraj uplatu' }))
-
-    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
-    const lines = decidedLines()
-
-    expect(lines.some((line) => line.includes('| approved |'))).toBe(true)
-    expect(lines.some((line) => line.includes('| payment |'))).toBe(true)
-    expect(lines.filter((line) => line.includes('| rejected |'))).toEqual([])
-  })
-
-  it('closes the reason without deciding anything', async () => {
-    const user = await openPayments()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-    await user.click(screen.getByRole('button', { name: 'Odustani' }))
-
-    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
-  })
-
-  /**
-   * „GIVES THE MEMBER FORM NO NUMBER AN ACTIVATION HAS ALREADY HANDED OUT" STOOD HERE UNTIL
-   * 26.09.2026, AND IT WENT BECAUSE ITS SECOND SOURCE DID.
-   *
-   * <p>It was a case about TWO places handing out member numbers without seeing each other:
-   * an activation records a fee and takes the first free number, and the member form used to
-   * take one too, so a form opened in the same visit handed out the number the activation had
-   * just given away. Two members answered to one number, and since the overlay of changes is
-   * keyed by that number, changing the town of one changed both (PDL P8, 30.07.2026; ADL A4d).
-   *
-   * <p><b>There is only one source left.</b> „Nov član" is gone from
-   * `admin/AdminMembers.tsx`, because `POST /api/competitors` is the group entry that sends
-   * invitations and not a form for one record (PDL P8b, 25.09.2026). A collision between two
-   * sources cannot be measured with one, and writing a case that pretended to would be a case
-   * about nothing.
-   *
-   * <p><b>What is left is guarded by its sibling</b>, „hands every activated membership its own
-   * number, not one number to all of them", a few cases below in this same file: that is the
-   * remaining source, and it is asked the same question over three activations in one visit.
-   * The arithmetic underneath both is tested directly in `admin/entityForms.test.tsx`, „the
-   * identity a new record is handed".
-   *
-   * <p><b>And the day the group entry screen arrives, this case comes back rather than being
-   * remembered</b> - it will be a second source again, and a group of five invitations taken
-   * in one visit is exactly the shape that used to break here.
-   */
-
-
-  it('says so once every membership has been decided', async () => {
-    const user = await openPayments()
-
-    // Three are waiting, and the row of whoever is decided leaves the table, so
-    // the first button is a different member every time.
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-
-    expect(screen.getByText('Nema nijedne stavke na čekanju.')).toBeVisible()
-    expect(decidedLines()).toHaveLength(3)
-  })
-})
+/* THE WHOLE DESCRIBE OF „the queue of memberships waiting to be activated" STOOD HERE AND IS
+ * GONE (27.09.2026), because the queue it was about is gone. Owner, PDL section 15:
+ * „Reda za verifikaciju uplate NEMA i ne uvodi se. Nista se ne upisuje, nista ne trigeruje,
+ * nijedan clan nista ne pritiska."
+ *
+ * Twelve cases were removed and each one measured something that no longer exists: activating
+ * on a recorded payment or on exemption from the fee, handing out a member number by counting
+ * the ones on screen, the region those numbers were listed in, and the box that sent a
+ * membership back with a reason. None of it reached the server at any point, which is why the
+ * screen was rewritten: nothing in the backend has ever written that queue, so the three rows
+ * these cases pressed buttons on came out of `verification.json` and out of nowhere else.
+ *
+ * WHERE WHAT IS LEFT IS MEASURED, so this is a move and not a deletion: the screen reads
+ * `GET /api/payments` and is held in `pages/admin/adminPayments.test.tsx` - the served order,
+ * the season read off the answer, the search over number and names, the two empty states told
+ * apart, and the absence of every one of the controls above.
+ *
+ * AND WHAT IS NOT MEASURED ANYWHERE YET, said plainly rather than left as a gap somebody has
+ * to notice: booking a payment. The owner is settling how that works per row, with a box
+ * carrying a currency and the competitor's balance beside it, so the act has no shape to write
+ * a case against. It arrives with its own specification and its own cases.
+ */
 
 describe('the five queues read from the file', () => {
   /** What is waiting on one queue, read off the file the screen reads. */
@@ -3543,9 +3220,14 @@ describe('the five queues read from the file', () => {
          backwards, on both screens this round had just corrected. Every other
          test compares a placeholder against `sr.review.*`, so they all move
          together with the values and none of them can see it. */
-      /* Every queue sends except the comments, which are deleted rather than
-         returned and write to nobody (owner, 15.08.2026, PDL P22). */
-      expect(sends, one.id).toBe(one.id !== 'comments')
+      /* Every queue sends except two, and the two are two different reasons.
+         The comments are DELETED rather than returned and write to nobody
+         (owner, 15.08.2026, PDL P22). And since 27.09.2026 the payments send
+         nothing either, because nothing is sent IN: the tab is a derived list of
+         whoever is not a member yet, so there is no submission to hand back and
+         nobody to write to. `QUEUE.payments` carries no `returnedKey` for that
+         reason, which is what `returned` reads. */
+      expect(sends, one.id).toBe(one.id !== 'comments' && one.id !== 'payments')
     }
 
     /* And the words themselves, once rather than once per queue: these say
@@ -4177,7 +3859,7 @@ describe('what is counted beside a queue', () => {
     country: '',
   }
   const item = (id: string, queue: PendingQueueId): PendingItem => ({ ...BLANK, id, queue })
-  const empty = { pendingResults: 0, items: [], decisions: {} }
+  const empty = { pendingResults: 0, notMembersYet: 0, items: [], decisions: {} }
   /* Through countFor, one queue at a time, which is how the navigation and the
      header both read it (SectionNav, Shell). There was a second function here
      answering for all eight at once; nothing on the portal called it, and these
@@ -4188,8 +3870,11 @@ describe('what is counted beside a queue', () => {
   it('counts every queue from the one place', () => {
     const counts = countsFor({
       pendingResults: 3,
+      /* Five, and deliberately a number no other queue here carries. Every count in this
+         case comes from a different source - the session, the derived list, the file - and a
+         number shared between two of them would let a reading of the wrong one pass. */
+      notMembersYet: 5,
       items: [
-        item('u', 'payments'),
         item('a', 'profiles'),
         item('b', 'profiles'),
         item('c', 'comments'),
@@ -4199,24 +3884,34 @@ describe('what is counted beside a queue', () => {
     })
 
     expect(counts.results).toBe(3)
-    expect(counts.payments).toBe(1)
+    expect(counts.payments).toBe(5)
     expect(counts.profiles).toBe(2)
     expect(counts.comments).toBe(1)
     expect(counts.teams).toBe(1)
   })
 
-  it('counts a membership from the queue and never from the member list', () => {
-    /* It used to be counted as the member who was not active yet. A member number
-       is handed out when the fee is recorded (PDL P8, 30.07.2026), so somebody who
-       has not paid has no number and is not a member; counting them off the member
-       list would mean they were in it, and everything that reads that list reads
-       all of it, front page included.
+  it('counts a membership from the derived list and never from the queue', () => {
+    /* IT WAS COUNTED FROM THE QUEUE UNTIL 27.09.2026 AND THAT IS WHAT THIS NOW REFUSES.
+       Owner, PDL section 15: the queue for payments „NEMA i ne uvodi se". Nothing writes
+       `verification.queue = 'payments'` anywhere in the backend - five places write that
+       table and not one writes that word - so a tab counted off the file would read a
+       permanent nought while the screen behind it listed people. The owner's decision of
+       29.08.2026 („Neka ostane vidljiva i neka pise 0") is what makes that reading harmful
+       rather than merely wrong: a nought is the ordinary sight in this column now, so
+       nothing would tell „nothing to do" from „nobody counted".
 
-       The member list is not even handed in any more, and that is what this holds:
-       while it still was, the counter in the header asked for the file of members
-       on every screen of the portal so it could pass it in unread. */
+       BOTH DIRECTIONS, because either one alone passes for the wrong reason. An item in the
+       FILE must not be counted, and the length of the derived list must be; the second call
+       carries both at once, so the number cannot come from the source being refused.
+
+       And the member list is not handed in at all, which is the older half of this case:
+       while it still was, the counter in the header asked for the file of members on every
+       screen of the portal so it could pass it in unread. */
     expect(Object.keys(empty)).not.toContain('competitors')
-    expect(countsFor({ ...empty, items: [item('u', 'payments')] }).payments).toBe(1)
+    expect(countsFor({ ...empty, items: [item('u', 'payments')] }).payments).toBe(0)
+    expect(countsFor({ ...empty, notMembersYet: 4, items: [item('u', 'payments')] }).payments).toBe(
+      4,
+    )
   })
 
   it('carries no count from the calendar it no longer reads', () => {
@@ -4234,19 +3929,19 @@ describe('what is counted beside a queue', () => {
   })
 
   it('stops counting an item once it has been decided', () => {
-    const items = [item('a', 'teams'), item('b', 'teams'), item('u', 'payments')]
+    const items = [item('a', 'teams'), item('b', 'teams'), item('c', 'profiles')]
 
-    expect(countsFor({ ...empty, items })).toMatchObject({ teams: 2, payments: 1 })
+    expect(countsFor({ ...empty, items })).toMatchObject({ teams: 2, profiles: 1 })
     expect(
       countsFor({
         ...empty,
         items,
         decisions: {
           a: { status: 'approved', note: '', basis: '', memberNumber: '' },
-          u: { status: 'approved', note: '', basis: 'payment', memberNumber: '000033' },
+          c: { status: 'approved', note: '', basis: '', memberNumber: '' },
         },
       }),
-    ).toMatchObject({ teams: 1, payments: 0 })
+    ).toMatchObject({ teams: 1, profiles: 0 })
   })
 
   it('reports zero for every queue when nothing is waiting', () => {

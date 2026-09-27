@@ -1,0 +1,33 @@
+{
+  "season": 2027,
+  "accounts": [
+    {
+      "competitorId": 41,
+      "memberNumber": "",
+      "firstName": "Ana",
+      "lastName": "Ilić",
+      "city": "Novi Sad"
+    },
+    {
+      "competitorId": 23,
+      "memberNumber": "000031",
+      "firstName": "Jovana",
+      "lastName": "Ilić",
+      "city": "Beograd"
+    },
+    {
+      "competitorId": 58,
+      "memberNumber": "",
+      "firstName": "Petar",
+      "lastName": "Marko",
+      "city": "Niš"
+    },
+    {
+      "competitorId": 17,
+      "memberNumber": "000009",
+      "firstName": "Marko",
+      "lastName": "Marković",
+      "city": "Beograd"
+    }
+  ]
+}

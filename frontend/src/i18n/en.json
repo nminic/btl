@@ -1415,8 +1415,10 @@
     "teamChangeAcceptedBody": "The details of the team „{name}“ have been changed. A moderator may correct what you sent before accepting it, so have a look at the team's page.",
     "sentBy": "Sent by {who}, member {memberNumber}",
     "sentByAnonymous": "Reported by a visitor without an account",
-    "activatePayment": "Record the payment",
-    "activateFeeExempt": "Exempt from the fee",
+    "paymentsSeason": "Not members for the {season} season",
+    "paymentsSearch": "Search by member number, given name or surname",
+    "paymentsNobodyDue": "Every account holds a membership for this season.",
+    "paymentsNoSearchHit": "No account matches this search.",
     "body": {
       "leagues": "Competition description",
       "teams": "The reasoning",
@@ -1443,20 +1445,11 @@
     "confirmDelete": "Delete the comment",
     "pictureAlt": "The picture sent by {who}, with the part that will be seen framed",
     "resultReturned": "The result has been sent back",
-    "paymentReturned": "The application has been sent back",
     "teamReturned": "The team proposal has been sent back",
     "teamChangeReturned": "The change to the team has been sent back",
     "bioReturned": "The text about yourself has been sent back",
     "photoReturned": "The profile picture has been sent back",
     "noRecipient": "This item has no member for an answer to reach, so it is not refused from this queue. Approve it or report the fault; a message without a recipient would go to the whole League.",
-    "numbersGiven": "The member numbers given",
-    "noNumbersYet": "No number has been given on this screen yet.",
-    "activateAllPayment": "Activate all on the basis of payment",
-    "activateAllAsk": {
-      "one": "Activate {count} membership on the basis of payment? Each one gets a member number and this cannot be undone.",
-      "few": "Activate {count} memberships on the basis of payment? Each one gets a member number and this cannot be undone.",
-      "other": "Activate {count} memberships on the basis of payment? Each one gets a member number and this cannot be undone."
-    },
     "approveAllDone": {
       "one": "{count} item has been settled.",
       "few": "{count} items have been settled.",

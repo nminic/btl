@@ -443,12 +443,20 @@ describe('a sentence with a value put into it', () => {
       'topBoards.sharedRaces',
       'units.btlPoints <- formatPoints',
       'units.memberCount',
-      'verification.activateAllAsk',
       'verification.approveAllAsk',
       'verification.approveAllDone',
       'verification.deleteNamed',
       'verification.foldCardNamed',
       'verification.openCardNamed',
+      /* A YEAR, AND IT IS THE ONE VALUE HERE THAT MUST NOT GO THROUGH A FORMATTER. The
+         season arrives off the answer as a number, and `formatNumber` would write 2.027 in
+         Serbian, which is a thousands separator inside a year. Written straight into the
+         sentence for that reason, and the reason is on this line because it is exactly the
+         question this gate exists to make somebody ask.
+         `verification.activateAllAsk` left this list on the same day: the sweep that asked
+         it is gone from the screen of payments, because on a derived list a row means „no
+         money has arrived" and one press would have activated every debtor at once. */
+      'verification.paymentsSeason',
       'verification.pictureAlt',
       'verification.sentBy',
       'verification.teamAccepted',
