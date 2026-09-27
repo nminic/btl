@@ -20,6 +20,31 @@ export function invitedFrom(values: FormValues): Invited {
 }
 
 /**
+ * WHAT `PUT /api/moderators/{id}` SENDS TO CHANGE A NAME, since 26.09.2026 the same route
+ * that already carried `rights` (`ModeratorWriteApi.Ticks`).
+ *
+ * There is no address field here, on purpose and unlike `Invited`: „adresa se ne menja jer
+ * je to prijava" (owner, 26.09.2026), and the form behind this shape does not ask for one
+ * (`AdminModerators.tsx`'s own edit form, narrower than the one that makes a moderator). The
+ * route refuses one by name regardless of what any form sends, so leaving the field out here
+ * is not the only thing standing between a superadmin and that mistake - it is simply this
+ * screen's own half of never asking.
+ */
+export type Changed = { firstName: string; lastName: string; rights: string[] }
+
+/**
+ * The name off the form, read by name exactly as `invitedFrom` reads its own three fields,
+ * beside the rights this screen already knows the moderator holds - `rights` is not on this
+ * form (it is the matrix, `AdminModerators.tsx`'s class comment says why), so it travels in
+ * from the caller rather than out of `values`.
+ */
+export function changedFrom(values: FormValues, rights: string[]): Changed {
+  const text = (name: string): string => String(values[name] ?? '')
+
+  return { firstName: text('firstName'), lastName: text('lastName'), rights }
+}
+
+/**
  * THE IDENTITY THE SERVER HANDED OUT, read off a 201 the same way
  * `admin/leagueWrites.ts#identityIn` reads one: without an assertion (ADL A14), because
  * what comes off the wire is `unknown`.
