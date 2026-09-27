@@ -8,6 +8,7 @@ import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { useSession } from '../../session/useSession'
 
 /**
  * ONE UPLOAD IS ONE ROW IN FRONT OF THE MODERATOR, AND HE DECIDES IT THROUGH THE ROUTE.
@@ -129,6 +130,43 @@ const theServer = (answers: unknown = THE_ROUTE_NAMES_THE_ROW) => {
 }
 
 const panelFor = async () => within(await screen.findByRole('region', { name: 'Profilna slika' }))
+
+/**
+ * SOMEBODY ELSE SIGNING IN DURING THE SAME VISIT, through the portal's own live writer.
+ *
+ * <p>`theServerSignedMeIn` and not a fake session, because the fault this drives lives in
+ * what that writer does and does not clear: it is the very call `member/SignIn.tsx` makes
+ * with the answer to `GET /api/me`, and the comment over it names this road - „a value kept
+ * from the person before is a value shown to the person after". A test that built a session
+ * object by hand would be measuring its own object.
+ *
+ * <p>Reachable without a reload, which is why the road is real: `SessionProvider` is mounted
+ * above the router so it never comes down, and the sign in screen can be walked to while
+ * somebody is signed in. A shared laptop at a race is the ordinary case.
+ */
+function SignInAs({ memberNumber }: { memberNumber: string }) {
+  const { theServerSignedMeIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        theServerSignedMeIn({
+          account: 2,
+          memberNumber,
+          country: null,
+          firstSeason: null,
+          teamId: null,
+          membershipBasis: null,
+          referralCode: null,
+          referredCount: null,
+        })
+      }}
+    >
+      sign in somebody else
+    </button>
+  )
+}
 
 const THE_QUEUE = '/sr/administracija/verifikacija/trkacki-profil'
 
@@ -285,6 +323,48 @@ describe('a picture sent for a decision', () => {
 
       expect(await panel.findByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
       expect(panel.queryByText(/čeka odobrenje/)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('is not shown to the NEXT member who signs in during the same visit', async () => {
+    /* VISOK, review of PR 400. This branch took the member out of the reading: it replaced
+       `one.memberNumber === me.memberNumber` (which `member/ProfileBio.tsx` still asks of the
+       same fact, on the same screen family) with „there is one picture a visit can have
+       sent", and **a visit is not a member**. Measured on the head of this branch before the
+       fix: the second member was told a picture of his was waiting, WAS SHOWN THE FIRST
+       MEMBER'S PHOTOGRAPH, and could not send one of his own.
+     *
+       The three assertions are the three states that were wrong, and the middle one is the
+       fault rather than a symptom: what it reads by is the alt of the frame, so it fails on a
+       picture drawn to the wrong person even if the sentence beside it were right. */
+    const user = setupUser()
+    const server = theServer()
+
+    try {
+      renderAt('/sr/podesavanja', 'superadmin', '000007', undefined, null, (
+        <SignInAs memberNumber="000002" />
+      ))
+
+      const mine = await panelFor()
+
+      await user.upload(
+        await mine.findByLabelText(/Izaberi novu sliku/),
+        new File(['slika'], 'nova-slika.jpg', { type: 'image/jpeg' }),
+      )
+      await measurePicture()
+      await mine.findByLabelText('Veličina isečka')
+      await user.click(mine.getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await waitFor(() => (expect(screen.getByText(/čeka odobrenje/)).toBeVisible()))
+
+      await user.click(screen.getByRole('button', { name: 'sign in somebody else' }))
+
+      const theirs = await panelFor()
+
+      expect(theirs.queryByText(/čeka odobrenje/)).toBeNull()
+      expect(theirs.queryByRole('img', { name: /Slika koju si poslao/ })).toBeNull()
+      expect(await theirs.findByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
     } finally {
       server.stop()
     }
