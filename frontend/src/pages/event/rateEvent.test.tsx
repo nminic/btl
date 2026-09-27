@@ -1090,13 +1090,19 @@ describe('a comment a moderator lets out', () => {
     }
     const served = globalThis.fetch
 
-    globalThis.fetch = (async (input: RequestInfo | URL) =>
+    /* `init` IS PASSED ON, and that is not tidiness. Since 26.09.2026 approving a
+       card is a `POST` to `/api/verification/{id}/decision` and the stub underneath
+       answers it by looking at the VERB (`test/setup.ts`). Dropped here, as it was,
+       the decision arrived as a bare GET, met the 404 that stub ends on, and the
+       card stayed in the queue - so the `waitFor` below waited for something that
+       was never going to happen and the case timed out instead of failing. */
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) =>
       String(input).endsWith('/api/verification')
         ? new Response(JSON.stringify([teamEdit]), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })
-        : served(input))
+        : served(input, init))
 
     try {
       const user = setupUser()

@@ -280,7 +280,7 @@ describe('a change waiting on the queue of teams', () => {
 
     await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
 
-    expect(screen.getByRole('link', { name: /Izmena tima je vraćena/ })).toBeVisible()
+    expect(await screen.findByRole('link', { name: /Izmena tima je vraćena/ })).toBeVisible()
     expect(screen.queryByRole('link', { name: /Predlog tima je vraćen/ })).toBeNull()
   }, SLOW)
 
@@ -309,6 +309,125 @@ describe('a change waiting on the queue of teams', () => {
       screen.getByRole('link', { name: /Izmena tima „Dunavski trkači“ je prihvaćena/ }),
     ).toBeVisible()
     expect(screen.queryByRole('link', { name: /predlog tima/i })).toBeNull()
+  }, SLOW)
+
+  it('is decided locally and never asks the route, unlike a served proposal waiting beside it', async () => {
+    /* VISOK 2, review of PR 380. This card exists because `EditTeam.tsx` calls
+       `propose` (`session/SessionProvider.tsx`), which mints `prop-1` for a row
+       nothing has served - there is no route yet to carry a changed town to the
+       server. Approved through the same door as everything else on this queue,
+       the id went to `POST /api/verification/prop-1/decision`, whose
+       `@PathVariable long id` (`VerificationWriteApi.decide`) cannot even carry
+       that shape: not refused, never delivered.
+     *
+       THE SOURCE SWAP THE REVIEW ASKED FOR: `ver-tim-1`, served off
+       `public/mock/verification.json`, waits on the SAME queue as `prop-1` in this
+       same render. A case holding only the second could not tell "the code reads
+       which row this is" from "the code never asks the route at all" - both would
+       show nothing sent. Held together, one is asked and the other is not. */
+    const user = setupUser()
+    const server = serverThat((path, init) =>
+      init?.method === 'POST' && path.includes('/decision')
+        ? new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+      await user.clear(await screen.findByLabelText(/^Mesto/))
+      await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+      await router.navigate('/sr/administracija/verifikacija/timovi')
+
+      const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+      const ours = within(
+        must(oursHeading.closest('li'), 'the card of the change this visit just made'),
+      )
+
+      await user.click(ours.getByRole('button', { name: 'Odobri' }))
+
+      /* Queried only now, after the card above is gone: a reference taken before
+         that press is still a live DOM node either way (React removes only the
+         `<li>` that left), but this is how every other case in this file reaches
+         for a card, and there is no reason for this one to read differently. */
+      const servedHeading = screen.getByRole('heading', { name: 'Timočka trkačka družina' })
+      const served = within(
+        must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'),
+      )
+
+      await user.click(served.getByRole('button', { name: 'Odobri' }))
+
+      const sent = server.asked.filter((one) => one.path.includes('/decision'))
+
+      expect(sent).toHaveLength(1)
+      /* The served row's own address, and not `prop-1`'s: one request, and this is
+         the one it has to be. */
+      expect(sent[0]?.path).toBe('/api/verification/ver-tim-1/decision')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('is handed back locally too, unlike a served proposal beside it', async () => {
+    /* The other door onto the same VISOK 2 boundary: `handBack` reads
+       `isProposal` separately from `approveAll`, because the two functions do
+       not share a call - measured directly, a mutation that put `prop-1` back
+       on the route inside `approveAll` alone left this door's own case green.
+       So this is not the case above with „Odbij" in place of „Odobri", it is
+       the only case that would have caught that mutation at all. */
+    const user = setupUser()
+    const server = serverThat((path, init) =>
+      init?.method === 'POST' && path.includes('/decision')
+        ? new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+      await user.clear(await screen.findByLabelText(/^Mesto/))
+      await user.type(screen.getByLabelText(/^Mesto/), 'Sremski Karlovci')
+      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+
+      await router.navigate('/sr/administracija/verifikacija/timovi')
+
+      const oursHeading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+      const ours = within(
+        must(oursHeading.closest('li'), 'the card of the change this visit just made'),
+      )
+
+      await user.click(ours.getByRole('button', { name: 'Odbij' }))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Mesto se ne poklapa sa prijavom.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      /* Queried only now, after the card above is gone, the same way the
+         approval case beside this one reaches for it. */
+      const servedHeading = screen.getByRole('heading', { name: 'Timočka trkačka družina' })
+      const served = within(
+        must(servedHeading.closest('li'), 'a card served off the file, waiting beside it'),
+      )
+
+      await user.click(served.getByRole('button', { name: 'Odbij' }))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Nepotpun opis tima.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      const sent = server.asked.filter((one) => one.path.includes('/decision'))
+
+      expect(sent).toHaveLength(1)
+      expect(sent[0]?.path).toBe('/api/verification/ver-tim-1/decision')
+    } finally {
+      server.stop()
+    }
   }, SLOW)
 
   it('cannot be approved once the team it names has been deleted', async () => {
@@ -385,7 +504,7 @@ describe('a change waiting on the queue of teams', () => {
 
     /* One row of that name, and the town it was changed to. Counted, because a
        creation would leave the old row standing beside a new one. */
-    expect(table.getAllByText('Dunavski trkači')).toHaveLength(1)
+    expect(await table.findAllByText('Dunavski trkači')).toHaveLength(1)
     expect(table.getByText('Sremski Karlovci')).toBeVisible()
     expect(table.queryByText('Novi Sad')).toBeNull()
   })

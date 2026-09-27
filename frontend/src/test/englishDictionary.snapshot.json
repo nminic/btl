@@ -1271,7 +1271,13 @@
     },
     "moderatorGone": "The moderator has been deleted.",
     "moderatorSavedUnseen": "The moderator has been saved, but the portal cannot show them in this list. Refresh the page.",
-    "moderatorRightsSavedUnseen": "The right has been saved, but the portal cannot show the new state. Refresh the page."
+    "moderatorRightsSavedUnseen": "The right has been saved, but the portal cannot show the new state. Refresh the page.",
+    "memberDeleteRefused": {
+      "theAccountMustBeDecided": "The portal did not pass on the decision about the account. Refresh the page and try again.",
+      "anonymisingIsNotWrittenYet": "Anonymising an account has not been written yet. For now a member can only be deleted.",
+      "theAccountAdministers": "This member's account administers the portal, so the member cannot be deleted from here."
+    },
+    "memberGone": "The member has been deleted."
   },
   "ducats": {
     "title": "Ducats",

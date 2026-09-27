@@ -1271,7 +1271,13 @@
     "teamDeleteRefused": {
       "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
     },
-    "teamGone": "Tim je obrisan."
+    "teamGone": "Tim je obrisan.",
+    "memberDeleteRefused": {
+      "theAccountMustBeDecided": "Portal nije prosledio odluku o nalogu. Osveži stranu pa pokušaj ponovo.",
+      "anonymisingIsNotWrittenYet": "Anonimizacija naloga još nije napisana. Član se za sada može samo obrisati.",
+      "theAccountAdministers": "Nalog ovog člana administrira portal, pa se član ne može obrisati odavde."
+    },
+    "memberGone": "Član je obrisan."
   },
   "ducats": {
     "title": "Dukati",
