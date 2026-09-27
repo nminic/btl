@@ -2938,53 +2938,33 @@ describe('the queue of memberships waiting to be activated', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Čeka proveru 3' })).toBeVisible()
   })
 
-  it('gives the member form no number an activation has already handed out', async () => {
-    const user = setupUser()
-    renderAt(`/sr/${QUEUE.payments.path}`, 'superadmin')
-    await screen.findByRole('heading', { level: 1, name: 'Uplate i aktivacija članova' })
+  /**
+   * „GIVES THE MEMBER FORM NO NUMBER AN ACTIVATION HAS ALREADY HANDED OUT" STOOD HERE UNTIL
+   * 26.09.2026, AND IT WENT BECAUSE ITS SECOND SOURCE DID.
+   *
+   * <p>It was a case about TWO places handing out member numbers without seeing each other:
+   * an activation records a fee and takes the first free number, and the member form used to
+   * take one too, so a form opened in the same visit handed out the number the activation had
+   * just given away. Two members answered to one number, and since the overlay of changes is
+   * keyed by that number, changing the town of one changed both (PDL P8, 30.07.2026; ADL A4d).
+   *
+   * <p><b>There is only one source left.</b> „Nov član" is gone from
+   * `admin/AdminMembers.tsx`, because `POST /api/competitors` is the group entry that sends
+   * invitations and not a form for one record (PDL P8b, 25.09.2026). A collision between two
+   * sources cannot be measured with one, and writing a case that pretended to would be a case
+   * about nothing.
+   *
+   * <p><b>What is left is guarded by its sibling</b>, „hands every activated membership its own
+   * number, not one number to all of them", a few cases below in this same file: that is the
+   * remaining source, and it is asked the same question over three activations in one visit.
+   * The arithmetic underneath both is tested directly in `admin/entityForms.test.tsx`, „the
+   * identity a new record is handed".
+   *
+   * <p><b>And the day the group entry screen arrives, this case comes back rather than being
+   * remembered</b> - it will be a second source again, and a group of five invitations taken
+   * in one visit is exactly the shape that used to break here.
+   */
 
-    /* An activation writes a decision and not a member, so the member form never
-       saw the number the activation had just given out: record a fee, get the
-       first free number, then enter a member without reloading and get it
-       again. Two members
-       answered to one number, and because the overlay of changes is keyed by the
-       number, changing the town of one of them changed both. That is the fault
-       the check for uniqueness used to catch before the field left the form (PDL
-       P8, 30.07.2026; ADL A4d). */
-    await user.click(first(screen.getAllByRole('button', { name: 'Evidentiraj uplatu' })))
-
-    // The same visit, walked the way an administrator walks it: no reload.
-    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-    await user.click(await screen.findByRole('link', { name: 'Članovi' }))
-
-    await user.click(await screen.findByRole('button', { name: 'Novi član' }))
-    const form = within(screen.getByRole('form', { name: 'Novi član' }))
-
-    /* Pairs rather than a list of lists. Written plainly this is `string[][]`,
-       and taking two names out of a list of unknown length is exactly the shape
-       that has to be guarded; fixed as pairs, both the label and the value the
-       loop takes apart are known to be there. */
-    for (const [label, value] of [
-      ['Ime', 'Milica'],
-      ['Prezime', 'Pavlović'],
-      ['Mesto', 'Kraljevo'],
-      ['U ligi od sezone', '2027'],
-    ] as const) {
-      await user.type(form.getByLabelText(new RegExp(`^${label}`)), value)
-    }
-    await user.selectOptions(form.getByLabelText(/^Pol/), 'F')
-    await user.selectOptions(form.getByLabelText(/^Uzrasna kategorija/), '25-39')
-    await user.selectOptions(form.getByLabelText(/^Država/), 'RS')
-    await user.selectOptions(form.getByLabelText(/^Osnov članstva/), 'payment')
-    await user.click(form.getByRole('button', { name: 'Sačuvaj' }))
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    /* The number the activation handed out is spoken for, so the form must not
-       hand it out again: the new member is 000034. */
-    const list = within(await screen.findByRole('table', { name: 'Članovi' }))
-    expect(list.queryByText('000033')).not.toBeInTheDocument()
-    expect(within(must(list.getByText('000034').closest('tr'), 'tr')).getByText(/Milica/)).toBeVisible()
-  })
 
   it('says so once every membership has been decided', async () => {
     const user = await openPayments()
