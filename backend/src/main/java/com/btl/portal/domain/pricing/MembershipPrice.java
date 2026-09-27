@@ -141,9 +141,18 @@ public final class MembershipPrice {
 	 * filled in a form - which is the sentence {@code EventWriteApi} has carried since it was
 	 * written.
 	 *
-	 * <p><b>Zero is a real answer and is not judged.</b> {@code price_row_eur_not_negative}
-	 * allows it, and a price list in which something is free is a decision rather than a
-	 * fault; whether any particular row may be nought is nobody's rule today.
+	 * <p><b>Zero is a real answer and is not judged HERE.</b>
+	 * {@code price_row_eur_not_negative} allows it, and a price list in which something is
+	 * free is a decision rather than a fault.
+	 *
+	 * <p><b>WHAT THIS PARAGRAPH SAID UNTIL 27.09.2026 AND NO LONGER CAN.</b> It read „whether
+	 * any particular row may be nought is nobody's rule today", and on that day the owner made
+	 * one: PDL 20b, a row is free in BOTH currencies or priced in BOTH, and nought in one alone
+	 * is refused. It is still not asked here, and that is the same division this class has
+	 * always kept - each amount is asked about ALONE in these two methods, and the new rule is
+	 * about the PAIR, so it lives where a pair is in one place. That is
+	 * {@code price_row_free_in_both_or_priced_in_both} (V40) and
+	 * {@code PricingWriteApi.THE_ROW_IS_FREE_IN_ONE_CURRENCY_ONLY} beside it.
 	 *
 	 * <p><b>THE CEILING THIS ASKS ABOUT IS THE COLUMN'S AND NOT THE PRICE LIST'S, and until
 	 * 25.09.2026 this paragraph said there was no other.</b> It read: „the ceiling is not the

@@ -782,6 +782,107 @@ class PricingWriteApiTest {
 	}
 
 	/**
+	 * NOUGHT IN ONE CURRENCY ALONE IS REFUSED, AND BOTH WAYS ROUND ARE ASKED.
+	 *
+	 * <p>PDL 20b, owner 27.09.2026, chosen between three outcomes: „Red cenovnika je ili
+	 * besplatan u obe valute, ili ima iznos u obe. Nula u jednoj a iznos u drugoj se odbija."
+	 * V40's {@code price_row_free_in_both_or_priced_in_both} is the other half of it, and this
+	 * is the sentence rather than the 500.
+	 *
+	 * <p><b>The euro side is the one that was measured, and the amount here is that
+	 * measurement:</b> 0 EUR / 600 RSD for a membership breaks both roads to an activation,
+	 * because {@code balance_entry_a_membership_takes} (V38) requires a spend to move BOTH
+	 * currencies strictly. The other way round is asked in the same case because the rule is
+	 * written as an equivalence: a condition looking at the euro price alone would let a row
+	 * priced in euro and free in dinars straight through, and that row is equally reachable
+	 * from the screen.
+	 *
+	 * <p><b>Neither of them is turned back by the form, which is what separates this refusal
+	 * from the two above it.</b> Nought is a perfectly good number in a {@code min="0"} box, so
+	 * no attribute on either amount can ask whether the two agree - the question is about the
+	 * PAIR. This is the route being the only thing that can ask it rather than the route
+	 * repeating a floor the screen already holds.
+	 */
+	@Test
+	void arowFreeInOneCurrencyOnlyIsRefusedAndNothingIsWritten() throws Exception {
+		List<String> before = keysInOrder();
+		Map<String, Object> was = rowOf(ACTED);
+
+		MockHttpServletResponse freeInEuroOnly = change(ACTED, BigDecimal.ZERO,
+				new BigDecimal("600.00"), mayCookie);
+
+		assertThat(freeInEuroOnly.getStatus()).isEqualTo(400);
+		assertThat(freeInEuroOnly.getContentAsString())
+				.contains(PricingWriteApi.THE_ROW_IS_FREE_IN_ONE_CURRENCY_ONLY);
+
+		MockHttpServletResponse freeInDinarsOnly = change(ACTED, new BigDecimal("40.00"),
+				BigDecimal.ZERO, mayCookie);
+
+		assertThat(freeInDinarsOnly.getStatus()).isEqualTo(400);
+		assertThat(freeInDinarsOnly.getContentAsString())
+				.contains(PricingWriteApi.THE_ROW_IS_FREE_IN_ONE_CURRENCY_ONLY);
+
+		assertThat(rowOf(ACTED))
+				.as("a row free in one currency alone was refused and its amounts were written anyway")
+				.isEqualTo(was);
+		assertThat(keysInOrder()).isEqualTo(before);
+	}
+
+	/**
+	 * AND NOUGHT IS NOUGHT WHATEVER SCALE IT ARRIVES WITH, which is not a nicety.
+	 *
+	 * <p>{@code new BigDecimal("0.00")} is NOT equal to {@code BigDecimal.ZERO} - the scale is
+	 * part of that comparison - and the form carries whatever scale an administrator typed. So a
+	 * route asking {@code equals(ZERO)} would answer 200 to „0,00" and 400 to „0", which is the
+	 * same row written two ways. {@code signum()} is the same question PostgreSQL answers with
+	 * {@code = 0}, and it is what keeps this refusal and V40's constraint saying one thing.
+	 *
+	 * <p>Asked as a REFUSAL rather than as an acceptance, because that is the direction the
+	 * mistake goes: nought unrecognised means the row is written, and the 500 waits on the next
+	 * activation.
+	 */
+	@Test
+	void anoughtWithParaOnItIsStillNought() throws Exception {
+		Map<String, Object> was = rowOf(ACTED);
+
+		MockHttpServletResponse answer = change(ACTED, new BigDecimal("0.00"),
+				new BigDecimal("4800.00"), mayCookie);
+
+		assertThat(answer.getStatus())
+				.as("0,00 was not recognised as nought, so the route asks equals(ZERO) somewhere and"
+						+ " the same row can be written by typing the scale differently")
+				.isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.contains(PricingWriteApi.THE_ROW_IS_FREE_IN_ONE_CURRENCY_ONLY);
+		assertThat(rowOf(ACTED)).isEqualTo(was);
+	}
+
+	/**
+	 * AND THE FEE MAY BE SET TO NOUGHT, BECAUSE IT HAS NO SECOND CURRENCY TO DISAGREE WITH.
+	 *
+	 * <p>This is the exemption V40 writes into the constraint said as behaviour:
+	 * {@code price_row_only_fee_has_no_rsd} (V4) makes the fee the one row with no dinar side,
+	 * and a row with one currency cannot be free „in only one of the two". Without this case the
+	 * refusal above could have been written without asking whether the row is the fee, and the
+	 * association would have been unable to waive the processing charge - which is a decision
+	 * nobody has made, in either direction.
+	 *
+	 * <p><b>What it does NOT settle, said here so the boundary is not read as an answer:</b>
+	 * whether the fee SHOULD ever be nought is not V40's question and is not decided by this
+	 * passing. It is the schema and the route agreeing that the question is somebody else's.
+	 */
+	@Test
+	void thefeeMayBeSetToNought() throws Exception {
+		assertThat(change(MembershipPrice.PROCESSING, BigDecimal.ZERO, null, mayCookie).getStatus())
+				.as("a free processing fee was refused, although it has no dinar side that could"
+						+ " disagree with it and no decision says it may not be waived")
+				.isEqualTo(200);
+		/* `euroOf` and not `amountsOf`, because the fee's dinar side is a NULL and `List.of` will
+		   not hold one. The row having no second currency is the whole reason this case exists. */
+		assertThat(euroOf(MembershipPrice.PROCESSING)).isEqualByComparingTo("0.00");
+	}
+
+	/**
 	 * THE REFERRAL IS SET UNTIL THE RENEWAL WINDOW OPENS AND SETTLED ONCE IT HAS.
 	 *
 	 * <p><b>Owner, 16.08.2026 (PDL P16):</b> „administrator podesava <b>do 1.10. u 00 po
@@ -1107,6 +1208,12 @@ class PricingWriteApiTest {
 	 * invites somebody to close by accident: {@code price_row_eur_not_negative} allows it,
 	 * {@code MembershipPrice} says in as many words that a free row is a decision rather
 	 * than a fault, and a range written where a ceiling was asked for would refuse it.
+	 *
+	 * <p><b>SINCE 27.09.2026 THE JOURNALS DO SPEAK ABOUT NOUGHT, and it is nought in BOTH
+	 * currencies that they allow.</b> PDL 20b: a row is free in both or priced in both, which
+	 * is why the pair below is {@code ZERO, ZERO} and why it still answers 200. Nought in one
+	 * alone is a different row and is refused - see
+	 * {@link #arowFreeInOneCurrencyOnlyIsRefusedAndNothingIsWritten}.
 	 */
 	@Test
 	void theCeilingItselfIsWrittenAndSoIsNought() throws Exception {
@@ -1121,8 +1228,8 @@ class PricingWriteApiTest {
 				.containsExactly(new BigDecimal("1000.00"), new BigDecimal("200000.00"));
 
 		assertThat(change(ACTED, BigDecimal.ZERO, BigDecimal.ZERO, mayCookie).getStatus())
-				.as("a free row was refused, although nothing in the journals says a row may not"
-						+ " be nought and the schema allows it")
+				.as("a free row was refused, although PDL 20b allows nought in both currencies and"
+						+ " V40's constraint allows it too")
 				.isEqualTo(200);
 		assertThat(amountsOf(ACTED))
 				.containsExactly(new BigDecimal("0.00"), new BigDecimal("0.00"));
