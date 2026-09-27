@@ -1612,13 +1612,25 @@ class CompetitorApiTest {
 	 * <p>Requires {@link #recordsNameTheSameFieldsGiven} first, so that a name outside both
 	 * lists that is simply ABSENT from {@code other} is never silently skipped rather than
 	 * failing the case.
+	 *
+	 * <p><b>AND ONLY ON THE ROW WHERE HIDING ACTUALLY APPLIES, SINCE 27.09.2026.</b> A mutation
+	 * turning {@code CompetitorApi}'s condition for {@code bio} into a plain
+	 * {@code :signedIn = c.profile_hidden} survived this class whole (40 run, 0 failed):
+	 * {@link #WHAT_HIDING_MAY_WITHHOLD} excused the field on every caller's every row rather than
+	 * only the row a hiding member owns, so the one cell that mutation broke - not hidden, caller
+	 * signed in - was never asked. The rule of 14.09.2026 applies one level down from where the
+	 * class already applied it to raw text: an excuse a comparison grants everywhere is not an
+	 * excuse, it is a missing case. {@code other.path("profileHidden")} names the row, read off the
+	 * visitor's record because the flag is Article 73 public and does not itself move with the
+	 * reader.
 	 */
 	private static void answersAgreeExceptForWhatHidingOrTheBasisMayChange(JsonNode one,
 			JsonNode other, String memberNumber, Set<String> oneMayAlsoCarry) {
 		recordsNameTheSameFieldsGiven(one, other, memberNumber, oneMayAlsoCarry);
 
 		for (String field : Answers.fieldsOf(other)) {
-			if (WHAT_HIDING_MAY_WITHHOLD.contains(field)) {
+			if (WHAT_HIDING_MAY_WITHHOLD.contains(field)
+					&& other.path("profileHidden").asBoolean()) {
 				continue;
 			}
 
