@@ -156,4 +156,29 @@ describe('the circle a member is drawn in', () => {
       'app/AccountMenu.tsx',
     ])
   })
+
+  it('is drawn by the header through Portrait, and not by a circle the header keeps for itself', () => {
+    /* THE TWO TRACES ABOVE BOTH STAYED GREEN THROUGH THE VERY REGRESSION THAT MOTIVATED THEM,
+       and that is the finding this case closes rather than a second telling of it.
+
+       Reverting `app/AccountMenu.tsx` alone leaves it the sole reacher of `app/monogram.ts`
+       either way, because the account arm above needs that module whether the member arm
+       beside it draws through `Portrait` or draws its own circle again; and the reverted
+       header never had to reach `pages/competitorFace.ts` to draw a plain monogram with no
+       colour of its own. Neither list moves, so neither case notices - a member with an
+       approved photograph would have gone back to seeing his own initials in the header and
+       both cases above would still read exactly as they do here.
+
+       So this asks the one question that does move: whether the header's own module reaches
+       `Portrait` at all. It is a question about REACH rather than about a class name or a
+       kept branch, so unlike a sweep for text there is no spelling it can be incomplete in
+       (`ts.preProcessFile` and module resolution read every `import`, `export … from`,
+       `import(…)` and `require(…)` alike, exactly as the two cases above already rely on). */
+    const { walked, reaching } = modulesReaching('components/Portrait.tsx')
+
+    expect(walked).toBeGreaterThan(WHOLE_PORTAL)
+    expect(reaching, 'the header no longer reaches the one place a member’s circle is drawn').toContain(
+      'app/AccountMenu.tsx',
+    )
+  })
 })

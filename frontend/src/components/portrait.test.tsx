@@ -92,8 +92,15 @@ describe('the circle of a member who has no approved portrait', () => {
        So this is not a case about hiding as such: it is the case that this component CANNOT
        tell the two apart, and must not try. A visitor's answer for a hidden member is
        `photo: null` (`data/types.ts`), exactly what a member with no picture carries, and the
-       two records below differ in the flag and in nothing the circle can see. Were the circle
-       ever to read `profileHidden`, or to compose an address, this is what would fail. */
+       two records below differ in the flag and in nothing the circle can see.
+
+       **Composing an address here would fail; reading `profileHidden` would NOT, and that
+       was found by a surviving mutation rather than reasoned out in advance.** Both records
+       already carry `photo: null`, so `competitor.photo !== null && !competitor.profileHidden`
+       answers `false` exactly as `competitor.photo !== null` alone does - there is no picture
+       here for the flag to hide, so a component that had started reading it would still pass
+       this case. That is measured on a record that DOES carry a picture, in the case below
+       ('still draws the picture when the member has hidden their profile'). */
     /* The SAME member, with the flag turned over and nothing else touched. The first draft of
        this compared two different members and failed on the colour, which is read off the
        member number: a true failure of the setting rather than of the code, and the reason the
@@ -138,6 +145,30 @@ describe('the circle of a member whose portrait was approved', () => {
     /* The one with nothing still holds its place with letters, so this render really has both
        forms in it and the count above means what it says. */
     expect(screen.getByText('BN')).toBeInTheDocument()
+  })
+
+  it('still draws the picture when the member has hidden their profile, since the digest already decided that', () => {
+    /* Owner, 27.09.2026 (PDL P28f, point 17): „Prema clanu se ne krije nista" - hiding runs one
+       way only, toward a reader with no session, and this component is never told which reader
+       it is drawing for. `photo` already carries the outcome of that question by the time it
+       reaches here (null for a visitor a hidden profile refuses, the address for anybody else),
+       so `profileHidden` has nothing left for this component to decide and must not be read.
+
+       Written because a mutation survived: `competitor.photo !== null` narrowed to
+       `competitor.photo !== null && !competitor.profileHidden` left every case in this file
+       green, because the one case in the describe above that turns the flag on has no picture
+       either side of its comparison, so the extra clause never had anything to hide. This is
+       the record that closes it: a picture AND the flag together, which that fixture never
+       puts in one record. */
+    const hiding = { ...SUBJECT, profileHidden: true }
+
+    const { container } = render(<Portrait competitor={hiding} />)
+
+    expect(hiding.profileHidden).toBe(true)
+    expect(must(container.querySelector('img'), 'the portrait')).toHaveAttribute(
+      'src',
+      '/api/photos/3c9e5f41',
+    )
   })
 
   it('cuts it to the square that member chose, and not to the one above them', () => {

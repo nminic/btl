@@ -1,4 +1,4 @@
-import { htmlElement } from '../test/at'
+import { htmlElement, must } from '../test/at'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -174,6 +174,25 @@ describe('the account menu', () => {
 
     await user.click(button)
     expect(await panelOf('Otvori nalog').findByText('Strahinja Vukićević')).toBeVisible()
+  })
+
+  it('shows the approved photograph of whoever is signed in, and not the monogram', async () => {
+    /* 000003 rather than the fixture's first member: a header that drew the first
+       competitor's picture whoever was signed in would still show Vladan's square here,
+       since 000007 above never exercises this branch at all (his photo is null). Written
+       because a mutation survived: this call site had no case of its own for the picture
+       arriving (`app/AccountMenu.tsx` is the one PDL P28f names by name), so a mutation
+       that left the header drawing the monogram of a member who really has an approved
+       portrait passed the whole suite. */
+    renderAt('/sr', 'competitor', '000003')
+
+    const button = await screen.findByRole('button', { name: 'Otvori nalog' })
+
+    expect(must(button.querySelector('img'), 'the portrait in the account button')).toHaveAttribute(
+      'src',
+      '/mock/photo/andjelija.svg',
+    )
+    expect(button).not.toHaveTextContent('AV')
   })
 
   it('falls back to the member number when there is no such member', async () => {
