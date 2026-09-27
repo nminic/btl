@@ -101,12 +101,15 @@ describe('the part of a picture the cropper lights up', () => {
        is round is decided by the circle the screen already puts on it. A radius
        written here as well would be the same fact in two homes.
 
-       One screen and not two, corrected 27.08.2026 after a review counted them:
-       `crop-fitted` appears once in the whole of `src`, on a team's logo
-       (`TeamMark.tsx`). No record of a member carries a picture yet, so a face is
-       drawn from initials and colour and no cropped photograph of one is drawn
-       anywhere. The rule is written for both because both will use it, and the
-       claim that both use it today was wrong.
+       Two screens since 27.09.2026, and the count is the whole history of this
+       note. It said one until then, on a review of 27.08.2026 that counted
+       `crop-fitted` once in the whole of `src`, on a team's logo (`TeamMark.tsx`),
+       because no record of a member carried a picture. `/api/competitors` has
+       answered `photo` and `crop` since 26.09.2026 (PDL P28f) and
+       `components/Portrait.tsx` now wears this class for a member whose portrait
+       was approved. So „the rule is written for both because both will use it" has
+       come true, and `styles/leagueLayout.test.ts` is what counts the mentions
+       now.
 
        That `overflow: hidden` is there at all is held by `styles/circle.test.ts`,
        which is the file about round things; asked here as well it would be the

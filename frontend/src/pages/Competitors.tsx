@@ -1,9 +1,8 @@
 import { ProfileLink } from './profile/ProfileLink'
 import { categoryLabel } from '../data/categories'
 import { useMemo } from 'react'
-import { monogramFor } from '../app/monogram'
+import { Portrait } from '../components/Portrait'
 import { Resource } from '../components/Resource'
-import { hueFor } from './competitorFace'
 import { categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
 import type { Competitor, Result } from '../data/types'
 import { combinePair, useCompetitors, useResults } from '../data/useResource'
@@ -17,8 +16,10 @@ import { useFilterParams } from '../app/useFilterParams'
 
 /* Cards, not a table (PDL P28a). The league is about people, and a row in a
  * table does not show a person. The picture is the point of the card, so the
- * layout is built around it; until the database holds real pictures, the
- * initials stand in the same space a photograph will take. */
+ * layout is built around it, and since 26.09.2026 it really is a picture for
+ * every member who has sent one and had it approved (PDL P28f). The initials
+ * stand in the same space for everybody else, which is most of the league and
+ * is not a state waiting to end. */
 function CompetitorCards({
   competitors,
   results,
@@ -78,13 +79,17 @@ function CompetitorCards({
           {cards.map(({ competitor, totals: own }) => (
             <li key={competitor.memberNumber} className="cards__item">
               <ProfileLink competitor={competitor} className="card">
-                <span
-                  className="card__face"
-                  style={{ '--face-hue': hueFor(competitor.memberNumber) }}
-                  aria-hidden="true"
-                >
-                  {monogramFor(competitor, competitor.memberNumber)}
-                </span>
+                {/* The same circle every other screen draws, since 27.09.2026. This card kept
+                    its own until then - `card__face`, with its own monogram and its own copy
+                    of the colour recipe - and it is the reason a photograph would not have
+                    arrived here: PDL P28f of 26.09.2026 required that an approved picture „tog
+                    trenutka pocinje da se vidi na svim avatar mestima", and a sweep for the
+                    shared class name could not see this one, because it did not wear it.
+
+                    The size is the card's and stays the card's, said in the stylesheet with
+                    the widget in the selector, which is how `Portrait.css` asks to be
+                    resized. */}
+                <Portrait competitor={competitor} />
 
                 <span className="card__name">
                   {competitor.firstName} {competitor.lastName}

@@ -419,6 +419,11 @@
   height: 18px;
 }
 
+/* The mark of an ACCOUNT THAT IS NOT A MEMBER, and only of one, since 27.09.2026.
+   A signed in member wears the shared circle instead, at the size below
+   (`app/AccountMenu.tsx` names the boundary and why it is drawn here at all).
+   Filled with the accent because that is now what it says: an account, as against
+   a person, who wears a colour of their own. */
 .account__monogram {
   display: grid;
   place-items: center;
@@ -434,11 +439,33 @@
     transform var(--fast);
 }
 
+/* And a signed in member's own circle, at the header's size. Everything that makes
+   it a circle of somebody's own colour, and everything that cuts a photograph to
+   the square he chose, comes from the shared sheet (`components/Portrait.css`,
+   `components/Crop.css`); what is said here is only the size and the step this
+   header gives it, which is how `Portrait.css` asks to be resized.
+
+   The transition is here rather than there for the same reason: it belongs to the
+   button's hover and not to the circle. */
+.account .portrait {
+  inline-size: 1.7rem;
+  block-size: 1.7rem;
+  font-size: 0.72rem;
+  transition:
+    box-shadow var(--fast),
+    transform var(--fast);
+}
+
 /* Hovering gives it the same blue the rectangles beside it take, drawn as a
    ring around the circle. A border would be invisible: the circle is already
    filled with that blue, so the ring needs the header's own colour between the
-   two before the blue can be seen at all. */
-.account__btn:hover .account__monogram {
+   two before the blue can be seen at all.
+
+   Both forms, because both are pressed by the same button: one selector missing
+   here is a header where hovering does something for an administrator and nothing
+   for a member, which is exactly the sort of half nobody notices. */
+.account__btn:hover .account__monogram,
+.account__btn:hover .portrait {
   box-shadow:
     0 0 0 2px var(--surface),
     0 0 0 3px var(--accent);

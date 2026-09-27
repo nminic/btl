@@ -7,6 +7,7 @@ import { signOutOfTheServer } from '../session/theServer'
 import { useSession } from '../session/useSession'
 import { Dropdown } from './Dropdown'
 import { monogramFor } from './monogram'
+import { Portrait } from '../components/Portrait'
 import { ACCOUNT_ROUTES } from './routes'
 
 /* The picture, and behind it everything that belongs to one person: the member
@@ -60,13 +61,56 @@ export function AccountMenu({ signedIn }: { signedIn: SignedIn }) {
       className="account"
       label={t('shell.openAccount')}
       trigger={
-        <span className="account__monogram">
-          {/* The same rule either way, and it is the rule this portal already had: the
-              last two of whatever identifies him, until a name is there to take
-              initials from. An account never gets a name here, because the server does
-              not hand one out. */}
-          {monogramFor(member, signedIn.as === 'member' ? signedIn.memberNumber : String(signedIn.account))}
-        </span>
+        member === undefined ? (
+          /* AN ACCOUNT THAT IS NOT A MEMBER, and it keeps a mark of its own on purpose.
+             This is the boundary named rather than left for a review to find.
+
+             `Portrait` draws a MEMBER: it needs a record to take a portrait, initials and a
+             colour from, and there is none here. Administration has no competitor record at
+             all (PDL P21) and somebody who has registered and is not a member yet has none
+             either (ADL A44), so what stands here is the rule the portal already had - the
+             last two of whatever identifies him, until a name is there to take initials
+             from.
+
+             **It would have been cheaper to hand `Portrait` the `undefined` it already
+             accepts, and that would have been wrong:** `undefined` there means „a place on a
+             board the league has not filled", drawn as a dashed empty ring, and this is not
+             an empty place. Teaching it a fourth state would be deciding what the circle
+             MEANS, and that decision is the owner's and has not been made.
+
+             The accent keeps a second job because of this: filled with the accent it says
+             „an account", and filled with a colour of somebody's own it says „a person".
+
+             **And this arm also covers a MEMBER whose record has not arrived yet**, which is
+             why the number handed over is still chosen the way it always was. `member` is
+             looked up in a resource that may still be loading, so „no record" here is two
+             states: an account that will never have one, and a member who will have one in a
+             moment. He is shown the last two of HIS MEMBER NUMBER and never of the account
+             id; folding the two into one number would have him watch a stranger's digits and
+             then his own name. */
+          <span className="account__monogram">
+            {monogramFor(
+              signedIn.as === 'member' ? signedIn.memberNumber : String(signedIn.account),
+            )}
+          </span>
+        ) : (
+          /* A MEMBER, so the same circle every other screen draws, and since 26.09.2026 that
+             means his own approved photograph the moment a moderator approves it. This is the
+             place the owner named by name: „gornjem desnom zaglavlju ulogovanog korisnika"
+             (PDL P28f).
+
+             It had its own monogram until 27.09.2026, and that is why the picture would not
+             have arrived here: a sweep for the shared class could not see this header,
+             because it wore `account__monogram` instead. `components/oneFace.test.ts` now asks
+             the import graph rather than a class name.
+
+             **One thing about it changes look and is worth saying out loud:** the circle of a
+             signed in MEMBER is now his own colour rather than the accent, which is the rule
+             `Portrait.css` states for every other circle on the portal - „one person, or one
+             team, wears one colour wherever the portal draws them". The header was the one
+             place that disagreed. */
+          <Portrait competitor={member} />
+        )
       }
     >
       {(close) => (

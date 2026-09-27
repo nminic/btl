@@ -15,7 +15,7 @@ import './Portrait.css'
  *
  * **This is the one home of that circle, and that is what makes the sentence above
  * deliverable.** A photograph taught to one component arrives on every screen at once;
- * taught to five it arrives on the three somebody remembered. `styles/oneFace.test.ts`
+ * taught to five it arrives on the three somebody remembered. `components/oneFace.test.ts`
  * holds it, and holds it against the import graph rather than against a list, because the
  * two screens that had their own circle until this branch were invisible to a sweep for
  * the class name: they wore `card__face` and `account__monogram`.
@@ -55,6 +55,13 @@ export function Portrait({ competitor }: { competitor?: Competitor }) {
     return <span className="face-circle portrait portrait--empty" aria-hidden="true" />
   }
 
+  /* The member's own colour, on BOTH forms of the circle and not only on the monogram.
+     Behind an opaque photograph nothing of it shows, and it is still needed twice: the card
+     of a competitor draws its ring in this colour (`pages/Competitors.css`), so without it a
+     member with a portrait would wear a ring in the fallback hue while the member beside him
+     wears his own; and a portrait sent as a PNG with transparency stands on it. */
+  const own = { '--face-hue': hueFor(competitor.memberNumber) }
+
   if (competitor.photo !== null) {
     return (
       /* The circle is the box around the picture and not the picture itself, which is the
@@ -63,7 +70,7 @@ export function Portrait({ competitor }: { competitor?: Competitor }) {
          it: applied to the picture, a face cropped close would grow out of its own circle
          and over the name beside it. The clipping belongs to something that is never
          scaled (components/Crop.css, `.crop-fitted`). */
-      <span className="face-circle portrait crop-fitted" aria-hidden="true">
+      <span className="face-circle portrait crop-fitted" aria-hidden="true" style={own}>
         <img
           src={competitor.photo}
           alt=""
@@ -88,11 +95,7 @@ export function Portrait({ competitor }: { competitor?: Competitor }) {
   }
 
   return (
-    <span
-      className="face-circle portrait"
-      aria-hidden="true"
-      style={{ '--face-hue': hueFor(competitor.memberNumber) }}
-    >
+    <span className="face-circle portrait" aria-hidden="true" style={own}>
       {competitor.firstName.slice(0, 1)}
       {competitor.lastName.slice(0, 1)}
     </span>

@@ -35,25 +35,36 @@
   transform: translateY(-2px);
 }
 
-.card__face {
-  display: grid;
-  place-items: center;
+/* The card's face, which is the shared circle at the card's own size.
+ *
+ * **It was `.card__face` until 27.09.2026 and had its own copy of everything**: the
+ * radius, the colour recipe, the white, the weight and the spacing, all six of the
+ * declarations `.face-circle` was extracted to hold on 13.08.2026 (ADL A7). Nothing
+ * was wrong with how it looked, and that is exactly what made it expensive: a
+ * photograph taught to the shared circle would not have arrived here, and a sweep
+ * for the shared class name could not see this card, because it did not wear it
+ * (PDL P28f, 26.09.2026).
+ *
+ * What is left here is only what genuinely differs, which is what `Portrait.css`
+ * asks for in those words: the size, the type, the step under it, and the ring.
+ * The colour, the radius, the white and the clipping now come from one home. */
+.cards .card .portrait {
   /* Bigger, and optically centred: the glyph carries no line box of its own, so
      without line-height 1 it sits a hair below the middle of the circle
      (owner, 29.07.2026). */
-  width: 7.5rem;
-  height: 7.5rem;
+  inline-size: 7.5rem;
+  block-size: 7.5rem;
   margin: 0 auto var(--space-8);
   line-height: 1;
-  border-radius: 50%;
-  /* Stands in for a photograph, in the space a photograph will take. The hue
-     comes from the member number, so a face keeps its colour between visits. */
-  background: hsl(var(--face-hue) 45% 32%);
-  color: #fff;
   font-size: 2.6rem;
+  /* Heavier than the shared 700, and only here: two letters at 2,6rem on a disc
+     this size are the whole of the card above the name, and at 700 they read as a
+     word rather than as a mark. */
   font-weight: 800;
-  letter-spacing: 0.02em;
-  box-shadow: inset 0 0 0 3px var(--surface), 0 0 0 4px hsl(var(--face-hue) 45% 32% / 0.35);
+  /* The ring, which is the card's and not the circle's: it separates the disc from
+     the card's own surface. Written with the hue rather than with a token because
+     it is the same colour as the disc, at a third of its strength. */
+  box-shadow: inset 0 0 0 3px var(--surface), 0 0 0 4px hsl(var(--face-hue, 214) 45% 32% / 0.35);
 }
 
 .card__name {
