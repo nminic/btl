@@ -17,6 +17,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -31,9 +33,13 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
@@ -130,6 +136,14 @@ class PaymentsDueApiTest {
 	/** Registered and never paid: no number, no membership row of any season. */
 	private static final String NEVER_PAID = "marko@primer.rs";
 
+	private static final String BILLED_IN_DINARS = "milan@primer.rs";
+
+	private static final String BILLED_IN_DINARS_TYPED = "sanja@primer.rs";
+
+	private static final String A_JUNIOR_ABROAD = "bojan@primer.rs";
+
+	private static final String IN_ON_HIS_BALANCE = "dusan@primer.rs";
+
 	/** His namesake, first and last name alike, also with no number. */
 	private static final String NAMESAKE = "marko.drugi@primer.rs";
 
@@ -201,6 +215,32 @@ class PaymentsDueApiTest {
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
+	/**
+	 * THE FIRST SERBIAN TOWN THE CODEBOOK OFFERS, asked of the codebook rather than named.
+	 *
+	 * <p>{@link #A_TOWN} is {@code rank = 1}, which is Shanghai - so until this existed every
+	 * member of this fixture lived abroad and the whole currency axis had ONE state. Asked as a
+	 * query and not as a rank number for the reason V3 gives about {@code rank}: it is „a position
+	 * in a file and not a fact about a town", so the day the codebook is regenerated a written
+	 * number moves to a different town while this goes on meaning what it says.
+	 */
+	private static final String A_TOWN_IN_SERBIA =
+			"(select id from place where country_id = (select id from country where code = 'RS')"
+					+ " order by rank limit 1)";
+
+	/** A birth year nobody pays the junior price for: {@code 2027 - 1990} is well over fifteen. */
+	private static final String BORN_LONG_AGO = "1990-01-01";
+
+	/**
+	 * A birth year the junior price applies to, and it is deliberately NOT on the boundary.
+	 *
+	 * <p>{@code MembershipPrice.OLDEST_JUNIOR_IN_A_SEASON} is fifteen and where exactly that line
+	 * falls is measured in {@code MembershipPriceTest}, which is the one home for it. What this
+	 * fixture needs is a member who is clearly on the junior side at every one of the three moments
+	 * below, so that a case about the PRICE is never really a case about the boundary.
+	 */
+	private static final String BORN_A_JUNIOR = "2015-01-01";
+
 	/** And a town nobody found in the book, which is {@code competitor}'s other way of holding
 	 *  one and the half a query reading only {@code place.name} would lose. */
 	private static final String TYPED_TOWN = "Mostar";
@@ -213,6 +253,13 @@ class PaymentsDueApiTest {
 
 	@Autowired
 	private ObjectMapper mapper;
+
+	/**
+	 * The book, so the number this route serves can be held against the OTHER reading of the same
+	 * sum rather than against a figure written into this file.
+	 */
+	@Autowired
+	private BalanceBook book;
 
 	@Autowired
 	private AClockTheCaseMoves clock;
@@ -249,6 +296,18 @@ class PaymentsDueApiTest {
 	private long withDiacritics;
 
 	private long aMembersOwnRecord;
+
+	/** Lives in a Serbian town OUT OF THE CODEBOOK, so he is billed in dinars and charged no tax. */
+	private long billedInDinars;
+
+	/** Lives in a Serbian town somebody TYPED, which is the other road to the same currency. */
+	private long billedInDinarsTyped;
+
+	/** Abroad and young enough for the junior price, which replaces whichever period applies. */
+	private long aJuniorAbroad;
+
+	/** His membership for the season stands on the THIRD basis, so he is off the list. */
+	private long inOnHisBalance;
 
 	private long onlyImported;
 
@@ -339,6 +398,25 @@ class PaymentsDueApiTest {
 		surnamedNovak = competitor("000250", "Dragan", "Novak", true);
 		withDiacritics = competitor(null, "Mila", "Čačić", false);
 
+		/* THE CURRENCY AXIS, AND IT TAKES THREE PEOPLE RATHER THAN ONE.
+		   Everybody above lives in the codebook's `rank = 1`, which is Shanghai, so before these
+		   three the fixture had ONE currency and the tax was charged on every row - a route that
+		   always added the three euro and one that never did would both have passed.
+		   Serbia is reached through BOTH homes V7 allows, because the country arrives by two
+		   different roads and a route reading only one of them answers the other in euro. */
+		billedInDinars = competitor(null, "Milan", "Aleksic", false, A_TOWN_IN_SERBIA, BORN_LONG_AGO);
+		billedInDinarsTyped = competitor(null, "Sanja", "Zivkovic", false, A_TOWN, BORN_LONG_AGO);
+
+		/* AND THE JUNIOR LIVES ABROAD WHILE A SERBIAN PAYS THE FULL PRICE, so „junior" and
+		   „Serbia" are two axes and neither stands in for the other. With the junior in Serbia,
+		   one fixture row would carry both states and a route confusing them would pass. */
+		aJuniorAbroad = competitor(null, "Bojan", "Bogdanovic", false, A_TOWN, BORN_A_JUNIOR);
+
+		/* AND THE THIRD BASIS, which is off the list exactly as the other two are. A route taking a
+		   row off by asking about `payment` and `feeExempt` BY NAME would pass every case here
+		   without him, and V38 made that third word legal the day it landed. */
+		inOnHisBalance = competitor("000280", "Dusan", "Ostojic", true);
+
 		account(NEVER_PAID, "competitor", "Marko", "Markovic", true, neverPaid);
 		account(NAMESAKE, "competitor", "Marko", "Markovic", true, namesake);
 		account(DID_NOT_RENEW, "competitor", "Jelena", "Petrovic", true, didNotRenew);
@@ -348,6 +426,10 @@ class PaymentsDueApiTest {
 		account(FLAG_SAYS_OTHERWISE, "competitor", "Zorica", "Zoric", true, flagSaysOtherwise);
 		account(SURNAMED_NOVAK, "competitor", "Dragan", "Novak", true, surnamedNovak);
 		account(WITH_DIACRITICS, "competitor", "Mila", "Čačić", true, withDiacritics);
+		account(BILLED_IN_DINARS, "competitor", "Milan", "Aleksic", true, billedInDinars);
+		account(BILLED_IN_DINARS_TYPED, "competitor", "Sanja", "Zivkovic", true, billedInDinarsTyped);
+		account(A_JUNIOR_ABROAD, "competitor", "Bojan", "Bogdanovic", true, aJuniorAbroad);
+		account(IN_ON_HIS_BALANCE, "competitor", "Dusan", "Ostojic", true, inOnHisBalance);
 
 		/* THE ONE WHOSE ADDRESS IS NOT CONFIRMED. */
 		account(NOT_CONFIRMED, "competitor", "Novak", "Jovanovic", false, notConfirmed);
@@ -356,6 +438,30 @@ class PaymentsDueApiTest {
 		   the town axis as well and a query reading only `place.name` answers one of them
 		   blank. */
 		livesInATownSomebodyTyped(namesake, TYPED_TOWN, "BA");
+
+		/* AND THE OTHER SERBIAN GETS THERE BY THE OTHER ROAD, a town somebody wrote out with its
+		   country beside it. So each currency is reached through each home, which is four states
+		   and not two: without this one, a route reading the country only off the codebook would
+		   answer every typed address in euro and every case above would still pass. */
+		livesInATownSomebodyTyped(billedInDinarsTyped, "Novi Sad", "RS");
+
+		/* THE BOOK, AND NOT EVERYBODY'S IS THE SAME SIZE. Two members carry DIFFERENT non-zero
+		   balances, because a query that dropped the condition on the member would serve one total
+		   to every row and a fixture with one balance in it could not tell. */
+		earnedAReferral(neverPaid, paid, "5", "600");
+		earnedAReferral(billedInDinars, didNotRenew, "50", "6000");
+
+		/* ONE MEMBER HAS ALREADY SPENT PART OF HIS, for a season that is not the one on sale, so
+		   his balance is a NET. Summing only the referrals answers 5 where the truth is 3. */
+		earnedAReferral(surnamedNovak, paidAhead, "5", "600");
+		spentOnAMembership(surnamedNovak, 2028, "2", "200");
+
+		/* AND ONE HAS A PROMISE THAT DISAGREES WITH HIS BOOK, which is the whole of PDL 23a.
+		   The numbers are ones nothing else here uses, so a route serving the promise is caught by
+		   the value. Most members have no promise at all - nobody ever opened their membership
+		   screen - and that is the commonest state and the reason the owner chose the book. */
+		earnedAReferral(notConfirmed, flagSaysOtherwise, "5", "600");
+		acodeOncePromisedHim(notConfirmed, 2027, "99", "9999");
 
 		/* FOUR MEMBERSHIPS, ALONG EVERY AXIS THE ROUTE READS ONE.
 		   2027 is the season on sale at `IN_OCTOBER_2026` and at `IN_JUNE_2027`; 2028 is the
@@ -370,6 +476,9 @@ class PaymentsDueApiTest {
 		/* AND ONE FOR A SEASON THAT IS NOT THE ONE ASKED ABOUT AT THE DEFAULT MOMENT, which is
 		   what makes the default case measure `m.season` rather than only the October one. */
 		membershipOnAPayment(paidAhead, 2028);
+
+		/* AND ONE ON THE THIRD BASIS FOR THE SEASON ON SALE. */
+		membershipOnABalance(inOnHisBalance, freeOfTheFee, 2027);
 	}
 
 	/**
@@ -385,17 +494,42 @@ class PaymentsDueApiTest {
 
 		assertThat(answer.get("season").asInt()).isEqualTo(2027);
 		assertThat(keysIn(answer))
-				.containsExactly(withDiacritics, notConfirmed, neverPaid, namesake, paidAhead,
-						surnamedNovak, aMembersOwnRecord)
-				.doesNotContain(onlyImported, paid, freeOfTheFee, flagSaysOtherwise, didNotRenew);
+				.containsExactly(billedInDinars, aJuniorAbroad, withDiacritics, notConfirmed,
+						neverPaid, namesake, paidAhead, surnamedNovak, aMembersOwnRecord,
+						billedInDinarsTyped)
+				.doesNotContain(onlyImported, paid, freeOfTheFee, flagSaysOtherwise, didNotRenew,
+						inOnHisBalance);
+	}
+
+	/**
+	 * AND THE THIRD BASIS TAKES A ROW OFF EXACTLY AS THE OTHER TWO DO.
+	 *
+	 * <p>Said on its own as well as inside the list above, because it is the one of the three that
+	 * a route could plausibly have forgotten: {@code payment} and {@code feeExempt} are what V22
+	 * shipped with, and V38 added {@code balance} afterwards. A route asking „is there a row on one
+	 * of the two bases I know" instead of „is there a row" would keep a man on a screen of people
+	 * who owe money after he has already paid with his own balance.
+	 *
+	 * <p>He is read back out of {@code membership} as well, so a fixture that quietly stopped
+	 * writing the row cannot make this pass by having nothing to find.
+	 */
+	@Test
+	void amembershipStandingOnABalanceTakesHimOffTheListToo() throws Exception {
+		assertThat(db.sql("select basis from membership where competitor_id = ? and season = 2027")
+				.param(inOnHisBalance).query(String.class).single())
+				.as("the fixture stopped saying what it is for")
+				.isEqualTo("balance");
+
+		assertThat(keysIn(read(booksCookie, null))).doesNotContain(inOnHisBalance);
 	}
 
 	/**
 	 * AND THE MODERATOR READING IT IS NOT ON IT, because he has no member of his own.
 	 *
-	 * <p>Asked as a count of the accounts rather than of the members: he is one of fourteen
-	 * accounts and the only reader with a tick, so a route joining the two tables the other way
-	 * round puts the administration on the screen as people who owe a fee.
+	 * <p>Asked as a count of the accounts rather than of the members: he is one of eighteen accounts
+	 * and the only reader with a tick, so a route joining the two tables the other way round puts
+	 * the administration on the screen as people who owe a fee. <b>The number moved from fourteen to
+	 * eighteen on 27.09.2026</b>, when the currency axis needed members on both sides of it.
 	 */
 	@Test
 	void anAccountWithNoMemberOfItsOwnIsNotOnTheListAlthoughItHasNoMembershipEither() throws Exception {
@@ -406,7 +540,7 @@ class PaymentsDueApiTest {
 				.as("the fixture stopped saying what it is for: this reader must have no member")
 				.isNull();
 
-		assertThat(keysIn(read(booksCookie, null))).hasSize(7);
+		assertThat(keysIn(read(booksCookie, null))).hasSize(10);
 	}
 
 	/**
@@ -579,10 +713,17 @@ class PaymentsDueApiTest {
 	 * AND THE TOWN IS WHAT A READER CAN TELL THEM APART BY, held the two ways V7 allows.
 	 *
 	 * <p>Its reason is new rather than inherited: the queue drew a town because PDL P8 hung the
-	 * way somebody pays on it, and the owner's decision of 27.09.2026 took the amount, the
-	 * currency and the method out of activation altogether. What is left is that nothing stops
-	 * two people sharing a name, most of this list has no number, and a moderator picking the
-	 * wrong row books one man's money to another.
+	 * way somebody pays on it. What is left is that nothing stops two people sharing a name, most of
+	 * this list has no number, and a moderator picking the wrong row books one man's money to
+	 * another.
+	 *
+	 * <p><b>The sentence here used to add that „the owner's decision of 27.09.2026 took the amount,
+	 * the currency and the method out of activation altogether", and section 19 of the SAME DAY
+	 * overturned two thirds of it</b> - the amount and the currency are back, and the route works
+	 * them out from the country. The METHOD is still out, now for a stronger reason: PDL 20a fixes it
+	 * from where the member lives, so nobody is asked. What has not changed is that the TOWN decides
+	 * none of it: the currency follows the COUNTRY, so two members of one town are told apart here by
+	 * the key alone.
 	 */
 	@Test
 	void theTwoNamesakesAreToldApartByTheirTownWhicheverOfTheTwoWaysItIsHeld() throws Exception {
@@ -713,7 +854,7 @@ class PaymentsDueApiTest {
 	@NullSource
 	@ValueSource(strings = { "", "   " })
 	void anAbsentOrBlankTermMeansTheWholeListAndIsNeverRefused(String term) throws Exception {
-		assertThat(keysIn(read(booksCookie, term))).hasSize(7);
+		assertThat(keysIn(read(booksCookie, term))).hasSize(10);
 	}
 
 	/**
@@ -733,8 +874,8 @@ class PaymentsDueApiTest {
 		}
 
 		assertThat(surnames)
-				.containsExactly("Čačić", "Jovanovic", "Markovic", "Markovic", "Nikolic", "Novak",
-						"Takic");
+				.containsExactly("Aleksic", "Bogdanovic", "Čačić", "Jovanovic", "Markovic",
+						"Markovic", "Nikolic", "Novak", "Takic", "Zivkovic");
 
 		assertThat(keysIn(read(booksCookie, "Markovic")))
 				.as("two people of one name come back in the order of their keys")
@@ -802,7 +943,280 @@ class PaymentsDueApiTest {
 				.as("the fixture stopped saying what it is for: he holds no tick")
 				.isFalse();
 
-		assertThat(keysIn(read(superadminCookie, null))).hasSize(7);
+		assertThat(keysIn(read(superadminCookie, null))).hasSize(10);
+	}
+
+	/**
+	 * THE CURRENCY FOLLOWS THE COUNTRY AND IS REACHED THROUGH BOTH HOMES OF IT.
+	 *
+	 * <p>Owner, 27.09.2026 (PDL, section 19): „Prazno polje sa oznakom valute pored njega. Valuta
+	 * zavisi od zemlje clana." Which country is billed in dinars is derived in
+	 * {@code PaymentsDueApi} from three written decisions and the derivation is set out there.
+	 *
+	 * <p><b>Four states and not two, which is the whole reason this case is a table.</b> V7 lets the
+	 * country arrive either with a town out of the codebook or beside one somebody typed, so each
+	 * currency has to be reached by each road: a route joining only {@code place} answers every
+	 * typed address in euro, and one joining only {@code competitor.country_id} answers every
+	 * codebook address in euro. Either mistake leaves half the table right.
+	 */
+	@Test
+	void thecurrencyIsWorkedOutFromTheCountryThroughWhicheverHomeHoldsIt() throws Exception {
+		Map<Long, String> currencies = new HashMap<>();
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			currencies.put(row.get("competitorId").asLong(), row.get("currency").asString());
+		}
+
+		assertThat(currencies.get(billedInDinars)).as("Serbia out of the codebook").isEqualTo("RSD");
+		assertThat(currencies.get(billedInDinarsTyped)).as("Serbia typed by hand").isEqualTo("RSD");
+		assertThat(currencies.get(neverPaid)).as("abroad out of the codebook").isEqualTo("EUR");
+		assertThat(currencies.get(namesake)).as("abroad typed by hand").isEqualTo("EUR");
+	}
+
+	/**
+	 * A MEMBER ALWAYS HAS A COUNTRY, so the currency can never fall back to euro by silence.
+	 *
+	 * <p><b>This is a floor under an assumption the route makes, and the assumption is the schema's
+	 * rather than the route's.</b> {@code PaymentsDueApi} reads
+	 * {@code coalesce(town_country.code, typed_country.code)} and compares it with one code, so a
+	 * null would compare unequal and every member on the portal would quietly be billed in euro. It
+	 * cannot be null, and this says WHY by asking PostgreSQL rather than by asserting it:
+	 * {@code competitor_town_is_from_the_codebook_or_typed} makes exactly one of the two towns
+	 * present, {@code competitor_typed_town_names_its_country} makes the typed country present
+	 * exactly when the typed town is, and {@code place.country_id} is {@code not null} (V3).
+	 *
+	 * <p><b>Said out loud because it is a boundary and not a guard:</b> what refuses a member with no
+	 * country is the DATABASE, not this route. The day a migration loosens either check, the route
+	 * bills him in euro and no case here fails. That is the cost, it is named, and this case is what
+	 * makes the loosening visible - it turns red.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {
+		/* Clearing the codebook town leaves a member with no town at all. */
+		"update competitor set place_id = null|competitor_town_is_from_the_codebook_or_typed",
+		/* And clearing the country of a typed town leaves the town naming none. */
+		"update competitor set country_id = null|competitor_typed_town_names_its_country" })
+	void amemberAlwaysHasACountryWhicheverHomeItCameFrom(String attempt) {
+		String statement = attempt.split("\\|")[0];
+		String constraint = attempt.split("\\|")[1];
+
+		/* ONE ATTEMPT PER CASE, which is the shape `MembershipConstraintsTest` uses and it is not a
+		   style: a refused statement ABORTS the transaction on PostgreSQL, so a second attempt in the
+		   same case fails with „current transaction is aborted" and would pass for the wrong
+		   reason. */
+		assertThatThrownBy(() -> db.sql(statement).update())
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining(constraint);
+	}
+
+	/**
+	 * AND NOBODY IN THIS FIXTURE IS WITHOUT ONE, which is what makes the case above about the schema
+	 * rather than about two rows that happen to break.
+	 */
+	@Test
+	void nomemberOfThisFixtureIsWithoutACountry() {
+		assertThat(db.sql("select count(*) from competitor c"
+						+ " left join place town on town.id = c.place_id"
+						+ " where coalesce(town.country_id, c.country_id) is null")
+				.query(Long.class).single())
+				.as("somebody here has no country, so the currency of his row means nothing")
+				.isZero();
+	}
+
+	/**
+	 * THE EXPECTED AMOUNT IS WHAT HE SENDS, so the processing fee is inside it.
+	 *
+	 * <p>Owner, 27.09.2026: „„Ocekivan iznos" je ono sto clan SALJE, dakle sa uracunatom taksom. Za
+	 * clana iz inostranstva sa clanarinom 40 i taksom 3, labela kaze 43."
+	 *
+	 * <p><b>Both currencies are needed for this to measure anything at all, and that is measured
+	 * rather than asserted.</b> V16's {@code payment_only_euro_carries_a_fee} puts the fee on the
+	 * euro side alone, so a route that NEVER added it is caught only by a member abroad, and one that
+	 * ALWAYS added it only by a member in Serbia. With one currency in the fixture, one of those two
+	 * mistakes passes.
+	 *
+	 * <p>At {@link #IN_OCTOBER_2026} the row that applies is {@code early}: 35 EUR and 4.200 RSD,
+	 * with the fee of three. The numbers are read off the price list rather than written here,
+	 * because ADL A12 keeps prices in {@code price_row} and a case repeating them would be the
+	 * second home the decision forbids.
+	 */
+	@Test
+	void theExpectedAmountIsTheFeeHeOwesPlusTheTaxOnlyWhereTheTaxIsCharged() throws Exception {
+		BigDecimal periodEur = priceOf("early", "eur");
+		BigDecimal periodRsd = priceOf("early", "rsd");
+		BigDecimal tax = priceOf("processing", "eur");
+		BigDecimal juniorEur = priceOf("junior", "eur");
+
+		Map<Long, BigDecimal> expected = new HashMap<>();
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			expected.put(row.get("competitorId").asLong(), row.get("expected").decimalValue());
+		}
+
+		assertThat(expected.get(neverPaid))
+				.as("abroad, so the tax is added")
+				.isEqualByComparingTo(periodEur.add(tax));
+
+		assertThat(expected.get(billedInDinars))
+				.as("Serbia, where there is no intermediary to pay and so no tax")
+				.isEqualByComparingTo(periodRsd);
+
+		assertThat(expected.get(aJuniorAbroad))
+				.as("the junior price REPLACES the period rather than reducing it, and the tax"
+						+ " is still charged on a euro transfer")
+				.isEqualByComparingTo(juniorEur.add(tax));
+
+		assertThat(juniorEur)
+				.as("the junior and the period cost the same, so this case cannot tell them apart")
+				.isNotEqualByComparingTo(periodEur);
+	}
+
+	/**
+	 * THE BALANCE IS WHAT HIS BOOK ADDS UP TO TODAY, IN HIS OWN CURRENCY.
+	 *
+	 * <p>Owner, 27.09.2026: „Balans u labeli kucice stoji u valuti TOG clana", and the reason he was
+	 * given - „kad balans pokriva razliku, oba broja moraju da budu u istoj valuti da bi se
+	 * oduzimanje uopste videlo", with „kurs u portalu ne postoji nigde".
+	 *
+	 * <p><b>Four states along three axes, and each one catches a different mistake:</b> a member with
+	 * an empty book, two members with DIFFERENT books so a query that lost its condition on the
+	 * member cannot pass, and one whose book is a NET because he has already spent part of it - which
+	 * is what separates „sum every line" from „sum the referrals".
+	 */
+	@Test
+	void thebalanceIsTheWholeBookInHisOwnCurrencyAndNotOnlyWhatHeEarned() throws Exception {
+		Map<Long, BigDecimal> balances = new HashMap<>();
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			balances.put(row.get("competitorId").asLong(), row.get("balance").decimalValue());
+		}
+
+		assertThat(balances.get(neverPaid))
+				.as("one referral, and he is billed in euro")
+				.isEqualByComparingTo("5");
+
+		assertThat(balances.get(billedInDinars))
+				.as("a bigger book, and the dinar column of it because he is billed in dinars")
+				.isEqualByComparingTo("6000");
+
+		assertThat(balances.get(surnamedNovak))
+				.as("five earned less two already spent on another season: the net and not the sum"
+						+ " of what he earned")
+				.isEqualByComparingTo("3");
+
+		assertThat(balances.get(withDiacritics))
+				.as("an empty book is nought rather than absent, which is most members")
+				.isEqualByComparingTo("0");
+	}
+
+	/**
+	 * AND IT IS THE BOOK RATHER THAN WHAT A CODE ONCE PROMISED HIM.
+	 *
+	 * <p>Owner, 27.09.2026 (PDL 23a), choosing between the two: „Moderator aktivira sa svog ekrana:
+	 * odlucuje kucica i iznos koji stoji u njenoj labeli." The label carries what he HAS.
+	 *
+	 * <p><b>The case that decided it is the commonest one and not an exotic one:</b> a member nobody
+	 * has ever opened the membership screen for has NO promise at all, so a label fed from promises
+	 * would show nothing beside a man with money in the book. Here the two deliberately disagree,
+	 * and the promise is the larger of the two so that serving it would be visible rather than
+	 * flattering.
+	 */
+	@Test
+	void thelabelCarriesWhatHeHasTodayAndNotWhatAPaymentCodePromised() throws Exception {
+		assertThat(db.sql("select eur from balance_promise where competitor_id = ? and season = 2027")
+				.param(notConfirmed).query(BigDecimal.class).single())
+				.as("the fixture stopped saying what it is for: the promise must differ from the book")
+				.isEqualByComparingTo("99");
+
+		Map<Long, BigDecimal> balances = new HashMap<>();
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			balances.put(row.get("competitorId").asLong(), row.get("balance").decimalValue());
+		}
+
+		assertThat(balances.get(notConfirmed))
+				.as("his book says five and the code he was once shown said ninety-nine")
+				.isEqualByComparingTo("5");
+	}
+
+	/**
+	 * THE BALANCE ON THE ROW IS THE SAME SUM THE BOOK ANSWERS FOR ONE MEMBER.
+	 *
+	 * <p>{@link BalanceBook} answers this question twice - once about a member and once about a list
+	 * of them - because a screen drawing a balance beside every row would otherwise ask one
+	 * statement per row. Two statements over one table are two places a sum can be edited, and this
+	 * is what makes them one answer: the number the route served is compared with
+	 * {@link BalanceBook#of(long)} asked about the same man.
+	 *
+	 * <p>Asked of the member whose book is a NET, deliberately: for a member with a single referral
+	 * the two readings agree even if one of them forgot the spends.
+	 */
+	@Test
+	void thebalanceOnTheRowIsTheSameSumTheBookAnswersForOneMember() throws Exception {
+		BigDecimal served = null;
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			if (row.get("competitorId").asLong() == surnamedNovak) {
+				served = row.get("balance").decimalValue();
+			}
+		}
+
+		assertThat(served).isNotNull();
+		assertThat(served).isEqualByComparingTo(book.of(surnamedNovak).eur());
+	}
+
+	/**
+	 * EVERY FIELD THE PORTAL READS IS ANSWERED, AND NOTHING EXTRA IS CARRIED IN SILENCE.
+	 *
+	 * <p><b>This resource had no such floor until today, which is why it gets one in the commit that
+	 * widens it.</b> Nineteen test classes use {@code Answers} and this was not among them, so
+	 * {@code GET /api/payments} could have stopped serving a field the screen reads and nothing here
+	 * would have said so.
+	 *
+	 * <p><b>The three new names are declared as extra rather than added to the served file</b>, which
+	 * is the shape {@code Answers} was given on 13.09.2026 for exactly this: „A server may still
+	 * carry something the served file never had... It just has to be NAMED." The front end's own copy
+	 * still holds five fields and three of its files say so in prose; the branch that draws the
+	 * activation row is where those move, and this route may not wait for it.
+	 *
+	 * <p><b>And the country is NOT among the three</b>, which is the assertion that the decision
+	 * above is really carried out: it is read to work the currency out and never served.
+	 */
+	@Test
+	void everyFieldTheScreenReadsIsAnsweredAndTheThreeNewOnesAreNamed() throws Exception {
+		JsonNode accounts = read(booksCookie, null).get("accounts");
+
+		/* THE SERVED NAMES ARE READ FROM UNDER `accounts`, because this resource answers a RECORD and
+		   not a list. `Answers.servedRecords` refuses such a file on purpose, and that refusal is
+		   worth keeping: it is what stops a served file which had become a list of numbers from being
+		   compared against nothing. So the rows are asked for by the name they live under. */
+		Answers.againstTheseServedNames(PATH, accounts,
+				Answers.servedFieldsUnder("payments.json", "accounts"), "payments.json",
+				Set.of("currency", "expected", "balance"));
+
+		assertThat(Answers.fieldsOf(accounts.get(0)))
+				.as("the country is read to work the currency out and never served")
+				.doesNotContain("country", "countryCode");
+	}
+
+	/**
+	 * AND NO FIELD OF THE ANSWER IS THE SAME IN EVERY ROW, which is what makes the three new ones
+	 * measured rather than merely present.
+	 *
+	 * <p>Measured on 12.09.2026 and true of this route as well: a field the fixture never varies is
+	 * a field the server could answer with a constant, and every case above it reads alike. So this
+	 * is what requires the currency to have two states, the expected amount to differ between a
+	 * junior and everybody else, and the book not to be one size.
+	 */
+	@Test
+	void nofieldOfTheAnswerIsTheSameInEveryRow() throws Exception {
+		Answers.noFieldIsTheSameInEveryRecord(PATH, read(booksCookie, null).get("accounts"));
+	}
+
+	/** One column of one row of the price list, asked of the list rather than written down. */
+	private BigDecimal priceOf(String key, String column) {
+		return db.sql("select " + column + " from price_row where key = ?")
+				.param(key).query(BigDecimal.class).single();
 	}
 
 	private JsonNode read(String cookie, String term) throws Exception {
@@ -880,15 +1294,113 @@ class PaymentsDueApiTest {
 	/** @param number null for somebody who has registered and never paid, which since V16 is an
 	 *                ordinary state and not a broken row */
 	private long competitor(String number, String first, String last, boolean active) {
+		return competitor(number, first, last, active, A_TOWN, BORN_LONG_AGO);
+	}
+
+	/**
+	 * @param town      a SQL expression for {@code place_id}, so a case can put somebody in Serbia
+	 *                  or abroad without the town becoming a second thing the caller has to undo
+	 * @param birthDate his, because the price list has a junior LEVEL that replaces whichever
+	 *                  period applies - so a fixture in which everybody was born in 1990 cannot
+	 *                  tell a route reading the year from one ignoring it
+	 */
+	private long competitor(String number, String first, String last, boolean active, String town,
+			String birthDate) {
 		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
 						+ " birth_date, place_id, first_season, first_season_2027, active,"
 						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
 						+ " father_name, address, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, 'F', date '1990-01-01', " + A_TOWN + ", 2027, false, ?,"
+						+ " values (?, ?, ?, 'F', ?::date, " + town + ", 2027, false, ?,"
 						+ " 'payment', ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
-				.params(number, first, last, active, String.format("%016x", ++issued))
+				.params(number, first, last, birthDate, active, String.format("%016x", ++issued))
 				.query(Long.class).single();
+	}
+
+	/**
+	 * ONE REFERRAL EARNED, which is the only way a balance comes to exist at all.
+	 *
+	 * <p>{@code balance_entry_reason_known} (V38) knows two reasons and
+	 * {@code balance_entry_a_referral_adds} demands both currencies be money, so a bare credit is
+	 * not a row the portal could ever write and is not one this fixture invents.
+	 */
+	private void earnedAReferral(long competitorId, long broughtIn, String eur, String rsd) {
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,"
+						+ " occurred_at, recorded_by_name)"
+						+ " values (?, ?::numeric, ?::numeric, 'referral', ?, ?, 'Neko Ko Je Knjizio')")
+				.params(competitorId, eur, rsd, broughtIn, Timestamp.from(IN_OCTOBER_2026))
+				.update();
+	}
+
+	/**
+	 * AND ONE SEASON'S MEMBERSHIP ALREADY PAID FOR OUT OF THAT BOOK, which is what makes the
+	 * balance a NET rather than a total of what he earned.
+	 *
+	 * <p>Without a spend anywhere in this fixture, „sum every line" and „sum the referrals" answer
+	 * alike for every member on the screen, and a route written the second way passes.
+	 */
+	private void spentOnAMembership(long competitorId, int season, String eur, String rsd) {
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+						+ " occurred_at, recorded_by_name)"
+						+ " values (?, (0 - ?::numeric), (0 - ?::numeric), 'membership', ?, ?,"
+						+ " 'Neko Ko Je Knjizio')")
+				.params(competitorId, eur, rsd, season, Timestamp.from(IN_OCTOBER_2026))
+				.update();
+	}
+
+	/**
+	 * WHAT A PAYMENT CODE ONCE PROMISED HIM, which this route must never serve.
+	 *
+	 * <p>The owner, 27.09.2026 (PDL 23a): on the moderator's screen „odlucuje kucica i iznos koji
+	 * stoji u njenoj labeli", and that label carries what he HAS. Written here with numbers nothing
+	 * else in the fixture uses, so a route reading the promise instead of the book is caught by the
+	 * value rather than by a shape.
+	 */
+	private void acodeOncePromisedHim(long competitorId, int season, String eur, String rsd) {
+		db.sql("insert into balance_promise (competitor_id, season, eur, rsd, promised_at)"
+						+ " values (?, ?, ?::numeric, ?::numeric, ?)")
+				.params(competitorId, season, eur, rsd, Timestamp.from(IN_OCTOBER_2026))
+				.update();
+	}
+
+	/**
+	 * A MEMBERSHIP STANDING ON A BALANCE, which is the THIRD basis and the one V38 added.
+	 *
+	 * <p>{@code membership_basis_says_whether_a_book_entry_is_named} (V38) refuses such a row unless
+	 * it names the line in the book it stands on, so the entry is written first and the row points
+	 * at it. Without this basis in the fixture, a route that took a row off the list by asking about
+	 * the two OLDER bases by name would pass.
+	 *
+	 * <p><b>HE IS CREDITED BEFORE HE IS CHARGED, and that is not tidiness.</b> Written the other way
+	 * round - a spend with no credit behind it - his book sums NEGATIVE, and
+	 * {@link com.btl.portal.domain.balance.Balance.Money} refuses a negative amount outright („money
+	 * here is never negative"), so the route throws rather than answering. <b>Measured, not
+	 * reasoned:</b> this fixture had exactly that shape and it brought
+	 * {@code inOctoberOfTheNextYearTheSeasonOnSaleMovesOnAndLastYearsMembersAreBackOnTheList} down
+	 * with {@code money here is never negative: -1.00 / -120.00} - and only that case, because it is
+	 * the only moment at which this member is back on the list and his book is read at all.
+	 *
+	 * <p><b>The boundary that finding names, recorded rather than left:</b> nothing in the schema
+	 * stops a book summing below nothing. {@code balance_entry_a_membership_takes} (V38) fixes the
+	 * SIGN of one line and says nothing about the total. What keeps production above it is that every
+	 * spend is capped at what is there - {@code Balance.honouring} at the paying door and
+	 * {@code GrantingAMembership.whatComesOffTheBook} at the moderator's - and not a constraint. So a
+	 * book driven negative by anything else would make this screen throw for that member, which is a
+	 * loud failure rather than a wrong number, and that is the better of the two.
+	 */
+	private void membershipOnABalance(long member, long broughtIn, int season) {
+		earnedAReferral(member, broughtIn, "5", "600");
+
+		long entry = db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+						+ " occurred_at, recorded_by_name)"
+						+ " values (?, -1, -120, 'membership', ?, ?, 'Neko Ko Je Knjizio')"
+						+ " returning id")
+				.params(member, season, Timestamp.from(IN_OCTOBER_2026))
+				.query(Long.class).single();
+
+		db.sql("insert into membership (competitor_id, season, basis, balance_entry_id)"
+						+ " values (?, ?, 'balance', ?)")
+				.params(member, season, entry).update();
 	}
 
 	/**

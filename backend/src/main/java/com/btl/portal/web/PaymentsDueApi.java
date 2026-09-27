@@ -1,14 +1,20 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.balance.Balance;
+import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.MonthDay;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, WORKED OUT AND NEVER QUEUED.
@@ -94,18 +100,58 @@ import java.util.List;
  * mogu da ga aktiviram" - so that reason is gone. It stays for a different one: nothing in the
  * schema stops two people sharing a first and last name, most of this list has no member number
  * to tell them apart, and a moderator picking the wrong row books one man's money to another.
- * The town is what he can read. <b>It does not decide anything about money here</b>, and that
- * sentence is written down because the old reason is still readable two files away.
- * <li><b>The country does not come.</b> Its only purpose was the one that fell, and it
- * separates no two people the town does not separate.
+ * The town is what he can read. <b>The town still decides nothing about money</b> - the CURRENCY
+ * below is worked out from the country and never from the town's name, so two members of one town
+ * are told apart here by nothing but the key.
+ * <li><b>The country is READ and is not served, and both halves of that are the owner's
+ * specification of 27.09.2026 rather than a leftover.</b> The sentence that stood here said „The
+ * country does not come. Its only purpose was the one that fell" - and section 19 brought that
+ * purpose back in a narrower shape: „Prazno polje sa oznakom valute pored njega. <b>Valuta zavisi
+ * od zemlje clana.</b>" So the country is what the CURRENCY is worked out from, and the route reads
+ * it through both of the homes V7 allows.
+ * <p><b>It is not SERVED, and that is measured against what section 19 asks for rather than
+ * assumed.</b> The three things it puts on the row are the expected amount, a field marked with a
+ * currency, and a tick box carrying a balance; a country is not among them, and nothing on the
+ * screen draws one. It also separates no two people the town does not separate, which was the
+ * other half of the old sentence and is still true. So a fourth field would be a name no screen
+ * reads, which is the thing {@code Answers} makes a case name out loud rather than carry in
+ * silence - and {@code PaymentsDueApiTest} names the three that ARE new there.
  * <li><b>The season comes once, on the answer rather than on every row.</b> The screen has to
  * say which season it is booking, and the front end cannot work it out: {@code
  * frontend/src/data/season.ts} exports {@code seasonRunning} and {@code transfersTakeEffect}
  * and has no {@code seasonBeingPaidFor}, so leaving it out would mean a third home for the one
  * question this class already had to settle.
- * <li><b>No amount, no currency, no method and no day</b>, because the owner's decision of
- * 27.09.2026 says the record of a payment has none of them and the price a member owes is
- * worked out on HIS side, where it is shown to him.
+ * <li><b>THE EXPECTED AMOUNT, THE CURRENCY AND THE BALANCE, which are the three things section
+ * 19 puts on the row and the three this route had to be changed to answer.</b> The sentence that
+ * stood here said „No amount, no currency, no method and no day, because the owner's decision of
+ * 27.09.2026 says the record of a payment has none of them and the price a member owes is worked
+ * out on HIS side, where it is shown to him." Section 19 of the same day OVERTURNS it in as many
+ * words - „Ovo obara sve ranije nacrte tog ekrana, ukljucujuci moj zakljucak iz odeljka 14 da
+ * zapis o uplati nema iznos" - and the half of it that survives is worth keeping apart from the
+ * half that fell:
+ * <ul>
+ * <li><b>The METHOD and the DAY still do not come, and now for a stronger reason than before.</b>
+ * Neither is a question anybody is asked: PDL 20a fixes the method from where the member lives
+ * („Srbin placa IPS uplatnicom, inostranstvo PayPal-om") and the day a payment is booked is the
+ * portal's own clock and never a form.
+ * <li><b>The AMOUNT comes, and it is what the member SENDS rather than what the membership
+ * costs.</b> Owner, 27.09.2026: „„Ocekivan iznos" je ono sto clan SALJE, dakle sa uracunatom
+ * taksom. Za clana iz inostranstva sa clanarinom 40 i taksom 3, labela kaze 43." So the
+ * processing fee is added here, which is the one place in the portal that adds it without asking:
+ * {@link MembershipInvoice} deliberately carries it raw, because on the member's own screen
+ * whether anything is transferred at all is still open.
+ * <li><b>The CURRENCY comes, worked out from the country and never asked for.</b>
+ * <li><b>And the BALANCE comes, in that same currency</b>, because the owner chose exactly that
+ * on 27.09.2026 and gave the reason: „kad balans pokriva razliku, oba broja <b>moraju</b> da budu
+ * u istoj valuti da bi se oduzimanje uopste videlo", and „kurs u portalu ne postoji nigde".
+ * </ul>
+ * <li><b>It is what he has TODAY and never what a code promised him, and that is the owner's
+ * decision of 27.09.2026 (PDL 23a) rather than the cheaper reading.</b> „Moderator aktivira sa
+ * svog ekrana: odlucuje <b>kucica</b> i iznos koji stoji u njenoj labeli", against the other road
+ * in which a promise decides. The case that settles it is the commonest one there is: a member
+ * nobody has ever opened the membership screen for has NO promise at all, so a label fed from
+ * promises would show him nothing while his book stood full. {@code balance_promise} is therefore
+ * a table this route does not name, and a fixture where the two disagree is what holds it.
  * </ul>
  *
  * <p><b>NOTHING IS REFUSED HERE, and ADL A54 is why that is said out loud rather than left to
@@ -131,13 +177,68 @@ import java.util.List;
 @RestController
 class PaymentsDueApi {
 
+	/**
+	 * THE ONE COUNTRY THAT IS BILLED IN DINARS, and it is a codebook key rather than a price.
+	 *
+	 * <p><b>DERIVED from three written decisions and not one of them says it in these words</b>,
+	 * so where it comes from is set out here rather than left to be reconstructed. PDL 31.07.2026:
+	 * „cena proizlazi iz toga gde član živi i portal je izračuna sam" - the country decides and
+	 * nobody chooses. PDL 31.07.2026 again: „QR kod postoji samo za uplate iz Srbije. Član van
+	 * Srbije ga ne vidi uopšte... Udruženje ima jedan račun, u dinarima, kod srpske banke" - the
+	 * dinar account is the Serbian one. PDL 20a, 27.09.2026: „Srbin placa IPS uplatnicom,
+	 * inostranstvo PayPal-om." The three together leave one mapping: Serbia is the dinar side and
+	 * everywhere else is the euro side.
+	 *
+	 * <p><b>Kosovo needs no sentence of its own, which is worth writing down because it looks as
+	 * though it would.</b> {@code country_code_not_kosovo} (V2) refuses {@code XK} outright and
+	 * says why in the migration: Kosovo „is carried as part of Serbia" and the generator that
+	 * builds the town codebook „rewrites it to RS on the way in". So a town there already carries
+	 * this code and is already billed in dinars, by the codebook rather than by anything here.
+	 *
+	 * <p><b>A literal and not an amount, which is the line ADL A12 actually draws.</b> That
+	 * decision forbids „broj upisan u kodu" and gives its own scope - „da se cenovnik i ono sto
+	 * portal objavljuje ne raziđu". Not one price is written here; this is the NAME of a row of
+	 * {@code country}, the same kind of thing {@link BalanceBook}'s {@code REFERRAL} is and for the
+	 * reason written there. What holds it against the codebook rather than against a memory is
+	 * {@code PaymentsDueApiTest}, which reaches this currency through a town of the codebook AND
+	 * through a town somebody typed, because V7 allows the country to arrive by either road.
+	 */
+	private static final String BILLED_IN_DINARS = "RS";
+
+	private static final String DINARS = "RSD";
+
+	private static final String EURO = "EUR";
+
 	private final JdbcClient db;
 
 	private final Clock clock;
 
-	PaymentsDueApi(JdbcClient db, Clock clock) {
+	/**
+	 * The price list, read ONCE for the whole answer rather than per row.
+	 *
+	 * <p>Which row applies is a question about the day and about a year of birth
+	 * ({@link MembershipPrice#on}), so it is answered in memory for every member off one reading
+	 * of seven rows. Asked per row it would be one statement per person on the screen, and it
+	 * could also cross an administrator's edit half way down one list.
+	 */
+	private final PriceRows priceRows;
+
+	/**
+	 * The book, and this is the only caller that READS it without ever writing a line.
+	 *
+	 * <p>Asked about the whole list in one statement ({@link BalanceBook#forEveryOneOf}) for the
+	 * same reason the price list is read once. It is asked THROUGH that class and not summed here,
+	 * because {@link BalanceBook} says of itself that nothing else in the portal names
+	 * {@code balance_entry} - ADL's „saldo koji se uvek izvodi iz knjige" is only one answer if
+	 * there is one place the deriving happens.
+	 */
+	private final BalanceBook book;
+
+	PaymentsDueApi(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book) {
 		this.db = db;
 		this.clock = clock;
+		this.priceRows = priceRows;
+		this.book = book;
 	}
 
 	/**
@@ -153,9 +254,21 @@ class PaymentsDueApi {
 	 * @param city         where he lives, out of the codebook or as he typed it, and here to
 	 *                     tell two people of one name apart rather than to decide anything
 	 *                     about money
+	 * @param currency     which of the two the label beside the amount is marked with,
+	 *                     {@code RSD} for a member living in Serbia and {@code EUR} for everybody
+	 *                     else. Worked out from his country and never asked for: „Valuta zavisi od
+	 *                     zemlje clana" (PDL, section 19)
+	 * @param expected     what the portal expects HIM TO SEND in that currency, which is the
+	 *                     membership fee that applies to him PLUS the processing fee where one is
+	 *                     charged - forty and three make forty-three, the owner's own example. The
+	 *                     junior price replaces whichever period applies rather than reducing it
+	 *                     ({@link MembershipPrice})
+	 * @param balance      what his book adds up to TODAY in that same currency, which is the
+	 *                     number the tick box carries in its label, and never what a payment code
+	 *                     once promised him (PDL 23a)
 	 */
 	record Due(long competitorId, String memberNumber, String firstName, String lastName,
-			String city) {
+			String city, String currency, BigDecimal expected, BigDecimal balance) {
 	}
 
 	/**
@@ -257,12 +370,65 @@ class PaymentsDueApi {
 	 * the alternative is escaping that nobody would ever exercise.
 	 */
 	private List<Due> notActiveIn(int season, String term) {
+		List<OnTheList> rows = whoIsNotActiveIn(season, term);
+
+		/* THE BOOK AND THE PRICE LIST, ONE READING EACH FOR THE WHOLE ANSWER. Read per row, the
+		   book would be one statement per person and the price list could cross an
+		   administrator's edit half way down one list, so two members of one age would be
+		   quoted two different prices under one heading. */
+		Map<Long, Balance.Money> books = book.forEveryOneOf(rows.stream().map(OnTheList::id).toList());
+		List<MembershipPrice.Row> priceList = priceRows.all();
+
+		MonthDay today = MonthDay.from(LocalDate.ofInstant(clock.instant(), SeasonClock.ZONE));
+
+		return rows.stream().map(one -> {
+			boolean euro = !BILLED_IN_DINARS.equals(one.countryCode());
+
+			MembershipPrice.Price price = MembershipPrice.on(priceList, today,
+					one.birthDate().getYear(), season, euro);
+
+			/* WHAT HE SENDS AND NOT WHAT THE MEMBERSHIP COSTS, which is the owner's choice of
+			   27.09.2026 and the whole reason this is an addition rather than a column: „„Ocekivan
+			   iznos" je ono sto clan SALJE, dakle sa uracunatom taksom." `MembershipPrice` already
+			   answers nought for the fee on the dinar side, so the same line is right in both
+			   currencies rather than branching on one of them. */
+			BigDecimal expected = price.amount().add(price.fee());
+
+			Balance.Money his = books.get(one.id());
+
+			return new Due(one.id(), one.memberNumber(), one.firstName(), one.lastName(), one.city(),
+					euro ? EURO : DINARS, expected, euro ? his.eur() : his.rsd());
+		}).toList();
+	}
+
+	/**
+	 * One row as the database holds it, before the price list and the book are asked about it.
+	 *
+	 * @param countryCode never null: {@code place.country_id} is {@code not null} (V3) and
+	 *                    {@code competitor_typed_town_names_its_country} (V7) makes the typed
+	 *                    country present exactly when the typed town is, so of the two homes one
+	 *                    always answers
+	 */
+	private record OnTheList(long id, String memberNumber, String firstName, String lastName,
+			String city, LocalDate birthDate, String countryCode) {
+	}
+
+	private List<OnTheList> whoIsNotActiveIn(int season, String term) {
 		return db.sql("select c.id, coalesce(c.member_number, '') as member_number,"
 						+ " c.first_name, c.last_name,"
-						+ " coalesce(town.name, c.city) as city"
+						+ " coalesce(town.name, c.city) as city,"
+						+ " c.birth_date,"
+						/* THE COUNTRY THROUGH BOTH OF ITS HOMES, the shape `CompetitorApi`,
+						   `MeApi` and `VerificationApi` all already use for the same column.
+						   `competitor_town_is_from_the_codebook_or_typed` (V7) makes exactly one
+						   of the two present, so this coalesce cannot answer empty and cannot
+						   answer twice - the same sentence the town beside it stands on. */
+						+ " coalesce(town_country.code, typed_country.code) as country_code"
 						+ " from account a"
 						+ " join competitor c on c.id = a.competitor_id"
 						+ " left join place town on town.id = c.place_id"
+						+ " left join country town_country on town_country.id = town.country_id"
+						+ " left join country typed_country on typed_country.id = c.country_id"
 						/* NOT ACTIVE IS THE ABSENCE OF THE ROW, AND THE SEASON IS HALF OF IT.
 						   Without `m.season`, anybody who was ever a member of anything is off
 						   this list for good - which is last season's member who has not
@@ -288,8 +454,9 @@ class PaymentsDueApi {
 						+ " order by c.last_name, c.first_name, c.id")
 				.param("season", season)
 				.param("term", term)
-				.query((row, i) -> new Due(row.getLong(1), row.getString(2), row.getString(3),
-						row.getString(4), row.getString(5)))
+				.query((row, i) -> new OnTheList(row.getLong(1), row.getString(2), row.getString(3),
+						row.getString(4), row.getString(5), row.getDate(6).toLocalDate(),
+						row.getString(7)))
 				.list();
 	}
 }
