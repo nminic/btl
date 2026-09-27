@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DucatFamily } from './ducatRule'
 import { useSession } from '../session/useSession'
-import { arrivedResource, loadResource, type ResourceName } from './client'
+import type { Message } from '../session/context'
+import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from './client'
 import type {
   Attending,
   BtlEvent,
   Competitor,
   EventComment,
+  InboxLine,
   League,
   Moderator,
   Outstanding,
@@ -14,6 +16,7 @@ import type {
   Race,
   RacingPair,
   Result,
+  ServedMessage,
   StaticPage,
   Team,
 } from './types'
@@ -364,3 +367,136 @@ export const useResults = (): ResourceState<Result[]> => {
 }
 export const usePairs = () => useResource<RacingPair[]>('pairs')
 export const useTeams = () => useResource<Team[]>('teams')
+
+/**
+ * WHOEVER THE INBOX IN THE CACHE WAS FETCHED FOR, kept beside the cache rather than
+ * inside any one component.
+ *
+ * **This is the one resource whose answer differs per caller, and the cache above is keyed
+ * by name with nobody in the key** (`data/client.ts` says so in its own words). What makes
+ * that a fault rather than a note is measured: signing out and in again happens IN PLACE.
+ * `AccountMenu` calls `signOutOfTheServer()` and `signOut()`, `SignIn` calls `signInWith`
+ * and `navigate`, and not one of the four reloads the page - so one visit can hold two
+ * different people, and a cache keyed by name alone would hand the second one the first
+ * one's mail.
+ *
+ * Module scope and not a ref, because two components read this list at once - the panel in
+ * the header and the screen behind it - and a ref each would mean two of them deciding to
+ * drop the same cache, which throws away the request the other one had already started.
+ * One home, one decision, one request.
+ */
+let inboxAnsweredFor: string | null | undefined
+
+/**
+ * Drops the answer the moment it stops being this caller's.
+ *
+ * Called while rendering rather than from an effect, and that is the whole point: an effect
+ * runs AFTER the render that read the cache, so the first paint after signing in as
+ * somebody else would draw their predecessor's subjects and then correct itself. There is
+ * nothing to correct if the answer is gone before it is read.
+ */
+function theInboxNowBelongsTo(whose: string | null): void {
+  if (inboxAnsweredFor !== whose) {
+    inboxAnsweredFor = whose
+    clearResourceCache('inbox')
+  }
+}
+
+/**
+ * THE INBOX: WHAT THE SERVER HAS KEPT, AND THEN WHAT HAS BEEN SAID DURING THIS VISIT.
+ *
+ * **The shape is `event/GoingToEvent.tsx`'s, word for word - „what the file says, and then
+ * what has been said during this visit" - and it is here rather than there because three
+ * screens read it.** The server is the source: seven routes in `backend/src/main` write
+ * into `message`, and until today not one of their rows was ever drawn. The nine screens
+ * that call `notify` still write nowhere but the browser, so leaving them out would take a
+ * team's invitation, a pair's invitation and a moderator's reason off the one screen a
+ * member can answer them on - and no route carries any of the three.
+ *
+ * **Why two sources cannot show one message twice, measured rather than hoped.** The one
+ * pair that could collide is a moderator's decision: `PendingQueue` posts it to
+ * `/api/verification/{id}/decision`, which writes the row, AND calls `notify` beside it.
+ * Nothing clears this resource after that write, so the served list a visit holds is the
+ * one it fetched when the panel first mounted and the new row is not in it; on the next
+ * visit the browser's copy is gone and only the served row is left. So the member sees it
+ * once either way, and the day something does clear this name after a decision, that is
+ * the day the `notify` beside it goes.
+ *
+ * **Newest first, and the served half's own order is not touched.** `InboxApi` orders by
+ * `sent_at desc, m.id desc`, and what leaves the server is the calendar DAY - the time is
+ * gone - so sorting the two halves together on the day would shuffle everything the server
+ * sent on one day into an order it did not choose. Sorted on the day alone with a STABLE
+ * sort, two messages of one day keep the order they arrived in, which for the served half
+ * is the server's.
+ */
+export function useInbox(): ResourceState<InboxLine[]> {
+  const { signedIn, inbox: held } = useSession()
+  /* Whose mail the answer would be. Read off `signedIn` rather than off `memberNumber`
+     beside it, for the reason `pages/member/memberScreen.tsx` gives: `signedIn` is worked
+     out from the only two facts there are and cannot drift from either. */
+  const whose = signedIn !== null && signedIn.as === 'member' ? signedIn.memberNumber : null
+
+  theInboxNowBelongsTo(whose)
+
+  const served = useResource<ServedMessage[]>('inbox')
+
+  return useMemo(() => {
+    if (served.status !== 'ready') {
+      return served
+    }
+
+    return { status: 'ready', data: newestFirst([...held.map(asALine), ...served.data.map(asServed)]) }
+  }, [served, held])
+}
+
+/** A record the browser is holding, as a line. Its read mark is the portal's own, because
+ *  for it the portal IS the store. */
+function asALine(one: Message): InboxLine {
+  return {
+    id: one.id,
+    from: one.from,
+    subject: one.subject,
+    body: one.body,
+    date: one.date,
+    read: one.read,
+    invitation: one.invitation,
+    pairInvite: one.pairInvite,
+    canBeMarkedRead: true,
+  }
+}
+
+/**
+ * A row the server answered, as a line.
+ *
+ * The two question ids become the absences the screens ask about, and they become them
+ * HERE rather than at each screen: `null` is how the answer really arrives, and three
+ * screens each deciding what `null` means is three places that can decide differently.
+ *
+ * `String(...)` on the key and not the other way about, because the address of one message
+ * is text and a number put through `Number(id)` would answer `NaN` for every key the
+ * browser's own half holds.
+ */
+function asServed(one: ServedMessage): InboxLine {
+  return {
+    id: String(one.id),
+    from: one.from,
+    subject: one.subject,
+    body: one.body,
+    date: one.date,
+    read: one.read,
+    invitation: one.teamInvitationId === null ? undefined : String(one.teamInvitationId),
+    pairInvite: one.pairInviteId === null ? undefined : String(one.pairInviteId),
+    /* NO ROUTE WRITES `message_read`. Measured 27.09.2026: `backend/src/main` maps
+       `GET /api/inbox` and `POST /api/inbox` and nothing else on this resource, and the
+       second sends a message rather than marking one read. See `InboxLine` for what the
+       screens do with that. */
+    canBeMarkedRead: false,
+  }
+}
+
+/** Sorted on the day, stably, so that whatever order each half arrived in survives inside
+ *  a day. `localeCompare` is not needed and would be wrong: these are ISO days, where
+ *  plain string order IS date order. */
+function newestFirst(lines: InboxLine[]): InboxLine[] {
+  return [...lines].sort((left, right) => (left.date < right.date ? 1 : left.date > right.date ? -1 : 0))
+}

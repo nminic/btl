@@ -84,6 +84,29 @@ export const RESOURCE_NAMES = [
   'comments',
   'competitors',
   'events',
+  /* WHAT WAS WRITTEN TO WHOEVER IS ASKING, PLUS WHAT WAS WRITTEN TO THE WHOLE LEAGUE
+     (V13: „a message may be addressed to one member or to the whole league, and EMPTY
+     MEANS EVERYBODY"). The seventeenth, since 27.09.2026, and the third name here that
+     was ANSWERED long before it was ever asked for: `GET /api/inbox` has served this
+     since `InboxApi` went in, and the three screens that draw a message read a list the
+     browser itself was holding instead.
+
+     **What that cost is the whole reason for this name, and it was measured on the owner
+     rather than reasoned about.** He refused a photograph with a reason on 27.09.2026,
+     the message arrived, he signed out and in, and IT WAS GONE. Seven routes write into
+     `message` on the server - the decision he took is one of them
+     (`VerificationWriteApi.tell`) - so what he was shown was never the row the server
+     had kept. It was the browser's own copy, held in `useState`, and a copy in a
+     component dies with the component.
+
+     THE ONE NAME ON THIS LIST WHOSE ANSWER IS DIFFERENT FOR EVERY CALLER, and the cache
+     above is keyed by name with nobody in the key. That is safe for exactly as long as a
+     visit is one person: `whoTheServerSaysIAm` is asked once a visit
+     (`session/useTheServersSession.ts`) and signing out ends the visit by reloading, so
+     no second caller reads a first caller's answer through this. It is written down
+     because it is the one thing that would have to change first if signing out ever
+     became something this application did in place. */
+  'inbox',
   'leagues',
   'moderators',
   'pages',

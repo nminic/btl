@@ -71,6 +71,16 @@
     "name",
     "slug"
   ],
+  "inbox.json": [
+    "body",
+    "date",
+    "from",
+    "id",
+    "pairInviteId",
+    "read",
+    "subject",
+    "teamInvitationId"
+  ],
   "leagues.json": [
     "eventIds",
     "id",
