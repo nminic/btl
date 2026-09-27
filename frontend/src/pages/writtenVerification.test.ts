@@ -1,4 +1,4 @@
-import pages from '../../public/mock/pages.json'
+import pages from '../test/mock/pages.json'
 import settled from '../test/writtenPages.snapshot.json'
 
 /* What the written pages say, held exactly as the owner settled it.

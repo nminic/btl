@@ -105,7 +105,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	private static final ObjectMapper JSON = new ObjectMapper();
 
 	private static final String COUNTRIES = "frontend/src/data/countries.json";
-	private static final String PLACES = "frontend/public/mock/places.json";
+	private static final String PLACES = "frontend/src/test/mock/places.json";
 
 	private static final String GENERATOR = "backend/tools/generate_reference_migrations.py";
 

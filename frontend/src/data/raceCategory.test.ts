@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const MOCK = join(process.cwd(), 'public/mock')
+const MOCK = join(process.cwd(), 'src/test/mock')
 
 type Served = { file: string; distanceKm: number; category: string }
 

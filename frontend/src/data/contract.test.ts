@@ -319,7 +319,7 @@ describe('the screens that draw a section of a written page', () => {
    * and the one on the writing of a filter (src/app/filterParams.test.ts).
    *
    * It has to be read off the source, because no screen test can ever catch it:
-   * no record in `public/mock/pages.json` takes another one in today, so the two
+   * no record in `src/test/mock/pages.json` takes another one in today, so the two
    * ways of reading a record draw the same thing. The day one does, the screen
    * that reads it the wrong way draws less, and nothing says so.
    */
@@ -452,8 +452,8 @@ describe('what the ducats are called', () => {
     const read = everything().map((one) => one.path)
 
     expect(read).toContain('i18n/sr.json')
-    expect(read).toContain('mock/pages.json')
-    expect(read).toContain('mock/ducats.json')
+    expect(read).toContain('test/mock/pages.json')
+    expect(read).toContain('test/mock/ducats.json')
     /* And the stylesheets, which were the one kind nothing pinned: dropping
        '.css' from the list of what is read switched thirty-six files out of the
        sweep in silence. */
@@ -463,7 +463,7 @@ describe('what the ducats are called', () => {
     /* And not the codebook of towns, for the reason written where it is
        dropped. Held here so that dropping it stays a decision rather than
        something that quietly grows to cover whatever fails next. */
-    expect(read).not.toContain('mock/places.json')
+    expect(read).not.toContain('test/mock/places.json')
   })
 
   it('reads every file, so the sweep above is looking at something', () => {
@@ -536,7 +536,7 @@ describe('what the ducats are called', () => {
 describe('what the portal writes down about the codebook of towns', () => {
   /** The shipped file, which `everything()` deliberately drops and which is the
    *  source of truth for every number below. */
-  const CODEBOOK = join(process.cwd(), 'public', 'mock', 'places.json')
+  const CODEBOOK = join(process.cwd(), 'src', 'test', 'mock', 'places.json')
 
   const towns: Place[] = JSON.parse(readFileSync(CODEBOOK, 'utf-8'))
 
@@ -685,13 +685,17 @@ describe('what the portal writes down about the codebook of towns', () => {
  * Everything the rename had to reach: the code, the words a visitor reads, and
  * the records the portal is generated from.
  *
- * Two roots rather than one, because the old word survived in neither of the
- * places `src/**` alone could see it. Paths under `public/mock` are given
- * without that prefix, so a file reads as `mock/pages.json`.
+ * One root since the mock fixtures moved under `src/test` (mock files leave the
+ * delivery, PDL „Mock fajlovi izlaze iz isporuke odmah"): they are inside `src/**`
+ * now, so the sweep below that already walks it finds them on its own, at
+ * `test/mock/pages.json`, and there is no second root left to walk beside it. Until
+ * that move this needed two roots, because the old word survived in neither of the
+ * places `src/**` alone could see, and a file under the old `public/mock` read as
+ * `mock/pages.json` without that prefix.
  */
 /* **Read once and kept, since 21.09.2026, and that is about the clock rather than
-   about tidiness.** Six cases in this file call it, so the whole of `src` and `public`
-   was walked six times, about four hundred milliseconds each on an idle machine. That
+   about tidiness.** Six cases in this file call it, so the whole of `src` was walked
+   six times, about four hundred milliseconds each on an idle machine. That
    is comfortable alone and not comfortable beside another gate: measured that day, two
    runs of the package minutes apart gave one failure and then two, and every one of them
    was this file running out of its five seconds in a sweep rather than a case saying
@@ -705,7 +709,6 @@ let swept: { path: string; code: string }[] | null = null
 function everything(): { path: string; code: string }[] {
   swept ??= [
     ...under(join(process.cwd(), 'src'), '', ['.ts', '.tsx', '.css', '.json']),
-    ...under(join(process.cwd(), 'public'), '', ['.json']),
     /* The codebook of the world's towns is not among them, and is dropped
        below: it is forty seven thousand place names nobody here wrote, and one
        of them is a town in Alaska called Badger. Reading it for the words the
@@ -713,7 +716,7 @@ function everything(): { path: string; code: string }[] {
     /* The page the browser is handed before any of that. It carries a title and
        a description of its own, which is words a visitor reads. */
     { path: 'index.html', code: readFileSync(join(process.cwd(), 'index.html'), 'utf-8') },
-  ].filter((one) => one.path !== 'mock/places.json')
+  ].filter((one) => one.path !== 'test/mock/places.json')
 
   return swept
 }

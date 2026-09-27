@@ -48,7 +48,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Import(TestcontainersConfiguration.class)
 class PlaceApiTest {
 
-	private static final Path SERVED_TODAY = Path.of("..", "frontend", "public", "mock", "places.json");
+	private static final Path SERVED_TODAY = Path.of("..", "frontend", "src", "test", "mock", "places.json");
 
 	@Autowired
 	private MockMvc http;

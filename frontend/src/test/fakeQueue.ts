@@ -156,7 +156,7 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
 /** Read once per call, off the same generated files the disc reader answers a GET
  *  with, so a fixture added there is a fixture this file sees too. */
 function fileOf<T>(name: string): T {
-  const parsed: T = JSON.parse(readFileSync(join(process.cwd(), 'public', 'mock', `${name}.json`), 'utf-8'))
+  const parsed: T = JSON.parse(readFileSync(join(process.cwd(), 'src', 'test', 'mock', `${name}.json`), 'utf-8'))
 
   return parsed
 }

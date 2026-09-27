@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * being discovered the day somebody notices a board ordered by nothing.
  *
  * <p><b>The boundary, written down rather than left to be found.</b> The rulebook
- * is read off the working tree at {@code ../frontend/public/mock/pages.json},
+ * is read off the working tree at {@code ../frontend/src/test/mock/pages.json},
  * because it belongs to the other half of the repository and this build has no
  * other way to reach it. The same move is already made by the ducat floor in
  * {@code DucatConstraintsTest}. Static pages stay repository content rather than
@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class LaddersMatchTheRulebookTest {
 
-	private static final Path PUBLISHED = Path.of("..", "frontend", "public", "mock", "pages.json");
+	private static final Path PUBLISHED = Path.of("..", "frontend", "src", "test", "mock", "pages.json");
 
 	private static final String ARTICLE = "### Član 49.";
 
