@@ -145,7 +145,7 @@ class PageApiTest {
 	 *
 	 * <p><b>The mark that places a drawing is reproduced where, and only where, the block
 	 * carries one</b>, which is read off the {@code gallery} column rather than off a list
-	 * of positions. That is what a real translation has to do (V35's header) and it is what
+	 * of positions. That is what a real translation has to do (V37's header) and it is what
 	 * {@link #everyTranslatedBlockThatCarriesADrawingStillCarriesTheMarkThatPlacesIt()}
 	 * measures.
 	 */
@@ -815,7 +815,7 @@ class PageApiTest {
 	 * AND THE NAME OF THE DRAWING IS NOT TRANSLATED.
 	 *
 	 * <p><b>This is the one thing in a sixty-one kilobyte translation that breaks silently.</b>
-	 * The name of the drawing is a column of its own and V35 gives the translation no place
+	 * The name of the drawing is a column of its own and V37 gives the translation no place
 	 * to hold it, so it cannot be got wrong. Where the drawing STANDS is a line inside the
 	 * words, holding nothing but the mark (ADL A7, 21.08.2026), so it travels through the
 	 * translation like any other text.
@@ -893,7 +893,7 @@ class PageApiTest {
 		assertThat(served)
 				.as("the English answer does not name the same drawings, in the same order, as"
 						+ " the rows behind it - a name is not translated and has no column in"
-						+ " V35 to be translated in")
+						+ " V37 to be translated in")
 				.isEqualTo(drawings);
 		assertThat(markedBlocks)
 				.as("the answer carried no block with a drawing at all, so the mark was never"

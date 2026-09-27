@@ -70,7 +70,7 @@ class PageApi {
 	 * <p>PDL P18: „Kod pravnih tekstova mora biti izričito navedeno koja je jezička
 	 * verzija merodavna, i to je <b>srpska</b>." So the Serbian is not a fallback in the
 	 * sense of a second best: it is the version that binds, it lives in the base tables
-	 * where the schema cannot let it go missing, and V35's
+	 * where the schema cannot let it go missing, and V37's
 	 * {@code static_page_translation_not_serbian} refuses to hold a second copy of it.
 	 */
 	static final String THE_ORIGINAL = "sr";
@@ -85,7 +85,7 @@ class PageApi {
 	 *
 	 * <p>PDL P18: „Oznake jezika: {@code sr} i {@code en}. Ako se jednog dana doda
 	 * crnogorski, oznaka je {@code cnr}." Two or three lower-case letters, the same
-	 * sentence V35 checks in the column.
+	 * sentence V37 checks in the column.
 	 *
 	 * <p><b>Deliberately not a list of the languages the portal has.</b> A list would
 	 * have to be kept equal to {@code frontend/src/i18n/config.ts}'s {@code LOCALES}
@@ -120,7 +120,7 @@ class PageApi {
 	 *                rather than as a field here. It is therefore INSIDE the text a
 	 *                translator rewrites, and it has to come out the other side spelt the
 	 *                same; the name of the drawing itself is not translated and has no
-	 *                column in V35
+	 *                column in V37
 	 */
 	record Section(String heading, String body, String gallery) {
 	}
@@ -213,7 +213,7 @@ class PageApi {
 	 * that brings the last block, and not before.
 	 *
 	 * <p><b>Serbian needs no branch of its own anywhere below, which is why there isn't
-	 * one.</b> V35 refuses to hold a row spelling {@code sr}
+	 * one.</b> V37 refuses to hold a row spelling {@code sr}
 	 * ({@code static_page_translation_not_serbian}), so asked for the original every join
 	 * below finds nothing, every page is „not translated", and the original is what comes
 	 * back. The same is true of a tag the portal has no words in. One path, three
@@ -289,7 +289,7 @@ class PageApi {
 						+ " join static_page p on p.id = s.page_id"
 						/* The drawing is NOT joined in from the translation: it has no
 						   column there, because the name of a drawing is the same name in
-						   every language (V35's header). */
+						   every language (V37's header). */
 						+ " left join static_page_section_translation st"
 						+ "   on st.section_id = s.id and st.language = :language"
 						/* BY POSITION, AND POSITION IS A COLUMN, NOT THE ORDER ROWS WERE

@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Every constraint the three tables of V24 and the two of V35 carry, with the row that
+ * Every constraint the three tables of V24 and the two of V37 carry, with the row that
  * breaks it.
  *
  * <p>The same shape as {@link RoleAndRightConstraintsTest}, and for the same reason:
@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *
  * <p><b>Three of the five start with no row at all</b> - {@code static_page_include},
  * because no page uses {@code includes} today (see V24's header), and the two
- * translation tables, because V35 carries no text and the translation is a migration of
+ * translation tables, because V37 carries no text and the translation is a migration of
  * its own. So a violation on those cannot be built the way {@code ConstraintsTest} builds
  * {@code country_pk}, by selecting the id of an existing row. Where that matters (each
  * empty table's primary key and its unique keys) the violation inserts two rows of its own
@@ -56,7 +56,7 @@ class StaticPageConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * The three tables V24 adds and the two V35 adds.
+	 * The three tables V24 adds and the two V37 adds.
 	 *
 	 * Package visible because
 	 * {@link ConstraintsTest#everyTableInTheSchemaIsClaimedByAConstraintTest()} adds
@@ -80,7 +80,7 @@ class StaticPageConstraintsTest extends DatabaseTest {
 					+ "select a.id, 900, b.id from static_page a, static_page b "
 					+ "where a.slug = 'pravilnik' and b.slug = 'politika-privatnosti'";
 	/* `en` throughout the two translation fixtures, because it is the tag the portal is
-	   actually getting (owner, 26.09.2026) and the only one V35 will hold before launch. The
+	   actually getting (owner, 26.09.2026) and the only one V37 will hold before launch. The
 	   shape check is asked about separately, with a tag nobody would write on purpose. */
 	private static final String GOOD_TRANSLATION =
 			"insert into static_page_translation (page_id, language, title) "
@@ -94,7 +94,7 @@ class StaticPageConstraintsTest extends DatabaseTest {
 	/* One seeded block, named by the PAIR that identifies it - the address of its page and
 	   its position - because a block has no address of its own. That is the same pair the
 	   translation itself has to be written by, so these two constants are also the shape
-	   V35's header hands a translator. */
+	   V37's header hands a translator. */
 	private static final String A_SECTION = aSectionAt(1);
 	private static final String ANOTHER_SECTION = aSectionAt(2);
 
@@ -257,7 +257,7 @@ class StaticPageConstraintsTest extends DatabaseTest {
 				   inside a bracket expression CAN be resolved by the collation, so the two
 				   letters below are the ones that would slip in if it were. Measured rather than
 				   left as a worry: under sr_latn, the tailoring V1 installs, they do not match
-				   this expression either, which is why V35 carries no COLLATE clause and says so.
+				   this expression either, which is why V37 carries no COLLATE clause and says so.
 				   This row is what keeps that answer from changing quietly. The floor above takes
 				   constraint names as a SET, so naming one constraint twice is allowed. */
 				Violation.of("static_page_translation_language_shape",

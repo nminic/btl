@@ -306,10 +306,10 @@ class KeysAndIndexesTest extends DatabaseTest {
 			new Key("static_page_include_once_per_page", false,
 					"whether one page already takes another in is looked up, not counted from one end"),
 
-			/* V35. The same split once more, and NEITHER order is deferrable because neither
+			/* V37. The same split once more, and NEITHER order is deferrable because neither
 			   table holds an order at all: a translation is identified by what it translates
 			   and the language it is in, and the order a page's blocks are read in stays on
-			   the block (V35's header: position is the document's and not the language's). */
+			   the block (V37's header: position is the document's and not the language's). */
 			new Key("static_page_translation_pk", false,
 					"a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("static_page_translation_once_per_language", false,
