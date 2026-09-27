@@ -306,7 +306,7 @@ describe('the country a form opens holding', () => {
  * time anybody edits it, and every screen that draws it then draws nothing.
  */
 describe('the fields an overlay writes that a record keeps as a number', () => {
-  const MOCK = join(process.cwd(), 'public', 'mock')
+  const MOCK = join(process.cwd(), 'src', 'test', 'mock')
 
   /** Every value the served files hold under that name, at any depth. */
   function servedUnder(name: string): unknown[] {

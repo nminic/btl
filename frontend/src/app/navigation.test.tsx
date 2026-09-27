@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { expectFrontPage, renderAt } from '../test/render'
 import { setupUser } from '../test/user'
-import WRITTEN from '../../public/mock/pages.json'
+import WRITTEN from '../test/mock/pages.json'
 import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 

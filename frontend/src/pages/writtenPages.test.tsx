@@ -13,10 +13,10 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import registration from '../forms/definitions/registracija.form.json'
 import newResult from '../forms/definitions/unos-rezultata.form.json'
 import fromEvent from '../forms/definitions/prijava-sa-trke.form.json'
-import written from '../../public/mock/pages.json'
+import written from '../test/mock/pages.json'
 /* The served price list, read from the very file `test/setup.ts` answers `/api/pricing`
    with, so what this holds the table to is what the portal was really handed. */
-import servedPrices from '../../public/mock/pricing.json'
+import servedPrices from '../test/mock/pricing.json'
 import { serverThat } from '../test/serverAnswers'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
@@ -1422,7 +1422,7 @@ describe('the rulebook', () => {
        revisit, and the alarm quotes the page. */
     const WORD = 'dezorijentiring'
     const NAME = `BTL ${WORD}`
-    const mock = join(__dirname, '..', '..', 'public', 'mock')
+    const mock = join(__dirname, '..', 'test', 'mock')
     const contents = (name: string) => readFileSync(join(mock, name), 'utf8')
 
     /* The prose, page by page, with the target of a link taken out. The shape is

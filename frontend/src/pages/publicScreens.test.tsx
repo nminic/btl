@@ -12,7 +12,7 @@ import {
 } from '../data/derive'
 import { hueFor } from './competitorFace'
 import sr from '../i18n/sr.json'
-import pages from '../../public/mock/pages.json'
+import pages from '../test/mock/pages.json'
 import words from '../test/leagueWords.snapshot.json'
 import screens from '../test/leagueScreens.snapshot.json'
 import { formatDuration, formatNumber, formatPoints } from '../i18n/format'
@@ -1270,7 +1270,7 @@ describe('TopBoards', () => {
        by two people confirming each other, nothing in the data said who had, and an invented pair
        would have been worse than an empty board. The owner then asked to see the shape: „Izmokuj mi
        podatke za neki fiktivni par da mogu da vidim kako to izgleda", „neka dva para". Two pairs are
-       now mocked in `public/mock/pairs.json`, and both of them are two members who really do share
+       now mocked in `src/test/mock/pairs.json`, and both of them are two members who really do share
        races in the mocked results, so the figures are derived and not written by hand.
 
        **Both halves are still here**, because only one of them changed: a season the pairs were
@@ -1287,7 +1287,7 @@ describe('TopBoards', () => {
     expect(rows.length).toBe(2)
 
     /* **The order is the ladder's, and the mocked file is written to prove it** (review,
-       07.09.2026). The weaker pair is listed **first** in `public/mock/pairs.json` and holds the
+       07.09.2026). The weaker pair is listed **first** in `src/test/mock/pairs.json` and holds the
        lower first member number, which is what `withPlaces` ends every board on. So neither the
        order of the file nor that last rung can produce this order: only the points can. */
     expect(within(at(rows, 0)).getByText('Milovanović')).toBeVisible()

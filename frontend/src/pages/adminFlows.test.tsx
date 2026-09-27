@@ -10,7 +10,7 @@ import { MemoryRouter } from 'react-router'
 import { PageMetaContext } from '../app/pageMetaContext'
 import { ClockProvider } from '../clock/ClockProvider'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
-import servedPrices from '../../public/mock/pricing.json'
+import servedPrices from '../test/mock/pricing.json'
 import { did, refused, serverThat } from '../test/serverAnswers'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/translate'
@@ -2984,7 +2984,7 @@ describe('the five queues read from the file', () => {
   /** What is waiting on one queue, read off the file the screen reads. */
   const itemsOf = (queue: string): PendingItem[] =>
     JSON.parse(
-      readFileSync(join(process.cwd(), 'public/mock/verification.json'), 'utf-8'),
+      readFileSync(join(process.cwd(), 'src/test/mock/verification.json'), 'utf-8'),
     ).filter((one: PendingItem) => one.queue === queue)
 
   const open = async (queue: PendingQueueId, title: string) => {
