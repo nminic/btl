@@ -198,13 +198,20 @@ describe('the picture on a profile, changed later', () => {
      *
        So the panel knows about this visit, and with a database it will ask one
        question about one member. Until then the cost is not the moderator's - a
-       review of PR 381 (27.09.2026) measured that `proposals` lives in `useState`
-       (`SessionProvider.tsx`), so this very overlay is gone the moment the tab is
-       reloaded while the row it cannot see stays open on the server: the member
-       who sent it meets `picture.none` on the next visit as though he had sent
-       nothing, sends again, and is refused `aPictureAlreadyWaits`. No card is
-       what is missing then, not a second one, which is written down rather than
-       left to be found (PENDING, and PDL P22). */
+       review of PR 381 (27.09.2026) measured it of `proposals`, and since that
+       same day the fact this panel reads is `pictureSent` (`session/context.ts`),
+       which lives in `useState` exactly as `proposals` does. So it is gone the
+       moment the tab is reloaded while the row it cannot see stays open on the
+       server: the member who sent it meets `picture.none` on the next visit as
+       though he had sent nothing, sends again, and is refused
+       `aPictureAlreadyWaits`. No card is what is missing then, not a second one,
+       which is written down rather than left to be found (PENDING, and PDL P22).
+     *
+       WHAT CHANGED THAT DAY AND WHAT DID NOT: the panel no longer puts a card of
+       its own in front of the moderator at all, because the server files the queue
+       row itself (`pictureIsOneRow.test.tsx`). The reload boundary above is
+       untouched by that - it was never about the card, it was about this panel
+       knowing what it sent. */
     const asked: string[] = []
     const real = globalThis.fetch
 
