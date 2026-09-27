@@ -271,12 +271,37 @@ class MePhotoApiTest {
 				.params(picture(), memberNumber).update();
 	}
 
+	/**
+	 * A PICTURE WAITING, AT A MOMENT OF ITS OWN.
+	 *
+	 * <p><b>The moment is written out rather than left to V9's {@code default now()}, and that is a
+	 * fault the mutation series found in this fixture rather than a tidiness.</b> In PostgreSQL
+	 * {@code now()} is the TRANSACTION's timestamp, and this class is {@code @Transactional}, so
+	 * every row the fixture writes carried the SAME {@code raised_at} to the microsecond. An
+	 * assertion that a member keeps his place in the queue was therefore satisfied by ANY member's
+	 * place - measured: swapping {@code theQueuePlaceOf(WHOSE_PICTURE_WAITS)} for
+	 * {@code theQueuePlaceOf(SOMEONE_ELSE)} left all fifty cases green. That is „two sources of one
+	 * value" exactly, and the fixture separates the sources rather than the assertion hoping they
+	 * differ.
+	 *
+	 * <p>The moments increase in the order the rows are written, which is the order V9's
+	 * {@code (queue, raised_at)} index puts them in and the order every reader of the queue uses, so
+	 * nothing that already reads this fixture changes meaning.
+	 */
 	private void waitingPicture(String memberNumber) {
-		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id)"
+		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id, raised_at)"
 						+ " values (?, (select id from competitor where member_number = ?),"
-						+ " 'Neko Nekic', '', ?)")
-				.params(THE_PROFILES_TAB, memberNumber, picture()).update();
+						+ " 'Neko Nekic', '', ?, ?)")
+				.params(THE_PROFILES_TAB, memberNumber, picture(),
+						Timestamp.from(Instant.parse("2026-09-01T10:00:00Z")
+								.plus(Duration.ofMinutes(++raised))))
+				.update();
 	}
+
+	/**
+	 * How many waiting pictures the fixture has written, which is what keeps their moments apart.
+	 */
+	private int raised;
 
 	/** A TEXT waiting in the same tab, which is the other half of it and stops nothing. */
 	private void waitingText(String memberNumber) {
