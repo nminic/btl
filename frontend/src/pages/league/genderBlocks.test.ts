@@ -75,6 +75,8 @@ const person = (memberNumber: string, gender: 'M' | 'F'): Competitor => ({
   teamSince: null,
   profileHidden: false,
   birthdayShown: 'none',
+  photo: null,
+  crop: null,
   bio: '',
 })
 

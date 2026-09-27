@@ -73,6 +73,8 @@ const MEMBERS: Competitor[] = [
     teamSince: 2019,
     profileHidden: false,
     birthdayShown: 'none',
+    photo: null,
+    crop: null,
     bio: '',
   },
 ]

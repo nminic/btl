@@ -219,7 +219,16 @@ describe('which fields the portal serves', () => {
        13.09.2026, of which twenty three are nested. Fourteen since 26.09.2026, when the
        price list became a resource the portal reads: seven more paths, none of them
        nested, and not one of them about a person - a price row belongs to nobody, which
-       is why `PricingApi` is public and says so at length. */
+       is why `PricingApi` is public and says so at length.
+
+       **Five more since 27.09.2026, and these ARE about a person: `photo` and `crop` on a
+       member, with the three fractions under the square** (PDL P28f of 26.09.2026, the
+       portrait reaching every avatar). They were added to the snapshot by hand, as this
+       file requires, and what makes them safe to serve is the thing they are NOT: the
+       address is the digest of the CONTENT and never `photo.id` (`PhotoApi`), so nothing
+       countable leaves, and the three fractions are fractions of the picture's own edges
+       and say nothing about the person in it. The fractions also cannot trip the rule
+       below: nothing between 0 and 1 is year-shaped. */
     expect(Object.keys(served)).toHaveLength(14)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(

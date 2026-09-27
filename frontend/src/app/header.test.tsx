@@ -1,4 +1,4 @@
-import { htmlElement } from '../test/at'
+import { htmlElement, must } from '../test/at'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
@@ -8,7 +8,6 @@ import { setupUser } from '../test/user'
 import { monogramFor } from './monogram'
 import { MailIcon } from './icons'
 import { MessagesMenu } from './MessagesMenu'
-import type { Competitor } from '../data/types'
 
 /* The header: the mark, the groups that open, the inbox and the account
  * picture. Everything here is reached by role and by name, because that is how
@@ -137,30 +136,22 @@ describe('a panel that opens under a button', () => {
 })
 
 describe('monogramFor', () => {
-  const member: Competitor = {
-    memberNumber: '000007',
-    firstName: 'strahinja',
-    lastName: 'vukićević',
-    gender: 'M',
-    city: 'Banja Luka',
-    country: 'BA',
-    ageBand: '24-',
-    firstSeason2027: false,
-    firstSeason: 2015,
-    membershipBasis: 'payment',
-    teamId: null,
-    teamSince: null,
-    profileHidden: false,
-    birthdayShown: 'none',
-    bio: '',
-  }
+  /* **The case that asserted initials is gone with the branch that produced them**
+     (27.09.2026). `monogramFor` took a `Competitor` and answered „SV" for „strahinja
+     vukićević", which was the second home of the two letters `components/Portrait.tsx` takes
+     out of the same two fields. The header now draws `Portrait` for a member (PDL P28f), so
+     no screen could reach that branch any more and only this case kept it alive - a line
+     covered by a test and reachable from nothing, which is the one shape a coverage threshold
+     reports as healthy.
 
-  it('takes the initials of whoever is signed in', () => {
-    expect(monogramFor(member, '000007')).toBe('SV')
-  })
-
-  it('falls back to the end of the member number until the name is there', () => {
-    expect(monogramFor(undefined, '000007')).toBe('07')
+     What is left is the only question the function still answers, and the case that would
+     have told us the branch was dead is `components/oneFace.test.ts`, which asks which modules
+     reach the two that make a member's circle. */
+  it('takes the end of whatever identifies an account, until a name is there', () => {
+    expect(monogramFor('000007')).toBe('07')
+    /* An account id rather than a member number, which is the other thing the header hands
+       it: the two are different numbers and this function may not care which. */
+    expect(monogramFor('41')).toBe('41')
   })
 })
 
@@ -183,6 +174,25 @@ describe('the account menu', () => {
 
     await user.click(button)
     expect(await panelOf('Otvori nalog').findByText('Strahinja Vukićević')).toBeVisible()
+  })
+
+  it('shows the approved photograph of whoever is signed in, and not the monogram', async () => {
+    /* 000003 rather than the fixture's first member: a header that drew the first
+       competitor's picture whoever was signed in would still show Vladan's square here,
+       since 000007 above never exercises this branch at all (his photo is null). Written
+       because a mutation survived: this call site had no case of its own for the picture
+       arriving (`app/AccountMenu.tsx` is the one PDL P28f names by name), so a mutation
+       that left the header drawing the monogram of a member who really has an approved
+       portrait passed the whole suite. */
+    renderAt('/sr', 'competitor', '000003')
+
+    const button = await screen.findByRole('button', { name: 'Otvori nalog' })
+
+    expect(must(button.querySelector('img'), 'the portrait in the account button')).toHaveAttribute(
+      'src',
+      '/mock/photo/andjelija.svg',
+    )
+    expect(button).not.toHaveTextContent('AV')
   })
 
   it('falls back to the member number when there is no such member', async () => {
