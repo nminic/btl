@@ -49,6 +49,8 @@ const competitor = (memberNumber: string): Competitor => ({
   teamSince: null,
   profileHidden: false,
   birthdayShown: 'none',
+  photo: null,
+  crop: null,
   bio: '',
 })
 
@@ -191,9 +193,12 @@ describe('TopTen', () => {
     ])
   })
 
-  /* The circle is the face until there are photographs. Two things it has to
-     do: carry that person's initials, and carry a colour that is theirs and not
-     everybody's. Both survived being taken away. */
+  /* The circle of a member who has sent no photograph, which is thirty of the
+     thirty two served members. Two things it has to do: carry that person's
+     initials, and carry a colour that is theirs and not everybody's. Both
+     survived being taken away. What the OTHER form of the circle does with an
+     approved portrait is measured where the circle is, in
+     `components/portrait.test.tsx`. */
   it('gives each face its own initials and its own colour', () => {
     const { container } = renderWidget(
       <TopTen competitors={competitors} results={[]} season={2027} gender="M" />,

@@ -457,6 +457,21 @@ class RightsAtTheDoorTest {
 					   with a team-mate who is genuinely in the team and a moderator who
 					   genuinely holds a right that is not this one. */
 					"DELETE /api/teams/{id}",
+					/* A MEMBER'S OWN CHOICE OF CATEGORY, ADDED 27.09.2026. Here for the reason
+					   `PUT /api/me/notifications` is: no box the superadmin ticks decides it,
+					   because choosing which category one runs in is not a privilege anybody
+					   grants but a consequence of being a member (PDL P7, owner 26.09.2026:
+					   „Clan je nov, uplatio je clanarinu (ili nije), ali moze da bira u koju ce
+					   kategoriju"). What decides is the session, inside the handler, and whether
+					   the account behind it names a member at all.
+
+					   AND WHAT THIS FLOOR DOES NOT SAY ABOUT THESE TWO, named here rather than
+					   left to be read into the list. „Every signed in account may call them" is
+					   true of the door and not of the answer: an account with no member behind it
+					   is refused 404 by both verbs, and the PUT refuses a caller whose own
+					   deadline of 1 January 10:00 has passed with 409. `MeCategoryApiTest` and
+					   `MeCategoryWriteApiTest` hold those halves. */
+					"GET /api/me/category", "PUT /api/me/category",
 					"ANY /error");
 
 	private static final String HOLDS_THE_FIRST = "prvo-pravo@primer.rs";

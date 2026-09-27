@@ -1,7 +1,16 @@
 /* Faces.
-   A circle of the member's own colour carrying their initials, until there are
-   photographs to put in it. The empty one holds a place the league has not
-   filled yet, so a board is the same height all season.
+   The approved photograph in a circle, or a circle of the member's own colour
+   carrying their initials where there is none. Both shapes are permanent: most
+   members have sent nothing, so the monogram is not a placeholder waiting for a
+   picture (components/Portrait.tsx, and PDL P28f of 26.09.2026 for the day the
+   picture arrived). The empty one holds a place the league has not filled yet,
+   so a board is the same height all season.
+
+   What cuts a photograph to the square the member chose is `.crop-fitted` in
+   components/Crop.css, not this file: the same three declarations draw a
+   member's face and a team's logo, and one home for them is the whole point
+   (ADL A7). Nothing about a photograph is written here, which is why this sheet
+   gained no rule the day the portrait arrived.
 
    A shared building block, so the name is bare and this is its one definition
    (ADL A7). It was written as `.home .portrait` while the front page was the

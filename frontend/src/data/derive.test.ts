@@ -61,6 +61,8 @@ const competitor = (memberNumber: string, extra: Partial<Competitor> = {}): Comp
   teamSince: null,
   profileHidden: false,
   birthdayShown: 'none',
+  photo: null,
+  crop: null,
   bio: '',
   ...extra,
 })

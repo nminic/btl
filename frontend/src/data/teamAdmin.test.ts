@@ -48,6 +48,8 @@ const member = (
   teamSince,
   profileHidden: false,
   birthdayShown: 'none',
+  photo: null,
+  crop: null,
   bio: '',
 })
 
