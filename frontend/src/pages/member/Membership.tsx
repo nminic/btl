@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
+import { CopyField } from '../../components/CopyField'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
 import { bestOfficialSeason } from '../../data/derive'
@@ -12,6 +12,7 @@ import { useResults } from '../../data/useResource'
 import {
   ipsPayload,
   methodsFor,
+  PAYPAL_ADDRESS,
   paysInDinars,
   paymentPurpose,
   paymentReference,
@@ -29,7 +30,7 @@ import {
   pricedInBoth,
 } from '../../data/priceList'
 import { combineResources, usePricing, useTeams } from '../../data/useResource'
-import { money } from '../../i18n/format'
+import { formatNumber, money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useMemberScreen } from './memberScreen'
 import './Member.css'
@@ -181,28 +182,6 @@ export function Membership() {
      and the copy button needs the exact same string the paragraph prints. Built twice
      it could say two different things; built once, both read the one variable. */
   const referralLink = `${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`
-
-  /* WHAT THE COPY BUTTON SAYS AFTER IT IS PRESSED, in the portal's own shape for a
-     quiet confirmation (`admin/AdminPricing.tsx`, `said`/`setSaid`): one string,
-     empty until something happens, read out by an `aria-live` region that is in the
-     page from the first render rather than mounted on demand - a region added only
-     after the fact can miss its own first announcement.
-
-     `navigator.clipboard` both CAN BE ABSENT (older browsers, a page not served over
-     https) and CAN REFUSE (a user or a browser policy denying the permission), and
-     the two look the same from here: a rejected promise either way. Both get a
-     sentence on screen, per WCAG 2.2 AA - neither leaves the member pressing a
-     button that answers nothing. */
-  const [copyStatus, setCopyStatus] = useState('')
-
-  async function copyReferralLink(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(referralLink)
-      setCopyStatus(t('membership.linkCopied'))
-    } catch {
-      setCopyStatus(t('membership.copyFailed'))
-    }
-  }
 
   if (who.memberNumber === null) {
     return who.instead
@@ -388,6 +367,20 @@ export function Membership() {
            31.07.2026). */
         const purpose = paymentPurpose(nextSeason)
         const reference = paymentReference(nextSeason, memberNumber)
+        /* WHAT A MEMBER ABROAD ACTUALLY SENDS THROUGH PAYPAL, fee included (owner,
+           27.09.2026: „cena ostaje 35, clan salje 38, a taksa se vidi kao svoj red").
+           The same `due` row the slip above already quotes, plus the same processing
+           fee the sentence above the slip already quotes to everybody - never the
+           junior row: nothing on the record can tell this member apart from an adult
+           (the 13.09.2026 boundary the slip already lives with, `juniorInSeason`
+           comment above), so PayPal reads the one price this screen can actually
+           stand behind, exactly as the slip does.
+
+           A list of none or one, like every other amount on this screen: `due` is
+           empty where the served price list has a gap, so an answer with a hole in it
+           draws no PayPal amount rather than one built around a figure nobody sent -
+           the same rule `membership.renew` above is now held to as well. */
+        const paypalTotal = due.flatMap((row) => processing.map((fee) => row.eur + fee.eur))
 
         return (
           <div className="member">
@@ -561,17 +554,25 @@ export function Membership() {
                       ONLY WHERE THE DATA IT POINTS AT REALLY FOLLOWS, since 27.09.2026
                       (review, PR 385). It read unconditionally until then, and it promises in
                       words: „Podatke za uplatu vidiš u nastavku." What follows two screens down
-                      is the slip, gated on the exact same two facts this reads here -
-                      `methods.includes('ips')` (PDL P8: no IPS code outside Serbia) and a `due`
-                      that actually holds a row. A member abroad met the sentence and then the
-                      PayPal heading with no recipient, no account, no amount and no reference
-                      under it; a `due` emptied by a gap in the served price list would have
-                      left the same promise standing over nothing for a member in Serbia too.
-                      Both are the one fault the comment above already names for a control that
-                      does nothing (PDL.md:1659): a sentence pointing at data that is not there
-                      is worse than no sentence. Read off the same two facts the slip below
-                      reads rather than a copy of them, so the two cannot drift apart. */}
-                  {methods.includes('ips') && due.length > 0 && (
+                      used to be the slip alone, drawn only for `methods.includes('ips')`, so a
+                      member abroad met this sentence and then a PayPal heading with no
+                      recipient, no account, no amount and no reference under it.
+
+                      GATED ON `due.length > 0` ALONE NOW, AND NOT ON THE COUNTRY TOO, since the
+                      PayPal account arrived the same day (owner, 27.09.2026, PDL „Plaćanje iz
+                      inostranstva: PayPal"): whichever of the two ways to pay this member has,
+                      real data now follows the sentence either way - the slip for
+                      `methods.includes('ips')`, the PayPal address/amount/note for
+                      `methods.includes('paypal')` - and `methodsFor` never answers with neither
+                      (`data/paymentQr.ts`). What still has to be true is that `due` actually
+                      holds a row: a gap in the served price list draws no slip AND no PayPal
+                      amount, and would leave the same promise standing over nothing for
+                      EITHER country. This is the one fault the comment above already names for
+                      a control that does nothing (PDL.md:1659): a sentence pointing at data
+                      that is not there is worse than no sentence. Read off the same fact the
+                      slip and the PayPal block below read rather than a copy of it, so the
+                      three cannot drift apart. */}
+                  {due.length > 0 && (
                     <p className="member__note">{t('membership.renew')}</p>
                   )}
 
@@ -691,6 +692,64 @@ export function Membership() {
                     <div className="pay">
                       <h4>{t('membership.paypal')}</h4>
                       <p className="member__note">{t('membership.paypalNote')}</p>
+
+                      {/* LAYER 1 OF „PLAĆANJE IZ INOSTRANSTVA: PAYPAL" (owner, 27.09.2026):
+                          the address, the fee-inclusive amount and the note, written out to
+                          be copied - it needs nothing PayPal might refuse, and works from the
+                          first day. Layer 2 is a link that would carry these three as one
+                          press (`paypalPaymentLink`, data/paymentQr.ts); it is prepared and
+                          not drawn here, because whether the owner's own account still takes
+                          PayPal's classic hosted button is a fact about PayPal's side this
+                          portal cannot measure, and he is trying it on his own account first.
+
+                          AND ONLY WHERE THERE IS AN AMOUNT TO PUT ON IT, the same walk of the
+                          list of none or one the slip above is held to, for the same reason:
+                          a gap in the served price list is a state this side cannot rule out,
+                          and an address with no amount beside it is an instruction with a
+                          hole in it. */}
+                      {paypalTotal.map((amount) => (
+                        <div className="pay__slipText" key="paypal-payment">
+                          <dl className="pay__details">
+                            <dt>{t('membership.toWhom')}</dt>
+                            <dd>{RECIPIENT_NAME}</dd>
+                          </dl>
+
+                          <CopyField
+                            label={t('membership.paypalAddressLabel')}
+                            value={PAYPAL_ADDRESS}
+                            copyButtonLabel={t('membership.paypalCopyAddress')}
+                            copiedMessage={t('membership.paypalAddressCopied')}
+                            failedMessage={t('membership.paypalAddressCopyFailed')}
+                          />
+
+                          {/* Two decimals always, the way a currency amount is written and
+                              not the way `inTheirCurrency` rounds a whole number for
+                              reading: this figure is typed into a PayPal amount field
+                              rather than read off a sentence, so it is the same shape the
+                              QR payload already forces on the Serbian figure
+                              (`ipsAmount`, data/paymentQr.ts). */}
+                          <CopyField
+                            label={t('membership.paypalAmountLabel')}
+                            value={formatNumber(amount, locale, 2)}
+                            copyButtonLabel={t('membership.paypalCopyAmount')}
+                            copiedMessage={t('membership.paypalAmountCopied')}
+                            failedMessage={t('membership.paypalAmountCopyFailed')}
+                          />
+
+                          {/* The same reference the Serbian slip uses (`paymentReference`,
+                              data/paymentQr.ts) and not a second computation of it: the
+                              owner's own words for this decision were „isti oblik kao poziv
+                              na broj za Srbiju", and reading the one variable both screens
+                              already hold is what keeps the two from drifting apart. */}
+                          <CopyField
+                            label={t('membership.paypalNoteLabel')}
+                            value={reference}
+                            copyButtonLabel={t('membership.paypalCopyNote')}
+                            copiedMessage={t('membership.paypalNoteCopied')}
+                            failedMessage={t('membership.paypalNoteCopyFailed')}
+                          />
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -780,44 +839,18 @@ export function Membership() {
                   Written out because a `${undefined}` in an address is a link a reader
                   would copy and send on, and the empty string is a link that plainly
                   does not work rather than one that looks as if it might. */}
-              <p className="pay__payload">
-                <span className="pay__link">{referralLink}</span>
-                {/* The graphic at the end of the box (owner, 26.09.2026), never on its
-                    own: an icon with no name is a button a screen reader announces as
-                    just „button", so the name it needs is here (`aria-label`) rather
-                    than left to the picture, per WCAG 2.2 AA. What it does on either
-                    outcome is said below, not just here. */}
-                <button
-                  type="button"
-                  className="copyLink"
-                  aria-label={t('membership.copyReferralLink')}
-                  onClick={() => {
-                    void copyReferralLink()
-                  }}
-                >
-                  <svg className="copyLink__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                    <rect x="7.5" y="7.5" width="9" height="9" rx="1.5" />
-                    <path d="M4.5 12.5h-1a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v1" />
-                  </svg>
-                </button>
-              </p>
-              {/* SEEN AND NOT ONLY HEARD, since 27.09.2026 (review, PR 385). It borrowed
-                  `admin/AdminPricing.tsx`'s shape for a confirmation until then
-                  (`visually-hidden`, `said`), and that shape carries its own condition,
-                  written on it there: „the table beside it has already changed, and a
-                  reader who is not looking at it gets the one sentence that says so." That
-                  holds on `AdminPricing` because the table's own cell changes where a
-                  sighted reader is already looking. It does not hold here: pressing this
-                  button changes nothing else on the screen, so a sighted member who presses
-                  it and reads nothing has no way to tell a copy that succeeded from one the
-                  browser silently refused, and on failure reads nothing while believing the
-                  link is on their clipboard. `aria-live="polite"` is kept so a screen reader
-                  still hears it, present from the first render and empty until pressed, so
-                  the first real change is not the region's own first mount - a live region
-                  that only exists once there is something to say can miss saying it. */}
-              <p aria-live="polite" className="member__note">
-                {copyStatus}
-              </p>
+              {/* The copy button and its confirmation, in the one shape the whole portal
+                  now uses for a value a member copies by hand (`components/CopyField.tsx`,
+                  pulled out of this exact spot on 27.09.2026 when the PayPal fields below
+                  needed the same shape). No label: the heading and the sentence above
+                  already say what the box holds, and a label repeating that would be the
+                  same fact said twice. */}
+              <CopyField
+                value={referralLink}
+                copyButtonLabel={t('membership.copyReferralLink')}
+                copiedMessage={t('membership.linkCopied')}
+                failedMessage={t('membership.copyFailed')}
+              />
               {credited.map((row) => (
                 <p className="membership__balance" key={row.key}>
                   <strong>
