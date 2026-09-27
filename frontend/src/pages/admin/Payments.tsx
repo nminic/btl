@@ -21,6 +21,7 @@ import { matching } from './paymentSearch'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import '../member/Member.css'
+import './Activation.css'
 import './Verification.css'
 
 /** Where the search box is, so its label points at it. */
@@ -188,8 +189,21 @@ function Row({
       <td className="activate__expected">{inHisCurrency(one.expected)}</td>
 
       <td>
-        <label className="rankings__field" htmlFor={amountId}>
-          <span>{t('verification.paid')}</span>
+        {/* THE LABEL IS A SIBLING OF THE FIELD AND NOT ITS PARENT, AND THE CURRENCY IS IN THE
+            LABEL'S OWN WORDS. Measured, not preferred: with the currency mark standing INSIDE the
+            label, the label's text became „Uplaćeno EUR" whatever `aria-hidden` said about the
+            mark, so the field had no name anybody could ask for by name - and a test querying it
+            by label could not find it, which is the same thing a screen reader would report.
+
+            AND THE CURRENCY BELONGS IN THE NAME rather than only beside the box. „Uplaćeno" alone
+            leaves a reader who cannot see the mark typing an amount into a field whose currency he
+            has not been told, on a screen where the other five rows may be in the other one. The
+            mark stays as well, `aria-hidden`, because it is the same fact drawn for the eye where
+            the eye is looking (WCAG 2.2 AA, 3.3.2). */}
+        <div className="rankings__field">
+          <label htmlFor={amountId}>
+            {t('verification.paidIn', { currency: one.currency })}
+          </label>
           <span className="activate__amount">
             <input
               id={amountId}
@@ -208,14 +222,13 @@ function Row({
               onChange={(event) => setTyped(event.target.value)}
             />
             {/* The currency beside the field, which is the owner's „Prazno polje sa oznakom
-                valute pored njega". `aria-hidden` because the label above already says which
-                amount this is and the mark would otherwise be read as part of the value; the
-                whole pair is said out loud in the prompt, where the decision is taken. */}
+                valute pored njega". `aria-hidden` because the label already carries the same word,
+                so read out it would be said twice about one field. */}
             <span className="activate__mark" aria-hidden="true">
               {one.currency}
             </span>
           </span>
-        </label>
+        </div>
 
         {read.got === 'refused' ? (
           <p className="activate__wrong" id={wrongId}>

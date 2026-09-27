@@ -187,7 +187,15 @@ describe('activating a membership from the payments screen', () => {
       expect(within(row).getByText('43,50 EUR')).toBeVisible()
 
       /* The field, found BY ITS LABEL and never by a class, and empty to begin with. */
-      const field = within(row).getByLabelText('Uplaćeno')
+      /* ASKED FOR BY THE NAME IT REALLY HAS, and the currency is part of that name: a reader
+         who cannot see the mark beside the box would otherwise be typing an amount into a field
+         whose currency nobody told him, on a screen where the other five rows may be in the
+         other one. */
+      /* ASKED FOR BY THE NAME IT REALLY HAS, and the currency is part of that name: a reader
+         who cannot see the mark beside the box would otherwise be typing an amount into a field
+         whose currency nobody told him, on a screen where the other five rows may be in the
+         other one. */
+      const field = within(row).getByLabelText('Uplaćeno (EUR)')
 
       expect(field).toHaveValue('')
 
@@ -245,10 +253,14 @@ describe('activating a membership from the payments screen', () => {
       const mine = await rowOf('Petar Marko')
       const other = await rowOf('Jovana Ilić')
 
-      await user.type(within(mine).getByLabelText('Uplaćeno'), '40')
+      await user.type(within(mine).getByLabelText('Uplaćeno (EUR)'), '40')
       await user.click(within(mine).getByLabelText('uključi balans (12,75 EUR)'))
 
-      expect(within(other).getByLabelText('Uplaćeno')).toHaveValue('')
+      /* AND THE OTHER ROW'S FIELD IS ASKED FOR BY ITS OWN NAME, which is „Uplaćeno (RSD)"
+         because Jovana is billed in dinars. So this case also holds the currency being per ROW: a
+         screen writing one currency into every label would have only one name here and this line
+         would find the wrong field or none. */
+      expect(within(other).getByLabelText('Uplaćeno (RSD)')).toHaveValue('')
       expect(within(other).getByLabelText('uključi balans (6.000 RSD)')).toBeChecked()
 
       server.stop()
@@ -272,7 +284,7 @@ describe('activating a membership from the payments screen', () => {
 
       const row = await rowOf('Petar Marko')
 
-      await user.type(within(row).getByLabelText('Uplaćeno'), '4.800')
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '4.800')
 
       const said = within(row).getByText(
         'Iznos unesi ciframa, sa najviše dve decimale i bez razdvajanja hiljada.',
@@ -282,8 +294,8 @@ describe('activating a membership from the payments screen', () => {
 
       /* THE SENTENCE IS TIED TO THE FIELD AND NOT MERELY NEAR IT. Without that a screen reader
          announces a field with no hint of why it was refused. */
-      expect(within(row).getByLabelText('Uplaćeno')).toHaveAccessibleDescription(said.textContent ?? '')
-      expect(within(row).getByLabelText('Uplaćeno')).toBeInvalid()
+      expect(within(row).getByLabelText('Uplaćeno (EUR)')).toHaveAccessibleDescription(said.textContent ?? '')
+      expect(within(row).getByLabelText('Uplaćeno (EUR)')).toBeInvalid()
       expect(within(row).getByRole('button', { name: 'Aktiviraj' })).toBeDisabled()
 
       server.stop()
@@ -297,7 +309,7 @@ describe('activating a membership from the payments screen', () => {
       renderAt(ADDRESS, 'superadmin')
 
       const row = await rowOf('Petar Marko')
-      const field = within(row).getByLabelText('Uplaćeno')
+      const field = within(row).getByLabelText('Uplaćeno (EUR)')
 
       await user.type(field, 'nesto')
       expect(
@@ -340,7 +352,7 @@ describe('activating a membership from the payments screen', () => {
 
       const row = await rowOf('Petar Marko')
 
-      await user.type(within(row).getByLabelText('Uplaćeno'), typed)
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), typed)
 
       expect(within(row).getByRole('button', { name: 'Aktiviraj' })).toBeDisabled()
 
@@ -358,7 +370,7 @@ describe('activating a membership from the payments screen', () => {
 
       const row = await rowOf('Petar Marko')
 
-      await user.type(within(row).getByLabelText('Uplaćeno'), '43,50')
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43,50')
       await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
 
       expect(grantsIn(server.asked)).toEqual([])
@@ -383,7 +395,7 @@ describe('activating a membership from the payments screen', () => {
 
         const row = await rowOf('Petar Marko')
 
-        await user.type(within(row).getByLabelText('Uplaćeno'), typed)
+        await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), typed)
         await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
 
         /* Petar's balance is short of his fee, so this is the owner's case 5 and the second
@@ -742,29 +754,56 @@ describe('activating a membership from the payments screen', () => {
      * `pages/account/NewPassword`, and neither stands on this screen - so there is no hint here
      * for a press to reach. Both halves are set out on `components/Prompt.tsx`.
      */
-    it('stops Escape from reaching the menus in the header', async () => {
+    it('stops Escape from reaching a bubble-phase listener on the document', async () => {
+      /* WHAT THIS PROTECTS, NAMED: `app/LanguageMenu.tsx`, `app/Dropdown.tsx` (which is the
+         account and the messages menus) and `forms/DatePicker.tsx` all listen for Escape on the
+         DOCUMENT in the BUBBLE phase, and every one of them treats it as „close me". The language
+         menu is in `app/Shell.tsx`, so it is on the same page as this sheet always. Without the
+         press being stopped, one Escape answering this question would also shut a menu the reader
+         had left open behind it, and he would have to find it again to see why.
+
+         MEASURED ON THE MECHANISM AND NOT ON THE MENU, and the first draft of this case is why.
+         It opened the language menu, then clicked „Aktiviraj" - and that click is itself a press
+         OUTSIDE the menu, which the menu closes on. So the menu was already shut before Escape
+         was ever pressed, and the case passed or failed on something it was not about. A listener
+         of this test's own, registered exactly as the menus register theirs, cannot be closed by
+         anything else on the way.
+
+         AND THE OTHER HALF IS THE MEASURED BOUNDARY: a CAPTURE-phase listener on the document
+         DOES hear it, because by construction it runs before anything inside the sheet. That is
+         `forms/FieldHint.tsx`, and it costs nothing today - `FieldHint` is drawn only by
+         `forms/FormRenderer` and `pages/account/NewPassword`, neither of which stands on this
+         screen. Asserted rather than merely written down, so the day somebody makes the sheet
+         stop the press in the capture phase, this says where the reason went. */
+      const bubbled: string[] = []
+      const captured: string[] = []
+      const onBubble = (pressed: KeyboardEvent) => bubbled.push(pressed.key)
+      const onCapture = (pressed: KeyboardEvent) => captured.push(pressed.key)
+
+      document.addEventListener('keydown', onBubble)
+      document.addEventListener('keydown', onCapture, true)
+
       const server = serving()
       const user = setupUser()
-      renderAt(ADDRESS, 'superadmin')
 
-      const row = await rowOf('Ana Ilić')
+      try {
+        renderAt(ADDRESS, 'superadmin')
 
-      /* The language menu, open and standing behind the sheet. */
-      const menu = screen.getByRole('button', { name: /jezik|Srpski|Language/i })
+        const row = await rowOf('Ana Ilić')
 
-      await user.click(menu)
-      expect(menu).toHaveAttribute('aria-expanded', 'true')
+        await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+        await screen.findByRole('dialog')
+        await user.keyboard('{Escape}')
 
-      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
-      await screen.findByRole('dialog')
-      await user.keyboard('{Escape}')
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
-      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-
-      /* THE MENU IS STILL OPEN, which is the whole of this case. */
-      expect(menu).toHaveAttribute('aria-expanded', 'true')
-
-      server.stop()
+        expect(bubbled).toEqual([])
+        expect(captured).toEqual(['Escape'])
+      } finally {
+        document.removeEventListener('keydown', onBubble)
+        document.removeEventListener('keydown', onCapture, true)
+        server.stop()
+      }
     })
   })
 

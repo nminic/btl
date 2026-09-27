@@ -1421,6 +1421,7 @@
     "paymentsNoSearchHit": "Nijedan nalog ne odgovara ovoj pretrazi.",
     "expected": "Očekivan iznos",
     "paid": "Uplaćeno",
+    "paidIn": "Uplaćeno ({currency})",
     "balanceColumn": "Balans",
     "activate": "Aktiviraj",
     "amountNotRead": "Iznos unesi ciframa, sa najviše dve decimale i bez razdvajanja hiljada.",

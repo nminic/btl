@@ -1421,6 +1421,7 @@
     "paymentsNoSearchHit": "No account matches this search.",
     "expected": "Expected amount",
     "paid": "Paid in",
+    "paidIn": "Paid in ({currency})",
     "balanceColumn": "Balance",
     "activate": "Activate",
     "amountNotRead": "Type the amount in figures, with at most two decimals and no thousands separator.",

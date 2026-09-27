@@ -123,21 +123,32 @@ export function Prompt({
     /* THE FOCUS CANNOT LEAVE, which is what „modal" means for somebody who is not using a
        mouse. Without it, Tab walks out into the table behind and the reader is answering a
        question while standing somewhere the question is not. Read at the moment of the press
-       rather than kept, because what is focusable in here changes with the prompt. */
-    const inside = sheet.current?.querySelectorAll<HTMLElement>('[data-prompt-first], button')
+       rather than kept, because what is focusable in here changes with the prompt.
 
-    if (inside === undefined || inside.length === 0) {
+       THE BUTTONS ONLY, AND THE HEADING IS DELIBERATELY NOT AMONG THEM. Measured rather than
+       reasoned: the heading carries `tabIndex={-1}`, so it can be focused by this component but
+       is NOT in the browser's tab order. Written as „the first thing in the sheet", the backward
+       wrap compared the focus against the heading and therefore never fired from the first
+       BUTTON - so Shift+Tab off it walked out of the sheet and landed on the „Aktiviraj" that
+       opened it, which is exactly the fault this guard exists to prevent. The forward wrap
+       happened to work, which is what made it look right. */
+    const buttons = sheet.current?.querySelectorAll<HTMLElement>('button')
+
+    if (buttons === undefined || buttons.length === 0) {
       return
     }
 
-    const first = inside[0]
-    const last = inside[inside.length - 1]
+    const first = buttons[0]
+    const last = buttons[buttons.length - 1]
 
     if (first === undefined || last === undefined) {
       return
     }
 
-    if (pressed.shiftKey && document.activeElement === first) {
+    /* Backwards off the first button, and backwards off the HEADING as well: the sheet opens
+       with the focus there, so Shift+Tab as the very first press is an ordinary thing to do and
+       there is nothing before it inside the sheet. */
+    if (pressed.shiftKey && (document.activeElement === first || document.activeElement === sheet.current?.firstElementChild)) {
       pressed.preventDefault()
       last.focus()
     } else if (!pressed.shiftKey && document.activeElement === last) {

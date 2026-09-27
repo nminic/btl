@@ -1,0 +1,103 @@
+/*
+ * THE ACTIVATION CONTROLS IN A ROW OF THE PAYMENTS SCREEN.
+ *
+ * Its own file rather than more rules in `Verification.css`, which is the verification queue's
+ * `.pending__*` and is being edited on other branches this week. A new file has no line anybody
+ * else is touching, which is worth more here than keeping the count of files down.
+ *
+ * Mobile-first, like every other stylesheet here: the rules without a query are the narrow ones.
+ * The table itself sits in `.table-scroll`, which is the portal's own answer to a wide table and
+ * says so in `styles/table.css`: „Wide tables scroll inside their own box. The page body never
+ * scrolls sideways, which is a hard rule on this portal." So the job of this file is to keep each
+ * cell from being wider than it has to be, not to make the table fit.
+ */
+
+/* The expected amount, which the moderator compares against a bank statement by eye. Tabular
+   figures so the digits of six rows line up in a column and a wrong order of magnitude is
+   visible rather than having to be read. */
+.activate__expected {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* The field and the currency mark, which the owner asked to stand beside it. */
+.activate__amount {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.activate__field {
+  /* 7ch takes „4.800,00" and no more. A field sized in characters rather than in rem stays right
+     when somebody enlarges the text, which WCAG 2.2 AA asks for (1.4.4). */
+  inline-size: 7ch;
+  min-inline-size: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.activate__mark {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* THE SENTENCE WHEN THE FIELD CANNOT BE READ.
+ *
+ * `--danger` and never colour alone: the message is words, and the colour is the second signal
+ * rather than the only one (WCAG 2.2 AA, 1.4.1). It is the SAME token the statement's own refusal
+ * uses on this very screen (`Verification.css`, `.statement__refused`), so one screen does not
+ * have two reds - and the token was read out of `styles/tokens.css` rather than guessed at, which
+ * is how the first draft's `--danger-ink` was caught: there is no such custom property, so the
+ * rule would have been silently ignored and the sentence drawn in the ordinary text colour. */
+.activate__wrong {
+  margin: var(--space-6) 0 0;
+  max-inline-size: 22ch;
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
+/* The tick box and the amount it carries. The label is the hit area, which is what a real
+   `<label>` gives, and it wraps rather than pushing the row wider. */
+.activate__balance {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  max-inline-size: 18ch;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.activate__balance input {
+  /* Kept from shrinking with the text beside it, and big enough to be hit with a thumb: 2.75rem
+     is the 44px WCAG 2.2 asks of a target (2.5.8), carried by the label around it. */
+  flex: 0 0 auto;
+  margin-block-start: var(--space-2);
+}
+
+/* What the server said, under the button it was pressed on. A live region that is always in the
+   page, so it has no height of its own while it is empty. */
+.activate__said:empty {
+  display: none;
+}
+
+.activate__said {
+  margin-block-start: var(--space-8);
+  max-inline-size: 26ch;
+  font-size: 0.8rem;
+}
+
+/* The cells hold controls rather than words, so they sit at the top of a row whose name and town
+   may wrap to two lines. Without this the field floats in the middle of a tall row and stops
+   lining up with the fields above and below it. */
+.activate td {
+  vertical-align: top;
+}
+
+/* Wider screens have room for the box and its amount on one line, which is where the Serbian
+   „uključi balans (4.800 RSD)" stops wrapping. */
+@media (min-width: 64rem) {
+  .activate__balance {
+    max-inline-size: none;
+    white-space: nowrap;
+  }
+}
