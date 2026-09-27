@@ -38,6 +38,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -428,6 +429,126 @@ class MePhotoApiTest {
 	}
 
 	/* ------------------------------------------------------------------------------------
+	   WHAT PDL 21b AND 21c NEED READ BACK: THE ROW ITSELF, ITS PLACE, AND ITS PICTURE.
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * The key of the queue row this member's picture is waiting in.
+	 *
+	 * <p>Read back so that „gazi trenutan red" can be measured as the owner wrote it: the row is
+	 * REPOINTED, so this number must be the same before and after. A case that only counted rows
+	 * would pass against a route that deleted one and opened another, which is the shape his
+	 * boundary does not describe.
+	 */
+	private long theQueueRowOf(String memberNumber) {
+		return db.sql("select v.id from verification v where v.state = 'waiting'"
+						+ " and v.photo_id is not null and v.queue = ? and v.competitor_id ="
+						+ " (select id from competitor where member_number = ?)"
+						+ " order by v.raised_at, v.id")
+				.params(THE_PROFILES_TAB, memberNumber).query(Long.class).single();
+	}
+
+	/** And where it stands in the queue, which V9 orders by and a repoint must not move. */
+	private Instant theQueuePlaceOf(String memberNumber) {
+		return db.sql("select v.raised_at from verification v where v.id = ?")
+				.param(theQueueRowOf(memberNumber)).query(Instant.class).single();
+	}
+
+	/** The picture that row is about, which is what an overwrite takes away. */
+	private long theWaitingPhotoOf(String memberNumber) {
+		return db.sql("select v.photo_id from verification v where v.id = ?")
+				.param(theQueueRowOf(memberNumber)).query(Long.class).single();
+	}
+
+	private long howManyPhotoRows() {
+		return db.sql("select count(*) from photo").query(Long.class).single();
+	}
+
+	/**
+	 * The three fractions on one picture, moved so that two pictures of one member differ.
+	 *
+	 * <p>Every row {@code picture()} writes carries the same crop, so a case that read the
+	 * waiting circle out of an answer would be satisfied by the standing one. This is what
+	 * separates the two axes.
+	 */
+	private void cropOf(long photo, String x, String y, String size) {
+		db.sql("update photo set crop_x = cast(? as numeric), crop_y = cast(? as numeric),"
+						+ " crop_diameter = cast(? as numeric) where id = ?")
+				.params(x, y, size, photo).update();
+	}
+
+	/** A file for a fixture row, which the fixture does not write and two cases need. */
+	private void aFileFor(long photo) throws Exception {
+		Files.createDirectories(Path.of(folder));
+		Files.write(fileOf(photo), aJpeg("fajl koji je fikstura izostavila"));
+	}
+
+	/**
+	 * A send carrying the three fractions and NO FILE PART AT ALL, which is PDL 21c's second
+	 * half: „ili da pomerim krug da gadja drugi deo slike".
+	 */
+	private MockHttpServletResponse sendingOnlyTheCircle(String memberNumber, String x, String y,
+			String size) throws Exception {
+
+		return http.perform(multipart("/api/me/photo").with(csrf())
+						.param("cropX", x).param("cropY", y).param("cropSize", size)
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse();
+	}
+
+	/** What PDL 21b's screen asks on load, which is the read that did not exist before. */
+	private MockHttpServletResponse askingForMine(String memberNumber) throws Exception {
+		return http.perform(get("/api/me/photo")
+						.cookie(new Cookie(SessionCookie.NAME, cookieOf(memberNumber))))
+				.andReturn().getResponse();
+	}
+
+	/**
+	 * A CIRCLE AS THE SERVER WROTE IT, read off the TEXT and never through a parser.
+	 *
+	 * <p><b>Measured rather than preferred, and {@code TeamApiTest} names the same trap for the
+	 * same field.</b> The crop is {@code numeric(9,8)}, so what the server writes is
+	 * {@code 0.12500000}; Jackson's reader turns a JSON number into a {@code double} unless it is
+	 * told otherwise, and a {@code double} of that value comes back out of {@code asString} as
+	 * {@code 0.125}. So an assertion made through the parsed tree measures the PARSER and would go
+	 * on passing against a route that had dropped the scale the column is declared with - which is
+	 * the whole of what V21 says the declared scale is for: „what the member chose is what is
+	 * stored and what is read back, byte for byte".
+	 */
+	private static String theCircleWrittenIn(MockHttpServletResponse answer, String half)
+			throws Exception {
+
+		String whole = answer.getContentAsString();
+		String from = "\"" + half + "\":{";
+		int at = whole.indexOf(from);
+
+		assertThat(at)
+				.as("the answer carries no „%s\" half at all, so there is nothing here to read a"
+						+ " circle out of: %s", half, whole)
+				.isNotNegative();
+
+		int crop = whole.indexOf("\"crop\":", at);
+
+		return whole.substring(crop, whole.indexOf('}', crop) + 1);
+	}
+
+	/**
+	 * A moderator taking V28's hold on one queue row, which is the fact the owner's boundary
+	 * about „red mu se promeni pod rukom" is really about.
+	 */
+	private void aModeratorHolds(long queueRow) {
+		db.sql("insert into verification_lock (verification_id, held_by, held_until) values"
+						+ " (?, (select id from account where email = ?), now() + interval"
+						+ " '15 minutes')")
+				.params(queueRow, MODERATOR_WHO_DOES_NOT_RACE).update();
+	}
+
+	private long howManyHoldsOn(long queueRow) {
+		return db.sql("select count(*) from verification_lock where verification_id = ?")
+				.param(queueRow).query(Long.class).single();
+	}
+
+	/* ------------------------------------------------------------------------------------
 	   SENDING ONE.
 	   ------------------------------------------------------------------------------------ */
 
@@ -553,31 +674,284 @@ class MePhotoApiTest {
 				.isEqualTo(6 + 2);
 	}
 
+	/* ------------------------------------------------------------------------------------
+	   PDL 21c: SENDING AGAIN OVERWRITES THE ROW THAT WAITS.
+	   ------------------------------------------------------------------------------------ */
+
 	/**
-	 * A SECOND PICTURE WHILE ONE IS WAITING IS REFUSED, AND THE FIRST ONE STAYS UNTOUCHED.
+	 * A SECOND PICTURE OVERWRITES THE ONE THAT WAITS, AND IS NOT REFUSED.
 	 *
-	 * <p>Derived rather than quoted, and the head of {@link MePhotoApi} says so: it is the
-	 * picture's half of the owner's decision of 19.09.2026 about the TEXT, and it is what
-	 * {@code pages/member/ProfilePicture.tsx} already does - „a second ask gives a moderator
-	 * two faces and no question to answer". His sentence of 24.09.2026 points the same way:
-	 * the member is shown his waiting picture „da je ne salje tri puta".
+	 * <p><b>Owner, PDL 21c, 27.09.2026:</b> „Ako hocu da pregazim novom ili da pomerim krug da
+	 * gadja drugi deo slike, opet se salje na verifikaciju i gazi trenutan red kod verifikatora."
+	 * Until that day this route answered 409 {@code aPictureAlreadyWaits}, and the owner met it
+	 * himself: he sent a picture twice and the second was refused.
+	 *
+	 * <p><b>THE DIGEST IS READ BACK RATHER THAN THE COUNT, because a count cannot tell an
+	 * overwrite from a refusal.</b> One row waits before and one row waits after in both worlds;
+	 * what separates them is WHICH picture that row is about. The fixture's picture and the one
+	 * sent here have different digests by construction ({@code picture()} says why), so the
+	 * assertion below fails against a route that left the first standing.
 	 */
 	@Test
-	void aSecondPictureIsRefusedWhileTheFirstStillWaits() throws Exception {
+	void aSecondPictureOverwritesTheOneThatWaits() throws Exception {
 		String wasWaiting = theWaitingRowOf(WHOSE_PICTURE_WAITS).get(6);
 
 		MockHttpServletResponse answer = sending(WHOSE_PICTURE_WAITS,
 				aJpeg("druga slika, poslata dok prva ceka"));
 
-		assertThat(answer.getStatus()).isEqualTo(409);
-		assertThat(reasonIn(answer)).isEqualTo(MePhotoApi.A_PICTURE_ALREADY_WAITS);
+		assertThat(answer.getStatus()).isEqualTo(200);
 
 		assertThat(howManyPicturesWaitFor(WHOSE_PICTURE_WAITS))
-				.as("a moderator now holds two pictures of one member and no question to answer")
+				.as("„Red ostaje jedan\", and a moderator now holds two pictures of one member")
 				.isEqualTo(1);
 		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS).get(6))
-				.as("the picture already in the queue was replaced under the moderator's hand")
-				.isEqualTo(wasWaiting);
+				.as("the row still names the picture it named before, so nothing was overwritten")
+				.isNotEqualTo(wasWaiting)
+				.isEqualTo(answerIn(answer).path("digest").asString());
+	}
+
+	/**
+	 * AND IT IS THE SAME ROW, IN THE SAME PLACE, WITH THE MODERATOR STILL HOLDING IT.
+	 *
+	 * <p><b>This is the case that says which of the two shapes „gazi" means</b>, and the owner's
+	 * own boundary is what decides it (PDL 21c): „ako clan pregazi sliku dok je moderator gleda,
+	 * RED MU SE PROMENI POD RUKOM. Po pravilu da red ostaje jedan to je prihvatljivo, ali se zna
+	 * i zapisano je." A row that was deleted and opened again does not change under anybody's
+	 * hand: it vanishes, and V28's {@code verification_lock_verification_fk} is ON DELETE CASCADE,
+	 * so the hold goes with it. Measured on a real PostgreSQL before this was written, both ways:
+	 * one hold before, one after a repoint, none after a delete.
+	 *
+	 * <p><b>And {@code raised_at} is the second half, which is not decoration.</b> V9 indexes the
+	 * queue by {@code (queue, raised_at)} and every reader orders by it, so a row opened afresh
+	 * would send a member who moves his circle to the BACK of the queue each time. Keeping the row
+	 * keeps his place, and that follows from the choice rather than being a separate decision.
+	 */
+	@Test
+	void theOverwrittenRowIsTheSameRowInTheSamePlaceAndStillHeld() throws Exception {
+		long row = theQueueRowOf(WHOSE_PICTURE_WAITS);
+		Instant place = theQueuePlaceOf(WHOSE_PICTURE_WAITS);
+
+		aModeratorHolds(row);
+
+		assertThat(sending(WHOSE_PICTURE_WAITS, aJpeg("nova slika preko stare")).getStatus())
+				.isEqualTo(200);
+
+		assertThat(theQueueRowOf(WHOSE_PICTURE_WAITS))
+				.as("THE ROW WAS REPLACED RATHER THAN REPOINTED. The owner's boundary says the row"
+						+ " changes under the moderator's hand, not that it disappears from under"
+						+ " it.")
+				.isEqualTo(row);
+		assertThat(theQueuePlaceOf(WHOSE_PICTURE_WAITS))
+				.as("the member lost his place in a queue V9 orders by raised_at, so moving a"
+						+ " circle sends him to the back of it")
+				.isEqualTo(place);
+		assertThat(howManyHoldsOn(row))
+				.as("the moderator's hold was thrown away by a member replacing his picture, which"
+						+ " is what ON DELETE CASCADE does to it when the row is deleted")
+				.isEqualTo(1);
+	}
+
+	/**
+	 * AND THE PICTURE THAT WAS OVERWRITTEN GOES, ROW AND FILE BOTH.
+	 *
+	 * <p>The file has to be put there by the case, because the fixture writes {@code photo} rows
+	 * and no files - so this is also the one case in which the file of an overwritten picture
+	 * really exists, and its sibling below is the one in which it does not.
+	 *
+	 * <p><b>The row count is asserted as a NUMBER rather than „one fewer", because both halves
+	 * happen at once:</b> one row is written for the new picture and one is taken away for the
+	 * old, so a route that wrote the new one and kept the old would show the same count as a
+	 * route that did neither. The digest assertion beside it is what tells those apart.
+	 */
+	@Test
+	void theOverwrittenPicturesRowAndFileBothGo() throws Exception {
+		long overwritten = theWaitingPhotoOf(WHOSE_PICTURE_WAITS);
+		long rowsBefore = howManyPhotoRows();
+
+		aFileFor(overwritten);
+
+		assertThat(sending(WHOSE_PICTURE_WAITS, aJpeg("nova slika preko stare")).getStatus())
+				.isEqualTo(200);
+
+		assertThat(db.sql("select count(*) from photo where id = ?").param(overwritten)
+						.query(Long.class).single())
+				.as("the picture that was overwritten still has a row, which nothing points at and"
+						+ " nothing will ever serve")
+				.isZero();
+		assertThat(fileOf(overwritten))
+				.as("the file of the overwritten picture stayed on the disk for ever")
+				.doesNotExist();
+		assertThat(howManyPhotoRows())
+				.as("one picture came in and one went out, so the table must be exactly as long")
+				.isEqualTo(rowsBefore);
+		assertThat(fileOf(theWaitingPhotoOf(WHOSE_PICTURE_WAITS)))
+				.as("the new picture has no file, so the overwrite deleted the wrong one")
+				.exists();
+	}
+
+	/**
+	 * AND A FILE THAT HAD ALREADY GONE IS ONLY WRITTEN DOWN, NOT MADE INTO A REFUSAL.
+	 *
+	 * <p>{@code remove} has the identical half and gives the reason: a row whose file has already
+	 * gone is a state {@link PhotoApi} names and serves nothing for, and refusing to finish an
+	 * overwrite because of it would leave the member unable to replace a picture nobody can see.
+	 * The fixture's rows carry no files at all, so this is the state by default and the case above
+	 * is the one that has to arrange the other.
+	 */
+	@Test
+	void anOverwriteWhoseOldFileWasAlreadyGoneStillSucceeds() throws Exception {
+		long overwritten = theWaitingPhotoOf(WHOSE_PICTURE_WAITS);
+
+		assertThat(fileOf(overwritten))
+				.as("the fixture wrote a file, so this case no longer measures the missing one")
+				.doesNotExist();
+
+		assertThat(sending(WHOSE_PICTURE_WAITS, aJpeg("nova preko one bez fajla")).getStatus())
+				.as("a picture whose file was already missing stopped its member from sending"
+						+ " another")
+				.isEqualTo(200);
+
+		assertThat(howManyPicturesWaitFor(WHOSE_PICTURE_WAITS)).isEqualTo(1);
+	}
+
+	/**
+	 * A ROW THAT HAS BEEN DECIDED IS NOT OVERWRITTEN: HE GETS A NEW ONE BESIDE IT.
+	 *
+	 * <p>PDL 21c is about the row that is WAITING - „gazi trenutan red" - and a decided row is
+	 * not that. It also cannot be repointed at all: V9's
+	 * {@code verification_decided_keeps_no_photo} refuses a picture on a row that is not waiting,
+	 * which {@code theSchemaRefusesADecidedRowThatStillHoldsAPicture} pins from the other side.
+	 *
+	 * <p><b>{@link #WHOSE_PICTURE_WAS_REFUSED} carries a decided row and nothing waiting</b>, so
+	 * the count going from nought to one is what says a row was opened rather than a decision
+	 * overwritten, and the refused row is read back to show it was left exactly as it was (PDL,
+	 * owner: a refused row stands for ever with its state and its reason).
+	 */
+	@Test
+	void aDecidedRowIsLeftAloneAndANewOneIsOpenedBesideIt() throws Exception {
+		long rowsBefore = howManyRowsInTheQueue();
+
+		assertThat(sending(WHOSE_PICTURE_WAS_REFUSED, aJpeg("posle odbijanja saljem novu"))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(howManyPicturesWaitFor(WHOSE_PICTURE_WAS_REFUSED))
+				.as("nothing waits, so the send overwrote a decision instead of opening a row")
+				.isEqualTo(1);
+		assertThat(howManyRowsInTheQueue())
+				.as("the refused row was taken away, and PDL says a refusal stands for ever")
+				.isEqualTo(rowsBefore + 1);
+		assertThat(db.sql("select count(*) from verification where state = 'rejected'"
+						+ " and reason is not null and competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+						.param(WHOSE_PICTURE_WAS_REFUSED).query(Long.class).single())
+				.as("the refusal lost its state or its reason")
+				.isEqualTo(1);
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   PDL 21c, SECOND HALF: MOVING ONLY THE CIRCLE.
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * MOVING THE CIRCLE ALONE IS SENT WITH NO FILE AT ALL, AND CHANGES THE CROP IN PLACE.
+	 *
+	 * <p>Owner, PDL 21c: „Ako hocu da pregazim novom ILI DA POMERIM KRUG da gadja drugi deo
+	 * slike". Until this increment {@link MePhotoApi} answered
+	 * {@link MePhotoApi#THE_FORM_IS_NOT_COMPLETE} to a request with no file, so sending only the
+	 * circle was not possible at all.
+	 *
+	 * <p><b>The crop is moved to three numbers the fixture does not use anywhere</b>, so an answer
+	 * that echoed what was sent rather than writing it, or a route that wrote one fraction and
+	 * left two, comes back visibly wrong. The digest is asserted NOT to move: the same bytes under
+	 * the same name are the whole point of doing this without a new file.
+	 */
+	@Test
+	void movingOnlyTheCircleNeedsNoFileAndKeepsTheSamePicture() throws Exception {
+		long picture = theWaitingPhotoOf(WHOSE_PICTURE_WAITS);
+		long row = theQueueRowOf(WHOSE_PICTURE_WAITS);
+		long rowsBefore = howManyPhotoRows();
+		String digest = theWaitingRowOf(WHOSE_PICTURE_WAITS).get(6);
+
+		MockHttpServletResponse answer =
+				sendingOnlyTheCircle(WHOSE_PICTURE_WAITS, "0.125", "0.875", "0.625");
+
+		assertThat(answer.getStatus())
+				.as("a send carrying only the three fractions was refused, so PDL 21c's second"
+						+ " half is not implemented")
+				.isEqualTo(200);
+
+		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS).subList(7, 10))
+				.as("the circle the member moved was not written to the picture that is waiting")
+				.containsExactly("0.12500000", "0.87500000", "0.62500000");
+		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS).get(6))
+				.as("a new picture was written for a request that carried no bytes at all")
+				.isEqualTo(digest);
+		assertThat(howManyPhotoRows())
+				.as("moving a circle wrote a second photo row, so the same bytes are on the disk"
+						+ " twice")
+				.isEqualTo(rowsBefore);
+		assertThat(theWaitingPhotoOf(WHOSE_PICTURE_WAITS)).isEqualTo(picture);
+		assertThat(answerIn(answer).path("waiting").asLong())
+				.as("the answer names a different queue row than the one that was there")
+				.isEqualTo(row);
+		assertThat(answerIn(answer).path("digest").asString()).isEqualTo(digest);
+	}
+
+	/**
+	 * AND MOVING THE CIRCLE WITH NOTHING WAITING IS STILL THE FORM THAT IS NOT COMPLETE.
+	 *
+	 * <p>This is the boundary as it was settled: 21c's sentence presupposes a row to overwrite
+	 * („gazi trenutan red"), so with nothing waiting there is no picture here to re-cut and the
+	 * answer this class already had goes on being the right one. Whether a member may move the
+	 * circle over a picture that has been APPROVED is a separate question that no decision
+	 * answers, and nothing here invents one: that would mean copying a {@code photo} row and its
+	 * file, which is a mechanism this portal does not have.
+	 *
+	 * <p><b>{@link #ME} has a picture ON the profile and nothing waiting</b>, so this is not the
+	 * empty case: there is a portrait of his in the table, and the answer is still that there is
+	 * nothing to re-cut.
+	 */
+	@Test
+	void movingTheCircleWithNothingWaitingIsRefused() throws Exception {
+		long rowsBefore = howManyPhotoRows();
+
+		MockHttpServletResponse answer = sendingOnlyTheCircle(ME, "0.125", "0.875", "0.625");
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MePhotoApi.THE_FORM_IS_NOT_COMPLETE);
+
+		assertThat(howManyPicturesWaitFor(ME))
+				.as("a request with no bytes in it put something in front of a moderator")
+				.isZero();
+		assertThat(howManyPhotoRows()).isEqualTo(rowsBefore);
+		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS).subList(7, 10))
+				.as("somebody else's waiting circle was moved by a member who has none")
+				.containsExactly("0.30000000", "0.70000000", "0.45000000");
+	}
+
+	/**
+	 * AND A CIRCLE THAT IS NOT THREE FRACTIONS IS REFUSED EVEN WHEN THERE IS A PICTURE TO MOVE
+	 * IT OVER.
+	 *
+	 * <p>The order matters and this is what pins it: the crop is parsed AFTER it is known that
+	 * there is something to re-cut, so a member with a waiting picture and a broken fraction is
+	 * told which fault is his rather than being told the form is incomplete. Written the other way
+	 * round, both members would get the same sentence and neither would be right.
+	 */
+	@Test
+	void movingTheCircleToSomethingThatIsNotAFractionIsRefused() throws Exception {
+		MockHttpServletResponse answer =
+				sendingOnlyTheCircle(WHOSE_PICTURE_WAITS, "0.125", "ovo nije broj", "0.625");
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer))
+				.as("a member who has a picture to re-cut was told his FORM was incomplete, which"
+						+ " names the wrong fault")
+				.isEqualTo(MePhotoApi.THE_CROP_IS_NOT_A_CIRCLE);
+
+		assertThat(theWaitingRowOf(WHOSE_PICTURE_WAITS).subList(7, 10))
+				.as("one fraction was written before the broken one was noticed")
+				.containsExactly("0.30000000", "0.70000000", "0.45000000");
 	}
 
 	/**
@@ -710,6 +1084,13 @@ class MePhotoApiTest {
 	 * and left the file out - which is what a browser does when the input has no file and the
 	 * form is built by hand. {@code @RequestPart(required = false)} turns the second into a
 	 * null, and a condition written for only one of them would answer 500 to the other.
+	 *
+	 * <p><b>SINCE PDL 21c THIS CASE ALSO DEPENDS ON WHO IS ASKING, and it is {@link #ME} on
+	 * purpose.</b> A send with no file is how a moved circle is sent, so it is a legal request for
+	 * a member who HAS something waiting - see
+	 * {@link #movingOnlyTheCircleNeedsNoFileAndKeepsTheSamePicture}. {@link #ME} has a portrait on
+	 * his profile and nothing in the queue, so for him both shapes above are still a form that is
+	 * not complete, and that is what this case goes on measuring.
 	 */
 	@Test
 	void aRequestWithNoFileIsToldTheFormIsNotComplete() throws Exception {
@@ -1142,5 +1523,166 @@ class MePhotoApiTest {
 				.as("an address that maps nothing no longer answers 404, so there is nothing"
 						+ " being compared here")
 				.isEqualTo(answer.getStatus());
+	}
+
+	/* ------------------------------------------------------------------------------------
+	   PDL 21b: WHAT THE SCREEN SEES WHEN IT IS OPENED AGAIN.
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * THE WHOLE POINT OF THIS INCREMENT: THE WAITING PICTURE SURVIVES A RELOAD.
+	 *
+	 * <p><b>Owner, PDL 21b, 27.09.2026:</b> „ukoliko udjem da posaljem ponovo, vidim da je
+	 * trenutno slika u statusu cekanja i tu vidim trenutno azuriranu sliku sa krugom." What was
+	 * measured before this route existed is that the picture reached the screen ONLY in the visit
+	 * that sent it: the bytes were in that browser and the mark beside them was an overlay in front
+	 * of the session, so after a reload nothing answered either.
+	 *
+	 * <p><b>THE SEND AND THE READ ARE DELIBERATELY NOT THE SAME REQUEST, which is what makes this
+	 * a case about a reload rather than about an echo.</b> The picture is sent, and then the state
+	 * is asked for over a second request that carries nothing but the session cookie - no bytes, no
+	 * crop, nothing the first request said. Everything asserted below therefore came out of the
+	 * database.
+	 *
+	 * <p><b>And the circle is moved to numbers nothing else in the fixture uses</b>, so an answer
+	 * reading the STANDING picture's crop instead of the waiting one's is visibly wrong rather
+	 * than accidentally right.
+	 */
+	@Test
+	void afterAReloadTheWaitingPictureIsAnsweredWithItsOwnCircle() throws Exception {
+		MockHttpServletResponse sent = sending(ME, aJpeg("slika koja mora da prezivi reload"),
+				MediaType.IMAGE_JPEG_VALUE, "portret.jpg", "0.125", "0.875", "0.625");
+
+		assertThat(sent.getStatus()).isEqualTo(200);
+
+		MockHttpServletResponse reload = askingForMine(ME);
+
+		assertThat(answerIn(reload).path("waiting").path("photo").asString())
+				.as("NOTHING ANSWERS THE MEMBER HIS OWN WAITING PICTURE AFTER A RELOAD, which is"
+						+ " the state PDL 21b was written against")
+				.isEqualTo("/api/me/photo/" + answerIn(sent).path("digest").asString());
+		assertThat(theCircleWrittenIn(reload, "waiting"))
+				.as("the circle answered beside the waiting picture is not the circle he set, or"
+						+ " not at the scale V21 declares so that „what the member chose is what is"
+						+ " stored and what is read back, byte for byte\"")
+				.isEqualTo("\"crop\":{\"x\":0.12500000,\"y\":0.87500000,\"size\":0.62500000}");
+	}
+
+	/**
+	 * AND THE TWO PICTURES ARE ANSWERED APART, AT TWO DIFFERENT ADDRESSES.
+	 *
+	 * <p>This is the axis the record exists for. PDL 21a keeps the waiting picture OFF the profile
+	 * („Clan i ne treba da vidi svoju sliku dok nije odobrena") while 21b puts it ON the screen he
+	 * sends from, so a screen has to be able to draw „this is what everybody sees" beside „this is
+	 * what you sent" - which one field could not do.
+	 *
+	 * <p><b>The two addresses are not the same prefix and that is the assertion</b>: the standing
+	 * picture is published and lives under {@code /api/photos/}, and the waiting one is not public
+	 * at all (ADL A60) and lives under {@code /api/me/photo/}. A route that answered the public
+	 * address for both would hand the member a link that {@link PhotoApi#photo} refuses.
+	 *
+	 * <p><b>And the two crops are moved apart before anything is asked</b>, so „the waiting crop"
+	 * cannot be satisfied by the standing one: every row the fixture writes carries the same three
+	 * fractions, which is exactly the two-sources-one-value trap.
+	 */
+	@Test
+	void theWaitingAndTheStandingPictureAreAnsweredApart() throws Exception {
+		cropOf(theWaitingPhotoOf(WHOSE_PICTURE_WAITS), "0.1", "0.2", "0.3");
+		cropOf(db.sql("select photo_id from competitor where member_number = ?")
+				.param(WHOSE_PICTURE_WAITS).query(Long.class).single(), "0.8", "0.9", "1");
+
+		MockHttpServletResponse answer = askingForMine(WHOSE_PICTURE_WAITS);
+		JsonNode mine = answerIn(answer);
+
+		assertThat(mine.path("waiting").path("photo").asString())
+				.as("the waiting picture was answered at the PUBLIC address, which refuses it")
+				.isEqualTo("/api/me/photo/" + theWaitingRowOf(WHOSE_PICTURE_WAITS).get(6))
+				.startsWith("/api/me/photo/");
+		assertThat(mine.path("standing").path("photo").asString())
+				.as("the picture on the profile was answered at the member's private address")
+				.isEqualTo("/api/photos/" + digestStandingOn(WHOSE_PICTURE_WAITS));
+
+		assertThat(theCircleWrittenIn(answer, "waiting"))
+				.as("the crop of the STANDING picture was answered beside the waiting one")
+				.isEqualTo("\"crop\":{\"x\":0.10000000,\"y\":0.20000000,\"size\":0.30000000}");
+		assertThat(theCircleWrittenIn(answer, "standing"))
+				.as("the crop of the WAITING picture was answered beside the standing one")
+				.isEqualTo("\"crop\":{\"x\":0.80000000,\"y\":0.90000000,\"size\":1.00000000}");
+	}
+
+	/**
+	 * AND EACH HALF IS NULL ON ITS OWN, WHICH IS THREE STATES AND NOT TWO.
+	 *
+	 * <p>PDL P28f fixed the shape for {@link CompetitorApi} - „oba `null` za clana bez slike" - and
+	 * there is no reason for this answer to invent a second convention. The three rows are the
+	 * three states a member can really be in, and each of them is somebody different in the
+	 * fixture rather than the same member rearranged:
+	 *
+	 * <ul>
+	 * <li>{@link #ME} has a portrait and nothing waiting.
+	 * <li>{@link #HAS_NO_PICTURE} has neither, which is the only member in the fixture who has
+	 * never had one.
+	 * <li>{@link #WHOSE_TEXT_WAITS} has a portrait and a TEXT waiting in the same tab, which must
+	 * not be read as a waiting picture: that is the half of the tab {@code MeWriteApi} owns.
+	 * </ul>
+	 */
+	@ParameterizedTest
+	@CsvSource({ ME + ",false,true", HAS_NO_PICTURE + ",false,false",
+			WHOSE_TEXT_WAITS + ",false,true" })
+	void whatIsAnsweredWhenOneHalfOrBothAreMissing(String memberNumber, boolean waiting,
+			boolean standing) throws Exception {
+
+		JsonNode mine = answerIn(askingForMine(memberNumber));
+
+		assertThat(mine.path("waiting").isNull())
+				.as("%s: the waiting half of the answer is wrong, and a text waiting in the same"
+						+ " tab is not a picture waiting", memberNumber)
+				.isEqualTo(!waiting);
+		assertThat(mine.path("standing").isNull())
+				.as("%s: the standing half of the answer is wrong", memberNumber)
+				.isEqualTo(!standing);
+	}
+
+	/**
+	 * AND AN ACCOUNT THAT RACES FOR NOBODY IS ANSWERED NOTHING AT ALL.
+	 *
+	 * <p>The same answer {@link MePhotoApi#send} and {@link MePhotoApi#remove} give such an
+	 * account, for the same reason: V23 lets an account exist with no member behind it (owner,
+	 * 14.09.2026), and these addresses are not for it. ADL A8 of 13.09.2026 asks for 404 rather
+	 * than 403, „isti odgovor kao da adresa ne postoji".
+	 */
+	@Test
+	void anAccountThatRacesForNobodyIsAnsweredNothing() throws Exception {
+		MockHttpServletResponse answer = http.perform(get("/api/me/photo")
+						.cookie(new Cookie(SessionCookie.NAME,
+								sessions.get(MODERATOR_WHO_DOES_NOT_RACE).secret())))
+				.andReturn().getResponse();
+
+		assertThat(answer.getStatus()).isEqualTo(404);
+	}
+
+	/**
+	 * AND IT IS THE SESSION'S OWN MEMBER AND NEVER THE FIRST ONE IN THE TABLE.
+	 *
+	 * <p><b>The mutation this is written against is a statement that read any member rather than
+	 * the one the session names</b>, and the fixture is arranged so that neither „the first row"
+	 * nor „the only one" could pass for it: {@link #SOMEONE_ELSE} is written SECOND and has a
+	 * picture waiting, {@link #WHOSE_PICTURE_WAITS} is written FOURTH and has one too, and both
+	 * have a portrait standing as well. So the answer has to name this member's two digests and
+	 * not another member's.
+	 */
+	@Test
+	void theAnswerIsTheSessionsOwnMemberAndNotTheFirstWithAPicture() throws Exception {
+		JsonNode mine = answerIn(askingForMine(WHOSE_PICTURE_WAITS));
+
+		assertThat(mine.path("waiting").path("photo").asString())
+				.isEqualTo("/api/me/photo/" + theWaitingRowOf(WHOSE_PICTURE_WAITS).get(6));
+		assertThat(mine.path("waiting").path("photo").asString())
+				.as("the answer named SOMEONE ELSE's waiting picture, and he was written first")
+				.isNotEqualTo("/api/me/photo/" + theWaitingRowOf(SOMEONE_ELSE).get(6));
+		assertThat(mine.path("standing").path("photo").asString())
+				.as("the answer named somebody else's portrait")
+				.isEqualTo("/api/photos/" + digestStandingOn(WHOSE_PICTURE_WAITS))
+				.isNotEqualTo("/api/photos/" + digestStandingOn(FIRST_WRITTEN));
 	}
 }
