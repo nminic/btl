@@ -47,7 +47,7 @@ import served from '../test/servedFields.snapshot.json'
  */
 
 /** The served folder itself, which is the source of truth for every case here. */
-const MOCK = join(process.cwd(), 'public', 'mock')
+const MOCK = join(process.cwd(), 'src', 'test', 'mock')
 
 /**
  * The codebook of the world's towns, which is not read here.
@@ -165,14 +165,19 @@ describe('the sweep itself', () => {
        subfolder holding every file above. If it descends there it descends anywhere,
        and this needs no fixture written into the repository to say so.
 
-       Worth doing because `public/mock` already has a folder in it today — `logo/`,
-       which `teams.json` points into — and Vite copies the whole of `public/` across
-       verbatim, so a file one level down is served exactly as publicly as one at the
-       top. While this read a single level, `logo/roster.json` carrying a year of birth
-       and an age passed the whole suite (review, 13.09.2026). */
+       Worth doing because the mock folder already has a folder in it today — `logo/`,
+       which `teams.json` points into. While `mock/` lived under `public/`, Vite copied
+       the whole of it into what shipped verbatim, so a file one level down was served
+       exactly as publicly as one at the top, which is why this recursion mattered
+       enough to write down (review, 13.09.2026). The folder moved out of `public/`
+       since (mock files leave the delivery), but `test/setup.ts` still answers any
+       path under it from disc the same way regardless of depth, so a sweep stopping at
+       one level would still miss whatever a nested folder like this one carries. While
+       this read a single level, `logo/roster.json` carrying a year of birth and an age
+       passed the whole suite (review, 13.09.2026). */
     expect(readdirSync(MOCK, { withFileTypes: true }).some((one) => one.isDirectory())).toBe(true)
 
-    const deeper = servedFiles(join(process.cwd(), 'public')).map((one) => one.name)
+    const deeper = servedFiles(join(process.cwd(), 'src', 'test')).map((one) => one.name)
 
     expect(deeper).toContain('mock/competitors.json')
     expect(deeper.length).toBeGreaterThanOrEqual(everything.length)

@@ -381,7 +381,7 @@ describe('the text of a competition', () => {
    */
   function servingWithMemory() {
     const remembered: Record<string, unknown>[] = JSON.parse(
-      readFileSync(join(process.cwd(), 'public/mock/leagues.json'), 'utf-8'),
+      readFileSync(join(process.cwd(), 'src/test/mock/leagues.json'), 'utf-8'),
     )
 
     return serverThat((path, init) => {
