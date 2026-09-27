@@ -4,7 +4,6 @@ import { limitOf } from '../../forms/records'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
 import { combinePair, dataOr, failed, useCompetitors, useTeams } from '../../data/useResource'
-import { CropWindow } from '../../components/CropWindow'
 import { Stars } from '../../components/Stars'
 import { commentFrom } from '../../data/comment'
 import { afterJoining } from '../../data/afterJoining'
@@ -1087,32 +1086,48 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           </div>
                         </dl>
 
-                        {/* The picture itself, where there is one to look at.
-                            Owner, 12.08.2026: „Administrator kad odobrava i
-                            timsku sliku (unutar odobravanja tima) i profilnu
-                            sliku učesnika... treba da vidi isto fokus na vidljiv
-                            deo slike i zatamnjen ali dovoljno vidljiv ostatak."
+                        {/* THE PICTURE ITSELF WAS DRAWN HERE AND WAS REMOVED ON
+                            27.09.2026, AND THE REQUIREMENT IT SERVED IS LIVE AND
+                            NOW UNMET. Read this before concluding that a
+                            moderator was never meant to see what he decides.
 
-                            „Isto" is the requirement and the reason this is the
-                            same component the member arranged it in: what a
-                            moderator judges has to be what the member set, and
-                            the rest of the photograph has to stay readable so
-                            that a face cut out of a crowd can be told from a
-                            face cut out of nothing.
+                            Owner, 12.08.2026, and it stands: „Administrator kad
+                            odobrava i timsku sliku (unutar odobravanja tima) i
+                            profilnu sliku učesnika... treba da vidi isto fokus na
+                            vidljiv deo slike i zatamnjen ali dovoljno vidljiv
+                            ostatak." „Isto" was the requirement, which is why
+                            what stood here was the very component the member
+                            arranges the circle in.
 
-                            The file name above stays. It is what the queue is
-                            searched and talked about by, and the two seeded
-                            items carry a name with no picture behind them
-                            (data/types.ts): those stand for pictures sent before
-                            this visit, and there is nowhere they could have been
-                            kept. */}
-                        {one.picture !== '' && (
-                          <CropWindow
-                            picture={one.picture}
-                            crop={one.crop}
-                            alt={t('verification.pictureAlt', { who: one.subject })}
-                          />
-                        )}
+                            WHY IT WENT. A card carried a picture from exactly one
+                            place: the row `ProfilePicture.tsx` minted in the
+                            session beside the row the server had already filed.
+                            That twin drew the member TWICE on this queue and its
+                            copy was the one no route could decide, so it went
+                            (`member/pictureIsOneRow.test.tsx`). Measured the same
+                            day: nothing else ever filled `one.picture`. The
+                            server cannot - `ServedPendingItem` omits it and
+                            `admin/pending.ts` fills it as the empty string
+                            because ADL A60 keeps a waiting picture out of every
+                            address - no row of the generated file carries one, and
+                            a proposed team sends `picture: ''`. So this drew for
+                            the card the moderator COULD NOT decide, and never for
+                            the one he could: the two halves of what the owner
+                            asked for lived on two different cards.
+
+                            WHAT THE BRANCH THAT BRINGS THE PICTURE OWES. Putting
+                            the drawing back is part of its work, not a leftover:
+                            it has to serve the number of the picture out to the
+                            screen (`VerificationApi`), stop `admin/pending.ts`
+                            throwing it away (`itemFrom({ photoId: _photoId })`),
+                            and feed this frame - with `verification.pictureAlt`,
+                            which is still in the dictionary, and with the circle
+                            the member set. Until then the file name below is all
+                            a moderator gets, and that is a gap rather than a
+                            decision.
+
+                            The file name stays either way. It is what the queue is
+                            searched and talked about by. */}
 
                         {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,
                             on the card it is about and above both the box and the
