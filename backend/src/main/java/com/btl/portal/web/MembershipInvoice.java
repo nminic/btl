@@ -34,7 +34,10 @@ import java.time.ZonedDateTime;
 class MembershipInvoice {
 
 	/**
-	 * The honorary basis, as {@code competitor_membership_basis_known} (V7) names it. Written here
+	 * The basis of a member the Managing Board has freed of the fee, as
+	 * {@code competitor_membership_basis_known} (V7) names it - never „pocasni", which PDL forbids
+	 * for such a member because in the Statute that word means somebody who is NOT a member at all.
+	 * Written here
 	 * as a literal because it IS a literal in the schema; what stops it drifting is
 	 * {@code MeApiTest}, which asks PostgreSQL what that constraint actually says rather than
 	 * comparing one written word against another.

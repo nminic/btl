@@ -362,11 +362,11 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 * answers <b>does this person pay or is he let in free</b>, which is a standing property, and a
 	 * man who settles a season out of his balance is <b>paying</b>; he is not exempt from anything.
 	 *
-	 * <p><b>And the alternative was measured to be worse.</b> Widening V7 to take 'balance' would
-	 * put a word in the schema that NOTHING EVER WRITES - the registration writes 'payment' and the
-	 * honorary screen writes 'feeExempt' - which V36's own migration refuses in as many words („a
-	 * reason nothing can produce is a reason no constraint should name"). It would also turn two
-	 * other floors red for a reason that is not theirs:
+	 * <p><b>And the alternative was measured to be worse.</b> Widening V7 to take 'balance' would put
+	 * a word in the per-person column that nothing could ever mean by it: that column says whether a
+	 * person is charged at all, and a man who settles ONE SEASON out of his balance is charged and
+	 * pays. The word would describe no person, only a season, which is the column beside it. It would
+	 * also turn two other floors red for a reason that is not theirs:
 	 * {@code MeApiTest.aMemberIsHandedHisOwnBasisAndTheOtherWordIsNotIt} asserts V7 names exactly
 	 * two words so that a third demands a third caller, and {@link #bothRulesAboutABasisAreStillThere}
 	 * counts them.

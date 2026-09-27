@@ -169,7 +169,7 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		competitor(PAID_FOR_TWO_SEASONS, "Platio Dvaput", "00112233445566a2", "payment",
 				broughtBy(THE_REFERRER));
 		competitor(NEVER_PAID, "Nikad Platio", "00112233445566a3", "payment", broughtBy(THE_REFERRER));
-		competitor(LET_IN_FREE, "Pocasni", "00112233445566a4", "feeExempt", broughtBy(THE_REFERRER));
+		competitor(LET_IN_FREE, "Oslobodjen", "00112233445566a4", "feeExempt", broughtBy(THE_REFERRER));
 		competitor(BROUGHT_IN_BY_THE_OTHER, "Doveden", "00112233445566a6", "payment",
 				broughtBy(ANOTHER_REFERRER));
 
@@ -218,7 +218,8 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 * AND WHAT HAS NOT EARNED IS LEFT OUT, in both of the ways that happens.
 	 *
 	 * <p>PDL, 13.08.2026: „Ko se registrovao preko linka a clanarina mu nikad nije aktivirana, ne
-	 * donosi nista." And the honorary one is V36's own named boundary: he has a membership and no
+	 * donosi nista." And the one freed of the fee is V36's own named boundary: he has a membership
+	 * and no
 	 * payment, so there is no account that ever recognised anything for him, and inventing one would
 	 * put a name in an immutable book that never did the thing.
 	 */
@@ -235,8 +236,8 @@ class BalanceCarriedOverTest extends DatabaseTest {
 		assertThat(db.sql("select count(*) from balance_entry e join competitor c"
 						+ " on c.id = e.referred_competitor_id where c.member_number = ?")
 						.param(LET_IN_FREE).query(Long.class).single())
-				.as("an honorary membership was carried, which V36 says it leaves to the screen that"
-						+ " grants the honour")
+				.as("a membership held free of the fee was carried, which V36 says it leaves to"
+						+ " whatever route records that exemption")
 				.isZero();
 	}
 

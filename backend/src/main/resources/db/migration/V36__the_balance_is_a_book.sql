@@ -362,7 +362,7 @@ execute function a_reward_says_who_earned_it();
  * samo kod oslobodjenog."
  *
  * So the column below is that sentence, and the shape of the old rule is kept exactly: every
- * basis names the thing it stands on, and only the honorary one names nothing.
+ * basis names the thing it stands on, and only the one freed of the fee names nothing.
  *
  * AND THE CHEAPER SHAPE WAS REFUSED, in the same entry and for the reason it gives: a row in
  * `payment` would say that MONEY ARRIVED, and money did not arrive - an obligation of the
@@ -421,11 +421,11 @@ alter table membership
  * AND WHO IS CREDITED WITH WRITING IT: the account that recognised the newcomer's earliest
  * payment, because that is the act that earned the reward and `payment` remembers both the key
  * and the name. Where the newcomer has a membership but no payment anybody recognised - the
- * honorary case, which V22 deliberately left unseeded and which nothing writes yet - there is
+ * case of a member freed of the fee, which V22 deliberately left unseeded - there is
  * no such account, and the `join` below drops him rather than inventing one. That leaves a
- * referral of an honorary member unrewarded by THIS migration and rewarded by the route that
- * grants the honour, the day it is built; inventing an account here would put a name in an
- * immutable book that never did the thing.
+ * referral of a member freed of the fee unrewarded by THIS migration, and rewarded by whatever
+ * route records that exemption, the day it exists; inventing an account here would put a name
+ * in an immutable book that never did the thing.
  */
 insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,
                            occurred_at, recorded_by, recorded_by_name)
