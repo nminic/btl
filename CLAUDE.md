@@ -578,3 +578,93 @@ pokazivao jedan uredan `pass`.
   cekaj". Oblik „dok ijedan red **nije** pending" je zadovoljen prvim poslom koji zavrsi.
 - **I zato `gh pr checks` nikad nije cuvar petlje sam po sebi.** Dok ista visi, on je nenulti; dakle
   ne razlikuje „jos traje" od „palo" bez citanja teksta.
+
+## 16. Cetiri oblika laznog merenja nadjena 27.09.2026, sva cetiri na frontend kapiji
+
+Uz cetiri koja vec stoje gore, danas su izmerena jos cetiri. **Nijedan se ne vidi bez broja uz
+`passed`.**
+
+### 16a. `-t` filter koji ne pogodi ime: `skipped` uz izlazni kod NULA
+
+Agent je pustio `vitest -t "next member"` da izmeri jedan slucaj. Filter nije pogodio ime, pa je izlaz
+glasio **`Tests 7 skipped (7)`**, izlazni kod **0**.
+
+**To prolazi obe nase provere odjednom:** red **postoji**, broj je **iznad nule**, kod je **nula**. A
+nijedan slucaj nije bio pokrenut.
+
+- **Merilo:** broj uz **`passed`** mora biti veci od nule. `skipped`, `no tests` i `0 passed` su
+  **„nije mereno"**, bez obzira na izlazni kod.
+- **Gde se javlja:** ime slucaja se promeni, filter ostane, i od tog trenutka je svako merenje tim
+  filterom prazno a izgleda zeleno.
+
+### 16b. Odsustvo reda `All files` NE znaci da prag nije meren
+
+Agent je trazio `All files` u ispisu pokrivenosti, nije ga nasao, i procitao to kao „prag nije ni
+ocenjen". **Tabela lista samo fajlove ISPOD praga**, pa je prazna **upravo zato sto ih nema**.
+
+**Dokaz da je merenje teklo** je red `Coverage enabled with v8` **plus apsolutni brojevi u sazetku**
+(`Statements : 100% ( 5608/5608 )`), nikad prisustvo tabele.
+
+**Ovaj oblik greska vuce u OBRNUTOM smeru od ostalih:** nateruje te da **zelen** ishod proglasis
+nemerenim.
+
+### 16c. `npm run test:coverage` je DVE komande sa `&&`, pa pad prve preseca drugi dan
+
+Skript je `vitest run --coverage && npm run test:another-day`. **Prolaz koji padne na pragu nije
+izmerio drugi dan uopste**, iako izgleda kao da je pusten ceo. Ko hoce oba merena, pusta ih kao **dve
+komande sa dva izlazna koda**.
+
+### 16d. Vitest se pusta iz `frontend/`, ne iz korena worktree-a
+
+Test koji cita `src/test/mock` inace pukne sa `ENOENT: no such file or directory, scandir` i vrati
+**`Tests no tests`** uz izlazni kod 1, sto izgleda kao pad grane a nije.
+
+## 17. Git Bash pretvara obrazac sa vodecom kosom crtom u Windows putanju (27.09.2026)
+
+Kvari **prazan** ishod, dakle najgori smer: izgleda kao da necega nema.
+
+| komanda | odgovor | zasto |
+|---|---|---|
+| `git log --all -S'/decision' -- frontend/src` | **0** | obrazac pretvoren u `C:/Program Files/Git/decision` |
+| `MSYS_NO_PATHCONV=1 git log --all -S'/decision' -- frontend/src` | **6** | isti upit, bez pretvaranja |
+| `git grep "/decision" origin/main` | **0** | isto pretvaranje |
+| `git grep "api/verification/" origin/main` | **sest fajlova** | obrazac ne pocinje kosom crtom |
+
+**Uzrok je mehanicki:** Git Bash to radi svakom argumentu koji pocinje kosom crtom pre nego sto ga
+preda **nativnom** programu. `git.exe` je nativan; `grep` je MSYS pa njegov obrazac nije diran —
+**zato `grep` radi a `git grep` laze**.
+
+- Svaki `-S`, `-G` ili obrazac za `git` koji pocinje kosom crtom pise se **bez nje** ili uz
+  **`MSYS_NO_PATHCONV=1`**.
+- **Nula iz `git grep` ili `git log -S` nad takvim obrascem nije nalaz nego nemerenje.**
+- **I druga polovina iste greske:** merenje u radnom stablu koje je **13 commita iza** `origin/main`.
+  Pre svake tvrdnje o tome cega u kodu nema, `git fetch` pa pitaj **`origin/main`**, ne svoj disk.
+
+**Cena kad se ne uradi:** vlasniku je prijavljeno da ekran ne ume da upise odluku, a ume i radi.
+
+## 18. „Commituj pre prve mutacije" je pogresna formulacija: commit ide pre SVAKE serije (27.09.2026)
+
+Pravilo stoji od 18.09.2026 i danas je **cetvrti put** koga kosta rada. Prva tri puta su bili agenti
+koji nisu commitovali uopste. **Cetvrti je drugaciji:** agent je **commitovao pre prve serije**, kako
+pravilo kaze, pa **dopisao kod** i pustio **drugu** seriju bez novog commita. `git checkout HEAD --`
+je vratio fajl na stanje koje nov slucaj nije sadrzalo, i slucaj je nestao.
+
+- **Commit ide pre SVAKE serije.** „Pre prve mutacije" se cita kao jednokratna priprema, a opasnost se
+  vraca **svaki put kad se doda kod**.
+- **Provera je mehanicka:** pre serije `git status` mora da bude **prazan**.
+- **Pravilo koje se moze ispuniti a ipak izgubiti rad je pogresno napisano**, ne pogresno sprovedeno.
+
+## 19. Cekanje nadzivi agenta koji ga je pokrenuo (27.09.2026)
+
+**Dvaput u jednom danu**, i oba puta je vlasnik primetio pre mene: ujutru je prolaz stajao **10 sati i
+29 minuta**, uvece petlja **3 sata i 59 minuta**.
+
+**Izmereno kad je pogledano:** **nula** Java procesa, dakle nijedna kapija nije radila; ziv **jedan**
+agent star cetiri minuta, a ljuske od **14:31 i 14:44**. Cetiri sirocica agenata koji su odavno
+zavrsili.
+
+- **Cekanje koje agent pokrene mora da se zavrsi PRE nego sto preda izvestaj.** Ako mora da preda
+  ranije, to izricito kaze.
+- **Provera je mehanicka:** `Get-Process bash,sh` sa `StartTime` uporedjen sa spiskom zivih agenata.
+  **Svaka ljuska starija od sat vremena koja ne pripada nijednom zivom agentu je siroce i gasi se.**
+  Uz nju `Get-Process java,node`: ako ih nema, nijedna kapija ne radi i cekanje nema sta da ceka.

@@ -60,10 +60,16 @@ export const WAITING = 'waiting'
  * that by a case; `crop` is `WHOLE` and cannot be, which is the paragraph at the bottom
  * of this one, and `currentDate`/`proposedDate` need no case at all any more - see below.
  *
- * **`picture` is the empty string and this is the one that matters**, because the
- * card asks `one.picture !== ''` before it draws a frame. Left undefined - which is
- * what reading a field the answer has not got gives you - that test passes and the
- * frame is drawn around nothing. The emptiness has to be a VALUE.
+ * **`picture` is the empty string, and since 27.09.2026 NOTHING READS IT.** It mattered
+ * while the card asked `one.picture !== ''` before drawing a frame: left undefined - which
+ * is what reading a field the answer has not got gives you - that test passed and the frame
+ * was drawn around nothing, so the emptiness had to be a VALUE. That drawing is gone, and
+ * `admin/PendingQueue.tsx` carries the whole of why in the comment where it stood: the only
+ * thing that ever filled this was the row `member/ProfilePicture.tsx` minted in the session
+ * beside the server's, and that twin went with the fault it caused. **So this field is now
+ * written and never read**, which is a loose end named here rather than tidied away by a
+ * change that had no business growing that far: it goes, with `crop` below it, on the day
+ * the number of the picture is served out to the screen and the frame comes back.
  *
  * **It fills what is missing rather than overwriting what is there, and the
  * difference is not academic.** The answers this portal is fed do not all come off
@@ -91,8 +97,8 @@ export const WAITING = 'waiting'
  *
  * **`crop` HAS NO READER AT ALL, and that is written here rather than left to be
  * found.** Measured the same day `picture`/`email`/`rating` were: `crop` set to a
- * quarter of the picture leaves every case green. The one thing that reads it is
- * `CropWindow`, and a card only draws that where `one.picture !== ''` - so while ADL
+ * quarter of the picture leaves every case green. The one thing that read it was
+ * `CropWindow`, drawn on a card until 27.09.2026 - so while ADL
  * A60 keeps a waiting picture out of every address the portal could ask for it at,
  * there is nothing for a square to be a square OF. It is `WHOLE` because that is what
  * `cropIn` answers for a record with no square of its own, and the day A60 is

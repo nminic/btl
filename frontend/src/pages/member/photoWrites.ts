@@ -25,20 +25,55 @@ import type { Crop } from '../../components/crop'
  * a third longer for being base64, and the route hashes what arrives rather than what it is
  * told.
  *
- * <p><b>AND NOTHING IS READ OFF THE ANSWER, WHICH IS A BOUNDARY RATHER THAN AN OMISSION.</b>
- * `MePhotoApi.Waiting` carries three fields - the key of the queue row, the digest of the
- * picture that is now waiting, and the digest of the one still standing on the profile -
- * and this branch reads none of them. Two of the three are addresses under `/api/photos/`,
- * and `PhotoApi` refuses a picture no public thing holds (ADL A60), so a waiting picture's
- * digest is an address that answers nothing to anybody yet; the third is a key of a row in
- * a queue this portal still draws out of its own overlay. What the member is shown instead
- * is the picture he chose, out of his own browser, which `CropChooser` is already holding -
- * and that is what `MePhotoApi`'s own javadoc says this route leaves to the screen. The day
- * `PhotoApi` serves a member his own waiting portrait, this is where the reader for it goes.
+ * <p><b>ONE OF THE THREE FIELDS OF THE ANSWER IS READ, AND THE OTHER TWO ARE STILL NOT.</b>
+ * `MePhotoApi.Waiting` carries the key of the queue row, the digest of the picture that is
+ * now waiting, and the digest of the one still standing on the profile. The two digests are
+ * addresses under `/api/photos/`, and `PhotoApi` refuses a picture no public thing holds
+ * (ADL A60), so a waiting picture's digest is an address that answers nothing to anybody
+ * yet; the day `PhotoApi` serves a member his own waiting portrait, this is where the reader
+ * for those goes. What the member is shown until then is the picture he chose, out of his
+ * own browser, which `CropChooser` is already holding.
+ *
+ * <p><b>THE KEY IS READ, and until 27.09.2026 it was not, which is the whole of the fault
+ * this paragraph used to describe as a boundary.</b> It said the key was „a key of a row in a
+ * queue this portal still draws out of its own overlay", and while that was true the screen
+ * minted a row of its OWN beside the server's: one upload drew TWO cards in front of the
+ * moderator, identical in everything he could see, and a decision taken on the browser's
+ * copy reached no route at all. The owner met it himself and asked for „jedan jedini red na
+ * strani verifikacije". So the row the member is waiting on is the row the SERVER made, named
+ * by the key it answers with here, and it is the same key the moderator's decision is filed
+ * under - which is what lets the member's own „čeka odobrenje" clear when that decision lands
+ * (`ProfilePicture.tsx`, `session/context.ts#pictureSent`).
  */
 
 /** The one address a picture goes to, and the one it is taken down at. */
 export const THE_PICTURE_GOES_TO = '/api/me/photo'
+
+/**
+ * THE QUEUE ROW THE SERVER MADE FOR THE PICTURE THAT WAS JUST SENT, or nothing where the
+ * answer did not name one.
+ *
+ * <p>The shape is `admin/leagueWrites.ts#identityIn`'s, down to the guards, and it is
+ * copied rather than reused for the reason that file's twin in `admin/moderatorWrites.ts`
+ * already writes down: the two read different keys off different routes, and one function
+ * taking the name of the key as an argument would be a function whose callers decide what it
+ * means. This one reads `waiting`, which is what `MePhotoApi.Waiting` calls it.
+ *
+ * <p><b>Without an assertion (ADL A14).</b> The answer is `unknown` because that is what
+ * came off the wire, and `Reflect.get` asks the object rather than telling the compiler what
+ * it holds. A whole number above nought, so that a route answering `0`, `-1`, `"7"` or
+ * nothing at all is one this returns null for rather than one whose key the screen goes on to
+ * file a decision under.
+ */
+export function theRowIn(body: unknown): number | null {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const waiting: unknown = Reflect.get(body, 'waiting')
+
+  return typeof waiting === 'number' && Number.isInteger(waiting) && waiting > 0 ? waiting : null
+}
 
 /**
  * HOW MANY DECIMAL PLACES THE COLUMN HOLDS, and it is V21's number rather than a choice

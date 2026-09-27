@@ -560,13 +560,19 @@ describe('a queue of things waiting, on the answer the server gives', () => {
   })
 
   it('draws no frame where the answer carries no picture', async () => {
-    /* **`ABSENT.picture` is the empty string and its own docstring calls that the one
-       that matters**, because the card asks `one.picture !== ''` before it draws a
-       frame. Nothing measured it: every row of the generated file carries `picture: ""`
-       of its own, so the fill-in had nothing to do and `ABSENT.picture` could be set to
-       any file name at all with the whole package green. Here the name does not arrive,
-       so this side is the only thing deciding, and a frame drawn around nothing is a
-       moderator looking at a broken image instead of at what he is judging. */
+    /* **WHY THIS STILL STANDS AFTER 27.09.2026, WHEN THE DRAWING IT WATCHED WAS REMOVED.**
+       It was written against a card that asked `one.picture !== ''` before drawing a frame,
+       and it held `ABSENT.picture` being the empty string: set to any file name at all, the
+       card drew a frame around nothing and only this case said so, because every row of the
+       generated file carries `picture: ""` of its own and the fill-in had nothing to do.
+     *
+       That frame is gone (`admin/PendingQueue.tsx`, where the comment in its place says what
+       the branch bringing the picture owes). So what this asserted is now true BY
+       CONSTRUCTION, and a case that cannot fail is worth nothing - except that this one can,
+       and against exactly the mutation that matters: **a frame drawn again without being
+       fed.** The branch that serves the picture out has to put the drawing back, and the day
+       it does, it meets this case first and has to make the answer carry a picture before it
+       goes green. That is the whole reason it is kept rather than deleted with the block. */
     const { stop } = answering(queueAsServed(), '/api/verification')
 
     try {
