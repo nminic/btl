@@ -18,6 +18,7 @@ import {
   readAsWaitingItemWithNoNumber,
   readAsAdministrationsRow,
   readAsFee,
+  readAsMemberWithNoPortrait,
   readAsLeague,
   readAsMyOwnRow,
   readAsPrice,
@@ -418,6 +419,21 @@ describe('the answer the backend gives', () => {
     expect(readAsVisitorsMember.membershipBasis).toBeUndefined()
     expect(readAsMyOwnRow.membershipBasis).toBeUndefined()
     expect(readAsAdministrationsRow.membershipBasis).toBe('payment')
+    /* THE PORTRAIT, IN BOTH OF THE STATES ITS ANSWER HAS, and written down twice for the
+       same reason the mark below it is: `CompetitorApi` reads the address and the square off
+       one JOINED row whose every column is NOT NULL, so the pair is answered whole or not at
+       all, and a sample showing one of the two would let the other drift.
+
+       The address is the whole path and the portal never builds one, which is what the first
+       of these says: read through a bare digest instead, a screen would have to know where
+       pictures live and that decision has one home (`PhotoApi`, and `data/types.ts`).
+
+       Null covers TWO facts on purpose - no portrait, and a hidden profile read with no
+       session - because PDL P28f of 26.09.2026 requires „Oba slucaja dobijaju isti ishod". */
+    expect(readAsVisitorsMember.photo).toBe('/api/photos/3c9e5f41')
+    expect(readAsVisitorsMember.crop).toEqual({ x: 0.42, y: 0.18, size: 0.64 })
+    expect(readAsMemberWithNoPortrait.photo).toBeNull()
+    expect(readAsMemberWithNoPortrait.crop).toBeNull()
     expect(readAsTeam.organizerMemberNumber).toBe('000001')
     /* Both halves of the mark gone together, which is the arrangement `TeamApi`
        refuses to answer in any other way. */

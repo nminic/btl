@@ -1522,6 +1522,25 @@ describe('Competitors', () => {
     expect(card.getByText('Bodovi')).toBeVisible()
   })
 
+  it('draws each competitor’s own picture on their card, never the first competitor’s', async () => {
+    /* 000003, Anđelija Vukotić, is the THIRD record of the fixture and the SECOND one with
+       an approved photo (000001 is the first and carries one too), so a card that drew the
+       first competitor's picture on every row would still show Vladan's square here instead
+       of her own. Written because a mutation survived: replacing the `competitor` this card
+       is built from with the first card's own competitor passed the whole suite, since
+       nothing here had read a picture from any row but the first. */
+    renderAt('/sr/takmicari')
+
+    await screen.findByRole('list')
+
+    const her = must(screen.getByText('Anđelija Vukotić').closest('li'), 'her card')
+
+    expect(must(her.querySelector('img'), 'her portrait')).toHaveAttribute(
+      'src',
+      '/mock/photo/andjelija.svg',
+    )
+  })
+
   it('searches, and says so when nothing matches', async () => {
     const user = setupUser()
     renderAt('/sr/takmicari')

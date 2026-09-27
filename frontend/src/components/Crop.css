@@ -55,10 +55,13 @@
    was never what anybody was choosing; it was a rectangle around the thing they
    were choosing, with the corners quietly thrown away afterwards.
 
-   Counted rather than assumed, after a review counted it on 27.08.2026: the one
-   place a cropped picture is drawn today is a team's logo. No record of a member
-   carries a picture yet, so a face is drawn from initials and colour. Both will
-   use this, and only one does.
+   Counted rather than assumed, and counted twice: on 27.08.2026 the one place a
+   cropped picture was drawn was a team's logo, and since 26.09.2026 there are two
+   (PDL P28f). A member's approved portrait is cut by this same rule
+   (`components/Portrait.tsx`), which is what „both will use this" was written
+   for. What is still true of most members is that they have sent nothing, so a
+   face is drawn from initials and colour for them, and that is a permanent state
+   rather than one waiting to end.
 
    The record is untouched by this and stays a square of three fractions
    (`components/crop.ts`), with the circle inscribed in it. */

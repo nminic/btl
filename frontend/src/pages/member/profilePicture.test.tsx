@@ -434,4 +434,34 @@ describe('the picture on a profile, changed later', () => {
     expect(screen.queryByRole('region', { name: 'Profilna slika' })).not.toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Tema' })).toBeVisible()
   })
+
+  /* BOTH STATES OF THE ONE FACT THIS PANEL READS OFF THE MEMBER'S OWN RECORD, since
+     27.09.2026 (PDL P28f). Written as one case over two members, because the whole of what
+     is being held is that the two differ: asked of one member alone, either half passes over
+     a panel that says the same thing to everybody, which is exactly what it did.
+   *
+     The two are taken from the served file by number and the case says which is which, so a
+     seed that gives `000007` a portrait fails here rather than passing quietly. */
+  it('tells a member the portal has no photograph only when HIS record has none', async () => {
+    /* „Portal još nema fotografije, pa u krugu pored tvog imena stoje tvoji inicijali."
+       True of `000007`, who has sent nothing. */
+    const { unmount } = renderAt('/sr/podesavanja', 'competitor', '000007')
+
+    expect(await (await panelFor()).findByText(sr.picture.none)).toBeVisible()
+
+    unmount()
+
+    /* And false of `000003`, whose portrait is approved and served. Until this branch the
+       sentence was drawn unconditionally, so this member was told the portal had no
+       photograph while his own was in the header of the same page - the shape PDL P11
+       rejected once already, „u istom dahu kaže ,Nemaš sliku' i ,čeka odobrenje'". */
+    renderAt('/sr/podesavanja', 'competitor', '000003')
+
+    const mine = await panelFor()
+
+    expect(mine.queryByText(sr.picture.none)).not.toBeInTheDocument()
+    /* And the panel is still a panel: he can choose and send a new one, which is the whole
+       reason it is drawn for him at all (owner, 12.08.2026). */
+    expect(mine.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+  })
 })

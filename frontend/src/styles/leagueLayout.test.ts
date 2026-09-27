@@ -161,17 +161,46 @@ const PLATE_SHEETS = `=== components/NamePlate.css ===
 /**
  * Which sheets outside the plate's own name one of its classes, and how many times.
  *
- * Three of them dress the circle of another widget, which draws no plate: the chart on the top
- * boards, the ten faces on the front page, and the head of a profile. The fourth is the owner's
+ * Five of them dress the circle of another widget, which draws no plate: the chart on the top
+ * boards, the ten faces on the front page, the head of a profile, the card of a competitor and
+ * the header of a signed in member. The next is the owner's
  * own decision of 07.09.2026, „Krug se ne crta ispod 700px", written against the main standing by
- * name, and it is read as a rule two cases below.
+ * name, and it is read as a rule two cases below. The last is the sheet that DEFINES a class the
+ * plate wears rather than one reaching in to redress it, and its entry says so.
+ *
+ * **Three entries arrived on 27.09.2026 and each is explained where it stands.** Two of them are
+ * the whole of why this list matters: the card of a competitor and the header of a member had
+ * their own circles, wearing their own class names, so no sweep for a class could see them - and
+ * one of the two was a place the owner had named by name.
  *
  * A tenth mention in the chart fails this and is answered in one line. A **new** rule anywhere in
  * the portal aiming at a plate's class fails it too, and that is the thing this is for: that is
  * how the circle was taken off the main standing at every width with the gate green.
  */
 const REACHED_FROM = [
+  /* THE HEADER OF A SIGNED IN MEMBER, since 27.09.2026, and it is two mentions because the
+     hover is a second selector. It drew a 1,7rem disc of its own called `account__monogram`
+     until then, which is why the picture the owner approved on QA never arrived there
+     although he had named that very place: „gornjem desnom zaglavlju ulogovanog korisnika"
+     (PDL P28f). An account that is NOT a member keeps its own mark and is not here.
+     `components/oneFace.test.ts` is what holds the move, by the import graph. */
+  'app/Shell.css: portrait x2',
   'components/ColumnChart.css: portrait x9',
+  /* AND THE ONE ENTRY HERE THAT IS NOT A WIDGET DRESSING A CIRCLE: `Crop.css` DEFINES
+     `crop-fitted`, which joined `PLATE_CLASSES` on 27.09.2026 because the plate's circle now
+     has a second form, a photograph, and that form wears it (`components/Portrait.tsx`).
+     Two mentions, the box and the picture inside it.
+
+     It is listed rather than pulled into the plate's own sheets, and the reason is that what
+     those two rules SAY is already held twice: `styles/circle.test.ts` asks the browser's own
+     parser for `object-fit: cover` on the picture and `overflow: hidden` on the box, and
+     `components/cropStyle.test.ts` holds the rest of that sheet. A third home for the same
+     text would be the very thing this file's own note warns about. */
+  'components/Crop.css: crop-fitted x2',
+  /* THE CARD OF A COMPETITOR, since 27.09.2026 and for the same reason as the header: it drew
+     a 7,5rem disc of its own called `card__face`, with its own copy of the six declarations
+     `.face-circle` was extracted to hold. One mention, the size and the ring. */
+  'pages/Competitors.css: portrait x1',
   'pages/Home.css: portrait x2',
   'pages/Profile.css: portrait x2',
   'pages/Rankings.css: plate__faces x1',
