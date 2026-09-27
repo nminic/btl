@@ -109,12 +109,16 @@ function reasonsIn(file: string): string[] {
  */
 const NOT_A_REASON: Record<string, string[]> = {
   'PricingWriteApi.java': ['fee', 'referral'],
-  /* `MePhotoApi` declares one too, added 26.09.2026 with the screen that sends:
+  /* `MePhotoApi` declared one of these on 26.09.2026 and gained two more on 27.09.2026
+     with `mine`, the GET this class did not use to have (PDL 21a/21b):
      `THE_PROFILES_TAB = "profiles"` is the NAME OF A QUEUE, the one PDL P28a calls
      „Profili", and it is the value the route writes into `verification.queue` and reads
-     back by. It is not a refusal and no screen answers it, which is what the third case
+     back by. `A_PUBLISHED_PICTURE_IS_ASKED_FOR_AT = "/api/photos/"` and
+     `MY_WAITING_PICTURE_IS_ASKED_FOR_AT = "/api/me/photo/"` are the two prefixes `mine`
+     builds a picture's address out of, never a reason a send was turned away. None of the
+     three is a refusal and no screen answers any of them, which is what the third case
      below checks about every name on this list. */
-  'MePhotoApi.java': ['profiles'],
+  'MePhotoApi.java': ['profiles', '/api/photos/', '/api/me/photo/'],
   /* `CompetitorWriteApi` declares five that are not refusals either, and they fall into two
      kinds. `delete` and `anonymise` are the two words the DELETE's `account` parameter may
      carry (PDL P23, 14.09.2026), so they are what a request SAYS rather than why one was
@@ -233,8 +237,14 @@ describe('the reasons the server can name', () => {
        of. Two of the six cannot be reached from the screen today and both are answered
        anyway, for the reason `WHEN_WRITING_A_PRICE` gives: the form is the floor and the
        route decides (PDL P12c), so a request that goes round the screen meets the route
-       with nothing in between. */
-    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 8],
+       with nothing in between.
+
+       NINE CONSTANTS AND SEVEN REASONS since V40 (27.09.2026).
+       `theRowIsFreeInOneCurrencyOnly` is PDL 20b: a row is free in both currencies or
+       priced in both. It is the one reason on this list the FORM cannot turn back, which
+       is why it is worth saying twice - nought is a perfectly good number in both amount
+       boxes, so no `min` or `max` on either of them can ask whether the two agree. */
+    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 9],
     /* THE SEVENTH, ADDED WITH B106: making a moderator, ticking his boxes and taking his
        moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
        one dictionary covers all four reasons the class declares. */
@@ -244,12 +254,18 @@ describe('the reasons the server can name', () => {
        nothing on this side could read any of them, because no screen called the route at
        all: `grep -rn "me/photo" frontend/src` came back empty, tests included.
 
-       SIX CONSTANTS AND FIVE REASONS, which is the second file on this list where those
-       two numbers differ; `NOT_A_REASON` above says which the sixth is and why. The two
-       routes of the class are one act as far as this gate goes, because `DELETE
-       /api/me/photo` names no refusal at all - it answers 200 or an empty 404 - so the
-       one dictionary the screen hands in covers everything the file can say. */
-    ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE], 6],
+       SEVEN CONSTANTS AND FOUR REASONS SINCE 27.09.2026, and both numbers moved for
+       different reasons at once. `aPictureAlreadyWaits` left the class: PDL 21c has a
+       second send overwrite the row that waits rather than being refused for it, so the
+       route lost a reason instead of renaming one. `mine` arrived beside it, the GET this
+       class did not use to have (PDL 21a/21b), and it declares no reason of its own but
+       two address prefixes the screen never had to answer for either; `NOT_A_REASON`
+       above says which three constants are not reasons now and why. The three routes of
+       the class are one act as far as this gate goes, because neither `GET /api/me/photo`
+       nor `DELETE /api/me/photo` names a refusal at all - both answer 200 or an empty 404
+       - so the one dictionary the screen hands in still covers everything the file can
+       say. */
+    ['MePhotoApi.java', [WHEN_SENDING_A_PICTURE], 7],
     /* THE EIGHTH, ADDED 26.09.2026 WITH THE SCREEN THAT MEETS HALF OF IT. `CompetitorWriteApi`
        declares fourteen constants, which is the largest number on this list and the first
        where all three categories appear at once: five that are not refusals

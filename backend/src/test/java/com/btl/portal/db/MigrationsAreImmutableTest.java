@@ -134,6 +134,9 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   assertion below is `containsExactlyElementsOf`, which is about ORDER and never about
 			   arithmetic between neighbours. */
 			new Applied("38", "V38__the_balance_is_a_book.sql", 2032527406),
+			new Applied("39", "V39__the_money_arrives_two_ways_and_the_slip_is_ips.sql", -1797253810),
+			new Applied("40", "V40__a_price_row_is_free_in_both_currencies_or_in_neither.sql",
+					-1581242756),
 			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1973092509));
 
 	@Test

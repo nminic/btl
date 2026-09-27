@@ -104,6 +104,19 @@ class ConstraintsTest extends DatabaseTest {
 	private static final String GOOD_PRICE_ROW =
 			"insert into price_row (key, kind, day_from, day_to, eur, rsd, ranking, sort_order, label) "
 					+ "values ('probe', 'period', '02-01', '02-02', 1, 120, true, 9001, 'Naziv probe')";
+	/**
+	 * AND A ROW THAT COSTS NOTHING AT ALL, which V40 allows and is the half of that decision no
+	 * breaking row can state.
+	 *
+	 * <p>PDL 20b, owner 27.09.2026: a row is free in BOTH currencies or priced in BOTH. The two rows
+	 * above in the violation list say what it refuses; without this one the constraint could be
+	 * replaced by {@code eur > 0 and rsd > 0} - refusing a free row outright - and every case in this
+	 * file would still pass. That is a different decision from the one he made, and this is the only
+	 * thing that tells the two apart.
+	 */
+	private static final String A_FREE_PRICE_ROW =
+			"insert into price_row (key, kind, day_from, day_to, eur, rsd, ranking, sort_order, label) "
+					+ "values ('besplatno', 'level', null, null, 0, 0, null, 9002, 'Naziv probe')";
 
 	static List<Violation> violations() {
 		return List.of(
@@ -217,6 +230,21 @@ class ConstraintsTest extends DatabaseTest {
 				Violation.of("price_row_only_fee_has_no_rsd", priceRow("'probe', 'level', null, null, 20, null, null, 9001")),
 				Violation.of("price_row_only_period_is_ranked", priceRow("'probe', 'level', null, null, 20, 2400, true, 9001")),
 				Violation.of("price_row_only_period_is_ranked", priceRow("'probe', 'period', '02-01', '02-02', 1, 120, null, 9001")),
+				/* NOUGHT IN ONE CURRENCY ALONE, both ways round, because they are two different rows
+				   an administrator can type and the rule is written as an equivalence in order to
+				   refuse both. V40, PDL 20b, owner 27.09.2026. The euro side is the one that was
+				   measured: 0 EUR / 600 RSD breaks both roads to an activation, because a spend in
+				   the book has to move both currencies strictly (`balance_entry_a_membership_takes`,
+				   V38). A check written as an implication would have caught one of these two.
+
+				   A LEVEL rather than a period, so that `price_row_only_period_is_ranked` and
+				   `price_row_period_has_days` are both satisfied and this is the only thing each row
+				   breaks; and `rsd` is there, because a row without it is the fee's exemption and
+				   would pass. */
+				Violation.of("price_row_free_in_both_or_priced_in_both",
+						priceRow("'probe', 'level', null, null, 0, 2400, null, 9001")),
+				Violation.of("price_row_free_in_both_or_priced_in_both",
+						priceRow("'probe', 'level', null, null, 20, 0, null, 9001")),
 				/* A row with no name at all, and a row whose name is spaces. Both directions of
 				   what V34 says a name is, and they are two different faults: NOT NULL alone
 				   would take „   ", which draws as an empty cell in the table a visitor reads
@@ -359,7 +387,7 @@ class ConstraintsTest extends DatabaseTest {
 	 * would otherwise be answered by turning a check off.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = { GOOD_COUNTRY, GOOD_PLACE, GOOD_PRICE_ROW })
+	@ValueSource(strings = { GOOD_COUNTRY, GOOD_PLACE, GOOD_PRICE_ROW, A_FREE_PRICE_ROW })
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isEqualTo(1);
 	}

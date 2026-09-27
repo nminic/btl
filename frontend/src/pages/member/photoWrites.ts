@@ -160,16 +160,24 @@ export function pictureToSend(file: File, crop: Crop): FormData {
 }
 
 /**
- * THE FIVE REFUSALS `MePhotoApi` CAN NAME, each to a sentence in the dictionary.
+ * THE FOUR REFUSALS `MePhotoApi` CAN NAME, each to a sentence in the dictionary.
  *
  * <p>`refusals.test.ts` reads the `static final String` reasons the class declares and
  * fails when one of them is not here, or when one here is not there. The class declares
- * SIX such constants and one of them is not a refusal at all - `THE_PROFILES_TAB =
- * "profiles"`, the name of the queue a portrait waits in - so it is named in that file's
- * own `NOT_A_REASON`, which is itself checked both ways: an exemption for a constant some
- * screen does answer is refused there.
+ * SEVEN such constants and three of them are not a refusal at all - `THE_PROFILES_TAB =
+ * "profiles"`, the name of the queue a portrait waits in, and the two address prefixes
+ * `mine` reads its answer through, `/api/photos/` and `/api/me/photo/` - so all three are
+ * named in that file's own `NOT_A_REASON`, which is itself checked both ways: an exemption
+ * for a constant some screen does answer is refused there.
  *
- * <p><b>TWO OF THE FIVE CANNOT BE REACHED THROUGH THE SCREEN AS IT STANDS, AND BOTH ARE
+ * <p><b>UNTIL 27.09.2026 THERE WERE FIVE, AND THE FIFTH LEFT RATHER THAN BEING RENAMED.</b>
+ * `aPictureAlreadyWaits` was the 409 a second send met while one picture still waited; PDL
+ * 21c took it out of the class, because a second send now overwrites the row that waits
+ * instead of being refused for it (`MePhotoApi.send`: „gazi trenutan red kod verifikatora").
+ * The screen answers one fewer reason because the route can no longer give it, not because
+ * the reason moved anywhere.
+ *
+ * <p><b>TWO OF THE FOUR CANNOT BE REACHED THROUGH THE SCREEN AS IT STANDS, AND BOTH ARE
  * ANSWERED ANYWAY.</b> The form is the floor and the route decides (the shape
  * `admin/priceWrites.ts` states for its own two, out of PDL P12c), so a request that goes
  * round the screen meets the route with nothing in between:
@@ -182,7 +190,7 @@ export function pictureToSend(file: File, crop: Crop): FormData {
  * the screen refuses to send with nothing chosen before that.
  * </ul>
  *
- * <p><b>AND THREE OF THE FIVE REALLY ARE REACHABLE, which is measured and is not obvious.</b>
+ * <p><b>AND THE OTHER TWO REALLY ARE REACHABLE, which is measured and is not obvious.</b>
  * The screen refuses exactly two files today - one whose shorter edge is under 240 pixels
  * and one the browser cannot decode (`components/CropChooser.tsx`) - and it checks NEITHER
  * the number of bytes NOR the type. `accept="image/*"` lets a GIF through, a browser decodes
@@ -198,7 +206,6 @@ export function pictureToSend(file: File, crop: Crop): FormData {
  * which is the honest form, and `thisIsNotAPicture` follows it.
  */
 export const WHEN_SENDING_A_PICTURE: Record<string, string> = {
-  aPictureAlreadyWaits: 'picture.sendRefused.aPictureAlreadyWaits',
   theFormIsNotComplete: 'picture.sendRefused.theFormIsNotComplete',
   thePictureIsTooBig: 'picture.sendRefused.thePictureIsTooBig',
   thisIsNotAPicture: 'picture.sendRefused.thisIsNotAPicture',

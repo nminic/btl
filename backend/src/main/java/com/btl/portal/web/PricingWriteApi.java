@@ -145,6 +145,29 @@ class PricingWriteApi {
 	static final String THE_FEE_HAS_NO_DINAR_PRICE = "theFeeHasNoDinarPrice";
 
 	/**
+	 * V40's {@code price_row_free_in_both_or_priced_in_both}, said as a sentence.
+	 *
+	 * <p>PDL 20b, owner 27.09.2026, chosen between three outcomes: „Red cenovnika je ili
+	 * besplatan u obe valute, ili ima iznos u obe. Nula u jednoj a iznos u drugoj se odbija."
+	 * The sentence is half of that decision and the constraint is the other half, which is the
+	 * same division {@link #THE_FEE_HAS_NO_DINAR_PRICE} already stands on: the schema is what
+	 * makes the row impossible, and this is what an administrator can act on instead of meeting
+	 * a 500.
+	 *
+	 * <p><b>Its own sentence and not {@link #THE_AMOUNT_IS_NOT_KEPT_EXACTLY}</b>, for the reason
+	 * the ceiling above is its own: nought is a perfectly exact amount that {@code numeric(10,2)}
+	 * keeps, and „take a para off it" is not what this asks for. What it asks for is the other
+	 * currency, which is a different instruction and a different box on the form.
+	 *
+	 * <p><b>AND IT IS REACHABLE FROM THE SCREEN TODAY</b>, which is why it is a sentence rather
+	 * than a note: nought is within every other refusal this route names -
+	 * {@code amountIsKeptExactly} asks for {@code signum() >= 0} and the ceilings ask about the
+	 * top - so until V40 an administrator could set a membership to 0 EUR / 600 RSD and be told
+	 * nothing at all. What he would have met is a 500 on the next activation, and not here.
+	 */
+	static final String THE_ROW_IS_FREE_IN_ONE_CURRENCY_ONLY = "theRowIsFreeInOneCurrencyOnly";
+
+	/**
 	 * More characters in the name than the box an administrator types it into will hold.
 	 *
 	 * <p><b>Its own sentence and not {@link #THE_FORM_IS_NOT_COMPLETE}</b>, for the reason the
@@ -480,6 +503,35 @@ class PricingWriteApi {
 		   ending in a space is not refused for a character the statement below throws away. */
 		if (typed.label().strip().length() > AS_LONG_AS_THE_FORM_ALLOWS) {
 			return no(HttpStatus.BAD_REQUEST, THE_NAME_IS_LONGER_THAN_THE_FORM_ALLOWS);
+		}
+
+		/* AND WHAT V40'S `price_row_free_in_both_or_priced_in_both` WOULD SAY AS A 500, SAID AS A
+		   SENTENCE. PDL 20b, owner 27.09.2026: a row is free in BOTH currencies or priced in BOTH,
+		   and nought in one alone is refused. Written as an equivalence for the reason the schema
+		   writes it as one: 0 EUR with a dinar price and a euro price with 0 RSD are two different
+		   rows an administrator can type, and a condition asking about one currency would let the
+		   other through.
+
+		   WHY IT IS WORTH A SENTENCE AT ALL, which is measured rather than assumed: nought passes
+		   every other refusal this route names. `amountIsKeptExactly` asks for `signum() >= 0` and
+		   the two ceilings ask about the top, so before today 0 EUR / 600 RSD was written down and
+		   answered 200 - and the 500 came later, on the next activation, off
+		   `balance_entry_a_membership_takes` (V38), which requires a spend to move both currencies
+		   strictly. The administrator who caused it would have been nowhere near that screen.
+
+		   THE FEE IS NOT ASKED, for the reason the schema does not ask it either: it has no second
+		   currency to disagree with, and the sentence above has already refused a dinar price on it.
+		   The same six rows the two questions before this one are about.
+
+		   `signum()` AND NEVER `equals(ZERO)`, which is not a style: `new BigDecimal("0.00")` is not
+		   equal to `BigDecimal.ZERO` - the scale is part of that comparison - and the form carries
+		   whatever scale was typed. `signum()` is the same question PostgreSQL answers with `= 0`,
+		   which is what keeps this sentence and that constraint saying one thing.
+
+		   LAST, like the name above and for the same stated reason: appended rather than inserted,
+		   so not one request that already had an answer gets a different one. */
+		if (!theFee && (typed.eur().signum() == 0) != (typed.rsd().signum() == 0)) {
+			return no(HttpStatus.BAD_REQUEST, THE_ROW_IS_FREE_IN_ONE_CURRENCY_ONLY);
 		}
 
 		/* `single()` AND NOT `optional()`, WHICH IS A STATEMENT ABOUT WHAT CAN HAPPEN HERE.
