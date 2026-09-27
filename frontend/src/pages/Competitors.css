@@ -47,7 +47,16 @@
  *
  * What is left here is only what genuinely differs, which is what `Portrait.css`
  * asks for in those words: the size, the type, the step under it, and the ring.
- * The colour, the radius, the white and the clipping now come from one home. */
+ * The colour, the radius, the white and the clipping now come from one home.
+ *
+ * **No `@import './Portrait.css'` here, and that is the measured practice rather
+ * than an oversight.** ADL A7 of 15.08.2026 says a sheet brings what it uses, and
+ * the case it was written for is `TeamMark.css`, whose screen draws no `Portrait`
+ * at all - so nothing else would pull the sheet in. This screen draws one, and
+ * `Portrait.tsx` brings its own sheet; `pages/Home.css` and
+ * `components/ColumnChart.css` write `.portrait` on the same footing and import
+ * nothing either. There is no width at which this class is on the page without the
+ * component that defines it. */
 .cards .card .portrait {
   /* Bigger, and optically centred: the glyph carries no line box of its own, so
      without line-height 1 it sits a hair below the middle of the circle
