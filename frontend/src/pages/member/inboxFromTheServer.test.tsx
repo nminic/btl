@@ -696,7 +696,13 @@ describe('the inbox when somebody else signs in without signing out first', () =
      calls `useInbox(mine)` once and, without the fix, holds the same `useResource` instance
      across a caller switch that never routes it away. Reached on `/sr/poruke` and never
      navigated off it, so the remount routing would otherwise give this screen for free
-     cannot be the reason this one passes. */
+     cannot be the reason this one passes.
+   *
+     **Read through `main` and not through the whole document, and that is measured rather
+     than tidiness.** `MessagesMenu` sits above every screen and carries its own span of the
+     same subject text; a case that reverted only this screen's key still failed here until
+     the query was scoped, because `queryByText` found the panel's stale span instead of
+     saying anything about this screen at all. */
   it('the inbox screen does not go on showing what was fetched for the person before', async () => {
     const user = setupUser()
 
@@ -706,12 +712,14 @@ describe('the inbox when somebody else signs in without signing out first', () =
       <SignInAsWithoutSigningOut memberNumber="000009" address={HER_ADDRESS} />
     ))
 
-    expect(await screen.findByRole('link', { name: FORGED.subject })).toBeVisible()
+    const main = () => within(screen.getByRole('main'))
+
+    expect(await main().findByRole('link', { name: FORGED.subject })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
 
-    expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
-    expect(await screen.findByRole('link', { name: HERS.subject })).toBeVisible()
+    expect(main().queryByText(FORGED.subject)).not.toBeInTheDocument()
+    expect(await main().findByRole('link', { name: HERS.subject })).toBeVisible()
   }, SLOW * 2)
 
   /* And the third door, `MessageDetail.tsx`'s `TheMessageAsked`: opened on HIS message and
