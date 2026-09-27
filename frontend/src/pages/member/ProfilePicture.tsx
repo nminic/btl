@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { useToday } from '../../clock/useClock'
 import { RequiredNote } from '../../forms/AskedLabel'
 import { CropChooser } from '../../components/CropChooser'
 import type { Chosen } from '../../components/CropChooser'
 import { CropWindow } from '../../components/CropWindow'
 import { useI18n } from '../../i18n/useI18n'
-import { NO_RATING } from '../../data/types'
 import type { Competitor } from '../../data/types'
+import { clearResourceCache } from '../../data/client'
 import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
-import { pictureToSend, THE_PICTURE_GOES_TO, WHEN_SENDING_A_PICTURE } from './photoWrites'
+import {
+  pictureToSend,
+  theRowIn,
+  THE_PICTURE_GOES_TO,
+  WHEN_SENDING_A_PICTURE,
+} from './photoWrites'
 
 /**
  * Changing the picture on a profile, after joining.
@@ -82,8 +86,7 @@ import { pictureToSend, THE_PICTURE_GOES_TO, WHEN_SENDING_A_PICTURE } from './ph
  */
 export function ProfilePicture({ me }: { me: Competitor }) {
   const { t } = useI18n()
-  const { propose, proposals, decisions } = useSession()
-  const today = useToday()
+  const { sendPicture, pictureSent, decisions } = useSession()
   const [chosen, setChosen] = useState<Chosen | null>(null)
   const [justSent, setJustSent] = useState(false)
   /* While the request is out. Two states rather than one, the shape
@@ -111,32 +114,40 @@ export function ProfilePicture({ me }: { me: Competitor }) {
      own, on a second visit, and not the moderator's as this paragraph claimed
      until a review of PR 381 (27.09.2026) measured it.
 
-     `proposals` lives in `useState` (session/SessionProvider.tsx), so it is gone
-     the moment the tab is reloaded while the row this screen cannot see is still
-     open on the server. A member who comes back to a picture still waiting is
-     met by `picture.none` - „Portal još nema fotografije" - exactly as if he had
-     sent nothing, sends again, and is refused `aPictureAlreadyWaits`, 409.
-     Neither half of PDL.md:7582 holds for him then: he is not shown his own
-     picture under its waiting mark, and the reason that decision gives for
-     itself, spelt there without diacritics - „da zna da je slanje uspelo i da je
-     ne salje tri puta" - is exactly what fails: nothing here stops him from
-     sending again, which is the very thing that sentence exists to prevent. It
-     is the shape PDL P11 already rejected once, a screen that in one breath told
-     a member nothing was there and in the next that something already was
-     (PDL.md:1659, over the withdrawn „Ukloni sliku"); this is that shape again,
-     by a different road. Written down rather than left to be discovered
-     (PENDING, and PDL P22).
+     `pictureSent` lives in `useState` (session/SessionProvider.tsx), so it is
+     gone the moment the tab is reloaded while the row this screen cannot see is
+     still open on the server. A member who comes back to a picture still waiting
+     is met by `picture.none` - „Portal još nema fotografije" - exactly as if he
+     had sent nothing, sends again, and is refused `aPictureAlreadyWaits`, 409.
+     PDL 21b is what that fails (owner, 27.09.2026): „ukoliko udjem da posaljem
+     ponovo, vidim da je trenutno slika u statusu cekanja i tu vidim trenutno
+     azuriranu sliku sa krugom." It holds within the visit that sent the picture
+     and not across a reload, and it cannot be made to: `PhotoApi` refuses a
+     picture nothing public holds - „serving it is publishing it instead of him" -
+     and a waiting picture is held by nothing public (ADL A60), so there is no
+     address this screen could ask. It is the shape PDL P11 already rejected once,
+     a screen that in one breath told a member nothing was there and in the next
+     that something already was (over the withdrawn „Ukloni sliku"); this is that
+     shape again, by a different road. Written down rather than left to be
+     discovered (PENDING, review of PR 381, and PDL P22).
+   *
+     WHAT IS ASKED OF IT IS NOW ONE THING AND NOT FOUR, and that is the whole of
+     what changed on 27.09.2026. It used to be a row in `proposals`, the same list
+     the moderator's queue is merged out of, so this had to pick his own row out of
+     a list that also held everybody else's teams and biographies - by queue, by
+     sort and by member number. A picture is not in that list any more, because the
+     server files the queue row for it and a second row of the browser's own drew
+     the member twice in front of the moderator (`session/context.ts#pictureSent`).
+     There is one picture a visit can have sent, so there is nothing to pick.
    *
      Decisions are read all the same, so approving a picture during this visit
      hands the control straight back rather than leaving somebody told to wait
-     with no way out. */
-  const waiting = proposals.find(
-    (one) =>
-      one.queue === 'profiles' &&
-      one.kind === 'photo' &&
-      one.memberNumber === me.memberNumber &&
-      decisions[one.id] === undefined,
-  )
+     with no way out. AND THE KEY IS THE SERVER'S: the moderator decides the row
+     the server made, `settle` files it under that row's id, and this reads the
+     same id. Under `prop-1` - which is what it was - the two never met, so a
+     member went on being told to wait over a picture already decided. */
+  const waiting =
+    pictureSent !== null && decisions[pictureSent.row] === undefined ? pictureSent : undefined
 
   /* Said out loud, because the control just pressed is replaced by a sentence:
      without this the focus falls to the body and a screen reader is told nothing
@@ -146,8 +157,6 @@ export function ProfilePicture({ me }: { me: Competitor }) {
       said.current?.focus()
     }
   }, [justSent])
-
-  const who = `${me.firstName} ${me.lastName}`
 
   /* Which note the button points at, and never one that is not on the screen:
      `aria-describedby` naming an element that is not there is a description a
@@ -196,36 +205,34 @@ export function ProfilePicture({ me }: { me: Competitor }) {
       return
     }
 
-    propose({
-      queue: 'profiles',
-      /* The one queue that holds two sorts. Both go back to the member when
-         they are refused (PDL P22, 06.08.2026); what differs is what the
-         moderator writes, since a picture is changed by an instruction precise
-         enough to work from and a text is written again. This comment said
-         „rather than published" until 15.08.2026, which was the withdrawn rule
-         and outlived it by nine days. */
-      kind: 'photo',
-      date: today,
-      memberNumber: me.memberNumber,
-      who,
-      subject: who,
-      /* Empty, as every other item on this queue is: it carries a record's id
-         where a decision is about a record, and this one is about a person
-         (data/types.ts). */
-      subjectId: '',
-      /* The name of the file and nothing else, which is what the seeded items on
-         this queue carry too: a moderator must not be able to tell what came
-         from a member from what came from the file (pages/admin/pending.ts). */
-      body: picture.name,
+    /* WHAT THE MEMBER IS WAITING ON IS THE ROW THE SERVER MADE, NAMED BY THE KEY IT
+       ANSWERED WITH, and until 27.09.2026 this was `propose` instead - a row of the
+       browser's own, beside the server's.
+     *
+       The owner met what that cost on QA: one upload drew him TWICE on the moderator's
+       queue, the two cards alike in everything he could see, and the decision he took
+       reached no route at all, so „ODBIJENO" and the message in his inbox were both gone
+       when he signed back in. He asked for „jedan jedini red na strani verifikacije".
+     *
+       `theRowIn` reads that key (`photoWrites.ts`), and it is the same key the
+       moderator's decision is filed under, which is what lets the mark above clear when
+       the decision lands. Where the answer names no row the key is the empty string: no
+       decision is ever filed under that, so the mark stands for the rest of the visit,
+       which is the direction that cannot mislead - the reason the owner gave for the mark
+       is „da je ne salje tri puta", and the route refuses a second one 409 regardless. */
+    sendPicture({
+      row: String(theRowIn(answer.body) ?? ''),
       picture: picture.picture,
       crop: picture.crop,
-      currentDate: '',
-      proposedDate: '',
-      rating: NO_RATING,
-      email: '',
-      city: '',
-      country: '',
     })
+
+    /* SO THAT THE ROW JUST MADE IS ON THE QUEUE THIS VISIT, and not only on the next one.
+       `data/client.ts` fetches a resource once per visit, so a moderator who had already
+       opened the queue held the list from before this upload and never saw the row at all.
+       The shape is the one every screen that writes through a route already uses
+       (`admin/AdminMembers.tsx`, `admin/AdminTeams.tsx`, `admin/PendingQueue.tsx`).
+       Narrowed to the one resource: nothing else about this visit went stale. */
+    clearResourceCache('verification')
 
     setChosen(null)
     setJustSent(true)

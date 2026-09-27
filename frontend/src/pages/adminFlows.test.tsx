@@ -136,6 +136,8 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
     remove: vi.fn(),
     proposals: [],
     propose: vi.fn(),
+    pictureSent: null,
+    sendPicture: vi.fn(),
     published: [],
     publish: vi.fn(),
   }

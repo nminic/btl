@@ -1,5 +1,6 @@
 import { createContext } from 'react'
 import type {
+  Crop,
   EventComment,
   MembershipBasis,
   RaceCategory,
@@ -443,6 +444,26 @@ export type Decisions = Record<string, Decision>
  */
 export type Deletions = Record<string, string[]>
 
+/**
+ * A PICTURE SENT FOR A DECISION: the row the server filed it as, and the picture itself.
+ *
+ * <p>Three fields and not a `PendingItem`, which is the point of it. A `PendingItem` is what a
+ * queue draws a card from, and this must never become one again: the queue's cards come off
+ * `GET /api/verification`, and this is the member's own copy of what he sent, for his own
+ * screen (see `pictureSent` below for the measurement that parted them).
+ *
+ * <p><b>The picture and the crop are carried because the screen he sends from shows them</b>
+ * (PDL 21b, owner, 27.09.2026: „ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u
+ * statusu cekanja i tu vidim trenutno azuriranu sliku sa krugom"). They come out of his own
+ * browser rather than off an address, because there is no address: `PhotoApi` refuses a
+ * picture nothing public holds - „serving it is publishing it instead of him" - and a waiting
+ * picture is held by nothing public (ADL A60).
+ *
+ * <p>`row` is text, because a decision is filed under text (`Decisions`), and the server's key
+ * is a number - turned once, where it is read, rather than at each place that asks.
+ */
+export type PictureSent = { row: string; picture: string; crop: Crop }
+
 export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
 
 /**
@@ -806,6 +827,55 @@ export type SessionValue = {
    */
   proposals: PendingItem[]
   propose: (item: Omit<PendingItem, 'id'>) => void
+
+  /**
+   * THE QUEUE ROW THE SERVER FILED FOR THE PICTURE THIS VISIT SENT, and nothing else about it.
+   *
+   * <p><b>Why this is not a proposal, which is what it was until 27.09.2026.</b> A proposal is
+   * a row the moderator's queue has no other source for, and `propose` puts it in front of him
+   * (`admin/pending.ts` merges the two lists). A picture has had a source since
+   * `POST /api/me/photo` went in: the server files the queue row itself. Proposing it as well
+   * drew the member TWICE on one queue, alike in everything the moderator could see, and a
+   * decision taken on the browser's copy reached no route at all. The owner met that himself
+   * and asked for „jedan jedini red na strani verifikacije". So this is held apart from
+   * `proposals` and NOTHING merges it into any queue.
+   *
+   * <p><b>WHERE THE MEMBER MAY SEE IT AND WHERE HE MAY NOT, and the two are different screens
+   * rather than one rule.</b> PDL 21a (owner, 27.09.2026): „Clan i ne treba da vidi svoju sliku
+   * dok nije odobrena. Kad je bude ugledao po prvi put tad ce znati da je slika i odobrena" -
+   * that is about his PROFILE, where the first sight of it is the news that it was approved.
+   * PDL 21b, the same day, is about the screen he sent it from: „ukoliko udjem da posaljem
+   * ponovo, vidim da je trenutno slika u statusu cekanja i tu vidim trenutno azuriranu sliku sa
+   * krugom." So this carries the picture and the crop, and only the sending screen draws them.
+   *
+   * <p><b>What it reaches only for this visit, and it is a boundary that needs a route.</b> 21b
+   * says the sending screen shows the waiting picture, and after a reload this holds nothing, so
+   * it shows none. There is no address it could ask: `PhotoApi` refuses a picture nothing public
+   * holds, and a waiting picture is held by nothing public (ADL A60). Measured rather than
+   * assumed, and left to the owner as a question rather than papered over here.
+   *
+   * <p><b>It is the SERVER'S key and that is what makes the sentence go away by itself.</b> A
+   * decision is filed under the id of the row it was about (`decisions`, `settle`), so a
+   * moderator deciding the served row writes the very key this holds, and the screen reading
+   * `decisions[row]` sees it without anything being kept in step by hand. Under a key of the
+   * browser's own - which is what `prop-1` was - the two never met, so a member went on being
+   * told to wait over a picture that had already been decided.
+   *
+   * <p><b>The empty string is a row the answer did not name</b>, and no decision is ever filed
+   * under it, so the sentence stands for the rest of the visit. That is the direction that
+   * cannot mislead: what the sentence is for is that the member does not send the same picture
+   * again (`pages/member/ProfilePicture.tsx`).
+   *
+   * <p><b>It does not survive a reload, and that is a boundary rather than an oversight.</b>
+   * `useState`, like `proposals` beside it. A member who comes back while his picture is still
+   * waiting is met as though he had sent nothing and can send again, which the route refuses
+   * 409. Written down (`PENDING.md`, review of PR 381) rather than left to be discovered.
+   */
+  pictureSent: PictureSent | null
+  /** Nothing takes it back down: a decision is what ends the wait, and that is
+   *  `decisions` rather than a second list to keep in step. Called with `null` only
+   *  where a visit has to forget it without one, which nothing does today. */
+  sendPicture: (one: PictureSent | null) => void
 
   /**
    * Comments a moderator has let out during this visit, carrying the id of the
