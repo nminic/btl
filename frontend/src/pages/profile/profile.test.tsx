@@ -3,9 +3,10 @@ import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { at, first, must, selectElement } from '../../test/at'
 import { renderAt } from '../../test/render'
-import { membersAsServed } from '../../test/serverAnswers'
+import { membersAsServed, serverThat } from '../../test/serverAnswers'
+import { aCompetitor } from '../../test/theAnswer'
 import { setupUser } from '../../test/user'
-import { loadResource } from '../../data/client'
+import { clearResourceCache, loadResource } from '../../data/client'
 import sr from '../../i18n/sr.json'
 import { formatPoints } from '../../i18n/format'
 import type { AgeBand } from '../../data/categories'
@@ -637,6 +638,50 @@ describe('what the portal calls the person whose page it is', () => {
 
     renderAt(`/sr/takmicar/${silent('M').memberNumber}`)
     expect(await screen.findByText('Ovaj takmičar još nije napisao ništa o sebi.')).toBeVisible()
+  })
+
+  /**
+   * AND A BIOGRAPHY OF `null` READS THE SAME AS ONE OF `''`, WHICH IS A STATE THE SERVER
+   * NEVER ACTUALLY SENDS TO A READER WHO CAN REACH THIS PAGE.
+   *
+   * **Why this case builds a row the server would never really answer.** `bio: null` and
+   * `profileHidden: false` together is exactly the combination `profile/visible.ts`'s
+   * `reachable` and `CompetitorApi`'s own condition on `bio` would have to disagree about
+   * for a visitor to see it here - the server only ever answers `null` for a member who is
+   * hidden AND unreachable, and such a reader is sent to `/sr` before this component draws
+   * at all (see the notes on `data/types.ts`'s `bio` and on this file's own `Biography`
+   * call). So on the portal as it stands, `Biography`'s null branch is a guard against the
+   * two conditions drifting apart rather than a state anybody types their way into.
+   *
+   * **And a guard nothing exercises is a claim nothing checks** (rule of 14.09.2026), so
+   * this case builds the disagreement by hand rather than leaving the branch untested: the
+   * synthesised row is reachable (not hidden) and carries `bio: null` anyway, which is a
+   * shape only a bug could produce for real. What is measured is that the card reads
+   * exactly as it does for a member who wrote nothing, rather than throwing or drawing the
+   * word „null".
+   */
+  it('reads a null biography the same as an empty one, in case the two guards ever disagree', async () => {
+    clearResourceCache()
+
+    const { stop } = serverThat((path) =>
+      path === '/api/competitors'
+        ? new Response(JSON.stringify([{ ...aCompetitor, bio: null }]), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderAt(`/sr/takmicar/${aCompetitor.memberNumber}`)
+
+      expect(
+        await screen.findByText('Ovaj takmičar još nije napisao ništa o sebi.'),
+      ).toBeVisible()
+    } finally {
+      stop()
+      clearResourceCache()
+    }
   })
 
   it('asks no gender at all for a profile that is not there', async () => {
