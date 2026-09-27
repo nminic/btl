@@ -96,7 +96,7 @@ class ReferenceDataMatchesCodebookTest extends DatabaseTest {
 
 	@Test
 	void thePlaceTableIsTheTownCodebook() {
-		JsonNode file = read("frontend/public/mock/places.json");
+		JsonNode file = read("frontend/src/test/mock/places.json");
 
 		List<PlaceRow> expected = new ArrayList<>();
 

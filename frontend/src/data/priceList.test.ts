@@ -11,7 +11,7 @@ import {
   windowOf,
 } from './priceList'
 import type { Price } from './types'
-import served from '../../public/mock/pricing.json'
+import served from '../test/mock/pricing.json'
 
 /**
  * HOW THE SERVED PRICE LIST IS TAKEN APART, measured over the answer itself.

@@ -35,16 +35,16 @@ const ME = '000007'
  *  is the file's to choose, and a case about whose result it is has to name one
  *  that really belongs to somebody else. */
 const countedResults: Result[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/results.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/results.json'), 'utf-8'),
 )
 /** The calendar as the files hold it, for the one case that asks what a
  *  correction of a counted result wrote down: the answer has to come from the
  *  race and its event, and nothing on a screen shows either. */
 const allRaces: Race[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/races.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'),
 )
 const allEvents: BtlEvent[] = JSON.parse(
-  readFileSync(join(process.cwd(), 'public/mock/events.json'), 'utf-8'),
+  readFileSync(join(process.cwd(), 'src/test/mock/events.json'), 'utf-8'),
 )
 
 const MINE = '/sr/moji-rezultati'
