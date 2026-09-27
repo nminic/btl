@@ -516,7 +516,17 @@ describe('membership', () => {
        plaćanja zavise od države na tvom profilu") is gone since 26.09.2026
        (owner: „obriši ovu liniju"), and nothing replaced it - what is left for
        a member abroad is the PayPal heading and its note, checked below, and
-       that is the whole of what axis 3 of this branch measures him down to. */
+       that is the whole of what axis 3 of this branch measures him down to.
+
+       **AND „Podatke za uplatu vidiš u nastavku" IS GONE TOO, since 27.09.2026
+       (review, PR 385).** It read unconditionally until then, so a member here read
+       it and then met exactly the gap the paragraph above already lists: no
+       recipient, no account, no amount, no reference - the promise stood over
+       nothing. It is gated now on the same two facts the slip itself needs
+       (`methods.includes('ips')` and a `due` that holds a row), so the case
+       „draws the whole renewal for the member the public list does not carry"
+       is what proves the OTHER side of this same guard: that member is in Serbia
+       and reads the sentence with the slip right under it. */
     renderFor('000010')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
@@ -526,8 +536,45 @@ describe('membership', () => {
     expect(screen.queryByText('Poziv na broj')).not.toBeInTheDocument()
     expect(screen.queryByText(RECIPIENT_ACCOUNT)).not.toBeInTheDocument()
     expect(screen.queryByText(/Severna Makedonija/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
 
     expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+  })
+
+  it('promises nothing about a payment slip when the served price list has no period in force', async () => {
+    /* THE SECOND AXIS OF THE SAME GUARD, and it is a member IN SERBIA this time - the
+       first axis (country) is measured above, on 000010. „Podatke za uplatu vidiš u
+       nastavku" is gated on `due.length > 0` besides `methods.includes('ips')`
+       (`Membership.tsx`), because `due` answers „none or one" over whatever the served
+       list holds (`inForceOn`, data/priceList.ts) and this side cannot hold it to tiling
+       the year the way `PriceListRowsTest` holds the server: a gap in what is served is a
+       state this screen has to survive rather than rule out.
+
+       Emptied by dropping every `period` row rather than by picking a date, so the case
+       does not depend on which day of the year renders it: `inForceOn` reads only rows of
+       `A_PERIOD`, and none at all means none in force on any day. */
+    const { stop } = serverThat((path) =>
+      path === '/api/pricing'
+        ? new Response(
+            JSON.stringify(servedPrices.filter((row) => row.kind !== 'period')),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderFor('000032')
+
+      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      /* The category choice does not depend on a price and stays. */
+      expect(screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).toBeVisible()
+
+      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
   })
 
   it('writes the amount owed to a member in Serbia, in dinars', async () => {
@@ -629,8 +676,31 @@ describe('membership', () => {
     renderFor('000032')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })).toBeVisible()
+
+    const written = screen.getByRole('heading', { level: 3, name: 'Uplatnica' })
+    const withCode = screen.getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })
+
+    expect(written).toBeVisible()
+    expect(withCode).toBeVisible()
+
+    /* THE TWO HALVES SHARE ONE WRAPPER, which is what „sa desne strane u nivou detalja
+       za uplatu" (owner, 26.09.2026) means and `styles/membershipPaySlip.test.ts` cannot
+       measure: that file reads `.pay__slip`'s `grid-template-columns` straight off
+       `Member.css` (jsdom applies no stylesheet, ADL A33), and never asks whether
+       anything in the rendered page actually wears the class the rule is about.
+       Found by role rather than by the class itself (`btl/CLAUDE.md`: role/label
+       queries, not CSS selectors) and then walked up to it, so a markup change that
+       stopped naming the wrapper `pay__slip` - and left the CSS rule untouched - fails
+       here even though the CSS-only guard cannot see it. */
+    const slip = must(
+      written.closest<HTMLElement>('.pay__slip'),
+      'the wrapper the written half and the QR code are meant to share',
+    )
+
+    expect(within(slip).getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })).toBe(
+      withCode,
+    )
+
     expect(screen.queryByRole('heading', { name: /[Kk]artic/ })).not.toBeInTheDocument()
     // Paying between residents of Serbia through PayPal is not allowed.
     expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
@@ -823,6 +893,25 @@ describe('membership', () => {
     }
   }
 
+  /**
+   * That the copy confirmation stands where a sighted member reads it, and not
+   * only in the accessibility tree.
+   *
+   * `.toBeVisible()` cannot tell that apart from the fault it replaced (review, PR
+   * 385): jsdom applies no stylesheet at all (ADL A33), so `index.css`'s own
+   * `.visually-hidden` rule - the one that used to clip this very paragraph to a
+   * pixel - never reaches a component test, and the assertion read `true`
+   * regardless of which class sat on the element (measured: the class renamed to
+   * `member__note` in the markup with nothing else touched, and all three
+   * `toBeVisible()` calls this replaces stayed green). The class itself is
+   * something jsdom tracks exactly, because it is an attribute and not a computed
+   * style, so that is what is asked instead.
+   */
+  function expectSeen(said: HTMLElement): void {
+    expect(said).not.toHaveClass('visually-hidden')
+    expect(said).toHaveClass('member__note')
+  }
+
   it('lets a member copy their referral link, and says so out loud', async () => {
     /* Owner, 26.09.2026: „stavi onu grafikicu za kopiranje, tako da ako kliknem
        na to iskopiram link kod sebe u profil." The name is on the button
@@ -842,8 +931,8 @@ describe('membership', () => {
       /* Said through a live region that is on the page from the first render
          (present, empty, above), not one mounted only once there is something to
          announce - the confirmation is the region's text changing, not its
-         arrival. */
-      expect(await screen.findByText('Link je kopiran.')).toBeVisible()
+         arrival. And SEEN, not only heard (`expectSeen` above, PR 385). */
+      expectSeen(await screen.findByText('Link je kopiran.'))
     })
   })
 
@@ -861,7 +950,7 @@ describe('membership', () => {
         await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
         await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
-        expect(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.')).toBeVisible()
+        expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
         expect(screen.queryByText('Link je kopiran.')).not.toBeInTheDocument()
       },
     )
@@ -879,7 +968,7 @@ describe('membership', () => {
       await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
       await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
 
-      expect(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.')).toBeVisible()
+      expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
     })
   })
 

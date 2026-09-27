@@ -556,8 +556,24 @@ export function Membership() {
                       signed in to do it himself. A control promising an action that does not
                       exist here is worse than none (PDL.md:1659, owner: „Kontrola koja ništa
                       ne radi je gora nego da je nema"), so this says what actually happens
-                      next instead of offering a press that went nowhere. */}
-                  <p className="member__note">{t('membership.renew')}</p>
+                      next instead of offering a press that went nowhere.
+
+                      ONLY WHERE THE DATA IT POINTS AT REALLY FOLLOWS, since 27.09.2026
+                      (review, PR 385). It read unconditionally until then, and it promises in
+                      words: „Podatke za uplatu vidiš u nastavku." What follows two screens down
+                      is the slip, gated on the exact same two facts this reads here -
+                      `methods.includes('ips')` (PDL P8: no IPS code outside Serbia) and a `due`
+                      that actually holds a row. A member abroad met the sentence and then the
+                      PayPal heading with no recipient, no account, no amount and no reference
+                      under it; a `due` emptied by a gap in the served price list would have
+                      left the same promise standing over nothing for a member in Serbia too.
+                      Both are the one fault the comment above already names for a control that
+                      does nothing (PDL.md:1659): a sentence pointing at data that is not there
+                      is worse than no sentence. Read off the same two facts the slip below
+                      reads rather than a copy of them, so the two cannot drift apart. */}
+                  {methods.includes('ips') && due.length > 0 && (
+                    <p className="member__note">{t('membership.renew')}</p>
+                  )}
 
                   {/* The slip belongs to renewing, not to a screen of its own: the
                       member has just chosen a category and the next thing they need
@@ -785,12 +801,21 @@ export function Membership() {
                   </svg>
                 </button>
               </p>
-              {/* Said once, quietly, in the portal's own shape for a confirmation nobody
-                  has to be looking at the button to hear (`admin/AdminPricing.tsx`,
-                  `said`). Present from the first render and empty until pressed, so the
-                  first real change is not the region's own first mount - a live region
+              {/* SEEN AND NOT ONLY HEARD, since 27.09.2026 (review, PR 385). It borrowed
+                  `admin/AdminPricing.tsx`'s shape for a confirmation until then
+                  (`visually-hidden`, `said`), and that shape carries its own condition,
+                  written on it there: „the table beside it has already changed, and a
+                  reader who is not looking at it gets the one sentence that says so." That
+                  holds on `AdminPricing` because the table's own cell changes where a
+                  sighted reader is already looking. It does not hold here: pressing this
+                  button changes nothing else on the screen, so a sighted member who presses
+                  it and reads nothing has no way to tell a copy that succeeded from one the
+                  browser silently refused, and on failure reads nothing while believing the
+                  link is on their clipboard. `aria-live="polite"` is kept so a screen reader
+                  still hears it, present from the first render and empty until pressed, so
+                  the first real change is not the region's own first mount - a live region
                   that only exists once there is something to say can miss saying it. */}
-              <p aria-live="polite" className="visually-hidden">
+              <p aria-live="polite" className="member__note">
                 {copyStatus}
               </p>
               {credited.map((row) => (
