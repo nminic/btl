@@ -1,5 +1,8 @@
 package com.btl.portal.web;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
@@ -9,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -403,45 +407,83 @@ class VerificationPhotoApiTest {
 	 * sequence hands out in {@code @BeforeEach}, and a {@code @MethodSource} factory is
 	 * resolved before that runs, so a parameterised shape here would read an empty map. The
 	 * four are named in the assertion instead, so a failure still says which one it was.
+	 *
+	 * <p><b>AND THE LOGGER IS WATCHED THROUGHOUT, WHICH IS NOT TIDINESS BUT THE ONLY THING
+	 * THAT MAKES TWO OF THESE FOUR MEASURE ANYTHING.</b> Found by mutation and not by
+	 * reading: with {@code join} weakened to {@code left join}, a decided row and a
+	 * biography row come back as a row whose {@code p.id} is NULL, which JDBC hands over as
+	 * NOUGHT - so the route goes looking for a file called „0", fails to find it, and
+	 * answers 404 by the MISSING FILE road. Measured: all eleven cases here stayed green and
+	 * the log carried two lines of „picture 0 asked for as ...". The status was right for
+	 * the wrong reason, which is the two-sources-of-one-value fault in this fixture rather
+	 * than in the route.
+	 *
+	 * <p>So what separates the two roads is asserted directly: nothing to show must be
+	 * NOTHING, not a server fault. A picture a queue row does not have is an ordinary state
+	 * - most of these rows never had one - while the warning means „a row names a file that
+	 * is gone", which ADL A43, 2 says is a backup that did not cover the volume. One of
+	 * those is worth waking somebody for and the other is not, and a route that confused
+	 * them would write a line per request for every decided row on the portal.
 	 */
 	@Test
-	void nothingToShowIsAnsweredExactlyAsAnIdNobodyWrote() throws Exception {
-		Map<String, Long> byWhatItIs = new LinkedHashMap<>();
+	void nothingToShowIsAnsweredExactlyAsAnIdNobodyWroteAndIsNoServerFault() throws Exception {
+		Logger speaking = (Logger) LoggerFactory.getLogger(PhotoApi.class);
+		ListAppender<ILoggingEvent> heard = new ListAppender<>();
 
-		byWhatItIs.put("a row that has already been decided", decided);
-		byWhatItIs.put("a biography in the same tab", aBiography);
-		byWhatItIs.put("an id nobody wrote", nobodysRow());
+		heard.start();
+		speaking.addAppender(heard);
 
-		String nothing = whatCameBack(asked(nobodysRow(), MAY_THE_PROFILES));
+		try {
+			Map<String, Long> byWhatItIs = new LinkedHashMap<>();
 
-		for (Map.Entry<String, Long> one : byWhatItIs.entrySet()) {
-			MockHttpServletResponse refused = asked(one.getValue(), MAY_THE_PROFILES);
+			byWhatItIs.put("a row that has already been decided", decided);
+			byWhatItIs.put("a biography in the same tab", aBiography);
+			byWhatItIs.put("an id nobody wrote", nobodysRow());
 
-			assertThat(refused.getStatus())
-					.as(one.getKey() + " was not answered 404. ADL A8, owner 13.09.2026:"
-							+ " „Server odbija moderatora bez privilegije sa 404, ne sa 403\"")
+			String nothing = whatCameBack(asked(nobodysRow(), MAY_THE_PROFILES));
+
+			for (Map.Entry<String, Long> one : byWhatItIs.entrySet()) {
+				MockHttpServletResponse refused = asked(one.getValue(), MAY_THE_PROFILES);
+
+				assertThat(refused.getStatus())
+						.as(one.getKey() + " was not answered 404. ADL A8, owner 13.09.2026:"
+								+ " „Server odbija moderatora bez privilegije sa 404, ne sa"
+								+ " 403\"")
+						.isEqualTo(404);
+				assertThat(whatCameBack(refused))
+						.as(one.getKey() + " is told apart from an id nobody wrote, so the"
+								+ " difference between two answers says something the caller"
+								+ " was not to be told")
+						.isEqualTo(nothing);
+			}
+
+			/* AND THE ONE WHOSE REFUSAL COMES BY THE PRIVILEGE ROAD RATHER THAN THE JOIN,
+			   asked about a row that really is there and really does hold a picture. Kept
+			   beside the three above because it is the same answer arriving a different way,
+			   and a case that measured only the join would pass on a route with no privilege
+			   at all. */
+			MockHttpServletResponse aMember = asked(rows.get(WAITING.digest()), HOLDS_NOTHING);
+
+			assertThat(aMember.getStatus())
+					.as("a signed in competitor holding no tick anywhere was served a picture"
+							+ " waiting for a moderator's decision")
 					.isEqualTo(404);
-			assertThat(whatCameBack(refused))
-					.as(one.getKey() + " is told apart from an id nobody wrote, so the"
-							+ " difference between two answers says something the caller was"
-							+ " not to be told")
+			assertThat(whatCameBack(aMember))
+					.as("a competitor's refusal is told apart from an id nobody wrote, so the"
+							+ " difference says a row is standing there")
 					.isEqualTo(nothing);
+
+			assertThat(heard.list.stream().map(ILoggingEvent::getFormattedMessage).toList())
+					.as("having nothing to show was reported to whoever runs the server, so one"
+							+ " of these four is arriving by the MISSING FILE road instead of"
+							+ " finding no row - which is what `left join` here does, and it"
+							+ " answers the right number for the wrong reason while writing a"
+							+ " line per request for every decided row on the portal")
+					.isEmpty();
+		} finally {
+			speaking.detachAppender(heard);
+			heard.stop();
 		}
-
-		/* AND THE ONE WHOSE REFUSAL COMES BY THE PRIVILEGE ROAD RATHER THAN THE JOIN, asked
-		   about a row that really is there and really does hold a picture. Kept beside the
-		   three above because it is the same answer arriving a different way, and a case that
-		   measured only the join would pass on a route with no privilege at all. */
-		MockHttpServletResponse aMember = asked(rows.get(WAITING.digest()), HOLDS_NOTHING);
-
-		assertThat(aMember.getStatus())
-				.as("a signed in competitor holding no tick anywhere was served a picture"
-						+ " waiting for a moderator's decision")
-				.isEqualTo(404);
-		assertThat(whatCameBack(aMember))
-				.as("a competitor's refusal is told apart from an id nobody wrote, so the"
-						+ " difference says a row is standing there")
-				.isEqualTo(nothing);
 	}
 
 	/**
