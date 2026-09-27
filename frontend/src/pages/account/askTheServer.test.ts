@@ -244,5 +244,51 @@ describe('what is sent', () => {
     expect(sent.path).toBe('/api/password-reset')
     expect(sent.init?.method).toBe('POST')
     expect(sent.init?.body).toBe('{"token":"tk","password":"a","passwordRepeat":"b"}')
+    /* AND IT SAYS WHAT SHAPE THAT BODY IS. Read here beside the body rather than in a
+       case of its own, because the header and the body are one decision: JSON goes with
+       the JSON header, and the case below is the same decision the other way round. */
+    expect(Reflect.get(Object(sent.init?.headers), 'Content-Type')).toBe('application/json')
+  })
+
+  it('hands a FormData over whole, and lets the browser write the type', async () => {
+    /* THE FOURTH WIDENING OF THIS FILE, AND THE ONE THAT CANNOT BE MEASURED BY A SCREEN.
+     *
+       `POST /api/me/photo` is the one route that takes a file (`member/photoWrites.ts`),
+       and two things have to be true of the request or nothing arrives:
+     *
+       1. THE BODY IS THE FormData ITSELF. `JSON.stringify` of one is `"{}"` - measured,
+          not reasoned: every part of a FormData is on an internal slot and none on an own
+          property - so serialised it reaches `MePhotoApi` as an empty object, which
+          answers `theFormIsNotComplete` about a picture that was really chosen.
+       2. NO `Content-Type` IS SET. `fetch` writes `multipart/form-data` with a boundary of
+          its own, and only where nothing else has written one. A `Content-Type` put here
+          would name a boundary that is in no body, and the route would read nought parts
+          out of a request that carried five megabytes.
+     *
+       The token still goes: `ApiSecurity` protects what changes something, whatever shape
+       it arrived in. */
+    const body = new FormData()
+
+    body.append('picture', new File(['bytes'], 'lice.jpg', { type: 'image/jpeg' }))
+    body.append('cropX', '0.50000000')
+
+    server = serverThat(() => did())
+
+    await askTheServer('/api/me/photo', body)
+
+    const sent = at(server.asked, 0)
+
+    expect(sent.path).toBe('/api/me/photo')
+    expect(sent.init?.method).toBe('POST')
+    /* The very object, and never a copy or a rendering of it. */
+    expect(sent.init?.body).toBe(body)
+    /* Not merely „not application/json": nothing at all, under any spelling, because a
+       header of the right name with a wrong boundary is the failure this is about. */
+    expect(
+      Object.keys(Object(sent.init?.headers)).filter(
+        (one) => one.toLowerCase() === 'content-type',
+      ),
+    ).toEqual([])
+    expect(echoedBy(server.asked, 0)).toBe('imam')
   })
 })
