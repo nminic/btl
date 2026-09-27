@@ -708,7 +708,7 @@ export function Membership() {
                           and an address with no amount beside it is an instruction with a
                           hole in it. */}
                       {paypalTotal.map((amount) => (
-                        <div className="pay__slipText" key="paypal-payment">
+                        <div className="pay__slipText" key={amount}>
                           <dl className="pay__details">
                             <dt>{t('membership.toWhom')}</dt>
                             <dd>{RECIPIENT_NAME}</dd>
