@@ -731,10 +731,17 @@ export type SessionValue = {
 
   /** The invitations into a team that are still open, from every team at once. */
   invitations: Invitation[]
-  /** Sends one, from any member of the team to somebody outside it, and hands
-   *  back the identity it was given: the message that carries it has to name it,
-   *  and working the identity out a second time at the call site would be the
-   *  same rule written twice. */
+  /** Sends one, from a team to somebody outside it, and hands back the identity it
+   *  was given: the message that carries it has to name it, and working the identity
+   *  out a second time at the call site would be the same rule written twice.
+   *
+   *  **Who may send is not this method's question and the sentence that used to
+   *  answer it here is overturned.** It said „from any member of the team", the
+   *  owner's parenthesis of 05.09.2026, and he replaced it on 27.09.2026
+   *  (`PDL.md:8703`) with „samo administrator tog tima". This writes whatever the
+   *  screen asks it to write; the condition lives where the button is drawn
+   *  (`pages/profile/InviteToTeam.tsx`, which names why it does not enforce the new
+   *  rule yet) and on the server, which does. */
   invite: (invitation: Omit<Invitation, 'id'>) => string
 
   /** The invitations into a racing pair that are still open, from everybody at once. */

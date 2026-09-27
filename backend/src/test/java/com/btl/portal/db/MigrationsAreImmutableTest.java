@@ -41,6 +41,27 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the same reason this refuses to accept the rewrite. Changing a pinned number
  * below is saying out loud, in a diff somebody reviews, that a database which has
  * already run that file is being asked to run a different one.
+ *
+ * <p><b>And on 27.09.2026 that last sentence was measured to have one exception,
+ * which is written here because leaving it out is what would make it dangerous.</b>
+ * V35 merged and then FAILED on QA, on
+ * {@code check constraint "membership_free_of_the_fee_says_who" ... is violated by
+ * some row}. Every statement in it is transactional DDL, so Flyway rolled the group
+ * back and wrote NO history row at all: QA's history topped out at 34, and no
+ * database anywhere held V35's checksum. A later migration could not repair it
+ * either, because V35 fails before any later one is reached. So V35 was corrected
+ * in place and its number below changed, and for that one file the sentence above
+ * was FALSE - no database had already run it.
+ *
+ * <p>That case is now named in ADL A2 itself, addendum of 27.09.2026: "migracija
+ * koja je PALA nije primenjena, pa se sme menjati u mestu", which is not a
+ * loosening but the case the rule never named - the boundary is merge BECAUSE merge
+ * is when QA comes to remember the checksum, and a migration that failed never got
+ * that far. The condition is <b>checked</b> against Flyway's own history table - the
+ * one {@link DatabaseTest#flywayTable()} names, since it is a setting and this is
+ * Java - on every reachable database, and never assumed; and the changed file has to
+ * carry a sentence saying why. From the day V35 succeeds on QA it is as immutable as
+ * the rest, and a correction is the next migration.
  */
 class MigrationsAreImmutableTest extends DatabaseTest {
 
@@ -95,7 +116,10 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("32", "V32__a_member_writes_his_own_result.sql", 1492171060),
 			new Applied("33", "V33__a_deleted_member_takes_his_name_with_him.sql", -1251992971),
 			new Applied("34", "V34__the_price_list_row_carries_its_name.sql", 1229579551),
-			new Applied("35", "V35__freeing_a_member_of_the_fee_says_who_and_when.sql", -1373574365));
+			/* CHANGED IN PLACE on 27.09.2026, from -1373574365, and the paragraph above is why that
+			   was allowed for this one file: it had merged but never applied anywhere, because it
+			   failed on QA. Nothing else in this list has ever been repinned. */
+			new Applied("35", "V35__freeing_a_member_of_the_fee_says_who_and_when.sql", 1372522848));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

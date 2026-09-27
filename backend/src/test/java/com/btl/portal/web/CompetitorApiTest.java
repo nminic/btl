@@ -153,6 +153,22 @@ class CompetitorApiTest {
 	private static final String THE_PORTRAIT_OF_THE_ONE_WHO_HAS_NOT_PAID = aDigestOf("ef");
 
 	/**
+	 * THE HIDING MEMBER'S REAL BIOGRAPHY, WRITTEN OVER THE FIXTURE'S OWN {@code ""} ONE TEST AT
+	 * A TIME, rather than in {@code fiveMembers}.
+	 *
+	 * <p><b>{@code fiveMembers} gives 000007, the one member who hides, an EMPTY biography</b>,
+	 * and that is a trap for a case about withholding it: {@code null} and {@code ""} would read
+	 * alike to any assertion that only asks whether the field is blank, so a case built on the
+	 * shared fixture as it stands could pass without the withholding existing at all. Changing
+	 * {@code fiveMembers} itself is not the fix - every other case in this class shares it, and
+	 * {@code ""} is there on purpose, to prove an empty biography is a state the answer has to
+	 * carry (V7's own note on the column). So the two cases that need a REAL text write it
+	 * themselves, over 000007's row alone, through {@link #hisBiographyIs}.
+	 */
+	private static final String THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES =
+			"Ovo je biografija skrivenog clana i ne sme da procuri do neprijavljenog posetioca.";
+
+	/**
 	 * A PICTURE SHE HAS SENT AND NOBODY HAS DECIDED ON, standing beside the portrait she
 	 * already has.
 	 *
@@ -639,6 +655,16 @@ class CompetitorApiTest {
 	}
 
 	/**
+	 * OVERWRITES ONE MEMBER'S BIOGRAPHY FOR ONE CASE, leaving {@code fiveMembers} itself untouched
+	 * for every other case in this class. See {@link #THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES} for why
+	 * this exists rather than a different value in the shared fixture.
+	 */
+	private void hisBiographyIs(String memberNumber, String text) {
+		db.sql("update competitor set bio = ? where member_number = ?").params(text, memberNumber)
+				.update();
+	}
+
+	/**
 	 * AND A PICTURE HE HAS SENT THAT NOBODY HAS DECIDED ON, which is the column this resource
 	 * must never read.
 	 *
@@ -688,6 +714,19 @@ class CompetitorApiTest {
 		return StreamSupport.stream(answerFor(email).spliterator(), false)
 				.filter(one -> one.path("memberNumber").asString().equals(memberNumber))
 				.findFirst().orElseThrow();
+	}
+
+	/**
+	 * EVERY MEMBER NUMBER AN ANSWER CARRIES, IN THE ORDER IT CARRIES THEM - the half a
+	 * comparison keyed by number can never see, because {@link #recordOf} always looks a
+	 * number up rather than counting how many records answer to it or in what order they
+	 * came. A join that drops a row, or one that multiplies it, changes this list while
+	 * leaving every name {@code recordOf} finds still right.
+	 */
+	private static List<String> memberNumbersOf(JsonNode answer) {
+		return StreamSupport.stream(answer.spliterator(), false)
+				.map(one -> one.path("memberNumber").asString())
+				.toList();
 	}
 
 	/**
@@ -1267,6 +1306,88 @@ class CompetitorApiTest {
 	}
 
 	/**
+	 * A HIDDEN PROFILE'S BIOGRAPHY DOES NOT LEAVE TO A CALLER WHO IS NOT SIGNED IN, THE SAME
+	 * RULE AS THE PORTRAIT AND ITS OWN [ODLUKA 26.09.2026, owner].
+	 *
+	 * <p>PDL, 06.09.2026 names the biography beside the photograph among what hiding hides, and
+	 * the note on {@link CompetitorApi} says why this is its own increment rather than a line
+	 * added to the portrait's: a guard must not outgrow the change it measures (rule of
+	 * 01.09.2026).
+	 *
+	 * <p><b>000007's biography in {@code fiveMembers} is {@code ""}, which is a trap for this
+	 * exact case and is named on {@link #THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES}.</b> {@code null}
+	 * and {@code ""} read alike to a check that only asks whether the field is blank, so this
+	 * case writes a REAL text over his row first and asserts on its CONTENT rather than on
+	 * emptiness: the visitor's whole answer must not contain a single byte of it, which a
+	 * blank-versus-blank comparison could never tell apart from success.
+	 *
+	 * <p><b>And the floors say the withholding is about hiding and nothing else</b>, the same
+	 * discipline {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor} keeps for the portrait:
+	 * he really is hidden, his row really carries that text, and the member who does NOT hide
+	 * is answered hers to the same visitor.
+	 */
+	@Test
+	void aHiddenProfilesBiographyDoesNotLeaveToAVisitor() throws Exception {
+		assertThat(db.sql("select profile_hidden from competitor where member_number = '000007'")
+						.query(Boolean.class).single())
+				.as("000007 is not hiding his profile in this fixture, so withholding his"
+						+ " biography below would withhold nothing")
+				.isTrue();
+
+		hisBiographyIs("000007", THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES);
+
+		assertThat(db.sql("select bio from competitor where member_number = '000007'")
+						.query(String.class).single())
+				.as("the biography was not written where this case expects to find it, so the"
+						+ " rest of the case would be proving nothing")
+				.isEqualTo(THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES);
+
+		JsonNode his = recordOf(null, "000007");
+
+		assertThat(his.path("bio").isNull())
+				.as("a visitor was answered the biography of a member who hides his profile")
+				.isTrue();
+		assertThat(whole(null))
+				.as("the hidden member's biography is somewhere in the visitor's answer, under"
+						+ " some other name")
+				.doesNotContain(THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES);
+
+		/* AND THE OTHER MEMBER'S BIOGRAPHY DOES REACH THE SAME VISITOR, which is what makes
+		   HIDING the condition rather than the session or a blanket rule about biographies.
+		   000012 does not hide and has written one (`fiveMembers`). */
+		assertThat(recordOf(null, "000012").path("bio").asString())
+				.as("a visitor was answered no biography for a member who does NOT hide her"
+						+ " profile, so what is being withheld is the session and not the hiding")
+				.isEqualTo("Trcim od 2014.");
+	}
+
+	/**
+	 * AND IT DOES LEAVE TO EVERYBODY WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION - THE SAME
+	 * FIVE CALLERS {@link #aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn} WALKS, FOR THE
+	 * SAME REASON.
+	 *
+	 * <p>{@code RACES_FOR_NOBODY} is exactly the state that would catch the sibling mistake
+	 * named on {@link CompetitorApi}: swapping {@code :signedIn} for {@code :administration} in
+	 * the biography's condition. {@code administration} is false for him - he holds
+	 * {@code entity:events}, not {@code entity:members} - while {@code signedIn} is true, which
+	 * is the one combination that tells the two conditions apart.
+	 */
+	@Test
+	void aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn() throws Exception {
+		hisBiographyIs("000007", THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES);
+
+		for (String asking : List.of(HER_OWN_ACCOUNT, THE_OTHER_MEMBER, RACES_FOR_NOBODY,
+				THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN)) {
+
+			assertThat(recordOf(asking, "000007").path("bio").asString())
+					.as("%s is signed in and was not answered the biography of a member who hides"
+							+ " his profile; hiding is from a reader who is not signed in and from"
+							+ " nobody else", asking)
+					.isEqualTo(THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES);
+		}
+	}
+
+	/**
 	 * AND NOTHING OF A LAPSED MEMBER'S PORTRAIT LEAVES, BECAUSE HE IS ON NO ANSWER AT ALL.
 	 *
 	 * <p>{@link #aMemberWhoseFeeHasLapsedIsNotOnTheList} says his ROW is absent; this says that
@@ -1430,60 +1551,95 @@ class CompetitorApiTest {
 	 * same container - which is a guard that fails for a reason that has nothing to do
 	 * with what it is guarding.
 	 *
-	 * <p><b>The second half cuts the substring rather than parsing and writing back,
-	 * and {@code TeamApiTest} says why it was measured that way.</b> What is cut is
-	 * built out of the values the answer itself carries, so nothing in this case is a
-	 * number somebody remembered.
+	 * <p><b>AND SINCE 26.09.2026 THE SECOND HALF NAMES ITS EXCEPTIONS RATHER THAN CUTTING A
+	 * PATTERN OUT OF RAW TEXT, and this is a correction rather than a restyling.</b> A hidden
+	 * member's portrait and his biography are now the two things a session may change ([ODLUKA
+	 * 26.09.2026, owner], twice - see the note on {@code CompetitorApi}), and a comparison that
+	 * has to excuse them has to say why they differ: „because we decided to hide them" is a
+	 * finding, not noise to blank out of the text before comparing (rule of 14.09.2026, from a
+	 * review whose only real finding was its own blind spot - a pattern that blanks a match can
+	 * match it zero times and the comparison would still pass). {@link #WHAT_HIDING_MAY_WITHHOLD}
+	 * names the two, and each has its own case proving its VALUE for a hiding member and a
+	 * visitor: {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor},
+	 * {@link #aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn},
+	 * {@link #aHiddenProfilesBiographyDoesNotLeaveToAVisitor} and
+	 * {@link #aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn}. What is left for THIS
+	 * case to require is that every OTHER field of every record reads the same to both - by
+	 * VALUE, through the parsed answer and never through a second serialisation:
+	 * {@code TeamApiTest} writes out why a square's exact scale would not survive that trip,
+	 * which is also why {@code crop} stays on the excused list rather than being compared here.
 	 */
+	private static final Set<String> WHAT_HIDING_MAY_WITHHOLD =
+			Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT, "bio");
+
 	/**
-	 * A PORTRAIT AND ITS SQUARE AS THE ANSWER SPELLS THEM, in either of their two shapes.
+	 * ONE RECORD NAMES EXACTLY THE OTHER'S FIELDS, PLUS WHATEVER IS NAMED AS ALLOWED TO BE EXTRA
+	 * ON ITS SIDE.
 	 *
-	 * <p>The two names are always side by side and always both there, which is what lets one
-	 * pattern cover both states: an address with an object beside it, and null beside null.
+	 * <p>Named rather than assumed, and checked in both directions: a field that appears or
+	 * disappears is a different failure from one that merely changed value, and the two would
+	 * read alike to a comparison that only asked whether anything at all was different.
+	 *
+	 * @param oneMayAlsoCarry names {@code one} may carry that {@code other} does not - the basis,
+	 *                        for an administration caller compared with a visitor's record -
+	 *                        checked to be names the answer can really carry, so a typo here
+	 *                        could not silently excuse a name that leaked
 	 */
-	private static final Pattern A_PORTRAIT_AND_ITS_SQUARE = Pattern.compile(
-			"\"" + THE_PORTRAIT + "\":(?:null|\"[^\"]*\"),\"" + THE_SQUARE_OF_IT
-					+ "\":(?:null|[{][^}]*})");
+	private static void recordsNameTheSameFieldsGiven(JsonNode one, JsonNode other,
+			String memberNumber, Set<String> oneMayAlsoCarry) {
+		Set<String> oneFields = Answers.fieldsOf(one);
 
-	private static final String BLANKED = "\"portraitBlankedByTheCase\":true";
+		assertThat(oneMayAlsoCarry)
+				.as("a name this comparison allows %s to carry extra is not one its record ever"
+						+ " carries, so it excuses nothing and could hide a name that really did"
+						+ " leak", memberNumber)
+				.isSubsetOf(oneFields);
+
+		Set<String> expected = Answers.fieldsOf(other);
+		expected.addAll(oneMayAlsoCarry);
+
+		assertThat(oneFields)
+				.as("%s's record does not carry the expected set of names, so a field appeared or"
+						+ " disappeared rather than merely changing value", memberNumber)
+				.isEqualTo(expected);
+	}
 
 	/**
-	 * THE ANSWER WITH EVERY PORTRAIT BLANKED, so that what is left may be compared across
-	 * callers byte for byte.
+	 * EVERY FIELD NEITHER {@link #WHAT_HIDING_MAY_WITHHOLD} NOR THIS COMPARISON'S OWN EXTRA
+	 * NAMES COVER READS THE SAME TO BOTH, VALUE FOR VALUE - the assertion that replaced blanking
+	 * a pattern out of the raw response text.
 	 *
-	 * <p><b>Why the three cases below need it from 26.09.2026.</b> Each of them says „signing in
-	 * changes nothing at all", which is the stronger sentence P26a made available on 25.09.2026
-	 * by taking two fields off this list. A hidden member's portrait is the one thing a session
-	 * changes again ([ODLUKA 26.09.2026, owner]), so left unblanked those cases would fail on a
-	 * resource that is behaving exactly as decided - and loosening them into „mostly the same"
-	 * would throw away the half that makes them worth having: the number of records, their
-	 * order, and every other value.
+	 * <p>Requires {@link #recordsNameTheSameFieldsGiven} first, so that a name outside both
+	 * lists that is simply ABSENT from {@code other} is never silently skipped rather than
+	 * failing the case.
 	 *
-	 * <p><b>What that costs, and where it is paid back.</b> Blanked here, these cases no longer
-	 * say anything about a portrait at all - including that a member who does NOT hide is
-	 * answered his to a visitor. That sentence is asserted where it belongs, in
-	 * {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor}, which reads both members.
-	 *
-	 * <p><b>On the TEXT and never through a parser</b>, which is the reason {@code TeamApiTest}
-	 * writes out for the same surgery: the square is {@code numeric(9, 8)} and comes out as
-	 * {@code 0.10000000}, which survives being parsed and not being written back, so a
-	 * comparison of two serialisations would measure the writer.
-	 *
-	 * <p><b>And it counts what it blanked</b>, because a pattern that matched nothing would leave
-	 * every one of those cases passing for the wrong reason - which is exactly how a
-	 * normalisation stops measuring and starts hiding. This is the rule of 14.09.2026 about an
-	 * exception in a guard, applied to the exception this increment brings back: the exception is
-	 * real, so it is named, counted, and paid for by a case of its own.
+	 * <p><b>AND ONLY ON THE ROW WHERE HIDING ACTUALLY APPLIES, SINCE 27.09.2026.</b> A mutation
+	 * turning {@code CompetitorApi}'s condition for {@code bio} into a plain
+	 * {@code :signedIn = c.profile_hidden} survived this class whole (40 run, 0 failed):
+	 * {@link #WHAT_HIDING_MAY_WITHHOLD} excused the field on every caller's every row rather than
+	 * only the row a hiding member owns, so the one cell that mutation broke - not hidden, caller
+	 * signed in - was never asked. The rule of 14.09.2026 applies one level down from where the
+	 * class already applied it to raw text: an excuse a comparison grants everywhere is not an
+	 * excuse, it is a missing case. {@code other.path("profileHidden")} names the row, read off the
+	 * visitor's record because the flag is Article 73 public and does not itself move with the
+	 * reader.
 	 */
-	private static String withoutAnyPortrait(String whole, int records, String who) {
-		String left = A_PORTRAIT_AND_ITS_SQUARE.matcher(whole).replaceAll(BLANKED);
+	private static void answersAgreeExceptForWhatHidingOrTheBasisMayChange(JsonNode one,
+			JsonNode other, String memberNumber, Set<String> oneMayAlsoCarry) {
+		recordsNameTheSameFieldsGiven(one, other, memberNumber, oneMayAlsoCarry);
 
-		assertThat(left.split(Pattern.quote(BLANKED), -1).length - 1)
-				.as("the answer given to %s does not carry one portrait and one square per record,"
-						+ " so blanking them hid a difference rather than a picture", who)
-				.isEqualTo(records);
+		for (String field : Answers.fieldsOf(other)) {
+			if (WHAT_HIDING_MAY_WITHHOLD.contains(field)
+					&& other.path("profileHidden").asBoolean()) {
+				continue;
+			}
 
-		return left;
+			assertThat(one.path(field))
+					.as("%s of %s's record changed with the reader, and it is not one of the"
+							+ " fields hiding may withhold or one this comparison names as the"
+							+ " basis", field, memberNumber)
+					.isEqualTo(other.path(field));
+		}
 	}
 
 	@Test
@@ -1496,7 +1652,7 @@ class CompetitorApiTest {
 							HOW_THE_MEMBERSHIP_IS_HELD);
 		}
 
-		/* AND SIGNING IN CHANGES NOTHING AT ALL, WHICH IS A STRONGER SENTENCE THAN THE ONE
+		/* AND SIGNING IN CHANGES NOTHING ELSE AT ALL, WHICH IS A STRONGER SENTENCE THAN THE ONE
 		   THIS CASE CARRIED UNTIL 25.09.2026 AND IS WORTH THE PARAGRAPH.
 
 		   It used to build the two fields the caller's own row carried out of the answer's
@@ -1505,41 +1661,49 @@ class CompetitorApiTest {
 		   and „signing in adds whatever it likes": anything else that arrived on his row
 		   would have had to be noticed by a second case.
 
-		   P26a took both fields off this list, so there is nothing to cut and nothing to
-		   build: a member's answer IS a visitor's answer, to the byte. The rule of
-		   14.09.2026 about exceptions in a guard is what this is - the exception did not
-		   need a better wording, it needed the postavka underneath it to change, and when
-		   it did the exception went away by itself rather than being argued down. */
-		/* AND BOTH ANSWERS CARRY SOMETHING, which the comparison itself cannot say. Two
-		   empty arrays are equal, and so are two error pages: this claim is load-bearing
-		   now that nothing is cut before comparing, so it gets the floor the cut used to
-		   give it for free (the cut named a value off the answer and would have thrown
-		   over an empty one). Asked of the caller's own row by number, because „his row
-		   is there" is the half that makes „and it is no different" mean anything. */
+		   P26a took both fields off this list, so there is nothing to cut and nothing to build
+		   for THEM: a member's answer is a visitor's answer except for what hiding may withhold.
+		   The rule of 14.09.2026 about exceptions in a guard is what this is - the exception did
+		   not need a better wording, it needed the postavka underneath it to change, and when it
+		   did the exception went away by itself rather than being argued down. */
+		/* AND BOTH ANSWERS CARRY SOMETHING, which the comparison below cannot say by itself. Two
+		   empty arrays are equal, and so are two error pages. Asked of the caller's own row by
+		   number, because „his row is there" is the half that makes „and it is no different"
+		   mean anything. */
 		assertThat(recordOf(HER_OWN_ACCOUNT, "000012").path("memberNumber").asString())
 				.as("the caller has no row in his own answer, so the comparison below is two"
 						+ " empty answers agreeing")
 				.isEqualTo("000012");
 
-		/* AND ONE THING DOES CHANGE SINCE 26.09.2026, SO IT IS BLANKED ON BOTH SIDES RATHER
-		   THAN THE COMPARISON LOOSENED. A member who hides his profile is answered his portrait
-		   to anybody with a session and null to a visitor, which is [ODLUKA 26.09.2026, owner].
-		   The line below would fail without the blanking and the resource would be behaving
-		   exactly as decided. */
-		int records = answerFor(null).size();
-
+		/* AND TWO THINGS DO CHANGE SINCE 26.09.2026, SO THEY ARE NAMED RATHER THAN THE
+		   COMPARISON LOOSENED. A member who hides his profile is answered his portrait and his
+		   biography to anybody with a session and null to a visitor, twice [ODLUKA 26.09.2026,
+		   owner]. The sentence below would fail without naming them and the resource would be
+		   behaving exactly as decided. */
 		assertThat(whole(HER_OWN_ACCOUNT))
-				.as("the member's answer and the visitor's are already identical, so blanking the"
-						+ " portrait below measures nothing and a hidden member's picture is reaching"
-						+ " a visitor")
+				.as("the member's answer and the visitor's are already identical, so this case"
+						+ " measures nothing and a hidden member's picture or biography is"
+						+ " reaching a visitor")
 				.isNotEqualTo(whole(null));
 
-		assertThat(withoutAnyPortrait(whole(HER_OWN_ACCOUNT), records, HER_OWN_ACCOUNT))
-				.as("signing in changed something other than the one thing it may: nothing on this"
-						+ " list is the caller's own business since P26a, so with the portraits"
-						+ " blanked a member and a visitor read the same bytes and anything at all"
-						+ " arriving on his row fails here")
-				.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
+		/* AND THE TWO ANSWERS NAME THE SAME RECORDS IN THE SAME ORDER, which the loop below
+		   can never say by itself: it is keyed by the VISITOR's numbers and looks each one up
+		   on the member's side by number, so a join that drops a member's row or answers it
+		   twice would still find every number it goes looking for and call every name right
+		   (rule of 14.09.2026: what a comparison must ignore to pass is its real finding). */
+		assertThat(memberNumbersOf(answerFor(HER_OWN_ACCOUNT)))
+				.as("the member's answer does not carry the same records, in the same order, as"
+						+ " the visitor's - the number and order of rows a lookup by number below"
+						+ " can never see")
+				.containsExactlyElementsOf(memberNumbersOf(answerFor(null)));
+
+		for (JsonNode visitorRecord : answerFor(null)) {
+			String memberNumber = visitorRecord.path("memberNumber").asString();
+
+			answersAgreeExceptForWhatHidingOrTheBasisMayChange(
+					recordOf(HER_OWN_ACCOUNT, memberNumber), visitorRecord, memberNumber,
+					Set.of());
+		}
 	}
 
 	/**
@@ -1639,18 +1803,30 @@ class CompetitorApiTest {
 						+ " racing for nobody")
 				.isZero();
 
-		/* AND THE PORTRAITS ARE BLANKED, WHICH IS THE ONE THING HE IS ANSWERED MORE THAN A
-		   VISITOR SINCE 26.09.2026 - and it is the point rather than an exception. He has no
+		/* AND THE PORTRAIT AND THE BIOGRAPHY ARE THE ONLY THINGS HE IS ANSWERED MORE THAN A
+		   VISITOR SINCE 26.09.2026 - and that is the point rather than an exception. He has no
 		   member at all, so a rule written against the caller's MEMBER would refuse him a hidden
-		   member's portrait although he is signed in, and the rule is about a reader with no
-		   session. `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` walks him by name for
-		   exactly that reason; here what is measured is that NOTHING ELSE moved. */
-		int records = answerFor(null).size();
+		   member's portrait or biography although he is signed in, and the rule is about a
+		   reader with no session. `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` and
+		   `aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn` walk him by name for exactly
+		   that reason; here what is measured is that NOTHING ELSE moved. */
+		/* AND HIS ANSWER NAMES THE SAME RECORDS IN THE SAME ORDER AS THE VISITOR'S, for the
+		   same reason given on `theVisitorsAnswerHasNotMoved`: the loop below is keyed by the
+		   visitor's numbers and looks each one up on his side by number, so it cannot see a
+		   join that dropped a row or answered one twice while every name it finds stays right. */
+		assertThat(memberNumbersOf(answerFor(RACES_FOR_NOBODY)))
+				.as("his answer does not carry the same records, in the same order, as the"
+						+ " visitor's - the number and order of rows a lookup by number below"
+						+ " can never see")
+				.containsExactlyElementsOf(memberNumbersOf(answerFor(null)));
 
-		assertThat(withoutAnyPortrait(whole(RACES_FOR_NOBODY), records, RACES_FOR_NOBODY))
-				.as("an account with no member behind it was answered more than a visitor is, beyond"
-						+ " the portrait his session entitles him to")
-				.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
+		for (JsonNode visitorRecord : answerFor(null)) {
+			String memberNumber = visitorRecord.path("memberNumber").asString();
+
+			answersAgreeExceptForWhatHidingOrTheBasisMayChange(
+					recordOf(RACES_FOR_NOBODY, memberNumber), visitorRecord, memberNumber,
+					Set.of());
+		}
 	}
 
 	/**
@@ -1798,51 +1974,49 @@ class CompetitorApiTest {
 	 * <p>The same sentence {@code theVisitorsAnswerHasNotMoved} holds from the other
 	 * end: it keeps the number of records, their order and every other value in them,
 	 * so a condition written as a join - the one shape that can give a member two rows
-	 * or drop one - fails here although every name is still right. It also refuses the
-	 * key arriving empty rather than absent for everybody else, because what is cut out
-	 * is built from the values the answer itself carries.
+	 * or drop one - fails here although every name is still right.
 	 *
-	 * <p><b>All of the administration are asked, and ONE of them is on the list</b>, so
-	 * his own record carries the two fields a member is answered about himself on top of
-	 * the basis. Those are cut too, and only off the record that really carries them:
-	 * until 21.09.2026 no administration account had a row here at all, and the sentence
-	 * „neither of them races for anybody on the list" read as a convenience of the
-	 * fixture when it was in fact the one state this case never entered.
+	 * <p><b>ONE KEY AND NOT TWO SINCE 25.09.2026</b>: until that day this also had to cut the
+	 * referral code and the count off whichever record belonged to the caller. P26a stopped
+	 * answering them on purpose, so there is nothing of them to name here either: an
+	 * administrator's own row is an ordinary row plus the basis, like every other.
 	 *
-	 * <p>What is cut is built out of the values the answer itself carries and the key is
-	 * looked for rather than remembered, so nothing here is a number somebody wrote down.
-	 * The count below says the branch really fired: without it, a resource that stopped
-	 * answering the caller his own two fields would make this case pass by having less to
-	 * cut.
+	 * <p><b>All of the administration are asked, and ONE of them is on the list</b>, so his own
+	 * record is checked the same way as everybody else's rather than being a special case: until
+	 * 21.09.2026 no administration account had a row here at all, and the sentence „neither of
+	 * them races for anybody on the list" read as a convenience of the fixture when it was in
+	 * fact the one state this case never entered.
+	 *
+	 * <p><b>AND SINCE 26.09.2026 THE COMPARISON NAMES ITS EXTRA KEY RATHER THAN CUTTING IT OUT
+	 * OF RAW TEXT</b>, the same correction {@code theVisitorsAnswerHasNotMoved} makes and for
+	 * the same reason (rule of 14.09.2026): {@link #recordsNameTheSameFieldsGiven} requires the
+	 * administration's record to carry EXACTLY the visitor's fields plus
+	 * {@code membershipBasis}, so a resource that quietly stopped answering the basis to the
+	 * administration - leaving the two field-sets equal after all - fails here rather than
+	 * passing by having one less name to add. The portrait and the biography are excused the
+	 * same way they are everywhere else, by name and never by a pattern matched against text.
 	 */
 	@Test
 	void theAdministrationsAnswerIsTheVisitorsWithTheBasisAdded() throws Exception {
-		/* ONE CUT AND NOT TWO SINCE 25.09.2026, and the one that went was a BRANCH.
-
-		   Until that day this also cut the referral code and the count off whichever
-		   record belonged to the caller, and counted how often it had to, because without
-		   the count „a resource that stopped answering the caller his own two fields would
-		   make this case pass by having less to cut". P26a stopped answering them on
-		   purpose, so there is nothing to cut, no branch to fire and no count to keep: an
-		   administrator's own row is an ordinary row plus the basis, like every other. */
 		for (String administration : THE_ADMINISTRATION) {
-			String whole = whole(administration);
+			/* AND HIS ANSWER NAMES THE SAME RECORDS IN THE SAME ORDER AS THE VISITOR'S, for
+			   the same reason given on `theVisitorsAnswerHasNotMoved`: the loop below is keyed
+			   by the visitor's numbers and looks each one up on his side by number, so it
+			   cannot see a join that dropped a row or answered one twice while every name it
+			   finds stays right. */
+			assertThat(memberNumbersOf(answerFor(administration)))
+					.as("%s's answer does not carry the same records, in the same order, as the"
+							+ " visitor's - the number and order of rows a lookup by number below"
+							+ " can never see", administration)
+					.containsExactlyElementsOf(memberNumbersOf(answerFor(null)));
 
-			for (JsonNode one : answerFor(administration)) {
-				whole = whole.replace(",\"" + HOW_THE_MEMBERSHIP_IS_HELD + "\":\""
-						+ one.path(HOW_THE_MEMBERSHIP_IS_HELD).asString() + "\"", "");
+			for (JsonNode visitorRecord : answerFor(null)) {
+				String memberNumber = visitorRecord.path("memberNumber").asString();
+
+				answersAgreeExceptForWhatHidingOrTheBasisMayChange(
+						recordOf(administration, memberNumber), visitorRecord, memberNumber,
+						Set.of(HOW_THE_MEMBERSHIP_IS_HELD));
 			}
-
-			/* AND THE PORTRAITS ARE BLANKED ON BOTH SIDES, because the administration is signed
-			   in and a hidden member's portrait therefore reaches it ([ODLUKA 26.09.2026,
-			   owner]). Blanked and not ignored: `withoutAnyPortrait` counts one per record. */
-			int records = answerFor(null).size();
-
-			assertThat(withoutAnyPortrait(whole, records, administration))
-					.as("%s was answered something other than the visitor's answer with the basis"
-							+ " added and the portraits blanked: the list itself moved, or a key"
-							+ " nobody named arrived with it", administration)
-					.isEqualTo(withoutAnyPortrait(whole(null), records, "a visitor"));
 		}
 	}
 

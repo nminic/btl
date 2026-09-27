@@ -68,8 +68,19 @@ const AT_FIRST = 50
  * will have one, since it is written at the moment of joining, and a row of
  * three that is sometimes a row of two changes shape from person to person for
  * no reason the reader can see.
+ *
+ * <p><b>`text` may be null since 26.09.2026, and reads exactly like `''`.</b> The server
+ * answers null for a member who hides their profile from a reader with no session
+ * (`data/types.ts`'s note on `bio`), and PDL, 06.09.2026 requires that hiding read like
+ * having nothing rather than like a fourth, different state: „Oba slucaja dobijaju isti
+ * ishod" is the same sentence the portrait already keeps. In practice this page never
+ * actually draws that reader a hidden member's card at all - `profile/visible.ts`'s
+ * `reachable` sends them to `/sr` first - so treating null here is a guard against the
+ * two conditions drifting apart rather than a state a real visit produces;
+ * `profile.test.tsx` builds the disagreement by hand to keep the guard from being a
+ * branch nothing checks (rule of 14.09.2026).
  */
-function Biography({ text, gender }: { text: string; gender: Gender }) {
+function Biography({ text, gender }: { text: string | null; gender: Gender }) {
   const { t } = useI18n()
 
   return (
@@ -80,7 +91,7 @@ function Biography({ text, gender }: { text: string; gender: Gender }) {
       {/* Said of the person whose page it is, in the gender they are: a portal
           that calls every woman on it a takmičar is one written for half its
           members (owner, 11.08.2026). */}
-      {text === '' ? (
+      {text === null || text === '' ? (
         <p className="profile__bio-text profile__bio-text--none">
           {t(gender === 'F' ? 'profile.bioEmptyFemale' : 'profile.bioEmpty')}
         </p>
