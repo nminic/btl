@@ -151,10 +151,14 @@ class PaymentMethodCarriedOverTest extends DatabaseTest {
 	 * than every one leaves the second slip behind. Rewriting every row's method to {@code ips}
 	 * takes the PayPal payment with it.
 	 *
-	 * <p><b>AND IT IS ALSO THE ONLY THING THAT MEASURES THE ORDER OF THE TWO STATEMENTS.</b> V39
-	 * renames first and narrows second. Swap them and the migration fails on the rows already
-	 * standing with „violated by some row", which is precisely the failure QA suffered on
-	 * 27.09.2026 and which no test starting from an empty database can produce.
+	 * <p><b>AND IT IS THE ONLY THING THAT MEASURES WHERE THE RENAME STANDS AMONG V39'S THREE
+	 * STATEMENTS, which it found on its first run rather than being written to confirm.</b> The rename
+	 * has exactly one legal position, between the {@code drop} and the {@code add}, and both ways of
+	 * moving it fail differently: above the {@code drop} it breaks V16's rule because {@code ips} was
+	 * never one of V16's four words, and below the {@code add} it breaks V39's own rule because
+	 * {@code slip} is not one of its two. On an empty table all three orders succeed, so no case
+	 * starting from a migrated database can tell them apart - and the wrong one stops Flyway on the
+	 * first real database it meets, which is where V35 was found on 27.09.2026.
 	 */
 	@Test
 	void everyPaymentMadeOnASlipComesOutCalledIpsAndNothingElseMoves() {

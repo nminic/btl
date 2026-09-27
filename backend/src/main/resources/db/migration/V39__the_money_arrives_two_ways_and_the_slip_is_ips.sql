@@ -34,17 +34,33 @@
 
 
 /*
- * THE ROWS THAT ARE ALREADY THERE, WHICH IS THE HALF NO ORDINARY TEST CAN SEE.
+ * THREE STATEMENTS IN ONE ORDER, AND THE ORDER IS THE ONLY ONE THAT WORKS.
  *
+ * The old rule goes first, the rows already there are renamed second, and the new rule is written
+ * third. The middle statement has exactly ONE legal position and it was MEASURED rather than
+ * reasoned: put the rename above the `drop` and it breaks V16's rule, because `ips` was never one of
+ * V16's four words; put it below the `add` and it breaks this file's own rule, because `slip` is not
+ * one of these two. `PaymentMethodCarriedOverTest` failed on the first of those two on its first run,
+ * which is how this paragraph comes to be here.
+ *
+ * AND THAT IS INVISIBLE ON AN EMPTY TABLE, which is the whole point. With no rows to rename all
+ * three orders succeed, so every test that starts from a migrated database is equally green whatever
+ * order they stand in - and the one that is wrong stops Flyway on the first real database it meets,
+ * which is where V35 was found on 27.09.2026 after 7 hours and 50 minutes.
+ */
+alter table payment
+    drop constraint payment_method_known;
+
+
+/*
  * `slip` is what a payment slip was called and `ips` is what it is called now: one road under two
  * names. So the rows carrying it are RENAMED rather than refused.
  *
- * AND AFTER THIS FILE `'slip'` CANNOT BE WRITTEN AGAIN. That is what makes the statement below
- * invisible to every test that starts from an empty database: no case can produce the row it acts
- * on, so deleting it leaves the whole suite green. `PaymentMethodCarriedOverTest` is the one thing
- * that can see it - it puts V16's constraint back, writes the row a real database holds, and then
- * runs THIS FILE through `DatabaseTest.migrationSql`. That is the class which took QA down for 7
- * hours and 50 minutes on 27.09.2026, and it is measured here rather than found there.
+ * AND AFTER THIS FILE `'slip'` CANNOT BE WRITTEN AGAIN. That is what makes this statement invisible
+ * to every test that starts from an empty database: no case can produce the row it acts on, so
+ * deleting it leaves the whole suite green. `PaymentMethodCarriedOverTest` is the one thing that can
+ * see it - it puts V16's constraint back, writes the rows a real database holds, and then runs THIS
+ * FILE through `DatabaseTest.migrationSql`.
  */
 update payment set method = 'ips' where method = 'slip';
 
@@ -66,9 +82,6 @@ update payment set method = 'ips' where method = 'slip';
  * EXISTS and cannot be corrected; written over an empty table it would only be a permanent excuse
  * for whatever gets in first.
  */
-alter table payment
-    drop constraint payment_method_known;
-
 alter table payment
     add constraint payment_method_known check (method in ('ips', 'paypal'));
 
