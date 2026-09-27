@@ -33,7 +33,18 @@ export function ProfileBio({ me }: { me: Competitor }) {
   const { t } = useI18n()
   const { propose, proposals, decisions } = useSession()
   const today = useToday()
-  const [written, setWritten] = useState(me.bio)
+  /**
+   * NULL READS AS NOTHING WRITTEN, the same rule PDL, 06.09.2026 keeps for a visitor's own
+   * view of a hidden member: „Oba slucaja dobijaju isti ishod". In practice this screen
+   * never actually meets null - a member is never hidden from himself
+   * (`profile/visible.ts`'s `reachable`, and `CompetitorApi`'s condition on `bio` is always
+   * true for the CALLER's own row, hidden or not, since it asks whether HE is signed in and
+   * he must be to be here at all) - so this is a guard against the two conditions drifting
+   * apart rather than a state a real visit produces, matched by `profileBio.test.tsx`'s own
+   * case for it (rule of 14.09.2026: a guard nothing exercises is a branch nothing checks).
+   */
+  const bio = me.bio ?? ''
+  const [written, setWritten] = useState(bio)
   const [justSent, setJustSent] = useState(false)
   const said = useRef<HTMLParagraphElement>(null)
 
@@ -70,7 +81,7 @@ export function ProfileBio({ me }: { me: Competitor }) {
   /* Nothing to send where nothing was written, and nothing to send where the
      words are the ones already on the profile: a moderator reading a card that
      asks them to approve what they approved last week learns to skim. */
-  const same = written.trim() === me.bio.trim()
+  const same = written.trim() === bio.trim()
 
   function send(): void {
     propose({
@@ -107,7 +118,7 @@ export function ProfileBio({ me }: { me: Competitor }) {
 
       {waiting === undefined ? (
         <>
-          <p className="member__note">{t(me.bio === '' ? 'bio.none' : 'bio.standing')}</p>
+          <p className="member__note">{t(bio === '' ? 'bio.none' : 'bio.standing')}</p>
 
           <div className="rankings__field rankings__field--wide">
             <AskedLabel id="settings-bio-box" asked={false}>
@@ -158,7 +169,7 @@ export function ProfileBio({ me }: { me: Competitor }) {
 
           {same && (
             <p id="bio-waits" className="rate__hint" role="status">
-              {t(me.bio === '' ? 'bio.writeFirst' : 'bio.changeFirst')}
+              {t(bio === '' ? 'bio.writeFirst' : 'bio.changeFirst')}
             </p>
           )}
         </>

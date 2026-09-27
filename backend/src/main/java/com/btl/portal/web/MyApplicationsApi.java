@@ -7,7 +7,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -160,15 +162,43 @@ class MyApplicationsApi {
 
 	private final JdbcClient db;
 
-	MyApplicationsApi(JdbcClient db) {
+	/**
+	 * THE ONE PLACE THAT ANSWERS „HAS HE A TEAM ALREADY", asked here so that an invitation
+	 * that can no longer be accepted says so.
+	 *
+	 * <p>{@link TeamJoiningWriteApi} asks the identical object before it lets anybody accept
+	 * one, so the field this route serves and the refusal that route gives cannot come apart -
+	 * which is the whole point of it. Written as a second query here, the screen could offer a
+	 * button the server would refuse, or hide one it would have taken.
+	 */
+	private final ATeamHeIsAlreadyIn alreadyInATeam;
+
+	/**
+	 * Which season an acceptance would be for is a question about a moment, and the moment
+	 * comes from the bean rather than from {@code Instant.now()} for the reason
+	 * {@code WhatTimeItIs} gives: both sides of 1 January are then one fixture and two
+	 * assertions.
+	 */
+	private final Clock clock;
+
+	MyApplicationsApi(JdbcClient db, ATeamHeIsAlreadyIn alreadyInATeam, Clock clock) {
 		this.db = db;
+		this.alreadyInATeam = alreadyInATeam;
+		this.clock = clock;
 	}
 
 	/** A team this competitor asked to join, waiting for the team to answer. */
 	record TeamApplication(long id, long teamId, LocalDate date) {
 	}
 
-	/** A team asking this competitor to join, waiting for him to answer. */
+	/**
+	 * A team asking this competitor to join, waiting for him to answer.
+	 *
+	 * <p>Whether he may still ACCEPT one is not a field of this record: it cannot differ
+	 * between two of his invitations, so it is answered once on {@link Waiting}. See
+	 * {@link Waiting#alreadyInATeam} for the decision it carries and for the guard that
+	 * moved it there.
+	 */
 	record TeamInvitation(long id, long teamId, LocalDate date) {
 	}
 
@@ -190,9 +220,35 @@ class MyApplicationsApi {
 	record PairInvite(long id, String memberNumber, boolean sentByMe, LocalDate date) {
 	}
 
-	/** Everything this competitor is waiting to hear back about, in four parts. */
+	/**
+	 * Everything this competitor is waiting to hear back about, in four parts and one fact.
+	 *
+	 * @param alreadyInATeam WHETHER A TEAM HE ALREADY HAS STANDS IN THE WAY OF ACCEPTING AN
+	 *                       INVITATION, which is {@code PDL.md:6771} carried out rather than
+	 *                       a convenience: „<b>[ODLUKA 06.09.2026] Poziv se ne pamti kao
+	 *                       odgovoren nego se pravo na odgovor računa u trenutku
+	 *                       iscrtavanja.</b> Čim član ima tim, nijedan drugi poziv ne nudi
+	 *                       „Prihvati"." Entering a team deletes no other team's row - that
+	 *                       decision says the row is not remembered as answered - so without
+	 *                       this the four lists would go on reporting questions that wait,
+	 *                       and a member who joined in October would read three live
+	 *                       invitations he cannot answer.
+	 *                       <p><b>It is NOT the window and must not be read as one.</b> The
+	 *                       two are two sentences on the portal's own screen:
+	 *                       {@code teams.inviteWaits} („Poziv čeka: u tim se ulazi samo u
+	 *                       prelaznom roku") for a shut window, which is still answerable in
+	 *                       October, and {@code teams.inviteOvertaken} („U međuvremenu si
+	 *                       ušao/la u tim") for one that never will be. Folded together they
+	 *                       would call every waiting invitation dead for nine months of the
+	 *                       year, which is why {@link ATeamHeIsAlreadyIn} asks the question
+	 *                       without the window in it.
+	 *                       <p>It stands beside the lists rather than on each invitation
+	 *                       because it cannot differ between two of them; the note on
+	 *                       {@link TeamInvitation} has the guard that measured that.
+	 */
 	record Waiting(List<TeamApplication> teamApplications, List<TeamInvitation> teamInvitations,
-			List<TeamProposal> teamProposals, List<PairInvite> pairInvites) {
+			List<TeamProposal> teamProposals, List<PairInvite> pairInvites,
+			boolean alreadyInATeam) {
 	}
 
 	/**
@@ -209,10 +265,11 @@ class MyApplicationsApi {
 		   is the honest answer and not a placeholder for one this class chose not
 		   to compute. */
 		if (me == null) {
-			return new Waiting(List.of(), List.of(), List.of(), List.of());
+			return new Waiting(List.of(), List.of(), List.of(), List.of(), false);
 		}
 
-		return new Waiting(teamApplications(me), teamInvitations(me), teamProposals(me), pairInvites(me));
+		return new Waiting(teamApplications(me), teamInvitations(me), teamProposals(me),
+				pairInvites(me), alreadyInATeam.standsInHisWay(me, ZonedDateTime.now(clock)));
 	}
 
 	/** V23: at most one member per account, and null for a moderator who has none. */
