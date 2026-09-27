@@ -1,5 +1,7 @@
 package com.btl.portal.domain.category;
 
+import java.math.BigDecimal;
+
 /**
  * Which category somebody competes in, for one season.
  *
@@ -129,5 +131,32 @@ public final class Category {
 	 */
 	public static boolean firstSeasonAllowed(int bestOfficialSeasonPoints) {
 		return bestOfficialSeasonPoints < FIRST_SEASON_POINTS;
+	}
+
+	/**
+	 * The same question asked of what the DATABASE adds up, which is not a whole number.
+	 *
+	 * <p><b>An overload rather than a cast at the call site, and the reason is a future
+	 * threshold rather than today's arithmetic.</b> Points are {@code numeric(8,2)} (V7,
+	 * {@code result.points}) and a season's total is a sum of them, so the one place that
+	 * asks this of a real member holds a {@link BigDecimal}. Truncating it to an
+	 * {@code int} happens to be exact while the threshold is a whole number - for integer
+	 * {@code n}, {@code floor(x) < n} exactly when {@code x < n}, and points are never
+	 * negative ({@code result_points_not_negative}) so truncation toward zero IS the
+	 * floor. It stops being exact the day {@link #FIRST_SEASON_POINTS} is not a whole
+	 * number, and the cast would be in a caller rather than here, where nobody changing
+	 * the threshold would think to look.
+	 *
+	 * <p><b>It is not a second home for the rule.</b> Both of these read the one constant,
+	 * and neither carries a number of its own; what differs is the type of the question,
+	 * not its answer. {@code CategoryTest} holds the two against each other on either side
+	 * of the threshold.
+	 *
+	 * @param bestOfficialSeasonPoints the best SINGLE official season, never a sum of
+	 *                                 several: see the overload above for what that cost
+	 *                                 once already
+	 */
+	public static boolean firstSeasonAllowed(BigDecimal bestOfficialSeasonPoints) {
+		return bestOfficialSeasonPoints.compareTo(BigDecimal.valueOf(FIRST_SEASON_POINTS)) < 0;
 	}
 }
