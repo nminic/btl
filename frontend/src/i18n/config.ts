@@ -37,11 +37,12 @@ export const DEFAULT_LOCALE: Locale = 'sr'
  * named there rather than here (owner, 26.09.2026: the name stays Serbian and English
  * prose calls the league BTL).
  *
- * The written legal pages are **not** in either dictionary and are not translated: the
- * rulebook, the terms of use and the privacy policy are served by the backend, they
- * need a paid human translation, and the Serbian version is the one that binds
- * (PDL P18). What is translated is the four declarations a registrant affirms, and
- * they carry a sentence saying which version binds. */
+ * The written legal pages are **not** in either dictionary: the rulebook, the terms of
+ * use and the privacy policy are served by the backend. The Serbian original is the one
+ * that binds (PDL P18), and since 27.09.2026 it is only the English pages that say so -
+ * the Serbian text itself is left untouched (owner, 27.09.2026). What is translated is
+ * the four declarations a registrant affirms, and they carry a sentence saying which
+ * version binds. */
 const DICTIONARIES: Record<Locale, Dictionary> = {
   sr: sr,
   en: en,

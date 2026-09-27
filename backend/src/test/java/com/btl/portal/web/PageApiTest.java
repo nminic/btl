@@ -874,6 +874,13 @@ class PageApiTest {
 			if (!section.path("gallery").isNull()) {
 				served.add(section.path("gallery").asString());
 
+				assertThat(section.path("body").asString())
+						.as("the block that carries the %s drawing came back in Serbian, not in"
+								+ " the English this page was asked for - the mark surviving that"
+								+ " swap is not evidence the translation ran, only that Serbian"
+								+ " happens to carry the same line", section.path("gallery").asString())
+						.startsWith(ENGLISH_BODY);
+
 				assertThat(section.path("body").asString().lines().map(String::strip).toList())
 						.as("the English words of the block that carries the %s drawing hold no"
 								+ " line that is only the mark, so the drawing has nowhere to"
