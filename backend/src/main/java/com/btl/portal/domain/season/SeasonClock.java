@@ -72,6 +72,59 @@ public final class SeasonClock {
 	}
 
 	/**
+	 * WHETHER A MEMBER MAY STILL SAY WHICH CATEGORY HE WANTS TO RUN A SEASON IN.
+	 *
+	 * <p><b>Owner, 26.09.2026 (PDL P7, §9):</b> „Clan moze da stiklira dakle od ove dve
+	 * opcije sta god hoce sve do zamrzavanja sezone 1.1. u 10 ujutru", and, asked why ten
+	 * and not four in the afternoon: „Do 10h ujutru 1.1. stizu svi inputi clanova. To mogu
+	 * biti rezultati, a moze biti i odabir kategorije. Od 10 do 16 superadmin odobrava samo
+	 * sta jos treba da se odobri i ima 6h za to."
+	 *
+	 * <p><b>So this is NOT a new moment, and it delegates for exactly that reason.</b> The
+	 * instant the owner named is the one {@link #reportingEnds} already is - he named it as
+	 * the moment every member INPUT stops, and a category is an input beside a result rather
+	 * than a deadline of its own. A second {@code plusHours(10)} written here would be a
+	 * second home for one boundary, which is the fault {@link #referralMayBeSet}'s own note
+	 * describes in as many words, and the day one of them moved nothing would say which was
+	 * right.
+	 *
+	 * <p><b>The word „zamrzavanje" in that quotation is the owner's for the deadline and is
+	 * NOT {@link #tablesFreeze}, which is six hours later.</b> This is written down because
+	 * the two were read as one while this increment was being scoped: the brief for it said
+	 * ten in the morning was the freeze and was a moment this class did not have, and both
+	 * halves were false. The freeze is 16:00 and it is the PORTAL's act (§9: „stikliranje je
+	 * unos i zavrsava se u 10:00; primena je portalova radnja i desava se u 16:00"), so
+	 * nothing here asks about it.
+	 *
+	 * <p><b>Why {@code season - 1} and not a year read off the clock.</b> The choice for a
+	 * season closes on 1 January OF that season, which is the end of reporting for the
+	 * season BEFORE it - one sentence with two ends, exactly as {@link #seasonBeingRun} is
+	 * {@link #transfersTakeEffect} minus one rather than a second reading of the same
+	 * moment. Spelt as its own date arithmetic it would be free to disagree the day either
+	 * the hour or the zone moved.
+	 *
+	 * <p><b>AND IT CAN NAME A YEAR THAT IS NOT A SEASON, which is said here rather than
+	 * clamped away.</b> Asked about {@link #FIRST_SEASON} it reads
+	 * {@code reportingEnds(2026)}, and there is no season 2026 (PDL P2). The arithmetic is
+	 * sound - it is a date and a date has no opinion about leagues - and clamping it would
+	 * be worse than leaving it: clamped to the first season it would answer that the choice
+	 * for 2027 closes on 1 January 2028, ten hours after the season it is about has already
+	 * frozen. {@link #seasonBeingRun} keeps the identical boundary in the identical way and
+	 * for the identical reason.
+	 *
+	 * <p><b>The mutation that proves it is a replacement and never a deleted assertion:</b>
+	 * put {@link #tablesFreeze} in the line below, or drop the {@code - 1}, and
+	 * {@code SeasonClockTest} fails on the instant each one moves.
+	 *
+	 * @param season the season the choice is FOR, which is the one the screen names
+	 * @param at     the moment being asked about, in any zone: it is read in the league's,
+	 *               which is ADL A36 O2 („sezona se racuna u zoni Europe/Belgrade")
+	 */
+	public static boolean categoryMayBeChosenFor(int season, ZonedDateTime at) {
+		return at.isBefore(reportingEnds(season - 1));
+	}
+
+	/**
 	 * The transfer window: 1 October to 31 December, the same window membership is
 	 * renewed in.
 	 *

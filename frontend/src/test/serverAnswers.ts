@@ -182,3 +182,61 @@ type FileMember = {
   memberNumber: string
   active: boolean
 }
+
+/** What `GET /api/me/category` answers, in the names it answers them under. */
+export type CategoryAnswered = {
+  season: number
+  firstSeason: boolean
+  firstSeasonAllowed: boolean
+  category: string
+  open: boolean
+}
+
+/**
+ * `GET /api/me/category`, and what a write to it is answered with.
+ *
+ * <p><b>The five fields are given in full and never defaulted</b>, which is deliberate:
+ * the whole of what the member's box draws comes off this answer since 27.09.2026, so a
+ * case that left a field out would be measuring a screen against a state the route cannot
+ * produce. Four of the five have both values in use across the cases.
+ *
+ * @param said  what the read answers, or null for a route that answers 404 - an account
+ *              with no member, or a visitor. Both are „no box", which is the same outcome
+ *              `myCategory.ts` folds every failure into.
+ * @param wrote what a {@code PUT} to it answers. The default is the read's own body, which
+ *              is what the route really does (it works the answer out again after writing),
+ *              and a case about a refusal hands in `refused('theChoiceIsShut', 409)`.
+ */
+export function categoryAsServed(
+  said: CategoryAnswered | null,
+  wrote?: Response,
+): { asked: Asked[]; stop: () => void } {
+  return serverThat((path, init) => {
+    if (path !== '/api/me/category') {
+      return null
+    }
+
+    if (init?.method === 'PUT') {
+      return wrote ?? answeringCategory(said)
+    }
+
+    return answeringCategory(said)
+  })
+}
+
+/**
+ * The body of a 200, or the 404 that stands for every way the read can fail.
+ *
+ * Exported because a case about the WRITE hands in what the write answers, and that is most
+ * often a different state from what the read answered: the route works the whole answer out
+ * again after writing, so a wish that cost the member his right comes back with the right
+ * already gone.
+ */
+export function answeringCategory(said: CategoryAnswered | null): Response {
+  return said === null
+    ? new Response(null, { status: 404 })
+    : new Response(JSON.stringify(said), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+}
