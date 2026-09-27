@@ -41,9 +41,18 @@ describe('the members screen', () => {
   const TEAMS = [{ id: 3, name: 'Trkači', slug: 'trkaci', organiserMemberNumber: '000004' }]
 
   /** The five `AdminMembers.tsx`'s own note names as cascading off a deleted competitor
-   *  (V7:557, V12:114-118, V7:594, V7:646+V33:89, V9:67), beside `competitors` and
-   *  `teams`, which the case below already counts by hand. */
-  const ALSO_CLEARED: ResourceName[] = ['results', 'pairs', 'attendance', 'comments', 'verification']
+   *  (V7:557, V12:114-118, V7:594, V7:646+V33:89, V9:67), plus `payments`, which the same
+   *  note names as a DERIVED list rather than a cascade (`PaymentsDueApi.due()`'s join
+   *  onto `competitor`, PR 397's review) - six in all, beside `competitors` and `teams`,
+   *  which the case below already counts by hand. */
+  const ALSO_CLEARED: ResourceName[] = [
+    'results',
+    'pairs',
+    'attendance',
+    'comments',
+    'verification',
+    'payments',
+  ]
 
   /**
    * The three served above, with whatever a case wants said about a write.
@@ -437,15 +446,18 @@ describe('the members screen', () => {
    * whether or not anything cleared it.
    *
    * <p><b>AND THE FIVE THE SCHEMA CASCADES OFF A COMPETITOR ARE GONE FROM THE CACHE TOO
-   * (PR 382's review).</b> Measured through `arrivedResource` rather than through a screen,
-   * because no one screen on this portal reads `results`, `pairs`, `attendance`, `comments`
-   * and `verification` all at once - `AdminMembers.tsx`'s own note names the migration that
-   * cascades each one off `competitor`. Loaded directly here for the same reason, and
-   * confirmed IN HAND before the deletion, so „gone afterwards" is a change this case can
-   * see rather than a guess about a resource nobody had asked for yet.
+   * (PR 382's review), AND SINCE PR 397'S REVIEW SO IS `payments`, A SIXTH.</b> Measured
+   * through `arrivedResource` rather than through a screen, because no one screen on this
+   * portal reads `results`, `pairs`, `attendance`, `comments`, `verification` and `payments`
+   * all at once - `AdminMembers.tsx`'s own note names the migration that cascades each of
+   * the first five off `competitor`, and names `payments` separately as a DERIVED list
+   * instead (`PaymentsDueApi.due()`'s join onto `competitor`, not a foreign key). Loaded
+   * directly here for the same reason, and confirmed IN HAND before the deletion, so „gone
+   * afterwards" is a change this case can see rather than a guess about a resource nobody
+   * had asked for yet.
    */
   it('reads the members again after a deletion, and the teams with them, and forgets the '
-    + 'five the schema cascades from a competitor', async () => {
+    + 'five the schema cascades from a competitor plus the derived list of payments', async () => {
     const server = serving()
     const user = setupUser()
     const { router } = renderAt('/sr/administracija/timovi', 'superadmin')

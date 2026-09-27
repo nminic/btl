@@ -125,7 +125,7 @@ export function AdminMembers() {
       return
     }
 
-    /* SEVEN, NOT TWO, AND COUNTED AGAINST THE SCHEMA RATHER THAN AGAINST WHAT THIS
+    /* EIGHT, NOT TWO, AND COUNTED AGAINST THE SCHEMA RATHER THAN AGAINST WHAT THIS
        SCREEN HAPPENS TO DRAW. A member who was the last of his team takes the team
        with him (`CompetitorWriteApi`, and PR 367) - that is the two this used to clear -
        but `competitor` has five more foreign keys pointing at it, and every one of them
@@ -144,6 +144,16 @@ export function AdminMembers() {
        at a queue entry the server no longer holds. That is the exact fault PR 367
        closed for `teams`, five resources wide.
 
+       THE EIGHTH IS NOT A FOREIGN KEY (PR 397's review, 27.09.2026). `payments` is a
+       DERIVED list rather than a cascade - `PaymentsDueApi.due()` answers an INNER JOIN
+       of `membership` onto `competitor` for the season being paid for, so a deleted
+       competitor drops out of a fresh answer with nothing in the schema needing to
+       cascade. Left cached here, the row would still be drawn, and its `competitorId`
+       would be sent to `POST /api/payments` on a press of „Aktiviraj" against a man the
+       server no longer has. `payments` was not yet a resource earlier the same day this
+       note was written (#382, then #393's PDL section 15), which is the whole reason it
+       was left off here.
+
        `ducats` is the one resource this deletion does NOT touch, and that is measured
        rather than an oversight: `GET /api/ducats` serves the catalogue of tiers
        (`DucatApi:152`, `from ducat`), never `ducat_award`, so nothing a competitor's
@@ -155,6 +165,7 @@ export function AdminMembers() {
     clearResourceCache('attendance')
     clearResourceCache('comments')
     clearResourceCache('verification')
+    clearResourceCache('payments')
     setRefused(null)
     setSaid(t('admin.memberGone'))
 
