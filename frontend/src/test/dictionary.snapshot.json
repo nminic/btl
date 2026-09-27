@@ -1443,7 +1443,7 @@
     "deleteNote": "Napomena o brisanju",
     "deleteNotePlaceholder": "Zašto je sklonjen, za moderatore. Sme da ostane prazno.",
     "confirmDelete": "Obriši komentar",
-    "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
+    "pictureAlt": "Slika koju je poslao {who}",
     "resultReturned": "Rezultat je vraćen",
     "teamReturned": "Predlog tima je vraćen",
     "teamChangeReturned": "Izmena tima je vraćena",

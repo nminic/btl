@@ -239,15 +239,22 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * (`CLAUDE.md`, "mutacija koja mora da... nije mutacija", the class of finding it
  * warns against).
  *
- * <p><b>A plain `<img>`, and never `CropWindow`, and that is forced rather than
- * chosen.</b> `PhotoApi.waitingOn` answers the WHOLE original and nothing about the
- * crop - its own comment: "the circle is the MEMBER's choice over his own picture...
- * not part of the one being taken here" - and `VerificationApi.Waiting` carries no
- * `crop` field at all. Drawing `CropWindow` here would mean feeding it `one.crop`,
- * which is always `WHOLE` for a server row (`ABSENT.crop` in `./pending.ts`) and
- * would show a generic centred circle as though it were the member's own choice,
- * which it is not. So this card shows what the route actually gives: the photograph,
- * whole, framed by nothing but the border a moderator reads any other picture in.
+ * <p><b>A plain `<img>`, and never `CropWindow`, and that is a decision rather than
+ * this increment's edge - `PhotoApi.java`'s own reasoning and not the owner's word,
+ * because he was never asked, and its comment marks it so.</b> `PhotoApi.waitingOn`
+ * answers the WHOLE original and nothing about the crop - its own comment: "the
+ * circle is the MEMBER's choice over his own picture... not part of the one being
+ * taken here" - and `VerificationApi.Waiting` carries no `crop` field at all. The
+ * mechanics agree with that decision rather than forcing it: PDL P11 and ADL A17
+ * both refuse a route that burns a crop into bytes, so cutting one into bytes here
+ * was never available, but answering the three fractions BESIDE the picture, on
+ * `/api/verification`, was - and the same paragraph turns that down too, for the
+ * reason above and not for the cost of building it. Drawing `CropWindow` here would
+ * mean feeding it `one.crop`, which is always `WHOLE` for a server row
+ * (`ABSENT.crop` in `./pending.ts`) and would show a generic centred circle as
+ * though it were the member's own choice, which it is not. So this card shows what
+ * the route actually gives: the photograph, whole, framed by nothing but the border
+ * a moderator reads any other picture in.
  *
  * <p><b>A failed load hides the picture rather than drawing a broken image icon.</b>
  * `GET /api/verification/{id}/photo` answers 404 to a moderator with no right over
@@ -1173,13 +1180,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             than in 12.08.2026's own words: the moderator sees
                             everything the photograph holds rather than the same
                             circle the member sees, which is `WaitingPicture`'s own
-                            doc above, in full, with why that is forced rather
-                            than chosen.
+                            doc above, in full, with why that is a decision and not
+                            a limit of what this increment could build - and why
+                            the owner was never asked to make that call himself.
 
-                            The file name stays below either way, whether or not
-                            this draws anything: it is what the queue is searched
-                            and talked about by, and it is what a moderator reads
-                            when a picture 404s and nothing else does. */}
+                            Unaffected either way is everything else this row
+                            draws, whatever it holds: this paragraph used to say a
+                            moderator reads a file name here when a picture 404s,
+                            and that was never true of a photo row -
+                            `MePhotoApi.java` inserts `body: ''` for every one it
+                            gives a `photo_id`, so what a photo row shows under
+                            „Datoteka" is an empty `<dd>` whether the picture loads
+                            or not. Corrected rather than left standing for the
+                            next reader to repeat. */}
                         <WaitingPicture item={one} />
 
                         {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,

@@ -80,13 +80,23 @@
 /* The picture a moderator is deciding about (`WaitingPicture` in
    `PendingQueue.tsx`), whole and never cropped - see that component's own doc for
    why. Never wider than the card, so a photograph larger than the viewport cannot
-   open the horizontal scrollbar CLAUDE.md forbids from 360px up; capped in height
-   as well, so a portrait shot taken tall does not push the buttons under it off a
-   telephone screen before the moderator has even read the file name. */
+   open the horizontal scrollbar CLAUDE.md forbids from 360px up.
+
+   NOT capped in height, and that is a decision and not an oversight: PDL.md,
+   ODLUKA 28.08.2026 (derived from measurement, not a new owner sentence), „Moderatoru
+   se ne ograničava, jer on nema šta da povlači i njegov je posao da vidi ceo
+   ostatak: sa ograničenjem bi ista fotografija stajala 217x483 umesto 320x711,
+   dakle na 68 odsto linearne veličine, a „zatamnjen ali dovoljno vidljiv ostatak"
+   (vlasnik, 12.08.2026) je tačno ono što on gleda." The identical split already has
+   a code guard on the component it was written for: `CropWindow.tsx` applies its
+   own `maxBlockSize: '60svh'` only where `onChange !== undefined` - only where
+   there is something to drag - and `cropChooser.test.tsx`'s "takes none of them
+   where there is nothing to drag" holds the moderator's half of it at an empty
+   `maxBlockSize`. A cap on this class would be that same mutation, on the plain
+   `<img>` this card draws instead of `CropWindow`. */
 .pending__picture {
   display: block;
   max-width: 100%;
-  max-block-size: 20rem;
   height: auto;
   margin-block: var(--space-8);
   border: 1px solid var(--border);

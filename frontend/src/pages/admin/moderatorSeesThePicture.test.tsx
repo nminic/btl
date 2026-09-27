@@ -28,7 +28,11 @@ const RATING = { organisation: 0, value: 0, ambience: 0 }
 
 /** A row the schema really produces for an uploaded photograph: `MePhotoApi` fills
  *  `photo_id`, and `VerificationApi.Waiting.kind` reads that presence back as
- *  `'photo'` for the profiles tab. */
+ *  `'photo'` for the profiles tab. `body` is `''` for the same reason and not a
+ *  guess: `MePhotoApi.java` inserts `body: ''` on every row it gives a `photo_id`
+ *  (`insert into verification (... body ...) select ?, ..., '', ?`), so there is no
+ *  file name in this row for a moderator to read back - only the empty field this
+ *  fixture used to fake one in. */
 const aPhotoRow = {
   queue: 'profiles' as const,
   id: 21,
@@ -37,7 +41,7 @@ const aPhotoRow = {
   who: 'Neda Nedić',
   subject: 'Neda Nedić',
   subjectId: '',
-  body: 'nova-slika.jpg',
+  body: '',
   kind: 'photo' as const,
   city: '',
   country: '',
@@ -94,10 +98,11 @@ describe('the picture on a card the moderator is deciding about', () => {
       /* The dictionary's own sentence, naming who sent it - never the file name or
          the subject read straight off the row, which is exactly the mutation
          `theRealAnswer.test.tsx` already measured this alt text against. */
-      expect(picture).toHaveAccessibleName('Slika koju je poslao Neda Nedić, sa uokvirenim delom koji će se videti')
-      /* The file name stays too: it is what the queue is searched and talked about
-         by, picture or not. */
-      expect(cardOf('Neda Nedić').getByText('nova-slika.jpg')).toBeVisible()
+      expect(picture).toHaveAccessibleName('Slika koju je poslao Neda Nedić')
+      /* The row's own „Datoteka" field stays too, picture or not - empty here
+         because it always is for a photo row (`MePhotoApi.java` inserts `body: ''`
+         for every one it gives a `photo_id`), never a name to read. */
+      expect(cardOf('Neda Nedić').getByText('Datoteka')).toBeVisible()
     } finally {
       stop()
     }
@@ -161,10 +166,10 @@ describe('the picture on a card the moderator is deciding about', () => {
       expect(
         cardOf('Neda Nedić').queryByRole('img', { name: /Slika koju je poslao/ }),
       ).not.toBeInTheDocument()
-      /* The card itself, and the file name on it, are untouched: a picture that
-         cannot be shown is not a reason to lose the rest of the row. */
+      /* The card itself, and the row's own fields on it, are untouched: a picture
+         that cannot be shown is not a reason to lose the rest of the row. */
       expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
-      expect(cardOf('Neda Nedić').getByText('nova-slika.jpg')).toBeVisible()
+      expect(cardOf('Neda Nedić').getByText('Datoteka')).toBeVisible()
     } finally {
       stop()
     }
