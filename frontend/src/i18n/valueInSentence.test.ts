@@ -372,9 +372,6 @@ describe('a sentence with a value put into it', () => {
       'registration.bioFull',
       'registration.bioLeft',
       'registration.doneText',
-      /* „Učlanjenje se otvara {date}, za {count} dana.": a verb governs the date, so the
-         genitive, and this is the sentence a review found wrong on 05.09.2026. */
-      'registration.opensIn <- formatDayInSentence',
       'review.proof',
       'review.sweptLeft',
       'rights.box',

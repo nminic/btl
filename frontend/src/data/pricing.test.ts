@@ -1,5 +1,4 @@
 import {
-  daysBetween,
   juniorInSeason,
   PRICES,
   priceOn,
@@ -57,13 +56,6 @@ describe('priceOn', () => {
     expect(priceOn('2027-03-01').ranking).toBe(false)
     expect(priceOn('2027-09-30').ranking).toBe(false)
     expect(priceOn('2026-10-01').ranking).toBe(true)
-  })
-})
-
-describe('daysBetween', () => {
-  it('counts whole days', () => {
-    expect(daysBetween('2026-10-01', '2026-10-06')).toBe(5)
-    expect(daysBetween('2026-10-06', '2026-10-06')).toBe(0)
   })
 })
 

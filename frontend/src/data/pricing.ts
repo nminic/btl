@@ -16,8 +16,8 @@ import { FIRST_SEASON, transfersTakeEffect } from './season'
  * The first half is still read by eighteen files and has nothing to do with an amount: the
  * season the portal was built for (`SEASON`), the day registration opens
  * (`REGISTRATION_OPENS`), which season a renewal is for (`seasonBeingRenewed`), who pays the
- * junior fee (`juniorInSeason`), the shape of a referral code (`REFERRAL_CODE`),
- * `daysBetween`, `registrationOpen`. Those are the calendar and the rules, and they are not
+ * junior fee (`juniorInSeason`), the shape of a referral code (`REFERRAL_CODE`), and
+ * `registrationOpen`. Those are the calendar and the rules, and they are not
  * served by anything.
  *
  * **The second half is the AMOUNTS, and they are here because a test on the other side of
@@ -75,9 +75,11 @@ export type PriceRow = {
  *  season, a calendar talks about the first one — but there is one number. */
 export const SEASON = FIRST_SEASON
 
-/** Before this date nobody can even begin to register: the portal is open for
- *  looking only (PDL P8). A launch happens once, so this is a real date and not
- *  a day of the year. */
+/** The day membership goes on sale, and the plan the launch still keeps (PDL P8). Until
+ *  27.09.2026 the registration screen also refused to draw a form before this day; that
+ *  refusal is gone (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA", owner 27.09.2026),
+ *  so what is left here is the price list's own date, nothing that stops anybody reaching
+ *  the form early. A launch happens once, so this is a real date and not a day of the year. */
 export const REGISTRATION_OPENS = '2026-10-01'
 
 /**
@@ -235,13 +237,13 @@ export function priceOn(today: string): PriceRow {
   return BY_START.reduce((inForce, row) => (row.from <= day ? row : inForce))
 }
 
-export function daysBetween(from: string, to: string): number {
-  const start = Date.parse(`${from}T00:00:00Z`)
-  const end = Date.parse(`${to}T00:00:00Z`)
-
-  return Math.round((end - start) / 86_400_000)
-}
-
+/* `daysBetween` STOOD HERE AND IS GONE (PDL, "Zabrana registracije pre 01.10.2026 se SKIDA",
+ * owner 27.09.2026). Its only reader was the registration screen's own countdown to opening
+ * day, on the closed page that is removed along with the ban it explained. Nothing else in
+ * the portal counts days between two dates through this file: `forms/dateField.ts` has its
+ * own `daysBetween`, read by the two screens that move an event to a different day, and the
+ * two were never the same function under one name.
+ */
 export function registrationOpen(today: string): boolean {
   return today >= REGISTRATION_OPENS
 }

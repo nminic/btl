@@ -1,12 +1,10 @@
 import { useRef, useState } from 'react'
 import { useFilterParams } from '../app/useFilterParams'
-import { useToday } from '../clock/useClock'
 import { storedDate } from '../forms/dateField'
 import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
 import type { FormValues } from '../forms/types'
-import { REFERRAL_CODE, REGISTRATION_OPENS, daysBetween, registrationOpen } from '../data/pricing'
-import { formatDayInSentence } from '../i18n/format'
+import { REFERRAL_CODE } from '../data/pricing'
 import { askTheServer, type Answer } from './account/askTheServer'
 import { WHEN_REGISTERING } from './account/refusals'
 import { ServerSaid } from './account/ServerSaid'
@@ -170,11 +168,6 @@ export function Registration() {
      measured is the ordinary double press, and that the guard lets go again once the
      server has answered. */
   const outstanding = useRef(false)
-  /* Which side of 1 October the portal is on, from the one clock the whole
-     portal reads (src/clock). It used to be a prop with the machine's date
-     behind it, which meant this screen could be shown one day and the price
-     beside it another. */
-  const today = useToday()
   const [params] = useFilterParams()
   /* A referral code and not whatever the address carried.
    *
@@ -192,26 +185,14 @@ export function Registration() {
   const carried = params.get('preporuka') ?? ''
   const referral = REFERRAL_CODE.test(carried) ? carried : null
 
-  // Between 15 and 30 September the portal is open for looking only: nobody can
-  // even begin to register, which is a decision and not a missing screen.
-  if (!registrationOpen(today)) {
-    return (
-      <div className="registration-closed">
-        <h1>{t('registration.closed')}</h1>
-        <p>{t('registration.closedText')}</p>
-        <p>
-          {t('registration.opensIn', {
-            /* The day under a verb, so the genitive and not the nominative that
-               `formatDate` gives: a screen said „Učlanjenje se otvara 1. oktobar 2026."
-               to everybody between 15 and 30 September (ADL A35, review 05.09.2026). */
-            date: formatDayInSentence(REGISTRATION_OPENS, locale),
-            count: daysBetween(today, REGISTRATION_OPENS),
-          })}
-        </p>
-      </div>
-    )
-  }
-
+  /* THE CLOSED PAGE STOOD HERE AND IS GONE (PDL, "Zabrana registracije pre 01.10.2026 se
+   * SKIDA", owner 27.09.2026): „Zapravo bih najradije da skinem tu zabranu i da mogu prijave
+   * odmah da krenu, a svakako niko nece pristupiti ovome pre nego sto sajt bude live 1.10."
+   * It read `registrationOpen(today)` off the browser's own clock and drew a page saying the
+   * form was not open yet in its place. The launch plan itself has not moved (30.09/01.10,
+   * owner 14.09.2026): what changed is that this screen stopped being the one enforcing it,
+   * since the site a visitor actually reaches before 1 October is still the old portal.
+   */
   if (sent !== null) {
     /* What happens next, and not what was typed.
      *

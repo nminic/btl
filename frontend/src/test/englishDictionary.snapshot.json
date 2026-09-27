@@ -407,14 +407,7 @@
     "passwordRepeat": "Repeat the password",
     "parentConsent": "The parent's or guardian's full name",
     "parentConsentHint": "The competitor is under sixteen, so the account is kept by a parent or a guardian. By entering your name you confirm that you support your child's application with the details given. For anybody under fourteen it is at the same time the consent to membership.",
-    "closed": "Registration is not open yet",
-    "closedText": "From 15 to 30 September the portal is open for looking around only. The calendar and the boards work, but no membership is sold then.",
     "opensOn": "It opens on {date}.",
-    "opensIn": {
-      "one": "Joining opens on {date}, in {count} day.",
-      "few": "Joining opens on {date}, in {count} days.",
-      "other": "Joining opens on {date}, in {count} days."
-    },
     "category": "Category",
     "categoryFirstSeason": "Rookie",
     "categoryByAge": "By age",

@@ -13,10 +13,11 @@
 /**
  * The day the table is read on.
  *
- * Deliberately before 01.10.2026 and inside the season the generated calendar lives in: what a
- * screen draws depends on the day, and two of the addresses below change with it — the
- * registration, whose heading changes when it opens, and a profile, whose owner has to be a member
- * on the day it is read.
+ * Inside the season the generated calendar lives in: what a screen draws can depend on the day,
+ * and one of the addresses below still changes with it — a profile, whose owner has to be a
+ * member on the day it is read. The registration screen used to be a second one, before its own
+ * ban on a date came off (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA", owner 27.09.2026);
+ * this is no longer pinned before that date for its sake, only for the profile's.
  *
  * Beside the table since 07.09.2026, because two sweeps read it: the one that watches what a
  * browser downloads, and the one that hides a member and asks every address whether it still leads
@@ -107,14 +108,11 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
   ['/sr/politika-privatnosti', 'Politika privatnosti', 'Politika privatnosti'],
   ['/sr/uslovi-koriscenja', 'Uslovi korišćenja', 'Uslovi korišćenja'],
-  /* Read on a fixed day, because this heading changes on 01.10.2026 when
-     registration opens (pricing.ts). A row that turns over on a date is a row
-     that breaks the build on a date. */
-  [
-    '/sr/registracija',
-    'Registracija još nije otvorena',
-    'Registracija još nije otvorena',
-  ],
+  /* The heading here no longer turns over on 1 October: the ban that used to close this
+     screen before that date is gone (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA",
+     owner 27.09.2026), and the form is what both a visitor and a member meet on any day.
+     `DAY` still holds this table to one day, for the profile row below rather than this one. */
+  ['/sr/registracija', 'Registracija', 'Registracija'],
   ['/sr/prijava', 'Prijava', 'Prijava'],
   /* The two screens a link out of a message lands on, read WITH a token on the address,
      because that is the only state in which they speak to the server at all: opened
