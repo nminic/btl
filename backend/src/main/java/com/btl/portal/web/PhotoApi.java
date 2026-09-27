@@ -74,7 +74,9 @@ import java.util.regex.Pattern;
  * (PDL, owner, 12.08.2026).
  * <li>{@code verification.photo_id} - a picture WAITING for a moderator. PDL, „Profilnu
  * sliku administrator odobrava pre objave": a picture in that queue is by definition one
- * nobody has published, so serving it is publishing it instead of him.
+ * nobody has published, so serving it HERE is publishing it instead of him. <b>Since
+ * 27.09.2026 it has an address of its own, and that sentence is why it is a second route
+ * rather than a third {@code exists}</b>: see {@link #waitingOn} below.
  * <li>{@code team_proposal.logo_id} - the mark of a team that has been PROPOSED. The
  * proposal is what a moderator decides on; until he does, there is no team and there is
  * nothing to draw it beside.
@@ -227,7 +229,27 @@ import java.util.regex.Pattern;
  * <p><b>It is open to a visitor, and by a list of its own.</b>
  * {@link ApiSecurity#READ_BY_ANYBODY_UNDER_A_NAME} says why the existing list could not
  * carry it: every entry there is a whole address, and this one is an address with a name in
- * it.
+ * it. <b>That sentence is about {@link #photo} and not about this class</b>, which since
+ * 27.09.2026 maps a second route that is on no open list at all.
+ *
+ * <p><b>AND THAT SECOND ROUTE IS WHY THIS CLASS NOW SERVES TWO KINDS OF CALLER FROM ONE
+ * PLACE, which is a choice with a measurement behind it rather than a convenience.</b>
+ * {@link #waitingOn} answers the picture a moderator is deciding about. It could have lived
+ * in {@link VerificationApi}, whose resource it belongs to, and what decided otherwise is
+ * that {@link #bytesOf} is the ONE place in this portal that reads a picture off the disk
+ * for a response, and the one place {@code NOFOLLOW_LINKS} is written. A second reader would
+ * split the refusal of a symbolic link across two files, so whoever hardened one would miss
+ * the other. The folder setting is a different matter and is already read in four classes
+ * ({@code MePhotoApi} says so in as many words), so a fifth reader of a SETTING is the
+ * pattern here and a second reader of the BYTES is not.
+ *
+ * <p><b>What the two routes do NOT share is the question they ask</b>, and nothing was
+ * loosened to fit them in one class: {@link #photo} asks „does something public hold this
+ * digest", {@link #waitingOn} asks „may this moderator decide about this row". They share
+ * {@link #bytesOf}, {@link #nothingIsHere}, {@link #FOR_A_DAY} and the folder, all four of
+ * which are about carrying bytes out and none of which is about permission.
+ * {@code THE_PICTURE_A_DIGEST_NAMES} is untouched by the second route, so which pictures are
+ * PUBLIC is exactly what it was.
  */
 @RestController
 class PhotoApi {
@@ -304,9 +326,40 @@ class PhotoApi {
 			+ " or exists (select 1 from team its where its.logo_id = p.id))"
 			+ " order by p.id limit 1";
 
+	/**
+	 * THE PICTURE ONE QUEUE ROW IS ABOUT, AND THE PRIVILEGE THAT ROW ITSELF NAMES.
+	 *
+	 * <p><b>The join to {@code photo} is what answers three of this route's states at
+	 * once, and it is INNER on purpose.</b> A row that has been decided, a row on the
+	 * biographies half of the same tab, and a row that was never there all produce no row
+	 * here, so all three leave through the one {@link #nothingIsHere}.
+	 *
+	 * <p><b>There is deliberately NO {@code and v.state = 'waiting'} in this statement</b>,
+	 * and that is a reading of the schema rather than an omission. V9's
+	 * {@code verification_decided_keeps_no_photo check (state = 'waiting' or photo_id is
+	 * null)} means a decided row CANNOT hold a picture, so „it still holds one" and „it is
+	 * still waiting" are one fact and the {@code check} is the thing that says so. Written
+	 * here as well it would be a second home for it, and the two could only ever disagree
+	 * by one of them being wrong. {@code VerificationConstraintsTest} keeps the two
+	 * violations that fall if the constraint is lost.
+	 *
+	 * <p><b>And {@code right_code} comes back rather than being compared here</b>, which is
+	 * the shape {@code VerificationWriteApi.itemHeMayModerate} already has and gives the
+	 * reason for: the superadmin holds every right with no tick anywhere (V5's
+	 * {@code rights_mode = 'all'}), so a condition over the ticks written into this SQL
+	 * would refuse him his own portal. V9 GENERATES the column as {@code 'queue:' || queue}
+	 * and keys it to {@code admin_right(code)}, so the row carries the exact privilege that
+	 * opens it and nothing here re-derives which tab is which.
+	 */
+	private static final String THE_WAITING_PICTURE_OF_A_ROW =
+			"select p.id, p.media_type, v.right_code from verification v"
+			+ " join photo p on p.id = v.photo_id where v.id = :id";
+
 	private final JdbcClient db;
 
 	private final Path folder;
+
+	private final WhatHeMayDo mayHe;
 
 	/**
 	 * @param folder where the files are, which is a setting because QA and production are
@@ -315,14 +368,30 @@ class PhotoApi {
 	 *               Its default is a developer's temporary folder, and what that means is
 	 *               an empty one: on a machine nobody has uploaded to, every picture is an
 	 *               address that is not there, which is the true answer
+	 * @param mayHe  the one place „may he" is answered (ADL A8, „Odgovara jedno mesto"),
+	 *               asked by {@link #waitingOn} and by nothing else here. {@link #photo}
+	 *               does not touch it: what that route asks is whether there is a session
+	 *               at all, which is a different question and is already answered by
+	 *               whether the principal is there
 	 */
-	PhotoApi(JdbcClient db, @Value("${btl.photos.folder}") String folder) {
+	PhotoApi(JdbcClient db, @Value("${btl.photos.folder}") String folder, WhatHeMayDo mayHe) {
 		this.db = db;
 		this.folder = Path.of(folder);
+		this.mayHe = mayHe;
 	}
 
 	/** The two things the row decides: where the file is, and what it is. */
 	private record Kept(long id, String mediaType) {
+	}
+
+	/**
+	 * The same two, and the privilege the queue row carries beside them.
+	 *
+	 * <p>Read in ONE statement with the picture rather than asked for afterwards, so „which
+	 * tab is this row in" and „which picture is it about" are one reading of one moment. A
+	 * tab read separately could be read after a decision had emptied the row.
+	 */
+	private record KeptForADecision(long id, String mediaType, String rightCode) {
 	}
 
 	/**
@@ -366,50 +435,242 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		byte[] bytes;
+		Optional<byte[]> bytes = theFileOf(kept.get().id(), name);
 
-		try {
-			/* THE NAME OF THE FILE IS THE KEY OF THE ROW AND NOTHING ELSE TOUCHES IT. Not
-			   `name`, which came over the wire; not the digest, which is the same string.
-			   A `long` written out is digits, so there is no spelling of it that leaves
-			   this folder, and every case in `PhotoApiTest` keeps a decoy file named after
-			   the digest to say which of the two was read - see the note at the head of
-			   that class, which is where the arrangement is described. */
-			bytes = bytesOf(folder.resolve(String.valueOf(kept.get().id())));
-		} catch (IOException noFile) {
-			/* THE ONLY PLACE THIS FAULT EXISTS. The caller is told what a caller of a
-			   digest nobody wrote is told, so a row and its absence cannot be told apart
-			   from outside; whoever runs the server is told here, because a row whose file
-			   has gone is a backup that did not cover the volume (ADL A43, 2, „rezervna kopija
-			   mora da pokrije i volumen, a danas ne pokriva nista").
-
-			   AND THE EXCEPTION IS NOT HANDED TO THE LOGGER, which is the correction of
-			   20.09.2026 and was a finding rather than an untidiness. Passed as the last
-			   argument it printed its whole stack - some sixty lines down the filter chain -
-			   for a state this portal EXPECTS: deploy/README.md says QA is refreshed by
-			   throwing the volume away while the rows stay, so every picture on the portal
-			   is one of these. Measured over a real socket: fifty requests of about 190
-			   bytes each made the server write 1.002.600 bytes of log, 20.052 per request,
-			   which is an amplifier of a hundred times over. Neither deploy stack sets a
-			   `logging:` block, so Docker's json-file driver keeps it all without rotation,
-			   and `frontend/nginx.conf` rate-limits signing in and registering and not this.
-			   What the stack said that this line does not is WHERE the read failed, and it
-			   was the same three frames every time; what matters is which digest and which
-			   folder, and both are here. */
-			LOG.warn("photo {} names a row whose file could not be read under {}", name, folder);
+		if (bytes.isEmpty()) {
 			return nothingIsHere(response);
 		}
 
+		return carrying(kept.get().mediaType(), bytes.get());
+	}
+
+	/**
+	 * THE PICTURE ONE QUEUE ROW IS WAITING FOR A DECISION ABOUT, TO THE MODERATOR WHO MAY
+	 * TAKE IT.
+	 *
+	 * <p><b>ADL A60, dopuna 27.09.2026, and the owner found the hole himself on QA:</b> he
+	 * approved a photograph WITHOUT SEEING IT, because the queue never drew one. „kad neko
+	 * posalje sliku na odobrenje, zelim da dobijem jedan jedini red na strani verifikacije
+	 * gde cu videti tu sliku i odobriti njeno takvo postavljanje na profil clana", and then,
+	 * asked about the conflict with the rule above: „Svakako uradi sta god je potrebno da
+	 * moderator vidi sliku koju verifikuje."
+	 *
+	 * <p><b>THE RULE ABOVE IS NARROWED AND NOT OVERTURNED, which is the whole reason this is
+	 * a route of its own.</b> A60 of 20.09.2026 still stands: „Slika koju drzi samo nesto sto
+	 * ceka odluku moderatora nije javna... Takva slika odgovara tacno isto kao slika koje
+	 * nema." {@link #photo} still refuses it and {@code THE_PICTURE_A_DIGEST_NAMES} is not
+	 * touched, so a picture waiting for a decision is still not PUBLIC. What changes is that
+	 * one moderator has an address. Widening the digest route instead would have moved the
+	 * idea of „a public holder" and pulled the identical question along for
+	 * {@code team_proposal.logo_id}, which no decision covers; a route keyed to a ROW serves
+	 * one caller about one row by construction, so its guard is narrower than the concept.
+	 *
+	 * <p><b>The privilege is the ROW'S and never this file's</b>, which is
+	 * {@code VerificationWriteApi.itemHeMayModerate}'s shape and its reason: five queues
+	 * exist, so one code written on the route could only be one of them and would either
+	 * shut the route to four moderators out of five or open all five to any one of them.
+	 * {@code verification.right_code} carries the exact privilege that opens the row, and it
+	 * is handed to {@link WhatHeMayDo}, the one place „may he" is answered.
+	 *
+	 * <p><b>Somebody who may not is told 404 and not 403</b>, ADL A8, owner 13.09.2026:
+	 * „Server odbija moderatora bez privilegije sa 404, ne sa 403". PDL P28a, owner
+	 * 30.07.2026, says the same from the screen's side and is the stronger sentence of the
+	 * two: „Ne treba ni da budu svesni moderatori da postoje akcije koje im nisu
+	 * dodeljene." So a competitor, a moderator holding another queue and a row that was
+	 * never there are ONE answer, and it leaves through the same {@link #nothingIsHere}
+	 * every other refusal in this class leaves through.
+	 *
+	 * <p><b>NOTHING HERE ASKS WHETHER ANYBODY IS SIGNED IN, and there must not be.</b> This
+	 * address is on no open list, so the chain answers 401 before this method runs -
+	 * {@code ApiSecurityTest.everyRouteNobodyOpenedIsARouteNobodyCanRead} derives that from
+	 * the dispatcher rather than being told, so it covers this route by existing. Written as
+	 * a branch here it would be a branch no request can reach, which the gate's hundred per
+	 * cent of branches refuses.
+	 *
+	 * <p><b>AND NOTHING HERE ASKS ABOUT {@code profile_hidden} EITHER, for two independent
+	 * reasons.</b> A60 closes that rule with „Od koga se krije: samo od neprijavljenog", and
+	 * every caller of this route is signed in by the paragraph above, so the condition could
+	 * never decide anything; and a picture waiting for a decision is not ON the profile yet,
+	 * so there is no profile field for hiding to cover.
+	 * {@code aWaitingPictureOfAHiddenMemberIsStillAnsweredToItsModerator} is what pins that,
+	 * rather than this paragraph asserting it.
+	 *
+	 * <p><b>THE WHOLE PICTURE AND NEVER THE CROP, AND THAT IS A DECISION RATHER THAN THIS
+	 * INCREMENT'S EDGE. [IZVEDENO 27.09.2026 - my reasoning and NOT the owner's word, and it
+	 * is marked so because he was never asked.]</b> The moderator decides what enters the
+	 * portal, so it is more use to him to see what falls OUTSIDE the circle than less: what he
+	 * is judging is the photograph, and anything the circle hides is exactly what he could not
+	 * otherwise refuse. The circle is the MEMBER's choice over his own picture and it applies
+	 * when the picture is approved, which makes it his decision and not part of the one being
+	 * taken here.
+	 *
+	 * <p>The mechanics agree with the decision rather than forcing it, and that is worth
+	 * separating. PDL P11 - „Odseceni deo se ne baca. Slika ostaje cela, a isecak se pamti
+	 * pored nje" - and ADL A17 both refuse a route that burns a crop into bytes, so cutting
+	 * here was never available; what was available was answering the three fractions BESIDE
+	 * the picture, on {@code /api/verification}, and that is what the paragraph above turns
+	 * down. Doing it would also change that answer's shape and therefore the portal's
+	 * contract, but the reason it is not done is the first one and not the cost.
+	 *
+	 * <p><b>AND THE CROP IS NOT REFUSED EVERYWHERE, WHICH HAS TO BE SAID HERE OR THIS
+	 * PARAGRAPH READS AS A RULE ABOUT THE PORTAL.</b> PDL 21b gives the MEMBER his own waiting
+	 * picture „sa krugom" on the screen he sends from. So the two readers are deliberately
+	 * opposite: the member is shown what he chose, because the circle IS his choice and he is
+	 * checking it; the moderator is shown everything, because what he is judging is whether
+	 * the photograph may be on the portal at all and the circle would hide the part he could
+	 * not otherwise refuse. The route 21b needs is not written yet, and when it is, it carries
+	 * the crop rather than copying this decision.
+	 *
+	 * <p><b>AND THE MEMBER WHOSE PICTURE IT IS IS ANSWERED 404 HERE TOO, BUT THE REASON IS
+	 * THIS ROUTE'S OWNER AND NOT A RULE ABOUT HIM.</b> He holds no queue right and does not
+	 * know a {@code verification.id}, so he is refused exactly as anybody else without the
+	 * tick. <b>Saying more than that would be wrong</b>, and PDL 21 decides the two halves
+	 * separately:
+	 *
+	 * <ul>
+	 * <li><b>21a, on the PROFILE, not until approved. [ODLUKA 27.09.2026, owner]</b> „Clan i
+	 * ne treba da vidi svoju sliku dok nije odobrena. Kad je bude ugledao po prvi put tad ce
+	 * znati da je slika i odobrena." So the first appearance ON THE PROFILE is itself the
+	 * notice and no second one is made.
+	 * <li><b>21b, on the SCREEN HE SENDS FROM, he does see it. [ODLUKA 27.09.2026, owner]</b>
+	 * „ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u statusu cekanja i tu
+	 * vidim trenutno azuriranu sliku sa krugom." With the crop he set, and with a mark that it
+	 * is waiting.
+	 * </ul>
+	 *
+	 * <p><b>So 21b needs a route of its own and it is NOT this one and NOT yet written</b> -
+	 * keyed to the caller's own session rather than to a queue row, and carrying the crop
+	 * rather than refusing it. ADL A60 says so in as many words: „Ono sto clan vidi na svom
+	 * ekranu za slanje i ono sto moderator vidi u redu su dve imenovane rute sa svojim pravom,
+	 * ne sirenje pojma „javna slika"." Named here as an open increment, not as something this
+	 * route covers.
+	 *
+	 * <p><b>Both of those overturn the decision of 24.09.2026</b> („Dok slika ceka odobrenje,
+	 * clan vidi svoju novu sliku sa oznakom da ceka"), which is named because a sentence
+	 * describing it as still open would be an instruction to build it. <b>And the first
+	 * writing of the new one was WIDER than the owner meant</b> - „the member sees it nowhere"
+	 * - which 21b corrected the same day. That is recorded here because this paragraph carried
+	 * the wide version until it was measured against the log, and the wide version is the one
+	 * that reads as „no screen may ever show him his own picture".
+	 *
+	 * @param id       {@code verification.id}, taken as a {@code long} because that is what
+	 *                 {@code VerificationWriteApi} takes for the same key. <b>What that
+	 *                 costs is named rather than hidden:</b> an id that is not a number is
+	 *                 answered 400 by Spring and not 404, which tells the caller this path
+	 *                 pattern exists. That is not this route's doing - {@code POST
+	 *                 /api/verification/{id}/hold} has had it since it was written - so it is
+	 *                 recorded rather than fixed here, where fixing it for one route of three
+	 *                 would leave the other two saying otherwise
+	 * @param asking   whose request it is, as the chain resolved it. Taken as a parameter
+	 *                 rather than read off the context because that is the shape
+	 *                 {@link WhatHeMayDo#may(WhoIsAsking.Member, String)} exists for, and it
+	 *                 is never a value out of the body, a header or a query
+	 * @param response asked for so a refusal goes down the road an address that is not there
+	 *                 takes, exactly as {@link #photo} and {@link VerificationApi} do
+	 */
+	@GetMapping("/api/verification/{id}/photo")
+	ResponseEntity<byte[]> waitingOn(@PathVariable long id,
+			@AuthenticationPrincipal WhoIsAsking.Member asking, HttpServletResponse response)
+			throws IOException {
+
+		Optional<KeptForADecision> kept = db
+				.sql(THE_WAITING_PICTURE_OF_A_ROW)
+				.param("id", id)
+				.query((row, one) -> new KeptForADecision(row.getLong(1), row.getString(2),
+						row.getString(3)))
+				.optional()
+				/* MAY HE MODERATE THE TAB THIS ROW STANDS IN, asked of the one place that
+				   answers it and about the code THE ROW carries. The superadmin holds every
+				   right with no tick anywhere (V5's `rights_mode = 'all'`), so a condition
+				   over the ticks would refuse him his own portal.
+
+				   AND IT IS A `filter` ON THE SAME OPTIONAL, not a branch of its own, so „no
+				   such row" and „not his row" are one emptiness and cannot be told apart by
+				   anything outside. */
+				.filter(one -> mayHe.may(asking, one.rightCode()));
+
+		if (kept.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		Optional<byte[]> bytes = theFileOf(kept.get().id(), id);
+
+		if (bytes.isEmpty()) {
+			return nothingIsHere(response);
+		}
+
+		return carrying(kept.get().mediaType(), bytes.get());
+	}
+
+	/**
+	 * THE BYTES OF THE PICTURE A ROW NAMES, OR NOTHING AND ONE LINE TO WHOEVER RUNS THE
+	 * SERVER.
+	 *
+	 * <p><b>THE ONLY PLACE THIS FAULT EXISTS</b>, and it is one place for two routes rather
+	 * than two places saying the same thing. The caller is told what a caller of a digest
+	 * nobody wrote is told, so a row and its absence cannot be told apart from outside;
+	 * whoever runs the server is told here, because a row whose file has gone is a backup
+	 * that did not cover the volume (ADL A43, 2, „rezervna kopija mora da pokrije i volumen,
+	 * a danas ne pokriva nista").
+	 *
+	 * <p><b>THE NAME OF THE FILE IS THE KEY OF THE ROW AND NOTHING ELSE TOUCHES IT.</b> Not
+	 * what came over the wire, and not the digest, which is the same string. A {@code long}
+	 * written out is digits, so there is no spelling of it that leaves this folder, and every
+	 * case in {@code PhotoApiTest} keeps a decoy file named after the digest to say which of
+	 * the two was read.
+	 *
+	 * <p><b>AND THE EXCEPTION IS NOT HANDED TO THE LOGGER</b>, which is the correction of
+	 * 20.09.2026 and was a finding rather than an untidiness. Passed as the last argument it
+	 * printed its whole stack - some sixty lines down the filter chain - for a state this
+	 * portal EXPECTS: deploy/README.md says QA is refreshed by throwing the volume away while
+	 * the rows stay, so every picture on the portal is one of these. Measured over a real
+	 * socket: fifty requests of about 190 bytes each made the server write 1.002.600 bytes of
+	 * log, 20.052 per request, an amplifier of a hundred times over. Neither deploy stack
+	 * sets a {@code logging:} block, so Docker's json-file driver keeps it all without
+	 * rotation, and {@code frontend/nginx.conf} rate-limits signing in and registering and
+	 * not this. What the stack said that this line does not is WHERE the read failed, and it
+	 * was the same three frames every time; what matters is which picture, by which address,
+	 * and under which folder, and all three are here.
+	 *
+	 * @param photo {@code photo.id}, which is the file's name
+	 * @param named how the caller asked for it - a digest on {@link #photo} and a queue row's
+	 *              key on {@link #waitingOn}. Carried into the line because „which picture"
+	 *              alone does not tell an operator which address is broken, and the two
+	 *              routes reach one picture by two different names
+	 */
+	private Optional<byte[]> theFileOf(long photo, Object named) {
+		try {
+			return Optional.of(bytesOf(folder.resolve(String.valueOf(photo))));
+		} catch (IOException noFile) {
+			LOG.warn("picture {} asked for as {} could not be read under {}", photo, named,
+					folder);
+
+			return Optional.empty();
+		}
+	}
+
+	/**
+	 * THE ONE ANSWER THAT CARRIES BYTES, so that the two routes cannot come to disagree
+	 * about how long a picture may be kept.
+	 *
+	 * <p>The cache term is a DAY and PRIVATE, and the note at the head of this class is where
+	 * both halves are argued. It is kept in one place because it is the line a decision about
+	 * withdrawing a picture moves, and a second copy would be a second thing to move.
+	 *
+	 * <p><b>AND NOTHING IS WRITTEN HERE ABOUT SNIFFING, which a first draft did.</b>
+	 * {@code X-Content-Type-Options: nosniff} is on this answer already, written by the
+	 * chain's own header writer for everything it answers - measured by taking the explicit
+	 * header off and finding the case that asks for it still green. A line that changes no
+	 * answer beside a sentence crediting it is worse than no line, so the fact is PINNED in
+	 * the case instead, because these routes are the ones that depend on it.
+	 *
+	 * @param mediaType off the row and out of nothing else, which the note at the head of
+	 *                  this class explains and V8's {@code photo_media_type_known} bounds
+	 */
+	private static ResponseEntity<byte[]> carrying(String mediaType, byte[] bytes) {
 		return ResponseEntity.ok()
-				.contentType(MediaType.parseMediaType(kept.get().mediaType()))
+				.contentType(MediaType.parseMediaType(mediaType))
 				.cacheControl(CacheControl.maxAge(FOR_A_DAY).cachePrivate())
-				/* AND NOTHING IS WRITTEN HERE ABOUT SNIFFING, which a first draft did.
-				   `X-Content-Type-Options: nosniff` is on this answer already, written by the
-				   chain's own header writer for everything it answers - measured by taking the
-				   explicit header off and finding the case that asks for it still green. A
-				   line that changes no answer beside a sentence crediting it is worse than no
-				   line, so the fact is PINNED in the case instead, because this route is the
-				   one that depends on it. */
 				.body(bytes);
 	}
 

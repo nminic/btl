@@ -42,13 +42,47 @@ import java.util.Optional;
  * itself, from {@code PDL.md:1694} (an empty biography is a removal that takes effect at
  * once) and {@code :1655} (a member changes or removes his picture „kad god hoce"), with the
  * reason beside it: „Uklanjanje ne moze da bude sporno."
- * <li><b>„Dok slika ceka odobrenje, clan vidi SVOJU novu sliku sa oznakom da ceka; svi
- * ostali vide staru ili nijednu."</b> His reason: „da zna da je slanje uspelo i da je ne
- * salje tri puta." What that means HERE is one sentence and it is the whole of this route's
- * answer: the key of the waiting row and the digest of the picture in it come back to the
- * member who sent it, and to nobody else. What it means for the BYTES is
- * {@link PhotoApi}'s, and that half is NOT done on this branch - see „what is not here".
+ * <li>~~<b>„Dok slika ceka odobrenje, clan vidi SVOJU novu sliku sa oznakom da ceka; svi
+ * ostali vide staru ili nijednu."</b>~~ <b>[OBORENO 27.09.2026, owner, PDL 21.]</b> The
+ * sentence this route was written under is no longer the rule, and what replaced it is
+ * narrower in one place and wider in another - which is why it is set out below rather than
+ * quietly swapped.
  * </ul>
+ *
+ * <h2>WHAT A WAITING PICTURE DOES NOW, AND THE TWO HALVES ARE DECIDED SEPARATELY</h2>
+ *
+ * <p><b>PDL 21a, on the PROFILE: not until it is approved. [ODLUKA 27.09.2026, owner]</b>
+ * „Clan i ne treba da vidi svoju sliku dok nije odobrena. Kad je bude ugledao po prvi put tad
+ * ce znati da je slika i odobrena." So the first appearance on the profile is itself the
+ * notice, and no second one is made.
+ *
+ * <p><b>PDL 21b, on THIS route's own screen: he does see it, with the crop. [ODLUKA
+ * 27.09.2026, owner]</b> „ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u
+ * statusu cekanja i tu vidim trenutno azuriranu sliku sa krugom." So the screen a member sends
+ * from shows the waiting picture, cut to the circle he set, under a mark that it is waiting.
+ *
+ * <p><b>WHAT THAT MEANS FOR THIS ROUTE TODAY: nothing changes, and that is a decision rather
+ * than an oversight.</b> The answer still carries the key of the waiting row and the digest of
+ * the picture in it, to the member who sent it and to nobody else. <b>Neither 21b nor 21c is
+ * implemented yet</b> and both go in their own backend increment; changing the shape of this
+ * answer now would change it twice.
+ *
+ * <p><b>SO THE OPEN QUESTION IS NAMED HERE RATHER THAN LEFT TO BE FOUND: does {@code digest}
+ * stay?</b> It was put here so the member could see his own waiting picture, and no route
+ * serves those bytes to him - {@link PhotoApi#photo} refuses a picture only a queue row holds
+ * (ADL A60), and {@link PhotoApi#waitingOn} is the moderator's, keyed to a
+ * {@code verification.id} he does not know and shut by a queue right he does not hold. When
+ * 21b's route is written, keyed to his own session and carrying the crop, this field is either
+ * what that screen asks with or it is dead. <b>It is left standing because the portal reads
+ * it</b>, and because a field removed in the same week it becomes useful is two changes.
+ *
+ * <p><b>And PDL 21c is the other unimplemented half, which this class WILL have to change.</b>
+ * „Ako hocu da pregazim novom ili da pomerim krug da gadja drugi deo slike, opet se salje na
+ * verifikaciju i gazi trenutan red kod verifikatora." So sending again is to OVERWRITE the
+ * waiting row rather than be refused, and the refusal this class answers with today
+ * ({@code aPictureAlreadyWaits}) is what that decision removes. Nothing here has been changed
+ * for it: it is named so the next reader knows the refusal is on its way out and does not read
+ * it as settled.
  *
  * <h2>THE FIRST MULTIPART ROUTE, AND WHAT THAT CHANGES</h2>
  *
