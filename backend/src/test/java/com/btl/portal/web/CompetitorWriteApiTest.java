@@ -632,6 +632,56 @@ class CompetitorWriteApiTest {
 	}
 
 	/**
+	 * AND THE MESSAGE THE EMPTIED TEAM HAD PUT IN SOMEBODY'S INBOX STAYS THERE, WHILE THE
+	 * STANDING TEAM'S STAYS A QUESTION.
+	 *
+	 * <p><b>This is an owner's decision and not reasoning</b>, PDL 06.09.2026: „**Poruka sa
+	 * pozivom ostaje u sandučetu, sa razlogom umesto dugmadi.** Ne briše se: brisanje poruke iz
+	 * tuđeg sandučeta je brisanje istorije, a pitanje „šta se desilo sa onim pozivom" mora da
+	 * ima odgovor." Two cascades took it instead - {@code team_invitation_team_fk} (V12) and
+	 * {@code message_team_invitation_fk} (V13) - and {@link ATeamGoesWithItsLastMember} empties
+	 * the pointer before the row goes. This is that method reached through the road a DELETED
+	 * member opens; {@code TeamWriteApiTest} measures the same thing down the other two.
+	 *
+	 * <p><b>Both halves of „stays", because either alone passes the wrong code:</b> the row is
+	 * still in the inbox AND it is no longer a question. And a second invitation from
+	 * {@link #TEAM_KEPT_BY_AN_OPEN_ROW} is standing the whole time, which is what tells „his
+	 * message survived" from „nothing was touched" - the same pair
+	 * {@link #theEmptiedTeamsLogoGoesWithItAndTheKeptTeamsLogoStays} uses one act along.
+	 *
+	 * <p><b>{@link #FIRST_WRITTEN} is asked and not {@link #THE_TARGET}</b>, because
+	 * {@code message_to_fk} cascades as well: an invitation to the man being deleted would lose
+	 * its message to his own row and this would pass without the fix.
+	 */
+	@Test
+	void theEmptiedTeamsInvitationStaysInTheInboxAndTheKeptTeamsStaysAQuestion() throws Exception {
+		AnInvitationSent fromTheGone = anInvitationInTheInboxOf(TEAM_THAT_EMPTIES, FIRST_WRITTEN);
+		AnInvitationSent fromTheKept =
+				anInvitationInTheInboxOf(TEAM_KEPT_BY_AN_OPEN_ROW, HER_PARTNER);
+
+		assertThat(deleteAs(THE_DELETER, THE_TARGET, "delete").getStatus()).isEqualTo(204);
+
+		assertThat(teamsThatExist())
+				.as("the team did not empty, so this case measures nothing")
+				.doesNotContain(TEAM_THAT_EMPTIES)
+				.contains(TEAM_KEPT_BY_AN_OPEN_ROW);
+
+		assertThat(messageStands(fromTheGone.message()))
+				.as("the invited member's message was deleted out of his inbox with the team")
+				.isTrue();
+		assertThat(pointerOf(fromTheGone.message()))
+				.as("the message still offers a button about a team that is gone")
+				.isNull();
+
+		assertThat(messageStands(fromTheKept.message()))
+				.as("a message about a team that is still standing went too")
+				.isTrue();
+		assertThat(pointerOf(fromTheKept.message()))
+				.as("a standing team's open invitation lost its buttons")
+				.isEqualTo(fromTheKept.invitation());
+	}
+
+	/**
 	 * EVERY HALF HE LEAVES BEHIND IS TOLD, AND NOBODY ELSE IS.
 	 *
 	 * <p>PDL P13, 07.09.2026: „„Raskini" obavestava drugu polovinu... promena pogadja clana
@@ -1089,6 +1139,58 @@ class CompetitorWriteApiTest {
 						+ " (select id from competitor where member_number = ?), ?,"
 						+ " timestamptz '2027-05-02 10:00:00+00', 5, 5, 5, 'Bilo je dobro.')")
 				.params(AN_EVENT, memberNumber, who).update();
+	}
+
+	/**
+	 * AN OPEN INVITATION A TEAM HAS SENT, AND THE MESSAGE THAT CARRIES IT INTO AN INBOX.
+	 *
+	 * <p>Two rows, because the cascade this measures is a chain of two:
+	 * {@code team_invitation_team_fk} (V12) and {@code message_team_invitation_fk} (V13) are
+	 * both {@code on delete cascade}, so a team going reaches {@code message} through the
+	 * invitation. The season only has to be one the league has
+	 * ({@code team_invitation_season_not_before_the_league}).
+	 *
+	 * <p><b>The identities are handed back so the assertion compares against the INSERT</b> and
+	 * never against a value read back off the row it is asking about.
+	 *
+	 * @param teamSlug     the team doing the asking
+	 * @param memberNumber the member asked, who must not be the member the case deletes:
+	 *                     {@code message_to_fk} cascades too, so his own deletion would take
+	 *                     the message and the case would measure the wrong key
+	 */
+	private AnInvitationSent anInvitationInTheInboxOf(String teamSlug, String memberNumber) {
+		long invitation = db.sql("insert into team_invitation (team_id, competitor_id, season)"
+						+ " values ((select id from team where slug = ?),"
+						+ " (select id from competitor where member_number = ?), ?) returning id")
+				.params(teamSlug, memberNumber, A_SEASON_STILL_TO_COME)
+				.query(Long.class)
+				.single();
+
+		long message = db.sql("insert into message (to_id, from_id, from_name, subject, body,"
+						+ " team_invitation_id)"
+						+ " values ((select id from competitor where member_number = ?), null,"
+						+ " 'Balkanska trkacka liga', 'Poziv u tim', 'Tekst poziva.', ?)"
+						+ " returning id")
+				.params(memberNumber, invitation)
+				.query(Long.class)
+				.single();
+
+		return new AnInvitationSent(invitation, message);
+	}
+
+	/** The two rows {@link #anInvitationInTheInboxOf} writes, named so a case can read either. */
+	private record AnInvitationSent(long invitation, long message) {
+	}
+
+	private boolean messageStands(long message) {
+		return db.sql("select exists(select 1 from message where id = ?)").param(message)
+				.query(Boolean.class).single();
+	}
+
+	/** Whether the message is still a question, which is what the pointer means (V13). */
+	private Long pointerOf(long message) {
+		return db.sql("select team_invitation_id from message where id = ?").param(message)
+				.query(Long.class).optional().orElse(null);
 	}
 
 	private void wrote(String fromNumber, String fromName, String toNumber) {

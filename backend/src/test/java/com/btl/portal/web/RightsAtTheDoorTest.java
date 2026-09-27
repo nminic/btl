@@ -399,6 +399,25 @@ class RightsAtTheDoorTest {
 					"POST /api/results", "PUT /api/results/{id}", "DELETE /api/results/{id}",
 					"POST /api/pairs", "PUT /api/pairs/{id}", "DELETE /api/pairs/{id}",
 					"DELETE /api/teams/{id}/membership", "PUT /api/me/notifications",
+					/* GETTING INTO A TEAM THAT ALREADY EXISTS, ALL FIVE ROUTES, ADDED WITH
+					   B115. None of them is a box the superadmin could tick: PDL gives every
+					   one of these acts to somebody the TEAM decides rather than the league -
+					   „Prijavu u tim odobrava administrator tog tima" (owner, 05.09.2026),
+					   „Poziv u tim prihvata pozvani član" (same day), and „Poziv u tim salje
+					   samo administrator tog tima" (owner, 27.09.2026, off Article 53 of the
+					   rulebook, overturning his own decision that any member of the team could
+					   send one). So what decides is the session weighed against the roster,
+					   inside the handler, and somebody it is not for is answered 404 by the
+					   route rather than by a right (ADL A8).
+					   Unauthenticated is 401 from the chain: `READ_BY_ANYBODY` holds whole
+					   addresses and opens `/api/teams` for GET, HEAD and OPTIONS alone, so no
+					   sub-path of it ever reaches `permitAll`. See `TeamJoiningWriteApi`. */
+					"POST /api/teams/{id}/applications",
+					"PUT /api/teams/{id}/applications/{application}",
+					"DELETE /api/teams/{id}/applications/{application}",
+					"POST /api/teams/{id}/invitations",
+					"PUT /api/teams/{id}/invitations/{invitation}",
+					"DELETE /api/teams/{id}/invitations/{invitation}",
 					/* A MEMBER'S OWN ACCOUNT AND HIS OWN PORTRAIT, ADDED 24.09.2026 WITH
 					   INCREMENT A. Each of the three is here for the reason `PUT /api/me` is:
 					   no box anybody could tick would let one member change another's
