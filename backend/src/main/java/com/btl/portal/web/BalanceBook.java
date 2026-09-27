@@ -121,10 +121,21 @@ class BalanceBook {
 	 * numbers while only one row can be recorded, and whichever he pays, the book takes off the
 	 * other one's amount. Rewriting it is exactly the outcome the owner refused on 27.09.2026.
 	 *
-	 * <p><b>{@code on conflict do nothing} rather than a question asked first</b>, so that two
-	 * requests reading no promise before either writes end with the earlier one standing instead of
-	 * one of them meeting {@code balance_promise_pk} and answering 500. The caller reads the promise
-	 * back before serving, so the loser of that race serves what the winner wrote.
+	 * <p><b>WHAT ACTUALLY HOLDS „ONCE" IS THE CALLER'S ORDER AND NOT THIS CLAUSE, and that is
+	 * measured rather than argued.</b> {@link MyMembershipApi} reads the promise BEFORE it writes and
+	 * calls this only when none stands, so a second look never reaches this statement at all. The
+	 * measurement: replacing {@code on conflict do nothing} below with the upsert this branch used to
+	 * have leaves all 18 cases of {@code MyMembershipApiTest} green, because through one request after
+	 * another the conflict path is unreachable. The clause is therefore <b>not the guard</b>; it is
+	 * what makes a RACE safe, where two requests both read no promise before either writes: the
+	 * earlier one stands instead of the later meeting {@code balance_promise_pk} and answering 500,
+	 * and the loser reads back and serves what the winner wrote.
+	 *
+	 * <p><b>SO WHAT HAS NO GUARD, said rather than left to be found:</b> that race. Writing one costs
+	 * a concurrency fixture of its own ({@code PaymentNumberConcurrencyTest} is the shape it would
+	 * take) and nothing in the finding this was written for asks for it. What is known about the cost
+	 * of getting it wrong is small: both racers compute from the same book and the same price list
+	 * microseconds apart, so they promise the same amount and only {@code promised_at} would differ.
 	 *
 	 * <p><b>Nothing here refuses a promise of nothing</b>, and that is deliberate: a member whose
 	 * book is empty, or whose balance covers the whole fee so that there is no code at all, has
