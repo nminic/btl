@@ -89,7 +89,20 @@ class MembershipWriteApiTest {
 
 	private static final String SUPERADMIN = "vlasnik@primer.rs";
 
+	/** {@code rank = 1} is Shanghai, so the default member of this file is billed in EURO. */
 	private static final String A_TOWN = "(select id from place where rank = 1)";
+
+	/**
+	 * THE FIRST SERBIAN TOWN THE CODEBOOK OFFERS, so the currency axis has both its states.
+	 *
+	 * <p>Since V42 a member's country picks the column of the price list his fee is read from AND the
+	 * lines of the book that are his balance (owner, 27.09.2026, PDL 25), so a file in which everybody
+	 * lives abroad measures one state of a fact this route turns on. Asked as a query rather than by rank
+	 * number for the reason V3 gives: {@code rank} is „a position in a file and not a fact about a town".
+	 */
+	private static final String A_TOWN_IN_SERBIA =
+			"(select id from place where country_id = (select id from country where code = 'RS')"
+					+ " order by rank limit 1)";
 
 	private static final String COMPETITOR_COLUMNS = "member_number, first_name, last_name, gender,"
 			+ " birth_date, place_id, city, country_id, first_season, first_season_2027, active,"
@@ -213,6 +226,21 @@ class MembershipWriteApiTest {
 				.query(Long.class).single();
 	}
 
+	/**
+	 * THE SAME MEMBER IN A NAMED TOWN, for the cases that are about the money his country decides.
+	 *
+	 * <p>A second helper rather than a parameter on the first, so that the twenty cases which have
+	 * nothing to do with a currency stay exactly the shape they were.
+	 */
+	private long competitorIn(String town, String memberNumber) {
+		return db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values (?, 'Probni',"
+						+ " 'Takmicar', 'M', date '1990-05-15', " + town + ", null, null, 2027,"
+						+ " false, false, 'payment', ?, null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(memberNumber, "0011223344" + memberNumber)
+				.query(Long.class).single();
+	}
+
 	/** An exemption already standing, with the trail {@code V35} requires of one. */
 	private void freeOfTheFee(long competitorId, int season) {
 		db.sql("insert into membership (competitor_id, season, basis, payment_id,"
@@ -260,41 +288,31 @@ class MembershipWriteApiTest {
 	 * shape in which a balance can come to exist at all, which is worth meeting here rather than
 	 * inventing a row the portal could never write.
 	 *
-	 * @param eur how much, in euro, and it is deliberately NOT a fixed multiple of the dinar figure
-	 *            at every call site: see the case about a book that covers the fee in one currency
-	 *            and not the other
+	 * @param amount   how much, and it is written here rather than read off the price list so that a
+	 *                 case can compose a book on either side of the fee
+	 * @param currency the money the REFERRER is billed in, because since V42 a line in any other money
+	 *                 is not his balance at all. It is a parameter rather than a constant because this
+	 *                 file measures both sides of the country axis
 	 */
-	private void earnedAReferral(long competitorId, long broughtIn, String eur, String rsd) {
-		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,"
-						+ " occurred_at, recorded_by_name)"
-						+ " values (?, ?::numeric, ?::numeric, 'referral', ?, ?, 'Neko Ko Je Knjizio')")
-				.params(competitorId, eur, rsd, broughtIn, Timestamp.from(IN_JUNE_2027))
+	private void earnedAReferral(long competitorId, long broughtIn, String amount, String currency) {
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+						+ " referred_competitor_id, occurred_at, recorded_by_name)"
+						+ " values (?, ?::numeric, ?, 'referral', ?, ?, 'Neko Ko Je Knjizio')")
+				.params(competitorId, amount, currency, broughtIn, Timestamp.from(IN_JUNE_2027))
 				.update();
 	}
 
-	/**
-	 * A MEMBERSHIP ALREADY SPENT PART OF HIS BOOK, FOR A SEASON OTHER THAN THE ONE UNDER TEST, so a
-	 * book can be composed to a value {@code earnedAReferral} could never write in one row on its
-	 * own.
+	/*
+	 * A HELPER THAT COMPOSED A BOOK OUT OF TWO LEGAL ROWS STOOD HERE, `spentOnAnEarlierMembership`,
+	 * and it goes with V42 rather than being left unused.
 	 *
-	 * <p><b>Why two legal rows rather than one line at the target value.</b>
-	 * {@code balance_entry_a_referral_adds} (V38) demands both currencies of a REFERRAL be strictly
-	 * positive, so a row of, say, 15.00 EUR / 0.00 RSD is not a shape this table can hold under that
-	 * reason. The one case where the schema allows a book to carry money in only one currency is the
-	 * SUM of a referral and a spend that do not share the referral row's ratio - exactly the shape
-	 * {@code GrantingAMembership#whatComesOffTheBook} explains at length for the neighbouring case of
-	 * a fee covered in one currency and not the other.
-	 *
-	 * @param eur negative, as {@link BalanceBook#spentOnAMembership} would have written it
-	 * @param rsd negative, as {@link BalanceBook#spentOnAMembership} would have written it
+	 * It existed for exactly one state and that state no longer exists. While a balance was a PAIR,
+	 * `balance_entry_a_referral_adds` demanded BOTH currencies of a referral be strictly positive, so
+	 * 15.00 EUR / 0.00 RSD was not a row this table could hold - it could only be a SUM, of a referral
+	 * and a spend that did not share the referral row's ratio. Two cases below used it, and both are
+	 * gone for the same reason: the owner decided on 27.09.2026 (PDL 25) that a balance is one amount
+	 * in one money, so there is no second currency left to be nothing while the first is not.
 	 */
-	private void spentOnAnEarlierMembership(long competitorId, int season, String eur, String rsd) {
-		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
-						+ " occurred_at, recorded_by_name)"
-						+ " values (?, ?::numeric, ?::numeric, 'membership', ?, ?, 'Neko Ko Je Knjizio')")
-				.params(competitorId, eur, rsd, season, Timestamp.from(IN_JUNE_2027))
-				.update();
-	}
 
 	private MembershipWriteApi.Granted granted(MockHttpServletResponse answer) throws Exception {
 		return mapper.readValue(answer.getContentAsString(), MembershipWriteApi.Granted.class);
@@ -316,9 +334,9 @@ class MembershipWriteApiTest {
 	 * the whole of {@code balance_entry_one_a_referral}.
 	 */
 	private String bookOf(long competitorId) {
-		return db.sql("select coalesce(string_agg(reason || ' ' || eur || '/' || rsd || ' for '"
-						+ " || coalesce(referred_competitor_id::text, 'nobody'), ', '), 'no lines')"
-						+ " from balance_entry where competitor_id = ?")
+		return db.sql("select coalesce(string_agg(reason || ' ' || amount || ' ' || currency"
+						+ " || ' for ' || coalesce(referred_competitor_id::text, 'nobody'), ', '),"
+						+ " 'no lines') from balance_entry where competitor_id = ?")
 				.param(competitorId).query(String.class).single();
 	}
 
@@ -414,7 +432,7 @@ class MembershipWriteApiTest {
 		assertThat(bookOf(whoBroughtHimIn))
 				.as("the reward for bringing in a member freed of the fee was lost, and lost for good:"
 						+ " the paying door refuses a man who already holds the season")
-				.isEqualTo("referral 5.00/600.00 for " + him);
+				.isEqualTo("referral 5.00 EUR for " + him);
 
 		assertThat(bookOf(whoPays))
 				.as("the reward went to the first competitor in the table rather than to the man who"
@@ -466,7 +484,7 @@ class MembershipWriteApiTest {
 
 		assertThat(bookOf(whoBroughtHimIn))
 				.as("the referrer was paid twice for one member brought in")
-				.isEqualTo("referral 5.00/600.00 for " + him);
+				.isEqualTo("referral 5.00 EUR for " + him);
 	}
 
 	/**
@@ -802,13 +820,15 @@ class MembershipWriteApiTest {
 	 *
 	 * <p><b>The book is read back as LINES and not as a sum</b>, for the reason {@link #bookOf}
 	 * gives: a sum of the right size is satisfied by a line written for the wrong person or under
-	 * the wrong reason. In June 2027 the row that applies is {@code season}, 40 EUR / 4.800 RSD, and
-	 * his referral was worth more than that - so what is left over stays his, „visak ostaje za
-	 * sledecu godinu".
+	 * the wrong reason. In June 2027 the row that applies is {@code season}, 40 euro, and his referral
+	 * was worth more than that - so what is left over stays his, „visak ostaje za sledecu godinu".
+	 *
+	 * <p><b>He is billed in EURO because this fixture's town is Shanghai</b>, and since V42 that is
+	 * what decides the money every number here is in. The dinar side of the same rule has its own case.
 	 */
 	@Test
 	void abalanceThatCoversTheFeeActivatesHimAndTakesExactlyTheFee() throws Exception {
-		earnedAReferral(him, whoPays, "50", "6000");
+		earnedAReferral(him, whoPays, "50", "EUR");
 
 		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
 
@@ -818,65 +838,76 @@ class MembershipWriteApiTest {
 
 		assertThat(bookOf(him))
 				.as("the fee and not the whole book, and the surplus stays his")
-				.isEqualTo("referral 50.00/6000.00 for " + whoPays
-						+ ", membership -40.00/-4800.00 for nobody");
+				.isEqualTo("referral 50.00 EUR for " + whoPays
+						+ ", membership -40.00 EUR for nobody");
 
 		assertThat(membershipOf(him, 2027)).isEqualTo("balance names an entry, no trail");
 	}
 
 	/**
-	 * CASE 5: HIS BALANCE IS SHORT OF THE FEE AND THE MODERATOR APPROVES IT ANYWAY, so the WHOLE
-	 * book comes off.
+	 * CASE 5: HIS BALANCE IS SHORT OF THE FEE AND THE MODERATOR APPROVES IT ANYWAY, so the WHOLE book
+	 * comes off.
 	 *
 	 * <p>Owner, section 19: „Odobri <b>umanjen iznos</b> iz balansa". <b>This is the case that makes
 	 * this route's decision a different one from the member's own door</b>, where the identical state
 	 * is refused outright ({@code ActivatingFromBalance.THE_BALANCE_IS_NOT_ENOUGH}) because a member
 	 * may not hand himself a discount.
+	 *
+	 * <p><b>AND SINCE V42 THIS IS THE ORDINARY RULE RATHER THAN A SPECIAL ONE, which is worth writing
+	 * down because it used to take twenty lines of reasoning to justify.</b> While a balance was a
+	 * PAIR, {@code min(balance, fee)} per currency could answer „40 EUR and 600 RSD" for a book of
+	 * 50/600 - taking every dinar while leaving ten euro standing, at an implied rate of fifteen to one
+	 * that ADL forbids - so this door needed a rule of its own, {@code whatComesOffTheBook}, which was
+	 * binary: covered in both, take the fee; otherwise take the whole book. One amount cannot land in
+	 * that state, so {@code min} IS „the whole book when it is short", the extra rule is gone, and both
+	 * doors now read {@code Balance.Settlement.fromTheBalance()}.
 	 */
 	@Test
 	void abalanceShortOfTheFeeIsApprovedByTheModeratorAndTheWholeBookComesOff() throws Exception {
-		earnedAReferral(him, whoPays, "5", "600");
+		earnedAReferral(him, whoPays, "5", "EUR");
 
 		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
 
 		assertThat(answer.getStatus()).isEqualTo(201);
 		assertThat(bookOf(him))
 				.as("all of it, so the book is emptied rather than driven negative")
-				.isEqualTo("referral 5.00/600.00 for " + whoPays
-						+ ", membership -5.00/-600.00 for nobody");
+				.isEqualTo("referral 5.00 EUR for " + whoPays
+						+ ", membership -5.00 EUR for nobody");
 	}
 
 	/**
-	 * AND THE ONE STATE IN WHICH „THE WHOLE BOOK" AND „THE LESSER OF EACH" ARE DIFFERENT PAIRS.
+	 * AND THE SAME TWO CASES ON THE DINAR SIDE, because the money is a fact about his COUNTRY and a
+	 * file in which everybody lives abroad measures one state of it.
 	 *
-	 * <p><b>This case exists because in every other fixture the two rules agree, so nothing else
-	 * here can tell them apart.</b> {@code Balance.Settlement.fromTheBalance()} is
-	 * {@code min(balance, fee)} taken per currency, which is the right answer at the member's own
-	 * door - a short balance never reaches it. Here a short balance is the POINT.
+	 * <p><b>This is the axis V42 opened and nothing else in this file covers.</b> Until then an invoice
+	 * carried both columns and a route took the one it wanted, so where a member lived changed nothing
+	 * about which numbers were right. Now his country picks the column of the price list AND the lines
+	 * of the book that are his, and the two have to be the same column or the comparison is wrong by
+	 * the rate. In June 2027 the {@code season} row is 4.800 dinars, so a book of 6.000 covers it and a
+	 * book of 600 does not.
 	 *
-	 * <p>His book covers the fee in euro (50 against 40) and is short in dinars (600 against 4.800).
-	 * {@code coveredByTheBalance} asks BOTH and therefore says no, so case 5 applies and his book is
-	 * spent. Per-currency {@code min} would answer <b>40.00/-600.00</b> - leaving 10 EUR standing
-	 * while taking every dinar, at an implied rate of fifteen to one, which is the conversion ADL
-	 * forbids. The rule under test answers the whole book.
-	 *
-	 * <p><b>How a book gets into that state, because a case guarding an unreachable one is
-	 * decoration:</b> every line copies both numbers off one row of the price list, and
-	 * {@code PUT /api/pricing/{key}} moves one column without the other, so two referrals
-	 * earned either side of such an edit stand in no single ratio. One line is enough to show it.
+	 * <p>A member of his own rather than {@code him}, because {@code him} lives in Shanghai and moving
+	 * him would take every other case in this file with him.
 	 */
 	@Test
-	void abookThatCoversTheFeeInOneCurrencyOnlyGivesUpAllOfItselfAndNotTheLesserOfEach()
-			throws Exception {
-		earnedAReferral(him, whoPays, "50", "600");
+	void thesameTwoOutcomesOnTheDinarSide() throws Exception {
+		long coversIt = competitorIn(A_TOWN_IN_SERBIA, "003701");
+		long shortOfIt = competitorIn(A_TOWN_IN_SERBIA, "003702");
 
-		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+		earnedAReferral(coversIt, whoPays, "6000", "RSD");
+		earnedAReferral(shortOfIt, him, "600", "RSD");
 
-		assertThat(answer.getStatus()).isEqualTo(201);
-		assertThat(bookOf(him))
-				.as("per-currency min would have taken 40.00/-600.00 and left 10 EUR standing")
-				.isEqualTo("referral 50.00/600.00 for " + whoPays
-						+ ", membership -50.00/-600.00 for nobody");
+		assertThat(fromHisBalance(coversIt, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(bookOf(coversIt))
+				.as("a dinar book was measured against the euro column of the price list")
+				.isEqualTo("referral 6000.00 RSD for " + whoPays
+						+ ", membership -4800.00 RSD for nobody");
+
+		assertThat(fromHisBalance(shortOfIt, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(bookOf(shortOfIt))
+				.as("a short dinar book did not give up all of itself")
+				.isEqualTo("referral 600.00 RSD for " + him
+						+ ", membership -600.00 RSD for nobody");
 	}
 
 	/**
@@ -905,42 +936,25 @@ class MembershipWriteApiTest {
 				.isEqualTo("none false payment");
 	}
 
-	/**
-	 * A BOOK WITH MONEY IN ONLY ONE CURRENCY IS REFUSED TOO, AND NOT ONLY THE WHOLLY EMPTY ONE.
+	/*
+	 * A CASE CALLED `abookWithMoneyInOnlyOneCurrencyIsRefusedTooAndNotOnlyTheWhollyEmptyOne` STOOD
+	 * HERE, and it goes with the pair rather than being weakened.
 	 *
-	 * <p><b>Found on review (PR 403): the guard above used to ask {@code offTheBook.isNothing()},
-	 * true only when BOTH halves are nothing.</b> {@code balance_entry_a_membership_takes} (V38)
-	 * refuses a spend whenever EITHER half is not strictly negative, so a book of 15.00 EUR / 0.00
-	 * RSD passed the old guard and met the constraint instead, answering 500 with
-	 * {@code DataIntegrityViolationException} rather than this route's own 409.
+	 * It was found on review of PR 403 and it was a real finding: the guard asked
+	 * `offTheBook.isNothing()`, true only when BOTH halves were nothing, while
+	 * `balance_entry_a_membership_takes` refused a spend whenever EITHER half was not strictly
+	 * negative - so a book of 15.00 EUR / 0.00 RSD met the constraint and answered 500 instead of this
+	 * route's own 409. `Balance.Money.isMoneyInBothCurrencies` was written for it.
 	 *
-	 * <p>His book is built out of two rows the schema allows on their own - a referral of 50/600 and
-	 * an earlier membership spend of 35/600 for a different season - so 15.00/0.00 is a value this
-	 * fixture composes rather than one {@link #earnedAReferral} could write in a single row, and it
-	 * is not a value this route could ever write itself, only find already standing.
+	 * ONE AMOUNT HAS NO SUCH STATE. The owner decided on 27.09.2026 (PDL 25) that a balance is one
+	 * amount in one money, so „money in only one currency" is not a book any more - it is simply a
+	 * book. What remains of the finding is the case above it, an EMPTY book refused rather than met in
+	 * the database, and `isMoneyInBothCurrencies` collapsed into `isMoney`, one `signum() > 0`.
 	 *
-	 * <p><b>Nothing at all is written</b>, the same three tables {@link
-	 * #anEmptyBookIsRefusedRatherThanWritingALineThatMovesNothing} asserts of the wholly empty book -
-	 * this is the sibling finding measured, not a different refusal.
+	 * V38 predicted this in as many words, in its own note on that refusal: „Once the book is one
+	 * amount in one currency rather than a pair, there is no second currency left to be nothing while
+	 * the first is not, and this road closes with the pair it depends on."
 	 */
-	@Test
-	void abookWithMoneyInOnlyOneCurrencyIsRefusedTooAndNotOnlyTheWhollyEmptyOne() throws Exception {
-		earnedAReferral(him, whoPays, "50", "600");
-		spentOnAnEarlierMembership(him, 2028, "-35", "-600");
-
-		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
-
-		assertThat(answer.getStatus()).isEqualTo(409);
-		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.NOTHING_WOULD_COME_OFF_THE_BOOK);
-		assertThat(membershipCount()).isEqualTo(1);
-		assertThat(bookOf(him))
-				.as("only the two rows the fixture wrote, nothing added by the route")
-				.isEqualTo("referral 50.00/600.00 for " + whoPays
-						+ ", membership -35.00/-600.00 for nobody");
-		assertThat(competitorRow(him))
-				.as("no number was drawn and he was not activated")
-				.isEqualTo("none false payment");
-	}
 
 	/**
 	 * THE PER-PERSON BASIS IS LEFT ALONE ON THIS GROUND, AND THAT IS THE SCHEMA'S DOING.
@@ -957,7 +971,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void thebalanceGroundActivatesHimWithoutTouchingThePerPersonBasis() throws Exception {
-		earnedAReferral(him, whoPays, "50", "6000");
+		earnedAReferral(him, whoPays, "50", "EUR");
 
 		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
 
@@ -982,7 +996,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void eachGroundKeepsItsTrailInExactlyOnePlace() throws Exception {
-		earnedAReferral(him, whoPays, "50", "6000");
+		earnedAReferral(him, whoPays, "50", "EUR");
 
 		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
 		assertThat(membershipOf(him, 2027)).isEqualTo("balance names an entry, no trail");
@@ -1005,7 +1019,7 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void asecondPressOfTheBalanceButtonDrawsNoSecondNumberAndSpendsNothingFurther() throws Exception {
-		earnedAReferral(him, whoPays, "50", "6000");
+		earnedAReferral(him, whoPays, "50", "EUR");
 
 		MockHttpServletResponse first = fromHisBalance(him, cashierCookie);
 		String number = granted(first).memberNumber();
@@ -1017,8 +1031,8 @@ class MembershipWriteApiTest {
 		assertThat(granted(second).memberNumber()).isEqualTo(number);
 		assertThat(bookOf(him))
 				.as("the fee came off once")
-				.isEqualTo("referral 50.00/6000.00 for " + whoPays
-						+ ", membership -40.00/-4800.00 for nobody");
+				.isEqualTo("referral 50.00 EUR for " + whoPays
+						+ ", membership -40.00 EUR for nobody");
 	}
 
 	/**
@@ -1035,8 +1049,8 @@ class MembershipWriteApiTest {
 	 */
 	@Test
 	void aseasonHeldOnTheOtherGroundIsRefusedWithoutNamingIt() throws Exception {
-		earnedAReferral(him, whoPays, "50", "6000");
-		earnedAReferral(alreadyFreeElsewhere, him, "50", "6000");
+		earnedAReferral(him, whoPays, "50", "EUR");
+		earnedAReferral(alreadyFreeElsewhere, him, "50", "EUR");
 
 		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
 

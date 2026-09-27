@@ -210,9 +210,9 @@ class MyMembershipWriteApiTest {
 	 * paid for it, which {@code membership_basis_says_whether_a_book_entry_is_named} (V38) requires.
 	 */
 	private void alreadyInOnHisOwnBalance(long competitorId, int season) {
-		long entry = db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+		long entry = db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season,"
 						+ " occurred_at, recorded_by, recorded_by_name)"
-						+ " values (?, -5, -600, 'membership', ?, ?,"
+						+ " values (?, -600, 'RSD', 'membership', ?, ?,"
 						+ " (select id from account where email = ?), 'Blagajnik Probni') returning id")
 				.params(competitorId, season, Timestamp.from(NOW), A_MODERATOR_WHO_DOES_NOT_RACE)
 				.query(Long.class).single();
@@ -237,9 +237,9 @@ class MyMembershipWriteApiTest {
 		for (int one = 0; one < howMany; one++) {
 			long newcomer = competitor("009" + String.format("%03d", ++issued), "payment");
 
-			db.sql("insert into balance_entry (competitor_id, eur, rsd, reason,"
+			db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
 							+ " referred_competitor_id, occurred_at, recorded_by, recorded_by_name)"
-							+ " values (?, 5, 600, 'referral', ?, ?,"
+							+ " values (?, 600, 'RSD', 'referral', ?, ?,"
 							+ " (select id from account where email = ?), 'Blagajnik Probni')")
 					.params(referrer, newcomer, Timestamp.from(NOW.minus(Duration.ofDays(30))),
 							A_MODERATOR_WHO_DOES_NOT_RACE)
@@ -253,7 +253,12 @@ class MyMembershipWriteApiTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, false, ?, ?, '',"
+						/* IN SERBIA, because since V42 his country decides the money he is billed in
+						   (owner, 27.09.2026, PDL 25) and every amount in this file is the price
+						   list's DINAR column: 4.200 for the early period, 600 a referral. Until V42
+						   an invoice carried both columns and where he lived changed nothing. */
+						+ " (select id from place where country_id = (select id from country"
+						+ "   where code = 'RS') order by rank limit 1), 2027, false, false, ?, ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
 				.params(number, basis, String.format("%016x", ++issued))
@@ -297,8 +302,10 @@ class MyMembershipWriteApiTest {
 				.andReturn().getResponse().getContentAsString());
 	}
 
+	/** In HIS money, which since V42 is what a balance is: this fixture's town is in Serbia. */
 	private BigDecimal bookOf(long competitor) {
-		return db.sql("select coalesce(sum(rsd), 0) from balance_entry where competitor_id = ?")
+		return db.sql("select coalesce(sum(amount), 0) from balance_entry"
+						+ " where competitor_id = ? and currency = 'RSD'")
 				.param(competitor).query(BigDecimal.class).single();
 	}
 
@@ -361,7 +368,7 @@ class MyMembershipWriteApiTest {
 		JsonNode body = bodyOf(answer);
 		assertThat(body.path("season").asInt()).isEqualTo(THE_SEASON_ON_SALE);
 		assertThat(body.path("memberNumber").asString()).matches("^[0-9]{6}$");
-		assertThat(body.path("fromTheBalance").path("rsd").asDouble()).isEqualTo(4200.0);
+		assertThat(body.path("fromTheBalance").path("amount").asDouble()).isEqualTo(4200.0);
 
 		assertThat(db.sql("select member_number, active from competitor where id = ?")
 						.param(theFirstTimer)
@@ -373,11 +380,11 @@ class MyMembershipWriteApiTest {
 
 		assertThat(membershipOf(theFirstTimer)).isEqualTo("balance no receipt " + entry);
 
-		assertThat(db.sql("select eur, rsd, season from balance_entry where id = ?").param(entry)
-						.query((row, i) -> row.getBigDecimal(1) + " " + row.getBigDecimal(2) + " "
+		assertThat(db.sql("select amount, currency, season from balance_entry where id = ?").param(entry)
+						.query((row, i) -> row.getBigDecimal(1) + " " + row.getString(2) + " "
 								+ row.getInt(3)).single())
-				.as("the line in the book is not the fee, taken away, for this season")
-				.isEqualTo("-35.00 -4200.00 " + THE_SEASON_ON_SALE);
+				.as("the line in the book is not the fee, taken away, in his money, for this season")
+				.isEqualTo("-4200.00 RSD " + THE_SEASON_ON_SALE);
 
 		assertThat(bookOf(theFirstTimer))
 				.as("the surplus was spent as well, so the owner's 'visak ostaje za sledecu godinu'"
@@ -605,7 +612,7 @@ class MyMembershipWriteApiTest {
 				.as("a balance equal to the fee was treated as short, so the boundary moved")
 				.isEqualTo(201);
 
-		assertThat(bodyOf(answer).path("fromTheBalance").path("rsd").asDouble()).isEqualTo(4200.0);
+		assertThat(bodyOf(answer).path("fromTheBalance").path("amount").asDouble()).isEqualTo(4200.0);
 
 		assertThat(membershipOf(idOf(EXACTLY_ENOUGH))).startsWith("balance ");
 
@@ -665,9 +672,9 @@ class MyMembershipWriteApiTest {
 
 		assertThat(activate(FIRST_TIMER).getStatus()).isEqualTo(201);
 
-		assertThat(db.sql("select -rsd from balance_entry where competitor_id = ? and reason ="
+		assertThat(db.sql("select -amount from balance_entry where competitor_id = ? and reason ="
 						+ " 'membership'").param(theFirstTimer).query(BigDecimal.class).single())
-				.isEqualByComparingTo(shown.path("fromTheBalance").path("rsd").decimalValue());
+				.isEqualByComparingTo(shown.path("fromTheBalance").path("amount").decimalValue());
 	}
 
 	/**

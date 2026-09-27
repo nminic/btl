@@ -191,9 +191,10 @@ class MembershipConstraintsTest extends DatabaseTest {
 		/* ONE LINE IN THE BOOK OF BALANCE, HIS, naming a season he holds no membership for. The
 		   season matters: a row that named 2029 would let the legitimate case below be satisfied by
 		   the membership already standing there instead of by the one it inserts. */
-		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season, occurred_at,"
-						+ " recorded_by, recorded_by_name) values (" + A_MEMBER + ", -5, -600, 'membership',"
-						+ " 2030, " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni')")
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season, occurred_at,"
+						+ " recorded_by, recorded_by_name) values (" + A_MEMBER + ", -5, 'EUR',"
+						+ " 'membership', 2030, " + AN_INSTANT + ", " + AN_ACCOUNT + ","
+						+ " 'Blagajnik Probni')")
 				.update();
 	}
 
