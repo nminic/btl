@@ -95,9 +95,17 @@ class TeamJoiningWriteApiTest {
 	private static final String LEADER = "000400";
 
 	/**
-	 * ALSO STANDS IN {@link #THE_TEAM} AND DOES NOT LEAD IT, which is the axis the owner's
-	 * parenthesis of 05.09.2026 turns on: he may send an invitation and may not decide an
-	 * application.
+	 * ALSO STANDS IN {@link #THE_TEAM} AND DOES NOT LEAD IT, which is the axis between standing
+	 * in a team and holding its seat: he may do <b>neither</b> of the two acts that belong to
+	 * the seat, so he decides no application and sends no invitation.
+	 *
+	 * <p><b>He used to be the axis of the opposite pair</b> - „may invite, may not decide" -
+	 * which was the owner's parenthesis „(bilo koji clan)" of 05.09.2026, and he
+	 * <b>overturned it on 27.09.2026</b> in favour of Article 53 of the rulebook. Both halves
+	 * are now one rule read twice, and what this member measures is that the rule is asked on
+	 * both routes rather than on one: {@code aMemberOfTheTeamWhoDoesNotLeadItDecidesNothing}
+	 * and {@link #aMemberOfTheTeamWhoDoesNotLeadItAsksNobodyIn} demand 404 from him on either
+	 * side of the same window.
 	 *
 	 * <p>His membership begins in a season still to come, so {@code WHO_ADMINISTERS_IT}'s
 	 * „longest in it" picks {@link #LEADER} by the season and never by the tie-break - and his
@@ -704,6 +712,17 @@ class TeamJoiningWriteApiTest {
 	 * own two sentences in his own inbox, and the two OTHER teams that had asked him are told -
 	 * while the team he joined is not ({@code PDL.md:6785}) and the team nobody stands in is
 	 * not either. Nothing reaches the league as a whole.
+	 *
+	 * <p><b>AND A TEAM THAT IS HOLDING AN INVITATION TO SOMEBODY ELSE IS NOT TOLD ANYTHING,
+	 * WHICH IS AN AXIS THIS CASE WAS MISSING AND A MUTATION FOUND.</b> Every invitation in
+	 * this suite named {@link #ME}, so „the teams that asked HIM" and „every team holding any
+	 * invitation at all" were the same list and the condition {@code i.competitor_id = ?} could
+	 * be dropped without a single case changing its answer. The two invitations of
+	 * {@link #NOBODY_ELSE} in the class note are to the ANSWER route and never reach this
+	 * statement - they are cases that end 404 one line earlier - so the axis has to be
+	 * separated here, where the statement actually runs. In production the dropped condition
+	 * would write „X has joined team Y, so your invitation no longer stands" to whoever leads
+	 * every team holding any open invitation, about a man that team never asked for.
 	 */
 	@Test
 	void whoeverLeadsTheTeamTakesHimInAndTheOtherTeamsThatAskedHimAreTold() throws Exception {
@@ -711,6 +730,11 @@ class TeamJoiningWriteApiTest {
 		long fromTheOther = invitationTo(ME, THE_OTHER_TEAM, 2028);
 		long fromTheThird = invitationTo(ME, A_THIRD_TEAM, 2028);
 		invitationTo(ME, AN_EMPTY_TEAM, 2028);
+
+		/* AND A TEAM WHOSE OPEN QUESTION IS ABOUT A DIFFERENT MAN, so „whose invitation" is
+		   told from „anybody's invitation". {@link #FIRST_WRITTEN} leads it and is the one
+		   inbox in this fixture that must stay empty. */
+		long aboutSomebodyElse = invitationTo(NOBODY_ELSE, A_FIRST_TEAM, 2028);
 
 		/* AND THE TEAM HE IS JOINING HAS ALSO ASKED HIM, which is what makes „not the team he
 		   joined" a condition rather than a sentence. A mutation found this: with no invitation
@@ -737,11 +761,18 @@ class TeamJoiningWriteApiTest {
 		assertThat(inboxOf(THIRD)).as("and the second such team, so this is never one")
 				.containsExactly(missed);
 		assertThat(inboxOf(LEADER)).as("the team he joined already knows").isEmpty();
+		assertThat(inboxOf(FIRST_WRITTEN))
+				.as("a team holding an invitation to somebody else was told about a man it never"
+						+ " asked for")
+				.isEmpty();
 		assertThat(howManyWentToTheLeague()).isZero();
 
 		assertThat(invitationStands(fromTheOther)).as("PDL.md:6771, the row is not remembered as"
 				+ " answered and is not deleted either").isTrue();
 		assertThat(invitationStands(fromTheThird)).isTrue();
+		assertThat(invitationStands(aboutSomebodyElse))
+				.as("somebody else's open question was closed by this answer")
+				.isTrue();
 	}
 
 	/**
@@ -805,12 +836,18 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * A MEMBER OF THE TEAM WHO DOES NOT LEAD IT DECIDES NOTHING, which is the half of the
-	 * owner's pair of decisions that is easy to read off the other.
+	 * A MEMBER OF THE TEAM WHO DOES NOT LEAD IT DECIDES NOTHING, which is one half of a rule
+	 * whose other half is now the same answer.
 	 *
-	 * <p>{@link #PLAIN} may send an invitation - the case below proves he may - and this case
-	 * proves he may not answer an application. One fixture, two answers, so a route that
-	 * asked „is he in the team" for both would fail exactly one of them.
+	 * <p>{@link #PLAIN} may not send an invitation either, since the owner's reversal of
+	 * 27.09.2026, and {@link #aMemberOfTheTeamWhoDoesNotLeadItAsksNobodyIn} demands 404 of him
+	 * there. So a route reading „is he in the team" instead of „does he hold its seat" would
+	 * fail <b>both</b> of them and not one, and what keeps the two honest is that they read the
+	 * same {@link TeamApi#WHO_ADMINISTERS_IT} rather than a case each.
+	 *
+	 * <p><b>Written this way round on purpose:</b> until that day this paragraph said he may
+	 * invite and may not decide, and cited a case that no longer exists to prove the first
+	 * half. Sentences like that are how an overturned decision gets put back.
 	 */
 	@Test
 	void aMemberOfTheTeamWhoDoesNotLeadItDecidesNothing() throws Exception {

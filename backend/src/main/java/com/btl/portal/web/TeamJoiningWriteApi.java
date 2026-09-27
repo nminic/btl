@@ -194,11 +194,26 @@ import java.util.Optional;
  * dugmadi.** Ne briše se: brisanje poruke iz tuđeg sandučeta je brisanje istorije, a pitanje
  * „šta se desilo sa onim pozivom" mora da ima odgovor."
  *
- * <p>Both are honoured by {@link #closed}, which empties the pointer before it deletes the
- * row: the message stays where it was, and what goes is the thing that made it a question,
- * which is the whole of what V13's note asks for. <b>Neither the constraint nor its case is
- * touched</b> - that case deletes the row in SQL with no route in it and goes on measuring
- * the constraint's own action. <b>What this does not give, said out loud:</b> the reason
+ * <p>Both are honoured by {@link #theInvitationIsOver}, which empties the pointer before it
+ * deletes the row: the message stays where it was, and what goes is the thing that made it a
+ * question, which is the whole of what V13's note asks for. <b>Neither the constraint nor its
+ * case is touched</b> - that case deletes the row in SQL with no route in it and goes on
+ * measuring the constraint's own action.
+ *
+ * <p><b>AND THAT IS NOT THE ONLY ROAD ONTO THAT CASCADE, WHICH IS A HOLE THE REVIEW OF THIS
+ * BRANCH MEASURED RATHER THAN A SECOND SENTENCE ABOUT THE SAME ONE.</b> V12 makes
+ * {@code team_invitation_team_fk} cascade too, so <b>deleting a TEAM</b> reaches
+ * {@code message} down a chain this class never touches - and three routes delete teams
+ * ({@code DELETE /api/teams/{id}}, a member walking out of his last team, the administration
+ * deleting a member). The owner's sentence above is about a message in an inbox and says
+ * nothing about which road takes it, so all four roads owe it the same thing. The other three
+ * are answered where they already meet - {@link ATeamGoesWithItsLastMember}, the one method in
+ * the portal that runs {@code delete from team} - and that class carries the reasoning for why
+ * it is there and not at the call sites. Named here because this class was the first code on
+ * the server ever to write {@code message.team_invitation_id}, and a reader who found the
+ * emptying only in this file would think the decision was fully served by it.
+ *
+ * <p><b>What this does not give, said out loud:</b> the reason
  * sentence. With no pointer the screen cannot tell an invitation that was answered from one
  * that was taken back, so {@code teams.inviteClosed} („Ovaj poziv više ne stoji") has
  * nothing to key off. That sentence is drawable in the mock because the mock has no foreign
@@ -251,10 +266,15 @@ import java.util.Optional;
  * <li><b>A moderator.</b> {@code PDL.md:6703}: „**[ODLUKA 05.09.2026] Ni prijava ni poziv ne
  * idu u moderatorski red za verifikaciju.**" Nothing here writes {@code verification}.
  * <li><b>A migration.</b> {@code team_application} and {@code team_invitation} are V12's and
- * carry every column this class writes. That {@code team_invitation} does not record WHO
- * sent it is right rather than missing: {@code PDL.md:6778} sends the outcome to „onome ko
- * vodi tim u trenutku odgovora... ne onome ko je poziv poslao", because „poziv je mogao
- * poslati bilo koji član tima", so a {@code sent_by} column would be a field nothing reads.
+ * carry every column this class writes. <b>That {@code team_invitation} records no sender is
+ * right rather than missing, and the reason is {@link #takeBack}'s in full:</b> under the
+ * decision of 27.09.2026 the one who sends an invitation and the one who takes it back are
+ * the same SEAT, and a seat is not always the same PERSON, because the title passes when
+ * somebody leaves. So both acts ask {@link #heAdministersThisTeam} at the moment they happen,
+ * and a {@code sent_by} column would be a memory of who typed that no condition here may
+ * read. <b>The argument that used to stand here read the other way round</b> - that anybody
+ * in the team could have sent it, so recording a sender was pointless - and it rested on
+ * exactly the half of {@code PDL.md:6676} the owner overturned on 27.09.2026.
  * <li><b>Any length for anything.</b> Nothing in either request is free text.
  * </ul>
  */
