@@ -1262,6 +1262,7 @@
       "theAmountIsNotKeptExactly": "Cena sme da ima najviše dve decimale i ne sme da bude negativna.",
       "theAmountIsMoreThanARowMayCost": "Cena je veća od najveće dozvoljene: 1.000 EUR i 200.000 RSD.",
       "theFeeHasNoDinarPrice": "Taksa za obradu plaćanja nema dinarsku cenu, jer se u dinarima ne plaća posredniku.",
+      "theRowIsFreeInOneCurrencyOnly": "Red cenovnika je ili besplatan u obe valute, ili ima iznos u obe. Nula samo u jednoj se ne prihvata.",
       "theReferralIsSettled": "Iznos za preporuku je od 1. oktobra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
     },
     "moderatorSaveRefused": {
@@ -1524,7 +1525,6 @@
     "sentAlt": "Slika koju si poslao na odobrenje, sa uokvirenim delom koji će se videti",
     "sending": "Slika se šalje...",
     "sendRefused": {
-      "aPictureAlreadyWaits": "Tvoja prethodna slika još čeka odluku moderatora. Kad o njoj odluči, možeš da pošalješ novu.",
       "theFormIsNotComplete": "Slika nije stigla do servera. Izaberi je ponovo i pošalji.",
       "thePictureIsTooBig": "Slika je prevelika za portal. Izaberi manju ili je smanji pre slanja.",
       "thisIsNotAPicture": "Ovaj fajl nije slika, kako se god zove. Pošalji fotografiju, na primer u JPG ili PNG obliku.",

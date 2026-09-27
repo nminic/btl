@@ -1437,7 +1437,7 @@ class ModeratorWriteApiTest {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
 						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
 						+ " values (?, 2028, ?, (select id from price_row where key = 'early'),"
-						+ " 35.00, 'EUR', 3.00, 'card', 'recorded',"
+						+ " 35.00, 'EUR', 3.00, 'paypal', 'recorded',"
 						+ " timestamptz '2027-10-02 09:00:00+00', ?, ?)")
 				.params(runner, THE_REFERENCE_HE_RECOGNISED, account, THE_NAME_HE_RECORDED_UNDER)
 				.update();

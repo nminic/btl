@@ -437,6 +437,17 @@ class RightsAtTheDoorTest {
 					   read - what decides is the session, inside the handler, and the account
 					   or the member it names. See `MePasswordApi` and `MePhotoApi`. */
 					"PUT /api/me/password", "POST /api/me/photo", "DELETE /api/me/photo",
+					/* AND THE TWO READS OF HIS OWN PICTURE, ADDED 27.09.2026 WITH B136, here
+					   for exactly the three lines above's reason rather than a new one. PDL
+					   21b gives a member his own waiting picture back after a reload, and both
+					   halves of that are keyed to HIS SESSION and to nothing else:
+					   `GET /api/me/photo` says where the bytes are and what circle he set, and
+					   `GET /api/me/photo/{digest}` carries the bytes. Neither takes a member,
+					   a key or a queue anywhere in its path, so there is nothing a box could be
+					   ticked about - and the second lives in `PhotoApi` for `bytesOf`'s reason,
+					   which is a question about where bytes come from and not about who may
+					   have them. See `MePhotoApi.mine` and `PhotoApi.mineThatWaits`. */
+					"GET /api/me/photo", "GET /api/me/photo/{digest}",
 					"POST /api/verification/{id}/hold", "DELETE /api/verification/{id}/hold",
 					"POST /api/verification/{id}/decision",
 					/* AND THE PICTURE A QUEUE ROW IS ABOUT, ADDED 27.09.2026 WITH B131. Here

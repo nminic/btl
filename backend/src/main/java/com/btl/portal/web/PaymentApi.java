@@ -221,8 +221,26 @@ class PaymentApi {
 	/** {@code payment_currency_known}, V16. */
 	private static final Set<String> CURRENCIES = Set.of("EUR", "RSD");
 
-	/** {@code payment_method_known}, V16. */
-	private static final Set<String> METHODS = Set.of("slip", "card", "paypal", "sepa");
+	/**
+	 * {@code payment_method_known}, V39: the two ways the money arrives.
+	 *
+	 * <p>The owner decided on 27.09.2026 (PDL 23b) that the set has exactly two members.
+	 * {@code ips} is the QR payment slip into the dinar account, and it covers a slip somebody
+	 * copied out BY HAND from the figures printed beside the code, because that money takes the
+	 * same road into the same account. {@code slip} was renamed to this; {@code card} and
+	 * {@code sepa} are gone, neither having ever been chosen.
+	 *
+	 * <p><b>Package private rather than private, and that is what holds this list up.</b> It is
+	 * written by hand and a list written by hand is only as safe as the floor under it:
+	 * {@code PaymentMethodsMatchTheSchemaTest} takes the constraint's own expression out of the
+	 * catalogue, asks PostgreSQL to judge each of these against it, and reads the words back out
+	 * of the rule in the other direction. The same shape
+	 * {@link com.btl.portal.domain.payment.RecordingAPayment#STATES} has under
+	 * {@code PaymentStatesMatchTheSchemaTest}, and the reason it is needed here is measured: the
+	 * screen said {@code ips} and this said {@code slip} from 26.09.2026 until V39, and nothing
+	 * in the portal noticed.
+	 */
+	static final Set<String> METHODS = Set.of("ips", "paypal");
 
 	/** {@code payment_reference_shape}, V16: digits and nothing else, off a bank statement. */
 	private static final Pattern A_REFERENCE = Pattern.compile("^[0-9]{7,}$");
@@ -288,7 +306,7 @@ class PaymentApi {
 	 * @param currency     which of the association's two accounts the money is in,
 	 *                     {@code EUR} or {@code RSD} - a fact about the bank
 	 *                     statement, not a choice of price
-	 * @param method       how it arrived, one of the four V16 lists
+	 * @param method       how it arrived, one of the two V39 lists
 	 * @param reference    the poziv na broj, when the statement carries one; null for
 	 *                     a first payment, which has no number yet to write on a slip
 	 *                     (V16)
