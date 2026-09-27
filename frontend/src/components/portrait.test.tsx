@@ -103,7 +103,13 @@ describe('the circle of a member who has no approved portrait', () => {
     const { container: asHiding } = render(<Portrait competitor={hiding} />)
     const { container: asBare } = render(<Portrait competitor={NO_PORTRAIT} />)
 
+    /* **BOTH ENDS OF THE COMPARISON NAMED, because without them this case is satisfied by
+       itself.** „These two renders are identical" is trivially true of one record rendered
+       twice, and the mutation that proves it is exactly that: drop the spread and hand
+       `NO_PORTRAIT` to both sides. So the two records are required to DIFFER in the flag
+       before the renders are required to agree. */
     expect(NO_PORTRAIT.profileHidden).toBe(false)
+    expect(hiding.profileHidden).toBe(true)
     expect(asHiding.innerHTML).toBe(asBare.innerHTML)
   })
 })
