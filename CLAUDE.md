@@ -790,3 +790,84 @@ se **grana ukloni**, a pitanje preseli tamo gde odgovor vec postoji.
 
 **Merilo koje iz toga sledi:** kad kapija padne na pragu a svi testovi su zeleni, prvo pitanje nije
 „koji test nedostaje" nego **„koji kod se ne izvrsava i zasto postoji"**.
+
+## 24. Podovi nad CELIM portalom ne stoje u folderu koji diras, pa ih usko merenje nikad ne pokrene (28.09.2026)
+
+Nadjeno na `b141`. Grana je usko merena po fajlovima koje dira, sve je bilo zeleno, i **puna kapija
+je pala na tri poda**. **Sva tri su bila moja, sva tri se reprodukuju i kad se fajl pusti sam**,
+dakle nijedan nije opterecenje niti zatecen krhak fajl.
+
+**Klasa je jedna i po konstrukciji je nevidljiva uskom merenju:** pod koji pita nesto o **celom
+portalu** ne zivi u folderu u kom radim. `styles/scale.test.ts` cita svaki `.css` koji repo ima,
+`data/servedAge.test.ts` cita svaki fajl pod `test/mock`, `styles/writtenInCode.test.ts` cita svaki
+nacrtani izvor. Pravilo „pusti fajlove koje si menjao" ih **nikad** ne pokrene, a **tri od tri**
+pada su bila tamo.
+
+### Sta NIJE lek
+
+**Puna kapija posle svake izmene.** To je vec izmereno kao preskupo i to merilo ostaje: prolaz traje
+oko **11 minuta**, a spisak mutacija po grani ima **8 do 13** stavki, pa bi to bilo sat i po do dva i
+po cistog pokretanja testova po agentu. Ovo pravilo se ne sme procitati kao poziv da se kapija pusta
+uvek.
+
+### Sta JESTE lek
+
+**Uz fajlove koje menjam pustam i podove nad KLASOM stvari koju dodajem.** Ne nad celim paketom, nego
+nad onim sto je nova vrsta stvari:
+
+| sta dodajem | sta uz to pustam |
+|---|---|
+| nov `.css` fajl ili novo pravilo u postojecem | `src/styles/` |
+| novo polje koje ruta servira, ili izmena u `test/mock` | `src/data/servedAge.test.ts` |
+| nov atribut u nacrtanom izvoru (`aria-*`, `data-*`) | `src/styles/writtenInCode.test.ts` |
+| nov kljuc recnika | `src/i18n/` i oba snimka recnika |
+| nova mapa odbijanja sa ekrana | `src/pages/account/refusals.test.ts` |
+
+**Tri fajla vise, ne 208.** Cena je nekoliko sekundi, a hvata tacno onu klasu koju usko merenje ne
+moze da vidi.
+
+### Tri pada doslovno, jer klasa bez instance ne pomaze
+
+**1. `styles/scale.test.ts` je pao na JEDINICI I MESTU PREKRETNICE, ne na golom broju u
+`padding`.** Doslovno: „`components/Prompt.css` sets the breakpoint at 30 in rem: expected 'rem' to
+be 'em'". **Pretpostavka pre merenja je bila da je pad o golom `20px` u `padding|margin|gap`; nije
+bila tacna**, i to je zapisano zato sto bi po njoj ispravka bila pisana na pogresnom mestu. Taj pod
+trazi **dve** stvari i obe su bile prekrsene:
+
+- **prekretnica se pise u `em`, nikad u `rem`**, i pod to sam obrazlaze: `em` u upitu o sirini se
+  meri prema velicini od koje **citalacev pregledac krece**, a `rem` prati koren koji stilski fajl
+  sme da pomeri, pa prekretnica u `rem` putuje kad neko promeni koren;
+- **postoji zatvoren spisak sirina na kojima portal menja oblik**, svaka sa zapisanim razlogom
+  (559.98, 560, 620, 699.98, 700, 780, 819.98, 820, 860, 900, 1000). Moje dve (480 i 1024) nisu bile
+  na njemu.
+
+**2. `styles/writtenInCode.test.ts` je pao na spisku imena atributa: 60 naspram 59.** Nedostajalo je
+**`aria-modal`**, prvi u portalu. Odluka koju taj pod trazi je jedna: **cuje li ga citalac?**
+`aria-modal` nosi rec „true" koju niko ne cuje; ono sto citalac cuje je da je to dijalog, i to mu
+pregledac kaze na njegovom jeziku. Dakle masinerija, uz `aria-hidden`, a ne govor uz `alt` i
+`placeholder`.
+
+**3. `data/servedAge.test.ts` je pao na tri nova servirana polja** (`accounts.currency`,
+`accounts.expected`, `accounts.balance`). Taj snimak se pise **rukom** i to je namerno: nema komande
+koja ga regenerise, jer snimak koji nesto drugo prepisuje niko ne cita.
+
+### I ono sto je od svega najvrednije: prekretnice su OBRISANE, ne premestene
+
+Prva pomisao je bila premestiti obe na sirinu sa zatvorenog spiska. **To bi trazilo da pozajmim tudji
+razlog:** svaka sirina na tom spisku stoji tamo zbog necega odredjenog („telefon prestaje da bude
+telefon", „tabela odustaje od kolona"), a moje pitanje nije bilo nijedno od toga.
+
+**Obe su obrisane, i ispalo je bolje od onoga sto menja.** U dijalogu `flex: 1 1 auto` uz zatecen
+`wrap` znaci da dugmad sede u redu kad stanu a lome se kad ne stanu, dakle odluku donosi **duzina
+labele**, sto je prava cinjenica; prekretnica bi bila nagadjanje koliko je duga srpska recenica.
+**Izmereno posle brisanja: tri reda na 360, dva na 768 i dva na 1280**, dakle isto ponasanje koje je
+upit davao. Druga prekretnica je davala `nowrap` labeli kucice; brisanje ne kosta nista jer kolonu
+drzi `18ch`, a tabela stoji u `.table-scroll`, pa prelomljena labela nikad nista ne gura sa strane.
+
+**Portal time ne dobija nijednu novu sirinu na kojoj menja oblik.**
+
+**Zatvoren spisak sirina nije prepreka nego je uradio tacno ono zbog cega postoji:** naterao je da se
+odgovori na pitanje „zasto bas ovde", i odgovor je bio da prekretnica uopste ne treba.
+
+**Provera koja iz ovoga sledi, jedna recenica:** koju **vrstu** stvari ova grana uvodi prvi put, i
+koji pod nad tom vrstom stoji van foldera koji diram?
