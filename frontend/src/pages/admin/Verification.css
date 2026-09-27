@@ -77,6 +77,22 @@
   font-weight: 600;
 }
 
+/* The picture a moderator is deciding about (`WaitingPicture` in
+   `PendingQueue.tsx`), whole and never cropped - see that component's own doc for
+   why. Never wider than the card, so a photograph larger than the viewport cannot
+   open the horizontal scrollbar CLAUDE.md forbids from 360px up; capped in height
+   as well, so a portrait shot taken tall does not push the buttons under it off a
+   telephone screen before the moderator has even read the file name. */
+.pending__picture {
+  display: block;
+  max-width: 100%;
+  max-block-size: 20rem;
+  height: auto;
+  margin-block: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-8);
+}
+
 /* The bank statement, above the queue it is meant to empty. */
 .statement {
   display: flex;

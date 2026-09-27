@@ -17,7 +17,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { clearResourceCache } from '../../data/client'
-import { aRefusal, anApproval, decisionPath } from './verificationWrites'
+import { aRefusal, anApproval, decisionPath, photoPath } from './verificationWrites'
 import { usePending, WAITING, waitingIn } from './pending'
 import { recordKey } from '../../session/context'
 import type { PendingItem, Team } from '../../data/types'
@@ -216,6 +216,74 @@ function RatingGiven({ rating }: { rating: EventRating }) {
         </dd>
       </div>
     </dl>
+  )
+}
+
+/**
+ * THE PICTURE A MODERATOR IS DECIDING ABOUT, on whichever queue row still holds one.
+ *
+ * <p><b>Gated on `photoId`, never on `kind`.</b> `kind === 'photo'` is worked out on
+ * the server for the racing profile tab alone (`VerificationApi.Waiting.kind`'s own
+ * doc: "a profiles row is a picture exactly when it still holds one and a biography
+ * otherwise") and says nothing about a proposed team's logo, which the same schema
+ * carries through the identical `photo_id`. `photoId` is answered for every queue
+ * alike, so this is the one fact that is true of a picture whichever tab it stands in.
+ *
+ * <p><b>Recorded rather than built: no case here walks a team row with a logo,
+ * because nothing produces one yet.</b> `pages/member/EditTeam.tsx` proposes a team
+ * with `picture: ''` always and no upload of its own, so a `teams` row carrying a
+ * real `photoId` is a state the schema allows and today's screens never reach. This
+ * component does not special-case the queue away regardless, because the day a team
+ * logo upload lands this is exactly the behaviour it should already have; a test
+ * manufacturing that state now would be measuring itself and not the portal
+ * (`CLAUDE.md`, "mutacija koja mora da... nije mutacija", the class of finding it
+ * warns against).
+ *
+ * <p><b>A plain `<img>`, and never `CropWindow`, and that is forced rather than
+ * chosen.</b> `PhotoApi.waitingOn` answers the WHOLE original and nothing about the
+ * crop - its own comment: "the circle is the MEMBER's choice over his own picture...
+ * not part of the one being taken here" - and `VerificationApi.Waiting` carries no
+ * `crop` field at all. Drawing `CropWindow` here would mean feeding it `one.crop`,
+ * which is always `WHOLE` for a server row (`ABSENT.crop` in `./pending.ts`) and
+ * would show a generic centred circle as though it were the member's own choice,
+ * which it is not. So this card shows what the route actually gives: the photograph,
+ * whole, framed by nothing but the border a moderator reads any other picture in.
+ *
+ * <p><b>A failed load hides the picture rather than drawing a broken image icon.</b>
+ * `GET /api/verification/{id}/photo` answers 404 to a moderator with no right over
+ * this row and to a row that never held a picture, indistinguishably and on purpose
+ * (`PhotoApi.waitingOn`'s doc, ADL A8) - so there is nothing here to tell those two
+ * apart from a picture whose file went missing under it, and nothing here tries. All
+ * three are the one state a card can be in without a picture: say so by drawing
+ * nothing, the same as a row with no `photoId` at all.
+ *
+ * <p><b>The alt text is the dictionary's own call and never a string built here.</b>
+ * `data/theRealAnswer.test.tsx`'s guard against this exact frame returning unfed is
+ * tied to that literal call - measured to survive a frame whose `alt` is read off
+ * the row instead (`one.subject`, `one.who`) rather than through `t('verification.
+ * pictureAlt', ...)` - so this reads the key by name rather than composing an
+ * equivalent sentence that would satisfy the guard without answering it.
+ */
+function WaitingPicture({ item }: { item: PendingItem }) {
+  const { t } = useI18n()
+  /* Whether the address this card asked for came back broken, in the sense
+     `<img onerror>` means it: a 404, a redirect nowhere, a file the browser cannot
+     decode. Its own piece of state and not a prop, because it answers a load THIS
+     `<img>` attempted and every other card on the screen asks its own question of
+     its own address. */
+  const [broken, setBroken] = useState(false)
+
+  if (item.photoId === null || broken) {
+    return null
+  }
+
+  return (
+    <img
+      className="pending__picture"
+      src={photoPath(item.id)}
+      alt={t('verification.pictureAlt', { who: item.who })}
+      onError={() => setBroken(true)}
+    />
   )
 }
 
@@ -1086,57 +1154,33 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                           </div>
                         </dl>
 
-                        {/* THE PICTURE ITSELF WAS DRAWN HERE AND WAS REMOVED ON
-                            27.09.2026, AND THE REQUIREMENT IT SERVED IS LIVE AND
-                            NOW UNMET. Read this before concluding that a
-                            moderator was never meant to see what he decides.
+                        {/* THE PICTURE, where this row still holds one.
 
-                            Owner, 12.08.2026, and it stands: „Administrator kad
-                            odobrava i timsku sliku (unutar odobravanja tima) i
-                            profilnu sliku učesnika... treba da vidi isto fokus na
-                            vidljiv deo slike i zatamnjen ali dovoljno vidljiv
-                            ostatak." „Isto" was the requirement, which is why
-                            what stood here was the very component the member
-                            arranges the circle in.
+                            Owner, 12.08.2026: „Administrator kad odobrava i
+                            timsku sliku (unutar odobravanja tima) i profilnu
+                            sliku učesnika... treba da vidi isto fokus na vidljiv
+                            deo slike i zatamnjen ali dovoljno vidljiv ostatak."
+                            That requirement stood UNMET on this card between
+                            27.09.2026 and this branch: the block that used to
+                            draw here was the very component the member arranges
+                            his circle in, and it was removed the same day because
+                            it was fed by a session row no route could decide
+                            (`member/pictureIsOneRow.test.tsx`), never by this one.
 
-                            WHY IT WENT. A card carried a picture from exactly one
-                            place: the row `ProfilePicture.tsx` minted in the
-                            session beside the row the server had already filed.
-                            That twin drew the member TWICE on this queue and its
-                            copy was the one no route could decide, so it went
-                            (`member/pictureIsOneRow.test.tsx`). Measured the same
-                            day: nothing else ever filled `one.picture`. The
-                            server cannot - `ServedPendingItem` omits it and
-                            `admin/pending.ts` fills it as the empty string
-                            because ADL A60 keeps a waiting picture out of every
-                            address - no row of the generated file carries one, and
-                            a proposed team sends `picture: ''`. So this drew for
-                            the card the moderator COULD NOT decide, and never for
-                            the one he could: the two halves of what the owner
-                            asked for lived on two different cards.
+                            WHY THE COMPONENT BELOW IS NOT THAT ONE BROUGHT BACK.
+                            `PhotoApi.waitingOn` answers the whole original and
+                            never the crop, so „isto" is answered a different way
+                            than in 12.08.2026's own words: the moderator sees
+                            everything the photograph holds rather than the same
+                            circle the member sees, which is `WaitingPicture`'s own
+                            doc above, in full, with why that is forced rather
+                            than chosen.
 
-                            WHAT IS STILL OWED, AND IT IS NOW ONLY THIS SIDE OF THE
-                            WIRE. The server's half landed the same day in PR 399
-                            (ADL A60's dopuna of 27.09.2026): the waiting picture
-                            has an address of its own, `GET
-                            /api/verification/{id}/photo` through
-                            `PhotoApi.waitingOn`, open to the moderator who may
-                            decide that row and 404 to everybody else - and the
-                            owner's reason for it was the same fault read from the
-                            other end, that he approved a photograph on QA WITHOUT
-                            SEEING IT. `VerificationApi` already answers `photoId`
-                            beside it.
-                            So what is left is here and in one more place:
-                            `admin/pending.ts` still throws that number away
-                            (`itemFrom({ photoId: _photoId, ...served })`), and
-                            this frame has to come back and be fed from that
-                            address, with `verification.pictureAlt` - still in the
-                            dictionary for it - and with the circle the member set.
-                            Until then the file name below is all a moderator gets,
-                            and that is a gap rather than a decision.
-
-                            The file name stays either way. It is what the queue is
-                            searched and talked about by. */}
+                            The file name stays below either way, whether or not
+                            this draws anything: it is what the queue is searched
+                            and talked about by, and it is what a moderator reads
+                            when a picture 404s and nothing else does. */}
+                        <WaitingPicture item={one} />
 
                         {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,
                             on the card it is about and above both the box and the
