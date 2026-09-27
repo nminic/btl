@@ -157,22 +157,44 @@ public final class GrantingAMembership {
 		THE_PAYMENT_WAS_REVERSED,
 
 		/**
-		 * Nothing. What would come off the book is nothing at all, so there is no line to
-		 * write.
+		 * Nothing. What would come off the book is not a whole amount in both currencies, so
+		 * there is no line {@code balance_entry_a_membership_takes} (V38) would accept.
 		 *
-		 * <p><b>Reachable only for {@link Ground#THE_BALANCE}, by two roads that end in one
-		 * state, and it is guarded here rather than met in the database.</b>
-		 * {@code balance_entry_a_membership_takes} (V38) refuses an entry that moves nothing,
-		 * in either currency - „an entry that moves nothing is not a fact about money" - so
-		 * without this the route answers 500. The two roads: a member whose book is EMPTY,
-		 * which is most members, and a price list edited so that the row that applies to him
-		 * is worth nothing, which {@code price_row_eur_not_negative} (V4) allows and
-		 * {@code PUT /api/pricing/{key}} has no lower bound against.
+		 * <p><b>Reachable only for {@link Ground#THE_BALANCE}, by three roads that end in one
+		 * state, and it is guarded here rather than met in the database.</b> The constraint
+		 * reads {@code eur < 0 and rsd < 0} for a spend, BOTH STRICTLY - not „not both
+		 * nothing" - so it refuses a spend the moment EITHER half is not strictly positive,
+		 * and without this guard asking the same question the route answers 500. The three
+		 * roads: a member whose book is EMPTY in both currencies, which is most members; a
+		 * price list edited so the row that applies to him is worth nothing in both, which
+		 * {@code price_row_eur_not_negative} (V4) allows and {@code PUT /api/pricing/{key}}
+		 * has no lower bound against; and a book holding money in exactly ONE currency, which
+		 * is the third road and is named below.
 		 *
-		 * <p>One outcome and not two, because the question the schema asks is one question:
-		 * would this entry move money. Two outcomes would be two names for one refusal and
-		 * would invite a caller to tell the member which of the two it was, when the second
-		 * road is about the price list and not about him.
+		 * <p><b>THE THIRD ROAD IS NOT REACHABLE UNDER THE SHIPPED PRICE LIST, said rather than
+		 * left for the next reader to wonder.</b> {@code V4} seeds every row a referral or a
+		 * fee can ever be built from at one uniform rate, 120 dinars to the euro (35/4.200,
+		 * 40/4.800, 50/6.000, 20/2.400, 5/600), so a book made only of such rows stays on that
+		 * same rate and a total on it is either nothing in both currencies or something in
+		 * both - it cannot land on one at nothing with the other positive. {@code
+		 * whatComesOffTheBook} above says the reason a rate can ever come apart at all: {@code
+		 * PUT /api/pricing/{key}} moves one column of one row without the other, and one such
+		 * edit is enough to make the third road reachable. The guard is written for that
+		 * general case rather than for today's data.
+		 *
+		 * <p><b>AND THE THIRD ROAD IS TEMPORARY, said so nobody refines this guard further
+		 * instead of removing it.</b> The owner, 27.09.2026 (PDL, section 25): „balans je uvek
+		 * u valuti zavisno od drzave... Balans uvek skida u svojoj valuti, tako da nije ni
+		 * bitno koliko je to u drugoj valuti. Nema ni potrebe da cuva par, nego moze da cuva
+		 * samo iznos i valutu, to je bolje." Once the book is one amount in one currency
+		 * rather than a pair, there is no second currency left to be nothing while the first
+		 * is not, and this road closes with the pair it depends on.
+		 *
+		 * <p>One outcome and not two or three, because the question the schema asks is one
+		 * question: would this entry move money in every currency it must. More outcomes
+		 * would be more names for one refusal and would invite a caller to tell the member
+		 * which road it was, when two of the three are about the price list and not about
+		 * him.
 		 */
 		NOTHING_WOULD_COME_OFF_THE_BOOK
 	}
@@ -264,7 +286,7 @@ public final class GrantingAMembership {
 			return Outcome.THE_PAYMENT_WAS_REVERSED;
 		}
 
-		if (asking.ground() == Ground.THE_BALANCE && asking.offTheBook().isNothing()) {
+		if (asking.ground() == Ground.THE_BALANCE && !asking.offTheBook().isMoneyInBothCurrencies()) {
 			return Outcome.NOTHING_WOULD_COME_OFF_THE_BOOK;
 		}
 

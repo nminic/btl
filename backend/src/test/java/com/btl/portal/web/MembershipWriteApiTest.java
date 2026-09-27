@@ -272,6 +272,30 @@ class MembershipWriteApiTest {
 				.update();
 	}
 
+	/**
+	 * A MEMBERSHIP ALREADY SPENT PART OF HIS BOOK, FOR A SEASON OTHER THAN THE ONE UNDER TEST, so a
+	 * book can be composed to a value {@code earnedAReferral} could never write in one row on its
+	 * own.
+	 *
+	 * <p><b>Why two legal rows rather than one line at the target value.</b>
+	 * {@code balance_entry_a_referral_adds} (V38) demands both currencies of a REFERRAL be strictly
+	 * positive, so a row of, say, 15.00 EUR / 0.00 RSD is not a shape this table can hold under that
+	 * reason. The one case where the schema allows a book to carry money in only one currency is the
+	 * SUM of a referral and a spend that do not share the referral row's ratio - exactly the shape
+	 * {@code GrantingAMembership#whatComesOffTheBook} explains at length for the neighbouring case of
+	 * a fee covered in one currency and not the other.
+	 *
+	 * @param eur negative, as {@link BalanceBook#spentOnAMembership} would have written it
+	 * @param rsd negative, as {@link BalanceBook#spentOnAMembership} would have written it
+	 */
+	private void spentOnAnEarlierMembership(long competitorId, int season, String eur, String rsd) {
+		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+						+ " occurred_at, recorded_by_name)"
+						+ " values (?, ?::numeric, ?::numeric, 'membership', ?, ?, 'Neko Ko Je Knjizio')")
+				.params(competitorId, eur, rsd, season, Timestamp.from(IN_JUNE_2027))
+				.update();
+	}
+
 	private MembershipWriteApi.Granted granted(MockHttpServletResponse answer) throws Exception {
 		return mapper.readValue(answer.getContentAsString(), MembershipWriteApi.Granted.class);
 	}
@@ -876,6 +900,43 @@ class MembershipWriteApiTest {
 				.isEqualTo(MembershipWriteApi.NOTHING_WOULD_COME_OFF_THE_BOOK);
 		assertThat(membershipCount()).isEqualTo(1);
 		assertThat(bookOf(him)).isEqualTo("no lines");
+		assertThat(competitorRow(him))
+				.as("no number was drawn and he was not activated")
+				.isEqualTo("none false payment");
+	}
+
+	/**
+	 * A BOOK WITH MONEY IN ONLY ONE CURRENCY IS REFUSED TOO, AND NOT ONLY THE WHOLLY EMPTY ONE.
+	 *
+	 * <p><b>Found on review (PR 403): the guard above used to ask {@code offTheBook.isNothing()},
+	 * true only when BOTH halves are nothing.</b> {@code balance_entry_a_membership_takes} (V38)
+	 * refuses a spend whenever EITHER half is not strictly negative, so a book of 15.00 EUR / 0.00
+	 * RSD passed the old guard and met the constraint instead, answering 500 with
+	 * {@code DataIntegrityViolationException} rather than this route's own 409.
+	 *
+	 * <p>His book is built out of two rows the schema allows on their own - a referral of 50/600 and
+	 * an earlier membership spend of 35/600 for a different season - so 15.00/0.00 is a value this
+	 * fixture composes rather than one {@link #earnedAReferral} could write in a single row, and it
+	 * is not a value this route could ever write itself, only find already standing.
+	 *
+	 * <p><b>Nothing at all is written</b>, the same three tables {@link
+	 * #anEmptyBookIsRefusedRatherThanWritingALineThatMovesNothing} asserts of the wholly empty book -
+	 * this is the sibling finding measured, not a different refusal.
+	 */
+	@Test
+	void abookWithMoneyInOnlyOneCurrencyIsRefusedTooAndNotOnlyTheWhollyEmptyOne() throws Exception {
+		earnedAReferral(him, whoPays, "50", "600");
+		spentOnAnEarlierMembership(him, 2028, "-35", "-600");
+
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(refusal(answer)).isEqualTo(MembershipWriteApi.NOTHING_WOULD_COME_OFF_THE_BOOK);
+		assertThat(membershipCount()).isEqualTo(1);
+		assertThat(bookOf(him))
+				.as("only the two rows the fixture wrote, nothing added by the route")
+				.isEqualTo("referral 50.00/600.00 for " + whoPays
+						+ ", membership -35.00/-600.00 for nobody");
 		assertThat(competitorRow(him))
 				.as("no number was drawn and he was not activated")
 				.isEqualTo("none false payment");
