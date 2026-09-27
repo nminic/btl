@@ -638,9 +638,15 @@ class PaymentApiTest {
 	void aSeasonSentInTheBodyIsIgnoredAndTheDayDecides() throws Exception {
 		long id = competitor("a7", null, false, "1990-05-15");
 
+		/* AND THE CURRENCY IS SENT TOO, ALTHOUGH NOTHING READS IT, for the same reason the season is:
+		   this case is about a field the form does not have, and both of them are now in that
+		   position. `currency` was taken until V42 and is worked out from the member's country since
+		   (owner, 27.09.2026, PDL 19), so a body naming it has to be accepted and ignored exactly as a
+		   body naming a season is - and if either field ever comes back, this goes red. */
 		MockHttpServletResponse answer = confirm(
-				"{\"competitorId\":" + id + ",\"season\":2027,\"currency\":\"EUR\","
-						+ "\"method\":\"paypal\"}", moderatorCookie);
+				"{\"competitorId\":" + id + ",\"season\":2027,\"currency\":\"RSD\","
+						+ "\"received\":38.00,\"useTheBalance\":false,\"method\":\"paypal\"}",
+				moderatorCookie);
 
 		assertThat(answer.getStatus())
 				.as("a body naming a season was refused, so the field is back on the form")
@@ -1235,9 +1241,9 @@ class PaymentApiTest {
 	 */
 	@Test
 	void twoConfirmationsOfOneSeasonTakeTheBalanceOnce() throws Exception {
-		long id = competitor("g1", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
-		long oneHeBroughtIn = competitor("g2", "004109", true, "1991-05-15");
-		long anotherHeBroughtIn = competitor("g3", "004110", true, "1992-05-15");
+		long id = competitor("ba", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("bb", "004109", true, "1991-05-15");
+		long anotherHeBroughtIn = competitor("bc", "004110", true, "1992-05-15");
 
 		rewardFor(id, oneHeBroughtIn, "RSD");
 		rewardFor(id, anotherHeBroughtIn, "RSD");
@@ -1357,8 +1363,8 @@ class PaymentApiTest {
 	 */
 	@Test
 	void therewardIsInTheReferrersMoneyAndNotTheNewcomers() throws Exception {
-		long referrer = competitor("g4", "004111", true, "1980-05-15", A_TOWN_IN_SERBIA);
-		long newcomer = competitor("g5", null, false, "1990-05-15", A_TOWN);
+		long referrer = competitor("bd", "004111", true, "1980-05-15", A_TOWN_IN_SERBIA);
+		long newcomer = competitor("be", null, false, "1990-05-15", A_TOWN);
 
 		db.sql("update competitor set referred_by = ? where id = ?").params(referrer, newcomer).update();
 
