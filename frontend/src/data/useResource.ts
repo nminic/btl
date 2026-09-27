@@ -468,13 +468,25 @@ function asALine(one: Message): InboxLine {
 /**
  * A row the server answered, as a line.
  *
- * The two question ids become the absences the screens ask about, and they become them
- * HERE rather than at each screen: `null` is how the answer really arrives, and three
- * screens each deciding what `null` means is three places that can decide differently.
- *
  * `String(...)` on the key and not the other way about, because the address of one message
  * is text and a number put through `Number(id)` would answer `NaN` for every key the
  * browser's own half holds.
+ *
+ * **AND THE TWO QUESTION KEYS DO NOT COME ACROSS, which is a refusal and not an oversight.**
+ * `GET /api/inbox` answers `teamInvitationId` and `pairInviteId`, and the routes that answer
+ * such a question exist too - `PUT /api/teams/{id}/invitations/{invitation}` and
+ * `PUT /api/pairs/{id}`. What does not exist is any screen that calls either: measured
+ * 27.09.2026, the only write the frontend sends anywhere near them is `POST /api/teams` from
+ * `member/ProposeTeam.tsx`, and `InvitationAnswer` answers by looking the invitation up in the
+ * session's own `invitations` and writing the member's record there.
+ *
+ * So handing a served key to that screen would not leave it short of a button - it would make
+ * it say something false. `InvitationAnswer` treats an invitation it cannot find as one that is
+ * OVER („teams.inviteClosed", and the file says why in its own words), so a member would be told
+ * a question was closed while `team_invitation` on the server still held it open. Absent, the
+ * message is drawn as what it is - a subject, a sender and a body - and nothing is claimed about
+ * an answer. **That leaves a served invitation unanswerable on this portal, which is the boundary
+ * this increment ends on and not something it hides.**
  */
 function asServed(one: ServedMessage): InboxLine {
   return {
@@ -484,8 +496,6 @@ function asServed(one: ServedMessage): InboxLine {
     body: one.body,
     date: one.date,
     read: one.read,
-    invitation: one.teamInvitationId === null ? undefined : String(one.teamInvitationId),
-    pairInvite: one.pairInviteId === null ? undefined : String(one.pairInviteId),
     /* NO ROUTE WRITES `message_read`. Measured 27.09.2026: `backend/src/main` maps
        `GET /api/inbox` and `POST /api/inbox` and nothing else on this resource, and the
        second sends a message rather than marking one read. See `InboxLine` for what the
