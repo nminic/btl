@@ -2,6 +2,8 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { serverThat } from '../../test/serverAnswers'
+import { setupUser } from '../../test/user'
+import { decisionPath } from './verificationWrites'
 import { QUEUE } from './queues'
 
 /**
@@ -22,6 +24,13 @@ import { QUEUE } from './queues'
  * <p><b>The owner's own words, PENDING.md, 27.09.2026:</b> "kad neko posalje sliku na
  * odobrenje, zelim da dobijem jedan jedini red na strani verifikacije gde cu videti tu
  * sliku i odobriti njeno takvo postavljanje na profil clana."
+ *
+ * <p><b>Since 28.09.2026 this file also holds PDL.md's "29. Slika koja ne moze da se
+ * ucita"</b> (owner, 27.09.2026): a picture that fails to load draws a sentence rather
+ * than nothing, Odobri is disabled beside it, and Odbij still reaches the route. Kept
+ * here rather than in a file of its own, because it is the same axis the cases above
+ * already walk - a row with `photoId` and one without - with one more state added to
+ * it: `photoId` present but the load itself failed.
  */
 
 const RATING = { organisation: 0, value: 0, ambience: 0 }
@@ -103,6 +112,15 @@ describe('the picture on a card the moderator is deciding about', () => {
          because it always is for a photo row (`MePhotoApi.java` inserts `body: ''`
          for every one it gives a `photo_id`), never a name to read. */
       expect(cardOf('Neda Nedić').getByText('Datoteka')).toBeVisible()
+      /* THE OTHER STATE OF THE AXIS PDL.md "29." ADDS: a picture that DID load.
+         Asserted here and not only where loading fails, or a mutation that disabled
+         Odobri unconditionally - or read the wrong fact, `photoId === null` instead
+         of "this row's own load failed" - would pass every case below and be
+         invisible from the failing side alone. */
+      expect(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' })).toHaveAttribute(
+        'aria-disabled',
+        'false',
+      )
     } finally {
       stop()
     }
@@ -124,6 +142,15 @@ describe('the picture on a card the moderator is deciding about', () => {
       expect(
         cardOf('Petar Petrović').queryByRole('img', { name: /Slika koju je poslao/ }),
       ).not.toBeInTheDocument()
+      /* A biography never had a picture to fail, so PDL.md "29." does not reach it:
+         Odobri stays enabled. This is what tells "this row's load failed" apart
+         from "this row's photoId is null" - a card gated on the second instead of
+         the first would disable Odobri here too, where PDL P22 asks nothing of a
+         picture at all. */
+      expect(cardOf('Petar Petrović').getByRole('button', { name: 'Odobri' })).toHaveAttribute(
+        'aria-disabled',
+        'false',
+      )
     } finally {
       stop()
     }
@@ -147,12 +174,17 @@ describe('the picture on a card the moderator is deciding about', () => {
     expect(within(waiting).getAllByRole('listitem').length).toBeGreaterThan(0)
   })
 
-  it('is hidden rather than left as a broken image icon once the address answers nothing usable', async () => {
+  it('says the picture is unavailable and disables Odobri, rather than leaving a broken image icon, once the address answers nothing usable', async () => {
     /* THE ONE OBSERVATION THAT STANDS FOR BOTH "no right over this row" and "the file
        is gone": `PhotoApi.waitingOn` answers both, and a row that was never given a
        picture, with the identical 404 (`nothingIsHere`), on purpose (ADL A8). An
        `<img>` cannot tell any of the three apart either, so one failed load is what
-       proves all three are handled alike. */
+       proves all three are handled alike.
+
+       PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the sentence
+       replaces the picture, Odobri is disabled beside it, and both are read off the
+       identical fact - `PendingQueue`'s own `brokenPictures` - rather than guessed
+       twice. */
     const { stop } = answering([aPhotoRow])
 
     try {
@@ -166,10 +198,63 @@ describe('the picture on a card the moderator is deciding about', () => {
       expect(
         cardOf('Neda Nedić').queryByRole('img', { name: /Slika koju je poslao/ }),
       ).not.toBeInTheDocument()
+      /* The dictionary's own sentence, not a broken image icon and not silence:
+         `sr.json`'s `verification.pictureUnavailable`. */
+      expect(
+        cardOf('Neda Nedić').getByText(
+          'Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.',
+        ),
+      ).toBeVisible()
+      /* Told off, not switched off, the same shape every other reason this button
+         cannot act is in (PendingQueue.tsx, `why !== null`, `decisionUnknown`): the
+         control stays reachable so a screen reader lands on the sentence that says
+         why, rather than being skipped as `disabled` would skip it. */
+      const approve = cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' })
+
+      expect(approve).toHaveAttribute('aria-disabled', 'true')
+      expect(approve).not.toBeDisabled()
+      expect(approve).toHaveAccessibleDescription(
+        'Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.',
+      )
       /* The card itself, and the row's own fields on it, are untouched: a picture
          that cannot be shown is not a reason to lose the rest of the row. */
       expect(screen.getByRole('heading', { name: 'Neda Nedić' })).toBeVisible()
       expect(cardOf('Neda Nedić').getByText('Datoteka')).toBeVisible()
+    } finally {
+      stop()
+    }
+  })
+
+  it('still lets Odbij reach the route once the picture has failed to load', async () => {
+    /* THE OTHER HALF OF PDL.md "29.": approving is refused because a moderator who
+       cannot see the picture has nothing to approve, and that reasoning says
+       nothing about refusing it - a picture an instruction is written against is
+       exactly a picture nobody has to see first. Measured rather than assumed: a
+       gate written over the wrong state (`why !== null || decisionUnknown ||
+       deciding`, without `pictureUnavailable` named beside them) would leave this
+       button reachable regardless, and only a press that actually reaches the
+       route tells that apart from one that silently does not. */
+    const { asked, stop } = answering([aPhotoRow])
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
+
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odbij' }))
+      await user.type(screen.getByLabelText('Razlog odbijanja'), 'Slika je nejasna.')
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+
+      const sent = asked.find((one) => one.path === decisionPath('21'))
+
+      expect(sent, 'a request to the decision route').toBeDefined()
+      expect(JSON.parse(String(sent?.init?.body))).toEqual({
+        approved: false,
+        reason: 'Slika je nejasna.',
+      })
     } finally {
       stop()
     }

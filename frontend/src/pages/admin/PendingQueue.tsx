@@ -239,49 +239,84 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * (`CLAUDE.md`, "mutacija koja mora da... nije mutacija", the class of finding it
  * warns against).
  *
- * <p><b>A plain `<img>`, and never `CropWindow`, and that is a decision rather than
- * this increment's edge - `PhotoApi.java`'s own reasoning and not the owner's word,
- * because he was never asked, and its comment marks it so.</b> `PhotoApi.waitingOn`
- * answers the WHOLE original and nothing about the crop - its own comment: "the
- * circle is the MEMBER's choice over his own picture... not part of the one being
- * taken here" - and `VerificationApi.Waiting` carries no `crop` field at all. The
- * mechanics agree with that decision rather than forcing it: PDL P11 and ADL A17
- * both refuse a route that burns a crop into bytes, so cutting one into bytes here
- * was never available, but answering the three fractions BESIDE the picture, on
- * `/api/verification`, was - and the same paragraph turns that down too, for the
- * reason above and not for the cost of building it. Drawing `CropWindow` here would
- * mean feeding it `one.crop`, which is always `WHOLE` for a server row
- * (`ABSENT.crop` in `./pending.ts`) and would show a generic centred circle as
- * though it were the member's own choice, which it is not. So this card shows what
- * the route actually gives: the photograph, whole, framed by nothing but the border
- * a moderator reads any other picture in.
+ * <p><b>A plain `<img>`, and never `CropWindow`, and that is a decision the owner
+ * has since taken the other way for a branch of its own.</b> PDL.md, "28. Moderator
+ * vidi ISECAK sa zatamnjenim ostatkom" (owner, 27.09.2026), confirms and sharpens
+ * the 12.08.2026 decision this paragraph used to read as unmet: the moderator sees
+ * the crop with its remainder dimmed but still perceptible, not the whole
+ * photograph this card draws today. Drawing that needs `/api/verification` to
+ * carry the crop's three fractions beside the picture, which this branch's route
+ * does not - so drawing the crop is its own increment, and the whole photograph
+ * drawn here in the meantime is a temporary stand-in rather than a decision of
+ * this component's own. It stands in because it is strictly better than the
+ * "Datoteka" label with nothing under it this branch replaces (owner, 27.09.2026:
+ * "Svakako uradi sta god je potrebno da moderator vidi sliku koju verifikuje"),
+ * not because the question of what he should see was ever open - it no longer is.
+ * `PhotoApi.waitingOn`'s own comment still answers the WHOLE original and nothing
+ * about the crop - "the circle is the MEMBER's choice over his own picture... not
+ * part of the one being taken here" - and `VerificationApi.Waiting` carries no
+ * `crop` field at all today, which is exactly what the branch that draws the crop
+ * has to add. Drawing `CropWindow` here regardless would mean feeding it
+ * `one.crop`, which is always `WHOLE` for a server row (`ABSENT.crop` in
+ * `./pending.ts`) and would show a generic centred circle as though it were the
+ * member's own choice, which it is not.
  *
- * <p><b>A failed load hides the picture rather than drawing a broken image icon.</b>
- * `GET /api/verification/{id}/photo` answers 404 to a moderator with no right over
- * this row and to a row that never held a picture, indistinguishably and on purpose
- * (`PhotoApi.waitingOn`'s doc, ADL A8) - so there is nothing here to tell those two
- * apart from a picture whose file went missing under it, and nothing here tries. All
- * three are the one state a card can be in without a picture: say so by drawing
- * nothing, the same as a row with no `photoId` at all.
+ * <p><b>A failed load says so rather than hiding the picture or drawing a broken
+ * image icon, since PDL.md "29. Slika koja ne moze da se ucita" (owner,
+ * 27.09.2026).</b> `GET /api/verification/{id}/photo` answers 404 to a moderator
+ * with no right over this row and to a row whose file went missing under it,
+ * indistinguishably and on purpose (`PhotoApi.waitingOn`'s doc, ADL A8) - so there
+ * is nothing here to tell those two apart, and nothing here tries: both draw the
+ * identical sentence. A row with no `photoId` at all is a different state and
+ * stays silent exactly as before - it never had a picture to fail, so there is
+ * nothing to report missing.
+ *
+ * <p><b>`broken` is a prop and never state of its own, unlike before this
+ * decision.</b> The Approve button beside this card has to read the identical
+ * fact this paragraph draws a sentence about - it is disabled while a picture
+ * cannot be seen, per the same owner decision - and a second copy of "did this
+ * load" kept here could disagree with the parent's copy (`CLAUDE.md`, "Dva izvora,
+ * jedna vrednost"). `PendingQueue`'s own `brokenPictures` is the one place this
+ * fact is decided; this component only reports a load failure up through
+ * `onBroken` and draws whatever `broken` says.
  *
  * <p><b>The alt text is the dictionary's own call and never a string built here.</b>
  * `data/theRealAnswer.test.tsx`'s guard against this exact frame returning unfed is
  * tied to that literal call - measured to survive a frame whose `alt` is read off
  * the row instead (`one.subject`, `one.who`) rather than through `t('verification.
  * pictureAlt', ...)` - so this reads the key by name rather than composing an
- * equivalent sentence that would satisfy the guard without answering it.
+ * equivalent sentence that would satisfy the guard without answering it. Shortened
+ * to "Slika koju je poslao {who}" on 27.09.2026, the day this component stopped
+ * drawing a crop and the framed part it used to promise stopped being true; PDL.md
+ * "28." above means it goes back to naming that framed part the day the branch
+ * that draws the crop replaces this component's picture, and not one day before.
  */
-function WaitingPicture({ item }: { item: PendingItem }) {
+function WaitingPicture({
+  item,
+  broken,
+  onBroken,
+}: {
+  item: PendingItem
+  /** Whether this row's picture has already failed to load once, read off
+   *  `PendingQueue`'s own `brokenPictures` rather than kept here. */
+  broken: boolean
+  /** Reported once, the moment `<img onerror>` fires: a 404, a redirect
+   *  nowhere, a file the browser cannot decode. Not asked to say which,
+   *  the same way the sentence this draws does not either. */
+  onBroken: () => void
+}) {
   const { t } = useI18n()
-  /* Whether the address this card asked for came back broken, in the sense
-     `<img onerror>` means it: a 404, a redirect nowhere, a file the browser cannot
-     decode. Its own piece of state and not a prop, because it answers a load THIS
-     `<img>` attempted and every other card on the screen asks its own question of
-     its own address. */
-  const [broken, setBroken] = useState(false)
 
-  if (item.photoId === null || broken) {
+  if (item.photoId === null) {
     return null
+  }
+
+  if (broken) {
+    return (
+      <p className="pending__unavailable" id={`${item.id}-picture-unavailable`}>
+        {t('verification.pictureUnavailable')}
+      </p>
+    )
   }
 
   return (
@@ -289,7 +324,7 @@ function WaitingPicture({ item }: { item: PendingItem }) {
       className="pending__picture"
       src={photoPath(item.id)}
       alt={t('verification.pictureAlt', { who: item.who })}
-      onError={() => setBroken(true)}
+      onError={onBroken}
     />
   )
 }
@@ -440,6 +475,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * cannot act without asking either for a new line.
    */
   const [deciding, setDeciding] = useState(false)
+  /**
+   * Which rows' pictures have failed to load, so the Approve button beside a
+   * broken photograph can read the identical fact `WaitingPicture` already
+   * draws a sentence about (PDL.md, "29. Slika koja ne moze da se ucita",
+   * owner 27.09.2026).
+   *
+   * Lifted up rather than left as `WaitingPicture`'s own state, on purpose: a
+   * fact two places would otherwise carry separately is a fact that can
+   * disagree, and the button needs the same answer the picture already gave,
+   * not a second guess at it worked out from different props.
+   */
+  const [brokenPictures, setBrokenPictures] = useState<ReadonlySet<string>>(new Set())
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
@@ -1053,6 +1100,11 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                     /* The team this card is about, where it is about one, so the two
                        places that ask do not ask twice. */
                     const about = teamOf(one)
+                    /* Read off the state `WaitingPicture` reports into rather than
+                       kept a second time here - see `brokenPictures` above and
+                       `WaitingPicture`'s own doc for why there is exactly one copy
+                       of this fact. */
+                    const pictureUnavailable = brokenPictures.has(one.id)
 
                     return (
                       <li key={one.id} className="submissions__item">
@@ -1174,15 +1226,21 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             it was fed by a session row no route could decide
                             (`member/pictureIsOneRow.test.tsx`), never by this one.
 
-                            WHY THE COMPONENT BELOW IS NOT THAT ONE BROUGHT BACK.
-                            `PhotoApi.waitingOn` answers the whole original and
-                            never the crop, so „isto" is answered a different way
-                            than in 12.08.2026's own words: the moderator sees
-                            everything the photograph holds rather than the same
-                            circle the member sees, which is `WaitingPicture`'s own
-                            doc above, in full, with why that is a decision and not
-                            a limit of what this increment could build - and why
-                            the owner was never asked to make that call himself.
+                            WHY THE COMPONENT BELOW STILL DRAWS THE WHOLE PICTURE
+                            AND NOT THAT ONE BROUGHT BACK, AND IT IS TEMPORARY.
+                            PDL.md, „28. Moderator vidi ISECAK sa zatamnjenim
+                            ostatkom" (owner, 27.09.2026), confirms 12.08.2026's
+                            „isto" the way it was always meant: the moderator sees
+                            the crop with its remainder dimmed but still visible,
+                            not the whole photograph this card draws today. That
+                            needs `/api/verification` to carry the crop's three
+                            fractions beside the picture, which is its own branch
+                            and not a line changed here (`WaitingPicture`'s own doc
+                            above, in full). Until that branch lands, this whole
+                            picture stands in because it is better than the
+                            „Datoteka" label with nothing under it this branch
+                            replaces, and not because the question was ever open:
+                            it no longer is.
 
                             Unaffected either way is everything else this row
                             draws, whatever it holds: this paragraph used to say a
@@ -1193,7 +1251,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             „Datoteka" is an empty `<dd>` whether the picture loads
                             or not. Corrected rather than left standing for the
                             next reader to repeat. */}
-                        <WaitingPicture item={one} />
+                        <WaitingPicture
+                          item={one}
+                          broken={pictureUnavailable}
+                          onBroken={() =>
+                            setBrokenPictures((was) =>
+                              was.has(one.id) ? was : new Set(was).add(one.id),
+                            )
+                          }
+                        />
 
                         {/* WHAT THE ROUTE SAID WHEN IT WOULD NOT TAKE THE DECISION,
                             on the card it is about and above both the box and the
@@ -1286,13 +1352,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                  takes the keyboard with it, and this one is meant
                                  to be reachable so its reason can be read. It says
                                  it cannot act and points at why. */
-                              aria-disabled={why !== null || decisionUnknown || deciding}
+                              aria-disabled={
+                                why !== null || decisionUnknown || deciding || pictureUnavailable
+                              }
                               aria-describedby={
                                 why !== null
                                   ? `${one.id}-blocked`
                                   : decisionUnknown
                                     ? `${waitingId}-blocked`
-                                    : undefined
+                                    : pictureUnavailable
+                                      ? `${one.id}-picture-unavailable`
+                                      : undefined
                               }
                               onClick={() => {
                                 /* Approving a proposed team without the members
@@ -1305,8 +1375,17 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    sweep button carries, checked here so a press on
                                    one door while the other is out cannot start a
                                    second walk over an identity or address the
-                                   first has already carried past this point. */
-                                if (!decisionUnknown && !outstanding.current) {
+                                   first has already carried past this point.
+
+                                   And held back while this row's own picture has
+                                   failed to load (PDL.md, "29. Slika koja ne moze
+                                   da se ucita", owner 27.09.2026): approving is
+                                   what a moderator does after seeing the
+                                   photograph, in his own words „videti tu sliku i
+                                   odobriti" - so a card whose picture he cannot
+                                   see is not his to approve, and this is the one
+                                   button that does. */
+                                if (!decisionUnknown && !outstanding.current && !pictureUnavailable) {
                                   void approveAll([one], teams)
                                 }
                               }}

@@ -103,6 +103,18 @@
   border-radius: var(--radius-8);
 }
 
+/* Where the picture above stands when its file cannot be loaded (PDL.md, "29.
+   Slika koja ne moze da se ucita", owner 27.09.2026): muted the same way every
+   other sentence standing in for something else on this screen is
+   (.pending__blocked, .pending__swept), because it explains an absence rather
+   than reporting a decision. Same block spacing as .pending__picture, so
+   swapping one for the other does not shift anything else on the card. */
+.pending__unavailable {
+  margin-block: var(--space-8);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 /* The bank statement, above the queue it is meant to empty. */
 .statement {
   display: flex;
