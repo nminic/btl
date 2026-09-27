@@ -688,6 +688,58 @@ class MyMembershipApiTest {
 	}
 
 	/**
+	 * AND A PROMISE OF NOUGHT PINS HIM JUST THE SAME, which is the half of „written once" that looks
+	 * like an oversight and is the reason the whole rule holds.
+	 *
+	 * <p><b>Why nought has to be a ROW.</b> A member whose book was empty when he first looked was
+	 * minted a code for the WHOLE fee, and that slip is live. Were nought left unwritten, his second
+	 * look would write the first real promise while that slip was still in his hand - and paying it
+	 * would take a discount off his book that he had already paid in cash. So the row is written, and
+	 * what it says is „this season's code has been minted, at nought".
+	 *
+	 * <p><b>WHAT IT COSTS, and it is the cost rather than a bug:</b> his balance keeps instead of being
+	 * spent here. PDL 11.08.2026, „Balans ne propada nikad i prenosi se iz sezone u sezonu", is what
+	 * makes that safe - it waits for next season - and if it grows past the whole fee he can still let
+	 * himself in through the door that mints no code.
+	 *
+	 * <p><b>The balance must GROW between the two looks</b>, or „pinned at nought" and „recomputed from
+	 * an empty book" give the same answer and this measures nothing.
+	 */
+	@Test
+	void apromiseOfNoughtPinsTheSeasonExactlyAsARealOneDoes() throws Exception {
+		String him = aMemberOfHisOwn("007104", 0);
+		long id = idOf("007104");
+
+		assertThat(invoiceFor(him).path("fromTheBalance").path("rsd").asDouble()).isEqualTo(0.0);
+		assertThat(promiseTo("007104"))
+				.as("nothing was written down for a member with an empty book, so his next look is free"
+						+ " to promise something while his first slip is still live")
+				.isEqualTo("0.00 0.00");
+
+		brought("007104", 1);
+
+		JsonNode second = invoiceFor(him);
+
+		assertThat(second.path("balance").path("rsd").decimalValue())
+				.as("his book did not grow, so nothing here is about a book that grew")
+				.isEqualByComparingTo("600.00");
+
+		assertThat(second.path("fromTheBalance").path("rsd").asDouble())
+				.as("the code he is holding was re-priced, so the slip for the whole fee and the row in"
+						+ " the book now say two different numbers")
+				.isEqualTo(0.0);
+
+		assertThat(second.path("toTransfer").path("rsd").decimalValue())
+				.isEqualByComparingTo(second.path("fee").path("rsd").decimalValue());
+
+		assertThat(bookedFor(id)).isEqualTo(201);
+
+		assertThat(bookAddsUpTo(id))
+				.as("he paid the whole fee in cash and a discount was taken off his book as well")
+				.isEqualByComparingTo("600.00");
+	}
+
+	/**
 	 * A MEMBER THE MANAGING BOARD FREED OF THE FEE IS TOLD THERE IS NO INVOICE HERE, and until this
 	 * was written he was sent a bill for the whole membership.
 	 *
