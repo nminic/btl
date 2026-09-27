@@ -259,16 +259,19 @@ import java.util.Optional;
  * every row this writes. They are what puts „Prihvati"/„Odbij" under a message
  * ({@code MessageDetail.tsx}), and the two things they point at are written by other
  * increments; a member writing to a member asks nothing the portal can answer for him.
- * <li><b>DELETING, EDITING AND MARKING READ.</b> Nothing here removes or changes a message:
- * PDL „Inkrement 134", 06.09.2026, „Ne briše se: brisanje poruke iz tuđeg sandučeta je
- * brisanje istorije". Marking one read is {@code message_read}, which
- * {@link InboxApi} READS and nothing writes - so the portal's unread counter
- * (PDL „Inkrement 134", „Brojač nepročitanih u sandučetu") can
- * never fall. It is left out of this increment for a reason that is about the repository
- * rather than about the feature: the smallest shape it can take is a route of its own, and
- * since 19.09.2026 a new route owes its OWN {@code VERB PATH} entry in
- * {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT}. Sharing this path with the two verbs
- * already named there buys it nothing, which is the whole point of the pair.
+ * <li><b>DELETING AND EDITING.</b> Nothing here removes or changes a message: PDL „Inkrement
+ * 134", 06.09.2026, „Ne briše se: brisanje poruke iz tuđeg sandučeta je brisanje istorije".
+ * <b>MARKING READ IS NO LONGER ONE OF THE THINGS LEFT OUT HERE - CORRECTED 27.09.2026, PDL
+ * section 27a, the day the owner decided it: „kad clan otvori poruku ona stvarno postaje
+ * procitana... Ne treba mi dugme."</b> What this paragraph said until then still explains WHY
+ * it took a route of its own rather than a third verb here: „the smallest shape it can take
+ * is a route of its own, and since 19.09.2026 a new route owes its OWN {@code VERB PATH} entry
+ * in {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT}. Sharing this path with the two verbs
+ * already named there buys it nothing, which is the whole point of the pair." That route is
+ * {@link InboxReadApi}, {@code POST /api/inbox/{id}/read}, called when a member opens a
+ * message rather than on any button - there is still no button, by the same decision. Nothing
+ * in this class writes {@code message_read} before or after that class exists; only
+ * {@link InboxApi} reads it and only {@link InboxReadApi} writes it.
  * <li><b>A REPLY, BLOCKING AND REPORTING.</b> PDL P18 puts „blokiranje i prijava
  * neprikladnog ponasanja" in the same sentence as private messages, and neither has a table,
  * a column or a screen. Until one exists, ANY active member may be written to by any member,
