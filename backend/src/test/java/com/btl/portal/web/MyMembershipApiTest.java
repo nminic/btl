@@ -998,7 +998,8 @@ class MyMembershipApiTest {
 		JsonNode owed = invoiceFor(him);
 
 		assertThat(owed.path("season").asInt())
-				.as("the invoice is about the season on sale, so „the previous one" means something here")
+				.as("the invoice is about a season other than the one on sale, so the previous one is"
+						+ " no longer the season this case grants")
 				.isEqualTo(THE_SEASON_ON_SALE);
 
 		assertThat(owed.path("alreadyAMember").asBoolean())
