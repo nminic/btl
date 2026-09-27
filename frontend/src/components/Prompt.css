@@ -1,0 +1,105 @@
+/*
+ * THE PORTAL'S FIRST MODAL SHEET.
+ *
+ * Mobile-first, like every other stylesheet here: the narrow rules are the ones without a
+ * query, and the only query widens the sheet. At 360px the sheet is the whole width less a
+ * gutter, and nothing in it is laid out side by side - the buttons stack, because two Serbian
+ * labels of the length „Odobri umanjen iznos iz balansa" cannot sit on one line at that width
+ * without the row growing past the screen and taking the page's side-scroll with it.
+ */
+
+.prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  /* CENTRED ACROSS, AND AT THE TOP DOWN THE PAGE ON A NARROW SCREEN. A sheet centred
+     vertically whose content is taller than the viewport cannot be scrolled to its own top:
+     the overflow goes off both ends. Started from the top with `align-items: flex-start`, the
+     whole of it is always reachable, and the padding keeps it off the edge. */
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-16);
+  overflow-y: auto;
+  /* Dark enough to say the page behind is not listening, and not so dark that the table
+     underneath stops being readable as context. */
+  background: rgb(20 24 31 / 55%);
+}
+
+.prompt__sheet {
+  width: 100%;
+  /* So the sheet does not become a column of text on a wide screen. Below this it is fluid. */
+  max-width: 34rem;
+  margin-block-start: var(--space-24);
+  padding: var(--space-20);
+  border-radius: var(--radius-8);
+  background: var(--surface);
+  box-shadow: 0 var(--space-8) var(--space-32) rgb(20 24 31 / 35%);
+}
+
+.prompt__title {
+  /* The question itself, and it carries the focus when the sheet opens. The outline has to be
+     visible on a heading as much as on a button (WCAG 2.2 AA, 2.4.11), and the global
+     `:focus-visible` rule gives it; nothing here removes it. */
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.prompt__body {
+  margin-block-start: var(--space-12);
+  color: var(--text);
+}
+
+.prompt__body p {
+  margin: var(--space-8) 0 0;
+}
+
+.prompt__answers {
+  display: flex;
+  /* STACKED BY DEFAULT AND SIDE BY SIDE ONLY WHERE THERE IS ROOM, which is the mobile-first
+     half of this file. `wrap` rather than a second query: three buttons of Serbian prose wrap
+     when they must and sit in a row when they fit, at every width in between as well. */
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-block-start: var(--space-20);
+}
+
+.prompt__answers .button {
+  /* Each button as wide as the sheet while they are stacked, so a thumb cannot miss one and
+     hit the one under it. `flex: 1 1 100%` up to the width where they fit beside each other. */
+  flex: 1 1 100%;
+}
+
+@media (min-width: 30rem) {
+  .prompt__answers .button {
+    flex: 0 1 auto;
+  }
+}
+
+/*
+ * NOTHING MOVES FOR A READER WHO HAS ASKED FOR THAT.
+ *
+ * The sheet fades in, which is the one piece of motion here and is what tells a sighted reader
+ * that something arrived over the page rather than replaced it. Asked to keep still, it simply
+ * is there - the appearance is not conveyed by the movement, so removing it takes nothing away
+ * (ADL A7, WCAG 2.2 AA 2.3.3).
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .prompt__sheet {
+    animation: prompt-arrives 140ms ease-out;
+  }
+}
+
+@keyframes prompt-arrives {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-8)));
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

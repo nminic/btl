@@ -142,6 +142,100 @@ export const FREE_OF_THE_FEE = 'feeExempt'
 export const ON_THE_BALANCE = 'balance'
 
 /**
+ * WHETHER THE PORTAL CAN CARRY THIS CASE OUT AT ALL TODAY.
+ *
+ * <p><b>FOUR OF THE SEVEN IT CANNOT, and this is the one place that says so</b> rather than the
+ * screen deciding it again beside each control. Measured against `origin/main` on 28.09.2026,
+ * and what is missing is TWO things rather than one:
+ *
+ * <ol>
+ * <li><b>There is no amount on the wire.</b> `POST /api/payments` takes
+ * `record Confirm(Long competitorId, String currency, String method, String reference)` -
+ * `PaymentApi.java:296` - and writes `payment.amount` from the PRICE LIST instead
+ * (`PaymentApi.java:456-457,478`, `price.amount()` and `price.fee()`). So „he sent less than
+ * expected" and „he sent more" cannot be told to the server at all: both would be recorded as
+ * having sent exactly the price.
+ * <li><b>And the balance is spent by what the QR code promised, not by the tick box.</b>
+ * `PaymentApi.java:496-505` reads `book.promised(competitor.id(), season)` and takes nothing
+ * where there is no promise. The owner decided the opposite for THIS screen on 27.09.2026
+ * (PDL 23a): „Na moderatorovom ekranu odlucuje kucica i iznos u njenoj labeli, ne ono sto je QR
+ * kod obecao." Until that is written, clearing the box would change nothing and the commonest
+ * member of all - the one nobody ever minted a code for - would be shown a balance in the label
+ * and have none of it taken.
+ * </ol>
+ *
+ * <p><b>A THIRD thing would stop it even if those two were done, and it is the owner's own
+ * deadline.</b> `POST /api/payments` requires `method`, the schema knows
+ * `('slip', 'card', 'paypal', 'sepa')` (`V16:115`, `payment_method_known`) and does NOT know
+ * `ips`, which is the only way somebody in Serbia pays. PDL 20a, 27.09.2026: „Rok: postaje zivo
+ * onog dana kad prvi ekran pozove upisnu rutu, dakle sa aktivacijom na ekranu Uplate. Do tada
+ * je nedostizno, posle toga je svaki upis netacan." So the first call this screen made would
+ * make every method it could send a wrong one, and the migration that widens that constraint is
+ * not written.
+ *
+ * <p><b>Why the button is therefore disabled rather than the prompt being drawn and refused.</b>
+ * Three of the owner's cases end in a question, and two of those three can be acted on. The
+ * third - „Prihvatam umanjen ukupan iznos? Da / Ne" - is reached only with an amount typed, so
+ * its „Da" would have nowhere to go. A question asked with no way of honouring the answer is
+ * worse than a control that is plainly not available: the moderator would believe the row had
+ * been dealt with.
+ */
+export function theServerCanDoIt(what: WhatToDo): what is Actionable {
+  return what.does === 'offersTheBalanceOrTheExemption' || what.does === 'asksAboutTheExemption'
+}
+
+/**
+ * THE THREE CASES OF THE SEVEN THAT REACH A ROUTE, as a type.
+ *
+ * <p><b>A type and not a comment, so the screen cannot draw a question it has no way of
+ * honouring.</b> {@link theServerCanDoIt} narrows to this, so the prompt for the shortfall -
+ * „Prihvatam umanjen ukupan iznos? Da / Ne", which needs an amount on the wire - cannot be
+ * built by mistake: the compiler refuses to hand it in. The day the amount arrives, widening
+ * this type is what makes the screen fail to compile until the question is drawn, which is the
+ * opposite of a boundary that has to be remembered.
+ *
+ * <p>Three of the owner's cases and two grounds: 4 and 5 are
+ * {@code offersTheBalanceOrTheExemption} (one ground, two labels) and 6 is
+ * {@code asksAboutTheExemption}, which also takes the state his grid does not name - the box
+ * ticked over an empty book.
+ */
+export type Actionable = Extract<
+  WhatToDo,
+  { does: 'offersTheBalanceOrTheExemption' } | { does: 'asksAboutTheExemption' }
+>
+
+/**
+ * THE SEVEN REFUSALS `POST /api/memberships` NAMES, and the sentence this screen turns each of
+ * them into.
+ *
+ * <p><b>All seven are answered although this screen can only reach some of them, which is the
+ * shape `admin/priceWrites.ts` and `admin/memberWrites.ts` both keep and give the reason for:
+ * the screen is the floor and the route decides.</b> An unmapped reason falls through to
+ * `ServerSaid`'s honest branch and is printed with its camel-case code in it, so a moderator
+ * reading a refusal would be shown a word out of the Java source.
+ *
+ * <p><b>`nothingWouldComeOffTheBalance` is the one this screen CANNOT predict, and it is the
+ * whole reason a map is needed rather than a guard.</b> The screen is served ONE balance, the
+ * column the member's country names (`PaymentsDueApi`), and the server decides by the PAIR:
+ * `Balance.isMoneyInBothCurrencies` wants both halves strictly positive because
+ * `balance_entry_a_membership_takes` (V38) reads `eur < 0 and rsd < 0`. So a man whose book is
+ * `0.00 EUR / 600.00 RSD` is shown „600 RSD" in the tick box, is offered his balance, and is
+ * refused. Nothing the screen is served would let it know that in advance, so it says what the
+ * server said. PDL section 25 („balans je uvek u valuti zavisno od drzave... nije ni bitno
+ * koliko je to u drugoj valuti") closes the gap and is not carried out: V38 still holds the two
+ * columns side by side.
+ */
+export const WHEN_ACTIVATING: Record<string, string> = {
+  theFormIsNotComplete: 'verification.activationRefused.theFormIsNotComplete',
+  theGroundIsNotKnown: 'verification.activationRefused.theGroundIsNotKnown',
+  nothingWouldComeOffTheBalance: 'verification.activationRefused.nothingWouldComeOffTheBalance',
+  theMembershipIsAlreadyHeld: 'verification.activationRefused.theMembershipIsAlreadyHeld',
+  theCompetitorDoesNotExist: 'verification.activationRefused.theCompetitorDoesNotExist',
+  theFeeIsAlreadyRecorded: 'verification.activationRefused.theFeeIsAlreadyRecorded',
+  thePaymentWasReversed: 'verification.activationRefused.thePaymentWasReversed',
+}
+
+/**
  * Digits, and at most one separator with at most two digits after it.
  *
  * Both separators, because the portal writes the Serbian one and an administrator may type
