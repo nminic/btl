@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -61,28 +62,24 @@ import java.util.Optional;
  * statusu cekanja i tu vidim trenutno azuriranu sliku sa krugom." So the screen a member sends
  * from shows the waiting picture, cut to the circle he set, under a mark that it is waiting.
  *
- * <p><b>WHAT THAT MEANS FOR THIS ROUTE TODAY: nothing changes, and that is a decision rather
- * than an oversight.</b> The answer still carries the key of the waiting row and the digest of
- * the picture in it, to the member who sent it and to nobody else. <b>Neither 21b nor 21c is
- * implemented yet</b> and both go in their own backend increment; changing the shape of this
- * answer now would change it twice.
+ * <p><b>BOTH HALVES ARE IMPLEMENTED HERE, which is what this increment is.</b> 21b gets the
+ * GET this class did not have ({@link #mine}) plus the bytes route beside it
+ * ({@link PhotoApi#mineThatWaits}), and 21c takes the refusal out of {@link #send}.
  *
- * <p><b>SO THE OPEN QUESTION IS NAMED HERE RATHER THAN LEFT TO BE FOUND: does {@code digest}
- * stay?</b> It was put here so the member could see his own waiting picture, and no route
- * serves those bytes to him - {@link PhotoApi#photo} refuses a picture only a queue row holds
- * (ADL A60), and {@link PhotoApi#waitingOn} is the moderator's, keyed to a
- * {@code verification.id} he does not know and shut by a queue right he does not hold. When
- * 21b's route is written, keyed to his own session and carrying the crop, this field is either
- * what that screen asks with or it is dead. <b>It is left standing because the portal reads
- * it</b>, and because a field removed in the same week it becomes useful is two changes.
+ * <p><b>SO THE QUESTION THIS CLASS USED TO NAME AS OPEN IS ANSWERED: {@code digest} STAYS, and
+ * it is now what the screen ASKS with.</b> It was put on the answer so the member could see his
+ * own waiting picture, and until this increment no route served those bytes to him -
+ * {@link PhotoApi#photo} refuses a picture only a queue row holds (ADL A60), and
+ * {@link PhotoApi#waitingOn} is the moderator's, keyed to a {@code verification.id} he does not
+ * know and shut by a queue right he does not hold. {@link PhotoApi#mineThatWaits} answers at
+ * {@code /api/me/photo/<digest>}, so the field stopped being decoration the day that route was
+ * written.
  *
- * <p><b>And PDL 21c is the other unimplemented half, which this class WILL have to change.</b>
- * „Ako hocu da pregazim novom ili da pomerim krug da gadja drugi deo slike, opet se salje na
- * verifikaciju i gazi trenutan red kod verifikatora." So sending again is to OVERWRITE the
- * waiting row rather than be refused, and the refusal this class answers with today
- * ({@code aPictureAlreadyWaits}) is what that decision removes. Nothing here has been changed
- * for it: it is named so the next reader knows the refusal is on its way out and does not read
- * it as settled.
+ * <p><b>AND PDL 21c: SENDING AGAIN OVERWRITES THE ROW THAT WAITS.</b> „Ako hocu da pregazim
+ * novom ili da pomerim krug da gadja drugi deo slike, opet se salje na verifikaciju i gazi
+ * trenutan red kod verifikatora." So the 409 this class used to answer
+ * ({@code aPictureAlreadyWaits}) is gone, and „gazi" is read as the owner's own boundary reads
+ * it - see {@link #send}, where the POINTER MOVES and the row does not.
  *
  * <h2>THE FIRST MULTIPART ROUTE, AND WHAT THAT CHANGES</h2>
  *
@@ -110,15 +107,17 @@ import java.util.Optional;
  * <ol>
  * <li><b>Is there a member behind this account?</b> Asked first, exactly as
  * {@link MeWriteApi#change} asks it, and answered 404 with no body (ADL A8, 13.09.2026).
- * <li><b>Is one of his pictures already waiting?</b> 409 {@link #A_PICTURE_ALREADY_WAITS}.
- * The rule is the picture's half of what the owner decided for the TEXT on 19.09.2026 -
- * „Nov tekst o sebi se ODBIJA dok prethodni ceka odluku moderatora. Odgovor je 409" - and it
- * is what the portal's own screen already does: {@code pages/member/ProfilePicture.tsx}
- * draws no control while one stands, „a second ask gives a moderator two faces and no
- * question to answer". <b>It is derived from that pair rather than quoted from a decision
- * about pictures</b>, and it is written here so that a reader can see which it is. The
- * owner's sentence of 24.09.2026 points the same way: a member is shown his waiting picture
- * precisely „da je ne salje tri puta".
+ * <li><b>Is one of his pictures already waiting?</b> Asked, but no longer to REFUSE him:
+ * it is what decides whether this send overwrites a row or opens one, and it is asked with
+ * {@code for update} so a decision cannot land between the question and the answer. <b>The
+ * 409 that used to stand here is what PDL 21c removed</b>, and the pair it was derived from
+ * (the owner's 409 for the TEXT, 19.09.2026) is untouched: {@link MeWriteApi} still refuses a
+ * second biography, because a text and a picture are two sorts on one tab and „razlikuje se
+ * samo sta moderator pise".
+ * <li><b>Did a picture arrive at all?</b> If not, this is 21c's second half - „ili da
+ * pomerim krug da gadja drugi deo slike" - and it is legal exactly when something is
+ * waiting to be re-cropped. With nothing waiting there is no picture to move a circle over,
+ * so it is {@link #THE_FORM_IS_NOT_COMPLETE} as before.
  * <li><b>Is the crop three fractions between nought and one?</b> V21 bounds all three and
  * bounds the diameter above nought; a crop outside that is refused here rather than by the
  * constraint, because a constraint violation aborts the transaction and answers 500 where
@@ -146,14 +145,16 @@ import java.util.Optional;
  * a {@link RuntimeException} and an {@link Error} and COMMITS on a checked one, and
  * {@link IOException} is checked: this paragraph claimed the rollback for a round without it
  * being true, and a security review measured what that cost. With the row committed, a
- * passing fault of the disk left a queue card pointing at a picture with no file, the member
- * was answered 500 and then <b>refused for ever</b> by the 409 below, and he could not take it
- * back himself - {@link #remove} deliberately does not withdraw what a moderator is holding.
- * The only way out was a moderator approving a picture {@link PhotoApi} could never serve.
- * <b>The case that holds it cannot live in {@code MePhotoApiTest}</b>, because that class is
- * {@code @Transactional} and the route then joins the test's transaction, which is exactly why
- * the fault survived a green file; it is in
- * {@code ThePictureAndItsFileAreOneThingTest}, which is not.
+ * passing fault of the disk left a queue card pointing at a picture with no file, and the only
+ * way out was a moderator approving a picture {@link PhotoApi} could never serve. <b>The half
+ * of that cost which said the member was then „refused for ever" by a 409 has gone with the 409
+ * itself (PDL 21c), and the guard has NOT</b>: a card in front of a moderator that names bytes
+ * nobody can read is wrong whether or not its member can send again, and since 21c the rollback
+ * carries a second weight the 409 never had - an overwrite DELETES the picture it replaced, so a
+ * half-written send that committed would take a good picture with it. <b>The case that holds it
+ * cannot live in {@code MePhotoApiTest}</b>, because that class is {@code @Transactional} and
+ * the route then joins the test's transaction, which is exactly why the fault survived a green
+ * file; it is in {@code ThePictureAndItsFileAreOneThingTest}, which is not.
  * <li><b>{@link #remove}'s own mapping does NOT carry {@code rollbackFor}</b>, though a
  * review on 25.09.2026 found it copied there anyway. There the checked exception is the FILE
  * refusing to leave the disk after the row and the pointer are already gone, and letting it
@@ -174,17 +175,14 @@ import java.util.Optional;
  * <h2>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED</h2>
  *
  * <ul>
- * <li><b>THE MEMBER SEEING HIS OWN WAITING PICTURE'S BYTES.</b> {@link PhotoApi} serves a
- * digest only when a PUBLIC thing holds it, and it names {@code verification.photo_id} among
- * the two holders it refuses: „a picture in that queue is by definition one nobody has
- * published". The owner's decision of 24.09.2026 asks for exactly one exception to that -
- * the member who sent it, and the moderator who decides it - and an exception to it is a
- * change to a resource that is open to visitors and has no session to read. This route
- * therefore answers the digest of the waiting picture to its own sender, which is what a
- * screen needs in order to ASK for it, and the asking is the other half. <b>It is not
- * pretended otherwise and it is not half-built:</b> nothing here loosens {@link PhotoApi},
- * so today the member is told his picture arrived and is shown the picture he chose out of
- * his own browser, which is what {@code CropChooser} already holds.
+ * <li><b>THE BYTES THEMSELVES, which are one address away and deliberately not this one.</b>
+ * {@link #mine} answers WHERE they are and {@link PhotoApi#mineThatWaits} answers WITH them,
+ * and they are two routes because {@code PhotoApi.bytesOf} is the one place in this portal
+ * that reads a picture off a disk for a response and the one place {@code NOFOLLOW_LINKS} is
+ * written - a second reader would split the refusal of a symbolic link across two files. What
+ * is NOT loosened is {@link PhotoApi#photo}: a picture only a queue row holds is still not
+ * public and {@code THE_PICTURE_A_DIGEST_NAMES} is untouched, so „javan nosilac" still means
+ * exactly {@code competitor.photo_id} and {@code team.logo_id} (ADL A60).
  * <li><b>The decision.</b> Approving or refusing belongs to whoever holds
  * {@code queue:profiles} and {@link VerificationWriteApi} already does it - on approval it
  * runs {@code update competitor set photo_id = ?} and empties the queue row's own pointer,
@@ -215,19 +213,26 @@ import java.util.Optional;
  * a question going back to him rather than an entry written into a journal.
  * </ul>
  *
- * <p><b>Neither route carries a {@link RightIsNeeded}</b>, for {@link MeWriteApi}'s own
- * reason: no box anybody could tick would let one member change another's portrait. Both are
- * named in {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT}, by method and path together.
+ * <p><b>No route here carries a {@link RightIsNeeded}</b>, for {@link MeWriteApi}'s own
+ * reason: no box anybody could tick would let one member change another's portrait. All three
+ * are named in {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT}, by method and path
+ * together, and that list has a floor:
+ * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads every mapping out of
+ * {@code RequestMappingHandlerMapping} and compares the two sets exactly, so a route added
+ * without an entry fails the gate rather than going unnoticed.
  */
 @RestController
 class MePhotoApi {
 
 	private static final Logger LOG = LoggerFactory.getLogger(MePhotoApi.class);
 
-	/** This member's picture is already standing in front of a moderator. */
-	static final String A_PICTURE_ALREADY_WAITS = "aPictureAlreadyWaits";
-
-	/** Nothing arrived where the picture should have been. */
+	/**
+	 * Nothing arrived where the picture should have been, AND there was nothing to re-crop.
+	 *
+	 * <p>Since PDL 21c a send with no file is how „ili da pomerim krug da gadja drugi deo
+	 * slike" is said, so this answer narrowed rather than stayed: it is the state where a
+	 * circle arrived over nothing at all.
+	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
 	/** More bytes than {@link WhatAPictureIs#AT_MOST_BYTES}. */
@@ -246,6 +251,61 @@ class MePhotoApi {
 
 	/** The tab a portrait waits in, which is the one PDL P28a names „Profili". */
 	private static final String THE_PROFILES_TAB = "profiles";
+
+	/**
+	 * Where the picture ON THE PROFILE is asked for, which is the public route and unchanged.
+	 *
+	 * <p>Spelt the same way {@link CompetitorApi} and {@link TeamApi} spell it, because it is
+	 * the same address and PDL P28f settled the shape there: „Ruta nosi dva polja: `photo`,
+	 * adresu oblika `/api/photos/<otisak>`, i `crop` sa tri frakcije, oba `null` za clana bez
+	 * slike."
+	 */
+	private static final String A_PUBLISHED_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
+
+	/**
+	 * And where the picture that is still WAITING is asked for, which is nobody's but his.
+	 *
+	 * <p><b>The digest and not a fixed word, and that is measured rather than tidy.</b>
+	 * {@link PhotoApi} keeps every answer that carries bytes for a day (privately), and the
+	 * whole ground for that is that an address derived from CONTENT cannot come to mean
+	 * different bytes. Since PDL 21c the picture a member is waiting on may be replaced, so a
+	 * fixed address such as {@code /api/me/photo/waiting} would serve him the picture he just
+	 * overwrote for up to a day. With the digest in it, a new picture is a new address and the
+	 * day stands.
+	 */
+	private static final String MY_WAITING_PICTURE_IS_ASKED_FOR_AT = "/api/me/photo/";
+
+	/**
+	 * THE ONE ROW OF HIS THAT IS WAITING WITH A PICTURE IN IT, as a clause rather than a query.
+	 *
+	 * <p>It is a fragment because two things ask it and they must not come to ask it
+	 * differently: {@link #theOneThatWaits} reads the row in order to write, and {@link #mine}
+	 * reads the same row's picture in order to answer. Written twice, the day one of them gains
+	 * a condition is the day they disagree about what „waiting" means.
+	 *
+	 * <p><b>{@code state = 'waiting'} IS WRITTEN HERE AND CANNOT BE MEASURED HERE, AND THAT IS
+	 * SAID OUT LOUD RATHER THAN LEFT FOR A REVIEWER.</b> A mutation that loosened it to „any
+	 * state at all" leaves the file green, and the reason is not a missing case but V9:
+	 * {@code verification_decided_keeps_no_photo check (state = 'waiting' or photo_id is null)} -
+	 * read the other way round, a row whose {@code photo_id} is NOT null is necessarily still
+	 * waiting. So for PICTURES the two conditions imply each other and no fixture can separate
+	 * them, because the database refuses to hold the row that would. <b>It stays</b> because it
+	 * says what this clause means to a reader who has not got V9 open, and because it goes on
+	 * being right the day that constraint is relaxed. <b>What IS measured is the thing that
+	 * really holds it:</b> {@code MePhotoApiTest.theSchemaRefusesADecidedRowThatStillHoldsAPicture}
+	 * asks the database to write exactly that row and requires it to refuse.
+	 *
+	 * <p><b>Note that the same condition on {@link MeWriteApi}'s TEXT query is load bearing</b>,
+	 * because a decided text keeps its {@code body}: there the two halves of this tab really do
+	 * differ, which is what PDL P28a means by one row holding two sorts.
+	 *
+	 * <p>Oldest first with the key last and {@code limit 1}, which is how V9 indexes the queue
+	 * and how {@link VerificationApi} reads it.
+	 */
+	private static final String THE_ONE_OF_MINE_THAT_WAITS =
+			" from verification v where v.competitor_id = :me and v.queue = :tab"
+			+ " and v.state = 'waiting' and v.photo_id is not null"
+			+ " order by v.raised_at, v.id limit 1";
 
 	/**
 	 * The bounds V21 puts on the two positions, spelt here so a refusal can name the fault.
@@ -298,9 +358,73 @@ class MePhotoApi {
 	}
 
 	/**
-	 * @param picture the file itself. {@code required = false} so that a request that
-	 *                carried no such part is refused by this class with a sentence, rather
-	 *                than by the argument resolver with a 400 that names a part
+	 * The three fractions, under the portal's own names for them.
+	 *
+	 * <p>{@link CompetitorApi} and {@link TeamApi} both carry a record of exactly this shape and
+	 * both explain the third name: the column has been {@code crop_diameter} since V21 and the
+	 * portal's word is {@code size}. A third copy rather than one shared record is what those two
+	 * already do, and the reason holds here too - each resource owns the shape of its own answer,
+	 * and a shared record would make three contracts move together the day one of them wants a
+	 * fourth number.
+	 */
+	record Crop(BigDecimal x, BigDecimal y, BigDecimal size) {
+	}
+
+	/**
+	 * One picture as a screen needs it: an address to fetch it from, and the circle over it.
+	 *
+	 * @param photo the address, never the key. Which address depends on which picture this is,
+	 *              and that is the whole difference the two fields below carry
+	 * @param crop  the circle the member set, which V21 keeps as three fractions and which
+	 *              {@link PhotoApi} never burns into the bytes (ADL A17)
+	 */
+	record Picture(String photo, Crop crop) {
+	}
+
+	/**
+	 * WHAT THIS MEMBER'S PORTRAIT IS DOING, BOTH HALVES OF IT, and either may be nothing.
+	 *
+	 * <p><b>PDL 21 decides the two halves separately and this record is why they can be drawn
+	 * apart.</b> 21a: on the PROFILE he does not see it until it is approved. 21b, the screen
+	 * this answers: „ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u statusu
+	 * cekanja i tu vidim trenutno azuriranu sliku sa krugom." Two fields, so a screen can say
+	 * „this is what everybody sees, and this is what you sent" rather than guessing which it has.
+	 *
+	 * <p><b>Both null for a member with no picture at all</b>, which is the shape PDL P28f fixed
+	 * for {@link CompetitorApi}: „oba `null` za clana bez slike". An absent key would tell the
+	 * two states apart by their SHAPE, which is what {@code PDL.md:6258} refuses for hiding, and
+	 * there is no reason for this answer to invent a second convention.
+	 *
+	 * @param waiting  at {@code /api/me/photo/<digest>}, served by
+	 *                 {@link PhotoApi#mineThatWaits} and by nothing else. This is the field that
+	 *                 did not survive a reload before this increment: the bytes lived in the
+	 *                 browser that sent them and no route would answer them again
+	 * @param standing at {@code /api/photos/<digest>}, the public address, because a picture on
+	 *                 a profile IS published and {@link PhotoApi#photo} already serves it
+	 */
+	record MyPictures(Picture waiting, Picture standing) {
+	}
+
+	/**
+	 * The row of his that is waiting, and the picture in it, read as one row.
+	 *
+	 * <p>Both are needed by {@link #send} and reading them separately would be reading two
+	 * moments: a decision landing in between would empty the pointer under the second read.
+	 *
+	 * @param row   {@code verification.id}, which is what an overwrite REPOINTS and never
+	 *              replaces
+	 * @param photo {@code photo.id} of the picture being replaced, which is what the overwrite
+	 *              then takes away
+	 */
+	private record Waits(long row, long photo) {
+	}
+
+	/**
+	 * @param picture the file itself, and ABSENT IS A LEGAL REQUEST since PDL 21c: „ili da
+	 *                pomerim krug da gadja drugi deo slike". {@code required = false} was
+	 *                already here for a different reason - so that a request carrying no such
+	 *                part is refused by this class with a sentence rather than by the argument
+	 *                resolver with a 400 that names a part - and it now carries both
 	 * @param cropX   taken as text and parsed here, for the same reason: a number Spring
 	 *                could not bind would be a 400 nobody wrote
 	 */
@@ -319,14 +443,35 @@ class MePhotoApi {
 			return away(response);
 		}
 
-		/* ASKED BEFORE THE BYTES ARE LOOKED AT, which is the same order `MeWriteApi` keeps
-		   for its own conflict: a member whose picture is already waiting is told so without
-		   the portal hashing five megabytes first. */
-		if (thePictureThatWaits(me).isPresent()) {
-			return no(HttpStatus.CONFLICT, A_PICTURE_ALREADY_WAITS);
-		}
+		/* ASKED BEFORE THE BYTES ARE LOOKED AT, which is the order this class already kept for
+		   the refusal that used to live here: what is waiting decides whether this send opens a
+		   row or repoints one, and neither needs five megabytes hashed first.
 
-		if (picture == null || picture.isEmpty()) {
+		   HELD FOR THE LENGTH OF THIS WRITE, and that is the one line PDL 21c's boundary rests
+		   on. Without it a decision may land between this read and the repoint below, and then
+		   the repoint meets a row the moderator has just approved: V9's
+		   `verification_decided_keeps_no_photo` refuses it outright, so the member is answered
+		   500 for a request that was perfectly good. With the lock the two serialise, and in
+		   READ COMMITTED this statement re-checks its own WHERE after taking the lock - so what
+		   comes back is either a row that really is still waiting or nothing at all, and
+		   „nothing at all" is the correct answer in that case: his overwrite becomes a fresh
+		   proposal beside the decision that just happened.
+
+		   WHAT HOLDS IT, said plainly: nothing here does. The case would have to interleave two
+		   requests, which is `VerificationDecisionConcurrencyTest`'s trade and not this file's,
+		   and the SCHEMA is the floor underneath either way - the constraint above makes the bad
+		   outcome a 500 rather than a lost portrait. This is a boundary written down rather than
+		   a protection claimed. */
+		Optional<Waits> waits = theOneThatWaits(me, true);
+
+		/* A SEND WITH NO FILE IS 21c'S SECOND HALF, and it is legal exactly when there is
+		   something to move a circle over. „Ako hocu da pregazim novom ILI DA POMERIM KRUG da
+		   gadja drugi deo slike, opet se salje na verifikaciju." With nothing waiting there is no
+		   picture here to re-cut, so the sentence this class already had goes on being the right
+		   one. */
+		boolean onlyTheCircle = picture == null || picture.isEmpty();
+
+		if (onlyTheCircle && waits.isEmpty()) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -336,6 +481,21 @@ class MePhotoApi {
 
 		if (x == null || y == null || size == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_CROP_IS_NOT_A_CIRCLE);
+		}
+
+		/* AND THE CIRCLE ALONE MOVES ON THE ROW THAT IS ALREADY THERE: no second `photo` row, no
+		   second file, and the same bytes under the same digest. The digest is the content, so the
+		   address `PhotoApi.mineThatWaits` answers at does not move either, which is exactly right
+		   - the bytes a browser may have cached really are still the bytes. */
+		if (onlyTheCircle) {
+			Waits standing = waits.orElseThrow();
+
+			db.sql("update photo set crop_x = ?, crop_y = ?, crop_diameter = ? where id = ?")
+					.params(x, y, size, standing.photo())
+					.update();
+
+			return ResponseEntity.ok(new Waiting(standing.row(), theDigestOf(standing.photo()),
+					theDigestStandingOn(me)));
 		}
 
 		/* THE LENGTH IS ASKED OF THE PART BEFORE THE BYTES ARE READ INTO MEMORY. Spring has
@@ -368,24 +528,57 @@ class MePhotoApi {
 				.query(Long.class)
 				.single();
 
-		/* THE SUBJECT IS THE MEMBER'S OWN NAME AND COMES OUT OF HIS OWN ROW, which is the
-		   arrangement `MeWriteApi.queued` already measured: PDL P21 gives a member under
-		   sixteen an account his parent holds, so `account.first_name` is the parent's and
-		   `competitor.first_name` is the child's, and a card about the child's profile
-		   carries the child's name. Selected inside the statement, there is no variable in
-		   between for the other value to arrive in.
+		/* AND NOW EITHER THE ROW THAT IS THERE POINTS AT THE NEW PICTURE, OR A ROW IS OPENED.
+		   PDL 21c, the owner: „opet se salje na verifikaciju i gazi trenutan red kod
+		   verifikatora", and „Red ostaje jedan".
 
-		   `body` IS EMPTY AND THAT IS THE SCHEMA'S OWN WORD FOR IT. V9 makes the column NOT
-		   NULL and says it „may be blank - the same shape `competitor.bio` already has", for
-		   „a tab that proposes nothing". A picture proposes a picture; what the moderator
-		   looks at is `photo_id`, and a sentence invented here would be the portal writing
-		   into a field the member never filled in. */
-		long waiting = db.sql("insert into verification (queue, competitor_id, subject, body,"
-						+ " photo_id) select ?, c.id, c.first_name || ' ' || c.last_name, '', ?"
-						+ " from competitor c where c.id = ? returning id")
-				.params(THE_PROFILES_TAB, photo, me)
-				.query(Long.class)
-				.single();
+		   REPOINTED AND NOT REPLACED, and the choice is the owner's own boundary rather than
+		   taste. He was told what overwriting costs and accepted it in these words: „ako clan
+		   pregazi sliku dok je moderator gleda, RED MU SE PROMENI POD RUKOM. Po pravilu da red
+		   ostaje jedan to je prihvatljivo, ali se zna i zapisano je." Measured against the
+		   schema, that sentence is true of one of the two shapes and not the other:
+
+		     - repointed, the row keeps its `id` and its `raised_at`, and V28's
+		       `verification_lock` row keeps pointing at it - so a moderator who is holding it
+		       goes on holding it and the picture under his hand changes, which is the sentence;
+		     - deleted and opened again, the row VANISHES from under him and the hold goes with
+		       it, because `verification_lock_verification_fk` is ON DELETE CASCADE. That is a
+		       different thing, and no decision describes it.
+
+		   Measured, both directions, on a real PostgreSQL: the lock count is 1 before, 1 after a
+		   repoint, and 0 after a delete.
+
+		   AND HIS PLACE IN THE QUEUE IS KEPT, which follows from the same choice and is named so
+		   nobody reads it as an accident: `raised_at` is untouched, so a member who moves the
+		   circle ten times does not go to the back of a queue V9 orders by that column. */
+		long waiting;
+
+		if (waits.isPresent()) {
+			db.sql("update verification set photo_id = ? where id = ?")
+					.params(photo, waits.orElseThrow().row())
+					.update();
+
+			waiting = waits.orElseThrow().row();
+		} else {
+			/* THE SUBJECT IS THE MEMBER'S OWN NAME AND COMES OUT OF HIS OWN ROW, which is the
+			   arrangement `MeWriteApi.queued` already measured: PDL P21 gives a member under
+			   sixteen an account his parent holds, so `account.first_name` is the parent's and
+			   `competitor.first_name` is the child's, and a card about the child's profile
+			   carries the child's name. Selected inside the statement, there is no variable in
+			   between for the other value to arrive in.
+
+			   `body` IS EMPTY AND THAT IS THE SCHEMA'S OWN WORD FOR IT. V9 makes the column NOT
+			   NULL and says it „may be blank - the same shape `competitor.bio` already has", for
+			   „a tab that proposes nothing". A picture proposes a picture; what the moderator
+			   looks at is `photo_id`, and a sentence invented here would be the portal writing
+			   into a field the member never filled in. */
+			waiting = db.sql("insert into verification (queue, competitor_id, subject, body,"
+							+ " photo_id) select ?, c.id, c.first_name || ' ' || c.last_name, '', ?"
+							+ " from competitor c where c.id = ? returning id")
+					.params(THE_PROFILES_TAB, photo, me)
+					.query(Long.class)
+					.single();
+		}
 
 		/* AND THE FILE, UNDER THE NAME THE DATABASE JUST ISSUED. `String.valueOf` of a
 		   `long` is the same thing `PhotoApi` resolves when it opens one, and it is the whole
@@ -409,7 +602,134 @@ class MePhotoApi {
 		Files.write(folder.resolve(String.valueOf(photo)), bytes, StandardOpenOption.CREATE_NEW,
 				StandardOpenOption.WRITE);
 
+		/* AND ONLY NOW DOES THE PICTURE THAT WAS OVERWRITTEN GO. The order is not a preference
+		   and it was measured in both directions on a real PostgreSQL:
+
+		     - THE POINTER MOVES FIRST, ALWAYS. Deleting the `photo` row while the queue row still
+		       pointed at it is not refused - `verification_photo_fk` is ON DELETE SET NULL (V9) -
+		       and what it leaves behind is worse than a refusal would be. The row SURVIVES as
+		       `state = 'waiting', photo_id = null`, which is exactly the shape of a BIOGRAPHY item
+		       (`MeWriteApi.theTextThatWaits` asks for `photo_id is null`). Measured: after such a
+		       delete this class's own query answers 0 rows and `MeWriteApi`'s answers 1. So the
+		       moderator gets a card proposing a text that is empty, and the member's biography is
+		       locked behind `MeWriteApi`'s own 409 by a row nobody meant to write.
+		     - AND THE FILE GOES AFTER THE NEW ONE IS WRITTEN, which is why this is below
+		       `Files.write` and not above it. Written first, a disk that then refused the new file
+		       would roll the rows back onto a picture whose bytes had already gone.
+
+		   WHAT THIS COSTS, named rather than discovered: the delete of a FILE is not part of a
+		   transaction, so a commit that failed after this line leaves the row pointing at bytes
+		   that are gone. That is not a new state - it is the one `remove` already accepts by the
+		   same reasoning, and `PhotoApi` answers it exactly as it answers a digest nobody wrote
+		   and logs the fault for whoever runs the server.
+
+		   AND THE ROW IS DELETED WITHOUT ASKING WHETHER ANYTHING ELSE HOLDS IT, which is a
+		   boundary and not an oversight. A waiting picture is held by its queue row alone: every
+		   send INSERTS its own `photo` row, and an approval moves the picture onto
+		   `competitor.photo_id` while emptying the queue row's pointer
+		   (`VerificationWriteApi.approve`), so the two pointers never name one row. The pointer
+		   was moved off it one statement ago, and the `for update` above is what stops a decision
+		   from putting it on a profile in between. Written as a condition it would be a branch no
+		   case could enter, which the gate's hundred per cent of branches refuses. */
+		if (waits.isPresent()) {
+			long overwritten = waits.orElseThrow().photo();
+
+			db.sql("delete from photo where id = ?").param(overwritten).update();
+
+			/* deleteIfExists AND NOT delete, for `remove`'s own reason: a row whose file has
+			   already gone is a state `PhotoApi` names and serves nothing for, and refusing to
+			   finish an overwrite because of it would leave the member unable to replace a
+			   picture nobody can see anyway. The fault is told to the operator, not to him. */
+			if (!Files.deleteIfExists(folder.resolve(String.valueOf(overwritten)))) {
+				LOG.warn("the file of photo {} was already gone when its member overwrote it",
+						overwritten);
+			}
+		}
+
 		return ResponseEntity.ok(new Waiting(waiting, digest, theDigestStandingOn(me)));
+	}
+
+	/**
+	 * WHAT THIS MEMBER'S PORTRAIT IS DOING, WHICH IS THE ANSWER A RELOAD NEEDS.
+	 *
+	 * <p><b>PDL 21b, owner, 27.09.2026:</b> „Neka ta recenica stoji u segmentu da se salje slika.
+	 * Tako da ukoliko udjem da posaljem ponovo, vidim da je trenutno slika u statusu cekanja i tu
+	 * vidim trenutno azuriranu sliku sa krugom."
+	 *
+	 * <p><b>WHAT WAS MEASURED BEFORE THIS ROUTE EXISTED, because it is the whole reason it
+	 * does.</b> A waiting picture reached the screen only in the visit that SENT it: the bytes
+	 * were in that browser and the mark beside them was an overlay in front of the session
+	 * (`session/context.ts`). After a reload nothing answered either. {@link #send} carried the
+	 * digest of the waiting picture from the day it was written, and no route would serve those
+	 * bytes - so the field was a name for something unreachable. This route and
+	 * {@link PhotoApi#mineThatWaits} are the two halves that make it reachable.
+	 *
+	 * <p><b>IT IS A READ OF ONE MEMBER'S OWN ROW AND THE SESSION IS THE WHOLE OF ITS GUARD.</b>
+	 * There is no path variable naming a member, no key of a queue row, and therefore no shape in
+	 * which this route can answer about somebody else - which is what ADL A60's second amendment
+	 * of 27.09.2026 means by „cuvar uske rute po konstrukciji sluzi jednom pozivaocu nad jednim
+	 * redom, pa se ne moze slucajno prosiriti". An account with no member behind it (V23, owner
+	 * 14.09.2026) is answered as {@link #send} and {@link #remove} answer it: nothing at all.
+	 *
+	 * <p><b>ONE STATEMENT, and the clause that says „waiting" is
+	 * {@link #THE_ONE_OF_MINE_THAT_WAITS} rather than a second copy of it.</b> Read as two
+	 * queries this would be two moments - a decision landing in between would let the waiting
+	 * picture be answered after it had been approved - and read with the clause written out again
+	 * it would be a second home for what „waiting" means.
+	 *
+	 * <p><b>The two addresses are DIFFERENT and that is the point of answering both.</b> The
+	 * standing picture is public and lives at {@code /api/photos/<digest>}; the waiting one is
+	 * not public at all and lives at {@code /api/me/photo/<digest>}, which is nobody's address
+	 * but his. A screen that got one field could not draw the sentence 21b asks for.
+	 *
+	 * @param response asked for so that an account these addresses are not for goes down the road
+	 *                 an address that is not there takes, exactly as the two writes here do
+	 */
+	@GetMapping("/api/me/photo")
+	ResponseEntity<?> mine(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			HttpServletResponse response) throws IOException {
+
+		Long me = memberOfAccount.competitorId(asking.account());
+
+		if (me == null) {
+			return away(response);
+		}
+
+		return ResponseEntity.ok(db
+				.sql("select waiting.digest, waiting.crop_x, waiting.crop_y,"
+						+ " waiting.crop_diameter, standing.digest, standing.crop_x,"
+						+ " standing.crop_y, standing.crop_diameter"
+						+ " from competitor c"
+						+ " left join photo standing on standing.id = c.photo_id"
+						+ " left join photo waiting on waiting.id = (select v.photo_id"
+						+ THE_ONE_OF_MINE_THAT_WAITS + ")"
+						+ " where c.id = :me")
+				.param("me", me)
+				.param("tab", THE_PROFILES_TAB)
+				.query((row, one) -> new MyPictures(
+						pictureAt(MY_WAITING_PICTURE_IS_ASKED_FOR_AT, row.getString(1),
+								row.getBigDecimal(2), row.getBigDecimal(3), row.getBigDecimal(4)),
+						pictureAt(A_PUBLISHED_PICTURE_IS_ASKED_FOR_AT, row.getString(5),
+								row.getBigDecimal(6), row.getBigDecimal(7), row.getBigDecimal(8))))
+				/* ONE ROW, AND IT IS HIS. `account.competitor_id` is ON DELETE RESTRICT (V23) -
+				   „the member cannot be deleted while this column still names him" - so a value
+				   that is not null names a row that is there, which is the reasoning `MeApi`
+				   writes out for the identical read. */
+				.single());
+	}
+
+	/**
+	 * One picture as an address and a circle, or nothing where the join found no row.
+	 *
+	 * @param at     the prefix, which is what tells the public address from the member's own
+	 * @param digest null exactly when the {@code left join} matched nothing, so it is the one
+	 *               thing asked. The three fractions are NOT NULL on a row that exists (V21), so
+	 *               there is no arrangement in which a digest arrived and a fraction did not
+	 */
+	private static Picture pictureAt(String at, String digest, BigDecimal x, BigDecimal y,
+			BigDecimal size) {
+
+		return digest == null ? null : new Picture(at + digest, new Crop(x, y, size));
 	}
 
 	/**
@@ -474,7 +794,14 @@ class MePhotoApi {
 			}
 		}
 
-		return ResponseEntity.ok(new Removed(thePictureThatWaits(me).orElse(null)));
+		/* READ WITHOUT THE LOCK `send` TAKES, and that is deliberate rather than an omission.
+		   This read only REPORTS what is waiting; nothing here writes to that row, so there is
+		   nothing for a concurrent decision to spoil. Taking the lock anyway would have this
+		   route and `send` acquire the same two rows in opposite orders, which is how two
+		   requests of one member deadlock rather than queue. */
+		return ResponseEntity.ok(new Removed(theOneThatWaits(me, false)
+				.map(Waits::row)
+				.orElse(null)));
 	}
 
 	/**
@@ -488,48 +815,48 @@ class MePhotoApi {
 	}
 
 	/**
-	 * THIS MEMBER'S PICTURE STANDING IN THE QUEUE UNDECIDED, OR NOTHING.
+	 * THIS MEMBER'S ROW STANDING IN THE QUEUE UNDECIDED WITH A PICTURE IN IT, OR NOTHING.
 	 *
-	 * <p>The mirror of {@link MeWriteApi}'s own {@code theTextThatWaits}, told apart by the
-	 * one thing the schema offers: {@code photo_id is not null} where that one asks for
-	 * null. PDL P28a, 06.08.2026 puts both in one tab - „Profili: trkacke biografije i
-	 * profilne slike" - and „razlikuje se samo sta moderator pise, jer se slika menja po
-	 * instrukciji a tekst se pise ponovo".
+	 * <p>The mirror of {@link MeWriteApi}'s own {@code theTextThatWaits}, told apart by the one
+	 * thing the schema offers: {@code photo_id is not null} where that one asks for null. PDL
+	 * P28a, 06.08.2026 puts both in one tab - „Profili: trkacke biografije i profilne slike" -
+	 * and „razlikuje se samo sta moderator pise, jer se slika menja po instrukciji a tekst se
+	 * pise ponovo". What the clause says and why every word of it is there is on
+	 * {@link #THE_ONE_OF_MINE_THAT_WAITS}, which is its one home.
 	 *
-	 * <p><b>{@code state = 'waiting'} IS WRITTEN HERE AND CANNOT BE MEASURED HERE, AND THAT
-	 * IS SAID OUT LOUD RATHER THAN LEFT FOR A REVIEWER.</b> A mutation that loosened it to
-	 * „any state at all" was run before this was opened and the whole file stayed green, 31
-	 * of 31. The reason is not a missing case but V9:
-	 * {@code verification_decided_keeps_no_photo check (state = 'waiting' or photo_id is
-	 * null)} - read the other way round, a row whose {@code photo_id} is NOT null is
-	 * necessarily still waiting. So for PICTURES the condition below is implied by the one
-	 * beside it, and no fixture can separate them, because the database refuses to hold the
-	 * row that would.
+	 * <p><b>Both columns come back and that is what PDL 21c needs</b>: the key of the ROW,
+	 * because an overwrite repoints it and never replaces it, and the key of the PICTURE,
+	 * because the overwrite then takes that one away. Read as one row rather than two reads, so
+	 * a decision cannot land between them.
 	 *
-	 * <p><b>It stays, for two reasons that are not habit.</b> It says what this query means
-	 * to a reader who has not got V9 open, and it goes on being right the day that constraint
-	 * is relaxed - at which point the condition stops being redundant and starts being the
-	 * only thing keeping a decided picture out of this answer. <b>What IS measured is the
-	 * thing that really holds it:</b>
-	 * {@code MePhotoApiTest.theSchemaRefusesADecidedRowThatStillHoldsAPicture} asks the
-	 * database to write exactly that row and requires it to refuse. That is the floor under
-	 * this line, and it is a case about behaviour rather than a case about a string.
-	 *
-	 * <p><b>Note that the same condition on {@link MeWriteApi}'s TEXT query is load bearing
-	 * and is not redundant at all</b>, because a decided text keeps its {@code body}: there
-	 * the two halves of this tab really do differ, which is what PDL P28a means by one row
-	 * holding two sorts.
-	 *
-	 * <p>Oldest first with the key last and {@code limit 1}, which is how V9 indexes the
-	 * queue and how {@link VerificationApi} reads it.
+	 * @param holdIt whether the row is locked for the length of the caller's transaction.
+	 *               {@link #send} needs it because it WRITES to the row it just read;
+	 *               {@link #remove} must not take it, because it only reports what is waiting
+	 *               and would otherwise take these two rows in the opposite order from
+	 *               {@link #send} and deadlock against it
 	 */
-	private Optional<Long> thePictureThatWaits(long me) {
-		return db.sql("select id from verification where competitor_id = ? and queue = ?"
-						+ " and state = 'waiting' and photo_id is not null"
-						+ " order by raised_at, id limit 1")
-				.params(me, THE_PROFILES_TAB)
-				.query(Long.class)
+	private Optional<Waits> theOneThatWaits(long me, boolean holdIt) {
+		return db
+				.sql("select v.id, v.photo_id" + THE_ONE_OF_MINE_THAT_WAITS
+						+ (holdIt ? " for update" : ""))
+				.param("me", me)
+				.param("tab", THE_PROFILES_TAB)
+				.query((row, one) -> new Waits(row.getLong(1), row.getLong(2)))
 				.optional();
+	}
+
+	/**
+	 * The digest of one picture by its key, which is the address it is asked for at.
+	 *
+	 * <p>Read back rather than carried down from the crop that was just written: what the answer
+	 * has to name is the row as it now stands, and a value held in a variable across an
+	 * {@code update} is a value nobody read.
+	 */
+	private String theDigestOf(long photo) {
+		return db.sql("select digest from photo where id = ?")
+				.param(photo)
+				.query(String.class)
+				.single();
 	}
 
 	/**
