@@ -1,9 +1,8 @@
-import { Fragment } from 'react'
 import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
-import { countryName } from '../../data/countryName'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
+import { CopyField } from '../../components/CopyField'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
 import { bestOfficialSeason } from '../../data/derive'
@@ -13,6 +12,7 @@ import { useResults } from '../../data/useResource'
 import {
   ipsPayload,
   methodsFor,
+  PAYPAL_ADDRESS,
   paysInDinars,
   paymentPurpose,
   paymentReference,
@@ -30,7 +30,7 @@ import {
   pricedInBoth,
 } from '../../data/priceList'
 import { combineResources, usePricing, useTeams } from '../../data/useResource'
-import { money } from '../../i18n/format'
+import { formatNumber, money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useMemberScreen } from './memberScreen'
 import './Member.css'
@@ -176,6 +176,12 @@ export function Membership() {
      inside it, so this screen is the one that changes most with the date. It
      reads the same clock as everything else (src/clock). */
   const today = useToday()
+
+  /* The referral link, built here rather than where it is drawn: it needs only the
+     locale and the session's own code, neither of which waits on the resources below,
+     and the copy button needs the exact same string the paragraph prints. Built twice
+     it could say two different things; built once, both read the one variable. */
+  const referralLink = `${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`
 
   if (who.memberNumber === null) {
     return who.instead
@@ -361,6 +367,44 @@ export function Membership() {
            31.07.2026). */
         const purpose = paymentPurpose(nextSeason)
         const reference = paymentReference(nextSeason, memberNumber)
+        /* WHAT A MEMBER ABROAD ACTUALLY SENDS THROUGH PAYPAL, fee included (owner,
+           27.09.2026: „cena ostaje 35, clan salje 38, a taksa se vidi kao svoj red").
+           The same `due` row the slip above already quotes, plus the same processing
+           fee the sentence above the slip already quotes to everybody - never the
+           junior row: nothing on the record can tell this member apart from an adult
+           (the 13.09.2026 boundary the slip already lives with, `juniorInSeason`
+           comment above), so PayPal reads the one price this screen can actually
+           stand behind, exactly as the slip does.
+
+           A list of none or one, like every other amount on this screen: `due` is
+           empty where the served price list has a gap, so an answer with a hole in it
+           draws no PayPal amount rather than one built around a figure nobody sent -
+           the same rule `membership.renew` above is now held to as well. */
+        const paypalTotal = due.flatMap((row) => processing.map((fee) => row.eur + fee.eur))
+
+        /* WHAT ACTUALLY FOLLOWS THE PROMISE BELOW, READ OFF THE SAME TWO THINGS THE SLIP
+           AND THE PAYPAL BLOCK THEMSELVES DRAW FROM - not off `due` alone, which is the
+           fault found three rounds running on PR 385, once per axis: the country (round
+           one), an empty period (round two), and now a served list missing only the fee
+           row (round three).
+
+           `slipDrawn` is exactly the condition the slip's own walk is nested inside
+           below (`slipDrawn && due.map(...)`), read here once rather than re-derived a
+           second time at the sentence above it, so the two cannot drift.
+
+           `paypalAmountDrawn` mirrors what the PayPal block's own `paypalTotal.map`
+           needs in order to put anything under the "PayPal" heading - the method has to
+           apply to this country AND the total has to hold a value. It is deliberately
+           NOT what gates the block itself: the heading and its note stay keyed on
+           `methods.includes('paypal')` alone, further down, so a member abroad still
+           reads them even on a day the total is empty - only the sentence above needs to
+           know whether an amount is coming. `paypalTotal` is empty whenever EITHER `due`
+           OR `processing` is (it is built from both, just above), which is exactly the
+           gap this round closes: a list with every period intact and no fee row leaves
+           `due` non-empty and `processing` empty, so the amount never arrives although
+           the old, `due`-only gate could not tell. */
+        const slipDrawn = methods.includes('ips') && due.length > 0
+        const paypalAmountDrawn = methods.includes('paypal') && paypalTotal.length > 0
 
         return (
           <div className="member">
@@ -461,6 +505,26 @@ export function Membership() {
                 <>
                   <p className="member__note">{t('membership.renewalOpen')}</p>
 
+                  {/* THESE TWO RADIOS ARE A DRAFT, NOT DECORATION, and this comment exists
+                      because they were almost read as the opposite on 26.09.2026 - counted
+                      among "controls that do nothing" alongside the Renew button below,
+                      since neither is wired to a route today.
+
+                      They are not the same case. PDL.md §9 ("Izbor kategorije je clanov unos
+                      do 1.1. u 10:00, a portal ga primenjuje na zamrzavanju"), owner,
+                      26.09.2026: „Clan moze da stiklira... sta god hoce sve do zamrzavanja
+                      sezone 1.1. u 10 ujutru. Dotle zavisno od toga sta izabere, on se
+                      prikazuje u adekvatnim porecima za narednu sezonu." And, sharper than
+                      first drafted: „racunaj da clan bira ono sto ZELI, ali ga superadmin /
+                      moderator verifikacijom necega moze gurnuti u starosnu kategoriju ako
+                      odobri rezultat kojim prelaz 12 bodova" - what is kept is the WISH, not
+                      the category, because the category is derived from it and a right the
+                      server checks.
+
+                      So a route for this choice is coming, as its own increment right after
+                      this one. Until it lands, these stay exactly as they render today:
+                      unwired, but blueprint rather than dead weight. Do not remove them on
+                      the strength of the Renew button's fate below - ask first. */}
                   <fieldset className="renewal">
                     <legend>{t('membership.chooseCategory', { season: nextSeason })}</legend>
 
@@ -501,9 +565,45 @@ export function Membership() {
                     </p>
                   </fieldset>
 
-                  <button type="button" className="button button--primary">
-                    {t('membership.renew', { season: nextSeason })}
-                  </button>
+                  {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026. The button had
+                      no `onClick`, no enclosing `<form>` and no route to reach: renewing has
+                      never been the member's own action on this portal, paying is, and a
+                      moderator is the one who records that a payment arrived
+                      (`PaymentApi`, `@RightIsNeeded("queue:payments")`) - the member is never
+                      signed in to do it himself. A control promising an action that does not
+                      exist here is worse than none (PDL.md:1659, owner: „Kontrola koja ništa
+                      ne radi je gora nego da je nema"), so this says what actually happens
+                      next instead of offering a press that went nowhere.
+
+                      ONLY WHERE THE DATA IT POINTS AT REALLY FOLLOWS, since 27.09.2026
+                      (review, PR 385). It read unconditionally until then, and it promises in
+                      words: „Podatke za uplatu vidiš u nastavku." What follows two screens down
+                      used to be the slip alone, drawn only for `methods.includes('ips')`, so a
+                      member abroad met this sentence and then a PayPal heading with no
+                      recipient, no account, no amount and no reference under it.
+
+                      GATED ON WHAT IS ACTUALLY DRAWN BELOW, since round three of this same
+                      review (27.09.2026) - and not on `due.length > 0` alone, which is what
+                      round two left it on. Whichever of the two ways to pay this member has,
+                      real data was meant to follow the sentence either way - the slip for
+                      `methods.includes('ips')`, the PayPal address/amount/note for
+                      `methods.includes('paypal')` - and `methodsFor` never answers with neither
+                      (`data/paymentQr.ts`). But `due` alone only ever asked the slip's half of
+                      that question: the PayPal amount is built from `due` AND `processing`
+                      together (`paypalTotal`, above), so a served list with every period intact
+                      and no fee row left `due` non-empty, the sentence drawn, and PayPal's own
+                      amount, address and reference empty underneath it - the same fault the
+                      first two rounds found (country, then an empty period), on a third axis
+                      neither of them measured. This is still the one fault the comment above
+                      already names for a control that does nothing (PDL.md:1659): a sentence
+                      pointing at data that is not there is worse than no sentence. `slipDrawn`
+                      and `paypalAmountDrawn` (above) are read off the exact values the slip and
+                      the PayPal block themselves draw from, not a fourth copy of the question,
+                      so the sentence cannot drift from what actually follows it on whatever
+                      axis comes next either. */}
+                  {(slipDrawn || paypalAmountDrawn) && (
+                    <p className="member__note">{t('membership.renew')}</p>
+                  )}
 
                   {/* The slip belongs to renewing, not to a screen of its own: the
                       member has just chosen a category and the next thing they need
@@ -514,13 +614,6 @@ export function Membership() {
                       (owner, 30.07.2026). The line above about membership not
                       being on sale is the one September before the launch, and
                       not the day the list ran out. */}
-                  {/* Which ways of paying this member is offered, and why. It
-                      belongs to the ways and not to the slip: a member abroad
-                      sees no slip at all and still needs to know that PayPal and
-                      a card are what their country gets. */}
-                  <p className="member__note">
-                    {t('membership.byCountry', { country: countryName(myCountry) })}
-                  </p>
 
                   {/* The slip itself, and only where it can be paid. PDL P8,
                       owner 31.07.2026: „QR kod postoji samo za uplate iz Srbije.
@@ -528,8 +621,10 @@ export function Membership() {
                       Only the drawn code was hidden, so a member abroad still got
                       the heading, the association's dinar account, the reference
                       and an amount, which is the whole of the slip and the very
-                      route that decision removed. The terms say the same in
-                      writing: outside Serbia it is PayPal or a card. */}
+                      route that decision removed. The sentence that used to say so in
+                      writing (byCountry) is gone since 26.09.2026, owner: „Načini plaćanja
+                      zavise od države na tvom profilu (Srbija). obriši ovu liniju" - what
+                      abroad gets instead is said beside PayPal further down. */}
                   {/* AND ONLY WHERE THERE IS AN AMOUNT TO PUT ON IT, which is the walk
                       of the list of none or one. A slip is four facts and a sum, and the
                       one thing a bank cannot do without is the sum, so an answer holding
@@ -538,100 +633,152 @@ export function Membership() {
                       into it: „a member abroad sees no slip" and „there is no price to
                       put on one" are two different reasons, and one condition covering
                       both would let a case pass for the wrong one. */}
-                  {methods.includes('ips') &&
+                  {/* ONE WALK AND NOT TWO, since 26.09.2026 - the written slip and the QR
+                      code used to be two separate `due.map` calls back to back, paired only
+                      by DOM position, which holds while `due` never carries more than one
+                      row (it does not: `PriceListRowsTest` on the server) but would put row
+                      one's text beside row two's code the day it ever did. A single `.map`
+                      over `row` makes the written half and the drawn half of the SAME row
+                      one unit, so the pairing cannot come apart. It is also what „sa desne
+                      strane u nivou detalja za uplatu" (owner, 26.09.2026) asks for: the two
+                      are one slip in two forms, laid out as a pair rather than a stack
+                      (Member.css, `.pay__slip`, two columns from `51.25em`, one below
+                      `700px`... one column). */}
+                  {slipDrawn &&
                     due.map((row) => (
-                    <Fragment key={row.key}>
-                  <h3 className="profile__section">{t('membership.payNow')}</h3>
+                    <div className="pay__slip" key={row.key}>
+                      <div className="pay__slipText">
+                        <h3 className="profile__section">{t('membership.payNow')}</h3>
 
-                  {/* The same four facts the code carries, in writing, because a
-                      code is no use to somebody typing a payment into their bank
-                      on a telephone they are also holding the code on (owner,
-                      31.07.2026). The reference is what the statement is
-                      reconciled by, so it is called out under them. */}
-                  <dl className="pay__details">
-                    <dt>{t('membership.toWhom')}</dt>
-                    <dd>
-                      {RECIPIENT_NAME}
-                      <span className="pay__seat">{RECIPIENT_ADDRESS}</span>
-                    </dd>
-                    <dt>{t('membership.account')}</dt>
-                    <dd>{RECIPIENT_ACCOUNT}</dd>
-                    <dt>{t('membership.reference')}</dt>
-                    <dd>
-                      <strong>{reference}</strong>
-                    </dd>
-                    <dt>{t('membership.purposeLabel')}</dt>
-                    <dd>{purpose}</dd>
-                    {/* The amount, which this list did not have at all. It exists
-                        for somebody typing the payment into their bank by hand,
-                        and the one thing a bank cannot do without is the sum. A
-                        junior member had it worse than nobody: the only figure
-                        they could read on this screen was the grown one, and the
-                        right one was inside the code, where only a camera
-                        reaches. */}
-                    <dt>{t('membership.amountLabel')}</dt>
-                    <dd>
-                      <strong>{inTheirCurrency(myCountry, row, locale)}</strong>
-                    </dd>
-                  </dl>
+                        {/* The same four facts the code carries, in writing, because a
+                            code is no use to somebody typing a payment into their bank
+                            on a telephone they are also holding the code on (owner,
+                            31.07.2026). The reference is what the statement is
+                            reconciled by, so it is called out under them. */}
+                        <dl className="pay__details">
+                          <dt>{t('membership.toWhom')}</dt>
+                          <dd>
+                            {RECIPIENT_NAME}
+                            <span className="pay__seat">{RECIPIENT_ADDRESS}</span>
+                          </dd>
+                          <dt>{t('membership.account')}</dt>
+                          <dd>{RECIPIENT_ACCOUNT}</dd>
+                          <dt>{t('membership.reference')}</dt>
+                          <dd>
+                            <strong>{reference}</strong>
+                          </dd>
+                          <dt>{t('membership.purposeLabel')}</dt>
+                          <dd>{purpose}</dd>
+                          {/* The amount, which this list did not have at all. It exists
+                              for somebody typing the payment into their bank by hand,
+                              and the one thing a bank cannot do without is the sum. A
+                              junior member had it worse than nobody: the only figure
+                              they could read on this screen was the grown one, and the
+                              right one was inside the code, where only a camera
+                              reaches. */}
+                          <dt>{t('membership.amountLabel')}</dt>
+                          <dd>
+                            <strong>{inTheirCurrency(myCountry, row, locale)}</strong>
+                          </dd>
+                        </dl>
 
-                  <p className="member__note">{t('membership.referenceNote')}</p>
-                    </Fragment>
-                    ))}
+                        <p className="member__note">{t('membership.referenceNote')}</p>
+                      </div>
 
-                  {/* Every way of paying is one way of doing what the slip
-                      above is for, so they sit under it rather than beside
-                      it. As third level headings they read as four more
-                      sections of the renewal, which they are not. */}
-                  {/* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is
-                      the sharpest end of the whole increment. `PricingWriteApi` names it
-                      in its own heading: while this read the bundled constant, an
-                      administrator who raised the fee raised what the next payment was
-                      BOOKED at and left the code asking for the old figure - so a member
-                      scanned a request for one sum and was recorded as owing another. */}
-                  {methods.includes('ips') &&
-                    due.map((row) => (
-                    <div className="pay" key={row.key}>
-                      <h4>{t('membership.ips')}</h4>
-                      <p className="member__note">{t('membership.ipsNote')}</p>
-                      <div className="pay__code">
-                        <QrCode
-                          text={ipsPayload({
-                            account: RECIPIENT_ACCOUNT,
-                            recipient: RECIPIENT,
-                            amountRsd: row.rsd,
-                            purpose,
-                            reference,
-                          })}
-                          label={t('membership.ipsQrLabel')}
-                        />
-                        <details>
-                          <summary>{t('membership.showPayload')}</summary>
-                          <pre className="pay__payload">
-                            {ipsPayload({
+                      {/* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is
+                          the sharpest end of the whole increment. `PricingWriteApi` names it
+                          in its own heading: while this read the bundled constant, an
+                          administrator who raised the fee raised what the next payment was
+                          BOOKED at and left the code asking for the old figure - so a member
+                          scanned a request for one sum and was recorded as owing another. */}
+                      <div className="pay">
+                        <h4>{t('membership.ips')}</h4>
+                        <p className="member__note">{t('membership.ipsNote')}</p>
+                        <div className="pay__code">
+                          <QrCode
+                            text={ipsPayload({
                               account: RECIPIENT_ACCOUNT,
                               recipient: RECIPIENT,
                               amountRsd: row.rsd,
                               purpose,
                               reference,
                             })}
-                          </pre>
-                        </details>
+                            label={t('membership.ipsQrLabel')}
+                          />
+                        </div>
                       </div>
                     </div>
                     ))}
 
-                  {methods.includes('card') && (
-                    <div className="pay">
-                      <h4>{t('membership.card')}</h4>
-                      <p className="member__note">{t('membership.cardNote')}</p>
-                    </div>
-                  )}
-
+                  {/* CARD LEFT, since 26.09.2026 (PDL.md:1659). No provider was ever chosen
+                      (`membership.cardNote` said so in as many words), so this was a heading
+                      and a note and nothing a member could act on - the owner is sending a
+                      real PayPal account for payment from abroad instead. `methodsFor`
+                      (data/paymentQr.ts) no longer offers `'card'` to anybody, Serbia
+                      included, where it sat beside the slip for the same reason: a way to
+                      pay that was never actually built. */}
                   {methods.includes('paypal') && (
                     <div className="pay">
                       <h4>{t('membership.paypal')}</h4>
                       <p className="member__note">{t('membership.paypalNote')}</p>
+
+                      {/* LAYER 1 OF „PLAĆANJE IZ INOSTRANSTVA: PAYPAL" (owner, 27.09.2026):
+                          the address, the fee-inclusive amount and the note, written out to
+                          be copied - it needs nothing PayPal might refuse, and works from the
+                          first day. Layer 2 is a link that would carry these three as one
+                          press (`paypalPaymentLink`, data/paymentQr.ts); it is prepared and
+                          not drawn here, because whether the owner's own account still takes
+                          PayPal's classic hosted button is a fact about PayPal's side this
+                          portal cannot measure, and he is trying it on his own account first.
+
+                          AND ONLY WHERE THERE IS AN AMOUNT TO PUT ON IT, the same walk of the
+                          list of none or one the slip above is held to, for the same reason:
+                          a gap in the served price list is a state this side cannot rule out,
+                          and an address with no amount beside it is an instruction with a
+                          hole in it. */}
+                      {paypalTotal.map((amount) => (
+                        <div className="pay__slipText" key={amount}>
+                          <dl className="pay__details">
+                            <dt>{t('membership.toWhom')}</dt>
+                            <dd>{RECIPIENT_NAME}</dd>
+                          </dl>
+
+                          <CopyField
+                            label={t('membership.paypalAddressLabel')}
+                            value={PAYPAL_ADDRESS}
+                            copyButtonLabel={t('membership.paypalCopyAddress')}
+                            copiedMessage={t('membership.paypalAddressCopied')}
+                            failedMessage={t('membership.paypalAddressCopyFailed')}
+                          />
+
+                          {/* Two decimals always, the way a currency amount is written and
+                              not the way `inTheirCurrency` rounds a whole number for
+                              reading: this figure is typed into a PayPal amount field
+                              rather than read off a sentence, so it is the same shape the
+                              QR payload already forces on the Serbian figure
+                              (`ipsAmount`, data/paymentQr.ts). */}
+                          <CopyField
+                            label={t('membership.paypalAmountLabel')}
+                            value={formatNumber(amount, locale, 2)}
+                            copyButtonLabel={t('membership.paypalCopyAmount')}
+                            copiedMessage={t('membership.paypalAmountCopied')}
+                            failedMessage={t('membership.paypalAmountCopyFailed')}
+                          />
+
+                          {/* The same reference the Serbian slip uses (`paymentReference`,
+                              data/paymentQr.ts) and not a second computation of it: the
+                              owner's own words for this decision were „isti oblik kao poziv
+                              na broj za Srbiju", and reading the one variable both screens
+                              already hold is what keeps the two from drifting apart. */}
+                          <CopyField
+                            label={t('membership.paypalNoteLabel')}
+                            value={reference}
+                            copyButtonLabel={t('membership.paypalCopyNote')}
+                            copiedMessage={t('membership.paypalNoteCopied')}
+                            failedMessage={t('membership.paypalNoteCopyFailed')}
+                          />
+                        </div>
+                      ))}
                     </div>
                   )}
 
@@ -655,11 +802,16 @@ export function Membership() {
                   ? t('membership.transferOpen', { season: nextSeason })
                   : t('membership.transferShut')}
               </p>
-              {windowOpen && (
-                <button type="button" className="button button--secondary">
-                  {t('membership.askToJoin')}
-                </button>
-              )}
+              {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026, and for the same
+                  reason as the Renew button above (PDL.md:1659). This one had no route in
+                  EITHER direction: `POST /api/teams` (`TeamWriteApi`) proposes a brand new
+                  team, not joining one that exists, and nothing on the backend writes
+                  `team_application` or `team_invitation` at all - `GET /api/me/applications`
+                  (`MyApplicationsApi`) only reads them, and no frontend screen calls even
+                  that yet. So joining a team is not a member's action on the portal today,
+                  from neither side of it, and the sentence says what is actually true rather
+                  than promise a press that had nowhere to go. */}
+              {windowOpen && <p className="member__note">{t('membership.askToJoin')}</p>}
             </section>
 
             {/* The referral programme, and the balance it pays into.
@@ -716,7 +868,18 @@ export function Membership() {
                   Written out because a `${undefined}` in an address is a link a reader
                   would copy and send on, and the empty string is a link that plainly
                   does not work rather than one that looks as if it might. */}
-              <p className="pay__payload">{`${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`}</p>
+              {/* The copy button and its confirmation, in the one shape the whole portal
+                  now uses for a value a member copies by hand (`components/CopyField.tsx`,
+                  pulled out of this exact spot on 27.09.2026 when the PayPal fields below
+                  needed the same shape). No label: the heading and the sentence above
+                  already say what the box holds, and a label repeating that would be the
+                  same fact said twice. */}
+              <CopyField
+                value={referralLink}
+                copyButtonLabel={t('membership.copyReferralLink')}
+                copiedMessage={t('membership.linkCopied')}
+                failedMessage={t('membership.copyFailed')}
+              />
               {credited.map((row) => (
                 <p className="membership__balance" key={row.key}>
                   <strong>

@@ -7,7 +7,13 @@ import { MemoryRouter } from 'react-router'
 import type { Result } from '../data/types'
 import { MEMBERS } from './admin/entityForms'
 import { ClockProvider } from '../clock/ClockProvider'
-import { RECIPIENT_ACCOUNT } from '../data/paymentQr'
+import {
+  ipsPayload,
+  paymentPurpose,
+  paymentReference,
+  RECIPIENT_ACCOUNT,
+  RECIPIENT_NAME,
+} from '../data/paymentQr'
 /* The bundled list, read only to NAME the figures this screen must no longer show: the
    served answer is moved away from them, and the assertions say so in both directions. */
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL } from '../data/pricing'
@@ -25,6 +31,8 @@ import { setupUser, type Pressing } from '../test/user'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { theCookieNames } from '../test/setup'
 import { myOwnRecordFromMe } from '../test/theAnswer'
+import { withClipboard } from '../test/clipboard'
+import { expectSeen } from '../test/visibility'
 import { Membership } from './member/Membership'
 import { Messages } from './member/Messages'
 
@@ -475,10 +483,10 @@ describe('membership', () => {
        and one of the three who actually pay. */
     renderFor('000031')
 
-    const payload = must(
-      (await screen.findByText(/^K:PR\|V:01/)).textContent,
-      'the payload the screen shows',
-    )
+    /* Read off the code itself, by the decoder, since 26.09.2026: the written text of
+       the payload ("Prikaži sadržaj koda") left the screen with it (PDL.md:1659), and
+       the code is still the one place this figure is drawn. */
+    const payload = readQr(await screen.findByRole('img', { name: /QR/ }))
 
     /* 4.800 is the standard fee on the day this case renders, which is the late part
        of the renewal window. Worth noting that the case this replaced asserted the
@@ -495,30 +503,181 @@ describe('membership', () => {
     ).toBeVisible()
   })
 
-  it('offers a member abroad no payment slip at all, in any form', async () => {
+  it('offers a member abroad PayPal data written out to copy, and never the Serbian slip', async () => {
     /* PDL P8, owner 31.07.2026: „QR kod postoji samo za uplate iz Srbije. Član
        van Srbije ga ne vidi uopšte, ni u kom obliku. Udruženje ima jedan račun,
        u dinarima, kod srpske banke, i uplata na njega iz inostranstva je
-       najsporiji i najskuplji put koji postoji."
-     *
-       Only the drawn code was hidden. The heading, the association's dinar
-       account, the reference, the purpose and an amount were all still there, so
-       a member in North Macedonia was handed the whole of the route that
-       decision removed, and an amount of 4.200 RSD against a debt of 35 EUR. The
-       terms say the same in writing: outside Serbia it is PayPal or a card. */
+       najsporiji i najskuplji put koji postoji." That half is unchanged: no
+       heading, no dinar account, no code, ever, for anybody the country on the
+       profile does not put in Serbia.
+
+       **What the review of PR 385 found missing here is filled in now, with real
+       data (owner, 27.09.2026, PDL „Plaćanje iz inostranstva: PayPal").** Until
+       then „Podatke za uplatu vidiš u nastavku" was drawn for this member with
+       nothing under it - no recipient, no account, no amount, no reference - which
+       was the exact fault the sentence's own gate (`due.length > 0`,
+       `Membership.tsx`) exists to prevent. The gate has not moved; what changed is
+       that PayPal now has data to put under it, so the sentence is drawn again and
+       this case is what proves it is not a false promise a second time: every fact
+       it points at is checked below.
+
+       000010 on 1 November 2026 is in the "regular" selling period (6 October -
+       30 November, 40 EUR) and the processing fee is a fixed 3 EUR
+       (`public/mock/pricing.json`), so the amount PayPal is told about is 43 - the
+       same arithmetic the owner's own example uses for 1 October (35 + 3 = 38). */
     renderFor('000010')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+    expect(screen.getByText(/Podatke za uplatu vidiš u nastavku/)).toBeVisible()
 
     expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Iznos')).not.toBeInTheDocument()
     expect(screen.queryByText('Poziv na broj')).not.toBeInTheDocument()
     expect(screen.queryByText(RECIPIENT_ACCOUNT)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Severna Makedonija/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
 
-    /* And still told why, since that sentence belongs to the ways of paying and
-       not to the slip. */
-    expect(screen.getByText(/Severna Makedonija/)).toBeVisible()
     expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+    expect(screen.getByText(RECIPIENT_NAME)).toBeVisible()
+    expect(screen.getByText('info@balkanskatrkackaliga.net')).toBeVisible()
+    expect(screen.getByText('43,00')).toBeVisible()
+    /* NEVER THE JUNIOR ROW, which is a zamena-izvora check and not a second way to
+       say the same thing: `junior.eur` is a fixed 20 regardless of the date
+       (`public/mock/pricing.json`, `kind: "level"`, no window), so 20 + 3 = 23 is
+       exactly the wrong number this screen would show if the amount ever read
+       `junior` instead of `due` - the 13.09.2026 boundary the slip already lives
+       with (`Membership.tsx`, the comment above `methods`). Asserting only "43,00"
+       is present would pass just the same on a screen showing both figures. */
+    expect(screen.queryByText('23,00')).not.toBeInTheDocument()
+    /* The same reference the Serbian slip would use for this member and season -
+       `paymentReference(2027, '000010')` - read off the one function rather than
+       computed a second time by this test, so the two cannot silently disagree
+       about what „isti oblik" (owner) means. */
+    expect(screen.getByText(paymentReference(2027, '000010'))).toBeVisible()
+  })
+
+  it('quotes a different PayPal amount as the selling period changes, fee included', async () => {
+    /* THE OTHER AXIS OF THE SAME AMOUNT: the period, not the country. Read on 1
+       October rather than 1 November, this is the early period (1-5 October, 35
+       EUR) and not the regular one (40 EUR), so the fee-inclusive total is 38 - the
+       owner's own example for this exact decision ("prva cena recimo 38 eur 1.
+       oktobra"). Held beside the 43 on 1 November (the case above), a screen that
+       had hard-coded either figure would fail one of the two. */
+    renderMembershipOn('2026-10-01', '000010')
+
+    expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+    expect(screen.getByText('38,00')).toBeVisible()
+    expect(screen.queryByText('43,00')).not.toBeInTheDocument()
+  })
+
+  it('promises nothing about a payment slip when the served price list has no period in force', async () => {
+    /* THE SECOND AXIS OF THE SAME GUARD, and it is a member IN SERBIA this time - the
+       first axis (country) is measured above and below, on 000010. „Podatke za uplatu
+       vidiš u nastavku" is gated on `due.length > 0` alone since PayPal got real data
+       (`Membership.tsx`), because `due` answers „none or one" over whatever the served
+       list holds (`inForceOn`, data/priceList.ts) and this side cannot hold it to tiling
+       the year the way `PriceListRowsTest` holds the server: a gap in what is served is a
+       state this screen has to survive rather than rule out.
+
+       Emptied by dropping every `period` row rather than by picking a date, so the case
+       does not depend on which day of the year renders it: `inForceOn` reads only rows of
+       `A_PERIOD`, and none at all means none in force on any day. */
+    const { stop } = serverThat((path) =>
+      path === '/api/pricing'
+        ? new Response(
+            JSON.stringify(servedPrices.filter((row) => row.kind !== 'period')),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderFor('000032')
+
+      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      /* The category choice does not depend on a price and stays. */
+      expect(screen.getByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).toBeVisible()
+
+      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Uplatnica' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
+  it('promises nothing about a PayPal amount either, when the served price list has no period in force', async () => {
+    /* THE SAME SECOND AXIS AGAIN, for the country the case above does not reach: a
+       member abroad has no `due.map` slip to fall silent, but has the PayPal amount
+       this round adds, and that reads `due` too (`paypalTotal`, Membership.tsx). An
+       empty served list is a gap this side cannot rule out for either country, so
+       neither may point a member at money it never computed. */
+    const { stop } = serverThat((path) =>
+      path === '/api/pricing'
+        ? new Response(
+            JSON.stringify(servedPrices.filter((row) => row.kind !== 'period')),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderFor('000010')
+
+      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+
+      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+      expect(screen.queryByText('info@balkanskatrkackaliga.net')).not.toBeInTheDocument()
+      expect(screen.queryByText(paymentReference(2027, '000010'))).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
+  it('promises nothing about a PayPal amount either, when the served price list has no fee row', async () => {
+    /* THE THIRD AXIS OF THE SAME GUARD (round 3 of the PR 385 review), and periods are
+       untouched this time: only the `fee` row is dropped. `due` therefore still holds a
+       row - the slip's own half of the question is satisfied - but the PayPal amount is
+       built off `due` AND `processing` together (`paypalTotal`, Membership.tsx), so a
+       fee-only gap starves it exactly as an empty `due` did on the axis above, and a
+       sentence gated on `due.length > 0` alone (round two's own fix) could not see that:
+       it was found standing over an empty PayPal block a second time, on this third axis.
+
+       000010 abroad is the only member this axis can be measured on: in Serbia the slip
+       reads `due` alone and never `processing`, so removing the fee row would leave the
+       slip (and the sentence) exactly as they were - the fault is invisible on that half
+       of the country axis and only PayPal ever reads the fee row at all. Same day as the
+       two cases above, 1 November 2026, so only the fee row removing it touches. */
+    const { stop } = serverThat((path) =>
+      path === '/api/pricing'
+        ? new Response(JSON.stringify(servedPrices.filter((row) => row.kind !== 'fee')), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderFor('000010')
+
+      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      /* The heading and its note stay: they are keyed on the method applying to this
+         country and not on there being an amount, and that gate is not what this case
+         is about. Only the promise and the fields the missing fee starves are checked. */
+      expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+
+      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+      expect(screen.queryByText('info@balkanskatrkackaliga.net')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Kopiraj adresu za uplatu' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText(paymentReference(2027, '000010'))).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
   })
 
   it('writes the amount owed to a member in Serbia, in dinars', async () => {
@@ -612,45 +771,85 @@ describe('membership', () => {
     }
   })
 
-  it('offers a member in Serbia the payment slip and the card, never PayPal', async () => {
+  it('offers a member in Serbia the payment slip alone, never PayPal or a card', async () => {
+    /* Card left both directions on 26.09.2026 (PDL.md:1659, `data/paymentQr.ts`
+       `methodsFor`): no provider was ever chosen, so Serbia's own list is now
+       `['ips']` alone, the same as it always excluded PayPal for the reason
+       still checked below. */
     renderFor('000032')
 
     expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 3, name: 'Uplatnica' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 4, name: 'Kartica' })).toBeVisible()
+
+    const written = screen.getByRole('heading', { level: 3, name: 'Uplatnica' })
+    const withCode = screen.getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })
+
+    expect(written).toBeVisible()
+    expect(withCode).toBeVisible()
+
+    /* THE TWO HALVES SHARE ONE WRAPPER, which is what „sa desne strane u nivou detalja
+       za uplatu" (owner, 26.09.2026) means and `styles/membershipPaySlip.test.ts` cannot
+       measure: that file reads `.pay__slip`'s `grid-template-columns` straight off
+       `Member.css` (jsdom applies no stylesheet, ADL A33), and never asks whether
+       anything in the rendered page actually wears the class the rule is about.
+       Found by role rather than by the class itself (`btl/CLAUDE.md`: role/label
+       queries, not CSS selectors) and then walked up to it, so a markup change that
+       stopped naming the wrapper `pay__slip` - and left the CSS rule untouched - fails
+       here even though the CSS-only guard cannot see it. */
+    const slip = must(
+      written.closest<HTMLElement>('.pay__slip'),
+      'the wrapper the written half and the QR code are meant to share',
+    )
+
+    expect(within(slip).getByRole('heading', { level: 4, name: 'Uplatnica sa QR kodom' })).toBe(
+      withCode,
+    )
+
+    expect(screen.queryByRole('heading', { name: /[Kk]artic/ })).not.toBeInTheDocument()
     // Paying between residents of Serbia through PayPal is not allowed.
     expect(screen.queryByRole('heading', { name: 'PayPal' })).not.toBeInTheDocument()
   })
 
   /* No code at all abroad (owner, 31.07.2026): the association has one account,
      in dinars, at a Serbian bank, and paying into it from abroad is the slowest
-     and dearest way there is. PayPal or a card, and nothing else. */
+     and dearest way there is. PayPal alone since 26.09.2026, card having left
+     both lists. */
   it('draws the slip the member is told to pay, and not some other text', async () => {
-    /* The two ends joined: the payload has its own tests and the drawing has its
-       own, and neither says the square on the screen is a drawing of this
-       member's slip. The screen writes the payload out under "Prikaži sadržaj
-       koda", so the two are read off one render and compared.
+    /* The two ends joined: `ipsPayload` (data/paymentQr.ts) has its own tests and
+       the decoder has its own (test/readQr.ts), and neither says the square on
+       THIS member's screen is a drawing of THIS member's slip. Built here from
+       the same four facts the screen itself reads for him - the account, the
+       recipient, the season's reference and the amount in force on the day this
+       renders - and compared against what the code actually decodes to.
 
-       Not opened first: what is inside a `details` is in the page whether it is
-       open or not, and what this is about is the two agreeing, not the
-       disclosure. */
+       The written duplicate this used to compare against ("Prikaži sadržaj
+       koda") left the screen on 26.09.2026 (owner: „Obriši ekstraktibilnu
+       liniju Prikaži sadržaj koda"), so the expected side is built rather than
+       read off a second element on screen; the point of the case, that the
+       code says THIS member's slip and not some other text, survives the
+       deletion unchanged. */
     renderFor('000032')
 
     await screen.findByRole('heading', { name: 'Moja članarina' })
 
-    const payload = must(
-      screen.getByText(/^K:PR\|V:01/).textContent,
-      'the payload the screen shows',
+    const regular = must(
+      PRICES.find((row) => row.key === 'regular'),
+      'the price in force on 1 November',
     )
+    const expected = ipsPayload({
+      account: RECIPIENT_ACCOUNT,
+      recipient: RECIPIENT_NAME,
+      amountRsd: regular.rsd,
+      purpose: paymentPurpose(2027),
+      reference: paymentReference(2027, '000032'),
+    })
 
-    /* Read off the square itself, by the decoder, rather than compared with a
-       second drawing of the same words: what has to hold is that the code on
-       this member's screen says this member's slip (test/readQr.ts). */
-    expect(readQr(screen.getByRole('img', { name: /QR/ }))).toBe(payload)
+    expect(readQr(screen.getByRole('img', { name: /QR/ }))).toBe(expected)
+    /* The disclosure this used to sit beside is gone, not merely closed (stavka 1,
+       owner 26.09.2026: „Obriši ekstraktibilnu liniju Prikaži sadržaj koda"). */
+    expect(screen.queryByText('Prikaži sadržaj koda')).not.toBeInTheDocument()
   })
 
-  it('offers a member abroad PayPal and a card, and no code at all', async () => {
+  it('offers a member abroad PayPal alone, and no code at all', async () => {
     /* 000010 is the one member abroad who pays rather than being honoured, and
        the generator says why one had to exist: with every foreign member
        freed of the fee, this screen would have nobody to show and the rule about the
@@ -658,22 +857,11 @@ describe('membership', () => {
     renderFor('000010')
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
-    expect(screen.getByRole('heading', { level: 4, name: /[Kk]artic/ })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: /[Kk]artic/ })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Uplatnica sa QR kodom' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText(/QR/)).not.toBeInTheDocument()
-  })
-
-  it('says which country the ways of paying come from, in words', async () => {
-    /* The sentence above them says the ways of paying follow the country on the
-       profile, and the country is kept as a code. It was printed raw, so a member
-       abroad read the bare code; the words come off the same file the select is
-       filled from (countryName). */
-    renderFor('000010')
-
-    expect(await screen.findByText(/Severna Makedonija/)).toBeVisible()
-    expect(screen.queryByText(/\(ME\)/)).not.toBeInTheDocument()
   })
 
   it('says what a payment carries besides the fee, to everybody', async () => {
@@ -777,6 +965,118 @@ describe('membership', () => {
     } finally {
       stop()
     }
+  })
+
+  it('lets a member copy their referral link, and says so out loud', async () => {
+    /* Owner, 26.09.2026: „stavi onu grafikicu za kopiranje, tako da ako kliknem
+       na to iskopiram link kod sebe u profil." The name is on the button
+       (`aria-label`), never only on the icon (WCAG 2.2 AA), so it is found by
+       role and name here exactly as a screen reader would find it. */
+    const user = setupUser()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+
+    await withClipboard({ writeText }, async () => {
+      renderAt('/sr/moja-clanarina', 'competitor', '000001')
+
+      const link = await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
+
+      await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
+
+      expect(writeText).toHaveBeenCalledWith(link.textContent)
+      /* Said through a live region that is on the page from the first render
+         (present, empty, above), not one mounted only once there is something to
+         announce - the confirmation is the region's text changing, not its
+         arrival. And SEEN, not only heard (`expectSeen` above, PR 385). */
+      expectSeen(await screen.findByText('Link je kopiran.'))
+    })
+  })
+
+  it('says copying failed when the clipboard refuses', async () => {
+    /* A user or a browser policy denying the permission is a rejected promise,
+       the same shape `navigator.clipboard` being altogether absent takes below -
+       and axis 5 asks that both reach the member as a sentence, not silence. */
+    const user = setupUser()
+
+    await withClipboard(
+      { writeText: vi.fn().mockRejectedValue(new Error('permission denied')) },
+      async () => {
+        renderAt('/sr/moja-clanarina', 'competitor', '000001')
+
+        await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
+        await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
+
+        expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
+        expect(screen.queryByText('Link je kopiran.')).not.toBeInTheDocument()
+      },
+    )
+  })
+
+  it('says copying failed when there is no clipboard to copy through', async () => {
+    /* Older browsers and a page not served over https both leave
+       `navigator.clipboard` `undefined` rather than refusing anything - the other
+       half of axis 5, and the ordinary state of this API in jsdom itself. */
+    const user = setupUser()
+
+    await withClipboard(undefined, async () => {
+      renderAt('/sr/moja-clanarina', 'competitor', '000001')
+
+      await screen.findByText(/registracija\?preporuka=7f07b38ff7ee7543/)
+      await user.click(screen.getByRole('button', { name: 'Kopiraj link za preporuku' }))
+
+      expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj link ručno.'))
+    })
+  })
+
+  it('lets a member abroad copy the PayPal address, amount and note, each into its own confirmation', async () => {
+    /* Axis 4 („Kopiranje: uspeh naspram odbijanja, kao i kod linka preporuke", owner
+       27.09.2026) for the three PayPal fields, in one render: each button copies its
+       OWN value and says so under itself, which is what proves Membership.tsx wired
+       the three `CopyField`s correctly and not, say, the amount button to the note's
+       value. Whether `CopyField` itself copies and announces correctly is a question
+       its own file already answers (`components/CopyField.test.tsx`); this is the
+       integration the unit test cannot see. */
+    const user = setupUser()
+    const writeText = vi.fn().mockResolvedValue(undefined)
+
+    await withClipboard({ writeText }, async () => {
+      renderFor('000010')
+
+      await screen.findByRole('heading', { level: 4, name: 'PayPal' })
+
+      await user.click(screen.getByRole('button', { name: 'Kopiraj adresu za uplatu' }))
+      expect(writeText).toHaveBeenLastCalledWith('info@balkanskatrkackaliga.net')
+      expectSeen(await screen.findByText('Adresa je kopirana.'))
+
+      await user.click(screen.getByRole('button', { name: 'Kopiraj iznos za uplatu' }))
+      expect(writeText).toHaveBeenLastCalledWith('43,00')
+      expectSeen(await screen.findByText('Iznos je kopiran.'))
+
+      await user.click(screen.getByRole('button', { name: 'Kopiraj napomenu za uplatu' }))
+      expect(writeText).toHaveBeenLastCalledWith(paymentReference(2027, '000010'))
+      expectSeen(await screen.findByText('Napomena je kopirana.'))
+    })
+  })
+
+  it('says copying failed for whichever PayPal field the clipboard refuses', async () => {
+    const user = setupUser()
+
+    await withClipboard(
+      { writeText: vi.fn().mockRejectedValue(new Error('permission denied')) },
+      async () => {
+        renderFor('000010')
+
+        await screen.findByRole('heading', { level: 4, name: 'PayPal' })
+
+        await user.click(screen.getByRole('button', { name: 'Kopiraj adresu za uplatu' }))
+        expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj adresu ručno.'))
+
+        await user.click(screen.getByRole('button', { name: 'Kopiraj iznos za uplatu' }))
+        expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj iznos ručno.'))
+
+        await user.click(screen.getByRole('button', { name: 'Kopiraj napomenu za uplatu' }))
+        expectSeen(await screen.findByText('Kopiranje nije uspelo. Kopiraj napomenu ručno.'))
+      },
+    )
   })
 
   it('promises what the server answers, not what the bundle shipped', async () => {
@@ -920,9 +1220,12 @@ describe('membership', () => {
         screen.queryByRole('heading', { name: 'Tvoji podaci o članstvu nisu stigli' }),
       ).not.toBeInTheDocument()
 
-      /* Renewal itself: the heading and the button that opens it. */
+      /* Renewal itself: the heading, and the sentence that has stood in place of a
+         button since 26.09.2026 (PDL.md:1659). */
       expect(screen.getByRole('heading', { name: 'Obnova članarine za 2027.' })).toBeVisible()
-      expect(screen.getByRole('button', { name: 'Obnovi za 2027.' })).toBeVisible()
+      expect(
+        screen.getByText(/Podatke za uplatu vidiš u nastavku/),
+      ).toBeVisible()
 
       /* **His first season**, which is 2016 in the seed and is on no row the answer to the
          public list does carry. */
@@ -966,7 +1269,6 @@ describe('membership', () => {
       'a country, a season and a team it disagrees with on every one',
       { country: 'MK', firstSeason: 2019, teamId: 2 },
       {
-        country: 'Severna Makedonija',
         season: 'Član od 2019. sezone.',
         team: 'Trenutno si u timu Nišavski maraton klub.',
         slip: false,
@@ -976,7 +1278,6 @@ describe('membership', () => {
       'no team at all, while the list has him in one',
       { country: 'RS', firstSeason: 2016 },
       {
-        country: 'Srbija',
         season: 'Član od 2016. sezone.',
         team: 'Trenutno nisi ni u jednom timu.',
         slip: true,
@@ -1013,11 +1314,6 @@ describe('membership', () => {
 
         expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
 
-        expect(
-          screen.getByText(
-            `Načini plaćanja zavise od države na tvom profilu (${drawn.country}).`,
-          ),
-        ).toBeVisible()
         expect(screen.getByText(drawn.season)).toBeVisible()
         expect(screen.getByText(drawn.team)).toBeVisible()
         /* The slip follows the country and is the third reading of it on one screen: a man
@@ -1740,7 +2036,9 @@ describe('the transfer window and renewal', () => {
     expect(await screen.findByRole('heading', { name: /Obnova članarine/ })).toBeVisible()
     expect(screen.getByText(/Obnova je otvorena/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je otvoren do 31. decembra/)).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Pošalji zahtev timu' })).toBeVisible()
+    /* A sentence since 26.09.2026, not a button: joining another team has no route
+       in either direction yet (PDL.md:1659). */
+    expect(screen.getByText(/Prelazak u drugi tim se dogovara van portala/)).toBeVisible()
   })
 
   it('offers the first season category to somebody whose running is all from before the league', async () => {
@@ -1789,7 +2087,9 @@ describe('the transfer window and renewal', () => {
 
     expect(await screen.findByText(/Obnova se otvara 1. oktobra/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je zatvoren/)).toBeVisible()
-    expect(screen.queryByRole('button', { name: 'Pošalji zahtev timu' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Prelazak u drugi tim se dogovara van portala/),
+    ).not.toBeInTheDocument()
   })
 
   it('says plainly when somebody is in no team at all', async () => {
