@@ -144,7 +144,7 @@ class PaymentNumberConcurrencyTest {
 
 	private MockHttpServletResponse confirm(long competitorId) throws Exception {
 		String json = mapper.writeValueAsString(
-				new PaymentApi.Confirm(competitorId, "EUR", "card", null));
+				new PaymentApi.Confirm(competitorId, "EUR", "paypal", null));
 
 		return http.perform(post("/api/payments").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, cookie))

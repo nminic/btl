@@ -89,11 +89,11 @@ class PaymentConstraintsTest extends DatabaseTest {
 			+ ", 35.00, 'EUR', 3.00, 'paypal', 'awaited', null, null, null");
 	/** Recognised: it says when, and under whose name. */
 	private static final String GOOD_RECORDED = payment(A_MEMBER + ", 2028, '20281000', " + A_PRICE_ROW
-			+ ", 4200.00, 'RSD', 0, 'slip', 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT
+			+ ", 4200.00, 'RSD', 0, 'ips', 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT
 			+ ", 'Blagajnik Probni'");
 	/** Reversed: it happened, it says so, and the season is his no longer. */
 	private static final String GOOD_REVERSED = payment(A_MEMBER + ", 2029, '20291000', " + A_PRICE_ROW
-			+ ", 40.00, 'EUR', 3.00, 'card', 'reversed', " + AN_INSTANT + ", " + AN_ACCOUNT
+			+ ", 40.00, 'EUR', 3.00, 'paypal', 'reversed', " + AN_INSTANT + ", " + AN_ACCOUNT
 			+ ", 'Blagajnik Probni'");
 
 	/**
@@ -115,7 +115,7 @@ class PaymentConstraintsTest extends DatabaseTest {
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', 'blagajnik@primer.rs',"
 				+ " (select id from role where code = 'moderator'))").update();
 
-		db.sql(payment(A_MEMBER + ", 2027, '20271000', " + A_PRICE_ROW + ", 35.00, 'EUR', 3.00, 'card',"
+		db.sql(payment(A_MEMBER + ", 2027, '20271000', " + A_PRICE_ROW + ", 35.00, 'EUR', 3.00, 'paypal',"
 				+ " 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni'")).update();
 	}
 
@@ -123,70 +123,70 @@ class PaymentConstraintsTest extends DatabaseTest {
 		return List.of(
 				Violation.notNull("payment_id_not_null", "id",
 						"insert into payment (id, " + COLUMNS + ") values (null, " + A_MEMBER + ", 2028,"
-								+ " null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card', 'awaited', null, null,"
+								+ " null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited', null, null,"
 								+ " null)"),
 				Violation.of("payment_pk",
 						"insert into payment (id, " + COLUMNS + ") select id, " + A_MEMBER + ", 2028,"
-								+ " null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card', 'awaited', null, null,"
+								+ " null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited', null, null,"
 								+ " null from payment limit 1"),
 
 				Violation.notNull("payment_competitor_id_not_null", "competitor_id",
-						payment("null, 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card', 'awaited',"
+						payment("null, 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
 								+ " null, null, null")),
 				Violation.of("payment_competitor_fk",
-						payment("999999, 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card', 'awaited',"
+						payment("999999, 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
 								+ " null, null, null")),
 
 				Violation.notNull("payment_season_not_null", "season",
-						payment(A_MEMBER + ", null, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", null, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 				Violation.of("payment_season_not_before_the_league",
-						payment(A_MEMBER + ", 2026, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2026, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 				/* One payment per member per season: the probe already holds 2027 for him. */
 				Violation.of("payment_one_a_season",
-						payment(A_MEMBER + ", 2027, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2027, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 
 				/* THE REFERENCE, which a machine reads off a bank statement. */
 				Violation.of("payment_reference_shape",
-						payment(A_MEMBER + ", 2028, '2028-1000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, '2028-1000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 				Violation.of("payment_reference_unique",
-						payment(A_MEMBER + ", 2028, '20271000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, '20271000', " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 
 				Violation.notNull("payment_price_row_id_not_null", "price_row_id",
-						payment(A_MEMBER + ", 2028, null, null, 35, 'EUR', 0, 'card', 'awaited', null,"
+						payment(A_MEMBER + ", 2028, null, null, 35, 'EUR', 0, 'paypal', 'awaited', null,"
 								+ " null, null")),
 				Violation.of("payment_price_row_fk",
-						payment(A_MEMBER + ", 2028, null, 999999, 35, 'EUR', 0, 'card', 'awaited', null,"
+						payment(A_MEMBER + ", 2028, null, 999999, 35, 'EUR', 0, 'paypal', 'awaited', null,"
 								+ " null, null")),
 
 				Violation.notNull("payment_amount_not_null", "amount",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", null, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", null, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 				Violation.of("payment_amount_positive",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 0, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 0, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 
 				Violation.notNull("payment_currency_not_null", "currency",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, null, 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, null, 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 				Violation.of("payment_currency_known",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'USD', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'USD', 0, 'paypal',"
 								+ " 'awaited', null, null, null")),
 
 				Violation.notNull("payment_fee_not_null", "fee",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', null, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', null, 'paypal',"
 								+ " 'awaited', null, null, null")),
 				Violation.of("payment_fee_not_negative",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', -1, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', -1, 'paypal',"
 								+ " 'awaited', null, null, null")),
 				/* A fee on a dinar payment, which covers an intermediary that account does not
 				   have. The owner was explicit: "dinarska uplata je nema". */
 				Violation.of("payment_only_euro_carries_a_fee",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 4200, 'RSD', 3, 'slip',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 4200, 'RSD', 3, 'ips',"
 								+ " 'awaited', null, null, null")),
 
 				Violation.notNull("payment_method_not_null", "method",
@@ -195,34 +195,54 @@ class PaymentConstraintsTest extends DatabaseTest {
 				Violation.of("payment_method_known",
 						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'bitcoin',"
 								+ " 'awaited', null, null, null")),
+				/* AND ONE ROW FOR EACH OF THE THREE WORDS V39 TOOK AWAY, which the floor below does
+				   not ask for and which is the whole axis of that migration. The floor wants ONE row
+				   per constraint, so `bitcoin` above would satisfy it on its own and say nothing
+				   about the three that used to be legal: a constraint written back to V16's four
+				   values, or to any three of them, would keep passing.
+
+				   Each of the three is written as a row that breaks NOTHING ELSE - a member, a
+				   season nobody holds, an amount, a currency, awaited with no recogniser - so the
+				   failure names this constraint and not another. `slip` matters most of the three:
+				   it was legal until V39 renamed it, so a migration that dropped `card` and `sepa`
+				   and left it would pass everything else in this file. */
+				Violation.of("payment_method_known",
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 4200, 'RSD', 0, 'slip',"
+								+ " 'awaited', null, null, null")),
+				Violation.of("payment_method_known",
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+								+ " 'awaited', null, null, null")),
+				Violation.of("payment_method_known",
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'sepa',"
+								+ " 'awaited', null, null, null")),
 
 				Violation.notNull("payment_state_not_null", "state",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card', null,"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', null,"
 								+ " null, null, null")),
 				/* A fourth state, written as a RECOGNISED row so that the two biconditionals
 				   below are satisfied and this is the only thing it breaks. */
 				Violation.of("payment_state_known",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'pending', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni'")),
 
 				/* RECOGNISED SAYS WHEN AND BY WHOM, both directions of each. */
 				Violation.of("payment_recognised_says_when",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'recorded', null, " + AN_ACCOUNT + ", 'Blagajnik Probni'")),
 				Violation.of("payment_recognised_says_when",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', " + AN_INSTANT + ", null, null")),
 				Violation.of("payment_recognised_says_who",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT + ", null")),
 				Violation.of("payment_recognised_says_who",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, 'Blagajnik Probni'")),
 				Violation.of("payment_recorded_by_name_not_blank",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT + ", '   '")),
 				Violation.of("payment_recorded_by_fk",
-						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'card',"
+						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'recorded', " + AN_INSTANT + ", 999999, 'Blagajnik Probni'")));
 	}
 

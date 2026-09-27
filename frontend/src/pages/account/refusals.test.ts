@@ -233,8 +233,14 @@ describe('the reasons the server can name', () => {
        of. Two of the six cannot be reached from the screen today and both are answered
        anyway, for the reason `WHEN_WRITING_A_PRICE` gives: the form is the floor and the
        route decides (PDL P12c), so a request that goes round the screen meets the route
-       with nothing in between. */
-    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 8],
+       with nothing in between.
+
+       NINE CONSTANTS AND SEVEN REASONS since V40 (27.09.2026).
+       `theRowIsFreeInOneCurrencyOnly` is PDL 20b: a row is free in both currencies or
+       priced in both. It is the one reason on this list the FORM cannot turn back, which
+       is why it is worth saying twice - nought is a perfectly good number in both amount
+       boxes, so no `min` or `max` on either of them can ask whether the two agree. */
+    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 9],
     /* THE SEVENTH, ADDED WITH B106: making a moderator, ticking his boxes and taking his
        moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
        one dictionary covers all four reasons the class declares. */

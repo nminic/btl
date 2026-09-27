@@ -577,7 +577,7 @@ class MyMembershipApiTest {
 		assertThat(http.perform(post("/api/payments").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(THE_PAYMENTS_QUEUE).secret()))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"competitorId\":" + id + ",\"currency\":\"RSD\",\"method\":\"slip\"}"))
+						.content("{\"competitorId\":" + id + ",\"currency\":\"RSD\",\"method\":\"ips\"}"))
 				.andReturn().getResponse().getStatus())
 				.isEqualTo(201);
 
@@ -629,7 +629,7 @@ class MyMembershipApiTest {
 		return http.perform(post("/api/payments").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(THE_PAYMENTS_QUEUE).secret()))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"competitorId\":" + competitorId + ",\"currency\":\"RSD\",\"method\":\"slip\"}"))
+						.content("{\"competitorId\":" + competitorId + ",\"currency\":\"RSD\",\"method\":\"ips\"}"))
 				.andReturn().getResponse().getStatus();
 	}
 
