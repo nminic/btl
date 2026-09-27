@@ -19,10 +19,10 @@ import sr from '../../i18n/sr.json'
  * <p><b>Why this file exists, and it is the owner's own afternoon rather than a class of
  * fault somebody imagined.</b> On 27.09.2026 he refused a profile photograph with a reason,
  * read the message it produced, signed out, signed back in, and <b>the message was gone</b>.
- * Nothing was broken on the server: seven routes in `backend/src/main` write into `message`
- * and the decision he took is one of them (`VerificationWriteApi.tell`). The row was kept and
- * never read. What the three screens drew was a copy held in `session/SessionProvider.tsx`'s
- * `useState`, and a copy in a component dies with the component.
+ * Nothing was broken on the server: seven places in six classes under `backend/src/main`
+ * write into `message` and the decision he took is one of them (`VerificationWriteApi.tell`).
+ * The row was kept and never read. What the three screens drew was a copy held in
+ * `session/SessionProvider.tsx`'s `useState`, and a copy in a component dies with it.
  *
  * <p><b>So every case here is written so that it cannot be satisfied by the browser's own
  * half.</b> The session in these cases holds nothing at all: `renderAt` starts a

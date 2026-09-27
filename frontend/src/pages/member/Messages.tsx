@@ -10,11 +10,12 @@ import './Member.css'
 /* The inbox lives on the portal, not only in email: a member has to be able to
  * find what was said to them without digging through a mailbox.
  *
- * **SINCE 27.09.2026 IT IS THE SERVER'S INBOX AND NOT THE BROWSER'S.** Seven routes in
- * `backend/src/main` write into `message` and until that day not one of their rows was ever
- * drawn here; what this screen listed was a copy the session held in `useState`. The owner
- * met the difference himself: he refused a photograph with a reason, read the message, signed
- * out and in, and it was gone. `data/useResource.ts` says what the list is made of now. */
+ * **SINCE 27.09.2026 IT IS THE SERVER'S INBOX AND NOT THE BROWSER'S.** Seven places in six
+ * classes under `backend/src/main` write into `message` and until that day not one of their
+ * rows was ever drawn here; what this screen listed was a copy the session held in
+ * `useState`. The owner met the difference himself: he refused a photograph with a reason,
+ * read the message, signed out and in, and it was gone. `data/useResource.ts` says what the
+ * list is made of now. */
 export function Messages({ only }: { only?: string[] } = {}) {
   const who = useMemberScreen()
 

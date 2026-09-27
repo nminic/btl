@@ -416,11 +416,11 @@ function theInboxNowBelongsTo(whose: string): void {
  *
  * **The shape is `event/GoingToEvent.tsx`'s, word for word - „what the file says, and then
  * what has been said during this visit" - and it is here rather than there because three
- * screens read it.** The server is the source: seven routes in `backend/src/main` write
- * into `message`, and until today not one of their rows was ever drawn. The nine screens
- * that call `notify` still write nowhere but the browser, so leaving them out would take a
- * team's invitation, a pair's invitation and a moderator's reason off the one screen a
- * member can answer them on - and no route carries any of the three.
+ * screens read it.** The server is the source: seven places in six classes under
+ * `backend/src/main` write into `message`, and until today not one of their rows was ever
+ * drawn. The nine screens that call `notify` still write nowhere but the browser, so leaving
+ * them out would take a team's invitation, a pair's invitation and a moderator's reason off
+ * the one screen a member can answer them on - and no screen sends any of the three.
  *
  * **Why two sources cannot show one message twice, measured rather than hoped.** The one
  * pair that could collide is a moderator's decision: `PendingQueue` posts it to

@@ -93,8 +93,8 @@ export const RESOURCE_NAMES = [
 
      **What that cost is the whole reason for this name, and it was measured on the owner
      rather than reasoned about.** He refused a photograph with a reason on 27.09.2026,
-     the message arrived, he signed out and in, and IT WAS GONE. Seven routes write into
-     `message` on the server - the decision he took is one of them
+     the message arrived, he signed out and in, and IT WAS GONE. Seven places in six classes
+     write into `message` on the server - the decision he took is one of them
      (`VerificationWriteApi.tell`) - so what he was shown was never the row the server
      had kept. It was the browser's own copy, held in `useState`, and a copy in a
      component dies with the component.

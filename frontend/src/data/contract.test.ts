@@ -53,10 +53,10 @@ describe('the list of resources', () => {
     /* Seventeen since 27.09.2026, when the inbox stopped living in the browser. It is the
        THIRD name here answered long before it was ever asked for, and the only one whose
        absence the owner felt himself: he refused a photograph with a reason, the message
-       arrived, he signed out and in, and it was gone. Seven routes write into `message` on
-       the server and the decision he took is one of them (`VerificationWriteApi.tell`), so
-       the row was always kept; what the three screens drew was the browser's own copy,
-       held in `useState`, which dies with the component. */
+       arrived, he signed out and in, and it was gone. Seven places in six classes write into
+       `message` on the server and the decision he took is one of them
+       (`VerificationWriteApi.tell`), so the row was always kept; what the three screens drew
+       was the browser's own copy, held in `useState`, which dies with the component. */
     expect([...RESOURCE_NAMES]).toEqual([
       'attendance',
       'ducats',
