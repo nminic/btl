@@ -2,9 +2,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import type { Competitor } from '../../data/types'
+import { clearResourceCache } from '../../data/client'
 import { must } from '../../test/at'
 import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
+import { serverThat } from '../../test/serverAnswers'
+import { aCompetitor } from '../../test/theAnswer'
 import sr from '../../i18n/sr.json'
 import { setupUser } from '../../test/user'
 
@@ -34,11 +37,11 @@ const members: Competitor[] = JSON.parse(
  *  (owner, 13.09.2026), so being in the list IS the condition this used to spell
  *  out as `one.active`. */
 const withOne = must(
-  members.find((one) => one.bio.trim() !== ''),
+  members.find((one) => (one.bio ?? '').trim() !== ''),
   'a member whose profile carries a biography',
 )
 const withNone = must(
-  members.find((one) => one.bio.trim() === ''),
+  members.find((one) => (one.bio ?? '').trim() === ''),
   'a member whose profile carries none',
 )
 
@@ -144,6 +147,43 @@ describe('the words a member wrote about themselves, changed later', () => {
        whole suite stayed green. */
     expect(panel.getByText(sr.bio.none)).toBeVisible()
     expect(panel.queryByText(sr.bio.standing)).not.toBeInTheDocument()
+  })
+
+  /**
+   * AND A `null` BIOGRAPHY OPENS THE SAME WAY, WHICH IS A ROW THE SERVER NEVER ACTUALLY
+   * HANDS A MEMBER ABOUT HIMSELF.
+   *
+   * **Why this case builds a row the server would never really answer.** `CompetitorApi`'s
+   * condition on `bio` asks only whether the CALLER is signed in, never whether the row is
+   * his own, so a member's own row never comes back null: he must be signed in to have a
+   * "my own row" at all. Built here anyway, because `ProfileBio`'s `me.bio ?? ''` is a guard
+   * against that condition and `profile/visible.ts`'s ever drifting apart, and a guard
+   * nothing exercises is a branch nothing checks (rule of 14.09.2026).
+   */
+  it('reads a null biography the same as an empty one, in case the two guards ever disagree', async () => {
+    clearResourceCache()
+
+    const { stop } = serverThat((path) =>
+      path === '/api/competitors'
+        ? new Response(
+            JSON.stringify([{ ...aCompetitor, memberNumber: withNone.memberNumber, bio: null }]),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          )
+        : null,
+    )
+
+    try {
+      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+      const panel = await panelFor()
+
+      expect(await box()).toHaveValue('')
+      expect(panel.getByText(sr.bio.none)).toBeVisible()
+      expect(panel.queryByText(sr.bio.standing)).not.toBeInTheDocument()
+    } finally {
+      stop()
+      clearResourceCache()
+    }
   })
 
   it('reaches the moderator as a text, under the member it belongs to', async () => {

@@ -276,14 +276,26 @@ export type Competitor = {
    */
   teamSince: number | null
   /**
-   * The racing biography, as published.
+   * The racing biography, as published, or null for a member who hides their profile when
+   * the reader has no session.
    *
    * Written by the member, and approved as written or refused with a reason and
    * handed back (PDL P11, P22, 06.08.2026), so what is here is what the member
    * wrote. Empty for most of them, which is the state the profile has to look
-   * right in.
+   * right in - and a DIFFERENT state from null, because the column itself is never empty
+   * on the server: hiding is the only reason this answers null (PDL, 06.09.2026 names the
+   * biography beside the photo among what hiding hides; CompetitorApi's own note says why
+   * it is a case rather than a fifth state to draw).
+   *
+   * Null and not the empty string, the same reasoning `photo` and `logo` already carry on
+   * this file: the two must not collide, or a member who has written nothing would read as
+   * a member who is hiding. `profile/visible.ts`'s `reachable` is the one place that decides
+   * whether a reader may reach a profile at all, by the identical rule, so the only screen
+   * that reads this field (`CompetitorProfile.tsx`) never actually sees it null - which is a
+   * property of that screen's own guard, not of this type, so this stays honest about every
+   * OTHER reader of the same list.
    */
-  bio: string
+  bio: string | null
 }
 
 /* ~~A race has no name of its own (owner, 11.08.2026).~~ **Overturned 23.08.2026
