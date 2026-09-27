@@ -353,13 +353,32 @@ class InboxReadApiTest {
 	 * call rather than the same success, and one that updated {@code read_at} unconditionally
 	 * would move the moment every time the member reopens a message he has already read - the
 	 * decision under test names neither a button to unmark nor a reason to move the clock.
+	 *
+	 * <p><b>THE FIRST {@code read_at} IS PUSHED BACK A DAY BEFORE THE SECOND CALL, AND THAT IS
+	 * NOT DECORATION - FOUND ON REVIEW.</b> This whole test runs inside one
+	 * {@code @Transactional} method, and Postgres freezes {@code now()} at the transaction's
+	 * start for every statement in it. So a route answering {@code on conflict do update set
+	 * read_at = now()} wrote back the EXACT value {@code on conflict do nothing} would have
+	 * left in place, and this case stayed green under both. Measured 28.09.2026: without
+	 * moving the row first, {@code Tests run: 7, Failures: 0} whether the second call runs
+	 * {@code do nothing} or that {@code do update} - the mutation survived. Backdating the row
+	 * makes "left alone" and "written again" two different values to tell apart, and the same
+	 * mutation then fails the assertion below.
 	 */
 	@Test
 	void openingItASecondTimeChangesNothing() throws Exception {
 		long target = idOf(TARGET);
 
 		assertThat(marking(RECIPIENT_SIGNS_IN, target).getStatus()).isEqualTo(204);
-		Instant firstReadAt = readAt(TARGET, RECIPIENT);
+
+		/* PUSHED A DAY INTO THE PAST, so that now() written back on a second call and
+		   read_at left alone are two DIFFERENT values - see the class note above on why the
+		   un-backdated version of this case could not tell them apart. */
+		db.sql("update message_read set read_at = read_at - interval '1 day'"
+						+ " where message_id = ? and competitor_id = ?")
+				.params(target, keyOf(RECIPIENT))
+				.update();
+		Instant backdated = readAt(TARGET, RECIPIENT);
 
 		assertThat(marking(RECIPIENT_SIGNS_IN, target).getStatus())
 				.as("opening an already read message failed instead of doing nothing")
@@ -372,7 +391,7 @@ class InboxReadApiTest {
 		assertThat(readAt(TARGET, RECIPIENT))
 				.as("read_at moved on a second call, so a read receipt would say when a"
 						+ " message was last reopened rather than when it was first read")
-				.isEqualTo(firstReadAt);
+				.isEqualTo(backdated);
 	}
 
 	/**
