@@ -1,8 +1,10 @@
 import { htmlElement, must } from '../test/at'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { SessionContext, type Message, type SessionValue } from '../session/context'
+import { SessionContext, type Message, type SessionValue, type SignedIn } from '../session/context'
+import { clearResourceCache } from '../data/client'
+import { serverThat } from '../test/serverAnswers'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { monogramFor } from './monogram'
@@ -263,13 +265,94 @@ describe('the inbox in the header', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Poruke' })).toBeVisible()
   })
 
-  it('says so when there is nothing in it', async () => {
+  /**
+   * **NOTHING IN IT MEANS NOTHING ON EITHER SIDE, since 27.09.2026.**
+   *
+   * The panel read a list the session was holding until that day, so an empty session was the
+   * whole of „empty". It reads `GET /api/inbox` now, and the fixture the harness serves has two
+   * rows in it, so a case that emptied only the session would be asserting that the panel had
+   * not finished loading.
+   *
+   * **And that is why the request is waited for rather than assumed.** `MessagesMenu` reads the
+   * answer through `dataOr`, deliberately - a header that waited would hold up every screen
+   * behind it - so „Nema poruka." is on the screen from the first paint whatever the server is
+   * going to say. Asserted before the answer landed, this case would pass just as well against
+   * a server that answered six messages.
+   */
+  it('says so when there is nothing in it, on either side', async () => {
+    const user = setupUser()
+    clearResourceCache()
+
+    const { asked, stop } = serverThat((path) =>
+      path === '/api/inbox'
+        ? new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
+        : null,
+    )
+
+    try {
+      renderInbox([])
+
+      await waitFor(() => {
+        expect(asked.map((one) => one.path)).toContain('/api/inbox')
+      })
+
+      await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+
+      expect(screen.getByText('Nema poruka.')).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Otvori poruke, 0 nepročitanih' })).toBeVisible()
+    } finally {
+      stop()
+      clearResourceCache()
+    }
+  })
+
+  /**
+   * THE OTHER HALF OF THE CASE ABOVE, AND THE ONE THAT WOULD HAVE CAUGHT THE FAULT THE OWNER
+   * MET.
+   *
+   * The session is empty here too, so everything on the screen came off `GET /api/inbox`. Take
+   * the server read back out of `MessagesMenu` and this is what goes red: the panel that used to
+   * be „empty" for exactly this session.
+   */
+  it('lists what the server kept, for a session holding nothing at all', async () => {
     const user = setupUser()
     renderInbox([])
 
-    await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+    await user.click(
+      await screen.findByRole('button', { name: 'Otvori poruke, 0 nepročitanih' }),
+    )
 
-    expect(screen.getByText('Nema poruka.')).toBeVisible()
+    expect(await screen.findByRole('link', { name: /Fotografija je prihvaćena/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: /Prevoz do Jadovnika/ })).toBeVisible()
+    expect(screen.queryByText('Nema poruka.')).not.toBeInTheDocument()
+  })
+
+  /**
+   * AND THE ENVELOPE FOR AN ACCOUNT THAT RACES FOR NOBODY, which is a moderator and a
+   * superadmin (PDL P21, owner 14.09.2026).
+   *
+   * `GET /api/inbox` answers such an account the way an address that is not there answers, so
+   * the panel asks nothing at all and says there is nothing. **Measured as the ABSENCE of the
+   * request and not only as an empty panel**, because an empty panel is what a refused request
+   * would look like too, and the difference is a refusal spent on every moderator who signs in.
+   */
+  it('asks for no inbox at all for an account the league has given no number', async () => {
+    const user = setupUser()
+    clearResourceCache()
+
+    const { asked, stop } = serverThat(() => null)
+
+    try {
+      renderInbox([], { as: 'account', account: 4 })
+
+      await user.click(screen.getByRole('button', { name: /Otvori poruke/ }))
+
+      expect(screen.getByText('Nema poruka.')).toBeVisible()
+      expect(asked.map((one) => one.path)).not.toContain('/api/inbox')
+    } finally {
+      stop()
+      clearResourceCache()
+    }
   })
 })
 
@@ -285,9 +368,16 @@ describe('the icons', () => {
   })
 })
 
-function renderInbox(inbox: Message[]) {
+/* Who the panel is drawn for, as well as what it is holding. The second argument is here
+   because the envelope is drawn for EVERY signed in account (`app/Shell.tsx`) while the inbox
+   belongs only to somebody the league has given a number, and the two states of that are what
+   decides whether anything is asked for at all. */
+function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNumber: '000007' }) {
   const session: SessionValue = {
-    memberNumber: '000007',
+    /* Kept in step with the arm above rather than written out, because „an account that races
+       for nobody" is exactly a session with no member number, and a helper that set one anyway
+       would be building a state the provider cannot produce. */
+    memberNumber: who.as === 'member' ? who.memberNumber : null,
     signIn: vi.fn(),
     account: null,
     theServerSignedMeIn: vi.fn(),
@@ -301,7 +391,7 @@ function renderInbox(inbox: Message[]) {
     myTeamId: null,
     myReferralCode: null,
     myReferredCount: null,
-    signedIn: { as: 'member', memberNumber: '000007' },
+    signedIn: who,
     signOut: vi.fn(),
     submissions: [],
     corrected: {},
