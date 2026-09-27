@@ -39,6 +39,15 @@ import { setupUser } from '../../test/user'
  * has both of its states here rather than one: approving beside refusing, the row the server
  * made beside a queue that has already been read once, and the member's own mark cleared by a
  * decision on HIS row beside one on somebody else's.
+ *
+ * <p><b>WHAT WAS NOT MEASURED, and it is reasoning rather than a measurement.</b> The three
+ * widths (360, 768, 1280) were not walked for this change. The argument is that no element,
+ * rule or wrapper moved: what left is a card the moderator's queue drew from a second source,
+ * and the queue draws each card the same way whichever list it came out of, so a queue holding
+ * one card where it held two is the same layout with one fewer item in it. The sending screen
+ * lost nothing it draws - the waiting picture and its circle are still there (PDL 21b). This is
+ * set down as an argument, not as a pass: side-scrolling is measured once at the end rather
+ * than on a branch that does not touch the layout.
  */
 
 /* Annotated rather than asserted, which is the shape `profilePicture.test.tsx` beside this

@@ -848,11 +848,15 @@ export type SessionValue = {
    * ponovo, vidim da je trenutno slika u statusu cekanja i tu vidim trenutno azuriranu sliku sa
    * krugom." So this carries the picture and the crop, and only the sending screen draws them.
    *
-   * <p><b>What it reaches only for this visit, and it is a boundary that needs a route.</b> 21b
-   * says the sending screen shows the waiting picture, and after a reload this holds nothing, so
-   * it shows none. There is no address it could ask: `PhotoApi` refuses a picture nothing public
-   * holds, and a waiting picture is held by nothing public (ADL A60). Measured rather than
-   * assumed, and left to the owner as a question rather than papered over here.
+   * <p><b>What it reaches only for this visit, and it is a boundary that waits on a route.</b>
+   * 21b says the sending screen shows the waiting picture, and after a reload this holds nothing,
+   * so it shows none. There is no address it could ask TODAY: `PhotoApi` refuses a picture
+   * nothing public holds, and a waiting picture is held by nothing public. That is not a rule
+   * against this, it is the absence of the route - ADL A60 names the member looking at his OWN
+   * picture as an exception of the same shape as the moderator deciding it, each through a
+   * narrow route with its own right, and `GET /api/photos/{name}` untouched. Until that route
+   * exists the reload shows nothing, and this sentence is here so the next reader finds the
+   * boundary rather than the fault.
    *
    * <p><b>It is the SERVER'S key and that is what makes the sentence go away by itself.</b> A
    * decision is filed under the id of the row it was about (`decisions`, `settle`), so a
