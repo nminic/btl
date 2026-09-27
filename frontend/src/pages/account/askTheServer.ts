@@ -195,7 +195,29 @@ async function bodyIn(answer: Response): Promise<unknown> {
  * Sends one thing to one route and says what came back.
  *
  * @param path what is being asked, an address under `/api`
- * @param said the body, which is the only place anything given here is written
+ * @param said the body, which is the only place anything given here is written.
+ *
+ *             **A `FormData` IS A BODY TOO, SINCE 26.09.2026, AND THAT IS THE FOURTH
+ *             WIDENING OF THIS FILE FOR THE THIRD TIME ON ONE REASON.** Registration
+ *             (21.09.2026), `DELETE` (24.09.2026) and `PUT` back with its caller
+ *             (25.09.2026) were each weighed against copying this file, and each time the
+ *             answer was the same sentence: the fact being shared is the TOKEN. Sending a
+ *             file is the same question asked about the SHAPE OF THE BODY rather than
+ *             about the verb, and the copy would have been a second home for the name of
+ *             the cookie, the name of the header, the read that hands the token out and
+ *             all five answers - so that one `if` could differ.
+ *
+ *             **What the branch really is: the `Content-Type` is NOT SET.** A multipart
+ *             body is not one header but a header carrying a boundary, and the boundary is
+ *             a string only whoever encoded the body knows. Written by hand here it would
+ *             be a header naming a boundary that is not in the body, and the server would
+ *             read nought parts out of a request that carried a file. So the browser is
+ *             left to write it, which it does only where nothing else has.
+ *
+ *             **And nothing here learns what is IN it.** `POST /api/me/photo`
+ *             (`member/photoWrites.ts`) is the one caller, it builds its own parts, and
+ *             this file goes on taking an address and a body and reporting one of five
+ *             answers.
  * @param how  the verb, and `POST` where nothing says otherwise.
  *
  *             **Widened on 24.09.2026 for ONE verb and no more, on the same reasoning that
@@ -243,14 +265,31 @@ export async function askTheServer(
     /* Built rather than written out, because a header carrying `null` is a header
        carrying the four letters of the word. Without the token the request is still
        sent: the server is what judges it, and being refused by it out loud is worth
-       more than this file deciding on its own that there is no point. */
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+       more than this file deciding on its own that there is no point.
+
+       AND EMPTY FOR A FILE, WHICH IS THE WHOLE OF THE WIDENING. `fetch` writes
+       `Content-Type: multipart/form-data; boundary=...` itself for a `FormData` body,
+       and only where nothing else has written one - so a `Content-Type` set here is not
+       an extra header but a boundary that belongs to no body, and the route reads nought
+       parts out of a request that carried a picture. The token goes with it either way:
+       `ApiSecurity` protects what changes something, whatever shape it arrived in. */
+    const headers: Record<string, string> =
+      said instanceof FormData ? {} : { 'Content-Type': 'application/json' }
 
     if (token !== null) {
       headers[TOKEN_HEADER] = token
     }
 
-    answer = await fetch(path, { method: how, headers, body: JSON.stringify(said) })
+    answer = await fetch(path, {
+      method: how,
+      headers,
+      /* Handed over whole rather than serialised. `JSON.stringify` of a `FormData` is
+         `"{}"` - measured, not reasoned: every part of it is on the internal slot and
+         none on an own property - so a file sent this way arrives as an empty object and
+         `MePhotoApi` answers `theFormIsNotComplete` about a picture that was really
+         chosen. `askTheServer.test.ts` holds that shape by reading what was sent. */
+      body: said instanceof FormData ? said : JSON.stringify(said),
+    })
   } catch {
     return { got: 'nothing' }
   }
