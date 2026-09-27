@@ -437,6 +437,8 @@ function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNum
     remove: vi.fn(),
     proposals: [],
     propose: vi.fn(),
+    pictureSent: null,
+    sendPicture: vi.fn(),
     published: [],
     publish: vi.fn(),
   }

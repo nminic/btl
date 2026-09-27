@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { closestIn, WHOLE } from '../../components/crop'
-import { AS_FINE_AS_THE_COLUMN, asTheColumnHolds, pictureToSend } from './photoWrites'
+import { AS_FINE_AS_THE_COLUMN, asTheColumnHolds, pictureToSend, theRowIn } from './photoWrites'
 
 /**
  * WHAT GOES ON THE WIRE WHEN A MEMBER SENDS HIS PORTRAIT.
@@ -145,5 +145,38 @@ describe('the body a picture travels in', () => {
     expect(Number(body.get('cropX'))).toBe(WHOLE.x)
     expect(Number(body.get('cropY'))).toBe(WHOLE.y)
     expect(Number(body.get('cropSize'))).toBe(WHOLE.size)
+  })
+})
+
+describe('the queue row the answer names', () => {
+  /* The key the member's own screen files his wait under, and the SAME key the moderator's
+     decision is filed under (`session/context.ts#pictureSent`). The shape of these cases is
+     `admin/leagueWrites.test.ts`'s for `identityIn`, because the function is that one's shape
+     too: a route that answers with a record answers with its identity, and this side reads it
+     off `unknown` rather than asserting it (ADL A14). */
+  it('is the number the route filed the picture as', () => {
+    expect(theRowIn({ waiting: 2, digest: 'abc', standing: null })).toBe(2)
+  })
+
+  it('is nothing where the answer carried no body at all', () => {
+    expect(theRowIn(undefined)).toBeNull()
+    expect(theRowIn(null)).toBeNull()
+    expect(theRowIn('2')).toBeNull()
+  })
+
+  it('is nothing where the body names no row, or one of the wrong kind', () => {
+    /* `digest` is there and `waiting` is not, which is the one shape a route that had dropped
+       the key would really answer with. */
+    expect(theRowIn({ digest: 'abc', standing: null })).toBeNull()
+    expect(theRowIn({ waiting: '2' })).toBeNull()
+    expect(theRowIn({ waiting: 2.5 })).toBeNull()
+  })
+
+  it('is nothing for a row number no sequence hands out', () => {
+    /* `verification.id` is a `bigserial`, so it starts at one. Nought and below are what a
+       route answering about no row at all would send, and a decision must never be filed
+       under one. */
+    expect(theRowIn({ waiting: 0 })).toBeNull()
+    expect(theRowIn({ waiting: -1 })).toBeNull()
   })
 })

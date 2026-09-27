@@ -198,13 +198,20 @@ describe('the picture on a profile, changed later', () => {
      *
        So the panel knows about this visit, and with a database it will ask one
        question about one member. Until then the cost is not the moderator's - a
-       review of PR 381 (27.09.2026) measured that `proposals` lives in `useState`
-       (`SessionProvider.tsx`), so this very overlay is gone the moment the tab is
-       reloaded while the row it cannot see stays open on the server: the member
-       who sent it meets `picture.none` on the next visit as though he had sent
-       nothing, sends again, and is refused `aPictureAlreadyWaits`. No card is
-       what is missing then, not a second one, which is written down rather than
-       left to be found (PENDING, and PDL P22). */
+       review of PR 381 (27.09.2026) measured it of `proposals`, and since that
+       same day the fact this panel reads is `pictureSent` (`session/context.ts`),
+       which lives in `useState` exactly as `proposals` does. So it is gone the
+       moment the tab is reloaded while the row it cannot see stays open on the
+       server: the member who sent it meets `picture.none` on the next visit as
+       though he had sent nothing, sends again, and is refused
+       `aPictureAlreadyWaits`. No card is what is missing then, not a second one,
+       which is written down rather than left to be found (PENDING, and PDL P22).
+     *
+       WHAT CHANGED THAT DAY AND WHAT DID NOT: the panel no longer puts a card of
+       its own in front of the moderator at all, because the server files the queue
+       row itself (`pictureIsOneRow.test.tsx`). The reload boundary above is
+       untouched by that - it was never about the card, it was about this panel
+       knowing what it sent. */
     const asked: string[] = []
     const real = globalThis.fetch
 
@@ -224,76 +231,22 @@ describe('the picture on a profile, changed later', () => {
       globalThis.fetch = real
     }
   })
-  it('lets the member send another once a moderator has decided', async () => {
-    /* A decision is what ends the waiting. Read without it, somebody whose
-       picture had just been approved was still told to wait, with no control at
-       all and no way out of it. */
-    const user = setupUser()
-    const { router } = renderAt(
-      '/sr/administracija/verifikacija/trkacki-profil',
-      'superadmin',
-      waiting.memberNumber,
-    )
-
-    const heading = await screen.findByRole('heading', { name: waiting.subject })
-    const card = must(heading.closest('li'), 'the card the heading stands in')
-
-    await user.click(within(card).getByRole('button', { name: 'Odobri' }))
-    await router.navigate('/sr/podesavanja')
-
-    const panel = await panelFor()
-
-    expect(await panel.findByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
-    expect(panel.queryByText(/čeka odobrenje/)).not.toBeInTheDocument()
-  })
-
-  it('reaches the moderator as a picture, under the member it belongs to', async () => {
-    /* The queue holds two sorts and decides them differently. Sent as the wrong
-       sort, or under the wrong number, the instruction telling somebody what to
-       change reaches the wrong inbox: `memberNumber` is what decides that
-       (pages/admin/queues.ts). Both are read off the card here, because the
-       earlier version of this test checked neither and passed through both.
-
-       THE CARD IS STILL THE PORTAL'S OWN OVERLAY and this case is why the session is
-       still written at all: the moderator's queue is drawn out of it, so the flow the
-       owner asked for stays walkable end to end. What changed on 26.09.2026 is WHEN it
-       is written - only inside the arm an answer authorised - and the case below is the
-       other half of that pair. */
-    const { stop } = serverThat((path, init) =>
-      path === '/api/me/photo' && init?.method === 'POST' ? did() : null,
-    )
-    const user = setupUser()
-    const { router } = renderAt('/sr/podesavanja', 'superadmin', '000007')
-
-    const panel = await panelFor()
-
-    await user.upload(await panel.findByLabelText(/Izaberi novu sliku/), anImage())
-    await measurePicture()
-    /* Waited for, as above. Without this the send is pressed while the browser
-       is still reading the file and nothing is sent at all: it passed on this
-       machine, alone, and failed the moment the whole suite ran beside it. */
-    await panel.findByLabelText('Veličina isečka')
-    await user.click(panel.getByRole('button', { name: 'Pošalji na odobrenje' }))
-    await waitFor(() => (expect(screen.getByText(/čeka odobrenje/)).toBeVisible()))
-
-    stop()
-    await router.navigate('/sr/administracija/verifikacija/trkacki-profil')
-
-    const heading = await screen.findByRole('heading', { name: 'Strahinja Vukićević' })
-    const card = must(heading.closest('li'), 'the card the heading stands in')
-
-    expect(within(card).getByText(/nova-slika\.jpg/)).toBeVisible()
-    expect(within(card).getByText(/000007/)).toBeVisible()
-    /* The decision offered is the one for a picture: handed back with an
-       instruction precise enough to work from, rather than the plain reason a
-       text is refused with (PDL P22). */
-    expect(within(card).getByRole('button', { name: 'Odobri' })).toBeVisible()
-    /* The word left the dictionary with the decision (PDL P22), so asking the
-       screen for it can no longer fail on its own; the dictionary is asked with
-       it, which is where it would have to reappear. */
-    expect(within(card).queryByRole('button', { name: 'Objavi' })).not.toBeInTheDocument()
-    expect(JSON.stringify(sr.verification)).not.toContain('Objavi')
-  })
+  /* TWO CASES THAT STOOD HERE LEFT ON 27.09.2026, and both left because their subject
+     did, not because anything about them was weakened.
+   *
+     „reaches the moderator as a picture, under the member it belongs to" read the sort and
+     the member number off the card this screen minted. This screen mints no card: the queue
+     row for a picture is the server's, and the sort and the number on it are read off
+     `competitor` by `VerificationApi`. There is nothing here left to get wrong. The case also
+     asked the card for the name of the file, which the served row cannot carry at all -
+     `MePhotoApi` writes `body` as the empty string and says why: „A picture proposes a
+     picture; what the moderator looks at is `photo_id`."
+   *
+     „lets the member send another once a moderator has decided" measured the mark clearing,
+     and it had stopped measuring it: with no card minted here the panel offers the control
+     whatever anybody decides, so the case passed without the decision. It is replaced by
+     `pictureIsOneRow.test.tsx`, which sends first and then decides, and decides SOMEBODY
+     ELSE'S row beside his own - the swap this file never had. */
 
   it('says what the server refused, and puts nothing in front of a moderator', async () => {
     /* THE OTHER ARM OF THE FIRST AXIS, AND IT IS NOT READ OFF THIS PANEL.
