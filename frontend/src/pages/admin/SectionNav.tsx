@@ -7,7 +7,7 @@ import { useSession } from '../../session/useSession'
 import { usePermittedEntities, usePermittedQueues } from './mayOpen'
 import { usePending } from './pending'
 import { usePaymentsDue } from '../../data/useResource'
-import { countFor } from './queues'
+import { countFor, notMembersYetIn } from './queues'
 import './SectionNav.css'
 
 /* The two administrative sections are worked through rather than visited: the
@@ -256,7 +256,7 @@ function QueuesSector() {
     /* Read for what it is worth, like the file beside it: a derived list still on its way
        counts as nought, which is the same reading every other queue gets while it waits and
        is what keeps this section from holding up the work behind it. */
-    notMembersYet: dataOr(due, { season: 0, accounts: [] }).accounts.length,
+    notMembersYet: notMembersYetIn(dataOr(due, null)),
     items: dataOr(items, []),
     decisions,
   }

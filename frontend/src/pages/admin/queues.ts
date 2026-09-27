@@ -367,6 +367,36 @@ export type Waiting = {
  * member number became something the system hands out (PDL P8, 30.07.2026). They are out of it
  * again for a different reason: not because a number is missing, but because there is no item.
  */
+/**
+ * HOW MANY ACCOUNTS THE DERIVED LIST HOLDS, read off the answer itself.
+ *
+ * <p><b>Read without an assertion (ADL A14), and that is not tidiness: it was a crash.</b>
+ * `data/client.ts` puts the caller's type back onto what comes off the wire, so an answer of
+ * another shape arrives claiming to be an `Outstanding`. Written as `answer.accounts.length`,
+ * the counter threw „Cannot read properties of undefined" and took the WHOLE administration
+ * down through `ErrorBoundary` - not the Uplate tab, the navigation, which stands on every
+ * administrative screen. Measured, not imagined: a case that answers every resource with an
+ * empty list did exactly that.
+ *
+ * <p>So the shape is narrowed by LOOKING at it, the same rule `admin/leagueCounted.ts` reads a
+ * served field by and `pages/account/askTheServer.ts` reads a refusal by.
+ *
+ * <p><b>Nothing and nought are deliberately one answer.</b> A list still on its way, a list
+ * that came back empty, and a route that refused a moderator who may not read it are three real
+ * states and all three mean „no number to show here". Told apart, the column would have to say
+ * something about two of them, and there is nothing it could usefully say: the owner's decision
+ * of 29.08.2026 is that a queue shows its number and stays put.
+ */
+export function notMembersYetIn(served: unknown): number {
+  if (served === null || typeof served !== 'object') {
+    return 0
+  }
+
+  const accounts: unknown = Reflect.get(served, 'accounts')
+
+  return Array.isArray(accounts) ? accounts.length : 0
+}
+
 export function countFor(
   { pendingResults, notMembersYet, items, decisions }: Waiting,
   queue: Queue,

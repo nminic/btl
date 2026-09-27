@@ -5,7 +5,7 @@ import { dataOr, usePaymentsDue } from '../data/useResource'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePending } from '../pages/admin/pending'
-import { totalWaiting } from '../pages/admin/queues'
+import { notMembersYetIn, totalWaiting } from '../pages/admin/queues'
 import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
@@ -57,7 +57,7 @@ function useWaiting(): number {
   const items = usePending()
   /* TWO reads and not one since 27.09.2026, because one of the five queues is no longer in
      the file: the Uplate tab is a derived list (`queues.ts`, `notMembersYet`). Left out, this
-     total would be short by however many people owe a fee, and the badge over every screen on
+     total would be short by however many people owe a fee, and the number over every screen on
      the portal would disagree with the column that stands beside the work. Both are resources
      the data layer keeps for the whole visit, so it is still one request each. */
   const due = usePaymentsDue()
@@ -69,7 +69,7 @@ function useWaiting(): number {
   return totalWaiting(
     {
       pendingResults: submissions.filter((one) => one.status === 'pending').length,
-      notMembersYet: dataOr(due, { season: 0, accounts: [] }).accounts.length,
+      notMembersYet: notMembersYetIn(dataOr(due, null)),
       items: dataOr(items, []),
       decisions,
     },

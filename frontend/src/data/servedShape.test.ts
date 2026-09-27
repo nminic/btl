@@ -535,6 +535,13 @@ describe('the answer the backend gives', () => {
        and `transfersTakeEffect` and neither of the two is the season being paid for. So an
        answer that stopped carrying `season` would send that screen back to working the year
        out for itself, and the year it would work out is measurably a different one. */
+    /* The two typed names above are what the compiler checks; read here so that the check is
+       load-bearing rather than a declaration nothing touches, which is the shape the four
+       samples at the top of this file already keep. The season is a YEAR and not a count, which
+       is the one thing about this answer a reader has to know. */
+    expect(readAsOutstanding.season).toBe(2027)
+    expect(readAsAccountNotYetAMember.memberNumber).toBe('')
+
     expect(missing(anOutstandingAnswer, servedAnswer('payments'))).toEqual([])
 
     /* AND THE ROW INSIDE IT, because the record above says nothing about what an account

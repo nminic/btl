@@ -1288,18 +1288,7 @@
       "anonymisingIsNotWrittenYet": "Anonymising an account has not been written yet. For now a member can only be deleted.",
       "theAccountAdministers": "This member's account administers the portal, so the member cannot be deleted from here."
     },
-    "memberGone": "The member has been deleted.",
-    "paymentRefused": {
-      "theFormIsNotComplete": "The portal did not pass on who is being activated. Refresh the page and try again.",
-      "theCurrencyIsNotKnown": "The portal sent a currency the server does not accept. Refresh the page and try again.",
-      "theMethodIsNotKnown": "The portal sent a payment method the server does not accept. Refresh the page and try again.",
-      "theReferenceIsNotShaped": "The payment reference is not of the right shape.",
-      "theCompetitorDoesNotExist": "The server no longer knows this member. Refresh the page: the list has changed in the meantime.",
-      "theReferenceIsTaken": "That payment reference is already recorded against another payment.",
-      "thePaymentWasReversed": "The payment for this season was reversed, so the membership is not activated from here. A reversal is turned back by a decision, not by a click on a list.",
-      "theMembershipIsAlreadyHeld": "This member already holds a membership for this season.",
-      "theFeeIsAlreadyRecorded": "This member's payment is already recorded, so he cannot be exempted from the fee."
-    }
+    "memberGone": "The member has been deleted."
   },
   "ducats": {
     "title": "Ducats",
@@ -1432,8 +1421,6 @@
     "teamChangeAcceptedBody": "The details of the team „{name}“ have been changed. A moderator may correct what you sent before accepting it, so have a look at the team's page.",
     "sentBy": "Sent by {who}, member {memberNumber}",
     "sentByAnonymous": "Reported by a visitor without an account",
-    "activatePayment": "Record the payment",
-    "activateFeeExempt": "Exempt from the fee",
     "paymentsSeason": "Not members for the {season} season",
     "paymentsSearch": "Search by member number, given name or surname",
     "paymentsNobodyDue": "Every account holds a membership for this season.",
@@ -1469,8 +1456,6 @@
     "bioReturned": "The text about yourself has been sent back",
     "photoReturned": "The profile picture has been sent back",
     "noRecipient": "This item has no member for an answer to reach, so it is not refused from this queue. Approve it or report the fault; a message without a recipient would go to the whole League.",
-    "numbersGiven": "The member numbers given",
-    "noNumbersYet": "No number has been given on this screen yet.",
     "approveAllDone": {
       "one": "{count} item has been settled.",
       "few": "{count} items have been settled.",

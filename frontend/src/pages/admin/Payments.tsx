@@ -1,20 +1,8 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Resource } from '../../components/Resource'
-import { clearResourceCache } from '../../data/client'
 import { usePaymentsDue } from '../../data/useResource'
-import type { MembershipDue } from '../../data/types'
 import { useI18n } from '../../i18n/useI18n'
-import { askTheServer, type Answer } from '../account/askTheServer'
-import { ServerSaid } from '../account/ServerSaid'
 import { matching } from './paymentSearch'
-import {
-  activating,
-  A_FEE_THAT_ARRIVED,
-  A_FEE_THAT_IS_WAIVED,
-  numberIn,
-  WHEN_CONFIRMING_A_PAYMENT,
-  WHEN_FREEING_OF_THE_FEE,
-} from './paymentWrites'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE } from './queues'
 import '../member/Member.css'
@@ -91,7 +79,7 @@ function Statement() {
 }
 
 /**
- * WHOEVER IS NOT A MEMBER FOR THE SEASON YET, AND THE ONE CLICK THAT MAKES HIM ONE.
+ * WHOEVER IS NOT A MEMBER FOR THE SEASON YET, READ OFF THE SERVER.
  *
  * <p><b>IT IS A DERIVED LIST AND NOT A QUEUE, AND THAT IS THE WHOLE OF WHAT CHANGED HERE
  * ON 27.09.2026.</b> Owner, choosing between three outcomes: „Svidja mi se pod 1, a da li
@@ -103,150 +91,38 @@ function Statement() {
  * hold. The tab looked alive because tabs are named after RIGHTS rather than after items.
  *
  * <p><b>WHAT THE SCREEN BEFORE THIS ONE REALLY DID, because it is the fault being fixed and
- * not merely an older design.</b> It wrote the decision into the session overlay and handed
- * out a member number by counting the ones it could see. Nothing reached the server: a
- * refresh undid the activation, and the number was worked out against the member list, which
- * is missing exactly the people who have left. The number is a sequence on the server for
- * that reason (V16), and now only the server hands one out.
+ * not merely an older design.</b> It drew three rows out of a fixture, wrote a decision into
+ * the session overlay, and handed out a member number by counting the ones it could see.
+ * Nothing reached the server, nothing in the backend has ever written that queue, and the
+ * number was worked out against the member list, which is missing exactly the people who have
+ * left. This reads `GET /api/payments`, which works the answer out on every read.
  *
- * <p><b>A ROW LEAVES THIS LIST BY THE MEMBERSHIP BEING WRITTEN, never by a decision being
- * recorded.</b> So there is nothing for this screen to remember: it asks the route, and on
- * the answer it clears the cached list so the next mount reads the derived answer again. What
- * it holds for the rest of the visit is only which rows it has already booked, which is a fact
- * about this visit and dies with it - not a decision laid over the server's answer.
+ * <p><b>WHAT IT DELIBERATELY DOES NOT DO YET, AND THAT IS A BOUNDARY RATHER THAN AN
+ * UNFINISHED HALF.</b> Nothing here activates a membership. The owner is settling how that
+ * works - per row, an empty box carrying a currency, the competitor's balance beside it, and
+ * the booking taken out of the balance where the box is left empty - and until that is written
+ * down, a button here would be a guess at a shape he is in the middle of deciding. So the
+ * screen reads and finds, and the act of booking arrives with its own specification. There is
+ * no half-built control standing about in the meantime, which is the point.
  *
- * <p><b>THE MASS BUTTON IS GONE AND ITS ABSENCE IS THE DECISION, not an omission.</b> On the
- * old queue a row meant „somebody says the money arrived", so one press deciding all of them
- * was one decision taken many times. On a derived list a row means the OPPOSITE - „no money
- * has arrived" - so the same sweep would activate every debtor at once and hand each of them a
- * member number that cannot be taken back (the sequence only counts up, and a number spent in
- * error is spent for good). „Dovoljno je da klikne Aktiviraj" is about one man.
+ * <p><b>THE MASS BUTTON IS GONE AND ITS ABSENCE IS ALREADY DECIDED, independently of the
+ * above.</b> On the old queue a row meant „somebody says the money arrived", so one press
+ * deciding all of them was one decision taken many times. On a derived list a row means the
+ * OPPOSITE - „no money has arrived" - so the same sweep would activate every debtor at once
+ * and hand each a member number that cannot be taken back: the sequence only counts up, so a
+ * number spent in error is spent for good.
  *
  * <p><b>AND SO IS THE BOX THAT HANDED WORK BACK WITH A REASON.</b> It existed to return
  * something somebody had sent in. Nobody sends anything in here, so there is nothing to
  * return and nobody to write to: a reason written against one of these rows would reach a
  * member as „your submission was handed back" about a submission he never made.
- *
- * <p><b>Two buttons and not one, because a membership is activated in two ways</b> and the
- * owner named both in one breath (PDL:760): a fee that arrived, and a decision of the
- * association freeing somebody of it. Two routes, two sets of refusals, two words
- * (`paymentWrites.ts`). Neither asks the moderator to type anything.
  */
 export function Payments() {
   const { t } = useI18n()
   const [search, setSearch] = useState('')
-  /**
-   * Why the last press did not go through, the row it was pressed on, and the sentences of
-   * the act that was pressed.
-   *
-   * <p><b>The dictionary is remembered rather than worked out from the reason.</b> Three
-   * names are declared by both routes, so „which act was this" cannot be read back off the
-   * answer; carried here, the reader of a refusal only one of the two routes can name is
-   * never handed the other one's words, and never the raw code.
-   */
-  const [said, setSaid] = useState<{
-    competitorId: number
-    answer: Exclude<Answer, { got: 'done' }>
-    reasons: Record<string, string>
-  } | null>(null)
-  /**
-   * Whom this visit has already activated, and the number each of them was given.
-   *
-   * <p><b>Held here rather than in the session, and that is the decision of 27.09.2026
-   * carried out rather than worked around.</b> There is no decision to record: the server's
-   * own answer is what says who is a member, and this is only what keeps a row that has just
-   * been booked from standing under the moderator's hand until he leaves the screen. It dies
-   * with the screen, and what he sees when he comes back is the derived answer, read again
-   * because the cache was cleared.
-   *
-   * <p>The number is in it because the number is the first thing the administrator passes on
-   * to whoever paid (PDL P8), and because nothing else on the portal would ever show it to
-   * him: the row it belongs to has left the list by then.
-   */
-  const [booked, setBooked] = useState<{ competitorId: number; who: string; memberNumber: string }[]>(
-    [],
-  )
-  /**
-   * Whether a press is out with the route, so a second one before the first has answered
-   * cannot start another.
-   *
-   * A ref rather than the state beside it, exactly the way `PendingQueue.tsx` guards its own
-   * walk and `ProposeTeam.tsx` its own send: state set inside the call is not yet visible to a
-   * second click fired before the render it would cause, and two clicks fired without waiting
-   * are what a double press and an impatient second try both are. Read by BOTH buttons of
-   * BOTH rows, so a press on either while the other is still out is caught the same way - and
-   * on this screen that matters more than on the queue, because the two acts write a different
-   * basis for the same season and the loser of the race would meet a 409.
-   */
-  const outstanding = useRef(false)
-  /** The same fact as a render can see, so both buttons can be marked while one is out. */
-  const [working, setWorking] = useState(false)
   const state = usePaymentsDue()
 
   const queue = QUEUE.payments
-
-  /**
-   * ACTIVATION: ASK THE ROUTE, AND CHANGE NOTHING HERE UNLESS IT SAID YES.
-   *
-   * <p>The order is the order, and it is the one `PendingQueue.tsx` was rewritten into on
-   * 26.09.2026 after a moderator watched a card leave a queue while nothing was written: a
-   * consequence of something that did not happen is the fault being avoided.
-   *
-   * @param where  which of the two acts this is (`paymentWrites.ts`)
-   * @param reasons the sentences that act's refusals draw
-   */
-  const activate = async (
-    one: MembershipDue,
-    where: string,
-    reasons: Record<string, string>,
-  ): Promise<void> => {
-    /* Set before anything below awaits anything, so a second press reads it as true before
-       it can send a second request for the same row. Released in `finally` rather than after
-       the last line, so a route that rejects outright still lets the next press in. */
-    outstanding.current = true
-    setWorking(true)
-
-    try {
-      const answer = await askTheServer(where, activating(one.competitorId))
-
-      if (answer.got !== 'done') {
-        setSaid({ competitorId: one.competitorId, answer, reasons })
-
-        return
-      }
-
-      setSaid(null)
-      setBooked((sofar) => [
-        ...sofar,
-        {
-          competitorId: one.competitorId,
-          who: `${one.firstName} ${one.lastName}`,
-          /* Off the ANSWER and never worked out here. Both routes either find the number he
-             already had or draw the next one from the sequence, and the sequence is the only
-             thing that knows which that is. */
-          memberNumber: numberIn(answer.body),
-        },
-      ])
-
-      /* ONLY IN THE BRANCH THE ANSWER APPROVED, which is the shape `PendingQueue.tsx` keeps
-         (`if (done > 0)`) and the reason it gives: clearing the cache over a write the route
-         REFUSED is a screen throwing away an answer it still has every reason to trust, and
-         it would send the next mount to the server for a list that has not changed. */
-      clearResourceCache('payments')
-    } finally {
-      outstanding.current = false
-      setWorking(false)
-    }
-  }
-
-  /** One press, guarded at the door the same way both of `PendingQueue`'s are. */
-  const press = (one: MembershipDue, where: string, reasons: Record<string, string>) => {
-    if (outstanding.current) {
-      return
-    }
-
-    void activate(one, where, reasons)
-  }
 
   return (
     <div className="member">
@@ -258,23 +134,20 @@ export function Payments() {
       <h1 className="visually-hidden">{t(queue.labelKey)}</h1>
 
       <Resource state={state}>
-        {(outstandingFees) => {
-          const rows = matching(outstandingFees.accounts, search).filter(
-            (one) => !booked.some((each) => each.competitorId === one.competitorId),
-          )
-          const given = booked.filter((one) => one.memberNumber !== '')
+        {(outstanding) => {
+          const rows = matching(outstanding.accounts, search)
 
           return (
             <>
               <Statement />
 
               <div className="pending__bar">
-                {/* The season is named because the screen is booking one, and it comes off
-                    the ANSWER: `data/season.ts` cannot work it out (`Outstanding` says why),
-                    so a heading that computed it would name a different year from the list
-                    under it. */}
+                {/* The season is named because the screen is about one, and it comes off the
+                    ANSWER: `data/season.ts` cannot work it out (`Outstanding` says why), so a
+                    heading that computed it would name a different year from the list under
+                    it. */}
                 <h2 className="profile__section">
-                  {t('verification.paymentsSeason', { season: outstandingFees.season })}{' '}
+                  {t('verification.paymentsSeason', { season: outstanding.season })}{' '}
                   <span className="profile__count">{rows.length}</span>
                 </h2>
               </div>
@@ -295,40 +168,16 @@ export function Payments() {
                 </div>
               </div>
 
-              {/* Drawn whether or not anything has been given, so the region is on the page
-                  before it has anything to say: one added together with its text is the kind
-                  a screen reader misses. */}
-              <div
-                className="member__panel"
-                role="status"
-                aria-label={t('verification.numbersGiven')}
-              >
-                <h2 className="profile__section">{t('verification.numbersGiven')}</h2>
-
-                {given.length === 0 ? (
-                  <p className="profile__empty">{t('verification.noNumbersYet')}</p>
-                ) : (
-                  <ul className="pending__given">
-                    {given.map((one) => (
-                      <li key={one.competitorId}>
-                        {one.who}
-                        {' · '}
-                        <span className="table__member-number">{one.memberNumber}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-
               {/* THREE STATES AND NOT TWO, and the middle one is the reason this is not an
-                  `||`. „Nobody owes anything" is the ordinary state of a working portal on
+                  `||`. „Everybody is a member" is the ordinary state of a working portal on
                   the first day (owner: „NIKO SE NE DOVODI U PORTAL DOK SE SAM NE PRIJAVI");
                   „nothing matches what you typed" is a moderator who mistyped a name off a
-                  bank statement. Told with one sentence, he would read „nobody owes" and stop
-                  looking for the man whose money is sitting in the account. */}
+                  bank statement. Told with one sentence, he would read „everybody is a
+                  member" and stop looking for the man whose money is sitting in the
+                  account. */}
               {rows.length === 0 ? (
                 <p className="profile__empty">
-                  {outstandingFees.accounts.length === 0
+                  {outstanding.accounts.length === 0
                     ? t('verification.paymentsNobodyDue')
                     : t('verification.paymentsNoSearchHit')}
                 </p>
@@ -340,7 +189,6 @@ export function Payments() {
                       <tr>
                         <th scope="col">{t('competitors.columns.member')}</th>
                         <th scope="col">{t('competitors.columns.city')}</th>
-                        <th scope="col">{t('review.decision')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -350,44 +198,21 @@ export function Payments() {
                             {one.firstName} {one.lastName}
                             {/* Under the name because the owner named it as one of the three
                                 things he searches by, so a hit has to be confirmable by eye.
-                                Blank for most of this list, which is the ordinary state of
-                                somebody who has registered and never paid. */}
+                                Blank for most of this list, which since V16 is the ordinary
+                                state of somebody who has registered and never paid. */}
                             <span className="table__member-number">{one.memberNumber}</span>
                           </td>
+                          {/* THE TOWN, AND ITS REASON IS NEW RATHER THAN INHERITED, which is
+                              written here because the old one is still readable two files
+                              away: `VerificationApi` says a town is drawn „because how a
+                              member pays follows the country they live in". That fell with
+                              the owner's decision of 27.09.2026 - „Novac je legao, mogu da ga
+                              aktiviram" - so nothing about money is read off a town any more.
+                              It stays to tell two people of one name apart: nothing stops two
+                              sharing a first and last name, most of this list holds no member
+                              number to separate them, and a moderator booking the wrong row
+                              books one man's money to another. */}
                           <td>{one.city}</td>
-                          <td>
-                            <div className="review__decide">
-                              <button
-                                type="button"
-                                className="button button--primary"
-                                aria-disabled={working}
-                                onClick={() => {
-                                  press(one, A_FEE_THAT_ARRIVED, WHEN_CONFIRMING_A_PAYMENT)
-                                }}
-                              >
-                                {t('verification.activatePayment')}
-                              </button>
-                              <button
-                                type="button"
-                                className="button button--secondary"
-                                aria-disabled={working}
-                                onClick={() => {
-                                  press(one, A_FEE_THAT_IS_WAIVED, WHEN_FREEING_OF_THE_FEE)
-                                }}
-                              >
-                                {t('verification.activateFeeExempt')}
-                              </button>
-                            </div>
-
-                            {/* Beside the row it is about, because on a list of twenty there
-                                is otherwise nothing on screen saying whose activation was
-                                refused. Which act refused it decides which sentences are
-                                looked up, so a reason one route names and the other does not
-                                cannot be answered by the wrong words. */}
-                            {said?.competitorId === one.competitorId && (
-                              <ServerSaid answer={said.answer} refusals={said.reasons} />
-                            )}
-                          </td>
                         </tr>
                       ))}
                     </tbody>
