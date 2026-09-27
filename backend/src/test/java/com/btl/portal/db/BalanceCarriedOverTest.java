@@ -85,10 +85,17 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	 * had half of it.
 	 */
 	private void whatV36Creates() {
-		/* THE COLUMN, AND WITH IT EVERYTHING THAT DEPENDS ON IT. `cascade` rather than three
-		   statements naming the two constraints by hand: a hand-written list of dependencies is a
-		   list that goes stale the day a fourth thing points at this column, and PostgreSQL already
-		   knows what points at it. */
+		/* THE COLUMN, AND WITH IT EVERYTHING THAT DEPENDS ON IT - one statement rather than three
+		   naming the two constraints by hand, because a hand-written list of dependencies goes stale
+		   the day a fourth thing points at this column and PostgreSQL already knows what does.
+
+		   `cascade` IS NOT WHAT DOES THE WORK HERE, and saying so is the point of this line rather
+		   than leaving a word that looks load-bearing. Measured by mutation: removing it changes
+		   nothing, because PostgreSQL drops indexes and table constraints involving a column together
+		   with the column whether it is asked to or not. What `cascade` would cover is something
+		   OUTSIDE this table pointing at the column, of which there is nothing today. It is kept
+		   because it costs nothing and because it is what the rule written on 27.09.2026 prescribes,
+		   not because the two constraints need it. */
 		jdbc.execute("alter table membership drop column balance_entry_id cascade");
 
 		/* Both tables in one statement, and `cascade` takes their triggers with them. The functions

@@ -335,6 +335,31 @@ class MembershipConstraintsTest extends DatabaseTest {
 				.hasMessageContaining(violation.evidence());
 	}
 
+	/**
+	 * AND THE ROW THAT NAMES A BOOK ENTRY ON THE WRONG BASIS BREAKS THAT AND NOTHING ELSE.
+	 *
+	 * <p><b>This case exists because a mutation SURVIVED without it.</b> The row above holds
+	 * {@code feeExempt} while naming a book entry, and since V35 an exemption owes a trail - so
+	 * without one it breaks THREE constraints. Taking its trail away left the whole file green,
+	 * because {@code theConstraintRejectsTheRowThatBreaksIt} asks only that the refusal MENTIONS the
+	 * constraint it is about, and PostgreSQL happened to reach that one first. The comment beside the
+	 * row claimed „each of the three breaks exactly one constraint" and nothing measured it.
+	 *
+	 * <p>So the claim is measured here, in the one direction that can fail: the refusal must NOT name
+	 * either of the two V35 puts on an exemption. Which constraint PostgreSQL reports when a row
+	 * breaks several is its business and not something to assert; that it breaks only one is this
+	 * branch's business and is what this asks.
+	 */
+	@Test
+	void theRowThatNamesABookEntryOnTheWrongBasisBreaksThatAloneSinceV35() {
+		assertThatThrownBy(() -> db.sql(membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, "
+						+ HIS_BOOK_ENTRY + ", " + A_TRAIL)).update())
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("membership_basis_says_whether_a_book_entry_is_named")
+				.hasMessageNotContaining("membership_free_of_the_fee_says_who")
+				.hasMessageNotContaining("membership_free_of_the_fee_says_when");
+	}
+
 	/** The floor under the list above, read out of the database. */
 	@Test
 	void everyConstraintOnTheMembershipHasARowThatBreaksIt() {
