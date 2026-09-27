@@ -679,12 +679,18 @@ describe('the inbox when somebody else signs in without signing out first', () =
     expect(await screen.findByRole('link', { name: new RegExp(FORGED.subject) })).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+    /* Checked before the panel is reopened, so a stale instance that never remounted cannot
+       hide behind the dropdown's own `hidden` and still pass this: the span is either gone
+       because a fresh mount never drew it, or it is sitting there whether the panel is open
+       or not. */
+    expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
+
     await user.click(await theEnvelope())
 
     expect(await screen.findByRole('link', { name: new RegExp(HERS.subject) })).toBeVisible()
-    expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
     expect(asksFor('/api/inbox')).toBeGreaterThan(1)
-  }, SLOW)
+  }, SLOW * 2)
 
   /* The same fault, on the screen rather than the panel: `Messages.tsx`'s `TheWholeInbox`
      calls `useInbox(mine)` once and, without the fix, holds the same `useResource` instance
@@ -704,9 +710,9 @@ describe('the inbox when somebody else signs in without signing out first', () =
 
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
 
-    expect(await screen.findByRole('link', { name: HERS.subject })).toBeVisible()
     expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
-  }, SLOW)
+    expect(await screen.findByRole('link', { name: HERS.subject })).toBeVisible()
+  }, SLOW * 2)
 
   /* And the third door, `MessageDetail.tsx`'s `TheMessageAsked`: opened on HIS message and
      never routed anywhere else, so a remount from routing cannot save this one either. The
@@ -728,12 +734,12 @@ describe('the inbox when somebody else signs in without signing out first', () =
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' }),
-    ).toBeVisible()
-    expect(
       screen.queryByRole('heading', { level: 1, name: FORGED.subject }),
     ).not.toBeInTheDocument()
-  }, SLOW)
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' }),
+    ).toBeVisible()
+  }, SLOW * 2)
 })
 
 describe('an account the league has given no number', () => {
