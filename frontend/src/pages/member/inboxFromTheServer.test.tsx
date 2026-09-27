@@ -96,6 +96,60 @@ const A_QUESTION = {
   teamInvitationId: 7,
 }
 
+/** And one that asks about a racing pair, which is answered by a different screen and is
+ *  therefore its own state rather than a variant of the one above. */
+const A_PAIR_QUESTION = {
+  ...FORGED,
+  id: 505,
+  subject: 'Poziv u par',
+  body: 'Milica te poziva u trkački par.',
+  pairInviteId: 9,
+}
+
+/**
+ * EVERY SENTENCE AND EVERY BUTTON AN ANSWER TO AN INVITATION COULD PUT ON THIS SCREEN, taken
+ * off the dictionary itself.
+ *
+ * **Written as a derivation because the hand-written version of it let a mutation through.**
+ * The first draft of the case below named three sentences - „Ovaj poziv više ne stoji.", „Tim
+ * koji te je pozvao više ne postoji." and the accept button - and a mutation that handed a
+ * served key straight to `InvitationAnswer` SURVIVED it, because what that screen actually
+ * drew was a fourth sentence („U međuvremenu si ušao/la u tim …", the member of this fixture
+ * having a team already). A list of sentences cannot be finished by thinking about the list.
+ *
+ * **And the derivation is not a scan of the component either**, which would have gone short
+ * in the same place: `grep` over `t('…')` in `InvitationAnswer.tsx` finds seven keys and
+ * misses exactly the two that are chosen by a ternary, which are the two that were missed.
+ * The dictionary is the thing that names them all.
+ *
+ * The longest literal run between the placeholders rather than the text up to the first one,
+ * because three of these sentences BEGIN with a placeholder and would otherwise contribute an
+ * empty string and quietly drop out.
+ */
+const WHAT_AN_ANSWER_WOULD_SAY = [
+  ...Object.entries(sr.teams).filter(([key]) => key.startsWith('invite')),
+  ...Object.entries(sr.pair),
+]
+  .map(([, said]) => longestLiteralIn(String(said)))
+  .filter((one) => one.length > 3)
+
+function longestLiteralIn(said: string): string {
+  return (
+    said
+      .split(/\{[^}]*\}/)
+      .map((one) => one.trim())
+      .sort((left, right) => right.length - left.length)[0] ?? ''
+  )
+}
+
+/** What a served question must not have put on the screen, said as one list rather than as
+ *  one assertion per sentence. */
+function whatTheScreenClaimsAboutAnAnswer(): string[] {
+  const said = screen.getByRole('main').textContent ?? ''
+
+  return WHAT_AN_ANSWER_WOULD_SAY.filter((one) => said.includes(one))
+}
+
 let server: { asked: Asked[]; stop: () => void } | null = null
 let open = false
 let holder: { role: string; account: number; member?: { memberNumber: string } } | null = null
@@ -314,6 +368,12 @@ describe('the inbox a member reads', () => {
       [HIS_ADDRESS]: [
         FORGED,
         WRITTEN,
+        /* **The SAME DAY as the row above it, which is the third thing this case measures.**
+           What leaves the server is the calendar day, so two messages of one day carry the
+           same value to sort on and the only order there is for them is the one the server
+           sent them in (`sent_at desc, id desc`). A sort that is not stable, or one that
+           compares something else when the days are equal, swaps these two. */
+        { ...WRITTEN, id: 499, subject: 'Majica je poslata', date: '2026-09-20' },
         { ...WRITTEN, id: 504, subject: 'Rezultat je primljen', date: '2026-07-11' },
       ],
     })
@@ -323,12 +383,13 @@ describe('the inbox a member reads', () => {
     await screen.findByRole('link', { name: FORGED.subject })
 
     expect(
-      screen.getAllByRole('link', { name: /Fotografija|Prevoz|Dobro do|Rezultat/ }).map(
+      screen.getAllByRole('link', { name: /Fotografija|Prevoz|Majica|Dobro do|Rezultat/ }).map(
         (one) => one.textContent,
       ),
     ).toEqual([
       FORGED.subject,
       WRITTEN.subject,
+      'Majica je poslata',
       'Dobro došao u pripremu sezone 2027',
       'Rezultat je odobren',
       'Rezultat je primljen',
@@ -392,9 +453,26 @@ describe('what the portal may not claim about a message the server keeps', () =>
        member a question was closed while the server still held it open, and that is worse
        than no buttons. Neither the buttons nor the sentence is here, and if either appears
        this goes red. */
-    expect(screen.queryByRole('button', { name: sr.teams.inviteAccept })).not.toBeInTheDocument()
-    expect(screen.queryByText(sr.teams.inviteClosed)).not.toBeInTheDocument()
-    expect(screen.queryByText(sr.teams.inviteGone)).not.toBeInTheDocument()
+    /* **THE FLOOR UNDER THAT, and it is why this reads a derived list rather than three
+       names.** Held as three sentences, this case was SURVIVED by exactly the mutation it was
+       written for: the screen drew a fourth sentence instead. The list is the dictionary's
+       own, so a fifth sentence written tomorrow is already on it. */
+    expect(WHAT_AN_ANSWER_WOULD_SAY.length).toBeGreaterThan(20)
+    expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
+  })
+
+  it('says nothing about an answer to a question about a racing pair either', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [A_PAIR_QUESTION] })
+
+    renderAt(`/sr/poruke/${String(A_PAIR_QUESTION.id)}`, 'competitor', '000007')
+
+    await screen.findByRole('heading', { level: 1, name: A_PAIR_QUESTION.subject })
+
+    /* **Its own case and not a variant of the one above**, because the two keys are answered
+       by two different screens and the compiler is the only thing keeping them apart
+       (`session/context.ts` says so about its own two). A mutation that handed a served key to
+       one of the two would leave the other green. */
+    expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
   })
 })
 

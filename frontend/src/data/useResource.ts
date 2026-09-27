@@ -385,7 +385,7 @@ export const useTeams = () => useResource<Team[]>('teams')
  * drop the same cache, which throws away the request the other one had already started.
  * One home, one decision, one request.
  */
-let inboxAnsweredFor: string | null | undefined
+let inboxAnsweredFor: string | undefined
 
 /**
  * Drops the answer the moment it stops being this caller's.
@@ -395,7 +395,7 @@ let inboxAnsweredFor: string | null | undefined
  * somebody else would draw their predecessor's subjects and then correct itself. There is
  * nothing to correct if the answer is gone before it is read.
  */
-function theInboxNowBelongsTo(whose: string | null): void {
+function theInboxNowBelongsTo(whose: string): void {
   if (inboxAnsweredFor !== whose) {
     inboxAnsweredFor = whose
     clearResourceCache('inbox')
@@ -429,14 +429,21 @@ function theInboxNowBelongsTo(whose: string | null): void {
  * sort, two messages of one day keep the order they arrived in, which for the served half
  * is the server's.
  */
-export function useInbox(): ResourceState<InboxLine[]> {
-  const { signedIn, inbox: held } = useSession()
-  /* Whose mail the answer would be. Read off `signedIn` rather than off `memberNumber`
-     beside it, for the reason `pages/member/memberScreen.tsx` gives: `signedIn` is worked
-     out from the only two facts there are and cannot drift from either. */
-  const whose = signedIn !== null && signedIn.as === 'member' ? signedIn.memberNumber : null
+export function useInbox(mine: string): ResourceState<InboxLine[]> {
+  const { inbox: held } = useSession()
 
-  theInboxNowBelongsTo(whose)
+  /* **WHOSE MAIL IS AN ARGUMENT AND NOT SOMETHING THIS HOOK WORKS OUT, and that is a
+     measurement rather than a preference.** Written as „read `signedIn` and answer nothing
+     where it names no member", the second half was a branch NOTHING COULD REACH: all three
+     callers gate on the same fact before they draw the part that asks (`Messages.tsx` says
+     why), so the hook is only ever called for somebody the league has given a number. A
+     branch nothing reaches is a branch that hides what it would have done, and the coverage
+     floor of 100 per cent on branches is what says so out loud.
+
+     So the caller hands over the number it already holds - `who.memberNumber` on the two
+     screens, `signedIn.memberNumber` in the panel - and the signature is what keeps the
+     question from being asked twice and answered two ways. */
+  theInboxNowBelongsTo(mine)
 
   const served = useResource<ServedMessage[]>('inbox')
 

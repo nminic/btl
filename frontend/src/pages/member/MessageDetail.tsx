@@ -32,7 +32,7 @@ export function MessageDetail() {
   /* The gate before the asking, for the reason written over `Messages.tsx`: an account that
      races for nobody is told `/api/inbox` is not there, so asking first would spend a refused
      request and hand this screen an error to draw over a sentence that is already right. */
-  return who.memberNumber === null ? who.instead : <TheMessageAsked />
+  return who.memberNumber === null ? who.instead : <TheMessageAsked mine={who.memberNumber} />
 }
 
 /**
@@ -44,8 +44,8 @@ export function MessageDetail() {
  * like „there is no such message" to anything reading the list. Read with a fallback, every
  * visit to a real message would show the not found page first and correct itself after.
  */
-function TheMessageAsked() {
-  return <Resource state={useInbox()}>{(lines) => <TheMessage lines={lines} />}</Resource>
+function TheMessageAsked({ mine }: { mine: string }) {
+  return <Resource state={useInbox(mine)}>{(lines) => <TheMessage lines={lines} />}</Resource>
 }
 
 function TheMessage({ lines }: { lines: InboxLine[] }) {

@@ -31,18 +31,22 @@ export function MessagesMenu() {
      header shows them is the empty panel, which is the same sentence an inbox with nothing in
      it gets: „there is nothing here" is true for both, and the difference between having none
      and having one that is empty is not a difference a header can usefully draw. */
-  return signedIn !== null && signedIn.as === 'member' ? <HisOwnInbox /> : <ThePanel lines={[]} />
+  return signedIn !== null && signedIn.as === 'member' ? (
+    <HisOwnInbox mine={signedIn.memberNumber} />
+  ) : (
+    <ThePanel lines={[]} />
+  )
 }
 
 /** The panel for whoever has one, read off the server. */
-function HisOwnInbox() {
+function HisOwnInbox({ mine }: { mine: string }) {
   /* **WAITED FOR BY NOBODY, WHICH IS THE ONE THING THIS MAY NOT DO.** This panel stands over
      every screen on the portal, so a `Resource` here would put the loading sheet over all of
      them, and an error state would put „Podaci se ne mogu učitati." in the header of a portal
      that is otherwise working. `Shell.tsx` answers the same question the same way for the
      count of work waiting: „A header that waited for it would hold up every screen behind it."
      Until the answer lands the panel says there is nothing, and then it says what arrived. */
-  return <ThePanel lines={dataOr(useInbox(), [])} />
+  return <ThePanel lines={dataOr(useInbox(mine), [])} />
 }
 
 function ThePanel({ lines }: { lines: InboxLine[] }) {

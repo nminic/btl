@@ -30,14 +30,18 @@ export function Messages({ only }: { only?: string[] } = {}) {
      Gated by DRAWING the part that asks rather than by a condition inside it, because a hook
      cannot be called conditionally. The shape is `app/Shell.tsx`'s: the count of work waiting
      is read inside `AdminLink`, which is only drawn for somebody who may open administration. */
-  return who.memberNumber === null ? who.instead : <TheWholeInbox only={only} />
+  return who.memberNumber === null ? (
+    who.instead
+  ) : (
+    <TheWholeInbox only={only} mine={who.memberNumber} />
+  )
 }
 
 /** The inbox itself, drawn only for somebody the league has given a number. */
-function TheWholeInbox({ only }: { only?: string[] }) {
+function TheWholeInbox({ only, mine }: { only?: string[]; mine: string }) {
   const { locale, t } = useI18n()
   const { markRead } = useSession()
-  const state = useInbox()
+  const state = useInbox(mine)
 
   return (
     <Resource state={state}>
