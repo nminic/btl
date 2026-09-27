@@ -726,27 +726,56 @@ describe('activating a membership from the payments screen', () => {
      * while standing somewhere the question is not. Walked far enough to come round twice, so a
      * ring that merely happens to be long does not pass.
      */
-    it('keeps the keyboard inside it', async () => {
+    it('keeps the keyboard inside it, and the ring runs in the right order', async () => {
+      /* <p><b>THE ORDER IS ASSERTED AND NOT MERELY THE CONTAINMENT, and the first draft of this
+         case is why.</b> It tabbed sixteen times and asked only „is the focus still inside the
+         sheet". With three buttons in a ring, a wrap that lands on the WRONG end is still inside
+         the sheet, so that question was satisfied by every arrangement - and three mutations
+         proved it: making the backward edge the same as the forward one, swapping the two ends,
+         and dropping the heading from the backward edge all survived. Naming the element after
+         every press is what tells a ring from a heap.
+
+         MEASURED ON THE QUESTION WITH THREE BUTTONS rather than the one with two, because a ring
+         of two cannot tell „the next one" from „the other end". */
       const server = serving()
       const user = setupUser()
       renderAt(ADDRESS, 'superadmin')
 
-      const row = await rowOf('Ana Ilić')
+      const row = await rowOf('Petar Marko')
 
       await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
 
       const sheet = await screen.findByRole('dialog')
+      const [exempt, balance, stop] = within(sheet).getAllByRole('button')
 
-      for (let step = 0; step < 8; step += 1) {
-        await user.tab()
-        expect(sheet.contains(document.activeElement)).toBe(true)
-      }
+      /* The sheet opens with the question itself holding the focus, not a button. */
+      expect(document.activeElement).toHaveTextContent('Aktivacija članstva')
 
-      /* And backwards, which is its own wrap and its own branch. */
-      for (let step = 0; step < 8; step += 1) {
-        await user.tab({ shift: true })
-        expect(sheet.contains(document.activeElement)).toBe(true)
-      }
+      /* SHIFT+TAB AS THE VERY FIRST PRESS goes to the last button and not out of the sheet.
+         There is nothing before the heading inside the sheet, so this is the wrap that only the
+         heading's own edge can serve. */
+      await user.tab({ shift: true })
+      expect(document.activeElement).toBe(stop)
+
+      /* Forward from the last one wraps to the first. */
+      await user.tab()
+      expect(document.activeElement).toBe(exempt)
+
+      await user.tab()
+      expect(document.activeElement).toBe(balance)
+
+      await user.tab()
+      expect(document.activeElement).toBe(stop)
+
+      await user.tab()
+      expect(document.activeElement).toBe(exempt)
+
+      /* And backwards off the first button, which is the other wrap. */
+      await user.tab({ shift: true })
+      expect(document.activeElement).toBe(stop)
+
+      await user.tab({ shift: true })
+      expect(document.activeElement).toBe(balance)
 
       server.stop()
     })
