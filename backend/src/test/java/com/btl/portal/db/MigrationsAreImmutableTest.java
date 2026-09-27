@@ -133,7 +133,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   rather than assumed: it is this very list that would have to say otherwise, and the
 			   assertion below is `containsExactlyElementsOf`, which is about ORDER and never about
 			   arithmetic between neighbours. */
-			new Applied("38", "V38__the_balance_is_a_book.sql", 2032527406));
+			new Applied("38", "V38__the_balance_is_a_book.sql", 2032527406),
+			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1973092509));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
