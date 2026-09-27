@@ -634,6 +634,52 @@ describe('membership', () => {
     }
   })
 
+  it('promises nothing about a PayPal amount either, when the served price list has no fee row', async () => {
+    /* THE THIRD AXIS OF THE SAME GUARD (round 3 of the PR 385 review), and periods are
+       untouched this time: only the `fee` row is dropped. `due` therefore still holds a
+       row - the slip's own half of the question is satisfied - but the PayPal amount is
+       built off `due` AND `processing` together (`paypalTotal`, Membership.tsx), so a
+       fee-only gap starves it exactly as an empty `due` did on the axis above, and a
+       sentence gated on `due.length > 0` alone (round two's own fix) could not see that:
+       it was found standing over an empty PayPal block a second time, on this third axis.
+
+       000010 abroad is the only member this axis can be measured on: in Serbia the slip
+       reads `due` alone and never `processing`, so removing the fee row would leave the
+       slip (and the sentence) exactly as they were - the fault is invisible on that half
+       of the country axis and only PayPal ever reads the fee row at all. Same day as the
+       two cases above, 1 November 2026, so only the fee row removing it touches. */
+    const { stop } = serverThat((path) =>
+      path === '/api/pricing'
+        ? new Response(JSON.stringify(servedPrices.filter((row) => row.kind !== 'fee')), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderFor('000010')
+
+      expect(await screen.findByRole('heading', { name: 'Moja članarina' })).toBeVisible()
+      /* The heading and its note stay: they are keyed on the method applying to this
+         country and not on there being an amount, and that gate is not what this case
+         is about. Only the promise and the fields the missing fee starves are checked. */
+      expect(screen.getByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
+
+      expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
+      expect(screen.queryByText('info@balkanskatrkackaliga.net')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Kopiraj adresu za uplatu' }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Kopiraj iznos za uplatu' }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByText(paymentReference(2027, '000010'))).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+
   it('writes the amount owed to a member in Serbia, in dinars', async () => {
     /* The row carrying the amount was spelled RSD by hand while every other
        figure on the screen follows the country on the profile. It is the one

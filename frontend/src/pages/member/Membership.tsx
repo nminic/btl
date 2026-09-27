@@ -382,6 +382,30 @@ export function Membership() {
            the same rule `membership.renew` above is now held to as well. */
         const paypalTotal = due.flatMap((row) => processing.map((fee) => row.eur + fee.eur))
 
+        /* WHAT ACTUALLY FOLLOWS THE PROMISE BELOW, READ OFF THE SAME TWO THINGS THE SLIP
+           AND THE PAYPAL BLOCK THEMSELVES DRAW FROM - not off `due` alone, which is the
+           fault found three rounds running on PR 385, once per axis: the country (round
+           one), an empty period (round two), and now a served list missing only the fee
+           row (round three).
+
+           `slipDrawn` is exactly the condition the slip's own walk is nested inside
+           below (`slipDrawn && due.map(...)`), read here once rather than re-derived a
+           second time at the sentence above it, so the two cannot drift.
+
+           `paypalAmountDrawn` mirrors what the PayPal block's own `paypalTotal.map`
+           needs in order to put anything under the "PayPal" heading - the method has to
+           apply to this country AND the total has to hold a value. It is deliberately
+           NOT what gates the block itself: the heading and its note stay keyed on
+           `methods.includes('paypal')` alone, further down, so a member abroad still
+           reads them even on a day the total is empty - only the sentence above needs to
+           know whether an amount is coming. `paypalTotal` is empty whenever EITHER `due`
+           OR `processing` is (it is built from both, just above), which is exactly the
+           gap this round closes: a list with every period intact and no fee row leaves
+           `due` non-empty and `processing` empty, so the amount never arrives although
+           the old, `due`-only gate could not tell. */
+        const slipDrawn = methods.includes('ips') && due.length > 0
+        const paypalAmountDrawn = methods.includes('paypal') && paypalTotal.length > 0
+
         return (
           <div className="member">
             <h1>{t('membership.title')}</h1>
@@ -558,21 +582,26 @@ export function Membership() {
                       member abroad met this sentence and then a PayPal heading with no
                       recipient, no account, no amount and no reference under it.
 
-                      GATED ON `due.length > 0` ALONE NOW, AND NOT ON THE COUNTRY TOO, since the
-                      PayPal account arrived the same day (owner, 27.09.2026, PDL „Plaćanje iz
-                      inostranstva: PayPal"): whichever of the two ways to pay this member has,
-                      real data now follows the sentence either way - the slip for
+                      GATED ON WHAT IS ACTUALLY DRAWN BELOW, since round three of this same
+                      review (27.09.2026) - and not on `due.length > 0` alone, which is what
+                      round two left it on. Whichever of the two ways to pay this member has,
+                      real data was meant to follow the sentence either way - the slip for
                       `methods.includes('ips')`, the PayPal address/amount/note for
                       `methods.includes('paypal')` - and `methodsFor` never answers with neither
-                      (`data/paymentQr.ts`). What still has to be true is that `due` actually
-                      holds a row: a gap in the served price list draws no slip AND no PayPal
-                      amount, and would leave the same promise standing over nothing for
-                      EITHER country. This is the one fault the comment above already names for
-                      a control that does nothing (PDL.md:1659): a sentence pointing at data
-                      that is not there is worse than no sentence. Read off the same fact the
-                      slip and the PayPal block below read rather than a copy of it, so the
-                      three cannot drift apart. */}
-                  {due.length > 0 && (
+                      (`data/paymentQr.ts`). But `due` alone only ever asked the slip's half of
+                      that question: the PayPal amount is built from `due` AND `processing`
+                      together (`paypalTotal`, above), so a served list with every period intact
+                      and no fee row left `due` non-empty, the sentence drawn, and PayPal's own
+                      amount, address and reference empty underneath it - the same fault the
+                      first two rounds found (country, then an empty period), on a third axis
+                      neither of them measured. This is still the one fault the comment above
+                      already names for a control that does nothing (PDL.md:1659): a sentence
+                      pointing at data that is not there is worse than no sentence. `slipDrawn`
+                      and `paypalAmountDrawn` (above) are read off the exact values the slip and
+                      the PayPal block themselves draw from, not a fourth copy of the question,
+                      so the sentence cannot drift from what actually follows it on whatever
+                      axis comes next either. */}
+                  {(slipDrawn || paypalAmountDrawn) && (
                     <p className="member__note">{t('membership.renew')}</p>
                   )}
 
@@ -615,7 +644,7 @@ export function Membership() {
                       are one slip in two forms, laid out as a pair rather than a stack
                       (Member.css, `.pay__slip`, two columns from `51.25em`, one below
                       `700px`... one column). */}
-                  {methods.includes('ips') &&
+                  {slipDrawn &&
                     due.map((row) => (
                     <div className="pay__slip" key={row.key}>
                       <div className="pay__slipText">
