@@ -979,6 +979,50 @@ describe('the price list', () => {
   })
 
   /**
+   * `theRowIsFreeInOneCurrencyOnly` IS THE ONE REFUSAL ON THIS SCREEN THE FORM CANNOT TURN BACK.
+   *
+   * <p><b>PDL 20b, owner 27.09.2026:</b> a row of the price list is free in BOTH currencies or
+   * priced in BOTH, and nought in one alone is refused. Before V40 the screen saved such a row
+   * and said „Sačuvano", and the 500 arrived later on somebody else's activation, because
+   * `balance_entry_a_membership_takes` requires a spend to move both currencies strictly.
+   *
+   * <p><b>Why no attribute on the form can hold this, which is what separates it from the two
+   * refusals above.</b> `theAmountIsMoreThanARowMayCost` is `max` and
+   * `theNameIsLongerThanTheFormAllows` is `maxLength`: both are questions about ONE box, and
+   * `forms/validate.ts` answers them before anything is sent. This is a question about the PAIR -
+   * nought is a perfectly good figure in either box on its own - so the route is the only thing
+   * that can ask it.
+   *
+   * <p><b>MEASURED ON THE WIRE and not only on the sentence appearing</b>, which is the shape the
+   * fee's own sibling below uses and for the same reason: a case that only looked for the alert
+   * would pass just as well over a screen that refused nought itself and sent nothing, and then
+   * the sentence being wired up here would be measuring the mock rather than the portal.
+   */
+  it('says a row may not be free in one currency only, and sends the nought to find out', async () => {
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      path === '/api/pricing/early' && init?.method === 'PUT'
+        ? refused('theRowIsFreeInOneCurrencyOnly')
+        : null,
+    )
+
+    try {
+      await theEarlyBandIsChangedTo('0', user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/besplatan u obe valute/)
+
+      const sent = must(
+        asked.find((one) => one.init?.method === 'PUT'),
+        'the request that tried to make the band free in euros alone',
+      )
+
+      expect(JSON.parse(String(sent.init?.body)).eur).toBe(0)
+    } finally {
+      stop()
+    }
+  })
+
+  /**
    * THE OTHER HALF OF THE SAME CHANGE: A BLANK DINAR BOX IS NOW A SAVE THAT GOES THROUGH,
    * NOT ONE THE FORM REFUSES BEFORE IT IS EVEN SENT.
    *
