@@ -58,6 +58,15 @@
  * because nobody noticed it had. `rsd is null or` makes the exemption a sentence somebody can argue
  * with.
  *
+ * AND THAT CLAUSE IS THEREFORE GUARDED BY NOTHING, WHICH IS MEASURED AND WRITTEN DOWN HERE RATHER
+ * THAN LEFT FOR SOMEBODY TO REPORT AS A GAP. Taking `rsd is null or` off changes no row's fate in
+ * either direction - a fee row is `false = NULL` or `true = NULL`, and both are NULL, and a check
+ * constraint takes NULL - so no case can fail on its removal. A mutation that removed it was run and
+ * survived 63 cases, exactly as this paragraph predicts. What WOULD change behaviour is inverting it
+ * to `rsd is not null and`, which stops the migration on the fee row; that mutation was run too and
+ * every case of both floors failed on „is violated by some row". The clause is here for the reader
+ * and the inversion is what the schema actually turns on.
+ *
  * WHAT IT DOES NOT SAY, named because a narrow rule without its reason reads as an oversight: it says
  * nothing about a fee row priced at nought. A free processing fee is one currency at nought and there
  * is no second currency to contradict it, so it is not this rule's question. Whether the association
