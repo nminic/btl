@@ -816,7 +816,7 @@ describe('who the profile is about, above everything else', () => {
        a document comes back the first time somebody reads the document: the card, the
        dictionary, and the two published documents. */
     const served: Competitor[] = JSON.parse(
-      readFileSync(join(process.cwd(), 'public/mock/competitors.json'), 'utf-8'),
+      readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
     )
 
     /* BOTH ANSWERS THAT EVER SHOWED ANYTHING, and that is what the first round of
@@ -874,7 +874,7 @@ describe('who the profile is about, above everything else', () => {
       'Rođendan na mom profilu',
     )
 
-    const documents = readFileSync(join(process.cwd(), 'public/mock/pages.json'), 'utf-8')
+    const documents = readFileSync(join(process.cwd(), 'src/test/mock/pages.json'), 'utf-8')
 
     expect(documents, 'a published document still grants the exception').not.toContain(
       'Izuzetak postoji samo ako sami izaberete',

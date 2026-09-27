@@ -286,7 +286,7 @@ const readAsModerator: Moderator = aModerator
 
 /** Every row of what the portal serves today, by resource. */
 function servedRows(name: ResourceName): Record<string, unknown>[] {
-  const file = readFileSync(join(process.cwd(), 'public', 'mock', `${name}.json`), 'utf8')
+  const file = readFileSync(join(process.cwd(), 'src', 'test', 'mock', `${name}.json`), 'utf8')
   const rows: unknown = JSON.parse(file)
 
   if (!Array.isArray(rows)) {

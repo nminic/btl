@@ -20,8 +20,11 @@ import { SLOW } from './slow'
  * answers questions about what the portal ships; this one is about what is written,
  * and the byte was written in a test. Stylesheets and dictionaries are read by
  * guards of their own, and the written pages are read by six — a character nobody
- * can see empties any of them the same way. `public/mock` is swept for that reason,
- * the way `data/contract.test.ts` sweeps it (ADL A20).
+ * can see empties any of them the same way. Since the mock fixtures moved to
+ * `src/test/mock` (mock files leave the delivery, PDL „Mock fajlovi izlaze iz
+ * isporuke odmah"), the one sweep of `src` below already reaches them; there is no
+ * second root to walk any more, which is the same simplification
+ * `data/contract.test.ts` made for its own sweep (ADL A20).
  *
  * **Asked by what Unicode calls these characters, not by a list.** Two lists written
  * by hand were both too short. The first held seven code points and let through the
@@ -136,7 +139,6 @@ describe('the source of the portal', () => {
     const here = process.cwd()
     const files = [
       ...everySource(join(here, 'src')),
-      ...everySource(join(here, 'public', 'mock')),
       /* And everything else the portal is built and served by. The same shell
          replacement that put the byte into a test puts it as easily into any of these:
          a zero-width space in `vite.config.ts` passed the whole suite, and so did one

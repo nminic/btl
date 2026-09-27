@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @Transactional
 class PageApiTest {
 
-	private static final Path MOCK = Path.of("..", "frontend", "public", "mock", "pages.json");
+	private static final Path MOCK = Path.of("..", "frontend", "src", "test", "mock", "pages.json");
 
 	/** V24's four rows, in the order {@code pages.json} itself holds them - the order
 	 *  the generator that wrote V24 read the file in, and so the order {@code static_page.id}
@@ -75,12 +75,12 @@ class PageApiTest {
 	}
 
 	/**
-	 * THE ANSWER IS EXACTLY WHAT frontend/public/mock/pages.json HOLDS: the same
+	 * THE ANSWER IS EXACTLY WHAT frontend/src/test/mock/pages.json HOLDS: the same
 	 * four pages, in the same order, each with the same title, the same sections in the
 	 * same order, and the same gallery on each.
 	 *
 	 * <p>V24 was seeded from this file (task instruction, section 4: „Pocetne redove
-	 * uzmi iz frontend/public/mock/pages.json"). This is the strong, field-by-field
+	 * uzmi iz frontend/src/test/mock/pages.json"). This is the strong, field-by-field
 	 * comparison {@code CountryApiTest} and {@code DucatApiTest} make against their own
 	 * fixtures, and it is what catches a column read for another one - a heading served
 	 * as a body, a body served as a heading - without either being named in advance:
