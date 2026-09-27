@@ -519,6 +519,266 @@ class MyMembershipApiTest {
 	}
 
 	/**
+	 * A MEMBER OF HIS OWN, SIGNED IN, WITH A BOOK OF EXACTLY {@code howMany} MEMBERS BROUGHT IN.
+	 *
+	 * <p>Written inside the cases that need him rather than into {@link #fourMembersWithFourDifferentBalances},
+	 * because what these cases measure is a balance that MOVES and the shared fixture is deliberately
+	 * four members whose balances stand still. His number is his own and well clear of everybody
+	 * else's, so no answer about him can be an answer about one of the four.
+	 *
+	 * @return the email he signs in with
+	 */
+	private String aMemberOfHisOwn(String number, int howMany) {
+		competitor(number);
+
+		String email = "sam-" + number + "@primer.rs";
+		account(email, "competitor");
+		belongsTo(email, number);
+
+		brought(number, howMany);
+
+		return email;
+	}
+
+	private JsonNode invoiceFor(String email) throws Exception {
+		return new ObjectMapper().readTree(whole(email));
+	}
+
+	private long idOf(String number) {
+		return db.sql("select id from competitor where member_number = ?").param(number)
+				.query(Long.class).single();
+	}
+
+	private int bookedFor(long competitorId) throws Exception {
+		return http.perform(post("/api/payments").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(THE_PAYMENTS_QUEUE).secret()))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"competitorId\":" + competitorId + ",\"currency\":\"RSD\",\"method\":\"slip\"}"))
+				.andReturn().getResponse().getStatus();
+	}
+
+	private java.math.BigDecimal bookAddsUpTo(long competitorId) {
+		return db.sql("select coalesce(sum(rsd), 0) from balance_entry where competitor_id = ?")
+				.param(competitorId).query(java.math.BigDecimal.class).single();
+	}
+
+	/**
+	 * A BALANCE THAT GROWS AFTER THE CODE WAS MINTED DOES NOT MOVE WHAT THE CODE PROMISED, and this
+	 * is the owner's own scenario of 27.09.2026 walked end to end.
+	 *
+	 * <p><b>His words, and V36 quotes them over this very table:</b> „skida se ono sto je kod obecao,
+	 * ne ono sto balans stoji na dan knjizenja." The case he was shown: a code minted for 3.600
+	 * against a balance of 600, a seventh referral activated before the money arrives so the balance
+	 * becomes 1.200, and then the 3.600 lands. <b>600 comes off and 600 stays.</b> He refused taking
+	 * today's 1.200, with the cost stated: „the association's liability would fall by 1.200 against a
+	 * discount of 600, so it loses quietly on every such case."
+	 *
+	 * <p><b>WHAT WAS MEASURED BEFORE THIS CASE EXISTED, because it is why the case is shaped like
+	 * this.</b> The write was an upsert, so a MERE REFRESH of the page between the referral landing
+	 * and the money arriving moved the promise from 600 to 1.200 and the booking took 1.200. Nothing
+	 * saw it: {@code lookingTwiceLeavesOneNote} looks twice at a balance that has not moved, so
+	 * „rewrite it" and „leave it" wrote the same row, and
+	 * {@code whatIsTakenOffTheBookIsWhatWasPromisedAndNotTodaysBalance} puts the promise into the
+	 * table BY HAND and never goes through this route at all.
+	 *
+	 * <p><b>SO THE BALANCE MUST MOVE BETWEEN THE TWO READS AND THE SECOND READ IS THE POINT.</b>
+	 * Without the second read this measures nothing at all; without the growth in between, „serve the
+	 * promise" and „serve today" give the same number and it measures nothing either.
+	 *
+	 * <p><b>And every number asserted is read off an ANSWER or off the BOOK, never written in this
+	 * file</b>, so the case is about the seam rather than about arithmetic on either side of it.
+	 */
+	@Test
+	void abalanceThatGrowsAfterTheCodeWasMintedDoesNotMoveThePromise() throws Exception {
+		String him = aMemberOfHisOwn("007101", 1);
+		long id = idOf("007101");
+
+		JsonNode firstLook = invoiceFor(him);
+
+		java.math.BigDecimal offTheBookAsMinted = firstLook.path("fromTheBalance").path("rsd")
+				.decimalValue();
+		java.math.BigDecimal toTransferAsMinted = firstLook.path("toTransfer").path("rsd").decimalValue();
+
+		assertThat(offTheBookAsMinted).isEqualByComparingTo("600.00");
+		assertThat(toTransferAsMinted).isEqualByComparingTo("3600.00");
+
+		/* THE SEVENTH REFERRAL OF THE OWNER'S SCENARIO, landing while his slip is in the post. */
+		brought("007101", 1);
+
+		assertThat(bookAddsUpTo(id))
+				.as("his balance did not move, so this case cannot tell a fixed promise from a"
+						+ " recomputed one")
+				.isEqualByComparingTo("1200.00");
+
+		JsonNode secondLook = invoiceFor(him);
+
+		assertThat(secondLook.path("balance").path("rsd").decimalValue())
+				.as("the second look did not see the balance grow, so nothing here is about a balance"
+						+ " that grew")
+				.isEqualByComparingTo("1200.00");
+
+		assertThat(secondLook.path("fromTheBalance").path("rsd").decimalValue())
+				.as("a refresh moved what the code promises, so the slip in his hand and the row in the"
+						+ " book now say two different numbers")
+				.isEqualByComparingTo(offTheBookAsMinted);
+
+		assertThat(secondLook.path("toTransfer").path("rsd").decimalValue())
+				.as("a refresh changed what he is asked to send, so his printed slip is no longer the"
+						+ " amount the portal expects")
+				.isEqualByComparingTo(toTransferAsMinted);
+
+		assertThat(promiseTo("007101")).isEqualTo("5.00 600.00");
+
+		/* AND THEN THE MONEY LANDS, WHICH IS WHERE THE MONEY WAS LOST. */
+		assertThat(bookedFor(id)).isEqualTo(201);
+
+		assertThat(db.sql("select -rsd from balance_entry where competitor_id = ? and reason ="
+						+ " 'membership'").param(id).query(java.math.BigDecimal.class).single())
+				.as("more came off his book than the code he paid ever promised")
+				.isEqualByComparingTo(offTheBookAsMinted);
+
+		assertThat(bookAddsUpTo(id))
+				.as("600 came off and 600 did not stay, which is the outcome the owner refused")
+				.isEqualByComparingTo("600.00");
+	}
+
+	/**
+	 * AND A MEMBER WHOSE BOOK OUTGREW HIS CODE MAY STILL LET HIMSELF IN, which is the other half of
+	 * the same decision and the reason {@code coveredByTheBalance} is asked of TODAY.
+	 *
+	 * <p>The promise fixes what the SLIP says. It does not fix what he is allowed to do:
+	 * {@code POST /api/me/membership} mints no code, reads no promise and spends what is in the book
+	 * at the moment it writes. Were „covered" taken off the promise instead, a member who has since
+	 * brought in enough people to cover the whole fee would be held to a slip for the rest of the
+	 * season.
+	 *
+	 * <p><b>Both halves are asserted in the one answer, because it is their combination that is the
+	 * decision:</b> covered is true while the transfer is not nothing. That pair is impossible unless
+	 * the two are read from two places.
+	 */
+	@Test
+	void amemberWhoseBookOutgrewHisCodeIsCoveredAndStillHoldsASlip() throws Exception {
+		String him = aMemberOfHisOwn("007102", 1);
+
+		assertThat(invoiceFor(him).path("coveredByTheBalance").asBoolean()).isFalse();
+
+		brought("007102", 7);
+
+		JsonNode after = invoiceFor(him);
+
+		assertThat(after.path("coveredByTheBalance").asBoolean())
+				.as("covered was read off his code instead of off his book, so a member who owes"
+						+ " nothing is told to pay")
+				.isTrue();
+
+		assertThat(after.path("toTransfer").path("rsd").decimalValue())
+				.as("the slip in his hand stopped being described, so whatever he already posted is"
+						+ " an amount the portal no longer expects")
+				.isEqualByComparingTo("3600.00");
+
+		/* AND THE PROCESSING FEE FOLLOWS THE TRANSFER AND NOT THE COVER, because a transfer that is
+		   asked for is a transfer somebody's bank charges for (V16). */
+		assertThat(after.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+
+		assertThat(http.perform(post(PATH).with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(him).secret())))
+				.andReturn().getResponse().getStatus())
+				.as("his book covers the whole fee and the door that needs no code refused him")
+				.isEqualTo(201);
+	}
+
+	/**
+	 * A MEMBER THE MANAGING BOARD FREED OF THE FEE IS TOLD THERE IS NO INVOICE HERE, and until this
+	 * was written he was sent a bill for the whole membership.
+	 *
+	 * <p><b>What was measured.</b> {@code MembershipInvoice} computes {@code exemptFromTheFee},
+	 * {@code MyMembershipWriteApi} and {@code ActivatingFromBalance} both turn on it and refuse him
+	 * „and HIS BALANCE IS NOT TOUCHED" - and this route did not read it at all. So one door protected
+	 * him while the other served him a slip for 4.200, wrote a promise against it, and let a booking
+	 * take his balance off him for a season the Board had given him. One fact, two homes that
+	 * disagreed.
+	 *
+	 * <p><b>HIS FEE IS MONEY AND HIS BOOK IS NOT EMPTY, and both are the case rather than tidiness.</b>
+	 * A fee of nothing reaches the same refusal by a different road, so an exempt member in front of a
+	 * free season would leave the outcome satisfied by two things at once; and „nothing came off his
+	 * book" says nothing about a book with nothing in it.
+	 *
+	 * <p><b>THE OPEN PART, named rather than settled:</b> what his own screen should show him instead
+	 * of an invoice. His basis already reaches it through {@code /api/me}, and a field on this answer
+	 * would be the cheap way to say more - deliberately not invented here.
+	 */
+	@Test
+	void amemberFreedOfTheFeeIsToldThereIsNoInvoiceHere() throws Exception {
+		String him = aMemberOfHisOwn("007103", 1);
+		long id = idOf("007103");
+
+		assertThat(statusOf(PATH, him))
+				.as("he was served an invoice before the Board freed him, so this case has a before")
+				.isEqualTo(200);
+
+		/* The look above wrote a promise, as it should for a member who still owed a fee. It is
+		   cleared so that the assertion below is about what the EXEMPT read does, and it is what makes
+		   the assertion bite: the row is gone, so a route that stopped reading `exemptFromTheFee`
+		   would insert one again rather than being saved by `on conflict do nothing`. */
+		db.sql("delete from balance_promise where competitor_id = ?").param(id).update();
+
+		db.sql("update competitor set membership_basis = 'feeExempt' where id = ?").param(id).update();
+
+		assertThat(statusOf(PATH, him))
+				.as("a member who owes nothing was still handed an invoice")
+				.isEqualTo(404);
+
+		assertThat(promiseTo("007103"))
+				.as("a promise was written against a membership he does not have to buy, so a stray"
+						+ " transfer would take his balance off him")
+				.isEqualTo("nothing promised");
+
+		assertThat(bookAddsUpTo(id))
+				.as("his book is empty, so the assertion after the booking could not tell an untouched"
+						+ " balance from no balance at all")
+				.isEqualByComparingTo("600.00");
+
+		/* AND A BOOKING FOR HIM TAKES NOTHING, which is the harm the missing read actually did. */
+		assertThat(bookedFor(id)).isEqualTo(201);
+
+		assertThat(bookAddsUpTo(id))
+				.as("a season he was given was charged to his balance anyway")
+				.isEqualByComparingTo("600.00");
+	}
+
+	/**
+	 * AND A SEASON THE PRICE LIST SAYS IS WORTH NOTHING IS NOT BILLED, which is one edit of one row
+	 * away at any time.
+	 *
+	 * <p>{@code price_row_eur_not_negative} (V4) lets a row be nought and {@code PUT
+	 * /api/pricing/{key}} has no lower bound - it refuses a negative price and one above what a row
+	 * may cost, and nothing in between. The refusal on the writing door is
+	 * {@code ActivatingFromBalance}'s; here the point is only that the answer is a fee of nothing
+	 * rather than an error, and that no transfer and no processing fee are asked for.
+	 *
+	 * <p><b>The price is set over the ZATECENI rows rather than over a row this file inserted</b>, so
+	 * it is the list the portal actually ships that is being made free.
+	 */
+	@Test
+	void aseasonThePriceListMakesFreeIsBilledAtNothing() throws Exception {
+		db.sql("update price_row set eur = 0, rsd = 0 where kind = 'period'").update();
+
+		JsonNode owed = invoiceOf(BROUGHT_IN_SIX);
+
+		assertThat(owed.path("fee").path("rsd").asDouble()).isEqualTo(0.0);
+		assertThat(owed.path("toTransfer").path("rsd").asDouble()).isEqualTo(0.0);
+		assertThat(owed.path("fromTheBalance").path("rsd").asDouble()).isEqualTo(0.0);
+
+		assertThat(owed.path("processingFeeEur").asDouble())
+				.as("a bank was asked to process a transfer of nothing")
+				.isEqualTo(0.0);
+
+		assertThat(owed.path("balance").path("rsd").asDouble())
+				.as("his book was emptied by a price change")
+				.isEqualTo(3600.0);
+	}
+
+	/**
 	 * AND NOTHING BEYOND WHAT HE OWES LEAVES HERE.
 	 *
 	 * <p>{@link MembershipInvoice.Invoice} carries two more facts because the route that spends the

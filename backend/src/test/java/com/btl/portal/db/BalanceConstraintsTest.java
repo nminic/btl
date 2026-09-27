@@ -164,6 +164,37 @@ class BalanceConstraintsTest extends DatabaseTest {
 						entry(A_MEMBER + ", 35, 4200, 'membership', null, 2028, " + AN_INSTANT + ", "
 								+ AN_ACCOUNT + ", 'Blagajnik'")),
 
+				/* AND A SPEND OF NOTHING IS REFUSED TOO, which is the half of that constraint a
+				   positive row does not reach: `eur < 0 and rsd < 0` is strict in both currencies, so
+				   nought fails it exactly as a positive number does. This row is the FLOOR under
+				   `ActivatingFromBalance`'s refusal of a fee of nothing - V4 lets a price row be
+				   nought and `PUT /api/pricing/{key}` has no lower bound, so without that refusal the
+				   balance covers the fee by `0 >= 0`, the route reaches the book, and every member on
+				   the portal is answered 500. If this constraint is ever loosened to take nought, the
+				   guard in the domain is no longer holding anything and this case is what says so.
+
+				   It breaks THIS constraint and no other: the season is named, so
+				   `balance_entry_membership_names_the_season` is satisfied, and no member is named, so
+				   `balance_entry_only_a_referral_names_a_member` is too. A row that broke two would
+				   say nothing about either. */
+				Violation.of("balance_entry_a_membership_takes",
+						entry(A_MEMBER + ", 0, 0, 'membership', null, 2028, " + AN_INSTANT + ", "
+								+ AN_ACCOUNT + ", 'Blagajnik'")),
+
+				/* AND SO IS A SPEND THAT MOVES ONE CURRENCY ONLY, which is a BOUNDARY THIS BRANCH
+				   NAMES RATHER THAN SETTLES and is written down here so the next reader finds it named.
+				   A period row may be priced at nought euro and six hundred dinars - `PUT
+				   /api/pricing/{key}` refuses a negative price and one above what a row may cost, and
+				   nothing between - and such a fee is covered by a balance holding the dinars, so both
+				   activation doors would try to write this row and be answered 500. The guard in
+				   `ActivatingFromBalance` refuses a fee that is nothing in BOTH currencies, which is
+				   the case the owner's decision reaches; the one-sided fee needs a decision nobody has
+				   made, between loosening this constraint to take a one-sided spend and refusing such
+				   a fee on the pricing route. */
+				Violation.of("balance_entry_a_membership_takes",
+						entry(A_MEMBER + ", 0, -4200, 'membership', null, 2028, " + AN_INSTANT + ", "
+								+ AN_ACCOUNT + ", 'Blagajnik'")),
+
 				/* ONE REWARD PER PERSON BROUGHT IN, however many seasons he goes on to pay for. The
 				   row differs from the one already standing in the MEMBER CREDITED as well, so a key
 				   widened to take the referrer in - the shape somebody reaches for the moment two
@@ -346,14 +377,25 @@ class BalanceConstraintsTest extends DatabaseTest {
 	}
 
 	/**
-	 * BUT A PROMISE IS MEANT TO BE OVERWRITTEN, and that is the difference between the two tables
-	 * rather than an oversight in one of them.
+	 * BUT THE PROMISE TABLE CARRIES NO SUCH TRIGGER, and that is the difference between the two
+	 * tables rather than an oversight in one of them.
 	 *
-	 * <p>A second code for the same season replaces the first: the member is looking at one screen
-	 * showing one amount, and that amount is what he will transfer.
+	 * <p><b>This is a case about the TABLE and not about what the portal does to it, and the
+	 * difference was measured.</b> The book records what HAPPENED to money, so „immutable" is a word
+	 * a trigger has to make true. This table records what a code SAYS, which is not money moving, so
+	 * the schema leaves it writable - and the day a decision does call for re-minting a code, that
+	 * is a change to a screen rather than a migration.
+	 *
+	 * <p><b>WHAT THE PORTAL ITSELF DOES IS THE OPPOSITE, AND THAT IS NOT THIS CASE'S BUSINESS.</b>
+	 * {@code BalanceBook.promise} writes {@code on conflict do nothing}: the first look of a season
+	 * fixes what that season's code promises. An earlier draft of this branch made it an upsert and
+	 * this case said so in its own name, which made a case about a table read as a case about a
+	 * rule - and the rule was wrong. The rule is held by
+	 * {@code MyMembershipApiTest.aBalanceThatGrowsAfterTheCodeWasMintedDoesNotMoveThePromise}, which
+	 * goes through the route; this one only proves nothing in the schema stands in its way.
 	 */
 	@Test
-	void apromiseIsOverwrittenBecauseTheNextCodeReplacesTheLast() {
+	void aPromiseMayBeRewrittenByTheSchemaEvenThoughThePortalNeverRewritesOne() {
 		assertThat(db.sql("insert into balance_promise (competitor_id, season, eur, rsd, promised_at)"
 						+ " values (" + A_MEMBER + ", 2028, 10, 1200, " + AN_INSTANT + ")"
 						+ " on conflict (competitor_id, season) do update set eur = excluded.eur,"

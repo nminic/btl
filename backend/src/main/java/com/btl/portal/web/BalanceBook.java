@@ -15,12 +15,13 @@ import java.time.Clock;
  * direktno." That sentence is only true if there is one place the deriving happens, and this is
  * it. Nothing else in the portal names {@code balance_entry}.
  *
- * <p><b>WHY THIS IS A CLASS AND NOT A QUERY IN EACH CALLER.</b> Four routes need the book: the
- * member's own record ({@link MeApi}), his invoice ({@link MyMembershipApi}), his activation out
- * of it ({@link MyMembershipWriteApi}) and a moderator recognising a payment ({@link PaymentApi},
- * which both spends the payer's balance and earns the referrer's). The same reasoning
- * {@link MemberOfAccount} is written with: one lookup asked in one place beats the identical
- * {@code select} in four controllers, free to drift the day one is edited.
+ * <p><b>WHY THIS IS A CLASS AND NOT A QUERY IN EACH CALLER.</b> Five callers need the book: what a
+ * member owes ({@link MembershipInvoice}, for {@link MyMembershipApi}), his activation out of it
+ * ({@link MyMembershipWriteApi}), a moderator recognising a payment ({@link PaymentApi}, which
+ * both spends the payer's balance and earns the referrer's) and the administration freeing him of
+ * the fee ({@link MembershipWriteApi}, which spends nothing and still earns the referrer's). The
+ * same reasoning {@link MemberOfAccount} is written with: one lookup asked in one place beats the
+ * identical {@code select} in five controllers, free to drift the day one is edited.
  *
  * <p><b>AND IT IS WHERE THE SIGN LIVES.</b> {@link Balance.Money} is money somebody HAS and is
  * never negative; the book records a movement and a spend moves down. Rather than letting four
@@ -72,7 +73,18 @@ class BalanceBook {
 	 * 26.09.2026, „balans se skida tek kad uplata bude proknjizena. Ako clan ne plati, balans mu
 	 * ostaje." He was shown and accepted the cost of that - a code minted and not paid leaves the
 	 * balance standing and promised twice - and the shape that refuses to deduct early is this
-	 * method being called from nowhere but the two places a membership row is written.
+	 * method being called from nowhere but where a membership row is actually written.
+	 *
+	 * <p><b>TWO OF THE THREE SUCH PLACES, AND THE THIRD IS NOT AN OMISSION.</b>
+	 * {@link MyMembershipWriteApi} and {@link PaymentApi} call this;
+	 * {@link MembershipWriteApi}, where the administration frees a member of the fee, does not and
+	 * must not - he owes nothing, so there is nothing for his balance to pay, and spending it on a
+	 * season he was going to get free would be the portal charging him for a gift. That is the same
+	 * refusal {@link com.btl.portal.domain.balance.ActivatingFromBalance} states for
+	 * {@code HE_OWES_NOTHING}, derived from PDL 11.08.2026 („Balans ne propada nikad i prenosi se iz
+	 * sezone u sezonu"): it keeps, so it waits for a season in which he is no longer exempt. The
+	 * REWARD is a different question and is paid at all three
+	 * ({@link #aReferralWasActivated}).
 	 *
 	 * @param amount how much of the balance this membership uses, as
 	 *               {@link Balance.Settlement#fromTheBalance()} worked it out - the whole balance
@@ -100,16 +112,31 @@ class BalanceBook {
 	 * amount is recorded when it is promised and acted on when the money arrives. A member who never
 	 * pays keeps his whole balance, because this row is a note and not a withdrawal.
 	 *
-	 * <p><b>An upsert, and that is the answer to „two codes in one day".</b> A second code for the
-	 * same season replaces the first: the member is looking at one screen showing one amount, and
-	 * that amount is what he will transfer. {@code balance_promise_pk} is what makes it one row
-	 * rather than a history nobody could choose between.
+	 * <p><b>WRITTEN ONCE PER SEASON AND NEVER REWRITTEN, and that is the answer to „two codes in one
+	 * day".</b> The first look of a season fixes what that season's code promises; a second look is
+	 * served the number that already stands ({@link Balance#asThePromiseStands}). An earlier draft of
+	 * this branch made it an upsert, on the reasoning that „the member is looking at one screen
+	 * showing one amount" - and that reasoning was measured false: a slip already printed is not on
+	 * the screen, so a member whose balance moved between two looks holds two slips saying two
+	 * numbers while only one row can be recorded, and whichever he pays, the book takes off the
+	 * other one's amount. Rewriting it is exactly the outcome the owner refused on 27.09.2026.
+	 *
+	 * <p><b>{@code on conflict do nothing} rather than a question asked first</b>, so that two
+	 * requests reading no promise before either writes end with the earlier one standing instead of
+	 * one of them meeting {@code balance_promise_pk} and answering 500. The caller reads the promise
+	 * back before serving, so the loser of that race serves what the winner wrote.
+	 *
+	 * <p><b>Nothing here refuses a promise of nothing</b>, and that is deliberate: a member whose
+	 * book is empty, or whose balance covers the whole fee so that there is no code at all, has
+	 * nought written down and it is that row which pins him for the season. Were it left out, his
+	 * SECOND look would write the first real promise while his first slip - the one for the whole fee
+	 * - was still live, and paying that slip would take a discount off his book he had already paid
+	 * in cash.
 	 */
 	void promise(long competitorId, int season, Balance.Money amount) {
 		db.sql("insert into balance_promise (competitor_id, season, eur, rsd, promised_at)"
 						+ " values (?, ?, ?, ?, ?)"
-						+ " on conflict (competitor_id, season) do update"
-						+ " set eur = excluded.eur, rsd = excluded.rsd, promised_at = excluded.promised_at")
+						+ " on conflict (competitor_id, season) do nothing")
 				.params(competitorId, season, amount.eur(), amount.rsd(), Timestamp.from(clock.instant()))
 				.update();
 	}
@@ -122,6 +149,12 @@ class BalanceBook {
 	 * member promised nothing because his book was empty is the same outcome by a different road.
 	 * Both are answered, and neither is guessed: {@link MyMembershipApi} is the only place a reduced
 	 * amount is ever computed, and it records what it computed.
+	 *
+	 * <p><b>AND A ROW STANDING AT ALL IS THE SECOND THING THIS ANSWERS, which is what
+	 * {@link MyMembershipApi} reads it for.</b> A promise is written once per season, so its mere
+	 * presence says „this season's code has already been minted and its number is fixed". That is
+	 * why a promise of nought is a row rather than an absent one: nought is a number this season's
+	 * code was minted on, and the next look has to be held to it.
 	 */
 	java.util.Optional<Balance.Money> promised(long competitorId, int season) {
 		return db.sql("select eur, rsd from balance_promise where competitor_id = ? and season = ?")
@@ -160,6 +193,28 @@ class BalanceBook {
 	 * owner, 13.08.2026, „OK je da se za preporuku dobije balans čak i ako je preporučen član
 	 * dobio počasnu aktivaciju." So this is called from every place a membership is activated, and
 	 * it asks nothing about how.
+	 *
+	 * <p><b>„EVERY PLACE" IS THREE, THEY ARE NAMED HERE, AND THE COUNT HAS A FLOOR UNDER IT RATHER
+	 * THAN A PROMISE.</b> A {@code membership} row is written by {@link PaymentApi} (a moderator
+	 * recognising money), by {@link MyMembershipWriteApi} (the member letting himself in on his own
+	 * balance) and by {@link MembershipWriteApi} (the administration freeing him of the fee). Each of
+	 * the three has a case that the referrer is paid through IT and not merely somewhere:
+	 * {@code PaymentApiTest.whoeverBroughtThePayerInIsPaidOnce},
+	 * {@code MyMembershipWriteApiTest.whoeverBroughtHimInIsPaidWhenHeLetsHimselfIn} and
+	 * {@code MembershipWriteApiTest.whoeverBroughtHimInIsPaidWhenTheAdministrationFreesHimOfTheFee}.
+	 *
+	 * <p><b>The third was measured missing.</b> For a while this sentence said „every place" while two
+	 * of the three called it, and a reward for bringing in a member freed of the fee was not late but
+	 * LOST: he cannot come through the paying door afterwards, because that door answers 409 to a man
+	 * who already holds the season.
+	 *
+	 * <p><b>WHAT STOPS A FOURTH DOOR ARRIVING SILENTLY is the basis, and it is already floored.</b> A
+	 * membership stands on one of the words {@code membership_basis_known} (V36) names, and
+	 * {@code MembershipConstraintsTest} reads those words out of {@code pg_constraint} and compares
+	 * them with V7's - so a FOURTH basis turns a case red and asks for a decision once, rather than
+	 * being waved through. <b>The limit of that, named rather than left to be found:</b> a fourth door
+	 * reusing one of the three existing bases is caught by neither the schema nor the three cases
+	 * above. What would catch it is a case at the door itself, which is why each door has one.
 	 *
 	 * <p><b>ONCE PER MEMBER BROUGHT IN, AND THE SCHEMA IS WHAT SAYS SO.</b> A member who pays for
 	 * a second season does not earn his referrer a second reward, and rather than each caller

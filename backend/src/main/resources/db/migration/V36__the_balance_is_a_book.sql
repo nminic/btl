@@ -202,13 +202,26 @@ comment on table balance_entry is
  * uvek izvodi iz knjige" would stop being a plain sum of a table and become a plain sum of a table
  * minus one kind of row. The book stays movements only, and what a code said is a fact beside it.
  *
- * AND IT IS ONE ROW PER MEMBER PER SEASON, REWRITTEN RATHER THAN ADDED TO. This is what settles the
- * boundary PDL 26.09.2026 left open in the words „dva koda kovana istog dana obecavaju isti novac
- * dvaput": a second code for the same season REPLACES the first, because the member is looking at
- * one screen showing one amount and that amount is what he will pay. The key is therefore
- * (competitor, season) and the write is an upsert - which is also why this table carries no
- * immutability trigger, unlike the book: the book records what HAPPENED and may never be edited,
- * while this records what the CURRENT code says and is meant to be overwritten.
+ * AND IT IS ONE ROW PER MEMBER PER SEASON, WRITTEN ONCE AND NEVER REWRITTEN. This is what settles
+ * the boundary PDL 26.09.2026 left open in the words „dva koda kovana istog dana obecavaju isti
+ * novac dvaput": THE FIRST LOOK OF A SEASON FIXES WHAT THAT SEASON'S CODE PROMISES, and a second
+ * look is served the number that already stands. The key is therefore (competitor, season) and the
+ * write is `on conflict do nothing`.
+ *
+ * AN EARLIER DRAFT OF THIS VERY MIGRATION SAID THE OPPOSITE - that the write is an upsert, because
+ * „the member is looking at one screen showing one amount and that amount is what he will pay" -
+ * AND THAT REASONING WAS MEASURED FALSE BEFORE THIS BRANCH WAS MERGED. A slip already printed is
+ * not on the screen. A member whose balance moves between two looks therefore holds TWO slips
+ * saying two different numbers while only one row can ever be recorded, and whichever slip he pays,
+ * the book takes off the OTHER one's amount. Measured: a code minted on 3.600 against a balance of
+ * 600, a seventh referral landing, a mere refresh of the page, and then 1.200 off the book for a
+ * discount of 600 - which is, to the dinar, the outcome the owner refused above.
+ *
+ * WHICH IS ALSO WHY THIS TABLE STILL CARRIES NO IMMUTABILITY TRIGGER, unlike the book, although
+ * nothing rewrites it. The book records what HAPPENED to money and a trigger is what makes that
+ * word true. This records what a code SAYS, which is not money moving; it is left rewritable
+ * because the day a decision does call for re-minting a code, that is a decision about a screen and
+ * not a schema migration. What holds the rule today is `BalanceBook.promise` and the cases over it.
  *
  * WHAT REMAINS OPEN, and it needs two seasons rather than two codes: a promise for season S and a
  * promise for S+1 can both stand, because minting one does not spend anything - and the booking
@@ -229,7 +242,14 @@ create table balance_promise (
     /* HOW MUCH THAT CODE SAID HIS BALANCE WOULD COVER, both currencies, off the same price row the
        invoice was built from. Never negative and allowed to be zero: a member with an empty book is
        promised nothing, and „nothing" is an honest answer to record rather than an absent row that
-       a reader has to guess about. */
+       a reader has to guess about.
+
+       AND THE ZERO ROW IS LOAD-BEARING RATHER THAN TIDY. Because a promise is written once, the
+       mere PRESENCE of a row is what says „this season's code has been minted and its number is
+       fixed". Leave the zero out and a member whose book was empty at his first look would have the
+       first REAL promise written at his second, while the slip from the first - the one for the
+       whole fee - was still live; paying that slip would then take a discount off his book he had
+       already paid in cash. */
     eur           numeric(10,2) not null,
     rsd           numeric(10,2) not null,
 
@@ -248,7 +268,7 @@ create table balance_promise (
 );
 
 comment on table balance_promise is
-    'What the payment code currently shown to a member says his balance will cover, per season. Not a movement and not part of the balance: the balance falls only when a payment is booked (owner, 26.09.2026), and then by exactly what this row says (owner, 27.09.2026).';
+    'What this season''s payment code promised a member his balance would cover, written at the first look and never rewritten. Not a movement and not part of the balance: the balance falls only when a payment is booked (owner, 26.09.2026), and then by exactly what this row says (owner, 27.09.2026).';
 
 /* ---------------------------------------------------------------------------------------------
  * AND THE ENTRIES ARE IMMUTABLE, WHICH IS A WORD IN ADL AND THEREFORE A TRIGGER HERE
@@ -423,9 +443,11 @@ alter table membership
  * and the name. Where the newcomer has a membership but no payment anybody recognised - the
  * case of a member freed of the fee, which V22 deliberately left unseeded - there is
  * no such account, and the `join` below drops him rather than inventing one. That leaves a
- * referral of a member freed of the fee unrewarded by THIS migration, and rewarded by whatever
- * route records that exemption, the day it exists; inventing an account here would put a name
- * in an immutable book that never did the thing.
+ * referral of a member freed of the fee unrewarded by THIS migration, and rewarded by the route
+ * that records that exemption - `POST /api/memberships`, which exists as of this branch and does
+ * pay it; inventing an account here would put a name in an immutable book that never did the
+ * thing. (An earlier draft of this paragraph said „the day it exists". The route existed already
+ * and did NOT pay, which is what the sentence let nobody notice.)
  */
 insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,
                            occurred_at, recorded_by, recorded_by_name)

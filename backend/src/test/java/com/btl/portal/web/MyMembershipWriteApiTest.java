@@ -411,6 +411,66 @@ class MyMembershipWriteApiTest {
 	}
 
 	/**
+	 * A SEASON THE PRICE LIST SAYS IS WORTH NOTHING IS REFUSED HERE TOO, and before this was written
+	 * it answered 500 to EVERY member on the portal.
+	 *
+	 * <p><b>The road, measured rather than imagined.</b> {@code price_row_eur_not_negative} (V4)
+	 * lets a row be nought and {@code PUT /api/pricing/{key}} has no lower bound - it refuses a
+	 * negative price and one above what a row may cost, and nothing in between - so one edit of the
+	 * period row through an administrator's own screen is all it takes. Then {@code Balance.against}
+	 * finds the balance covers the fee by {@code 0 >= 0}, the route reaches the book, and
+	 * {@code balance_entry_a_membership_takes} (V36) refuses an entry that moves nothing.
+	 *
+	 * <p><b>This is NOT the {@code if} the payments route already has.</b> There a membership stands
+	 * on {@code basis = 'payment'} and the book entry may simply be left out, which is what
+	 * {@code PaymentApi} does when there is nothing to spend. Here
+	 * {@code membership_basis_says_whether_a_book_entry_is_named} (V36) REQUIRES a
+	 * {@code balance} membership to name an entry, so there is no leaving it out: the only answer is
+	 * not to let him in.
+	 *
+	 * <p><b>The price is moved over the ROWS THE PORTAL SHIPS</b> and not over one this file inserted,
+	 * so what is measured is the real list going free. <b>And the member is not exempt and his book is
+	 * not empty:</b> exempt reaches this same refusal one clause earlier, and a fee of nought is
+	 * covered by an empty book just as well as by a full one, so either of those would leave the
+	 * outcome satisfied by two things at once.
+	 *
+	 * <p><b>Whether a price of nothing should be allowed at all is NOT decided here</b>, exactly as it
+	 * was not decided for a referral reward of nothing: the route declines, the price list keeps its
+	 * nought.
+	 */
+	@Test
+	void aseasonThePriceListMakesFreeIsRefusedRatherThanBreakingTheBook() throws Exception {
+		db.sql("update price_row set eur = 0, rsd = 0 where kind = 'period'").update();
+
+		long him = idOf(SHORT_BY_SIX_HUNDRED);
+
+		assertThat(bookOf(him))
+				.as("his book is empty, so the assertion below about an untouched balance would be vacuous")
+				.isEqualByComparingTo("3600.00");
+
+		MockHttpServletResponse refused = activate(EMAIL.get(SHORT_BY_SIX_HUNDRED));
+
+		assertThat(refused.getStatus())
+				.as("a membership worth nothing reached the book, which answers 500 rather than 409")
+				.isEqualTo(409);
+
+		assertThat(bodyOf(refused).path("reason").asString())
+				.isEqualTo(MyMembershipWriteApi.HE_OWES_NOTHING);
+
+		assertThat(membershipOf(him))
+				.as("he was let in on a fee of nothing")
+				.isEqualTo("not a member");
+
+		assertThat(entriesAgainst(him))
+				.as("an entry that moves nothing was written into the book")
+				.isZero();
+
+		assertThat(bookOf(him))
+				.as("a season that costs nothing cost him his balance")
+				.isEqualByComparingTo("3600.00");
+	}
+
+	/**
 	 * A BALANCE THAT IS EXACTLY THE FEE LETS HIM IN, WHICH IS THE BOUNDARY THE OWNER DREW.
 	 *
 	 * <p><b>Owner, 26.09.2026:</b> „Balans <b>veci ili jednak</b> clanarini: QR koda nema, clanstvo

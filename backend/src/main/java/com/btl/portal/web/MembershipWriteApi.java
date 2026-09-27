@@ -100,6 +100,14 @@ import java.util.Optional;
  * and all eight readers at once. Until then this route writes both, and the cases replace
  * one source with the other to prove neither is standing in for it.
  *
+ * <p><b>AND WHOEVER BROUGHT HIM IN IS PAID HERE, which is an obligation this branch's own book
+ * creates rather than anything this route wanted.</b> The owner, 13.08.2026: „OK je da se za
+ * preporuku dobije balans cak i ako je preporucen clan dobio pocasnu aktivaciju." {@code V36} opens
+ * the book and ties the reward to activation, and this is the third of the three places a
+ * {@code membership} row is written - so leaving it out would make a reward depend on which door
+ * the newcomer came through, which no decision says, and here it would be lost for good because
+ * nothing may settle the same season twice. See {@link #freeHim}.
+ *
  * <p><b>WHAT IS DELIBERATELY NOT BUILT HERE, NAMED RATHER THAN DISCOVERED:</b>
  *
  * <ul>
@@ -166,12 +174,20 @@ class MembershipWriteApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
+	/**
+	 * The book, for the one thing this route owes it: whoever brought this member in is paid the
+	 * moment his membership becomes a fact, and an exemption is one of the three ways that happens.
+	 * See {@link #freeHim} for the decision and for what was measured before it was written.
+	 */
+	private final BalanceBook book;
+
 	MembershipWriteApi(JdbcClient db, Clock clock, MemberNumbers numbers,
-			TransactionTemplate inOneTransaction) {
+			TransactionTemplate inOneTransaction, BalanceBook book) {
 		this.db = db;
 		this.clock = clock;
 		this.numbers = numbers;
 		this.inOneTransaction = inOneTransaction;
+		this.book = book;
 	}
 
 	/**
@@ -273,6 +289,29 @@ class MembershipWriteApi {
 				.params(competitor.id(), season, FEE_EXEMPT, asking.account(), enteredByName,
 						Timestamp.from(clock.instant()))
 				.update();
+
+		/* AND WHOEVER BROUGHT HIM IN IS PAID, HERE TOO, because the owner said so in as many words on
+		   13.08.2026: „OK je da se za preporuku dobije balans cak i ako je preporucen clan dobio
+		   pocasnu aktivaciju." PDL ties the reward to ACTIVATION („Iznos leze na balans automatski, u
+		   trenutku kad se novom clanu aktivira clanarina") and says nothing about how it was paid
+		   for, and an exemption is one of the three ways a `membership` row comes to exist.
+
+		   WHY THIS IS NOT A CONVENIENCE BUT THE ONLY MOMENT THERE IS. A member freed of the fee can
+		   never afterwards come through the paying door - `THE_FEE_IS_ALREADY_RECORDED` refuses a
+		   second act on a season already held, and `PaymentApi` refuses him likewise - so a reward
+		   not written here is a reward LOST FOR GOOD. Measured on this branch before it was written:
+		   the grant answered 201, the referrer's book stayed empty, and the same man through the
+		   payments door answered 409.
+
+		   V36's carry says of this exact case that it leaves such a referral „rewarded by whatever
+		   route records that exemption, the day it exists". This is that route and that day.
+
+		   `on conflict (referred_competitor_id) do nothing` inside `aReferralWasActivated` is what
+		   keeps it once per member brought in, so a man freed of the fee for a second season earns
+		   his referrer nothing further, and it is silent rather than an error. Inside the one
+		   transaction this route already opens, so the entry and the membership stand or fall
+		   together. */
+		book.aReferralWasActivated(competitor.id(), asking.account(), enteredByName);
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Granted(competitor.id(), season, number.written()));

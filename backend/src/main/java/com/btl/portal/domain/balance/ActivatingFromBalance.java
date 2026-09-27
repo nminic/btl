@@ -19,7 +19,7 @@ import java.util.Objects;
  * so every question that route asks of the world has to be asked here too, of the same world, or
  * the cheaper door becomes the way around the dearer one.
  *
- * <p><b>THE FOUR FACTS IT TURNS ON, and it turns on nothing else.</b> Each is a fact about the
+ * <p><b>THE FACTS IT TURNS ON, and it turns on nothing else.</b> Each is a fact about the
  * database at the moment of asking, read by the route and handed in:
  *
  * <ul>
@@ -38,6 +38,10 @@ import java.util.Objects;
  * „greater or equal" boundary in it; this class only reads the answer. Short is refused, because
  * a short balance is what the QR is for: „QR se kuje na iznos minus balans" is the other half of
  * the same day's decision and it goes through the payments route, not this one.
+ * <li><b>And whether the fee is money at all</b>, which is the same {@link Balance.Settlement} read for a
+ * different thing: a fee of nothing is covered by an empty balance and there is no membership for
+ * the book to buy. Refused for the reason a member freed of the fee is refused, and the road to it
+ * is an administrator editing the price list rather than anything about the member.
  * <li><b>Does he already carry a member number.</b> Which decides between the two ways of saying
  * yes, and not whether to say it.
  * </ul>
@@ -84,7 +88,11 @@ public final class ActivatingFromBalance {
 		/** Nothing. He is already a member of this season. */
 		ALREADY_A_MEMBER,
 
-		/** Nothing, and nothing taken off his balance. He owes no fee to begin with. */
+		/**
+		 * Nothing, and nothing taken off his balance. He owes no fee to begin with, by either of
+		 * two roads: the Managing Board freed him of it, or the price list says this season is
+		 * worth nothing.
+		 */
 		HE_OWES_NOTHING,
 
 		/** Nothing. His balance does not cover the fee, so the invoice is the way in. */
@@ -108,6 +116,24 @@ public final class ActivatingFromBalance {
 		}
 
 		if (asking.exemptFromTheFee()) {
+			return Outcome.HE_OWES_NOTHING;
+		}
+
+		/* A MEMBERSHIP THE PRICE LIST SAYS IS WORTH NOTHING IS THE SAME REFUSAL, and it is a second
+		   road to one state rather than a second state. `price_row_eur_not_negative` (V4) lets a row
+		   be nought and `PUT /api/pricing/{key}` has no lower bound - it refuses a negative price and
+		   a price above what a row may cost, and nothing below - so an administrator editing the
+		   period to nought through his own screen is the road. Without this the balance covers the
+		   fee by `0 >= 0`, the route reaches the book, and
+		   `balance_entry_a_membership_takes` (V36) refuses an entry that moves nothing: every member
+		   on the portal would be answered 500.
+
+		   AFTER being exempt and not before it, and the order is measured rather than tidy: an exempt
+		   member whose fee is also nought must be refused for the reason that is about HIM, because
+		   that one outlives any price list. Both roads end in this outcome, so the two are told apart
+		   only by a case that puts a NON-exempt member in front of a fee of nothing and an exempt one
+		   in front of a fee that is money. */
+		if (asking.balance().fee().isNothing()) {
 			return Outcome.HE_OWES_NOTHING;
 		}
 

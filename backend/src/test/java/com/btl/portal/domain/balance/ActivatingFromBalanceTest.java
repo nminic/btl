@@ -96,6 +96,55 @@ class ActivatingFromBalanceTest {
 	}
 
 	/**
+	 * AND A MEMBERSHIP THE PRICE LIST SAYS IS WORTH NOTHING IS REFUSED FOR THE SAME REASON, which is
+	 * a second ROAD to one answer rather than a second answer.
+	 *
+	 * <p><b>The road is an administrator and not the member.</b> {@code price_row_eur_not_negative}
+	 * (V4) lets a row be nought and {@code PUT /api/pricing/{key}} has no lower bound - it refuses a
+	 * negative price and one above what a row may cost, and nothing in between - so one edit of the
+	 * period row through his own screen is all it takes. Without this the balance covers the fee by
+	 * {@code 0 >= 0}, the route reaches the book, and
+	 * {@code balance_entry_a_membership_takes} (V36) refuses an entry that moves nothing: EVERY member
+	 * on the portal is answered 500. The floor under that constraint's half of it is
+	 * {@code BalanceConstraintsTest}, which writes the nought row and watches PostgreSQL refuse it.
+	 *
+	 * <p><b>HE IS NOT EXEMPT AND HIS BOOK IS NOT EMPTY, and both halves of that are the case rather
+	 * than the fixture being tidy.</b> Exempt reaches this same outcome one clause earlier, so an
+	 * exempt member here would be measuring that clause; and a fee of nought is covered by an EMPTY
+	 * book just as well as by a full one, so a member with nothing would leave „covered" satisfied by
+	 * two things at once. He is therefore an ordinary member with money in his book, and the only
+	 * thing odd about him is the price of the season.
+	 */
+	@Test
+	void afeeOfNothingIsRefusedForTheSameReasonAndHeIsNeitherExemptNorEmpty() {
+		Balance.Settlement nothingToPay = Balance.against(Balance.Money.NOTHING,
+				new Balance.Money(new BigDecimal("40"), new BigDecimal("4800")));
+
+		assertThat(nothingToPay.coveredByTheBalance())
+				.as("a fee of nothing is not covered, so this case cannot be about a fee of nothing")
+				.isTrue();
+
+		assertThat(ActivatingFromBalance.decide(asking(false, false, nothingToPay, HE_HAS_ONE)))
+				.isEqualTo(ActivatingFromBalance.Outcome.HE_OWES_NOTHING);
+
+		assertThat(ActivatingFromBalance.decide(asking(false, false, nothingToPay, null)))
+				.as("having never been numbered is not a way past a fee of nothing")
+				.isEqualTo(ActivatingFromBalance.Outcome.HE_OWES_NOTHING);
+
+		/* AND THE FEE IS WHAT DECIDES IT, NOT THE BALANCE THAT MET IT. The same empty fee against an
+		   empty book answers the same, which is the one substitution that would pass if the guard had
+		   been written over the balance instead. */
+		assertThat(ActivatingFromBalance.decide(asking(false, false,
+				Balance.against(Balance.Money.NOTHING, Balance.Money.NOTHING), HE_HAS_ONE)))
+				.isEqualTo(ActivatingFromBalance.Outcome.HE_OWES_NOTHING);
+
+		/* And a fee that IS money is untouched by this clause, so it refuses a price and not a
+		   member. */
+		assertThat(ActivatingFromBalance.decide(asking(false, false, covered(), HE_HAS_ONE)))
+				.isEqualTo(ActivatingFromBalance.Outcome.ACTIVATE);
+	}
+
+	/**
 	 * AND A MEMBER OF THIS SEASON ALREADY IS TOLD THAT, NOT SOMETHING ELSE.
 	 *
 	 * <p>Without this the row would collide with {@code membership_pk} (V22) and the member would be

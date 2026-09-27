@@ -238,6 +238,20 @@ class MembershipWriteApiTest {
 		return db.sql("select count(*) from membership").query(Long.class).single();
 	}
 
+	/**
+	 * One member's book as readable lines, or the words for none.
+	 *
+	 * <p>Read back with the REASON and the MEMBER BROUGHT IN in the string rather than as a sum: a sum
+	 * is satisfied by a line of the right size written for the wrong person, and who a reward names is
+	 * the whole of {@code balance_entry_one_a_referral}.
+	 */
+	private String bookOf(long competitorId) {
+		return db.sql("select coalesce(string_agg(reason || ' ' || eur || '/' || rsd || ' for '"
+						+ " || coalesce(referred_competitor_id::text, 'nobody'), ', '), 'no lines')"
+						+ " from balance_entry where competitor_id = ?")
+				.param(competitorId).query(String.class).single();
+	}
+
 	private String competitorRow(long id) {
 		return db.sql("select coalesce(member_number, 'none') || ' ' || active || ' ' || membership_basis"
 						+ " from competitor where id = ?")
@@ -290,6 +304,99 @@ class MembershipWriteApiTest {
 				.isEqualTo("009001 true payment");
 		assertThat(competitorRow(alreadyFreeElsewhere)).as("somebody else was touched")
 				.isEqualTo("009003 true feeExempt");
+	}
+
+	/**
+	 * WHOEVER BROUGHT HIM IN IS PAID WHEN THE ADMINISTRATION FREES HIM OF THE FEE, which is the
+	 * third of the three doors onto this portal and the one that was not paying.
+	 *
+	 * <p><b>Owner, 13.08.2026, in as many words:</b> „OK je da se za preporuku dobije balans cak
+	 * i ako je preporucen clan dobio pocasnu aktivaciju." PDL ties the reward to ACTIVATION -
+	 * „Iznos leze na balans automatski, u trenutku kad se novom clanu aktivira clanarina" - and it
+	 * says nothing at all about how the season was paid for.
+	 *
+	 * <p><b>WHAT WAS MEASURED BEFORE THIS CASE EXISTED.</b> {@code insert into membership} stood in
+	 * THREE places and {@code aReferralWasActivated} was called from two. The grant answered 201,
+	 * the referrer's book stayed empty, and the same man through the payments door answered 409 - so
+	 * the reward was not merely late but <b>lost for good</b>, because nothing may settle one season
+	 * twice. Two sentences in this branch claimed otherwise: {@code BalanceBook} said it was called
+	 * from „every place a membership is activated", and V36's carry said such a referral would be
+	 * rewarded by this route „the day it exists" - and the route existed already.
+	 *
+	 * <p><b>THE REFERRER IS NEITHER THE SUBJECT NOR THE FIRST ROW.</b> He is created LAST, and the
+	 * first competitor's book is asserted empty beside him, so a route crediting a fixed or earliest
+	 * competitor fails here instead of coinciding. The whole table is counted too, so one activation
+	 * writing more than one line is caught.
+	 */
+	@Test
+	void whoeverBroughtHimInIsPaidWhenTheAdministrationFreesHimOfTheFee() throws Exception {
+		/* Created LAST, so nothing may pass by crediting the earliest competitor - `whoPays` is the
+		   first row and his book is asserted empty below for exactly that reason. */
+		long whoBroughtHimIn = competitor("c4", "009004", true, "payment");
+		db.sql("update competitor set referred_by = ? where id = ?").params(whoBroughtHimIn, him).update();
+
+		assertThat(bookOf(whoBroughtHimIn))
+				.as("a line stood before the grant, so nothing below is about the grant")
+				.isEqualTo("no lines");
+
+		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		assertThat(bookOf(whoBroughtHimIn))
+				.as("the reward for bringing in a member freed of the fee was lost, and lost for good:"
+						+ " the paying door refuses a man who already holds the season")
+				.isEqualTo("referral 5.00/600.00 for " + him);
+
+		assertThat(bookOf(whoPays))
+				.as("the reward went to the first competitor in the table rather than to the man who"
+						+ " actually brought him in")
+				.isEqualTo("no lines");
+
+		assertThat(db.sql("select count(*) from balance_entry").query(Long.class).single())
+				.as("more than one line was written for one activation")
+				.isOne();
+	}
+
+	/**
+	 * AND THE MAN NOBODY BROUGHT IN EARNS NOBODY ANYTHING, which is most of them.
+	 *
+	 * <p>The pair to the case above and not a repetition of it: that one proves a reward IS written,
+	 * this one proves the writing is conditional on somebody having brought him in rather than
+	 * happening to every grant. Without it, a route that credited a fixed competitor - or every
+	 * competitor - would pass the case above.
+	 */
+	@Test
+	void amemberNobodyBroughtInEarnsNobodyAnythingWhenHeIsFreed() throws Exception {
+		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select count(*) from balance_entry").query(Long.class).single())
+				.as("a reward was written for an activation nobody had referred")
+				.isZero();
+	}
+
+	/**
+	 * AND A SECOND SEASON FREE OF THE FEE EARNS HIS REFERRER NOTHING FURTHER, which is
+	 * {@code balance_entry_one_a_referral} (V36) holding rather than a question this route asks.
+	 *
+	 * <p>PDL ties the reward to bringing somebody in, once, however many seasons he goes on to hold.
+	 * The second grant is for a DIFFERENT season, because the same one answers 200 and writes nothing
+	 * at all - which would make this case measure that instead.
+	 */
+	@Test
+	void asecondSeasonFreeOfTheFeeEarnsTheReferrerNothingFurther() throws Exception {
+		long whoBroughtHimIn = competitor("c4", "009004", true, "payment");
+		db.sql("update competitor set referred_by = ? where id = ?").params(whoBroughtHimIn, him).update();
+
+		assertThat(grant(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		clock.moveTo(IN_OCTOBER_2027);
+
+		assertThat(grant(him, cashierCookie).getStatus())
+				.as("the next season was not a fresh grant, so this case is not about a second one")
+				.isEqualTo(201);
+
+		assertThat(bookOf(whoBroughtHimIn))
+				.as("the referrer was paid twice for one member brought in")
+				.isEqualTo("referral 5.00/600.00 for " + him);
 	}
 
 	/**

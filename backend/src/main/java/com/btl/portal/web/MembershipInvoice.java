@@ -64,16 +64,23 @@ class MembershipInvoice {
 	 *                           never one anybody asked for
 	 * @param priceKey           the row of the price list that applies to him
 	 * @param settled            the fee, his balance, and what the one does to the other
-	 * @param processingFeeEur   V16's fee, on a euro transfer only, and nothing when there is no
-	 *                           transfer to process
+	 * @param processingFeeEurIfHeTransfers V16's fee for the row that applies to him, charged on a
+	 *                           euro transfer only. <b>Carried raw, and whether it is charged is not
+	 *                           decided here</b>: only the route knows what it is finally serving as
+	 *                           the amount to transfer, because a promise already standing for the
+	 *                           season fixes that number rather than today's balance
+	 *                           ({@link Balance#asThePromiseStands}). Deciding it here would answer
+	 *                           „is there a transfer" off today's arithmetic and then contradict the
+	 *                           transfer actually served.
 	 * @param alreadyAMember     a {@code membership} row already stands for him and this season,
 	 *                           on any basis
 	 * @param exemptFromTheFee   {@code competitor.membership_basis} is {@code feeExempt}: he owes
 	 *                           nothing, so there is nothing for a balance to pay
 	 * @param numberHeAlreadyHas his member number, or {@code null} if he has never had one
 	 */
-	record Invoice(int season, String priceKey, Balance.Settlement settled, BigDecimal processingFeeEur,
-			boolean alreadyAMember, boolean exemptFromTheFee, MemberNumber numberHeAlreadyHas) {
+	record Invoice(int season, String priceKey, Balance.Settlement settled,
+			BigDecimal processingFeeEurIfHeTransfers, boolean alreadyAMember, boolean exemptFromTheFee,
+			MemberNumber numberHeAlreadyHas) {
 	}
 
 	private record TheMember(LocalDate birthDate, String membershipBasis, String memberNumber) {
@@ -108,11 +115,7 @@ class MembershipInvoice {
 						"select exists(select 1 from membership where competitor_id = ? and season = ?)")
 				.params(me, season).query(Boolean.class).single());
 
-		/* NO TRANSFER, NOTHING TO PROCESS: reasoning rather than a written decision, and
-		   {@link Balance} carries the whole of it. */
-		BigDecimal processing = settled.coveredByTheBalance() ? BigDecimal.ZERO : inEuro.fee();
-
-		return new Invoice(season, inEuro.key(), settled, processing, alreadyAMember,
+		return new Invoice(season, inEuro.key(), settled, inEuro.fee(), alreadyAMember,
 				FEE_EXEMPT.equals(member.membershipBasis()),
 				member.memberNumber() == null ? null : new MemberNumber(member.memberNumber()));
 	}

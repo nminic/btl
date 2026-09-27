@@ -122,6 +122,57 @@ public final class Balance {
 	}
 
 	/**
+	 * THE SETTLEMENT AS THE CODE HE IS ALREADY HOLDING STATES IT, which is not the settlement
+	 * today's book would produce.
+	 *
+	 * <p><b>Why a second reading of one invoice may not recompute the discount.</b> A code is a slip
+	 * of paper with a number on it, and once it leaves the screen the portal cannot take it back.
+	 * If a second look recomputed the reduction, a member whose balance moved in between would be
+	 * holding TWO slips saying two different numbers while only one promise could be recorded - and
+	 * whichever slip he then paid, the amount coming off his book would be the other one's. Measured
+	 * on this branch before it was fixed: a code minted on 3.600 against a balance of 600, a seventh
+	 * referral landing, a mere refresh of the page, and then 1.200 off the book for a discount of
+	 * 600. That is the outcome the owner refused on 27.09.2026 in as many words, with the cost
+	 * stated to him: „the association's liability would fall by 1.200 against a discount of 600".
+	 *
+	 * <p><b>SO THE FIRST LOOK OF A SEASON FIXES WHAT THAT SEASON'S CODE PROMISES, and this is the
+	 * method that serves it afterwards.</b> Every slip the member can be holding for that season
+	 * then carries the same number, so there is no slip whose payment would take off something he
+	 * was not told about.
+	 *
+	 * <p><b>WHAT IS TAKEN FROM TODAY AND WHAT FROM THE PROMISE, because the two answer different
+	 * questions.</b> The reduction and the transfer come from the promise, because they are what the
+	 * slip says. The balance and {@link Settlement#coveredByTheBalance()} come from today, because
+	 * they are facts about his book right now: the second of them is read by the screen as „{@code
+	 * POST /api/me/membership} is the way in", and that route mints no code and therefore consults
+	 * no promise - it spends what is in the book at the moment it writes, inside one transaction. A
+	 * member whose balance grew past the whole fee after minting can therefore still let himself in,
+	 * rather than being held to a slip for the rest of the season.
+	 *
+	 * <p><b>The promise is settled against the fee exactly as a balance would be</b>, by handing it
+	 * to {@link #against}, so a promise larger than the fee cannot drive the transfer below nothing
+	 * and {@link Money}'s own refusal of negative amounts is never reached. That is not decoration:
+	 * it is the one road by which a promise can exceed the fee, namely the price list being edited
+	 * downwards between two looks, and <b>that case is a boundary this branch names rather than
+	 * settles.</b> What happens today is that the older slip and the newer one say different
+	 * numbers while the promise matches the older, so a member paying the newer one transfers less
+	 * than the season now costs. Naming it: the promise is per season and carries no price, so
+	 * nothing here can tell which price list a slip was minted from.
+	 *
+	 * @param today    the settlement his fee and his book would produce right now
+	 * @param promised what the code said, from {@code balance_promise}
+	 */
+	public static Settlement asThePromiseStands(Settlement today, Money promised) {
+		Objects.requireNonNull(today, "today");
+		Objects.requireNonNull(promised, "promised");
+
+		Settlement onThePromise = against(today.fee(), promised);
+
+		return new Settlement(today.fee(), today.balance(), onThePromise.fromTheBalance(),
+				onThePromise.toTransfer(), today.coveredByTheBalance());
+	}
+
+	/**
 	 * WHAT A BOOKED PAYMENT TAKES OUT OF THE BOOK, which is what the code PROMISED and not what the
 	 * balance happens to be on the day the money lands.
 	 *

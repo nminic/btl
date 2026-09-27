@@ -238,4 +238,110 @@ class BalanceTest {
 		assertThat(taken.eur()).as("capped by the book").isEqualByComparingTo("30.00");
 		assertThat(taken.rsd()).as("capped by the promise").isEqualByComparingTo("4200.00");
 	}
+
+	/**
+	 * AND A SECOND LOOK AT AN INVOICE IS SERVED THE CODE HE IS HOLDING, not the sum his book has
+	 * grown to since.
+	 *
+	 * <p><b>Why the reduction may not be recomputed.</b> A slip already printed is not on the screen.
+	 * Recompute it and a member whose balance moved holds two slips saying two numbers while only one
+	 * promise can be recorded, so whichever he pays, the book takes off the other one's amount. That
+	 * is the outcome the owner refused on 27.09.2026 with the cost stated to him.
+	 *
+	 * <p><b>THE TWO HALVES COME FROM DIFFERENT DAYS AND EACH IS ASSERTED, because that split is the
+	 * decision.</b> The reduction and the transfer are the code's; the balance and „covered" are
+	 * today's, because the second of them is read as „{@code POST /api/me/membership} is a way in"
+	 * and that route mints no code and reads no promise.
+	 *
+	 * <p><b>The promise and today's balance are deliberately different numbers</b>, or „serve the
+	 * promise" and „serve today" would answer alike and this would measure nothing.
+	 */
+	@Test
+	void asecondLookIsServedThePromiseWhileTheBalanceAndCoverAreTodays() {
+		Balance.Settlement today = Balance.against(A_MEMBERSHIP, broughtIn(2));
+
+		Balance.Settlement served = Balance.asThePromiseStands(today, broughtIn(1));
+
+		assertThat(served.fromTheBalance().rsd())
+				.as("today's book was served instead of what the code promised, so a booking would take"
+						+ " twice the discount that was offered")
+				.isEqualByComparingTo("600");
+
+		assertThat(served.toTransfer().rsd())
+				.as("the transfer and the reduction no longer add back up to the fee, so whatever the"
+						+ " member sends leaves the association short")
+				.isEqualByComparingTo("3600");
+
+		assertThat(served.fromTheBalance().rsd().add(served.toTransfer().rsd()))
+				.isEqualByComparingTo(served.fee().rsd());
+
+		assertThat(served.balance().rsd())
+				.as("the balance shown is the promise rather than what he actually has today")
+				.isEqualByComparingTo("1200");
+
+		assertThat(served.fee()).isEqualTo(today.fee());
+		assertThat(served.coveredByTheBalance()).isFalse();
+	}
+
+	/**
+	 * AND „COVERED" STAYS TODAY'S ANSWER EVEN WHILE THE TRANSFER IS THE CODE'S, which is the one
+	 * combination that proves the two halves are read from two places.
+	 *
+	 * <p>A member short of the fee at his first look, whose book has since grown past it: the slip in
+	 * his hand still asks for a transfer, AND he may now let himself in for nothing. Both roads are
+	 * open and both come out right - activating spends today's book and kills the slip, because a man
+	 * already holding the season is refused at the paying door. Were „covered" taken off the promise
+	 * instead, he would be held to his slip for the rest of the season with a book that covers the
+	 * whole fee.
+	 */
+	@Test
+	void amemberWhoseBalanceOutgrewHisCodeIsBothCoveredAndStillAskedToTransfer() {
+		Balance.Settlement served = Balance.asThePromiseStands(
+				Balance.against(A_MEMBERSHIP, broughtIn(8)), broughtIn(1));
+
+		assertThat(served.coveredByTheBalance())
+				.as("covered was read off the promise, so a member whose book covers the whole fee is"
+						+ " told it does not")
+				.isTrue();
+
+		assertThat(served.toTransfer().isNothing())
+				.as("the transfer was recomputed from today, so the slip in his hand is not what this"
+						+ " answer describes")
+				.isFalse();
+
+		assertThat(served.fromTheBalance().rsd()).isEqualByComparingTo("600");
+	}
+
+	/**
+	 * A PROMISE LARGER THAN THE FEE IS CAPPED AT IT, and that is what stops a 500 rather than a
+	 * nicety: {@link Balance.Money} refuses a negative amount, so an uncapped subtraction would
+	 * throw.
+	 *
+	 * <p><b>The road to it is the price list being edited DOWNWARDS between two looks</b>, and that
+	 * case is a boundary this branch names rather than settles: the promise carries no price, so
+	 * nothing can tell which price list a slip was minted from, and a member paying the newer slip
+	 * transfers less than the season now costs.
+	 */
+	@Test
+	void apromiseBiggerThanTheFeeLeavesNothingToTransferInsteadOfThrowing() {
+		Balance.Settlement served = Balance.asThePromiseStands(
+				Balance.against(money("5.00", "600.00"), broughtIn(1)), broughtIn(7));
+
+		assertThat(served.fromTheBalance().rsd()).isEqualByComparingTo("600.00");
+		assertThat(served.toTransfer().isNothing()).isTrue();
+	}
+
+	/** And neither half of it may be missing, because a settlement of nothing is not one. */
+	@Test
+	void servingAPromiseNeedsBothTheSettlementAndThePromise() {
+		Balance.Settlement today = Balance.against(A_MEMBERSHIP, broughtIn(1));
+
+		assertThatThrownBy(() -> Balance.asThePromiseStands(null, broughtIn(1)))
+				.isInstanceOf(NullPointerException.class)
+				.hasMessageContaining("today");
+
+		assertThatThrownBy(() -> Balance.asThePromiseStands(today, null))
+				.isInstanceOf(NullPointerException.class)
+				.hasMessageContaining("promised");
+	}
 }
