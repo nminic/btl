@@ -9,11 +9,18 @@ import { ruleFor, unconditionalRules } from '../test/stylesheet'
  * Owner, 28.09.2026, from a screenshot of this exact row: „Pogledaj koliko je ovaj red jezivo
  * pojeban. Sve mora biti centrirano vertikalno u njemu, a clanski broj treba da ide ispod Imena i
  * prezimena tako da ukupna visina punog imena i broja odgovara ukupnoj visini slike / inicijala u
- * krugu." Three sentences, three cases below, each reading the sheet a rendered test cannot: jsdom
- * lays nothing out, so nothing that renders this table can say whether a cell sits in the middle of
- * its row or whether two lines of text add up to the height of a circle beside them (ADL A33, the
- * same reason `styles/rankingsRow.test.ts` and `styles/leagueLayout.test.ts` read a sheet as text
- * rather than a screen).
+ * krugu." Three sentences, and a fourth case under them from the second screenshot the same day,
+ * each reading the sheet a rendered test cannot: jsdom lays nothing out, so nothing that renders
+ * this table can say whether a cell sits in the middle of its row or whether two lines of text add
+ * up to the height of a circle beside them (ADL A33, the same reason `styles/rankingsRow.test.ts`
+ * and `styles/leagueLayout.test.ts` read a sheet as text rather than a screen).
+ *
+ * **What the second screenshot added, and why it needed a case of its own rather than a tighter
+ * one above.** Every box in the row was already centred to within 0,01px and the two lines already
+ * added up to the circle; the owner could still see the group standing high, because the ink was
+ * hanging out of the top of a box that was itself in the right place. The sum was never wrong, so
+ * no assertion about the sum could have caught it, and the case that does is about the PROPORTION
+ * between the two lines instead.
  *
  * What puts the number under the name rather than beside it is asked of the DOM instead, in
  * `pages/publicScreens.test.tsx` (`describe('Rankings')`, „puts the member number under the name"):
@@ -100,21 +107,63 @@ describe('the row of a competitor on the main standing', () => {
        otherwise share: a shared constant would make this compare a value with itself, which is the
        one shape of assertion that cannot fail (CLAUDE.md, „tvrdnja o visini ne sme da cita istu
        konstantu iz koje visina dolazi"). The circle's size is `NamePlate.css`'s own, unchanged and
-       still held by the golden text in `styles/leagueLayout.test.ts`; the line height is
-       `Rankings.css`'s own. A mutation to either alone has to fail exactly one of the two readings
-       below and therefore this sum. */
+       still held by the golden text in `styles/leagueLayout.test.ts`; the two line heights are
+       `Rankings.css`'s own. A mutation to any one of the three has to fail exactly one of the
+       readings below and therefore this sum.
+
+       The two lines stopped being the same height on 28.09.2026 and the SUM did not change, which
+       is why this case survived that round while the one under it had to be written: a pair of
+       leadings that add up wrongly and a pair that add up rightly but in the wrong proportion are
+       two different faults, and this one only ever spoke to the first. */
     const circle = ruleFor(plate, '.plate .portrait', 'NamePlate.css')
-    const lines = ruleForBoth(
-      rankings,
-      'Rankings.css',
-      '.rankings__member-name',
-      '.rankings__member-number',
-    )
+    const name = ruleFor(rankings, '.rankings__member-name', 'Rankings.css')
+    const number = ruleFor(rankings, '.rankings__member-number', 'Rankings.css')
 
     const faceSize = rem(circle.getPropertyValue('block-size'))
-    const lineHeight = rem(lines.getPropertyValue('line-height'))
+    const together =
+      rem(name.getPropertyValue('line-height')) + rem(number.getPropertyValue('line-height'))
 
-    expect(lineHeight * 2).toBeCloseTo(faceSize, 5)
+    expect(together).toBeCloseTo(faceSize, 5)
+  })
+
+  it('gives the name the taller of the two lines, and by the smaller font size being smaller', () => {
+    /* Owner, 28.09.2026, second screenshot of the same row: „i dalje je deo sa imenom prezimenom
+       slikom i članskim brojem vertikalno neki piksel iznad ostatka podataka u toj liniji. Iznad
+       te grupe ima manje piksela do vrha linije nego što je ispod do dna."
+
+       Measured in a browser at 1280px, because a box that is centred says nothing about where the
+       ink inside it lands and jsdom lays out neither: with both lines at 1.05rem every BOX in the
+       row was within 0,01px of centre, while the group's ink stood 9,67px from the top of the row
+       and 12,34px from the bottom. The name at 1rem needs 21,33px and had 16,8px, so 2,67px of its
+       ascent hung out of the TOP; the number at 0.8rem needs 17,33px and had the same 16,8px, so
+       nothing hung out of the bottom. The overflow was one-sided because the two lines are two
+       sizes and the bigger one is on top.
+
+       **Why this case is not the sum above.** Both leadings could be swapped for each other, or
+       split 1.3rem/0.8rem, and the sum would still be 2.1rem. What the fix asks is a PROPORTION:
+       the name's line is the longer one. That is the half a stylesheet can answer, and the amount
+       it is longer by (0.25rem, the measured difference of the two natural line boxes) is read out
+       of the sheet rather than recomputed here, since `normal` is not proportional to the font
+       size and nothing in jsdom can lay a glyph out to find it.
+
+       **And the floor under the proportion, which is in a third sheet this branch never touched.**
+       The name's line is longer only because the number is set smaller; a number at the name's own
+       size would want the same leading and this whole rule would be wrong rather than merely
+       unnecessary. `styles/table.css` is where that size lives, for this screen and the three
+       others that wear the class, so it is read here too. Three sheets, none of them deriving its
+       number from another. */
+    const shared = readFileSync(join(process.cwd(), 'src/styles/table.css'), 'utf-8')
+    const smaller = ruleFor(shared, '.table__member-number', 'table.css')
+    const name = ruleFor(rankings, '.rankings__member-name', 'Rankings.css')
+    const number = ruleFor(rankings, '.rankings__member-number', 'Rankings.css')
+
+    expect(rem(smaller.getPropertyValue('font-size'))).toBeLessThan(1)
+
+    const forTheName = rem(name.getPropertyValue('line-height'))
+    const forTheNumber = rem(number.getPropertyValue('line-height'))
+
+    expect(forTheName).toBeGreaterThan(forTheNumber)
+    expect(forTheName - forTheNumber).toBeCloseTo(0.25, 5)
   })
 
   it('does not draw the circle at all below 700px, which is the boundary a wrapped name meets first', () => {
