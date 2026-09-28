@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -71,23 +72,6 @@ import java.util.Optional;
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
- * <li><b>THE MESSAGE SENT WHEN AN ACCEPTANCE BREAKS SOMEBODY ELSE'S PAIR, AND IT IS A HOLE
- * RATHER THAN A DECISION.</b> PDL P13: „Kad promena pogodi treceg clana, on se obavestava
- * ODMAH po nastanku promene, ne na pocetku sezone", with the owner's own example - „muskarac
- * zatrazi novi par, nova zena prihvati, dotadasnja zena istog trenutka dobija poruku „Vas
- * trkacki par ce u narednoj sezoni biti raskinut."" - and, 07.09.2026, „svaki ostavljeni
- * partner dobija poruku imenom, u svoje sanduce, nikad ligi". {@link #settle} deletes at
- * most two pairs and writes to nobody. <b>What that costs, said out loud:</b> a member whose
- * pair is broken by somebody else's acceptance is told NOTHING, and the invitation itself
- * still arrives only on {@code /api/me/applications} rather than in an inbox. <b>Why this
- * half is not paid while {@link #breakUp} pays its own:</b> the two messages are not one
- * sentence. Breaking is one act with one person on the far side of it, whose name and season
- * the route already has in hand; an acceptance reaches up to two more people through two
- * rows it deletes in one statement, and which of them is told what is the same decision as
- * the invitation's own message - the one V13 built {@code message.pair_invite_id} and
- * {@code message_a_question_has_an_addressee} for, and the one the increment that puts an
- * invitation in an inbox will take. Written here out of symmetry it would answer that
- * question first and leave that increment fighting an answer nobody decided.
  * <li><b>A pair that is over.</b> Nothing here reads or writes a row of a season other than
  * the one being formed, which is PDL P13, 07.09.2026 in one condition: „par iz sezone koja je
  * prosla se NIKAD ne dira (P13, zamrznuti podaci). Oba se citaju za sezonu koja se formira,
@@ -100,6 +84,20 @@ import java.util.Optional;
  * <li><b>A migration.</b> {@code racing_pair} and {@code pair_invite} are V12's, and V12
  * holds every rule this class leans on. Nothing here needs a column that is not there.
  * </ul>
+ *
+ * <p><b>THE TWO MESSAGES THIS CLASS ONCE OWED ARE BOTH WRITTEN NOW, IN ONE INCREMENT, BECAUSE
+ * THE OWNER SAID SO HIMSELF.</b> {@link #ask} inserts a message carrying {@code pair_invite_id},
+ * the shape {@link TeamJoiningWriteApi#theInvitationBodyReads} already holds for a team
+ * ({@code pair.inviteSubject}/{@code pair.inviteBody}, sign for sign); {@link #settle} tells
+ * every abandoned partner by name through the same {@link #tell} {@link #end} already calls for
+ * its own half ({@code pair.brokenSubject}/{@code pair.brokenBody}). The two were one decision
+ * before either was built - PDL P13: „Kad promena pogodi treceg clana, on se obavestava ODMAH po
+ * nastanku promene, ne na pocetku sezone", with the owner's own example - „muskarac zatrazi novi
+ * par, nova zena prihvati, dotadasnja zena istog trenutka dobija poruku „Vas trkacki par ce u
+ * narednoj sezoni biti raskinut."" - and, 07.09.2026, on „Raskini": „Isto pravilo kao kod
+ * prihvatanja: promena pogađa člana koji ništa nije pritisnuo, pa se obaveštava odmah." Choosing
+ * between the offered outcomes, the owner kept them together rather than let one increment answer
+ * a question the other had not yet decided.
  *
  * <p><b>THE PAIR IS MIXED AND THIS CLASS DOES NOT SAY SO A SECOND TIME.</b> „Trkacki par
  * mora biti mesovit, jedan muskarac i jedna zena" (PDL P13), and V12 holds it in the database
@@ -273,6 +271,16 @@ class PairWriteApi {
 	static final String THE_PAIR_IS_BROKEN = "Trkački par je raskinut";
 
 	/**
+	 * WHAT THE OTHER HALF READS IN HIS INBOX WHEN HE IS ASKED.
+	 *
+	 * <p>Not invented here: it is the subject the portal already draws for this exact event
+	 * ({@code i18n/sr.json}, {@code pair.inviteSubject}), the same shape {@link #THE_PAIR_IS_BROKEN}
+	 * already holds for a different one. The body beside it is {@code pair.inviteBody} with its
+	 * one value filled in.
+	 */
+	static final String THE_PAIR_INVITATION = "Poziv u trkački par";
+
+	/**
 	 * WHO THE PORTAL IS WHEN IT WRITES TO A MEMBER ITSELF.
 	 *
 	 * <p>PDL P13, 19.09.2026, the owner choosing between three offered answers: the sender is
@@ -365,8 +373,14 @@ class PairWriteApi {
 	record Made(long id, int season) {
 	}
 
-	/** One half of a would-be pair: who he is, and which column he can stand in. */
-	private record Half(long id, String gender) {
+	/**
+	 * One half of a would-be pair: who he is, which column he can stand in, and his name.
+	 *
+	 * <p>{@code name} is read here rather than by a second query the day a caller needs it,
+	 * the same reasoning {@link Held} is built on: both {@link #half} and {@link #halfNumbered}
+	 * already hold the row, and a name read later could be a name from after it changed.
+	 */
+	private record Half(long id, String gender, String name) {
 	}
 
 	/**
@@ -460,6 +474,17 @@ class PairWriteApi {
 				.params(me, other.get().id())
 				.query(Long.class)
 				.single();
+
+		/* AND IT ARRIVES AS A QUESTION IN HIS INBOX, which is what `message.pair_invite_id` was
+		   built for (V13: „the two things a message can ask a question about, which is what
+		   puts two buttons under it instead of none") and what PDL asks for in as many words:
+		   „Poziv stiže kao poruka u sanduče, sa dva dugmeta: „Prihvati" i „Odbij"." (PDL P13,
+		   07.09.2026). The shape is `TeamJoiningWriteApi.inviting`'s own. */
+		db.sql("insert into message (to_id, from_id, from_name, subject, body, pair_invite_id)"
+						+ " values (?, null, ?, ?, ?, ?)")
+				.params(other.get().id(), THE_LEAGUE, THE_PAIR_INVITATION,
+						theInvitationBodyReads(mine.get().name()), question)
+				.update();
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Asking(question, whoWasAsked(question)));
@@ -592,6 +617,14 @@ class PairWriteApi {
 		   and does not read `competitor.active` at all. Filtered the same way, a stale row
 		   whose other half had lapsed would survive the delete and then refuse the insert,
 		   and the member would meet a server fault instead of a pair. */
+
+		/* READ BEFORE THE DELETE, because after it there is no row left to read either
+		   abandoned partner's name off - the same reasoning `pairHeIsHalfOf` is built on. At
+		   most two: the schema allows one pair a season a side, so `man` loses at most the
+		   woman on his old row and `woman` loses at most the man on hers. */
+		List<Abandoned> abandoned = whoLosesAPairWhen(season, mixed.get().man(),
+				mixed.get().woman());
+
 		db.sql("delete from racing_pair where season = ?"
 						+ " and (man_id in (?, ?) or woman_id in (?, ?))")
 				.params(season, mixed.get().man(), mixed.get().woman(), mixed.get().man(),
@@ -607,6 +640,16 @@ class PairWriteApi {
 				.query((row, one) -> new Made(row.getLong(1), row.getInt(2)))
 				.single();
 
+		/* EVERY THIRD AND FOURTH PERSON WHO PRESSED NOTHING, TOLD BY NAME, IN HIS OWN INBOX,
+		   NEVER THE LEAGUE'S. PDL P13: „Kad promena pogodi treceg clana, on se obavestava ODMAH
+		   po nastanku promene", and 07.09.2026, the same rule „Raskini" already pays through
+		   `end`: „promena pogađa člana koji ništa nije pritisnuo, pa se obaveštava odmah." Two
+		   different people can be in this list and each reads his OWN old partner's name, never
+		   the other one's. */
+		for (Abandoned him : abandoned) {
+			tell(him.id(), THE_PAIR_IS_BROKEN, theSupersededPairReads(him.supersededBy(), season));
+		}
+
 		/* AND ONLY THIS ONE. Any other question standing between either of them and anybody
 		   else is left where it is: nothing decided that pairing up answers questions the
 		   member has not read, and `member/PairInviteAnswer.tsx` closes exactly the one that
@@ -614,6 +657,39 @@ class PairWriteApi {
 		closed(question);
 
 		return ResponseEntity.ok(made);
+	}
+
+	/** Somebody a pairing-up is about to take a partner from, and the name of who took him. */
+	private record Abandoned(long id, String supersededBy) {
+	}
+
+	/**
+	 * WHO LOSES A PAIR WHEN {@code man} AND {@code woman} PAIR UP FOR {@code season}, READ IN
+	 * ONE STATEMENT SO THE DELETE THAT FOLLOWS CANNOT OUTRUN IT.
+	 *
+	 * <p>Two branches and never a self-join: a row where {@code man} already stood abandons
+	 * whoever is on the OTHER side of it, and the same for {@code woman}, so each branch's own
+	 * join hands back the very name {@code {who}} needs without a second lookup. Neither branch
+	 * filters on {@code active} - the DELETE two lines below does not either, and a stale row
+	 * that survives a lapsed fee (V22) is exactly the row this method must still find, or the
+	 * member it named would meet silence where {@link #end} already answers with a name.
+	 *
+	 * <p><b>Zero, one or two rows, never more:</b> {@code racing_pair_one_man_a_season} and
+	 * {@code racing_pair_one_woman_a_season} hold one row a season a side, so {@code man} can
+	 * abandon at most one woman and {@code woman} at most one man.
+	 */
+	private List<Abandoned> whoLosesAPairWhen(int season, long man, long woman) {
+		return db.sql("select p.woman_id, m.first_name, m.last_name"
+						+ " from racing_pair p join competitor m on m.id = p.man_id"
+						+ " where p.season = ? and p.man_id = ?"
+						+ " union all"
+						+ " select p.man_id, w.first_name, w.last_name"
+						+ " from racing_pair p join competitor w on w.id = p.woman_id"
+						+ " where p.season = ? and p.woman_id = ?")
+				.params(season, man, season, woman)
+				.query((row, one) -> new Abandoned(row.getLong(1),
+						row.getString(2) + " " + row.getString(3)))
+				.list();
 	}
 
 	/**
@@ -740,6 +816,39 @@ class PairWriteApi {
 	}
 
 	/**
+	 * WHO IS ASKING, BUILT IN ONE PLACE SO A FLOOR CAN COMPARE IT WITH THE PORTAL'S OWN
+	 * DICTIONARY, THE SAME SHAPE {@link #theBrokenPairReads} ALREADY HOLDS.
+	 *
+	 * <p>The sentence is {@code pair.inviteBody} from {@code frontend/src/i18n/sr.json}, sign
+	 * for sign, with its one value filled in. {@code PairWriteApiTest.theTwoSentencesAreThePortalsOwnWords}
+	 * is the tie that keeps this method and the dictionary from drifting apart.
+	 *
+	 * @param who the one who sent the invitation, by the name his profile carries
+	 */
+	static String theInvitationBodyReads(String who) {
+		return who + " te poziva u trkački par. Par nastaje tek kad ti potvrdiš, i važi za sezonu"
+				+ " koja počinje posle 31. decembra.";
+	}
+
+	/**
+	 * WHAT AN ABANDONED PARTNER READS WHEN SOMEBODY ELSE'S ACCEPTANCE TAKES HIS HALF OF THE
+	 * PAIR AWAY, sharing its subject with {@link #THE_PAIR_IS_BROKEN} because both tell the
+	 * reader the same fact from his own chair.
+	 *
+	 * <p>The sentence is {@code pair.brokenBody} from {@code frontend/src/i18n/sr.json}, sign
+	 * for sign, with its two values filled in - the dictionary's OTHER body for this subject,
+	 * next to {@link #theBrokenPairReads}: that one names who pressed „Raskini", this one names
+	 * who paired up with somebody else instead.
+	 *
+	 * @param who    the one who is, from {@code season}, in another racing pair - never the
+	 *               reader himself
+	 * @param season the season the new pair holds for, off the row rather than off the clock
+	 */
+	static String theSupersededPairReads(String who, int season) {
+		return who + " je od sezone " + season + " u drugom trkačkom paru, pa je vaš raskinut.";
+	}
+
+	/**
 	 * THE PAIR HE MAY END, or nothing - and „nothing" is four different people on purpose.
 	 *
 	 * <p>Read as one statement of one moment: which row, who the other half is, what this
@@ -861,9 +970,11 @@ class PairWriteApi {
 	 * it by the DIFFERENCE between two answers rather than by any field in either.
 	 */
 	private Optional<Half> halfNumbered(String memberNumber) {
-		return db.sql("select id, gender from competitor where member_number = ? and active")
+		return db.sql("select id, gender, first_name, last_name from competitor"
+						+ " where member_number = ? and active")
 				.param(memberNumber)
-				.query((row, one) -> new Half(row.getLong(1), row.getString(2)))
+				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
+						row.getString(3) + " " + row.getString(4)))
 				.optional();
 	}
 
@@ -882,9 +993,11 @@ class PairWriteApi {
 	 * moment it was written.
 	 */
 	private Optional<Half> half(long who) {
-		return db.sql("select id, gender from competitor where id = ? and active")
+		return db.sql("select id, gender, first_name, last_name from competitor"
+						+ " where id = ? and active")
 				.param(who)
-				.query((row, one) -> new Half(row.getLong(1), row.getString(2)))
+				.query((row, one) -> new Half(row.getLong(1), row.getString(2),
+						row.getString(3) + " " + row.getString(4)))
 				.optional();
 	}
 
