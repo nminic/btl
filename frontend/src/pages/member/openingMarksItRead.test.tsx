@@ -213,6 +213,27 @@ function whatWasMarked(): string[] {
 }
 
 /**
+ * HOW MANY TIMES THE INBOX ITSELF WAS READ, which is the only thing that can tell a refused
+ * write from an accepted one.
+ *
+ * <p><b>Written because a mutation survived without it, and the mutation was the one this file
+ * cares most about.</b> Claiming the read mark on the ASKING rather than on the ANSWERING -
+ * `if (answer.got === 'done')` turned into `if (true)` - left all eight cases green. The reason
+ * is a fault in the setting rather than in the assertion: after a refusal the server's answer is
+ * unchanged, so „2 unread" is what the envelope says whether the portal dropped its cache or
+ * not. The number the assertion read could have come from either behaviour, so it distinguished
+ * neither.
+ *
+ * <p>What the two behaviours really differ by is a REQUEST: dropping the cache and bumping the
+ * revision sends this screen back to the server, and a refusal must not. So the pair of cases
+ * below states this number exactly - one read where the write was refused, two where it was
+ * accepted - and each of them is the floor under the other.
+ */
+function inboxReads(): number {
+  return (server?.asked ?? []).filter((one) => one.path === '/api/inbox').length
+}
+
+/**
  * THE ENVELOPE ABOVE EVERY SCREEN, AND WHAT IT SAYS, as a screen reader is given it.
  *
  * <p><b>Found by the words it always carries and then asked what its whole name is, rather than
@@ -299,6 +320,13 @@ describe('a served message the member opens', () => {
        two unread arrived, one was opened, and the number the header draws comes from the
        server's own second answer. */
     expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
+
+    /* **AND IT WENT BACK TO THE SERVER TO LEARN THAT, which is the half the count cannot say.**
+       Two reads: the one every screen of this portal makes at mount, and the one the accepted
+       write asked for by dropping the cache. The refusal case below states the same number as
+       ONE, and that pair is what makes „claimed on the answering and not on the asking"
+       measurable at all - see `inboxReads`. */
+    expect(inboxReads()).toBe(2)
   }, SLOW * 2)
 
   it('is asked about once even though the answer makes this screen read the inbox again', async () => {
@@ -338,15 +366,22 @@ describe('a served message the member opens', () => {
     })
 
     /* **THE AXIS THIS FILE CANNOT GET WRONG: a refusal must leave the count exactly as the
-       server last said it was.** Both unread, still. A portal that dropped its cache on the
-       asking rather than on the answering would draw „1" here and be lying about the one
-       number PDL 27a exists to make true. */
+       server last said it was.** Both unread, still. */
     expect(await theEnvelope()).toHaveAccessibleName(saysUnread(2))
 
-    /* And it does not hammer the route it was refused by. */
+    /* Settled, so that a read arriving a tick late is inside this case rather than after it. */
     await new Promise((settle) => setTimeout(settle, 0))
 
+    /* And it does not hammer the route it was refused by. */
     expect(whatWasMarked()).toHaveLength(1)
+
+    /* **AND THIS IS WHAT THE COUNT ABOVE CANNOT SAY, measured because a mutation proved it.**
+       Turning „the server agreed" into „always" left every case here green: after a refusal the
+       server's answer has not changed, so the envelope reads „2 unread" whether the portal threw
+       its cache away or not. The two behaviours differ by a REQUEST and by nothing else - ONE
+       read here against TWO in the accepted case above - so this is the assertion that tells them
+       apart, and `inboxReads` says why it had to be written. */
+    expect(inboxReads()).toBe(1)
   }, SLOW * 2)
 
   it('asks nothing at all when the server already had it read', async () => {
