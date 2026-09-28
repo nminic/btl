@@ -280,7 +280,7 @@ describe('member screens without a session', () => {
     ['/sr/moji-rezultati'],
     ['/sr/moja-clanarina'],
     ['/sr/poruke'],
-    ['/sr/poruke/msg-1'],
+    ['/sr/poruke/41'],
     ['/sr/podesavanja'],
     ['/sr/rezultat/novi'],
   ])('sends %s to the sign in notice', async (path) => {
@@ -1801,9 +1801,57 @@ describe('settings', () => {
   })
 })
 
+/**
+ * A MESSAGE THIS VISIT WROTE, because the bundle no longer writes any (PDL 34, 28.09.2026).
+ *
+ * <p>The four cases below read a seeded record until that day: `data/seedMessages.ts` put two
+ * broadcasts into every session, one of them unread, so „1 nepročitana" and „a message to
+ * open" arrived free. The owner found them on QA - „Zasto su ove testne poruke i dalje tu??????
+ * NECU MOCK PODATKE NIGDE" - so a case that needs a message in the browser's half writes one
+ * now, through the one thing that still writes there.
+ *
+ * <p><b>Addressed to this member and not to the league</b>, so no assertion below can be
+ * satisfied by a message everybody would have received anyway; and dated between the two rows
+ * `test/mock/inbox.json` serves, so the list this member reads really holds both halves.
+ */
+function WritesOneMessage() {
+  const { notify } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        notify({
+          from: 'Balkanska trkačka liga',
+          to: '000007',
+          subject: 'Profilna slika je vraćena',
+          body: 'Pošalji sliku na kojoj ti se vidi lice.',
+          date: '2026-08-15',
+        })
+      }}
+    >
+      napisi poruku ovom clanu
+    </button>
+  )
+}
+
+/** Writes it, then waits for the row it produced, so that everything after this line is read
+ *  off a list that really holds both halves. */
+async function withOneWritten(user: Pressing): Promise<void> {
+  await user.click(screen.getByRole('button', { name: 'napisi poruku ovom clanu' }))
+  await screen.findByRole('link', { name: /Profilna slika je vraćena/ })
+}
+
 describe('messages', () => {
   it('lists the inbox, says how many are unread, and offers no way to change that', async () => {
-    renderAt('/sr/poruke', 'competitor', '000007')
+    const user = setupUser()
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, <WritesOneMessage />)
+
+    /* The served rows arrive read (`test/mock/inbox.json`), so the one unread line is the one
+       written here and the count is a claim about both halves being counted rather than about
+       a number the build shipped. */
+    await screen.findByRole('link', { name: /Fotografija je prihvaćena/ })
+    await withOneWritten(user)
 
     expect(await screen.findByText('1 nepročitana')).toBeVisible()
 
@@ -1818,8 +1866,12 @@ describe('messages', () => {
        Asked as „no buttons in the rows" rather than „no button called X": the name has left the
        dictionary in the same commit, so a query for the old words could never fail again. The
        rows are found through the subjects they draw, because the header of the portal is full of
-       buttons and one of them carries this very count in its accessible name. */
-    for (const subject of ['Dobro došao u pripremu sezone 2027', 'Rezultat je odobren']) {
+       buttons and one of them carries this very count in its accessible name.
+
+       **One row of each half**, which is what „on either half of the list" needs: the first was
+       written into the browser during this visit and the second came off `GET /api/inbox`, so a
+       screen that kept the control for whichever store it is the keeper of still fails here. */
+    for (const subject of ['Profilna slika je vraćena', 'Fotografija je prihvaćena']) {
       const row = must(
         screen.getByRole('link', { name: subject }).closest('li'),
         `a row around "${subject}"`,
@@ -1830,12 +1882,20 @@ describe('messages', () => {
   })
 
   it('opens one message on its own address, and reading it is what marks it read', async () => {
-    renderAt('/sr/poruke/msg-1', 'competitor', '000007')
+    const user = setupUser()
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, <WritesOneMessage />)
+
+    await withOneWritten(user)
+
+    expect(await screen.findByRole('button', { name: 'Otvori poruke, 1 nepročitana' })).toBeVisible()
+
+    /* Opened through the link the member would press, on the address that link carries. */
+    await user.click(screen.getByRole('link', { name: /Profilna slika je vraćena/ }))
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Dobro došao u pripremu sezone 2027' }),
+      await screen.findByRole('heading', { level: 1, name: 'Profilna slika je vraćena' }),
     ).toBeVisible()
-    expect(screen.getByText(/Kalendar se puni/)).toBeVisible()
+    expect(screen.getByText(/vidi lice/)).toBeVisible()
     /* Nothing was pressed, and the header ends up saying nothing is waiting.
        **Waited for since 27.09.2026, and the wait is the change rather than the claim.** The
        inbox is `GET /api/inbox` now, so this screen finds its message one tick after it mounts
@@ -1844,15 +1904,25 @@ describe('messages', () => {
     expect(
       await screen.findByRole('button', { name: 'Otvori poruke, 0 nepročitanih' }),
     ).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 
   it('leaves a message that was already read alone', async () => {
-    renderAt('/sr/poruke/msg-2', 'competitor', '000007')
+    const user = setupUser()
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, <WritesOneMessage />)
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Rezultat je odobren' })).toBeVisible()
-    // msg-1 is still unread, so opening a read message changed nothing.
+    await withOneWritten(user)
+
+    /* The one opened is a row the SERVER kept and it arrives read, while the unread one stays
+       where it is. Two messages and not one, deliberately: with a single message on the screen
+       „nothing changed" and „everything was marked" answer the same, and the count below is the
+       only thing that tells them apart. */
+    await user.click(screen.getByRole('link', { name: /Fotografija je prihvaćena/ }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Fotografija je prihvaćena' }),
+    ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Otvori poruke, 1 nepročitana' })).toBeVisible()
-  })
+  }, SEVERAL_SCREENS)
 
   it('leads back to the whole inbox, through the menu and not a link on the page', async () => {
     /* The way back that stood inside the page went with every other „Nazad" link (owner,
@@ -1860,12 +1930,13 @@ describe('messages', () => {
        own back does that work now. What must stay reachable is the pigeonhole itself, and
        it lives in the menu, which is not a way back but a way anywhere. */
     const user = setupUser()
-    renderAt('/sr/poruke/msg-2', 'competitor', '000007')
+    /* A row the server kept (`test/mock/inbox.json`), since the bundle seeds none (PDL 34). */
+    renderAt('/sr/poruke/17', 'competitor', '000007')
 
     /* Pinned by the message's own subject, not by „a level one heading": read as „any
        heading", the page that failed to draw at all satisfied the line below just as well
        as the one that drew (review, 06.09.2026). */
-    await screen.findByRole('heading', { level: 1, name: 'Rezultat je odobren' })
+    await screen.findByRole('heading', { level: 1, name: 'Prevoz do Jadovnika' })
 
     expect(
       within(screen.getByRole('main')).queryByRole('link', { name: 'Sve poruke' }),

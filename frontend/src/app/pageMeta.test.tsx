@@ -120,12 +120,15 @@ describe('the name of a page', () => {
   })
 
   it('never puts the subject or the body of a message in the name (PDL P23)', async () => {
-    renderAt('/sr/poruke/msg-1', 'competitor', '000007')
+    /* A message the SERVER kept (`test/mock/inbox.json`, row 41), since 28.09.2026. This
+       opened a seeded record until that day; PDL 34 („NECU MOCK PODATKE NIGDE", owner) took
+       the seed out of the bundle, and what the tab may say about a message did not move. */
+    renderAt('/sr/poruke/41', 'competitor', '000007')
 
-    await screen.findByRole('heading', { level: 1, name: 'Dobro došao u pripremu sezone 2027' })
+    await screen.findByRole('heading', { level: 1, name: 'Fotografija je prihvaćena' })
     await waitFor(() => expect(document.title).toBe(`${sr.seo.message.title} · ${LEAGUE}`))
-    expect(document.title).not.toContain('Dobro došao')
-    expect(content('name', 'description')).not.toContain('Portal je otvoren')
+    expect(document.title).not.toContain('Fotografija')
+    expect(content('name', 'description')).not.toContain('Tvoja profilna fotografija')
   })
 })
 

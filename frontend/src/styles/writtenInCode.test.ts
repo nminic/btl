@@ -38,9 +38,13 @@ import { sources } from '../test/sources'
  *    (review, 05.09.2026).
  *
  * **What it does not read**, said plainly: `.ts` files, which draw nothing on their
- * own, and the records that stand in for a database (`data/seedMessages.ts`,
- * `public/mock`), which are rows somebody will replace rather than words a screen
- * says.
+ * own.
+ *
+ * **It used to name a second exemption and there is nothing left to exempt.** „The
+ * records that stand in for a database (`data/seedMessages.ts`, `public/mock`)" stood
+ * here until 28.09.2026; `public/mock` emptied on the 26th and `data/seedMessages.ts`
+ * went with PDL 34 („NECU MOCK PODATKE NIGDE", owner), so the portal ships no record
+ * pretending to be a row and this rule has no corner it is asked to look away from.
  */
 const DRAWN = sources().filter(({ path }) => path.endsWith('.tsx'))
 
