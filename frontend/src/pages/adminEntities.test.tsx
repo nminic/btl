@@ -2089,9 +2089,18 @@ describe('leagues', () => {
     renderAt('/sr/administracija/lige', 'superadmin')
 
     const rows = await table('Lige')
-    // The generator deliberately leaves one league empty, which is the case
-    // worth seeing from the list.
-    expect(rows.getAllByText('Bez događaja').length).toBeGreaterThan(0)
+
+    /* WAITED FOR, SINCE 28.09.2026, and the wait is the change rather than an accident of
+       timing. The cell counts the DAYS OF THE RACES the competition counts, which is what the
+       box under the row counts and what the row was not counting on the day the owner read
+       „Bez događaja" over a box listing four races. That answer needs the races and the
+       events, and the names and the seasons in this table come out of a file a thousand times
+       smaller, so the table is drawn before the count can be worked out.
+
+       The generated file leaves every one of its three competitions counting no race at all -
+       it names nineteen days between them and not one race - so what is asked here is that at
+       least one says so, which is the state this case has always been about. */
+    expect((await rows.findAllByText('Bez događaja')).length).toBeGreaterThan(0)
   })
 
   it('no longer asks whether a league groups by category', async () => {

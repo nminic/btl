@@ -708,13 +708,40 @@ export function useInbox(
      before. */
   theInboxNowBelongsTo(mine)
 
-  /* **AND HOW MANY TIMES IT HAS GONE OUT OF DATE, read by every caller whatever `reactive`
-     is.** This is not the same question `reactive` answers and is not gated by it: that one is
-     about WHOSE mail this is and carries the race with `NotFound`'s redirect that
-     `member/MessageDetail.tsx` opts out of, while this one cannot reach that race at all - the
-     owner does not change, so the message this screen is drawing is still his and still there.
-     What re-reading buys the detail screen is the mark it has just written, which is what
-     stops its own effect asking a second time. */
+  /* **AND HOW MANY TIMES IT HAS GONE OUT OF DATE, read by every caller whatever `reactive` is.**
+     What re-reading buys the detail screen is the mark it has just written, which is what stops
+     its own effect asking a second time.
+
+     **This is not the same question `reactive` answers and is not gated by it, and what that
+     costs is written here rather than left to be found.** An earlier draft of this paragraph gave
+     a reason - „this one cannot reach that race at all, the owner does not change" - and that
+     reason was measured on 28.09.2026 and does NOT hold. `reactive` is about WHOSE mail this is,
+     and a caller that changes has already had `theInboxNowBelongsTo` above drop the one shared
+     cache; so the NEXT bump of this number sends the instance back to the server, and the server
+     answers whoever is asking NOW. On `member/MessageDetail.tsx` that is an inbox holding no
+     message at this address, so `TheMessage` finds none, returns `<NotFound />`, and its
+     `<Navigate replace>` fires - which is the race `{ reactive: false }` is held for.
+
+     **What `{ reactive: false }` DOES hold is exactly what it names, and that half was measured on
+     its own.** Served a row that arrives already read, so that nothing is ever written and this
+     number never moves, the detail screen did not move either while the caller was switched under
+     it. The way back in is the other half, and it is this screen's own: `member/inboxRead.ts`
+     bumps this number once the route has answered, so the window is open between the switch and
+     the moment that receipt settles. Measured with the receipt held until after the switch: a
+     further `GET /api/inbox` answers the new caller's mail, the message goes, and the router lands
+     on the front page.
+
+     **NO PRODUCTION ROAD INTO THAT WINDOW WAS FOUND, and „not found" is the claim rather than
+     „cannot happen".** What was searched is every caller of `theServerSignedMeIn` in
+     `frontend/src`, of which two are production. `member/SignIn.tsx` is reachable only at
+     `/sr/prijava`, which shares the one `<Outlet />` `app/Shell.tsx` holds, so walking to it
+     unmounts this screen. `session/useTheServersSession.ts` is run by `Shell` once a visit and
+     cannot move a caller that is already mounted: `app/App.tsx` builds `SessionProvider` with no
+     `initialMemberNumber`, so `signedIn` is null until `GET /api/me` answers and
+     `TheMessageAsked` first mounts already knowing `mine`. Every other caller is a test, reaching
+     it on purpose. So this is a boundary that has been looked for and not found, not one that has
+     been ruled out, and the two cases in `pages/member/inboxFromTheServer.test.tsx` that switch a
+     caller in place are where it would be seen moving. */
   const revision = useSyncExternalStore(whileDrawingTheInbox, theInboxRevisionNow)
 
   /* `mine` again, as `useResource`'s owner - UNLESS this caller asked not to, in which case

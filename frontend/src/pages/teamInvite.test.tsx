@@ -95,13 +95,24 @@ const SEVERAL_SCREENS = SLOW * 2
  * The reader becomes somebody else inside one visit.
  *
  * <p><b>And the fake server is told the same thing, since 22.09.2026.</b> This button
- * has no real counterpart at all - a superadmin cannot actually become a member's
- * session in production, this is purely a way to walk several people's screens without
- * a `renderAt` each - so there is no real route whose behaviour it need match. What DOES
- * need to agree is `fakeQueue()`, which stands in for `TeamWriteApi` reading the
- * submitter off the session: without this, a proposal sent after „postani 000002" would
- * still be recorded under whoever `renderAt` first named, which is a different member
- * for every case in this file that becomes somebody before it proposes.
+ * calls no route of its own: it writes straight into the session context (`signIn`) and
+ * into the fake server's own idea of who is asking (`theCookieNames`, a test-only export
+ * of `test/setup.ts`), so there is nothing on the wire for either side to agree with.
+ *
+ * <p><b>THAT THE SETTER IT CALLS HAS NO PRODUCTION CALLER IS THE STATE OF A SEARCH AND
+ * NOT A GUARANTEE REPEATED HERE (review of PR 426).</b> An earlier draft of this comment
+ * said a superadmin „cannot actually become a member's session in production", which is
+ * exactly the shape that misleads the next reader. What was searched and what it found
+ * is written out where the setter is declared rather than repeated here, so the
+ * boundary keeps one home: `session/context.ts` says `signIn` is „a second door and is
+ * called by no screen - measured 24.09.2026, `grep` over `src` outside the tests and
+ * outside its own definition comes back empty".
+ *
+ * <p>What DOES need to agree is `fakeQueue()`, which stands in for `TeamWriteApi`
+ * reading the submitter off the session: without this, a proposal sent after „postani
+ * 000002" would still be recorded under whoever `renderAt` first named, which is a
+ * different member for every case in this file that becomes somebody before it
+ * proposes.
  */
 function Become({ who }: { who: string }) {
   const { signIn } = useSession()
