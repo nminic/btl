@@ -204,8 +204,44 @@ function columnsOf(fields: Drawn[]): number {
  * fields far apart in the definition that happen to share a number are two rows,
  * and what is on screen is always in the order of the file.
  */
-function rowsOf(drawn: Drawn[]): { row: number | undefined; fields: Drawn[]; key: string }[] {
-  const rows: { row: number | undefined; fields: Drawn[]; key: string }[] = []
+type Row = { row: number | undefined; fields: Drawn[]; key: string }
+
+type Group = { groupKey: string | undefined; rows: Row[]; key: string }
+
+/**
+ * The rows gathered into the groups the definition puts them in.
+ *
+ * The same walk as `rowsOf`, one level up: a group is a run of neighbouring
+ * ROWS whose fields name the same group, so a group never reaches across a row
+ * it does not hold and what is on screen stays in the order of the file.
+ *
+ * A group is named after the row it begins with, for the reason `rowsOf` gives
+ * about keys: two groups may carry one name once a field is moved between them,
+ * and two siblings keyed alike are two React cannot tell apart.
+ *
+ * Read off the FIRST field of each row rather than off the row: a row belongs
+ * to one group, and `everyFieldIsInAGroup` in `fieldHint.test.tsx` is what says
+ * so about the definition rather than leaving it to be assumed here.
+ */
+function groupsOf(rows: Row[]): Group[] {
+  const groups: Group[] = []
+
+  for (const one of rows) {
+    const groupKey = one.fields[0]?.field.groupKey
+    const last = groups.at(-1)
+
+    if (last !== undefined && last.groupKey !== undefined && last.groupKey === groupKey) {
+      last.rows.push(one)
+    } else {
+      groups.push({ groupKey, rows: [one], key: one.key })
+    }
+  }
+
+  return groups
+}
+
+function rowsOf(drawn: Drawn[]): Row[] {
+  const rows: Row[] = []
 
   for (const one of drawn) {
     const last = rows.at(-1)
@@ -1121,50 +1157,72 @@ export function FormRenderer({
         </div>
       )}
 
-      {rowsOf(drawn).map(({ row, fields, key }) => {
-        const drawnRow = fields.map(({ field, value }) => (
-          <Field
-            key={field.name}
-            field={field}
-            value={value}
-            beside={String(filled.country ?? '')}
-            error={shown[field.name]}
-            choices={optionsFor(field, options)}
-            onChange={handleChange}
-            open={field.name === openAt}
-            locked={led.includes(field.name) || fixed.includes(field.name)}
-            steps={field.type === 'date' ? steps : undefined}
-            suggesting={suggestingOn(field)}
-          />
-        ))
+      {groupsOf(rowsOf(drawn)).map(({ groupKey, rows, key: groupOwnKey }) => {
+        const drawnRows = rows.map(({ row, fields, key }) => {
+          const drawnRow = fields.map(({ field, value }) => (
+            <Field
+              key={field.name}
+              field={field}
+              value={value}
+              beside={String(filled.country ?? '')}
+              error={shown[field.name]}
+              choices={optionsFor(field, options)}
+              onChange={handleChange}
+              open={field.name === openAt}
+              locked={led.includes(field.name) || fixed.includes(field.name)}
+              steps={field.type === 'date' ? steps : undefined}
+              suggesting={suggestingOn(field)}
+            />
+          ))
 
-        /* A field on no row stands on its own, as every field on every form did
-           before rows existed and as every field still does on a telephone. */
-        if (row === undefined) {
-          /* Wrapped rather than handed back bare, so this group has a key of its
-             own. Returned as an array it had none, and React then paired these
-             groups by position: a field that appears and disappears with a date
-             of birth shifted every one below it by one, and „Svojim rečima" was
-             mounted onto the fiber that had been holding the confirmation. */
-          return <Fragment key={key}>{drawnRow}</Fragment>
+          /* A field on no row stands on its own, as every field on every form did
+             before rows existed and as every field still does on a telephone. */
+          if (row === undefined) {
+            /* Wrapped rather than handed back bare, so this group has a key of its
+               own. Returned as an array it had none, and React then paired these
+               groups by position: a field that appears and disappears with a date
+               of birth shifted every one below it by one, and „Svojim rečima" was
+               mounted onto the fiber that had been holding the confirmation. */
+            return <Fragment key={key}>{drawnRow}</Fragment>
+          }
+
+          return (
+            <div
+              className="form__row"
+              key={key}
+              /* How many columns this row has is counted here rather than written
+                 in the definition, so moving a field between rows is one number in
+                 one place (forms/types.ts, `row`). A town counts as two of
+                 them, because it carries the country beside it. */
+              /* The one cast the portal makes, and the same one every other CSS
+                 variable on it makes (components/ColumnChart.tsx): TypeScript's
+                 `CSSProperties` has no room for a custom property, and there is no
+                 other way to hand a number to a stylesheet. */
+              style={{ '--columns': columnsOf(fields) }}
+            >
+              {drawnRow}
+            </div>
+          )
+        })
+
+        /* A form whose fields name no group is drawn exactly as it was before
+           groups existed: no `fieldset`, no `legend`, not one element more.
+           Eleven of the twelve forms the renderer draws are that form, and
+           `otherFormsAreDrawnAsTheyWere` in `FormRenderer.test.tsx` is what
+           holds them there. */
+        if (groupKey === undefined) {
+          return <Fragment key={groupOwnKey}>{drawnRows}</Fragment>
         }
 
         return (
-          <div
-            className="form__row"
-            key={key}
-            /* How many columns this row has is counted here rather than written
-               in the definition, so moving a field between rows is one number in
-               one place (forms/types.ts, `row`). A town counts as two of
-               them, because it carries the country beside it. */
-            /* The one cast the portal makes, and the same one every other CSS
-               variable on it makes (components/ColumnChart.tsx): TypeScript's
-               `CSSProperties` has no room for a custom property, and there is no
-               other way to hand a number to a stylesheet. */
-            style={{ '--columns': columnsOf(fields) }}
-          >
-            {drawnRow}
-          </div>
+          <fieldset className="form__group" key={groupOwnKey}>
+            {/* The one element a screen reader repeats before every field inside
+                it. A heading would be read once, on the way past, and say
+                nothing at all to somebody who arrives at the third field of the
+                group by keyboard. */}
+            <legend className="form__groupName">{t(groupKey)}</legend>
+            {drawnRows}
+          </fieldset>
         )
       })}
 
