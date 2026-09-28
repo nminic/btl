@@ -341,6 +341,13 @@ describe('a sentence with a value put into it', () => {
       'membership.firstSeasonOpen',
       'membership.inTeam',
       'membership.junior <- money',
+      /* The team a member is about to leave, and the case it wants is the one
+         `membership.inTeam` two lines up already asks for: „Sigurno izlaziš iz tima
+         Nišavski maraton klub?" takes the nominative, exactly as „Trenutno si u timu
+         Nišavski maraton klub." does, because the preposition „iz" governs the genitive of
+         „tim" and leaves the name itself alone. No formatter writes it: `Team.name` is
+         handed over as the server answers it. */
+      'membership.leaveTeamAsk',
       'membership.priceNow <- money',
       'membership.referralNote',
       'membership.renewal',
