@@ -18,67 +18,56 @@ import { theInboxHasChanged } from '../../data/useResource'
  */
 
 /**
- * EVERY KEY THIS VISIT HAS ALREADY ASKED ABOUT, whether the asking worked or not.
- *
- * <p><b>This is a guard against a loop and not an optimisation, and the loop is real rather
- * than imagined.</b> The screen asks from an effect over „is this unread", and a successful
- * write bumps the inbox revision, which makes the screen read the server again - on purpose,
- * so that the answer it holds carries the mark it has just written. If the route FAILS, the
- * line comes back unread, the effect fires again, and without this set the portal would ask
- * for ever over a route that is answering 404.
- *
- * <p><b>Keys and not a count, because the member opens many messages in one visit</b> and
- * each one is its own question. Module scope for the reason `data/useResource.ts` gives about
- * its own two facts: the screen unmounts on every navigation and a `useRef` would forget
- * between two openings of the same message.
- *
- * <p><b>What this deliberately does NOT do is keep a read mark of its own.</b> Whether a
- * message is read is the server's answer and is read off the line; this holds only „have I
- * already asked", which is a fact about this visit's requests and about nothing else. Two
- * stores for one fact is what `asServed` and `asALine` exist to prevent.
- */
-const alreadyAsked = new Set<string>()
-
-/**
- * Marks a served message read, once per key per visit.
+ * Marks a served message read.
  *
  * <p><b>The cache is dropped only where the server agreed</b>, and that is the axis this
- * function cannot get wrong: a refusal must leave the count exactly as the server last said
- * it was. Bumping the revision on the asking rather than on the answering would have the
- * envelope fall for a write that never happened, which is the portal lying about the one
- * number PDL 27a exists to make true.
+ * function cannot get wrong: a refusal must leave the count exactly as the server last said it
+ * was. Bumping the revision on the asking rather than on the answering would have the envelope
+ * fall for a write that never happened, which is the portal lying about the one number PDL 27a
+ * exists to make true.
  *
- * <p><b>And a refusal is not drawn anywhere, which is a boundary rather than an omission.</b>
- * Nothing in PDL says what a member should be told when a read receipt does not land, and the
- * honest answer on this screen is nothing: he is looking at the message he asked for, it is
- * on the screen in front of him, and an error box over it would describe a failure that costs
- * him a number in a corner. What the portal must not do is claim the write happened, and it
- * does not - the line stays unread and the envelope goes on counting it.
+ * <p><b>AND THERE IS NO „HAVE I ASKED ALREADY" GUARD IN HERE, WHICH IS A MEASUREMENT AND NOT AN
+ * OVERSIGHT.</b> One was written first, as a module-level set of keys, against a loop that looked
+ * obvious: a successful write makes the caller's screen read the inbox again, so the effect that
+ * asked runs a second time. It cannot loop, and the reason is the effect's own dependencies
+ * (`member/MessageDetail.tsx`):
+ *
+ * <ul>
+ * <li><b>The write worked.</b> The line comes back read, `unread` turns false, the effect re-runs
+ * once on a changed dependency and does nothing.</li>
+ * <li><b>The write was refused.</b> Nothing is dropped and nothing is bumped, so no re-read
+ * happens at all and the dependencies do not move - React does not re-run an effect whose
+ * dependencies are unchanged, however often the component renders.</li>
+ * </ul>
+ *
+ * <p><b>It was removed rather than kept as insurance, because it was measured to carry
+ * nothing:</b> disabled outright, all 26 cases of `member/openingMarksItRead.test.tsx` and
+ * `member/inboxFromTheServer.test.tsx` stayed green, the two written specifically to count the
+ * requests included. A branch nothing can reach is a branch that hides what it would have done,
+ * and the coverage floor of 100 per cent on branches is what says so out loud. It also cost
+ * something real: resetting module state between cases meant `test/setup.ts` importing this file,
+ * which dragged `askTheServer` into the module graph of every test on the portal and broke
+ * `data/useResource.test.tsx`, whose `vi.mock` of `data/client.ts` answers three names.
+ *
+ * <p><b>What the absence does allow, and it is harmless:</b> `StrictMode` runs an effect twice on
+ * mount in development (`main.tsx`), so a development build sends this twice. The route is a
+ * single `insert ... on conflict do nothing` keyed on `(message_id, competitor_id)`, and
+ * `read_at` of the FIRST call survives every call after it (`InboxReadApi`), so the second
+ * request changes nothing at all - which is the property that makes a guard here unnecessary
+ * rather than merely unmeasured.
  *
  * @param id `message.id` as text, which is what the address of a message is
  */
 export async function theServerHasSeenThisOpened(id: string): Promise<void> {
-  if (alreadyAsked.has(id)) {
-    return
-  }
-
-  alreadyAsked.add(id)
-
   const answer = await askTheServer(`/api/inbox/${id}/read`, {})
 
+  /* **A refusal is drawn nowhere, which is a boundary rather than an omission.** Nothing in PDL
+     says what a member should be told when a read receipt does not land, and the honest answer on
+     this screen is nothing: he is looking at the message he asked for, it is in front of him, and
+     an error box over it would describe a failure that costs him a number in a corner. What the
+     portal must not do is claim the write happened, and it does not - the line stays unread and
+     the envelope goes on counting it. */
   if (answer.got === 'done') {
     theInboxHasChanged()
   }
-}
-
-/**
- * Forgets which keys this visit has asked about, for the test setup and for nothing else.
- *
- * <p>`test/setup.ts` clears the resource cache between cases for the identical reason: module
- * state outlives a render tree, so a case that opened message 501 would otherwise leave the
- * next case unable to open it at all - and that next case would go green while measuring
- * nothing, which is the failure shape this repo refuses hardest.
- */
-export function forgetWhatHasBeenOpened(): void {
-  alreadyAsked.clear()
 }

@@ -528,19 +528,23 @@ function theInboxRevisionNow(): number {
   return inboxRevision
 }
 
-/**
- * FORGETS EVERYTHING BOTH OF THE MODULE-LEVEL FACTS ABOVE HOLD, for the test setup and for
- * nothing else.
+/*
+ * AND NEITHER OF THE TWO FACTS ABOVE IS RESET BETWEEN TESTS, which was written first and
+ * measured to be both impossible and unnecessary (27.09.2026).
  *
- * <p>`test/setup.ts` already calls `clearResourceCache()` between cases for the same reason:
- * module state outlives a render tree, so a case that read this inbox leaves a number behind
- * for the next one. Exported rather than reached at through the cache clear, because these
- * two are this file's and `data/client.ts` has no business knowing they exist.
+ * **Impossible from where it belonged.** `test/setup.ts` runs before every test MODULE, so
+ * importing this file there loads `data/client.ts` for real and caches it; a test whose
+ * `vi.mock('./client')` comes afterwards registers a mock this module never sees.
+ * `data/useResource.test.tsx` is that test - its mock answers three names and stages an answer
+ * that arrives between a render and its effect - and it hung for twenty seconds on a real
+ * `fetch` nothing in it had asked for.
+ *
+ * **And unnecessary.** `clearResourceCache()` there drops the answer, so a stale
+ * `inboxAnsweredFor` can only cause one more drop of a cache that is already empty; and
+ * `inboxRevision` is read as a `useResource` dependency, where what matters is that it CHANGES
+ * during a case, never what it started at. The listeners need no help either:
+ * `useSyncExternalStore` removes each one as its component unmounts.
  */
-export function forgetTheInbox(): void {
-  inboxAnsweredFor = undefined
-  inboxRevision = 0
-}
 
 /**
  * THE INBOX: WHAT THE SERVER HAS KEPT, AND THEN WHAT HAS BEEN SAID DURING THIS VISIT.

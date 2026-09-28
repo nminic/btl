@@ -4,8 +4,6 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, expect, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
-import { forgetTheInbox } from '../data/useResource'
-import { forgetWhatHasBeenOpened } from '../pages/member/inboxRead'
 import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
 import { SLOW } from './slow'
 
@@ -78,14 +76,22 @@ configure({ asyncUtilTimeout: SLOW })
 // next one.
 beforeEach(() => {
   clearResourceCache()
-  /* AND THE THREE FACTS THE INBOX KEEPS BESIDE THAT CACHE, which outlive a render tree the
-     same way it does (PDL 27a, 27.09.2026). Whose the cached answer was, how many times it
-     has gone out of date, and which keys this visit has already told the server it opened.
-     The last of the three is the one that bites: it refuses to ask twice about one message,
-     so a case that opened message 501 would leave the next case unable to open it at all -
-     and that next case would pass while measuring nothing. */
-  forgetTheInbox()
-  forgetWhatHasBeenOpened()
+  /* **AND NOTHING FROM `data/useResource.ts` OR ANYTHING UNDER IT IS IMPORTED HERE, which is a
+     measurement of 27.09.2026 rather than a style.** PDL 27a gave the inbox two module-level facts
+     beside this cache - whose the answer was, and how many times it has gone out of date - and the
+     obvious thing was to reset them from here. It cannot be done from here, and the failure is not
+     obvious: this file runs BEFORE each test module, so importing the data layer loads
+     `data/client.ts` for real and caches it; a test whose `vi.mock('./client')` comes later then
+     registers a mock that the already-loaded `useResource.ts` never sees.
+     `data/useResource.test.tsx` is that test, its mock answers three names, and it hung for
+     twenty seconds on a real `fetch` it never asked for.
+
+     **Neither fact needs resetting, which is why there is nothing here to do.** `clearResourceCache`
+     above drops the answer, so a stale „whose was it" can only cause one extra drop of a cache that
+     is already empty; and the revision is read as a `useResource` dependency, where what matters is
+     that it CHANGES during a case and never what it started at. The listeners look after themselves:
+     `useSyncExternalStore` removes each one when its component unmounts, which Testing Library does
+     between cases. */
   sessionStorage.clear()
   whoTheCookieNames = null
 })

@@ -8,8 +8,6 @@ import {
   serverThat,
   type Asked,
 } from '../../test/serverAnswers'
-import { forgetTheInbox } from '../../data/useResource'
-import { forgetWhatHasBeenOpened } from './inboxRead'
 import { FIRST_MESSAGES } from '../../data/seedMessages'
 import { SLOW } from '../../test/slow'
 import { translate } from '../../i18n/translate'
@@ -458,8 +456,6 @@ describe('an announcement two members are both served', () => {
        `member/inboxFromTheServer.test.tsx` owns that walk. What is wanted here is a fresh
        reader asking the same server, which is what signing in on another machine is. */
     cleanup()
-    forgetTheInbox()
-    forgetWhatHasBeenOpened()
     serving = HER_ADDRESS
 
     renderAt('/sr/poruke', 'competitor', '000009')
