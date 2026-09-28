@@ -361,17 +361,25 @@ describe('the reasons the server can name', () => {
        this class declares that no screen answered, so the merge that brought them in would have
        gone red with the number in the message on the day it happened.
 
-       NINE CONSTANTS AND NINE REASONS, which is the first file on this list where those two
+       TEN CONSTANTS AND TEN REASONS, which is the first file on this list where those two
        numbers agree, so it needs no entry in either table above. `METHODS` is a `Set<String>` and
        `A_REFERENCE` a `Pattern`, so neither is a `static final String` and neither has to be
        excused - the count is the floor that says so, and it moves if either ever becomes one.
 
-       AND FOUR OF THE NINE POINT AT THE SENTENCES `WHEN_ACTIVATING` ALREADY USES, which this gate
+       THE TENTH IS `theMembershipCostsNothing`, ADDED 28.09.2026, and it arrived through exactly
+       the door this entry was written for. It is a BACKEND refusal, added by a branch that had no
+       business on any screen - a price list free in both currencies is legal (PDL 20b) while
+       `payment_amount_positive` (V16) will not take a payment of nought - and the screen would
+       have gone on knowing nine names while the route could say ten. Section 21 of the project's
+       own rules is the same shape the other way round: a backend branch DELETING a constant broke
+       this very gate from the far side.
+
+       AND FOUR OF THE TEN POINT AT THE SENTENCES `WHEN_ACTIVATING` ALREADY USES, which this gate
        is indifferent to and `activation.ts` gives the reason for: a refusal means the same thing
        whichever door refused it, and a second Serbian sentence for it would be a second place to
        change. What this gate asks is that every name be answered, not that every name have a
        sentence of its own. */
-    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 9],
+    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 10],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers
