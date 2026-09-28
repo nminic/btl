@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor } from '@testing-library/react'
+import { act, screen, waitFor } from '@testing-library/react'
 import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
 import sr from '../../i18n/sr.json'
 import { theServerWasToldILeft } from './teamExit'
@@ -561,6 +561,70 @@ describe('leaving a team from the membership screen', () => {
       { timeout: SLOW },
     )
   })
+
+  /**
+   * TWO PRESSES WITH NOTHING AWAITED BETWEEN THEM ARE ONE REQUEST TOO (VISOK, review of PR 442).
+   *
+   * <p><b>The case above does not measure a genuine double press, and that is exactly why a
+   * mutation swapping the guard for the state beside it survived it.</b> `Membership.tsx` reads
+   * the ref (`outstanding.current`) when the button is pressed and the state (`leaving`) for
+   * `aria-disabled`. The second press of the case above comes only after the first has been
+   * carried all the way through `user.click`, which awaits its own click and lets React render,
+   * so `leaving` is already `true` by the time the second press is tried: `if (outstanding.current)`
+   * and a mutated `if (leaving)` agree there, because both values have caught up.
+   *
+   * <p><b>A genuine double press agrees with neither, because nothing has been awaited for
+   * either to catch up.</b> `user.click` cannot produce that by construction, so this fires two
+   * raw clicks on the very same button inside one `act`, which is the shape
+   * `admin/paymentsActivation.test.tsx` gives its own „Da" case for the same reason. Nothing
+   * commits between them: the second is handled by the very closure the first was, from before
+   * `setLeaving` had been seen anywhere. A ref is read fresh whichever closure asks; the state is
+   * fooled by exactly this.
+   *
+   * <p><b>The road is walked to its end before anything is counted</b> (the member reads that he
+   * is in no team), because a screen that lets the second press through sends that request in the
+   * same breath as the first: counted earlier, a request still on its way would read as one that
+   * was never sent. And the count is over EVERY write the server was sent and not over the address
+   * alone, so a second request to anywhere is one too.
+   *
+   * <p>What the second request would cost is written on `Membership.tsx`, at `outstanding`. This
+   * server answers every leaving 204, so what is measured here is the NUMBER of requests and not
+   * that sentence: the number is the cause, and it is what the guard is there to hold.
+   */
+  it(
+    'sends one request for two presses with nothing awaited between them',
+    async () => {
+      const user = setupUser()
+      let asked: Asked[] = []
+      ;({ stop, asked } = aServerThatIsLeft())
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await user.click(
+        await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+      )
+
+      const sure = screen.getByRole('button', { name: sr.membership.leaveTeamSure })
+
+      /* THE RACE ITSELF: two clicks on the same button with nothing awaited between them,
+         grouped in one `act` so that neither can commit before the other is dispatched. */
+      act(() => {
+        sure.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        sure.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      })
+
+      /* The road ends where the member reads that he is in no team. */
+      expect(
+        await screen.findByText(sr.membership.noTeam, undefined, { timeout: SLOW }),
+      ).toBeInTheDocument()
+
+      /* One request, to HIS team and not to the first on the list, and nothing else written. */
+      expect(writes(asked)).toEqual([
+        { path: `/api/teams/${String(MINE.id)}/membership`, how: 'DELETE' },
+      ])
+    },
+    SLOW,
+  )
 
   /**
    * OUTSIDE THE WINDOW THERE IS NO BUTTON, AND THE SENTENCE IS WHAT STANDS IN ITS PLACE.
