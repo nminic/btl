@@ -405,32 +405,52 @@ describe('a screen waits only on the data it shows', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
 
-    /* And the deletion says the file failed rather than that it is waiting for
-       it. Held back either way, because deleting an event without its results
-       leaves them counting for an event that is gone; but a row that says it is
-       waiting, for ever, is an administrator refused a right he holds and told
-       something untrue about why. */
-    expect(table.getAllByText(/rezultati se ne mogu učitati/).length).toBeGreaterThan(0)
+    /**
+     * AND THE DELETION IS OFFERED, WHICH IT WAS NOT UNTIL 28.09.2026.
+     *
+     * <p>This row used to hold the button back while the results were missing, and to say
+     * which kind of missing it was, because the screen took the results down itself, one
+     * at a time. It does not any more: `DELETE /api/events/{id}` is one statement and
+     * `result_race_fk` cascades from the race. There is nothing left to wait for, and
+     * waiting on the largest file the portal has in order to do nothing with it was the
+     * whole of what the gate cost.
+     *
+     * <p>Owner, 28.09.2026, choosing between three outcomes he was priced: the button
+     * works at once, and the number of results is said before the deletion is sent. The
+     * number cannot be had here, so the question says so rather than guessing one - and a
+     * file that FAILED and a file still on its way get one sentence between them, because
+     * to somebody about to press they are the same fact.
+     */
+    expect(table.getAllByRole('button', { name: /^Obriši/ }).length).toBeGreaterThan(0)
+    expect(table.queryByText(/rezultati se ne mogu učitati/)).toBeNull()
     expect(table.queryByText('Brisanje čeka rezultate')).toBeNull()
-    expect(table.queryByRole('button', { name: /^Obriši/ })).toBeNull()
   })
 
-  it('does not offer to delete an event while its results are still on their way', async () => {
-    /* The other half of reading them for what they are worth. Deleting an event
-       takes its results along, and until they are here there is nothing to take:
-       the deletion would leave them pointing at an event that is gone, each one
-       still counting in the standing. The row says what it is waiting for
-       instead of offering a button that does half the work. */
+  it('offers to delete an event while its results are still on their way', async () => {
+    /**
+     * THE OTHER HALF OF READING THEM FOR WHAT THEY ARE WORTH, and it turned over on
+     * 28.09.2026.
+     *
+     * <p>The row used to say what it was waiting for and draw no button, because the
+     * deletion needed the results in hand: it took them down itself, so one sent before
+     * the file arrived left them pointing at an event that was gone. The route takes the
+     * event in one statement and the schema cascades the races and their results, so the
+     * button has nothing left to wait for.
+     *
+     * <p>What is owed instead is the truth about what will go, and that number cannot be
+     * had while the file is on its way. So the question says it is not known - never a
+     * guess, and never nought, which would be a lie in the one direction that costs
+     * something.
+     */
     const stalled = stallResource('results')
     restore = stalled.restore
     renderAt('/sr/administracija/dogadjaji', 'superadmin')
 
     const table = within(await screen.findByRole('table', { name: 'Događaji' }))
 
-    expect(table.getAllByText('Brisanje čeka rezultate').length).toBeGreaterThan(0)
-    expect(table.queryByRole('button', { name: /^Obriši/ })).toBeNull()
-    /* And the other control is there, so this is the deletion held back rather
-       than the row being empty. */
+    expect(table.getAllByRole('button', { name: /^Obriši/ }).length).toBeGreaterThan(0)
+    expect(table.queryByText('Brisanje čeka rezultate')).toBeNull()
+    /* And the other control is there, so the row is a row rather than empty. */
     expect(table.getAllByRole('button', { name: /^Otvori/ }).length).toBeGreaterThan(0)
   })
 

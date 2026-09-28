@@ -6,6 +6,7 @@ import { beforeEach, expect, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
 import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
 import { SLOW } from './slow'
+import { eventSlug } from '../pages/admin/entityForms'
 
 /**
  * NO TEST ON THIS PORTAL READS THE MACHINE'S CLOCK, since 21.09.2026.
@@ -343,6 +344,96 @@ const WRITES_THAT_QUEUE = new Set(['/api/teams', '/api/comments', '/api/results'
  */
 const A_DECISION = /^\/api\/verification\/([\w-]+)\/decision$/
 
+/**
+ * THE CALENDAR'S SIX WRITES, standing in for {@link EventWriteApi} and
+ * {@link RaceWriteApi} when a case installs no server of its own.
+ *
+ * <p><b>Why this exists, and it is the same reason `WRITES_THAT_QUEUE` and `A_DECISION`
+ * give one screen along.</b> Until 28.09.2026 `admin/AdminEvents.tsx` and
+ * `event/EventActions.tsx` wrote into the session overlay, so entering an event, copying
+ * one and deleting one never touched `fetch` at all. Now every one of those goes to a
+ * route, and without this floor all of them would meet the 404 at the bottom of this stub:
+ * some forty cases across `adminFlows.test.tsx` and `eventActions.test.tsx` would be
+ * measuring a refusal rather than the thing they were written for.
+ *
+ * <p><b>The identities are handed out the way a `bigserial` does</b>, counting UP from a
+ * number no generated record uses, because that is the one thing the screen reads off the
+ * answer and the one thing the old overlay got wrong: it counted DOWN from nought
+ * (`admin/raceIds.ts`), and `eventWrites.ts` refuses anything at or below nought precisely
+ * so that range can never come back.
+ *
+ * <p><b>The address is built by the portal's own rule rather than written out again</b>
+ * (`admin/entityForms.ts`, `eventSlug`), so the stub cannot drift from what the screen
+ * expects. It is the rule and not the whole route: `EventAddress.keptOrRebuilt` KEEPS the
+ * standing address where the name and the day still build it, which matters only for an
+ * imported event whose address carries more than the rule can build. A case that turns on
+ * that puts its own server in front, which is what every case here is told to do.
+ */
+const AN_EVENT = /^\/api\/events\/(\d+)$/
+const A_RACE = /^\/api\/races\/(\d+)$/
+
+/** Counted up from well past anything the generated files carry. */
+let handedOut = 90_000
+
+function said(init: RequestInit | undefined): unknown {
+  return JSON.parse(String(init?.body ?? '{}'))
+}
+
+/**
+ * One field of a body that came off the wire, as text.
+ *
+ * <p>Narrowed by looking at it and never asserted into a dictionary (ADL A14, which the
+ * linter refuses outright): a body of some other shape answers the empty string rather
+ * than being claimed to hold fields.
+ */
+function field(body: unknown, name: string): string {
+  return typeof body === 'object' && body !== null ? String(Reflect.get(body, name) ?? '') : ''
+}
+
+function wrote(body: object, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  })
+}
+
+/**
+ * THE ADDRESS A CHANGED EVENT IS LEFT AT, which is `EventAddress.keptOrRebuilt` and NOT
+ * simply what the rule builds.
+ *
+ * <p><b>Written out because a stub that answered the rule's answer was measured to lie,
+ * and in the one direction that matters.</b> An event put off by a week keeps its address
+ * and everything joined to it (owner, 10.08.2026), so the route rebuilds the address only
+ * where the NAME or the DAY moved. The generated calendar carries imported addresses that
+ * carry a month - `gradska-liga-usce-2017-05` - which the rule cannot build at all, so a
+ * stub that answered `eventSlug(name, date)` handed back `gradska-liga-usce-2017` for an
+ * event nobody had renamed, and the screen dutifully wrote the lie into its list.
+ *
+ * <p>The standing record is read out of the served file, which is what the route reads out
+ * of the table, so the stub asks the same question of the same data.
+ */
+function keptOrRebuilt(id: number, form: unknown): string {
+  const wanted = eventSlug(field(form, 'name'), field(form, 'date'))
+
+  try {
+    const file: unknown = JSON.parse(readFileSync(join(PUBLIC_DIR, '/mock/events.json'), 'utf-8'))
+    const before = (Array.isArray(file) ? file : []).find(
+      (one): one is Record<string, unknown> =>
+        typeof one === 'object' && one !== null && Reflect.get(one, 'id') === id,
+    )
+
+    if (before === undefined) {
+      return wanted
+    }
+
+    return eventSlug(field(before, 'name'), field(before, 'date')) === wanted
+      ? field(before, 'slug') || wanted
+      : wanted
+  } catch {
+    return wanted
+  }
+}
+
 vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
   const asked = String(input)
 
@@ -355,6 +446,55 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
       status: 201,
       headers: { 'content-type': 'application/json' },
     })
+  }
+
+  const how = init?.method ?? 'GET'
+
+  if (how === 'DELETE' && (AN_EVENT.test(asked) || A_RACE.test(asked))) {
+    return new Response(null, { status: 204 })
+  }
+
+  if (asked === '/api/events' && how === 'POST') {
+    const form = said(init)
+
+    handedOut += 1
+
+    return wrote(
+      { id: handedOut, slug: eventSlug(field(form, 'name'), field(form, 'date')) },
+      201,
+    )
+  }
+
+  const changingEvent = how === 'PUT' ? AN_EVENT.exec(asked) : null
+
+  if (changingEvent !== null) {
+    const form = said(init)
+    const id = Number(changingEvent[1])
+
+    return wrote({ id, slug: keptOrRebuilt(id, form) }, 200)
+  }
+
+  if (asked === '/api/races' && how === 'POST') {
+    const form = said(init)
+
+    handedOut += 1
+
+    /* The three the route really answers with: a race can MOVE the event it hangs off,
+       because an event follows its earliest morning (owner, 10.08.2026). Nothing on the
+       screen reads either of the last two - `eventWrites.ts` says why, and reads only the
+       id - so they are here to be the shape rather than to be measured. */
+    return wrote({ id: handedOut, eventDate: field(form, 'date'), eventSlug: '' }, 201)
+  }
+
+  const changingRace = how === 'PUT' ? A_RACE.exec(asked) : null
+
+  if (changingRace !== null) {
+    const form = said(init)
+
+    return wrote(
+      { id: Number(changingRace[1]), eventDate: field(form, 'date'), eventSlug: '' },
+      200,
+    )
   }
 
   const deciding = init?.method === 'POST' ? A_DECISION.exec(asked) : null

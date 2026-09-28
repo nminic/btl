@@ -17,6 +17,97 @@ import { limitOf } from '../../forms/records'
  */
 
 /**
+ * THE ONE ADDRESS ALL THREE PANELS OF THIS SCREEN WRITE TO.
+ *
+ * <p>Written once so the three cannot part, which is the arrangement `member/myCategory.ts`
+ * already has for its own resource („Where both verbs of this resource live. Written once so
+ * the two cannot part") and `member/photoWrites.ts` for the picture. Until 28.09.2026 the
+ * address was spelt out at the one panel that sent anything; two more send now, and three
+ * hand-written copies of one string is three places for it to be wrong.
+ */
+export const THE_ACCOUNT_GOES_TO = '/api/me'
+
+/**
+ * WHETHER THE PROFILE IS HIDDEN, AS THE ROW NOW HOLDS IT, or nothing where the answer did
+ * not say.
+ *
+ * <p><b>Read off the ANSWER and never off what was sent, which is the whole reason this
+ * exists.</b> {@code MeWriteApi.Changed} says of this field that it is „the flag as the row
+ * now holds it", and its own class note gives the reason in the other direction: leaving it
+ * out „would be the opposite lie: the one half of this request that DID take effect would be
+ * the half the caller is told nothing about, and the screen would have to assume what it had
+ * just asked for". A screen that folded in the tick it drew would agree with the table on
+ * every request that worked and would claim something on every request that did not.
+ *
+ * <p><b>Without an assertion (ADL A14)</b>, the shape `photoWrites.ts#theRowIn` already has:
+ * what came off the wire is `unknown` and `Reflect.get` asks the object rather than telling
+ * the compiler what it holds. A route that stopped answering the field, or answered it as the
+ * word „true", gives nothing back here rather than a value the screen goes on to draw.
+ */
+export function hiddenIn(body: unknown): boolean | null {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const hidden: unknown = Reflect.get(body, 'profileHidden')
+
+  return typeof hidden === 'boolean' ? hidden : null
+}
+
+/**
+ * THE TEXT STANDING ON THE PROFILE AFTER THE REQUEST, or nothing where the answer did not
+ * say.
+ *
+ * <p><b>Which is NEVER the text that was just sent, and that is the field's own definition
+ * rather than a caution here.</b> {@code MeWriteApi.Changed}: „the text STANDING ON THE
+ * PROFILE, which is never the one this request sent: a new one waits for a moderator and the
+ * profile goes on carrying the approved words". After a DELETION it is empty, which is the
+ * one road on which it does move (PDL, owner 19.09.2026).
+ *
+ * <p>An empty string is an answer and `null` is the absence of one, so the two are told
+ * apart: the column may hold no text at all ({@code Competitor.bio} is `string | null`), and
+ * a member who has never written one and a member whose words were just removed are the same
+ * state to this screen - which is what {@code ProfileBio} folds them into, once, at the top.
+ */
+export function standingTextIn(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const bio: unknown = Reflect.get(body, 'bio')
+
+  return typeof bio === 'string' ? bio : null
+}
+
+/**
+ * THE KEY OF THE TEXT OF HIS STANDING IN THE QUEUE UNDECIDED, or nothing where none stands.
+ *
+ * <p>The shape is `photoWrites.ts#theRowIn`'s, down to the guards, and it is copied rather
+ * than reused for the reason that file's own twin writes down: the two read different keys
+ * off different routes, and one function taking the name of the key as an argument would be
+ * a function whose callers decide what it means. This one reads `waiting`, which is what
+ * {@code MeWriteApi.Changed} calls it.
+ *
+ * <p><b>It is not „what this request wrote", and the route says so</b>: „a member who sent
+ * only the switch is told about the text that was already waiting, because that is what is
+ * true". So a deletion, and a bare flick of the privacy switch, both answer with whatever
+ * was already standing in the queue.
+ *
+ * <p>A whole number above nought, so that a route answering `0`, `-1`, `"7"` or nothing at
+ * all is one this returns null for rather than one whose key the screen goes on to file a
+ * decision under.
+ */
+export function waitingIn(body: unknown): number | null {
+  if (typeof body !== 'object' || body === null) {
+    return null
+  }
+
+  const waiting: unknown = Reflect.get(body, 'waiting')
+
+  return typeof waiting === 'number' && Number.isInteger(waiting) && waiting > 0 ? waiting : null
+}
+
+/**
  * A FIELD OF THE MEMBER'S OWN FORM, AND WHETHER THE PORTAL KNOWS WHAT IS IN IT TODAY.
  *
  * <p>{@code standing} is `null` where the portal <b>cannot say</b> what the server holds,
@@ -133,11 +224,16 @@ export function whatChanged(standing: Standing, typed: Typed): Partial<Record<Se
  * has: a reason added on the server is a red gate on the day it is written, rather than a
  * member shown a code he cannot read.
  *
- * <p><b>Two of the eight belong to the biography and not to this panel</b>, and they are
- * here all the same because a table keyed by route rather than by panel is the one the guard
- * above can hold. {@code theTextIsTooLong} and {@code aTextAlreadyWaits} are what
- * {@code PUT /api/me} answers about a `bio`, which this screen does not send yet; their
- * sentences are the ones the biography panel already says in its own words.
+ * <p><b>Two of the eight belong to the biography and one to the privacy switch, which is why
+ * this table is keyed by ROUTE and not by panel</b> - and since 28.09.2026 all three panels
+ * really do send to it, so the table is read by three screens rather than by one. That was
+ * always the shape the guard above could hold: it reads the Java source, which knows one
+ * route and nothing about which of our panels reaches it.
+ *
+ * <p>{@code theTextIsTooLong} and {@code aTextAlreadyWaits} are what {@code PUT /api/me}
+ * answers about a `bio`, and {@code ProfileBio.tsx} is what meets them.
+ * {@code onlyAnAdministratorChangesThese} is what it answers about a date of birth or a
+ * gender, which no panel here draws at all.
  */
 export const WHEN_CHANGING_MY_DATA: Record<string, string> = {
   /* Nothing this route could act on arrived. On this screen it is unreachable by
