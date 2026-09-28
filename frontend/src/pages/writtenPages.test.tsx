@@ -2731,7 +2731,7 @@ describe('what the written pages say the fee buys', () => {
          are different: is it in the right shape, and is there one of it. */
       expect(last, `${slug} does not sign off the way the other two do`).toMatch(
         new RegExp(
-          ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 15.09.2026.']
+          ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 28.09.2026.']
             .join(NEWLINE)
             .replaceAll('.', String.fromCharCode(92) + '.') + String.fromCharCode(36),
         ),

@@ -184,6 +184,11 @@ export function EditTeam() {
               country: String(values.country),
               picture: '',
               crop: WHOLE,
+              /* Never a picture: this screen collects no logo yet, and `photoId` is
+                 null for the same reason `picture` and `crop` above are - nothing
+                 this visit makes up locally has a server row to hold a key for
+                 (`data/types.ts`, `PendingItem.photoId`). */
+              photoId: null,
             })
 
             confirm(`/${locale}/tim/${slug}`, name)

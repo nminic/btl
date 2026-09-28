@@ -136,7 +136,14 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("38", "V38__the_balance_is_a_book.sql", 2032527406),
 			new Applied("39", "V39__the_money_arrives_two_ways_and_the_slip_is_ips.sql", -1797253810),
 			new Applied("40", "V40__a_price_row_is_free_in_both_currencies_or_in_neither.sql",
-					-1581242756));
+					-1581242756),
+			/* REPINNED 28.09.2026, from 1973092509: V41 gained a third statement (politika-privatnosti
+			   position 5, the "kartično" home the independent review of PR 410 found) and a fourth
+			   (the shared sign-off date on positions 7/12/19). V41 had not merged to main at either
+			   point - checked with `git ls-tree origin/main` and `git merge-base`, not assumed - so
+			   ADL A2's protection for applied migrations does not cover it yet and this is not a
+			   rewrite of a migration anyone has run. */
+			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

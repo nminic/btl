@@ -803,10 +803,34 @@ class RightsOverRealHttpTest {
 	 * {@link #mappingFor}, every pair named here is asked of the dispatcher and fails loudly
 	 * if it is not really mapped, so a typo or a renamed route cannot pass in silence even
 	 * though the choice of which pairs to list stays a human one.
+	 *
+	 * <p><b>A LITERAL {@code {id}} SENT TO THE SOCKET NEVER REACHES THE ROUTE, AND THAT - NOT
+	 * {@link #twinOf} - IS WHY THIS PAIR ONCE MEASURED NOTHING; FOUND ON REVIEW.</b> The first
+	 * draft of this paragraph blamed {@link #twinOf} for respelling only the last segment and
+	 * leaving the earlier {@code {id}} identical on both sides. Measured 28.09.2026: sent over
+	 * a real socket exactly as written, braces and all, {@code POST /api/inbox/{id}/read}
+	 * answers {@code HTTP/1.1 400} before the dispatcher is ever asked - the CONNECTOR refuses
+	 * a request line carrying a literal {@code {} or {@code }}. Its twin, built the same
+	 * literal way, answers 400 for the identical reason. So "the two answers agree" held no
+	 * matter what {@code InboxReadApi#away} did, because neither side of the comparison was
+	 * ever a real address, not because a variable in the middle defeats {@link #twinOf}.
+	 *
+	 * <p><b>SO THE ROUTE IS ASKED WITH A SAMPLE VALUE IN THE VARIABLE'S PLACE, THE WAY THIS
+	 * FILE ALREADY ASKS ONE.</b> {@link #THE_QUEUE_ITEM} is the same shape a segment over - a
+	 * real id spliced into the path before {@link #twinOf} ever sees it - and
+	 * {@code ApiSecurityTest.withASampleValue} names the same move outright: "a path is asked
+	 * of the server, so a variable has to become something." {@link #mappingFor} above is
+	 * still asked about the TEMPLATE, {@code {id}} and all, because a template is what it
+	 * maps; only the address handed to the socket, and from it to {@link #twinOf}, has
+	 * {@code {id}} replaced by {@code 1} first. {@link #twinOf} itself is untouched - fed a
+	 * real address instead of a template, it does exactly what it does for the five pairs
+	 * above. Measured 28.09.2026: with the sample value in place this pair stays green under
+	 * {@code sendError} and fails under {@code setStatus}, on the same different-LENGTHS
+	 * assertion every other pair here is caught by.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "GET /api/me/notifications",
-			"PUT /api/me/notifications", "PUT /api/me"})
+			"PUT /api/me/notifications", "PUT /api/me", "POST /api/inbox/{id}/read"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way
@@ -878,7 +902,15 @@ class RightsOverRealHttpTest {
 		String extra = consumes.isEmpty() ? ""
 				: "Content-Type: " + consumes.iterator().next() + "\r\n";
 
-		answersTheSameWay(method, path, twinOf(path), A_COMPETITOR, A_TOKEN, extra);
+		/* A SAMPLE VALUE IN THE VARIABLE'S PLACE, ONLY HERE. The dispatcher above is asked
+		   about the path exactly as it maps it, but the socket cannot be: a literal {id}
+		   answers 400 at the connector before either address reaches the route's own
+		   refusal, which compares nothing (see the class note on this case). Replacing on
+		   a path with no variable in it is a no-op, so the other pairs on this list are not
+		   touched by it. */
+		String probe = path.replace("{id}", "1");
+
+		answersTheSameWay(method, probe, twinOf(probe), A_COMPETITOR, A_TOKEN, extra);
 	}
 
 	/**
