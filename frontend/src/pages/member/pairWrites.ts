@@ -125,3 +125,68 @@ export async function theServerWasAnswered(invite: number, accepted: boolean): P
 
   return answer
 }
+
+/**
+ * WHERE „RASKINI" GOES, AND THE KEY IS THE PAIR'S RATHER THAN THE QUESTION'S.
+ *
+ * <p><b>Two verbs at one path template take two tables' keys, and that is written down in the
+ * journal rather than discovered here.</b> ADL A55 draws the line: „onog dana kad zatreba
+ * {@code GET /api/pairs/&#123;id&#125;}, ista adresa nosi kljuc para na citanju i kljuc poziva
+ * na upisu." `PairWriteApi.breakUp` is the third verb at that address and it carries the third
+ * meaning of the three - `racing_pair.id`, which is the key `GET /api/pairs` hands out and the
+ * only key this screen has in its hand. A55's own test still holds, because no single request
+ * is ambiguous: a `PUT` means the invitation and a `DELETE` means the pair.
+ *
+ * <p><b>Spelt apart from {@link theAnswerGoesTo} even though the two build the same text
+ * today.</b> They answer two different questions - one takes a `pair_invite.id` and the other a
+ * `racing_pair.id` - so one function serving both would be the place where a screen could hand
+ * over the wrong table's key and nothing would say so. The day A55's boundary triggers, one of
+ * these two moves and the other does not.
+ */
+export function theBreakingGoesTo(pair: number): string {
+  return `/api/pairs/${String(pair)}`
+}
+
+/**
+ * Ends one pair on the server, and says what came back.
+ *
+ * <p><b>THE ROUTE NAMES NO REFUSAL AT ALL, AND THAT IS READ OFF IT RATHER THAN ASSUMED.</b>
+ * `PairWriteApi.end` reaches for `away()` and never for `no(...)`, so the only answers this can
+ * carry are 204 and an empty 404 - and that 404 deliberately covers four callers at once: a
+ * pair that is not there, one that is not his, one of a season that is over, and one whose half
+ * has stopped paying. Told apart, the numbers would answer which pairs exist and who is in them
+ * to anybody walking the keys.
+ *
+ * <p><b>So the screen has no refusals map to hand {@code ServerSaid}, and the empty one it does
+ * hand is honest rather than lazy.</b> What it costs is that a 404 reads as
+ * `server.wrong` - „Server je odgovorio brojem 404" - where a sentence of its own would say
+ * „this pair is already gone". <b>That sentence is not written here because it would be a new
+ * key in `i18n/sr.json` and `en.json`, and those two are held by another branch in flight</b>;
+ * a key added to one dictionary alone fails the floors that require the two to carry exactly
+ * the same set. Recorded as a boundary so that whoever takes it knows it was weighed.
+ *
+ * <p><b>`pairs` IS DROPPED AND THE INBOX IS NOT, WHICH IS THE ONE THING THIS FUNCTION COULD GET
+ * WRONG.</b> {@link theServerWasAnswered} above drops the inbox because the member ANSWERING is
+ * the one whose question closes, so his own next read is stale. Here the message
+ * `PairWriteApi.end` writes goes to the OTHER half (`tell(...)`, the sentence built by
+ * `theBrokenPairReads`), and nothing about the presser's own inbox has moved. Dropped anyway it
+ * would be a screen re-reading a resource nothing had changed, and the next reader could no
+ * longer tell which of this module's two writes touches whose mail.
+ *
+ * <p><b>And dropping `pairs` is only half of what makes the screen agree</b>, which is the
+ * shape `admin/AdminTeams.tsx` states for its own deletion: „A screen that is still mounted
+ * never asks its resource again." `useResource` reads once per mount, so this drop is for the
+ * NEXT one; what takes the row off the screen the member is looking at is the caller writing
+ * the break into the visit beside it.
+ *
+ * @param pair `racing_pair.id`, as `GET /api/pairs` answers it
+ */
+export async function theServerWasToldToBreakUp(pair: number): Promise<Answer> {
+  const answer = await askTheServer(theBreakingGoesTo(pair), {}, 'DELETE')
+
+  if (answer.got === 'done') {
+    clearResourceCache('pairs')
+  }
+
+  return answer
+}
