@@ -35,9 +35,16 @@ describe('the races of an event', () => {
    *  nothing. This screen stopped writing into the session on 28.09.2026 and sends
    *  instead, so what it wrote is read off the wire (`test/sent.ts`). */
   let watching: ReturnType<typeof serverThat>
+  /** What the server answers, so a case can make the route decide something the local
+   *  rule would not. Put back to "let the floor have it" before every case. */
+  let answering: (
+    path: string,
+    init: RequestInit | undefined,
+  ) => Response | Promise<Response> | null
 
   beforeEach(() => {
-    watching = serverThat(() => null)
+    answering = () => null
+    watching = serverThat((path, init) => answering(path, init))
   })
 
   afterEach(() => {
@@ -1292,6 +1299,131 @@ describe('the races of an event', () => {
     ).toEqual([])
   })
 
+  it('changes a served event through its own address, and makes no second one', async () => {
+    /**
+     * A SAVE OVER A RECORD THAT ALREADY STANDS IS A `PUT`, AND NOTHING ELSE.
+     *
+     * <p>Found by a mutation that survived the first series: turning the verb into a plain
+     * `POST` left every case green, and it is the worst thing this screen could do. The
+     * route answers 201 and the database hands out a new identity, so every edit of an
+     * event would leave the old row standing and file a second one - at the same address,
+     * which is the one thing `eventClash` exists to stop - and `/api/races` would then hang
+     * this event's mornings off the copy while the original kept its own.
+     *
+     * <p>Measured over the VERB and the address together, because either alone is
+     * satisfied by the fault: the address is right in both, and a `POST` to `/api/events`
+     * is right when the event is new.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(
+      events.find((one) => one.kind !== 'race'),
+      'an event with no races, so one press is one request',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.type(search, mine.name)
+
+    const shown = formatShortDate(mine.date, 'sr-Latn')
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (each) =>
+            (each.textContent ?? '').includes(mine.name) &&
+            (each.textContent ?? '').includes(shown),
+        ),
+      `the row for ${mine.name} on ${shown}`,
+    )
+
+    await user.click(within(row).getByRole('button', { name: `Otvori: ${mine.name}` }))
+    /* Any change at all, so the save is a save. */
+    await user.type(await screen.findByLabelText(/^Opis događaja/), 'jedna rečenica')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(whereItWrote(watching.asked).filter((one) => one.includes('/api/events'))).toEqual([
+      `PUT /api/events/${String(mine.id)}`,
+    ])
+  }, SLOW)
+
+  it('keeps the address the route filed it under, not the one the rule would build', async () => {
+    /**
+     * THE ROUTE DECIDES THE ADDRESS, AND THIS SCREEN WRITES DOWN WHAT IT SAID.
+     *
+     * <p>Two homes hold one rule: `entityForms.addressOfEvent` here and
+     * `EventAddress.keptOrRebuilt` on the server. They agree today and nothing made them,
+     * so a mutation that read the address out of the local rule instead of off the answer
+     * survived the whole package - both homes give the same string, so no case could tell.
+     *
+     * <p>What tells them apart is a route that answers something the rule would not build.
+     * That is not a hypothetical: the address is the server's to decide, and the day it
+     * decides differently - a collision resolved on its side, an imported shape the rule
+     * cannot make - the screen must draw what really stands rather than what it guessed.
+     *
+     * <p>Read on the SECOND save, which is where a kept address shows: the confirmation is
+     * drawn from the record the form was opened on, so the first save is what puts the
+     * route's answer into the list and the second is what reads it back.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(
+      events.find((one) => one.kind !== 'race'),
+      'an event with no races',
+    )
+    const itsOwn = 'adresa-koju-je-server-dao-2099'
+
+    answering = (path, init) =>
+      path.startsWith('/api/events/') && init?.method === 'PUT'
+        ? new Response(JSON.stringify({ id: mine.id, slug: itsOwn }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.type(search, mine.name)
+
+    const shown = formatShortDate(mine.date, 'sr-Latn')
+    const find = async () =>
+      must(
+        (await table('Događaji'))
+          .getAllByRole('row')
+          .slice(1)
+          .find(
+            (each) =>
+              (each.textContent ?? '').includes(mine.name) &&
+              (each.textContent ?? '').includes(shown),
+          ),
+        `the row for ${mine.name} on ${shown}`,
+      )
+
+    await user.click(within(await find()).getByRole('button', { name: `Otvori: ${mine.name}` }))
+    await user.type(await screen.findByLabelText(/^Opis događaja/), 'prva izmena')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    /* Opened again, so the form is handed the record this visit has written, and saved
+       again without touching the name or the day - which is what "keep the address"
+       means on both sides of the wire. */
+    await user.click(within(await find()).getByRole('button', { name: `Otvori: ${mine.name}` }))
+    await user.type(await screen.findByLabelText(/^Opis događaja/), ' i druga')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(
+      await screen.findByRole('status', { name: 'Sačuvano' }),
+      'the screen kept the address its own rule builds and threw away the route s',
+    ).toHaveTextContent(itsOwn)
+  }, SLOW)
+
   it('shows the address the save will leave, not the one the rule would build', async () => {
     /* Fifteen pairs of events in the history share a name inside one year, so
        their address carries the month as well, which the rule cannot build. The
@@ -2302,14 +2434,182 @@ describe('an event that is deleted', () => {
   /** What the screen told the routes. It filed session deletions until 28.09.2026; the
    *  event goes through its own route now and the schema takes the rest. */
   let watching: ReturnType<typeof serverThat>
+  /** What the server answers, so one case can leave a read hanging without taking the
+   *  watcher apart. Put back to "let the floor have it" before every case. */
+  let answering: (
+    path: string,
+    init: RequestInit | undefined,
+  ) => Response | Promise<Response> | null
 
   beforeEach(() => {
-    watching = serverThat(() => null)
+    answering = () => null
+    watching = serverThat((path, init) => answering(path, init))
   })
 
   afterEach(() => {
     watching.stop()
   })
+
+  /** The row of one event, found by its name AND its day: the same race is run every
+   *  year, so a dozen rows carry that name and only one of them is this morning. */
+  async function rowOf(event: BtlEvent, user: Pressing): Promise<HTMLElement> {
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.clear(search)
+    await user.type(search, event.name)
+
+    const shown = formatShortDate(event.date, 'sr-Latn')
+
+    return must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (each) =>
+            (each.textContent ?? '').includes(event.name) &&
+            (each.textContent ?? '').includes(shown),
+        ),
+      `the row for ${event.name} on ${shown}`,
+    )
+  }
+
+  /** How many results really hang off an event, counted the way the database counts them:
+   *  through its races, which is what `result_race_fk` cascades from. */
+  function resultsUnder(event: BtlEvent, races: Race[], scored: Result[]): number {
+    const its = new Set(races.filter((race) => race.eventId === event.id).map((race) => race.id))
+
+    return scored.filter((one) => its.has(one.raceId)).length
+  }
+
+  /** The sentence the question points the reader at, read off the button that confirms. */
+  function askedWith(row: HTMLElement, name: string): string {
+    const sure = within(row).getByRole('button', { name: `Potvrdi brisanje: ${name}` })
+    const at = must(sure.getAttribute('aria-describedby'), 'the sentence beside the question')
+
+    return must(document.getElementById(at), 'the element that sentence is in').textContent ?? ''
+  }
+
+  it('says how many results go with it, and each event says its own number', async () => {
+    /**
+     * THE OWNER'S DECISION OF 28.09.2026, chosen between three outcomes he was priced: the
+     * button works at once, and the number is said before the deletion is sent. What stood
+     * here instead held the button back until the whole file of results had arrived.
+     *
+     * <p><b>Two events with different numbers, which is what makes this a claim at all.</b>
+     * The number could come from three places that all look right on one event: the results
+     * of THIS event, the results of the whole portal, or the count of its races. Measured on
+     * one event, any source that happened to agree would pass. Measured on two that
+     * disagree, only the right one answers both.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const scored = await loadResource<Result[]>('results')
+    const counted = events
+      .map((one) => ({ event: one, under: resultsUnder(one, races, scored) }))
+      .filter((one) => one.under > 0)
+    const fewest = must(
+      counted.reduce((so, one) => (one.under < so.under ? one : so)),
+      'an event with results',
+    )
+    const most = must(
+      counted.reduce((so, one) => (one.under > so.under ? one : so)),
+      'an event with more results',
+    )
+
+    expect(
+      fewest.under,
+      'the two events carry the same number, so no source can be told from another',
+    ).not.toBe(most.under)
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    for (const { event, under } of [fewest, most]) {
+      const row = await rowOf(event, user)
+
+      await user.click(within(row).getByRole('button', { name: `Obriši: ${event.name}` }))
+
+      expect(
+        askedWith(row, event.name),
+        `the question does not carry the ${String(under)} results of this event`,
+      ).toContain(String(under))
+
+      /* Put away again, so the next event is asked from the same place. */
+      await user.click(within(row).getByRole('button', { name: `Odustani od brisanja: ${event.name}` }))
+    }
+  }, SLOW)
+
+  it('sends nothing on the first press, and only on the second', async () => {
+    /* The question is two presses because nothing brings any of it back, and a number said
+       in it is only worth saying if it arrives BEFORE the deletion does. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const scored = await loadResource<Result[]>('results')
+    const mine = must(
+      events.find((one) => resultsUnder(one, races, scored) > 0),
+      'an event with results',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const row = await rowOf(mine, user)
+
+    await user.click(within(row).getByRole('button', { name: `Obriši: ${mine.name}` }))
+
+    expect(whereItWrote(watching.asked), 'the first press already deleted it').toEqual([])
+
+    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+
+    expect(whereItWrote(watching.asked)).toEqual([`DELETE /api/events/${String(mine.id)}`])
+  }, SLOW)
+
+  it('says the number is not known yet rather than guessing one, and still deletes', async () => {
+    /**
+     * THE SECOND STATE OF THE AXIS, and the one the decision does not name.
+     *
+     * <p>The results are the largest file the portal has and this screen draws without
+     * waiting for it, so a press can land before it is here. Three things could be said
+     * then and the decision itself refuses two: an approximate number is what "pita sa
+     * brojem" rules out, and nought is a lie in the one direction that costs something -
+     * it says nothing will be lost.
+     *
+     * <p>So the question says the number is not known, and the button still works, which
+     * is the half of the decision that replaced the waiting. A file on its way and a file
+     * that failed get one sentence between them, because to somebody about to press they
+     * are the same fact: the portal cannot tell him the number at this moment.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const scored = await loadResource<Result[]>('results')
+    const mine = must(
+      events.find((one) => resultsUnder(one, races, scored) > 0),
+      'an event with results',
+    )
+
+    clearResourceCache()
+    /* Never answered rather than refused, because that is the state that really happens:
+       the file is a million and a half bytes and this screen does not wait for it. */
+    answering = (path) =>
+      path.startsWith('/api/results') ? new Promise<Response>(() => null) : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const row = await rowOf(mine, user)
+
+    await user.click(within(row).getByRole('button', { name: `Obriši: ${mine.name}` }))
+
+    const words = askedWith(row, mine.name)
+
+    expect(words, 'a number was invented while the file was still on its way').not.toMatch(/[0-9]/)
+    expect(words).toBe('Broj rezultata koji odlaze još nije poznat.')
+
+    /* And the deletion is not held back, which is the whole of what changed. */
+    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+
+    expect(whereItWrote(watching.asked)).toEqual([`DELETE /api/events/${String(mine.id)}`])
+  }, SLOW)
 
   it('takes its races with it, since nothing shows a race outside its event', async () => {
     /* This is what used to leave an orphan: the race screen kept showing a race
