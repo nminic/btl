@@ -360,10 +360,19 @@ const A_RACE = /^\/api\/races\/(\d+)$/
 /** Counted up from well past anything the generated files carry. */
 let handedOut = 90_000
 
-function said(init: RequestInit | undefined): Record<string, unknown> {
-  const body: unknown = JSON.parse(String(init?.body ?? '{}'))
+function said(init: RequestInit | undefined): unknown {
+  return JSON.parse(String(init?.body ?? '{}'))
+}
 
-  return typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+/**
+ * One field of a body that came off the wire, as text.
+ *
+ * <p>Narrowed by looking at it and never asserted into a dictionary (ADL A14, which the
+ * linter refuses outright): a body of some other shape answers the empty string rather
+ * than being claimed to hold fields.
+ */
+function field(body: unknown, name: string): string {
+  return typeof body === 'object' && body !== null ? String(Reflect.get(body, name) ?? '') : ''
 }
 
 function wrote(body: object, status: number): Response {
@@ -388,8 +397,8 @@ function wrote(body: object, status: number): Response {
  * <p>The standing record is read out of the served file, which is what the route reads out
  * of the table, so the stub asks the same question of the same data.
  */
-function keptOrRebuilt(id: number, form: Record<string, unknown>): string {
-  const wanted = eventSlug(String(form.name ?? ''), String(form.date ?? ''))
+function keptOrRebuilt(id: number, form: unknown): string {
+  const wanted = eventSlug(field(form, 'name'), field(form, 'date'))
 
   try {
     const file: unknown = JSON.parse(readFileSync(join(PUBLIC_DIR, '/mock/events.json'), 'utf-8'))
@@ -402,8 +411,8 @@ function keptOrRebuilt(id: number, form: Record<string, unknown>): string {
       return wanted
     }
 
-    return eventSlug(String(before.name ?? ''), String(before.date ?? '')) === wanted
-      ? String(before.slug ?? wanted)
+    return eventSlug(field(before, 'name'), field(before, 'date')) === wanted
+      ? field(before, 'slug') || wanted
       : wanted
   } catch {
     return wanted
@@ -436,7 +445,7 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     handedOut += 1
 
     return wrote(
-      { id: handedOut, slug: eventSlug(String(form.name ?? ''), String(form.date ?? '')) },
+      { id: handedOut, slug: eventSlug(field(form, 'name'), field(form, 'date')) },
       201,
     )
   }
@@ -459,7 +468,7 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
        because an event follows its earliest morning (owner, 10.08.2026). Nothing on the
        screen reads either of the last two - `eventWrites.ts` says why, and reads only the
        id - so they are here to be the shape rather than to be measured. */
-    return wrote({ id: handedOut, eventDate: String(form.date ?? ''), eventSlug: '' }, 201)
+    return wrote({ id: handedOut, eventDate: field(form, 'date'), eventSlug: '' }, 201)
   }
 
   const changingRace = how === 'PUT' ? A_RACE.exec(asked) : null
@@ -468,7 +477,7 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     const form = said(init)
 
     return wrote(
-      { id: Number(changingRace[1]), eventDate: String(form.date ?? ''), eventSlug: '' },
+      { id: Number(changingRace[1]), eventDate: field(form, 'date'), eventSlug: '' },
       200,
     )
   }

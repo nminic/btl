@@ -27,10 +27,12 @@ export function whatWasSent(asked: Asked[]): string[] {
     .filter((one) => (one.init?.method ?? 'GET') !== 'GET' && one.init?.body !== undefined)
     .map((one) => {
       const body: unknown = JSON.parse(String(one.init?.body))
-      const fields =
-        typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {}
+      /* Narrowed by looking at it and never asserted into a shape (ADL A14), which the
+         linter refuses outright: what came off the wire is `unknown`, and a body of some
+         other shape reads as no fields rather than as an object that happens to have none. */
+      const fields = typeof body === 'object' && body !== null ? written(body) : ''
 
-      return `${one.init?.method ?? 'GET'} ${one.path} | ${written(fields)}`
+      return `${one.init?.method ?? 'GET'} ${one.path} | ${fields}`
     })
 }
 
@@ -47,9 +49,11 @@ export function whereItWrote(asked: Asked[]): string[] {
     .map((one) => `${one.init?.method ?? 'GET'} ${one.path}`)
 }
 
-/** One record as one line, which is `test/saved.tsx`'s own shape. */
-function written(values: Record<string, unknown>): string {
-  return Object.entries(values)
-    .map(([name, value]) => `${name}=${String(value)}`)
+/** One record as one line, which is `test/saved.tsx`'s own shape. Read through
+ *  `Reflect.get` rather than by asserting the object into a dictionary, for the reason
+ *  above and because the linter refuses the assertion. */
+function written(values: object): string {
+  return Object.keys(values)
+    .map((name) => `${name}=${String(Reflect.get(values, name))}`)
     .join(' ')
 }
