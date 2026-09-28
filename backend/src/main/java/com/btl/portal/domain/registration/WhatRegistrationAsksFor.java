@@ -58,8 +58,17 @@ public final class WhatRegistrationAsksFor {
 	 */
 	public static final Set<String> ONLY_FROM_A_GUARDIAN = Set.of("parentConsent", "parentRelation");
 
-	/** Never required, whoever is registering. */
-	public static final Set<String> NEVER_REQUIRED = Set.of("phone", "bio");
+	/**
+	 * Never required, whoever is registering.
+	 *
+	 * <p><b>The biography left this set on 28.09.2026 with the picture beside it</b>, and
+	 * for the same sentence of the owner's: „Profilna sekcija se sa slikom i svojim recima
+	 * izbacuje iz registracione forme - to ce clan popunjavati naknadno kad bude odobren."
+	 * It was never required and is now not asked either; where a member writes it is
+	 * {@code member/ProfileBio.tsx}, and what bounds it is the field on
+	 * {@code profil.form.json}, which {@code MeWriteApi} reads the same number off.
+	 */
+	public static final Set<String> NEVER_REQUIRED = Set.of("phone");
 
 	private WhatRegistrationAsksFor() {
 	}

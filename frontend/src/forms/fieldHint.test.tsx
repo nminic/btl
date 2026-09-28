@@ -37,7 +37,6 @@ const KEPT = [
   'newResult.linkHint',
   'newResult.photoHint',
   'newResult.raceKindHint',
-  'registration.bioHint',
   'registration.fatherNameHint',
   'registration.idNumberHint',
   'registration.parentConsentHint',
@@ -905,7 +904,7 @@ describe('an answer chosen from buttons', () => {
 /**
  * The words a key stands for, out of the dictionary the form is drawn in.
  *
- * Read rather than written out here: eighteen labels copied into this file would
+ * Read rather than written out here: seventeen labels copied into this file would
  * be a second home for every one of them, and the day one is reworded the guard
  * would be holding the old one.
  */
@@ -998,7 +997,7 @@ function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number; ofIt
  * read the definition at all.
  *
  * Its floor is the case below it, which holds this table and the form to the same
- * eighteen names in BOTH directions, so a field added without a place here, or a
+ * seventeen names in BOTH directions, so a field added without a place here, or a
  * line here for a field the form no longer asks for, fails on the day it happens
  * rather than the day somebody looks. The portal already does this once, in
  * `pages/publicData.test.tsx`, for the same reason.
@@ -1026,19 +1025,13 @@ const STANDS_IN: Record<string, string | null> = {
   city: 'Kontakt i dostava',
   firstSeason2027: 'Takmičenje',
   shirtSize: 'Takmičenje',
-  /* ~~The picture stood here beside the words.~~ It left on 28.09.2026, which is the
-     half of „Profilna sekcija se sa slikom i svojim rečima izbacuje iz registracione
-     forme" that could be done across both layers at once: the field also had to leave
-     `WhatRegistrationAsksFor.OF_EVERYBODY`, because
-     `WhatRegistrationAsksForTest.everyFieldTheFormAsksForIsOneTheServerKnows` reads THIS
-     file and holds the server's four sets to the names it draws, in both directions.
-
-     The words are still here, and the group with them: the 360 characters they are
-     limited to live on THIS field („Ograničenje stoji na polju u formi registracije",
-     PDL 31.07.2026), and `ProfileBio.tsx` and `MeWriteApi` both read the number off it.
-     Moving them needs that limit to be given a home first, which is the owner's to
-     decide and is not decided here. */
-  bio: 'Profil',
+  /* ~~`photo: 'Profil'` and `bio: 'Profil'` stood here.~~ Both left on 28.09.2026 and
+     the group „Profil" left with them, because a group is the fields that stand in it:
+     „Profilna sekcija se sa slikom i svojim rečima izbacuje iz registracione forme - to
+     ce clan popunjavati naknadno kad bude odobren" (owner). The picture goes to
+     `POST /api/me/photo` and the words to `PUT /api/me`, each from its own panel under
+     Settings, and the 360 characters moved with the box to `profil.form.json` rather
+     than being copied into code. */
   healthStatement: null,
   parentConsent: null,
   parentRelation: null,
@@ -1078,11 +1071,11 @@ const ROWS_ARE: string[][] = [
      two columns of the three (`FormRenderer.css`, `.field--place`). */
   ['city'],
   ['firstSeason2027', 'shirtSize'],
-  /* „Profilna sekcija se sa slikom i svojim recima izbacuje iz registracione forme
-     - to ce clan popunjavati naknadno kad bude odobren" (owner, 28.09.2026). The
-     picture left this row that day; the biography is still on it, and stands
-     alone. */
-  ['bio'],
+  /* ~~A seventh row stood here, the picture beside the words.~~ Both left on
+     28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
+     registracione forme - to ce clan popunjavati naknadno kad bude odobren"
+     (owner). The form has six rows from that day, and the member writes about
+     himself on `member/ProfileBio.tsx` instead. */
 ]
 
 /**
@@ -1109,7 +1102,6 @@ const GROUPS_ARE: string[] = [
   'Pristup nalogu',
   'Kontakt i dostava',
   'Takmičenje',
-  'Profil',
 ]
 
 describe('a form laid out in groups', () => {
@@ -1161,7 +1153,7 @@ describe('a form laid out in groups', () => {
     })
   })
 
-  it('names the same eighteen fields the form asks for, and no others', () => {
+  it('names the same seventeen fields the form asks for, and no others', () => {
     /* The floor under the table above. Held in both directions: a field added to
        the form without a place in the table fails here, and so does a line left
        behind for a field that is gone. */
@@ -1315,7 +1307,7 @@ describe('a form laid out in groups', () => {
       ).toBe(0)
     }
 
-    /* And then with a date that makes the competitor a child, when all eighteen
+    /* And then with a date that makes the competitor a child, when all seventeen
        are drawn. The guardian's two are the ones a reordering is likeliest to
        lose, because they are the only two that are not there to be seen. */
     await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')

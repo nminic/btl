@@ -339,10 +339,17 @@ class RegistrationApi {
 	 *                is collected „po pristanku" - the decision of 11.08.2026 that took
 	 *                it off the portal was itself overturned on 20.08.2026 and the form
 	 *                has carried it ever since
-	 * @param bio     optional too. It was compulsory in the form by mistake and
-	 *                registration was refused without it, which collided with the
-	 *                portal's own privacy policy; corrected 12.08.2026, and PDL says in
-	 *                as many words that „prijava prolazi i bez njega"
+	 * ~~@param bio optional too, corrected 12.08.2026 after it was compulsory by
+	 *                mistake.~~ <b>Gone from this record on 28.09.2026</b>, with the owner's
+	 *                decision that „Profilna sekcija se sa slikom i svojim recima izbacuje
+	 *                iz registracione forme - to ce clan popunjavati naknadno kad bude
+	 *                odobren". <b>Removed rather than left unread, and that is the half
+	 *                worth writing down:</b> a parameter this route still accepted would be
+	 *                a way to put prose on a public profile that no screen offers and no
+	 *                moderator sees, because what is written here goes straight into
+	 *                {@code competitor.bio} while every later edit goes through
+	 *                {@link MeWriteApi} and waits in the queue. That reasoning is the
+	 *                author's, not a decision anybody wrote down, and it is marked as such
 	 * @param referredBy who brought this member, which is the ONE field here that does
 	 *                not come from the form at all. {@code Registration.tsx} reads it out
 	 *                of the address the visitor arrived by ({@code ?preporuka=}), which
@@ -357,7 +364,7 @@ class RegistrationApi {
 	record Typed(String firstName, String lastName, String fatherName, String birthDate,
 			String gender, Boolean firstSeason2027, String email, String password,
 			String passwordRepeat, String address, Long placeId, String city, String country,
-			String idNumber, String phone, String shirtSize, String bio, Boolean healthStatement,
+			String idNumber, String phone, String shirtSize, Boolean healthStatement,
 			String parentConsent, String parentRelation, String referredBy) {
 	}
 
@@ -612,15 +619,23 @@ class RegistrationApi {
 
 						   `referred_by` IS A KEY THIS ROUTE LOOKED UP, never the code that
 						   arrived. `whoBrought` is where the looking up is, and why an
-						   unknown code is not a refusal. */
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, ?, false, ?,"
+						   unknown code is not a refusal.
+
+						   `bio` IS WRITTEN EMPTY AND IS NO LONGER A PARAMETER, since the owner
+						   took the biography out of the registration on 28.09.2026. The column
+						   is NOT NULL and may be empty (V7), which is the state a member joins
+						   in from that day; he writes his words afterwards, through
+						   `PUT /api/me`, where a moderator sees them before anybody else does.
+						   Written as a literal rather than as an empty parameter so that there
+						   is no value here for a caller to influence at all. */
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),
 						town.placeId(), town.city(), town.countryId(),
 						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
 						typed.firstSeason2027(), ReferralCode.fresh().written(),
-						whoBrought(typed), WhatAFieldMeans.theBio(typed.bio()),
+						whoBrought(typed),
 						java.sql.Date.valueOf(born), typed.fatherName().strip(),
 						typed.address().strip(), WhatAFieldMeans.thePhone(typed.phone()), typed.shirtSize(), now)
 				.query(Long.class)

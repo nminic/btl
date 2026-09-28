@@ -113,7 +113,12 @@ function theBody(values: FormValues, agreeing: FormValues, referral: string | nu
     idNumber: written(values, 'idNumber'),
     phone: written(values, 'phone'),
     shirtSize: written(values, 'shirtSize'),
-    bio: written(values, 'bio'),
+    /* ~~`bio`, which this form asked for at the moment of joining.~~ It went on
+       28.09.2026 with the picture beside it, and `RegistrationApi.Typed` no longer
+       declares it. Sending it anyway would be a key nothing reads, which is the one
+       shape this body is written out name by name to make impossible. Where the words
+       go now is `PUT /api/me`, from `member/ProfileBio.tsx`, and that road puts them in
+       front of a moderator before anybody else reads them. */
     healthStatement: values.healthStatement === true,
     parentConsent: written(values, 'parentConsent'),
     parentRelation: written(values, 'parentRelation'),

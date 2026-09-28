@@ -209,17 +209,6 @@
       "policyBasis": "Izvršenje ugovora"
     },
     {
-      "name": "bio",
-      "type": "textarea",
-      "labelKey": "profile.bio",
-      "hintKey": "registration.bioHint",
-      "maxLength": 360,
-      "row": 7,
-      "groupKey": "registration.group.profile",
-      "policyRow": "Biografija, tekst o sebi, linkovi na Stravu i Instagram",
-      "policyBasis": "Vaš pristanak"
-    },
-    {
       "name": "healthStatement",
       "type": "checkbox",
       "labelKey": "registration.healthStatement",
