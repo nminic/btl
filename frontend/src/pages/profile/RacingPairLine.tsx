@@ -266,8 +266,14 @@ export function RacingPairLine({
             </p>
             {/* WHAT THE SERVER SAID, UNDER THE ROW IT IS ABOUT AND UNDER NO OTHER. The pair stays
                 drawn beside it: a break the server refused has not happened, so a line that went
-                anyway would tell the member the opposite of what the server holds. */}
-            {refused !== null && refused.id === pair.id && (
+                anyway would tell the member the opposite of what the server holds.
+
+                AND ONLY ON THE READER'S OWN PAGE, guarded by `mine` same as the button above it
+                (review, 28.09.2026). `refused` is keyed by `pair.id` and not remounted between
+                profiles (`app/routeObjects.tsx` carries no `key` on this route), so a refusal from
+                the reader's own „Raskini" outlived a navigation to the held pair's OTHER half and
+                read out on arrival there, about a press that page never made. */}
+            {mine && refused !== null && refused.id === pair.id && (
               <ServerSaid answer={refused.answer} refusals={WHEN_BREAKING_A_PAIR} />
             )}
           </Fragment>
