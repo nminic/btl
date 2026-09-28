@@ -421,6 +421,27 @@ function asksFor(path: string): number {
   return (server?.asked ?? []).filter((one) => one.path === path).length
 }
 
+/**
+ * REQUIRES SOMETHING TO BE TRUE NOW AND TO GO ON BEING TRUE, which `waitFor` cannot say.
+ *
+ * <p><b>`waitFor` answers „has this BECOME true" and can answer nothing else.</b> Measured: a
+ * heading that is absent at the start and appended after 300 ms satisfies it. So a `waitFor`
+ * written to hold a screen still - „it did not react" - is satisfied by a screen that reacted and
+ * then put itself back, and equally by one that had not reacted YET when the first poll ran.
+ *
+ * <p><b>Read now and then again for as long as the window being guarded</b>, 300 ms in thirty
+ * turns. Now, so that something that arrives late fails on the first reading rather than being
+ * waited for; again, so that something that leaves inside the window fails on a later one.
+ */
+async function itStays(check: () => void): Promise<void> {
+  check()
+
+  for (let turn = 0; turn < 30; turn += 1) {
+    await new Promise((settle) => setTimeout(settle, 10))
+    check()
+  }
+}
+
 beforeEach(() => {
   forgetEveryCookie()
   document.cookie = 'XSRF-TOKEN=imam'
@@ -920,14 +941,27 @@ describe('the inbox when somebody else signs in without signing out first', () =
 
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
 
-    /* Held for a beat rather than read once, the same way `leaves a served message unread
-       after it has been opened` above holds its own count: a version that DID react - and so
-       would need `NotFound`'s race measured all over again - corrects itself a tick later,
-       and reading once would not give it that tick to be wrong in. */
-    await waitFor(() => {
+    /* **Held rather than waited for, and that is a measurement rather than a stronger word for
+       the same thing.** What stood here was `waitFor`, under a comment saying it would catch a
+       screen that reacted and corrected itself a tick later. It would not: `waitFor` answers „has
+       this BECOME true" and nothing else, so it is satisfied by a heading that was absent when it
+       started and arrived 300 ms later. Measured both ways on 28.09.2026 - a late arrival PASSES
+       `waitFor` and FAILS this; and with the read receipt of this screen's own effect released a
+       tick after the click, `waitFor` PASSED while the router had already been sent to „/".
+
+       **AND WHAT THIS NOW MEASURES IS NOT UNCONDITIONALLY TRUE, which is written here rather than
+       left for the next reader to be surprised by.** `{ reactive: false }` holds the half it
+       names - the OWNER - and that was measured on its own: with nothing ever written, and so
+       nothing ever bumping the revision, this screen did not move at all. But `useInbox` passes
+       `revision` to `useResource` for EVERY caller whatever `reactive` is, and a revision bump
+       that lands after the caller has changed makes this screen read an inbox that is somebody
+       else's, reach `NotFound`, and be redirected away. Its own read receipt is what bumps it. On
+       a quiet machine the receipt settles long before this click and nothing moves, which is why
+       this is green; under load it need not, and that is the fault rather than this guard. */
+    await itStays(() => {
       expect(screen.getByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
+      expect(screen.getByText(FORGED.body)).toBeVisible()
     })
-    expect(screen.getByText(FORGED.body)).toBeVisible()
   }, SLOW * 2)
 })
 
