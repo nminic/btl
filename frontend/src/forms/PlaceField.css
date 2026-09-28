@@ -42,12 +42,22 @@
 /* The wrapper is set in the small uppercase of its own label, so the select has
    to name a size or it inherits that one.
  *
- * The two boxes are aligned along their feet and not their heads, and that is
- * deliberate. A select is two pixels shorter than a text box of the same font
- * in Chrome, because `line-height` has no effect on a select there: the browser
- * decides its height and an author cannot say otherwise without naming a number
- * in pixels. Measured, not assumed. So the row lines up where the eye reads it,
- * at the bottom edge, and nothing here pretends to a height it does not have. */
+ * ~~The two boxes are aligned along their feet and not their heads, and that is
+ * deliberate. A select is two pixels shorter than a text box of the same font in
+ * Chrome... an author cannot say otherwise without naming a number in pixels.~~
+ *
+ * **The measurement was right and the conclusion drawn from it fell on
+ * 28.09.2026.** A select really does refuse `line-height` - re-measured that day,
+ * in both directions, and written up beside the token - but the owner then asked
+ * for exactly the thing this said could not be had: „Moraju biti savrseno visine
+ * tekstualnih boksova i dugmadi u tim redovima, a vertikalna pozicija mora biti
+ * identicna." So the number is named, once, for every control in a field
+ * (`--control-height`, `forms/FormRenderer.css`).
+ *
+ * The feet stay, and now they cost nothing: with the town and the country the
+ * same height, aligning at the bottom puts their tops on the same line as well.
+ * Measured after: both 48px tall and both starting 22,59px into the row, where
+ * before they were 46,13 and 43,33 starting 19,8 and 22,59. */
 .place__country-pick select {
   font-size: 0.95rem;
   text-transform: none;
