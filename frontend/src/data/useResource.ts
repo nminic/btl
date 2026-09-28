@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { DucatFamily } from './ducatRule'
 import { useSession } from '../session/useSession'
 import type { Message } from '../session/context'
@@ -84,10 +84,30 @@ export type ResourceState<T> =
  * the window can still open under a slower fetch or a busier event loop. The doc on
  * `TheMessageAsked` has the full measurement and names what closing that gap for good
  * would need.
+ *
+ * @param revision **Written the day the portal gained a write that changes what a resource
+ * ALREADY MOUNTED would answer, which is `POST /api/inbox/{id}/read` and no other** (PDL 27a,
+ * 27.09.2026). `clearResourceCache` on its own drops the promise and says nothing to anybody
+ * holding a state that came out of it: the panel in the header never unmounts while somebody
+ * is signed in (`app/Shell.tsx` keeps it beside the outlet), so the envelope would have gone
+ * on drawing the count it read at mount until the next sign in. Bumping this is what asks
+ * again.
+ *
+ * **Optional, and the fifteen callers that do not pass it are byte-for-byte as they were**:
+ * `undefined` on every render is one dependency that never changes, which is the same
+ * nothing they had before this parameter existed. That is deliberate - the alternative
+ * considered was making `clearResourceCache` itself notify every mounted reader, and it was
+ * refused for its blast radius: `admin/AdminMembers.tsx` alone clears eight names in one
+ * breath, and turning each of those into a re-read of a mounted screen is a change to every
+ * administrative flow on the portal in a branch about an envelope.
  */
-export function useResource<T>(name: ResourceName, owner?: string): ResourceState<T> {
-  /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` changes,
-   * which the effect below now also answers to.
+export function useResource<T>(
+  name: ResourceName,
+  owner?: string,
+  revision?: number,
+): ResourceState<T> {
+  /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` or
+   * `revision` changes, which the effect below now also answers to.
    *
    * Once is all that is wanted: what the first render of a screen holds is what
    * decides whether the router has a page to put a scroll position back into.
@@ -120,7 +140,7 @@ export function useResource<T>(name: ResourceName, owner?: string): ResourceStat
     return () => {
       active = false
     }
-  }, [name, owner])
+  }, [name, owner, revision])
 
   return state
 }
@@ -452,6 +472,81 @@ function theInboxNowBelongsTo(whose: string): void {
 }
 
 /**
+ * HOW MANY TIMES THE SERVER'S OWN ANSWER ABOUT THIS INBOX HAS STOPPED BEING TRUE.
+ *
+ * <p><b>Module scope and beside {@link inboxAnsweredFor}, for the reason written over it</b> -
+ * two components read this list at once and one home means one decision. The difference
+ * between the two is which question they answer: that one says „this answer is somebody
+ * else's", this one says „this answer is his and is out of date".
+ *
+ * <p><b>Why a number rather than dropping the cache alone.</b> `clearResourceCache('inbox')`
+ * throws the promise away, and a component that already put the old answer into its own
+ * `useState` never hears about it. The panel in the header is exactly that component: it
+ * stands beside the outlet in `app/Shell.tsx` and does not come down while somebody is signed
+ * in, which is the very thing `MessagesMenu.tsx` says about itself in its own words. So the
+ * count would have fallen on the next sign in and not on the reading.
+ */
+let inboxRevision = 0
+
+/** Everybody currently drawing this inbox. A `Set`, so the same listener subscribing twice
+ *  is one listener, and so unsubscribing is by identity rather than by index. */
+const whoIsDrawingTheInbox = new Set<() => void>()
+
+/**
+ * THE INBOX HAS CHANGED ON THE SERVER, SAID BY WHOEVER CHANGED IT.
+ *
+ * <p>Called by `pages/member/inboxRead.ts` once the route has answered, and deliberately not
+ * before it: a count that fell on the asking rather than on the answering would be the portal
+ * telling the member something the server had not agreed to, and the one axis this increment
+ * cannot get wrong is „the route failed, and then the counter must not lie".
+ *
+ * <p><b>The cache is dropped and the number bumped in one breath</b>, because either alone is
+ * a half: dropped without the bump, nothing re-reads; bumped without the drop, everything
+ * re-reads and `loadResource` hands back the very promise that held the stale answer.
+ */
+export function theInboxHasChanged(): void {
+  clearResourceCache('inbox')
+  inboxRevision += 1
+
+  for (const listener of whoIsDrawingTheInbox) {
+    listener()
+  }
+}
+
+/** `useSyncExternalStore`'s two halves. Returned as stable module-level functions rather than
+ *  built per render, because a new `subscribe` on every render makes React tear the
+ *  subscription down and set it up again after each one. */
+function whileDrawingTheInbox(listener: () => void): () => void {
+  whoIsDrawingTheInbox.add(listener)
+
+  return () => {
+    whoIsDrawingTheInbox.delete(listener)
+  }
+}
+
+function theInboxRevisionNow(): number {
+  return inboxRevision
+}
+
+/*
+ * AND NEITHER OF THE TWO FACTS ABOVE IS RESET BETWEEN TESTS, which was written first and
+ * measured to be both impossible and unnecessary (27.09.2026).
+ *
+ * **Impossible from where it belonged.** `test/setup.ts` runs before every test MODULE, so
+ * importing this file there loads `data/client.ts` for real and caches it; a test whose
+ * `vi.mock('./client')` comes afterwards registers a mock this module never sees.
+ * `data/useResource.test.tsx` is that test - its mock answers three names and stages an answer
+ * that arrives between a render and its effect - and it hung for twenty seconds on a real
+ * `fetch` nothing in it had asked for.
+ *
+ * **And unnecessary.** `clearResourceCache()` there drops the answer, so a stale
+ * `inboxAnsweredFor` can only cause one more drop of a cache that is already empty; and
+ * `inboxRevision` is read as a `useResource` dependency, where what matters is that it CHANGES
+ * during a case, never what it started at. The listeners need no help either:
+ * `useSyncExternalStore` removes each one as its component unmounts.
+ */
+
+/**
  * THE INBOX: WHAT THE SERVER HAS KEPT, AND THEN WHAT HAS BEEN SAID DURING THIS VISIT.
  *
  * **The shape is `event/GoingToEvent.tsx`'s, word for word - „what the file says, and then
@@ -510,10 +605,19 @@ export function useInbox(
      before. */
   theInboxNowBelongsTo(mine)
 
+  /* **AND HOW MANY TIMES IT HAS GONE OUT OF DATE, read by every caller whatever `reactive`
+     is.** This is not the same question `reactive` answers and is not gated by it: that one is
+     about WHOSE mail this is and carries the race with `NotFound`'s redirect that
+     `member/MessageDetail.tsx` opts out of, while this one cannot reach that race at all - the
+     owner does not change, so the message this screen is drawing is still his and still there.
+     What re-reading buys the detail screen is the mark it has just written, which is what
+     stops its own effect asking a second time. */
+  const revision = useSyncExternalStore(whileDrawingTheInbox, theInboxRevisionNow)
+
   /* `mine` again, as `useResource`'s owner - UNLESS this caller asked not to, in which case
      `undefined` is what every other one of `useResource`'s fourteen callers already passes,
      and this instance goes back to reading the cache once, at mount, same as they do. */
-  const served = useResource<ServedMessage[]>('inbox', reactive ? mine : undefined)
+  const served = useResource<ServedMessage[]>('inbox', reactive ? mine : undefined, revision)
 
   return useMemo(() => {
     if (served.status !== 'ready') {
@@ -525,7 +629,8 @@ export function useInbox(
 }
 
 /** A record the browser is holding, as a line. Its read mark is the portal's own, because
- *  for it the portal IS the store. */
+ *  for it the portal IS the store - there is no row on the server this key names, so opening
+ *  it writes into `session/SessionProvider.tsx` and nowhere else. */
 function asALine(one: Message): InboxLine {
   return {
     id: one.id,
@@ -536,7 +641,7 @@ function asALine(one: Message): InboxLine {
     read: one.read,
     invitation: one.invitation,
     pairInvite: one.pairInvite,
-    canBeMarkedRead: true,
+    readMarkIsTheServers: false,
   }
 }
 
@@ -562,6 +667,19 @@ function asALine(one: Message): InboxLine {
  * message is drawn as what it is - a subject, a sender and a body - and nothing is claimed about
  * an answer. **That leaves a served invitation unanswerable on this portal, which is the boundary
  * this increment ends on and not something it hides.**
+ *
+ * **AND IT IS A BOUNDARY WITH A DECISION AGAINST IT RATHER THAN AN OPEN QUESTION, which is the
+ * one thing that changed on 27.09.2026 without this function changing.** PDL 27b has the owner
+ * asking „Pod 1 ako to podrazumeva da clan moze klikom na dugme da prihvati ili odbije poziv?"
+ * and the answer being yes, so the two keys above are owed a screen. What that screen needs and
+ * this branch does not build is measured and worth writing down here rather than rediscovering:
+ * `PUT /api/pairs/{id}` takes a `pair_invite.id`, which is exactly `pairInviteId`, so the pair
+ * half wants nothing further; but `PUT /api/teams/{id}/invitations/{invitation}` needs the TEAM
+ * as well, and no field here carries it. The one route that hands the invited member both
+ * halves is `GET /api/me/applications`, whose `TeamInvitation(id, teamId, date)`
+ * (`MyApplicationsApi`) nothing in `frontend/src` reads yet - and being absent from that list
+ * is also how the server says a question is CLOSED, which is the honest answer to the trap
+ * named above rather than a second guess at it.
  */
 function asServed(one: ServedMessage): InboxLine {
   return {
@@ -571,11 +689,12 @@ function asServed(one: ServedMessage): InboxLine {
     body: one.body,
     date: one.date,
     read: one.read,
-    /* NO ROUTE WRITES `message_read`. Measured 27.09.2026: `backend/src/main` maps
-       `GET /api/inbox` and `POST /api/inbox` and nothing else on this resource, and the
-       second sends a message rather than marking one read. See `InboxLine` for what the
-       screens do with that. */
-    canBeMarkedRead: false,
+    /* AND THE MARK ON IT IS THE SERVER'S TO WRITE, since `POST /api/inbox/{id}/read`
+       (`InboxReadApi`, PDL 27a). This key names a row in `message`, so opening it writes
+       `message_read` there and the answer survives signing out - which is the whole of what
+       27a is for. See `InboxLine` for what the one screen that opens a message does with
+       this. */
+    readMarkIsTheServers: true,
   }
 }
 

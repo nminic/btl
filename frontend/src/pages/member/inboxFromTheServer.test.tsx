@@ -197,6 +197,7 @@ function aServerWhere(
   open = already
   holder = who
   mail = inboxes
+  readBy = new Set()
 
   server = serverThat((path, init) => {
     if (path === '/api/me') {
@@ -234,15 +235,44 @@ function aServerWhere(
     }
 
     if (path === '/api/inbox') {
-      return new Response(JSON.stringify(mail[whoseMailIsBeingServed] ?? []), {
+      /* **AND WHAT HAS BEEN READ IS APPLIED ON THE WAY OUT, since PDL 27a (27.09.2026).** This
+         used to hand the fixture straight back, which was enough while nothing could change a
+         read mark; `POST /api/inbox/{id}/read` can, so a fixture returned unchanged would make
+         „the portal read the server's answer" indistinguishable from „the portal decided on its
+         own". Keyed by address AND message, because a row in `message_read` names the reader
+         (V13), so one broadcast served to two people carries a different mark for each. */
+      const rows = (mail[whoseMailIsBeingServed] ?? []).map((row) =>
+        typeof row === 'object' && row !== null
+          ? {
+              ...row,
+              read:
+                Reflect.get(row, 'read') === true ||
+                readBy.has(`${whoseMailIsBeingServed}:${String(Reflect.get(row, 'id'))}`),
+            }
+          : row,
+      )
+
+      return new Response(JSON.stringify(rows), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       })
     }
 
+    const reading = /^\/api\/inbox\/(\d+)\/read$/.exec(path)
+
+    if (reading !== null) {
+      readBy.add(`${whoseMailIsBeingServed}:${String(reading[1])}`)
+
+      return did()
+    }
+
     return null
   })
 }
+
+/** Who has read which message, as the server keeps it: a row is its presence. Cleared with
+ *  every fresh server, so one case cannot decide what the next one measures. */
+let readBy = new Set<string>()
 
 /** Whose mail the fake server is holding out, which only signing in changes. */
 let whoseMailIsBeingServed = HIS_ADDRESS
@@ -473,45 +503,55 @@ describe('the inbox a member reads', () => {
 })
 
 describe('what the portal may not claim about a message the server keeps', () => {
-  it('offers no way to mark a served message read, and still offers one for a held message', async () => {
+  it('offers no way to mark a message read by hand, on either half of the list', async () => {
     aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
 
     renderAt('/sr/poruke', 'competitor', '000007')
 
     await screen.findByRole('link', { name: FORGED.subject })
 
-    /* **Both halves in one case, because either alone is satisfied by the wrong code.** One
-       button and not none: the seeded broadcast is unread and the browser IS its store, so
-       its button must stay. And not two: no route writes `message_read` (measured over the
-       whole of `backend/src/main`), so a button on the served row would be a control over a
-       fact the portal cannot change. A screen that drew a button for everything, and one that
-       drew none at all, each pass half of this. */
-    expect(screen.getAllByRole('button', { name: sr.messages.markRead })).toHaveLength(1)
+    /* **BOTH HALVES ARE DRAWN HERE AND NEITHER CARRIES A CONTROL, since PDL 27a
+       (27.09.2026).** There was one button on this list until that day, on whichever row the
+       browser was the store of. The owner refused it in one sentence covering both - „Ne treba
+       mi dugme da se nesto oznaci kao procitano ili neprocitano", „ni za posluzenu poruku ni za
+       onu koja zivi u poseti" - so a screen that kept it for the held half fails here exactly
+       as one that kept it for the served half does.
 
-    /* Through `rowOf` rather than `closest('li')` read here, because ADL A14 refuses a type
-       assertion anywhere under `src` and `closest` answers „or nothing": the helper turns that
-       nothing into a failure with a sentence, which is the same thing `test/at.ts`'s `must`
-       does for the portal's own lists. */
-    expect(
-      within(rowOf(FORGED.subject)).queryByRole('button', { name: sr.messages.markRead }),
-    ).not.toBeInTheDocument()
+       The floor under the absence is the row below: the seeded broadcast really is on this
+       screen, so „no button" is measured where both states of „where does the mark live" are
+       present rather than over an empty list. What replaced the button is on
+       `member/MessageDetail.tsx`, and `member/openingMarksItRead.test.tsx` measures it. */
+    expect(within(rowOf(FORGED.subject)).queryAllByRole('button')).toEqual([])
+
+    const held = screen.getByRole('link', { name: /Dobro došao u pripremu sezone/ })
+
+    expect(held).toBeVisible()
+    expect(within(rowOf(held.textContent ?? '')).queryAllByRole('button')).toEqual([])
   })
 
-  it('leaves a served message unread after it has been opened', async () => {
+  it('marks a served message read once it has been opened, and the count falls', async () => {
     aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
 
     renderAt(`/sr/poruke/${String(FORGED.id)}`, 'competitor', '000007')
 
     await screen.findByRole('heading', { level: 1, name: FORGED.subject })
 
-    /* Opening a message is what marks it read, and for a served one there is nowhere to
-       write that. **The count is the measurement rather than the absence of a button**: the
-       seeded broadcast carries one unread and the served row carries the second, so a screen
-       that marked the served one anyway would say „1 nepročitana" here. Held for a beat
-       rather than read once, because the mark, if it happened, would happen in the tick after
-       the screen drew. */
+    /* **THE OTHER HALF OF PDL 27a, AND THIS CASE USED TO SAY THE OPPOSITE.** Until 27.09.2026
+       there was no route that wrote `message_read`, so a served line was left as the server had
+       it and this case asserted „2 nepročitane" after opening one of them. `InboxReadApi` is
+       that route, so opening is now the trigger and the count falls by itself - which is the
+       consequence the journal names in as many words: „brojac nad svakim ekranom od tada pada
+       sam, bez ijedne radnje clana osim citanja."
+
+       **The count is the measurement and not the request**, because the envelope is what the
+       member actually sees and it stands above every screen (`app/Shell.tsx`). The seeded
+       broadcast keeps the one that is left, so this number distinguishes „the served row was
+       marked" from „everything was marked" and from „nothing was". The request itself, the
+       key it carried and what happens when it is refused are measured where the mechanism
+       lives (`member/openingMarksItRead.test.tsx`); this file's question is only that the
+       screen reading the server does it at all. */
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Otvori poruke, 2 nepročitane' })).toBeVisible()
+      expect(screen.getByRole('button', { name: 'Otvori poruke, 1 nepročitana' })).toBeVisible()
     })
   })
 

@@ -1,7 +1,6 @@
 import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
 import { formatShortDate } from '../../i18n/format'
-import { useSession } from '../../session/useSession'
 import { useInbox } from '../../data/useResource'
 import { Resource } from '../../components/Resource'
 import { useMemberScreen } from './memberScreen'
@@ -45,7 +44,6 @@ export function Messages({ only }: { only?: string[] } = {}) {
 /** The inbox itself, drawn only for somebody the league has given a number. */
 function TheWholeInbox({ only, mine }: { only?: string[]; mine: string }) {
   const { locale, t } = useI18n()
-  const { markRead } = useSession()
   const state = useInbox(mine)
 
   return (
@@ -90,21 +88,14 @@ function TheWholeInbox({ only, mine }: { only?: string[]; mine: string }) {
                     </div>
                     <p className="messages__from">{message.from}</p>
                     <p className="messages__body">{message.body}</p>
-                    {/* **Not „unread" alone, since 27.09.2026.** A line that came off the
-                        server is counted among the unread and carries no button, because
-                        there is no route that writes `message_read` and a button that
-                        cannot do what it says is worse than no button at all. Which lines
-                        those are is decided in one place and carried on the line itself
-                        (`data/types.ts`, `InboxLine.canBeMarkedRead`). */}
-                    {!message.read && message.canBeMarkedRead && (
-                      <button
-                        type="button"
-                        className="button button--secondary"
-                        onClick={() => markRead(message.id)}
-                      >
-                        {t('messages.markRead')}
-                      </button>
-                    )}
+                    {/* **AND NOTHING HERE MARKS ANYTHING, since PDL 27a (27.09.2026).** There
+                        was a „Označi kao pročitano" button on this row until that day, for
+                        whichever line the browser was holding. The owner refused it in his own
+                        words - „Ne treba mi dugme da se nesto oznaci kao procitano ili
+                        neprocitano" - and refused it for BOTH halves of this list, the served
+                        line and the held one alike. What marks a message read is opening it,
+                        which happens on `member/MessageDetail.tsx` behind the subject above and
+                        nowhere else. */}
                   </li>
                 ))}
               </ul>

@@ -246,6 +246,29 @@ describe('the inbox in the header', () => {
     renderAt('/sr', 'competitor', '000007')
 
     await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
+
+    /* **THE ORDER IS ASSERTED HERE, so the title above is a claim rather than a decoration.**
+       Copied from `inboxFromTheServer.test.tsx`'s „puts the newest first" case: the served
+       half's own fixture (`test/mock/inbox.json`) sends one row dated after the seeded „Dobro
+       došao" (2026-09-25) and one before it (2026-07-09), so the merged list only reads
+       newest-first if both halves are sorted together - keeping either half's own order intact
+       instead would pass with the served half first or the held half first, and neither is
+       what „newest first" means.
+
+       Each link's own text carries the date after the subject (`MessagesMenu.tsx` draws both
+       inside the one link), so the expected strings below end in the day this panel shows -
+       not a formatting choice made here, just what `textContent` already returns. */
+    expect(
+      screen.getAllByRole('link', { name: /Fotografija|Dobro do|Rezultat|Prevoz/ }).map(
+        (one) => one.textContent,
+      ),
+    ).toEqual([
+      'Fotografija je prihvaćena25. 9. 2026.',
+      'Dobro došao u pripremu sezone 202720. 7. 2026.',
+      'Rezultat je odobren12. 7. 2026.',
+      'Prevoz do Jadovnika9. 7. 2026.',
+    ])
+
     await user.click(screen.getByRole('link', { name: /Dobro došao u pripremu sezone 2027/ }))
 
     expect(

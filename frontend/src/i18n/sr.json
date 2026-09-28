@@ -987,8 +987,7 @@
       "few": "{count} nepročitane",
       "other": "{count} nepročitanih"
     },
-    "empty": "Nemaš nijednu poruku.",
-    "markRead": "Označi kao pročitano"
+    "empty": "Nemaš nijednu poruku."
   },
   "membership": {
     "title": "Moja članarina",

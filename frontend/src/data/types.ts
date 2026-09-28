@@ -1364,19 +1364,35 @@ export type InboxLine = {
    *  answers apart. */
   pairInvite?: string
   /**
-   * WHETHER SAYING „I HAVE READ THIS" IS SOMETHING THE PORTAL CAN ACTUALLY DO WITH THIS
-   * LINE, and it is false for every line that came from the server.
+   * WHICH OF THE TWO STORES HOLDS THIS LINE'S READ MARK, and it is the server for every
+   * line that came off the server.
    *
-   * **A boundary put in the type rather than in a comment, because a comment cannot stop a
-   * screen drawing a button.** `message_read` is in the schema (V13) and `GET /api/inbox`
-   * reads it per caller, so a served line's read mark is real and is the server's. What
-   * does not exist is any route that WRITES it: measured 27.09.2026, the whole of
-   * `backend/src/main` maps two addresses on the inbox, `GET /api/inbox` and
-   * `POST /api/inbox`, and the second one sends a message rather than marking one read.
+   * **This field used to answer a different question and the difference is the whole of PDL
+   * 27a.** Until 27.09.2026 it was `canBeMarkedRead`, and it was false for a served line
+   * because no route WROTE `message_read` - the mark was readable and unwritable, so a
+   * served line was drawn with no button and opening it marked nothing. `InboxReadApi` is
+   * that route (`POST /api/inbox/{id}/read`), so „can this be marked read" is now **true
+   * either way** and would be a field with one state - a branch nothing reaches, which the
+   * coverage floor is there to refuse. What is still two-stated, and is what the one screen
+   * that opens a message has to know, is WHERE the mark goes.
    *
-   * So a served line is drawn with no „Označi kao pročitano" under it and opening it marks
-   * nothing, because both would be controls over a fact this portal cannot change. A line
-   * the browser is holding keeps both, because for it the portal IS the store.
+   * **Kept as a field on the line rather than worked out from the key**, though the two
+   * halves do number themselves differently (`msg-1` against `41`). A screen that read the
+   * shape of an identity to decide where to write would be answering a question about
+   * storage by looking at a string, and the day either side renumbers, nothing fails - the
+   * wrong store is simply written. One place decides it (`data/useResource.ts`, `asALine`
+   * and `asServed`) and the line carries the answer.
+   *
+   * <ul>
+   * <li>`true`: opening it sends `POST /api/inbox/{id}/read` and the mark survives signing
+   * out, because it is a row in `message_read` keyed by message AND member.</li>
+   * <li>`false`: the browser is holding this one and the portal IS its store, so opening it
+   * writes through `session/SessionProvider.tsx` and dies with the visit.</li>
+   * </ul>
+   *
+   * **And NEITHER of them is drawn with a button**, which is the owner's own narrowing of
+   * 27a: „Ne treba mi dugme da se nesto oznaci kao procitano ili neprocitano." Opening is
+   * the only trigger there is.
    */
-  canBeMarkedRead: boolean
+  readMarkIsTheServers: boolean
 }
