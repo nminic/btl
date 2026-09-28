@@ -553,6 +553,22 @@ class PairWriteApiTest {
 				.as("the question was filed as coming from somebody other than the member who"
 						+ " sent it")
 				.isEqualTo(competitorId(HE_ASKS));
+
+		/* THE MESSAGE, AND THE KEY IT MUST NOT BE CONFUSED WITH ANY OF THE OTHER TWO QUESTIONS
+		   THIS FIXTURE ALREADY HOLDS (FIRST_MAN/FIRST_WOMAN, SHE_ASKS/HE_IS_ASKED), NOR WITH
+		   TEAM_INVITATION_ID. `postFor` reads `from_name | subject | body` in one string, so a
+		   message sent to the wrong half or carrying the wrong sender's name fails here too. */
+		assertThat(postFor(SHE_IS_ASKED)).containsExactly(
+				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_INVITATION + " | "
+						+ PairWriteApi.theInvitationBodyReads("Probni Probic" + HE_ASKS));
+		assertThat(postFor(HE_ASKS)).as("the one who asked was not told about his own question")
+				.isEmpty();
+
+		assertThat(db.sql("select count(*) from message where pair_invite_id = ?")
+						.param(idIn(answer)).query(Long.class).single())
+				.as("V13: the pointer is what puts two buttons under a message")
+				.isOne();
+		assertThat(howManyMessages()).as("asking writes exactly one message").isOne();
 	}
 
 	/**
@@ -753,6 +769,24 @@ class PairWriteApiTest {
 				.as("the fourth member kept his, so the ANSWERING side was not broken - which is"
 						+ " the exact finding of 07.09.2026")
 				.isEmpty();
+
+		/* AND EACH OF THEM WAS TOLD, BY NAME, IN HIS OWN INBOX - PDL P13, 11.08.2026 and
+		   07.09.2026, both quoted where `theSupersededPairReads` builds the sentence. THE_THIRD
+		   reads HE_ASKED_HER's name (who kept HIM out of the new pair); THE_FOURTH reads
+		   SHE_ANSWERS's (who kept HER out) - the two are not interchangeable, and a route that
+		   swapped them would still pass every assertion above this one. */
+		assertThat(postFor(THE_THIRD)).containsExactly(
+				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_IS_BROKEN + " | "
+						+ PairWriteApi.theSupersededPairReads("Probni Probic" + HE_ASKED_HER,
+								BEING_FORMED));
+		assertThat(postFor(THE_FOURTH)).containsExactly(
+				"Balkanska trkačka liga | " + PairWriteApi.THE_PAIR_IS_BROKEN + " | "
+						+ PairWriteApi.theSupersededPairReads("Probni Probic" + SHE_ANSWERS,
+								BEING_FORMED));
+		assertThat(howManyMessages())
+				.as("exactly the two abandoned partners were told, nobody else - not the two who"
+						+ " just paired up and not the untouched pair's own two people")
+				.isEqualTo(2);
 
 		assertThat(seasonsPairedIn(HE_ASKED_HER))
 				.as("the member who asked does not hold exactly the pair he was running and the"
@@ -1463,6 +1497,105 @@ class PairWriteApiTest {
 	}
 
 	/**
+	 * A message written directly, standing for the one {@link PairWriteApi#ask} would have
+	 * written for this same question - the shape
+	 * {@code TeamJoiningWriteApiTest.messageCarrying} already uses, and for the same reason:
+	 * this floor is about {@link PairWriteApi#closed} alone, not about whether {@code ask}
+	 * wrote the row correctly, which {@code aMemberAsksAnotherAndWhatStandsIsAQuestion} already
+	 * measures.
+	 */
+	private long messageCarrying(String memberNumber, long question) {
+		return db.sql("insert into message (to_id, from_id, from_name, subject, body,"
+						+ " pair_invite_id) values (?, null, 'Balkanska trkačka liga',"
+						+ " 'Poziv u trkački par', 'Tekst.', ?) returning id")
+				.params(competitorId(memberNumber), question)
+				.query(Long.class)
+				.single();
+	}
+
+	/**
+	 * A SECOND MESSAGE TO THE SAME MEMBER THAT HAS NOTHING TO DO WITH ANY PAIR, so that
+	 * „the message stands" cannot be satisfied by any row in his inbox: it has to be answered
+	 * of the one the case names.
+	 */
+	private long unrelatedMessageTo(String memberNumber) {
+		return db.sql("insert into message (to_id, from_id, from_name, subject, body)"
+						+ " values (?, null, 'Balkanska trkačka liga', 'Nešto sasvim drugo',"
+						+ " 'Tekst.') returning id")
+				.param(competitorId(memberNumber))
+				.query(Long.class)
+				.single();
+	}
+
+	private Long pointerOf(long message) {
+		return db.sql("select pair_invite_id from message where id = ?").param(message)
+				.query(Long.class).optional().orElse(null);
+	}
+
+	private boolean messageStands(long message) {
+		return db.sql("select exists(select 1 from message where id = ?)").param(message)
+				.query(Boolean.class).single();
+	}
+
+	/**
+	 * BOTH DOORS EMPTY THE POINTER BEFORE THEY TAKE THE ROW, WHICH IS WHAT KEEPS
+	 * {@code message_pair_invite_fk}'S CASCADE FROM TAKING THE MESSAGE WITH IT.
+	 *
+	 * <p>PDL ("Više poziva istom čoveku"), 06.09.2026: „Poruka sa pozivom ostaje u sandučetu,
+	 * sa razlogom umesto dugmadi. Ne briše se." Until {@link PairWriteApi#closed} emptied the
+	 * pointer first, the cascade V13 wrote for exactly the opposite reason - „an invitation
+	 * that has been answered or withdrawn leaves a message that is no longer a question" - took
+	 * the row instead of the question. {@code TeamJoiningWriteApiTest
+	 * .heAcceptsAndTheMessageThatAskedHimStaysBehindWithoutItsButtons} is the shape this pair
+	 * of cases copies.
+	 *
+	 * <p><b>A second, unrelated message in the same inbox</b> is the axis that stops „a message
+	 * stands" from being satisfied by any row at all: the mutation that deletes only the
+	 * `update` above and keeps the cascade still passes if the case only asks whether SOME
+	 * message survived.
+	 */
+	@Test
+	void acceptingLeavesTheMessageThatAskedHimBehindWithoutItsKey() throws Exception {
+		question(HE_ASKS, SHE_IS_ASKED, ASKED_ON);
+		long question = questionFrom(HE_ASKS, SHE_IS_ASKED);
+		long asked = messageCarrying(SHE_IS_ASKED, question);
+		long somethingElse = unrelatedMessageTo(SHE_IS_ASKED);
+
+		assertThat(answerAs(SHE_IS_ASKED, question, answering(true)).getStatus()).isEqualTo(200);
+
+		assertThat(messageStands(asked))
+				.as("a message in somebody's inbox is history and is not deleted")
+				.isTrue();
+		assertThat(pointerOf(asked))
+				.as("and it is no longer a question, which is what the cascade was for")
+				.isNull();
+		assertThat(messageStands(somethingElse))
+				.as("the unrelated message in the same inbox is untouched")
+				.isTrue();
+	}
+
+	/** „Odbij", the twin of the case above: the question ends and his message stays. */
+	@Test
+	void refusingLeavesTheMessageThatAskedHimBehindWithoutItsKey() throws Exception {
+		question(HE_ASKS, SHE_IS_ASKED, ASKED_ON);
+		long question = questionFrom(HE_ASKS, SHE_IS_ASKED);
+		long asked = messageCarrying(SHE_IS_ASKED, question);
+		long somethingElse = unrelatedMessageTo(SHE_IS_ASKED);
+
+		assertThat(answerAs(SHE_IS_ASKED, question, answering(false)).getStatus()).isEqualTo(204);
+
+		assertThat(messageStands(asked))
+				.as("a message in somebody's inbox is history and is not deleted")
+				.isTrue();
+		assertThat(pointerOf(asked))
+				.as("and it is no longer a question, which is what the cascade was for")
+				.isNull();
+		assertThat(messageStands(somethingElse))
+				.as("the unrelated message in the same inbox is untouched")
+				.isTrue();
+	}
+
+	/**
 	 * EITHER HALF ENDS THE PAIR, AND THE OTHER HALF IS TOLD BY NAME.
 	 *
 	 * <p>Owner, 24.09.2026: „Par sme da raskine SVAKA STRANA, bilo kad." Two runs and not
@@ -1577,13 +1710,20 @@ class PairWriteApiTest {
 	}
 
 	/**
-	 * AND THE TWO SERBIAN SENTENCES ARE THE PORTAL'S OWN WORDS, ASKED OF THE DICTIONARY.
+	 * AND ALL FIVE SERBIAN SENTENCES ARE THE PORTAL'S OWN WORDS, ASKED OF THE DICTIONARY.
 	 *
 	 * <p>{@code PairWriteApi.THE_PAIR_IS_BROKEN} and {@link PairWriteApi#theBrokenPairReads}
 	 * are {@code pair.brokenSubject} and {@code pair.endedBody} sign for sign, and until this
 	 * case nothing said so: one sentence lived in two files and either could be edited alone.
 	 * A member would then read one thing in the inbox the server writes and another on the
 	 * screen the portal draws, about one act.
+	 *
+	 * <p><b>{@code THE_PAIR_INVITATION}/{@link PairWriteApi#theInvitationBodyReads} and
+	 * {@link PairWriteApi#theSupersededPairReads} tie the same knot for the two messages
+	 * 28.09.2026 added.</b> The first is {@code pair.inviteSubject}/{@code pair.inviteBody};
+	 * the second SHARES {@code pair.brokenSubject} with {@link PairWriteApi#theBrokenPairReads}
+	 * - one headline, two bodies, exactly as the dictionary itself holds them - and reads its
+	 * own body off {@code pair.brokenBody}.
 	 *
 	 * <p><b>The sender is asked the same way and for the same reason.</b> PDL P13, 19.09.2026
 	 * decided that a message the portal writes itself is signed with the name of the league,
@@ -1608,6 +1748,19 @@ class PairWriteApiTest {
 				.replace("{who}", "Petar Petrović").replace("{season}", String.valueOf(2031)))
 				.as("the body the server writes is not the sentence the dictionary holds")
 				.isEqualTo(PairWriteApi.theBrokenPairReads("Petar Petrović", 2031));
+
+		assertThat(pair.get("inviteSubject").stringValue())
+				.as("the invitation's subject is not the sentence the dictionary holds")
+				.isEqualTo(PairWriteApi.THE_PAIR_INVITATION);
+
+		assertThat(pair.get("inviteBody").stringValue().replace("{who}", "Petar Petrović"))
+				.as("the invitation's body is not the sentence the dictionary holds")
+				.isEqualTo(PairWriteApi.theInvitationBodyReads("Petar Petrović"));
+
+		assertThat(pair.get("brokenBody").stringValue()
+				.replace("{who}", "Petar Petrović").replace("{season}", String.valueOf(2031)))
+				.as("the superseded body shares brokenSubject above but reads its own template")
+				.isEqualTo(PairWriteApi.theSupersededPairReads("Petar Petrović", 2031));
 
 		assertThat(dictionary.get("app").get("name").stringValue())
 				.as("the portal signs its own message with a name it does not call itself"
