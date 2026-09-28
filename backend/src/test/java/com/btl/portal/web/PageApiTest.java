@@ -369,6 +369,66 @@ class PageApiTest {
 				.as("the privacy policy did not come back whole - seven real English headings")
 				.hasSize(7);
 
+		/* V44 moved "Profile picture" out of "Data you enter when you join" and into "Data
+		   generated while you are a member", in both languages - WrittenPageTranslationAppliesTest
+		   re-runs V43 in isolation and cannot see anything a later migration does to V43's own
+		   text, so it is this real, fully migrated answer that has to carry the correction. Read
+		   off section 2 alone (index 1, the same section fieldOf("heading") already sized above)
+		   rather than the whole page. An independent review found that comparing indexOf
+		   positions only checked the row came AFTER "Data generated while you are a member",
+		   which a row moved into a LATER table (such as "Membership fee") also satisfies, so a
+		   mutation that did exactly that survived. Split on "###" instead, the same shape the
+		   Serbian twin (writtenPages.test.tsx, "keeps the profile picture among what membership
+		   produces") already uses, so each block is bounded by the NEXT heading and the row has
+		   to sit INSIDE the member table rather than merely somewhere past its start. */
+		String whatDataIsProcessed = fieldOf(ours, "politika-privatnosti", "body").get(1);
+		List<String> sections = List.of(whatDataIsProcessed.split("###"));
+		String joinTable = sections.stream()
+				.filter(section -> section.contains("Data you enter when you join"))
+				.findFirst()
+				.orElse(null);
+		String memberTable = sections.stream()
+				.filter(section -> section.contains("Data generated while you are a member"))
+				.findFirst()
+				.orElse(null);
+
+		assertThat(joinTable)
+				.as("the English section no longer has the \"data you enter when you join\" table")
+				.isNotNull();
+		assertThat(memberTable)
+				.as("the English section no longer has the \"data generated while you are a"
+						+ " member\" table")
+				.isNotNull();
+		assertThat(whatDataIsProcessed).containsOnlyOnce("Profile picture");
+		assertThat(memberTable)
+				.as("the real English answer does not list the profile picture among what"
+						+ " membership itself produces")
+				.contains("Profile picture");
+		assertThat(joinTable)
+				.as("the real English answer still lists the profile picture among what a member"
+						+ " enters when joining")
+				.doesNotContain("Profile picture");
+
+		/* PDL.md, "Pravni osnov za profilnu sliku je PRISTANAK, ne izvrsenje ugovora" (owner,
+		   28.09.2026), moved this row's ground too, from "Performance of contract" to "Your
+		   consent" - the same word the English biography row already carries. Table membership
+		   alone would not see a ground reverted in place while the row stayed put, so this reads
+		   the row's own line rather than the block around it. */
+		String pictureRowLine = memberTable.lines()
+				.filter(line -> line.contains("Profile picture"))
+				.findFirst()
+				.orElse(null);
+
+		assertThat(pictureRowLine)
+				.as("the real English answer's profile picture row is not one markdown line")
+				.isNotNull();
+		assertThat(pictureRowLine)
+				.as("the real English answer still puts the profile picture on \"Performance of"
+						+ " contract\" rather than \"Your consent\", the ground the biography row"
+						+ " beside it already carries")
+				.contains("Your consent")
+				.doesNotContain("Performance of contract");
+
 		assertThat(pageNamed(ours, "uslovi-koriscenja").path("title").asString())
 				.as("uslovi-koriscenja's real English title did not reach the route")
 				.isEqualTo("Terms of use");

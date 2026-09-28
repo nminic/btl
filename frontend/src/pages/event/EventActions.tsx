@@ -1,14 +1,15 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useToday } from '../../clock/useClock'
+import { clearResourceCache } from '../../data/client'
 import type { BtlEvent, Race, Result } from '../../data/types'
 import { RESULTS } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
-import { EVENTS, RACES } from '../admin/entityForms'
-import { copiedRace } from './copiedRace'
-import { copyOf } from './copyOf'
-import { nextIdentity } from '../admin/raceIds'
-import { daysBetween } from '../../forms/dateField'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { ServerSaid } from '../account/ServerSaid'
+import { WHEN_WRITING_AN_EVENT } from '../admin/eventWrites'
+import { EVENTS } from '../admin/entityForms'
 import { ran } from './ran'
 import { useMay } from '../admin/rights'
 
@@ -36,9 +37,11 @@ export function EventActions({
 }) {
   const { locale, t } = useI18n()
   const may = useMay()
-  const { memberNumber, creations, create, remove } = useSession()
+  const { memberNumber } = useSession()
   const navigate = useNavigate()
   const today = useToday()
+  /** Why the deletion did not happen, where the route refused it. */
+  const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
 
   const mayEdit = may(`entity:${EVENTS.id}`)
   const mine = races.filter((race) => race.eventId === event.id)
@@ -56,60 +59,27 @@ export function EventActions({
    * form mentions them.
    */
   function copy() {
-    /* Worked out once, here, and everything that follows is moved by the same
-       number of days: the event, and every race under it. Done at the press
-       rather than while somebody types over the date afterwards, which is the
-       same rule applied once instead of once per keystroke. */
-    const moved = copyOf(event).date
-    const by = daysBetween(event.date, moved)
-    /* Numbered from the lowest already used and not from how many there are
-       (`admin/raceIds.ts`). Counted, the number a deleted copy freed went to the
-       next one made: measured on 23.08.2026, copy, copy, delete the first, copy,
-       and the third came out as the second's. Two records under one id is the
-       fault the whole numbering module exists to prevent: the list draws them
-       under one key, a lookup finds only the first, and an edit to either changes
-       both.
-
-       Over the records this visit has made, which is where every copy is and all
-       this has to look at: an event out of the file carries a `bigserial` and
-       `nextIdentity` counts below nought, so the two cannot meet. Deleting one
-       takes it out of that list, and taking the lowest still says three where
-       counting said two. */
-    const id = String(nextIdentity((creations[EVENTS.id] ?? []).map((one) => Number(one.id))))
-
-    create(EVENTS.id, id, copyOf(event))
-
-    /* Every race this visit has made, whichever way it came to be: one entered
-       under an event and one copied along with its event live in one list, and a
-       number in use is in use whichever of the two it is. The file's races are
-       not on it and do not need to be, for the reason above. */
-    const takenRaces = (creations[RACES.id] ?? []).map((one) => Number(one.id))
-
-    const copied: number[] = []
-
-    for (const race of mine) {
-      /* Counted down from the lowest number in use, over every race this visit made
-         (`admin/raceIds.ts`).
-
-         Counted instead, this was the third home of one fault and the last to be
-         put right. Deleting the rows of a copy takes those races out of the list
-         while the numbers they held are gone from the count, so copying a third
-         time handed the third copy the ids the second copy's races answer to.
-         `editRecord` is filed by id, so saving the third copy moved **both** onto
-         it and the second copy was left with no races at all. Measured on
-         „Maraton maratona 2015" on 23.08.2026: four rows became none. */
-      const made = String(nextIdentity([...takenRaces, ...copied]))
-
-      copied.push(Number(made))
-      create(RACES.id, made, copiedRace(race, id, by))
-    }
-
-    /* And the screen is told what it is doing, rather than left to work it out
-       from the shape of the id or from `copiedFrom`. A copy is edited again like
-       any other event a season later, and both of those would still say „copy"
-       then: what is true only now is that this press is the copy being made
-       (owner, 23.08.2026, the title at the top). */
-    void navigate(`/${locale}/${EVENTS.path}?zapis=${id}&kopija=1`)
+    /**
+     * NOTHING IS WRITTEN HERE ANY MORE, AND THAT IS THE WHOLE CHANGE.
+     *
+     * <p>This press used to MAKE the copy: an event and a race apiece, filed into the
+     * session overlay under identities counted down from nought (`admin/raceIds.ts`),
+     * and then the form opened on a record that already existed. None of it was ever on
+     * the server, so none of it survived an F5 - the reader filled a whole calendar in
+     * and reloaded to find it gone.
+     *
+     * <p><b>So the address carries the QUESTION now, not the answer.</b> „Copy this
+     * event" is all that travels, and `admin/AdminEvents.tsx` opens a NEW form holding
+     * what a copy holds (`copyOf`) with this event's mornings beneath it, moved by the
+     * same number of days. The record is made by the route when Sačuvaj is pressed, and
+     * it is the only thing that makes one.
+     *
+     * <p><b>The identity in the address is this event's and not the copy's</b>, which is
+     * also what tells the screen it is copying at all. A copy is edited again like any
+     * other event a season later, and neither the shape of its id nor its `copiedFrom`
+     * would still say „copy" then (owner, 23.08.2026, the title at the top).
+     */
+    void navigate(`/${locale}/${EVENTS.path}?kopija=${String(event.id)}`)
   }
 
   /**
@@ -121,37 +91,40 @@ export function EventActions({
    * any of it back, and because deleting an event of five races from a page that
    * shows one of them is easy to do by mistake.
    */
-  function erase() {
+  /**
+   * THE EVENT AND EVERYTHING THAT BELONGS TO IT, GONE, THROUGH THE ROUTE.
+   *
+   * <p>One request, because `DELETE /api/events/{id}` is one statement and the schema
+   * cascades the rest: `race_event_fk`, `attending_event_fk` and `event_comment_event_fk`
+   * from the event, and `result_race_fk` from the race. The three loops that used to stand
+   * here filed session deletions instead, and `useLive` reads those
+   * (`data/useResource.ts`), so this button took the event off the calendar for the rest of
+   * the visit and left the row standing in the database for everybody else.
+   *
+   * <p><b>It asks first, and that is unchanged</b>: nothing brings any of it back, and
+   * deleting an event of five races from a page that shows one of them is easy to do by
+   * mistake. What is new is that the answer is now the truth.
+   */
+  async function erase() {
     if (!window.confirm(t('event.deleteAsk', { name: event.name, count: mine.length }))) {
       return
     }
 
-    for (const race of mine) {
-      remove(RACES.id, String(race.id))
+    const answer = await askTheServer(`/api/events/${String(event.id)}`, {}, 'DELETE')
+
+    if (answer.got !== 'done') {
+      setRefused(answer)
+
+      return
     }
 
-    /* And what hangs off it. A result carries the address of its event, so
-       without this the event left the calendar and its results went on counting
-       in the standing, in the Top 10 boards and in the team totals, each of them
-       still linking to a page that now says the event does not exist. */
-    for (const result of results.filter((one) => one.eventSlug === event.slug)) {
-      remove(RESULTS, String(result.id))
-    }
-
-    /* No question here of a second event answering at this address, which is
-       what the same deletion in administration has to allow for
-       (admin/AdminEvents.tsx). A copy is a record of this visit, and a public
-       screen reads the file minus what has been deleted and nothing else
-       (data/useResource.ts, useLive): what is created in a session never reaches
-       it.
-
-       What each side can see is the whole of the difference between the two
-       buttons. This one waits for the results before it is drawn at all
-       (EventDetail.tsx); the one in administration draws the screen without them
-       and holds back the deletion of the row until they are here
-       (admin/AdminEvents.tsx). Neither deletes an event without its results. */
-
-    remove(EVENTS.id, String(event.id))
+    /* All three names, because one statement moved all three. The reader is carried to
+       the calendar next, which reads `events` and `races`, and the standings read the
+       results; left in the cache, every one of them would go on drawing what this press
+       has just taken away. */
+    clearResourceCache('events')
+    clearResourceCache('races')
+    clearResourceCache(RESULTS)
     void navigate(`/${locale}/kalendar?mesec=${event.date.slice(0, 7)}`)
   }
 
@@ -194,9 +167,13 @@ export function EventActions({
           <button type="button" className="button button--secondary" onClick={copy}>
             {t('event.copy')}
           </button>
-          <button type="button" className="button button--secondary" onClick={erase}>
+          <button type="button" className="button button--secondary" onClick={() => void erase()}>
             {t('event.delete')}
           </button>
+          {/* What the route said instead of doing it. The reader is still on the
+              event's own page when a deletion is refused - nothing navigated - so
+              the sentence belongs here, beside the button he pressed. */}
+          {refused !== null && <ServerSaid answer={refused} refusals={WHEN_WRITING_AN_EVENT} />}
         </>
       )}
 
