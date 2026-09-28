@@ -401,10 +401,20 @@ describe('a served message the member opens', () => {
 
 describe('a message the browser is holding', () => {
   it('is marked in the visit and the server is not asked about it', async () => {
-    /* NOTHING SERVED AT ALL, so the only unread line on this screen is the one
-       `data/seedMessages.ts` addresses to the whole league - a held line, whose key is text
-       and names no row on any server. */
-    aServerKeepingMarks({ [HIS_ADDRESS]: [] })
+    /* **ONE SERVED ROW, ALREADY READ AND DATED AFTER THE HELD ONE**, so that the key this
+       screen opens is not also `lines[0]` once the two halves are sorted together - the
+       collision a mutation found (review of PR 415). Nothing served at all left the held
+       line named in the address as the only unread line on the whole screen, so it was
+       also the newest, so `lines[0].id` and the key in the address were one and the same
+       value: `markRead(id)` written as `markRead(lines[0].id)` had nowhere to be wrong.
+       This row is what `OPENED` is for the served half above (line 55) - it exists so the
+       message being opened is not first.
+
+       Already read, and dated after the seed rather than before it, so nothing here moves
+       the count this case ends on: it arrives read, stays read, and is never opened, same
+       as `ALREADY_READ` behaves in the served cases above. A row still unread when the
+       case ends would change what „nought" below has to mean; this one does not. */
+    aServerKeepingMarks({ [HIS_ADDRESS]: [ALREADY_READ] })
 
     const seeded = 'msg-1'
 
