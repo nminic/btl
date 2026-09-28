@@ -1,0 +1,15 @@
+{
+  "id": "profil",
+  "titleKey": "bio.title",
+  "submitKey": "bio.send",
+  "fields": [
+    {
+      "name": "bio",
+      "type": "textarea",
+      "labelKey": "profile.bio",
+      "maxLength": 360,
+      "policyRow": "Biografija, tekst o sebi, linkovi na Stravu i Instagram",
+      "policyBasis": "Vaš pristanak"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { must } from '../test/at'
 import { fieldDate, isoDate, storedDate } from './dateField'
-import { registracija } from './definitions'
+import { profil, registracija } from './definitions'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
@@ -259,7 +259,7 @@ describe('the limit a field carries in its definition', () => {
   /* Read rather than written out beside each of the two boxes that are edited
      outside a form, so the limit is one number in one file. */
   it('is the number in the definition', () => {
-    expect(limitOf(registracija, 'bio')).toBe(360)
+    expect(limitOf(profil, 'bio')).toBe(360)
   })
 
   it('refuses a name that is not a field with a limit, rather than taking the cap off', () => {
