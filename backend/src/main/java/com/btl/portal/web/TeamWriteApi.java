@@ -354,9 +354,11 @@ class TeamWriteApi {
 	 * component of {@link Proposed}, and that every name on this list really is one the
 	 * form does NOT ask for - so a field added to the form tomorrow fails the build until
 	 * somebody decides where it goes, and a name that starts being asked for cannot sit
-	 * here excusing nothing. That is {@link RegistrationApi#NOT_COLLECTED_YET}'s shape,
-	 * inverted: there the form asks and the route does not collect, here the route collects
-	 * and the form does not yet ask.
+	 * here excusing nothing. That is {@link CompetitorWriteApi#NOT_ASKED_OF_A_GROUP}'s
+	 * shape, inverted: there the form asks and the route does not collect, here the route
+	 * collects and the form does not yet ask. ~~{@code RegistrationApi.NOT_COLLECTED_YET}
+	 * was the example named here~~ until 28.09.2026, when the registration stopped asking
+	 * for a picture and that constant went with it.
 	 *
 	 * <p><b>It exists because the other direction was measured and was wrong.</b> This
 	 * record once said it was „what the form sends and nothing besides" while differing

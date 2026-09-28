@@ -11,6 +11,7 @@ import { PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import { money } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
 import registration from '../forms/definitions/registracija.form.json'
+import profile from '../forms/definitions/profil.form.json'
 import newResult from '../forms/definitions/unos-rezultata.form.json'
 import fromEvent from '../forms/definitions/prijava-sa-trke.form.json'
 import written from '../test/mock/pages.json'
@@ -939,10 +940,32 @@ describe('the privacy policy', () => {
        which is the only moment anybody is thinking about that field at all. `firstSeason2027`
        was collected for weeks with no row, and nothing said so.
        The row is matched on the cell rather than on the line, so a table reflowed by hand
-       does not read as a policy that lost a row. */
-    const asked = registration.fields
+       does not read as a policy that lost a row.
 
-    expect(asked.length, 'the registration form asks for nothing').toBeGreaterThan(0)
+       **EVERY FORM THE MEMBER FILLS IN, AND SINCE 28.09.2026 THERE ARE TWO.** The owner
+       took the picture and the words out of the registration that day („Profilna sekcija se
+       sa slikom i svojim recima izbacuje iz registracione forme - to ce clan popunjavati
+       naknadno kad bude odobren"), so the biography's field moved to `profil.form.json`.
+       Read from the registration alone, this would have quietly stopped holding the policy
+       to the row about the biography - the field would simply not be in the list any more,
+       and a guard that runs one way says nothing about what it cannot see.
+
+       **THE BOUNDARY THAT IS LEFT, written down rather than left to be found.** This runs
+       ONE WAY: every field a form asks for names a row, and no row is held to being named
+       by a field. That was always so - the register of members needs facts nobody types,
+       and the policy has rows for what arises from a visit. „Profilna fotografija" joined
+       them on 28.09.2026: the picture is given through `POST /api/me/photo`, which is a
+       file and not a field on any form, so its row is still true and nothing here holds
+       the policy to saying so. The day a picture is asked for through a form definition,
+       that row gets its guard back for free. */
+    const asked = [...registration.fields, ...profile.fields]
+
+    expect(asked.length, 'the forms the member fills in ask for nothing').toBeGreaterThan(0)
+    /* And BOTH of them are really in it, so a merge that silently lost one would not
+       read as a portal that asks for less. */
+    expect(asked.map((one) => one.name)).toEqual(
+      expect.arrayContaining(['firstName', 'bio']),
+    )
 
     /* Out of the one section that says what is collected, and only rows of four cells:
        what, why, on what ground, for how long. Read off the whole document instead, the

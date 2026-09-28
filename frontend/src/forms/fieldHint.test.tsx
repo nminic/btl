@@ -18,7 +18,10 @@ import { setupUser } from '../test/user'
  *  them written into a screen by hand. Two lists would drift, and the drift would show
  *  as a guard quietly holding one fewer.
  *
- *  Seven from 31.08.2026, and **eight since 20.09.2026**: the owner asked for the rule
+ *  Seven from 31.08.2026, **eight since 20.09.2026**, and **seven again since
+ *  28.09.2026**, when the biography left the registration and took its rule with it (the
+ *  owner had already struck that same sentence off the panel it moved to, on 31.08.2026,
+ *  so it has no screen left to stand on). The eighth was the owner asking for the rule
  *  about the length of a password to stand beside the field on the screen a link out of
  *  a message lands on (`pages/account/NewPassword.tsx`). His reason is what separates
  *  that field from the password field of the registration form, which is one of the
@@ -27,9 +30,9 @@ import { setupUser } from '../test/user'
  *  every refusal, so learning the rule from the server costs him the whole thing typed
  *  again.
  *
- *  It is in this list on the same terms as the other seven, which is the point: it is
+ *  It is in this list on the same terms as the others, which is the point: it is
  *  declared as a `hintKey` on the screen that draws it, so the sweep below counts it,
- *  and the day somebody adds a ninth without being asked this fails. A rule that
+ *  and the day somebody adds an eighth without being asked this fails. A rule that
  *  reached a screen WITHOUT a `hintKey` is the shape three of them outlived the
  *  deletion in, and that is what the second case refuses. */
 const KEPT = [
@@ -37,7 +40,6 @@ const KEPT = [
   'newResult.linkHint',
   'newResult.photoHint',
   'newResult.raceKindHint',
-  'registration.bioHint',
   'registration.fatherNameHint',
   'registration.idNumberHint',
   'registration.parentConsentHint',
@@ -104,12 +106,15 @@ describe('the rules that were kept', () => {
 
     expect([...new Set(carried)].sort()).toEqual(KEPT)
 
-    /* Ten fields and eight rules, because two of them are asked for on two forms:
+    /* Nine fields and seven rules, because two of them are asked for on two forms:
        the link and the picture stand on both roads a result is reported by, so one
-       wording answers for both. The tenth is the eighth rule itself, declared on the
+       wording answers for both. The ninth is the password's rule itself, declared on the
        screen that draws it rather than in a definition, which is what makes it visible
-       to the sweep above at all. */
-    expect(carried).toHaveLength(10)
+       to the sweep above at all.
+
+       ~~Ten and eight.~~ The biography's rule went on 28.09.2026 with the field it stood
+       beside, which is one field and one rule fewer. */
+    expect(carried).toHaveLength(9)
   })
 
   it('are never written into a screen by hand, under any name they have had', () => {
@@ -905,7 +910,7 @@ describe('an answer chosen from buttons', () => {
 /**
  * The words a key stands for, out of the dictionary the form is drawn in.
  *
- * Read rather than written out here: nineteen labels copied into this file would
+ * Read rather than written out here: seventeen labels copied into this file would
  * be a second home for every one of them, and the day one is reworded the guard
  * would be holding the old one.
  */
@@ -998,7 +1003,7 @@ function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number; ofIt
  * read the definition at all.
  *
  * Its floor is the case below it, which holds this table and the form to the same
- * nineteen names in BOTH directions, so a field added without a place here, or a
+ * seventeen names in BOTH directions, so a field added without a place here, or a
  * line here for a field the form no longer asks for, fails on the day it happens
  * rather than the day somebody looks. The portal already does this once, in
  * `pages/publicData.test.tsx`, for the same reason.
@@ -1026,17 +1031,13 @@ const STANDS_IN: Record<string, string | null> = {
   city: 'Kontakt i dostava',
   firstSeason2027: 'Takmičenje',
   shirtSize: 'Takmičenje',
-  /* Still a group of its own, and NOT because anybody chose that today: the
-     owner asked for the picture and the words about oneself to leave the
-     registration altogether („Profilna sekcija se sa slikom i svojim rečima
-     izbacuje iz registracione forme"), and they cannot, yet.
-     `WhatRegistrationAsksForTest.everyFieldTheFormAsksForIsOneTheServerKnows`
-     reads THIS file and holds the server's four sets to the names it draws, in
-     both directions, so taking two fields out of the form here fails a backend
-     test that no frontend gate runs. Measured, not assumed. It is written up in
-     the description of this branch and it is one change across both halves. */
-  photo: 'Profil',
-  bio: 'Profil',
+  /* ~~`photo: 'Profil'` and `bio: 'Profil'` stood here.~~ Both left on 28.09.2026 and
+     the group „Profil" left with them, because a group is the fields that stand in it:
+     „Profilna sekcija se sa slikom i svojim rečima izbacuje iz registracione forme - to
+     ce clan popunjavati naknadno kad bude odobren" (owner). The picture goes to
+     `POST /api/me/photo` and the words to `PUT /api/me`, each from its own panel under
+     Settings, and the 360 characters moved with the box to `profil.form.json` rather
+     than being copied into code. */
   healthStatement: null,
   parentConsent: null,
   parentRelation: null,
@@ -1076,7 +1077,11 @@ const ROWS_ARE: string[][] = [
      two columns of the three (`FormRenderer.css`, `.field--place`). */
   ['city'],
   ['firstSeason2027', 'shirtSize'],
-  ['photo', 'bio'],
+  /* ~~A seventh row stood here, the picture beside the words.~~ Both left on
+     28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
+     registracione forme - to ce clan popunjavati naknadno kad bude odobren"
+     (owner). The form has six rows from that day, and the member writes about
+     himself on `member/ProfileBio.tsx` instead. */
 ]
 
 /**
@@ -1103,7 +1108,6 @@ const GROUPS_ARE: string[] = [
   'Pristup nalogu',
   'Kontakt i dostava',
   'Takmičenje',
-  'Profil',
 ]
 
 describe('a form laid out in groups', () => {
@@ -1155,7 +1159,7 @@ describe('a form laid out in groups', () => {
     })
   })
 
-  it('names the same nineteen fields the form asks for, and no others', () => {
+  it('names the same seventeen fields the form asks for, and no others', () => {
     /* The floor under the table above. Held in both directions: a field added to
        the form without a place in the table fails here, and so does a line left
        behind for a field that is gone. */
@@ -1309,7 +1313,7 @@ describe('a form laid out in groups', () => {
       ).toBe(0)
     }
 
-    /* And then with a date that makes the competitor a child, when all nineteen
+    /* And then with a date that makes the competitor a child, when all seventeen
        are drawn. The guardian's two are the ones a reordering is likeliest to
        lose, because they are the only two that are not there to be seen. */
     await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')

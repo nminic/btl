@@ -268,6 +268,33 @@ class GroupEntryTest {
 	}
 
 	/**
+	 * A BIOGRAPHY SENT WITH A ROW IS IGNORED, AND THE COLUMN STAYS EMPTY.
+	 *
+	 * <p>{@code Invited} does not declare {@code bio} - see its own javadoc for why a name
+	 * this route once wrote straight into {@code competitor.bio} is gone rather than
+	 * defended. A body that carries the key anyway is not a row this route can see it in,
+	 * the same shape {@code RegistrationApiTest} measures for the public form
+	 * ({@code theTelephoneIsTheOnlyOptionalOneAndABiographySentAnywayIsIgnored}): Jackson
+	 * drops a name nothing is declared for silently, which is exactly the shape that would
+	 * otherwise go unnoticed and is why this is measured rather than assumed.
+	 */
+	@Test
+	void aBiographySentWithARowIsIgnoredAndTheColumnStaysEmpty() throws Exception {
+		List<Map<String, Object>> group = aGroupOfThree();
+
+		group.get(1).put("bio", "Tekst koji niko nije trazio i koji niko ne odobrava.");
+
+		MockHttpServletResponse answered = enter(group, EVERYTHING);
+
+		assertThat(answered.getStatus()).as("a row carrying a name nothing asks for was"
+				+ " refused, rather than the name simply being ignored: %s",
+				answered.getContentAsString()).isEqualTo(201);
+		assertThat(memberBehind(folded(SECOND_TYPED)).get("bio")).as("a biography sent with"
+				+ " a group row was stored, so this route still writes prose straight into"
+				+ " the column with no moderator ever seeing it").isEqualTo("");
+	}
+
+	/**
 	 * THE MOMENT THE HEALTH STATEMENT WAS TICKED IS WRITTEN, AND IT IS THE SERVER'S CLOCK.
 	 *
 	 * <p>The owner, 25.09.2026: „Potrebno je da covek to poseduje i dovoljno je da kaze da

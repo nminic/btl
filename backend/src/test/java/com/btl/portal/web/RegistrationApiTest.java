@@ -35,12 +35,10 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -175,7 +173,6 @@ class RegistrationApiTest {
 		form.put("idNumber", "AB1234567");
 		form.put("phone", "+381601234567");
 		form.put("shirtSize", "L");
-		form.put("bio", "Trcim od 2019. godine, najvise po planinama.");
 		form.put("healthStatement", true);
 
 		return form;
@@ -269,7 +266,10 @@ class RegistrationApiTest {
 		assertThat(competitor.get("address")).isEqualTo("Ulica slobode 15/4");
 		assertThat(competitor.get("shirt_size")).isEqualTo("L");
 		assertThat(competitor.get("phone")).isEqualTo("+381601234567");
-		assertThat(competitor.get("bio")).isEqualTo("Trcim od 2019. godine, najvise po planinama.");
+		/* EMPTY, AND THAT IS THE STATE A MEMBER JOINS IN since 28.09.2026. The column is
+		   NOT NULL and may be empty (V7), and the words are written afterwards through
+		   `PUT /api/me`, which puts them in front of a moderator first. */
+		assertThat(competitor.get("bio")).isEqualTo("");
 		assertThat(competitor.get("first_season_2027")).isEqualTo(true);
 		assertThat(((java.sql.Date) competitor.get("birth_date")).toLocalDate())
 				.isEqualTo(today.minusYears(30));
@@ -692,8 +692,10 @@ class RegistrationApiTest {
 	 * <p><b>The list is asked of {@link WhatRegistrationAsksFor} rather than written
 	 * here</b>, which is what makes it a floor and not a second list: a field added to the
 	 * registration tomorrow is one this case immediately demands, and it demands it of the
-	 * route rather than of a copy. {@link RegistrationApi#NOT_COLLECTED_YET} is the only
-	 * way out, and the case below holds that name to being a real one.
+	 * route rather than of a copy. <b>There is no way out of it any more:</b>
+	 * {@code RegistrationApi.NOT_COLLECTED_YET} was the one exception and it went on
+	 * 28.09.2026 with the field it excused, so every name the registration asks for is a
+	 * name this route refuses to do without, with nothing skipped.
 	 *
 	 * <p>Each field is taken away on its own, from an otherwise complete form, so nothing
 	 * here can be satisfied by a request that was going to be refused anyway. Nothing is
@@ -705,10 +707,6 @@ class RegistrationApiTest {
 		List<String> measured = new ArrayList<>();
 
 		for (String field : WhatRegistrationAsksFor.from(born, today)) {
-			if (RegistrationApi.NOT_COLLECTED_YET.contains(field)) {
-				continue;
-			}
-
 			Map<String, Object> without = aGrownUp();
 
 			without.remove(ANSWERED_BY.getOrDefault(field, field));
@@ -727,40 +725,65 @@ class RegistrationApiTest {
 	}
 
 	/**
-	 * AND WHAT THE FORM ASKS FOR IS EITHER COLLECTED OR NAMED AS NOT COLLECTED.
+	 * A MEMBER IS REGISTERED WITH NO PICTURE, AND SENDING ONE ANYWAY DOES NOT CHANGE THAT.
 	 *
-	 * <p>The other direction of the same floor, and the one that keeps
-	 * {@link RegistrationApi#NOT_COLLECTED_YET} honest. Both halves: every name on that
-	 * list really is a field the form asks for, so a name that stopped being asked for
-	 * cannot sit there excusing nothing; and the photograph really is refused - measured
-	 * by sending one, which this route ignores rather than stores.
+	 * <p>The owner, 28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
+	 * registracione forme - to ce clan popunjavati naknadno kad bude odobren." So the
+	 * registration is complete without a picture and the row it writes carries none; the
+	 * picture arrives later, by {@code POST /api/me/photo}, and is approved there exactly
+	 * as it always was.
+	 *
+	 * <p><b>Both halves, because either alone is half a guard.</b> That a registration with
+	 * no picture is ACCEPTED is what the owner's decision asks for; that a registration
+	 * WITH one still stores none is what says this route did not quietly start collecting
+	 * it by another name. The second is not hypothetical: the screen sent every field it
+	 * held until 28.09.2026, and {@code TeamWriteApi} measured what happens to a name
+	 * nothing is declared for - „Jackson drops a field nothing is named for, and nothing in
+	 * {@code backend/src/main/resources} configures it otherwise" - so a body carrying one
+	 * is answered 201 or 204 with the field gone, silently, which is the shape that has to
+	 * be held rather than assumed.
+	 *
+	 * <p><b>Two addresses and not one</b>, so the second registration is a registration and
+	 * not the 409 the first one earns.
 	 */
 	@Test
-	void whatTheFormAsksForIsEitherCollectedOrNamedAsNotCollected() throws Exception {
-		Set<String> everAsked = new HashSet<>(WhatRegistrationAsksFor.from(today.minusYears(30), today));
-
-		everAsked.addAll(WhatRegistrationAsksFor.from(today.minusYears(10), today));
-
-		assertThat(everAsked)
-				.as("a name is listed as not collected which the form does not ask for at any"
-						+ " age, so it excuses nothing")
-				.containsAll(RegistrationApi.NOT_COLLECTED_YET);
-
-		/* AND THE PHOTOGRAPH REALLY IS ABSENT rather than quietly accepted: a registration
-		   goes through without one and the member's row carries no picture. What this
-		   server still cannot do is RECEIVE a file (ADL A36 O8): no signature under
-		   backend/src/main/java carries a `MultipartFile` or a `@RequestPart`, so nothing
-		   there is written to be handed one. That is read off the signatures and is not a
-		   claim that no file could arrive by any road; RegistrationApi's own note names
-		   the three routes that read the raw body and what stops them. The digest and the
-		   crop used to
-		   be denied in this same breath and no longer can be - PhotoApi finds a row by
-		   `photo.digest` and TeamApi answers a digest beside its crop since 20.09.2026
-		   (ADL A60) - so what the two lines below measure is the ABSENCE of a row, which
-		   is this route collecting nothing, and not the absence of the machinery. */
+	void aMemberIsRegisteredWithNoPictureAndSendingOneAnywayDoesNotChangeThat() throws Exception {
 		assertThat(register(aGrownUp()).getStatus()).isEqualTo(204);
 		assertThat(theCompetitorBehind(ADDRESS).get("photo_id")).isNull();
-		assertThat(howMany("photo")).isZero();
+
+		String second = "druga.osoba@primer.rs";
+		Map<String, Object> withAPicture = aGrownUp();
+
+		withAPicture.put("email", second);
+		withAPicture.put("photo", "vladan.jpg");
+
+		assertThat(register(withAPicture).getStatus())
+				.as("a body carrying a picture was refused, so this route is reading a name"
+						+ " the form no longer sends")
+				.isEqualTo(204);
+
+		/* TWO ROWS AND NOT ONE, WHICH IS WHAT MAKES THE TWO LINES AFTER IT SAY ANYTHING.
+		   With one member in the fixture, „no member carries a picture" is a claim about
+		   the only row there is, and a route that wrote a picture for the SECOND
+		   registration alone would satisfy it. Measured rather than reasoned: reading
+		   `photo_id` off `second` instead of off `ADDRESS` passed 32 of 32, because both
+		   are null, so a per-row read cannot tell the two apart and is not written here. */
+		assertThat(theCompetitorBehind(second).get("id"))
+				.as("the second registration did not make a second member, so nothing below"
+						+ " is about the registration that carried a picture")
+				.isNotEqualTo(theCompetitorBehind(ADDRESS).get("id"));
+
+		/* OVER EVERY MEMBER AND OVER THE WHOLE TABLE, so neither line can be satisfied by
+		   whichever row an address happened to find. */
+		assertThat(db.sql("select count(*) from competitor where photo_id is not null")
+				.query(Integer.class).single())
+				.as("a registration put a picture on a member's row")
+				.isZero();
+
+		assertThat(howMany("photo"))
+				.as("the registration wrote a picture, which is what the owner moved to"
+						+ " POST /api/me/photo on 28.09.2026")
+				.isZero();
 	}
 
 	/**
@@ -1126,25 +1149,34 @@ class RegistrationApiTest {
 	}
 
 	/**
-	 * THE BIOGRAPHY AND THE TELEPHONE ARE OPTIONAL, and they are the only two that are.
+	 * THE TELEPHONE IS THE ONLY OPTIONAL FIELD LEFT, AND A BIOGRAPHY SENT ANYWAY IS IGNORED.
 	 *
-	 * <p>„Svojim recima" was compulsory in the form by mistake and registration was refused
-	 * without it, which collided with the portal's own privacy policy; corrected
-	 * 12.08.2026, and PDL says „prijava prolazi i bez njega". The telephone is collected on
-	 * consent since 20.08.2026, which overturned the decision of 11.08.2026 that had taken
-	 * it off the portal altogether.
+	 * <p>~~„Svojim recima" was compulsory in the form by mistake and registration refused
+	 * without it, corrected 12.08.2026.~~ <b>It is not asked at all since 28.09.2026</b>
+	 * („Profilna sekcija se sa slikom i svojim recima izbacuje iz registracione forme - to
+	 * ce clan popunjavati naknadno kad bude odobren"), so there is no longer an optional
+	 * field beside the telephone, which is collected on consent since 20.08.2026.
 	 *
-	 * <p><b>The two are stored differently and V7 and V8 each say why</b>: an empty
-	 * biography is a state a profile has to look right in, so the column is NOT NULL and
-	 * may be empty; no telephone is NULL, because an empty string would be a second way of
-	 * saying the same absence.
+	 * <p><b>And a body carrying one is ignored rather than stored, which is the half that
+	 * had to be measured rather than assumed.</b> What this route is handed goes STRAIGHT
+	 * into {@code competitor.bio}, while every later edit goes through {@link MeWriteApi}
+	 * and waits for a moderator - so a parameter still accepted after no screen sends one
+	 * would be a way to publish prose nobody reads first. {@code Typed} no longer declares
+	 * it and the row is written with a literal, and the case below is what says so:
+	 * Jackson drops a name nothing is declared for silently, which is exactly the shape
+	 * that would otherwise go unnoticed.
+	 *
+	 * <p>The two columns still differ and V7 and V8 each say why: an empty biography is a
+	 * state a profile has to look right in, so the column is NOT NULL and may be empty; no
+	 * telephone is NULL, because an empty string would be a second way of saying the same
+	 * absence.
 	 */
 	@Test
-	void theBiographyAndTheTelephoneAreTheOnlyTwoThatAreOptional() throws Exception {
+	void theTelephoneIsTheOnlyOptionalOneAndABiographySentAnywayIsIgnored() throws Exception {
 		Map<String, Object> neither = aGrownUp();
 
-		neither.remove("bio");
 		neither.remove("phone");
+		neither.put("bio", "Tekst koji niko nije trazio i koji niko ne odobrava.");
 
 		assertThat(register(neither).getStatus())
 				.as("a registration was refused for want of a field nothing asks for")
@@ -1153,7 +1185,8 @@ class RegistrationApiTest {
 		Map<String, Object> stored = theCompetitorBehind(ADDRESS);
 
 		assertThat(stored.get("bio"))
-				.as("an absent biography was stored as nothing rather than as an empty one")
+				.as("a biography sent with the registration was stored, so this route still"
+						+ " takes prose that no moderator will ever see")
 				.isEqualTo("");
 		assertThat(stored.get("phone"))
 				.as("an absent telephone was stored as an empty string, which is a second way"

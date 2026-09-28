@@ -589,9 +589,35 @@ class CompetitorWriteApi {
 	 * <p><b>The two that are not here.</b> {@code password} and {@code passwordRepeat},
 	 * because the whole of PDL 31.07.2026 is that no password passes through the hands of
 	 * whoever does the entering („Time nijedna lozinka ne prolazi kroz ruke organizatora
-	 * Tima"); and {@code photo}, which {@link RegistrationApi#NOT_COLLECTED_YET} says is
-	 * not received by anything under {@code src/main} yet, so requiring it here would be
-	 * requiring something no route can take.
+	 * Tima").
+	 *
+	 * <p><b>And a third that used to be, until the registration stopped asking for it.</b>
+	 * {@code photo} stood beside those two while the registration required a picture; the
+	 * owner took the picture out of the registration on 28.09.2026 („Profilna sekcija se sa
+	 * slikom i svojim recima izbacuje iz registracione forme - to ce clan popunjavati
+	 * naknadno kad bude odobren"), so there is nothing here to excuse: this route asks for
+	 * what the registration asks for, and the registration does not ask. A member entered
+	 * off a sheet of paper reaches the same place a member who registered himself does -
+	 * live, with no picture, and free to send one to {@code POST /api/me/photo}.
+	 *
+	 * <p><b>And a fourth that this record carried and no longer does: {@code bio}.</b> Unlike
+	 * the first three, this is not the registration's own boundary moving under it - it is
+	 * measured against {@link MeWriteApi}, the one place a member's own words reach
+	 * {@code competitor.bio}, which never writes that column without also queuing the text
+	 * for a moderator (PDL, 19.09.2026: „Nov tekst o sebi se ODBIJA dok prethodni ceka
+	 * odluku moderatora", so that a moderator always faces exactly one text per member).
+	 * This route wrote the column directly and queued nothing, the same shape this branch
+	 * has just refused for the registration itself, reached from an administrator's screen
+	 * rather than the public one. <b>That the queue was bypassed is measured; that removing
+	 * the field is the right answer is this author's own reasoning, marked as such and not a
+	 * decision anybody wrote down:</b> no screen sends this key today, so nothing observable
+	 * is lost, and a group entered off a sheet of paper reaches the same place a member who
+	 * registered himself does - live, with an empty biography, free to write one through
+	 * {@code PUT /api/me} once a moderator can see it. A day the owner wants a biography
+	 * collected here is a day this gets its own increment, written through the queue like
+	 * every other. {@code WhatAFieldMeans.theBio} lost its only caller with it and is gone
+	 * rather than left unused, and {@code GroupEntryTest} measures that the column stays
+	 * empty regardless of what a caller sends.
 	 *
 	 * <p><b>And one that is here for a reason worth naming: {@code healthStatement}.</b>
 	 * The owner, 25.09.2026: „Potrebno je da covek to poseduje i dovoljno je da kaze da
@@ -613,7 +639,7 @@ class CompetitorWriteApi {
 	record Invited(String firstName, String lastName, String fatherName, String birthDate,
 			String gender, Boolean firstSeason2027, String email, String address, Long placeId,
 			String city, String country, String idNumber, String phone, String shirtSize,
-			String bio, Boolean healthStatement, String parentConsent, String parentRelation) {
+			Boolean healthStatement, String parentConsent, String parentRelation) {
 	}
 
 	/**
@@ -935,12 +961,23 @@ class CompetitorWriteApi {
 	private void memberFor(Reading reading, long account, Timestamp now, LocalDate today,
 			String from) {
 
+		/* `bio` IS WRITTEN EMPTY AND IS NO LONGER A PARAMETER. This is not the owner's
+		   28.09.2026 decision about the registration form; `Invited` never took that
+		   decision's boundary, it took the same SHAPE `RegistrationApi` measured and
+		   refused there: a column written directly, with no row queued for a moderator,
+		   which is what every biography from a member's own hand goes through
+		   (`MeWriteApi.queued`, PDL 19.09.2026). See the `Invited` record's own javadoc for
+		   where that measurement and this author's reasoning are told apart. The column is
+		   NOT NULL and may be empty (V7); a member entered off paper writes his words
+		   afterwards, through `PUT /api/me`, where a moderator sees them before anybody
+		   else does. Written as a literal rather than as an empty parameter so that there
+		   is no value here for a caller to influence at all. */
 		long member = db.sql("insert into competitor"
 						+ " (first_name, last_name, gender, place_id, city, country_id,"
 						+ "  first_season, first_season_2027, active, membership_basis,"
 						+ "  referral_code, bio, profile_hidden, birth_date,"
 						+ "  father_name, address, phone, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, false, ?,"
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(reading.typed().firstName().strip(), reading.typed().lastName().strip(),
@@ -948,7 +985,6 @@ class CompetitorWriteApi {
 						reading.town().countryId(),
 						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
 						reading.typed().firstSeason2027(), ReferralCode.fresh().written(),
-						WhatAFieldMeans.theBio(reading.typed().bio()),
 						java.sql.Date.valueOf(reading.born()),
 						reading.typed().fatherName().strip(), reading.typed().address().strip(),
 						WhatAFieldMeans.thePhone(reading.typed().phone()),
@@ -1112,18 +1148,22 @@ class CompetitorWriteApi {
 	/**
 	 * The two names {@link WhatRegistrationAsksFor} asks for that this route does not.
 	 *
-	 * <p><b>Named rather than silent, which is {@link RegistrationApi#NOT_COLLECTED_YET}'s
-	 * reason:</b> a field left out on purpose and a field that went missing look exactly
-	 * alike from inside a handler. {@code GroupEntryTest} holds this list to being a subset
-	 * of what the registration asks, so a name that stops being asked for cannot sit here
-	 * excusing nothing, and a field added to the registration tomorrow is one this route
-	 * starts requiring rather than one it quietly skips.
+	 * <p><b>Named rather than silent:</b> a field left out on purpose and a field that went
+	 * missing look exactly alike from inside a handler. {@code GroupEntryTest} holds this
+	 * list to being a subset of what the registration asks, so a name that stops being
+	 * asked for cannot sit here excusing nothing, and a field added to the registration
+	 * tomorrow is one this route starts requiring rather than one it quietly skips.
 	 *
-	 * <p>{@code photo} because nothing under {@code src/main} receives a file for a member
-	 * yet; {@code password} and {@code passwordRepeat} because the whole point is that no
+	 * <p>{@code password} and {@code passwordRepeat}, because the whole point is that no
 	 * password passes through the hands of whoever enters the group.
+	 *
+	 * <p><b>{@code photo} was the third until 28.09.2026 and its removal is that floor
+	 * working rather than a tidying.</b> The owner took the picture out of the registration
+	 * that day, so it stopped being a name the registration asks for - and a name on this
+	 * list that the registration does not ask for is exactly what the subset half of
+	 * {@code GroupEntryTest} refuses.
 	 */
-	static final Set<String> NOT_ASKED_OF_A_GROUP = Set.of("photo", "password", "passwordRepeat");
+	static final Set<String> NOT_ASKED_OF_A_GROUP = Set.of("password", "passwordRepeat");
 
 	/**
 	 * Every field the form asks for, under the name {@link WhatRegistrationAsksFor} knows
