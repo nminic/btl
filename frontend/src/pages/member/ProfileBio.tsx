@@ -117,21 +117,26 @@ export function ProfileBio({ me }: { me: Competitor }) {
    * THE TEXT OF HIS THE SERVER SAYS IS STANDING IN THE QUEUE UNDECIDED, and only what this
    * visit was told about.
    *
-   * <p><b>`member` is carried beside the row and it is not decoration.</b>
-   * `ProfilePicture.tsx` had exactly this state without it for one round of review and the
-   * fault that round found is measured: „`000007` sends, `000002` signs in through
-   * `theServerSignedMeIn` during the same visit, and the second man was told a picture of his
-   * was waiting and was shown THE FIRST MAN'S PHOTOGRAPH." `SessionProvider` sits above the
-   * router so it never comes down, the sign in screen is walkable while somebody is signed in,
-   * and this panel is not remounted when the record it is handed changes. A VISIT IS NOT A
-   * MEMBER.
+   * <p><b>WHOSE IT IS IS NOT A FIELD HERE, AND THAT IS A DECISION RATHER THAN AN OVERSIGHT.</b>
+   * `ProfilePicture.tsx` carries the member beside its own row because `pictureSent` lives in
+   * the SESSION and survives anything this panel could do. Everything here is local, and there
+   * are FOUR pieces of it that belong to one person - what he typed, what stands on his
+   * profile, what of his is waiting, and what the server last said - so the honest answer is
+   * that the whole panel belongs to one member. `Settings.tsx` says so with a `key`, and a
+   * comparison in here would have mended one of the four and left the other three.
+   *
+   * <p>The fault is measured and it is the one that cost the picture panel a round of review:
+   * „`000007` sends, `000002` signs in through `theServerSignedMeIn` during the same visit, and
+   * the second man was told a picture of his was waiting and was shown THE FIRST MAN'S
+   * PHOTOGRAPH." `SessionProvider` sits above the router so it never comes down, and the sign
+   * in screen is walkable while somebody is signed in. A VISIT IS NOT A MEMBER.
    *
    * <p><b>`body` is what was sent, and it is empty where this panel never saw the text.</b>
    * That is the state a removal reaches while an older proposal of his is still undecided: the
    * route answers with the key of that older row, which is true and is what the member needs
    * to be told, and nothing here knows the words it carries.
    */
-  const [sent, setSent] = useState<{ row: string; member: string; body: string } | null>(null)
+  const [sent, setSent] = useState<{ row: string; body: string } | null>(null)
 
   /* AND THE KEY IS THE SERVER'S, which is what lets this clear by itself: a moderator deciding
      in this same visit files the decision under the id of the row the SERVER made (`settle`),
@@ -141,10 +146,7 @@ export function ProfileBio({ me }: { me: Competitor }) {
      The empty string is a row the answer did not name, and no decision is ever filed under it,
      so the sentence stands for the rest of the visit - the direction that cannot mislead, since
      what the sentence is for is that a moderator is not handed the same text twice. */
-  const waiting =
-    sent !== null && sent.member === me.memberNumber && decisions[sent.row] === undefined
-      ? sent
-      : undefined
+  const waiting = sent !== null && decisions[sent.row] === undefined ? sent : undefined
 
   /* Said out loud, because the control just pressed is replaced by a sentence
      (WCAG 2.2 SC 4.1.3, and the order of focus in 2.4.3). */
@@ -214,11 +216,7 @@ export function ProfileBio({ me }: { me: Competitor }) {
        older proposal is still undecided is told the truth about both. */
     const row = waitingIn(answered.body)
 
-    setSent(
-      row === null
-        ? null
-        : { row: String(row), member: me.memberNumber, body: asked === '' ? '' : asked },
-    )
+    setSent(row === null ? null : { row: String(row), body: asked })
 
     /* WHICH RESOURCE STOPPED BEING TRUE, and the two roads spoil different ones.
 

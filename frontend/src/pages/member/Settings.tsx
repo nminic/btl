@@ -66,7 +66,21 @@ export function Settings() {
             <>
               <PersonalData me={me} />
               <ProfilePicture me={me} />
-              <ProfileBio me={me} />
+              {/* KEYED BY THE MEMBER, BECAUSE EVERYTHING THAT PANEL HOLDS BELONGS TO ONE
+                  PERSON: what he typed, what stands on his profile, what of his is waiting,
+                  and what the server last said. `SessionProvider` sits above the router so
+                  it never comes down and the sign in screen is walkable while somebody is
+                  signed in, so one visit can hold two people - a shared laptop at a race -
+                  and without this the second reads the first man's words out of the box.
+                  The identical fault cost `ProfilePicture.tsx` a round of review, and it
+                  mends its own with a member carried beside the row because its state lives
+                  in the session and survives a remount; this panel's does not, so the
+                  cheaper and more complete answer is to say whose panel it is.
+
+                  **The reach of this `key` is this screen and no other**, which is the
+                  question the rule of 28.09.2026 asks of every one: `ProfileBio` is drawn
+                  here and nowhere else in `src`. */}
+              <ProfileBio key={me.memberNumber} me={me} />
             </>
           )
         }}
@@ -124,7 +138,10 @@ export function Settings() {
             (one) => one.memberNumber === memberNumber,
           )
 
-          return me === undefined ? null : <ProfileVisibility me={me} />
+          /* Keyed by the member for the reason the biography panel above it is: „Sačuvano."
+             and a refusal both belong to whoever pressed, and one visit can hold two
+             people. */
+          return me === undefined ? null : <ProfileVisibility key={me.memberNumber} me={me} />
         }}
       </Resource>
 
