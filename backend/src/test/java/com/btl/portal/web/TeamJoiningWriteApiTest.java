@@ -152,7 +152,8 @@ class TeamJoiningWriteApiTest {
 	/**
 	 * A TEAM WITH NOBODY STANDING IN IT, which is a state V11 allows and PDL names twice.
 	 *
-	 * <p>{@code PDL.md:6783}: „Tim koji nema nijednog člana ne dobija poruku, jer nema kome.
+	 * <p>PDL.md ("Tim koji nema nijednog člana ne dobija poruku"): „Tim koji nema nijednog
+	 * člana ne dobija poruku, jer nema kome.
 	 * Isti razlog iz kog se takvom timu ne nudi ni prijava." It is deliberately NOT the first
 	 * team either, so „empty" and „lowest key" are two different rows.
 	 */
@@ -652,7 +653,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * A TEAM NOBODY STANDS IN IS NOT OFFERED AN APPLICATION, {@code PDL.md:6783}, and the
+	 * A TEAM NOBODY STANDS IN IS NOT OFFERED AN APPLICATION, PDL.md
+	 * ("Tim koji nema nijednog člana ne dobija poruku"), and the
 	 * fault it prevents is the one the owner's entry of 06.09.2026 describes: „prijava koju
 	 * niko ne može da odgovori čekala je zauvek i držala člana van svih timova."
 	 */
@@ -678,7 +680,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * ONE QUESTION IN FLIGHT ACROSS EVERY TEAM, {@code PDL.md:6765}, AND THE SECOND TEAM IS
+	 * ONE QUESTION IN FLIGHT ACROSS EVERY TEAM, PDL.md ("Prijava ne može da se umnoži"),
+	 * AND THE SECOND TEAM IS
 	 * THE POINT OF THIS CASE.
 	 *
 	 * <p>{@code team_application_asked_once} is over {@code (competitor_id, team_id, season)},
@@ -710,7 +713,8 @@ class TeamJoiningWriteApiTest {
 	 *
 	 * <p>The membership begins in 2028, the question is gone, the applicant reads the portal's
 	 * own two sentences in his own inbox, and the two OTHER teams that had asked him are told -
-	 * while the team he joined is not ({@code PDL.md:6785}) and the team nobody stands in is
+	 * while the team he joined is not
+	 * (PDL.md ("doneo odluku ili je njegov poziv prihvaćen")) and the team nobody stands in is
 	 * not either. Nothing reaches the league as a whole.
 	 *
 	 * <p><b>AND A TEAM THAT IS HOLDING AN INVITATION TO SOMEBODY ELSE IS NOT TOLD ANYTHING,
@@ -767,7 +771,8 @@ class TeamJoiningWriteApiTest {
 				.isEmpty();
 		assertThat(howManyWentToTheLeague()).isZero();
 
-		assertThat(invitationStands(fromTheOther)).as("PDL.md:6771, the row is not remembered as"
+		assertThat(invitationStands(fromTheOther)).as("PDL.md's 'Poziv se ne pamti kao"
+				+ " odgovoren' entry, the row is not remembered as"
 				+ " answered and is not deleted either").isTrue();
 		assertThat(invitationStands(fromTheThird)).isTrue();
 		assertThat(invitationStands(aboutSomebodyElse))
@@ -810,7 +815,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * „PRIHVATI" NEEDS THE WINDOW AND „ODBIJ" DOES NOT, {@code PDL.md:6818}, and this is the
+	 * „PRIHVATI" NEEDS THE WINDOW AND „ODBIJ" DOES NOT, PDL.md ("traži prelazni rok"), and
+	 * this is the
 	 * asymmetry a fixture that only ever asked in October cannot see.
 	 *
 	 * <p>The owner's reason, in his entry: „član pozvan 30. decembra ne bi mogao ni da prihvati
@@ -890,7 +896,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * AN APPLICANT WHO HAS SINCE GOT A TEAM IS INVISIBLE TO THE TEAM, {@code PDL.md:6851}, AND
+	 * AN APPLICANT WHO HAS SINCE GOT A TEAM IS INVISIBLE TO THE TEAM, PDL.md
+	 * ("Prijava člana koji je u međuvremenu dobio tim se timu ne prikazuje"), AND
 	 * FOR BOTH ANSWERS.
 	 *
 	 * <p>„Prikazana, „Primi u tim" bi ga izvukla iz tog tima bez ijednog pitanja, a P13 to
@@ -983,7 +990,8 @@ class TeamJoiningWriteApiTest {
 
 	/**
 	 * AND IT IS HIS TO TAKE BACK IN BOTH THE CASES THAT HIDE IT FROM THE TEAM
-	 * ({@code PDL.md:6854}: „Prijava u oba slučaja ostaje njegova da je povuče"), and on a day
+	 * (PDL.md ("ostaje njegova da je povuče"): „Prijava u oba slučaja ostaje njegova da je
+	 * povuče"), and on a day
 	 * the window is shut.
 	 */
 	@Test
@@ -1054,7 +1062,8 @@ class TeamJoiningWriteApiTest {
 	/**
 	 * WHOEVER LEADS THE TEAM ASKS SOMEBODY IN, AND THE QUESTION ARRIVES AS A QUESTION.
 	 *
-	 * <p>{@code PDL.md:8693}, the owner of 27.09.2026: „Poziv u tim salje **samo administrator
+	 * <p>PDL.md ("samo administrator tog tima"), the owner of 27.09.2026: „Poziv u tim salje
+	 * **samo administrator
 	 * tog tima**", taken off Article 53 of the rulebook ({@code V24__static_pages.sql:811}) and
 	 * overturning his own decision of 05.09.2026.
 	 *
@@ -1101,7 +1110,8 @@ class TeamJoiningWriteApiTest {
 	 * A MEMBER OF THE TEAM WHO DOES NOT LEAD IT ASKS NOBODY IN, which is the owner's reversal of
 	 * 27.09.2026 and the half of the old case that demanded 201.
 	 *
-	 * <p>{@code PDL.md:8693}. Until that day {@code PDL.md:6676} said the opposite in as many
+	 * <p>PDL.md ("samo administrator tog tima"). Until that day PDL.md
+	 * ("obara pretpostavku da poziv šalje administrator") said the opposite in as many
 	 * words, with his parenthesis „(bilo koji clan)" recorded as explicitly overturning the
 	 * obvious reading. The conflict was found by reading Article 53 of the rulebook in order to
 	 * translate it, and he chose the rulebook.
@@ -1130,7 +1140,7 @@ class TeamJoiningWriteApiTest {
 		assertThat(howManyInvitations()).isZero();
 	}
 
-	/** {@code PDL.md:6684}: „Ko nema tim, taj nema koga da pozove." */
+	/** PDL.md ("Ko nema tim, taj nema koga da pozove"): „Ko nema tim, taj nema koga da pozove." */
 	@Test
 	void aMemberWithNoTeamAsksNobodyIn() throws Exception {
 		assertThat(invite(THE_TEAM, asking(NOBODY_ELSE), ME).getStatus()).isEqualTo(404);
@@ -1192,7 +1202,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * SOMEBODY WHO ALREADY HAS A TEAM IS NOT ASKED, {@code PDL.md:6679}, and the reason names
+	 * SOMEBODY WHO ALREADY HAS A TEAM IS NOT ASKED - P13's single-team rule, PDL.md
+	 * ("je član u jednom timu") - and the reason names
 	 * it because a squad is public.
 	 *
 	 * @param whom a member standing in a team from a season already running, and one from a
@@ -1209,7 +1220,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * ONE TEAM ASKS ONE MAN ONCE, IN ANY SEASON, {@code PDL.md:6910} - AND THE SEASON IS THE
+	 * ONE TEAM ASKS ONE MAN ONCE, IN ANY SEASON, PDL.md
+	 * ("Isti tim ne poziva istog čoveka dvaput") - AND THE SEASON IS THE
 	 * POINT OF THIS CASE.
 	 *
 	 * <p>{@code team_invitation_sent_once} is per season, so a row for 2029 leaves the key free
@@ -1234,7 +1246,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * BUT ANOTHER TEAM HAVING ASKED HIM REFUSES NOTHING, which is {@code PDL.md:6767}: „Poziv
+	 * BUT ANOTHER TEAM HAVING ASKED HIM REFUSES NOTHING, which is PDL.md
+	 * ("pa tri tima mogu pozvati istog čoveka"): „Poziv
 	 * može [da se umnoži]... tri tima mogu pozvati istog čoveka istog dana, i nijedan ne zna za
 	 * ostale." A condition written over the member alone would turn this into a 409.
 	 */
@@ -1284,7 +1297,8 @@ class TeamJoiningWriteApiTest {
 	 * <p><b>This is the case the schema would have failed.</b>
 	 * {@code message_team_invitation_fk} is {@code on delete cascade} (V13), so deleting the
 	 * row takes the message with it, and the owner decided the opposite on 06.09.2026
-	 * ({@code PDL.md:6774}): „Poruka sa pozivom ostaje u sandučetu... Ne briše se: brisanje
+	 * (PDL.md ("Poruka sa pozivom ostaje u sandučetu, sa razlogom umesto dugmadi")):
+	 * „Poruka sa pozivom ostaje u sandučetu... Ne briše se: brisanje
 	 * poruke iz tuđeg sandučeta je brisanje istorije." What goes is the POINTER, which is what
 	 * made it a question - V13's own reason for the cascade („the row would offer a button that
 	 * does nothing") without its side effect.
@@ -1339,7 +1353,7 @@ class TeamJoiningWriteApiTest {
 				.isEqualTo(before);
 	}
 
-	/** {@code PDL.md:6818} from the other side of the same door. */
+	/** PDL.md ("traži prelazni rok") from the other side of the same door. */
 	@Test
 	void outsideTheWindowHeMayRefuseAndMayNotAccept() throws Exception {
 		long invitation = invitationTo(ME, THE_TEAM, 2028);
@@ -1350,7 +1364,8 @@ class TeamJoiningWriteApiTest {
 		assertThat(refused.getStatus()).isEqualTo(409);
 		assertThat(reasonIn(refused)).isEqualTo(TeamJoiningWriteApi.THE_WINDOW_IS_SHUT);
 		assertThat(invitationStands(invitation))
-				.as("PDL.md:6824: an invitation outside the window waits and does not lapse")
+				.as("PDL.md's 'Poziv van roka čeka, ne propada' entry: an invitation outside the"
+					+ " window waits and does not lapse")
 				.isTrue();
 		assertThat(membershipsOf(ME)).isEmpty();
 
@@ -1359,7 +1374,8 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * ONCE HE HAS A TEAM NO OTHER INVITATION OFFERS „PRIHVATI", {@code PDL.md:6771}, and the
+	 * ONCE HE HAS A TEAM NO OTHER INVITATION OFFERS „PRIHVATI", PDL.md
+	 * ("Poziv se ne pamti kao odgovoren"), and the
 	 * reason names his own squad because it is public and it is about him.
 	 */
 	@Test
@@ -1444,7 +1460,8 @@ class TeamJoiningWriteApiTest {
 	 * THE TEAM TAKES ITS OWN QUESTION BACK, AND ONLY WHOEVER LEADS IT MAY.
 	 *
 	 * <p><b>Owner, 27.09.2026: „Hoću da može da povuče poziv."</b> That it is the
-	 * administrator's alone is {@code PDL.md:8699}, marked in the journal as derived from the
+	 * administrator's alone is PDL.md ("Povlacenje poziva takodje sme samo administrator"),
+	 * marked in the journal as derived from the
 	 * decision above rather than as a sentence of his: the right to take a question back follows
 	 * the right to send it.
 	 *
@@ -1523,7 +1540,8 @@ class TeamJoiningWriteApiTest {
 
 	/**
 	 * AND A MEMBER OF THE TEAM WHO DOES NOT LEAD IT TAKES NOTHING BACK, which is
-	 * {@code PDL.md:8699} and the half of the old case that demanded 204.
+	 * PDL.md ("Povlacenje poziva takodje sme samo administrator") and the half of the old
+	 * case that demanded 204.
 	 *
 	 * <p>Both non-administrators are asked, for the reason {@link #ANOTHER_PLAIN} gives, and the
 	 * message is asserted to KEEP its pointer: a refused request must leave the question a
@@ -1587,7 +1605,8 @@ class TeamJoiningWriteApiTest {
 	/**
 	 * AN INVITATION HE CAN NO LONGER ACCEPT SAYS SO, AND A SHUT WINDOW IS NOT THAT.
 	 *
-	 * <p>This is {@code PDL.md:6771} carried out on the reading side: „pravo na odgovor se
+	 * <p>This is PDL.md ("Poziv se ne pamti kao odgovoren") carried out on the reading
+	 * side: „pravo na odgovor se
 	 * računa u trenutku iscrtavanja". The two states the portal draws two different sentences
 	 * for are separated here by the clock and by a membership, one axis at a time:
 	 *
