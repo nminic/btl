@@ -387,6 +387,54 @@ describe('a run reported from the event it was run at', () => {
     },
     SLOW,
   )
+
+  it(
+    'sends once from this door too, however many times the button is pressed',
+    async () => {
+      const user = setupUser()
+      const { race, event } = reportable()
+      let release: (response: Response) => void = () => undefined
+      const held = new Promise<Response>((settle) => {
+        release = settle
+      })
+
+      server = serverThat((path, init) =>
+        path.startsWith('/api/results') && init?.method !== undefined ? held : null,
+      )
+
+      renderAt(
+        `/sr/kalendar/${event.slug}/prijava?trka=${String(race.id)}`,
+        'competitor',
+        ME,
+        undefined,
+        '2026-08-23',
+      )
+
+      await user.type(await screen.findByLabelText(/Link/), 'https://primer.rs/rezultati')
+
+      if (race.kind !== 'time') {
+        await user.type(screen.getByLabelText('Sati'), '0')
+        await user.type(screen.getByLabelText('Minuta'), '44')
+        await user.type(screen.getByLabelText('Sekundi'), '2')
+      }
+
+      await send(user, 'Pošalji rezultat')
+      await send(user, 'Pošalji rezultat')
+
+      /* THE SAME GUARD ON THE SECOND DOOR, and it is written out separately rather than
+         trusted to the first: these are two screens with two copies of the same ref, and a
+         mutation that removes one has to fail on one case rather than on none. A member may
+         hold only one result on one race (PDL, 09.09.2026). */
+      expect(writes()).toHaveLength(1)
+
+      release(did())
+
+      expect(
+        await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON),
+      ).toBeVisible()
+    },
+    SLOW,
+  )
 })
 
 describe('a counted result the member asks to have put right', () => {
@@ -579,6 +627,50 @@ describe('a counted result the member takes back', () => {
          still counted, so a screen that removed the row would be telling the member his
          result is gone while every board still holds it. */
       expect(await howManyCounted()).toBe(before)
+    },
+    SLOW,
+  )
+
+  it(
+    'takes only one back at a time, so a second press while one is out does nothing',
+    async () => {
+      const user = setupUser()
+      let release: (response: Response) => void = () => undefined
+      const held = new Promise<Response>((settle) => {
+        release = settle
+      })
+
+      server = serverThat((path, init) =>
+        path.startsWith('/api/results') && init?.method !== undefined ? held : null,
+      )
+
+      renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+      const table = within(await screen.findByRole('table', { name: 'Uračunato' }, SOON))
+      const rows = table.getAllByRole('row').slice(1)
+
+      expect(rows.length, 'one row cannot measure a second press').toBeGreaterThan(1)
+
+      /* A SECOND ROW AND NOT THE SAME ONE TWICE, which is the state this guard is really
+         for: the confirmation closes behind the first press, so nobody can press one row
+         twice - what a member CAN do is start on another row while the first is still out,
+         and that would take a second result off his profile on one answer. */
+      for (const row of rows.slice(0, 2)) {
+        await user.click(within(row).getByRole('button', { name: /^Obriši: / }))
+        /* Within the row and never over the whole screen: the first row's confirmation is
+           still open, because nothing closes it while its request is out, so a screen-wide
+           query finds two and this case would fail over its own second press rather than
+           over the thing it measures. */
+        await user.click(within(row).getByRole('button', { name: /^Potvrdi brisanje/ }))
+      }
+
+      expect(writes()).toHaveLength(1)
+
+      release(did())
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
     },
     SLOW,
   )
