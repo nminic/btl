@@ -99,6 +99,10 @@ export function ProfileBio({ me }: { me: Competitor }) {
       body: written.trim(),
       picture: '',
       crop: WHOLE,
+      /* Never a picture: this proposal is text, and `photoId` is null for the same
+         reason `picture` and `crop` above are - nothing this visit makes up locally
+         has a server row to hold a key for (`data/types.ts`, `PendingItem.photoId`). */
+      photoId: null,
       currentDate: '',
       proposedDate: '',
       rating: NO_RATING,
