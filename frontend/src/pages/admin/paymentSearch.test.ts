@@ -19,7 +19,20 @@ describe('finding one man on the list', () => {
     memberNumber: string,
     firstName: string,
     lastName: string,
-  ): MembershipDue => ({ competitorId, memberNumber, firstName, lastName, city: 'Beograd' })
+  ): MembershipDue => ({
+    competitorId,
+    memberNumber,
+    firstName,
+    lastName,
+    city: 'Beograd',
+    /* THE SAME FOR EVERYBODY HERE, AND THAT IS THE POINT RATHER THAN LAZINESS. This file
+       measures the SEARCH, and the owner named what it searches by: „po clanskom broju, imenu
+       ili prezimenu". A currency, an expected amount or a balance differing between these four
+       would let a case pass by telling them apart on something the search must not read. */
+    currency: 'RSD',
+    expected: 4800,
+    balance: 0,
+  })
 
   /**
    * FOUR PEOPLE, AND NOT ONE OF THEM IS THE ONLY ONE OF HIS KIND.
