@@ -1026,16 +1026,18 @@ const STANDS_IN: Record<string, string | null> = {
   city: 'Kontakt i dostava',
   firstSeason2027: 'Takmičenje',
   shirtSize: 'Takmičenje',
-  /* Still a group of its own, and NOT because anybody chose that today: the
-     owner asked for the picture and the words about oneself to leave the
-     registration altogether („Profilna sekcija se sa slikom i svojim rečima
-     izbacuje iz registracione forme"), and they cannot, yet.
-     `WhatRegistrationAsksForTest.everyFieldTheFormAsksForIsOneTheServerKnows`
-     reads THIS file and holds the server's four sets to the names it draws, in
-     both directions, so taking two fields out of the form here fails a backend
-     test that no frontend gate runs. Measured, not assumed. It is written up in
-     the description of this branch and it is one change across both halves. */
-  photo: 'Profil',
+  /* ~~The picture stood here beside the words.~~ It left on 28.09.2026, which is the
+     half of „Profilna sekcija se sa slikom i svojim rečima izbacuje iz registracione
+     forme" that could be done across both layers at once: the field also had to leave
+     `WhatRegistrationAsksFor.OF_EVERYBODY`, because
+     `WhatRegistrationAsksForTest.everyFieldTheFormAsksForIsOneTheServerKnows` reads THIS
+     file and holds the server's four sets to the names it draws, in both directions.
+
+     The words are still here, and the group with them: the 360 characters they are
+     limited to live on THIS field („Ograničenje stoji na polju u formi registracije",
+     PDL 31.07.2026), and `ProfileBio.tsx` and `MeWriteApi` both read the number off it.
+     Moving them needs that limit to be given a home first, which is the owner's to
+     decide and is not decided here. */
   bio: 'Profil',
   healthStatement: null,
   parentConsent: null,
@@ -1076,7 +1078,11 @@ const ROWS_ARE: string[][] = [
      two columns of the three (`FormRenderer.css`, `.field--place`). */
   ['city'],
   ['firstSeason2027', 'shirtSize'],
-  ['photo', 'bio'],
+  /* „Profilna sekcija se sa slikom i svojim recima izbacuje iz registracione forme
+     - to ce clan popunjavati naknadno kad bude odobren" (owner, 28.09.2026). The
+     picture left this row that day; the biography is still on it, and stands
+     alone. */
+  ['bio'],
 ]
 
 /**

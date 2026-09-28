@@ -398,7 +398,6 @@
       "other": "That is enough, the limit is {count} characters."
     },
     "bioHint": "A few sentences about yourself, at most 360 characters.",
-    "photo": "Profile picture",
     "shirtSize": "Shirt size",
     "healthStatement": "I confirm that I have read {link} and that I am medically fit for recreational sport.",
     "doneTitle": "The application is recorded",

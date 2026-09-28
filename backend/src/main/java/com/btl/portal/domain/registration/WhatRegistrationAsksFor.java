@@ -22,10 +22,22 @@ import java.util.Set;
  */
 public final class WhatRegistrationAsksFor {
 
-	/** Asked of everybody, whatever his age. */
+	/**
+	 * Asked of everybody, whatever his age.
+	 *
+	 * <p><b>The photograph is not here, and its absence is a decision rather than an
+	 * omission.</b> The owner made it compulsory on 11.08.2026 and took it out of the
+	 * registration on 28.09.2026, in his own words: „Profilna sekcija se sa slikom i
+	 * svojim recima izbacuje iz registracione forme - to ce clan popunjavati naknadno kad
+	 * bude odobren." So a picture is still approved and still cropped exactly as it was;
+	 * what moved is WHEN it is given, from the way in to {@code POST /api/me/photo} after
+	 * the account is live. A member is therefore approved before any picture exists, which
+	 * {@code competitor.photo_id} has always allowed - it is nullable, and every screen
+	 * that draws a member draws one without a picture already.
+	 */
 	public static final Set<String> OF_EVERYBODY = Set.of(
 			"firstName", "lastName", "fatherName", "birthDate", "gender", "firstSeason2027",
-			"email", "password", "passwordRepeat", "address", "city", "shirtSize", "photo",
+			"email", "password", "passwordRepeat", "address", "city", "shirtSize",
 			"healthStatement");
 
 	/**

@@ -125,7 +125,6 @@ function renderForm(today = OPEN, address = '/sr/registracija') {
 async function fillEverythingExceptBirthDate(
   user: ReturnType<typeof setupUser>,
   {
-    picture = true,
     /** What is typed into both password boxes. Handed in for the one pair of cases about
      *  a secret with a space in it, which is a value the portal must not alter. */
     password = PASSWORD,
@@ -133,9 +132,12 @@ async function fillEverythingExceptBirthDate(
      *  still trim. Without that pair nothing tells „leave the password alone" apart from
      *  „leave everything alone". */
     firstName = 'Vladan',
-  }: /** Left out where the test is about the picture being missing: a file input
-   *  cannot be cleared once it holds something (`user.clear` refuses it). */
-  { picture?: boolean; password?: string; firstName?: string } = {},
+  }: /** ~~`picture`, left out where the case was about the picture being missing.~~ It
+   *  went on 28.09.2026 with the field: the owner took the profile section out of the
+   *  registration („Profilna sekcija se sa slikom i svojim recima izbacuje iz
+   *  registracione forme - to ce clan popunjavati naknadno kad bude odobren"), so there
+   *  is no picture here to leave out. */
+  { password?: string; firstName?: string } = {},
 ) {
   await user.type(screen.getByLabelText(/^Ime$/), firstName)
   await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
@@ -161,15 +163,9 @@ async function fillEverythingExceptBirthDate(
   /* Either the beginners' category or the one for their age, and the portal
      asks rather than assumes (PDL P7). */
   await user.click(screen.getByRole('radio', { name: 'Starosna' }))
-  /* Required since the list of obligatory fields was written, and given its
-     place in the layout on 11.08.2026: the picture stands to the left of the
-     box below, in a row of its own two. */
-  if (picture) {
-    await user.upload(
-      screen.getByLabelText(/Profilna slika/),
-      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
-    )
-  }
+  /* ~~The picture stood here, to the left of the box below.~~ The owner took it out of
+     the registration on 28.09.2026; it is given to `POST /api/me/photo` once the account
+     is live, and `member/ProfilePicture.tsx` is the screen that sends it. */
   /* Required since 31.07.2026: the biography is written here, at the moment of
      joining, and goes from here to a moderator for approval. */
   await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
@@ -652,47 +648,38 @@ describe('the biography, at the moment of joining', () => {
   })
 })
 
-describe('the country a member lives in', () => {
-  it('is refused without a picture, which is an obligatory field', async () => {
-    /* Obligatory since the list of obligatory fields was written (PDL P8), and
-       it stayed obligatory when it was given its place in the layout on
-       11.08.2026. The picture is how members recognise each other at a race, so
-       a profile without one is a profile half made.
+describe('the profile picture', () => {
+  it('is not asked for here at all, and the form goes through without one', async () => {
+    /* Owner, 28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
+       registracione forme - to ce clan popunjavati naknadno kad bude odobren."
 
-       Everything else is filled in, so the only thing keeping the form shut is
-       the picture, and the refusal cannot be somebody else's. */
+       ~~It was obligatory from the day the list of obligatory fields was written (PDL
+       P8) and kept its place in the layout on 11.08.2026~~, and the case that stood here
+       refused a registration without it. What did NOT change is that a picture is still
+       approved and still cropped the same way: `member/ProfilePicture.tsx` sends it to
+       `POST /api/me/photo` once the account is live, and the queue decides it there.
+
+       BOTH HALVES, because either alone is half a guard. That the field is not drawn is
+       what the owner asked for; that the form SENDS without it is what says the field
+       was taken out rather than merely hidden behind a rule that still refuses. A field
+       left in the definition and not drawn would pass the first and fail the second. */
     const user = setupUser()
     renderForm()
 
-    await fillEverythingExceptBirthDate(user, { picture: false })
+    expect(screen.queryByLabelText(/Profilna slika/)).toBeNull()
+    /* And the label is gone from the whole screen, not only from a box: a legend or a
+       summary line still saying it would read as a field the member cannot find. */
+    expect(screen.queryByText(/Profilna slika/)).toBeNull()
+
+    await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
-    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
-
-    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
-
-    /* Said where the field is, and said again in the summary at the top, which
-       is what carries a keyboard back to it. */
-    const field = must(
-      screen.getByLabelText(/Profilna slika/).closest<HTMLElement>('.field'),
-      'the field the picture stands in',
-    )
-
-    expect(within(field).getByText('Ovo polje je obavezno.')).toBeVisible()
-    expect(screen.getByLabelText(/Profilna slika/)).toHaveAttribute('aria-invalid', 'true')
-    expect(
-      within(screen.getByRole('alert')).getByRole('link', { name: /Profilna slika/ }),
-    ).toHaveAttribute('href', '#field-photo')
-
-    /* And it goes through once the picture is there. */
-    await user.upload(
-      screen.getByLabelText(/Profilna slika/),
-      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
-    )
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
+})
 
+describe('the country a member lives in', () => {
   it('is refused when the town was typed by hand and no country was picked', async () => {
     /* The country has no field of its own: the town carries it (PDL P6). What
        that cost was the rule that used to stand on the country field: a town the
@@ -716,10 +703,6 @@ describe('the country a member lives in', () => {
        of, which is exactly what the field is allowed to take. */
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
     await user.click(screen.getByRole('radio', { name: 'Starosna' }))
-    await user.upload(
-      screen.getByLabelText(/Profilna slika/),
-      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
-    )
     await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
     await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
     await user.click(screen.getByLabelText(/zdravstveno sposoban/))
@@ -1097,10 +1080,10 @@ describe('what the registration sends', () => {
          `Typed.firstSeason2027` is a `Boolean`, so the word would have been refused by
          Jackson before the handler ran at all - a bare 400 with no reason in it, which
          no screen can turn into a sentence.
-       - `photo` IS ABSENT. Its value in the form is the name of a file on somebody's
-         disc („vladan.jpg", which `fillEverythingExceptBirthDate` uploads), and the
-         route does not collect a picture at all (`NOT_COLLECTED_YET`). Spread instead of
-         written out, a stranger's file name would travel for nothing.
+       - ~~`photo` IS ABSENT, because its value in the form is the name of a file on
+         somebody's disc and the route does not collect a picture.~~ The field itself went
+         on 28.09.2026, so there is no longer a value to leave out; what this comparison
+         still says about it is that nothing put one back under another name.
        - `placeId` IS ABSENT. `theTown` takes the codebook's mark or a name with a
          country and refuses BOTH TOGETHER, so a mark sent beside the name would refuse
          every registration this portal makes.

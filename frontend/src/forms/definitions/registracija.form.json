@@ -209,16 +209,6 @@
       "policyBasis": "Izvršenje ugovora"
     },
     {
-      "name": "photo",
-      "type": "photo",
-      "labelKey": "registration.photo",
-      "required": true,
-      "row": 7,
-      "groupKey": "registration.group.profile",
-      "policyRow": "Profilna fotografija",
-      "policyBasis": "Izvršenje ugovora"
-    },
-    {
       "name": "bio",
       "type": "textarea",
       "labelKey": "profile.bio",

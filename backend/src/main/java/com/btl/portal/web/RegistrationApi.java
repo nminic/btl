@@ -110,31 +110,25 @@ import java.util.regex.Pattern;
  * <p><b>WHAT IS DELIBERATELY NOT COLLECTED, EACH ONE A BOUNDARY.</b>
  *
  * <ul>
- * <li><b>The photograph.</b> {@link WhatRegistrationAsksFor#OF_EVERYBODY} asks for it
- *     and the owner made it compulsory on 11.08.2026, so it is not optional and this
- *     route does not pretend it is: it is named in {@link #NOT_COLLECTED_YET}, which
- *     is what keeps the omission visible. A picture is a file (ADL A36 O8, A12a), and
- *     what is missing under {@code backend/src/main} is the half that RECEIVES one: no
- *     signature under {@code backend/src/main/java} carries a {@code MultipartFile} or a
- *     {@code @RequestPart}, so nothing here is written to be handed a file. <b>That is
- *     read off the signatures, and it is deliberately NOT widened into „a file could not
- *     arrive", which would be a claim about every road into a handler and is not what was
- *     counted here.</b> Three routes do take the {@code HttpServletRequest} itself and read
- *     the whole body - {@link InboxWriteApi}, {@link MeWriteApi} and
- *     {@link NotificationWriteApi} - and what keeps a {@code multipart/form-data} body
- *     from reaching them is the {@code consumes = MediaType.APPLICATION_JSON_VALUE} each
- *     of those three declares, which {@link InboxWriteApi} measured and wrote up beside
- *     its own mapping („{@code consumes} goes on refusing before anything is dispatched").
- *     <b>The three things this
- *     sentence used to deny alongside it are no longer missing, so it is reversed here
- *     rather than left for a reader to trip over.</b> {@link PhotoApi} finds a row by
- *     {@code photo.digest} and opens its file under {@code String.valueOf} of that row's
- *     key (20.09.2026, ADL A60), and {@link TeamApi} answers a digest beside the three
- *     fractions of a crop (21.09.2026): the digest, the crop and the name the database
- *     issues are all read under {@code backend/src/main} today.
- *     {@code competitor.photo_id} is nullable, so the row is
- *     legitimate without one, and a member without a picture is a state the portal has
- *     to be able to draw in any case.
+ * <li><b>The photograph, WHICH THIS ROUTE NO LONGER OMITS BUT IS NO LONGER ASKED.</b> It
+ *     was compulsory here from 11.08.2026 and named in a constant of its own, because a
+ *     field the form asked for and this route dropped had to be visibly dropped rather
+ *     than silently. The owner ended that on 28.09.2026: „Profilna sekcija se sa slikom i
+ *     svojim recima izbacuje iz registracione forme - to ce clan popunjavati naknadno kad
+ *     bude odobren." The form stopped asking, {@link WhatRegistrationAsksFor#OF_EVERYBODY}
+ *     stopped requiring, and the constant went with them - a name excusing a field nobody
+ *     asks for excuses nothing, which is the rule that constant was written under in the
+ *     first place.
+ *     <p><b>What did NOT change, said out loud because the two are easy to run
+ *     together.</b> A picture still goes before a moderator, is still cropped by the same
+ *     rule, and still reaches the portal by the road it always did:
+ *     {@code POST /api/me/photo}, which a signed in member walks once his account is
+ *     live. Nothing about approval moved; only the moment the picture is given.
+ *     <p><b>And a member is therefore approved before any picture exists.</b>
+ *     {@code competitor.photo_id} is nullable and always has been, so the row is
+ *     legitimate without one, and a member without a picture is a state the portal has to
+ *     be able to draw in any case - which is what makes this a change of order rather
+ *     than a new state.
  * <li><b>The day registration opens, which nothing enforces any more, on either side
  *     of the wire.</b> The owner moved that window on 14.09.2026, on three offered
  *     outcomes, and his decision in his own words is „Prozor se pomera: portal je
@@ -251,19 +245,6 @@ class RegistrationApi {
 
 	/** One address is one account (V6), and the owner decided this is said out loud. */
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
-
-	/**
-	 * WHAT THE FORM ASKS FOR AND THIS ROUTE DOES NOT COLLECT, named rather than silent.
-	 *
-	 * <p>A field left out on purpose and a field that went missing look exactly alike
-	 * from inside a handler, which is the reason this is a constant and not a sentence.
-	 * {@code RegistrationApiTest} asks {@link WhatRegistrationAsksFor} what is required
-	 * at both ages and demands that every name be either collected here or on this list,
-	 * and that every name on this list really is one the form asks for - so a field
-	 * added to the registration tomorrow fails the build until somebody decides, and a
-	 * name that stops being asked for cannot sit here excusing nothing.
-	 */
-	static final Set<String> NOT_COLLECTED_YET = Set.of("photo");
 
 	private final JdbcClient db;
 
@@ -419,10 +400,13 @@ class RegistrationApi {
 		Set<String> asked = WhatRegistrationAsksFor.from(born, today);
 		Map<String, String> filledIn = whatHeFilledIn(typed, town, address);
 
+		/* EVERY NAME, WITH NOTHING EXCUSED. A second half of this condition used to let
+		   `NOT_COLLECTED_YET` past, and it went out with that constant on 28.09.2026:
+		   once the form stopped asking for a picture, the set was empty, the test was
+		   constantly true, and a branch that cannot be taken is a branch the coverage
+		   floor fails on rather than one that quietly sits there. */
 		for (String field : asked) {
-			if (!NOT_COLLECTED_YET.contains(field)
-					&& WhatAFieldMeans.isNothing(filledIn.get(field))) {
-
+			if (WhatAFieldMeans.isNothing(filledIn.get(field))) {
 				return no(THE_FORM_IS_NOT_COMPLETE);
 			}
 		}
