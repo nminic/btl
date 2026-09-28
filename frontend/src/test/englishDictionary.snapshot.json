@@ -371,6 +371,15 @@
   "registration": {
     "title": "Registration",
     "submit": "Send the application",
+    "group": {
+      "whoYouAre": "Who you are",
+      "theWayIn": "Your account",
+      "contact": "Contact and address",
+      "forTheRegister": "For the register of members",
+      "competing": "Competing",
+      "profile": "Profile",
+      "consents": "Consents"
+    },
     "firstName": "First name",
     "lastName": "Last name",
     "email": "Email address",

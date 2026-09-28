@@ -371,6 +371,15 @@
   "registration": {
     "title": "Registracija",
     "submit": "Pošalji prijavu",
+    "group": {
+      "whoYouAre": "Ko ste",
+      "theWayIn": "Pristup nalogu",
+      "contact": "Kontakt i adresa",
+      "forTheRegister": "Za evidenciju članova",
+      "competing": "Takmičenje",
+      "profile": "Profil",
+      "consents": "Saglasnosti"
+    },
     "firstName": "Ime",
     "lastName": "Prezime",
     "email": "Adresa elektronske pošte",

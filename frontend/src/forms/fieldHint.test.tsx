@@ -3,6 +3,8 @@ import { fireEvent, render } from '@testing-library/react'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { registracija, FORMS } from './definitions'
+import type { FieldDef } from './types'
+import sr from '../i18n/sr.json'
 import { bare, inside, sources, WHOLE_PORTAL } from '../test/sources'
 
 /** Every form the portal defines, as its own registry lists them. */
@@ -900,87 +902,201 @@ describe('an answer chosen from buttons', () => {
   })
 })
 
-describe('a form laid out in rows', () => {
-  it('puts the fields of one row together, and leaves the rest on their own', () => {
-    /* Owner, 11.08.2026: on a wide screen the registration form is rows, and on
-       a telephone every field keeps a line of its own. What is held here is the
-       grouping; the width at which it stops is CSS and is held by
-       styles/scale.test.ts. */
+/**
+ * The words a key stands for, out of the dictionary the form is drawn in.
+ *
+ * Read rather than written out here: nineteen labels copied into this file would
+ * be a second home for every one of them, and the day one is reworded the guard
+ * would be holding the old one.
+ */
+function words(key: string): string {
+  /* Walked rather than asserted into shape: the portal refuses type assertions
+     (`styles/noAssertions`), and a dictionary read with `as` would go on saying
+     it holds a string after the day it holds an object. */
+  const holds = (one: unknown): one is Record<string, unknown> =>
+    typeof one === 'object' && one !== null
+
+  let said: unknown = sr
+
+  for (const step of key.split('.')) {
+    said = holds(said) ? said[step] : undefined
+  }
+
+  return String(must(said, `the dictionary says nothing for ${key}`))
+}
+
+/**
+ * How a field is found on screen by the words the definition gives it.
+ *
+ * Cut at the first `{` because one label carries a link inside its words, and
+ * anchored at the front with what may follow it, because a field that need not
+ * be answered is drawn „Telefon (neobavezno)" and because „Ime" would otherwise
+ * find „Ime oca" as well.
+ */
+function labelFound(labelKey: string): RegExp {
+  const said = words(labelKey)
+  const head = said.split('{')[0] ?? ''
+  const asWords = head.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+
+  /* A label that carries a link inside its words goes on after the part that is
+     written down, so what is written down is a prefix and nothing may be asked
+     about what follows it. */
+  return said.includes('{') ? new RegExp(`^${asWords}`) : new RegExp(`^${asWords}(\\s*\\(|$)`)
+}
+
+/**
+ * The rows the DEFINITION asks for, counted the way the renderer counts them.
+ *
+ * A run of neighbours carrying one number, which is what a row is
+ * (`FormRenderer.rowsOf`), and a town counted as two columns because it carries
+ * the country beside it (`columnsOf`). Derived rather than written out, so a
+ * field moved from one row to another is a failure here rather than a table in
+ * this file quietly describing a form that no longer exists.
+ */
+function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number }[] {
+  const rows: FieldDef[][] = []
+
+  for (const field of registracija.fields) {
+    const last = rows.at(-1)
+
+    if (last !== undefined && last[0]?.row !== undefined && last[0].row === field.row) {
+      last.push(field)
+    } else {
+      rows.push([field])
+    }
+  }
+
+  return rows
+    .filter((fields) => fields[0]?.row !== undefined)
+    .map((fields) => ({
+      fields,
+      columns: fields.reduce((so, one) => so + (one.type === 'place' ? 2 : 1), 0),
+    }))
+}
+
+describe('a form laid out in groups', () => {
+  /* Owner, 28.09.2026: „organizuj je bolje, možda ponovo jedno ispod drugog". He
+     was offered four ways and took the one that keeps the thirds of 12.08.2026
+     (`PDL.md`: „Podeli je racionalno na trećine horizontalno") and names the
+     parts instead of undoing them.
+
+     What is held here is the JOIN, and it is held for EVERY field rather than
+     for a few. A case that says the group „Ko ste" exists, and another that says
+     „Broj ličnog dokumenta" is drawn, both pass while the document number sits
+     under „Ko ste": between them nothing asks WHICH group a field is in. So the
+     pairs are read out of the definition and every one of them is looked for on
+     screen, and moving a single field from one group to another fails here. */
+  it('draws every field inside the group its own definition names', async () => {
+    const user = setupUser()
+
     renderForm()
 
-    const first = must(
-      screen.getByLabelText(/^Ime$/).closest<HTMLElement>('.form__row'),
-      'the row the first name stands in',
-    )
+    const asked = registracija.fields
+    const onlyAChildIsAsked = asked.filter((one) => one.showWhenYoungerThan !== undefined)
 
-    /* Six rows of thirds (owner, 12.08.2026: „Podeli je racionalno na trećine
-       horizontalno"): who you are; how you are classed; the way in; where you
-       live; what the register of members asks for; and the picture with the
-       words beside it. It was five until 20.08.2026, when the father's name, the
-       number of an identity document and an optional telephone joined the form.
-       The confirmation and the parent's signature stand at the foot, outside the
-       rows, because they need the whole width and because opening the signature
-       must not shuffle the three columns above it. */
-    expect(document.querySelectorAll('.form__row')).toHaveLength(6)
-    expect(within(first).getByLabelText(/^Ime$/)).toBeInTheDocument()
-    expect(within(first).getByLabelText(/^Prezime$/)).toBeInTheDocument()
-    expect(within(first).getByLabelText(/^Ime oca$/)).toBeInTheDocument()
-    /* And what a row of three is, said to the stylesheet rather than written
-       into it: the renderer counts the columns. */
-    expect(first).toHaveStyle({ '--columns': '3' })
+    expect(asked.length, 'the registration form asks for nothing').toBeGreaterThan(0)
+    expect(onlyAChildIsAsked.length, 'no field of the form waits on a date of birth').toBeGreaterThan(0)
 
-    /* The row that classes a member: when they were born, which they are, and
-       which category they run in. */
-    const second = must(
-      screen.getByLabelText(/Datum rođenja/).closest<HTMLElement>('.form__row'),
-      'the row the date of birth stands in',
-    )
+    /* Twice, because a field can be in its group in one state of the form and
+       nowhere in the other. First as the form opens, when the two a guardian
+       answers are not drawn at all. */
+    for (const field of asked.filter((one) => one.showWhenYoungerThan === undefined)) {
+      const named = must(field.groupKey, `${field.name} is asked for and names no group`)
 
-    expect(within(second).getByLabelText(/^Pol$/)).toBeInTheDocument()
-    expect(second).toHaveStyle({ '--columns': '3' })
+      expect(
+        within(screen.getByRole('group', { name: words(named) }))
+          .queryAllByLabelText(labelFound(field.labelKey)).length,
+        `${field.name} is not drawn inside „${words(named)}"`,
+      ).toBeGreaterThan(0)
+    }
 
-    /* And the row the register of members asks for, beside the size of a shirt:
-       three fields, one of them the only optional field of the five rows above
-       the foot. */
-    const fifthRow = must(
-      screen.getByLabelText(/^Broj ličnog dokumenta$/).closest<HTMLElement>('.form__row'),
-      'the row the number of the document stands in',
-    )
+    for (const field of onlyAChildIsAsked) {
+      expect(
+        screen.queryAllByLabelText(labelFound(field.labelKey)).length,
+        `${field.name} is drawn before anybody said how old the competitor is`,
+      ).toBe(0)
+    }
 
-    expect(within(fifthRow).getByLabelText(/^Telefon \(neobavezno\)$/)).toBeInTheDocument()
-    expect(within(fifthRow).getByLabelText(/Veličina majice/)).toBeInTheDocument()
-    expect(fifthRow).toHaveStyle({ '--columns': '3' })
+    /* And then with a date that makes the competitor a child, when all nineteen
+       are drawn. The guardian's two are the ones a reordering is likeliest to
+       lose, because they are the only two that are not there to be seen. */
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
 
-    /* The row of the address is two fields and three columns, because the town
-       carries the country beside it. */
-    const third = must(
-      screen.getByLabelText(/^Adresa za slanje$/).closest<HTMLElement>('.form__row'),
-      'the row the address stands in',
-    )
+    for (const field of asked) {
+      const named = must(field.groupKey, `${field.name} is asked for and names no group`)
 
-    expect(third).toHaveStyle({ '--columns': '3' })
+      expect(
+        within(screen.getByRole('group', { name: words(named) }))
+          .queryAllByLabelText(labelFound(field.labelKey)).length,
+        `${field.name} is not drawn inside „${words(named)}" once a guardian is asked for`,
+      ).toBeGreaterThan(0)
+    }
+  })
 
-    /* The fifth row is the picture and the words beside it, in that order
-       (owner, 11.08.2026: „ide sa leve strane polje za upload... a onda boks za
-       svojim rečima"). */
-    const fifth = must(
-      screen.getByLabelText(/Profilna slika/).closest<HTMLElement>('.form__row'),
-      'the row the picture stands in',
-    )
+  it('keeps the rows of the definition inside those groups, and counts their columns', async () => {
+    /* The thirds are not undone by the groups; they are only freed from having to
+       be filled to three ACROSS a boundary. That is the whole of what the owner
+       bought: before this, the three fields no other row claimed had to share one,
+       and the number of an identity document stood beside the size of a shirt.
 
-    expect(fifth).toHaveStyle({ '--columns': '2' })
+       Named by the field a row begins with rather than by its position, because a
+       guard that reads „the fifth row" goes on passing after a reordering and
+       measures something else. */
+    const user = setupUser()
 
-    /* And in that order: the picture first, the words after it. Held on the
-       boxes themselves rather than on the labels, because the label of a field
-       carries the letter of its explanation as well. */
-    const inFifth = fifth.querySelectorAll<HTMLElement>('.field')
+    renderForm()
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
 
-    expect(within(must(inFifth[0], 'the first field of the row')).getByLabelText(/Profilna slika/))
-      .toBeInTheDocument()
-    expect(within(must(inFifth[1], 'the second field of the row')).getByLabelText(/Svojim rečima/))
-      .toBeInTheDocument()
+    const wanted = rowsTheDefinitionAsksFor()
 
-    /* The confirmation stands alone, as every field on every other form does. */
-    expect(screen.getByLabelText(/zdravstveno sposoban/).closest('.form__row')).toBeNull()
+    expect(wanted.length, 'the definition puts no field on a row').toBeGreaterThan(0)
+    expect(document.querySelectorAll('.form__row')).toHaveLength(wanted.length)
+
+    for (const { fields, columns } of wanted) {
+      const first = must(fields[0], 'a row of the definition holds no field')
+      const drawn = must(
+        screen.getByLabelText(labelFound(first.labelKey)).closest<HTMLElement>('.form__row'),
+        `the row ${first.name} stands in`,
+      )
+
+      expect(drawn).toHaveStyle({ '--columns': String(columns) })
+
+      const inRow = [...drawn.querySelectorAll<HTMLElement>('.field')]
+
+      /* Nothing else on it: a row that GAINED a field passes every line that only
+         asks that what belongs is there. */
+      expect(
+        inRow.length,
+        `the row ${first.name} stands in carries something the definition does not put there`,
+      ).toBe(fields.length)
+
+      /* And in the order the definition gives them, held on the boxes rather than
+         on the labels, because the label of a field carries the letter of its
+         explanation as well. Owner, 11.08.2026, about the one row where the order
+         was his: „ide sa leve strane polje za upload... a onda boks za svojim
+         rečima". Two fields swapped inside one row keep the count and the columns,
+         so without this nothing would say a word about it. */
+      fields.forEach((field, at) => {
+        expect(
+          within(must(inRow[at], `the field at ${at} of the row ${first.name} stands in`))
+            .queryAllByLabelText(labelFound(field.labelKey)).length,
+          `${field.name} is not the field at ${at} of its row`,
+        ).toBeGreaterThan(0)
+      })
+    }
+  })
+
+  it('leaves the fields on no row standing on their own, as every other form does', async () => {
+    const user = setupUser()
+
+    renderForm()
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
+
+    for (const field of registracija.fields.filter((one) => one.row === undefined)) {
+      expect(
+        screen.getByLabelText(labelFound(field.labelKey)).closest('.form__row'),
+        `${field.name} is on a row, and the definition puts it on none`,
+      ).toBeNull()
+    }
   })
 })
