@@ -80,20 +80,33 @@ const NOT_A_REASON = ['results', 'Rezultati']
  * which is exactly how a reason becomes invisible to a guard that looks in one place.
  * </ol>
  */
-function everyReasonTheRouteCanName(): string[] {
-  const mine = java('ResultWriteApi.java')
-  const ours = declaredIn('ResultWriteApi.java')
+/** The four this class declares for itself, less the two that are not refusals at all. */
+function declaredHere(): string[] {
+  return [...declaredIn('ResultWriteApi.java').values()].filter(
+    (one) => !NOT_A_REASON.includes(one),
+  )
+}
+
+/** The town's five, whose NAME is read off this class and whose VALUE off the class that
+ *  declares it, so a rename on either side fails here. */
+function borrowedForTheTown(): string[] {
   const theirs = declaredIn('EventWriteApi.java')
 
-  const declared = [...ours.values()].filter((one) => !NOT_A_REASON.includes(one))
-  const borrowed = [...new Set([...mine.matchAll(/EventWriteApi\.([A-Z_][A-Z_0-9]*)/g)])].map(
-    (one) => theirs.get(one[1] ?? '') ?? `<${one[1] ?? ''} is not declared by EventWriteApi>`,
-  )
-  const proof = [...mine.matchAll(/words\.put\(Outcome\.[A-Z_]+,\s*"([^"]+)"\)/g)].map(
-    (one) => one[1] ?? '',
-  )
+  return [
+    ...new Set([...java('ResultWriteApi.java').matchAll(/EventWriteApi\.([A-Z_][A-Z_0-9]*)/g)]),
+  ].map((one) => theirs.get(one[1] ?? '') ?? `<${one[1] ?? ''} is not declared by EventWriteApi>`)
+}
 
-  return [...new Set([...declared, ...borrowed, ...proof])]
+/** The three `WHY_NOT` gives the outcomes of `ProofThatTheRunHappened`. Literals in a map
+ *  rather than constants, so no reader of declarations can see them. */
+function forTheProof(): string[] {
+  return [
+    ...java('ResultWriteApi.java').matchAll(/words\.put\(Outcome\.[A-Z_]+,\s*"([^"]+)"\)/g),
+  ].map((one) => one[1] ?? '')
+}
+
+function everyReasonTheRouteCanName(): string[] {
+  return [...new Set([...declaredHere(), ...borrowedForTheTown(), ...forTheProof()])]
 }
 
 describe('every reason the result routes can name', () => {
@@ -115,7 +128,34 @@ describe('every reason the result routes can name', () => {
       [...ours.values()].filter((one) => !NOT_A_REASON.includes(one)),
       'the declared refusals of ResultWriteApi',
     ).toHaveLength(4)
+    expect(declaredHere(), 'the declared refusals').toHaveLength(4)
+    expect(borrowedForTheTown(), 'the town reasons borrowed from EventWriteApi').toHaveLength(5)
+    expect(forTheProof(), 'the reasons the proof rule names').toHaveLength(3)
     expect(everyReasonTheRouteCanName(), 'every reason across the three readers').toHaveLength(12)
+  })
+
+  /**
+   * AND THE UNION IS REALLY THE THREE READERS, which is the one thing the two cases below
+   * cannot ask on their own.
+   *
+   * <p>Measured 28.09.2026 by a mutation: with the union rewritten to answer
+   * `Object.keys(WHEN_A_RESULT_IS_WRITTEN)`, both directions become „the map equals the map"
+   * and pass, and so does every count above, because the map really does hold twelve. A
+   * guard that reads as though it works, exactly the shape `CLAUDE.md` names. So the union
+   * is compared against the three readers here, where the map has no part in it.
+   */
+  it('is the three readers and nothing of the screen’s own', () => {
+    expect(new Set(everyReasonTheRouteCanName())).toEqual(
+      new Set([...declaredHere(), ...borrowedForTheTown(), ...forTheProof()]),
+    )
+    /* And it is not the map wearing the readers' name: every one of the twelve has to be
+       traceable to one of the three, which is false the moment the union answers the map. */
+    for (const reason of everyReasonTheRouteCanName()) {
+      expect(
+        [...declaredHere(), ...borrowedForTheTown(), ...forTheProof()],
+        `${reason} is in the union but in none of the three readers`,
+      ).toContain(reason)
+    }
   })
 
   /**
@@ -385,17 +425,47 @@ describe('what each act leaves stale', () => {
    * <p>Measured for the deletion because it is the one with something to lose: it is the only
    * act that drops `results`.
    */
-  it('drops nothing where the server refused', async () => {
+  it.each([
+    [
+      'a run was refused',
+      async () =>
+        theRunWasSentIn({
+          raceId: 7,
+          distanceKm: 21.1,
+          ascentM: 0,
+          descentM: 0,
+          seconds: 5400,
+          link: 'https://x.example/1',
+          comment: '',
+        }),
+    ],
+    [
+      'a correction was refused',
+      async () =>
+        theCorrectionWasSentIn(41, {
+          distanceKm: 21.1,
+          ascentM: 0,
+          descentM: 0,
+          seconds: 5100,
+          link: 'https://x.example/1',
+          comment: '',
+        }),
+    ],
+    ['a deletion was refused', async () => theResultWasTakenBack(41)],
+  ])('drops nothing where %s', async (_what, act) => {
     const { stop } = serverThat(() => refused('theFormIsNotComplete'))
 
     try {
-      const answer = await theResultWasTakenBack(41)
-
-      expect(answer).toEqual({ got: 'refused', reason: 'theFormIsNotComplete' })
+      expect(await act()).toEqual({ got: 'refused', reason: 'theFormIsNotComplete' })
     } finally {
       stop()
     }
 
+    /* ALL THREE AND NOT THE DELETION ALONE. Measured 28.09.2026: with only the deletion
+       here, dropping the caches on the ASKING in `theRunWasSentIn` survived every case in
+       the suite - the two acts that leave `results` alone have nothing else that would
+       notice, and the inbox and the queue are re-read cheaply enough that no screen
+       complains. */
     expect(stillHeld()).toEqual(['results', 'verification', 'inbox'])
   })
 })

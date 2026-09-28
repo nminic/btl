@@ -285,9 +285,22 @@ describe('a run entered away from the calendar', () => {
 describe('a run reported from the event it was run at', () => {
   /** An event with a race that has been run, read off the files rather than named. */
   const reportable = () => {
+    /* NEVER THE FIRST RACE OF THE FILE, and that is a fault this case had until a mutation
+       found it on 28.09.2026: `allRaces.find(...)` answered race 1, which is also
+       `races[0]`, so swapping the one the screen sends for `races[0]` changed nothing and
+       the case went on passing over a screen that filed every run against one race.
+
+       The event has to have been run as well, because the screen refuses a form on an event
+       that has not (`NotRunYet`), and that is a second thing the calendar decides rather
+       than this case. */
     const race = must(
-      allRaces.find((one) => one.date <= '2026-08-23'),
-      'a race that has been run',
+      allRaces.find(
+        (one) =>
+          one.id !== allRaces[0]?.id &&
+          one.date <= '2026-08-23' &&
+          (allEvents.find((held) => held.id === one.eventId)?.date ?? '9999') <= '2026-08-23',
+      ),
+      'a race that has been run and is not the first of the file',
     )
 
     return {
@@ -565,12 +578,31 @@ describe('a submission that is still waiting', () => {
 describe('a counted result the member takes back', () => {
   const COUNTED = '/sr/moji-rezultati'
 
-  /** The first row of the counted table, and the control that deletes it. */
-  const firstRow = async () => {
-    const table = within(await screen.findByRole('table', { name: 'Uračunato' }))
+  /**
+   * A ROW OF THE COUNTED TABLE THAT IS NEVER THE FIRST ONE.
+   *
+   * <p>Measured 28.09.2026: with the first row, swapping the result the screen deletes for
+   * `counted[0]` changes nothing, so the case passed over a screen that would delete the
+   * wrong result for every row a member pressed. The second row is the cheapest postavka in
+   * which the two differ.
+   */
+  const secondRow = async () => {
+    const table = within(await screen.findByRole('table', { name: 'Uračunato' }, SOON))
+    const rows = table.getAllByRole('row').slice(1)
 
-    return within(must(table.getAllByRole('row')[1], 'the first counted result'))
+    expect(rows.length, 'one row cannot tell a row from the first row').toBeGreaterThan(1)
+
+    return within(must(rows[1], 'the second counted result'))
   }
+
+  /** Which result that row is, read off the address its own „Izmeni rezultat" link carries -
+   *  the same trick the correction cases use, and for the same reason: nothing else on the
+   *  row names the id, and taking it from the file would be a second source. */
+  const resultOf = (row: ReturnType<typeof within>) =>
+    must(
+      /ispravka=(\d+)/.exec(row.getByRole('link', { name: /^Izmeni rezultat/ }).getAttribute('href') ?? '')?.[1],
+      'the row does not name a result',
+    )
 
   const howManyCounted = async () =>
     within(await screen.findByRole('table', { name: 'Uračunato' })).getAllByRole('row').length - 1
@@ -584,7 +616,10 @@ describe('a counted result the member takes back', () => {
       renderAt(COUNTED, 'competitor', '000001', undefined, null)
 
       const before = await howManyCounted()
-      const row = await firstRow()
+      const row = await secondRow()
+      /* WHICH result the press is about, read off the row itself. The address the screen
+         then asks has to name THAT one and not simply some result of this member's. */
+      const pressed = resultOf(row)
 
       await user.click(row.getByRole('button', { name: /^Obriši: / }))
       await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
@@ -596,7 +631,7 @@ describe('a counted result the member takes back', () => {
       const sent = must(writes()[0], 'the request')
 
       expect(sent.init?.method).toBe('DELETE')
-      expect(sent.path).toMatch(/^\/api\/results\/\d+$/)
+      expect(sent.path).toBe(`/api/results/${pressed}`)
 
       await waitFor(async () => {
         expect(await howManyCounted()).toBe(before - 1)
@@ -614,7 +649,7 @@ describe('a counted result the member takes back', () => {
       renderAt(COUNTED, 'competitor', '000001', undefined, null)
 
       const before = await howManyCounted()
-      const row = await firstRow()
+      const row = await secondRow()
 
       await user.click(row.getByRole('button', { name: /^Obriši: / }))
       await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
