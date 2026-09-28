@@ -5,7 +5,39 @@ import { setupUser } from '../../test/user'
 import { Decided, Inbox } from '../../test/decided'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { QUEUE } from './queues'
+import { useSession } from '../../session/useSession'
+import { useEffect } from 'react'
 import sr from '../../i18n/sr.json'
+
+/**
+ * ONE MESSAGE THIS READER REALLY HAS, so that „the refusal wrote nothing" is read off a list
+ * that is drawn and not off one that is empty whatever happens.
+ *
+ * <p><b>That floor used to arrive from the bundle and no longer does.</b>
+ * `data/seedMessages.ts` put two broadcasts into every session until 28.09.2026, which is what
+ * the case below meant by „not by an empty list - the seed already writes 000010 other mail";
+ * PDL 34 („NECU MOCK PODATKE NIGDE", owner) took them out, and an absence asserted over an
+ * empty list is an assertion that cannot fail.
+ *
+ * <p>Written once, on mount, through `notify` - the road the screen under test would itself
+ * take - and addressed to this reader, so it is in `inbox` for the same reason a real one
+ * would be.
+ */
+function OneMessageThatIsNotADecision() {
+  const { notify } = useSession()
+
+  useEffect(() => {
+    notify({
+      from: 'Balkanska trkačka liga',
+      to: '000010',
+      subject: 'Članarina je evidentirana',
+      body: 'Uplata je zabeležena.',
+      date: '2026-09-20',
+    })
+  }, [notify])
+
+  return null
+}
 
 /**
  * THE MODERATOR'S DECISION REACHES THE SERVER, AND THE SCREEN CHANGES ONLY WHEN IT DID.
@@ -378,6 +410,7 @@ describe('a decision on a queue served by the pending screen', () => {
         <>
           <Decided />
           <Inbox />
+          <OneMessageThatIsNotADecision />
         </>,
       )
 
@@ -399,17 +432,21 @@ describe('a decision on a queue served by the pending screen', () => {
       /* Signed in as the member `ver-bio-1` itself names (`memberNumber` "000010"
          in `public/mock/verification.json`), so a message that reached them
          would show up here. Matched by the heading a bio refusal is sent under
-         and not by an empty list - the seed already writes 000010 other mail -
-         the same way `adminFlows.test.tsx` reads this list for the payments
-         queue. `decisions` above says nothing was RECORDED; this says the ONE
-         message a recorded refusal would carry was not WRITTEN either - the
-         mistake this guards against is `handBack` notifying on the branch that
-         returns early instead of the one that settles. */
-      expect(
-        within(screen.getByRole('list', { name: 'session inbox' })).queryByText(
-          new RegExp(sr.verification.bioReturned),
-        ),
-      ).toBeNull()
+         and not by an empty list, the same way `adminFlows.test.tsx` reads this
+         list for the payments queue. `decisions` above says nothing was RECORDED;
+         this says the ONE message a recorded refusal would carry was not WRITTEN
+         either - the mistake this guards against is `handBack` notifying on the
+         branch that returns early instead of the one that settles.
+
+         **The floor under „not by an empty list" is asserted first, and since
+         28.09.2026 it is one this case puts there** (`OneMessageThatIsNotADecision`
+         above): the bundle used to seed two broadcasts into every session, and PDL
+         34 took them out, so without a line of its own this absence would hold over
+         a list that is empty whatever the screen does. */
+      const inbox = within(screen.getByRole('list', { name: 'session inbox' }))
+
+      expect(inbox.getByText(/Članarina je evidentirana/)).toBeVisible()
+      expect(inbox.queryByText(new RegExp(sr.verification.bioReturned))).toBeNull()
     } finally {
       server.stop()
     }

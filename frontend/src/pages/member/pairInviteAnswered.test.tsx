@@ -361,11 +361,13 @@ describe('answering a served invitation into a racing pair', () => {
       await openTheQuestion()
 
       /* Read off the envelope before the answer, so that what is asserted after it is the SAME
-         value and not a number typed here. Typed, it would also have to know how many of
-         `data/seedMessages.ts`'s broadcasts are unread, which is another file's business. */
+         value and not a number typed here. Checked against `UNREAD` ALONE, not `UNREAD + 1`:
+         until PDL 34 (28.09.2026, „NECU MOCK PODATKE NIGDE", owner) the bundle seeded a
+         broadcast into every session and this reading had to answer for it too. `messages`
+         starts empty now, so the four rows this file wrote are the whole count. */
       const counting = (await theEnvelope()).getAttribute('aria-label')
 
-      expect(counting).toContain(String(UNREAD + 1))
+      expect(counting).toContain(String(UNREAD))
 
       const before = asked().filter((one) => one === '/api/inbox').length
 

@@ -172,7 +172,7 @@ describe('seoKeyFor', () => {
   it('fills the value in an address that carries one', () => {
     expect(seoKeyFor('takmicar/000001')).toBe('competitor')
     expect(seoKeyFor('kalendar/beogradski-maraton-2027-04-17')).toBe('event')
-    expect(seoKeyFor('poruke/msg-1')).toBe('message')
+    expect(seoKeyFor('poruke/41')).toBe('message')
     expect(seoKeyFor('administracija/verifikacija/rezultati')).toBe('verificationQueue')
   })
 

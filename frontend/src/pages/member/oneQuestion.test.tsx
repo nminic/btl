@@ -159,7 +159,9 @@ const WALKED: { screen: string; at: string }[] = [
   { screen: 'pages/event/ReportResult.tsx', at: '/sr/kalendar/resolution-run-2027/prijava' },
   { screen: 'pages/member/EditTeam.tsx', at: '/sr/tim/dunavski-trkaci/izmena' },
   { screen: 'pages/member/Membership.tsx', at: '/sr/moja-clanarina' },
-  { screen: 'pages/member/MessageDetail.tsx', at: '/sr/poruke/msg-1' },
+  /* A message the SERVER kept and not one the bundle seeded: PDL 34 (28.09.2026) took
+     `data/seedMessages.ts` out, so `41` is the first row of `test/mock/inbox.json`. */
+  { screen: 'pages/member/MessageDetail.tsx', at: '/sr/poruke/41' },
   { screen: 'pages/member/Messages.tsx', at: '/sr/poruke' },
   { screen: 'pages/member/MyProfile.tsx', at: '/sr/moj-profil' },
   { screen: 'pages/member/MyResults.tsx', at: '/sr/moji-rezultati' },
