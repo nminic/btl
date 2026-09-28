@@ -783,6 +783,33 @@ export type StaticPage = {
    *  (`PageApi.Page`): a list whose rows carry their own address. */
   slug: string
   title: string
+  /**
+   * THE LANGUAGE THE WORDS OF THIS PAGE ARE REALLY IN, which is not always the language they
+   * were asked for.
+   *
+   * <p>A page answers in the language asked for only when its title AND every one of its
+   * blocks have been written in it; otherwise the whole page answers in Serbian
+   * (`PageApi.pagesIn`, „whole or nothing" - „Eighteen articles of the rulebook in English and
+   * the nineteenth in Serbian is not a contract anybody could rely on"). So this field is the
+   * answer to „did the translation I asked for exist", per page, and the server works it out
+   * rather than leaving it to be guessed.
+   *
+   * <p><b>Read for one thing only: the `lang` attribute of the element the words are drawn
+   * in.</b> That is WCAG 2.2 AA 3.1.2 and it is the reason `i18n/config.ts` keeps a table of
+   * which address is written in which language at all - „`lang="en"` over Serbian text makes a
+   * screen reader read it with English phonetics, which is unintelligible". The document's own
+   * `lang` follows the DICTIONARY (`app/useRouteChrome.ts`), which is the right answer for
+   * every other word on the screen and the wrong one for a page that fell back; this field is
+   * the finer and the true fact, and it is per page because the fallback is per page.
+   *
+   * <p><b>A tag and not a `Locale`, deliberately.</b> The server checks the SHAPE of what it
+   * was handed and nothing more (`PageApi.A_LANGUAGE_TAG`, two or three lower-case letters),
+   * on purpose: a closed list „would answer 400 for `cnr` on the day that tag is entered as
+   * data, which PDL P18 („kao unos a ne kao razvoj") is written to prevent". Narrowing it here
+   * would put that list back on this side of the wire, and nothing on the portal needs this
+   * value to be one of ours - it is put on an attribute and never compared to a locale.
+   */
+  language: string
   sections: PageSection[]
   /**
    * Slugs of other written pages shown above this page's own sections.

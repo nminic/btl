@@ -151,7 +151,7 @@ describe('the focus after a row is deleted', () => {
 
 describe('a deleted written page', () => {
   it('stops being served, rather than going off the list and answering as before', () => {
-    const page = { slug: 'pravilnik', title: 'Pravilnik', sections: [] }
+    const page = { slug: 'pravilnik', title: 'Pravilnik', language: 'sr', sections: [] }
 
     expect(livePage([page], 'pravilnik', [])).toBe(page)
     expect(livePage([page], 'pravilnik', ['pravilnik'])).toBeUndefined()

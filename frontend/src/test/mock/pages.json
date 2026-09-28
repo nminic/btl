@@ -2,6 +2,7 @@
   {
     "slug": "politika-privatnosti",
     "title": "Politika privatnosti",
+    "language": "sr",
     "sections": [
       {
         "heading": "1. Ko smo i koji propisi važe",
@@ -36,6 +37,7 @@
   {
     "slug": "uslovi-koriscenja",
     "title": "Uslovi korišćenja",
+    "language": "sr",
     "sections": [
       {
         "heading": "1. Ko smo i šta ovi uslovi uređuju",
@@ -90,6 +92,7 @@
   {
     "slug": "rec-predsednika",
     "title": "Reč predsednika",
+    "language": "sr",
     "sections": [
       {
         "heading": "Reč predsednika",
@@ -100,6 +103,7 @@
   {
     "slug": "pravilnik",
     "title": "Opšti pravilnik Balkanske trkačke lige za sezonu 2027",
+    "language": "sr",
     "sections": [
       {
         "heading": "1. Uvodne odredbe",
