@@ -639,14 +639,37 @@ describe('what the portal may not claim about a message the server keeps', () =>
        arrangement exists to refuse. The same sentence is what `ServedTeamInvite` itself draws for
        a key the server does not say he is waiting on, so its absence is also the assertion that
        the two reads were joined rather than merely both made. */
-    expect(screen.queryByText(sr.teams.inviteClosed)).toBeNull()
-    expect(screen.queryByText(sr.teams.inviteGone)).toBeNull()
+    /* **THE THREE SENTENCES ARE NAMED RATHER THAN SWEPT FOR, AND THAT IS A MEASUREMENT OF
+       28.09.2026 RATHER THAN A STEP BACK FROM THE DERIVED LIST.** A first draft asked the
+       derived list for „nothing about a PAIR is claimed", which reads as the stronger form and
+       is not: the two dictionaries SHARE their two button words. `teams.inviteAccept` and
+       `pair.accept` are both „Prihvati", `teams.inviteRefuse` and `pair.refuse` are both
+       „Odbij", so a sweep for the pair's words matches the team screen's own buttons, and the
+       substring it was narrowed to („par") misses the one sentence that matters - „Ovaj poziv
+       više nije otvoren." carries no such run. Measured: the derived list holds 33 sentences, 12
+       of them carry „par", and `pair.inviteClosed` is not one of the 12.
 
-    /* **THE FLOOR UNDER THE DERIVED LIST STAYS, and it is now the floor under a narrower claim.**
-       The list is the dictionary's own so that a sentence written tomorrow is already on it; what
-       it measures here is that the screen does not claim an answer for the PAIR half as well. */
+       So each of the three is here by name, with what it would mean:
+       - `teams.inviteClosed` is what `InvitationAnswer` draws for a key it cannot find in the
+         SESSION's list, and what `ServedTeamInvite` draws for one the server does not say he is
+         waiting on. Either way it is the sentence a member reads about a question
+         `team_invitation` still holds open;
+       - `teams.inviteGone` is that screen's other ending, a team that no longer exists;
+       - `pair.inviteClosed` is `PairInviteAnswer`'s, for a served key handed to the wrong twin
+         entirely. */
+    for (const wrong of [sr.teams.inviteClosed, sr.teams.inviteGone, sr.pair.inviteClosed]) {
+      expect(screen.queryByText(wrong), wrong).toBeNull()
+    }
+
+    /* **AND THE DERIVED LIST KEEPS A JOB IT CAN REALLY DO.** It is the dictionary's own, so a
+       sentence written tomorrow is already on it; what it says here is that the screen claims
+       SOMETHING an answer would say, which is the other half of „no wrong sentence is on it" -
+       both are true of a screen that drew nothing at all, and only one of them is true of this
+       one. „Odbij" is the word asked for because it is the only one true on both of the days
+       this suite is read as (`test/theDay.ts`: 2026-09-30, outside the window, and 2027-11-01,
+       inside it). */
     expect(WHAT_AN_ANSWER_WOULD_SAY.length).toBeGreaterThan(20)
-    expect(whatTheScreenClaimsAboutAnAnswer().filter((one) => one.includes('par'))).toEqual([])
+    expect(whatTheScreenClaimsAboutAnAnswer()).toContain(sr.teams.inviteRefuse)
   })
 
   it('does offer an answer to a question about a racing pair, and says nothing about one', async () => {
