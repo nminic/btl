@@ -34,12 +34,13 @@ import type { FormDef, FormValues } from '../../forms/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
-import { allFinished, rowsOf, type RaceOfRow, type RaceRow } from './raceRows'
+import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextSeason } from './nextSeason'
 import {
   WHEN_WRITING_AN_EVENT,
   WHEN_WRITING_A_RACE,
   raceUpsertFrom,
+  raceWrittenIn,
   upsertFrom,
   writtenIn,
 } from './eventWrites'
@@ -365,10 +366,32 @@ export function AdminEvents() {
           const copySource =
             copiedFrom === null ? undefined : all.find((one) => String(one.id) === copiedFrom)
           const copying = copySource !== undefined
+          /**
+           * WHAT THE COPY'S FORM OPENS HOLDING.
+           *
+           * <p><b>The day is turned into what a form speaks, and that is not a detail.</b>
+           * `copyOf` answers a RECORD (`event/copyOf.ts`), so its day is `gggg-mm-dd`;
+           * these values are handed to `FormRenderer` as `initial` and used raw, and a
+           * date control given an ISO day holds nothing at all. It never showed while the
+           * copy was a record: the editor was opened on it in `one` mode and `valuesFor`
+           * did the turning. There is no record now, so this is where it happens.
+           *
+           * <p><b>The town, the country and the kind ride along although no field asks for
+           * them</b>, which is what makes the narrowed form safe. A copy is not asked for
+           * the three (owner, 23.08.2026) and `FormRenderer` drops only values whose FIELD
+           * is on the form and hidden, so a value with no field at all reaches the save
+           * untouched. That is the whole reason `upsertFrom` can send a complete event out
+           * of a form that asks seven questions.
+           */
+          const asCopied = (source: BtlEvent): FormValues => {
+            const held = copyOf(source)
+
+            return { ...held, date: fieldDate(held.date) }
+          }
           const editing: Editing | null =
             chosen ??
             (copySource !== undefined
-              ? { mode: 'new', start: copyOf(copySource) }
+              ? { mode: 'new', start: asCopied(copySource) }
               : wanted === undefined
                 ? null
                 : { mode: 'one', record: wanted })
@@ -473,6 +496,20 @@ export function AdminEvents() {
                   if (answer.got !== 'done') {
                     return answer
                   }
+
+                  setWritten((before) => ({
+                    ...before,
+                    creations: {
+                      ...before.creations,
+                      [RACES.id]: (before.creations[RACES.id] ?? []).filter(
+                        (made) => made.id !== String(race.id),
+                      ),
+                    },
+                    deletions: {
+                      ...before.deletions,
+                      [RACES.id]: [...(before.deletions[RACES.id] ?? []), String(race.id)],
+                    },
+                  }))
                 }
               }
 
@@ -482,6 +519,7 @@ export function AdminEvents() {
                    the numbers this screen used to hand out came from `admin/raceIds.ts`,
                    which counts DOWN from nought, and the whole of that is gone - a
                    `bigserial` is what a race is addressed by now. */
+                const filed = storedRow(row, eventId)
                 const answer =
                   row.id === ''
                     ? await askTheServer('/api/races', raceUpsertFrom(row, eventId))
@@ -493,6 +531,42 @@ export function AdminEvents() {
 
                 if (answer.got !== 'done') {
                   return answer
+                }
+
+                /* WHAT WAS WRITTEN GOES INTO THE OVERLAY BESIDE THE EVENT, and leaving it
+                   out was measured rather than reasoned: the screen does not remount when
+                   the form closes - `setChosen(null)` is a render and not a new mount - so
+                   `useRaces()` still answers with the array fetched before any of this.
+                   Without these three the copy went back to a list that counted nought
+                   races under it and opened on an empty table, over races the route had
+                   just accepted.
+
+                   The identity is the one the DATABASE handed out, read off the answer
+                   (`eventWrites.ts`, `raceWrittenIn`). A number counted on this side is
+                   the fault the whole of this change closes, one table along. */
+                if (row.id === '') {
+                  const made = raceWrittenIn(answer.body)
+
+                  if (made !== null) {
+                    setWritten((before) => ({
+                      ...before,
+                      creations: {
+                        ...before.creations,
+                        [RACES.id]: [
+                          ...(before.creations[RACES.id] ?? []),
+                          { id: String(made), values: filed },
+                        ],
+                      },
+                    }))
+                  }
+                } else {
+                  setWritten((before) => ({
+                    ...before,
+                    edits: {
+                      ...before.edits,
+                      [recordKey(RACES.id, row.id)]: filed,
+                    },
+                  }))
                 }
               }
 
@@ -581,9 +655,36 @@ export function AdminEvents() {
                 }
               }
 
-              /* The address is the server's answer and not the rule's, so the confirmation
-                 shows what an administrator would really send somebody. */
-              const filed = { ...text, slug: made.slug }
+              /**
+               * THE ROW THIS VISIT WILL DRAW, WHICH IS WHAT WAS SENT AND NOT ONLY WHAT WAS
+               * ASKED.
+               *
+               * <p>The address comes off the server's answer rather than out of the rule, so
+               * the list shows what an administrator would really send somebody
+               * (`eventWrites.ts`, `writtenIn`).
+               *
+               * <p><b>And the three a copy is never asked for are written down beside it,
+               * which was measured rather than reasoned.</b> `EntityEditor` builds its text
+               * out of the fields the FORM carries, and a copy is drawn without its town, its
+               * country and its kind (owner, 23.08.2026, `copyOfEvent`). That was harmless
+               * while a save wrote over a record that already held all three; it is not
+               * harmless now that the save MAKES the record. Left out, the copy went into the
+               * list with no kind at all: the kind column printed the name of a dictionary
+               * key, and opening it again drew no table of races, because the screen asks the
+               * kind whether there are any (`kindOf`). They are read off what went on the
+               * wire, so the row and the request cannot disagree.
+               *
+               * <p>The form's own answers win wherever it asked, which is every other save on
+               * this screen.
+               */
+              const sent = upsertFrom(values)
+              const filed = {
+                city: sent.city,
+                country: sent.country,
+                kind: sent.kind,
+                ...text,
+                slug: made.slug,
+              }
 
               setWritten((before) =>
                 standing === null
@@ -789,7 +890,12 @@ export function AdminEvents() {
                        form that grabs the cursor is a form that has taken the page
                        away from whoever opened it, and the copy is the one case
                        where the cursor already knows where it is wanted. */
-                    openAt={chosen === null && asked !== null ? 'date' : undefined}
+                    /* And a copy is the other way in, which it became on 28.09.2026: the
+                       address used to carry `?zapis=` for it too, because the copy was a
+                       record by then, so `asked` covered both. It names the event being
+                       copied FROM now, and left as it was the cursor stopped landing in
+                       the date on the one screen the owner asked for it (03.08.2026). */
+                    openAt={chosen === null && (asked !== null || copying) ? 'date' : undefined}
                     /* Not onto an address another event already answers at. A copy
                        keeps the name and the day it was copied from, so saving one
                        without changing the date wrote a second event at the first
