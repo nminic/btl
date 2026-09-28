@@ -12,7 +12,7 @@ import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the seventeen names the backend has to answer for', () => {
+  it('is the eighteen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -65,6 +65,18 @@ describe('the list of resources', () => {
       'events',
       'inbox',
       'leagues',
+      /* Eighteen since 28.09.2026, with the screen that answers a team's invitation. It is
+         the FOURTH name here answered long before it was ever asked for, and the FIRST whose
+         name carries a slash - `addressOf` builds `/api/<name>` and the route really is
+         declared at `/api/me/applications`, which the case below reads out of the Java
+         source rather than taking on trust. What it buys is the half `GET /api/inbox` cannot
+         say: that answer carries `teamInvitationId` and no team at all, while
+         `PUT /api/teams/{id}/invitations/{invitation}` needs both, so until this name a
+         member could be sent an invitation through the portal and had no way on the portal
+         to answer it. It is also the SECOND name whose answer differs per caller, after
+         `inbox`, and it is dropped from the cache the same way and for the same reason
+         (`data/useResource.ts`, `theWaitingNowBelongsTo`). */
+      'me/applications',
       'moderators',
       'pages',
       'pairs',

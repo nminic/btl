@@ -1417,6 +1417,34 @@ export type InboxLine = {
    */
   pairInviteOnTheServer?: number
   /**
+   * `team_invitation.id`, THE KEY THE SERVER ANSWERS A TEAM'S INVITATION BY, and the second
+   * thing on this type that goes back to a route rather than onto the screen.
+   *
+   * **A NUMBER AND NOT TEXT, for the reason written over the field above**: `invitation` is
+   * the text identity of a record the browser made itself and this is a key in
+   * `team_invitation` on the server. Both are answered by buttons that say „Prihvati" and
+   * „Odbij", and one of the two must reach `PUT /api/teams/{id}/invitations/{invitation}`
+   * while the other must never. Spelt as a number, that mistake does not compile.
+   *
+   * **IT IS HALF OF AN ADDRESS AND NOT THE WHOLE OF ONE, which is the difference from the
+   * pair key beside it and the reason this arrived later.** `PUT /api/pairs/{id}` is
+   * satisfied by its key alone; this route needs the TEAM in the path as well and
+   * `TeamJoiningWriteApi.invitationHeMayAnswer` really asks for it. No field of
+   * `GET /api/inbox` carries a team, so the screen that answers this fetches the other half
+   * from `GET /api/me/applications` (`data/useResource.ts`, `useWhatIsWaiting`).
+   *
+   * **What the compiler still cannot keep apart, said out loud because it is where the fault
+   * would live.** `ServedMessage` carries `teamInvitationId` and `pairInviteId` and both are
+   * `number | null`, so `data/useResource.ts#asServed` is the one place one could be put
+   * where the other belongs with nothing failing to compile. Only an assertion can, and
+   * `member/teamInviteAnswered.test.tsx` and `member/pairInviteAnswered.test.tsx` each serve
+   * a message whose two keys are DIFFERENT numbers and read which of the two the address
+   * carried.
+   *
+   * **Absent on every line the browser holds**, for the same reason as the field above.
+   */
+  teamInvitationOnTheServer?: number
+  /**
    * WHICH OF THE TWO STORES HOLDS THIS LINE'S READ MARK, and it is the server for every
    * line that came off the server.
    *
@@ -1448,4 +1476,65 @@ export type InboxLine = {
    * the only trigger there is.
    */
   readMarkIsTheServers: boolean
+}
+
+/**
+ * A TEAM ASKING THIS MEMBER IN, as `GET /api/me/applications` answers it.
+ *
+ * **The `teamId` is the whole reason this resource is read at all, and that is measured
+ * rather than a convenience.** `GET /api/inbox` carries `teamInvitationId` and nothing
+ * else about the question, while `PUT /api/teams/{id}/invitations/{invitation}` needs the
+ * TEAM in its path and `TeamJoiningWriteApi.invitationHeMayAnswer` really asks for it
+ * (`where i.id = ? and i.team_id = ? and i.competitor_id = ? and c.active`). So the two
+ * halves of one address live on two routes, and this is the one that holds the half the
+ * inbox cannot say.
+ *
+ * **`date` is carried and nothing draws it**, which is what the route answers rather than
+ * what this increment needs: `MyApplicationsApi.TeamInvitation` is `(id, teamId, date)`
+ * and a type that dropped a field would make `data/servedShape.test.ts` hold the answer
+ * against a narrower shape than the one that arrives.
+ */
+export type ServedTeamInvitation = {
+  id: number
+  teamId: number
+  /** The day it was sent, in the league's own zone, as a calendar day. */
+  date: string
+}
+
+/**
+ * EVERYTHING THE ONE ASKING IS WAITING TO HEAR BACK ABOUT, as `GET /api/me/applications`
+ * answers it.
+ *
+ * **The second resource whose answer differs per caller**, after `inbox`, and it is
+ * dropped from the cache the same way and for the same reason (`data/useResource.ts`,
+ * `theWaitingNowBelongsTo`): a visit is not one person, because signing out and back in
+ * happen in place.
+ *
+ * **Three of the five lists are answered and none of them is read**, and that is the shape
+ * `data/servedShape.test.ts` asks for rather than an oversight: the type is what the route
+ * really answers, and which parts of it a screen uses is the screen's question. Today one
+ * screen reads `teamInvitations` and `alreadyInATeam` and no screen reads the other three.
+ */
+export type WhatIsWaiting = {
+  teamApplications: { id: number; teamId: number; date: string }[]
+  teamInvitations: ServedTeamInvitation[]
+  teamProposals: { id: number; teamId: number | null; name: string; date: string }[]
+  pairInvites: { id: number; memberNumber: string | null; sentByMe: boolean; date: string }[]
+  /**
+   * WHETHER A TEAM HE ALREADY HAS STANDS IN THE WAY OF ACCEPTING AN INVITATION.
+   *
+   * **It is NOT the transfer window and must not be read as one**, which is
+   * `MyApplicationsApi.Waiting#alreadyInATeam`'s own warning in as many words: the two are
+   * two sentences on this portal's own screen, `teams.inviteWaits` for a shut window,
+   * which is still answerable in October, and the overtaken sentence for one that never
+   * will be. „Folded together they would call every waiting invitation dead for nine
+   * months of the year."
+   *
+   * **And it is NOT `GET /api/me`'s `teamId` either**, which is the nearer trap: that
+   * field is „the team of the membership that has NOT ENDED" and its own note says „WHAT
+   * IT DOES NOT SAY is which team he is in THIS season". Two sources for one decision that
+   * can come apart is what this boolean exists to prevent, so the screen that hides
+   * „Prihvati" reads this and never that.
+   */
+  alreadyInATeam: boolean
 }
