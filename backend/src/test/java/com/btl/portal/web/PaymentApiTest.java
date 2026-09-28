@@ -1745,9 +1745,30 @@ class PaymentApiTest {
 	 * what separates this from {@code aSeasonHeldOnAPaymentNotYetRecognisedIsRefusedToo}: with one
 	 * there, {@code theSeasonIsAlreadyHeld} answers 409 and the {@code insert} is never reached, so
 	 * the case would measure the guard instead of the sequence.
+	 *
+	 * <p><b>AND A BOOKING THAT SUCCEEDS COMES FIRST, WHICH IS THE ONLY THING STANDING BETWEEN THIS
+	 * CASE AND A TAUTOLOGY.</b> „The counter did not move" is satisfied by a counter that never
+	 * moves at all, and {@link #numbersHandedOutSoFar} reads a sequence through {@code is_called} -
+	 * one wrong branch there and it answers nought for ever, leaving this case and the free-price
+	 * one above both green having measured nothing. So a number is handed out on somebody else
+	 * first and the counter is required to have gone up by exactly one. That is the JOIN between the
+	 * two halves this case rests on, and it is asserted rather than assumed.
 	 */
 	@Test
 	void abookingTheDatabaseRefusesSpendsNoMemberNumber() throws Exception {
+		long drawnAtTheStart = numbersHandedOutSoFar();
+
+		long paid = competitor("c1", null, false, "1990-05-15");
+
+		assertThat(confirm(json(new PaymentApi.Confirm(paid, WHAT_A_EURO_MEMBER_SENDS, false,
+				"paypal", null)), moderatorCookie).getStatus()).isEqualTo(201);
+
+		assertThat(numbersHandedOutSoFar())
+				.as("the counter this case turns on did not move for a booking that DID hand a"
+						+ " number out, so it would report that nothing was spent whatever"
+						+ " happened below")
+				.isEqualTo(drawnAtTheStart + 1);
+
 		long drawnBefore = numbersHandedOutSoFar();
 
 		long id = competitor("c0", null, false, "1990-05-15");
