@@ -18,7 +18,10 @@ import { setupUser } from '../test/user'
  *  them written into a screen by hand. Two lists would drift, and the drift would show
  *  as a guard quietly holding one fewer.
  *
- *  Seven from 31.08.2026, and **eight since 20.09.2026**: the owner asked for the rule
+ *  Seven from 31.08.2026, **eight since 20.09.2026**, and **seven again since
+ *  28.09.2026**, when the biography left the registration and took its rule with it (the
+ *  owner had already struck that same sentence off the panel it moved to, on 31.08.2026,
+ *  so it has no screen left to stand on). The eighth was the owner asking for the rule
  *  about the length of a password to stand beside the field on the screen a link out of
  *  a message lands on (`pages/account/NewPassword.tsx`). His reason is what separates
  *  that field from the password field of the registration form, which is one of the
@@ -27,9 +30,9 @@ import { setupUser } from '../test/user'
  *  every refusal, so learning the rule from the server costs him the whole thing typed
  *  again.
  *
- *  It is in this list on the same terms as the other seven, which is the point: it is
+ *  It is in this list on the same terms as the others, which is the point: it is
  *  declared as a `hintKey` on the screen that draws it, so the sweep below counts it,
- *  and the day somebody adds a ninth without being asked this fails. A rule that
+ *  and the day somebody adds an eighth without being asked this fails. A rule that
  *  reached a screen WITHOUT a `hintKey` is the shape three of them outlived the
  *  deletion in, and that is what the second case refuses. */
 const KEPT = [
@@ -103,12 +106,15 @@ describe('the rules that were kept', () => {
 
     expect([...new Set(carried)].sort()).toEqual(KEPT)
 
-    /* Ten fields and eight rules, because two of them are asked for on two forms:
+    /* Nine fields and seven rules, because two of them are asked for on two forms:
        the link and the picture stand on both roads a result is reported by, so one
-       wording answers for both. The tenth is the eighth rule itself, declared on the
+       wording answers for both. The ninth is the password's rule itself, declared on the
        screen that draws it rather than in a definition, which is what makes it visible
-       to the sweep above at all. */
-    expect(carried).toHaveLength(10)
+       to the sweep above at all.
+
+       ~~Ten and eight.~~ The biography's rule went on 28.09.2026 with the field it stood
+       beside, which is one field and one rule fewer. */
+    expect(carried).toHaveLength(9)
   })
 
   it('are never written into a screen by hand, under any name they have had', () => {
