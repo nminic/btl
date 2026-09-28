@@ -33,8 +33,9 @@
  * whether the FORM still asked, which was a fact about this migration's own moment,
  * independent of when that separate increment landed.
  *
- * WHAT DOES NOT MOVE WITH IT. The picture stays on "Izvršenje ugovora" (performance of
- * contract), not "Vaš pristanak" (your consent) like the biography row beside its new home.
+ * THE ROW'S GROUND, AND WHAT IS NOT EVIDENCE FOR IT EITHER WAY. Until 28.09.2026 this row
+ * sat on "Izvršenje ugovora" (performance of contract); the biography row beside its new
+ * home has always sat on "Vaš pristanak" (your consent).
  * PDL.md's own 28.09.2026 entry does not keep them apart by moving only one of them out of
  * WhatRegistrationAsksFor: OF_EVERYBODY no longer names "photo" and NEVER_REQUIRED no longer
  * names "bio" (checked against the class directly, both left together) - the passage that
@@ -43,10 +44,18 @@
  * not move is narrower, and is the owner's own sentence read correctly this time: "Menja se
  * KADA se daje, ne DA LI se odobrava" (what changes is WHEN it is given, not WHETHER it is
  * approved) - the moderation queue and the crop rule a picture still passes through,
- * regardless of when it arrives. So this migration only moves the table; the reason, the
- * legal basis and the retention column of the row itself are the same four cells V41 left,
- * moved whole rather than rewritten, and placed immediately before the biography row rather
- * than copying its basis.
+ * regardless of when it arrives - a narrower fact that is not about the ground either. The
+ * ground DOES move, and only for this row: PDL.md, "Pravni osnov za profilnu sliku je
+ * PRISTANAK, ne izvrsenje ugovora" (owner, 28.09.2026), his own words, "fotografija sebe je
+ * profilna slika i vodi se kao Vaš pristanak. fotofrafija sata ili ekana kao dokaz je
+ * izvršenje ugovora." A picture of yourself is voluntary self-presentation exactly like a
+ * biography is - the distinction the owner drew is by CONTENT, not by the moment a member
+ * gives it - so this row's basis becomes "Vaš pristanak", the same ground the biography row
+ * beside it already sits on. The OTHER picture this section names, "Fotografija sata ili
+ * ekrana kao dokaz" (two rows above this one, untouched), keeps "Izvršenje ugovora": the
+ * service cannot verify a disputed result without it. So this migration moves the table and,
+ * for this one row only, its ground; the reason and the retention column are the same two
+ * cells V41 left, untouched.
  *
  * WHY A NEW MIGRATION AND NOT AN EDIT OF V24, V26 OR V41. All three are immutable from the day
  * they merged (ADL A2), and MigrationsAreImmutableTest holds Flyway to that. V24 first wrote
@@ -57,25 +66,29 @@
  * by line against frontend/src/test/mock/pages.json and frontend/src/test/writtenPages.snapshot.json
  * before writing a single line of this file: all three already agreed, byte for byte.
  *
- * ONLY THE ONE ROW MOVES. Every other row of both tables, and both other tables in the same
- * section ("Članarina", "Podaci koji nastaju samim posećivanjem"), is byte for byte what V41
- * left - produced by a script that removed exactly the "Profilna fotografija" line from the
- * first table and reinserted that same line, unchanged, immediately before the "Biografija"
- * line of the second, never by retyping the section - and the diff against V41's text shows
- * exactly that one line moving and nothing else. Total markdown table-row lines in the
- * section: 37 before this migration, 37 after.
+ * ONLY THE ONE ROW MOVES, AND ONLY ITS GROUND CELL CHANGES WITH IT. Every other row of both
+ * tables, and both other tables in the same section ("Članarina", "Podaci koji nastaju samim
+ * posećivanjem"), is byte for byte what V41 left - diffed against V41's own text line by line
+ * before writing this file, not assumed. The "Profilna fotografija" line moves from the first
+ * table to immediately before "Biografija" in the second, and its third cell changes from
+ * "Izvršenje ugovora" to "Vaš pristanak"; its other three cells (what, why, how long) are the
+ * same three V41 left. Total markdown table-row lines in the section: 37 before this
+ * migration, 37 after; one row moved, one cell of it rewritten, nothing else retyped.
  *
- * THE ENGLISH TRANSLATION CARRIES THE SAME MISTAKE, so it moves too, or the two languages
- * would disagree about the same fact. V43 is the only migration that has ever written a row
+ * THE ENGLISH TRANSLATION CARRIES THE SAME TWO CORRECTIONS, so it moves and its ground changes
+ * too, or the two languages would disagree about the same fact. V43 is the only migration that
+ * has ever written a row
  * into static_page_section_translation for this section - searched every migration for
  * `insert into static_page_section_translation` and `update static_page_section_translation`
  * and only V37 (which leaves the table empty, by its own header) and V43 appear; V41 predates
  * translation and touches no translation row, by its own header. So this is an UPDATE against
  * the text V43 actually inserted: "Profile picture" moved out of "Data you enter when you
  * join" and into "Data generated while you are a member", immediately before "Biography" - the
- * same position, relative to the same neighbour, as the Serbian row. Nothing else in either
- * language's copy of this section is touched, and the English side keeps 37 markdown
- * table-row lines before and after, the same as the Serbian side.
+ * same position, relative to the same neighbour, as the Serbian row - and its ground moves
+ * from "Performance of contract" to "Your consent", the same word the English "Biography" row
+ * already carries for the same reason. Nothing else in either language's copy of this section
+ * is touched, and the English side keeps 37 markdown table-row lines before and after, the
+ * same as the Serbian side.
  *
  * WHAT HOLDS THE SERBIAN COPY TOGETHER, the same pair V26 and V41 each name for the same
  * reason: frontend/src/test/mock/pages.json, which PageApiTest compares this server's Serbian
@@ -117,7 +130,7 @@ set body = '### Podaci koje unosite pri učlanjenju
 |---|---|---|---|
 | Rezultati trka i sve što se iz njih računa: bodovi, plasman, dukati, priznanja | Suština usluge | Izvršenje ugovora | Sekcija 5 |
 | Fotografija sata ili ekrana kao dokaz | Provera spornog rezultata | Izvršenje ugovora | Briše se odmah po verifikaciji |
-| Profilna fotografija | Prikaz na javnom profilu | Izvršenje ugovora | Sekcija 5 |
+| Profilna fotografija | Prikaz na javnom profilu | Vaš pristanak | Sekcija 5 |
 | Biografija, tekst o sebi, linkovi na Stravu i Instagram | Predstavljanje, dobrovoljno | Vaš pristanak | Sekcija 5 |
 | Ocene i komentari na događaje | Vodič ostalim članovima | Izvršenje ugovora | Sekcija 5 |
 | Tim, trkački par, klub | Poredak timova i parova | Izvršenje ugovora | Sekcija 5 |
@@ -169,7 +182,7 @@ set body = $$### Data you enter when you join
 |---|---|---|---|
 | Race results and everything calculated from them: points, placing, ducats, honours | The substance of the service | Performance of contract | Section 5 |
 | A photo of a watch or a screen as evidence | Checking a disputed result | Performance of contract | Deleted immediately after verification |
-| Profile picture | Display on the public profile | Performance of contract | Section 5 |
+| Profile picture | Display on the public profile | Your consent | Section 5 |
 | Biography, text about yourself, links to Strava and Instagram | Self-presentation, voluntary | Your consent | Section 5 |
 | Ratings and comments on events | A guide for other members | Performance of contract | Section 5 |
 | Team, racing pair, club | Team and pair standings | Performance of contract | Section 5 |

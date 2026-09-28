@@ -409,6 +409,26 @@ class PageApiTest {
 						+ " enters when joining")
 				.doesNotContain("Profile picture");
 
+		/* PDL.md, "Pravni osnov za profilnu sliku je PRISTANAK, ne izvrsenje ugovora" (owner,
+		   28.09.2026), moved this row's ground too, from "Performance of contract" to "Your
+		   consent" - the same word the English biography row already carries. Table membership
+		   alone would not see a ground reverted in place while the row stayed put, so this reads
+		   the row's own line rather than the block around it. */
+		String pictureRowLine = memberTable.lines()
+				.filter(line -> line.contains("Profile picture"))
+				.findFirst()
+				.orElse(null);
+
+		assertThat(pictureRowLine)
+				.as("the real English answer's profile picture row is not one markdown line")
+				.isNotNull();
+		assertThat(pictureRowLine)
+				.as("the real English answer still puts the profile picture on \"Performance of"
+						+ " contract\" rather than \"Your consent\", the ground the biography row"
+						+ " beside it already carries")
+				.contains("Your consent")
+				.doesNotContain("Performance of contract");
+
 		assertThat(pageNamed(ours, "uslovi-koriscenja").path("title").asString())
 				.as("uslovi-koriscenja's real English title did not reach the route")
 				.isEqualTo("Terms of use");
