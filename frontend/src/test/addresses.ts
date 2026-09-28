@@ -114,6 +114,12 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
      `DAY` still holds this table to one day, for the profile row below rather than this one. */
   ['/sr/registracija', 'Registracija', 'Registracija'],
   ['/sr/prijava', 'Prijava', 'Prijava'],
+  /* Where a forgotten password is asked about. No token on the address, unlike the two
+     below: nothing is ever posted that points here, so it is reached by typing or by the
+     link on the sign-in page. It asks the server nothing until the button is pressed,
+     which is the same shape the two rows above have, and its heading does not move with
+     any answer. */
+  ['/sr/zaboravljena-lozinka', 'Zaboravljena lozinka', 'Zaboravljena lozinka'],
   /* The two screens a link out of a message lands on, read WITH a token on the address,
      because that is the only state in which they speak to the server at all: opened
      without one they draw a sentence and ask for nothing, which is a row that would
