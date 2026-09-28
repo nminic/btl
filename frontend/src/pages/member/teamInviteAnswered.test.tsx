@@ -620,6 +620,32 @@ describe('answering a served invitation into a team', () => {
   )
 
   it(
+    'says a server that fell over is a server that fell over, and keeps the buttons',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(waitingWhere(), () => answeredWith(502))
+      await openTheQuestion()
+
+      await user.click(theRefuseButton())
+
+      /* **THIS CASE EXISTS BECAUSE A MUTATION SURVIVED WITHOUT IT, on 28.09.2026.** Dropping
+         `&& said.status === 404` from the screen left every one of the sixteen cases here green,
+         because not one of them ever answered with any other number: the axis „only 404" had a
+         state written down in prose and no case behind it. Read as „closed", a server that was
+         down for a moment tells a member his invitation has expired - and he cannot even press
+         again, because the buttons go with the sentence. */
+      expect(await screen.findByText(/502/)).toBeVisible()
+      expect(screen.queryByText(sr.teams.inviteClosed)).toBeNull()
+
+      /* AND THE BUTTONS STAY, which is the half that says what the reader should do about it:
+         „Pokušaj ponovo za koji minut" is not advice a screen with no buttons left can give. */
+      expect(theRefuseButton()).toBeVisible()
+    },
+    SLOW,
+  )
+
+  it(
     'reads a refusal the route names out of the very map the screen drew its own sentence from',
     async () => {
       const user = setupUser()
