@@ -430,8 +430,12 @@ describe('„Raskini" on a pair the server is keeping', () => {
   it(
     'sends one request for two presses inside one task, and tells the buttons off while it waits',
     async () => {
-      const user = setupUser()
-      /* A request that never comes back, which is the only way to look at the screen WHILE it is
+      /* **No `setupUser` here, and that is the case rather than an omission.** Every other case in
+         this file presses with `user.click`, which awaits between events and lets React render.
+         This one must dispatch both presses inside ONE task to tell a ref from the state beside
+         it, so it uses `fireEvent` inside `act` and has nothing to ask a user-event instance for.
+       *
+         A request that never comes back, which is the only way to look at the screen WHILE it is
          waiting. `serverThat` takes a promise for exactly this. */
       let release = (): void => {}
 
