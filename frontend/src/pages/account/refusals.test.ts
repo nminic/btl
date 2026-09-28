@@ -21,6 +21,7 @@ import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE } from '../member/pairWrites'
+import { WHEN_ANSWERING_A_TEAM_INVITE } from '../member/teamWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -145,6 +146,16 @@ const NOT_A_REASON: Record<string, string[]> = {
      question and none is refused by anybody: the class writes them rather than replies with
      them. */
   'PairWriteApi.java': ['Trkački par je raskinut', 'Balkanska trkačka liga', 'M'],
+  /* `TeamJoiningWriteApi` declares one that is not a refusal, and it is a shape this table
+     already holds twice: a SUBJECT LINE, the one a team's administrator reads when the man
+     he asked has joined somewhere else (`teams.inviteMissedSubject` in `i18n/sr.json`). It
+     is the same kind of constant as `PairWriteApi`'s `THE_PAIR_IS_BROKEN` above, and it is
+     the whole of that class's Serbian that is a constant rather than a method: the other
+     seven sentences take a value, so they are `static String` METHODS and this pattern does
+     not see them at all. `THE_LEAGUE` is not here either, and not because it is excused -
+     it is `private static final String THE_LEAGUE = PairWriteApi.THE_LEAGUE`, a name rather
+     than a literal, so the pattern above never matched it and the count of six says so. */
+  'TeamJoiningWriteApi.java': ['Poziv u tim je ostao bez odgovora'],
 }
 
 /**
@@ -191,6 +202,17 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
      dictionary and this entry shrinks to nothing, the same way `CompetitorWriteApi`'s six above
      are waiting to. */
   'PairWriteApi.java': ['aQuestionAlreadyStands', 'aPairAlreadyHolds'],
+  /* `TeamJoiningWriteApi` names two this way, and they belong to the two POST routes of that
+     class rather than to the PUT the screen sends. `aQuestionAlreadyStands` is
+     `POST /api/teams/{id}/applications`'s („Prijava ne može da se umnoži", PDL 06.09.2026)
+     and `heHasAlreadyBeenAsked` is `POST /api/teams/{id}/invitations`'s („Isti tim ne poziva
+     istog čoveka dvaput"). Measured rather than assumed: `grep -rn "api/teams" frontend/src`
+     answers 65 times and not one of them sends either address - the only two places those
+     paths are written at all are prose, in `data/useResource.ts` and in
+     `member/inboxFromTheServer.test.tsx`, and both name the PUT. The day a screen asks to
+     join a team or sends an invitation, these two move into a dictionary and this entry
+     shrinks, the same way `CompetitorWriteApi`'s six above are waiting to. */
+  'TeamJoiningWriteApi.java': ['aQuestionAlreadyStands', 'heHasAlreadyBeenAsked'],
 }
 
 describe('the reasons the server can name', () => {
@@ -355,6 +377,27 @@ describe('the reasons the server can name', () => {
        them. `member/pairWrites.ts`'s own comment on `WHEN_ANSWERING_A_PAIR_INVITE` names this
        same split and says why the other five are not here; this entry is that decision taken. */
     ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE], 7],
+    /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
+       is this list's twin of the line above it in every way but one. Six constants splitting
+       three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real
+       refusals of the two POST routes of the same class and no screen sends either
+       (`NOT_YET_ON_ANY_SCREEN`), and the remaining three are the whole of what
+       `PUT /api/teams/{id}/invitations/{invitation}` can name - `theFormIsNotComplete`,
+       `theWindowIsShut` and `heIsAlreadyInATeam`, all three read straight off
+       `TeamJoiningWriteApi.answer` and `answering`.
+
+       AND THE ONE WAY IT IS NOT A TWIN: TWO OF ITS THREE POINT AT SENTENCES THE SCREEN ALSO
+       DRAWS BEFORE ANYTHING IS SENT. `theWindowIsShut` is `teams.inviteWaits` and
+       `heIsAlreadyInATeam` is `teams.inviteOvertakenUnnamed`, and both of those stand where
+       „Prihvati" would have been, decided from `GET /api/me/applications` at the moment of
+       drawing (PDL, 06.09.2026: „pravo na odgovor se računa u trenutku iscrtavanja"). The
+       same two facts are therefore answered twice over, once by each door, because either
+       can change between the drawing and the press. This gate is indifferent to that and
+       `member/teamWrites.ts` gives the reason it is right: a refusal means the same thing
+       whichever door refused it, which is the arrangement `WHEN_ACTIVATING` and
+       `WHEN_BOOKING_A_PAYMENT` already share four sentences by. What is asked here is that
+       every name be answered, not that every name have a sentence of its own. */
+    ['TeamJoiningWriteApi.java', [WHEN_ANSWERING_A_TEAM_INVITE], 6],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

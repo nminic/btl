@@ -26,6 +26,7 @@ import type {
   ServedMessage,
   StaticPage,
   Team,
+  WhatIsWaiting,
 } from './types'
 
 export type ResourceState<T> =
@@ -547,6 +548,33 @@ function theInboxNowBelongsTo(whose: string): void {
 }
 
 /**
+ * THE SAME FACT FOR THE SECOND RESOURCE THAT DIFFERS PER CALLER, and it is a name of its own
+ * rather than a second use of the one above.
+ *
+ * <p><b>Not folded into `inboxAnsweredFor`, which was the first shape and is wrong in a way
+ * that is easy to miss.</b> One variable for both would drop BOTH caches whenever either
+ * question was asked by somebody new, and the two are not asked in the same breath: the panel
+ * in the header asks for the inbox on every screen of the portal, while this is asked only by
+ * a message that carries an invitation. Shared, opening any screen at all would throw away an
+ * answer nothing had said was stale.
+ *
+ * <p>Everything else about it is `theInboxNowBelongsTo`'s, including the limit written over
+ * {@link inboxAnsweredFor}: the same member signing out and back in inside one visit is
+ * served what the visit already fetched, because nothing calls this while nobody is signed
+ * in. What is closed is the leak, one caller's answer reaching the next.
+ */
+let waitingAnsweredFor: string | undefined
+
+/** Drops the answer the moment it stops being this caller's, during the render rather than
+ *  from an effect, for the reason written over {@link theInboxNowBelongsTo}. */
+function theWaitingNowBelongsTo(whose: string): void {
+  if (waitingAnsweredFor !== whose) {
+    waitingAnsweredFor = whose
+    clearResourceCache('me/applications')
+  }
+}
+
+/**
  * HOW MANY TIMES THE SERVER'S OWN ANSWER ABOUT THIS INBOX HAS STOPPED BEING TRUE.
  *
  * <p><b>Module scope and beside {@link inboxAnsweredFor}, for the reason written over it</b> -
@@ -706,6 +734,35 @@ export function useInbox(
   }, [served, held])
 }
 
+/**
+ * WHAT THE ONE ASKING IS WAITING TO HEAR BACK ABOUT, straight off the route.
+ *
+ * <p><b>No second half to fold in, which is the whole difference from {@link useInbox}.</b>
+ * That hook has two sources because nine screens still `notify` into the browser's own state
+ * and the server knows nothing of those; this question has never had a browser-side half at
+ * all. `session/context.ts` carries `invitations` for the prototype, and those are the
+ * PROTOTYPE'S invitations answered by `member/InvitationAnswer.tsx` - a different store, a
+ * different screen, and text where this is a number.
+ *
+ * <p><b>Whose it is is an argument rather than something this hook works out</b>, which is
+ * {@link useInbox}'s own measurement carried over: the one caller gates on the same fact
+ * before it draws anything that asks (`member/MessageDetail.tsx` reaches this only through
+ * `who.memberNumber`), so a branch for „nobody" would be a branch nothing could reach, and
+ * the coverage floor of 100 per cent on branches is what says so out loud.
+ *
+ * <p><b>No `revision` and no `reactive`, and both absences are decisions.</b> Answering an
+ * invitation drops this name outright (`member/teamWrites.ts`) and the component that drew
+ * the buttons goes with it - the inbox is re-read in the same breath and the line comes back
+ * with no `teamInvitationId`, because `TeamJoiningWriteApi.theInvitationIsOver` empties the
+ * pointer before it deletes the row. So there is no mounted reader left to tell, which is
+ * exactly what `revision` exists for and exactly what is not needed here.
+ */
+export function useWhatIsWaiting(mine: string): ResourceState<WhatIsWaiting> {
+  theWaitingNowBelongsTo(mine)
+
+  return useResource<WhatIsWaiting>('me/applications', { owner: mine })
+}
+
 /** A record the browser is holding, as a line. Its read mark is the portal's own, because
  *  for it the portal IS the store - there is no row on the server this key names, so opening
  *  it writes into `session/SessionProvider.tsx` and nowhere else. */
@@ -748,22 +805,33 @@ function asALine(one: Message): InboxLine {
  * stores and neither can be given the other's key by accident, because one key is text and the
  * other is a number (`data/types.ts`, `pairInviteOnTheServer`).
  *
- * **THE TEAM KEY STILL CANNOT TRAVEL, because its route needs something no field here
- * carries.** `PUT /api/teams/{id}/invitations/{invitation}` needs the TEAM as well, and the
- * one route that hands the invited member both halves is `GET /api/me/applications`, whose
- * `TeamInvitation(id, teamId, date)` (`MyApplicationsApi`) nothing in `frontend/src` reads
- * yet - and being absent from that list is also how the server says a question is CLOSED,
- * which is the honest answer to the trap above rather than a second guess at it. So a served
- * team invitation is drawn as what it is, a subject, a sender and a body, and nothing is
- * claimed about an answer. **That is the boundary this half ends on and not something it
- * hides**, and it is a boundary with a decision against it: the screen it is owed is the
- * increment that reads `/api/me/applications`.
+ * **AND THE TEAM KEY TRAVELS TOO SINCE 28.09.2026, WHICH CLOSES THE BOUNDARY THIS PARAGRAPH
+ * USED TO NAME.** It said the key could not travel because
+ * `PUT /api/teams/{id}/invitations/{invitation}` needs the TEAM as well and no field here
+ * carries one. Both halves of that were true and neither was a reason to withhold the key:
+ * the missing half is answered by `GET /api/me/applications`, whose
+ * `TeamInvitation(id, teamId, date)` is read by `useWhatIsWaiting` above, and
+ * `member/ServedTeamInvite.tsx` is the screen that puts the two together. So the key travels
+ * as `teamInvitationOnTheServer` and that screen sends it.
  *
- * **AND `teamInvitationId` IS NOT READ HERE AT ALL, which is what keeps the two apart where
- * the compiler cannot.** Both keys are `number | null` on the wire, so this function is the
- * one place on the portal where one could be put where the other belongs and nothing would
- * fail to compile. `member/pairInviteAnswered.test.tsx` serves a message whose two keys are
- * different numbers and reads which of them the address carried.
+ * **It is NOT handed to `member/InvitationAnswer.tsx`**, and that is the whole point of
+ * carrying it under a second name: that screen looks an invitation up in the session's own
+ * `invitations` and treats one it cannot find as one that is OVER, so a served key given to
+ * it would tell a member his question was closed while `team_invitation` on the server still
+ * held it open. The two screens answer the two stores and neither can be given the other's
+ * key by accident, because one key is text and the other is a number (`data/types.ts`).
+ *
+ * **What KEEPS the two served keys apart is a case and not the compiler**, and that is where
+ * the fault would live: both are `number | null` on the wire, so this function is the one place
+ * on the portal where one could be put where the other belongs and nothing would fail to
+ * compile. `member/pairInviteAnswered.test.tsx` and `member/teamInviteAnswered.test.tsx` are
+ * the two that hold it.
+ *
+ * **Neither does it by serving one message with two numbers, because that row does not exist:**
+ * V13 holds `check (team_invitation_id is null or pair_invite_id is null)`. Each serves a
+ * message carrying ONE of the two and `null` in the other, so a swap here hands its screen
+ * nothing at all and the buttons never appear. Measured on 28.09.2026: swapping the line below
+ * fails fifteen of that file's sixteen cases.
  */
 function asServed(one: ServedMessage): InboxLine {
   return {
@@ -777,6 +845,7 @@ function asServed(one: ServedMessage): InboxLine {
        says absent - which is what lets the screen ask about a VALUE rather than about a
        property (`member/MessageDetail.tsx` gives that reason for its own two reads). */
     pairInviteOnTheServer: one.pairInviteId ?? undefined,
+    teamInvitationOnTheServer: one.teamInvitationId ?? undefined,
     /* AND THE MARK ON IT IS THE SERVER'S TO WRITE, since `POST /api/inbox/{id}/read`
        (`InboxReadApi`, PDL 27a). This key names a row in `message`, so opening it writes
        `message_read` there and the answer survives signing out - which is the whole of what

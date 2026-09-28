@@ -11,6 +11,7 @@ import { useOverlay } from '../admin/overlay'
 import { InvitationAnswer } from './InvitationAnswer'
 import { PairInviteAnswer } from './PairInviteAnswer'
 import { ServedPairInvite } from './ServedPairInvite'
+import { ServedTeamInvite } from './ServedTeamInvite'
 import { NotFound } from '../NotFound'
 import { Resource } from '../../components/Resource'
 import { useMemberScreen } from './memberScreen'
@@ -102,12 +103,18 @@ export function MessageDetail() {
 function TheMessageAsked({ mine }: { mine: string }) {
   return (
     <Resource state={useInbox(mine, { reactive: false })}>
-      {(lines) => <TheMessage lines={lines} />}
+      {/* `mine` goes through as well as into the read above, and it is needed for one thing
+          only: `GET /api/me/applications` is answered per caller, so the hook that reads it
+          drops its cache when the caller changes and has to be told who is asking
+          (`data/useResource.ts`, `useWhatIsWaiting`). Threaded rather than read again here,
+          because two readings of „who is asking" on one screen is the fault this portal
+          calls „dva doma jedne činjenice". */}
+      {(lines) => <TheMessage lines={lines} mine={mine} />}
     </Resource>
   )
 }
 
-function TheMessage({ lines }: { lines: InboxLine[] }) {
+function TheMessage({ lines, mine }: { lines: InboxLine[]; mine: string }) {
   const { locale } = useI18n()
   const { id } = useParams()
   const { markRead, pairsMade, pairsBroken } = useSession()
@@ -133,6 +140,12 @@ function TheMessage({ lines }: { lines: InboxLine[] }) {
      what keeps them apart (`data/types.ts`, `pairInviteOnTheServer`). Read out into a value for
      the reason the two lines above give. */
   const pairInviteOnTheServer = message?.pairInviteOnTheServer
+  /* AND THE FOURTH, which is the TEAM's question when the server is the one holding it. Four
+     fields rather than two with a kind beside each, so the compiler keeps all four answers
+     apart: the two the browser holds are text and the two the server holds are numbers, and
+     each of the four reaches a different screen writing to a different store. Read out into a
+     value for the reason the three lines above give. */
+  const teamInvitationOnTheServer = message?.teamInvitationOnTheServer
   /* **AND OPENING IT IS THE ONLY THING THAT EVER MARKS IT, since PDL 27a (27.09.2026).** The
      owner's own narrowing: „Ne treba mi dugme da se nesto oznaci kao procitano ili
      neprocitano." There is no control for this anywhere on the portal - not on this screen and
@@ -220,6 +233,24 @@ function TheMessage({ lines }: { lines: InboxLine[] }) {
           is nothing here to wait for and no loader between the message and its buttons. */}
       {pairInviteOnTheServer !== undefined && (
         <ServedPairInvite invite={pairInviteOnTheServer} />
+      )}
+
+      {/* AND THE TEAM'S QUESTION WHEN THE SERVER IS KEEPING IT (PDL, 05.09.2026: „Poziv u tim
+          prihvata pozvani član."). It has a `Resource` of its own, inside itself, which is the
+          one way it differs from the pair screen above and is a fact about the two ROUTES
+          rather than a choice: `PUT /api/pairs/{id}` is satisfied by the key this line
+          already carries, while `PUT /api/teams/{id}/invitations/{invitation}` needs the team
+          as well and no field of `GET /api/inbox` carries one. So that screen waits for
+          `GET /api/me/applications`, and it waits INLINE, beside the message rather than over
+          it.
+
+          Outside the `Resource` above and holding nothing of it, for the same reason the pair
+          screen stands outside: the screen above answers by writing records this visit is
+          holding, so it has to be held against every one of them, while this one hands two
+          keys to a route that reads everything else again itself, in the transaction that
+          writes the membership. */}
+      {teamInvitationOnTheServer !== undefined && (
+        <ServedTeamInvite invitation={teamInvitationOnTheServer} mine={mine} />
       )}
     </div>
   )

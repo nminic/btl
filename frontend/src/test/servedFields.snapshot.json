@@ -90,6 +90,27 @@
     "season",
     "slug"
   ],
+  "me/applications.json": [
+    "alreadyInATeam",
+    "pairInvites",
+    "pairInvites.date",
+    "pairInvites.id",
+    "pairInvites.memberNumber",
+    "pairInvites.sentByMe",
+    "teamApplications",
+    "teamApplications.date",
+    "teamApplications.id",
+    "teamApplications.teamId",
+    "teamInvitations",
+    "teamInvitations.date",
+    "teamInvitations.id",
+    "teamInvitations.teamId",
+    "teamProposals",
+    "teamProposals.date",
+    "teamProposals.id",
+    "teamProposals.name",
+    "teamProposals.teamId"
+  ],
   "moderators.json": [
     "email",
     "firstName",

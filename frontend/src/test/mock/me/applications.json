@@ -1,0 +1,33 @@
+{
+  "teamApplications": [
+    {
+      "id": 11,
+      "teamId": 3,
+      "date": "2026-10-04"
+    }
+  ],
+  "teamInvitations": [
+    {
+      "id": 12,
+      "teamId": 5,
+      "date": "2026-10-06"
+    }
+  ],
+  "teamProposals": [
+    {
+      "id": 21,
+      "teamId": null,
+      "name": "Dunavski trkači",
+      "date": "2026-10-02"
+    }
+  ],
+  "pairInvites": [
+    {
+      "id": 33,
+      "memberNumber": "000031",
+      "sentByMe": false,
+      "date": "2026-10-05"
+    }
+  ],
+  "alreadyInATeam": false
+}

@@ -259,9 +259,27 @@ const PUBLIC_DIR = join(process.cwd(), 'src', 'test')
  *  makes it USELESS for measuring the difference: a case that turns on which language came
  *  back has to put its own server in front (`test/serverAnswers.ts`) and answer the two
  *  languages differently, or it is reading the absence of an English fixture and calling it
- *  a fallback. */
+ *  a fallback.
+ *
+ *  **A NAME MAY NOW CARRY A SLASH, since `me/applications` on 28.09.2026.** `addressOf`
+ *  builds `/api/<name>` and that route really is declared at `/api/me/applications`, so a
+ *  pattern of one lowercase run stopped matching the eighteenth name and answered it 404 -
+ *  which reads exactly like a screen asking for something the server does not have.
+ *
+ *  **Widened rather than derived from `RESOURCE_NAMES`, and that is a measurement rather
+ *  than laziness.** Reading the list would be the exact question instead of a shape, and it
+ *  is refused for the reason this file already states above about `data/useResource.ts`:
+ *  `setup.ts` runs before every test MODULE, so importing `data/client.ts` here loads and
+ *  caches it, and `data/useResource.test.tsx`'s own `vi.mock('./client')` would then
+ *  register a mock nothing sees. The shape stays a shape.
+ *
+ *  **Nothing else moves, because every other address under `/api` carries something this
+ *  pattern still refuses**: a digit (`/api/inbox/612/read`, `/api/teams/1/invitations/7`), a
+ *  hyphen (`/api/sign-in`) or an upper case letter. `/api/me` never reaches here at all, and
+ *  a lowercase address with no fixture (`/api/me/photo`) lands on the same 404 it landed on
+ *  before, by the `try` below rather than by this pattern. */
 function fileFor(path: string): string {
-  const resource = /^\/api\/([a-z]+)(\?[^#]*)?$/.exec(path)
+  const resource = /^\/api\/([a-z]+(?:\/[a-z]+)*)(\?[^#]*)?$/.exec(path)
 
   return resource === null ? path : `/mock/${resource[1] ?? ''}.json`
 }
