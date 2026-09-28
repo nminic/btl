@@ -568,9 +568,15 @@ describe('the biography', () => {
        fields that stand in it: „Profilna sekcija" is what the owner named, not two fields
        that happened to share a legend. Held here as well as in `fieldHint.test.tsx`,
        because that file reads the definition and this one reads the screen - a legend
-       drawn from somewhere else would pass there and fail here. */
+       drawn from somewhere else would pass there and fail here.
+
+       AND A GROUP THAT SHOULD BE THERE IS ASKED FOR FIRST, because „no group called
+       Profil" is satisfied by a screen that draws no groups at all: a form that failed
+       to render, a renderer that stopped drawing legends, a blank page. An absence can
+       always be satisfied by nothing being there, so it is asked beside a presence. */
     renderForm()
 
+    expect(screen.getByRole('group', { name: 'Takmičenje' })).toBeVisible()
     expect(screen.queryByRole('group', { name: 'Profil' })).toBeNull()
   })
 })
