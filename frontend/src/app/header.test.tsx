@@ -494,12 +494,6 @@ function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNum
     setGoing: vi.fn(),
     markRead: vi.fn(),
     notify: vi.fn(),
-    notifications: {
-      resultApproved: true,
-      resultChanged: true,
-      newsletter: false,
-    },
-    setNotification: vi.fn(),
     edits: {},
     edit: vi.fn(),
     editRecord: vi.fn(),

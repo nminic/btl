@@ -948,14 +948,7 @@
     "named": "sa servera"
   },
   "myProfile": {
-    "signOut": "Odjavi se",
-    "notifications": "Obaveštenja",
-    "notificationsNote": "Šest obaveznih mejlova se ne isključuju: potvrda naloga, promena lozinke, unet i promenjen rezultat, dodatni zahtev za proveru i krupna izmena na portalu. Ispod je sve ostalo.",
-    "notify": {
-      "resultApproved": "Kad mi rezultat bude odobren",
-      "resultChanged": "Kad mi neko izmeni rezultat",
-      "newsletter": "Povremene vesti iz lige"
-    }
+    "signOut": "Odjavi se"
   },
   "myResults": {
     "title": "Moji rezultati",
@@ -1391,9 +1384,7 @@
     "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od onih koji nisu prijavljeni.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
-    "themeLight": "Svetla",
-    "notifications": "Obaveštenja"
-  },
+    "themeLight": "Svetla"  },
   "rights": {
     "title": "Prava moderatora",
     "intro": "Red je moderator, kolona je pravo. Kućica se pamti čim se pritisne, nema dugmeta za čuvanje. Prava su u dve grupe zato što su to dve različite radnje: uređivanje menja zapis, a odlučivanje pušta ili vraća tuđi rad.",

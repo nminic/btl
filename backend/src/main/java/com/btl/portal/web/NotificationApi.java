@@ -30,16 +30,23 @@ import java.io.IOException;
  * to the portal) have no switch at all and therefore nothing to answer with, „a column for
  * them would be a promise the portal must refuse to keep."
  *
- * <p><b>THIS DELIBERATELY DOES NOT ANSWER WITH WHAT {@code Settings.tsx} READS TODAY.</b>
- * The screen still binds to {@code NOTIFICATION_KEYS = ['resultApproved', 'resultChanged',
- * 'newsletter']} ({@code session/context.ts}), which is the prototype's own mock and is
- * two mandatory mails P22 forbids switching off, plus a newsletter P22 never mentions and
- * PDL P22, 11.08.2026, „obaveštenja o predstojećem događaju nema uopšte" explicitly
- * removed the one thing close to it. Mock data is provisional and is not carried into
- * the backend on its own say-so; the schema is what actually encodes the settled P22
- * decision, six columns matching six sentences of it exactly, and this answers with
- * those six under their own names. Wiring {@code Settings.tsx} to them is a front end
- * change this increment does not make.
+ * <p><b>NO SCREEN READS THIS ROUTE YET, AND THE ONE THAT USED TO CONTRADICT IT IS GONE.</b>
+ * Until 28.09.2026 {@code Settings.tsx} bound to {@code NOTIFICATION_KEYS =
+ * ['resultApproved', 'resultChanged', 'newsletter']} ({@code session/context.ts}) - the
+ * prototype's own mock, and two mandatory mails P22 forbids switching off plus a
+ * newsletter P22 never mentions, PDL P22 of 11.08.2026 having removed the one thing close
+ * to it („obaveštenja o predstojećem događaju nema uopšte"). Mock data is provisional and
+ * was never carried into the backend on its own say-so; the schema is what encodes the
+ * settled P22 decision, six columns matching six sentences of it exactly, and this
+ * answers with those six under their own names.
+ *
+ * <p>The owner removed that panel whole on 28.09.2026 („Ekran za podesavanja obavestenja
+ * se sklanja u celini"), so the contradiction is closed - but from the other end than this
+ * class expected: the three keys went, and <b>the six below still reach no screen</b>.
+ * Nothing in {@code frontend/src} calls this route, measured rather than remembered, so a
+ * member has no way to turn on a mail P22 says he lights himself („clan ga sam pali").
+ * Whoever builds that screen starts here rather than from the removed mock, and
+ * {@code pages/member/settings.test.tsx} says so at the other end.
  *
  * <p><b>NOTHING IS PUBLIC, NOTHING IS CHECKED HERE ABOUT BEING SIGNED IN.</b> Same as
  * {@link InboxApi}: the route is absent from {@link ApiSecurity#READ_BY_ANYBODY}, so the
