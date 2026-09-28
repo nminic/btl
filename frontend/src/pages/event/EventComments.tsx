@@ -49,6 +49,51 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
   const today = useToday()
   const state = combineResources(useComments(), useCompetitors(), useEvents())
 
+  /* **Only members read them (owner, 11.08.2026), and the question is asked HERE,
+     in front of the `Resource` below rather than inside it.**
+   *
+     Asked inside, it was never reached: `Resource` answers a fetch that failed
+     with `role="alert"` BEFORE it calls its children at all (components/
+     Resource.tsx), so the guard sat behind the very state it had to decide. That
+     is not a hypothetical since the portal moved to `/api`: `/api/comments` is not
+     in `ApiSecurity.READ_BY_ANYBODY`, so an unauthenticated caller is answered
+     401, `data/client.ts` throws on anything that is not `ok`, and the resource
+     is therefore in error for EVERY visitor on EVERY event. What a visitor met
+     under a race they had just read about was a red alarm, on the one screen that
+     had already decided to tell them nothing.
+   *
+     The two screens beside this one ask the same question in the same place and
+     have all along (GoingToEvent.tsx, OverallMark.tsx), both of them predicting
+     in as many words that the endpoint would have to refuse an unauthenticated
+     caller „the same way the one for comments must". This is that sentence
+     carried out on the third of the three.
+   *
+     Nothing here needs the data to be able to say it, which is why the whole
+     answer to a visitor is settled above without reading `state` at all.
+   *
+     **This is a screen and not a lock, and it must not be mistaken for one.** The
+     server is what refuses. What this keeps is the page from promising what it
+     will not deliver, and now also from reporting that refusal as a fault. */
+  if (!reads) {
+    /* Nothing at all before the race, not even that the comments are for
+       members. Said on a future event, the line appeared on exactly those whose
+       earlier editions carry something and was missing from the rest: the
+       sentence meant to hide what was said would have said which race there is
+       something to read about.
+
+       Its own condition and not folded into the guard below, because the two
+       have different reasons. That one is about a box held open for data that is
+       still on its way; this one is about a sentence that needs no data. */
+    return date > today ? null : (
+      <>
+        <h2 className="profile__section" id="comments">
+          {t('event.comments')}
+        </h2>
+        <p className="profile__empty">{t('event.commentsForMembers')}</p>
+      </>
+    )
+  }
+
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a
      space that resolves into nothing, and on a broken connection an alert about
@@ -102,41 +147,12 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
            tied to the event's own id rather than to the date it falls on (the
            same linking `subjectId` in types.ts describes).
 
-           And before the race a visitor is told nothing either way, whether the
-           chain of editions carries anything or not. Otherwise the line saying
-           the comments are for members appeared on exactly those future events
-           that have some, and was missing from the rest: the sentence meant to
-           hide what was said would have said which race there is something to
-           read about. */
-        if (date > today && (mine.length === 0 || !reads)) {
+           Only the half that needs the list is left here. The other half of this
+           condition - that a visitor is told nothing either way before the race -
+           is answered above, in front of the `Resource`, because the answer to a
+           visitor never depended on what arrived. */
+        if (date > today && mine.length === 0) {
           return null
-        }
-
-        /* Only members read them (owner, 11.08.2026). Asked here and not before
-           the two guards above, because those decide whether there is a section
-           at all: asked first, a visitor was told there is something hidden on
-           a race nobody has said anything about, and got more of a page than
-           the member standing beside them.
-
-           **This is a screen and not a lock, and it must not be mistaken for
-           one.** The comments have already been fetched by the time this line
-           is reached, so a visitor's browser holds the whole file and anybody
-           who opens it reads every comment on the portal. That is tolerable
-           only while there is no server: the mock layer serves one static file
-           to everybody. When the API arrives (plan F5), the endpoint that
-           serves comments must refuse an unauthenticated caller, and this
-           guard stays as what it is, the thing that keeps the page from
-           promising what it will not deliver. The same is true of the marks
-           beside them (OverallMark.tsx). */
-        if (!reads) {
-          return (
-            <>
-              <h2 className="profile__section" id="comments">
-                {t('event.comments')}
-              </h2>
-              <p className="profile__empty">{t('event.commentsForMembers')}</p>
-            </>
-          )
         }
 
         return (
