@@ -38,6 +38,7 @@ import type {
   Outstanding,
   Race,
   Result,
+  ServedMessage,
   StaticPage,
 } from './types'
 import type { DucatFamily } from './ducatRule'
@@ -316,6 +317,50 @@ const anAccountNotYetAMember = {
 const readAsOutstanding: Outstanding = anOutstandingAnswer
 const readAsAccountNotYetAMember: MembershipDue = anAccountNotYetAMember
 
+/**
+ * A LINE OF THE INBOX THAT ONLY TELLS, which is what every message the portal writes is.
+ *
+ * `from` is the LEAGUE'S OWN NAME and not a person's, and that is the owner's decision of
+ * 19.09.2026 rather than this sample's convenience: „Kad portal sam pise poruku clanu,
+ * posiljalac je NAZIV LIGE", chosen between three offered endings. So „did the portal write
+ * this or did a person" is not a state of this field's PRESENCE - V13 holds `from_name`
+ * `not null` with `message_from_name_not_blank` beside it - and a sample that showed it
+ * absent would be writing down a shape the schema forbids.
+ */
+const aServedNotice = {
+  id: 41,
+  from: 'Balkanska trkačka liga',
+  subject: 'Fotografija je prihvaćena',
+  body: 'Tvoja profilna fotografija je pregledana i objavljena je na tvom profilu.',
+  date: '2026-07-18',
+  read: true,
+  teamInvitationId: null,
+  pairInviteId: null,
+}
+
+/**
+ * AND ONE THAT ASKS, which is the second state of the two fields the one above has nothing
+ * in.
+ *
+ * Two samples and not one, for the reason `copiedFrom` has two: a field that is a number or
+ * nothing shows one of the two in any one row, and a file that had written text in its place
+ * would be „text against nothing" with nothing to fail. Written down as a TEAM invitation and
+ * a PAIR invitation at once deliberately - the schema's `message_asks_at_most_one_question`
+ * forbids that row, and this is a sample of a SORT rather than of a row, so it is the cheapest
+ * place to say that both fields are keys and neither is text.
+ */
+const aServedQuestion = {
+  ...aServedNotice,
+  id: 42,
+  subject: 'Tim te poziva',
+  read: false,
+  teamInvitationId: 7,
+  pairInviteId: 9,
+}
+
+const readAsServedNotice: ServedMessage = aServedNotice
+const readAsServedQuestion: ServedMessage = aServedQuestion
+
 /** Every row of what the portal serves today, by resource. */
 function servedRows(name: ResourceName): Record<string, unknown>[] {
   const file = readFileSync(join(process.cwd(), 'src', 'test', 'mock', `${name}.json`), 'utf8')
@@ -510,6 +555,19 @@ describe('the answer the backend gives', () => {
     expect(readAsFee.to).toBeNull()
     expect(readAsFee.rsd).toBeNull()
     expect(readAsFee.ranking).toBeNull()
+    /* THE SEVENTEENTH RESOURCE, in both states of the two fields that have two. The key is a
+       NUMBER here, where the portal addresses one message by text (`/:locale/poruke/:id`), so
+       whoever compares the two puts the number through `String` and never the address through
+       `Number`. And a message that only tells carries `null` rather than nothing at all, which
+       is what `data/useResource.ts` turns into the absence the screens ask about. */
+    expect(readAsServedNotice.id).toBe(41)
+    expect(readAsServedNotice.teamInvitationId).toBeNull()
+    expect(readAsServedNotice.pairInviteId).toBeNull()
+    expect(readAsServedQuestion.teamInvitationId).toBe(7)
+    expect(readAsServedQuestion.pairInviteId).toBe(9)
+    /* The sender is a NAME whichever wrote it, which is the owner's decision of 19.09.2026 and
+       the reason no screen tells a forged message from a written one. */
+    expect(readAsServedNotice.from).toBe('Balkanska trkačka liga')
   })
 
   it('agrees with the served file about the sort of every field they share', () => {
@@ -533,6 +591,10 @@ describe('the answer the backend gives', () => {
          rulebook publishes. */
       ['pricing', [aPricePeriod, aProcessingFee]],
       ['moderators', [aModerator]],
+      /* Both states of the inbox against the served file. The pair is what makes the two
+         question ids measured as KEYS: one sample alone would say „a number" or „nothing", and
+         the file may then hold either of those and nothing else. */
+      ['inbox', [aServedNotice, aServedQuestion]],
     ]
 
     for (const [name, answers] of against) {
@@ -753,6 +815,11 @@ describe('the answer the backend gives', () => {
          payments went on drawing rows out of the `verification` fixture, a queue nothing has
          ever written. */
       'payments',
+      /* THE INBOX, added 27.09.2026 with the three screens that read it. Like `pricing` and
+         `payments` it was answered long before anything asked for it, and this is the one whose
+         absence the owner met himself: a message the server had kept was drawn out of the
+         browser's own `useState` instead, so signing out took it away. */
+      'inbox',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

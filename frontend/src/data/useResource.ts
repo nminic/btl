@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DucatFamily } from './ducatRule'
 import { useSession } from '../session/useSession'
-import { arrivedResource, loadResource, type ResourceName } from './client'
+import type { Message } from '../session/context'
+import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from './client'
 import type {
   Attending,
   BtlEvent,
   Competitor,
   EventComment,
+  InboxLine,
   League,
   Moderator,
   Outstanding,
@@ -14,6 +16,7 @@ import type {
   Race,
   RacingPair,
   Result,
+  ServedMessage,
   StaticPage,
   Team,
 } from './types'
@@ -32,24 +35,64 @@ export type ResourceState<T> =
  * that cost was not a flash but the scroll: the router puts a reader back where
  * they were as soon as the screen commits, and a screen that is one loading box
  * tall at that moment has nowhere to be put back to (owner, 04.08.2026).
+ *
+ * @param owner **Written the day a caller needed it, which is `useInbox` and no other**
+ * (review of PR 406). Fourteen callers never pass this and are exactly as they were: every
+ * one of them reads a resource whose answer is the same for anybody asking, so there is
+ * nobody it could be owned by. `useInbox` is the one resource whose answer differs per
+ * caller (its own doc says so), and the owner it passes is the member asking - except on
+ * `member/MessageDetail.tsx`, which asks `useInbox` for `{ reactive: false }` and so never
+ * changes this hook's owner at all; its own doc has the measurement of why.
+ *
+ * **Read by the effect below, not adjusted here during the render.** A version that also
+ * reset `state` the moment `owner` changed - during the render itself, before the effect
+ * even runs - was written first, on the theory that a render showing the previous owner's
+ * answer for one frame was worth closing on its own. Measured against every case this
+ * change has (`inboxFromTheServer.test.tsx`): none of them can tell the two apart, because
+ * `act` already carries a click through the effect and the fetch it starts before handing
+ * control back, so by the time a case reads anything the effect has already run either way.
+ * A guard that cannot be told from its own absence is not a guard (ADL A2), so the simpler
+ * form is what stayed; naming the one-frame case this does not independently cover is more
+ * honest than a `useState` nothing here exercises.
+ *
+ * **Two forms that DID fail on `teamInvite.test.tsx` with `MessageDetail.tsx` reacting,
+ * kept apart from what this file actually runs so the next reader does not reach for a
+ * mechanism already measured against the wrong one.** A `key` on the caller was tried first
+ * (review of PR 406, second round): it forces a fresh read by tearing the whole subtree
+ * down, `MessageDetail.tsx`'s `useCompetitors`/`useTeams`/`usePairs`/`useOverlay` included.
+ * The render-time state adjustment described two paragraphs up - an earlier draft of this
+ * very hook - was tried next. Both reached `TheMessage` finding no message, both correctly
+ * returned `<NotFound />`, and both lost to it: `NotFound`'s own `<Navigate replace>` fired
+ * from an effect that can land after a DIFFERENT navigation the caller already started
+ * (`router.navigate` to the team page, in that file), and the router heard the redirect
+ * last - three cases, same twenty second timeout, `TeamDetail` never called, both times.
+ *
+ * **What ships today - `owner` read only through this effect's `[name, owner]`, nothing
+ * adjusted during render at all - is neither of those two, and a later review of this fix
+ * measured it separately rather than carrying the verdict over: with `MessageDetail.tsx`
+ * reacting, `teamInvite.test.tsx` ran twice at 34 passed, 0 failed, and the whole frontend
+ * package once at 3396 passed, 1 failed - the one case built to require the narrower
+ * behaviour `member/MessageDetail.tsx` still chooses.** An earlier draft of this doc
+ * attached the first two mechanisms' failure to this one; that was wrong about which
+ * mechanism it was describing, and is corrected here rather than left for the next reader
+ * to disprove again.
+ *
+ * **That green run is not the same claim as a closed race, and is not why
+ * `member/MessageDetail.tsx` still opts out.** `NotFound.tsx` is still `<Navigate replace>`
+ * fired from an effect nothing here controls; a package that does not happen to hit this
+ * timing on one machine says something about that machine's scheduling, not about whether
+ * the window can still open under a slower fetch or a busier event loop. The doc on
+ * `TheMessageAsked` has the full measurement and names what closing that gap for good
+ * would need.
  */
-export function useResource<T>(name: ResourceName): ResourceState<T> {
-  /* Read once, as this mounts, and never again while it is mounted.
+export function useResource<T>(name: ResourceName, owner?: string): ResourceState<T> {
+  /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` changes,
+   * which the effect below now also answers to.
    *
    * Once is all that is wanted: what the first render of a screen holds is what
    * decides whether the router has a page to put a scroll position back into.
    * Reading it on every render would be reading a value nothing here is
-   * subscribed to.
-   *
-   * Which means this is written for a name that does not change, and every
-   * caller passes a literal one: the nine wrappers at the foot of this file, and
-   * `usePending`, which reads the queue, and `useComments`, which reads what
-   * has been published and must never read the queue (see its own doc below).
-   * Handed a name that changes, the first render under the new one
-   * would draw the old resource's data as though it were ready, and only the
-   * effect would put it right. Making that correct is not a line in the effect,
-   * which runs after that render: it is the state being adjusted during the
-   * render itself. Worth writing on the day a caller needs it, and not before. */
+   * subscribed to. */
   const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
 
   useEffect(() => {
@@ -77,7 +120,7 @@ export function useResource<T>(name: ResourceName): ResourceState<T> {
     return () => {
       active = false
     }
-  }, [name])
+  }, [name, owner])
 
   return state
 }
@@ -364,3 +407,181 @@ export const useResults = (): ResourceState<Result[]> => {
 }
 export const usePairs = () => useResource<RacingPair[]>('pairs')
 export const useTeams = () => useResource<Team[]>('teams')
+
+/**
+ * WHOEVER THE INBOX IN THE CACHE WAS FETCHED FOR, kept beside the cache rather than
+ * inside any one component.
+ *
+ * **This is the one resource whose answer differs per caller, and the cache above is keyed
+ * by name with nobody in the key** (`data/client.ts` says so in its own words). What makes
+ * that a fault rather than a note is measured: signing out and in again happens IN PLACE.
+ * `AccountMenu` calls `signOutOfTheServer()` and `signOut()`, `SignIn` calls `signInWith`
+ * and `navigate`, and not one of the four reloads the page - so one visit can hold two
+ * different people, and a cache keyed by name alone would hand the second one the first
+ * one's mail.
+ *
+ * Module scope and not a ref, because two components read this list at once - the panel in
+ * the header and the screen behind it - and a ref each would mean two of them deciding to
+ * drop the same cache, which throws away the request the other one had already started.
+ * One home, one decision, one request.
+ *
+ * **AND THE LIMIT, because this closes one of the two things it could have closed.** The same
+ * member signing out and back in within one visit is served what the visit already fetched:
+ * nothing calls this while nobody is signed in, so the name it holds does not change and the
+ * answer is not dropped. That is the portal's own rule for all seventeen names („One request
+ * per resource per visit", `data/client.ts`) rather than anything about this one, and what is
+ * closed here is the half that is not a staleness but a LEAK: one caller's mail reaching the
+ * next. `pages/member/inboxFromTheServer.test.tsx` says which of the two each of its cases
+ * measures.
+ */
+let inboxAnsweredFor: string | undefined
+
+/**
+ * Drops the answer the moment it stops being this caller's.
+ *
+ * Called while rendering rather than from an effect, and that is the whole point: an effect
+ * runs AFTER the render that read the cache, so the first paint after signing in as
+ * somebody else would draw their predecessor's subjects and then correct itself. There is
+ * nothing to correct if the answer is gone before it is read.
+ */
+function theInboxNowBelongsTo(whose: string): void {
+  if (inboxAnsweredFor !== whose) {
+    inboxAnsweredFor = whose
+    clearResourceCache('inbox')
+  }
+}
+
+/**
+ * THE INBOX: WHAT THE SERVER HAS KEPT, AND THEN WHAT HAS BEEN SAID DURING THIS VISIT.
+ *
+ * **The shape is `event/GoingToEvent.tsx`'s, word for word - „what the file says, and then
+ * what has been said during this visit" - and it is here rather than there because three
+ * screens read it.** The server is the source: seven places in six classes under
+ * `backend/src/main` write into `message`, and until today not one of their rows was ever
+ * drawn. The nine screens that call `notify` still write nowhere but the browser, so leaving
+ * them out would take a team's invitation, a pair's invitation and a moderator's reason off
+ * the one screen a member can answer them on - and no screen sends any of the three.
+ *
+ * **Why two sources cannot show one message twice, measured rather than hoped.** The one
+ * pair that could collide is a moderator's decision: `PendingQueue` posts it to
+ * `/api/verification/{id}/decision`, which writes the row, AND calls `notify` beside it.
+ * Nothing clears this resource after that write, so the served list a visit holds is the
+ * one it fetched when the panel first mounted and the new row is not in it; on the next
+ * visit the browser's copy is gone and only the served row is left. So the member sees it
+ * once either way, and the day something does clear this name after a decision, that is
+ * the day the `notify` beside it goes.
+ *
+ * **Newest first, and the served half's own order is not touched.** `InboxApi` orders by
+ * `sent_at desc, m.id desc`, and what leaves the server is the calendar DAY - the time is
+ * gone - so sorting the two halves together on the day would shuffle everything the server
+ * sent on one day into an order it did not choose. Sorted on the day alone with a STABLE
+ * sort, two messages of one day keep the order they arrived in, which for the served half
+ * is the server's.
+ *
+ * @param reactive Defaults to true: `useResource` is given `mine` as its owner, so an
+ * already-mounted caller reads fresh the moment it changes rather than going on drawing
+ * whoever it answered for at mount (review of PR 406). `member/MessageDetail.tsx` is the one
+ * caller that passes `false`, and its own doc on `TheMessageAsked` has the full measurement
+ * of why: on that one screen, reacting to the switch correctly reaches `NotFound`, and
+ * `NotFound`'s own redirect then races a navigation the caller may already have started,
+ * which cost `teamInvite.test.tsx` three cases before this parameter existed.
+ */
+export function useInbox(
+  mine: string,
+  { reactive = true }: { reactive?: boolean } = {},
+): ResourceState<InboxLine[]> {
+  const { inbox: held } = useSession()
+
+  /* **WHOSE MAIL IS AN ARGUMENT AND NOT SOMETHING THIS HOOK WORKS OUT, and that is a
+     measurement rather than a preference.** Written as „read `signedIn` and answer nothing
+     where it names no member", the second half was a branch NOTHING COULD REACH: all three
+     callers gate on the same fact before they draw the part that asks (`Messages.tsx` says
+     why), so the hook is only ever called for somebody the league has given a number. A
+     branch nothing reaches is a branch that hides what it would have done, and the coverage
+     floor of 100 per cent on branches is what says so out loud.
+
+     So the caller hands over the number it already holds - `who.memberNumber` on the two
+     screens, `signedIn.memberNumber` in the panel - and the signature is what keeps the
+     question from being asked twice and answered two ways.
+
+     Called unconditionally, whatever `reactive` is: this clears the one shared cache all
+     three callers read, and `member/MessageDetail.tsx` not reacting itself does not mean
+     the answer it eventually reads on its own next mount should still be whoever asked
+     before. */
+  theInboxNowBelongsTo(mine)
+
+  /* `mine` again, as `useResource`'s owner - UNLESS this caller asked not to, in which case
+     `undefined` is what every other one of `useResource`'s fourteen callers already passes,
+     and this instance goes back to reading the cache once, at mount, same as they do. */
+  const served = useResource<ServedMessage[]>('inbox', reactive ? mine : undefined)
+
+  return useMemo(() => {
+    if (served.status !== 'ready') {
+      return served
+    }
+
+    return { status: 'ready', data: newestFirst([...held.map(asALine), ...served.data.map(asServed)]) }
+  }, [served, held])
+}
+
+/** A record the browser is holding, as a line. Its read mark is the portal's own, because
+ *  for it the portal IS the store. */
+function asALine(one: Message): InboxLine {
+  return {
+    id: one.id,
+    from: one.from,
+    subject: one.subject,
+    body: one.body,
+    date: one.date,
+    read: one.read,
+    invitation: one.invitation,
+    pairInvite: one.pairInvite,
+    canBeMarkedRead: true,
+  }
+}
+
+/**
+ * A row the server answered, as a line.
+ *
+ * `String(...)` on the key and not the other way about, because the address of one message
+ * is text and a number put through `Number(id)` would answer `NaN` for every key the
+ * browser's own half holds.
+ *
+ * **AND THE TWO QUESTION KEYS DO NOT COME ACROSS, which is a refusal and not an oversight.**
+ * `GET /api/inbox` answers `teamInvitationId` and `pairInviteId`, and the routes that answer
+ * such a question exist too - `PUT /api/teams/{id}/invitations/{invitation}` and
+ * `PUT /api/pairs/{id}`. What does not exist is any screen that calls either: measured
+ * 27.09.2026, the only write the frontend sends anywhere near them is `POST /api/teams` from
+ * `member/ProposeTeam.tsx`, and `InvitationAnswer` answers by looking the invitation up in the
+ * session's own `invitations` and writing the member's record there.
+ *
+ * So handing a served key to that screen would not leave it short of a button - it would make
+ * it say something false. `InvitationAnswer` treats an invitation it cannot find as one that is
+ * OVER („teams.inviteClosed", and the file says why in its own words), so a member would be told
+ * a question was closed while `team_invitation` on the server still held it open. Absent, the
+ * message is drawn as what it is - a subject, a sender and a body - and nothing is claimed about
+ * an answer. **That leaves a served invitation unanswerable on this portal, which is the boundary
+ * this increment ends on and not something it hides.**
+ */
+function asServed(one: ServedMessage): InboxLine {
+  return {
+    id: String(one.id),
+    from: one.from,
+    subject: one.subject,
+    body: one.body,
+    date: one.date,
+    read: one.read,
+    /* NO ROUTE WRITES `message_read`. Measured 27.09.2026: `backend/src/main` maps
+       `GET /api/inbox` and `POST /api/inbox` and nothing else on this resource, and the
+       second sends a message rather than marking one read. See `InboxLine` for what the
+       screens do with that. */
+    canBeMarkedRead: false,
+  }
+}
+
+/** Sorted on the day, stably, so that whatever order each half arrived in survives inside
+ *  a day. `localeCompare` is not needed and would be wrong: these are ISO days, where
+ *  plain string order IS date order. */
+function newestFirst(lines: InboxLine[]): InboxLine[] {
+  return [...lines].sort((left, right) => (left.date < right.date ? 1 : left.date > right.date ? -1 : 0))
+}

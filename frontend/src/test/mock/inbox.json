@@ -1,0 +1,22 @@
+[
+  {
+    "id": 41,
+    "from": "Balkanska trkačka liga",
+    "subject": "Fotografija je prihvaćena",
+    "body": "Tvoja profilna fotografija je pregledana i objavljena je na tvom profilu.",
+    "date": "2026-07-18",
+    "read": true,
+    "teamInvitationId": null,
+    "pairInviteId": null
+  },
+  {
+    "id": 17,
+    "from": "Milica Anđelković",
+    "subject": "Prevoz do Jadovnika",
+    "body": "Idem kolima iz Beograda u subotu ujutru, ima još dva mesta ako ti treba prevoz.",
+    "date": "2026-07-09",
+    "read": true,
+    "teamInvitationId": null,
+    "pairInviteId": null
+  }
+]

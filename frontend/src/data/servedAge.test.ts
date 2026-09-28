@@ -229,7 +229,15 @@ describe('which fields the portal serves', () => {
        countable leaves, and the three fractions are fractions of the picture's own edges
        and say nothing about the person in it. The fractions also cannot trip the rule
        below: nothing between 0 and 1 is year-shaped. */
-    expect(Object.keys(served)).toHaveLength(15)
+    /* **Sixteen files since 27.09.2026, when the inbox became something the portal reads.**
+       Eight more paths, none of them nested, and they are about a person in the plainest way
+       anything on this list is: a message carries whoever sent it and whatever was written.
+       What is NOT among the eight is the one field that would matter - `to_id` never leaves
+       the server at all (`InboxApi`), so a served line cannot say whose it is, only that it
+       reached whoever asked. The two dates under it are DAYS and not years, which is what
+       keeps them clear of the rule below: `sent_at` leaves as `2026-07-18`, and the rule
+       refuses a bare four-digit year standing where a person's age could be read off it. */
+    expect(Object.keys(served)).toHaveLength(16)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,
