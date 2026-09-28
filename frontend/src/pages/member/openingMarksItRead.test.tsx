@@ -1,8 +1,18 @@
-import { screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { renderAt } from '../../test/render'
-import { answeredWith, did, serverThat, type Asked } from '../../test/serverAnswers'
-import { setupUser } from '../../test/user'
+import {
+  answeredWith,
+  did,
+  forgetEveryCookie,
+  serverThat,
+  type Asked,
+} from '../../test/serverAnswers'
+import { forgetTheInbox } from '../../data/useResource'
+import { forgetWhatHasBeenOpened } from './inboxRead'
+import { FIRST_MESSAGES } from '../../data/seedMessages'
+import { SLOW } from '../../test/slow'
+import { translate } from '../../i18n/translate'
 import sr from '../../i18n/sr.json'
 
 /**
@@ -29,9 +39,6 @@ import sr from '../../i18n/sr.json'
  * not mark it read for anybody else, and a store keyed by message alone would pass every case
  * here while getting that exactly wrong.
  */
-
-/** Obviously a test and not anybody's password. */
-const TYPED_PASSWORD = 'ovo-je-probna-lozinka-123'
 
 const HIS_ADDRESS = 'ja@primer.rs'
 const HER_ADDRESS = 'ona@primer.rs'
@@ -156,7 +163,18 @@ function aServerKeepingMarks(inboxes: Record<string, unknown[]>): void {
          a copy per reader, which is the very thing V13 refuses to keep. */
       const rows = (inboxes[serving] ?? []).map((row) =>
         typeof row === 'object' && row !== null
-          ? { ...row, read: marks.has(`${serving}:${String(Reflect.get(row, 'id'))}`) }
+          ? {
+              ...row,
+              /* **THE FIXTURE'S OWN MARK IS KEPT AND THIS ONE IS ADDED TO IT, not substituted
+                 for it.** Written as a plain `marks.has(...)`, this overwrote a row that arrives
+                 ALREADY READ - and the case about such a row caught it: the screen posted for a
+                 message the server had had read all along, because the server had stopped saying
+                 so. A row already read is one of the two states of „what was it before opening",
+                 so a harness that cannot express it takes half this file's subject away. */
+              read:
+                Reflect.get(row, 'read') === true ||
+                marks.has(`${serving}:${String(Reflect.get(row, 'id'))}`),
+            }
           : row,
       )
 
@@ -196,14 +214,69 @@ function whatWasMarked(): string[] {
     .map((one) => one.path)
 }
 
-/** The envelope above every screen, by the name a screen reader is given. The count is IN the
- *  name and not beside it (`app/MessagesMenu.tsx` says why), so this is the one query that
- *  reads it. */
-function theEnvelope(count: number): Promise<HTMLElement> {
-  return screen.findByRole('button', {
-    name: `${sr.shell.openMessages}, ${String(count)} ${count === 1 ? 'nepročitana' : 'nepročitane'}`,
-  })
+/**
+ * THE ENVELOPE ABOVE EVERY SCREEN, AND WHAT IT SAYS, as a screen reader is given it.
+ *
+ * <p><b>Found by the words it always carries and then asked what its whole name is, rather than
+ * queried by the whole name at once.</b> Two measurements put it this way round. A query for the
+ * finished sentence answers „unable to find" for every wrong count alike, and the DOM it prints
+ * is truncated well before the header - so a count that was one out looked exactly like an
+ * envelope that was not drawn at all. And the count is IN the accessible name rather than beside
+ * it, on purpose (`app/MessagesMenu.tsx`: an `aria-label` replaces everything inside the
+ * button), so there is no separate node to read it off.
+ *
+ * <p><b>And the sentence is built by the portal's own `translate` rather than written out here</b>,
+ * because Serbian picks a different form at 0, 1 and 2 and this file asserts all three.
+ * „nepročitana", „nepročitane" and „nepročitanih" written by hand is a fourth home for the
+ * plural rule, and the first draft of this helper got 0 wrong.
+ */
+function theEnvelope(): Promise<HTMLElement> {
+  return screen.findByRole('button', { name: new RegExp(sr.shell.openMessages) })
 }
+
+/**
+ * WHAT THE ENVELOPE SAYS WHEN THIS MANY SERVED MESSAGES ARE UNREAD.
+ *
+ * <p><b>The held half is added in here rather than into each number, and it is READ OFF THE SEED
+ * rather than remembered.</b> Every screen of this file draws both halves of the inbox: what the
+ * server answered, and what `data/seedMessages.ts` addresses to the whole league. One of those
+ * seeded records is unread, so every count in this file is „the served ones, plus that". Written
+ * as a bare number per case, each of them would be an unexplained arithmetic that the next reader
+ * has to rediscover - and the first draft of this file got all five wrong in the same direction.
+ *
+ * <p><b>Derived, so that the day somebody marks that seeded record read or adds a second, this
+ * file moves with it</b> instead of going red five times over something that is not its subject.
+ * A broadcast (`to: ''`) is counted for every member; anything addressed to one member is not
+ * this reader's business, which is the provider's own filter (`session/SessionProvider.tsx`).
+ */
+function saysUnread(served: number): string {
+  const held = FIRST_MESSAGES.filter((one) => one.to === '' && !one.read).length
+
+  return `${sr.shell.openMessages}, ${translate(sr, 'sr', 'shell.unread', { count: served + held })}`
+}
+
+/** The list item one subject stands in, so that what is asserted about a message is read off
+ *  that message and not off the page. Copied from `member/inboxFromTheServer.test.tsx` rather
+ *  than reinvented, and it exists because the header is a button too: „Otvori poruke, 2
+ *  nepročitane" carries the word this file would otherwise have queried by, on every screen. */
+function rowOf(subject: string | RegExp): HTMLElement {
+  const row = screen.getByRole('link', { name: subject }).closest('li')
+
+  if (row === null) {
+    throw new Error(`the subject "${String(subject)}" is not drawn inside a row`)
+  }
+
+  return row
+}
+
+beforeEach(() => {
+  /* THE TOKEN, because `askTheServer` asks for one before every write and jsdom keeps cookies
+     for the whole file. Without it the write still goes out - the file says so in its own words
+     - but it spends a read on the way, which would make „how many requests did this cost"
+     unreadable in the cases below. The sibling file sets it for the same reason. */
+  forgetEveryCookie()
+  document.cookie = 'XSRF-TOKEN=imam'
+})
 
 afterEach(() => {
   server?.stop()
@@ -227,15 +300,19 @@ describe('a served message the member opens', () => {
     /* And the count really falls, which is the half no assertion about the request can make:
        two unread arrived, one was opened, and the number the header draws comes from the
        server's own second answer. */
-    expect(await theEnvelope(1)).toBeVisible()
-  })
+    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
+  }, SLOW * 2)
 
   it('is asked about once even though the answer makes this screen read the inbox again', async () => {
     aServerKeepingMarks({ [HIS_ADDRESS]: [NEVER_OPENED, OPENED] })
 
     renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000007')
 
-    await theEnvelope(1)
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: new RegExp(sr.shell.openMessages) })).toHaveAccessibleName(
+        saysUnread(1),
+      ),
+    )
 
     /* **A floor under the mechanism rather than a tidiness check.** A successful write drops
        the cached inbox and bumps the revision on purpose, so this screen reads the server
@@ -245,7 +322,7 @@ describe('a served message the member opens', () => {
     await new Promise((settle) => setTimeout(settle, 0))
 
     expect(whatWasMarked()).toHaveLength(1)
-  })
+  }, SLOW * 2)
 
   it('is left alone where the route refuses it, and the envelope goes on counting it', async () => {
     aServerKeepingMarks({ [HIS_ADDRESS]: [NEVER_OPENED, OPENED] })
@@ -266,13 +343,13 @@ describe('a served message the member opens', () => {
        server last said it was.** Both unread, still. A portal that dropped its cache on the
        asking rather than on the answering would draw „1" here and be lying about the one
        number PDL 27a exists to make true. */
-    expect(await theEnvelope(2)).toBeVisible()
+    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(2))
 
     /* And it does not hammer the route it was refused by. */
     await new Promise((settle) => setTimeout(settle, 0))
 
     expect(whatWasMarked()).toHaveLength(1)
-  })
+  }, SLOW * 2)
 
   it('asks nothing at all when the server already had it read', async () => {
     aServerKeepingMarks({ [HIS_ADDRESS]: [NEVER_OPENED, ALREADY_READ] })
@@ -283,10 +360,10 @@ describe('a served message the member opens', () => {
 
     /* One unread arrived and one was already read, so the count is the floor under this: it
        says the inbox really landed before the absence below was asserted. */
-    expect(await theEnvelope(1)).toBeVisible()
+    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
 
     expect(whatWasMarked()).toEqual([])
-  })
+  }, SLOW * 2)
 })
 
 describe('a message the browser is holding', () => {
@@ -305,14 +382,22 @@ describe('a message the browser is holding', () => {
       name: /Dobro došao u pripremu sezone/,
     })
 
-    /* **The count falling is what says the mark landed**, and it landed in the session:
-       nothing was sent. A screen that sent `POST /api/inbox/msg-1/read` would be asking the
-       server about a key it has never heard of, and one that sent nothing AND marked nothing
-       would leave this at one. */
-    expect(await theEnvelope(0)).toBeVisible()
+    /* **The count falling to NOUGHT is what says the mark landed**, and it landed in the
+       session: nothing was sent. A screen that sent `POST /api/inbox/msg-1/read` would be asking
+       the server about a key it has never heard of, and one that sent nothing AND marked nothing
+       would leave this at one.
+
+       Written out rather than through `saysUnread`, and that is the difference this case turns
+       on: every other count in this file is „served, plus the held one that is always there",
+       while here the held one is the very message being opened. So nought is nought on both
+       halves, and a helper that added the seed back in would be asserting the opposite of the
+       point. */
+    expect(await theEnvelope()).toHaveAccessibleName(
+      `${sr.shell.openMessages}, ${translate(sr, 'sr', 'shell.unread', { count: 0 })}`,
+    )
 
     expect(whatWasMarked()).toEqual([])
-  })
+  }, SLOW * 2)
 })
 
 describe('what the portal offers for saying so by hand', () => {
@@ -330,29 +415,24 @@ describe('what the portal offers for saying so by hand', () => {
        „where does the mark live" are really drawn here. */
     expect(screen.getByRole('link', { name: /Dobro došao u pripremu sezone/ })).toBeVisible()
 
-    /* **Read off the dictionary rather than by the words**, so that the sentence being gone
-       from `sr.json` cannot make this case vacuous: `messages.markRead` no longer exists, and
-       a query for a literal „Označi kao pročitano" would go on passing for ever whatever the
-       screen drew. What is asked instead is that the list offers NO button at all - the only
-       controls on this screen are links to the messages. */
-    expect(screen.queryAllByRole('button', { name: /pročitan/i })).toEqual([])
+    /* **ASKED OF THE LIST ITSELF AND NOT OF THE DOCUMENT, which is a measurement rather than
+       caution.** A first draft asked the whole page for a button named `/pročitan/i` and it
+       FAILED on the right code: the envelope in the header is a button whose accessible name is
+       „Otvori poruke, 2 nepročitane", so a query by that word finds the header on every screen
+       of the portal. The count in that name is exactly why `app/MessagesMenu.tsx` puts it
+       there, so the collision is permanent and not a fixture's fault.
 
-    const onTheList = screen
-      .getAllByRole('button')
-      .map((one) => one.getAttribute('aria-label') ?? one.textContent)
-
-    /* And the buttons that ARE on the page are the header's, every one of them: the envelope,
-       the account menu, the language and the day switch. None belongs to a row. */
-    expect(onTheList.filter((one) => one !== null && /poruk/i.test(one))).toEqual([
-      `${sr.shell.openMessages}, 2 nepročitane`,
-    ])
-  })
+       **And it is asked as „no buttons at all" rather than „no button called X".** The name is
+       gone from the dictionary in this very commit, so a query for the literal „Označi kao
+       pročitano" would go on passing for ever whatever the screen drew - a case that cannot
+       fail. What a row of this list may carry is a link to the message and nothing else. */
+    expect(within(rowOf(OPENED.subject)).queryAllByRole('button')).toEqual([])
+    expect(within(rowOf(/Dobro došao u pripremu sezone/)).queryAllByRole('button')).toEqual([])
+  }, SLOW * 2)
 })
 
 describe('an announcement two members are both served', () => {
-  it('is read by the one who opened it and unread for the other', async () => {
-    const user = setupUser()
-
+  it('is read by the one who opened it and still unread for the other', async () => {
     aServerKeepingMarks({
       [HIS_ADDRESS]: [NEVER_OPENED, TO_EVERYBODY],
       [HER_ADDRESS]: [TO_EVERYBODY],
@@ -362,27 +442,35 @@ describe('an announcement two members are both served', () => {
 
     await screen.findByRole('heading', { level: 1, name: TO_EVERYBODY.subject })
 
-    /* He has read it: two arrived, one is left. */
-    expect(await theEnvelope(1)).toBeVisible()
+    /* He has read it: two arrived and one is left. */
+    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
 
-    /* **AND NOW HER, through the portal's own sign in rather than a fake session**, because
-       the fact being measured is what the SERVER keeps: a row in `message_read` names the
-       reader, so his reading marks nothing for her. A portal that kept read marks by message
-       alone would show her nought here, and every case above it would still be green. */
-    await user.click(screen.getByRole('button', { name: sr.shell.openAccount }))
-    await user.click(screen.getByRole('link', { name: sr.shell.signOut }))
+    expect(whatWasMarked()).toEqual([`/api/inbox/${String(TO_EVERYBODY.id)}/read`])
 
-    await screen.findByRole('link', { name: sr.shell.signIn })
+    /* **AND NOW HER, AS A SECOND VISIT TO THE SAME SERVER**, which is what makes this a
+       question about what the SERVER kept rather than about what a screen redrew. A row in
+       `message_read` names the reader (V13), so his reading marks nothing for her; a server
+       - or a portal - that kept read marks by message alone would answer hers read here and
+       every case above this one would still be green.
 
-    await user.click(screen.getByRole('link', { name: sr.shell.signIn }))
-    await user.type(await screen.findByLabelText(sr.signIn.email), HER_ADDRESS)
-    await user.type(screen.getByLabelText(sr.signIn.password), TYPED_PASSWORD)
-    await user.click(screen.getByRole('button', { name: sr.signIn.submit }))
+       Torn down and rendered again rather than switched in place: switching identity without
+       signing out is its own mechanism with its own race, and
+       `member/inboxFromTheServer.test.tsx` owns that walk. What is wanted here is a fresh
+       reader asking the same server, which is what signing in on another machine is. */
+    cleanup()
+    forgetTheInbox()
+    forgetWhatHasBeenOpened()
+    serving = HER_ADDRESS
 
-    /* Hers is the one announcement and it is still unread, plus the seeded broadcast the
-       browser holds for her too. */
-    expect(await theEnvelope(2)).toBeVisible()
-  })
+    renderAt('/sr/poruke', 'competitor', '000009')
+
+    await screen.findByRole('link', { name: TO_EVERYBODY.subject })
+
+    /* **Hers is the one announcement and it is STILL UNREAD**, which is the whole case: his
+       reading of it wrote a row naming him, and a row naming him says nothing about her. One
+       served, unread, plus the seeded broadcast she is served too. */
+    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
+  }, SLOW * 2)
 })
 
 describe('an account the league has given no number', () => {
@@ -398,5 +486,5 @@ describe('an account the league has given no number', () => {
     await screen.findByRole('heading', { level: 1 })
 
     expect(whatWasMarked()).toEqual([])
-  })
+  }, SLOW * 2)
 })
