@@ -51,6 +51,17 @@ describe('translation keys used in code', () => {
     for (const field of form.fields) {
       keys.push(field.labelKey)
 
+      /* And the name written over the part of the form it stands in, which is the
+         fourth kind of text a field carries (`forms/types.ts`, `groupKey`). Left
+         out until 28.09.2026, and it was left out the whole time groups existed:
+         a key that resolves to nothing is drawn as ITSELF, so a legend reading
+         „registration.group.basics" would have gone to QA with every case in the
+         portal green. Measured that day, renaming two of these and deleting two
+         more. */
+      if (field.groupKey !== undefined) {
+        keys.push(field.groupKey)
+      }
+
       if (field.hintKey !== undefined) {
         keys.push(field.hintKey)
       }

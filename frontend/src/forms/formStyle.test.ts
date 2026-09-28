@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor } from '../test/stylesheet'
+import { ruleFor, ruleInMedia } from '../test/stylesheet'
 
 /**
  * Three things about a form that no rendered test can see, because jsdom lays
@@ -170,5 +170,74 @@ describe('the calendar button that will not answer', () => {
 
     expect(refused.borderColor).toBe('var(--control-border)')
     expect(refused.color).toBe('var(--text-muted)')
+  })
+})
+
+/**
+ * THE TOWN AND THE COUNTRY, WHERE A ROW IS IN COLUMNS.
+ *
+ * Owner, 28.09.2026: „Drugi red su jednake trećine za Mesto i Državu (Treća
+ * kolona je prazna)." The field already SPANNED two columns before that day and
+ * that is not the same thing: measured at 1280, the town was 434,67px and the
+ * country 192px inside 634,67px, because `PlaceField.css` gives the country a
+ * fixed 12rem and hands the rest to the town.
+ *
+ * Two halves and a gap, and all three have to be said, which is why there are
+ * three assertions and not one: equal halves with the sheet's own 8px gap came
+ * out 313,33px each against a third of 309,33px, and the left edge of „Država"
+ * stood four pixels short of „Telefon" on the row above. Equal to each other and
+ * on neither column.
+ *
+ * **Measured in a browser after the rule was written**, because jsdom lays
+ * nothing out: at 1280 the town is 309,33px at x=98,33 and the country 309,33px
+ * at x=423,67, which is where the telephone above it begins, to the pixel.
+ */
+describe('a town standing on a row of columns', () => {
+  const QUERY = '(min-width: 51.25em)'
+
+  it('is two of those columns, and its halves are one each', () => {
+    const halves = ruleInMedia(
+      fields,
+      QUERY,
+      '.form__row .field--place .place__town, .form__row .field--place .place__country-pick',
+      'FormRenderer.css',
+    )
+
+    /* A basis of zero, written `0%` so every parser reads the shorthand, and not `auto`: `auto` starts from the width of the
+       content, and the content of one half is an empty box while the other is a
+       list of two hundred and forty six countries. */
+    expect(halves.getPropertyValue('flex')).toBe('1 1 0%')
+    expect(halves.getPropertyValue('min-inline-size')).toBe('0px')
+    /* And the fixed width `PlaceField.css` gives the country undone, or the
+       half is a half of nothing. */
+    expect(halves.getPropertyValue('inline-size')).toBe('auto')
+    expect(halves.getPropertyValue('max-inline-size')).toBe('none')
+  })
+
+  it('splits them by the gap between the columns, so each half IS a column', () => {
+    /* The third thing, and the one that a guard about the halves alone would
+       miss entirely: two equal halves of a field two columns wide are only two
+       columns if what parts them is what parts the columns. */
+    const inside = ruleInMedia(fields, QUERY, '.form__row .field--place .place', 'FormRenderer.css')
+    const row = ruleFor(fields, '.form__row', 'FormRenderer.css')
+
+    expect(inside.getPropertyValue('gap')).toBe(row.getPropertyValue('gap'))
+    expect(inside.getPropertyValue('gap'), 'the row no longer names a gap at all').not.toBe('')
+  })
+
+  it('leaves the rule for a town standing on its own alone', () => {
+    /* The scope, held rather than described. Two other forms draw a town
+       (`admin-dogadjaj`, `unos-rezultata`) and in both it stands on no row,
+       where there are no thirds to be equal to: the reason `PlaceField.css`
+       gives for the fixed width still holds there, that the town is typed and
+       the country is chosen. Written without the `.form__row` in front of it,
+       the rules above would have widened a control on two administrative
+       screens nobody asked about. */
+    const sheet = readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8')
+    const own = ruleFor(sheet, '.place__country-pick', 'PlaceField.css')
+
+    expect(own.getPropertyValue('inline-size')).toBe('12rem')
+    expect(own.getPropertyValue('max-inline-size')).toBe('45%')
+    expect(own.getPropertyValue('flex')).toBe('0 0 auto')
   })
 })
