@@ -1596,6 +1596,7 @@ describe('what a form hands over beside what it sends', () => {
       'admin-trka.form.json': [],
       'predlog-tima.form.json': [],
       'prijava-sa-trke.form.json': [],
+      'profil.form.json': [],
       'registracija.form.json': ['passwordRepeat'],
       'unos-rezultata.form.json': [],
     })

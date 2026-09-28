@@ -392,8 +392,10 @@ class MeWriteApi {
 	 * <p>PDL P11, 31.07.2026: „Biografija je ogranicena na 360 znakova, bez skrola u
 	 * kartici", with the arithmetic beside it - „Na trecini reda kartica prima oko
 	 * cetrdeset znakova po redu i devet redova, dakle tri stotine sezdeset" - and the
-	 * sentence that says where it lives: „Ogranicenje stoji na polju u formi registracije
-	 * ({@code registracija.form.json})". Six hundred was struck out the same day.
+	 * sentence that says where it lives: „Ogranicenje stoji na polju u formi profila
+	 * ({@code profil.form.json})". Six hundred was struck out the same day, and the form
+	 * that holds the box changed on 28.09.2026 when the owner moved the biography out of
+	 * the registration; the number did not, and neither did the rule that it has one home.
 	 *
 	 * <p><b>Why the server says it at all, when the box already does.</b> The same reason
 	 * {@link com.btl.portal.domain.registration.WhatRegistrationAsksFor} gives for deciding
@@ -405,7 +407,7 @@ class MeWriteApi {
 	 * number somebody decided" - and here somebody decided it.
 	 *
 	 * <p><b>Written here and measured against the file, which is the floor under it.</b>
-	 * {@code MeWriteApiTest} reads {@code registracija.form.json} and demands that
+	 * {@code MeWriteApiTest} reads {@code profil.form.json} and demands that
 	 * {@code bio}'s {@code maxLength} be this number, the same arrangement
 	 * {@code WhatRegistrationAsksForTest} and {@code TeamWriteApiTest} have for what their
 	 * forms ask. The day the owner moves the box, the build stops until this moves with it.
@@ -444,8 +446,8 @@ class MeWriteApi {
 	 *
 	 * <p><b>Written by hand with its floor in the same commit</b>, which is the arrangement
 	 * this file already has for {@link #AS_LONG_AS_THE_FORM_ALLOWS} and the one
-	 * {@code CLAUDE.md} demands of any list in a guard: {@code MeWriteApiTest} reads
-	 * {@code registracija.form.json} and requires every number here to be that field's own
+	 * {@code CLAUDE.md} demands of any list in a guard: {@code MeWriteApiTest} reads the
+	 * form each box stands on and requires every number here to be that field's own
 	 * {@code maxLength}, and requires this map to hold an entry for every TEXT field of the
 	 * form this route takes. A box the owner moves stops the build until the server moves
 	 * with it, and a tenth field added to {@link Change} with no box behind it stops it too.

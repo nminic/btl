@@ -44,8 +44,13 @@ export type FieldType =
    *
    * - **proof beside a result**, optional, deleted once the result has been
    *   checked, so the disc does not fill with photographs of watches;
-   * - **the profile picture in registration**, obligatory (PDL P8), kept for as
-   *   long as the member is one, and looked at by a moderator before it shows.
+   * - ~~**the profile picture in registration**, obligatory (PDL P8)~~ — no form
+   *   asks for a profile picture since 28.09.2026, when the owner moved it out of
+   *   the registration („Profilna sekcija se sa slikom i svojim recima izbacuje iz
+   *   registracione forme"). It is still kept for as long as the member is one and
+   *   still looked at by a moderator before it shows; what changed is that it
+   *   arrives as a file at `POST /api/me/photo` rather than as a field of a form.
+   *   So this type has one user today, the two forms a result is reported by.
    *
    * What the field type carries is the picking; how long the file lives is the
    * business of whatever receives it.
