@@ -176,6 +176,11 @@ class VerificationWriteApiTest {
 	 *  changed" pass over a route that wrote nothing at all. */
 	private static final int CORRECTED_TIME = 3300;
 
+	/** What a member who left the beginners' category months ago already carries. It is not
+	 *  written as twelve: the threshold is {@link Category#FIRST_SEASON_POINTS} and one place,
+	 *  and this is plainly past it whatever that number becomes. */
+	private static final String WELL_OVER_THE_THRESHOLD = "26.50";
+
 	private static final String THE_TEAM = "Timocka trkacka druzina";
 
 	/** The whole of {@code verification.body} for a comments row (dva izvora, jedna vrednost):
@@ -269,6 +274,9 @@ class VerificationWriteApiTest {
 
 	/** A results row naming no submission, which V10 permits and this route refuses. */
 	private long aResultsRowNamingNoRun;
+
+	/** A second run for a member who was over the threshold before this branch existed. */
+	private long detesSecondRun;
 
 	/** A second, unrelated event: what proves a comment is filed under the one it was
 	 *  actually about rather than under any other row that happens to exist. */
@@ -406,6 +414,17 @@ class VerificationWriteApiTest {
 				CORRECTED_TIME, verasCountedRun);
 		aRunOnARaceNobodyHasEnteredYet = describedRunWaitingFor(ANA, THE_OTHER_EVENTS_DAY);
 		aResultsRowNamingNoRun = waiting("results", VERA, "Red bez prijave", "", null);
+
+		/* AND A MEMBER WHO WAS ALREADY OVER THE THRESHOLD BEFORE ANY OF THIS, which is the
+		   third state of the category axis and the one a fixture normally misses. With only
+		   „he crosses it now" and „he is nowhere near", a route that told every member on
+		   every approval and a route that told the right one are told apart by the second
+		   case alone - and a member who crossed the threshold last month would be told again
+		   on every run he sends for the rest of the season. */
+		resultAlreadyCounted(DETE, theMarathon, SATURDAY, "42.1950", 300, 300, FOUR_HOURS,
+				WELL_OVER_THE_THRESHOLD);
+		detesSecondRun = runWaitingFor(DETE, theShortRace, THE_OTHER_EVENTS_DAY, "10.00", 50, 50,
+				AN_HOUR, null);
 
 		waiting("payments", VERA, "Uplata", "", null);
 	}
@@ -1290,6 +1309,56 @@ class VerificationWriteApiTest {
 						+ " (select id from competitor where member_number = ?)")
 				.param(BOJAN).query(Integer.class).single())
 				.as("he was told about a category nothing moved").isZero();
+	}
+
+	/**
+	 * AND A MEMBER WHO WAS ALREADY OVER THE THRESHOLD IS NOT TOLD AGAIN.
+	 *
+	 * <p>The third state of the axis, and the one that turns „he is told when it closes" into
+	 * „he is told when it closes, once". A member who crossed twelve points in April and goes
+	 * on running would otherwise be told his beginners' category had just been shut on every
+	 * result he sent for the rest of the season - each message true about the category and
+	 * false about the word „time", which is what the owner's sentence is built on: „ako
+	 * odobrenje PREVEDE clanov zbir... na 12 ili vise".
+	 *
+	 * <p>It is a different member from the two above and he had his points before this fixture
+	 * queued anything, so „already over" is a state of the record rather than something an
+	 * earlier case in the same run left behind.
+	 */
+	@Test
+	void aMemberWhoWasAlreadyOverTheThresholdIsNotToldAgain() throws Exception {
+		assertThat(beginnersCategoryIsOpenFor(memberId(DETE), 2028))
+				.as("the fixture did not put him over it, so this measures nothing").isFalse();
+
+		assertThat(answer(THE_SUPERADMIN, detesSecondRun, true, null)).isEqualTo(200);
+
+		assertThat(howManyResults(DETE)).as("the run was counted all the same").isEqualTo(2);
+		assertThat(db.sql("select count(*) from message where to_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(DETE).query(Integer.class).single())
+				.as("he was told again about a category that closed months ago").isZero();
+	}
+
+	/**
+	 * A RELAY THAT WILL NOT TAKE IT DOES NOT UNDO THE DECISION.
+	 *
+	 * <p>{@link ResultWriteApi}'s decision, made again for this route and for the same reason:
+	 * the moderator's answer was correct and the result belongs in the standings, so failing
+	 * his request because the post office is down would undo a decision that was rightly made.
+	 * What survives instead is the row, written inside the transaction the letter waits for.
+	 *
+	 * <p>The relay is stopped rather than imitated, so what is measured is the real failure the
+	 * real client throws.
+	 */
+	@Test
+	void aRelayThatIsDownDoesNotUndoTheApprovalOrTheResult() throws Exception {
+		SMTP.getSmtp().stopService();
+
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null))
+				.as("the moderator was refused because the post office was down").isEqualTo(200);
+
+		assertThat(stateOf(anasMarathon)).isEqualTo("approved");
+		assertThat(counted(onlyResultOf(ANA)).orElseThrow().seconds()).isEqualTo(FOUR_HOURS);
 	}
 
 	/**
