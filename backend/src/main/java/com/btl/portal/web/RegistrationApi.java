@@ -110,31 +110,25 @@ import java.util.regex.Pattern;
  * <p><b>WHAT IS DELIBERATELY NOT COLLECTED, EACH ONE A BOUNDARY.</b>
  *
  * <ul>
- * <li><b>The photograph.</b> {@link WhatRegistrationAsksFor#OF_EVERYBODY} asks for it
- *     and the owner made it compulsory on 11.08.2026, so it is not optional and this
- *     route does not pretend it is: it is named in {@link #NOT_COLLECTED_YET}, which
- *     is what keeps the omission visible. A picture is a file (ADL A36 O8, A12a), and
- *     what is missing under {@code backend/src/main} is the half that RECEIVES one: no
- *     signature under {@code backend/src/main/java} carries a {@code MultipartFile} or a
- *     {@code @RequestPart}, so nothing here is written to be handed a file. <b>That is
- *     read off the signatures, and it is deliberately NOT widened into „a file could not
- *     arrive", which would be a claim about every road into a handler and is not what was
- *     counted here.</b> Three routes do take the {@code HttpServletRequest} itself and read
- *     the whole body - {@link InboxWriteApi}, {@link MeWriteApi} and
- *     {@link NotificationWriteApi} - and what keeps a {@code multipart/form-data} body
- *     from reaching them is the {@code consumes = MediaType.APPLICATION_JSON_VALUE} each
- *     of those three declares, which {@link InboxWriteApi} measured and wrote up beside
- *     its own mapping („{@code consumes} goes on refusing before anything is dispatched").
- *     <b>The three things this
- *     sentence used to deny alongside it are no longer missing, so it is reversed here
- *     rather than left for a reader to trip over.</b> {@link PhotoApi} finds a row by
- *     {@code photo.digest} and opens its file under {@code String.valueOf} of that row's
- *     key (20.09.2026, ADL A60), and {@link TeamApi} answers a digest beside the three
- *     fractions of a crop (21.09.2026): the digest, the crop and the name the database
- *     issues are all read under {@code backend/src/main} today.
- *     {@code competitor.photo_id} is nullable, so the row is
- *     legitimate without one, and a member without a picture is a state the portal has
- *     to be able to draw in any case.
+ * <li><b>The photograph, WHICH THIS ROUTE NO LONGER OMITS BUT IS NO LONGER ASKED.</b> It
+ *     was compulsory here from 11.08.2026 and named in a constant of its own, because a
+ *     field the form asked for and this route dropped had to be visibly dropped rather
+ *     than silently. The owner ended that on 28.09.2026: „Profilna sekcija se sa slikom i
+ *     svojim recima izbacuje iz registracione forme - to ce clan popunjavati naknadno kad
+ *     bude odobren." The form stopped asking, {@link WhatRegistrationAsksFor#OF_EVERYBODY}
+ *     stopped requiring, and the constant went with them - a name excusing a field nobody
+ *     asks for excuses nothing, which is the rule that constant was written under in the
+ *     first place.
+ *     <p><b>What did NOT change, said out loud because the two are easy to run
+ *     together.</b> A picture still goes before a moderator, is still cropped by the same
+ *     rule, and still reaches the portal by the road it always did:
+ *     {@code POST /api/me/photo}, which a signed in member walks once his account is
+ *     live. Nothing about approval moved; only the moment the picture is given.
+ *     <p><b>And a member is therefore approved before any picture exists.</b>
+ *     {@code competitor.photo_id} is nullable and always has been, so the row is
+ *     legitimate without one, and a member without a picture is a state the portal has to
+ *     be able to draw in any case - which is what makes this a change of order rather
+ *     than a new state.
  * <li><b>The day registration opens, which nothing enforces any more, on either side
  *     of the wire.</b> The owner moved that window on 14.09.2026, on three offered
  *     outcomes, and his decision in his own words is „Prozor se pomera: portal je
@@ -252,19 +246,6 @@ class RegistrationApi {
 	/** One address is one account (V6), and the owner decided this is said out loud. */
 	static final String THE_ADDRESS_IS_TAKEN = "theAddressIsTaken";
 
-	/**
-	 * WHAT THE FORM ASKS FOR AND THIS ROUTE DOES NOT COLLECT, named rather than silent.
-	 *
-	 * <p>A field left out on purpose and a field that went missing look exactly alike
-	 * from inside a handler, which is the reason this is a constant and not a sentence.
-	 * {@code RegistrationApiTest} asks {@link WhatRegistrationAsksFor} what is required
-	 * at both ages and demands that every name be either collected here or on this list,
-	 * and that every name on this list really is one the form asks for - so a field
-	 * added to the registration tomorrow fails the build until somebody decides, and a
-	 * name that stops being asked for cannot sit here excusing nothing.
-	 */
-	static final Set<String> NOT_COLLECTED_YET = Set.of("photo");
-
 	private final JdbcClient db;
 
 	private final Postman postman;
@@ -358,10 +339,17 @@ class RegistrationApi {
 	 *                is collected „po pristanku" - the decision of 11.08.2026 that took
 	 *                it off the portal was itself overturned on 20.08.2026 and the form
 	 *                has carried it ever since
-	 * @param bio     optional too. It was compulsory in the form by mistake and
-	 *                registration was refused without it, which collided with the
-	 *                portal's own privacy policy; corrected 12.08.2026, and PDL says in
-	 *                as many words that „prijava prolazi i bez njega"
+	 * ~~@param bio optional too, corrected 12.08.2026 after it was compulsory by
+	 *                mistake.~~ <b>Gone from this record on 28.09.2026</b>, with the owner's
+	 *                decision that „Profilna sekcija se sa slikom i svojim recima izbacuje
+	 *                iz registracione forme - to ce clan popunjavati naknadno kad bude
+	 *                odobren". <b>Removed rather than left unread, and that is the half
+	 *                worth writing down:</b> a parameter this route still accepted would be
+	 *                a way to put prose on a public profile that no screen offers and no
+	 *                moderator sees, because what is written here goes straight into
+	 *                {@code competitor.bio} while every later edit goes through
+	 *                {@link MeWriteApi} and waits in the queue. That reasoning is the
+	 *                author's, not a decision anybody wrote down, and it is marked as such
 	 * @param referredBy who brought this member, which is the ONE field here that does
 	 *                not come from the form at all. {@code Registration.tsx} reads it out
 	 *                of the address the visitor arrived by ({@code ?preporuka=}), which
@@ -376,7 +364,7 @@ class RegistrationApi {
 	record Typed(String firstName, String lastName, String fatherName, String birthDate,
 			String gender, Boolean firstSeason2027, String email, String password,
 			String passwordRepeat, String address, Long placeId, String city, String country,
-			String idNumber, String phone, String shirtSize, String bio, Boolean healthStatement,
+			String idNumber, String phone, String shirtSize, Boolean healthStatement,
 			String parentConsent, String parentRelation, String referredBy) {
 	}
 
@@ -419,10 +407,13 @@ class RegistrationApi {
 		Set<String> asked = WhatRegistrationAsksFor.from(born, today);
 		Map<String, String> filledIn = whatHeFilledIn(typed, town, address);
 
+		/* EVERY NAME, WITH NOTHING EXCUSED. A second half of this condition used to let
+		   `NOT_COLLECTED_YET` past, and it went out with that constant on 28.09.2026:
+		   once the form stopped asking for a picture, the set was empty, the test was
+		   constantly true, and a branch that cannot be taken is a branch the coverage
+		   floor fails on rather than one that quietly sits there. */
 		for (String field : asked) {
-			if (!NOT_COLLECTED_YET.contains(field)
-					&& WhatAFieldMeans.isNothing(filledIn.get(field))) {
-
+			if (WhatAFieldMeans.isNothing(filledIn.get(field))) {
 				return no(THE_FORM_IS_NOT_COMPLETE);
 			}
 		}
@@ -628,15 +619,23 @@ class RegistrationApi {
 
 						   `referred_by` IS A KEY THIS ROUTE LOOKED UP, never the code that
 						   arrived. `whoBrought` is where the looking up is, and why an
-						   unknown code is not a refusal. */
-						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, ?, false, ?,"
+						   unknown code is not a refusal.
+
+						   `bio` IS WRITTEN EMPTY AND IS NO LONGER A PARAMETER, since the owner
+						   took the biography out of the registration on 28.09.2026. The column
+						   is NOT NULL and may be empty (V7), which is the state a member joins
+						   in from that day; he writes his words afterwards, through
+						   `PUT /api/me`, where a moderator sees them before anybody else does.
+						   Written as a literal rather than as an empty parameter so that there
+						   is no value here for a caller to influence at all. */
+						+ " values (?, ?, ?, ?, ?, ?, ?, ?, false, 'payment', ?, ?, '', false, ?,"
 						+ "  ?, ?, ?, ?, ?)"
 						+ " returning id")
 				.params(typed.firstName().strip(), typed.lastName().strip(), typed.gender(),
 						town.placeId(), town.city(), town.countryId(),
 						SeasonClock.seasonBeingPaidFor(ZonedDateTime.now(clock)),
 						typed.firstSeason2027(), ReferralCode.fresh().written(),
-						whoBrought(typed), WhatAFieldMeans.theBio(typed.bio()),
+						whoBrought(typed),
 						java.sql.Date.valueOf(born), typed.fatherName().strip(),
 						typed.address().strip(), WhatAFieldMeans.thePhone(typed.phone()), typed.shirtSize(), now)
 				.query(Long.class)

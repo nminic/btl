@@ -375,8 +375,7 @@
       "basics": "Basic details",
       "theWayIn": "Your account",
       "contact": "Contact and delivery",
-      "competing": "Competing",
-      "profile": "Profile"
+      "competing": "Competing"
     },
     "firstName": "First name",
     "lastName": "Last name",
@@ -397,8 +396,6 @@
       "few": "That is enough, the limit is {count} characters.",
       "other": "That is enough, the limit is {count} characters."
     },
-    "bioHint": "A few sentences about yourself, at most 360 characters.",
-    "photo": "Profile picture",
     "shirtSize": "Shirt size",
     "healthStatement": "I confirm that I have read {link} and that I am medically fit for recreational sport.",
     "doneTitle": "The application is recorded",
