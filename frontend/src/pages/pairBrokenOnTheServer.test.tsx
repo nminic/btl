@@ -484,4 +484,94 @@ describe('„Raskini" on a pair the server is keeping', () => {
     },
     SLOW,
   )
+
+  it(
+    'does not leave a refusal glued to the reader when they follow the partner’s own link',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(() => answeredWith(404))
+      await herProfile()
+
+      await user.click(at(breakButtons(), 1))
+
+      expect(
+        await screen.findByText(sr.server.wrong.replace('{status}', '404')),
+      ).toBeVisible()
+
+      /* **SHE LEAVES BY THE PARTNER’S OWN NAME, THE LINK INSIDE THE VERY ROW SHE JUST PRESSED
+         „RASKINI" ON.** `RacingPairLine` is mounted once, at a fixed spot in
+         `pages/CompetitorProfile.tsx`, and the route it sits under carries no `key`
+         (`app/routeObjects.tsx`), so React keeps this same instance mounted across the
+         navigation and its `refused` state survives with it. */
+      await user.click(await screen.findByRole('link', { name: /Časlav Radenković/ }))
+
+      await screen.findByRole('heading', { level: 1, name: /Časlav/ })
+
+      /* **HIS PAGE HAS NO „RASKINI" AT ALL.** Ending a pair is only ever the reader’s own act,
+         and she is reading somebody else’s page now. */
+      expect(breakButtons().length).toBe(0)
+
+      /* **AND NO ALERT EITHER, THOUGH `refused` STILL NAMES THAT SAME PAIR.** The questions
+         still standing are the reader’s own, and only on their own page (odluka 07.09.2026); a
+         `role="alert"` a screen reader would read out on arrival, about a press that happened on
+         a different page, says something happened here that did not. */
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText(sr.server.wrong.replace('{status}', '404')),
+      ).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
+
+  it(
+    'frees the row it refused for a second try, and a later success elsewhere clears it',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere((path) => (path === THE_LATER_PAIR ? answeredWith(404) : did()))
+      await herProfile()
+
+      await user.click(at(breakButtons(), 1))
+
+      expect(
+        await screen.findByText(sr.server.wrong.replace('{status}', '404')),
+      ).toBeVisible()
+
+      /* **TOLD OFF ONLY WHILE IT IS OUT, NOT FOR EVER AFTER A REFUSAL.** `endIt` releases both
+         the ref and the state on the branch that answers with a refusal; a screen that freed the
+         ref but left the state saying „busy" would tell her, wrongly, that a row nobody is
+         touching is still sending. */
+      await waitFor(() => {
+        expect(at(breakButtons(), 1).getAttribute('aria-disabled')).toBe('false')
+      })
+
+      /* **AND THE REF ITSELF WAS RELEASED, PROVED BY A SECOND REQUEST ACTUALLY LEAVING.** A
+         screen that left `outstanding.current` on would answer this second press by returning
+         before ever asking the server, and no second `DELETE` would be sent. */
+      await user.click(at(breakButtons(), 1))
+
+      await waitFor(() => {
+        expect(sentBy('DELETE')).toEqual([THE_LATER_PAIR, THE_LATER_PAIR])
+      })
+
+      /* **A DIFFERENT ROW, ENDED WITH THE SERVER’S AGREEMENT.** */
+      await user.click(at(breakButtons(), 0))
+
+      await waitFor(() => {
+        expect(sentBy('DELETE')).toEqual([THE_LATER_PAIR, THE_LATER_PAIR, THE_EARLIER_PAIR])
+      })
+
+      await waitFor(() => {
+        expect(breakButtons().length).toBe(1)
+      })
+
+      /* **AND THE STALE REFUSAL ABOUT THE OTHER PAIR IS GONE, TOO.** `setRefused(null)` runs at
+         the top of `endIt` for whichever row is pressed, not only the one the refusal was about,
+         so starting this attempt clears the earlier one before this attempt even reaches the
+         server. */
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
 })
