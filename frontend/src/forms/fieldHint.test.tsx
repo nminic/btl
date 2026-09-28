@@ -1040,6 +1040,35 @@ const ROWS_ARE: string[][] = [
   ['photo', 'bio'],
 ]
 
+/**
+ * Which group comes before which, as it was settled on 28.09.2026.
+ *
+ * Written out for the reason `STANDS_IN` and `ROWS_ARE` are, and found the same
+ * way: a mutation that carried the three fields of `Saglasnosti` to the front of
+ * `registracija.form.json`, and another that carried `Za evidenciju članova` to
+ * its end, BOTH PASSED every case above this one. They had to: `STANDS_IN` asks
+ * which group a field stands in and `ROWS_ARE` asks which fields share a row, and
+ * a group that moves whole keeps every field's answer to both of those questions
+ * the same. Neither one reads, and neither one could read, which group comes
+ * first.
+ *
+ * The order is the owner's choice among three offered outcomes, and the names
+ * are not his (`PDL.md`, „Registraciona forma ide u imenovane grupe, ne u niz
+ * redova": „Sedam grupa, redom kojim ih forma crta").
+ *
+ * Its floor is the case below: this table and the groups `STANDS_IN` sorts
+ * fields into must be the same names, once each, in both directions.
+ */
+const GROUPS_ARE: string[] = [
+  'Ko ste',
+  'Pristup nalogu',
+  'Kontakt i adresa',
+  'Za evidenciju članova',
+  'Takmičenje',
+  'Profil',
+  'Saglasnosti',
+]
+
 describe('a form laid out in groups', () => {
   it('puts every field that stands on a row into the table of rows, once', () => {
     /* The floor under `ROWS_ARE`. Both directions, and once each: a field on a row
@@ -1100,9 +1129,13 @@ describe('a form laid out in groups', () => {
 
   it('stands each field in the part of the form it was given, and not in another', async () => {
     /* The one case that would notice a field carried from one group to another in
-       the definition. Owner, 28.09.2026, choosing groups over one column: the
-       seven names are his, and where each field sits is what was reported to him
-       before it was written.
+       the definition. Owner, 28.09.2026: „Koristi redosled po svom misljenju i
+       organizuj je bolje," choosing, between three offered outcomes, groups over
+       one column. The seven names, and where each field sits inside them, are
+       not his: they were not reported to him before they were written (`PDL.md`,
+       „Registraciona forma ide u imenovane grupe, ne u niz redova", corrected
+       28.09.2026 after a PR 420 review found the first draft of this very
+       sentence claimed otherwise).
 
        Also the only case that pins the words of a legend, since it looks the
        group up by the name a person reads. */
@@ -1125,10 +1158,49 @@ describe('a form laid out in groups', () => {
     }
   })
 
-  /* Owner, 28.09.2026: „organizuj je bolje, možda ponovo jedno ispod drugog". He
-     was offered four ways and took the one that keeps the thirds of 12.08.2026
-     (`PDL.md`: „Podeli je racionalno na trećine horizontalno") and names the
-     parts instead of undoing them.
+  it('names the same seven groups STANDS_IN sorts fields into, once each', () => {
+    /* The floor under `GROUPS_ARE`, the same shape as the floor under `STANDS_IN`
+       two cases above and under `ROWS_ARE` at the top of this describe: held in
+       both directions, so a group that reaches `STANDS_IN` without a line here,
+       or a line here for a group nothing stands in any longer, fails on the day
+       it happens rather than the day somebody looks. */
+    const named = [...new Set(Object.values(STANDS_IN))]
+
+    expect(GROUPS_ARE.length, 'a group is written into the table of groups twice').toBe(
+      new Set(GROUPS_ARE).size,
+    )
+    expect(GROUPS_ARE.toSorted()).toEqual(named.toSorted())
+  })
+
+  it('draws the groups in the order that was settled on', () => {
+    /* What neither the floor above nor any case before it asks: not which group
+       a field is in, but which group stands before which. Read in one call
+       rather than looked up one name at a time, because `getByRole('group', {
+       name })` finds a group wherever it stands on the page and would say
+       nothing about whether it stands in the right place.
+
+       `role="group"` on this form is only ever the renderer's own `fieldset`:
+       the portal's other two owners of that role, `CropChooser` and
+       `GenderTabs` (named below, in `draws no group at all on a form whose
+       fields name none`), draw on neither the registration screen nor any field
+       this form asks for. */
+    renderForm()
+
+    const groups = screen.getAllByRole('group')
+
+    expect(groups.length, 'the form draws a different number of groups than were settled on').toBe(
+      GROUPS_ARE.length,
+    )
+
+    GROUPS_ARE.forEach((name, at) => {
+      expect(must(groups[at], `the group at ${at}`)).toHaveAccessibleName(name)
+    })
+  })
+
+  /* Owner, 28.09.2026: „organizuj je bolje, možda ponovo jedno ispod drugog",
+     choosing, between three offered outcomes, the one that keeps the thirds of
+     12.08.2026 (`PDL.md`: „Podeli je racionalno na trećine horizontalno") and
+     names the parts instead of undoing them.
 
      What is held here is the JOIN, and it is held for EVERY field rather than
      for a few. A case that says the group „Ko ste" exists, and another that says
