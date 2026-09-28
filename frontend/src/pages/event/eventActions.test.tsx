@@ -1,7 +1,7 @@
 import { SLOW } from '../../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import { at, first, inputElement, must } from '../../test/at'
 import { moderatorWith, renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -10,6 +10,7 @@ import type { BtlEvent, Race } from '../../data/types'
 import { copiedRace } from './copiedRace'
 import { fieldDate, shiftDate } from '../../forms/dateField'
 import { nextSeason } from '../admin/nextSeason'
+import { answeredWith, serverThat } from '../../test/serverAnswers'
 
 /* What can be done with an event, from the event's own page (owner,
  * 03.08.2026): copied and deleted by whoever administers events, and reported a
@@ -438,53 +439,113 @@ describe('deleting an event', () => {
     }
   })
 
-  it('takes the races with it and leaves for the month it was in', async () => {
+  it('asks the route once, for the event alone, and leaves for the month it was in', async () => {
+    /**
+     * ONE REQUEST AND NOT ONE PER RACE, WHICH IS THE WHOLE OF WHAT THE CASCADE BUYS.
+     *
+     * `DELETE /api/events/{id}` is one statement; `race_event_fk`,
+     * `attending_event_fk` and `event_comment_event_fk` cascade from the event and
+     * `result_race_fk` from the race. Until 28.09.2026 this button walked the races
+     * and the results itself and filed each one as a SESSION deletion, which
+     * `useLive` reads (`data/useResource.ts`): the event left the public calendar
+     * for the rest of the visit while the row stood in the database and every other
+     * visitor still saw it.
+     *
+     * So what is measured is the ADDRESS that was asked and the number of them. The
+     * old case asked the portal whether the event was still drawn, and that question
+     * can no longer be put here: the answer now lives on the server, and the served
+     * file this suite reads is not it.
+     */
     const user = setupUser()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    /* Watching and answering nothing, so the floor under it still replies. */
+    const server = serverThat(() => null)
 
     try {
       const { router } = await openEvent('superadmin')
-      const races = within(await screen.findByRole('table', { name: /Trke|trke/ }))
+      const events = await loadResource<BtlEvent[]>('events')
+      const mine = must(
+        events.find((one) => one.slug === EVENT.slice(EVENT.lastIndexOf('/') + 1)),
+        'the event being deleted',
+      )
+      const drawn = within(await screen.findByRole('table', { name: /Trke|trke/ }))
         .getAllByRole('row')
         .slice(1).length
 
-      expect(races).toBeGreaterThan(0)
-
-      /* Somebody who ran it, taken off the event's own list of results, so the
-         profile looked at afterwards is one that had a link to this event. */
-      const who = within(await screen.findByRole('table', { name: /Rezultati/ })).getAllByRole(
-        'link',
-      )
-      const ran = must(
-        must(first(who).getAttribute('href'), 'veza ka takmičaru').split('/').pop(),
-        'broj takmičara',
-      )
+      /* More than one race, so „one request" is a claim with something to be wrong
+         about: on a single race event it would be the same number either way. */
+      expect(drawn).toBeGreaterThan(1)
 
       await user.click(screen.getByRole('button', { name: 'Brisanje' }))
 
+      expect(
+        server.asked.filter((one) => one.init?.method === 'DELETE').map((one) => one.path),
+        'the races and the results are the database s to take, not this screen s',
+      ).toEqual([`/api/events/${String(mine.id)}`])
+
       expect(router.state.location.pathname).toBe('/sr/kalendar')
-
-      /* And it is gone rather than merely left behind: the address it had
-         answers as an address the portal does not have. */
-      await router.navigate(EVENT)
-      expect(await screen.findByRole('heading', { name: 'Ovog događaja nema.' })).toBeVisible()
-
-      /* And so is everything that hung off it. A result carries the address of
-         its event, so without this the event left the calendar while its results
-         went on counting, each of them linking to a page that now says the event
-         does not exist.
-       *
-         Checked on a profile, which is a screen that names the event. The
-         standing does not name events at all, so looking there proved nothing:
-         the whole deletion of results could be taken out and it stayed green. */
-      await router.navigate(`/sr/takmicar/${ran}?sezona=2015`)
-
-      const listed = within(await screen.findByRole('table', { name: 'Rezultati' }))
-
-      expect(listed.queryAllByRole('link', { name: 'Maraton maratona' })).toHaveLength(0)
-      /* And the row is gone rather than merely unlinked. */
-      expect(listed.queryByText('Maraton maratona')).toBeNull()
+      /* The month the event was in, read off the record rather than written out: a
+         month spelt here by hand would be a second home for the event's own day. */
+      expect(router.state.location.search).toBe(`?mesec=${mine.date.slice(0, 7)}`)
     } finally {
+      server.stop()
+      confirm.mockRestore()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('reads the calendar off the server again rather than the array it already had', async () => {
+    /* The cache outlives this component and the deletion does not, so without
+       `clearResourceCache` the calendar this press carries the reader to would draw
+       the event out of the array fetched before it was deleted. Measured as a read
+       that happens AFTER the write, which is the only order that says anything: the
+       same address is read before it as a matter of course. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const server = serverThat(() => null)
+
+    try {
+      await openEvent('superadmin')
+      await user.click(screen.getByRole('button', { name: 'Brisanje' }))
+
+      const wrote = server.asked.findIndex((one) => one.init?.method === 'DELETE')
+
+      expect(wrote, 'nothing was written, so this measures nothing').toBeGreaterThan(-1)
+      /* Asked as „did this become true", because the read happens when the calendar
+         mounts and that is a render after the press rather than inside it. */
+      await waitFor(() => {
+        expect(
+          server.asked
+            .slice(wrote + 1)
+            .filter((one) => (one.init?.method ?? 'GET') === 'GET')
+            .map((one) => one.path),
+          'the calendar was drawn from what this visit had already fetched',
+        ).toContain('/api/events')
+      })
+    } finally {
+      server.stop()
+      confirm.mockRestore()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('says why when the route refuses, and takes nobody anywhere', async () => {
+    /* A deletion that did not happen must not read as one that did. The reader stays
+       on the event, which is still there, and is told in his own language. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const server = serverThat((_path, init) =>
+      init?.method === 'DELETE' ? answeredWith(404) : null,
+    )
+
+    try {
+      const { router } = await openEvent('superadmin')
+
+      await user.click(screen.getByRole('button', { name: 'Brisanje' }))
+
+      expect(await screen.findByRole('alert')).toBeVisible()
+      expect(router.state.location.pathname).toBe('/sr/kalendar/maraton-maratona-2015')
+      expect(screen.getByRole('button', { name: 'Brisanje' })).toBeVisible()
+    } finally {
+      server.stop()
       confirm.mockRestore()
     }
   }, SEVERAL_SCREENS)
@@ -504,7 +565,11 @@ describe('copying an event', () => {
     await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
 
     expect(router.state.location.pathname).toBe('/sr/administracija/dogadjaji')
-    expect(router.state.location.search).toMatch(/zapis=/)
+    /* The address names the event being copied FROM, which is the whole of what
+       travels: until 28.09.2026 the press made the copy in the session first and sent
+       its own identity along (`?zapis=`), so a record existed before anybody had said
+       Sačuvaj and none of it survived a reload. */
+    expect(router.state.location.search).toMatch(/kopija=/)
 
     const date = await screen.findByLabelText('Datum')
 
@@ -636,28 +701,64 @@ describe('copying an event', () => {
     expect(screen.getByLabelText(/^Istaknuto/)).toHaveValue('no')
   }, SEVERAL_SCREENS)
 
-  it('gives a second copy an identity of its own', async () => {
-    /* The suffix counted the races and not the copies, and the number of races
-       does not change when a copy is made, so pressing the button twice wrote
-       two records under one id. Two records under one id is the fault the
-       numbering exists to prevent: the list draws them under one key, a lookup
-       finds only the first, and an edit to either changes both. */
+  it('writes nothing until the copy is saved, and the identity is the database s', async () => {
+    /**
+     * TWO HALVES OF ONE CHANGE, AND THE OLD CASE HERE COULD MEASURE NEITHER.
+     *
+     * It asked that pressing Kopiraj twice gave two different addresses, because the
+     * press MADE a record and a suffix counted the races rather than the copies, so
+     * two copies went in under one id. Nothing of that shape is left: the press makes
+     * nothing at all and the address names the event being copied from, so pressing
+     * twice gives the same address on purpose.
+     *
+     * What replaces it is the pair of facts that now carry the weight. Nothing is
+     * written by the press - no request leaves at all - and the identity a saved copy
+     * takes is the one the ROUTE handed back, which is what every later address for it
+     * is built from.
+     */
     const user = setupUser()
-    const { router } = await openEvent('superadmin')
+    const server = serverThat(() => null)
 
-    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
-    await screen.findByLabelText('Datum')
+    try {
+      const { router } = await openEvent('superadmin')
 
-    const first = router.state.location.search
+      await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+      await screen.findByLabelText('Datum')
 
-    await router.navigate(EVENT)
-    /* The event's own heading, not merely any first-level one: the screen left
-       behind has one of its own and it is there while this one is loading. */
-    await screen.findByRole('button', { name: 'Kopiranje' })
-    await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
-    await screen.findByLabelText('Datum')
+      expect(
+        server.asked.filter((one) => (one.init?.method ?? 'GET') !== 'GET'),
+        'the press wrote something, so a copy exists that nobody saved',
+      ).toEqual([])
+      expect(router.state.location.search).toMatch(/kopija=/)
 
-    expect(router.state.location.search).not.toBe(first)
+      /* Moved off the day the copy opens on, which is next season's. This race is run
+         every year, so the address that day builds is one another event already answers
+         at and the form refuses it before anything is sent (`eventClash`). */
+      const date = await screen.findByLabelText('Datum')
+
+      await user.clear(date)
+      await user.type(date, '14032027')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      const made = server.asked.filter(
+        (one) => one.path === '/api/events' && one.init?.method === 'POST',
+      )
+
+      expect(made, 'one press of Sačuvaj is one event').toHaveLength(1)
+      /* And the races went under the identity that came back, never under one counted
+         on this side: `/api/races/-1` is the address the old overlay would have built,
+         since `admin/raceIds.ts` counts DOWN from nought. */
+      const under = server.asked
+        .filter((one) => one.path === '/api/races' && one.init?.method === 'POST')
+        .map((one) => Number(JSON.parse(String(one.init?.body ?? '{}')).eventId))
+
+      expect(under.length, 'no races were sent, so this measures nothing').toBeGreaterThan(0)
+      expect(under.every((one) => Number.isInteger(one) && one > 0)).toBe(true)
+      expect(new Set(under).size, 'the mornings of one copy hang off one event').toBe(1)
+    } finally {
+      server.stop()
+    }
   }, SEVERAL_SCREENS)
 
   it('opens the copy as a copy: named so, without the three it keeps, on next season', async () => {
@@ -854,94 +955,79 @@ describe('copying an event', () => {
     ).toBe(true)
   }, SEVERAL_SCREENS)
 
-  it('does not hand a third copy the races the second one answers to', async () => {
-    /* The third home of one fault, and the last to be put right: the identity of a
-       copied race was counted rather than measured. A count goes back down and the
-       numbers do not, so emptying one copy frees a number that another copy still
-       holds. Measured 23.08.2026 on „Maraton maratona 2015": copy, copy, empty the
-       first copy, copy again, and the third copy took the four ids the second copy
-       answers to. `editRecord` is filed by id, so saving the third moved **both**
-       onto it and the second was left with no races at all. */
+  it('makes new races for a copy and never writes over the ones it came from', async () => {
+    /**
+     * THE FAULT THIS REPLACES IS GONE, AND THE ONE THAT TOOK ITS PLACE IS MEASURED HERE.
+     *
+     * The old case walked five screens: copy, copy, empty the first copy, copy again,
+     * and then asked whether the third copy had taken the second one's races. It could,
+     * because the identity of a copied race was COUNTED on this side
+     * (`admin/raceIds.ts` counts down from nought) and a count goes back down while the
+     * numbers do not. Nothing counts an identity any more - the database hands them out
+     * - so that walk now measures the mock file rather than the portal, and it cannot be
+     * written against a static one: this screen's overlay dies when the reader leaves it
+     * and `clearResourceCache` sends the next mount to the server, which is the whole
+     * point of the change.
+     *
+     * <p><b>What took its place is the one hazard the new path really has, and it is one
+     * token wide.</b> The rows of a copy are the source event's rows, and they arrive
+     * carrying the source races' identities. Left on them, every one would be sent as
+     * `PUT /api/races/{id}` - so saving a copy would rename and move LAST season's races
+     * and make none of its own, and the event it was copied from would come apart.
+     * `copiedRows` blanks the identity, and this is what falls over when it stops.
+     */
     const user = setupUser()
-    const { router } = await openEvent('superadmin')
-    const races = within(await screen.findByRole('table', { name: 'Trke' }))
-      .getAllByRole('row')
-      .slice(1).length
+    const server = serverThat(() => null)
 
-    async function copyOnto(day: string) {
-      await user.click(await screen.findByRole('button', { name: 'Kopiranje' }))
-      const date = await screen.findByLabelText('Datum')
-      await user.clear(date)
-      await user.type(date, day)
-      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-      await screen.findByRole('status', { name: 'Sačuvano' })
-      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-    }
+    try {
+      await openEvent('superadmin')
 
-    async function openCopy(year: string) {
-      const search = await screen.findByPlaceholderText('Naziv ili mesto')
-      await user.clear(search)
-      await user.type(search, 'Maraton maratona')
+      const races = await loadResource<Race[]>('races')
+      const events = await loadResource<BtlEvent[]>('events')
+      const source = must(
+        events.find((one) => one.slug === EVENT.slice(EVENT.lastIndexOf('/') + 1)),
+        'the event being copied',
+      )
+      const its = races.filter((one) => one.eventId === source.id).map((one) => String(one.id))
 
-      const row = must(
-        within(await screen.findByRole('table'))
-          .getAllByRole('row')
-          .find((one) => new RegExp(`${year}[.]`).test(one.textContent ?? '')),
-        `red kopije iz ${year}`,
+      /* More than one, so „none of them was touched" is a claim with something to be
+         wrong about. */
+      expect(its.length, 'the event copied has no races, so this measures nothing').toBeGreaterThan(
+        1,
       )
 
-      await user.click(within(row).getByRole('button', { name: /^Otvori/ }))
-      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      await user.click(screen.getByRole('button', { name: 'Kopiranje' }))
+
+      const date = await screen.findByLabelText('Datum')
+
+      /* Counted off the form the copy opened, which is what the press will really send.
+         Read out of the file instead, the two disagreed by one: the length of the list
+         is not the question, the rows are. */
+      const rows = screen.getAllByLabelText(/^Dužina/).length
+
+      expect(rows, 'the copy opened with no rows, so this measures nothing').toBeGreaterThan(1)
+
+      await user.clear(date)
+      await user.type(date, '14032027')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      /* The writes and not every mention of the address: `/api/races` is also the
+         resource this screen READS, and a GET of it says nothing about what was saved. */
+      const toRaces = server.asked.filter(
+        (one) => one.path.startsWith('/api/races') && (one.init?.method ?? 'GET') !== 'GET',
+      )
+
+      /* Every one of them made, and not one of them addressed. */
+      expect(toRaces.map((one) => `${one.init?.method ?? 'GET'} ${one.path}`)).toEqual(
+        Array.from({ length: rows }, () => 'POST /api/races'),
+      )
+      expect(
+        toRaces.filter((one) => its.some((was) => one.path === `/api/races/${was}`)),
+        'a copy wrote over a race of the event it was copied from',
+      ).toEqual([])
+    } finally {
+      server.stop()
     }
-
-    await copyOnto('14032027')
-    /* Back to the event that is being copied, for the second copy. The list of
-       events offers „Otvori" and not a link out to the calendar. */
-    await router.navigate(EVENT)
-    await screen.findByRole('heading', { level: 1 })
-    await copyOnto('14032028')
-
-    /* The first copy is emptied, which is what frees the numbers the second one
-       holds. Emptied in the administration and not deleted from its own page,
-       which would be shorter: nothing the administration creates reaches a public
-       screen, so the copy has no page of its own to delete it from. Measured, and
-       written down because it is the obvious shortcut. */
-    await openCopy('2027')
-    for (const button of screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ }).reverse()) {
-      await user.click(button)
-    }
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await screen.findByRole('status', { name: 'Sačuvano' })
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-
-    /* And now a third copy, which counted would land on the second one's ids. */
-    await router.navigate(EVENT)
-    await screen.findByRole('heading', { level: 1 })
-    await copyOnto('14032029')
-
-    await openCopy('2029')
-
-    expect(screen.queryAllByLabelText(/^Dužina/).length, 'the third copy lost a row').toBe(races)
-
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-    await openCopy('2028')
-
-    expect(
-      screen.queryAllByLabelText(/^Dužina/).length,
-      'the second copy was left without the races it had',
-    ).toBe(races)
-    /* Its own budget, and the reason for it. ADL A2 keeps the package at 5000ms as
-       a **performance** budget rather than a guard against hanging, so a longer one
-       has to say what it is paying for. This walk makes three copies of an event of
-       four races, opens two forms and saves them, which is the shortest sequence
-       that reaches the fault at all, and it is the longest walk in this file: five
-       changes of screen against one or three for the rest.
-
-       Measured 21.09.2026: **2,1 to 2,5 s** with the file run on its own, **3,3 s**
-       across the whole suite, and **14,6 s** with the file run beside sixty
-       processes burning the processor, which is a factor of about six and a half.
-       The twelve cases of this file that never leave the screen they started on keep
-       the default, because a single screen that is slow is what that budget exists
-       to show. */
   }, SEVERAL_SCREENS)
 })
