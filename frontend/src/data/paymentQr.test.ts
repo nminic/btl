@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { CONTACT_ADDRESS } from '../app/routes'
-import { PAYPAL_ADDRESS, paypalPaymentLink } from './paymentQr'
+import { methodFor, methodsFor, paysInDinars, PAYPAL_ADDRESS, paypalPaymentLink } from './paymentQr'
 
 /**
  * The two additions PR 385's second round made to this file, each covered directly
@@ -46,5 +48,87 @@ describe('the PayPal link Layer 2 would press, prepared and not drawn', () => {
     const link = paypalPaymentLink({ address: 'x@example.test', amountEur: 38, note: '20271' })
 
     expect(new URL(link).searchParams.get('amount')).toBe('38.00')
+  })
+})
+
+/**
+ * THE WAY TO PAY, ASKED BY THE MONEY, AND WHY IT IS NOT A SECOND RULE.
+ *
+ * <p><b>Every case here is written against {@link methodsFor} rather than against the two words,
+ * which is the whole point of the file it lives in.</b> The portal already answers „how does this
+ * man pay" from his country; {@link methodFor} answers it from his money because one screen is
+ * served the money and not the country (`data/types.ts#MembershipDue`). Held against the two
+ * literals alone, the two functions could drift apart and both would pass. Held against each
+ * other, a change to either one alone fails.
+ */
+describe('the way to pay, asked by the money instead of by the country', () => {
+  /** Where the server's own words live, the same place `pages/account/refusals.test.ts` reads. */
+  const CURRENCY = join(
+    process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'domain',
+    'pricing', 'Currency.java',
+  )
+
+  /**
+   * EVERY MONEY THE SERVER HAS, READ OUT OF THE ENUM RATHER THAN REMEMBERED.
+   *
+   * <p><b>This is the floor under the two branches below and it is the reason this file reads
+   * Java at all.</b> A hand-written pair would be exactly as wrong as the sentences this whole
+   * branch exists to correct: `admin/activation.ts` carried two paragraphs about
+   * `POST /api/payments` that were true when written and were left standing after the route
+   * changed, because nothing on this side of the repo reads that side. So the day `Currency`
+   * gains a third member, this goes red and somebody decides how it is paid - rather than
+   * `methodFor` quietly answering nothing for money the portal really bills in.
+   */
+  function everyCurrency(): string[] {
+    const java = readFileSync(CURRENCY, 'utf-8')
+    const body = java.slice(java.indexOf('public enum Currency {'))
+
+    return [...body.matchAll(/^\t([A-Z]{3})[,;]$/gm)].map((one) => one[1] ?? '')
+  }
+
+  it('knows one way to pay for every money the server bills in, and no more', () => {
+    const every = everyCurrency()
+
+    /* That the reading read something: an expression that stopped matching would make every
+       expectation below a walk over nothing. */
+    expect(every, 'Currency names no money at all, so this file measures nothing').toEqual([
+      'EUR',
+      'RSD',
+    ])
+
+    expect(every.filter((money) => methodFor(money) === null)).toEqual([])
+  })
+
+  /**
+   * <p><b>The two countries are chosen and then CHECKED to be on opposite sides</b>, so a pair
+   * that happened to behave the same way could not make the two expectations below agree by
+   * accident.
+   */
+  it('answers exactly what the country would have answered, both ways round', () => {
+    expect(paysInDinars('RS')).toBe(true)
+    expect(paysInDinars('SI')).toBe(false)
+
+    expect(methodFor('RSD')).toBe(methodsFor('RS')[0])
+    expect(methodFor('EUR')).toBe(methodsFor('SI')[0])
+
+    /* And the two are really different, so neither line above could be satisfied by one answer
+       standing for both. */
+    expect(methodFor('RSD')).not.toBe(methodFor('EUR'))
+  })
+
+  /**
+   * <p><b>NOT „ANYTHING THAT IS NOT DINARS IS PAYPAL", AND THIS IS THE CASE THAT DIVIDES THE
+   * TWO.</b> `currency` is served as a plain string on purpose, so a third money is something
+   * that arrives at runtime. Written as a single comparison, `methodFor` would answer `paypal`
+   * for it and the row would book somebody's money into the euro account on the strength of not
+   * recognising it. The mutation this exists for is exactly that one line.
+   */
+  it('answers nothing at all for money it does not know', () => {
+    expect(methodFor('CHF')).toBeNull()
+    expect(methodFor('')).toBeNull()
+    /* And not by prefix or by case either, which is what a comparison written loosely would let
+       through. */
+    expect(methodFor('RSDX')).toBeNull()
+    expect(methodFor('eur')).toBeNull()
   })
 })

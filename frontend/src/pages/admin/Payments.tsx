@@ -369,9 +369,10 @@ function Row({
              threshold is what found that, which is the one tool that sees such a branch. */
           disabled={press.press === 'nothing'}
           /* TOLD OFF WHILE ITS OWN REQUEST IS OUT, NOT SWITCHED OFF: `activating` never changes
-             `canAct`, so the native `disabled` above stays reserved for the four cases with no
-             route (`activation.ts#theServerCanDoIt`) and this is the second, independent reason
-             the row can give (`PendingQueue.tsx`'s own „Odobri" keeps the same two apart). */
+             `press`, so the native `disabled` above stays reserved for the one case that can send
+             nothing at all (`activation.ts#Press`, `'nothing'`) and this is the second,
+             independent reason the row can give (`PendingQueue.tsx`'s own „Odobri" keeps the same
+             two apart). */
           aria-disabled={activating ? true : undefined}
           onClick={() => {
             /* THE SAME REF `activate` SETS, CHECKED HERE SO A PRESS ON THIS BUTTON WHILE THE

@@ -1,4 +1,13 @@
-import { typedIn, whatToDo, type Typed } from './activation'
+import {
+  FREE_OF_THE_FEE,
+  MEMBERSHIPS,
+  ON_THE_BALANCE,
+  PAYMENTS,
+  sending,
+  typedIn,
+  whatToDo,
+  type Typed,
+} from './activation'
 
 /**
  * THE OWNER'S SEVEN CASES, MEASURED WITHOUT MOUNTING ANYTHING.
@@ -281,5 +290,327 @@ describe('which of the seven cases a row is in', () => {
     expect(whatToDo({ got: 'refused' }, EXPECTED, balance, box)).toEqual({
       does: 'theFieldRefuses',
     })
+  })
+})
+
+/**
+ * WHAT ONE PRESS SENDS, AND TO WHICH OF THE TWO DOORS.
+ *
+ * <p><b>THE JOIN IS WHAT THIS FILE IS FOR, and it is a different question from „which case is
+ * this".</b> That one is answered above and `whatToDo` carries no amount at all; this one is
+ * „which number out of the row goes into which field of the request", and it is the sort of thing
+ * that used to be settled inside a click handler where only a rendered test reading the bytes
+ * could see it. A guard split in two - one half asserting the case, the other asserting that a
+ * request went out - would assert both halves and never the join between them.
+ *
+ * <p><b>NO NUMBER HERE CAN STAND FOR ANOTHER, which is the rule of 06.09.2026 applied to a body
+ * rather than to a screen.</b> For every value the assertions read, the question asked was „where
+ * else could this same number have come from if the code were wrong":
+ *
+ * <ul>
+ * <li><b>`received` against `expected`.</b> Every case that asserts what goes on the wire types an
+ * amount UNLIKE the expected one, so sending the expected amount instead - which is the mistake
+ * that books a man as having paid in full whatever he really sent - changes the number. His case 1
+ * cannot measure this at all: the two are equal by definition there, so the value has two sources
+ * and the assertion would hold either way.
+ * <li><b>`useTheBalance` against „does the balance cover it".</b> Measured with the box TICKED over
+ * a balance that does NOT cover, so the two disagree and reading the wrong one shows.
+ * <li><b>`method` against a constant.</b> Both currencies are measured, and they answer differently.
+ * <li><b>`competitorId` against every other number on the row.</b> 58 and 23 are neither of them
+ * an amount, a balance or a shortfall anywhere in this file.
+ * </ul>
+ */
+describe('what one press on a row sends', () => {
+  /**
+   * PETAR, in euro, with a balance that is real and SHORT of what is expected.
+   *
+   * <p>Short on purpose: it is what makes „the box is ticked" and „the balance covers it" two
+   * different answers, so `useTheBalance` cannot be satisfied by the wrong one of the two.
+   */
+  const HIM = { competitorId: 58, currency: 'EUR', expected: 43.5, balance: 12.75 }
+
+  /** And one in the other money, so the way to pay is measured rather than assumed. */
+  const HER = { competitorId: 23, currency: 'RSD', expected: 4800, balance: 6000 }
+
+  const TICKED = true
+
+  const CLEARED = false
+
+  const amount = (value: number): Typed => ({ got: 'amount', value })
+
+  /** What the route calls a first payment with no slip number to write on it. */
+  const NO_REFERENCE = null
+
+  describe('his cases 1, 2 and 7, which his table says just go through', () => {
+    /**
+     * CASE 1: the amount is the expected one, so nothing is asked and the payment is booked.
+     *
+     * <p><b>This case deliberately does NOT assert the join</b>, because it cannot: `received` and
+     * `expected` are the same number here, so both a right and a wrong reading give 43.5. What it
+     * is for is the door and the shape - `POST /api/payments` with five fields and no question.
+     */
+    it('books the payment with no question at all', () => {
+      expect(sending(HIM, amount(43.5), TICKED)).toEqual({
+        press: 'sends',
+        sending: {
+          to: PAYMENTS,
+          body: {
+            competitorId: 58,
+            received: 43.5,
+            useTheBalance: true,
+            method: 'paypal',
+            reference: NO_REFERENCE,
+          },
+        },
+      })
+    })
+
+    /**
+     * <p><b>AND THE BODY CARRIES EXACTLY THE FIELDS `PaymentApi.Confirm` DECLARES, counted.</b> A
+     * field dropped is a request the route answers `theFormIsNotComplete` to; a field added is a
+     * name nothing reads, and both are invisible to an assertion that only looks for the ones it
+     * expects to find.
+     */
+    it('names every field the route takes and none besides', () => {
+      const press = sending(HIM, amount(43.5), TICKED)
+
+      if (press.press !== 'sends' || press.sending.to !== PAYMENTS) {
+        throw new Error(`the expected amount does not book a payment: ${press.press}`)
+      }
+
+      expect(Object.keys(press.sending.body).sort()).toEqual([
+        'competitorId',
+        'method',
+        'received',
+        'reference',
+        'useTheBalance',
+      ])
+    })
+
+    /**
+     * CASE 7, and <b>the first case that measures the join</b>: 50 is neither the expected amount
+     * nor the balance nor any shortfall, so the number on the wire can only have come from the
+     * field.
+     */
+    it('sends what really arrived when more than expected did, not what was expected', () => {
+      expect(sending(HIM, amount(50), TICKED)).toEqual({
+        press: 'sends',
+        sending: {
+          to: PAYMENTS,
+          body: {
+            competitorId: 58,
+            received: 50,
+            useTheBalance: true,
+            method: 'paypal',
+            reference: NO_REFERENCE,
+          },
+        },
+      })
+    })
+
+    /**
+     * CASE 2: less arrived and the balance covers the difference, so it goes through as well.
+     *
+     * <p><b>Measured on HER row and in dinars</b>, so the same case also says the way to pay is
+     * read off the money: 3600 against an expected 4800 with 6000 on the book, which covers it.
+     */
+    it('spends the balance and books, in dinars and by the dinar way of paying', () => {
+      expect(sending(HER, amount(3600), TICKED)).toEqual({
+        press: 'sends',
+        sending: {
+          to: PAYMENTS,
+          body: {
+            competitorId: 23,
+            received: 3600,
+            useTheBalance: true,
+            method: 'ips',
+            reference: NO_REFERENCE,
+          },
+        },
+      })
+    })
+
+    /**
+     * <p><b>THE TICK BOX IS WHAT `useTheBalance` CARRIES AND NOTHING ELSE IS, measured where the
+     * box and the balance disagree.</b> Petar's book is short of his fee, so „is it ticked" is
+     * true while „does it cover" is false; a body built from the second would send `false` here
+     * and would send `true` on the case above, which is why both are in the file.
+     */
+    it('carries the box as it stands, over a balance that does not cover the fee', () => {
+      expect(sending(HIM, amount(50), TICKED)).toMatchObject({
+        sending: { body: { useTheBalance: true } },
+      })
+
+      expect(sending(HIM, amount(50), CLEARED)).toMatchObject({
+        sending: { body: { useTheBalance: false } },
+      })
+    })
+  })
+
+  describe('his cases 3 and 3b, which ask before anything is sent', () => {
+    /**
+     * CASE 3: the box is ticked, the balance is spent to the last, and the sum is still short.
+     *
+     * <p><b>„Da" sends exactly what case 2 would have sent</b>, which is the route's own doing
+     * rather than a shortcut here: it records what arrived and takes what the box allows either
+     * way, and the only difference between the two cases is whether the two together reach the
+     * price. So the shortfall is carried for the question to NAME and never for the wire.
+     */
+    it('names what is missing and carries the same body case 2 sends', () => {
+      expect(sending(HIM, amount(20), TICKED)).toEqual({
+        press: 'asksAboutTheShortfall',
+        short: 10.75,
+        sending: {
+          to: PAYMENTS,
+          body: {
+            competitorId: 58,
+            received: 20,
+            useTheBalance: true,
+            method: 'paypal',
+            reference: NO_REFERENCE,
+          },
+        },
+      })
+    })
+
+    /**
+     * CASE 3b: the same question with the box cleared, and <b>measured against a balance that
+     * WOULD have covered the difference</b>. 35 with 12.75 on the book reaches 47.75, past the
+     * 43.50 expected - so a body that ignored the cleared box would make this his case 2 and no
+     * question would be put at all.
+     */
+    it('asks about the whole shortfall when the box is cleared over a balance that would cover it', () => {
+      expect(sending(HIM, amount(35), CLEARED)).toEqual({
+        press: 'asksAboutTheShortfall',
+        short: 8.5,
+        sending: {
+          to: PAYMENTS,
+          body: {
+            competitorId: 58,
+            received: 35,
+            useTheBalance: false,
+            method: 'paypal',
+            reference: NO_REFERENCE,
+          },
+        },
+      })
+    })
+  })
+
+  describe('his cases 4, 5 and 6, where nothing was typed', () => {
+    /**
+     * CASES 4 AND 5: two grounds and one question, and <b>the two bodies are asserted as two</b>.
+     * A press handing back one of them under both labels is the mistake this shape exists to make
+     * impossible, and an assertion reading only one of the two would not see it.
+     */
+    it.each([
+      ['covers the expected amount, his case 4', 71.25, true],
+      ['does not cover it, his case 5', 12.75, false],
+    ])('offers the balance or the exemption when the balance %s', (_what, balance, covers) => {
+      expect(sending({ ...HIM, balance }, { got: 'nothing' }, TICKED)).toEqual({
+        press: 'asksAboutTheGround',
+        covers,
+        onTheBalance: { to: MEMBERSHIPS, body: { competitorId: 58, ground: ON_THE_BALANCE } },
+        freeOfTheFee: { to: MEMBERSHIPS, body: { competitorId: 58, ground: FREE_OF_THE_FEE } },
+      })
+    })
+
+    /** And the two grounds really are two, so neither line above is satisfied by one answer. */
+    it('sends two different grounds under the two labels', () => {
+      expect(ON_THE_BALANCE).not.toBe(FREE_OF_THE_FEE)
+    })
+
+    /**
+     * CASE 6, and with it the state his grid does not name.
+     *
+     * <p><b>Both are measured</b>: the box cleared over a balance that would cover, which is his
+     * own case, and the box ticked over an empty book, which is the commonest row on the screen.
+     */
+    it.each([
+      ['the box is cleared over a balance that would cover it', 71.25, CLEARED],
+      ['the box is ticked over an empty book', 0, TICKED],
+    ])('asks only about the exemption when %s', (_what, balance, box) => {
+      expect(sending({ ...HIM, balance }, { got: 'nothing' }, box)).toEqual({
+        press: 'asksAboutTheExemption',
+        freeOfTheFee: { to: MEMBERSHIPS, body: { competitorId: 58, ground: FREE_OF_THE_FEE } },
+      })
+    })
+
+    /** <p>And no amount goes with a ground: the server works out what comes off the book. */
+    it('sends no amount with a ground, whichever of the two it is', () => {
+      const press = sending(HIM, { got: 'nothing' }, TICKED)
+
+      if (press.press !== 'asksAboutTheGround') {
+        throw new Error(`nothing typed over a balance does not offer a ground: ${press.press}`)
+      }
+
+      expect(Object.keys(press.onTheBalance.body).sort()).toEqual(['competitorId', 'ground'])
+      expect(Object.keys(press.freeOfTheFee.body).sort()).toEqual(['competitorId', 'ground'])
+    })
+  })
+
+  describe('what sends nothing at all', () => {
+    /**
+     * <p><b>Measured for every state of the other two axes</b>, the same way the case above about
+     * `whatToDo` is: a field that cannot be read decides the whole row and must not be overtaken
+     * by anything else on it.
+     */
+    it.each([
+      ['ticked, balance covers', 71.25, TICKED],
+      ['ticked, balance short', 12.75, TICKED],
+      ['ticked, no balance', 0, TICKED],
+      ['cleared, balance covers', 71.25, CLEARED],
+    ])('a field that cannot be read (%s)', (_what, balance, box) => {
+      expect(sending({ ...HIM, balance }, { got: 'refused' }, box)).toEqual({ press: 'nothing' })
+    })
+
+    /**
+     * <p><b>AND MONEY THE PORTAL CANNOT NAME A WAY TO PAY FOR, which is the boundary written on
+     * `Press` rather than guarded.</b> `Currency` holds two and `data/paymentQr.test.ts` reads
+     * that enum, so a third cannot arrive without somebody deciding how it is paid - but until
+     * they do, this is what the row does, and it is better than booking into the euro account on
+     * the strength of not recognising the money.
+     *
+     * <p><b>The amount is a perfectly good one</b>, so what is being measured is the currency and
+     * nothing else: the same press in either real money books a payment.
+     */
+    it('an amount in money that names no way to pay', () => {
+      expect(sending({ ...HIM, currency: 'CHF' }, amount(43.5), TICKED)).toEqual({
+        press: 'nothing',
+      })
+    })
+
+    /** <p>And the tick box does not rescue it either, since no body could be built to spend on. */
+    it('the same money with the box cleared', () => {
+      expect(sending({ ...HIM, currency: 'CHF' }, amount(20), CLEARED)).toEqual({
+        press: 'nothing',
+      })
+    })
+
+    /**
+     * <p><b>BUT MONEY IT DOES NOT KNOW STILL ASKS ABOUT A GROUND, and that is not an oversight.</b>
+     * `POST /api/memberships` takes a competitor and a ground and no money at all, so nothing about
+     * a currency it cannot name can stop it. A guard written over the whole row rather than over
+     * the door would take his case 6 away from a member for a reason that has nothing to do with
+     * it.
+     */
+    it('but a row in that money can still be granted a ground, which needs no money named', () => {
+      expect(sending({ ...HIM, currency: 'CHF', balance: 0 }, { got: 'nothing' }, TICKED)).toEqual({
+        press: 'asksAboutTheExemption',
+        freeOfTheFee: { to: MEMBERSHIPS, body: { competitorId: 58, ground: FREE_OF_THE_FEE } },
+      })
+    })
+  })
+
+  /**
+   * THE TWO ADDRESSES, WRITTEN OUT ONCE HERE SO EVERY CASE ABOVE CAN NAME THEM BY CONSTANT.
+   *
+   * <p>Without this, a constant misspelt in `activation.ts` would be misspelt in every assertion
+   * that reads it and the whole file would agree with itself about an address the server does not
+   * serve.
+   */
+  it('knocks on the two addresses the server really answers', () => {
+    expect(PAYMENTS).toBe('/api/payments')
+    expect(MEMBERSHIPS).toBe('/api/memberships')
   })
 })
