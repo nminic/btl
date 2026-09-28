@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import type { League } from '../../data/types'
-import { useLeagues } from '../../data/useResource'
+import { failed, useEvents, useLeagues, useRaces } from '../../data/useResource'
 import { formatNumber } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
@@ -12,13 +12,59 @@ import type { FormValues } from '../../forms/types'
 import { recordKey } from '../../session/context'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { LeagueRaceModeration } from './LeagueRaceModeration'
-import { countedRacesOf } from './leagueCounted'
+import { countedDaysOf, countedRacesOf } from './leagueCounted'
 import { LEAGUES, recordsOf, type Editing, type Overlay } from './entityForms'
 import { WHEN_WRITING_A_LEAGUE, identityIn, upsertFrom } from './leagueWrites'
 import '../member/Member.css'
 
 /** An overlay holding nothing, which is what this screen starts every visit with. */
 const NOTHING_YET: Overlay = { edits: {}, creations: {}, deletions: {} }
+
+/**
+ * HOW MANY DAYS A COMPETITION COUNTS, WORKED OUT OF THE RACES IT COUNTS AND NOT OF THE
+ * `eventIds` THE ANSWER CARRIED.
+ *
+ * **The fault this closes reached QA and the owner read it as work lost** (28.09.2026:
+ * „Popunim ovo ovako i onda se nista ne sacuva, nije se kreirala Liga sa ovim dogadjajem").
+ * Nothing was lost - `league` held the row, `league_race` held four, and `GET /api/leagues`
+ * answered with all of it - but this cell was drawing `league.eventIds.length` off the answer
+ * the screen had been served BEFORE the panel under it wrote anything, and a competition made
+ * during a visit carries the empty list `entityForms.ts` gives a new record. So the truest
+ * record the portal has had a false sentence written over it, which is the worst shape a fault
+ * can take.
+ *
+ * **Three states and not two, which is the shape `pages/Leagues.tsx` already gives the same
+ * number on the public list, word for word.** Nothing while the calendar is coming, because a
+ * nought drawn before the races have landed is this cell telling the same lie in a smaller
+ * size; the word for „unknown" if they will not come at all; the number when they are here.
+ *
+ * **WHAT IT COSTS, NAMED AS A DECISION.** The number used to appear with the name of the
+ * competition, out of an answer of a few kilobytes, and now waits on the races and the events.
+ * That is the same bargain the public list took on 13.09.2026 and for the same reason, and
+ * both files are here rather than one because the two read DIFFERENT lists: the public one has
+ * no panel and reads the days off `eventIds`, this one reads what the screen is holding.
+ */
+function CountedDays({ counted }: { counted: number[] }) {
+  const { locale, t } = useI18n()
+  const events = useEvents()
+  const races = useRaces()
+
+  if (failed(events, races)) {
+    return <>{t('leagues.unknown')}</>
+  }
+
+  if (events.status !== 'ready' || races.status !== 'ready') {
+    return null
+  }
+
+  const days = countedDaysOf(counted, races.data, events.data).length
+
+  return days === 0 ? (
+    <span className="tag tag--checking">{t('admin.noEvents')}</span>
+  ) : (
+    <>{formatNumber(days, locale)}</>
+  )
+}
 
 /**
  * Leagues, with the number of events each one carries. A league with no events
@@ -80,6 +126,26 @@ export function AdminLeagues() {
    * before anything was saved.
    */
   const [written, setWritten] = useState<Overlay>(NOTHING_YET)
+
+  /**
+   * WHICH RACES EACH COMPETITION COUNTS, AS THIS VISIT HAS LEFT IT, over what was served.
+   *
+   * **The one home for a fact two things on this screen draw**, and it is here rather than in
+   * the panel because the panel is not the only reader: the badge in the row above it is the
+   * other, and until 28.09.2026 the two were separate stores. The panel held its own
+   * `useState` and the row counted `League.eventIds` off the served answer, so a race written
+   * through the panel reached one of them and not the other. That is what the owner met on QA
+   * and read as a competition that had not saved.
+   *
+   * **The shape is `pages/Leagues.tsx`'s `standing`, word for word** - „what this visit wrote
+   * into it, or what was served" - and nothing is put in that a route has not accepted.
+   *
+   * **And it outlives the editor, which the panel's own state did not.** Opening a form swaps
+   * the whole subtree below, so every panel is unmounted and mounted again; this component is
+   * not, so a race entered and then a form opened and closed no longer reads as a race that
+   * went away.
+   */
+  const [counting, setCounting] = useState<Record<number, number[]>>({})
 
   /** What just happened, for whoever is not watching the list. */
   const [said, setSaid] = useState('')
@@ -231,6 +297,31 @@ export function AdminLeagues() {
              assumption that had already been overturned. */
           const rows = recordsOf(LEAGUES, leagues, written)
 
+          /** Which races a competition counts now: what this visit wrote, or what was served. */
+          function counted(id: number): number[] {
+            return counting[id] ?? countedRacesOf(leagues, id)
+          }
+
+          /**
+           * THE PANEL'S ROUTE HAS ACCEPTED A CHANGE, AND BOTH THINGS THAT READ IT HEAR ABOUT IT.
+           *
+           * **Two writes and not one, for the two different lifetimes this fact has.** The state
+           * is what THIS mount draws, badge and panel alike, because nothing re-reads a resource
+           * a mounted screen already holds. The cache is what the NEXT mount reads - this screen
+           * entered again, or the public list at `/lige` - and `POST /api/leagues/{id}/races`
+           * changes what `GET /api/leagues` answers with, so an answer kept from before it is an
+           * answer that is now wrong. `saveOne` and `deleteOne` above have cleared it since
+           * 25.09.2026 for the same reason and this was the third write on this screen and the
+           * only one that cleared nothing.
+           *
+           * The change arrives as a function of what was, rather than as the list it makes,
+           * because two presses can be answered between one render and the next.
+           */
+          function nowCounting(id: number, change: (was: number[]) => number[]): void {
+            clearResourceCache('leagues')
+            setCounting((was) => ({ ...was, [id]: change(was[id] ?? countedRacesOf(leagues, id)) }))
+          }
+
           if (editing !== null) {
             return (
               <EntityEditor
@@ -291,11 +382,9 @@ export function AdminLeagues() {
                         </td>
                         <td>{league.season}</td>
                         <td>
-                          {league.eventIds.length === 0 ? (
-                            <span className="tag tag--checking">{t('admin.noEvents')}</span>
-                          ) : (
-                            formatNumber(league.eventIds.length, locale)
-                          )}
+                          {/* OFF THE SAME LIST THE BOX UNDER THIS ROW DRAWS, which is what
+                              stops the two saying different things about one competition. */}
+                          <CountedDays counted={counted(league.id)} />
                         </td>
                         <td>
                           <RowActions
@@ -340,13 +429,25 @@ export function AdminLeagues() {
                          `state` up here still holds the served answer in full,
                          which is what `leagues` is. One home, reached one way.
 
-                         A competition entered during this visit is in neither of
-                         those, so it counts nothing, which is what it does count. */
+                         **AND SINCE 28.09.2026 THE LIST GOES ON BEING THIS
+                         SCREEN'S AFTER THE PANEL CHANGES IT** (`counting` above).
+                         It was handed down as the served answer and then kept
+                         inside the panel, which made two homes of one fact: the
+                         badge in the row was still counting `eventIds` off that
+                         same served answer, so a race written through the panel
+                         reached the box and not the badge. Now the panel reports
+                         what the route accepted, this holds it, and both the badge
+                         and the box are drawn off it.
+
+                         A competition entered during this visit is in neither the
+                         answer nor the cache, so it starts counting nothing, which
+                         is what it does count until somebody puts a race in it. */
                       <tr key={`${league.id}-races`}>
                         <td colSpan={5}>
                           <LeagueRaceModeration
                             league={league}
-                            counted={countedRacesOf(leagues, league.id)}
+                            counted={counted(league.id)}
+                            onCounted={(change) => nowCounting(league.id, change)}
                           />
                         </td>
                       </tr>,

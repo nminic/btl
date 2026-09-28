@@ -5,7 +5,7 @@ import type { League, Race } from '../../data/types'
 import { combinePair, useEvents, useRaces } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { racesByEvent } from '../league/leagueCounting'
+import { countedDaysOf } from './leagueCounted'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { WHEN_MODERATING_LEAGUE_RACES } from './leagueWrites'
 import '../Leagues.css'
@@ -33,12 +33,25 @@ import '../Leagues.css'
  * refused by the database through `league_race`'s composite keys (V19) and comes back as a
  * sentence saying which.
  *
- * **WHAT IS COUNTED IS READ OFF THE ANSWER AND THEN KEPT HERE.** A screen that is still
- * mounted never asks its resource again, so after a write there is nothing to re-read: what
- * is held is what the server has just accepted. What it starts from is `raceIds` on the
- * served competition, handed down by the screen that is holding that answer
- * (`AdminLeagues.tsx`, through `leagueCounted.ts`, which says why the field is read off the
- * answer rather than off the shared type).
+ * **WHAT IS COUNTED IS NEITHER READ NOR HELD HERE, SINCE 28.09.2026, AND THAT IS THE WHOLE
+ * OF WHAT THIS PANEL GAVE UP.** It used to seed a `useState` off the served answer and put
+ * every accepted write into that state, which was correct about itself and was a SECOND HOME
+ * for a fact the row above was also drawing. The owner met the two halves disagreeing on QA
+ * and read it as a competition that had not saved („nista se ne sacuva, nije se kreirala Liga
+ * sa ovim dogadjajem", 28.09.2026) - the panel listed four races and the badge beside it said
+ * „Bez dogadjaja", because only one of the two homes had heard about the write.
+ *
+ * So the list arrives as a prop and every change to it is reported back through `onCounted`,
+ * inside the branch that ran only because the route said the write went through.
+ * `AdminLeagues.tsx` holds it, draws the badge off the same list, and empties the cached
+ * answer in the same breath. **One home, reached one way**, which is the sentence this file
+ * already used about where the seed comes from and which it was only half keeping.
+ *
+ * **AND THE STATE SURVIVING THE EDITOR IS PART OF WHY, not a side effect of it.** Opening a
+ * competition's form swaps this whole subtree, so a panel that held its own list lost every
+ * race entered during that visit the moment somebody pressed „Otvori" and came back - the
+ * races were on the server and the panel drew them gone. The screen above is not unmounted by
+ * that, so what it holds outlives it.
  *
  * **IT IS HANDED DOWN AND NO LONGER FETCHED OUT OF `data/client.ts`'s CACHE, SINCE
  * 25.09.2026, AND THAT IS A MEASUREMENT.** The seed used to be `arrivedResource('leagues')`,
@@ -53,21 +66,26 @@ import '../Leagues.css'
  */
 export function LeagueRaceModeration({
   league,
+  /** Which races this competition counts as the screen above it holds that fact now. */
+  counted,
   /**
-   * Which races the served answer says this competition counts.
+   * That the route has accepted a change to it, as the change itself rather than as the list
+   * it produces.
    *
-   * **Read once, as this mounts, exactly as it was before it became a prop.** What comes
-   * after is this panel's own: a race entered or taken out is put in below, inside the branch
-   * that ran only because the route said the write went through.
+   * **A function of what was, and not the new list worked out here**, because two presses can
+   * be answered between one render and the next: a second press computing its list off the
+   * `counted` THIS render was given would write the first press's race back out of it. That
+   * is the same reason a `useState` takes an updater, and it is the shape this panel had
+   * before the fact moved upstairs.
    */
-  counted: whenItMounted,
+  onCounted,
 }: {
   league: League
   counted: number[]
+  onCounted: (change: (was: number[]) => number[]) => void
 }) {
   const { locale, t } = useI18n()
   const [open, setOpen] = useState(false)
-  const [counted, setCounted] = useState<number[]>(whenItMounted)
   /** The day chosen in the first box, and the empty string until somebody chooses one. */
   const [day, setDay] = useState('')
   /** One race of that day, or the empty string, which means the whole of it. */
@@ -142,8 +160,11 @@ export function LeagueRaceModeration({
       <div id={panelId} hidden={!open}>
         <Resource state={combinePair(useEvents(), races)} inline label={named}>
           {([events, everyRace]) => {
-            const mine = everyRace.filter((race) => counted.includes(race.id))
-            const listed = racesByEvent(mine, events)
+            /* THE SAME CALL THE BADGE ON THE ROW ABOVE MAKES (`leagueCounted.ts`), so the
+               list and the number over it cannot answer differently. Pulled out of this file
+               on 28.09.2026 for exactly that: two places grouping one list two ways is how a
+               box of four races came to stand under a badge saying „Bez dogadjaja". */
+            const listed = countedDaysOf(counted, everyRace, events)
             /* The days this competition may take, which are those of its own season.
                Narrowed on the RACE'S year and not on the event's own day, because an event
                may run over more than one morning (V7) and it is the race's year that
@@ -169,7 +190,7 @@ export function LeagueRaceModeration({
               const going = entered()
 
               await answered(askTheServer(`/api/leagues/${league.id}/races`, asking), () => {
-                setCounted((was) => [...new Set([...was, ...going])])
+                onCounted((was) => [...new Set([...was, ...going])])
                 setSaid(t('admin.leagueRaceAdded'))
                 setOne('')
               })
@@ -179,7 +200,7 @@ export function LeagueRaceModeration({
               const where = `/api/leagues/${league.id}/races/${race.id}`
 
               await answered(askTheServer(where, {}, 'DELETE'), () => {
-                setCounted((was) => was.filter((kept) => kept !== race.id))
+                onCounted((was) => was.filter((kept) => kept !== race.id))
                 setSaid(t('admin.leagueRaceDropped'))
               })
             }
@@ -197,8 +218,16 @@ export function LeagueRaceModeration({
 
                         <ul className="leagues__event-races">
                           {run.map((race) => (
-                            <li key={race.id}>
-                              {raceLabel(race, run, locale)}{' '}
+                            /* THE NAME AND THE CONTROL AS TWO PARTS OF A ROW, so the controls
+                               stand in a column (owner, 28.09.2026). Written as one run of text
+                               with a button after it, each button began wherever its race's name
+                               and distance happened to end, which on a day of four distances is
+                               four different places. The class is on the item and not on the
+                               list, because `.leagues__event-races` is also what the public
+                               competition page draws its races in (`league/LeagueEvents.tsx`),
+                               and nothing there has a control to line up. */
+                            <li key={race.id} className="leagues__counted-race">
+                              <span>{raceLabel(race, run, locale)}</span>
                               {/* The words on the button are short and the name adds the
                                   race, which is how this portal already names a control that
                                   repeats - and the visible words are the first part of the
@@ -227,38 +256,54 @@ export function LeagueRaceModeration({
                   </p>
                 ) : (
                   <form className="leagues__adding" onSubmit={(press) => void addToTheLeague(press)}>
-                    <label htmlFor={`${panelId}-event`}>{t('admin.chooseEvent')}</label>
-                    <select
-                      id={`${panelId}-event`}
-                      value={day}
-                      onChange={(typed) => {
-                        setDay(typed.target.value)
-                        setOne('')
-                      }}
-                    >
-                      <option value="">{t('admin.chooseNothing')}</option>
-                      {offered.map((event) => (
-                        <option key={event.id} value={String(event.id)}>
-                          {event.name}
-                        </option>
-                      ))}
-                    </select>
+                    {/* THE SHAPE EVERY OTHER CHOICE ON THIS PORTAL WEARS, AND IT IS COPIED
+                        RATHER THAN INVENTED (owner, 28.09.2026: „zasto su dropdowns ovako
+                        nakaradni?"). These two were a bare `<label>` beside a bare `<select>`,
+                        so the browser drew its own control - white on the portal's dark ground,
+                        in the browser's own font, unlike the twenty-eight other fields on the
+                        portal. `.rankings__field` is what administration already dresses a
+                        chooser in: the queue of proposals puts a country `select` in one
+                        (`admin/PendingQueue.tsx`), and the members, the events, the payments and
+                        the review queue each put their own control in one. The sheet is already
+                        asked for by the one this screen imports (`Leagues.css` opens with
+                        `@import 'Rankings.css'`), so nothing new is loaded and nothing under
+                        `forms/` is touched. */}
+                    <div className="rankings__field">
+                      <label htmlFor={`${panelId}-event`}>{t('admin.chooseEvent')}</label>
+                      <select
+                        id={`${panelId}-event`}
+                        value={day}
+                        onChange={(typed) => {
+                          setDay(typed.target.value)
+                          setOne('')
+                        }}
+                      >
+                        <option value="">{t('admin.chooseNothing')}</option>
+                        {offered.map((event) => (
+                          <option key={event.id} value={String(event.id)}>
+                            {event.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                    <label htmlFor={`${panelId}-race`}>{t('admin.chooseRace')}</label>
-                    <select
-                      id={`${panelId}-race`}
-                      value={one}
-                      onChange={(typed) => setOne(typed.target.value)}
-                    >
-                      {/* The whole day first, because it is the owner's own shortcut and it
-                          writes every race of that day (V19). */}
-                      <option value="">{t('admin.wholeEvent')}</option>
-                      {chosen.map((race) => (
-                        <option key={race.id} value={String(race.id)}>
-                          {raceLabel(race, chosen, locale)}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="rankings__field">
+                      <label htmlFor={`${panelId}-race`}>{t('admin.chooseRace')}</label>
+                      <select
+                        id={`${panelId}-race`}
+                        value={one}
+                        onChange={(typed) => setOne(typed.target.value)}
+                      >
+                        {/* The whole day first, because it is the owner's own shortcut and it
+                            writes every race of that day (V19). */}
+                        <option value="">{t('admin.wholeEvent')}</option>
+                        {chosen.map((race) => (
+                          <option key={race.id} value={String(race.id)}>
+                            {raceLabel(race, chosen, locale)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
                     <button type="submit" className="button" disabled={day === ''}>
                       {t('admin.addRace')}

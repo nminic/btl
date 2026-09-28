@@ -159,8 +159,51 @@
 
 /* Each box takes what it needs and gives it back. `min-width: 0` because a select whose
    longest option is an event's whole name otherwise refuses to shrink below it, and that is
-   the one input here that would push the page sideways. */
-.leagues__adding select {
+   the one input here that would push the page sideways.
+
+   On the FIELD and no longer on the select itself, since 28.09.2026: each of the two is now
+   wrapped in `.rankings__field`, which is what administration dresses a chooser in
+   (`admin/PendingQueue.tsx` and five more), so the wrapper is what this row lays out and the
+   select inside it takes the width its wrapper was given. Both halves are needed and neither
+   alone does it: without the floor on the select, a wrapper that has shrunk still holds a
+   control that refuses to. */
+.leagues__adding .rankings__field {
   flex: 1 1 12rem;
   min-width: 0;
+}
+
+.leagues__adding .rankings__field select {
+  min-width: 0;
+}
+
+/* The button that submits stands level with the two boxes rather than with their labels.
+   `.rankings__field` is a column of a small label over a control, so its own top is the top of
+   the LABEL; a button aligned to that sits a line above the boxes it belongs to. `flex-end` is
+   the bottom edge, which the control and the button share. */
+.leagues__adding .button {
+  align-self: flex-end;
+}
+
+/* ONE RACE THAT COUNTS, AND THE CONTROL THAT TAKES IT OUT (owner, 28.09.2026: the controls
+   were „svako pocinje na drugoj x koordinati").
+
+   The name takes what is left and the control is pushed to the end of the row, so four races
+   of one morning give four controls in one column whatever their distances are called.
+   `margin-inline-start: auto` and not `justify-content: space-between`, because the two behave
+   differently the moment the row wraps: `space-between` on a wrapped line spreads whatever
+   landed on it, and the automatic margin keeps pushing the control to the end of the line it
+   is on.
+
+   `flex-wrap` and no breakpoint, for the reason `.leagues__adding` above gives: this list sits
+   inside a cell of the table of competitions, and how wide that cell is is not something a
+   media query can be told. */
+.leagues__counted-race {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.leagues__counted-race .button {
+  margin-inline-start: auto;
 }
