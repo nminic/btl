@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import type { MembershipDue, Outstanding } from '../../data/types'
 import { renderAt } from '../../test/render'
@@ -1086,6 +1086,55 @@ describe('activating a membership from the payments screen', () => {
          it is answered (`activate`'s own comment says why), so a genuine double press lands on
          the very button the first one used rather than on a freshly opened one. */
       fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      settle(new Response(null, { status: 201 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect(grantsIn(server.asked)).toEqual([{ competitorId: 41, ground: 'feeExempt' }])
+
+      server.stop()
+    })
+
+    /**
+     * TWO PRESSES ON „DA" WITH NOTHING AWAITED BETWEEN THEM (VISOK, review of PR 411, round 2).
+     *
+     * <p><b>The case above does not measure a genuine double press, and that is exactly why a
+     * mutation swapping the guard for the state beside it survived it.</b> Its second press on
+     * „Da" comes only after the first has been carried all the way through `user.click`, so
+     * `activating` is already `true` before either door is tried again - `if (outstanding.current)`
+     * and a mutated `if (activating)` then agree, because both values have caught up by then.
+     *
+     * <p><b>A genuine double press agrees with neither, because nothing has been awaited for
+     * either to catch up.</b> `user.click` cannot produce that by construction - it awaits its
+     * own click through to completion - so this fires two raw clicks on the very same button with
+     * nothing between them, the way `verificationDecision.test.tsx` fires its own second press
+     * with `fireEvent` rather than `user` for the same reason. Both are grouped inside one `act`,
+     * the way `clock.test.tsx` groups two synchronous steps into one, so nothing commits between
+     * them: the second dispatch is handled by the very closure the first one was, from before
+     * `setActivating` had been seen anywhere. `outstanding.current` is not fooled by this, because
+     * a ref is read fresh no matter which closure asks; a state check in its place is fooled by
+     * exactly this, because the closure it reads `activating` from is the stale one.
+     *
+     * <p>Ana, first row, his case 6 again, for the same reason the case above uses her: one
+     * choice, „Da", so a second press on it is a press on the very button the first already used.
+     */
+    it('sends only one grant for two presses on „Da" with nothing awaited between them', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Ana Ilić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const da = within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' })
+
+      /* THE RACE ITSELF: two clicks with nothing awaited between them, grouped in one `act` so
+         neither can commit before the other is dispatched. */
+      act(() => {
+        da.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        da.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      })
 
       settle(new Response(null, { status: 201 }))
       await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
