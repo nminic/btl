@@ -49,63 +49,47 @@ function renderForm() {
 }
 
 /**
- * WHETHER A PROPERTY, DECLARED ON A BUTTON, CAN MOVE ITS EDGES.
+ * WHAT MAY BE DECLARED ON A BUTTON WHEN ITS OPTION IS TAKEN: paint, and nothing
+ * else.
  *
- * Closed on purpose, and it is not „the properties this sheet happens to use".
- * It is what these properties mean, and the floor under it is that a property
- * written in the taken state and missing from this map FAILS: the sweep below
- * refuses to judge what it has not been told about, rather than passing it.
+ * Written as what is ALLOWED rather than as a verdict per property, and that was
+ * measured rather than chosen. The first draft was a map of „moves an edge" to
+ * true or false, and half of it was unreachable: jsdom expands a shorthand, so
+ * `padding: 2rem` arrives as `padding-top` first and is judged before the word
+ * `padding` is ever reached. A list of the ways to widen a box is not a list
+ * anybody can finish by thinking about it - `src/test/stylesheet.ts` says the
+ * same thing about the ways to cut one, and paid for it once - so the list here
+ * is the SHORT side, the one that can be finished.
  *
- * That shape is the portal's, and it is written down in `src/test/stylesheet.ts`
- * over the `overflow` family, for a reason paid for once already: „A list of the
- * ways to cut a box is not a list anybody can finish by thinking about it."
- * Neither is a list of the ways to widen one.
+ * The floor is that anything not written here fails. A property nobody has
+ * thought about is refused rather than waved through, which is the direction a
+ * guard has to fail in.
+ *
+ * Every one of these is paint or is drawn outside the box, so none of them is in
+ * the flow and none can move an edge. The colour shorthands carry their
+ * longhands, because a value written without `var()` arrives expanded.
  */
-const MOVES_AN_EDGE = new Map([
-  /* Paint. None of these is in the flow: the box is where it was and only its
-     colours differ, which is the whole of what the owner asked for. */
-  ['background', false],
-  ['background-color', false],
-  ['background-image', false],
-  ['border-color', false],
-  ['color', false],
+const ONLY_PAINT = new Set([
+  'background',
+  'background-color',
+  'background-image',
+  'color',
+  'border-color',
+  'border-top-color',
+  'border-right-color',
+  'border-bottom-color',
+  'border-left-color',
+  'border-block-color',
+  'border-inline-color',
   /* Drawn outside the box and never counted into it. */
-  ['box-shadow', false],
-  ['outline', false],
-  ['outline-color', false],
-  ['outline-offset', false],
-  ['outline-style', false],
-  ['outline-width', false],
-  ['text-decoration-color', false],
-  ['opacity', false],
-  /* And everything that does move one. `content` is the mark that was taken off
-     on 28.09.2026 and is the reason this map exists at all; `border` is here and
-     `border-color` is not, because the shorthand carries a width. */
-  ['content', true],
-  ['border', true],
-  ['border-width', true],
-  ['padding', true],
-  ['padding-block', true],
-  ['padding-inline', true],
-  ['margin', true],
-  ['margin-block', true],
-  ['margin-inline', true],
-  ['margin-inline-end', true],
-  ['margin-inline-start', true],
-  ['gap', true],
-  ['font-size', true],
-  ['font-weight', true],
-  ['letter-spacing', true],
-  ['inline-size', true],
-  ['min-inline-size', true],
-  ['max-inline-size', true],
-  ['block-size', true],
-  ['min-block-size', true],
-  /* Not in the flow, but it changes how wide the button LOOKS, which is the
-     question being asked. */
-  ['transform', true],
-  ['scale', true],
-  ['zoom', true],
+  'box-shadow',
+  'outline',
+  'outline-color',
+  'outline-offset',
+  'outline-style',
+  'outline-width',
+  'text-decoration-color',
+  'opacity',
 ])
 
 describe('the buttons one answer is chosen from', () => {
@@ -199,13 +183,9 @@ describe('the buttons one answer is chosen from', () => {
 
     for (const { property, where } of declared) {
       expect(
-        MOVES_AN_EDGE.has(property),
-        `${property} is declared on ${where} and nothing here says whether it moves an edge`,
+        ONLY_PAINT.has(property),
+        `${property} is declared on ${where}: taking an option may change paint and nothing else, or the button moves under the hand that is choosing`,
       ).toBe(true)
-      expect(
-        MOVES_AN_EDGE.get(property),
-        `${property} on ${where} moves the edges of the button when an option is taken`,
-      ).toBe(false)
     }
   })
 
