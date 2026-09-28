@@ -12,7 +12,6 @@ import { reportForm } from './reportForm'
 import { reportedResult } from './reportedResult'
 import { raceKind } from '../../data/raceKind'
 import type { FormValues } from '../../forms/types'
-import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { useSend, useSent } from '../sent'
 import { useSession } from '../../session/useSession'
@@ -67,11 +66,16 @@ export function ReportResult() {
   const { submit } = useSession()
   const who = useMemberScreen()
   const state = combinePair(useEvents(), useRaces())
-  /* The points the entry earned, once there has been one, held by the address rather
-     than by the screen: the way back from this confirmation is the member's own list of
-     results, not the form they have already sent (PDL, 05.09.2026). */
-  const said = useSent()
-  const done = typeof said === 'number' ? said : null
+  /* THAT there has been an entry, and nothing about it. Held by the address rather than
+     by the screen, because the way back from this confirmation is the member's own list of
+     results and not the form they have already sent (PDL, 05.09.2026).
+   *
+     **A bare marker since 28.09.2026**, the same shape `RateEvent.tsx` next door keeps.
+     What travelled here until then was the number of points the entry earned, and it
+     travelled because the confirmation printed it; the owner ended that on 28.09.2026
+     („Ne vidim razlog da se ispisuju bilo kome prilikom unosa parametara prijave
+     rezultata"), so there is nothing left for it to carry. */
+  const done = useSent() !== undefined
   const confirm = useSend()
   /* What the server answered, where it answered anything but „done". A run that went
      through leaves this screen altogether (`confirm` below), so the only answer this ever
@@ -94,14 +98,18 @@ export function ReportResult() {
 
   const mine = memberNumber
 
-  if (done !== null) {
+  if (done) {
     return (
       <div className="member" role="status">
         <h1>{t('newResult.doneTitle')}</h1>
-        <p>{t('newResult.donePoints', { points: formatPoints(done, locale) })}</p>
-        {/* The same sentence on this road, since the same thing may happen to it:
-            the administration settles the time at verification. */}
-        <p>{t('newResult.pointsNotFinal')}</p>
+        {/* What happens next, and not what the run is worth. Until 28.09.2026 this
+            said the number the browser had worked out and then took it back in the
+            next breath, „Račun nije konačan". Owner, 28.09.2026: „bodovi ni na
+            dužinskoj ni na vremenskoj trci ne ulaze u obračun pre verifikacije. Ne
+            vidim razlog da se ispisuju bilo kome prilikom unosa parametara prijave
+            rezultata. Ako ga zanima koliko će bodova dobiti, neka se igra
+            kalkulatorom na naslovnoj strani portala." The caveat went with it, there
+            being no number left for it to stand beside. */}
         <p>{t('newResult.doneWaiting')}</p>
         <p className="member__actions">
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
@@ -234,7 +242,10 @@ export function ReportResult() {
             }
 
             keep(run, values)
-            confirm(`/${locale}/moji-rezultati`, run.points)
+            /* That it went, and nothing about what it was worth. `true` rather than a
+               figure since 28.09.2026, which is the shape `RateEvent.tsx` has always
+               used for the same question. */
+            confirm(`/${locale}/moji-rezultati`, true)
           }
 
           function onSubmit(values: FormValues) {
