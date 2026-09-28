@@ -375,8 +375,7 @@
       "basics": "Basic details",
       "theWayIn": "Your account",
       "contact": "Contact and delivery",
-      "competing": "Competing",
-      "profile": "Profile"
+      "competing": "Competing"
     },
     "firstName": "First name",
     "lastName": "Last name",
@@ -397,8 +396,6 @@
       "few": "That is enough, the limit is {count} characters.",
       "other": "That is enough, the limit is {count} characters."
     },
-    "bioHint": "A few sentences about yourself, at most 360 characters.",
-    "photo": "Profile picture",
     "shirtSize": "Shirt size",
     "healthStatement": "I confirm that I have read {link} and that I am medically fit for recreational sport.",
     "doneTitle": "The application is recorded",
@@ -1499,7 +1496,8 @@
       "theAmountIsNotKeptExactly": "The amount is larger than the portal can record, so no payment was booked and no membership was recorded. Check the amount and type it again.",
       "theMethodIsNotKnown": "The way the money arrived was not recognised, so no payment was booked and no membership was recorded. Refresh the page and try again.",
       "theReferenceIsNotShaped": "The payment reference is not of the right shape, so no payment was booked and no membership was recorded.",
-      "theReferenceIsTaken": "This payment reference is already recorded against another payment, so no payment was booked and no membership was recorded."
+      "theReferenceIsTaken": "This payment reference is already recorded against another payment, so no payment was booked and no membership was recorded.",
+      "theMembershipCostsNothing": "The price list asks for nothing this season, so no payment can be booked. A membership is recorded as an exemption from the fee instead."
     },
     "body": {
       "leagues": "Competition description",

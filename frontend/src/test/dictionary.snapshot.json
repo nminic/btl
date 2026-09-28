@@ -375,8 +375,7 @@
       "basics": "Osnovni podaci",
       "theWayIn": "Pristup nalogu",
       "contact": "Kontakt i dostava",
-      "competing": "Takmičenje",
-      "profile": "Profil"
+      "competing": "Takmičenje"
     },
     "firstName": "Ime",
     "lastName": "Prezime",
@@ -397,8 +396,6 @@
       "few": "Dosta je, granica je {count} znaka.",
       "other": "Dosta je, granica je {count} znakova."
     },
-    "bioHint": "Nekoliko rečenica o sebi, najviše 360 znakova.",
-    "photo": "Profilna slika",
     "shirtSize": "Veličina majice",
     "healthStatement": "Potvrđujem da sam upoznat sa {link} i da sam zdravstveno sposoban za rekreativan sport.",
     "doneTitle": "Prijava je zabeležena",
@@ -1499,7 +1496,8 @@
       "theAmountIsNotKeptExactly": "Iznos je veći nego što portal može da zapiše, pa uplata nije proknjižena i članstvo nije upisano. Proveri iznos i unesi ga ponovo.",
       "theMethodIsNotKnown": "Način plaćanja nije prepoznat, pa uplata nije proknjižena i članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "theReferenceIsNotShaped": "Poziv na broj nije ispravnog oblika, pa uplata nije proknjižena i članstvo nije upisano.",
-      "theReferenceIsTaken": "Ovaj poziv na broj je već zapisan na drugoj uplati, pa uplata nije proknjižena i članstvo nije upisano."
+      "theReferenceIsTaken": "Ovaj poziv na broj je već zapisan na drugoj uplati, pa uplata nije proknjižena i članstvo nije upisano.",
+      "theMembershipCostsNothing": "Cenovnik za ovu sezonu ne traži ništa, pa uplata ne može da se proknjiži. Članstvo se u tom slučaju upisuje kao oslobođenje od članarine."
     },
     "body": {
       "leagues": "Opis lige",

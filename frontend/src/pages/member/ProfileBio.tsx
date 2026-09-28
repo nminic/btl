@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useToday } from '../../clock/useClock'
 import { AskedLabel } from '../../forms/AskedLabel'
 import { LongBox } from '../../forms/LongBox'
-import { registracija } from '../../forms/definitions'
+import { profil } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import { WHOLE } from '../../components/crop'
@@ -131,7 +131,7 @@ export function ProfileBio({ me }: { me: Competitor }) {
             <LongBox
               id="settings-bio-box"
               value={written}
-              maxLength={limitOf(registracija, 'bio')}
+              maxLength={limitOf(profil, 'bio')}
               leftId="settings-bio-left"
               /* The count, read on the way into the box rather than found by
                  hitting the end of it. `LongBox` draws it `aria-hidden` and says

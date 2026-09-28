@@ -1,12 +1,10 @@
 import { SLOW } from '../test/slow'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { registracija } from '../forms/definitions'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { translate } from '../i18n/translate'
-import sr from '../i18n/sr.json'
-import { first, inputElement, last, must } from '../test/at'
+import { first, inputElement, must } from '../test/at'
 import { renderAt } from '../test/render'
 import {
   did,
@@ -15,7 +13,6 @@ import {
   serverThat,
   type Asked,
 } from '../test/serverAnswers'
-import { inside, SEP, sources, WHOLE_PORTAL } from '../test/sources'
 import { setupUser } from '../test/user'
 import { NewResult } from './member/NewResult'
 import { SessionProvider } from '../session/SessionProvider'
@@ -125,7 +122,6 @@ function renderForm(today = OPEN, address = '/sr/registracija') {
 async function fillEverythingExceptBirthDate(
   user: ReturnType<typeof setupUser>,
   {
-    picture = true,
     /** What is typed into both password boxes. Handed in for the one pair of cases about
      *  a secret with a space in it, which is a value the portal must not alter. */
     password = PASSWORD,
@@ -133,9 +129,12 @@ async function fillEverythingExceptBirthDate(
      *  still trim. Without that pair nothing tells „leave the password alone" apart from
      *  „leave everything alone". */
     firstName = 'Vladan',
-  }: /** Left out where the test is about the picture being missing: a file input
-   *  cannot be cleared once it holds something (`user.clear` refuses it). */
-  { picture?: boolean; password?: string; firstName?: string } = {},
+  }: /** ~~`picture`, left out where the case was about the picture being missing.~~ It
+   *  went on 28.09.2026 with the field: the owner took the profile section out of the
+   *  registration („Profilna sekcija se sa slikom i svojim recima izbacuje iz
+   *  registracione forme - to ce clan popunjavati naknadno kad bude odobren"), so there
+   *  is no picture here to leave out. */
+  { password?: string; firstName?: string } = {},
 ) {
   await user.type(screen.getByLabelText(/^Ime$/), firstName)
   await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
@@ -161,18 +160,11 @@ async function fillEverythingExceptBirthDate(
   /* Either the beginners' category or the one for their age, and the portal
      asks rather than assumes (PDL P7). */
   await user.click(screen.getByRole('radio', { name: 'Starosna' }))
-  /* Required since the list of obligatory fields was written, and given its
-     place in the layout on 11.08.2026: the picture stands to the left of the
-     box below, in a row of its own two. */
-  if (picture) {
-    await user.upload(
-      screen.getByLabelText(/Profilna slika/),
-      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
-    )
-  }
-  /* Required since 31.07.2026: the biography is written here, at the moment of
-     joining, and goes from here to a moderator for approval. */
-  await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
+  /* ~~The picture stood here, to the left of the box below.~~ The owner took it out of
+     the registration on 28.09.2026; it is given to `POST /api/me/photo` once the account
+     is live, and `member/ProfilePicture.tsx` is the screen that sends it. */
+  /* ~~The biography was typed here.~~ It left the form on 28.09.2026 with the picture,
+     and is written afterwards on `member/ProfileBio.tsx`. */
   await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
   await user.click(screen.getByLabelText(/zdravstveno sposoban/))
 }
@@ -542,157 +534,85 @@ describe('the address, at the moment of joining', () => {
   }, SLOW)
 })
 
-describe('the biography, at the moment of joining', () => {
-  it('is asked for here, and the form goes through without it', async () => {
-    /* Owner, 31.07.2026: it is written when the profile is created and goes from
-       there for approval. Until then it was a field somewhere in the member area
-       that most people never found, which is why most profiles in the data have
-       none. Asked for at the moment of joining, and not demanded: the list of
-       obligatory fields (PDL P8, 11.08.2026) does not hold it, and the privacy
-       policy says in as many words that it is given „dobrovoljno", on consent.
-       It was `required` in the definition all the same, so the portal refused a
-       registration over a field its own policy calls voluntary. */
+describe('the biography', () => {
+  it('is not asked for here at all, and the form goes through without it', async () => {
+    /* Owner, 28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
+       registracione forme - to ce clan popunjavati naknadno kad bude odobren."
+
+       ~~It was asked for at the moment of joining (owner, 31.07.2026), because before
+       that it was a field somewhere in the member area that most people never found.~~
+       The panel under Settings is that field's home now, and it is the one the owner
+       decided on for a refused biography on 15.08.2026, so the words are written where
+       they are also corrected.
+
+       BOTH HALVES, for the reason the picture's case beside this one gives: that the box
+       is not drawn is what was asked for, and that the form SENDS without it is what says
+       the field was taken out rather than hidden behind a rule that still refuses. */
     const user = setupUser()
     renderForm()
 
-    expect(screen.getByLabelText(/Svojim rečima/)).toBeVisible()
+    expect(screen.queryByLabelText(/Svojim rečima/)).toBeNull()
+    /* And the words are gone from the whole screen, not only from a box: a legend or a
+       summary line still saying them would read as a field nobody can find. */
+    expect(screen.queryByText(/Svojim rečima/)).toBeNull()
 
     await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12031990')
-    await user.clear(screen.getByLabelText(/Svojim rečima/))
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
 
-  it('says how long it may be, and nothing about what happens to it', async () => {
-    /* It used to say three things beside the field: that a moderator reads it,
-       that a refusal comes with a reason, and where to write a new one. It gained
-       the last two on 15.08.2026, when a biography began to come back (PDL P22).
+  it('takes the whole profile section with it, so no empty part of the form is left', () => {
+    /* The picture and the words were the two fields of one group, and a group is the
+       fields that stand in it: „Profilna sekcija" is what the owner named, not two fields
+       that happened to share a legend. Held here as well as in `fieldHint.test.tsx`,
+       because that file reads the definition and this one reads the screen - a legend
+       drawn from somewhere else would pass there and fail here.
 
-       All three went on 31.08.2026. The owner read the numbered list of all sixty
-       one rules the portal drew beside its fields, kept seven, and wrote this
-       one's words himself; asked what became of the three promises, he answered
-       „Neka se gube, ne treba mi". What stays is the length, which is the thing a
-       member has to know while they are typing. */
+       AND A GROUP THAT SHOULD BE THERE IS ASKED FOR FIRST, because „no group called
+       Profil" is satisfied by a screen that draws no groups at all: a form that failed
+       to render, a renderer that stopped drawing legends, a blank page. An absence can
+       always be satisfied by nothing being there, so it is asked beside a presence. */
     renderForm()
 
-    expect(screen.getByText(/Nekoliko rečenica o sebi/)).toBeVisible()
-    expect(screen.queryByText(/Moderator ih pregleda/)).toBeNull()
-  })
-
-  it('promises only what the portal does, and no more than one sentence of it', () => {
-    /* Four attempts at mechanising this, and the fourth is the reason there is
-       no fifth.
-     *
-       „These five words are not on the screen" was beaten by a review putting
-       the same promise back in different words. „One form definition has a box
-       for a biography" was beaten because the panel the owner decided on uses no
-       form definition. „No source file contains `kind: 'bio'`" was beaten by
-       `const kind = SORT`, and by double quotes: a guard that reads source text
-       guards the spelling. Counting the controls on Settings was beaten twice
-       over, because `findAllByRole` settles on the first tick with any match at
-       all; and when that was fixed by waiting for the picture and giving the
-       loop a turn, a review beat it again with a panel two turns out. That last
-       one is the one that matters: a panel whose clock starts with the picture's
-       is exactly the shape the real one has. A guard that misses the case it was
-       written for is worse than none, because it reads as cover.
-     *
-       So the promise is held as a promise, exactly: the hint is spelt out here,
-       word for word. That is a change of the dictionary nobody can make by
-       accident, and the branch that builds the panel has to come through it.
-     *
-       And the net is back beside it, because taking it away was worse than
-       keeping it. A review measured what the two actually catch: the source scan
-       catches a panel written plainly, which is the shape most likely to be
-       written, and misses one built through a variable or a second quotation
-       mark; the spelt sentence catches nobody at all, it only catches a change of
-       the words. Neither is a wall. Together they are a net with two holes rather
-       than one with all of them, and a hole named in a comment is a hole somebody
-       can step over. */
-    expect(sr.registration.bioHint).toBe('Nekoliko rečenica o sebi, najviše 360 znakova.')
-
-    /* And the net now names the one screen there is, rather than none.
-     *
-       It was written to fail the day a second place could send a biography for
-       review, so that this sentence would be read again. That day was 16.08.2026
-       and it worked: the panel arrived, the net fired, and the sentence gained
-       its other half. What the net keeps saying from here on is that there is
-       exactly one such place and this is it; a third would fail again.
-     *
-       What it does not catch is still named, so nobody reads it as cover: a
-       panel that builds the sort through a variable, or writes it in double
-       quotes, walks past. What it does catch is the plain one, which is how both
-       the picture and this panel are written. */
-    /* And the net is asked whether it caught anything at all before it is asked
-       what it caught. Narrowed to one folder by accident, it would go on passing
-       over a panel written in plain sight: measured, with the root cut to
-       `src/clock`, the guard stayed green while the panel stood there. The same
-       shape the repo already uses on its other source sweep
-       (app/filterParams.test.ts). */
-    const swept = sources()
-
-    expect(swept.length).toBeGreaterThan(WHOLE_PORTAL)
-    expect(swept.some(({ path }) => path.endsWith(inside('member', 'ProfileBio.tsx')))).toBe(true)
-    /* And it holds no helper. Nothing under `src/test/` ships, so a sentence
-       written in one of them is not something the portal does; read as though it
-       were, a plain line in a comment there failed a guard about screens. Asked
-       of the sweep itself, because no helper carries such a line today and so no
-       ordinary test can tell the two sweeps apart. */
-    expect(swept.filter(({ path }) => path.includes(inside('src', 'test', '')))).toEqual([])
-
-    const sending = swept
-      .filter(({ code }) => code.includes("kind: 'bio'") || code.includes('kind: "bio"'))
-      /* Named from `src` down, and cut at the **last** `src` rather than the
-         first: a checkout into a folder that itself carries `src` would otherwise
-         make every path unrecognisable and this list impossible to read. */
-      .map(({ path }) => path.slice(path.lastIndexOf(inside('src', ''))).split(SEP).join('/'))
-
-    expect(sending).toEqual(['src/pages/member/ProfileBio.tsx'])
+    expect(screen.getByRole('group', { name: 'Takmičenje' })).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'Profil' })).toBeNull()
   })
 })
 
-describe('the country a member lives in', () => {
-  it('is refused without a picture, which is an obligatory field', async () => {
-    /* Obligatory since the list of obligatory fields was written (PDL P8), and
-       it stayed obligatory when it was given its place in the layout on
-       11.08.2026. The picture is how members recognise each other at a race, so
-       a profile without one is a profile half made.
+describe('the profile picture', () => {
+  it('is not asked for here at all, and the form goes through without one', async () => {
+    /* Owner, 28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
+       registracione forme - to ce clan popunjavati naknadno kad bude odobren."
 
-       Everything else is filled in, so the only thing keeping the form shut is
-       the picture, and the refusal cannot be somebody else's. */
+       ~~It was obligatory from the day the list of obligatory fields was written (PDL
+       P8) and kept its place in the layout on 11.08.2026~~, and the case that stood here
+       refused a registration without it. What did NOT change is that a picture is still
+       approved and still cropped the same way: `member/ProfilePicture.tsx` sends it to
+       `POST /api/me/photo` once the account is live, and the queue decides it there.
+
+       BOTH HALVES, because either alone is half a guard. That the field is not drawn is
+       what the owner asked for; that the form SENDS without it is what says the field
+       was taken out rather than merely hidden behind a rule that still refuses. A field
+       left in the definition and not drawn would pass the first and fail the second. */
     const user = setupUser()
     renderForm()
 
-    await fillEverythingExceptBirthDate(user, { picture: false })
+    expect(screen.queryByLabelText(/Profilna slika/)).toBeNull()
+    /* And the label is gone from the whole screen, not only from a box: a legend or a
+       summary line still saying it would read as a field the member cannot find. */
+    expect(screen.queryByText(/Profilna slika/)).toBeNull()
+
+    await fillEverythingExceptBirthDate(user)
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
-    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
-
-    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
-
-    /* Said where the field is, and said again in the summary at the top, which
-       is what carries a keyboard back to it. */
-    const field = must(
-      screen.getByLabelText(/Profilna slika/).closest<HTMLElement>('.field'),
-      'the field the picture stands in',
-    )
-
-    expect(within(field).getByText('Ovo polje je obavezno.')).toBeVisible()
-    expect(screen.getByLabelText(/Profilna slika/)).toHaveAttribute('aria-invalid', 'true')
-    expect(
-      within(screen.getByRole('alert')).getByRole('link', { name: /Profilna slika/ }),
-    ).toHaveAttribute('href', '#field-photo')
-
-    /* And it goes through once the picture is there. */
-    await user.upload(
-      screen.getByLabelText(/Profilna slika/),
-      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
-    )
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(await screen.findByRole('heading', { name: 'Prijava je zabeležena' })).toBeVisible()
   }, SLOW)
+})
 
+describe('the country a member lives in', () => {
   it('is refused when the town was typed by hand and no country was picked', async () => {
     /* The country has no field of its own: the town carries it (PDL P6). What
        that cost was the rule that used to stand on the country field: a town the
@@ -716,11 +636,6 @@ describe('the country a member lives in', () => {
        of, which is exactly what the field is allowed to take. */
     await user.type(screen.getByLabelText(/^Mesto$/), 'Zaseok pod brdom')
     await user.click(screen.getByRole('radio', { name: 'Starosna' }))
-    await user.upload(
-      screen.getByLabelText(/Profilna slika/),
-      new File(['slika'], 'vladan.jpg', { type: 'image/jpeg' }),
-    )
-    await user.type(screen.getByLabelText(/Svojim rečima/), 'Trčim zbog druženja.')
     await user.selectOptions(screen.getByLabelText(/Veličina majice/), 'XXXL')
     await user.click(screen.getByLabelText(/zdravstveno sposoban/))
     await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
@@ -889,163 +804,6 @@ describe('the telephone', () => {
   }, SLOW)
 })
 
-describe('the box a member writes about themselves in', () => {
-  it('counts down what is left and refuses more than the limit', async () => {
-    /* Owner, 01.08.2026. Three hundred and sixty is the limit the form has
-       always carried; what it did with it was mark the field wrong after the
-       fact. It refuses at the door now, and says how much room is left before
-       anybody runs out of it. */
-    const user = setupUser()
-    renderForm()
-
-    const box = screen.getByLabelText(/Svojim rečima/)
-
-    expect(screen.getByText('Još 360 znakova')).toBeVisible()
-
-    await user.type(box, 'Trčim zbog druženja.')
-    expect(screen.getByText('Još 340 znakova')).toBeVisible()
-
-    /* Tall enough for the whole of it from the start, so nothing that fits has
-       to be read through a scrollbar. */
-    expect(box).toHaveAttribute('rows', '6')
-    expect(box).toHaveAttribute('maxlength', '360')
-  })
-
-  it('tells whoever cannot see the count that it is there', () => {
-    /* The count was printed under the box and described by nothing, so a screen
-       reader read the label and the rule on arrival and never the one number
-       that says how much of the box is already spent. */
-    renderForm()
-
-    const box = screen.getByLabelText(/Svojim rečima/)
-    const described = box.getAttribute('aria-describedby') ?? ''
-    const counter = must(document.getElementById(last(described.split(' '))), 'brojač')
-
-    expect(counter).toHaveTextContent('Još 360 znakova')
-  })
-
-  it('counts in Serbian, which has three forms and not one', () => {
-    /* "Još 1 znakova" is not a sentence anybody writes. The engine has had
-       plural forms since it was written and this key was a single string. */
-    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 1 })).toBe(
-      'Još 1 znak',
-    )
-    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 3 })).toBe(
-      'Još 3 znaka',
-    )
-    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 7 })).toBe(
-      'Još 7 znakova',
-    )
-  })
-
-  it('says so when there is no room left, rather than counting nought', async () => {
-    const user = setupUser()
-    renderForm()
-
-    const box = screen.getByLabelText(/Svojim rečima/)
-    await user.click(box)
-    /* Exactly the limit, so the box is full and nothing was lost filling it. */
-    await user.paste('x'.repeat(360))
-
-    expect(box).toHaveValue('x'.repeat(360))
-    /* Twice in the markup and once to a reader: the line under the box, hidden
-       from the reader because the same words reach it through
-       `aria-describedby`, and the region that says it. The region is on the page
-       from the start and empty until now, because one that is added together
-       with its text is one a screen reader often misses. */
-    expect(screen.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(2)
-    expect(screen.getByRole('status')).toHaveTextContent('Dosta je, granica je 360 znakova.')
-  })
-
-  it('keeps the region quiet while there is still room', () => {
-    /* It used to hold the count and change on every keystroke, which is three
-       hundred and fifty-nine announcements of a number nobody was waiting to
-       hear, each one to be got through before anything else could be said. */
-    renderForm()
-
-    expect(screen.getByRole('status')).toHaveTextContent('')
-  })
-
-  it('says how much of a paste was thrown away, rather than throwing it away in silence', async () => {
-    /* The limit is refused at the door, and the browser refuses in silence: 400
-       characters into a box that holds 360 keeps 360 and drops 40 without a
-       word. The counter then reads "the box is full", which is read as "I
-       filled it". */
-    const user = setupUser()
-    renderForm()
-
-    const box = screen.getByLabelText(/Svojim rečima/)
-    await user.click(box)
-    await user.paste('x'.repeat(400))
-
-    const said = 'Nalepljeni tekst je bio 40 znakova duži nego što staje, pa taj višak nije primljen.'
-
-    /* On the screen once and to a reader once: the visible sentence is hidden
-       from the reader, and the region that was there all along says it. */
-    expect(screen.getAllByText(said)).toHaveLength(2)
-    expect(screen.getByRole('status')).toHaveTextContent(said)
-
-    /* And it goes the moment the writer does anything themselves. Not when the
-       box drops below its limit, which was the first rule and left the message
-       standing through every edit that kept the length: typing over a selected
-       character is an edit the writer made and the length does not move. */
-    await user.type(box, '{Backspace}x')
-    expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
-  })
-
-  it('counts what a paste over a selection really loses, not what it brought', async () => {
-    /* Pasting over the whole box is not an overflow: what the selection gives
-       back is room. Without this the rule is arithmetic no test touches, so
-       taking the two the wrong way round would go green.
-
-       The event is dispatched rather than performed, because neither Ctrl+A nor
-       a selection set on the element moves the selection userEvent pastes
-       against, and a paste into a box that is full is the other case, not this
-       one. What is being checked is the arithmetic the handler does with the
-       selection it is given, and that is exactly what this hands it. */
-    const user = setupUser()
-    renderForm()
-
-    const box = screen.getByLabelText<HTMLTextAreaElement>(/Svojim rečima/)
-    await user.click(box)
-    await user.paste('x'.repeat(360))
-
-    box.setSelectionRange(0, 360)
-    fireEvent.paste(box, { clipboardData: { getData: () => 'y'.repeat(380) } })
-
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Nalepljeni tekst je bio 20 znakova duži nego što staje, pa taj višak nije primljen.',
-    )
-  })
-
-  it('does not charge a Windows clipboard for its line endings', async () => {
-    /* The clipboard carries CR LF and a textarea keeps LF, so counting the
-       clipboard as it comes charges the writer one character per line for
-       something the box never held. Ten lines of thirty-six, which is 360 in
-       the box and 369 on the clipboard: it all fits, and nothing is lost. */
-    const user = setupUser()
-    renderForm()
-
-    const box = screen.getByLabelText(/Svojim rečima/)
-    await user.click(box)
-    await user.paste(Array.from({ length: 10 }, () => 'x'.repeat(35)).join('\r\n'))
-
-    expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
-  })
-
-  it('says nothing when the paste fits', async () => {
-    const user = setupUser()
-    renderForm()
-
-    const box = screen.getByLabelText(/Svojim rečima/)
-    await user.click(box)
-    await user.paste('x'.repeat(40))
-
-    expect(screen.queryByText(/Nalepljeni tekst/)).toBeNull()
-    expect(screen.getByText('Još 320 znakova')).toBeVisible()
-  })
-})
-
 /**
  * WHAT ACTUALLY GOES TO `/api/registration`, WHICH UNTIL 21.09.2026 WAS NOTHING AT ALL.
  *
@@ -1097,10 +855,10 @@ describe('what the registration sends', () => {
          `Typed.firstSeason2027` is a `Boolean`, so the word would have been refused by
          Jackson before the handler ran at all - a bare 400 with no reason in it, which
          no screen can turn into a sentence.
-       - `photo` IS ABSENT. Its value in the form is the name of a file on somebody's
-         disc („vladan.jpg", which `fillEverythingExceptBirthDate` uploads), and the
-         route does not collect a picture at all (`NOT_COLLECTED_YET`). Spread instead of
-         written out, a stranger's file name would travel for nothing.
+       - ~~`photo` IS ABSENT, because its value in the form is the name of a file on
+         somebody's disc and the route does not collect a picture.~~ The field itself went
+         on 28.09.2026, so there is no longer a value to leave out; what this comparison
+         still says about it is that nothing put one back under another name.
        - `placeId` IS ABSENT. `theTown` takes the codebook's mark or a name with a
          country and refuses BOTH TOGETHER, so a mark sent beside the name would refuse
          every registration this portal makes.
@@ -1133,7 +891,6 @@ describe('what the registration sends', () => {
       idNumber: '123456789',
       phone: '',
       shirtSize: 'XXXL',
-      bio: 'Trčim zbog druženja.',
       healthStatement: true,
       parentConsent: '',
       parentRelation: '',
