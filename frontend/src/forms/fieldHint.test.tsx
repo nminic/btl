@@ -974,7 +974,82 @@ function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number }[] {
     }))
 }
 
+/**
+ * Which part of the form each field stands in, as it was settled on 28.09.2026.
+ *
+ * Written out by hand, and that is the whole point of it. Every other case in
+ * this describe reads the grouping OUT of the definition, which is right for
+ * asking whether the renderer draws what it is told and useless for asking
+ * whether it is told the right thing: carry a field from one group to another in
+ * `registracija.form.json` and a derived case changes its question and its answer
+ * in the same move and goes on passing. This one does not, because it does not
+ * read the definition at all.
+ *
+ * Its floor is the case below it, which holds this table and the form to the same
+ * nineteen names in BOTH directions, so a field added without a place here, or a
+ * line here for a field the form no longer asks for, fails on the day it happens
+ * rather than the day somebody looks. The portal already does this once, in
+ * `pages/publicData.test.tsx`, for the same reason.
+ */
+const STANDS_IN: Record<string, string> = {
+  firstName: 'Ko ste',
+  lastName: 'Ko ste',
+  fatherName: 'Ko ste',
+  birthDate: 'Ko ste',
+  gender: 'Ko ste',
+  email: 'Pristup nalogu',
+  password: 'Pristup nalogu',
+  passwordRepeat: 'Pristup nalogu',
+  address: 'Kontakt i adresa',
+  city: 'Kontakt i adresa',
+  phone: 'Kontakt i adresa',
+  idNumber: 'Za evidenciju članova',
+  firstSeason2027: 'Takmičenje',
+  shirtSize: 'Takmičenje',
+  photo: 'Profil',
+  bio: 'Profil',
+  healthStatement: 'Saglasnosti',
+  parentConsent: 'Saglasnosti',
+  parentRelation: 'Saglasnosti',
+}
+
 describe('a form laid out in groups', () => {
+  it('names the same nineteen fields the form asks for, and no others', () => {
+    /* The floor under the table above. Held in both directions: a field added to
+       the form without a place in the table fails here, and so does a line left
+       behind for a field that is gone. */
+    expect(Object.keys(STANDS_IN).toSorted()).toEqual(
+      registracija.fields.map((one) => one.name).toSorted(),
+    )
+  })
+
+  it('stands each field in the part of the form it was given, and not in another', async () => {
+    /* The one case that would notice a field carried from one group to another in
+       the definition. Owner, 28.09.2026, choosing groups over one column: the
+       seven names are his, and where each field sits is what was reported to him
+       before it was written.
+
+       Also the only case that pins the words of a legend, since it looks the
+       group up by the name a person reads. */
+    const user = setupUser()
+
+    renderForm()
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
+
+    for (const [name, stands] of Object.entries(STANDS_IN)) {
+      const field = must(
+        registracija.fields.find((one) => one.name === name),
+        `the form no longer asks for ${name}`,
+      )
+
+      expect(
+        within(screen.getByRole('group', { name: stands }))
+          .queryAllByLabelText(labelFound(field.labelKey)).length,
+        `${name} does not stand in „${stands}"`,
+      ).toBeGreaterThan(0)
+    }
+  })
+
   /* Owner, 28.09.2026: „organizuj je bolje, možda ponovo jedno ispod drugog". He
      was offered four ways and took the one that keeps the thirds of 12.08.2026
      (`PDL.md`: „Podeli je racionalno na trećine horizontalno") and names the
@@ -1083,6 +1158,46 @@ describe('a form laid out in groups', () => {
           `${field.name} is not the field at ${at} of its row`,
         ).toBeGreaterThan(0)
       })
+    }
+  })
+
+  it('draws no group at all on a form whose fields name none', () => {
+    /* Groups are drawn into the renderer that draws twelve forms, and eleven of
+       them asked for nothing. What holds them where they were is that a field
+       naming no group takes the path it took before groups existed, and this is
+       what says so: measured the day it was written, eleven of the twelve are
+       byte for byte what origin/main draws.
+
+       Over the registry rather than over a list written here, so a thirteenth
+       form is covered on the day it is added and not on the day somebody
+       remembers this file. */
+    const untouched = ALL_FORMS.filter((form) =>
+      form.fields.every((one) => one.groupKey === undefined),
+    )
+
+    expect(untouched.length, 'every form the portal has names a group').toBeGreaterThan(0)
+
+    for (const form of untouched) {
+      const { container } = render(
+        <ClockProvider simulatedDay={null}>
+          <I18nProvider locale="sr">
+            <FormRenderer form={form} onSubmit={() => {}} />
+          </I18nProvider>
+        </ClockProvider>,
+      )
+
+      /* Asked of the element and not of the role, which is the one place on this
+         form where a role query says less rather than more: `group` is a role the
+         portal uses elsewhere for its own reasons, and `admin-clan` draws two of
+         them before this change exists (`components/CropChooser`,
+         `components/GenderTabs` and the box that holds a country). What must not
+         appear is the renderer's own wrapper, which is a `fieldset` standing
+         directly in the form, and no role tells those apart. */
+      expect(
+        must(container.querySelector('form'), `${form.id} drew no form`)
+          .querySelectorAll(':scope > fieldset').length,
+        `${form.id} is wrapped in a fieldset and its definition names no group`,
+      ).toBe(0)
     }
   })
 
