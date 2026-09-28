@@ -706,10 +706,14 @@ describe('which races count towards a competition', () => {
       for (const label of ['Događaj', 'Trka']) {
         const chooser = within(box).getByLabelText(label)
 
+        /* THE ELEMENT IT STANDS IN AND NOT AN ANCESTOR OF IT. `closest` was written here
+           first and is satisfied by the class landing anywhere above, the form included -
+           and the form is not a field: the layout that puts the label over the box and the
+           box in the portal's own ground is written for the element the two sit in. */
         expect(
-          chooser.closest('.rankings__field'),
+          [...must(chooser.parentElement, `what the ${label} chooser stands in`).classList],
           `the ${label} chooser is not in a field`,
-        ).not.toBeNull()
+        ).toContain('rankings__field')
       }
 
       /* And the other end of the join: the screen's own sheet lays that field out, because a
@@ -735,10 +739,13 @@ describe('which races count towards a competition', () => {
            has no control to line up, so a rule on the list would reach a screen this branch
            is not about. */
         for (const one of out) {
+          /* Its own item and not an ancestor of it, for the reason the chooser above gives:
+             the class lays out ONE row, and found on the list instead it would be laying out
+             all of them at once and reaching a public screen besides. */
           expect(
-            one.closest('.leagues__counted-race'),
+            [...must(one.parentElement, 'what the control stands in').classList],
             'a control to take a race out is not in a row of its own',
-          ).not.toBeNull()
+          ).toContain('leagues__counted-race')
         }
 
         expect(selectorsOfLeaguesCss()).toContain('.leagues__counted-race')
