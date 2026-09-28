@@ -23,6 +23,7 @@ import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE } from '../member/pairWrites'
 import { WHEN_ANSWERING_A_TEAM_INVITE } from '../member/teamWrites'
+import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -437,6 +438,13 @@ describe('the reasons the server can name', () => {
        every name be answered - and the choice between borrowing a sentence and
        writing one is the screen's, not this file's. */
     ['InboxWriteApi.java', [WHEN_WRITING_TO_A_MEMBER], 2],
+    /* The two the calendar writes through, added 28.09.2026 when `admin/AdminEvents.tsx`
+       and `event/EventActions.tsx` stopped writing into the session and began to send.
+       Eleven and twelve, and four names appear in both under two different keys: the
+       route answers one word, and what it means to the reader depends on whether he was
+       saving an event or one of its mornings. */
+    ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
+    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 12],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every
