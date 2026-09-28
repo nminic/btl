@@ -384,6 +384,14 @@ class RightsAtTheDoorTest {
 			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
 					"GET /api/comments", "GET /api/attendance", "GET /api/verification",
 					"POST /api/registration", "GET /api/inbox", "POST /api/inbox",
+					/* MARKING A MESSAGE READ, ADDED 27.09.2026 WITH B142, PDL SECTION 27a. Its
+					   own entry rather than a third verb sharing GET/POST /api/inbox above -
+					   InboxWriteApi named this exact route and this exact requirement the day
+					   message_read was built but nothing wrote it. No box a superadmin could
+					   tick would let one member decide another's mail is read, so it is a
+					   consequence of being a member like the two verbs beside it. See
+					   InboxReadApi. */
+					"POST /api/inbox/{id}/read",
 					"GET /api/me/notifications",
 					/* HIS OWN MEMBERSHIP, READ AND BOUGHT. Neither is a moderator's action and there
 					   is no box anybody could tick for either: paying your own fee is what every
