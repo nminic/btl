@@ -538,6 +538,32 @@ describe('Rankings', () => {
 
     expect(link).toHaveAttribute('href', expect.stringContaining('/sr/takmicar/'))
   })
+
+  it('puts the member number under the name, in the same plate and never inside the link', async () => {
+    /* Owner, 28.09.2026, from a screenshot of this exact row: „clanski broj treba da ide ispod
+       Imena i prezimena." Before that the number stood outside `NamePlate` entirely, a sibling of
+       the whole plate rather than a second line inside it, so a mutation that put it back there is
+       what this asks the DOM to catch; jsdom lays nothing out, so the stylesheet cannot answer this
+       and the DOM has to (`components/NamePlate.css` stacks two block children of `.plate__words`
+       one under the other, and this is the same question asked of the tree instead of the sheet).
+
+       And the number still never becomes part of what the link says: a screen reader must not read
+       a member's name and his number as one word, which is why `link.contains(number)` is asked
+       before anything about order. `compareDocumentPosition` sets FOLLOWING for a descendant too
+       (`CLAUDE.md`, „bez izricitog !a.contains(b) tvrdnja o redosledu je tvrdnja o hijerarhiji"), so
+       containment is refused first and order is asked only once containment is already false. */
+    renderAt('/sr/tabela?sezona=2020')
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const cell = at(within(first(rows)).getAllByRole('cell'), 1)
+    const link = within(cell).getByRole('link')
+    const number = within(cell).getByText(/^\d+$/)
+    const plateWords = must(cell.querySelector('.plate__words'), 'the words beside the circle')
+
+    expect(plateWords.contains(number)).toBe(true)
+    expect(link.contains(number)).toBe(false)
+    expect(link.compareDocumentPosition(number) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
 })
 
 /* The words on the row of filters, and the count under it (owner, 05.08.2026).
