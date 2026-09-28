@@ -689,17 +689,91 @@ class PaymentApiTest {
 		assertThat(paymentCount()).isZero();
 	}
 
+	/**
+	 * THE METHOD MUST BE FILLED IN, AND „NOT THERE" AND „THERE BUT EMPTY" ARE BOTH FORMS OF NOT BEING.
+	 *
+	 * <p><b>Two shapes rather than one, and the second was lost on this branch before the coverage
+	 * threshold found it.</b> A field a browser never sent arrives as {@code null}; a text input a
+	 * moderator left untouched arrives as {@code ""}. {@code isNothing} answers true to both and that is
+	 * the whole reason it exists rather than a plain {@code == null}. Until V42 the empty-string half was
+	 * measured by a case about a blank CURRENCY - and the currency stopped being sent, so that case was
+	 * replaced by one about a MISSING tick box, which is a {@code null}. <b>The guard survived and its
+	 * case did not</b>, which is exactly the shape the rule about not deleting a guard before measuring
+	 * its replacement is written for, and the threshold is what said so: one branch missed, nought lines.
+	 */
 	@Test
-	void theMethodMustBeFilledIn() throws Exception {
+	void theMethodMustBeFilledInAndAnemptyStringIsNotFilledIn() throws Exception {
 		long id = competitor("a9", null, false, "1990-05-15");
 
-		MockHttpServletResponse answer = confirm(
-				"{\"competitorId\":" + id + ",\"received\":38.00,\"useTheBalance\":false}",
-				moderatorCookie);
+		for (String shape : new String[] {"", ",\"method\":\"\"", ",\"method\":\"   \""}) {
+			MockHttpServletResponse answer = confirm(
+					"{\"competitorId\":" + id + ",\"received\":38.00,\"useTheBalance\":false"
+							+ shape + "}",
+					moderatorCookie);
 
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-				.isEqualTo(PaymentApi.THE_FORM_IS_NOT_COMPLETE);
+			assertThat(answer.getStatus())
+					.as("a method sent as %s was taken as a filled in form", shape.isEmpty()
+							? "nothing at all" : shape)
+					.isEqualTo(400);
+			assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+					.isEqualTo(PaymentApi.THE_FORM_IS_NOT_COMPLETE);
+		}
+
+		assertThat(paymentCount()).isZero();
+	}
+
+	/**
+	 * AND AN EMPTY REFERENCE BOX IS NO REFERENCE AT ALL, WHICH IS THE ORDINARY THING A SCREEN SENDS.
+	 *
+	 * <p><b>This is the second caller of the same question and the one where getting it wrong costs
+	 * something.</b> V16 says of the reference that it is „the poziv na broj, when the statement carries
+	 * one; null for a first payment, which has no number yet to write on a slip" - so a moderator
+	 * booking a first payment has nothing to type, and an untouched text input reaches the route as
+	 * {@code ""} rather than as {@code null}. Without the blank being read as absent, {@code A_REFERENCE}
+	 * meets an empty string, fails to match, and the route answers
+	 * {@link PaymentApi#THE_REFERENCE_IS_NOT_SHAPED} - a refusal for the commonest booking there is.
+	 *
+	 * <p><b>The column is asserted and not only the status</b>, because the two say different things:
+	 * a 201 would also be given by a route that stored the empty string, and
+	 * {@code payment_reference_shape} (V16) reads {@code reference is null or reference ~ '^[0-9]{7,}$'},
+	 * so an empty string on the row would be refused by the database rather than by anybody - a 500 one
+	 * layer down instead of a clean row.
+	 *
+	 * <p>Whitespace is sent as well as the empty string, because {@code isBlank} is what the route asks
+	 * and a box somebody typed a space into is the same box.
+	 */
+	@Test
+	void anemptyReferenceBoxIsNoReferenceAtAll() throws Exception {
+		/* TWO FREE SUFFIXES RATHER THAN ONE BUILT FROM THE LOOP INDEX: `competitor_referral_code_shape`
+		   (V7) asks for sixteen HEXADECIMAL characters, and the helper appends its argument to a
+		   fourteen character stem - so a three character suffix is seventeen characters and a `g` is not
+		   a digit at all. Measured rather than reasoned about: both mistakes were made here and the
+		   constraint named each of them. */
+		String[] boxes = {"\"\"", "\"   \""};
+		String[] suffixes = {"bf", "ca"};
+
+		for (int one = 0; one < boxes.length; one++) {
+			long id = competitor(suffixes[one], null, false, "1990-05-15");
+
+			MockHttpServletResponse answer = confirm(
+					"{\"competitorId\":" + id + ",\"received\":38.00,\"useTheBalance\":false,"
+							+ "\"method\":\"paypal\",\"reference\":" + boxes[one] + "}",
+					moderatorCookie);
+
+			assertThat(answer.getStatus())
+					.as("a moderator who left the reference box at %s was refused, and that is the"
+							+ " commonest booking the portal has", boxes[one])
+					.isEqualTo(201);
+
+			PaymentApi.Confirmed body = mapper.readValue(answer.getContentAsString(),
+					PaymentApi.Confirmed.class);
+
+			assertThat(db.sql("select reference from payment where id = ?").param(body.paymentId())
+							.query(String.class).optional())
+					.as("an empty box was stored as an empty string rather than as no reference, which"
+							+ " `payment_reference_shape` refuses")
+					.isEmpty();
+		}
 	}
 
 	/**
