@@ -371,6 +371,15 @@
   "registration": {
     "title": "Registration",
     "submit": "Send the application",
+    "group": {
+      "whoYouAre": "Who you are",
+      "theWayIn": "Your account",
+      "contact": "Contact and address",
+      "forTheRegister": "For the register of members",
+      "competing": "Competing",
+      "profile": "Profile",
+      "consents": "Consents"
+    },
     "firstName": "First name",
     "lastName": "Last name",
     "email": "Email address",
@@ -500,7 +509,11 @@
     "mine": "Racing pair",
     "none": "Not in a racing pair.",
     "breakUp": "Break up the racing pair",
-    "forSeason": "For season {season}."
+    "forSeason": "For season {season}.",
+    "answerRefused": {
+      "theFormIsNotComplete": "The answer did not reach the server in full, so no racing pair was made. Refresh the page and try again.",
+      "thePairWouldNotBeMixed": "A racing pair must have one man and one woman, so this pair was not made."
+    }
   },
   "topBoards": {
     "title": "Top boards",

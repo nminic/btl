@@ -131,11 +131,24 @@ const A_PAIR_QUESTION = {
  * because three of these sentences BEGIN with a placeholder and would otherwise contribute an
  * empty string and quietly drop out.
  */
+/*
+ * **AND THE SENTENCES NESTED UNDER A REFUSAL COUNT TOO, WHICH IS A THIRD WAY THIS LIST WENT
+ * SHORT.** `sr.pair` gained `answerRefused` on 28.09.2026 with the screen that answers a served
+ * invitation (PDL 27b), and its two sentences are the ones a member reads when the ROUTE turns
+ * an answer back - exactly the sort of thing the case below asks a served team question not to
+ * claim. Read one level deep only, `Object.entries` would have handed this
+ * `['answerRefused', {…}]`, `String` of it is `"[object Object]"`, and the list would have
+ * carried that instead of the two sentences: longer by one, poorer by two, and passing the
+ * count below either way.
+ */
 const WHAT_AN_ANSWER_WOULD_SAY = [
   ...Object.entries(sr.teams).filter(([key]) => key.startsWith('invite')),
   ...Object.entries(sr.pair),
 ]
-  .map(([, said]) => longestLiteralIn(String(said)))
+  .flatMap(([, said]) =>
+    typeof said === 'object' && said !== null ? Object.values(said).map(String) : [String(said)],
+  )
+  .map((said) => longestLiteralIn(said))
   .filter((one) => one.length > 3)
 
 function longestLiteralIn(said: string): string {
@@ -684,7 +697,7 @@ describe('what the portal may not claim about a message the server keeps', () =>
     expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
   })
 
-  it('says nothing about an answer to a question about a racing pair either', async () => {
+  it('does offer an answer to a question about a racing pair, and says nothing about one', async () => {
     aServerWhere(him(), { [HIS_ADDRESS]: [A_PAIR_QUESTION] })
 
     renderAt(`/sr/poruke/${String(A_PAIR_QUESTION.id)}`, 'competitor', '000007')
@@ -693,12 +706,31 @@ describe('what the portal may not claim about a message the server keeps', () =>
 
     await screen.findByRole('heading', { level: 1, name: A_PAIR_QUESTION.subject })
 
-    /* **Its own case and not a variant of the one above**, because the two keys are answered
-       by two different screens and the compiler is the only thing keeping them apart
-       (`session/context.ts` says so about its own two). A mutation that handed a served key to
-       one of the two would leave the other green. */
+    /* **THIS CASE SAID THE OPPOSITE UNTIL 28.09.2026, AND THE DIFFERENCE IS PDL 27b.** It read
+       „says nothing about an answer to a question about a racing pair either", and the boundary
+       it held was real: `PUT /api/pairs/{id}` existed and nothing called it, so a served key
+       given to `PairInviteAnswer` would have told a member his question was closed while the
+       server held it open. The owner closed that boundary with a question -„Pod 1 ako to
+       podrazumeva da clan moze klikom na dugme da prihvati ili odbije poziv?" - and
+       `member/ServedPairInvite.tsx` is the screen it is owed. The case for the TEAM half above
+       is untouched, and that is the measurement that matters: the two halves are answered by
+       two different screens, and the team's route still needs a team no field here carries.
+
+       **What is asked here is only that the buttons arrive**, because this file's question is
+       whether the screen reading the server offers an answer at all. Which key reached which
+       address, what each button sends, and what the member reads when the route turns him back
+       are measured where the mechanism lives (`member/pairInviteAnswered.test.tsx`). */
     expect(theLoader()).toBeNull()
-    expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
+    expect(screen.getByRole('button', { name: sr.pair.accept })).toBeVisible()
+    expect(screen.getByRole('button', { name: sr.pair.refuse })).toBeVisible()
+
+    /* **AND THE SENTENCE OF THE OTHER SCREEN IS NOT HERE, which is the half that bites.** A
+       mutation handing this served key to `PairInviteAnswer` draws „Ovaj poziv više nije
+       otvoren." - that screen looks the key up in the session's own list and finds nothing -
+       and it would satisfy „something about an answer is on the screen" while saying the one
+       false thing this arrangement exists to refuse. So the closed sentence is asked for by
+       name and its absence is the assertion. */
+    expect(screen.queryByText(sr.pair.inviteClosed)).toBeNull()
   })
 })
 
