@@ -997,12 +997,27 @@ describe('the inbox when somebody else signs in without signing out first', () =
      it three times over (twenty second timeouts, `TeamDetail` never even called). `useInbox`
      here is called `{ reactive: false }` on purpose (review of PR 406, second round; the doc
      on `TheMessageAsked` carries the measurement in full), and this case is what keeps that
-     boundary from drifting back without the same measurement being repeated: production has
-     no road to this switch on this screen at all. The only door to `theServerSignedMeIn` is
-     `member/SignIn.tsx`, reached solely through `/sr/prijava`, and every route including that
-     one shares the one `<Outlet />` `app/Shell.tsx` holds - so walking to it and back both
-     unmount this screen, unlike the header panel above it, which never comes down. */
-  it('does not react to a caller switch that only a test can reach, which is the measured boundary', async () => {
+     boundary from drifting back without the same measurement being repeated.
+
+     **WHAT THIS CASE CLAIMS IS NARROWER THAN ITS OLD NAME SAID, and the difference is measured
+     rather than cautious (28.09.2026).** It used to be called „does not react to a caller
+     switch", under a sentence saying production has no road to this switch on this screen AT
+     ALL. The second half of that is still the honest state of a search - no production road was
+     found, and `data/useResource.ts` names above `useInbox` exactly what was searched - but the
+     first half is not a property of this screen. `{ reactive: false }` holds the OWNER and
+     nothing else, and `useInbox` hands `revision` to every caller whatever `reactive` is: with
+     the cache already dropped by the switch, the next bump of that number re-reads and is
+     answered with the NEW caller's mail, so this screen does reach `NotFound` and its redirect.
+     What bumps it here is this screen's own read receipt (`member/inboxRead.ts`), so the window
+     is the gap between the switch and the moment that receipt settles. Measured with the receipt
+     held open until after the click: the message goes within twenty five milliseconds and the
+     router lands on „/".
+
+     So what is really being held here is „once its own receipt has settled, a caller switch
+     alone does not move it", which is the half `{ reactive: false }` is responsible for, and it
+     was measured on its own: with a row that arrives already read, so nothing is ever written
+     and the revision never moves, this screen did not move either. */
+  it('holds its message through a caller switch once its own read receipt has settled', async () => {
     const user = setupUser()
 
     aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
@@ -1024,15 +1039,9 @@ describe('the inbox when somebody else signs in without signing out first', () =
        `waitFor` and FAILS this; and with the read receipt of this screen's own effect released a
        tick after the click, `waitFor` PASSED while the router had already been sent to „/".
 
-       **AND WHAT THIS NOW MEASURES IS NOT UNCONDITIONALLY TRUE, which is written here rather than
-       left for the next reader to be surprised by.** `{ reactive: false }` holds the half it
-       names - the OWNER - and that was measured on its own: with nothing ever written, and so
-       nothing ever bumping the revision, this screen did not move at all. But `useInbox` passes
-       `revision` to `useResource` for EVERY caller whatever `reactive` is, and a revision bump
-       that lands after the caller has changed makes this screen read an inbox that is somebody
-       else's, reach `NotFound`, and be redirected away. Its own read receipt is what bumps it. On
-       a quiet machine the receipt settles long before this click and nothing moves, which is why
-       this is green; under load it need not, and that is the fault rather than this guard. */
+       The window that receipt opens is named over this case rather than repeated here, and it is
+       why this reads „once its own read receipt has settled": on a quiet machine it settles long
+       before this click and nothing moves, which is why this is green. */
     await itStays(() => {
       expect(screen.getByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
       expect(screen.getByText(FORGED.body)).toBeVisible()
