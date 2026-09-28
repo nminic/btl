@@ -131,7 +131,7 @@ export function AdminLeagues() {
    * WHICH RACES EACH COMPETITION COUNTS, AS THIS VISIT HAS LEFT IT, over what was served.
    *
    * **The one home for a fact two things on this screen draw**, and it is here rather than in
-   * the panel because the panel is not the only reader: the badge in the row above it is the
+   * the panel because the panel is not the only reader: the count in the row above it is the
    * other, and until 28.09.2026 the two were separate stores. The panel held its own
    * `useState` and the row counted `League.eventIds` off the served answer, so a race written
    * through the panel reached one of them and not the other. That is what the owner met on QA
@@ -306,7 +306,7 @@ export function AdminLeagues() {
            * THE PANEL'S ROUTE HAS ACCEPTED A CHANGE, AND BOTH THINGS THAT READ IT HEAR ABOUT IT.
            *
            * **Two writes and not one, for the two different lifetimes this fact has.** The state
-           * is what THIS mount draws, badge and panel alike, because nothing re-reads a resource
+           * is what THIS mount draws, count and panel alike, because nothing re-reads a resource
            * a mounted screen already holds. The cache is what the NEXT mount reads - this screen
            * entered again, or the public list at `/lige` - and `POST /api/leagues/{id}/races`
            * changes what `GET /api/leagues` answers with, so an answer kept from before it is an
@@ -433,10 +433,10 @@ export function AdminLeagues() {
                          SCREEN'S AFTER THE PANEL CHANGES IT** (`counting` above).
                          It was handed down as the served answer and then kept
                          inside the panel, which made two homes of one fact: the
-                         badge in the row was still counting `eventIds` off that
+                         count in the row was still counting `eventIds` off that
                          same served answer, so a race written through the panel
-                         reached the box and not the badge. Now the panel reports
-                         what the route accepted, this holds it, and both the badge
+                         reached the box and not the count. Now the panel reports
+                         what the route accepted, this holds it, and both the count
                          and the box are drawn off it.
 
                          A competition entered during this visit is in neither the

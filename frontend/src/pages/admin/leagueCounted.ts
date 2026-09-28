@@ -53,7 +53,7 @@ export function countedRacesOf(served: unknown, leagueId: number): number[] {
 }
 
 /**
- * THOSE RACES UNDER THE DAY EACH OF THEM BELONGS TO, AND IT IS ONE CALL SO THAT THE BADGE
+ * THOSE RACES UNDER THE DAY EACH OF THEM BELONGS TO, AND IT IS ONE CALL SO THAT THE COUNT IN THE ROW
  * ON THE ROW AND THE BOX UNDER IT CANNOT DISAGREE.
  *
  * **This exists because they did disagree, on QA, and the owner read it as work lost**

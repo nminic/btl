@@ -98,8 +98,8 @@ describe('which races count towards a competition', () => {
        the one arrangement in which the chooser has nothing to offer. */
     { id: 13, slug: 'buduca-2035', name: 'Buduća liga 2035', season: 2035, rules: '', prizes: '',
       eventIds: [], raceIds: [] },
-    /* AND ONE WHOSE TWO FIELDS DISAGREE, which is the one arrangement in which „the badge
-       counts the DAYS the answer named" and „the badge counts the days of the RACES it
+    /* AND ONE WHOSE TWO FIELDS DISAGREE, which is the one arrangement in which „the count
+       counts the DAYS the answer named" and „the count counts the days of the RACES it
        counts" give different numbers without anything being written at all. The generated
        file the portal still ships is exactly this shape - its three competitions name
        nineteen days between them and not one race - so this is real data rather than an
@@ -157,9 +157,9 @@ describe('which races count towards a competition', () => {
   /**
    * The same four competitions, with one of the two big files refusing to come.
    *
-   * The badge that counts days reads the races and the events, and neither of them is the
+   * The cell that counts days reads the races and the events, and neither of them is the
    * file the names and the seasons come out of. So a screen that waited on them would be a
-   * screen a failed calendar replaces with an error, and a badge that counted nought would be
+   * screen a failed calendar replaces with an error, and a count of nought would be
    * this cell telling the same lie the whole branch is about, one file further back.
    */
   function servingWithout(broken: 'races' | 'events') {
@@ -469,10 +469,10 @@ describe('which races count towards a competition', () => {
    * **The owner met it on QA and read it as work lost** (28.09.2026: „Popunim ovo ovako i
    * onda se nista ne sacuva, nije se kreirala Liga sa ovim dogadjajem"). Nothing had been
    * lost: `league` held one row, `league_race` held four, and `GET /api/leagues` answered
-   * with `raceIds` and `eventIds` both filled in. The badge beside the name was drawing
+   * with `raceIds` and `eventIds` both filled in. The count beside the name was drawing
    * `League.eventIds` off the answer this screen had been served BEFORE the panel wrote
    * anything, and for a competition made during the visit that field is the empty list a new
-   * record is given and can never stop being. So the box listed four races under a badge
+   * record is given and can never stop being. So the box listed four races under a count
    * saying „Bez dogadjaja".
    *
    * **Nothing in this file could see it, and that is the measurement rather than an
@@ -480,7 +480,7 @@ describe('which races count towards a competition', () => {
    * above the box said the opposite. What the cases below add is the JOIN: one press, and
    * both the thing that lists and the thing that counts are read after it.
    */
-  describe('and the badge on the row says what the box under it counts', () => {
+  describe('and the count in the row says what the box under it counts', () => {
     /** The row a competition is named in, which is the first one carrying its name. */
     async function rowOf(name: string): Promise<HTMLElement> {
       const table = within(await screen.findByRole('table', { name: 'Lige' }))
@@ -497,7 +497,7 @@ describe('which races count towards a competition', () => {
      * The fourth cell and not a search over the row: the season is in the third and „2027"
      * would answer a search for a number as readily as the count does.
      */
-    async function badgeSays(name: string, words: string): Promise<void> {
+    async function theCountSays(name: string, words: string): Promise<void> {
       const cell = at(within(await rowOf(name)).getAllByRole('cell'), 3)
 
       await within(cell).findByText(words)
@@ -511,16 +511,16 @@ describe('which races count towards a competition', () => {
 
         /* The one whose two fields disagree, with nothing written at all. `eventIds` names
            TWO days, `raceIds` names one race of one of them, and under V20 a competition's
-           days ARE the days of its races - so a badge reading the first says „2" and a badge
+           days ARE the days of its races - so a count reading the first says „2" and a count
            reading the second says „1".
 
            **„1" is a number no other row on this screen says at rest**, which is what makes
            this a claim about THIS competition rather than about the column: three of the five
            read „Bez događaja" and the fourth reads „2". */
-        await badgeSays(DISAGREEING_NAME, '1')
+        await theCountSays(DISAGREEING_NAME, '1')
         /* And the one beside it that counts two days still says so, so the smaller number is
            being worked out rather than drawn over everything. */
-        await badgeSays(ITS_NAME, '2')
+        await theCountSays(ITS_NAME, '2')
 
         server.stop()
       }, SLOW)
@@ -536,7 +536,7 @@ describe('which races count towards a competition', () => {
           await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }),
         )
 
-        await badgeSays(NOTHING_YET, 'Bez događaja')
+        await theCountSays(NOTHING_YET, 'Bez događaja')
 
         await user.selectOptions(
           screen.getByLabelText('Događaj', {
@@ -552,13 +552,13 @@ describe('which races count towards a competition', () => {
         )
 
         /* THE TWO HALVES READ AFTER ONE PRESS, which is the whole of this case: the box lists
-           both races of the morning that went in, and the badge over it says the one day they
+           both races of the morning that went in, and the count over it says the one day they
            are. Either one alone is what the package already had. */
         expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
-        await badgeSays(NOTHING_YET, '1')
+        await theCountSays(NOTHING_YET, '1')
         /* And the competition next to it has not moved, so the press reached one row rather
            than the column. */
-        await badgeSays(ITS_NAME, '2')
+        await theCountSays(ITS_NAME, '2')
 
         server.stop()
       }, SLOW)
@@ -569,15 +569,15 @@ describe('which races count towards a competition', () => {
 
       const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
 
-      await badgeSays(ITS_NAME, '2')
+      await theCountSays(ITS_NAME, '2')
 
       for (const out of [...within(box).getAllByRole('button', { name: /^Izbaci trku/ })]) {
         await user.click(out)
       }
 
       /* Both races gone is both DAYS gone, because a day is on the list only through a race
-         of it. A badge that counted the served `eventIds` would still be saying „2". */
-      await badgeSays(ITS_NAME, 'Bez događaja')
+         of it. A count taken off the served `eventIds` would still be saying „2". */
+      await theCountSays(ITS_NAME, 'Bez događaja')
 
       server.stop()
     }, SLOW)
@@ -616,7 +616,7 @@ describe('which races count towards a competition', () => {
            about, one file further back: „Bez događaja" would be the screen saying a
            competition counts nothing when what it really knows is nothing. The word is the
            one the public list already uses for it (`pages/Leagues.tsx`, 13.09.2026). */
-        await badgeSays(ITS_NAME, 'nepoznato')
+        await theCountSays(ITS_NAME, 'nepoznato')
         /* And the screen itself is not replaced by an error: what failed is one number in one
            column, and the names, the addresses and the seasons come out of a different file
            altogether. */
@@ -655,7 +655,7 @@ describe('which races count towards a competition', () => {
         )
         await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-        await badgeSays(NOTHING_YET, '1')
+        await theCountSays(NOTHING_YET, '1')
 
         await user.click(screen.getByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
 

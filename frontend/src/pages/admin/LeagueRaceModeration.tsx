@@ -38,12 +38,12 @@ import '../Leagues.css'
  * every accepted write into that state, which was correct about itself and was a SECOND HOME
  * for a fact the row above was also drawing. The owner met the two halves disagreeing on QA
  * and read it as a competition that had not saved („nista se ne sacuva, nije se kreirala Liga
- * sa ovim dogadjajem", 28.09.2026) - the panel listed four races and the badge beside it said
+ * sa ovim dogadjajem", 28.09.2026) - the panel listed four races and the count beside it said
  * „Bez dogadjaja", because only one of the two homes had heard about the write.
  *
  * So the list arrives as a prop and every change to it is reported back through `onCounted`,
  * inside the branch that ran only because the route said the write went through.
- * `AdminLeagues.tsx` holds it, draws the badge off the same list, and empties the cached
+ * `AdminLeagues.tsx` holds it, draws that count off the same list, and empties the cached
  * answer in the same breath. **One home, reached one way**, which is the sentence this file
  * already used about where the seed comes from and which it was only half keeping.
  *
@@ -160,10 +160,10 @@ export function LeagueRaceModeration({
       <div id={panelId} hidden={!open}>
         <Resource state={combinePair(useEvents(), races)} inline label={named}>
           {([events, everyRace]) => {
-            /* THE SAME CALL THE BADGE ON THE ROW ABOVE MAKES (`leagueCounted.ts`), so the
+            /* THE SAME CALL THE COUNT IN THE ROW ON THE ROW ABOVE MAKES (`leagueCounted.ts`), so the
                list and the number over it cannot answer differently. Pulled out of this file
                on 28.09.2026 for exactly that: two places grouping one list two ways is how a
-               box of four races came to stand under a badge saying „Bez dogadjaja". */
+               box of four races came to stand under a count saying „Bez dogadjaja". */
             const listed = countedDaysOf(counted, everyRace, events)
             /* The days this competition may take, which are those of its own season.
                Narrowed on the RACE'S year and not on the event's own day, because an event
