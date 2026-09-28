@@ -84,6 +84,30 @@ export const RESOURCE_NAMES = [
   'comments',
   'competitors',
   'events',
+  /* WHAT WAS WRITTEN TO WHOEVER IS ASKING, PLUS WHAT WAS WRITTEN TO THE WHOLE LEAGUE
+     (V13: „a message may be addressed to one member or to the whole league, and EMPTY
+     MEANS EVERYBODY"). The seventeenth, since 27.09.2026, and the third name here that
+     was ANSWERED long before it was ever asked for: `GET /api/inbox` has served this
+     since `InboxApi` went in, and the three screens that draw a message read a list the
+     browser itself was holding instead.
+
+     **What that cost is the whole reason for this name, and it was measured on the owner
+     rather than reasoned about.** He refused a photograph with a reason on 27.09.2026,
+     the message arrived, he signed out and in, and IT WAS GONE. Seven places in six classes
+     write into `message` on the server - the decision he took is one of them
+     (`VerificationWriteApi.tell`) - so what he was shown was never the row the server
+     had kept. It was the browser's own copy, held in `useState`, and a copy in a
+     component dies with the component.
+
+     THE ONE NAME ON THIS LIST WHOSE ANSWER IS DIFFERENT FOR EVERY CALLER, and the cache
+     above is keyed by name with nobody in the key. That is safe for exactly as long as a
+     visit is one person, AND A VISIT IS NOT ONE PERSON: measured 27.09.2026, signing out and
+     signing back in happen IN PLACE - `AccountMenu` calls `signOutOfTheServer()` and
+     `signOut()`, `SignIn` calls `signInWith` and `navigate`, and not one of the four reloads
+     anything. So this name is dropped from the cache the moment the caller changes, which is
+     `theInboxNowBelongsTo` in `data/useResource.ts`, and that is the one thing on this list
+     that a name in the key would otherwise have had to buy. */
+  'inbox',
   'leagues',
   'moderators',
   'pages',
