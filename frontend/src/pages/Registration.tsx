@@ -36,11 +36,19 @@ function written(values: FormValues, name: string): string {
  * a reader is told to fix something and nobody - him or us - can tell what. Written
  * out, the two lists can be read side by side against `RegistrationApi.Typed`.
  *
- * <p><b>And spreading would send what must not be sent.</b> The form carries a
- * `photo`, and its value is the NAME OF A FILE ON SOMEBODY'S DISK
- * (`FormRenderer.tsx`). The route does not collect a picture at all - it says so
- * itself, in `NOT_COLLECTED_YET` - so the name of a stranger's file would travel for
- * nothing. It is absent here by construction rather than by being deleted afterwards.
+ * <p><b>And spreading would send the wrong value for the one field that has two.</b>
+ * `passwordRepeat` is read out of `agreeing` and not out of `values`, which is what
+ * makes a mismatch a mismatch on the server as well; spread, both boxes would travel as
+ * the same string and every mistyped repeat would be a success. `referredBy` is the
+ * other way round: it is not a field of the form at all, so no spread could ever
+ * produce it.
+ *
+ * <p>~~The form also carries a `photo`, whose value is the NAME OF A FILE ON SOMEBODY'S
+ * DISK, so spreading would send a stranger's file name for nothing.~~ <b>That reason
+ * went on 28.09.2026 with the field itself</b> (owner: „Profilna sekcija se sa slikom i
+ * svojim recima izbacuje iz registracione forme - to ce clan popunjavati naknadno kad
+ * bude odobren"). The picture is now given to `POST /api/me/photo` once the account is
+ * live, so there is no picture in these values to leave out.
  *
  * @param values what the form sends, already trimmed and with hidden fields gone
  * @param agreeing the fields that only agree with another one, which is the repeated
@@ -105,7 +113,12 @@ function theBody(values: FormValues, agreeing: FormValues, referral: string | nu
     idNumber: written(values, 'idNumber'),
     phone: written(values, 'phone'),
     shirtSize: written(values, 'shirtSize'),
-    bio: written(values, 'bio'),
+    /* ~~`bio`, which this form asked for at the moment of joining.~~ It went on
+       28.09.2026 with the picture beside it, and `RegistrationApi.Typed` no longer
+       declares it. Sending it anyway would be a key nothing reads, which is the one
+       shape this body is written out name by name to make impossible. Where the words
+       go now is `PUT /api/me`, from `member/ProfileBio.tsx`, and that road puts them in
+       front of a moderator before anybody else reads them. */
     healthStatement: values.healthStatement === true,
     parentConsent: written(values, 'parentConsent'),
     parentRelation: written(values, 'parentRelation'),
