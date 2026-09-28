@@ -286,6 +286,83 @@ describe('leaving a team from the membership screen', () => {
   })
 
   /**
+   * THE LEAVING HAPPENED AND THE QUESTION ABOUT WHO HE NOW IS DID NOT COME BACK.
+   *
+   * <p><b>A real road and not a contrived one:</b> the two are separate requests, so a
+   * connection that drops between them leaves the membership ended on the server and the
+   * portal with nothing to redraw from. `whoTheServerSaysIAm` answers `null` for every one
+   * of those - no server, a number that is not 200, a body that will not parse.
+   *
+   * <p><b>What must NOT happen is the interesting half.</b> `theServerSignedMeIn` writes all
+   * eight of its fields even when they are null, on purpose (`session/SessionProvider.tsx`),
+   * so handing it an empty answer would wipe this member's country, his first season and his
+   * referral link - and the country is what decides the currency of every amount on this very
+   * screen. So the session is left exactly as it was, which is
+   * `session/useTheServersSession.ts`'s own rule: „an answer that never came writes nothing
+   * at all."
+   *
+   * <p>The caches are already dropped by then, so the next mount asks the server again and
+   * the member is never stuck with this for longer than one screen.
+   */
+  it('leaves the session alone when the question about who I am does not come back', async () => {
+    const user = setupUser()
+    let left = false
+    ;({ stop } = serverThat((path, init) => {
+      const how = init?.method ?? 'GET'
+
+      if (path === '/api/me') {
+        /* Fine until the leaving, and gone afterwards: asked before, this screen could not
+           have drawn the team at all and the case would be measuring a blank page. */
+        return left
+          ? answeredWith(500)
+          : listOf({
+              role: 'competitor',
+              account: 1,
+              member: {
+                memberNumber: ME.memberNumber,
+                country: ME.country,
+                firstSeason: ME.firstSeason,
+                teamId: ME.teamId,
+                membershipBasis: ME.membershipBasis,
+                referralCode: ME.referralCode,
+                referredCount: 0,
+              },
+            })
+      }
+
+      if (how === 'DELETE' && path.endsWith('/membership')) {
+        left = true
+
+        return did()
+      }
+
+      return how === 'GET' ? null : did()
+    }))
+
+    renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+    await user.click(
+      await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+    )
+    await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
+
+    /* The question is put away, so the press really did finish rather than hanging. */
+    await waitFor(
+      () => {
+        expect(
+          screen.queryByRole('button', { name: sr.membership.leaveTeamSure }),
+        ).not.toBeInTheDocument()
+      },
+      { timeout: SLOW },
+    )
+
+    /* And nothing of his was cleared: the team still stands, and so does the country, which
+       is the one that would take the money on this screen with it. */
+    expect(screen.getByText(`Trenutno si u timu ${MINE.name}.`)).toBeInTheDocument()
+    expect(screen.queryByText(sr.membership.noRecordTitle)).not.toBeInTheDocument()
+  })
+
+  /**
    * NOTHING IS SENT UNTIL IT IS ASKED TWICE.
    *
    * <p>The confirmation is reasoning over what is measurable rather than a decision of the
