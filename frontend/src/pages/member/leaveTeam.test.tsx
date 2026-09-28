@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, waitFor } from '@testing-library/react'
+import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
 import sr from '../../i18n/sr.json'
+import { theServerWasToldILeft } from './teamExit'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
@@ -566,5 +568,73 @@ describe('leaving a team from the membership screen', () => {
       },
       { timeout: SLOW },
     )
+  })
+})
+
+/**
+ * WHAT A LEAVING DROPS OUT OF THE CACHE, ASKED OF THE MODULE RATHER THAN OF THE SCREEN.
+ *
+ * <p><b>Why not through the screen.</b> A dropped cache is not something a MOUNTED screen
+ * shows: `data/useResource.ts` says in as many words that `clearResourceCache` „drops the
+ * promise and says nothing to anybody holding a state that came out of it", and making it
+ * notify readers was refused there for its blast radius. So what the drop changes is what
+ * the NEXT mount reads, and the honest place to ask is the cache itself.
+ *
+ * <p><b>And a third resource is filled every time on purpose.</b> `pricing` is nothing this
+ * write touches, so it is what tells „drops the two it should" from „drops everything" -
+ * the bare `clearResourceCache()` with no name empties the lot, and without a resource
+ * standing outside the pair both would look the same.
+ */
+describe('what a leaving drops out of the cache', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    clearResourceCache()
+  })
+
+  afterEach(() => {
+    stop()
+    clearResourceCache()
+  })
+
+  /**
+   * <p>Both and not one: a member's team reaches the portal twice over, as `Competitor.teamId`
+   * off `/api/competitors` (which every screen that draws somebody's club reads) and as the
+   * row of `/api/teams`, which this write can REMOVE outright when he was the last of his
+   * team (`TeamWriteApi.leaving` ends on `emptyTeams.goIfEmpty`).
+   */
+  it('drops the two resources the write moves, and leaves the rest alone', async () => {
+    ;({ stop } = aServerThatIsLeft())
+
+    await loadResource('teams')
+    await loadResource('competitors')
+    await loadResource('pricing')
+
+    expect(arrivedResource('teams')).not.toBeUndefined()
+    expect(arrivedResource('competitors')).not.toBeUndefined()
+
+    await theServerWasToldILeft(must(ME.teamId, 'the team he is in'))
+
+    expect(arrivedResource('teams')).toBeUndefined()
+    expect(arrivedResource('competitors')).toBeUndefined()
+    expect(arrivedResource('pricing')).not.toBeUndefined()
+  })
+
+  /**
+   * AND DROPS NOTHING WHERE THE SERVER REFUSED, which is the axis this cannot get wrong.
+   *
+   * <p>`member/teamWrites.ts` states the rule this follows: a portal that dropped them on the
+   * asking would draw a member out of a team that still holds him.
+   */
+  it('drops nothing when the server refused', async () => {
+    ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+
+    await loadResource('teams')
+    await loadResource('competitors')
+
+    await theServerWasToldILeft(must(ME.teamId, 'the team he is in'))
+
+    expect(arrivedResource('teams')).not.toBeUndefined()
+    expect(arrivedResource('competitors')).not.toBeUndefined()
   })
 })
