@@ -151,13 +151,29 @@ describe('the row of a competitor on the main standing', () => {
        size would want the same leading and this whole rule would be wrong rather than merely
        unnecessary. `styles/table.css` is where that size lives, for this screen and the three
        others that wear the class, so it is read here too. Three sheets, none of them deriving its
-       number from another. */
+       number from another.
+
+       **0.25rem has two inputs, and only one of them was pinned.** An independent review of this
+       branch (PR 418) measured that raising `.table__member-number` from 0.8rem to 0.9rem in the
+       shared sheet survives every case here, and so does giving `.rankings__member-name` a
+       font-size of its own, because neither mutation touches a line-height this file reads.
+       0.25rem is not simply smaller than the name; it is the gap measured at exactly 0.8rem
+       against exactly the name's own, undeclared default (`PDL.md`, „Cetvrta stavka odeljka 33:
+       centrirano je MASTILO, ne kutija"), and moving either input without the other is the same
+       fault the second screenshot reported. So both ends of the pair are read below: the shared
+       size is pinned to the one value the gap was measured at, and the name is held to carrying
+       none of its own, which is what keeps it at the default this whole file has been assuming
+       instead of at a value nobody would then have to explain. */
     const shared = readFileSync(join(process.cwd(), 'src/styles/table.css'), 'utf-8')
     const smaller = ruleFor(shared, '.table__member-number', 'table.css')
     const name = ruleFor(rankings, '.rankings__member-name', 'Rankings.css')
     const number = ruleFor(rankings, '.rankings__member-number', 'Rankings.css')
 
-    expect(rem(smaller.getPropertyValue('font-size'))).toBeLessThan(1)
+    expect(
+      rem(smaller.getPropertyValue('font-size')),
+      'the size this gap was measured at has moved',
+    ).toBe(0.8)
+    expect(name.getPropertyValue('font-size'), 'the name has a font-size of its own').toBe('')
 
     const forTheName = rem(name.getPropertyValue('line-height'))
     const forTheNumber = rem(number.getPropertyValue('line-height'))
