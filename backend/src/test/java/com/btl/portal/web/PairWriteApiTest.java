@@ -1556,6 +1556,7 @@ class PairWriteApiTest {
 	 */
 	@Test
 	void acceptingLeavesTheMessageThatAskedHimBehindWithoutItsKey() throws Exception {
+		question(HE_ASKS, SHE_IS_ASKED, ASKED_ON);
 		long question = questionFrom(HE_ASKS, SHE_IS_ASKED);
 		long asked = messageCarrying(SHE_IS_ASKED, question);
 		long somethingElse = unrelatedMessageTo(SHE_IS_ASKED);
@@ -1576,6 +1577,7 @@ class PairWriteApiTest {
 	/** „Odbij", the twin of the case above: the question ends and his message stays. */
 	@Test
 	void refusingLeavesTheMessageThatAskedHimBehindWithoutItsKey() throws Exception {
+		question(HE_ASKS, SHE_IS_ASKED, ASKED_ON);
 		long question = questionFrom(HE_ASKS, SHE_IS_ASKED);
 		long asked = messageCarrying(SHE_IS_ASKED, question);
 		long somethingElse = unrelatedMessageTo(SHE_IS_ASKED);
