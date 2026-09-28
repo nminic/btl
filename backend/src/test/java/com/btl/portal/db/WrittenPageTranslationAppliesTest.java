@@ -297,13 +297,15 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 
 			assertThat(countOccurrences(english, sentence))
 					.as("%s's English translation must state exactly once that the Serbian version"
-							+ " is authoritative (PDL.md :3213 names this page)", namedByPdl)
+							+ " is authoritative (PDL.md names this page: \"politike privatnosti,"
+							+ " uslova korišćenja i pravilnika\")", namedByPdl)
 					.isEqualTo(1);
 		}
 
 		assertThat(wholeEnglishBodyOf("rec-predsednika"))
-				.as("rec-predsednika is not one of the three pages PDL.md :3213 names, so it must"
-						+ " not carry the authoritative-version sentence")
+				.as("rec-predsednika is not one of the three pages PDL.md names (\"politike"
+						+ " privatnosti, uslova korišćenja i pravilnika\"), so it must not carry"
+						+ " the authoritative-version sentence")
 				.doesNotContain(sentence);
 	}
 

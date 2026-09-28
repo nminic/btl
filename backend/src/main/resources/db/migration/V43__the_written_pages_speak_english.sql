@@ -757,7 +757,8 @@ Last amended: 28.09.2026.$$);
 /* PRIVACY POLICY, PAGE 3 OF 4. Translated against the text V41 left behind (see this file's own
  * header): section 2's table lost its card-data sentence, section 5's table lost its own
  * separate one, and section 7 gets both the new sign-off date and the new authoritative-version
- * sentence PDL.md :3213 requires for this named page. */
+ * sentence PDL.md requires for this named page (the row naming "politike privatnosti, uslova
+ * korišćenja i pravilnika" by name). */
 
 insert into static_page_translation (page_id, language, title) values
     ((select id from static_page where slug = 'politika-privatnosti'), 'en', $$Privacy policy$$);
