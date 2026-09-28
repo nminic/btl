@@ -1,7 +1,9 @@
+import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
 import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
+import { whoTheServerSaysIAm } from '../../session/theServer'
 import { CopyField } from '../../components/CopyField'
 import { QrCode } from '../../components/QrCode'
 import { Resource } from '../../components/Resource'
@@ -31,8 +33,12 @@ import {
 import { combineResources, usePricing, useTeams } from '../../data/useResource'
 import { formatNumber, money } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
+import { type Answer } from '../account/askTheServer'
+import { WHEN_LEAVING_A_TEAM } from '../account/refusals'
+import { ServerSaid } from '../account/ServerSaid'
 import { useMemberScreen } from './memberScreen'
 import { useMyCategory } from './useMyCategory'
+import { theServerWasToldILeft } from './teamExit'
 import './Member.css'
 
 /* The account, the name and the seat are the association's own and live with the
@@ -153,6 +159,7 @@ export function Membership() {
     myTeamId,
     myReferralCode,
     myReferredCount,
+    theServerSignedMeIn,
   } = useSession()
   /* THE PRICE LIST AS THE SERVER HAS IT, SINCE 26.09.2026, AND UNTIL THAT DAY AS THE
      BUNDLE HAD IT.
@@ -193,6 +200,103 @@ export function Membership() {
      under `inYearlyWindow` the box vanished at midnight on 1 January and took the last
      ten hours of the member's own deadline with it. */
   const { standing, choosing, refusal, choose } = useMyCategory()
+
+  /**
+   * LEAVING THE TEAM: THE QUESTION, THE REASON IT WAS REFUSED, AND WHETHER ONE IS OUT.
+   *
+   * <p><b>Asked twice before it is sent, and that is MY REASONING over what the portal does
+   * rather than a decision of the owner's.</b> No entry in the journal asks for a
+   * confirmation here; the one that asks for „Da li ste sigurni?" is about DELETING a team
+   * (PDL, 04.09.2026) and is a different act. What is measured is that a member cannot undo
+   * this by himself: joining a team is not a member's action on this portal from either side
+   * of it - the sentence below (`membership.askToJoin`) says so on this very screen, and
+   * `account/refusals.test.ts` measures it for the two addresses of `TeamJoiningWriteApi`
+   * that no screen sends. So a mis-press costs him his team until the administration puts
+   * him back, and the question is what stands between the two. <b>It is written down as my
+   * reasoning so that the next reader can overturn it without looking for an owner's
+   * sentence that is not there.</b>
+   *
+   * <p><b>And it is asked with this screen's own words rather than through
+   * `admin/EntityEditor.tsx`'s `DeleteRecord`.</b> That component asks the same way and its
+   * three labels are about deleting a RECORD („Obriši", „Potvrdi brisanje: {name}") - which
+   * is not what happens here, since nothing of his is deleted and the team goes on standing.
+   * Widening it to a third set of words would reach every administrative screen that draws
+   * it, which is a change to the administration in a branch about one member's own page.
+   */
+  const [asking, setAsking] = useState(false)
+  /** Why the leaving did not happen, for the one person who pressed it. */
+  const [refusedTheExit, setRefusedTheExit] = useState<Exclude<Answer, { got: 'done' }> | null>(
+    null,
+  )
+  /**
+   * WHETHER A LEAVING IS STILL OUT WITH THE SERVER, so a second press before the first has
+   * answered cannot send a second one.
+   *
+   * <p><b>A ref and not the state beside it</b>, which is `admin/Payments.tsx`'s own
+   * `outstanding` and the finding that put it there (VISOK 1, review of PR 411): a value set
+   * inside this handler is not visible to a second click fired before the render it would
+   * cause, and two clicks fired without waiting are exactly what a double press is.
+   *
+   * <p><b>What the second request would really cost, which is smaller here than there and is
+   * still worth the guard.</b> `TeamWriteApi.leaving` answers the second one 404 - he is no
+   * longer in a team it could be about - so nothing on the server is spent. What it costs is
+   * on the screen: `ServerSaid` would draw „ništa nije promenjeno" over an act that had just
+   * succeeded, which is the portal telling a member his leaving failed when it did not.
+   */
+  const outstanding = useRef(false)
+  /** The same fact as a render can see, so the button can say out loud that it cannot act
+   *  while its own request is out (`aria-disabled` below, told off rather than switched off:
+   *  a control that goes away takes the keyboard focus with it). */
+  const [leaving, setLeaving] = useState(false)
+
+  /**
+   * LEAVES THE TEAM, AND THEN ASKS THE SERVER WHO IT NOW THINKS THIS MEMBER IS.
+   *
+   * <p><b>The second half is not optional and is not a refresh for tidiness.</b> The route
+   * answers 204, so it answers NOTHING about what stands afterwards, and the fact this
+   * section draws - `myTeamId` - is not a resource at all: it comes off `GET /api/me` through
+   * the session, and `data/useResource.ts` says in as many words that dropping a resource
+   * cache „says nothing to anybody holding a state that came out of it". This screen does not
+   * go anywhere when the button is pressed, so nothing would ask again on its own and the
+   * member would go on reading „Trenutno si u timu X" over a team he had just left.
+   *
+   * <p><b>Both steps are `member/SignIn.tsx`'s, in its order</b>, and the role is deliberately
+   * not touched: `become` is the other half of what that screen does and leaving a team
+   * changes nobody's role.
+   *
+   * <p><b>An answer that never came writes nothing at all</b>, which is
+   * `session/useTheServersSession.ts`'s rule in its own words. A `null` here is no server to
+   * reach, so the session keeps what it had rather than being cleared by a question that
+   * failed - and the caches are already dropped, so the next mount asks again anyway.
+   */
+  async function leaveTheTeam(team: number): Promise<void> {
+    outstanding.current = true
+    setLeaving(true)
+    setRefusedTheExit(null)
+
+    try {
+      const answer = await theServerWasToldILeft(team)
+
+      if (answer.got !== 'done') {
+        setRefusedTheExit(answer)
+
+        return
+      }
+
+      const who = await whoTheServerSaysIAm()
+
+      if (who !== null) {
+        theServerSignedMeIn(who)
+      }
+
+      setAsking(false)
+    } finally {
+      /* In a `finally`, so a route that rejects outright still lets the next press in - the
+         same correction `admin/Payments.tsx` carries for the same reason. */
+      outstanding.current = false
+      setLeaving(false)
+    }
+  }
 
   /* The referral link, built here rather than where it is drawn: it needs only the
      locale and the session's own code, neither of which waits on the resources below,
@@ -873,6 +977,107 @@ export function Membership() {
                   from neither side of it, and the sentence says what is actually true rather
                   than promise a press that had nowhere to go. */}
               {windowOpen && <p className="member__note">{t('membership.askToJoin')}</p>}
+
+              {/* AND THE ONE THING A MEMBER MAY REALLY DO TO HIS OWN MEMBERSHIP OF A TEAM,
+                  since this branch: `DELETE /api/teams/{id}/membership` has existed since
+                  24.09.2026 and no screen called it (`member/teamExit.ts`).
+
+                  DRAWN ONLY INSIDE THE WINDOW, WHICH IS THE DECISION AND NOT THIS SCREEN'S
+                  CAUTION. Owner, 24.09.2026: „Iz tima se izlazi u ISTOM PROZORU u kom se i
+                  ulazi (1.10-31.12)", and the shape a shut window takes is the one PDL of
+                  05.09.2026 already fixed for the other direction: „Van tog roka dugmeta
+                  „Predloži tim" NEMA, a na njegovom mestu stoji rečenica kad se rok otvara."
+                  That sentence is `membership.transferShut` two paragraphs up, which the
+                  portal has drawn here since before this button existed, and it is the same
+                  condition `membership.askToJoin` right above is drawn under. So there is
+                  nothing to add for the shut case and nothing here invents a second one.
+
+                  WHICH IS A DIFFERENT ANSWER FROM `pages/TeamDetail.tsx`, AND THE DIFFERENCE
+                  IS RECORDED RATHER THAN LEFT TO LOOK LIKE A SLIP. That screen offers its
+                  „Obriši" on every day of the year and lets the route refuse it, because the
+                  same act is the administration's (PDL P13b: „ista radnja") and the
+                  administration's screen has no sentence about the window to put in its
+                  place. This one has, and it is already on the page.
+
+                  AND THE REFUSAL STILL COMES OFF THE ANSWER, because the condition above is
+                  not the window's second home but the same predicate the route reads
+                  (`data/season.ts#inYearlyWindow` and `SeasonClock.transferWindowOpen` are
+                  one pair of constants, which `SeasonClock` states on its own side). What is
+                  left is the race the condition cannot close: the window shuts at midnight on
+                  31 December, and a member who drew this button at 23.59 and pressed it a
+                  minute later meets a route that has changed its mind. `useMyCategory`
+                  answers exactly that case for the category box and gives the reason - being
+                  told why beats watching a control do nothing (PDL.md:1659).
+
+                  ONLY WHERE THERE IS A TEAM TO LEAVE. `myTeamId` is null for sixteen of the
+                  thirty two members in the data, and „Trenutno nisi ni u jednom timu." is
+                  what they read above instead. */}
+              {windowOpen && team !== undefined && (
+                <div className="member__links">
+                  {asking ? (
+                    <>
+                      {/* The question carries the name of the team, so the two buttons under
+                          it need no name of their own: `aria-describedby` hands a screen
+                          reader the whole sentence when „Potvrdi izlazak" takes focus. There
+                          is one of these on the page, so there is no second question it could
+                          be confused with - which is the reason `admin/EntityEditor.tsx` puts
+                          the name on all three of ITS buttons and this does not. */}
+                      <p className="member__note" id="leave-team-ask">
+                        {t('membership.leaveTeamAsk', { team: team.name })}
+                      </p>
+                      <button
+                        type="button"
+                        className="button button--primary"
+                        aria-describedby="leave-team-ask"
+                        aria-disabled={leaving ? true : undefined}
+                        onClick={() => {
+                          /* Reachable means pressable, as everywhere else on this portal:
+                             `aria-disabled` does not stop a click by itself, so the refusal
+                             lives here as well as on the attribute. */
+                          if (outstanding.current) {
+                            return
+                          }
+
+                          void leaveTheTeam(team.id)
+                        }}
+                      >
+                        {t('membership.leaveTeamSure')}
+                      </button>
+                      <button
+                        type="button"
+                        className="button"
+                        onClick={() => {
+                          setAsking(false)
+                          /* The reason goes with the question it was an answer to. Left
+                             standing, „Prelazni rok je zatvoren..." would sit under a button
+                             that had just been put away and read as a refusal of the NEXT
+                             thing pressed. */
+                          setRefusedTheExit(null)
+                        }}
+                      >
+                        {t('membership.leaveTeamKeep')}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={() => setAsking(true)}
+                    >
+                      {t('membership.leaveTeam')}
+                    </button>
+                  )}
+                </div>
+              )}
+              {/* WHY A LEAVING DID NOT HAPPEN, under the row it was pressed in rather than
+                  inside it, which is `pages/TeamDetail.tsx`'s own arrangement: `member__links`
+                  is a flex row, so a sentence of this length put among the buttons would be a
+                  flex item stretching the row. `ServerSaid` draws it as an alert, so the
+                  reader hears it without the focus being moved off „Potvrdi izlazak", which is
+                  still there because nothing was written. */}
+              {refusedTheExit !== null && (
+                <ServerSaid answer={refusedTheExit} refusals={WHEN_LEAVING_A_TEAM} />
+              )}
             </section>
 
             {/* The referral programme, and the balance it pays into.
