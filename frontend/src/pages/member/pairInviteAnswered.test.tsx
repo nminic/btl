@@ -13,7 +13,7 @@ import { setupUser } from '../../test/user'
 import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
 import { SLOW } from '../../test/slow'
 import sr from '../../i18n/sr.json'
-import { theAnswerGoesTo, theServerWasAnswered } from './pairWrites'
+import { theServerWasAnswered } from './pairWrites'
 
 /**
  * ANSWERING A SERVED INVITATION INTO A RACING PAIR, BY PRESSING A BUTTON.
@@ -62,6 +62,21 @@ const HIM = { role: 'competitor', account: 1, member: { memberNumber: '000007' }
 /** The key of the invitation this message asks about, which is the one thing that must reach
  *  the route. Not 612, not 44, not 77. */
 const HIS_INVITE = 31
+
+/**
+ * THE ADDRESS THAT ANSWER MUST REACH, WRITTEN OUT RATHER THAN BUILT.
+ *
+ * <p><b>An earlier draft of this file asked for `theAnswerGoesTo(HIS_INVITE)`, and that made
+ * the strongest assertion here satisfy itself.</b> The screen builds its address with that same
+ * function, so a mutation putting anything at all into it - a fixed `/api/pairs`, the message
+ * key, the wrong invitation - moved BOTH the address asked for and the address expected, and
+ * the case stayed green over a screen answering the wrong question. A guard may not be written
+ * in terms of the thing it guards.
+ *
+ * <p>Spelt out, it also says what the route really is, which is the other half of its job:
+ * `PUT /api/pairs/{id}` takes a `pair_invite.id` and not a pair's.
+ */
+const THE_ADDRESS = '/api/pairs/31'
 
 /**
  * THE ONE HE OPENS, and it is the OLDEST of the four rather than the newest.
@@ -270,18 +285,18 @@ describe('answering a served invitation into a racing pair', () => {
          the team invitation of the message beside it (77). Asked as „some pair was answered",
          all four pass; asked as this address, only the right one does. */
       await waitFor(() => {
-        expect(asked()).toContain(theAnswerGoesTo(HIS_INVITE))
+        expect(asked()).toContain(THE_ADDRESS)
       })
 
-      expect(asked()).not.toContain(theAnswerGoesTo(44))
-      expect(asked()).not.toContain(theAnswerGoesTo(77))
-      expect(asked()).not.toContain(theAnswerGoesTo(OPENED.id))
+      expect(asked()).not.toContain('/api/pairs/44')
+      expect(asked()).not.toContain('/api/pairs/77')
+      expect(asked()).not.toContain('/api/pairs/612')
 
       /* **AND WHAT WAS SENT SAYS „PRIHVATI".** `PairWriteApi.Answered` boxes this field on
          purpose - „a primitive would read it as „Odbij" and close somebody's question for him" -
          so a screen that sent nothing, or sent the wrong one of the two, is a screen that
          answers for the member. */
-      expect(sentTo(theAnswerGoesTo(HIS_INVITE))).toEqual([{ accepted: true }])
+      expect(sentTo(THE_ADDRESS)).toEqual([{ accepted: true }])
     },
     SLOW,
   )
@@ -297,13 +312,13 @@ describe('answering a served invitation into a racing pair', () => {
       await user.click(theRefuseButton())
 
       await waitFor(() => {
-        expect(asked()).toContain(theAnswerGoesTo(HIS_INVITE))
+        expect(asked()).toContain(THE_ADDRESS)
       })
 
       /* **THE SECOND HALF OF THE OWNER'S SENTENCE, and it is the half that goes missing.** „da
          prihvati ili odbije" is two things; a screen that sent `true` from both buttons would
          pass every case about accepting and would put the member in a pair he refused. */
-      expect(sentTo(theAnswerGoesTo(HIS_INVITE))).toEqual([{ accepted: false }])
+      expect(sentTo(THE_ADDRESS)).toEqual([{ accepted: false }])
     },
     SLOW,
   )
@@ -445,7 +460,7 @@ describe('answering a served invitation into a racing pair', () => {
       })
 
       await waitFor(() => {
-        expect(sentTo(theAnswerGoesTo(HIS_INVITE))).toEqual([{ accepted: true }])
+        expect(sentTo(THE_ADDRESS)).toEqual([{ accepted: true }])
       })
     },
     SLOW,
