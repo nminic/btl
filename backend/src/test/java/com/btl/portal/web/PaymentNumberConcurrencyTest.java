@@ -142,9 +142,21 @@ class PaymentNumberConcurrencyTest {
 				.query(Long.class).single();
 	}
 
+	/**
+	 * <p><b>THE AMOUNT IS SHORT AND THE BALANCE IS SWITCHED OFF, so that this case goes on measuring
+	 * only what it is about.</b> Since V42 the route takes what ARRIVED (owner, 27.09.2026, PDL 19) and
+	 * writes a line into the book when the tick box lets a balance pay, or when more arrived than was
+	 * expected. Either of those would put this file in the business of asserting about a ledger, which
+	 * is somebody else's file; a short amount with the box cleared writes the payment, the membership
+	 * and nothing else. There is no prompt to satisfy: the owner's rule over all seven cases is that
+	 * „NE" writes nothing at all, so a request reaching this route IS the yes.
+	 *
+	 * <p>The currency is not sent and cannot be: it is worked out from the member's country
+	 * ({@code Currency.of}), which for this fixture's town is euro.
+	 */
 	private MockHttpServletResponse confirm(long competitorId) throws Exception {
-		String json = mapper.writeValueAsString(
-				new PaymentApi.Confirm(competitorId, "EUR", "paypal", null));
+		String json = mapper.writeValueAsString(new PaymentApi.Confirm(competitorId,
+				new java.math.BigDecimal("1.00"), false, "paypal", null));
 
 		return http.perform(post("/api/payments").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, cookie))

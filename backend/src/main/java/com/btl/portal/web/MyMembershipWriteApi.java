@@ -77,8 +77,16 @@ import org.springframework.web.bind.annotation.RestController;
  * reason {@link MemberNumbers} gives about sequences.
  * <li><b>A code minted for one season and a code for another, both standing, and the balance gone
  * by the time the second is paid.</b> That is the boundary PDL leaves open, and it belongs to the
- * payments route rather than to this one: {@link Balance#honouring} is where it is answered, by
- * taking what is there rather than going negative.
+ * payments route rather than to this one.
+ *
+ * <p><b>WHERE IT IS ANSWERED CHANGED ON 27.09.2026 AND THIS SENTENCE SAID THE OLD PLACE.</b> It used
+ * to name {@code Balance.honouring}, which capped a booking at what was actually in the book. The
+ * owner then decided (PDL 23a) that „na moderatorovom ekranu odlucuje kucica i iznos u njenoj labeli,
+ * ne ono sto je QR kod obecao", so that method was deleted with the decision and the cap moved: what
+ * the tick box can spend is {@code min(balance, what is still owed)}, which cannot exceed the book
+ * because the book is one of the two things it is the smaller of
+ * ({@code Balance.Settlement.fromTheBalance()}). The boundary is therefore closed by arithmetic now
+ * rather than by a cap written for it, and nothing about THIS route changed.
  * </ul>
  */
 @RestController

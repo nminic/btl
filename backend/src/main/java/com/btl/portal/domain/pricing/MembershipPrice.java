@@ -229,20 +229,58 @@ public final class MembershipPrice {
 	}
 
 	/**
+	 * WHICH COLUMN OF ONE ROW OF THE PRICE LIST A GIVEN CURRENCY READS, said once.
+	 *
+	 * <p><b>This is a choice between two columns and never a conversion</b>, which is the whole of
+	 * ADL's „Dve valute su dva zasebna cenovnika, ne jedan sa konverzijom" as it applies here, and
+	 * which the note at the head of this class states in full. Both numbers are typed by an
+	 * administrator and neither is worked out of the other.
+	 *
+	 * <p>It is one method rather than a ternary at each call site because there are now three call
+	 * sites - the amount below, the referral reward in {@code BalanceBook}, and the invoice - and a
+	 * ternary repeated three times is a rule with three homes. A third currency arriving one day fails
+	 * to compile in exactly one place.
+	 *
+	 * @return the euro or the dinar column of that row, which is null for the one row V4 gives no
+	 *         dinar side: the processing fee
+	 */
+	public static java.math.BigDecimal amountIn(Row row, Currency currency) {
+		return currency.isEuro() ? row.eur() : row.rsd();
+	}
+
+	/**
 	 * What is owed, for one day of the year and one member.
+	 *
+	 * <p><b>The currency arrives as a {@link Currency} and not as a boolean, and that is a measured
+	 * change rather than a taste.</b> While it was {@code boolean euro} the one caller that mattered
+	 * most read it off the request - {@code PaymentApi} passed {@code "EUR".equals(typed.currency())},
+	 * a moderator's typed word - and from 27.09.2026 the currency is a fact about the member's country
+	 * and nothing a form may say (PDL 19: „Valuta zavisi od zemlje clana"). A boolean cannot be traced
+	 * back to where it was decided, and a boolean read from the wrong place still compiles and still
+	 * answers a perfectly ordinary price. The named type makes every call site say which money it
+	 * means, and it is what made the compiler find all of them when the rule moved.
 	 *
 	 * @param rows      the price list as V4 holds it, all seven
 	 * @param day       the day the membership is being paid for
 	 * @param birthYear the member's year of birth
 	 * @param season    the season being paid for
-	 * @param euro      whether he is paying in euro, which is what the fee hangs on
+	 * @param currency  which money he is billed in, which is what the fee hangs on
 	 */
-	public static Price on(List<Row> rows, MonthDay day, int birthYear, int season, boolean euro) {
+	public static Price on(List<Row> rows, MonthDay day, int birthYear, int season, Currency currency) {
 		Row period = periodFor(rows, day);
 		Row applies = juniorFor(birthYear, season) ? rowNamed(rows, JUNIOR) : period;
 
-		java.math.BigDecimal amount = euro ? applies.eur() : applies.rsd();
-		java.math.BigDecimal fee = euro ? rowNamed(rows, PROCESSING).eur() : java.math.BigDecimal.ZERO;
+		java.math.BigDecimal amount = amountIn(applies, currency);
+
+		/* THE PROCESSING FEE IS EURO ONLY, WHICH IS V4'S OWN SHAPE AND NOT A RULE INVENTED HERE.
+		   `price_row_only_fee_has_no_rsd check ((rsd is null) = (kind = 'fee'))` makes the fee the one
+		   row in the codebook with no dinar side at all, for the reason V4 gives: there is no payment
+		   intermediary on the dinar side to pay. `payment_only_euro_carries_a_fee` (V16) says the same
+		   thing where a payment is written. So `amountIn` is deliberately NOT used here - it would
+		   answer null for dinars, which is a different thing from nought. */
+		java.math.BigDecimal fee = currency.isEuro()
+				? rowNamed(rows, PROCESSING).eur()
+				: java.math.BigDecimal.ZERO;
 
 		/* THE RIGHT TO A PLACE IN THE TABLE COMES FROM THE PERIOD, NEVER FROM THE JUNIOR ROW,
 		   and that is the owner's correction of 21.08.2026: the junior price is a LEVEL of price
@@ -270,7 +308,22 @@ public final class MembershipPrice {
 				.orElseThrow(() -> new IllegalStateException("no period in the price list covers " + asWritten));
 	}
 
-	private static Row rowNamed(List<Row> rows, String key) {
+	/**
+	 * One row of the codebook by its key, which is how the list is addressed everywhere it is not
+	 * walked by day.
+	 *
+	 * <p><b>Public since V42 because a second caller arrived and it is not a price-list caller.</b>
+	 * {@code BalanceBook} needs the referral row to know what one brought in member is worth, and it
+	 * needs it in ONE currency - the referrer's - which it works out by
+	 * {@link MembershipPrice#amountIn}. Until V42 it read that row inside its own {@code insert ...
+	 * select} through a {@code cross join}, because a line carried both columns and no choice had to be
+	 * made. Now that a choice has to be made in Java, the row has to reach Java.
+	 *
+	 * <p>It throws rather than answering empty, and that is V4's shape rather than a policy: the price
+	 * list is a codebook whose AMOUNTS change and whose seven rows do not, so a missing key means the
+	 * codebook has been damaged and every road through it is wrong from there on.
+	 */
+	public static Row rowNamed(List<Row> rows, String key) {
 		return rows.stream()
 				.filter(row -> key.equals(row.key()))
 				.findFirst()

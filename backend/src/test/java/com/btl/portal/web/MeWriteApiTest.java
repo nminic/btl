@@ -1771,6 +1771,328 @@ class MeWriteApiTest {
 				.containsExactly(String.valueOf(town), "null", "null");
 	}
 
+	/* ------------------------------------------------------------------------------------------
+	 * AND A MEMBER WHO MOVES COUNTRY TAKES HIS BALANCE WITH HIM, RESTATED IN THE MONEY HE IS BILLED IN
+	 *
+	 * Owner, 27.09.2026 (PDL 26), chosen between three outcomes: „Dvojka, 120 je kurs i tako ostaje do
+	 * daljnjeg." And PDL 25 is why it has to happen at all: a balance is „uvek u valuti zavisno od
+	 * drzave", so a member billed in euro from now on cannot go on holding dinars.
+	 *
+	 * WHY THESE CASES LIVE IN THIS FILE, which is otherwise about a profile form. Because
+	 * `PUT /api/me` is the only route in the portal that writes `competitor.country_id` - measured, not
+	 * assumed: every `update competitor set` and every `insert into competitor` in `src/main` was
+	 * counted - and the owner's sentence names that moment and no other: „Trenutak je promena zemlje na
+	 * zapisu clana, ne prijava i ne pocetak sezone."
+	 * --------------------------------------------------------------------------------------- */
+
+	/** The book of one member, as lines with their money on them, because a sum would hide the money. */
+	private List<String> bookOf(String memberNumber) {
+		return db.sql("select reason || ' ' || amount || ' ' || currency from balance_entry"
+						+ " where competitor_id = (select id from competitor where member_number = ?)"
+						+ " order by id")
+				.param(memberNumber).query(String.class).list();
+	}
+
+	/**
+	 * ONE REFERRAL EARNED, in the money he is billed in at the moment it is written.
+	 *
+	 * <p>600 dinars, which is what V4's referral row really says on the dinar side - so a translation
+	 * that went the wrong way lands on 72.000 rather than on 5, and a rate that is not 120 lands
+	 * somewhere else again.
+	 */
+	private void earnedAReferral(String memberNumber, String amount, String currency) {
+		earnedAReferral(memberNumber, amount, currency, WHOSE_TEXT_WAS_REFUSED);
+	}
+
+	/**
+	 * @param broughtIn whose activation earned it. It is a parameter because
+	 *                  {@code balance_entry_one_a_referral} (V38) allows one reward per person brought
+	 *                  in, so a member holding two lines has to have brought in two people
+	 */
+	private void earnedAReferral(String memberNumber, String amount, String currency,
+			String broughtIn) {
+
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+						+ " referred_competitor_id, occurred_at, recorded_by_name) values ("
+						+ " (select id from competitor where member_number = ?), ?::numeric, ?,"
+						+ " 'referral', (select id from competitor where member_number = ?),"
+						+ " timestamptz '2026-10-02 09:00:00+00', 'Neko Ko Je Knjizio')")
+				.params(memberNumber, amount, currency, broughtIn)
+				.update();
+	}
+
+	/** A town of the codebook that is in Serbia, so moving there changes the money he is billed in. */
+	private long atownInSerbia() {
+		return db.sql("select geonames_id from place where country_id ="
+						+ " (select id from country where code = 'RS') order by rank limit 1")
+				.query(Long.class).single();
+	}
+
+	/**
+	 * MOVING FROM ABROAD TO SERBIA RESTATES HIS BOOK IN DINARS, AS TWO LINES.
+	 *
+	 * <p><b>Two lines and not one, and that is the whole shape of the answer.</b> Every line carries its
+	 * own money now, so the balance is the sum of the lines IN HIS CURRENCY - and a sum across two
+	 * currencies is not a number. So the whole of the old balance is taken OUT of euro and the restated
+	 * amount is put IN to dinars: the euro side then sums to exactly nought, which is the honest
+	 * statement that nothing is left there, and every line still says truthfully what money it was
+	 * written in.
+	 *
+	 * <p><b>And the old lines are NOT rewritten, which is not a preference:</b>
+	 * {@code a_balance_entry_is_written_once} (V38) refuses it outright, and ADL asks for „nepromenljive
+	 * stavke". A member is entitled to see THAT a translation happened.
+	 *
+	 * <p><b>The amount is the price list's own number in the other column</b>, 5 euro becoming 600
+	 * dinars, which is the strongest form this case can take: a rate that was wrong would not land on
+	 * the figure V4 publishes for the same thing.
+	 */
+	@Test
+	void movingToSerbiaRestatesHisBookInDinarsAsTwoLines() throws Exception {
+		earnedAReferral(ME, "5", "EUR");
+
+		assertThat(changeAs(ME, changing("placeId", atownInSerbia())).getStatus()).isEqualTo(200);
+
+		assertThat(bookOf(ME))
+				.as("his balance was not restated in the money he is billed in from now on")
+				.containsExactly("referral 5.00 EUR", "conversion -5.00 EUR", "conversion 600.00 RSD");
+	}
+
+	/**
+	 * AND MOVING BACK GOES THE OTHER WAY, WHICH IS A SECOND CASE AND NOT THE SAME ONE MIRRORED.
+	 *
+	 * <p>A rate applied the wrong way round is right in exactly one direction, and which direction that
+	 * is depends on which one the case happened to pick. 600 dinars back to 5 euro is the other half,
+	 * and it goes through the typed-town road rather than the codebook one so that BOTH ways a country
+	 * can arrive (V7) reach this code: a member moving to a town he types by hand is exactly as much a
+	 * change of country as one picking out of the codebook, and a reading that only asked
+	 * {@code place_id} would see nothing here.
+	 */
+	@Test
+	void andMovingAbroadAgainGoesTheOtherWayThroughAtownHeTypesByHand() throws Exception {
+		earnedAReferral(ME, "600", "RSD");
+
+		db.sql("update competitor set place_id = " + "(select id from place where country_id ="
+						+ " (select id from country where code = 'RS') order by rank limit 1)"
+						+ " where member_number = ?")
+				.param(ME).update();
+
+		String abroad = db.sql("select code from country where code <> 'RS' order by code limit 1")
+				.query(String.class).single();
+
+		assertThat(changeAs(ME, changing("city", "Zurich", "country", abroad)).getStatus())
+				.isEqualTo(200);
+
+		assertThat(bookOf(ME))
+				.as("a balance moving the other way was not restated, or was restated at the wrong rate")
+				.containsExactly("referral 600.00 RSD", "conversion -600.00 RSD", "conversion 5.00 EUR");
+	}
+
+	/**
+	 * A CHANGE OF COUNTRY THAT DOES NOT CHANGE THE MONEY WRITES NOTHING, and that is its own state.
+	 *
+	 * <p>Germany to France is a change of country and no change of currency, and so is Shanghai to
+	 * anywhere else outside Serbia. Without this case a route that restated a balance on every change of
+	 * COUNTRY would pass, and a member moving between two euro countries would collect a pair of lines
+	 * saying his five euro are five euro.
+	 */
+	@Test
+	void achangeOfCountryThatDoesNotChangeTheMoneyWritesNothing() throws Exception {
+		earnedAReferral(ME, "5", "EUR");
+
+		String abroad = db.sql("select code from country where code <> 'RS' order by code limit 1")
+				.query(String.class).single();
+
+		assertThat(changeAs(ME, changing("city", "Zurich", "country", abroad)).getStatus())
+				.isEqualTo(200);
+
+		assertThat(bookOf(ME))
+				.as("a balance was restated although the money he is billed in did not change")
+				.containsExactly("referral 5.00 EUR");
+	}
+
+	/**
+	 * AND A CHANGE OF TOWN INSIDE ONE COUNTRY WRITES NOTHING EITHER, which is a different state again.
+	 *
+	 * <p>Belgrade to Novi Sad. Without this a route that restated on every change of TOWN would pass,
+	 * and this is the commonest edit anybody makes to that field.
+	 */
+	@Test
+	void achangeOfTownInsideOneCountryWritesNothing() throws Exception {
+		earnedAReferral(ME, "5", "EUR");
+
+		assertThat(changeAs(ME, changing("placeId", anotherTownOfTheCodebook())).getStatus())
+				.isEqualTo(200);
+
+		assertThat(bookOf(ME))
+				.as("a balance was restated although he stayed in the same country")
+				.containsExactly("referral 5.00 EUR");
+	}
+
+	/**
+	 * AND A REQUEST THAT NAMES NO TOWN AT ALL NEVER EVEN ASKS, which is the third way of writing
+	 * nothing.
+	 *
+	 * <p>A member mending his telephone number cannot have changed his country, so the currency is not
+	 * looked up at all - and a route that looked it up anyway would be a statement on every keystroke of
+	 * a profile form. What this case can assert is the outcome: no line.
+	 */
+	@Test
+	void arequestThatNamesNoTownRestatesNothing() throws Exception {
+		earnedAReferral(ME, "5", "EUR");
+
+		assertThat(changeAs(ME, changing("phone", "0601234")).getStatus()).isEqualTo(200);
+
+		assertThat(bookOf(ME)).containsExactly("referral 5.00 EUR");
+	}
+
+	/**
+	 * AN EMPTY BOOK WRITES NO LINES, WHICH IS NOT AN OPTIMISATION.
+	 *
+	 * <p>{@code balance_entry_a_conversion_moves_something} (V42) refuses a line of nought, and rightly:
+	 * a member with no balance has nothing to restate, and a pair of lines saying so would be two facts
+	 * about money that never moved. Without the guard this answers 500 on a member's own profile form,
+	 * which is the commonest request the portal serves and the commonest member - most of them have
+	 * brought in nobody.
+	 */
+	@Test
+	void anemptyBookWritesNoLinesRatherThanAlineOfNothing() throws Exception {
+		assertThat(bookOf(ME))
+				.as("he holds a balance, so this case is not about an empty book")
+				.isEmpty();
+
+		assertThat(changeAs(ME, changing("placeId", atownInSerbia())).getStatus())
+				.as("a member with an empty book was answered 500 for moving country")
+				.isEqualTo(200);
+
+		assertThat(bookOf(ME)).isEmpty();
+	}
+
+	/**
+	 * AND A LINE IN A MONEY THAT IS NOT HIS IS NOT HIS BALANCE, WHICH IS THE ONE THING NO OTHER CASE
+	 * CAN SAY.
+	 *
+	 * <p><b>This case exists because a mutation survived, and the survival was predicted.</b>
+	 * {@code BalanceBook.of} sums his lines filtered by his currency, and
+	 * {@code BalanceBook}'s own note says why that filter looks redundant: a correct translation takes
+	 * the whole of the old balance OUT of the old money, so a member's lines in a currency he has left
+	 * sum to exactly nought and an UNFILTERED sum would come out right anyway. Measured on this branch:
+	 * loosening the filter to {@code (currency = ? or true)} left all 73 cases of this file green.
+	 *
+	 * <p><b>Which is precisely the trap, and it is the reason the filter is there.</b> The two readings
+	 * agree while the translation is correct and part company the moment it is not - and that is the one
+	 * moment anybody needs them to disagree. No behaviour can reach that state, because every route that
+	 * writes a line writes it in the member's own money; so the state is arranged by the FIXTURE, which
+	 * is what a fixture is for.
+	 *
+	 * <p><b>The numbers are chosen so a wrong reading is loud.</b> He is billed in euro and holds 5 of
+	 * them, plus a stray 600 in dinars that is nobody's business. Filtered, he takes 5 euro to Serbia
+	 * and gets 600 dinars - which is V4's own dinar figure for the same thing. Unfiltered he would take
+	 * 605 and get 72.600, so a filter that stopped binding is out by two orders of magnitude rather than
+	 * by a rounding.
+	 */
+	@Test
+	void alineInAmoneyThatIsNotHisIsNotHisBalance() throws Exception {
+		earnedAReferral(ME, "5", "EUR");
+		earnedAReferral(ME, "600", "RSD", WAITING_IN_ANOTHER_TAB);
+
+		assertThat(changeAs(ME, changing("placeId", atownInSerbia())).getStatus()).isEqualTo(200);
+
+		assertThat(bookOf(ME))
+				.as("the stray line in a money he is not billed in was counted as his, so the whole"
+						+ " translation is out by the rate")
+				.containsExactly("referral 5.00 EUR", "referral 600.00 RSD", "conversion -5.00 EUR",
+						"conversion 600.00 RSD");
+	}
+
+	/**
+	 * AND HIS STANDING PROMISE GOES, EVEN WHEN HIS BOOK IS EMPTY, WHICH IS WHERE THOSE TWO COME APART.
+	 *
+	 * <p><b>Why it goes at all.</b> V38 left {@code balance_promise} deliberately without an
+	 * immutability trigger, „because the day a decision does call for re-minting a code, that is a
+	 * decision about a screen and not a schema migration". This is that day: a slip minted before he
+	 * moved is not payable either way, because {@code frontend/src/data/paymentQr.ts} mints a dinar
+	 * member an IPS slip prefixed {@code RSD} and a euro member a PayPal link carrying
+	 * {@code currency_code: 'EUR'} - two instruments on two accounts, not one slip in two currencies.
+	 *
+	 * <p><b>Why it goes even with an empty book, which is the point of this case.</b> A member whose book
+	 * was empty was still minted a code, for the whole fee, and {@code balance_promise} records that
+	 * nought so his next look is held to it. Written as ONE condition with the translation, his
+	 * unpayable slip would survive exactly because he had no balance.
+	 *
+	 * <p><b>Every season's and not just the one on sale</b>, because minting spends nothing and V38 says
+	 * two seasons' codes can both stand. A change of country happens at one instant, so every promise he
+	 * holds was minted in the money he has just left.
+	 */
+	@Test
+	void everyPromiseHeHoldsGoesWithTheChangeOfCountryEvenWithAnEmptyBook() throws Exception {
+		for (int season : new int[] {2028, 2029}) {
+			db.sql("insert into balance_promise (competitor_id, season, amount, currency, promised_at)"
+							+ " values ((select id from competitor where member_number = ?), ?, 0, 'EUR',"
+							+ " timestamptz '2026-10-02 09:00:00+00')")
+					.params(ME, season).update();
+		}
+
+		assertThat(changeAs(ME, changing("placeId", atownInSerbia())).getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select count(*) from balance_promise where competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+						.param(ME).query(Long.class).single())
+				.as("a slip minted in the money he has left is still standing, so his next look is held"
+						+ " to a number he cannot pay")
+				.isZero();
+	}
+
+	/**
+	 * AND THE BOOK SAYS WHO DID IT, WHICH IS HE HIMSELF.
+	 *
+	 * <p>{@code balance_entry.recorded_by_name} is {@code not null} and ADL asks for „ko". Nobody in the
+	 * administration was involved in a member editing his own record, so naming a moderator would be a
+	 * false record and leaving it blank is refused by
+	 * {@code balance_entry_recorded_by_name_not_blank}. What it carries is the name on HIS OWN ACCOUNT,
+	 * which this fixture deliberately makes different from his member name - so a line credited to the
+	 * wrong reader shows up as a different name rather than as the same one twice.
+	 */
+	@Test
+	void thebookSaysHeHimselfDidIt() throws Exception {
+		earnedAReferral(ME, "5", "EUR");
+
+		assertThat(changeAs(ME, changing("placeId", atownInSerbia())).getStatus()).isEqualTo(200);
+
+		assertThat(db.sql("select distinct recorded_by_name from balance_entry"
+						+ " where competitor_id = (select id from competitor where member_number = ?)"
+						+ " and reason = 'conversion'")
+						.param(ME).query(String.class).list())
+				.containsExactly(THE_NAME_ON_THE_ACCOUNT + " " + THE_SURNAME_ON_THE_ACCOUNT);
+	}
+
+	/**
+	 * AND A ROUNDED TRANSLATION IS ROUNDED HALF UP, WHICH IS THE PORTAL'S RULE AND NOT THIS BRANCH'S.
+	 *
+	 * <p>{@code BtlScoreCalculator} rounds its points that way and {@code WhatAResultChangeSays} its
+	 * printed numbers, and every money column is {@code numeric(10,2)}. 650 dinars is 5.41666... euro,
+	 * so it rounds up to 5.42; the case measures it through the ROUTE rather than through
+	 * {@code Balance.translated} alone, because the column it lands in is what decides whether a third
+	 * decimal was ever possible.
+	 */
+	@Test
+	void aroundedTranslationLandsOnTwoDecimals() throws Exception {
+		earnedAReferral(ME, "650", "RSD");
+
+		db.sql("update competitor set place_id = (select id from place where country_id ="
+						+ " (select id from country where code = 'RS') order by rank limit 1)"
+						+ " where member_number = ?")
+				.param(ME).update();
+
+		String abroad = db.sql("select code from country where code <> 'RS' order by code limit 1")
+				.query(String.class).single();
+
+		assertThat(changeAs(ME, changing("city", "Zurich", "country", abroad)).getStatus())
+				.isEqualTo(200);
+
+		assertThat(bookOf(ME))
+				.containsExactly("referral 650.00 RSD", "conversion -650.00 RSD", "conversion 5.42 EUR");
+	}
+
 	/**
 	 * AND A REQUEST THAT SAYS NOTHING ABOUT THE TOWN LEAVES ALL THREE COLUMNS ALONE.
 	 *

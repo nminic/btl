@@ -143,7 +143,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   point - checked with `git ls-tree origin/main` and `git merge-base`, not assumed - so
 			   ADL A2's protection for applied migrations does not cover it yet and this is not a
 			   rewrite of a migration anyone has run. */
-			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484));
+			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484),
+			new Applied("42", "V42__the_balance_is_one_amount_in_one_currency.sql", -1505949912));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

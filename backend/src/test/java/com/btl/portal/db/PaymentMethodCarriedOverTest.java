@@ -99,10 +99,12 @@ class PaymentMethodCarriedOverTest extends DatabaseTest {
 	private void payment(String number, String reference, String method, String amount,
 			String currency, String fee) {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount, currency,"
-						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name) values ("
+						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name, received)"
+						+ " values ("
 						+ " (select id from competitor where member_number = ?), 2027, ?, " + A_PRICE_ROW
 						+ ", " + amount + ", '" + currency + "', " + fee + ", ?, 'recorded',"
-						+ " timestamptz '2026-10-05 09:00:00+00', " + AN_ACCOUNT + ", 'Blagajnik Probni')")
+						+ " timestamptz '2026-10-05 09:00:00+00', " + AN_ACCOUNT + ", 'Blagajnik Probni',"
+						+ " " + amount + " + " + fee + ")")
 				.params(number, reference, method).update();
 	}
 

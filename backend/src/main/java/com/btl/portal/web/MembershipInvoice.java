@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.member.MemberNumber;
+import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -58,11 +59,21 @@ class MembershipInvoice {
 
 	private final BalanceBook book;
 
-	MembershipInvoice(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book) {
+	/**
+	 * <p><b>Read here and not in each of the two routes, for the reason this whole class exists.</b>
+	 * The currency decides which column of the price list is the fee AND which lines of the book are
+	 * his balance, so a route that read it for one and let this class read it for the other would have
+	 * the two halves of one comparison answered by two lookups.
+	 */
+	private final CurrencyOfMember currencyOf;
+
+	MembershipInvoice(JdbcClient db, Clock clock, PriceRows priceRows, BalanceBook book,
+			CurrencyOfMember currencyOf) {
 		this.db = db;
 		this.clock = clock;
 		this.priceRows = priceRows;
 		this.book = book;
+		this.currencyOf = currencyOf;
 	}
 
 	/**
@@ -104,19 +115,21 @@ class MembershipInvoice {
 				.query((row, i) -> new TheMember(row.getDate(1).toLocalDate(), row.getString(2)))
 				.single();
 
-		var rows = priceRows.all();
+		/* ASKED ONCE, IN HIS MONEY, AND IT USED TO BE ASKED TWICE.
 
-		/* ASKED TWICE, ONCE PER CURRENCY, because that is what „dva zasebna cenovnika, ne jedan sa
-		   konverzijom" leaves as the only way to have both numbers: the row that applies is the
-		   same row either way and each call reads its own column off it. Computing one from the
-		   other is the conversion ADL forbids. */
-		MembershipPrice.Price inEuro = MembershipPrice.on(rows, MonthDay.from(today),
-				member.birthDate().getYear(), season, true);
-		MembershipPrice.Price inDinars = MembershipPrice.on(rows, MonthDay.from(today),
-				member.birthDate().getYear(), season, false);
+		   Until V42 this read the price list in BOTH currencies and handed the pair to `Balance`,
+		   because a balance was a pair and „dva zasebna cenovnika, ne jedan sa konverzijom" left no
+		   other way to have both numbers. Since the owner's decision of 27.09.2026 (PDL 25) a member
+		   has ONE balance in ONE money, decided by his country, so the only price that is ever
+		   compared with it is the one in that same money. The second reading answered a question
+		   nobody asks. */
+		Currency his = currencyOf.of(me);
+
+		MembershipPrice.Price price = MembershipPrice.on(priceRows.all(), MonthDay.from(today),
+				member.birthDate().getYear(), season, his);
 
 		Balance.Settlement settled = Balance.against(
-				new Balance.Money(inEuro.amount(), inDinars.amount()), book.of(me));
+				new Balance.Money(price.amount(), his), book.of(me, his));
 
 		/* BEING FREED OF THE FEE IS ASKED OF THE SEASON AND NEVER OF THE PERSON, and that is the
 		   owner's decision of 27.09.2026 in his own capital letters: „BESPLATNI CLANOVI NISU
@@ -148,7 +161,7 @@ class MembershipInvoice {
 						"select basis from membership where competitor_id = ? and season = ?")
 				.params(me, season).query(String.class).optional().orElse(null);
 
-		return new Invoice(season, inEuro.key(), settled, inEuro.fee(), basisForTheSeason != null,
+		return new Invoice(season, price.key(), settled, price.fee(), basisForTheSeason != null,
 				FEE_EXEMPT.equals(basisForTheSeason),
 				member.memberNumber() == null ? null : new MemberNumber(member.memberNumber()));
 	}
