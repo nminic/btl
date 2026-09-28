@@ -1126,15 +1126,28 @@ class PaymentsDueApiTest {
 	 * grouped both ways. A reading that took whichever group came back first would answer this member's
 	 * dinars in euro, which at the seeded rate is a hundred and twenty times the money.
 	 *
-	 * <p><b>The numbers are chosen so the wrong answer is loud.</b> He is billed in euro and holds 5 of
-	 * them; the line in the money he has left is 6.000 dinars, so a reading that added both answers
-	 * 6.005 and one that took the wrong group answers 6.000. Neither is 5.
+	 * <p><b>THE MEMBER HOLDS NOTHING IN HIS OWN MONEY, AND THAT IS THE WHOLE DESIGN OF THE CASE.</b> A
+	 * first draft gave him 5 euro BESIDE the stray 6.000 dinars, and a mutation walked through it: with
+	 * the currency test taken out, the statement puts BOTH groups into the map one after the other and
+	 * the last one wins - so whether the answer is 5 or 6.000 depends on the order {@code group by}
+	 * happens to return, and it happened to end on the euro group. <b>Measured, not reasoned about:</b>
+	 * that draft survived the mutation with all 39 cases green.
+	 *
+	 * <p>With ONE group there is no order for the answer to depend on. Filtered, nothing of his is in
+	 * euro and the label says nought - which is the value the route fills in for every member with no
+	 * lines at all. Unfiltered, the one group there is becomes his balance and the label says 6.000,
+	 * labelled in euro, which is a hundred and twenty times the money it is not.
 	 */
 	@Test
 	void alineInAmoneyThatIsNoLongerHisIsNotOnTheLabel() throws Exception {
-		long alsoBroughtIn = competitor("000295", "Nekad", "Dinarski", true);
+		long whoMovedAbroad = competitor("000295", "Nekad", "Dinarski", false);
+		long alsoBroughtIn = competitor("000296", "Doveden", "Nekada", true);
 
-		earnedAReferral(neverPaid, alsoBroughtIn, "6000", "RSD");
+		/* AND AN ACCOUNT, because this screen reads `from account a join competitor c` - a competitor
+		   nobody can sign in as is nobody the association can ask for money. */
+		account("nekad-dinarski@primer.rs", "competitor", "Nekad", "Dinarski", true, whoMovedAbroad);
+
+		earnedAReferral(whoMovedAbroad, alsoBroughtIn, "6000", "RSD");
 
 		Map<Long, BigDecimal> balances = new HashMap<>();
 
@@ -1142,10 +1155,14 @@ class PaymentsDueApiTest {
 			balances.put(row.get("competitorId").asLong(), row.get("balance").decimalValue());
 		}
 
-		assertThat(balances.get(neverPaid))
+		assertThat(balances)
+				.as("he is not on the screen at all, so nothing here is about what his label says")
+				.containsKey(whoMovedAbroad);
+
+		assertThat(balances.get(whoMovedAbroad))
 				.as("a line in the money he has left was counted as his balance, so the label shows him"
-						+ " money he does not have")
-				.isEqualByComparingTo("5");
+						+ " money he does not have - and shows it in the wrong money")
+				.isEqualByComparingTo("0");
 	}
 
 	/**
