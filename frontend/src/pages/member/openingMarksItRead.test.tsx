@@ -275,9 +275,25 @@ function theEnvelope(): HTMLElement {
  * of the seven had it right already and polled the assertion (the case below about asking once);
  * that shape is what the other six now share rather than a second spelling beside it.
  *
- * <p><b>Strictness is unchanged and that is the whole reason this is not a trade.</b> A count that
- * never becomes the one asserted still fails - later, and saying what the envelope said instead.
- * What stops failing is a count that was right and arrived a millisecond after it was read.
+ * <p><b>AND IT WAITS FOR THE NUMBER TO SETTLE ON IT RATHER THAN TO REACH IT, which is not caution
+ * but the whole of what makes the poll no weaker than the read it replaces.</b> `waitFor` answers
+ * „has this BECOME true" and can answer nothing else, so a value the count passes THROUGH on its
+ * way satisfies it - and this count passes through two of them on every case that opens a message:
+ * nought before the inbox lands, then what the server said, then what it says after the mark.
+ * Measured: with the wait alone, the broadcast case below was satisfied by „2" - the count before
+ * his reading of it - where the whole case is that it falls to one. That mutation SURVIVED eleven
+ * places where ten others were caught, and it is the one this second half exists for.
+ *
+ * <p><b>Settled is „the same twice over, with the loop given a real turn between".</b> The shape is
+ * the portal's own, from the guard that walks screens (`ADL`, 07.09.2026: wait for something only
+ * this screen has, then wait for it to stop being redrawn - two identical readings). A re-read here
+ * is a `fetch` and a render behind it, so one turn of the microtask queue is not enough to give it
+ * its chance; {@link theLoopHasRunDry} says how many and why.
+ *
+ * <p><b>Strictness is therefore not traded away in either direction.</b> A count that never becomes
+ * the one asserted still fails, saying what the envelope said instead; a count that reaches it and
+ * then moves off it fails too, which the read this replaces could not see at all. What stops
+ * failing is only the count that was right and arrived a millisecond after it used to be read.
  *
  * <p><b>What it does NOT stand in for, and every case here keeps its own.</b> The floor that says
  * the inbox really landed is the case's own `findByRole` for a subject or a heading, not this; a
@@ -289,6 +305,30 @@ async function theEnvelopeSays(unread: number): Promise<void> {
   await waitFor(() => {
     expect(theEnvelope()).toHaveAccessibleName(saysUnread(unread))
   })
+
+  await theLoopHasRunDry()
+
+  expect(theEnvelope()).toHaveAccessibleName(saysUnread(unread))
+}
+
+/**
+ * GIVES WHATEVER IS STILL IN FLIGHT ITS CHANCE TO CHANGE THE SCREEN.
+ *
+ * <p><b>Three turns of the macrotask queue and not one, and the number is measured rather than
+ * chosen.</b> What has to be let through is a whole `fetch` and the render behind it: the answer
+ * resolves on one turn, `useResource` sets its state on the next, and React paints on the one
+ * after. With a single turn the broadcast case below still read „2" and the mutation that proves
+ * this helper - asking it for two where the answer falls to one - went on surviving.
+ *
+ * <p><b>Written as turns of the loop rather than as a number of milliseconds</b>, because a
+ * millisecond count is a guess about a machine and this is a count of steps the portal really
+ * takes. Two of the cases below already held themselves for one such turn, in their own words
+ * („Held for a beat"), for exactly this reason; this is that shape with its reason written once.
+ */
+async function theLoopHasRunDry(): Promise<void> {
+  for (let turn = 0; turn < 3; turn += 1) {
+    await new Promise((settle) => setTimeout(settle, 0))
+  }
 }
 
 /**
