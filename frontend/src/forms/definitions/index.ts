@@ -9,6 +9,7 @@ import writtenTim from './admin-tim.form.json'
 import writtenTrka from './admin-trka.form.json'
 import writtenPredlogTima from './predlog-tima.form.json'
 import writtenPrijava from './prijava-sa-trke.form.json'
+import writtenProfil from './profil.form.json'
 import writtenRegistracija from './registracija.form.json'
 import writtenUnosRezultata from './unos-rezultata.form.json'
 
@@ -90,6 +91,20 @@ export const tim = formDef(writtenTim)
 export const trka = formDef(writtenTrka)
 export const predlogTima = formDef(writtenPredlogTima)
 export const prijava = formDef(writtenPrijava)
+/**
+ * The member's own profile, which no `FormRenderer` draws.
+ *
+ * `member/ProfileBio.tsx` is a hand made panel, so this definition exists for the
+ * one thing a panel cannot carry on its own: the length of the box. PDL, 31.07.2026,
+ * says where that number lives - „Ograničenje stoji na polju u formi profila" - and
+ * until 28.09.2026 the box it named was the registration's, because that is where a
+ * member wrote his biography. The owner moved the writing („Profilna sekcija se sa
+ * slikom i svojim recima izbacuje iz registracione forme - to ce clan popunjavati
+ * naknadno kad bude odobren"), so the number moved with it and is still ONE home that
+ * both layers read: the panel through `limitOf`, and `MeWriteApi` through the case
+ * that opens this very file.
+ */
+export const profil = formDef(writtenProfil)
 export const registracija = formDef(writtenRegistracija)
 export const unosRezultata = formDef(writtenUnosRezultata)
 
@@ -107,6 +122,7 @@ export const FORMS: Record<string, FormDef> = {
   'admin-trka.form.json': trka,
   'predlog-tima.form.json': predlogTima,
   'prijava-sa-trke.form.json': prijava,
+  'profil.form.json': profil,
   'registracija.form.json': registracija,
   'unos-rezultata.form.json': unosRezultata,
 }

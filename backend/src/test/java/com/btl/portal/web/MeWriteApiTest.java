@@ -154,8 +154,26 @@ class MeWriteApiTest {
 	 * {@code TeamWriteApiTest} uses for its own form: what a box holds is a fact about a
 	 * file, and a number in a comment claiming to know it is worth nothing.
 	 */
-	private static final Path THE_FORM_THE_BOX_IS_ON =
+	private static final Path THE_FORM_HIS_ACCOUNT_IS_ON =
 			Path.of("..", "frontend", "src", "forms", "definitions", "registracija.form.json");
+
+	/**
+	 * AND THE ONE THE BIOGRAPHY'S BOX STANDS ON, which is a SECOND file since 28.09.2026.
+	 *
+	 * <p>There was one until that day and there are two now, and the split is the decision
+	 * rather than an accident of files: the owner took the biography out of the registration
+	 * („Profilna sekcija se sa slikom i svojim recima izbacuje iz registracione forme - to ce
+	 * clan popunjavati naknadno kad bude odobren"), so the box a member types his biography
+	 * into is no longer on the form he joins with. What did NOT change is the rule under PDL
+	 * P11: the limit lives on the FIELD, in a definition, and both layers read that one home.
+	 *
+	 * <p>So the floor below reads BOTH files and merges them, which is the honest shape of
+	 * „every box the server bounds is bounded by the number on the form it stands on".
+	 * Pointed at one of the two, it would either stop measuring the biography or stop
+	 * measuring the other five.
+	 */
+	private static final Path THE_FORM_THE_BIOGRAPHY_IS_ON =
+			Path.of("..", "frontend", "src", "forms", "definitions", "profil.form.json");
 
 	private static final String THE_PROFILES_TAB = "profiles";
 
@@ -1234,17 +1252,25 @@ class MeWriteApiTest {
 	 * AND THE NUMBER IS THE FORM'S OWN, READ OFF THE FILE RATHER THAN REMEMBERED.
 	 *
 	 * <p>PDL P11, 31.07.2026 says where the limit lives: „Ogranicenje stoji na polju u formi
-	 * registracije ({@code registracija.form.json})", and {@code ProfileBio.tsx} draws its
-	 * box with {@code limitOf(registracija, 'bio')}. This is the floor under the constant:
-	 * the day the owner moves the box, the build stops until the server moves with it. It
-	 * is the same arrangement {@code WhatRegistrationAsksForTest} and
-	 * {@code TeamWriteApiTest} have for what their own forms ask.
+	 * profila ({@code profil.form.json})", and {@code ProfileBio.tsx} draws its box with
+	 * {@code limitOf(profil, 'bio')}. This is the floor under the constant: the day the
+	 * owner moves the box, the build stops until the server moves with it. It is the same
+	 * arrangement {@code WhatRegistrationAsksForTest} and {@code TeamWriteApiTest} have for
+	 * what their own forms ask.
+	 *
+	 * <p><b>The file this opens changed on 28.09.2026 and the number did not.</b> That
+	 * sentence used to name {@code registracija.form.json}, because the biography was
+	 * written at the moment of joining. The owner moved it („Profilna sekcija se sa slikom i
+	 * svojim recima izbacuje iz registracione forme - to ce clan popunjavati naknadno kad
+	 * bude odobren"), and the limit moved with the box rather than being copied: the point
+	 * of the decision is ONE home that both layers read, not the particular form that
+	 * happened to hold it.
 	 */
 	@Test
 	void theLimitIsTheOneTheMembersOwnBoxCarries() throws Exception {
 		JsonNode theBox = null;
 
-		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_THE_BOX_IS_ON))
+		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_THE_BIOGRAPHY_IS_ON))
 				.path("fields")) {
 
 			if ("bio".equals(field.path("name").asString())) {
@@ -1254,7 +1280,7 @@ class MeWriteApiTest {
 
 		assertThat(theBox)
 				.as("%s has no field called bio at all, so this compares nothing",
-						THE_FORM_THE_BOX_IS_ON)
+						THE_FORM_THE_BIOGRAPHY_IS_ON)
 				.isNotNull();
 
 		assertThat(theBox.path("maxLength").asInt())
@@ -1624,18 +1650,32 @@ class MeWriteApiTest {
 	void everyBoxTheServerBoundsIsBoundedByTheNumberOnTheForm() throws Exception {
 		Map<String, Integer> onTheForm = new LinkedHashMap<>();
 
-		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_THE_BOX_IS_ON))
-				.path("fields")) {
-
-			if (field.has("maxLength")) {
-				onTheForm.put(field.path("name").asString(), field.path("maxLength").asInt());
+		/* BOTH FILES, because the boxes this route takes stand on two forms since
+		   28.09.2026: five of them where a member joins, and the biography where he writes
+		   it afterwards. Read from one alone this would go green while measuring nothing
+		   about the other, which is the shape a split like this fails in. */
+		for (Path form : List.of(THE_FORM_HIS_ACCOUNT_IS_ON, THE_FORM_THE_BIOGRAPHY_IS_ON)) {
+			for (JsonNode field : mapper.readTree(Files.readString(form)).path("fields")) {
+				if (field.has("maxLength")) {
+					onTheForm.put(field.path("name").asString(), field.path("maxLength").asInt());
+				}
 			}
 		}
 
 		assertThat(onTheForm)
-				.as("%s carries no maxLength at all, so this compares nothing",
-						THE_FORM_THE_BOX_IS_ON)
+				.as("neither %s nor %s carries a maxLength, so this compares nothing",
+						THE_FORM_HIS_ACCOUNT_IS_ON, THE_FORM_THE_BIOGRAPHY_IS_ON)
 				.isNotEmpty();
+
+		/* AND THE BIOGRAPHY REALLY CAME OUT OF THE SECOND FILE, not out of the first one
+		   that happens to be read in the same loop. Without this, the day `bio` is put back
+		   on the registration the merge would hide it and the split above would stop being
+		   measured by anything. */
+		assertThat(mapper.readTree(Files.readString(THE_FORM_THE_BIOGRAPHY_IS_ON)).path("fields")
+				.valueStream().map(one -> one.path("name").asString()).toList())
+				.as("%s does not carry the biography, so the merge above is reading it from"
+						+ " the other file", THE_FORM_THE_BIOGRAPHY_IS_ON)
+				.contains("bio");
 
 		for (Map.Entry<String, MeWriteApi.Personal> one
 				: MeWriteApi.EACH_BOX_ON_THE_FORM.entrySet()) {
@@ -1695,8 +1735,11 @@ class MeWriteApiTest {
 				+ " other session (PDL P28b, 5)");
 		elsewhere.put("passwordRepeat", "the same route; it is not data at all but the form"
 				+ " checking itself");
-		elsewhere.put("photo", "MePhotoApi, because a picture is a file and waits for a"
-				+ " moderator (PDL P11)");
+		/* ~~`photo`, MePhotoApi, because a picture is a file and waits for a moderator.~~
+		   The registration stopped asking for a picture on 28.09.2026, so this name excused
+		   a field the form no longer has - which is the very thing the second half of this
+		   case now refuses. The picture still goes to MePhotoApi; it simply is not a box on
+		   this form any more, so there is nothing here to account for. */
 		elsewhere.put("idNumber", "ADL A12 keeps it out of the table the portal's screens"
 				+ " read, in competitor_document, with its own right of access");
 		elsewhere.put("healthStatement", "a moment recorded once at registration, not a"
@@ -1706,11 +1749,14 @@ class MeWriteApiTest {
 		elsewhere.put("parentRelation", "the same row");
 
 		List<String> unaccounted = new ArrayList<>();
+		List<String> drawn = new ArrayList<>();
 
-		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_THE_BOX_IS_ON))
+		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_HIS_ACCOUNT_IS_ON))
 				.path("fields")) {
 
 			String name = field.path("name").asString();
+
+			drawn.add(name);
 
 			if (!MeWriteApi.WHAT_THIS_ROUTE_TAKES.contains(name)
 					&& !MeWriteApi.ONLY_AN_ADMINISTRATOR_CHANGES.contains(name)
@@ -1725,6 +1771,17 @@ class MeWriteApiTest {
 						+ " by it, nor named as living somewhere else - so whatever a member"
 						+ " types into it is thrown away in silence")
 				.isEmpty();
+
+		/* AND THE OTHER DIRECTION, WHICH THIS CASE DID NOT HAVE UNTIL 28.09.2026 AND WHICH
+		   IS WHY IT WENT STALE IN SILENCE. `photo` sat on the list above for the length of
+		   one branch after the form stopped asking for it, excusing a field nobody could
+		   type into: the sweep is one way, so a name that stops being drawn is never looked
+		   at again. That is the same shape `RegistrationApi.NOT_COLLECTED_YET` was written
+		   against and the same one the rest of this file guards in both directions. */
+		assertThat(drawn)
+				.as("a field is named here as living somewhere else which the member's own form"
+						+ " does not draw at all, so that entry excuses nothing")
+				.containsAll(elsewhere.keySet());
 
 		assertThat(MeWriteApi.WHAT_THIS_ROUTE_TAKES)
 				.as("a field cannot be both taken and refused")
