@@ -39,7 +39,9 @@ import type {
   Race,
   Result,
   ServedMessage,
+  ServedTeamInvitation,
   StaticPage,
+  WhatIsWaiting,
 } from './types'
 import type { DucatFamily } from './ducatRule'
 import type { Place } from './places'
@@ -333,6 +335,38 @@ const anAccountNotYetAMember = {
 
 const readAsOutstanding: Outstanding = anOutstandingAnswer
 const readAsAccountNotYetAMember: MembershipDue = anAccountNotYetAMember
+
+/**
+ * THE EIGHTEENTH RESOURCE, whose answer is the second record on this list and the first whose
+ * ADDRESS carries a slash.
+ *
+ * <p><b>Every one of the four lists holds a row, in the sample and in the served file alike,
+ * and that is the point of both.</b> Four empty arrays satisfy every type in the portal and
+ * say nothing at all about what a row looks like, so a fixture written that way would be a
+ * floor under nothing. The shape is taken off `MyApplicationsApi`'s four records field for
+ * field, so a column dropped from any of them is a build that does not finish, and the case
+ * below holds the file against it as well.
+ *
+ * <p><b>`teamId` on a proposal is null and on an invitation is not, which is the one field on
+ * this answer with two states</b> and `MyApplicationsApi.TeamProposal` says which is which:
+ * „null for a brand new team, which has no address yet; filled for a proposed change to a team
+ * that already exists". `memberNumber` on a pair invite has two as well - the route writes null
+ * where the other half's fee has lapsed - and both states are held below.
+ */
+const whatIsWaitingAnswer = {
+  teamApplications: [{ id: 11, teamId: 3, date: '2026-10-04' }],
+  teamInvitations: [{ id: 7, teamId: 4, date: '2026-10-06' }],
+  teamProposals: [{ id: 21, teamId: null, name: 'Dunavski trkači', date: '2026-10-02' }],
+  pairInvites: [{ id: 31, memberNumber: '000031', sentByMe: false, date: '2026-10-05' }],
+  alreadyInATeam: false,
+}
+
+/** One invitation of it, for the half the record above cannot say: an empty `teamInvitations`
+ *  would satisfy it completely, and that list is the whole reason this resource is read. */
+const aServedTeamInvitation = { id: 7, teamId: 4, date: '2026-10-06' }
+
+const readAsWhatIsWaiting: WhatIsWaiting = whatIsWaitingAnswer
+const readAsServedTeamInvitation: ServedTeamInvitation = aServedTeamInvitation
 
 /**
  * A LINE OF THE INBOX THAT ONLY TELLS, which is what every message the portal writes is.
@@ -655,6 +689,47 @@ describe('the answer the backend gives', () => {
     expect(shared([anAccountNotYetAMember], [{ ...account }]), 'payments.accounts').toEqual([])
   })
 
+  it('reads the second record answer, and the one list on it a screen really sends back', () => {
+    /* THE EIGHTEENTH RESOURCE, held the same way as the seventeen before it: the sample is a
+       plain value handed to a name that carries the type, so a field of the wrong sort or one
+       the type needs and the answer has not got is a build that does not finish.
+
+       WHAT THIS CATCHES THAT NO OTHER CASE WOULD, and it is one field rather than a shape.
+       `member/ServedTeamInvite.tsx` builds `/api/teams/{teamId}/invitations/{id}` out of a row
+       of `teamInvitations`, and `teamId` is the only place on the whole portal that number can
+       come from - `GET /api/inbox` carries the invitation and no team at all
+       (`data/useResource.ts`, `asServed`). An answer that stopped carrying it would leave that
+       screen with half an address and nothing else would say so. */
+    expect(readAsWhatIsWaiting.alreadyInATeam).toBe(false)
+    expect(readAsServedTeamInvitation.teamId).toBe(4)
+
+    expect(missing(whatIsWaitingAnswer, servedAnswer('me/applications'))).toEqual([])
+
+    /* AND THE ROWS INSIDE IT, because the record above says nothing about them: four empty
+       arrays in the file would satisfy that line completely, and an empty `teamInvitations` is
+       exactly the state in which this whole resource does nothing. Each of the four is asked
+       for by name rather than swept, so a list that is empty in the file fails here with its
+       own name in the message instead of quietly contributing nothing. */
+    const waiting = servedAnswer('me/applications')
+
+    for (const [list, answered] of [
+      ['teamApplications', whatIsWaitingAnswer.teamApplications],
+      ['teamInvitations', whatIsWaitingAnswer.teamInvitations],
+      ['teamProposals', whatIsWaitingAnswer.teamProposals],
+      ['pairInvites', whatIsWaitingAnswer.pairInvites],
+    ] as const) {
+      const served: unknown = waiting[list]
+      const rows = Array.isArray(served) ? served : []
+      const row = must(rows[0], `a first row of me/applications.${list}`)
+
+      if (row === null || typeof row !== 'object') {
+        throw new Error(`a row of me/applications.${list} is not a record`)
+      }
+
+      expect(shared([...answered], [{ ...row }]), `me/applications.${list}`).toEqual([])
+    }
+  })
+
   it('names what it does not serve, which is the half nobody has decided yet', () => {
     /* Owner, 20.09.2026: „Uskladi oblike, pa polje po polje odluci." This is the
        second half written down rather than left to be rediscovered: every field
@@ -837,6 +912,13 @@ describe('the answer the backend gives', () => {
          absence the owner met himself: a message the server had kept was drawn out of the
          browser's own `useState` instead, so signing out took it away. */
       'inbox',
+      /* THE EIGHTEENTH NAME AND THE SECOND RECORD, added 28.09.2026 with the screen that
+         answers a team's invitation. Like the three before it, it was answered long before
+         anything asked for it; unlike them, what its absence cost was not a stale number but
+         a whole act - `PUT /api/teams/{id}/invitations/{invitation}` needs a team that only
+         this route hands the invited member, so the portal could send an invitation and had
+         nowhere to answer one. */
+      'me/applications',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */
