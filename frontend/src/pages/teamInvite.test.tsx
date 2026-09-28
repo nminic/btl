@@ -179,7 +179,15 @@ const OUTSIDE = '2026-06-15'
 async function inbox(user: ReturnType<typeof setupUser>) {
   await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
 
-  return screen.queryAllByRole('link').filter((one) => /\/poruke\/msg-/.test(one.getAttribute('href') ?? ''))
+  /* **ANY MESSAGE ADDRESS AND NO LONGER ONLY `msg-N`, since 28.09.2026.** The inbox has two
+     halves and they number themselves differently: what this visit wrote is `msg-N`, what the
+     server kept is its own key (`data/useResource.ts`). Reading only the first was enough while
+     the bundle seeded two broadcasts into every session, and PDL 34 („NECU MOCK PODATKE NIGDE",
+     owner) took those out - so the one case here that walks a message NOBODY invited, rather
+     than filtering by subject, had nothing left to walk. Every other caller filters on the
+     subject afterwards, so widening the address costs them nothing. The trailing character is
+     what keeps „Sve poruke" out: that link is `/sr/poruke` and names no message. */
+  return screen.queryAllByRole('link').filter((one) => /\/poruke\/./.test(one.getAttribute('href') ?? ''))
 }
 
 /** The line under the name on a profile, whole. The club is a sentence there and the same
@@ -1282,13 +1290,22 @@ describe('what the invitation must not be confused with', () => {
 
     /* The plan for this increment named this as the likeliest fault of the lot: every message
        the portal has ever written is a message that tells, and drawing the answer unless a
-       message says otherwise puts two buttons under all of them. Walked on the messages the
-       prototype starts with, which carry no invitation at all. */
+       message says otherwise puts two buttons under all of them.
+
+       **Walked on a message the SERVER kept, since 28.09.2026.** It was walked on the records
+       the bundle seeded into every session until then, and PDL 34 („NECU MOCK PODATKE NIGDE",
+       owner) took those out. A served row is the better half to ask anyway: the two question
+       keys deliberately do not cross over into one (`data/useResource.ts`, `asServed`), so „this
+       message is not an invitation" is true of it by construction rather than by fixture. The
+       heading is named so that an empty list or the wrong screen fails here instead of being
+       answered by whatever heading the page happened to draw. */
     const first = (await inbox(user))[0]
 
     await user.click(must(first, 'the first message in the inbox'))
 
-    expect(await screen.findByRole('heading', { level: 1 })).toBeVisible()
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Fotografija je prihvaćena' }),
+    ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
     expect(screen.queryByText(/poziv/i)).toBeNull()
   }, SEVERAL_SCREENS)

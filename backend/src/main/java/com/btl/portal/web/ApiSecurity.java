@@ -60,7 +60,7 @@ class ApiSecurity {
 	 * <p><b>And the written pages, which the portal must be able to show before anybody
 	 * signs in at all.</b> A privacy policy and terms of use only a member could read
 	 * would be the portal asking somebody to accept them before they can be read
-	 * (`PDL.md`:3094, „moraju postojati pre lansiranja"), the rulebook is what those
+	 * (PDL.md ("moraju postojati pre lansiranja")), the rulebook is what those
 	 * same terms point a prospective member at for the price of joining, and the
 	 * president's address is drawn on the front page, which is the first thing a
 	 * visitor sees.

@@ -107,7 +107,8 @@ class WhatAPriceMayCostTest {
 	 * AND THE TWO ARE NOT ONE CONVERTED, WHICH IS ITS OWN DECISION.
 	 *
 	 * <p><b>Owner, 25.09.2026 (PDL P12d), refusing the opposite:</b> the rate of 1 EUR = 120
-	 * RSD in {@code PDL.md:833} „je bio <b>nacin da se cene prvi put izracunaju</b>, ne odnos
+	 * RSD in PDL.md ("Ne preračunava se po kursu na dan")
+	 * „je bio <b>nacin da se cene prvi put izracunaju</b>, ne odnos
 	 * koji portal cuva", and the two currencies are typed „slobodno i nezavisno". He was
 	 * shown what it costs and took it: „dinarska lista sme tiho da prestane da bude x120."
 	 *
