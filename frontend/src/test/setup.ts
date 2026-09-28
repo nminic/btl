@@ -373,6 +373,43 @@ function wrote(body: object, status: number): Response {
   })
 }
 
+/**
+ * THE ADDRESS A CHANGED EVENT IS LEFT AT, which is `EventAddress.keptOrRebuilt` and NOT
+ * simply what the rule builds.
+ *
+ * <p><b>Written out because a stub that answered the rule's answer was measured to lie,
+ * and in the one direction that matters.</b> An event put off by a week keeps its address
+ * and everything joined to it (owner, 10.08.2026), so the route rebuilds the address only
+ * where the NAME or the DAY moved. The generated calendar carries imported addresses that
+ * carry a month - `gradska-liga-usce-2017-05` - which the rule cannot build at all, so a
+ * stub that answered `eventSlug(name, date)` handed back `gradska-liga-usce-2017` for an
+ * event nobody had renamed, and the screen dutifully wrote the lie into its list.
+ *
+ * <p>The standing record is read out of the served file, which is what the route reads out
+ * of the table, so the stub asks the same question of the same data.
+ */
+function keptOrRebuilt(id: number, form: Record<string, unknown>): string {
+  const wanted = eventSlug(String(form.name ?? ''), String(form.date ?? ''))
+
+  try {
+    const file: unknown = JSON.parse(readFileSync(join(PUBLIC_DIR, '/mock/events.json'), 'utf-8'))
+    const before = (Array.isArray(file) ? file : []).find(
+      (one): one is Record<string, unknown> =>
+        typeof one === 'object' && one !== null && Reflect.get(one, 'id') === id,
+    )
+
+    if (before === undefined) {
+      return wanted
+    }
+
+    return eventSlug(String(before.name ?? ''), String(before.date ?? '')) === wanted
+      ? String(before.slug ?? wanted)
+      : wanted
+  } catch {
+    return wanted
+  }
+}
+
 vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
   const asked = String(input)
 
@@ -408,14 +445,9 @@ vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (changingEvent !== null) {
     const form = said(init)
+    const id = Number(changingEvent[1])
 
-    return wrote(
-      {
-        id: Number(changingEvent[1]),
-        slug: eventSlug(String(form.name ?? ''), String(form.date ?? '')),
-      },
-      200,
-    )
+    return wrote({ id, slug: keptOrRebuilt(id, form) }, 200)
   }
 
   if (asked === '/api/races' && how === 'POST') {

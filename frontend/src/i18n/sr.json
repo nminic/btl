@@ -1296,6 +1296,12 @@
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
     "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "eventSavedRacesRefused": "Događaj je sačuvan, ali jedna njegova trka nije. Otvori događaj pa proveri trke.",
+    "eventDeleteTakes": {
+      "one": "Ovim brišeš i {count} rezultat.",
+      "few": "Ovim brišeš i {count} rezultata.",
+      "other": "Ovim brišeš i {count} rezultata."
+    },
+    "eventDeleteCountUnknown": "Broj rezultata koji odlaze još nije poznat.",
     "leagueGone": "Liga je obrisana.",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
     "leagueTextSaved": "Izmena je sačuvana.",

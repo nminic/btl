@@ -9,7 +9,9 @@ import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, first, inputElement, must, selectElement } from '../test/at'
-import { Deleted, Saved } from '../test/saved'
+import { Saved } from '../test/saved'
+import { serverThat } from '../test/serverAnswers'
+import { whatWasSent, whereItWrote } from '../test/sent'
 import { clearResourceCache, loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
 import { SEASON } from '../data/pricing'
@@ -29,6 +31,18 @@ async function table(name: string) {
 }
 
 describe('the races of an event', () => {
+  /** A server in front of the floor for the length of each case, watching and answering
+   *  nothing. This screen stopped writing into the session on 28.09.2026 and sends
+   *  instead, so what it wrote is read off the wire (`test/sent.ts`). */
+  let watching: ReturnType<typeof serverThat>
+
+  beforeEach(() => {
+    watching = serverThat(() => null)
+  })
+
+  afterEach(() => {
+    watching.stop()
+  })
   /* A race is one length of one morning and is edited inside the event it is run
      at (owner, 06.08.2026). It had a screen of its own, where finding the event
      meant searching a list of eleven hundred, and a race made there could be
@@ -150,10 +164,7 @@ describe('the races of an event', () => {
     await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    const written = within(await screen.findByRole('list', { name: 'session records' }))
-      .getAllByRole('listitem')
-      .map((one) => one.textContent ?? '')
-      .filter((one) => one.includes('limitSeconds='))
+    const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
 
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
     expect(first(written), 'the race was not written as a timed one').toContain('kind=time')
@@ -239,13 +250,10 @@ describe('the races of an event', () => {
     await user.selectOptions(kind(), 'length')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    const written = within(await screen.findByRole('list', { name: 'session records' }))
-      .getAllByRole('listitem')
-      .map((one) => one.textContent ?? '')
-      /* By a field only a race has: the event is written in the same list and its
-         own `kind` is „race", so filtering by `kind=` alone hands back the event and
-         a round of this measured it instead. */
-      .filter((one) => one.includes('limitSeconds='))
+    /* By a field only a race has: the event is sent in the same press and its own
+       `kind` is „race", so filtering by `kind=` alone hands back the event and a round
+       of this measured it instead. */
+    const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
 
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
     expect(first(written), 'a race of a length was written carrying a limit').toContain(
@@ -275,15 +283,19 @@ describe('the races of an event', () => {
     await user.type(inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]), '24')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    const written = within(await screen.findByRole('list', { name: 'session records' }))
-      .getAllByRole('listitem')
-      .map((one) => one.textContent ?? '')
-      .filter((one) => one.includes('limitSeconds='))
+    const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
 
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
     expect(first(written), 'a timed race was written carrying a length').toContain('distanceKm=0')
-    expect(first(written), 'and its category still reads off a length nobody ran').toContain(
-      'category=short',
+    /* AND THE CATEGORY IS NOT SENT AT ALL, which is a change of home rather than of
+       rule. The record kept one because the session overlay was the whole database, and
+       `raceRows.storedRow` still works it out for the row this screen draws; the route
+       takes nine fields and `category` is not among them (`RaceWriteApi.Upsert`), because
+       a category is read off the length and the server reads it. Sent anyway it would be
+       a second opinion about a derived value, which is the fault this whole change is
+       closing one table along. */
+    expect(first(written), 'the screen sent a category the route works out itself').not.toContain(
+      'category=',
     )
     expect(first(written)).toContain('kind=time')
     expect(first(written), 'the limit that was typed did not reach the record').toContain(
@@ -530,8 +542,13 @@ describe('the races of an event', () => {
        races are drawn under a name they share, so counting look-alike rows on a
        profile would pass just as well with the wrong one deleted. */
     const user = setupUser()
+    /* Read off the WIRE rather than off the session, which is where this fact moved on
+       28.09.2026: the screen used to file a deletion into the overlay and now it asks
+       the route. The question is the same one - which race went - and only the place it
+       is answered has changed. */
+    const watching = serverThat(() => null)
 
-    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, <Deleted />)
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
 
     await user.type(await screen.findByPlaceholderText('Naziv ili mesto'), 'Bešnjaja')
 
@@ -555,16 +572,30 @@ describe('the races of an event', () => {
 
     expect(await screen.findByRole('status', { name: 'Sačuvano' })).toBeVisible()
 
-    const gone = within(screen.getByRole('list', { name: 'session deletions' }))
+    const gone = whereItWrote(watching.asked)
 
-    expect(gone.getByText('gone races 141')).toBeInTheDocument()
-    expect(gone.getByText('gone results 1241')).toBeInTheDocument()
+    watching.stop()
 
-    /* And the other race, which nobody touched, keeps every one of its three. */
-    expect(gone.queryByText(/^gone races 142$/)).toBeNull()
-    expect(gone.queryByText('gone results 499')).toBeNull()
-    expect(gone.queryByText('gone results 1513')).toBeNull()
-    expect(gone.queryByText('gone results 3243')).toBeNull()
+    expect(gone, 'the race that was taken off the table is not the one that was deleted')
+      .toContain('DELETE /api/races/141')
+
+    /* And the other race, which nobody touched, is not addressed at all. */
+    expect(gone).not.toContain('DELETE /api/races/142')
+
+    /**
+     * AND NOTHING AT ALL IS SAID ABOUT THE RESULTS, which is the half that changed.
+     *
+     * Until 28.09.2026 this screen filed `gone results 1241` beside the race, because
+     * a result left behind goes on counting in the standing and points at a race that
+     * does not exist. `result_race_fk` cascades from the race, so the statement that
+     * takes race 141 takes its results with it; written on this side as well it would
+     * be a second answer to a question the schema has already answered, and the day
+     * the two disagreed the schema would win silently.
+     */
+    expect(
+      gone.filter((one) => one.includes('/api/results')),
+      'the screen deleted results the database was already taking',
+    ).toEqual([])
   })
 
   it('takes a second race of the same length on the same morning', async () => {
@@ -1216,7 +1247,6 @@ describe('the races of an event', () => {
           <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
             <RoleProvider initialRole="superadmin" initialModerator={null}>
               <SessionProvider>
-                <Removed />
                 <Copy of={one} />
                 <Routes>
                   <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
@@ -1244,7 +1274,22 @@ describe('the races of an event', () => {
     await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
     await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
 
-    expect(screen.getByTestId('removed-results')).toHaveTextContent('')
+    /**
+     * NOTHING IS SAID ABOUT THE RESULTS, AND THE REASON IS NO LONGER A GUARD ON THIS SIDE.
+     *
+     * <p>This screen used to delete an event's results by ADDRESS, so it needed a guard for
+     * the window in which two events answer at one: a copy keeps the name and the day until
+     * somebody moves it, and deleting either would have taken the other's results. The
+     * cascade joins by the race's own key, which answers for one race and no other, so the
+     * question the guard existed for cannot be asked any more.
+     *
+     * <p>What is still worth holding is that the press is ONE request naming this event -
+     * the screen reasons about no addresses at all.
+     */
+    expect(
+      whereItWrote(watching.asked).filter((each) => each.includes('/api/results')),
+      'the screen took results down by address, which is what the copy made unsafe',
+    ).toEqual([])
   })
 
   it('shows the address the save will leave, not the one the rule would build', async () => {
@@ -1505,23 +1550,27 @@ describe('the races of an event', () => {
     await openAgain(user)
     await addRaces(user, 2, 41)
 
-    const made = within(screen.getByRole('list', { name: 'session records' }))
-      .getAllByRole('listitem')
-      .flatMap((one) => {
-        const found = /^new races (-?\d+) \|/.exec(one.textContent ?? '')
-
-        return found === null ? [] : [Number(at(found, 1))]
-      })
+    /**
+     * EVERY ONE OF THEM MADE, AND NOT ONE OF THEM ADDRESSED.
+     *
+     * <p>The question this case asks did not change and the place it is answered did.
+     * It used to read the identities the SCREEN counted out, because the screen handed
+     * them out itself (`admin/raceIds.ts`, counting down from nought), and it held them
+     * against the served file so that a made race could never take a number the portal
+     * already answers to.
+     *
+     * <p>Nothing counts an identity here any more: `POST /api/races` answers with the one
+     * the database chose, so „two races under one number" is not a thing this side can
+     * get wrong. What it CAN still get wrong is sending a `PUT` - writing over a race
+     * that already exists instead of making a new one - and that is what five presses of
+     * „Nova trka" over two saves must never do.
+     */
+    /* The ones that were MADE. A save writes every row of the event, so the races it
+       already had go out as `PUT /api/races/{id}` beside these; counting those in would
+       be counting the event's own mornings as though this press had entered them. */
+    const made = whereItWrote(watching.asked).filter((one) => one === 'POST /api/races')
 
     expect(made, 'five races were entered over two presses').toHaveLength(5)
-    expect(new Set(made).size, 'two races were handed one number').toBe(made.length)
-
-    /* And none of them is a number the portal already serves. Held against the
-       file rather than against „is it below nought", because below nought is the
-       reason and this is the thing it is there for. */
-    const served = new Set((await loadResource<Race[]>('races')).map((one) => one.id))
-
-    expect(made.filter((one) => served.has(one)), 'a made race took a served number').toEqual([])
   })
 
   it('leaves every race entered over two presses standing as its own race', async () => {
@@ -1884,14 +1933,37 @@ describe('the country an event is filed in', () => {
     return within(mine).getByRole('button', { name: `Otvori: ${event.name}` })
   }
 
-  /** What the session was told about one record, by id. */
-  async function told(what: string): Promise<string> {
-    const lines = within(await screen.findByRole('list', { name: 'session records' }))
+  /** A server in front of the floor for the length of each case, watching and answering
+   *  nothing, so what the screen sent can be read back. Stopped after every one of them:
+   *  `serverThat` puts `globalThis.fetch` back only when it is told to, and a case that
+   *  left it standing would be watching the next one. */
+  let watching: ReturnType<typeof serverThat>
 
+  beforeEach(() => {
+    watching = serverThat(() => null)
+  })
+
+  afterEach(() => {
+    watching.stop()
+  })
+
+  /**
+   * WHAT THE ROUTE WAS TOLD ABOUT ONE RECORD, by whatever names it.
+   *
+   * <p>It read the session overlay until 28.09.2026 (`test/saved.tsx`), because that is
+   * where this screen kept what it wrote. It sends now, so the same sentence is read off
+   * the request - `name=value` in the same shape, deliberately, so these three cases kept
+   * every word they were asking about and changed only where they look.
+   *
+   * <p>Found by a substring of the whole line, which covers both halves without a second
+   * helper: a new event is named by something in its BODY (the name somebody typed) and a
+   * changed one by its identity in the ADDRESS (`PUT /api/events/123`).
+   */
+  function told(what: string): string {
     return must(
-      lines.getAllByRole('listitem').find((one) => (one.textContent ?? '').includes(what)),
-      `something saved for ${what}`,
-    ).textContent ?? ''
+      whatWasSent(watching.asked).find((one) => one.includes(what)),
+      `something sent for ${what}`,
+    )
   }
 
   it('comes with the town that was picked, on an event being entered', async () => {
@@ -1910,7 +1982,7 @@ describe('the country an event is filed in', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    expect(await told('Trka sa mestom')).toContain('country=HR')
+    expect(told('Trka sa mestom')).toContain('country=HR')
   })
 
   it('changes with the town, on an event being edited', async () => {
@@ -1932,7 +2004,7 @@ describe('the country an event is filed in', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    expect(await told(String(serbian.id))).toContain('country=HR')
+    expect(told(String(serbian.id))).toContain('country=HR')
   })
 
   it('stays as it was where the town was not touched', async () => {
@@ -1956,7 +2028,7 @@ describe('the country an event is filed in', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    expect(await told(String(serbian.id))).toContain('country=RS')
+    expect(told(String(serbian.id))).toContain('country=RS')
   })
 })
 
@@ -2225,18 +2297,20 @@ function Copy({ of }: { of: BtlEvent }) {
  *  it. The only way to see a race that is no longer anywhere: nothing on the
  *  portal draws a race outside its event, which is the whole reason the deletion
  *  has to carry them. */
-function Removed() {
-  const { deletions } = useSession()
-
-  return (
-    <>
-      <span data-testid="removed">{(deletions.races ?? []).join(',')}</span>
-      <span data-testid="removed-results">{(deletions.results ?? []).join(',')}</span>
-    </>
-  )
-}
 
 describe('an event that is deleted', () => {
+  /** What the screen told the routes. It filed session deletions until 28.09.2026; the
+   *  event goes through its own route now and the schema takes the rest. */
+  let watching: ReturnType<typeof serverThat>
+
+  beforeEach(() => {
+    watching = serverThat(() => null)
+  })
+
+  afterEach(() => {
+    watching.stop()
+  })
+
   it('takes its races with it, since nothing shows a race outside its event', async () => {
     /* This is what used to leave an orphan: the race screen kept showing a race
        whose event was gone, because it was the one place a race could be seen at
@@ -2269,7 +2343,6 @@ describe('an event that is deleted', () => {
           <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
             <RoleProvider initialRole="superadmin" initialModerator={null}>
               <SessionProvider>
-                <Removed />
                 <Routes>
                   <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
                 </Routes>
@@ -2300,23 +2373,26 @@ describe('an event that is deleted', () => {
     await user.click(within(row).getByRole('button', { name: `Obriši: ${one.name}` }))
     await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${one.name}` }))
 
-    const removed = (screen.getByTestId('removed').textContent ?? '').split(',')
+    /**
+     * ONE STATEMENT TAKES ALL OF IT, AND THAT IS WHAT IS MEASURED NOW.
+     *
+     * <p>This case used to read the session, where the screen filed a deletion for the
+     * event, one for each of its races and one for each of their results - because
+     * nothing else would have. `DELETE /api/events/{id}` is a single statement and the
+     * schema cascades the rest: `race_event_fk` from the event, `result_race_fk` from
+     * the race.
+     *
+     * <p><b>So the claim is stronger than it was, not weaker.</b> „Every race went" is
+     * satisfied by a screen that walks them; „exactly one request went, and it named the
+     * event" is only satisfied by one that leaves them to the database. A loop put back
+     * here falls over on the second half.
+     */
+    const wrote = whereItWrote(watching.asked)
 
-    for (const race of its) {
-      expect(removed, `${String(race)} went with its event`).toContain(String(race))
-    }
-
-    /* And its results, which is what the same deletion does from the event's own
-       page: left behind they go on counting in the standing and in the boards,
-       each of them linking to a page that says the event does not exist. */
-    const scored = scoredAt.filter((each) => each.eventSlug === one.slug).map((each) => each.id)
-    const dropped = (screen.getByTestId('removed-results').textContent ?? '').split(',')
-
-    expect(scored.length).toBeGreaterThan(0)
-
-    for (const result of scored) {
-      expect(dropped, `${String(result)} went with its event`).toContain(String(result))
-    }
+    expect(scoredAt.filter((each) => each.eventSlug === one.slug).length).toBeGreaterThan(0)
+    expect(wrote, 'the event was not deleted through its own route').toEqual([
+      `DELETE /api/events/${String(one.id)}`,
+    ])
   })
 
   it('takes the results too when an event is saved as something with no races', async () => {
@@ -2355,7 +2431,6 @@ describe('an event that is deleted', () => {
           <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
             <RoleProvider initialRole="superadmin" initialModerator={null}>
               <SessionProvider>
-                <Removed />
                 <Routes>
                   <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
                 </Routes>
@@ -2389,19 +2464,25 @@ describe('an event that is deleted', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    const removed = (screen.getByTestId('removed').textContent ?? '').split(',')
-    const dropped = (screen.getByTestId('removed-results').textContent ?? '').split(',')
+    /**
+     * EVERY RACE THROUGH ITS OWN ROUTE, AND THE RESULTS ARE NOT NAMED AT ALL.
+     *
+     * <p>Saving an event as a gathering deletes the races it had (owner, 23.08.2026: „u to
+     * čuvanje spada i brisanje svih trka koje su bile povezane"), a race at a time, because
+     * no route empties an event in one go. The results of those races used to be deleted
+     * here beside them; `result_race_fk` cascades from the race, so each
+     * `DELETE /api/races/{id}` already takes its own.
+     */
+    const wrote = whereItWrote(watching.asked)
 
-    for (const race of its) {
-      expect(removed, `${String(race)} stayed under an event that has no races`).toContain(
-        String(race),
-      )
-    }
-
-    for (const result of scored) {
-      expect(dropped, `${String(result)} was left pointing at a race that is gone`).toContain(
-        String(result),
-      )
-    }
+    expect(scored.length).toBeGreaterThan(0)
+    expect(
+      wrote.filter((one) => one.startsWith('DELETE /api/races/')).sort(),
+      'a race stayed under an event that has no races',
+    ).toEqual(its.map((race) => `DELETE /api/races/${String(race)}`).sort())
+    expect(
+      wrote.filter((one) => one.includes('/api/results')),
+      'the screen deleted results the database was already taking',
+    ).toEqual([])
   })
 })

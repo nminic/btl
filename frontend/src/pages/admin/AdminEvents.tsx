@@ -973,6 +973,51 @@ export function AdminEvents() {
             )
           }
 
+          /**
+           * WHAT ELSE THIS DELETION TAKES, SAID WITH A NUMBER, AND THE TWO STATES IT HAS.
+           *
+           * <p>Owner, 28.09.2026, choosing between three outcomes he was priced: the
+           * button works at once, and before the deletion is sent the reader is told how
+           * many results go with it. The gate that used to stand here instead HELD THE
+           * BUTTON BACK until the results arrived, because this screen took them down
+           * itself; the route deletes the event in one statement and the schema cascades
+           * them (`result_race_fk` from the race), so there is nothing left to wait for.
+           *
+           * <p><b>Counted through the RACES and not through the address</b>, because that
+           * is what the database will really do. A result names its event by address as
+           * well, and the two answers differ exactly where two events answer at one
+           * address - the window a copy opens before its day is changed - so the address
+           * would say „and 40 results" over an event that has none of them.
+           *
+           * <p><b>The second state is that the number is not yet known, and it is said
+           * rather than guessed.</b> The results are the largest file the portal has and
+           * this screen deliberately draws without waiting for it, so a press can land
+           * before it is here. An approximate number is what the owner's decision rules
+           * out; nought would be a lie in the one direction that costs something. So the
+           * question says the number is not known, and the deletion still works, which is
+           * the half of his decision that replaced the waiting.
+           *
+           * <p><b>A file on its way and a file that failed get ONE sentence here, and
+           * that is a change from the gate this replaces</b>, which had two. The
+           * difference mattered while it decided whether to WAIT - „waiting" over a file
+           * that will never come asks somebody to wait forever. It decides nothing now,
+           * and to the reader about to press, both states are the same fact: the portal
+           * cannot tell him the number at this moment.
+           */
+          const goingWith = (event: BtlEvent): string => {
+            if (results === null) {
+              return t('admin.eventDeleteCountUnknown')
+            }
+
+            const mine = new Set(
+              allRaces.filter((race) => race.eventId === event.id).map((race) => String(race.id)),
+            )
+
+            return t('admin.eventDeleteTakes', {
+              count: results.filter((made) => mine.has(String(made.raceId))).length,
+            })
+          }
+
           const needle = search.trim().toLowerCase()
           const found = all
             .filter((one) => (needle === '' ? one.date >= today : true))
@@ -1057,13 +1102,7 @@ export function AdminEvents() {
                             record={one}
                             name={one.name}
                             onOpen={() => setChosen({ mode: 'one', record: one })}
-                            whyNoRemove={
-                              results !== null
-                                ? undefined
-                                : resultsFailed
-                                  ? t('admin.resultsFailed')
-                                  : t('admin.waitingForResults')
-                            }
+                            asksWith={goingWith(one)}
                             /* WITH ITS RACES AND ITS RESULTS, AND THE DATABASE IS
                                WHAT TAKES THEM. `DELETE /api/events/{id}` is one
                                statement, and `race_event_fk`, `attending_event_fk`
