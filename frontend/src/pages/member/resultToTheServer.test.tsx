@@ -280,6 +280,103 @@ describe('a run entered away from the calendar', () => {
     },
     SLOW,
   )
+
+  it(
+    'is free to send again after a refusal, not left refusing every press after the first',
+    async () => {
+      const user = setupUser()
+
+      listening(() => refused('theRaceHasNotBeenRun'))
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+
+      await describeARace(user)
+      await send(user)
+
+      await screen.findByText('Rezultat ne može da se pošalje pre dana same trke.')
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      /* THE GUARD RESETS ON A REFUSAL, NOT ONLY ON SUCCESS. `outstanding.current` is set
+         back to `false` in `NewResult.tsx`'s `tellTheServer` as soon as an answer comes
+         back, whichever answer it was - a version that cleared it only where the server
+         agreed would leave this screen refusing every press after the first refusal, and
+         silently: the button goes on looking live and nothing happens, which is worse than
+         the sentence above the form telling a member to correct the one field and send
+         again. */
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(2)
+      }, SOON)
+    },
+    SLOW,
+  )
+})
+
+describe('a run picked from the calendar, on the form away from the event page', () => {
+  it(
+    'sends the raceId and not one word about the race, though the form still asks for the town',
+    async () => {
+      const user = setupUser()
+
+      listening()
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+
+      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+
+      const rows = await screen.findAllByRole('button', { name: /Maraton maratona/ })
+
+      /* NEVER THE FIRST ROW OF THE LIST, the same discipline `reportable()` above keeps and
+         for the same reason: a body built out of `races[0]` or out of the list's own first
+         entry would answer this case by coincidence rather than by carrying the race that
+         was really chosen. */
+      expect(rows.length, 'one race cannot tell a row from the first row').toBeGreaterThan(1)
+
+      await user.click(must(rows[1], 'the second race offered'))
+
+      /* NOT LOCKED, AND STILL THE MEMBER'S TO FILL IN: `racesToOffer.ts` hands over only
+         what the race fixes - the length, the climb and the fall for a race of a length -
+         and never the town or the kind, which is exactly why this body cannot be built out
+         of `said` (`NewResult.tsx`'s own comment on `tellTheServer`). */
+      await user.type(screen.getByLabelText('Mesto'), 'Niš')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      await user.type(screen.getByLabelText('Sati'), '3')
+      await user.type(screen.getByLabelText('Minuta'), '30')
+      await user.type(screen.getByLabelText('Sekundi'), '0')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      const sent = must(writes()[0], 'the request')
+
+      expect(sent.path).toBe('/api/results')
+      expect(sent.init?.method).toBe('POST')
+
+      const body = bodyOf(sent)
+
+      expect(Object.hasOwn(body, 'raceId')).toBe(true)
+      expect(typeof body.raceId).toBe('number')
+
+      /* AND NOT ONE WORD ABOUT THE RACE BESIDE ITS NUMBER, the same rule the door from the
+         event page keeps (`resultToTheServer.test.tsx`, „a run reported from the event it
+         was run at"): `ResultWriteApi.fromTheCalendar` refuses `theRaceIsNamedTwice` when
+         any of these five arrives beside a `raceId`, and City and Country are filled in
+         above precisely because this road, unlike the door from the event page, still asks
+         the member for them. */
+      for (const beside of ['raceName', 'raceKind', 'placeId', 'city', 'country', 'day', 'date']) {
+        expect(Object.hasOwn(body, beside), `${beside} travelled beside a raceId`).toBe(false)
+      }
+
+      expect(typeof body.distanceKm).toBe('number')
+      expect(body.link).toBe('https://primer.rs/rezultati')
+    },
+    SLOW,
+  )
 })
 
 describe('a run reported from the event it was run at', () => {
@@ -445,6 +542,52 @@ describe('a run reported from the event it was run at', () => {
       expect(
         await screen.findByRole('heading', { name: 'Rezultat je poslat' }, SOON),
       ).toBeVisible()
+    },
+    SLOW,
+  )
+
+  it(
+    'is free to send again after a refusal, not left refusing every press after the first',
+    async () => {
+      const user = setupUser()
+      const { race, event } = reportable()
+
+      listening(() => refused('theRaceIsNotKnown'))
+      renderAt(
+        `/sr/kalendar/${event.slug}/prijava?trka=${String(race.id)}`,
+        'competitor',
+        ME,
+        undefined,
+        '2026-08-23',
+      )
+
+      await user.type(await screen.findByLabelText(/Link/), 'https://primer.rs/rezultati')
+
+      if (race.kind !== 'time') {
+        await user.type(screen.getByLabelText('Sati'), '0')
+        await user.type(screen.getByLabelText('Minuta'), '44')
+        await user.type(screen.getByLabelText('Sekundi'), '2')
+      }
+
+      await send(user, 'Pošalji rezultat')
+
+      await screen.findByText(/više ne stoji u kalendaru/, undefined, SOON)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      /* THE SAME GUARD ON THE SECOND DOOR, RESET ON A REFUSAL HERE TOO. `outstanding.current`
+         is set back to `false` in `ReportResult.tsx`'s `send` as soon as an answer comes
+         back, whichever answer it was, and written out as its own case for the same reason
+         the in-flight guard above is its own case: two screens hold two copies of the same
+         ref, and a mutation that stops clearing one of them must fail on that screen's own
+         case rather than on neither. */
+      await send(user, 'Pošalji rezultat')
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(2)
+      }, SOON)
     },
     SLOW,
   )
@@ -705,6 +848,41 @@ describe('a counted result the member takes back', () => {
 
       await waitFor(() => {
         expect(writes()).toHaveLength(1)
+      }, SOON)
+    },
+    SLOW,
+  )
+
+  it(
+    'is free to take back again after a refusal, not left refusing every press after the first',
+    async () => {
+      const user = setupUser()
+
+      listening(() => refused('theFormIsNotComplete'))
+      renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+      const row = await secondRow()
+
+      await user.click(row.getByRole('button', { name: /^Obriši: / }))
+      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+
+      await screen.findByText(/Proveri dužinu, uspon, spust i vreme/, undefined, SOON)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      /* THE GUARD RESETS ON A REFUSAL HERE TOO. `DeleteRecord` does not close the question
+         on its own press (`admin/EntityEditor.tsx`; only its own „Odustani" does), so the row
+         is still asking and „Potvrdi brisanje" is the only way on - `MyResults.tsx` clears
+         `outstanding.current` inside `takeBack`'s `.then()` regardless of what the server
+         said, and a version that cleared it only on success would leave this button dead
+         after the first refusal, with the row still open and nothing on screen saying why a
+         second press does nothing. */
+      await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje/ }))
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(2)
       }, SOON)
     },
     SLOW,
