@@ -278,13 +278,22 @@ export function typedIn(field: string): Typed {
 /**
  * MONEY COMPARED IN THE SMALLEST UNIT IT HAS, never as it arrives.
  *
- * **Measured rather than tidied up.** Amounts here carry two decimals, and two decimals do not
- * survive binary addition: `43.29 + 0.01` is `43.299999999999996`, which is LESS than `43.30`,
- * so a balance that covers a shortfall to the last para would be reported as not covering it
- * and the moderator would be asked to accept a reduced total that is not reduced. Rounding to
- * whole paras and comparing integers has no such state. `activation.test.ts` holds this with
- * that very pair, so the mutation „compare the sums as they come" fails rather than passing on
- * every round number.
+ * **Measured rather than tidied up, and re-measured on review of PR 411 because the first pair
+ * chosen here did not measure what it claimed to.** `43.29 + 0.01` is `43.299999999999997`,
+ * which is the SAME double as `43.30` - so `43.29 + 0.01 >= 43.30` is `true` whether the sums
+ * are rounded to whole paras first or simply added as they arrive. The comment that used to
+ * stand here said the opposite, and `activation.test.ts` held that same pair as the one case
+ * "whose answer depends on how the sum is compared" - it does not, and the mutation "compare
+ * the sums as they come" survived it, 82 green.
+ *
+ * **The pair that actually depends on it, measured in Node:** `8.20 + 0.10` is
+ * `8.299999999999999` and `8.30` is `8.300000000000001` - two DIFFERENT doubles, the first
+ * strictly less than the second - so a comparison of the raw sums reports a shortfall of
+ * `2.27e-15`, a number with no meaning at whole paras, while `Math.round(820) + Math.round(10)
+ * >= Math.round(830)` is `830 >= 830`, true. Rounding to whole paras and comparing integers is
+ * what turns that shortfall into "the balance covers it to the last para" - `activation.test.ts`
+ * holds this with that pair now, so the mutation „compare the sums as they come" fails rather
+ * than passing on every round number.
  */
 function inMinorUnits(amount: number): number {
   return Math.round(amount * 100)

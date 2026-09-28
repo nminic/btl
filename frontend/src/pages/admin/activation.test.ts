@@ -238,14 +238,22 @@ describe('which of the seven cases a row is in', () => {
     })
 
     /**
-     * <p><b>THE ONE CASE IN THIS FILE WHOSE ANSWER DEPENDS ON HOW THE SUM IS COMPARED.</b>
-     * `43.29 + 0.01` is `43.299999999999996` in binary, which is less than `43.30`, so a
-     * comparison of the sums as they arrive reports this as short by nothing at all and asks the
-     * moderator to accept a reduced total that is not reduced. Rounded to whole paras there is
-     * no such state. Every other case in this file passes either way; this one does not.
+     * <p><b>THE ONE CASE IN THIS FILE WHOSE ANSWER DEPENDS ON HOW THE SUM IS COMPARED, RE-MEASURED
+     * ON REVIEW OF PR 411.</b> The pair that stood here, 43.29 / 43.30 / 0.01, does not: measured
+     * in Node, `43.29 + 0.01` and `43.30` are the SAME double, so `>=` answers `true` whether the
+     * sums are rounded first or not, and the mutation `inMinorUnits` exists to catch - dropping
+     * `Math.round` - survived this exact case, 82 green (review of PR 411, VISOK 2).
+     *
+     * <p><b>`8.20 + 0.10` against `8.30` is the pair that actually divides the two comparisons.</b>
+     * In binary, `8.20 + 0.10` is `8.299999999999999` and `8.30` is `8.300000000000001` - two
+     * DIFFERENT doubles, the first strictly the smaller - so comparing the raw sums reports a
+     * shortfall of `2.27e-15`, asking the moderator to accept a reduced total that is not reduced
+     * by any amount a para could hold. Rounded to whole paras, `820 + 10 >= 830` is `true` and the
+     * balance is read as covering it exactly. Every other case in this file passes either way;
+     * this one does not.
      */
     it('counts a balance that covers the difference to the last para', () => {
-      expect(whatToDo(amount(43.29), 43.3, 0.01, TICKED)).toEqual({
+      expect(whatToDo(amount(8.2), 8.3, 0.1, TICKED)).toEqual({
         does: 'spendsTheBalanceAndBooks',
       })
     })
