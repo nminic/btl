@@ -139,6 +139,14 @@ describe('the buttons one answer is chosen from', () => {
       expect(one.querySelector('input.choice__input'), 'an option carries no radio').not.toBeNull()
       expect(one.querySelector('label.choice__label'), 'an option carries no button').not.toBeNull()
     }
+
+    /* AND IT IS THE SEX AND NOT THE OTHER ONE. The form draws exactly two fields
+       from buttons, the sex and the category, and both offer two options, so
+       everything above this line is answered just as well by the wrong one of
+       them: point the query at `#field-firstSeason2027` and it goes on passing
+       while saying nothing about what the owner asked about. The words are what
+       tell the two apart. */
+    expect(options.map((one) => one.textContent)).toEqual(['Muški', 'Ženski'])
   })
 
   it('shares the field in equal parts, read off the track and not off the words', () => {
