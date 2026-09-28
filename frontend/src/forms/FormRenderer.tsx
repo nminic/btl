@@ -1221,8 +1221,13 @@ export function FormRenderer({
    * `setErrors({})` stood here until 23.08.2026 and emptied the whole form: one
    * letter typed into the name of an event took away nine messages and the summary
    * over them, while the same letter typed into „Sati" took away one. A reader
-   * walking the summary with a screen reader lost it on touching the first field
-   * and had to send the form unfinished again to get it back (WCAG 2.2 SC 3.3.1).
+   * walking those messages with a screen reader lost them on touching the first field
+   * and had to send the form unfinished again to get them back (WCAG 2.2 SC 3.3.1).
+   *
+   * <p><b>The rule outlived the thing it was first written for.</b> The summary went on
+   * 28.09.2026, and this matters more without it, not less: the messages are now the
+   * only account of what is wrong, and they are what `aria-invalid` marks, so a sweep
+   * that emptied them would also take away every place the cursor has to go back to.
    */
   const without = (names: string[]) => outside<FieldError>(names)
 
