@@ -35,18 +35,21 @@ import java.util.Optional;
  * day, and reading one of them off the other is the mistake this paragraph exists to stop.
  *
  * <ul>
- * <li><b>An APPLICATION is decided by whoever leads that team.</b> {@code PDL.md:6699}:
+ * <li><b>An APPLICATION is decided by whoever leads that team.</b> PDL.md
+ * ("Prijavu u tim odobrava administrator tog tima"):
  * „**[ODLUKA 05.09.2026] Prijavu u tim odobrava administrator tog tima.** Ne moderator: ko
  * je u čijem timu nije stvar lige nego tima."
  * <li><b>An INVITATION IS SENT BY WHOEVER LEADS THE TEAM, AND SO IS TAKING ONE BACK.</b>
- * {@code PDL.md:8693}: „**[ODLUKA 27.09.2026, vlasnik]** Poziv u tim salje **samo
- * administrator tog tima**", and beside it {@code PDL.md:8699}: „**[IZVEDENO, ne pitano]
+ * PDL.md ("samo administrator tog tima"): „**[ODLUKA 27.09.2026, vlasnik]** Poziv u tim
+ * salje **samo administrator tog tima**", and beside it PDL.md
+ * ("Povlacenje poziva takodje sme samo administrator"): „**[IZVEDENO, ne pitano]
  * Povlacenje poziva takodje sme samo administrator.** Pravo da se poziv povuce prati pravo da
  * se posalje; da ga zadrzi bilo koji clan, tim bi mogao da ponisti odluku coveka koji je
  * jedini smeo da je donese."
  * <p><b>THIS OVERTURNS THE OWNER'S OWN DECISION OF 05.09.2026 AND THE WAY THIS CLASS WAS
- * FIRST WRITTEN, so what it replaced is named rather than quietly gone.</b>
- * {@code PDL.md:6676} used to say the button was seen by „bilo koji clan tog tima, ne samo
+ * FIRST WRITTEN, so what it replaced is named rather than quietly gone.</b> PDL.md
+ * ("obara pretpostavku da poziv šalje administrator") used to say the button was seen by
+ * „bilo koji clan tog tima, ne samo
  * administrator", with his parenthesis „(bilo koji clan)" recorded as explicitly overturning
  * the obvious reading; that line is struck through and dated in the journal.
  * <p><b>How the conflict was found is the part worth keeping.</b> Not by review and not by
@@ -57,15 +60,18 @@ import java.util.Optional;
  * rulebook. <b>No guard here could have seen it:</b> the rulebook is prose in a database
  * column and this code is written from the journal, so the two can disagree for weeks and
  * every case stays green. That is a gap in the process rather than in this class, and
- * {@code PDL.md:8688} records it as one.
- * <li><b>And an INVITATION is answered by the one person it names.</b>
- * {@code PDL.md:6701}: „**[ODLUKA 05.09.2026] Poziv u tim prihvata pozvani član.** Niko ne
+ * PDL.md ("nijedan cuvar to nije mogao da vidi") records it as one.
+ * <li><b>And an INVITATION is answered by the one person it names.</b> PDL.md
+ * ("Poziv u tim prihvata pozvani član"): „**[ODLUKA 05.09.2026] Poziv u tim prihvata
+ * pozvani član.** Niko ne
  * sme da upiše promenu koja se tiče drugog čoveka bez njegove reči, pa ni član tima koji
  * poziva."
  * </ul>
  *
  * <p><b>Three older sentences of PDL said the administrator sends invitations too</b>
- * ({@code PDL.md:2434}, {@code :2435}, {@code :2564}) <b>and were struck through on
+ * (PDL.md ("Administrator tima odobrava zahteve za učlanjenje"),
+ * PDL.md ("takmičar šalje administratoru tima zahtev na odobrenje"),
+ * PDL.md ("Tim ima svog administratora, i to je")) <b>and were struck through on
  * 27.09.2026</b>, the decision of 05.09.2026 having overturned that half of each of them
  * without anybody crossing them out at the time. Named here because a reader who finds one
  * of them uncrossed in an older copy of the journal would write this route the wrong way
@@ -129,7 +135,8 @@ import java.util.Optional;
  * {@link VerificationWriteApi} at line 519 reads that same method on the day the moderator
  * decides, with its own note at line 106 saying the portal has already made this exact
  * mistake once.
- * <li><b>And the drift is reachable rather than theoretical.</b> {@code PDL.md:6824}:
+ * <li><b>And the drift is reachable rather than theoretical.</b> PDL.md
+ * ("Poziv van roka čeka, ne propada"):
  * „**Poziv van roka čeka, ne propada.** Poruka ostaje i kaže da poziv čeka; 1. oktobra se
  * dugme vraća samo od sebe." An invitation sent in December 2027 carries 2028 and, answered
  * in October 2028, takes effect in 2029 - so the frozen column names a season that is by
@@ -146,14 +153,16 @@ import java.util.Optional;
  * that measurement reversed.
  *
  * <p><b>THE WINDOW BINDS THREE OF THE FIVE ACTS AND NOT ALL FIVE, and that is the owner's
- * reason rather than symmetry.</b> {@code PDL.md:6818}: „**[ODLUKA 06.09.2026, izvedeno]
+ * reason rather than symmetry.</b> PDL.md ("traži prelazni rok"):
+ * „**[ODLUKA 06.09.2026, izvedeno]
  * „Prihvati" traži prelazni rok, „Odbij" ne.** Prihvatanje upisuje klub na zapis i sezonu od
  * koje član trči za njega, dakle menja sastav... Odbijanje ne upisuje ništa o sastavu nego
  * samo završava pitanje. Vezan za rok i on, član pozvan 30. decembra ne bi mogao ni da
  * prihvati ni da se oslobodi pitanja do sledećeg oktobra." So asking, inviting and accepting
  * are inside 1 October to 31 December and refusing is not. <b>Taking a question back is not
  * bound either, and that is read off the same sentence</b>: it writes nothing about a squad
- * and it is the asker's own end to his own question, which {@code PDL.md:6854} names for the
+ * and it is the asker's own end to his own question, which PDL.md
+ * ("ostaje njegova da je povuče") names for the
  * application in as many words - „Prijava u oba slučaja ostaje njegova da je povuče, pa i
  * dalje ima kraj koji ne zavisi ni od koga drugog." <b>That last step is my reasoning over
  * his sentence and is marked as such</b>, because a constraint reasoned out and written in
@@ -165,7 +174,8 @@ import java.util.Optional;
  * method. A month written in this file would be that window with a second home.
  *
  * <p><b>A MEMBER WHOSE FEE HAS LAPSED IS NOBODY TO ANY OF THE FIVE, ON EVERY SIDE.</b>
- * Owner, 19.09.2026 ({@code PDL.md:2318}): „Želim da od svih mesta član kojem je istekla
+ * Owner, 19.09.2026 (PDL.md ("mesta clan kojem je istekla clanarina moze da pristupa samo
+ * strani za obnovu clanarine")): „Želim da od svih mesta član kojem je istekla
  * članarina može da pristupa samo strani za obnovu članarine... jer se sve akcije za njega
  * brane." Getting into a team is such an action, and so is deciding about somebody's, so
  * {@code competitor.active} is asked of the caller, of the applicant and of the invitee.
@@ -190,7 +200,8 @@ import java.util.Optional;
  * {@code InboxConstraintsTest.withdrawingTheInvitationTakesTheMessageThatAskedAboutIt}
  * asserts exactly that of the constraint. Left to it, deleting the row would take the
  * member's message with it, and the owner decided the opposite on 06.09.2026
- * ({@code PDL.md:6774}): „**Poruka sa pozivom ostaje u sandučetu, sa razlogom umesto
+ * (PDL.md ("Poruka sa pozivom ostaje u sandučetu, sa razlogom umesto dugmadi")):
+ * „**Poruka sa pozivom ostaje u sandučetu, sa razlogom umesto
  * dugmadi.** Ne briše se: brisanje poruke iz tuđeg sandučeta je brisanje istorije, a pitanje
  * „šta se desilo sa onim pozivom" mora da ima odgovor."
  *
@@ -222,7 +233,8 @@ import java.util.Optional;
  * decision nobody has taken.
  *
  * <p><b>AND A QUESTION SOMEBODY ELSE'S TEAM ASKED IS LEFT EXACTLY WHERE IT IS.</b>
- * {@code PDL.md:6771}: „**[ODLUKA 06.09.2026] Poziv se ne pamti kao odgovoren nego se pravo
+ * PDL.md ("Poziv se ne pamti kao odgovoren"): „**[ODLUKA 06.09.2026] Poziv se ne pamti
+ * kao odgovoren nego se pravo
  * na odgovor računa u trenutku iscrtavanja.** Čim član ima tim, nijedan drugi poziv ne nudi
  * „Prihvati"." So entering a team deletes nothing of any other team's, and their messages
  * stand with it; what changes is that the answer is no longer possible, which
@@ -244,14 +256,16 @@ import java.util.Optional;
  *
  * <ul>
  * <li><b>ANY MESSAGE TO A TEAM ABOUT THE ANSWER TO ITS OWN INVITATION, AND IT IS A HOLE
- * RATHER THAN A DECISION.</b> {@code PDL.md:6751} asks for one: „**[ODLUKA 06.09.2026]
+ * RATHER THAN A DECISION.</b> PDL.md ("Ishod poziva se vraća timu kao poruka onome ko vodi
+ * tim") asks for one: „**[ODLUKA 06.09.2026]
  * Ishod poziva se vraća timu kao poruka onome ko vodi tim u trenutku odgovora**, računato iz
  * rostera tada, ne zapamćeno." No sentence for it exists - the dictionary has words for the
  * invitation, for an application's two outcomes and for an invitation overtaken by another
  * team, and none at all for „he accepted yours" or „he refused yours". A sentence invented
  * here would be the server writing the portal's Serbian for a decision nobody took, which is
  * the line {@link TeamWriteApi#leave} draws („NOBODY IS TOLD, AND THAT IS THE ABSENCE OF A
- * SENTENCE"). The team is not left blind in the meantime and {@code PDL.md:6753} says why:
+ * SENTENCE"). The team is not left blind in the meantime and PDL.md ("strana tima pokazuje
+ * i pozive") says why:
  * „strana tima pokazuje i pozive koje je poslala, da tim ne zavisi od poruke" - the row
  * leaving the team's own list IS the answer.
  * <li><b>Any message to the invited member when a team takes its invitation back.</b> Same
@@ -263,7 +277,8 @@ import java.util.Optional;
  * decided by a ROLE that may change hands between the question and the answer and a letter
  * addressed to a person would freeze it. Five rounds of review and ten findings had one
  * cause, which that entry records.
- * <li><b>A moderator.</b> {@code PDL.md:6703}: „**[ODLUKA 05.09.2026] Ni prijava ni poziv ne
+ * <li><b>A moderator.</b> PDL.md ("moderatorski red za verifikaciju"):
+ * „**[ODLUKA 05.09.2026] Ni prijava ni poziv ne
  * idu u moderatorski red za verifikaciju.**" Nothing here writes {@code verification}.
  * <li><b>A migration.</b> {@code team_application} and {@code team_invitation} are V12's and
  * carry every column this class writes. <b>That {@code team_invitation} records no sender is
@@ -274,7 +289,8 @@ import java.util.Optional;
  * and a {@code sent_by} column would be a memory of who typed that no condition here may
  * read. <b>The argument that used to stand here read the other way round</b> - that anybody
  * in the team could have sent it, so recording a sender was pointless - and it rested on
- * exactly the half of {@code PDL.md:6676} the owner overturned on 27.09.2026.
+ * exactly the half of PDL.md ("obara pretpostavku da poziv šalje administrator") the
+ * owner overturned on 27.09.2026.
  * <li><b>Any length for anything.</b> Nothing in either request is free text.
  * </ul>
  */
@@ -314,7 +330,8 @@ class TeamJoiningWriteApi {
 	/**
 	 * HE HAS A QUESTION STANDING ALREADY, AND FOR AN APPLICATION THAT IS ACROSS EVERY TEAM.
 	 *
-	 * <p>{@code PDL.md:6765}: „**Prijava ne može da se umnoži.** „Prijavi se u tim" se crta
+	 * <p>PDL.md ("Prijava ne može da se umnoži"): „**Prijava ne može da se umnoži.**
+	 * „Prijavi se u tim" se crta
 	 * samo kad član nema nijednu prijavu u letu, **traženo po broju člana kroz sve timove**,
 	 * pa ih nikad nema dve." <b>That is stricter than the schema and deliberately so:</b>
 	 * {@code team_application_asked_once} is over {@code (competitor_id, team_id, season)}, so
@@ -332,7 +349,8 @@ class TeamJoiningWriteApi {
 	/**
 	 * THIS TEAM HAS ALREADY ASKED THIS MEMBER, IN ANY SEASON.
 	 *
-	 * <p>{@code PDL.md:6910}: „**[IZVEDENO] Isti tim ne poziva istog čoveka dvaput.** Prijava
+	 * <p>PDL.md ("Isti tim ne poziva istog čoveka dvaput"): „**[IZVEDENO] Isti tim ne
+	 * poziva istog čoveka dvaput.** Prijava
 	 * se šalje jednom i dok čeka na njenom mestu stoji način da se povuče; poziv je isti
 	 * zapis, pa dok stoji, na njegovom mestu stoji da je poslat. Bez toga jedan tim može da
 	 * napuni tuđe sanduče istim pitanjem." <b>Stricter than the schema again, and along a
@@ -463,8 +481,10 @@ class TeamJoiningWriteApi {
 	/**
 	 * A MEMBER ASKING A TEAM TO TAKE HIM, WHICH WRITES NO MEMBERSHIP AND TELLS NOBODY.
 	 *
-	 * <p>{@code PDL.md:6671}: „**[ODLUKA 05.09.2026] „Prijavi se u tim" stoji na strani
-	 * tima.**" and {@code :6674}: „**Vidi ga član koji nema tim, i samo u prelaznom roku**
+	 * <p>PDL.md ("„Prijavi se u tim" stoji na strani tima"):
+	 * „**[ODLUKA 05.09.2026] „Prijavi se u tim" stoji na strani
+	 * tima.**" and PDL.md ("Vidi ga član koji nema tim, i samo u prelaznom roku"):
+	 * „**Vidi ga član koji nema tim, i samo u prelaznom roku**
 	 * (1.10-31.12)."
 	 *
 	 * <p><b>Three refusals are one empty 404 and that is {@link TeamWriteApi#propose}'s
@@ -476,7 +496,8 @@ class TeamJoiningWriteApi {
 	 * A member whose fee has lapsed is in the same bucket, by the decision of 19.09.2026.
 	 *
 	 * <p><b>A team with nobody to answer for it is in that bucket too, and it is the one
-	 * refusal here that is about the team rather than the caller.</b> {@code PDL.md:6783}:
+	 * refusal here that is about the team rather than the caller.</b> PDL.md
+ * ("Tim koji nema nijednog člana ne dobija poruku"):
 	 * „**[IZVEDENO] Tim koji nema nijednog člana ne dobija poruku, jer nema kome. Isti razlog
 	 * iz kog se takvom timu ne nudi ni prijava.**" Left in, the application would stand for
 	 * ever with nobody able to decide it, which is exactly the fault the owner's entry of
@@ -536,7 +557,8 @@ class TeamJoiningWriteApi {
 	/**
 	 * THE TEAM'S ANSWER TO AN APPLICATION, WHICH ONLY WHOEVER LEADS IT MAY GIVE.
 	 *
-	 * <p>{@code PDL.md:6699}, above. Who leads it is {@link TeamApi#WHO_ADMINISTERS_IT} - the
+	 * <p>PDL.md ("Prijavu u tim odobrava administrator tog tima"), above. Who leads it is
+	 * {@link TeamApi#WHO_ADMINISTERS_IT} - the
 	 * founder while he is still standing in it, otherwise whoever has been in it longest, the
 	 * tie broken by the smaller member number - asked of that constant and never written out
 	 * here, because {@code GET /api/teams} answers the same question to the team's own page as
@@ -549,13 +571,15 @@ class TeamJoiningWriteApi {
 	 * would answer which applications exist and who runs which team to anybody walking them.
 	 *
 	 * <p><b>AND A SIXTH, WHICH IS A DECISION RATHER THAN A CONSEQUENCE.</b>
-	 * {@code PDL.md:6851}: „**[ODLUKA 06.09.2026] Prijava člana koji je u međuvremenu dobio
+	 * PDL.md ("Prijava člana koji je u međuvremenu dobio tim se timu ne prikazuje"):
+	 * „**[ODLUKA 06.09.2026] Prijava člana koji je u međuvremenu dobio
 	 * tim se timu ne prikazuje.** Prikazana, „Primi u tim" bi ga izvukla iz tog tima bez
 	 * ijednog pitanja, a P13 to zabranjuje svuda drugde. **Isto važi i za člana koga je
 	 * administracija obrisala.**" So an applicant who has since got a team, or whose fee has
 	 * since lapsed, is not visible to this route at all - <b>for refusing as much as for
 	 * accepting</b>, which is what „se timu ne prikazuje" says and is the safe direction: the
-	 * row simply waits for him, and {@code PDL.md:6854} keeps that end in his hands - „Prijava
+	 * row simply waits for him, and PDL.md ("ostaje njegova da je povuče") keeps that end
+	 * in his hands - „Prijava
 	 * u oba slučaja ostaje njegova da je povuče."
 	 */
 	@PutMapping(path = "/api/teams/{id}/applications/{application}",
@@ -593,7 +617,8 @@ class TeamJoiningWriteApi {
 		}
 
 		if (!accepted) {
-			/* „Odbij", AND IT IS NOT BOUND BY THE WINDOW (PDL.md:6818): it writes nothing
+			/* „Odbij", AND IT IS NOT BOUND BY THE WINDOW (PDL.md, "traži prelazni rok"): it
+			   writes nothing
 			   about a squad and only ends the question. */
 			theApplicationIsOver(application);
 			tell(his.get().applicant(), theApplicationWasRefusedReads(his.get().teamName()),
@@ -621,7 +646,8 @@ class TeamJoiningWriteApi {
 	/**
 	 * A MEMBER TAKING HIS OWN APPLICATION BACK, WHICH DEPENDS ON NOBODY.
 	 *
-	 * <p>{@code PDL.md:6854}: „**[IZVEDENO] Prijava u oba slučaja ostaje njegova da je
+	 * <p>PDL.md ("ostaje njegova da je povuče"): „**[IZVEDENO] Prijava u oba slučaja ostaje
+	 * njegova da je
 	 * povuče**, pa i dalje ima kraj koji ne zavisi ni od koga drugog." „Oba slučaja" are the
 	 * two the decision above it names - an applicant who has since got a team and one the
 	 * administration has deleted - so this is the one road that is open when the team's own is
@@ -663,7 +689,8 @@ class TeamJoiningWriteApi {
 	/**
 	 * A TEAM ASKING SOMEBODY IN, AND ONLY WHOEVER LEADS IT MAY ASK.
 	 *
-	 * <p>{@code PDL.md:8693}, quoted in full on this class: „Poziv u tim salje **samo
+	 * <p>PDL.md ("samo administrator tog tima"), quoted in full on this class: „Poziv u tim
+	 * salje **samo
 	 * administrator tog tima**", the owner's decision of 27.09.2026 taken off Article 53 of the
 	 * rulebook and overturning his own of 05.09.2026. <b>A member who merely stands in the team
 	 * is answered 404 here</b>, and the same man is answered 404 by {@link #decide} - which is
@@ -760,17 +787,20 @@ class TeamJoiningWriteApi {
 	/**
 	 * THE MEMBER'S ANSWER TO AN INVITATION, WHICH ONLY HE MAY GIVE.
 	 *
-	 * <p>{@code PDL.md:6701}: „Niko ne sme da upiše promenu koja se tiče drugog čoveka bez
+	 * <p>PDL.md ("Poziv u tim prihvata pozvani član"): „Niko ne sme da upiše promenu koja se
+	 * tiče drugog čoveka bez
 	 * njegove reči, pa ni član tima koji poziva." One statement asks both halves of „is this
 	 * invitation his", so there is no moment at which the row is in hand and the answer still
 	 * depends on who is asking.
 	 *
-	 * <p><b>„Prihvati" needs the window and „Odbij" does not</b> ({@code PDL.md:6818}), and
+	 * <p><b>„Prihvati" needs the window and „Odbij" does not</b>
+	 * (PDL.md ("traži prelazni rok")), and
 	 * an invitation asked outside it is not lost: „**Poziv van roka čeka, ne propada.** Poruka
 	 * ostaje i kaže da poziv čeka; 1. oktobra se dugme vraća samo od sebe."
 	 *
 	 * <p><b>Accepting is refused when he has meanwhile got a team</b>
-	 * ({@code PDL.md:6771}), and that refusal names it, because his own squad is public and
+	 * (PDL.md ("Poziv se ne pamti kao odgovoren")), and that refusal names it, because his
+	 * own squad is public and
 	 * the sentence is about himself.
 	 */
 	@PutMapping(path = "/api/teams/{id}/invitations/{invitation}",
@@ -833,7 +863,8 @@ class TeamJoiningWriteApi {
 	 * as an absence.
 	 *
 	 * <p><b>And it is the administrator's alone, which is recorded rather than reasoned out
-	 * here.</b> {@code PDL.md:8699}: „**[IZVEDENO, ne pitano] Povlacenje poziva takodje sme
+	 * here.</b> PDL.md ("Povlacenje poziva takodje sme samo administrator"):
+	 * „**[IZVEDENO, ne pitano] Povlacenje poziva takodje sme
 	 * samo administrator.** Pravo da se poziv povuce prati pravo da se posalje; da ga zadrzi
 	 * bilo koji clan, tim bi mogao da ponisti odluku coveka koji je jedini smeo da je donese."
 	 * The journal marks it as derived from the decision above rather than as a sentence of his,
@@ -841,7 +872,8 @@ class TeamJoiningWriteApi {
 	 * {@link #decide} use, so the three cannot drift.
 	 *
 	 * <p><b>Nothing here reads WHO SENT the invitation, and there is no column that could.</b>
-	 * {@code team_invitation} records no sender on purpose: {@code PDL.md:6778} sends the
+	 * {@code team_invitation} records no sender on purpose: PDL.md
+	 * ("Poruka ide onome ko vodi tim u trenutku slanja") sends the
 	 * outcome „onome ko vodi tim u trenutku odgovora... ne onome ko je poziv poslao". Under the
 	 * decision of 27.09.2026 the one who sends and the one who takes back are the same SEAT,
 	 * but not always the same PERSON - the title passes when somebody leaves - so what is asked
@@ -950,16 +982,19 @@ class TeamJoiningWriteApi {
 	/**
 	 * THE TEAMS WHOSE INVITATION HE HAS JUST MADE UNANSWERABLE, AND EACH IS TOLD ONCE.
 	 *
-	 * <p>{@code PDL.md:6776}: „**[ODLUKA 06.09.2026] Tim čiji je poziv ostao neodgovoren
+	 * <p>PDL.md ("Tim čiji je poziv ostao neodgovoren dobija poruku u sandučetu"):
+	 * „**[ODLUKA 06.09.2026] Tim čiji je poziv ostao neodgovoren
 	 * dobija poruku u sandučetu portala.** Vlasnik: „Administratori timova dobijaju poruku u
 	 * tome u inbox portala."" And three derivations the owner's own entry draws beside it,
 	 * each of which is a condition here:
 	 *
 	 * <ul>
 	 * <li><b>To whoever leads the team, not to whoever sent the invitation</b>
-	 * ({@code PDL.md:6778}), „računato iz rostera tada", which is
+	 * (PDL.md ("Poruka ide onome ko vodi tim u trenutku slanja")), „računato iz rostera
+	 * tada", which is
 	 * {@link TeamApi#WHO_ADMINISTERS_IT} asked now.
-	 * <li><b>Not to the team he joined</b> ({@code PDL.md:6785}): „Taj je sam doneo odluku ili
+	 * <li><b>Not to the team he joined</b> (PDL.md ("doneo odluku ili je njegov poziv
+	 * prihvaćen")): „Taj je sam doneo odluku ili
 	 * je njegov poziv prihvaćen, pa mu se ne javlja ono što već zna."
 	 * <li><b>Not to a team with nobody in it</b>, „jer nema kome" - which is a null leader
 	 * here, and the row is left out rather than written to nobody. V13 makes a message with
@@ -967,7 +1002,8 @@ class TeamJoiningWriteApi {
 	 * all, exactly as {@link VerificationWriteApi} guards its own.
 	 * </ul>
 	 *
-	 * <p><b>The rows themselves are not touched</b> ({@code PDL.md:6771}), so what those
+	 * <p><b>The rows themselves are not touched</b>
+	 * (PDL.md ("Poziv se ne pamti kao odgovoren")), so what those
 	 * teams keep is their question and what they get is the news. One row per TEAM and not per
 	 * invitation: a team may hold one for 2028 and another for 2029, which the schema allows
 	 * even though this class refuses to write the second, and two identical lines in one inbox
@@ -1182,7 +1218,10 @@ class TeamJoiningWriteApi {
 	}
 
 
-	/** Across every team, which is {@code PDL.md:6765} and is stricter than the schema. */
+	/**
+	 * Across every team, which is PDL.md ("Prijava ne može da se umnoži") and is stricter
+	 * than the schema.
+	 */
 	private boolean aQuestionOfHisAlreadyStands(long me) {
 		return db.sql("select exists(select 1 from team_application where competitor_id = ?)")
 				.param(me)
@@ -1190,7 +1229,10 @@ class TeamJoiningWriteApi {
 				.single();
 	}
 
-	/** In any season, which is {@code PDL.md:6910} and is stricter than the schema. */
+	/**
+	 * In any season, which is PDL.md ("Isti tim ne poziva istog čoveka dvaput") and is
+	 * stricter than the schema.
+	 */
 	private boolean thisTeamHasAskedHim(long team, long him) {
 		return db.sql("select exists(select 1 from team_invitation"
 						+ " where team_id = ? and competitor_id = ?)")
