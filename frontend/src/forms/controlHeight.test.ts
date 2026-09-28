@@ -168,6 +168,30 @@ describe('how tall a control in a form is', () => {
     }
   })
 
+  it('is not asked of the one control that is a mark rather than a box', () => {
+    /* The height above binds everything in a field, and a tick is in a field. Without
+       something saying otherwise it stops being 1,15rem square and becomes a rectangle
+       the size of an empty text box - and nothing else would notice, because the rule
+       it loses to is correct and the tick simply comes out the wrong shape.
+     *
+       Held as „somebody says so" rather than as a number, and the reason the exemption
+       is allowed to exist at all is read from the definitions rather than remembered:
+       a portal with no checkbox on any form would not need one, and would be telling
+       this file about a control it no longer draws. */
+    const draws = Object.values(FORMS).flatMap((form) => form.fields.map((field) => field.type))
+
+    expect(draws, 'no form asks for a tick any more, so nothing needs to opt out')
+      .toContain('checkbox')
+
+    const optsOut = ALL.filter(
+      (rule) => insideAField(rule.selector) && rule.selector.includes('checkbox'),
+    ).flatMap((rule) =>
+      rule.declarations.filter(([property, value]) => TALL.includes(property) && value === OPT_OUT),
+    )
+
+    expect(optsOut.length, 'the tick would be given the height of a text box').toBeGreaterThan(0)
+  })
+
   it('is worth one thing, said in one place', () => {
     const declared = ALL.flatMap((rule) =>
       rule.declarations
