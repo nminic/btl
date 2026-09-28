@@ -443,6 +443,27 @@ function asksFor(path: string): number {
   return (server?.asked ?? []).filter((one) => one.path === path).length
 }
 
+/**
+ * REQUIRES SOMETHING TO BE TRUE NOW AND TO GO ON BEING TRUE, which `waitFor` cannot say.
+ *
+ * <p><b>`waitFor` answers „has this BECOME true" and can answer nothing else.</b> Measured: a
+ * heading that is absent at the start and appended after 300 ms satisfies it. So a `waitFor`
+ * written to hold a screen still - „it did not react" - is satisfied by a screen that reacted and
+ * then put itself back, and equally by one that had not reacted YET when the first poll ran.
+ *
+ * <p><b>Read now and then again for as long as the window being guarded</b>, 300 ms in thirty
+ * turns. Now, so that something that arrives late fails on the first reading rather than being
+ * waited for; again, so that something that leaves inside the window fails on a later one.
+ */
+async function itStays(check: () => void): Promise<void> {
+  check()
+
+  for (let turn = 0; turn < 30; turn += 1) {
+    await new Promise((settle) => setTimeout(settle, 10))
+    check()
+  }
+}
+
 beforeEach(() => {
   forgetEveryCookie()
   document.cookie = 'XSRF-TOKEN=imam'
@@ -976,12 +997,27 @@ describe('the inbox when somebody else signs in without signing out first', () =
      it three times over (twenty second timeouts, `TeamDetail` never even called). `useInbox`
      here is called `{ reactive: false }` on purpose (review of PR 406, second round; the doc
      on `TheMessageAsked` carries the measurement in full), and this case is what keeps that
-     boundary from drifting back without the same measurement being repeated: production has
-     no road to this switch on this screen at all. The only door to `theServerSignedMeIn` is
-     `member/SignIn.tsx`, reached solely through `/sr/prijava`, and every route including that
-     one shares the one `<Outlet />` `app/Shell.tsx` holds - so walking to it and back both
-     unmount this screen, unlike the header panel above it, which never comes down. */
-  it('does not react to a caller switch that only a test can reach, which is the measured boundary', async () => {
+     boundary from drifting back without the same measurement being repeated.
+
+     **WHAT THIS CASE CLAIMS IS NARROWER THAN ITS OLD NAME SAID, and the difference is measured
+     rather than cautious (28.09.2026).** It used to be called „does not react to a caller
+     switch", under a sentence saying production has no road to this switch on this screen AT
+     ALL. The second half of that is still the honest state of a search - no production road was
+     found, and `data/useResource.ts` names above `useInbox` exactly what was searched - but the
+     first half is not a property of this screen. `{ reactive: false }` holds the OWNER and
+     nothing else, and `useInbox` hands `revision` to every caller whatever `reactive` is: with
+     the cache already dropped by the switch, the next bump of that number re-reads and is
+     answered with the NEW caller's mail, so this screen does reach `NotFound` and its redirect.
+     What bumps it here is this screen's own read receipt (`member/inboxRead.ts`), so the window
+     is the gap between the switch and the moment that receipt settles. Measured with the receipt
+     held open until after the click: the message goes within twenty five milliseconds and the
+     router lands on „/".
+
+     So what is really being held here is „once its own receipt has settled, a caller switch
+     alone does not move it", which is the half `{ reactive: false }` is responsible for, and it
+     was measured on its own: with a row that arrives already read, so nothing is ever written
+     and the revision never moves, this screen did not move either. */
+  it('holds its message through a caller switch once its own read receipt has settled', async () => {
     const user = setupUser()
 
     aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
@@ -993,16 +1029,38 @@ describe('the inbox when somebody else signs in without signing out first', () =
     expect(await screen.findByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
     expect(screen.getByText(FORGED.body)).toBeVisible()
 
+    /* **WAITED FOR, NOT ASSUMED - this case's own name is a precondition and until this line
+       nothing established it (review of PR 426).** The heading above resolves on the FIRST
+       `GET /api/inbox`, before `member/inboxRead.ts` has even sent
+       `POST /api/inbox/{id}/read`, so whether the receipt settled before the click below used to
+       depend on nothing this case controlled - a slow receipt turned this case from green into a
+       deterministic failure, on the very heading `itStays` below reads. The road to a SECOND
+       `GET /api/inbox` is the same one the case above this one already waits on: nothing but
+       `theInboxHasChanged()` bumps `data/useResource.ts`'s revision, and it runs only once the
+       receipt route has answered, never on the asking. So waiting for the count to pass one is
+       waiting for the receipt to have settled, not for a fixed delay a slower machine or a
+       slower network would outrun. */
+    await waitFor(() => {
+      expect(asksFor('/api/inbox')).toBeGreaterThan(1)
+    })
+
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
 
-    /* Held for a beat rather than read once, the same way `leaves a served message unread
-       after it has been opened` above holds its own count: a version that DID react - and so
-       would need `NotFound`'s race measured all over again - corrects itself a tick later,
-       and reading once would not give it that tick to be wrong in. */
-    await waitFor(() => {
+    /* **Held rather than waited for, and that is a measurement rather than a stronger word for
+       the same thing.** What stood here was `waitFor`, under a comment saying it would catch a
+       screen that reacted and corrected itself a tick later. It would not: `waitFor` answers „has
+       this BECOME true" and nothing else, so it is satisfied by a heading that was absent when it
+       started and arrived 300 ms later. Measured both ways on 28.09.2026 - a late arrival PASSES
+       `waitFor` and FAILS this; and with the read receipt of this screen's own effect released a
+       tick after the click, `waitFor` PASSED while the router had already been sent to „/".
+
+       The window that receipt opens is named over this case rather than repeated here, and it is
+       why this reads „once its own read receipt has settled": the wait above is what makes that
+       true now, rather than the pace of whatever machine this runs on. */
+    await itStays(() => {
       expect(screen.getByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
+      expect(screen.getByText(FORGED.body)).toBeVisible()
     })
-    expect(screen.getByText(FORGED.body)).toBeVisible()
   }, SLOW * 2)
 })
 

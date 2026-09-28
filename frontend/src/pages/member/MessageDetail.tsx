@@ -82,23 +82,36 @@ export function MessageDetail() {
  * the window can still open under a slower fetch, a busier event loop, or a future React.
  * Reacting here is withheld on that uncertainty, not on a measurement that it fails.
  *
- * **What makes withholding it defensible rather than a shrug.** Measured over what
- * `theServerSignedMeIn` is - the one function `member/SignIn.tsx` calls after
- * `GET /api/me` - it is reachable from exactly one screen, `/sr/prijava`, which this address
- * is not. `app/routeObjects.tsx` puts every route including that one under the same `<Outlet />`
+ * **What makes withholding it defensible rather than a shrug, and it is the state of a SEARCH
+ * rather than a guarantee.** `theServerSignedMeIn` is what `member/SignIn.tsx` calls after
+ * `GET /api/me`, and that screen is `/sr/prijava`, which this address is not:
+ * `app/routeObjects.tsx` puts every route including that one under the same `<Outlet />`
  * `app/Shell.tsx` holds, so reaching the sign in screen and coming back BOTH unmount this
- * component - the very thing `MessagesMenu.tsx` cannot say, since it sits beside the outlet
- * and never comes down. So the shared-laptop road this increment closes (owner, 27.09.2026)
- * is closed here already, by routing, exactly as PR 406's own review measured before asking
- * for a key on this element in the first place: „the detail screen mounts again and reads
- * again." What `{ reactive: false }` does NOT close is a switch reached by calling
- * `theServerSignedMeIn` directly without going through that screen at all, which is not a
- * road production has - it is how `pictureIsOneRow.test.tsx` and this file's own
- * `inboxFromTheServer.test.tsx` reach it, on purpose, to measure the general case. That gap
- * is real, is narrower than it was, and is written down rather than hidden: closing it for
- * good needs either a change to the shared `NotFound.tsx` or a new, non-redirecting answer
- * for „not yours any more" as opposed to „never was anybody's" - both of which are product
- * decisions this increment does not carry a mandate for.
+ * component - the very thing `MessagesMenu.tsx` cannot say, since it sits beside the outlet and
+ * never comes down. That is the shared-laptop road the owner named (27.09.2026), and routing is
+ * what closes it here, exactly as PR 406's own review measured before asking for a key on this
+ * element in the first place: „the detail screen mounts again and reads again."
+ *
+ * **`session/useTheServersSession.ts` is a SECOND production caller of that same function, and it
+ * was measured rather than waved away** (28.09.2026). `Shell` runs it once a visit, and
+ * `app/App.tsx` builds `SessionProvider` with no `initialMemberNumber`, so `signedIn` is null
+ * until `GET /api/me` answers: `TheMessageAsked` first mounts already knowing `mine`, and that
+ * caller does not move under it afterwards.
+ *
+ * **So what is claimed here is that NO PRODUCTION ROAD WAS FOUND, and not that none exists.** An
+ * earlier draft of this paragraph said a switch reached without going through the sign in screen
+ * „is not a road production has", which is a guarantee rather than the state of a search, and is
+ * exactly the shape that misleads the next reader. What was searched is written out where the
+ * mechanism is, over `useInbox` in `data/useResource.ts`, and is not repeated here so that the
+ * boundary keeps one home. **That doc also carries what `{ reactive: false }` does and does not
+ * hold**, measured the same day: it holds the OWNER, while the revision `useInbox` hands every
+ * caller is NOT gated by it, so a bump landing after a caller has changed does reach `NotFound`
+ * on this screen. `pictureIsOneRow.test.tsx` and this file's own `inboxFromTheServer.test.tsx`
+ * are what reach the switch deliberately, to measure the general case. That gap is real, is
+ * narrower than it was, and is written down rather than hidden: closing it for good needs either
+ * a change to the shared `NotFound.tsx` or a new, non-redirecting answer for „not yours any more"
+ * as opposed to „never was anybody's" - both of which are product decisions this increment does
+ * not carry a mandate for.
  */
 function TheMessageAsked({ mine }: { mine: string }) {
   return (
