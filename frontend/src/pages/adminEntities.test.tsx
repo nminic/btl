@@ -10,7 +10,7 @@ import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, first, inputElement, must, selectElement } from '../test/at'
 import { Saved } from '../test/saved'
-import { refused, serverThat } from '../test/serverAnswers'
+import { answeredWith, refused, serverThat } from '../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../test/sent'
 import { clearResourceCache, loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
@@ -1440,6 +1440,127 @@ describe('the races of an event', () => {
       .toBeGreaterThan(before)
   }, SLOW)
 
+  it('says why the route refused the event, and confirms nothing', async () => {
+    /* The first half of one press. Nothing of the event was written, so the form stays as
+       it was with everything typed still in it, and the reader is told why in his own
+       language rather than by a code he cannot read. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(
+      events.filter((one) => one.kind !== 'race').at(-1),
+      'an event with no races',
+    )
+
+    answering = (path, init) =>
+      path.startsWith('/api/events/') && init?.method === 'PUT'
+        ? refused('theAddressIsTaken', 409)
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    await user.click(await openRowOf(mine, user))
+    await user.type(await screen.findByLabelText(/^Opis događaja/), 'jedna rečenica')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect((await screen.findByRole('alert')).textContent ?? '').toContain(
+      'Na toj adresi već stoji jedan događaj.',
+    )
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    expect(screen.getByLabelText(/^Opis događaja/)).toHaveValue('jedna rečenica')
+  }, SLOW)
+
+  it('says so where the route wrote it and handed back no address', async () => {
+    /**
+     * THE ONE ANSWER THAT IS NEITHER A REFUSAL NOR SOMETHING THIS SCREEN CAN DRAW.
+     *
+     * <p>The write happened - the route answered 200 - but without the identity and the
+     * address there is nothing to address the row by. Drawing a row anyway is exactly the
+     * fault this whole increment closes, one number further along, so nothing is drawn and
+     * the reader is told the truth: it is saved, and the screen has to be reloaded.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(
+      events.filter((one) => one.kind !== 'race').at(-1),
+      'an event with no races',
+    )
+
+    answering = (path, init) =>
+      path.startsWith('/api/events/') && init?.method === 'PUT'
+        ? new Response(JSON.stringify({ written: true }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    await user.click(await openRowOf(mine, user))
+    await user.type(await screen.findByLabelText(/^Opis događaja/), 'jedna rečenica')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect((await screen.findByRole('alert')).textContent ?? '').toContain(
+      'Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku.',
+    )
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+  }, SLOW)
+
+  it('says why the route refused to take a race off the table', async () => {
+    /* The row is gone from the table and the save is what really takes the race away, so a
+       route that refuses the deletion must not let the press read as a clean save. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const mine = must(
+      events.filter((one) => races.filter((race) => race.eventId === one.id).length > 1).at(-1),
+      'an event with more than one race',
+    )
+
+    answering = (path, init) =>
+      path.startsWith('/api/races/') && init?.method === 'DELETE'
+        ? refused('theRaceCountsInALeagueOfItsSeason')
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    await user.click(await openRowOf(mine, user))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const rows = screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })
+
+    await user.click(must(rows[0], 'the first race row'))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = (await screen.findAllByRole('alert')).map((one) => one.textContent ?? '').join(' ')
+
+    expect(said).toContain('Ova trka se broji u ligi svoje sezone')
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+  }, SLOW)
+
+  /** Opens one event's form from the list, found by its name and its day. */
+  async function openRowOf(event: BtlEvent, user: Pressing): Promise<HTMLElement> {
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.clear(search)
+    await user.type(search, event.name)
+
+    const shown = formatShortDate(event.date, 'sr-Latn')
+
+    return within(
+      must(
+        (await table('Događaji'))
+          .getAllByRole('row')
+          .slice(1)
+          .find(
+            (each) =>
+              (each.textContent ?? '').includes(event.name) &&
+              (each.textContent ?? '').includes(shown),
+          ),
+        `the row for ${event.name} on ${shown}`,
+      ),
+    ).getByRole('button', { name: `Otvori: ${event.name}` })
+  }
+
   it('changes a served event through its own address, and makes no second one', async () => {
     /**
      * A SAVE OVER A RECORD THAT ALREADY STANDS IS A `PUT`, AND NOTHING ELSE.
@@ -2678,6 +2799,86 @@ describe('an event that is deleted', () => {
       /* Put away again, so the next event is asked from the same place. */
       await user.click(within(row).getByRole('button', { name: `Odustani od brisanja: ${event.name}` }))
     }
+  }, SLOW)
+
+  it('says why the route refused a deletion, beside the row it was pressed on', async () => {
+    /* A deletion that did not happen must not read as one that did. The row stays, the
+       reader is told in his own language, and the sentence is beside the row he pressed
+       rather than somewhere that would be about one of sixty. */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(events.at(-1), 'an event')
+
+    answering = (path, init) =>
+      path.startsWith('/api/events/') && init?.method === 'DELETE'
+        ? answeredWith(404)
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const row = await rowOf(mine, user)
+
+    await user.click(within(row).getByRole('button', { name: `Obriši: ${mine.name}` }))
+    await user.click(within(row).getByRole('button', { name: `Potvrdi brisanje: ${mine.name}` }))
+
+    expect(within(row).getByRole('alert')).toBeVisible()
+    /* And the row is still there, because nothing was deleted. */
+    expect(within(row).getByRole('button', { name: `Otvori: ${mine.name}` })).toBeVisible()
+  }, SLOW)
+
+  it('takes an event made in this visit out of both stores when it is deleted', async () => {
+    /**
+     * OUT OF THE CREATIONS AS WELL AS INTO THE DELETIONS, and the second alone is not
+     * enough.
+     *
+     * <p>An event entered during this visit is held as a CREATION and one that was served
+     * is filtered out by a DELETION. Written into the second only, the row somebody just
+     * made would go on standing - `recordsOf` reads deletions past the SERVED records
+     * alone - and he would press Delete on it again, against an event the server has
+     * already forgotten.
+     */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.type(screen.getByLabelText(/^Naziv događaja/), 'Trka koja se briše')
+    await user.type(screen.getByLabelText(/^Datum/), '01062027')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Zagre')
+    /* Picked out of the codebook, which is what carries the country beside the town. */
+    await user.click(
+      within(await screen.findByRole('listbox', { name: 'Ponuđena mesta' })).getByRole('option', {
+        name: /^Zagreb/,
+      }),
+    )
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.type(search, 'Trka koja se briše')
+
+    const made = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find((each) => (each.textContent ?? '').includes('Trka koja se briše')),
+      'the event just entered',
+    )
+
+    await user.click(within(made).getByRole('button', { name: 'Obriši: Trka koja se briše' }))
+    await user.click(
+      within(made).getByRole('button', { name: 'Potvrdi brisanje: Trka koja se briše' }),
+    )
+
+    expect(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .filter((each) => (each.textContent ?? '').includes('Trka koja se briše')),
+      'the event this visit made went on standing after it was deleted',
+    ).toEqual([])
   }, SLOW)
 
   it('sends nothing on the first press, and only on the second', async () => {

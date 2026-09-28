@@ -205,19 +205,19 @@ export function AdminEvents() {
   const results = dataOr(resultsState, null)
   const resultsFailed = failed(resultsState)
   const today = useToday()
-  /**
-   * The record this screen was sent to open, and the field to open it at.
+  /*
+   * `?zapis=<id>` WAS READ HERE AND IS NOT ANY MORE, because nothing produces it.
    *
-   * Copying an event happens on the event's own page and ends here, on the form
-   * for the copy with the cursor in the date (owner, 03.08.2026). The address
-   * carries it because a screen cannot be told anything else: the editor is
-   * state inside this component, and a link is what the other page has.
+   * It named the record this screen was sent to open, and the copy was its only
+   * writer: the press made the copy first and sent this screen its identity
+   * (`event/EventActions.tsx`). The press writes nothing now and the address names the
+   * event being copied FROM, so no screen, no link and no test builds a `?zapis=` any
+   * more and the branch that read it could not be reached through any of them.
+   *
+   * Removed rather than given a case that reaches it sideways, which is what the
+   * coverage floor is for: a branch nothing can get to is a branch nothing can be
+   * wrong about, and a test written to touch it would be measuring itself.
    */
-  const asked = params.get('zapis')
-  /* And whether this is the copy being made, said by the press that made it
-     rather than worked out here: a copy is edited again like any other event a
-     season later, and both its id and its `copiedFrom` would still say „copy"
-     then (event/EventActions.tsx). */
   /**
    * WHICH EVENT IS BEING COPIED, NAMED BY ITS OWN IDENTITY RATHER THAN BY A FLAG.
    *
@@ -357,7 +357,6 @@ export function AdminEvents() {
              Read here, there is nothing to keep in step. What the address names
              is the form for that record; what somebody pressed wins over it,
              because they pressed it later. */
-          const wanted = asked === null ? undefined : all.find((one) => String(one.id) === asked)
           /* The event a copy is being made OF, found in the same list the rows are
              drawn from. Undefined on every screen but a copy, and undefined as well
              where the address names an event this list has not got, which opens an
@@ -389,12 +388,7 @@ export function AdminEvents() {
             return { ...held, date: fieldDate(held.date) }
           }
           const editing: Editing | null =
-            chosen ??
-            (copySource !== undefined
-              ? { mode: 'new', start: asCopied(copySource) }
-              : wanted === undefined
-                ? null
-                : { mode: 'one', record: wanted })
+            chosen ?? (copySource === undefined ? null : { mode: 'new', start: asCopied(copySource) })
 
           /* The record the form is open on, as the event it is, so its races
              can be looked up. Found in the list rather than taken off the form's
@@ -761,8 +755,14 @@ export function AdminEvents() {
                     },
                   ]
 
-            const kindOf = (values: FormValues): string =>
-              String(values.kind ?? openEvent?.kind)
+            /* Read off the values alone, which is new on 28.09.2026 and is a consequence
+               rather than a tidy-up. A copy is drawn without the kind field (owner,
+               23.08.2026, `copyOfEvent`), so the values used to carry none and the record
+               behind them had to answer instead. The copy now opens holding what `copyOf`
+               gives it, kind included, and `FormRenderer` keeps a value whose field is not
+               on the form - so there is no longer a way for this to be asked of a form that
+               cannot answer, and a fallback would be a branch nothing could reach. */
+            const kindOf = (values: FormValues): string => String(values.kind)
 
             return (
               <>
@@ -895,7 +895,7 @@ export function AdminEvents() {
                        record by then, so `asked` covered both. It names the event being
                        copied FROM now, and left as it was the cursor stopped landing in
                        the date on the one screen the owner asked for it (03.08.2026). */
-                    openAt={chosen === null && (asked !== null || copying) ? 'date' : undefined}
+                    openAt={chosen === null && copying ? 'date' : undefined}
                     /* Not onto an address another event already answers at. A copy
                        keeps the name and the day it was copied from, so saving one
                        without changing the date wrote a second event at the first
