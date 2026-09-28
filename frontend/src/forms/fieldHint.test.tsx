@@ -1013,7 +1013,82 @@ const STANDS_IN: Record<string, string> = {
   parentRelation: 'Saglasnosti',
 }
 
+/**
+ * Which fields share a row, and in what order, as it was settled on 28.09.2026.
+ *
+ * Written out for the reason `STANDS_IN` is, and found the same way: a mutation
+ * that carried the town onto the row above it, and another that split the picture
+ * from the words beside it, BOTH PASSED every derived case in this file. They had
+ * to. A case that reads the rows out of the definition and then looks for them on
+ * screen asks a question the definition answers, so moving a field in the
+ * definition moves the question with it.
+ *
+ * The thirds are the owner's, twice over: „Podeli je racionalno na trećine
+ * horizontalno" on 12.08.2026, and again on 28.09.2026 when he was offered one
+ * column instead and kept them. So what they are is worth writing down.
+ *
+ * Its floor is the case below: this table and the fields the definition puts on a
+ * row must be the same names, once each, in both directions.
+ */
+const ROWS_ARE: string[][] = [
+  ['firstName', 'lastName', 'fatherName'],
+  ['birthDate', 'gender'],
+  ['email', 'password', 'passwordRepeat'],
+  ['address'],
+  ['city', 'phone'],
+  ['firstSeason2027', 'shirtSize'],
+  ['photo', 'bio'],
+]
+
 describe('a form laid out in groups', () => {
+  it('puts every field that stands on a row into the table of rows, once', () => {
+    /* The floor under `ROWS_ARE`. Both directions, and once each: a field on a row
+       with no place in the table fails, a name here for a field that is on no row
+       fails, and a name written twice fails. */
+    const written = ROWS_ARE.flat()
+    const onARow = registracija.fields
+      .filter((one) => one.row !== undefined)
+      .map((one) => one.name)
+
+    expect(written.length, 'a field is written into the table of rows twice').toBe(
+      new Set(written).size,
+    )
+    expect(written.toSorted()).toEqual(onARow.toSorted())
+  })
+
+  it('draws the rows that were settled on, holding what they hold in the order they hold it', async () => {
+    const user = setupUser()
+
+    renderForm()
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
+
+    const drawn = [...document.querySelectorAll<HTMLElement>('.form__row')]
+
+    expect(drawn.length, 'the form draws a different number of rows than were settled on').toBe(
+      ROWS_ARE.length,
+    )
+
+    ROWS_ARE.forEach((names, at) => {
+      const row = must(drawn[at], `the row at ${at}`)
+      const boxes = [...row.querySelectorAll<HTMLElement>('.field')]
+
+      expect(boxes.length, `the row at ${at} holds a different number of fields`).toBe(names.length)
+
+      names.forEach((name, place) => {
+        const field = must(
+          registracija.fields.find((one) => one.name === name),
+          `the form no longer asks for ${name}`,
+        )
+
+        expect(
+          within(must(boxes[place], `the field at ${place} of the row at ${at}`))
+            .queryAllByLabelText(labelFound(field.labelKey)).length,
+          `${name} is not the field at ${place} of the row at ${at}`,
+        ).toBeGreaterThan(0)
+      })
+    })
+  })
+
   it('names the same nineteen fields the form asks for, and no others', () => {
     /* The floor under the table above. Held in both directions: a field added to
        the form without a place in the table fails here, and so does a line left
