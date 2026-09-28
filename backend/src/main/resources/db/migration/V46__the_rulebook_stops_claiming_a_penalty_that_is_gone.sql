@@ -38,13 +38,21 @@
  * V24's own, and the English text is V43's own, V43 being the only migration that has ever written
  * a row into static_page_section_translation for this section.
  *
- * WHAT IS THE OWNER'S AND WHAT IS MINE, BECAUSE THESE MUST NOT BE READ AS ONE. The second
- * paragraph below is the owner's approved formulation, transcribed rather than paraphrased
- * (PDL.md, section "Clan 56 Pravilnika se prepisuje: kazne nema, izlazak ide po prozoru",
- * ODLUKA 28.09.2026, chosen between three offered outcomes): "Iz tima se izlazi u istom prozoru u
- * kom se i ulazi, od 1. oktobra do 31. decembra. Izlazak je jedan i ne nosi nikakvu kaznu:
- * doprinos koji je clan dao timu u toj sezoni ostaje, i clan sme odmah da se prijavi drugom timu u
- * istom prozoru. Van tog prozora izlazak nije moguc."
+ * WHAT IS THE OWNER'S AND WHAT IS MINE, BECAUSE THESE MUST NOT BE READ AS ONE. ARTICLE 56 BELOW IS
+ * THE OWNER'S OWN FINAL TEXT, sent on 29.09.2026 and transcribed character for character rather
+ * than paraphrased; the only thing added to it here is the full diacritics the Rulebook uses on
+ * every other page. Its first paragraph is the formulation he approved on 28.09.2026 choosing
+ * between three offered outcomes (PDL.md, section "Clan 56 Pravilnika se prepisuje: kazne nema,
+ * izlazak ide po prozoru"): "Iz tima se izlazi u istom prozoru u kom se i ulazi, od 1. oktobra do
+ * 31. decembra. Izlazak je jedan i ne nosi nikakvu kaznu: doprinos koji je clan dao timu u toj
+ * sezoni ostaje, i clan sme odmah da se prijavi drugom timu u istom prozoru. Van tog prozora
+ * izlazak nije moguc."
+ *   AN EARLIER DRAFT OF MINE OPENED THIS ARTICLE WITH A PARAGRAPH EXPLAINING WHY A TEAM AND A PAIR
+ * DIFFER ("Tim nosi bodove kroz sezonu, pa bi izlazak usred nje znacio da tabela u januaru i tabela
+ * u junu govore razlicito o istoj sezoni"). THE OWNER DID NOT TAKE IT AND IT IS GONE. That sentence
+ * is recorded in the journal as the REASON PUT TO HIM BEFORE THE DECISION, not as text of the
+ * Rulebook, and I had promoted it from the one to the other. It survives where it belongs, in this
+ * header and in the journal, and nowhere in what a member reads.
  *   WITHIN that approved text, the clause "doprinos koji je clan dao timu u toj sezoni ostaje" is
  * MY DERIVATION and the journal says so in as many words: deleting the contribution was PART OF
  * THE PENALTY the owner abolished, but that it therefore STAYS is nowhere written down explicitly.
@@ -149,8 +157,6 @@ Poredak timova je čist zbir bodova svih članova tima, bez normalizacije po bro
 
 ### Član 56. Promene tima i trkačkog para
 
-Za tim i za trkački par ne važi isto pravilo. Tim nosi bodove kroz sezonu, pa bi izlazak usred nje značio da tabela u januaru i tabela u junu govore različito o istoj sezoni. Par to ne nosi.
-
 Iz tima se izlazi u istom prozoru u kom se i ulazi, od 1. oktobra do 31. decembra. Izlazak je jedan i ne nosi nikakvu kaznu: doprinos koji je član dao timu u toj sezoni ostaje, i član sme odmah da se prijavi drugom timu u istom prozoru. Van tog prozora izlazak nije moguć.
 
 Promena tima stupa na snagu 1. januara naredne sezone, i to samo ako je članstvo aktivno za tu sezonu. Sve promene moraju biti završene do 31. decembra.
@@ -187,8 +193,6 @@ The team standings are the plain sum of the points of all the team's members, wi
 - A „shared race" means the same race, not just the same event. If he runs the marathon and she runs the half marathon at the same event, that is not a shared race.
 
 ### Article 56. Team and racing pair changes
-
-A team and a racing pair are not governed by the same rule. A team carries points through the season, so leaving in the middle of one would mean the table in January and the table in June say different things about the same season. A pair does not carry them.
 
 A member leaves a team in the same window in which they join one, from 1 October to 31 December. There is one exit and it carries no penalty: the contribution they have made to the team in that season stays, and they may apply to another team immediately, within the same window. Outside that window leaving is not possible.
 
