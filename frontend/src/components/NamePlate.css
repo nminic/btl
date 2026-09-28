@@ -8,6 +8,56 @@
 
 .plate {
   display: inline-flex;
+  /* **The whole plate on the middle of its row** (owner, 28.09.2026, from a screenshot of a row of
+     the main standing: „problem je što je ceo boks koji čine okrugla slika, ime, prezime i članski
+     broj vertikalno necentriran u odnosu na ostatak reda. Ceo taj boks treba spustiti dodatno par
+     piksela").
+
+     **What it was, measured in a browser over the built bundle rather than reasoned about**, since
+     jsdom lays nothing out (ADL A33). An inline box sits on the BASELINE of the line box it is in,
+     and a cell's line box also carries the invisible strut of that cell's own font. The plate is
+     far taller than the strut, so the strut added nothing above it and its descent added 6,8px
+     BELOW it: the line box came out 6,8px taller than the plate, all of it underneath, and the
+     plate therefore stood 3,4px above the middle of its own cell with the row 6,8px taller than
+     anything drawn in it. The cell being centred could not help, and nor could the two line
+     heights the row was given on 28.09.2026 earlier the same day: every box was where it was asked
+     to be, and the box that held them was the wrong height.
+
+     `middle` takes the plate off the baseline, so the strut no longer reaches below it and the
+     line box is the plate. Measured over the real bundle at all three widths, worst row of each
+     screen, as the distance the plate stood above the middle of its row:
+
+       main standing               360  −1,75 → −0,25   768  3,40 → −0,25   1280  3,40 → −0,25
+       top boards                  360   6,80 → 6,80    768  4,27 → 4,27    1280  2,20 → −0,25
+       standing of a competition   360   2,68 → 1,30    768  2,68 →  0,50   1280  2,68 →  0,50
+
+     No screen gained a sideways scroll at any width, and NO ROW GREW anywhere: every row that
+     changed got SHORTER, by the 6,8px that was never drawn.
+
+     **Not `display: flex`, and that is measured rather than taste.** It centres the plate exactly
+     as well, and on five of the six tables the plate stands inside the link to the profile: a
+     block box inside an inline one breaks that link into fragments, and the anchors of the
+     standing of a competition went from one client rect each to THREE, stretched from their own
+     width to the whole 160px of the column. A focus ring is drawn on those rects (WCAG 2.2 SC
+     2.4.11), so that is the ring of every name on five tables redrawn to buy nothing.
+
+     **What this does NOT do, written rather than left for a review to find, and the two numbers
+     above that did not move are it.** Where ANOTHER cell of the row is taller than the plate, the
+     plate is where `styles/table.css` puts every cell of every table but the main standing: at the
+     TOP, on purpose, „a table is read across, and reading across needs a shared baseline". The two
+     6,80 and 4,27 rows of the top boards are exactly those; on every row of that screen where the
+     plate is the tallest cell it is −0,25 after the change, which is the same number the main
+     standing reaches. Moving the other five tables off that shared rule would overturn a written
+     decision and is not done here.
+
+     The 0,50px left on the standing of a competition is not that and not the strut either: it is
+     HALF THE RULE UNDER THE ROW. Measured on its first cell at 1280 - padding 10px above and 10px
+     below, no border above and 1px below, the plate 10,00px from the top of the row and 11,00px
+     from the bottom - so the row box holds a line the plate does not, and 1,30 at 360 is the same
+     thing on a row 49,80px tall. Only the main standing centres its own cells
+     (`pages/Rankings.css`, owner, 28.09.2026), and there the plate is on the middle at all three
+     widths. */
+  vertical-align: middle;
   align-items: center;
   gap: var(--space-10);
   /* The name reads from the left even in a cell the shared table rule aligns right, and it is

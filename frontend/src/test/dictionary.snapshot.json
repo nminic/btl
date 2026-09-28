@@ -91,6 +91,10 @@
       "title": "Potvrda adrese",
       "description": "Potvrda adrese elektronske pošte preko veze iz poruke koju portal pošalje po registraciji."
     },
+    "forgottenPassword": {
+      "title": "Zaboravljena lozinka",
+      "description": "Zahtev za poruku sa vezom na kojoj se postavlja nova lozinka za nalog na portalu Balkanske trkačke lige."
+    },
     "admin": {
       "title": "Administracija",
       "description": "Ulaz u administrativni deo portala, sa redovima čekanja i svim entitetima lige."
@@ -233,6 +237,7 @@
     "register": "Registracija",
     "newPassword": "Nova lozinka",
     "confirmAddress": "Potvrda adrese",
+    "forgottenPassword": "Zaboravljena lozinka",
     "myProfile": "Moj profil",
     "myResults": "Moji rezultati",
     "membership": "Moja članarina",
@@ -900,7 +905,8 @@
     "noRecordText": "Prijavljen si, ali uz ovaj nalog ne stoji takmičarski zapis, pa ovde nema šta da se prikaže.",
     "needsBoth": "Upiši adresu i lozinku da bi mogao da se prijaviš.",
     "refused": "Prijava nije uspela. Adresa ili lozinka nisu tačne, ili je nalog privremeno zaključan zbog previše neuspelih pokušaja.",
-    "noWho": "Prijava je prošla, ali portal nije uspeo da sazna ko si. Osveži stranu, pa ako se ponovi, javi nam."
+    "noWho": "Prijava je prošla, ali portal nije uspeo da sazna ko si. Osveži stranu, pa ako se ponovi, javi nam.",
+    "forgotten": "Zaboravljena lozinka"
   },
   "newPassword": {
     "title": "Nova lozinka",
@@ -915,6 +921,15 @@
     "linkIsNotValid": "Veza je istekla ili je već iskorišćena. Zatraži novu sa strane za prijavu.",
     "formIsNotComplete": "Obe lozinke moraju da budu popunjene, iste i duge najmanje {count} znakova.",
     "passwordHasLeaked": "Ova lozinka se već našla u javno objavljenim provalama, pa je portal ne prima. Izaberi drugu."
+  },
+  "forgottenPassword": {
+    "title": "Zaboravljena lozinka",
+    "intro": "Upiši adresu elektronske pošte svog naloga. Ako na njoj postoji nalog, stiže ti poruka sa vezom na kojoj postavljaš novu lozinku.",
+    "email": "Adresa elektronske pošte",
+    "submit": "Pošalji vezu",
+    "sending": "Šalje se",
+    "needsAddress": "Upiši adresu elektronske pošte da bi mogao da zatražiš vezu.",
+    "done": "Ako na toj adresi postoji nalog, poruka sa vezom je poslata. Pogledaj sanduče, pa i neželjenu poštu ako je nema."
   },
   "confirmAddress": {
     "title": "Potvrda adrese",
