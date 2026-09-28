@@ -1111,6 +1111,44 @@ class PaymentsDueApiTest {
 	}
 
 	/**
+	 * AND A LINE IN A MONEY THAT IS NO LONGER HIS IS NOT ON THE LABEL, WHICH IS WHAT A MEMBER WHO HAS
+	 * MOVED COUNTRY REALLY LOOKS LIKE.
+	 *
+	 * <p><b>This is production-reachable and not a contrived state.</b> A member who changes country has
+	 * his balance restated (owner, 27.09.2026, PDL 26, at 1 EUR = 120 RSD), and the restating is TWO
+	 * LINES rather than a rewrite: {@code a_balance_entry_is_written_once} (V38) refuses a rewrite, and
+	 * ADL asks for „nepromenljive stavke". So his old-money lines stay in the book for ever, and every
+	 * reader of the book has to know they are not his balance.
+	 *
+	 * <p><b>Why it needs a case here and not only in {@code MeWriteApiTest}.</b> This route reads the
+	 * book for a whole LIST at once, which is a second statement over one table
+	 * ({@code BalanceBook.forEveryOneOf}), and it has to pick each member's own money out of a result
+	 * grouped both ways. A reading that took whichever group came back first would answer this member's
+	 * dinars in euro, which at the seeded rate is a hundred and twenty times the money.
+	 *
+	 * <p><b>The numbers are chosen so the wrong answer is loud.</b> He is billed in euro and holds 5 of
+	 * them; the line in the money he has left is 6.000 dinars, so a reading that added both answers
+	 * 6.005 and one that took the wrong group answers 6.000. Neither is 5.
+	 */
+	@Test
+	void alineInAmoneyThatIsNoLongerHisIsNotOnTheLabel() throws Exception {
+		long alsoBroughtIn = competitor("000295", "Nekad", "Dinarski", true);
+
+		earnedAReferral(neverPaid, alsoBroughtIn, "6000", "RSD");
+
+		Map<Long, BigDecimal> balances = new HashMap<>();
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			balances.put(row.get("competitorId").asLong(), row.get("balance").decimalValue());
+		}
+
+		assertThat(balances.get(neverPaid))
+				.as("a line in the money he has left was counted as his balance, so the label shows him"
+						+ " money he does not have")
+				.isEqualByComparingTo("5");
+	}
+
+	/**
 	 * AND IT IS THE BOOK RATHER THAN WHAT A CODE ONCE PROMISED HIM.
 	 *
 	 * <p>Owner, 27.09.2026 (PDL 23a), choosing between the two: „Moderator aktivira sa svog ekrana:
