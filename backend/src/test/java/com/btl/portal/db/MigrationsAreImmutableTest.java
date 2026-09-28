@@ -172,7 +172,17 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			/* PINNED LAST, when the file was final. V45's header quotes V25 and V32 at length
 			   and both quotations were settled before this number was taken: a commit that
 			   afterwards corrects one sentence of that prose changes the bytes, and the gate
-			   then fails on a checksum that was right when it was written. */
+			   then fails on a checksum that was right when it was written.
+
+			   RENUMBERED 44 -> 45 on 29.09.2026, before this migration merged: main took 44 for
+			   V44__the_picture_leaves_what_you_enter_at_joining.sql (PR 434) while this branch
+			   was in review, and two files at one version is a refusal to start. The checksum is
+			   unchanged by that - the file is byte-identical (git reports a 100% rename) and
+			   Flyway computes the checksum over the content and not the name - so what a
+			   renumbering moves, and what this row therefore pins, is the version and the
+			   script name. The migration had not merged at either point (checked with
+			   `git merge-base --is-ancestor`, not assumed), so this is not a rewrite of a
+			   migration anyone has run (ADL A2). */
 			new Applied("45", "V45__a_moderator_decides_a_result.sql", 1500230178));
 
 	@Test
