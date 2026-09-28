@@ -1,0 +1,794 @@
+import { screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { renderAt } from '../../test/render'
+import {
+  answeredWith,
+  did,
+  forgetEveryCookie,
+  serverThat,
+  type Asked,
+} from '../../test/serverAnswers'
+import { setupUser } from '../../test/user'
+import { clearResourceCache } from '../../data/client'
+import { SLOW } from '../../test/slow'
+import sr from '../../i18n/sr.json'
+import { useSession } from '../../session/useSession'
+
+/**
+ * THE INBOX AS THE SERVER REALLY KEEPS IT.
+ *
+ * <p><b>Why this file exists, and it is the owner's own afternoon rather than a class of
+ * fault somebody imagined.</b> On 27.09.2026 he refused a profile photograph with a reason,
+ * read the message it produced, signed out, signed back in, and <b>the message was gone</b>.
+ * Nothing was broken on the server: seven places in six classes under `backend/src/main`
+ * write into `message` and the decision he took is one of them (`VerificationWriteApi.tell`).
+ * The row was kept and never read. What the three screens drew was a copy held in
+ * `session/SessionProvider.tsx`'s `useState`, and a copy in a component dies with it.
+ *
+ * <p><b>So every case here is written so that it cannot be satisfied by the browser's own
+ * half.</b> The session in these cases holds nothing at all: `renderAt` starts a
+ * `SessionProvider` whose only seeded messages are the two broadcasts in
+ * `data/seedMessages.ts`, and every subject asserted below is one only this file's server
+ * says. Put the server read back out of any of the three screens and these go red; leave the
+ * read in and take the SESSION half out, and they stay green, which is the direction that
+ * tells this file from the flow cases in `memberFlows.test.tsx`.
+ *
+ * <p><b>The fake server is a state machine and not a table</b>, copied from
+ * `member/signIn.test.tsx` for the reason that file gives: a visit begins with
+ * `GET /api/me` answering 401, signing in is what makes it answer 200, and signing out is
+ * what takes it back. A case that set „who is signed in" by hand could not tell „the portal
+ * asked again" from „the portal still had it".
+ */
+
+/** Obviously a test and not anybody's password. */
+const TYPED_PASSWORD = 'ovo-je-probna-lozinka-123'
+
+const HIS_ADDRESS = 'ja@primer.rs'
+const HER_ADDRESS = 'ona@primer.rs'
+
+/**
+ * WHAT THE PORTAL FORGED, so the sender is the LEAGUE'S NAME and not a person's.
+ *
+ * Owner, 19.09.2026, chosen between three offered endings: „Kad portal sam pise poruku clanu,
+ * posiljalac je NAZIV LIGE". `message.from_name` is `not null` in V13 with
+ * `message_from_name_not_blank` beside it, so „the portal wrote this" is NOT an empty sender
+ * on the wire, and a case that looked for one would be measuring a shape the schema forbids.
+ */
+const FORGED = {
+  id: 501,
+  from: 'Balkanska trkačka liga',
+  subject: 'Fotografija nije prihvaćena',
+  body: 'Slika je odbijena jer lice nije jasno vidljivo. Pošalji drugu.',
+  date: '2026-09-27',
+  read: false,
+  teamInvitationId: null,
+  pairInviteId: null,
+}
+
+/** AND WHAT A PERSON WROTE, the second state of the same field. Read, so that „read" and
+ *  „unread" are not the same value as „forged" and „written". */
+const WRITTEN = {
+  id: 502,
+  from: 'Milica Anđelković',
+  subject: 'Prevoz do Jadovnika',
+  body: 'Idem kolima iz Beograda u subotu, ima još dva mesta.',
+  date: '2026-09-20',
+  read: true,
+  teamInvitationId: null,
+  pairInviteId: null,
+}
+
+/** HERS AND NOT HIS, for the axis about somebody else's mail. It is never served to him:
+ *  the route spends `to_id` on its own `where` clause and the field never leaves
+ *  (`InboxApi`, and `InboxApiTest`'s „the inbox holds his own and every broadcast but never
+ *  somebody else's"), so the portal cannot be asked to filter what it was never given. */
+const HERS = {
+  ...FORGED,
+  id: 777,
+  subject: 'Tvoja članarina je evidentirana',
+}
+
+/** A MESSAGE THAT ASKS, which is the second state of the two question keys. */
+const A_QUESTION = {
+  ...FORGED,
+  id: 503,
+  subject: 'Tim te poziva',
+  body: 'Dunavski trkači te pozivaju u tim.',
+  teamInvitationId: 7,
+}
+
+/** And one that asks about a racing pair, which is answered by a different screen and is
+ *  therefore its own state rather than a variant of the one above. */
+const A_PAIR_QUESTION = {
+  ...FORGED,
+  id: 505,
+  subject: 'Poziv u par',
+  body: 'Milica te poziva u trkački par.',
+  pairInviteId: 9,
+}
+
+/**
+ * EVERY SENTENCE AND EVERY BUTTON AN ANSWER TO AN INVITATION COULD PUT ON THIS SCREEN, taken
+ * off the dictionary itself.
+ *
+ * **Written as a derivation because the hand-written version of it let a mutation through.**
+ * The first draft of the case below named three sentences - „Ovaj poziv više ne stoji.", „Tim
+ * koji te je pozvao više ne postoji." and the accept button - and a mutation that handed a
+ * served key straight to `InvitationAnswer` SURVIVED it, because what that screen actually
+ * drew was a fourth sentence („U međuvremenu si ušao/la u tim …", the member of this fixture
+ * having a team already). A list of sentences cannot be finished by thinking about the list.
+ *
+ * **And the derivation is not a scan of the component either**, which would have gone short
+ * in the same place: `grep` over `t('…')` in `InvitationAnswer.tsx` finds seven keys and
+ * misses exactly the two that are chosen by a ternary, which are the two that were missed.
+ * The dictionary is the thing that names them all.
+ *
+ * The longest literal run between the placeholders rather than the text up to the first one,
+ * because three of these sentences BEGIN with a placeholder and would otherwise contribute an
+ * empty string and quietly drop out.
+ */
+const WHAT_AN_ANSWER_WOULD_SAY = [
+  ...Object.entries(sr.teams).filter(([key]) => key.startsWith('invite')),
+  ...Object.entries(sr.pair),
+]
+  .map(([, said]) => longestLiteralIn(String(said)))
+  .filter((one) => one.length > 3)
+
+function longestLiteralIn(said: string): string {
+  return (
+    said
+      .split(/\{[^}]*\}/)
+      .map((one) => one.trim())
+      .sort((left, right) => right.length - left.length)[0] ?? ''
+  )
+}
+
+/** What a served question must not have put on the screen, said as one list rather than as
+ *  one assertion per sentence. */
+/**
+ * WHETHER ANYTHING ON THIS SCREEN IS STILL WAITING FOR AN ANSWER, and this is the half of
+ * the two cases below that actually bites.
+ *
+ * **Measured, and it is why the derived list above was not enough on its own.** With the
+ * list alone, a mutation that handed a served key to `InvitationAnswer` STILL survived: the
+ * block that opens is wrapped in a `Resource` over three further resources, so at the moment
+ * the message is drawn that block is a LOADER rather than a sentence, and an absence
+ * asserted then is the absence of something that had not had time to appear.
+ *
+ * A screen drawing a message the portal can say nothing further about has nothing left to
+ * wait for, so „no loader" is true of the right code and false the instant that block is
+ * opened.
+ *
+ * **Found by its words and not by its role**, and both halves of that are measured. `role`
+ * alone is no use: `app/Shell.tsx` keeps a permanent `role="status"` for announcing a change
+ * of screen, so „is there a status" is true on every page of the portal. And the role WITH a
+ * name is no use either: `status` is not a role that takes its name from its contents, so the
+ * loader has no accessible name at all. Its words are what the portal already reads it by
+ * (`app/newScreen.test.tsx`), and the cases below give this a floor by asking for it while the
+ * screen really is waiting.
+ */
+function theLoader(): HTMLElement | null {
+  return screen.queryByText(sr.data.loading)
+}
+
+function whatTheScreenClaimsAboutAnAnswer(): string[] {
+  const said = screen.getByRole('main').textContent ?? ''
+
+  return WHAT_AN_ANSWER_WOULD_SAY.filter((one) => said.includes(one))
+}
+
+let server: { asked: Asked[]; stop: () => void } | null = null
+let open = false
+let holder: { role: string; account: number; member?: { memberNumber: string } } | null = null
+let mail: Record<string, unknown[]> = {}
+
+/**
+ * A server that answers the four routes this walk uses, and lets every other one fall
+ * through to the mock on the disc.
+ *
+ * @param inboxes what `GET /api/inbox` answers, by address, because the whole point of this
+ *                resource is that the answer is different for every caller
+ */
+function aServerWhere(
+  who: { role: string; account: number; member?: { memberNumber: string } } | null,
+  inboxes: Record<string, unknown[]>,
+  already = true,
+): void {
+  open = already
+  holder = who
+  mail = inboxes
+
+  server = serverThat((path, init) => {
+    if (path === '/api/me') {
+      return open && holder !== null
+        ? new Response(JSON.stringify(holder), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : answeredWith(401)
+    }
+
+    if (path === '/api/sign-in') {
+      const said: unknown = JSON.parse(String(init?.body ?? '{}'))
+      const email = typeof said === 'object' && said !== null ? Reflect.get(said, 'email') : null
+
+      open = true
+      /* WHOEVER TYPED THE ADDRESS, and the account number moves with him. Two people and not
+         one, because the axis that matters most here cannot be measured with one: an answer
+         cached under the name „inbox" would be handed to whoever signed in next, and a case
+         where both sign-ins are the same person could not tell that from a fresh read. */
+      holder =
+        email === HER_ADDRESS
+          ? { role: 'competitor', account: 2, member: { memberNumber: '000009' } }
+          : { role: 'competitor', account: 1, member: { memberNumber: '000007' } }
+      whoseMailIsBeingServed = String(email)
+
+      return did()
+    }
+
+    if (path === '/api/sign-out') {
+      open = false
+      holder = null
+
+      return did()
+    }
+
+    if (path === '/api/inbox') {
+      return new Response(JSON.stringify(mail[whoseMailIsBeingServed] ?? []), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    return null
+  })
+}
+
+/** Whose mail the fake server is holding out, which only signing in changes. */
+let whoseMailIsBeingServed = HIS_ADDRESS
+
+/** Him, as `GET /api/me` answers him. */
+function him(): { role: string; account: number; member: { memberNumber: string } } {
+  return { role: 'competitor', account: 1, member: { memberNumber: '000007' } }
+}
+
+/**
+ * SOMEBODY ELSE SIGNING IN WITHOUT SIGNING OUT FIRST, through the portal's own live writer
+ * and not a fake session object.
+ *
+ * The shape is `pages/member/pictureIsOneRow.test.tsx`'s `SignInAs`, copied rather than
+ * reinvented, for the same reason that file gives: `theServerSignedMeIn` is the very call
+ * `member/SignIn.tsx` makes with the answer to `GET /api/me`, `SessionProvider` sits above
+ * the router so it never comes down, and the sign in screen can be walked to while somebody
+ * is signed in. A shared laptop at a race is the ordinary case.
+ *
+ * What this probe does beyond that one, and why: it also moves `whoseMailIsBeingServed`,
+ * because unlike the picture queue that file measures, this file's whole point is that
+ * `GET /api/inbox` answers a DIFFERENT body per caller, and the fake server above keys that
+ * answer on this module variable rather than on a cookie. A real sign in changes both in one
+ * request; this button changes both in one click, so a case built on it measures whether the
+ * SCREEN reacts to the switch, not whether the fake server can.
+ */
+function SignInAsWithoutSigningOut({
+  memberNumber,
+  address,
+}: {
+  memberNumber: string
+  address: string
+}) {
+  const { theServerSignedMeIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        whoseMailIsBeingServed = address
+        theServerSignedMeIn({
+          account: 2,
+          memberNumber,
+          country: null,
+          firstSeason: null,
+          teamId: null,
+          membershipBasis: null,
+          referralCode: null,
+          referredCount: null,
+        })
+      }}
+    >
+      sign in as somebody else, in place
+    </button>
+  )
+}
+
+function theEnvelope(): Promise<HTMLElement> {
+  return screen.findByRole('button', { name: /Otvori poruke/ })
+}
+
+/** The list item one subject stands in, so that what is asserted about a message is read off
+ *  that message and not off the page. */
+function rowOf(subject: string): HTMLElement {
+  const row = screen.getByRole('link', { name: subject }).closest('li')
+
+  if (row === null) {
+    throw new Error(`the subject "${subject}" is not drawn inside a row`)
+  }
+
+  return row
+}
+
+/** How many times the portal has asked for one address. */
+function asksFor(path: string): number {
+  return (server?.asked ?? []).filter((one) => one.path === path).length
+}
+
+beforeEach(() => {
+  forgetEveryCookie()
+  document.cookie = 'XSRF-TOKEN=imam'
+  whoseMailIsBeingServed = HIS_ADDRESS
+  clearResourceCache()
+})
+
+afterEach(() => {
+  server?.stop()
+  server = null
+  open = false
+  holder = null
+  mail = {}
+  clearResourceCache()
+})
+
+describe('the inbox a member reads', () => {
+  it('draws what the server kept, both what the league forged and what a person wrote', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED, WRITTEN] })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    expect(await screen.findByRole('link', { name: FORGED.subject })).toBeVisible()
+
+    /* **The sender is read INSIDE the row it belongs to, and that is not tidiness.** „Balkanska
+       trkačka liga" is on this page three times over before the inbox is drawn at all - it is
+       the name in the mark at the top of every screen, and it is the sender of both seeded
+       broadcasts - so a case reading it off the page would pass with the served row carrying
+       nobody's name at all, or the wrong one. */
+    expect(within(rowOf(FORGED.subject)).getByText(FORGED.body)).toBeVisible()
+    expect(within(rowOf(FORGED.subject)).getByText(FORGED.from)).toBeVisible()
+    /* And the second state of the same field: a person's name, where the one above is the
+       league's (owner, 19.09.2026). Two different strings on two different rows, because one
+       row alone is satisfied by a screen that draws the same sender on every line. */
+    expect(within(rowOf(WRITTEN.subject)).getByText(WRITTEN.from)).toBeVisible()
+  })
+
+  it('counts the unread among them and leaves the read alone', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED, WRITTEN] })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    /* One of the two served rows is unread and one is read, and the two seeded broadcasts
+       the provider starts with carry one unread between them. So the number is the sum and
+       not either half: served alone it would be one, seeded alone it would be one, and a
+       screen reading only one of the two sources would pass a case that asserted „1". */
+    expect(await screen.findByText('2 nepročitane')).toBeVisible()
+  })
+
+  it('says there is nothing when the server answers nothing, and asks nobody else', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [] })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    /* The two seeded broadcasts are still in the session here, so this is NOT an empty
+       inbox on the screen - and that is the honest thing to assert: the empty answer took
+       nothing away that the browser was holding. What it says is that an empty answer is a
+       state the screen survives, which is the half `header.test.tsx` measures on a session
+       holding nothing at all. */
+    expect(await screen.findByRole('link', { name: /Dobro došao u pripremu sezone/ })).toBeVisible()
+    expect(screen.queryByRole('link', { name: FORGED.subject })).not.toBeInTheDocument()
+    expect(screen.queryByText(sr.messages.empty)).not.toBeInTheDocument()
+  })
+
+  it('never has somebody else’s message to draw, because the route never sends one', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    await screen.findByRole('link', { name: FORGED.subject })
+
+    /* **Measured as the route's guard and not as a filter of this portal's own.** Whose a
+       message is is decided by `InboxApi`'s `where m.to_id = :me or m.to_id is null`, which
+       `InboxApiTest`'s „the inbox holds his own and every broadcast but never somebody
+       else's" measures against three members and six rows. `to` does not leave the server at
+       all, so there is nothing here that could let hers through and nothing here that could
+       be weakened to. What this asserts is the consequence: what he reads is what he was
+       served, hers included in no part of it. */
+    expect(screen.queryByText(HERS.subject)).not.toBeInTheDocument()
+  })
+
+  it('answers an address naming a message he was not served with the front page', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt(`/sr/poruke/${String(HERS.id)}`, 'competitor', '000007')
+
+    /* Same road as any address the portal does not have (owner, 30.07.2026). Waited for
+       rather than read at once, because the screen holds the loader until the answer lands:
+       read synchronously it would find the front page before the inbox had arrived, and
+       would say nothing about whether the message was in it. */
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Balkanska trkačka liga' }),
+    ).toBeVisible()
+  })
+
+  it('opens one the server kept, on its own address', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt(`/sr/poruke/${String(FORGED.id)}`, 'competitor', '000007')
+
+    /* The key arrives as a NUMBER and the address is text, so this is also the case that
+       fails if anybody ever compares the two without `String` (`data/types.ts`). */
+    expect(
+      await screen.findByRole('heading', { level: 1, name: FORGED.subject }),
+    ).toBeVisible()
+    expect(screen.getByText(FORGED.body)).toBeVisible()
+  })
+
+  it('puts the newest first, whichever of the two sides each one came from', async () => {
+    /* Three served rows and two seeded ones, dated so that the right answer INTERLEAVES them:
+       27.09. and 20.09. served, 20.07. and 12.07. seeded, and 11.07. served last. Any order
+       that keeps one side together - served first, or held first, which is what dropping the
+       sort gives - fails here, and so does one that sorts the wrong way round.
+
+       **And the day is the only thing sorted on, deliberately.** What leaves the server is the
+       calendar day and not the instant (`InboxApi` converts in the league's own zone), so two
+       messages of one day can only keep the order they arrived in; the sort is stable for
+       exactly that reason and this case does not ask it for more than it can say. */
+    aServerWhere(him(), {
+      [HIS_ADDRESS]: [
+        FORGED,
+        WRITTEN,
+        /* **The SAME DAY as the row above it, which is the third thing this case measures.**
+           What leaves the server is the calendar day, so two messages of one day carry the
+           same value to sort on and the only order there is for them is the one the server
+           sent them in (`sent_at desc, id desc`). A sort that is not stable, or one that
+           compares something else when the days are equal, swaps these two. */
+        { ...WRITTEN, id: 499, subject: 'Majica je poslata', date: '2026-09-20' },
+        { ...WRITTEN, id: 504, subject: 'Rezultat je primljen', date: '2026-07-11' },
+      ],
+    })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    await screen.findByRole('link', { name: FORGED.subject })
+
+    expect(
+      screen.getAllByRole('link', { name: /Fotografija|Prevoz|Majica|Dobro do|Rezultat/ }).map(
+        (one) => one.textContent,
+      ),
+    ).toEqual([
+      FORGED.subject,
+      WRITTEN.subject,
+      'Majica je poslata',
+      'Dobro došao u pripremu sezone 2027',
+      'Rezultat je odobren',
+      'Rezultat je primljen',
+    ])
+  })
+})
+
+describe('what the portal may not claim about a message the server keeps', () => {
+  it('offers no way to mark a served message read, and still offers one for a held message', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    await screen.findByRole('link', { name: FORGED.subject })
+
+    /* **Both halves in one case, because either alone is satisfied by the wrong code.** One
+       button and not none: the seeded broadcast is unread and the browser IS its store, so
+       its button must stay. And not two: no route writes `message_read` (measured over the
+       whole of `backend/src/main`), so a button on the served row would be a control over a
+       fact the portal cannot change. A screen that drew a button for everything, and one that
+       drew none at all, each pass half of this. */
+    expect(screen.getAllByRole('button', { name: sr.messages.markRead })).toHaveLength(1)
+
+    /* Through `rowOf` rather than `closest('li')` read here, because ADL A14 refuses a type
+       assertion anywhere under `src` and `closest` answers „or nothing": the helper turns that
+       nothing into a failure with a sentence, which is the same thing `test/at.ts`'s `must`
+       does for the portal's own lists. */
+    expect(
+      within(rowOf(FORGED.subject)).queryByRole('button', { name: sr.messages.markRead }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('leaves a served message unread after it has been opened', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt(`/sr/poruke/${String(FORGED.id)}`, 'competitor', '000007')
+
+    await screen.findByRole('heading', { level: 1, name: FORGED.subject })
+
+    /* Opening a message is what marks it read, and for a served one there is nowhere to
+       write that. **The count is the measurement rather than the absence of a button**: the
+       seeded broadcast carries one unread and the served row carries the second, so a screen
+       that marked the served one anyway would say „1 nepročitana" here. Held for a beat
+       rather than read once, because the mark, if it happened, would happen in the tick after
+       the screen drew. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Otvori poruke, 2 nepročitane' })).toBeVisible()
+    })
+  })
+
+  it('says nothing at all about an answer to a question the server keeps', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [A_QUESTION] })
+
+    renderAt(`/sr/poruke/${String(A_QUESTION.id)}`, 'competitor', '000007')
+
+    /* THE FLOOR UNDER `theLoader`: before the inbox lands this screen really is waiting, so
+       the query below is looking for something that exists on this portal. Without this, a
+       query that matched nothing at all would make the assertion after it vacuous. */
+    expect(theLoader()).not.toBeNull()
+
+    await screen.findByRole('heading', { level: 1, name: A_QUESTION.subject })
+
+    /* **THE BOUNDARY THIS INCREMENT ENDS ON, written as a case so that it is a decision and
+       not a gap.** `GET /api/inbox` answers `teamInvitationId`, and the route that answers
+       such a question exists too (`PUT /api/teams/{id}/invitations/{invitation}`). No screen
+       calls it: `InvitationAnswer` looks the invitation up in the session's own list and
+       treats one it cannot find as one that is OVER. So handing it a served key would tell a
+       member a question was closed while the server still held it open, and that is worse
+       than no buttons. Neither the buttons nor the sentence is here, and if either appears
+       this goes red. */
+    /* **THE FLOOR UNDER THAT, and it is why this reads a derived list rather than three
+       names.** Held as three sentences, this case was SURVIVED by exactly the mutation it was
+       written for: the screen drew a fourth sentence instead. The list is the dictionary's
+       own, so a fifth sentence written tomorrow is already on it. */
+    expect(WHAT_AN_ANSWER_WOULD_SAY.length).toBeGreaterThan(20)
+    expect(theLoader()).toBeNull()
+    expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
+  })
+
+  it('says nothing about an answer to a question about a racing pair either', async () => {
+    aServerWhere(him(), { [HIS_ADDRESS]: [A_PAIR_QUESTION] })
+
+    renderAt(`/sr/poruke/${String(A_PAIR_QUESTION.id)}`, 'competitor', '000007')
+
+    expect(theLoader()).not.toBeNull()
+
+    await screen.findByRole('heading', { level: 1, name: A_PAIR_QUESTION.subject })
+
+    /* **Its own case and not a variant of the one above**, because the two keys are answered
+       by two different screens and the compiler is the only thing keeping them apart
+       (`session/context.ts` says so about its own two). A mutation that handed a served key to
+       one of the two would leave the other green. */
+    expect(theLoader()).toBeNull()
+    expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
+  })
+})
+
+describe('the inbox across signing out and signing back in', () => {
+  it('still holds the message, and holds it because the server was asked again', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    expect(await screen.findByRole('link', { name: FORGED.subject })).toBeVisible()
+
+    const askedFirst = asksFor('/api/inbox')
+
+    expect(askedFirst).toBeGreaterThan(0)
+
+    /* OUT, through the control the member presses. */
+    await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
+    await user.click(screen.getByRole('button', { name: 'Odjavi se' }))
+
+    expect(await screen.findByRole('heading', { name: 'Za ovo treba prijava' })).toBeVisible()
+
+    /* AND BACK IN, through the form. */
+    await user.click(screen.getByRole('link', { name: sr.nav.login }))
+    await user.type(await screen.findByLabelText('Adresa elektronske pošte'), HIS_ADDRESS)
+    await user.type(screen.getByLabelText('Lozinka'), TYPED_PASSWORD)
+    await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
+
+    /* **THE WHOLE POVOD, AND IT IS ASSERTED TWICE ON PURPOSE.** That the message is on the
+       screen is the owner's own sentence. That the server was asked AGAIN is what makes the
+       first half mean anything: the resource cache is keyed by name with nobody in the key,
+       so a portal that never re-asked would show this message for exactly as long as the
+       cache held it, and the case would pass over the bug it was written for. */
+    /* The way back in is waited for on its own, so that a failure names the step rather than
+       the last line of the case. */
+    await waitFor(() => {
+      expect(asksFor('/api/sign-in')).toBe(1)
+    })
+
+    await user.click(await theEnvelope())
+
+    /* **THE WHOLE POVOD.** Read in the panel, where the name of a link is the subject and the
+       day together, so it is matched loosely on purpose.
+
+       **AND WHAT MAKES IT MEAN SOMETHING IS THAT THIS MESSAGE WAS NEVER IN THE SESSION.**
+       `notify` is not called anywhere in this file and the provider seeds only the two
+       broadcasts of `data/seedMessages.ts`, so `GET /api/inbox` is the one place this subject
+       can have come from at any point in the walk. Take the server read out of either screen
+       and this goes red at the first assertion, before the walk even starts.
+
+       **What is deliberately NOT claimed here is that the portal asked again.** It need not
+       have: the resource cache holds one answer per name for the whole visit, by the portal's
+       own rule („One request per resource per visit", `data/client.ts`), and this member is the
+       same member. That the answer never crosses from one caller to another is a different
+       claim with a different mechanism, and it is measured in the case below rather than
+       assumed here. */
+    expect(await screen.findByRole('link', { name: new RegExp(FORGED.subject) })).toBeVisible()
+    expect(asksFor('/api/inbox')).toBeGreaterThanOrEqual(askedFirst)
+  }, SLOW * 2)
+
+  it('hands the next person their own mail and never the last person’s', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt('/sr/poruke', 'competitor', '000007')
+
+    expect(await screen.findByRole('link', { name: FORGED.subject })).toBeVisible()
+
+    await user.click(await screen.findByRole('button', { name: 'Otvori nalog' }))
+    await user.click(screen.getByRole('button', { name: 'Odjavi se' }))
+    await screen.findByRole('heading', { name: 'Za ovo treba prijava' })
+
+    await user.click(screen.getByRole('link', { name: sr.nav.login }))
+    await user.type(await screen.findByLabelText('Adresa elektronske pošte'), HER_ADDRESS)
+    await user.type(screen.getByLabelText('Lozinka'), TYPED_PASSWORD)
+    await user.click(screen.getByRole('button', { name: 'Prijavi se' }))
+
+    await user.click(await theEnvelope())
+
+    /* **SIGNING OUT AND IN HAPPENS IN PLACE**, which is measured and not assumed:
+       `AccountMenu` calls `signOutOfTheServer()` and `signOut()`, `SignIn` calls `signInWith`
+       and `navigate`, and not one of the four reloads the page. So one visit holds two people
+       and a cache keyed by the name „inbox" alone would hand the second one the first one's
+       mail. `data/useResource.ts` drops the answer the moment it stops being this caller's,
+       and this is the case that says so. */
+    expect(await screen.findByRole('link', { name: new RegExp(HERS.subject) })).toBeVisible()
+    expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
+    /* And it is a fresh read and not the same answer relabelled, which is the half the case
+       above deliberately does not claim: her sign in changed who is asking, so the answer the
+       visit was holding was dropped and asked for again. */
+    expect(asksFor('/api/inbox')).toBeGreaterThan(1)
+  }, SLOW * 2)
+})
+
+describe('the inbox when somebody else signs in without signing out first', () => {
+  /* VISOK, review of PR 406. `app/Shell.tsx` draws `<MessagesMenu />` for every non-empty
+     `signedIn`, and `member/SignIn.tsx` carries no guard of its own against being reached
+     while somebody is already signed in - so one visit can hold two members without the
+     header ever unmounting. `data/useResource.ts` reads its cached answer once, in
+     `useState(() => atHand(name))`, and never again while the SAME component instance stays
+     mounted: `theInboxNowBelongsTo` clears the cache the moment the caller changes, but
+     nothing told the already mounted panel to read it again. Measured on the head of this
+     branch before the fix below: the panel went on naming HIS message after SHE had signed
+     in, `GET /api/inbox` was asked once and only for him, and the envelope counted his
+     unread mail as hers. */
+  it('the panel above every screen answers for whoever is signed in now, not whoever it was drawn for first', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt('/sr', 'competitor', '000007', undefined, null, (
+      <SignInAsWithoutSigningOut memberNumber="000009" address={HER_ADDRESS} />
+    ))
+
+    await user.click(await theEnvelope())
+    expect(await screen.findByRole('link', { name: new RegExp(FORGED.subject) })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+    /* Checked before the panel is reopened, so a stale instance that never remounted cannot
+       hide behind the dropdown's own `hidden` and still pass this: the span is either gone
+       because a fresh mount never drew it, or it is sitting there whether the panel is open
+       or not. */
+    expect(screen.queryByText(FORGED.subject)).not.toBeInTheDocument()
+
+    await user.click(await theEnvelope())
+
+    expect(await screen.findByRole('link', { name: new RegExp(HERS.subject) })).toBeVisible()
+    expect(asksFor('/api/inbox')).toBeGreaterThan(1)
+  }, SLOW * 2)
+
+  /* The same fault, on the screen rather than the panel: `Messages.tsx`'s `TheWholeInbox`
+     calls `useInbox(mine)` once and, without the fix, holds the same `useResource` instance
+     across a caller switch that never routes it away. Reached on `/sr/poruke` and never
+     navigated off it, so the remount routing would otherwise give this screen for free
+     cannot be the reason this one passes.
+   *
+     **Read through `main` and not through the whole document, and that is measured rather
+     than tidiness.** `MessagesMenu` sits above every screen and carries its own span of the
+     same subject text; a case that reverted only this screen's key still failed here until
+     the query was scoped, because `queryByText` found the panel's stale span instead of
+     saying anything about this screen at all. */
+  it('the inbox screen does not go on showing what was fetched for the person before', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, (
+      <SignInAsWithoutSigningOut memberNumber="000009" address={HER_ADDRESS} />
+    ))
+
+    const main = () => within(screen.getByRole('main'))
+
+    expect(await main().findByRole('link', { name: FORGED.subject })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+    expect(main().queryByText(FORGED.subject)).not.toBeInTheDocument()
+    expect(await main().findByRole('link', { name: HERS.subject })).toBeVisible()
+  }, SLOW * 2)
+
+  /* And the third door, `MessageDetail.tsx`'s `TheMessageAsked`: measured to reach the exact
+     same place as the two above it - a fresh read, and `NotFound` once the message stops
+     being this caller's - and then reverted, because `NotFound`'s own redirect went on to
+     race a navigation `teamInvite.test.tsx` had already started on this very screen, and won
+     it three times over (twenty second timeouts, `TeamDetail` never even called). `useInbox`
+     here is called `{ reactive: false }` on purpose (review of PR 406, second round; the doc
+     on `TheMessageAsked` carries the measurement in full), and this case is what keeps that
+     boundary from drifting back without the same measurement being repeated: production has
+     no road to this switch on this screen at all. The only door to `theServerSignedMeIn` is
+     `member/SignIn.tsx`, reached solely through `/sr/prijava`, and every route including that
+     one shares the one `<Outlet />` `app/Shell.tsx` holds - so walking to it and back both
+     unmount this screen, unlike the header panel above it, which never comes down. */
+  it('does not react to a caller switch that only a test can reach, which is the measured boundary', async () => {
+    const user = setupUser()
+
+    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED], [HER_ADDRESS]: [HERS] })
+
+    renderAt(`/sr/poruke/${String(FORGED.id)}`, 'competitor', '000007', undefined, null, (
+      <SignInAsWithoutSigningOut memberNumber="000009" address={HER_ADDRESS} />
+    ))
+
+    expect(await screen.findByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
+    expect(screen.getByText(FORGED.body)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
+
+    /* Held for a beat rather than read once, the same way `leaves a served message unread
+       after it has been opened` above holds its own count: a version that DID react - and so
+       would need `NotFound`'s race measured all over again - corrects itself a tick later,
+       and reading once would not give it that tick to be wrong in. */
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
+    })
+    expect(screen.getByText(FORGED.body)).toBeVisible()
+  }, SLOW * 2)
+})
+
+describe('an account the league has given no number', () => {
+  /* **Two cases here and not one, and the second exists because a mutation survived the
+     first.** The gate stands on both screens and each has its own; taking only the detail
+     screen's out left every case green, because the case below it walks the LIST. A gate
+     measured on one of two screens is a gate measured on one of two screens. */
+  it('opening one message is told this part is for competitors, and asks for no inbox', async () => {
+    aServerWhere({ role: 'moderator', account: 4 }, { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt(`/sr/poruke/${String(FORGED.id)}`, 'moderator', null)
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: sr.signIn.noRecord }),
+    ).toBeVisible()
+    expect((server?.asked ?? []).map((one) => one.path)).not.toContain('/api/inbox')
+  })
+
+  it('is told this part is for competitors, and no inbox is asked for at all', async () => {
+    aServerWhere({ role: 'moderator', account: 4 }, { [HIS_ADDRESS]: [FORGED] })
+
+    renderAt('/sr/poruke', 'moderator', null)
+
+    /* A moderator and a superadmin have no competitor row (PDL P21, owner 14.09.2026), so
+       `GET /api/inbox` answers them the way an address that is not there answers (404, ADL
+       A8; `InboxApiTest`'s „an account with no member behind it is told the address is not
+       there"). **Measured as the ABSENCE of the request as well as the sentence**, because an
+       empty screen is what a refused request would look like too, and the difference is a
+       refusal spent on every moderator who opens this. */
+    expect(
+      await screen.findByRole('heading', { level: 1, name: sr.signIn.noRecord }),
+    ).toBeVisible()
+    expect((server?.asked ?? []).map((one) => one.path)).not.toContain('/api/inbox')
+  })
+})

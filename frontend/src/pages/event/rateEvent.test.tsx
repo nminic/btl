@@ -1081,6 +1081,7 @@ describe('a comment a moderator lets out', () => {
       body: '',
       picture: '',
       crop: { x: 0.5, y: 0.5, size: 1 },
+      photoId: null,
       currentDate: '',
       proposedDate: '',
       rating: { organisation: 0, value: 0, ambience: 0 },

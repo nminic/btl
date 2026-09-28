@@ -60,16 +60,29 @@ export const WAITING = 'waiting'
  * that by a case; `crop` is `WHOLE` and cannot be, which is the paragraph at the bottom
  * of this one, and `currentDate`/`proposedDate` need no case at all any more - see below.
  *
- * **`picture` is the empty string, and since 27.09.2026 NOTHING READS IT.** It mattered
- * while the card asked `one.picture !== ''` before drawing a frame: left undefined - which
- * is what reading a field the answer has not got gives you - that test passed and the frame
- * was drawn around nothing, so the emptiness had to be a VALUE. That drawing is gone, and
+ * **`picture` is the empty string, and it is STILL NOTHING READS IT, past the day this
+ * paragraph expected that to change.** It mattered while the card asked
+ * `one.picture !== ''` before drawing a frame: left undefined - which is what reading a
+ * field the answer has not got gives you - that test passed and the frame was drawn
+ * around nothing, so the emptiness had to be a VALUE. That drawing is gone, and
  * `admin/PendingQueue.tsx` carries the whole of why in the comment where it stood: the only
  * thing that ever filled this was the row `member/ProfilePicture.tsx` minted in the session
- * beside the server's, and that twin went with the fault it caused. **So this field is now
- * written and never read**, which is a loose end named here rather than tidied away by a
- * change that had no business growing that far: it goes, with `crop` below it, on the day
- * the number of the picture is served out to the screen and the frame comes back.
+ * beside the server's, and that twin went with the fault it caused.
+ *
+ * **The number of the picture IS served out to the screen now, and the frame DID come
+ * back (`photoId` below; ADL A60 dopuna 27.09.2026, PR 399/400;
+ * `admin/PendingQueue.tsx`'s `WaitingPicture`) - and this field gained no reader even
+ * so, because the frame has nothing to read it FOR.** It is fed straight from the
+ * address `photoId` names (`GET /api/verification/{id}/photo`), never from a literal
+ * the item itself might carry, so a second source read ahead of that address would be
+ * two roads to one picture answering a question nobody asked - „which wins" - which is
+ * exactly the class of fault this portal has been measuring against all week. **Checked
+ * rather than assumed before this sentence was written:** both callers of `propose`
+ * (`pages/member/ProfileBio.tsx`, `pages/member/EditTeam.tsx`) send `picture: ''`, and
+ * `ServedPendingItem` omits the field outright - two producers, and neither has ever
+ * written anything else. So this field goes on being written and never read, which
+ * stays a loose end named here on purpose rather than solved in passing: `crop` below
+ * it is in the identical position, for a related but separate reason of its own.
  *
  * **It fills what is missing rather than overwriting what is there, and the
  * difference is not academic.** The answers this portal is fed do not all come off
@@ -99,10 +112,19 @@ export const WAITING = 'waiting'
  * found.** Measured the same day `picture`/`email`/`rating` were: `crop` set to a
  * quarter of the picture leaves every case green. The one thing that read it was
  * `CropWindow`, drawn on a card until 27.09.2026 - so while ADL
- * A60 keeps a waiting picture out of every address the portal could ask for it at,
- * there is nothing for a square to be a square OF. It is `WHOLE` because that is what
- * `cropIn` answers for a record with no square of its own, and the day A60 is
- * revisited the two come back together and this boundary goes with them.
+ * A60 kept a waiting picture out of every address the portal could ask for it at,
+ * there was nothing for a square to be a square OF. It is `WHOLE` because that is what
+ * `cropIn` answers for a record with no square of its own.
+ *
+ * **THE DAY A60 WAS REVISITED THIS BOUNDARY DID NOT GO WITH IT, and the sentence that
+ * used to stand here saying it would was a guess rather than a measurement.**
+ * `PhotoApi.waitingOn`'s own comment settles why, and it is a decision the route forces
+ * rather than a style this screen chose: the moderator is shown the WHOLE original and
+ * never the member's circle - „the circle is the MEMBER's choice... not part of the
+ * one being taken here" - so the route carries no crop for this caller to draw one
+ * from. `admin/PendingQueue.tsx` therefore draws a plain picture and never
+ * `CropWindow`, `crop` stays exactly as unread as it always was, and this paragraph is
+ * corrected rather than left standing to tell the next reader to go finish it.
  *
  * **`currentDate` AND `proposedDate` ARE THE OTHER TWO, AND THEY ARE NOT AN OPEN
  * QUESTION LIKE THE REST.** Both answered for real off the schedule tab, from V30
@@ -122,7 +144,7 @@ const ABSENT = {
   email: '',
 }
 
-function itemFrom({ photoId: _photoId, ...served }: ServedPendingItem): PendingItem {
+function itemFrom(served: ServedPendingItem): PendingItem {
   /* WHAT DID NOT ARRIVE IS FILLED IN; WHAT DID ARRIVE WINS. The spread order is the
      whole rule and it is written this way round on purpose: the day the server starts
      answering one of the six, nothing here changes and the value simply comes through.
@@ -132,6 +154,17 @@ function itemFrom({ photoId: _photoId, ...served }: ServedPendingItem): PendingI
     ...ABSENT,
     ...served,
     id: String(served.id),
+    /* NORMALISED HERE RATHER THAN TRUSTED FROM THE SPREAD ABOVE, and that is a
+       measurement and not caution for its own sake. `test/setup.ts` answers most
+       cases straight off `src/test/mock/verification.json`, a file written before
+       this name existed, so `served.photoId` arrives `undefined` there - a state the
+       type `number | null` denies and the real server never sends. Read past the
+       `?? null`, `undefined !== null` is true and `WaitingPicture` would try the
+       address on every card the default harness draws, photograph or not. Written
+       the identical way `memberNumber` further below already is, for the same
+       reason: what the server never omits is still made proof against a harness
+       that predates it. */
+    photoId: served.photoId ?? null,
     /* AND THE TWO NAMES THE SERVER ANSWERS IN ANOTHER SORT, which is a different thing
        from the six above and is why they are written after the spread rather than
        before it: those are absent, these arrive and arrive as something else.

@@ -12,7 +12,7 @@ import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the sixteen names the backend has to answer for', () => {
+  it('is the seventeen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -50,12 +50,20 @@ describe('the list of resources', () => {
        list now: whoever holds no membership for the season being paid for, worked out on
        every read. It is also the second name here that was answered before it was ever
        asked for, `/api/payments` having served this since PR 393. */
+    /* Seventeen since 27.09.2026, when the inbox stopped living in the browser. It is the
+       THIRD name here answered long before it was ever asked for, and the only one whose
+       absence the owner felt himself: he refused a photograph with a reason, the message
+       arrived, he signed out and in, and it was gone. Seven places in six classes write into
+       `message` on the server and the decision he took is one of them
+       (`VerificationWriteApi.tell`), so the row was always kept; what the three screens drew
+       was the browser's own copy, held in `useState`, which dies with the component. */
     expect([...RESOURCE_NAMES]).toEqual([
       'attendance',
       'ducats',
       'comments',
       'competitors',
       'events',
+      'inbox',
       'leagues',
       'moderators',
       'pages',

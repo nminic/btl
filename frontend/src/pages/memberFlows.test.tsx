@@ -1820,8 +1820,14 @@ describe('messages', () => {
       await screen.findByRole('heading', { level: 1, name: 'Dobro došao u pripremu sezone 2027' }),
     ).toBeVisible()
     expect(screen.getByText(/Kalendar se puni/)).toBeVisible()
-    // Nothing was pressed, and the header already says nothing is waiting.
-    expect(screen.getByRole('button', { name: 'Otvori poruke, 0 nepročitanih' })).toBeVisible()
+    /* Nothing was pressed, and the header ends up saying nothing is waiting.
+       **Waited for since 27.09.2026, and the wait is the change rather than the claim.** The
+       inbox is `GET /api/inbox` now, so this screen finds its message one tick after it mounts
+       and marks it read in the tick after that; read synchronously here, the header is still
+       one behind. What is asserted is the same thing it always was. */
+    expect(
+      await screen.findByRole('button', { name: 'Otvori poruke, 0 nepročitanih' }),
+    ).toBeVisible()
   })
 
   it('leaves a message that was already read alone', async () => {
@@ -2458,7 +2464,11 @@ describe('an empty inbox and an empty result list', () => {
 })
 
 describe('an inbox with nothing in it', () => {
-  it('says so', () => {
+  /* **Awaited since 27.09.2026.** `only={[]}` still empties the list the same way - it filters
+     what ARRIVED, which is why it survived the move to the server unchanged - but the screen now
+     waits for `GET /api/inbox` before it draws anything at all, so the first paint is the loader
+     and the sentence comes with the answer. */
+  it('says so', async () => {
     render(
       <I18nProvider locale="sr">
         <MemoryRouter>
@@ -2469,6 +2479,6 @@ describe('an inbox with nothing in it', () => {
       </I18nProvider>,
     )
 
-    expect(screen.getByText('Nemaš nijednu poruku.')).toBeVisible()
+    expect(await screen.findByText('Nemaš nijednu poruku.')).toBeVisible()
   })
 })
