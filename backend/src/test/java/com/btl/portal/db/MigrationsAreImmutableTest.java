@@ -168,7 +168,18 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   with `git ls-tree origin/main` and `git merge-base --is-ancestor`, not assumed - so
 			   neither repin is a rewrite of a migration anyone has run, the same condition V41's
 			   and V43's repin notes above check. */
-			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", 373307075));
+			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", 373307075),
+			/* V46, not V45: V44 is taken on main by the migration above, and V45 by the results
+			   queue on branch b177, which renumbered onto it from V44 for the same reason. Checked
+			   with `git ls-tree origin/main` and across every ref rather than taking "the first
+			   free number", which is what produced the V44 collision in the first place. Pinned
+			   LAST, with the file final, because a later commit correcting even one sentence of
+			   its header changes the bytes and this number with them - which is exactly what
+			   happened twice before this number settled, both times before merge and neither a
+			   rewrite of anything anyone has run: first when Article 9 was added to this same
+			   migration (owner, 29.09.2026), and then when the owner sent his final wording of
+			   Article 56 and the explanatory paragraph I had opened it with came out. */
+			new Applied("46", "V46__the_rulebook_stops_claiming_a_penalty_that_is_gone.sql", 426098328));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

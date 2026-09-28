@@ -587,19 +587,35 @@ describe('Escape while a rule is open', () => {
 })
 
 describe('what nothing else was holding', () => {
-  it('lets the summary of errors put the cursor inside the group', () => {
-    /* A group is not focusable of itself, so following the link only scrolled:
-       the keyboard stayed where it was, which is not what a list of things to
-       fix promises. */
+  it('lets a refused press put the cursor on the group itself', async () => {
+    /* ~~Lets the summary of errors put the cursor inside the group.~~ The summary went
+       on 28.09.2026 and the cursor took its job over (`forms/FormRenderer.tsx`,
+       `owed`), so the group is now focused outright rather than linked to. What it
+       needed then it needs now: a group is not focusable of itself, so without
+       `tabIndex={-1}` the cursor would stay where the press left it.
+
+       MEASURED AS A PRESS AND NOT AS A CALL TO `focus()`. Calling it by hand says only
+       that the attribute is there, and would go on passing the day nothing calls it -
+       which is the state this whole branch was written to get out of. The three fields
+       above the sex are answered first, so the group is the FIRST thing wrong on the
+       form and a cursor that merely went to the top would fail. */
+    const user = setupUser()
     renderForm()
 
     const group = screen.getByRole('radiogroup', { name: 'Pol' })
 
     expect(group).toHaveAttribute('tabindex', '-1')
 
-    group.focus()
+    await user.type(screen.getByLabelText(/^Ime$/), 'Vladan')
+    await user.type(screen.getByLabelText(/^Prezime$/), 'Đurišić')
+    await user.type(screen.getByLabelText(/^Ime oca$/), 'Milan')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    expect(group).toHaveFocus()
+    expect(group, 'the cursor stopped short of the group').toHaveFocus()
+    /* And it arrives on the group rather than on one of its buttons, which is the
+       difference the mark on the group makes: „Muški" is one option out of two and
+       says nothing about what was asked. */
+    expect(within(group).getAllByRole('radio')[0]).not.toHaveFocus()
   })
 
   it('keeps the letter out of what is read aloud', () => {
@@ -884,26 +900,42 @@ describe('an answer chosen from buttons', () => {
     expect(confirm.querySelector('.field__head--confirm')).not.toBeNull()
   })
 
-  it('refuses to go through with neither taken, and says which group is missing', async () => {
+  it('refuses to go through with neither taken, and says so on the group itself', async () => {
+    /* ~~And the summary above the form names the group and leads to it.~~ The summary
+       went on 28.09.2026 („zbirne greske kao u prilogu ne treba da se pojavljuju"),
+       and with it the one reason a group needed an address at all: a link has to
+       point somewhere, and a group has no single control to point at.
+
+       WHAT THE GROUP STILL OWES IS THE SAME, and is now owed on the group and on its
+       buttons rather than above the form: that it is marked wrong, and that what is
+       wrong is readable from wherever the cursor lands. Sex and category are the two
+       things nothing is chosen for, so they are the likeliest errors on this form. */
     const user = setupUser()
     renderForm()
 
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    const summary = screen.getByRole('alert')
+    const sex = screen.getByRole('radiogroup', { name: /^Pol/ })
 
-    const toSex = within(summary).getByRole('link', { name: 'Pol' })
+    expect(screen.getByRole('radiogroup', { name: /^Kategorija/ })).toBeInTheDocument()
 
-    expect(toSex).toBeInTheDocument()
-    expect(within(summary).getByRole('link', { name: 'Kategorija' })).toBeInTheDocument()
+    /* The group says what is wrong with it, and says it to whoever is standing on the
+       group. Read through the address rather than by looking under it: `aria-describedby`
+       is what a screen reader follows, so a message drawn but not named there is a
+       message only the eye gets. */
+    const at = must(
+      sex.getAttribute('aria-describedby'),
+      'the group says nothing about what is wrong with it',
+    )
 
-    /* And it leads somewhere. Every other field is reached through its own
-       control, which carries the id the summary points at; a group has no one
-       control, so without an id of its own the link „Pol" pointed at nothing,
-       and these two are the likeliest errors on this form. */
-    const at = must(toSex.getAttribute('href'), 'the address the summary points at')
+    expect(must(document.getElementById(at), 'what the group points at'))
+      .toHaveTextContent(words('form.errors.required'))
 
-    expect(document.getElementById(at.replace('#', ''))).toBeInTheDocument()
+    /* And every button in it carries the mark the cursor is found by, so a press that
+       is refused over this group has somewhere to go (`FormRenderer.tsx`, `owed`). */
+    for (const one of within(sex).getAllByRole('radio')) {
+      expect(one).toHaveAttribute('aria-invalid', 'true')
+    }
   })
 })
 
@@ -1080,8 +1112,18 @@ const ROWS_ARE: string[][] = [
   /* ~~A seventh row stood here, the picture beside the words.~~ Both left on
      28.09.2026: „Profilna sekcija se sa slikom i svojim recima izbacuje iz
      registracione forme - to ce clan popunjavati naknadno kad bude odobren"
-     (owner). The form has six rows from that day, and the member writes about
-     himself on `member/ProfileBio.tsx` instead. */
+     (owner). The member writes about himself on `member/ProfileBio.tsx` instead. */
+  /* A seventh row again from 28.09.2026, and a different pair: the two fields the
+     form asks for only where the competitor is under sixteen. Owner, that day:
+     „Ukoliko se pojavi potreba za punoletnim licem na dnu forme kako je sad: Oba
+     polja nose po trećinu u jednom redu (treća kolona prazna)". Two names for three
+     columns, which is what `columns: 3` on the form already means: the row is as
+     wide as the form declares, not as wide as the fields on it
+     (`FormRenderer.tsx`, `columnsOf`).
+
+     This row is drawn only part of the time, which no other row here is, so the
+     case below types a date of birth in 2015 before it counts. */
+  ['parentConsent', 'parentRelation'],
 ]
 
 /**

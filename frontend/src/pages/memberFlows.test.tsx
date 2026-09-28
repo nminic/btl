@@ -2171,8 +2171,13 @@ describe('a result from entry to decision', () => {
        every row of it. */
     /* A link now, not a button: the confirmation lives on its own entry in the history
        since 06.09.2026, so starting another one is going somewhere rather than clearing
-       something the screen was holding. */
-    await user.click(screen.getByRole('link', { name: 'Unesi još jedan' }))
+       something the screen was holding.
+     *
+       **Awaited since 28.09.2026, because the confirmation is no longer drawn on the
+       press.** `POST /api/results` is what really puts the run in the queue, so the screen
+       stays on the form until the route has answered - which is the whole point of the
+       change and is exactly what the case above this one already waited for. */
+    await user.click(await screen.findByRole('link', { name: 'Unesi još jedan' }))
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
     await user.type(screen.getByLabelText(/Datum trke/), '11052026')
     await user.type(screen.getByLabelText('Mesto'), 'Niš')

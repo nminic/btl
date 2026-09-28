@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { resultsOf } from '../../data/derive'
@@ -7,6 +8,9 @@ import { useI18n } from '../../i18n/useI18n'
 import { DeleteRecord } from '../admin/EntityEditor'
 import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
+import type { Answer } from '../account/askTheServer'
+import { ServerSaid } from '../account/ServerSaid'
+import { theResultWasTakenBack, WHEN_A_RESULT_IS_WRITTEN } from './resultWrites'
 import './Member.css'
 
 /* Everything a member has sent in, in one place: what is still waiting, what
@@ -18,6 +22,54 @@ export function MyResults() {
   const { submissions, withdraw, remove } = useSession()
   const who = useMemberScreen()
   const state = useResults()
+  /* What the server said about taking a counted result back, where it said anything but
+     „done". One at a time, because the reader presses one button and waits for it: a second
+     press while the first is out is refused below. */
+  const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  const [going, setGoing] = useState(false)
+  /* Read and written in the same tick, so a redraw cannot land between two presses that
+     arrive before one answer does. Deleting twice would answer 404 the second time, which
+     would tell the member his result is gone in the words of „that is not yours". */
+  const outstanding = useRef(false)
+
+  /**
+   * TAKES ONE COUNTED RESULT BACK, AND THE BROWSER FOLLOWS THE SERVER RATHER THAN LEADING
+   * IT.
+   *
+   * <p>Owner, 27.08.2026: „član ga ili briše (ima pravo na to, iako je verifikovan)", and
+   * 25.09.2026: „Čovek ima pravo da obriše svoj rezultat bez javljanja i time se i tabele i
+   * obračuni automatski ažuriraju." Until 28.09.2026 this screen only wrote the removal into
+   * the browser's own overlay, so the row came back the next time anybody signed in.
+   *
+   * <p><b>The overlay is written after the route answered, never before.</b> Refused, the
+   * row stays exactly where it is and a sentence appears above the table - which is the
+   * honest thing, because the points really are still counted.
+   */
+  function takeBack(result: number) {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setGoing(true)
+    setRefusal(null)
+
+    void theResultWasTakenBack(result).then((answer) => {
+      outstanding.current = false
+      setGoing(false)
+
+      if (answer.got !== 'done') {
+        setRefusal(answer)
+
+        return
+      }
+
+      /* And the overlay follows, so the row goes at once rather than on the next read. The
+         served list really has lost it - `resultWrites.ts` drops that cache - and this is
+         what covers the moment between the answer and the re-read. */
+      remove(RESULTS, String(result))
+    })
+  }
 
   if (who.memberNumber === null) {
     return who.instead
@@ -123,6 +175,16 @@ export function MyResults() {
       </section>
 
       <h2 className="profile__section">{t('myResults.counted')}</h2>
+
+      {/* Above the table rather than inside the cell the button sits in, so nothing about
+          the row's own geometry moves: a `td` that grows a paragraph is a row whose rule
+          breaks off short of the rest, which is what this screen already paid for once at
+          360px (see the note on `my-results__own` below). Both sentences name no race,
+          because only one deletion can be out at a time - the press is refused while one
+          is. */}
+      {going && <p role="status">{t('results.withdrawing')}</p>}
+
+      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />}
 
       <Resource state={state}>
         {(results) => {
@@ -240,7 +302,7 @@ export function MyResults() {
                             name={result.raceName}
                             look="button button--secondary"
                             onDelete={() => {
-                              remove(RESULTS, String(result.id))
+                              takeBack(result.id)
                             }}
                           />
                         </div>

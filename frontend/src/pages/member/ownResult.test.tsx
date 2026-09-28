@@ -9,6 +9,7 @@ import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
+import { did, serverThat } from '../../test/serverAnswers'
 
 /**
  * What a member may do with a result of their own after sending it.
@@ -651,6 +652,31 @@ describe('the number a deleted result leaves behind', () => {
 describe('a result that has been counted', () => {
   /** A member with results in the file, and the one row this is about. */
   const COUNTED = '/sr/moji-rezultati'
+
+  /**
+   * A SERVER THAT AGREES, BECAUSE SINCE 28.09.2026 BOTH OF THESE ROADS REALLY ASK ONE.
+   *
+   * <p>Taking a counted result back is `DELETE /api/results/{id}` and correcting one is
+   * `PUT`, and the screen writes its own overlay only once the route has answered
+   * (`member/resultWrites.ts`). Until then this screen wrote the overlay on the press and
+   * confirmed on the spot, so every case below passed with nothing leaving the machine.
+   *
+   * <p><b>This stub is therefore load-bearing rather than scenery</b>, and the two cases at
+   * the end of this block are what prove it: with a server that refuses, the row stays and
+   * the standing does not move.
+   */
+  let server: { stop: () => void } | null = null
+
+  beforeEach(() => {
+    server = serverThat((path, init) =>
+      path.startsWith('/api/results/') && init?.method !== undefined ? did() : null,
+    )
+  })
+
+  afterEach(() => {
+    server?.stop()
+    server = null
+  })
 
   /** The first counted result, whichever race it happens to be: this member has
    *  run some of them in more than one season, so a name does not name a row. */

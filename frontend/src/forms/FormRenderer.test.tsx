@@ -473,22 +473,125 @@ describe('FormRenderer', () => {
     expect(broken.getAttribute('aria-describedby')).toBe('field-ime-error')
   })
 
-  it('announces the failure and links to every broken field', async () => {
+  it('puts the cursor on the field that is wrong, since there is no longer a list to follow', async () => {
+    /* ~~A summary above the form, announcing the failure and linking to every broken
+       field.~~ It went on 28.09.2026 (owner: „zbirne greske kao u prilogu ne treba da
+       se pojavljuju. Dovoljna je validacija na nivou polja").
+
+       WHAT IT WAS DOING STILL HAS TO BE DONE, and the decision that kept it said
+       which half mattered: „veza iz sazetka ka polju ostaje, jer je to ono sto
+       tastaturu vraca na gresku (WCAG 2.2 SC 3.3.1)" (PDL, „[ODLUKA 12.08.2026,
+       vlasnik] Forme se dele na trecine"). Measured in a browser before the change:
+       after a refused press `document.activeElement` was `body`, with fourteen
+       messages on the registration and no keyboard road to any of them. So the
+       cursor goes to the field instead, where the reader hears its name and, through
+       `aria-describedby`, what is wrong with it. */
     const user = setupUser()
     renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert'), 'nothing is announced before a press')
+      .not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    // Without this, pressing the button with a broken form is silent for
-    // anyone who cannot see the red text appear.
-    const summary = screen.getByRole('alert')
-    expect(summary).toHaveTextContent('Prijava nije poslata')
-    expect(within(summary).getByRole('link', { name: /proba.ime/ })).toHaveAttribute(
-      'href',
-      '#field-ime',
+    /* AND NOTHING WAS PUT ABOVE THE FORM, which is the owner's half of this. Two
+       obligatory fields are wrong here, so the old box would certainly be drawn; that
+       it is not is what „zbirne greske ne treba da se pojavljuju" comes to. Asserted
+       over `alert` rather than over a class name, because what he objected to is the
+       thing that announces itself and hits the eye first, and a summary rebuilt under
+       another name would be the same thing. */
+    expect(screen.queryByRole('alert'), 'a summary of broken fields came back')
+      .not.toBeInTheDocument()
+
+    const first = screen.getByLabelText(/proba.ime/)
+
+    expect(first, 'the cursor was left where the press put it').toHaveFocus()
+    /* And it arrives carrying what is wrong with it, which is the other half of what
+       the summary used to say out loud. Asserted here beside the focus and not only
+       where `aria-describedby` is built: a cursor put on a field that describes
+       itself by nothing announces a name and a silence. */
+    expect(first.getAttribute('aria-describedby')).toBe('field-ime-error')
+    /* And what it points at is the sentence, not an empty box. Found by the address
+       the field gives rather than by the words on the screen: those same words stand
+       under the confirmation as well, so looking for them would find either one and
+       say nothing about which field the cursor is on. */
+    expect(must(document.getElementById('field-ime-error'), 'what the field points at'))
+      .toHaveTextContent('Ovo polje je obavezno.')
+  })
+
+  it('passes over the fields that are answered and lands on the first that is not', async () => {
+    /* The case that separates „the first field that is wrong" from „the first field".
+       With everything empty the two are the same control, so this one answers `ime`
+       first and leaves the obligatory confirmation near the foot of the form: the
+       cursor has to walk past eleven boxes to reach it. */
+    const user = setupUser()
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={vi.fn()} />)
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.getByLabelText(/proba.saglasnost/), 'the cursor stopped at the first field')
+      .toHaveFocus()
+    expect(screen.getByLabelText(/proba.ime/)).not.toHaveFocus()
+  })
+
+  it('lands on the country when the country is the half that is wrong', async () => {
+    /* A town carries the country beside it, and the country is a control of its own
+       with an address of its own (`PlaceField.tsx`, `field-<name>-country`). The list
+       of links had to know that - written as one address per field it said „Mesto"
+       and led to a box already filled in, while the one marked wrong could not be
+       reached at all - and whatever replaced the list has to know it too.
+
+       It is not known here twice over. The cursor asks the document for the first
+       control carrying `aria-invalid="true"`, and in this case the document already
+       says the town is valid and the country is not (`invalid` against
+       `countryInvalid`). Live, the refusal comes from `validate.ts` over a required
+       place whose town is filled and whose country is empty; handed in through
+       `check`, which is the renderer's own way of being told a field is wrong, the
+       key is the same and so is everything the screen does with it. */
+    const user = setupUser()
+    renderWithI18n(
+      <FormRenderer
+        form={everyType}
+        check={() => ({ mesto: { key: 'form.errors.countryMissing' } })}
+        onSubmit={vi.fn()}
+      />,
     )
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByLabelText(/proba.saglasnost/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.getByLabelText(/^Država/), 'the cursor went to the town beside it')
+      .toHaveFocus()
+    expect(screen.getByLabelText(/proba.mesto/)).not.toHaveFocus()
+  })
+
+  it('leaves the cursor alone when the form is refused over something that is not a field', async () => {
+    /* `alsoRefuses` answers for the form as a whole, and what it names is the table
+       under it rather than any box on it (`pages/admin/AdminEvents.tsx`), so there is
+       nothing to put the cursor on. The sentence announces itself where it is drawn
+       instead, which is why it keeps `role="alert"`; moving the cursor here would
+       take the reader off whatever he was working on and put him nowhere in
+       particular. */
+    const user = setupUser()
+    renderWithI18n(
+      <FormRenderer
+        form={everyType}
+        alsoRefuses={() => 'proba.naslov'}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByLabelText(/proba.saglasnost/))
+
+    const button = screen.getByRole('button', { name: 'Sačuvaj' })
+
+    await user.click(button)
+
+    expect(screen.getByRole('alert'), 'the refusal was not said out loud').toBeVisible()
+    expect(button, 'the cursor was taken off the button it was on').toHaveFocus()
   })
 
   it('clears a field error as soon as the field is touched', async () => {
@@ -1316,7 +1419,14 @@ describe('the errors a form is holding while somebody types', () => {
 
     expect(screen.getAllByText(sr.form.errors.required), 'the other field lost its error too')
       .toHaveLength(1)
-    expect(screen.queryByRole('alert'), 'the summary went with it').not.toBeNull()
+    /* ~~And the summary above the form went with it.~~ There is no summary since
+       28.09.2026. What has to survive instead is the mark the cursor is found by: the
+       field nobody touched is still `aria-invalid`, so the next refused press still
+       has somewhere to go. Without this the case would say only that a sentence is on
+       the screen, and a sentence with nothing marked behind it is a form the keyboard
+       cannot get back into. */
+    expect(screen.getByLabelText(/proba.drugo/), 'the field nobody touched lost its mark')
+      .toHaveAttribute('aria-invalid', 'true')
   })
 })
 
@@ -1414,17 +1524,19 @@ describe('an error that says a field is obligatory', () => {
 
     await user.click(screen.getByRole('button', { name: sr.form.submit }))
 
-    const summary = screen.getByRole('alert')
-
-    expect(within(summary).getByRole('link')).toBeVisible()
     expect(screen.getByText(sr.form.errors.required)).toBeVisible()
+    /* ~~And an entry for it in the summary above the form.~~ The summary went on
+       28.09.2026; the mark it was drawn from is what the case reads now, and it is
+       also what the cursor is found by. */
+    expect(screen.getByLabelText(/proba.veza/)).toHaveAttribute('aria-invalid', 'true')
 
     await attach(user)
 
     expect(screen.getByLabelText(/proba.veza/), 'the field is still said to be obligatory')
       .not.toHaveAttribute('aria-required')
     expect(screen.queryByText(sr.form.errors.required), 'the message stayed').toBeNull()
-    expect(screen.queryByRole('alert'), 'the summary stayed').toBeNull()
+    expect(screen.getByLabelText(/proba.veza/), 'the mark stayed under a freed field')
+      .toHaveAttribute('aria-invalid', 'false')
   })
 
   it('stays where the field is still obligatory', async () => {
