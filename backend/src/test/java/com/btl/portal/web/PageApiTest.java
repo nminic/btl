@@ -300,6 +300,68 @@ class PageApiTest {
 	}
 
 	/**
+	 * ASKED IN REAL {@code "en"}, WITH NO FIXTURE OF ITS OWN, THE PAGES V43 HAS ALREADY
+	 * TRANSLATED COME BACK IN ENGLISH.
+	 *
+	 * <p><b>Why this case writes nothing.</b> Every other case in this file that reaches
+	 * {@code "en"} goes through {@link #A_LANGUAGE_THESE_FIXTURES_OWN} precisely because a
+	 * literal {@code "en"} fixture would collide with V43's real seed - see that constant.
+	 * This is the one case that deliberately asks for the real tag against the real data
+	 * V43 shipped, with no insert of its own, because that is the only way to measure the
+	 * thing the task instruction asks for: "ruta koja servira strane mora sada za engleski
+	 * da vrati language:en i engleski tekst ... to je prva prilika da se ta grana koda
+	 * izvrsi" - the branch of {@code PageApi} that serves a real translation has, until
+	 * V43, only ever been exercised by fixtures it wrote and rolled back itself.
+	 *
+	 * <p><b>Only asserts what is true regardless of which page V43 reaches next.</b> The
+	 * exact English wording is not repeated here - that duplication is exactly what
+	 * {@link WrittenPageTranslationAppliesTest} exists to avoid, and what it already checks
+	 * structurally, section by section, against the real migration. What is worth a
+	 * MockMvc case is the one thing that file cannot see: that the HTTP route itself,
+	 * asked in the language a real visitor's browser sends, reports {@code "en"} rather than
+	 * silently falling back to {@code "sr"} the way it would for a page V43 has not
+	 * reached yet.
+	 */
+	@Test
+	void pagesV43HasAlreadyTranslatedAnswerInRealEnglishWithNoFixtureOfItsOwn() throws Exception {
+		JsonNode ours = answerIn("en");
+
+		assertThat(languagesOf(ours))
+				.as("politika-privatnosti and uslovi-koriscenja are not in V43 yet (held back for the"
+						+ " b143/V41 text-authority question) and must still answer in the original;"
+						+ " rec-predsednika and pravilnik are, and must answer in real English")
+				.containsExactly(entry("politika-privatnosti", PageApi.THE_ORIGINAL),
+						entry("uslovi-koriscenja", PageApi.THE_ORIGINAL),
+						entry("rec-predsednika", "en"),
+						entry("pravilnik", "en"));
+
+		assertThat(pageNamed(ours, "rec-predsednika").path("title").asString())
+				.as("rec-predsednika's real English title did not reach the route")
+				.isEqualTo("President's word");
+		assertThat(fieldOf(ours, "rec-predsednika", "body"))
+				.as("rec-predsednika does not have real English words in its one section")
+				.hasSize(1)
+				.first().asString().contains("Balkanska trkačka liga");
+
+		assertThat(pageNamed(ours, "pravilnik").path("title").asString())
+				.as("pravilnik's real English title did not reach the route")
+				.contains("2027 season");
+		assertThat(fieldOf(ours, "pravilnik", "heading"))
+				.as("the rulebook did not come back whole - nineteen real English headings, in"
+						+ " order - which is the exact condition PageApi.pagesIn requires before it"
+						+ " will call a page English at all")
+				.containsExactly("1. Introductory provisions", "2. Season and deadlines",
+						"3. Who competes", "4. Membership fee", "5. What counts toward points",
+						"6. How points are calculated", "7. Categories by race length",
+						"8. Competitor categories", "9. Submitting results",
+						"10. Verification of results", "11. Rankings and placing",
+						"12. Teams, racing pairs, and clubs", "13. Accompanying competitions and leagues",
+						"14. Awards and honours", "15. Code of ethics", "16. Sanctions and disqualification",
+						"17. Publishing data and photographs", "18. Ducats",
+						"19. Amendments to the Rulebook and final provisions");
+	}
+
+	/**
 	 * SECTION ORDER IS THE {@code position} COLUMN, AND NOT THE ORDER ROWS WERE WRITTEN IN.
 	 *
 	 * <p>Task instruction, section 5: dropping the {@code order by} on
