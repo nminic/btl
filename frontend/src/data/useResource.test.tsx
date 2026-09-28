@@ -26,7 +26,15 @@ import { useResource } from './useResource'
 const HELD = ['Ana', 'Bojan']
 let asked = 0
 
-vi.mock('./client', () => ({
+/* Partially, and `addressOf` is the one this keeps REAL on purpose (the shape
+   `pages/event/eventWaiting.test.tsx` and `test/setup.ts` already use). That function is
+   what the hook turns a name and a language into, and it is what the two caches are keyed
+   by; a copy of it here would be a second place deciding the same thing, and the window
+   this file exists to stage has nothing to do with addresses. Replaced whole, this file
+   went red on the day the hook started reading it - which is the mock saying it is a mock
+   rather than a fault, and is why the three below are named one by one. */
+vi.mock('./client', async (real) => ({
+  ...(await real<typeof import('./client')>()),
   arrivedResource: () => {
     asked += 1
     /* Nothing the first time it is asked, which is the render; the value from

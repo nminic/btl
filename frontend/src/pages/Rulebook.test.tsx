@@ -227,10 +227,14 @@ describe('the rulebook that takes in another page', () => {
     globalThis.fetch = original
   })
 
-  /** The real files, except for the written pages, which this test writes. */
+  /** The real files, except for the written pages, which this test writes.
+   *
+   *  The address carries the language since 28.09.2026 (`/api/pages?lang=sr`), so this looks
+   *  for the resource rather than for the end of the address; `endsWith` matched neither
+   *  language after that day and every case below would have read the generated file. */
   function serve(pages: unknown) {
     globalThis.fetch = ((input: RequestInfo | URL) =>
-      String(input).endsWith('/api/pages')
+      String(input).includes('/api/pages')
         ? Promise.resolve(
             new Response(JSON.stringify(pages), {
               status: 200,

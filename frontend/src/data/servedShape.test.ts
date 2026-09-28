@@ -197,6 +197,11 @@ const aResult = {
 const aPage = {
   slug: 'politika-privatnosti',
   title: 'Politika privatnosti',
+  /* The language the words really came back in, which the route answers per page since V37
+     and the portal has read since 28.09.2026. `sr` here because this is the answer to
+     `?lang=sr`, where V37 refuses to hold a translation row at all
+     (`static_page_translation_not_serbian`), so the original is what comes back. */
+  language: 'sr',
   sections: [{ heading: '1. Ko smo i koji propisi važe', body: 'Vašim podacima…', gallery: null }],
   includes: [],
 }

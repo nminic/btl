@@ -248,9 +248,20 @@ function broughtIn(file: Record<string, unknown>[], me: Record<string, unknown>)
 const PUBLIC_DIR = join(process.cwd(), 'src', 'test')
 
 /** Which file under `src/test/` answers an address: the generated record of a
- *  resource, and otherwise the path itself, which is how a picture is still read. */
+ *  resource, and otherwise the path itself, which is how a picture is still read.
+ *
+ *  **WHAT WAS ASKED OF THE RESOURCE IS DROPPED, AND THAT IS THE FLOOR SAYING WHAT IT IS
+ *  RATHER THAN PRETENDING.** Since 28.09.2026 one name carries a language,
+ *  `/api/pages?lang=en`, and there is one generated file per resource: the Serbian answer.
+ *  So on `/en` this floor serves the Serbian words and the `language` field in that file
+ *  says `sr`, which is exactly what the route answers for a page that has not been
+ *  translated (`PageApi.pagesIn`, „whole or nothing"). That makes the floor honest and it
+ *  makes it USELESS for measuring the difference: a case that turns on which language came
+ *  back has to put its own server in front (`test/serverAnswers.ts`) and answer the two
+ *  languages differently, or it is reading the absence of an English fixture and calling it
+ *  a fallback. */
 function fileFor(path: string): string {
-  const resource = /^\/api\/([a-z]+)$/.exec(path)
+  const resource = /^\/api\/([a-z]+)(\?[^#]*)?$/.exec(path)
 
   return resource === null ? path : `/mock/${resource[1] ?? ''}.json`
 }
