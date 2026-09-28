@@ -1029,6 +1029,21 @@ describe('the inbox when somebody else signs in without signing out first', () =
     expect(await screen.findByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
     expect(screen.getByText(FORGED.body)).toBeVisible()
 
+    /* **WAITED FOR, NOT ASSUMED - this case's own name is a precondition and until this line
+       nothing established it (review of PR 426).** The heading above resolves on the FIRST
+       `GET /api/inbox`, before `member/inboxRead.ts` has even sent
+       `POST /api/inbox/{id}/read`, so whether the receipt settled before the click below used to
+       depend on nothing this case controlled - a slow receipt turned this case from green into a
+       deterministic failure, on the very heading `itStays` below reads. The road to a SECOND
+       `GET /api/inbox` is the same one the case above this one already waits on: nothing but
+       `theInboxHasChanged()` bumps `data/useResource.ts`'s revision, and it runs only once the
+       receipt route has answered, never on the asking. So waiting for the count to pass one is
+       waiting for the receipt to have settled, not for a fixed delay a slower machine or a
+       slower network would outrun. */
+    await waitFor(() => {
+      expect(asksFor('/api/inbox')).toBeGreaterThan(1)
+    })
+
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
 
     /* **Held rather than waited for, and that is a measurement rather than a stronger word for
@@ -1040,8 +1055,8 @@ describe('the inbox when somebody else signs in without signing out first', () =
        tick after the click, `waitFor` PASSED while the router had already been sent to „/".
 
        The window that receipt opens is named over this case rather than repeated here, and it is
-       why this reads „once its own read receipt has settled": on a quiet machine it settles long
-       before this click and nothing moves, which is why this is green. */
+       why this reads „once its own read receipt has settled": the wait above is what makes that
+       true now, rather than the pace of whatever machine this runs on. */
     await itStays(() => {
       expect(screen.getByRole('heading', { level: 1, name: FORGED.subject })).toBeVisible()
       expect(screen.getByText(FORGED.body)).toBeVisible()
