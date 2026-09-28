@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useToday } from '../../clock/useClock'
-import { fieldDate, isoDate, shiftDate } from '../../forms/dateField'
+import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
+import { copyOf } from '../event/copyOf'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
 import type { BtlEvent } from '../../data/types'
@@ -216,7 +217,31 @@ export function AdminEvents() {
      rather than worked out here: a copy is edited again like any other event a
      season later, and both its id and its `copiedFrom` would still say „copy"
      then (event/EventActions.tsx). */
-  const copying = params.get('kopija') === '1'
+  /**
+   * WHICH EVENT IS BEING COPIED, NAMED BY ITS OWN IDENTITY RATHER THAN BY A FLAG.
+   *
+   * <p><b>It was `?kopija=1` beside `?zapis=<id>` until this, and the difference is where
+   * the copy LIVES.</b> `pages/event/EventActions.tsx` used to make the copy the moment the
+   * button was pressed - a record and a race apiece, written into the session with
+   * identities counted down from nought (`admin/raceIds.ts`) - and send the reader here to
+   * edit a thing that already existed. Nothing of that survived an F5, and nothing of it
+   * was ever on the server.
+   *
+   * <p><b>So the press now writes nothing at all, and the address carries the question
+   * instead of the answer.</b> What arrives here is „copy THIS event", and the form opens
+   * as a NEW event holding what a copy holds (`event/copyOf.ts`) with the source's mornings
+   * beneath it, moved by the same number of days. Nothing exists anywhere until Sačuvaj,
+   * which is what the reader already believed was happening.
+   *
+   * <p><b>What this loses, and it is written down rather than quietly dropped:</b> a copy
+   * no longer records which event it came out of. `copyOf` fills `copiedFrom` and
+   * `EventWriteApi.Upsert` has no such field - the route says so in as many words, „no
+   * {@code copiedFrom}, which belongs to a screen this increment does not build" - so the
+   * chain `data/editions.ts` walks is not written by this path. It was not written before
+   * either: a session creation never reached a public screen, which is the only place that
+   * chain is read.
+   */
+  const copiedFrom = params.get('kopija')
   /**
    * THE EVENT THIS EDITOR HAS ALREADY MADE ON THE SERVER, so a second press changes it
    * rather than making another one.
@@ -332,8 +357,21 @@ export function AdminEvents() {
              is the form for that record; what somebody pressed wins over it,
              because they pressed it later. */
           const wanted = asked === null ? undefined : all.find((one) => String(one.id) === asked)
+          /* The event a copy is being made OF, found in the same list the rows are
+             drawn from. Undefined on every screen but a copy, and undefined as well
+             where the address names an event this list has not got, which opens an
+             empty form rather than nothing: a mistyped address is not worth a screen
+             that refuses to work, which is the rule `?nov=` beside it already keeps. */
+          const copySource =
+            copiedFrom === null ? undefined : all.find((one) => String(one.id) === copiedFrom)
+          const copying = copySource !== undefined
           const editing: Editing | null =
-            chosen ?? (wanted === undefined ? null : { mode: 'one', record: wanted })
+            chosen ??
+            (copySource !== undefined
+              ? { mode: 'new', start: copyOf(copySource) }
+              : wanted === undefined
+                ? null
+                : { mode: 'one', record: wanted })
 
           /* The record the form is open on, as the event it is, so its races
              can be looked up. Found in the list rather than taken off the form's
@@ -356,10 +394,37 @@ export function AdminEvents() {
                falls out of step with it, and this screen has been bitten by an
                effect that copied a record already (see `wanted` above). */
             const under = String(openEvent?.id ?? 'nov')
+            /**
+             * THE MORNINGS A COPY OPENS HOLDING: the source's, moved by the same number
+             * of days, and every one of them a NEW row.
+             *
+             * <p>Moved by the difference between the two events' days rather than by a
+             * year, so the shape of a weekend survives: two races on the Saturday and one
+             * on the Sunday stay two and one (owner, 10.08.2026). The same number
+             * `event/copiedRace.ts` was handed when the copy was made in the session.
+             *
+             * <p><b>The identity is blanked, and that is the whole of what makes it a
+             * copy rather than an edit.</b> A row carrying the source race's id is a row
+             * the save writes over - `PUT /api/races/{id}` - so a copy left holding them
+             * would have renamed and moved LAST season's races and made none of its own.
+             * The session path could not meet this: it counted fresh identities out for
+             * every copied race, which is the same decision said in the other direction.
+             */
+            const copiedRows = (source: BtlEvent): RaceRow[] => {
+              const by = daysBetween(source.date, copyOf(source).date)
+
+              return rowsOf(racesUnder(allRaces, String(source.id)), fieldDate).map((row) => ({
+                ...row,
+                id: '',
+                date: fieldDate(shiftDate(isoDate(row.date), by)),
+              }))
+            }
             const current =
               held.of === under
                 ? held.rows
-                : rowsOf(racesUnder(allRaces, under), fieldDate)
+                : copySource !== undefined
+                  ? copiedRows(copySource)
+                  : rowsOf(racesUnder(allRaces, under), fieldDate)
             const setCurrent = (next: RaceRow[]) => {
               setHeld({ of: under, rows: next })
             }
@@ -574,9 +639,11 @@ export function AdminEvents() {
              * and nobody types (`event/copyOf.ts`). Empty where there is nothing to
              * count from, which is every screen but this one.
              */
-            const from = copying
-              ? all.find((one) => String(one.id) === String(openEvent?.copiedFrom))
-              : undefined
+            /* The event this is a copy of, which the address now names outright. It was
+               read off the copy's own `copiedFrom` while the copy was a record that
+               already existed; there is no record yet, so the source is the one the
+               reader pressed Kopiraj on, and that is the one both buttons count from. */
+            const from = copySource
             const steps =
               from === undefined
                 ? undefined
