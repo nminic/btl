@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Prompt } from '../../components/Prompt'
 import { Resource } from '../../components/Resource'
 import { clearResourceCache } from '../../data/client'
@@ -128,6 +128,30 @@ function Row({
   const [including, setIncluding] = useState(true)
   const [asking, setAsking] = useState<Actionable | null>(null)
   const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  /**
+   * WHETHER A REQUEST THIS ROW STARTED IS STILL OUT WITH THE SERVER, so a second press before
+   * the first has answered cannot send a second identical body.
+   *
+   * <p><b>A ref rather than the state beside it, `PendingQueue.tsx`'s own `outstanding` and
+   * `ProposeTeam.tsx`'s guard both taken as the precedent</b> - both give the same reason: a
+   * value `activate` sets is not visible to a second click fired before the render it would
+   * cause, and two clicks fired without waiting are exactly what a double press is. Checked at
+   * both doors that can start a request from this row - the button below and the prompt's own
+   * choice - the same way `PendingQueue.tsx` checks it at its two doors.
+   *
+   * <p><b>Why this one outstanding matters more than either precedent's.</b> Neither guards
+   * against resending a form or a decision the server can be asked about again; this guards a
+   * member number, and `nextval('member_number_seq')` never gives one back. Two requests in the
+   * air at once both pass „is there a membership already", both draw a number, and the loser
+   * fails on `membership_pk` - so the number it drew is spent for nothing (PDL section 19,
+   * „Aktivacija trosi clanski broj nepovratno").
+   */
+  const outstanding = useRef(false)
+  /** The same fact as a render can see, so the row's own button can say out loud that it
+   *  cannot act while ITS OWN request is out (`aria-disabled` below, told off rather than
+   *  switched off - `PendingQueue.tsx`'s „Odobri" keeps the same shape for the same reason: a
+   *  control that leaves the row takes the keyboard with it). */
+  const [activating, setActivating] = useState(false)
 
   const read = typedIn(typed)
   const what = whatToDo(read, one.expected, one.balance, including)
@@ -147,27 +171,48 @@ function Row({
   const inHisCurrency = (amount: number): string => `${money(amount, locale)} ${one.currency}`
 
   async function activate(ground: string) {
-    setAsking(null)
+    /* SET BEFORE ANYTHING BELOW AWAITS ANYTHING, the same order `PendingQueue.tsx#approveAll`
+       keeps and for the same reason: a second call reading this after the first has already set
+       it is what makes the guard at both doors below mean anything. Reset in `finally`, so a
+       route that rejects outright still lets the next press in (VISOK 1, review of PR 411). */
+    outstanding.current = true
+    setActivating(true)
 
-    const answer = await askTheServer('/api/memberships', {
-      competitorId: one.competitorId,
-      ground,
-    })
+    try {
+      const answer = await askTheServer('/api/memberships', {
+        competitorId: one.competitorId,
+        ground,
+      })
 
-    if (answer.got === 'done') {
-      setRefused(null)
-      onActivated()
+      /* CLOSED HERE, ONCE THE SERVER HAS ANSWERED, AND NOT BEFORE. This used to be the first
+         line of the function, closing the sheet before anything was asked - which is what a
+         sonde holding the answer unresolved found: the row's own button was not disabled either,
+         so a second "Aktiviraj" reopened this same question while the first was still in the
+         air, and a second „Da" sent a second, identical body. Moved here, the sheet stays up for
+         exactly as long as `activating` keeps the button below from reopening it. */
+      setAsking(null)
 
-      return
+      if (answer.got === 'done') {
+        setRefused(null)
+        onActivated()
+
+        return
+      }
+
+      /* AND THE ROW STAYS EXACTLY WHERE IT WAS, which is the owner's rule over the whole of his
+         specification: „Odluka NE ni ovde niti u ostatku opisa funkcionalnosti ne brise red iz
+         tabele za aktivaciju, samo odlaze odluku dok se stvari ne rese van portala." A refusal is
+         the same shape - nothing was written, so nothing about the row has changed - and the one
+         refusal this screen cannot see coming is `nothingWouldComeOffTheBalance`, for the reason
+         `activation.ts` sets out. */
+      setRefused(answer)
+    } finally {
+      /* Read at both doors before either starts a request (below, and `onChoose` where this is
+         handed to `Asking`), so the next press is let through the moment this one has actually
+         finished, whether it returned an answer or the route rejected it outright. */
+      outstanding.current = false
+      setActivating(false)
     }
-
-    /* AND THE ROW STAYS EXACTLY WHERE IT WAS, which is the owner's rule over the whole of his
-       specification: „Odluka NE ni ovde niti u ostatku opisa funkcionalnosti ne brise red iz
-       tabele za aktivaciju, samo odlaze odluku dok se stvari ne rese van portala." A refusal is
-       the same shape - nothing was written, so nothing about the row has changed - and the one
-       refusal this screen cannot see coming is `nothingWouldComeOffTheBalance`, for the reason
-       `activation.ts` sets out. */
-    setRefused(answer)
   }
 
   return (
@@ -278,7 +323,22 @@ function Row({
              button is disabled in exactly the case that would make it false - and the 100 per
              cent threshold is what found that, which is the one tool that sees such a branch. */
           disabled={canAct === null}
-          onClick={() => setAsking(canAct)}
+          /* TOLD OFF WHILE ITS OWN REQUEST IS OUT, NOT SWITCHED OFF: `activating` never changes
+             `canAct`, so the native `disabled` above stays reserved for the four cases with no
+             route (`activation.ts#theServerCanDoIt`) and this is the second, independent reason
+             the row can give (`PendingQueue.tsx`'s own „Odobri" keeps the same two apart). */
+          aria-disabled={activating ? true : undefined}
+          onClick={() => {
+            /* THE SAME REF `activate` SETS, CHECKED HERE SO A PRESS ON THIS BUTTON WHILE THE
+               ROW'S OWN REQUEST IS OUT CANNOT REOPEN THE QUESTION IT IS STILL ANSWERING (VISOK
+               1, review of PR 411). `aria-disabled` does not stop a click by itself - a stray
+               press some other way must still find nothing to do. */
+            if (outstanding.current) {
+              return
+            }
+
+            setAsking(canAct)
+          }}
         >
           {t('verification.activate')}
         </button>
@@ -297,7 +357,17 @@ function Row({
             season={season}
             what={asking}
             inHisCurrency={inHisCurrency}
-            onChoose={(ground) => void activate(ground)}
+            /* THE OTHER DOOR TO THE SAME REQUEST, guarded the same way as the button above: a
+               second „Da" fired at this same open sheet before the first has answered - a real
+               double press, not only a reopened sheet - must not start a second `activate` any
+               more than a second „Aktiviraj" may (VISOK 1, review of PR 411). */
+            onChoose={(ground) => {
+              if (outstanding.current) {
+                return
+              }
+
+              void activate(ground)
+            }}
             onDecline={() => setAsking(null)}
           />
         )}

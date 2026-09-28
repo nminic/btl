@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import type { MembershipDue, Outstanding } from '../../data/types'
 import { renderAt } from '../../test/render'
@@ -1008,6 +1008,182 @@ describe('activating a membership from the payments screen', () => {
       /* AND THE OTHERS ARE STILL THERE, which is what keeps this from passing on a screen that
          emptied the table. */
       expect(await rowOf('Petar Marko')).toBeVisible()
+
+      server.stop()
+    })
+  })
+
+  /**
+   * A SECOND PRESS BEFORE THE FIRST HAS ANSWERED (VISOK 1, review of PR 411).
+   *
+   * <p><b>What a sonde holding the server's answer unresolved found.</b> The sheet used to
+   * close the instant „Da" was pressed, before the server had said anything, and the row's own
+   * „Aktiviraj" was not disabled either - so a second press reopened the very question the
+   * first was still answering, and a second „Da" sent a second, identical body. Both requests
+   * pass „is there a membership already", both draw a member number, and the loser fails on
+   * `membership_pk` - so the number it drew is gone for nothing, because
+   * `nextval('member_number_seq')` never gives one back (PDL section 19, „Aktivacija trosi
+   * clanski broj nepovratno").
+   *
+   * <p><b>The mock answer is a promise that has not come back yet</b> (`test/serverAnswers.ts`
+   * says why: it is the only way to measure what a screen does while it is waiting), so every
+   * case below can press twice and inspect the row before ever letting the server speak.
+   */
+  describe('a second press while the first is out', () => {
+    /** A server whose write route answers only when `settle` is called, so a case can press
+     *  more than once before it says anything. */
+    function servingSlowly() {
+      let settle: ((response: Response) => void) | undefined
+      const answered = new Promise<Response>((resolve) => {
+        settle = resolve
+      })
+
+      const server = serving(OUTSTANDING, () => answered)
+
+      if (settle === undefined) {
+        throw new Error('the executor above runs synchronously')
+      }
+
+      return { server, settle }
+    }
+
+    /**
+     * <p><b>THE ASSERTION IS ON THE BODY THE SERVER RECEIVED, NOT ON HOW MANY TIMES ANYTHING
+     * WAS CLICKED.</b> Three presses land on this row - the button that opened the sheet, and
+     * the sheet's own „Da" pressed a second time on the very same still-open sheet - and the
+     * mutation this exists for is deleting the guard that stands between either of them and a
+     * second `askTheServer`: with it gone, `grantsIn` would carry two identical grants rather
+     * than one.
+     *
+     * <p>Ana, first row, his case 6 (the box ticked over an empty book): one choice, „Da", so
+     * a second press on it is a press on the very button the first press already used.
+     */
+    it('sends only one body no matter which door the second press comes through', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Ana Ilić')
+      const aktiviraj = within(row).getByRole('button', { name: 'Aktiviraj' })
+
+      await user.click(aktiviraj)
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      /* A SECOND PRESS ON THE BUTTON THAT OPENED THIS, while the first request is still out.
+         Fired with `fireEvent` and not through `user`, the same reason
+         `verificationDecision.test.tsx` gives for its own double press: `user.click` awaits its
+         own click through to completion, so two of those could never land while a walk of this
+         row's own is still out. */
+      fireEvent.click(aktiviraj)
+
+      /* AND A SECOND „DA" ON THE SAME STILL-OPEN SHEET. The sheet no longer closes the moment
+         it is answered (`activate`'s own comment says why), so a genuine double press lands on
+         the very button the first one used rather than on a freshly opened one. */
+      fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      settle(new Response(null, { status: 201 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect(grantsIn(server.asked)).toEqual([{ competitorId: 41, ground: 'feeExempt' }])
+
+      server.stop()
+    })
+
+    /**
+     * WCAG 2.2 AA 4.1.2: A CONTROL SAYS ITS OWN STATE, AND „AKTIVIRAJ" HAS TWO OF THEM NOW.
+     *
+     * <p><b>`aria-disabled` and not `disabled`</b> - measured rather than assumed, because the
+     * two read differently to a test as well as to a screen reader: `disabled` takes the
+     * control out of the tab order, and the four cases with no route
+     * (`activation.ts#theServerCanDoIt`) still use exactly that. This is the second, independent
+     * reason the same row can give, the shape `PendingQueue.tsx`'s own „Odobri" already carries
+     * for the same reason: a control that leaves the row takes the keyboard with it.
+     */
+    it('says it cannot act while its own request is out, without leaving the tab order', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Ana Ilić')
+      const aktiviraj = within(row).getByRole('button', { name: 'Aktiviraj' })
+
+      expect(aktiviraj).not.toHaveAttribute('aria-disabled')
+
+      await user.click(aktiviraj)
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      expect(aktiviraj).toHaveAttribute('aria-disabled', 'true')
+      expect(aktiviraj).not.toBeDisabled()
+
+      settle(new Response(null, { status: 201 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>WITHOUT THIS, THE GUARD ABOVE COULD LOCK THE ROW SHUT FOREVER AND NO CASE WOULD SAY
+     * SO.</b> Reset in `finally`, so a refusal lets the next press in exactly as an outright
+     * rejection would - `PendingQueue.tsx#approveAll` keeps the same shape and gives the same
+     * reason. Measured on a REFUSAL rather than on success, because success remounts the whole
+     * list (`Payments`'s own `onActivated`) and takes this row with it; a refusal is the one
+     * answer that leaves the row standing to be pressed again.
+     */
+    it('lets the row try again once the server has refused it', async () => {
+      const server = serving(OUTSTANDING, () =>
+        new Response(JSON.stringify({ reason: 'nothingWouldComeOffTheBalance' }), {
+          status: 409,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Nikola Zorić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odobri iz balansa' }),
+      )
+
+      await within(await rowOf('Nikola Zorić')).findByText(/Sa balansa ovog člana/)
+
+      const aktivirajAgain = within(await rowOf('Nikola Zorić')).getByRole('button', {
+        name: 'Aktiviraj',
+      })
+
+      expect(aktivirajAgain).not.toHaveAttribute('aria-disabled')
+
+      await user.click(aktivirajAgain)
+
+      expect(await screen.findByRole('dialog')).toBeVisible()
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>„NE" NEVER RAISES THE FLAG IN THE FIRST PLACE</b>, because declining never calls
+     * `activate` at all - so there is nothing for the row to hold onto and nothing that needs
+     * to be let go. Measured all the same, because a mutation that raised it on decline too
+     * would otherwise stand uncaught: the row would look identical until the moment it refused
+     * to open again.
+     */
+    it('does not leave the row stuck after „Ne"', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+      const aktiviraj = within(row).getByRole('button', { name: 'Aktiviraj' })
+
+      await user.click(aktiviraj)
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odustani' }))
+
+      expect(aktiviraj).not.toHaveAttribute('aria-disabled')
+
+      await user.click(aktiviraj)
+      expect(await screen.findByRole('dialog')).toBeVisible()
+      expect(grantsIn(server.asked)).toEqual([])
 
       server.stop()
     })
