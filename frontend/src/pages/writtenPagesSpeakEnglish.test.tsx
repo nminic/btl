@@ -1,4 +1,4 @@
-import { act, screen, within } from '@testing-library/react'
+import { act, cleanup, screen, within } from '@testing-library/react'
 import { clearResourceCache } from '../data/client'
 import type { StaticPage } from '../data/types'
 import { renderAt } from '../test/render'
@@ -288,6 +288,35 @@ describe('switching the language of a page that is already on screen', () => {
       await screen.findByRole('heading', { level: 1, name: 'Uslovi korišćenja' }),
     ).toBeVisible()
     expect(askedForPages(asked)).toEqual(['/api/pages?lang=sr', '/api/pages?lang=en'])
+  })
+
+  it('opens the English page a second time with the English words already there', async () => {
+    const asked = aServerAnswering(BOTH_LANGUAGES)
+
+    renderAt('/en/uslovi-koriscenja')
+    await screen.findByRole('heading', { level: 1, name: 'Terms of use' })
+
+    /* Taken down and opened again rather than navigated away from, which is the shape
+       `app/newScreen.test.tsx` measures this with and the reason it gives: what must be true
+       is that the screen is its full height in the very FIRST render, because the router puts
+       a scroll position back the instant it commits and a loading box has nowhere to put one.
+       That read happens while the component renders, so it goes through the value this visit
+       already holds - which is held under the address, language and all. */
+    cleanup()
+
+    renderAt('/en/uslovi-koriscenja')
+
+    /* `getBy` and no `await`, which IS the assertion: waiting is what must not be needed. */
+    expect(screen.queryByText('Loading')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of use' })).toBeVisible()
+
+    /* ONCE FOR THE WHOLE VISIT, and the second mount asks nothing at all - measured rather
+       than expected: the first expectation written here was two, and it was wrong. The effect
+       does call `loadResource` on the second mount, deliberately (there is a case for that in
+       `data/useResource.test.tsx`), and what it gets back is the promise this visit is already
+       holding under this address. So „one request per resource per visit" survives the
+       language going into the address; it becomes one per language. */
+    expect(askedForPages(asked)).toEqual(['/api/pages?lang=en'])
   })
 
   it('reports a language the server cannot answer, instead of showing the one it can', async () => {
