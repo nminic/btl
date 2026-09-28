@@ -3,12 +3,14 @@
  * Found ahead of the privacy policy's public launch on 30.09.2026: politika-privatnosti,
  * section 2 ("2. Koje podatke obrađujemo, zašto i po kom osnovu"), table "Podaci koje
  * unosite pri učlanjenju" ("Data you enter when you join"), names "Profilna fotografija".
- * Measured against RegistrationApi rather than assumed: the class names "photo" in its own
- * NOT_COLLECTED_YET constant, POST /api/registration declares no `consumes` and no method or
- * field of the class carries a MultipartFile or a @RequestPart (grep for both over this one
- * file finds them only inside the class's own doc comment, never in code), and the `insert
- * into competitor` statement the route runs does not name `photo_id` among its twenty
- * columns - checked by reading that statement, not inferred from the doc comment beside it.
+ * Measured against RegistrationApi rather than assumed: POST /api/registration declares no
+ * `consumes` and no method or field of the class carries a MultipartFile or a @RequestPart -
+ * grep for both over this one file finds neither anywhere, not even inside a doc comment -
+ * and the `insert into competitor` statement the route runs does not name `photo_id` among
+ * its twenty columns, checked by reading that statement, not inferred from the doc comment
+ * beside it. The class's own NOT_COLLECTED_YET constant, which once named "photo" as awaited
+ * rather than absent, left with the same 28.09.2026 change discussed below and cannot be
+ * named as still standing.
  * `photo_id` is nullable (V8), so the row this route writes is legitimate without one and
  * stays that way through registration. The row was never true of what this route persists.
  *
@@ -32,11 +34,16 @@
  * independent of when that separate increment landed.
  *
  * WHAT DOES NOT MOVE WITH IT. The picture stays on "Izvršenje ugovora" (performance of
- * contract), not "Vaš pristanak" (your consent) like the biography row beside its new home:
- * PDL.md's own 28.09.2026 entry is explicit that the picture stays in
- * WhatRegistrationAsksFor.OF_EVERYBODY (compulsory) while the biography stays in
- * NEVER_REQUIRED (voluntary) - "Menja se KADA se daje, ne DA LI se odobrava" (what changes is
- * WHEN it is given, not WHETHER it is required). So only the table changes; the reason, the
+ * contract), not "Vaš pristanak" (your consent) like the biography row beside its new home.
+ * PDL.md's own 28.09.2026 entry does not keep them apart by moving only one of them out of
+ * WhatRegistrationAsksFor: OF_EVERYBODY no longer names "photo" and NEVER_REQUIRED no longer
+ * names "bio" (checked against the class directly, both left together) - the passage that
+ * once read that way described the moment BEFORE the decision, the reason it could not be
+ * carried out on the frontend alone, not a distinction that survived it. What actually does
+ * not move is narrower, and is the owner's own sentence read correctly this time: "Menja se
+ * KADA se daje, ne DA LI se odobrava" (what changes is WHEN it is given, not WHETHER it is
+ * approved) - the moderation queue and the crop rule a picture still passes through,
+ * regardless of when it arrives. So this migration only moves the table; the reason, the
  * legal basis and the retention column of the row itself are the same four cells V41 left,
  * moved whole rather than rewritten, and placed immediately before the biography row rather
  * than copying its basis.

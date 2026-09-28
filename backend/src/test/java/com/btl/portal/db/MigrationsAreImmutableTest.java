@@ -153,7 +153,16 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   V41's own repin note above checks rather than assumes - so this is not a rewrite of a
 			   migration anyone has run. */
 			new Applied("43", "V43__the_written_pages_speak_english.sql", -1054379915),
-			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", -605669233));
+			/* REPINNED 28.09.2026, from -605669233: an independent review of PR 434 found the
+			   header asserting a decision PDL.md had already reversed (both "photo" and "bio"
+			   left WhatRegistrationAsksFor together on 28.09.2026, not one staying while the
+			   other left) plus a mistranslation of the owner's own quote that propped that claim
+			   up, and asked for the prose corrected - see the file's own header for what changed.
+			   V44 had not merged to main at either point - checked with `git ls-tree origin/main`
+			   and `git merge-base --is-ancestor`, not assumed - so this is not a rewrite of a
+			   migration anyone has run, the same condition V41's and V43's repin notes above
+			   check. */
+			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", -1737375022));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
