@@ -235,6 +235,25 @@ function sentTo(path: string): unknown[] {
     .map((one) => JSON.parse(String(one.init?.body ?? 'null')))
 }
 
+/**
+ * WHICH VERB CARRIED IT, and this exists because a mutation survived without it.
+ *
+ * <p><b>Measured on 28.09.2026:</b> changing the screen's `'PUT'` to `'POST'` left all 31 cases
+ * of this file and `member/inboxFromTheServer.test.tsx` green. The address was right, the body
+ * was right, and nothing looked at the one remaining thing - so the survival was a real hole
+ * and not a case run in the wrong file.
+ *
+ * <p><b>And the fake server is why it could hide, which is worth saying because it is a fault
+ * in the measuring and not in the portal.</b> The server below matches on the path alone, so it
+ * answers a `POST` exactly as it answers a `PUT`. The real one does not: `PairWriteApi` maps
+ * only `@PutMapping` at this address, so a `POST` there reaches no handler at all and the
+ * member's answer would never arrive. A harness looser than the server is a harness that can
+ * only be trusted where something asks the question it skips.
+ */
+function verbFor(path: string): (string | undefined)[] {
+  return (server?.asked ?? []).filter((one) => one.path === path).map((one) => one.init?.method)
+}
+
 /** The panel above every screen, which is where the count of unread messages is read. */
 function theEnvelope(): Promise<HTMLElement> {
   return screen.findByRole('button', { name: /Otvori poruke/ })
@@ -297,6 +316,11 @@ describe('answering a served invitation into a racing pair', () => {
          so a screen that sent nothing, or sent the wrong one of the two, is a screen that
          answers for the member. */
       expect(sentTo(THE_ADDRESS)).toEqual([{ accepted: true }])
+
+      /* **AND BY `PUT`, which is the third of the three things a request is.** `PairWriteApi`
+         maps only `@PutMapping` at this address, so the same body sent by `POST` reaches no
+         handler and the answer is lost without a word to anybody. */
+      expect(verbFor(THE_ADDRESS)).toEqual(['PUT'])
     },
     SLOW,
   )
