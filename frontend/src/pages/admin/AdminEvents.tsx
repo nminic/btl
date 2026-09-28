@@ -571,11 +571,31 @@ export function AdminEvents() {
                        would then correct whatever happens to occupy that index in
                        whatever `held` holds now, which is nothing this press wrote. A row
                        found by IDENTITY is simply absent once that happens, and `map`
-                       leaves every row exactly as it was. */
-                    setHeld((before) => ({
-                      ...before,
-                      rows: before.rows.map((each) => (each === row ? { ...each, id: String(made) } : each)),
-                    }))
+                       leaves every row exactly as it was.
+
+                       AND WHEN `held` HAS NOT CAUGHT UP TO `current` AT ALL, which is what
+                       a copy meets on its very first press. A copy opens this table
+                       already holding new rows nobody has touched (`copiedRows`), so
+                       `held` is still what this screen mounted with - `{ of: '', rows: [] }`
+                       - and `before.of !== under`. Matched against `before.rows` there,
+                       `row` is an object no array on screen holds: the map ran over an
+                       EMPTY array, the identity this race was just given never reached
+                       anywhere, and a retry after a later row's refusal read the row's own
+                       key as still blank and DELETEd the very race this press had just made
+                       (nezavisna recenzija, 28.09.2026, visok nalaz). `row` is an element of
+                       `current` whichever way `held` stands, because that is the array this
+                       loop is walking - so falling back to it is what lets the first write
+                       of a visit find itself, and `of` is written down in the same update so
+                       every row after this one in the same press, and a retry after it,
+                       agree on which table they are correcting. */
+                    setHeld((before) => {
+                      const rows = before.of === under ? before.rows : current
+
+                      return {
+                        of: under,
+                        rows: rows.map((each) => (each === row ? { ...each, id: String(made) } : each)),
+                      }
+                    })
                   }
                 } else {
                   setWritten((before) => ({

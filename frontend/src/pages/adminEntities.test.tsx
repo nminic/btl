@@ -1744,6 +1744,84 @@ describe('the races of an event', () => {
     ).toBe(false)
   }, SLOW)
 
+  it('writes a PUT for the row a copy already made and a POST for the one it has not, not a DELETE, when the second press retries', async () => {
+    /**
+     * THE COPY MEETS `held` UNSEEDED, WHICH THE CASE BESIDE THIS ONE NEVER DOES.
+     *
+     * <p>The case above presses „Nova trka" on a SERVED event: that calls `onRows`
+     * the moment the row is added, which seeds `held` before any race of this visit
+     * is ever written, so `before.of === under` from the first row on and the fix
+     * below is never exercised by it. A copy is different - it opens the table
+     * already holding new rows nobody has touched (`copiedRows`), so `held` is
+     * still what this screen mounted with, `{ of: '', rows: [] }`, on the very
+     * press that writes them.
+     *
+     * <p>Matched only against `before.rows` there, the row the loop is walking is
+     * an object an EMPTY array does not hold: the identity a race was just given
+     * never reached anywhere, and a retry after a later row's refusal read the
+     * row's own key as still blank and DELETEd the race this press had just made,
+     * then made it again - against a row the route had only just accepted
+     * (nezavisna recenzija, 28.09.2026, visok nalaz).
+     *
+     * <p>So this asks what the DELETE-shaped case above cannot: not only that
+     * nothing is deleted, but that the row already made is corrected by its OWN
+     * address (`PUT`) and the row not yet made is asked for by the one that makes
+     * one (`POST`) - the whole of what a correct retry writes, and no more.
+     */
+    let racePosts = 0
+    const THE_FIRST_RACE_MADE = 987654
+
+    answering = (path, init) => {
+      if (path !== '/api/races' || (init?.method ?? 'GET') !== 'POST') {
+        return null
+      }
+
+      racePosts += 1
+
+      /* Trka za dečji osmeh (2014, event 32) carries two races of a length, so the
+         copy opens the table already holding two new rows and neither press has to
+         touch it. The first is accepted under an identity chosen here rather than
+         left to the floor's own counter, so the retry can be measured by name; the
+         second is refused for a reason that has nothing to do with the first, so
+         the press is a PARTIAL failure and not a clean refusal of everything. */
+      return racePosts === 1
+        ? new Response(
+            JSON.stringify({ id: THE_FIRST_RACE_MADE, eventDate: '', eventSlug: '' }),
+            { status: 201, headers: { 'content-type': 'application/json' } },
+          )
+        : refused('theDistanceIsNotKeptExactly')
+    }
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    /* Both rows are here without either press ever touching the table, which is
+       what makes this the copy's path and not the served table's. */
+    expect(screen.getAllByLabelText(/^Dužina/)).toHaveLength(2)
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = (await screen.findAllByRole('alert')).map((one) => one.textContent ?? '').join(' ')
+
+    expect(said).toContain('Dužina nije upisana u obliku koji portal čuva.')
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+
+    const beforeRetry = watching.asked.length
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const onRetry = whereItWrote(watching.asked.slice(beforeRetry))
+      .filter((one) => one.includes('/api/races'))
+      .sort()
+
+    expect(
+      onRetry,
+      `the retry over the races of a copy: ${onRetry.join(', ')}`,
+    ).toEqual(['POST /api/races', `PUT /api/races/${String(THE_FIRST_RACE_MADE)}`])
+  }, SLOW)
+
   it('keeps the address the route filed it under, not the one the rule would build', async () => {
     /**
      * THE ROUTE DECIDES THE ADDRESS, AND THIS SCREEN WRITES DOWN WHAT IT SAID.
