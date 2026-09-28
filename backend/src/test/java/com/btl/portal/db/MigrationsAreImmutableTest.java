@@ -144,10 +144,13 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   ADL A2's protection for applied migrations does not cover it yet and this is not a
 			   rewrite of a migration anyone has run. */
 			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484),
-			/* PINNED LAST, 28.09.2026, once all four written pages were whole in this file - the
-			   rule this project keeps for every migration checksum, so that a later commit fixing
-			   one word in a comment cannot silently move this number out from under itself. */
-			new Applied("43", "V43__the_written_pages_speak_english.sql", 677440898));
+			/* REPINNED 28.09.2026, from 677440898: independent review of PR 414 found Article 36
+			   naming the rookie category by a Serbian word no English screen shows, and a header
+			   sentence attributing the assistant's own derivation to the owner as an independent
+			   confirmation. V43 had not merged to main at either point - the same condition V41's
+			   own repin note above checks rather than assumes - so this is not a rewrite of a
+			   migration anyone has run. */
+			new Applied("43", "V43__the_written_pages_speak_english.sql", 287136958));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

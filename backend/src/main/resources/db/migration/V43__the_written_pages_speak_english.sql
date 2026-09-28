@@ -58,9 +58,13 @@
  * "This [privacy policy / these terms of use] is published in the Serbian language, in the
  * Latin script. A translation into English, or into any third language, is for information
  * only, and in the event of a discrepancy the Serbian version is authoritative." Confirmed by
- * the owner as the wording to use. rec-predsednika is not one of the three named pages (PDL.md
- * :3213) and does not get this sentence, which the owner confirmed independently, citing the
- * same two lines.
+ * the owner as the wording to use. rec-predsednika is not one of the three named pages and does
+ * not get this sentence - DERIVED from the same two lines, not a separate confirmation from the
+ * owner: PDL.md, "Kod pravnih tekstova mora biti izricito navedeno koja je jezicka verzija
+ * merodavna, i to je srpska", and the very next line, which names the three by word rather than
+ * by count, "Engleska verzija politike privatnosti, uslova koriscenja i pravilnika" (today at
+ * :3212-:3213). A page named nowhere in that second line is not one of the three, and
+ * rec-predsednika is named in neither.
  *
  * VALUES ARE DOLLAR QUOTED ($$...$$) RATHER THAN QUOTED WITH DOUBLED APOSTROPHES, which V24
  * uses throughout (for example "Round ''n'' Around"). That form is exactly as valid here, but
@@ -394,7 +398,7 @@ The date of birth is not verified against a document. You enter it yourself, and
 
 ### Article 36. Rookie category
 
-Anyone who is new to the league competes in the rookie category, called `Početnici` for men and `Početnice` for women. The name describes time spent in the league, not ability.
+Anyone who is new to the league competes in the rookie category, called `Rookies` for men and `Rookies` for women. The name describes time spent in the league, not ability.
 
 - You leave the rookie category when one official season, starting from the 2027 season, ends with 12 or more BTL points, and the change takes effect from the following season. The category does not change mid-season, any more than the age category does.
 - Leaving is permanent and irreversible.

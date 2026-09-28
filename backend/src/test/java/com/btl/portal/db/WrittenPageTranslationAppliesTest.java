@@ -5,6 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -464,5 +466,63 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 							+ " 15.09.2026", slug)
 					.doesNotContain("15.09.2026");
 		}
+	}
+
+	/**
+	 * PRAVILNIK'S ENGLISH ARTICLE 36 NAMES THE ROOKIE CATEGORY THE WAY frontend/src/i18n/en.json
+	 * ACTUALLY NAMES IT ON SCREEN - READ FROM THE DICTIONARY PAIR ITSELF, NEVER TYPED AS A LITERAL.
+	 *
+	 * <p>Measured in three steps, none of them this task's to resolve: {@code data/categories.ts}
+	 * translates no category except by printing its raw code for everything but the first-season
+	 * band; the first-season CODE cannot read "F R" in English because {@code genderMark} is not
+	 * language aware and returns "M"/"Ž" on every language, so the code is "M R" / "Ž R" and never
+	 * "F R" anywhere; and {@code en.json}'s own {@code category.rookieMale} /
+	 * {@code category.rookieFemale} already both read "Rookies". So the owner's decision of
+	 * 11.08.2026 ("Na engleskom će se zvati M R i F R") is undelivered on the actual screen today,
+	 * and fixing that is a shared-function increment of its own (both {@code en.json} and
+	 * {@code genderMark} would have to change together). Until then this document follows the
+	 * screen: a reader must be able to find, on the English screen, the exact label the English
+	 * Rulebook names.
+	 *
+	 * <p><b>The two values compared are read from the dictionaries, not hand typed</b> - the same
+	 * discipline {@link #theLeadingNumberOfAnEnglishHeadingMatchesTheSerbianHeadingItIsPairedWith}
+	 * keeps for headings: its foundation is a LIST of thirty-nine pairs read from the schema; this
+	 * one's foundation is a DICTIONARY of two keys read from the two JSON files the portal itself
+	 * ships as the source of what a screen prints. A hard-coded {@code "Rookies"} here would drift
+	 * silently the day either file's wording changes; asking the file instead cannot.
+	 */
+	@Test
+	void article36NamesTheRookieCategoryExactlyAsEnJsonDoes() throws Exception {
+		reapply();
+
+		JsonNode enCategory = new ObjectMapper()
+				.readTree(repositoryRoot().resolve("frontend/src/i18n/en.json")).path("category");
+		JsonNode srCategory = new ObjectMapper()
+				.readTree(repositoryRoot().resolve("frontend/src/i18n/sr.json")).path("category");
+
+		String englishRookieMale = enCategory.path("rookieMale").asString();
+		String englishRookieFemale = enCategory.path("rookieFemale").asString();
+		String serbianRookieMale = srCategory.path("rookieMale").asString();
+		String serbianRookieFemale = srCategory.path("rookieFemale").asString();
+
+		assertThat(englishRookieMale)
+				.as("en.json's own two keys must still read the same word, or this case is not"
+						+ " measuring the fact it claims to")
+				.isEqualTo(englishRookieFemale);
+
+		String article36 = wholeEnglishBodyOf("pravilnik");
+
+		assertThat(article36)
+				.as("Article 36 does not name the rookie category the way en.json actually does"
+						+ " (\"%s\")", englishRookieMale)
+				.contains(englishRookieMale);
+		assertThat(article36)
+				.as("Article 36 still carries the untranslated Serbian dictionary value for the"
+						+ " men's rookie label (\"%s\")", serbianRookieMale)
+				.doesNotContain(serbianRookieMale);
+		assertThat(article36)
+				.as("Article 36 still carries the untranslated Serbian dictionary value for the"
+						+ " women's rookie label (\"%s\")", serbianRookieFemale)
+				.doesNotContain(serbianRookieFemale);
 	}
 }
