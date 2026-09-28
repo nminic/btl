@@ -7,7 +7,7 @@ import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { bare } from '../test/sources'
 import { at } from '../test/at'
-import { FORMS, registracija } from './definitions'
+import { FORMS } from './definitions'
 import { FormRenderer } from './FormRenderer'
 
 /**
@@ -188,17 +188,26 @@ describe('how tall a control in a form is', () => {
        name, the boxes are the labels inside the group. A field type added tomorrow is
        read on the day it is drawn, and a field that stops being drawn stops being
        asked about. */
-    render(
-      createElement(
-        ClockProvider,
-        { simulatedDay: null },
+    /* EVERY FORM THE PORTAL DEFINES, not the registration alone. The owner named three
+       dropdowns on one screen, but one renderer draws all thirteen definitions across
+       six screens, so a fix measured on the registration says nothing about the other
+       twelve unless they are drawn too. Drawn here rather than visited in a browser
+       because most of them are behind a sign-in and none of them needs to be visited to
+       answer this: what is asked is which controls exist, and that is the same answer in
+       jsdom as on a screen. */
+    for (const form of Object.values(FORMS)) {
+      render(
         createElement(
-          I18nProvider,
-          { locale: 'sr' },
-          createElement(FormRenderer, { form: registracija, onSubmit: () => undefined }),
+          ClockProvider,
+          { simulatedDay: null },
+          createElement(
+            I18nProvider,
+            { locale: 'sr' },
+            createElement(FormRenderer, { form, onSubmit: () => undefined }),
+          ),
         ),
-      ),
-    )
+      )
+    }
 
     const drawn = new Set<string>()
 
