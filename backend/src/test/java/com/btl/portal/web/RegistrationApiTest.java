@@ -760,20 +760,23 @@ class RegistrationApiTest {
 						+ " the form no longer sends")
 				.isEqualTo(204);
 
-		/* TWO ROWS AND NOT ONE, ASKED BEFORE THE PICTURE IS. Both members' `photo_id` is
-		   null, so the line below would read the same answer off EITHER of them, and the
-		   half of this case about the picture that was sent would be satisfied by the
-		   member who sent none. Asked here, `theCompetitorBehind(second)` is a row this
-		   case can name, which is what makes the next line about the second registration
-		   rather than about whichever row the address happened to find. */
+		/* TWO ROWS AND NOT ONE, WHICH IS WHAT MAKES THE TWO LINES AFTER IT SAY ANYTHING.
+		   With one member in the fixture, „no member carries a picture" is a claim about
+		   the only row there is, and a route that wrote a picture for the SECOND
+		   registration alone would satisfy it. Measured rather than reasoned: reading
+		   `photo_id` off `second` instead of off `ADDRESS` passed 32 of 32, because both
+		   are null, so a per-row read cannot tell the two apart and is not written here. */
 		assertThat(theCompetitorBehind(second).get("id"))
-				.as("the second registration did not make a second member, so the line below"
-						+ " reads the first one's row")
+				.as("the second registration did not make a second member, so nothing below"
+						+ " is about the registration that carried a picture")
 				.isNotEqualTo(theCompetitorBehind(ADDRESS).get("id"));
 
-		assertThat(theCompetitorBehind(second).get("photo_id"))
-				.as("a picture sent with the registration reached the member's row")
-				.isNull();
+		/* OVER EVERY MEMBER AND OVER THE WHOLE TABLE, so neither line can be satisfied by
+		   whichever row an address happened to find. */
+		assertThat(db.sql("select count(*) from competitor where photo_id is not null")
+				.query(Integer.class).single())
+				.as("a registration put a picture on a member's row")
+				.isZero();
 
 		assertThat(howMany("photo"))
 				.as("the registration wrote a picture, which is what the owner moved to"
