@@ -64,6 +64,29 @@
      failing on every screen the portal has. This is 3,63:1 on a card and 3,35:1
      on the page behind it. */
   --control-border: #7d8798;
+  /* HOW TALL ANYTHING YOU CAN OPERATE IN A FORM IS, and the reason it is a number
+     here rather than whatever each control works out for itself.
+   *
+     Owner, 28.09.2026: „sredi i visine i vertikalne pozicije svih dropdown polja...
+     Moraju biti savrseno visine tekstualnih boksova i dugmadi u tim redovima."
+   *
+     Left to themselves the three disagree, and it was measured rather than
+     assumed: at the same font, the same padding and the same border, a text box
+     came out 46,13px, a select 44 and a group of buttons 44. The gap is the line
+     box, and it cannot be argued with - a select in Chrome computes its own
+     `line-height` and ignores the one it is given. Measured in both directions on
+     28.09.2026: telling the select to inherit left it at `normal` and at 44, and
+     telling the text box to use `normal` took it to 42,67 while the select stayed
+     44. There is no value of `line-height` at which the two agree, so the height
+     stops being worked out and starts being said, once, here.
+   *
+     `rem` and not `px`, so it grows with the reader's own text size the way the
+     controls it replaces used to.
+   *
+     3rem is above every natural height measured, which is what makes it bind for
+     all of them rather than for some; it also keeps every control at least as
+     tall as the 44px a pointer target is usually given. */
+  --control-height: 3rem;
   --accent: var(--blue-700);
 
   /* One colour per race length: blue, green, yellow, orange, red, from the

@@ -225,6 +225,7 @@
       "hintKey": "registration.parentConsentHint",
       "required": true,
       "maxLength": 120,
+      "row": 7,
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
@@ -251,6 +252,7 @@
           "labelKey": "registration.guardian"
         }
       ],
+      "row": 7,
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
