@@ -1,9 +1,14 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { createElement } from 'react'
+import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { ClockProvider } from '../clock/ClockProvider'
+import { I18nProvider } from '../i18n/I18nProvider'
 import { bare } from '../test/sources'
 import { at } from '../test/at'
-import { FORMS } from './definitions'
+import { FORMS, registracija } from './definitions'
+import { FormRenderer } from './FormRenderer'
 
 /**
  * EVERY CONTROL IN A FIELD IS THE SAME HEIGHT, AND EVERY FIELD PUTS ITS CONTROL THE
@@ -165,6 +170,82 @@ describe('how tall a control in a form is', () => {
       expect(one.value, `${one.where} sets ${one.property} without ${TOKEN}`).toMatch(
         new RegExp(`var\\(${TOKEN}\\)|^${OPT_OUT}$`),
       )
+    }
+  })
+
+  it('is actually given to every control a field draws, and the list comes from the DOM', () => {
+    /* THE HALF THE FIRST DRAFT OF THIS FILE WAS MISSING, and a mutation found it: the
+       case above says where a height may COME FROM, and says nothing about whether any
+       control is given one. Take the shared rule out altogether and that case went on
+       passing, because what was left - the tick opting out - is a legal answer to the
+       only question it asks. Measured on 28.09.2026: „revert the shared height"
+       SURVIVED a guard of four cases, which is exactly the shape of a guard that reads
+       as though it works.
+     *
+       THE CONTROLS ARE NOT LISTED HERE. They are read off a form the portal really
+       draws, through the one link that says which control a field is about: its label
+       names it (`htmlFor`), and for a group of buttons, which has no single control to
+       name, the boxes are the labels inside the group. A field type added tomorrow is
+       read on the day it is drawn, and a field that stops being drawn stops being
+       asked about. */
+    render(
+      createElement(
+        ClockProvider,
+        { simulatedDay: null },
+        createElement(
+          I18nProvider,
+          { locale: 'sr' },
+          createElement(FormRenderer, { form: registracija, onSubmit: () => undefined }),
+        ),
+      ),
+    )
+
+    const drawn = new Set<string>()
+
+    for (const field of document.querySelectorAll('.field')) {
+      for (const label of field.querySelectorAll<HTMLLabelElement>('label[for]')) {
+        /* Except inside a group of buttons, where the control a label names is not the
+           box anybody sees. The radio itself is laid over the whole of its label and
+           made invisible, on purpose and with its reasons written beside it
+           (`.choice__input`, `forms/FormRenderer.css`): it is the size of the label
+           rather than the other way round, so asking how tall it is asks nothing. The
+           boxes of a group are collected below, as the labels they are. */
+        if (label.closest('[role="radiogroup"]') !== null) {
+          continue
+        }
+
+        const control = document.getElementById(label.htmlFor)
+
+        for (const name of control?.classList ?? []) {
+          drawn.add(name)
+        }
+      }
+
+      for (const box of field.querySelectorAll('[role="radiogroup"] label')) {
+        for (const name of box.classList) {
+          drawn.add(name)
+        }
+      }
+    }
+
+    expect(drawn.size, 'the form drew no control this could ask about').toBeGreaterThan(0)
+
+    /* Which of those the sheets actually give a height to. A class is answered for if
+       some rule inside a field names it and says how tall it is. */
+    const answered = new Set(
+      ALL.filter((rule) => insideAField(rule.selector))
+        .filter((rule) => rule.declarations.some(([property]) => TALL.includes(property)))
+        .flatMap((rule) => classesOf(rule.selector)),
+    )
+
+    /* A control that carries no class of its own cannot be reached by a sheet, and the
+       renderer gives every one of them one; `field__control` is that class for all but
+       the buttons of a choice. */
+    for (const name of drawn) {
+      expect(
+        [...answered].some((said) => said === name),
+        `nothing tells ${name} how tall to be, so it works it out for itself`,
+      ).toBe(true)
     }
   })
 
