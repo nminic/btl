@@ -601,6 +601,14 @@ describe('a team its administrator takes down', () => {
            means to the person it happened to. */
         expect(await screen.findByRole('link', { name: 'Predloži tim' })).toBeVisible()
 
+        /* AND NOBODY OUTSIDE THE TEAM LOST THEIRS WITH IT. Handing this half the whole list
+           of members instead of this team's would pass every assertion above and leave the
+           portal with nobody in any team, which is the same fault the served half is held
+           against one case along. Dunav keeps its six. */
+        await router.navigate('/sr/tim/dunavski-trkaci')
+
+        expect(await screen.findByText(/6 članova/)).toBeVisible()
+
         server.stop()
       }, SLOW)
   })

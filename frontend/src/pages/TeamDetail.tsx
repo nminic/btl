@@ -145,11 +145,19 @@ export function TeamDetail() {
        without this the team would still be standing in it. `competitors` beside `teams` is the
        half that is easy to miss: the memberships cascade on the server (V11), and a member's
        team reaches this portal as `Competitor.teamId` off `/api/competitors`, so every screen
-       that draws somebody's club would go on drawing a team that is gone. */
+       that draws somebody's club would go on drawing a team that is gone.
+
+       AND NOTHING IS WRITTEN INTO THE SESSION BESIDE THEM, WHICH IS A DIFFERENCE FROM
+       `admin/AdminTeams.tsx` AND NOT AN OMISSION. That screen adds the deletion to the overlay
+       because it STAYS MOUNTED over the very list the row came out of, and a screen that is
+       still mounted never asks its resource again. This one leaves, so the next mount reads
+       the two answers above and the server is the only thing that decides what is in them. A
+       `remove` here would be a second answer to „what does this list show" - the fault
+       `AdminLeagues.tsx` names in its own words - and there would be no case able to tell the
+       two apart, because the row is gone either way. */
     clearResourceCache('teams')
     clearResourceCache('competitors')
 
-    remove(TEAMS.id, String(team.id))
     void navigate(`/${locale}/timovi`)
   }
 
