@@ -21,18 +21,44 @@ import java.util.Objects;
  * over the same course. It becomes a rung only on the board that is ABOUT time,
  * "najduže na stazi", and there more of it is better as well.
  *
- * <p><b>Two decimals, and a third one throws.</b> The schema stores distance as
- * {@code numeric(6,2)} and points as {@code numeric(8,2)}, and
- * {@link com.btl.portal.domain.scoring.BtlScoreCalculator} hands back exactly
- * that. A number arriving here with a third decimal did not come from either, so
- * it is refused rather than rounded: rounding it would move somebody up or down
- * a table without a word. Scaling UP is exact and silent, so
- * {@link BigDecimal#ZERO} and a whole number are both fine.
+ * <p><b>A number wider than its own column throws, and the two columns are not
+ * the same width.</b> A number arriving here with more decimals than the schema
+ * can store did not come out of the schema, so it is refused rather than
+ * rounded: rounding it would move somebody up or down a table without a word.
+ * Scaling UP is exact and silent, so {@link BigDecimal#ZERO} and a whole number
+ * are both fine on either.
+ *
+ * <p><b>Distance carries FOUR decimals and points carry TWO, and that split is
+ * the schema's rather than this class's.</b> Until V44 both were two, and the
+ * reason written here was {@code result.distance_km numeric(6,2)}. The owner
+ * decided on 19.09.2026 that a race is measured exactly - „Hocu da mogu da
+ * unosim tacnu duzinu, ali se prikazuje zaokruzeno" - and the schema moved under
+ * that decision in three steps: V25 widened {@code race.distance_km} to
+ * {@code numeric(8,4)}, V32 widened {@code result_submission.distance_km} to
+ * match, and V44 widened {@code result.distance_km} in the commit that first
+ * lets an approval write one. So a season that adds up the kilometres of a
+ * 42,195 km race reaches this class with four decimals, and a guard still
+ * demanding two would refuse the one number the portal now takes trouble to keep
+ * exact. Both V25 and V32 name this class by name as the half of that work that
+ * is not SQL.
+ *
+ * <p><b>Points did NOT move with it, and that is a decision and not an
+ * oversight.</b> {@code result.points} is {@code numeric(8,2)} and
+ * {@link com.btl.portal.domain.scoring.BtlScoreCalculator} rounds its answer to
+ * two decimals before handing it back, so a third decimal on points still did
+ * not come from the formula. The owner's decision of the same day says so in as
+ * many words (PDL): „Zlatni test set bodovanja je na dve decimale i ostaje
+ * netaknut, ali se bodovi od tada racunaju na precizniju" length. A more exact
+ * length reaches the formula; the points it hands back are the same two decimals
+ * they always were.
  */
 public record Totals(int races, BigDecimal kilometers, int ascent, int descent, long seconds, BigDecimal points) {
 
-	/** What the schema stores and what the calculator hands back. */
-	static final int DECIMALS = 2;
+	/** What {@code result.distance_km} stores, since V44 and V25 before it. */
+	static final int DISTANCE_DECIMALS = 4;
+
+	/** What {@code result.points} stores and what the calculator hands back. */
+	static final int POINTS_DECIMALS = 2;
 
 	/** Nobody has raced yet, which is a real row: a member of a team who has not
 	 *  started is on the team page with zeros, not missing from it. */
@@ -40,8 +66,8 @@ public record Totals(int races, BigDecimal kilometers, int ascent, int descent, 
 			new Totals(0, BigDecimal.ZERO, 0, 0, 0L, BigDecimal.ZERO);
 
 	public Totals {
-		kilometers = exactlyTwoDecimals(kilometers, "kilometers");
-		points = exactlyTwoDecimals(points, "points");
+		kilometers = noWiderThan(DISTANCE_DECIMALS, kilometers, "kilometers");
+		points = noWiderThan(POINTS_DECIMALS, points, "points");
 		notNegative(races, "races");
 		notNegative(ascent, "ascent");
 		notNegative(descent, "descent");
@@ -80,7 +106,12 @@ public record Totals(int races, BigDecimal kilometers, int ascent, int descent, 
 		return plus(new Totals(1, raceKilometers, raceAscent, raceDescent, raceSeconds, racePoints));
 	}
 
-	private static BigDecimal exactlyTwoDecimals(BigDecimal value, String named) {
+	/**
+	 * @param decimals what the column this number comes out of can store, which is
+	 *                 four for a distance and two for points: see the note on this
+	 *                 class for why they differ and which migration moved which
+	 */
+	private static BigDecimal noWiderThan(int decimals, BigDecimal value, String named) {
 		Objects.requireNonNull(value, named);
 
 		if (value.signum() < 0) {
@@ -88,11 +119,11 @@ public record Totals(int races, BigDecimal kilometers, int ascent, int descent, 
 		}
 
 		try {
-			return value.setScale(DECIMALS, RoundingMode.UNNECESSARY);
-		} catch (ArithmeticException moreThanTwo) {
+			return value.setScale(decimals, RoundingMode.UNNECESSARY);
+		} catch (ArithmeticException tooWide) {
 			throw new IllegalArgumentException(
-					named + " carries more than " + DECIMALS + " decimals, so it did not come from a race: " + value,
-					moreThanTwo);
+					named + " carries more than " + decimals + " decimals, so it did not come from a race: " + value,
+					tooWide);
 		}
 	}
 
