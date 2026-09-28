@@ -173,7 +173,6 @@ class RegistrationApiTest {
 		form.put("idNumber", "AB1234567");
 		form.put("phone", "+381601234567");
 		form.put("shirtSize", "L");
-		form.put("bio", "Trcim od 2019. godine, najvise po planinama.");
 		form.put("healthStatement", true);
 
 		return form;
@@ -267,7 +266,10 @@ class RegistrationApiTest {
 		assertThat(competitor.get("address")).isEqualTo("Ulica slobode 15/4");
 		assertThat(competitor.get("shirt_size")).isEqualTo("L");
 		assertThat(competitor.get("phone")).isEqualTo("+381601234567");
-		assertThat(competitor.get("bio")).isEqualTo("Trcim od 2019. godine, najvise po planinama.");
+		/* EMPTY, AND THAT IS THE STATE A MEMBER JOINS IN since 28.09.2026. The column is
+		   NOT NULL and may be empty (V7), and the words are written afterwards through
+		   `PUT /api/me`, which puts them in front of a moderator first. */
+		assertThat(competitor.get("bio")).isEqualTo("");
 		assertThat(competitor.get("first_season_2027")).isEqualTo(true);
 		assertThat(((java.sql.Date) competitor.get("birth_date")).toLocalDate())
 				.isEqualTo(today.minusYears(30));
@@ -1147,25 +1149,34 @@ class RegistrationApiTest {
 	}
 
 	/**
-	 * THE BIOGRAPHY AND THE TELEPHONE ARE OPTIONAL, and they are the only two that are.
+	 * THE TELEPHONE IS THE ONLY OPTIONAL FIELD LEFT, AND A BIOGRAPHY SENT ANYWAY IS IGNORED.
 	 *
-	 * <p>„Svojim recima" was compulsory in the form by mistake and registration was refused
-	 * without it, which collided with the portal's own privacy policy; corrected
-	 * 12.08.2026, and PDL says „prijava prolazi i bez njega". The telephone is collected on
-	 * consent since 20.08.2026, which overturned the decision of 11.08.2026 that had taken
-	 * it off the portal altogether.
+	 * <p>~~„Svojim recima" was compulsory in the form by mistake and registration refused
+	 * without it, corrected 12.08.2026.~~ <b>It is not asked at all since 28.09.2026</b>
+	 * („Profilna sekcija se sa slikom i svojim recima izbacuje iz registracione forme - to
+	 * ce clan popunjavati naknadno kad bude odobren"), so there is no longer an optional
+	 * field beside the telephone, which is collected on consent since 20.08.2026.
 	 *
-	 * <p><b>The two are stored differently and V7 and V8 each say why</b>: an empty
-	 * biography is a state a profile has to look right in, so the column is NOT NULL and
-	 * may be empty; no telephone is NULL, because an empty string would be a second way of
-	 * saying the same absence.
+	 * <p><b>And a body carrying one is ignored rather than stored, which is the half that
+	 * had to be measured rather than assumed.</b> What this route is handed goes STRAIGHT
+	 * into {@code competitor.bio}, while every later edit goes through {@link MeWriteApi}
+	 * and waits for a moderator - so a parameter still accepted after no screen sends one
+	 * would be a way to publish prose nobody reads first. {@code Typed} no longer declares
+	 * it and the row is written with a literal, and the case below is what says so:
+	 * Jackson drops a name nothing is declared for silently, which is exactly the shape
+	 * that would otherwise go unnoticed.
+	 *
+	 * <p>The two columns still differ and V7 and V8 each say why: an empty biography is a
+	 * state a profile has to look right in, so the column is NOT NULL and may be empty; no
+	 * telephone is NULL, because an empty string would be a second way of saying the same
+	 * absence.
 	 */
 	@Test
-	void theBiographyAndTheTelephoneAreTheOnlyTwoThatAreOptional() throws Exception {
+	void theTelephoneIsTheOnlyOptionalOneAndABiographySentAnywayIsIgnored() throws Exception {
 		Map<String, Object> neither = aGrownUp();
 
-		neither.remove("bio");
 		neither.remove("phone");
+		neither.put("bio", "Tekst koji niko nije trazio i koji niko ne odobrava.");
 
 		assertThat(register(neither).getStatus())
 				.as("a registration was refused for want of a field nothing asks for")
@@ -1174,7 +1185,8 @@ class RegistrationApiTest {
 		Map<String, Object> stored = theCompetitorBehind(ADDRESS);
 
 		assertThat(stored.get("bio"))
-				.as("an absent biography was stored as nothing rather than as an empty one")
+				.as("a biography sent with the registration was stored, so this route still"
+						+ " takes prose that no moderator will ever see")
 				.isEqualTo("");
 		assertThat(stored.get("phone"))
 				.as("an absent telephone was stored as an empty string, which is a second way"
