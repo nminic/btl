@@ -1613,6 +1613,137 @@ describe('the races of an event', () => {
     ])
   }, SLOW)
 
+  it('makes two events when Novi događaj is pressed twice, not one and a change to it', async () => {
+    /**
+     * `madeHere` IS A REF ON THE WHOLE SCREEN, NOT ON ONE VISIT TO THE FORM, and a
+     * nezavisna recenzija found that `onDone` cleared `chosen`, `justMade`, `held`
+     * and `refused` and left it standing. The second „Novi događaj" then read the
+     * FIRST event's identity off it, and `standing` (`saveOne`) preferred that ref
+     * over the plain fact that this is a NEW record - so the second press `PUT`s
+     * the first event instead of making a second one, and the second event is
+     * never made at all.
+     */
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.type(screen.getByLabelText(/^Naziv događaja/), 'Prvi novi događaj')
+    await user.type(screen.getByLabelText(/^Datum/), '15062028')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.type(screen.getByLabelText(/^Naziv događaja/), 'Drugi novi događaj')
+    await user.type(screen.getByLabelText(/^Datum/), '16062028')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(
+      whereItWrote(watching.asked).filter((one) => one.includes('/api/events')),
+      'the second event was written as a change to the first instead of a record of its own',
+    ).toEqual(['POST /api/events', 'POST /api/events'])
+  }, SLOW)
+
+  it('changes the event that is open, not the one a moment ago entered and left', async () => {
+    /**
+     * THE SAME REF, THE OTHER DIRECTION. A served event opened AFTER a new one was
+     * entered has to be changed at ITS OWN address, not at the address the ref the
+     * new one left behind names: `standing` read `madeHere.current` before it
+     * read `editing.record` at all, so the new event's identity outranked the
+     * record the form was plainly open on, and the served event was never
+     * touched.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(
+      events.find((one) => one.kind !== 'race'),
+      'an event with no races, so one press is one request',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.type(screen.getByLabelText(/^Naziv događaja/), 'Uzgredni novi događaj')
+    await user.type(screen.getByLabelText(/^Datum/), '17062028')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    await user.click(await openRowOf(mine, user))
+    await user.type(await screen.findByLabelText(/^Opis događaja/), 'jedna rečenica')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    expect(
+      whereItWrote(watching.asked).filter((one) => one.includes('/api/events')),
+      'the served event was changed at the new one s address instead of its own',
+    ).toEqual(['POST /api/events', `PUT /api/events/${String(mine.id)}`])
+  }, SLOW)
+
+  it('does not delete a race the first press already wrote when the second press retries', async () => {
+    /**
+     * THE ROW THE TABLE HOLDS KEEPS AN EMPTY KEY AFTER ITS RACE IS MADE, and a
+     * retry after a partial refusal reads that empty key as „nothing stands here
+     * yet, so what the server just accepted must be swept away."
+     *
+     * <p>A press that writes two new races and has the second one refused leaves
+     * the FIRST one on the server with a real identity, but `held.rows` still
+     * shows it with `id: ''` because only the write overlay (`written`) was told
+     * about it; the table itself was not. The retry recomputes `was` off the
+     * overlay - which now names the first race by its real id - and `kept` off
+     * the table, which still says that id does not exist, so the loop that
+     * removes a filed race no surviving row keeps `DELETE`s it and then makes it
+     * again.
+     */
+    let racePosts = 0
+
+    answering = (path, init) => {
+      if (path !== '/api/races' || (init?.method ?? 'GET') !== 'POST') {
+        return null
+      }
+
+      racePosts += 1
+
+      /* The first new race is accepted, as the server really would accept it; the
+         second is refused for a reason that has nothing to do with the first, so
+         the press is a PARTIAL failure and not a clean refusal of everything. */
+      return racePosts >= 2 ? refused('theDistanceIsNotKeptExactly') : null
+    }
+
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.type(must(screen.getAllByLabelText(/^Dužina/).at(-1), 'the first new race'), '10')
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.type(must(screen.getAllByLabelText(/^Dužina/).at(-1), 'the second new race'), '15')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* The partial failure: the event and the first race went through, the second
+       did not, and the form stays open rather than confirming. */
+    const said = (await screen.findAllByRole('alert')).map((one) => one.textContent ?? '').join(' ')
+
+    expect(said).toContain('Dužina nije upisana u obliku koji portal čuva.')
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+
+    const beforeRetry = watching.asked.length
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const onRetry = whereItWrote(watching.asked.slice(beforeRetry))
+
+    expect(
+      onRetry.some((one) => one.startsWith('DELETE /api/races/')),
+      `the retry deleted a race the first press wrote: ${onRetry.join(', ')}`,
+    ).toBe(false)
+  }, SLOW)
+
   it('keeps the address the route filed it under, not the one the rule would build', async () => {
     /**
      * THE ROUTE DECIDES THE ADDRESS, AND THIS SCREEN WRITES DOWN WHAT IT SAID.
