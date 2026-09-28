@@ -50,6 +50,7 @@ async function eventAt(slug: string): Promise<BtlEvent> {
 }
 import { renderAt } from '../../test/render'
 import { Reported } from '../../test/saved'
+import { refused, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { ReportResult } from './ReportResult'
 
@@ -422,6 +423,39 @@ describe('a result reported this way', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(4)
+  })
+
+  it('is not written into the store where the server refused it', async () => {
+    /* Until 28.09.2026 this screen wrote the overlay and confirmed on the spot, so a
+       member was told his run was in the queue when nothing had left the machine.
+       `keep(run, values)` in `send` runs only past the check that returns early where the
+       answer was not „done"; a version that ran it before `await theRunWasSentIn` would
+       draw this exact row on a refusal too (`resultToTheServer.test.tsx` measures the same
+       axis on the wire, this measures what is drawn from it). */
+    const { races } = await racesOf(EVENT)
+    const user = setupUser()
+    const server = serverThat((path, init) =>
+      path.startsWith('/api/results') && init?.method !== undefined
+        ? refused('theRaceHasNotBeenRun')
+        : null,
+    )
+
+    try {
+      renderAt(reportAddress(EVENT, first(races)), 'competitor', ME, undefined, null, <Sent />)
+
+      await fillIn(user)
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+
+      /* The route's own word, so the wait is really over the answer and not over a redraw
+         that happened to land first. */
+      await screen.findByText('Rezultat ne može da se pošalje pre dana same trke.')
+
+      expect(
+        within(screen.getByRole('list', { name: 'store' })).queryAllByRole('listitem'),
+      ).toHaveLength(0)
+    } finally {
+      server.stop()
+    }
   })
 })
 
