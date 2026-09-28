@@ -100,16 +100,6 @@
       "policyBasis": "Izvršenje ugovora"
     },
     {
-      "name": "phone",
-      "type": "text",
-      "labelKey": "registration.phone",
-      "maxLength": 30,
-      "row": 4,
-      "groupKey": "registration.group.contact",
-      "policyRow": "Telefon, neobavezno",
-      "policyBasis": "Vaš pristanak"
-    },
-    {
       "name": "address",
       "type": "text",
       "labelKey": "registration.address",
@@ -130,6 +120,16 @@
       "groupKey": "registration.group.contact",
       "policyRow": "Mesto i zemlja",
       "policyBasis": "Izvršenje ugovora i pravna obaveza"
+    },
+    {
+      "name": "phone",
+      "type": "text",
+      "labelKey": "registration.phone",
+      "maxLength": 30,
+      "row": 5,
+      "groupKey": "registration.group.contact",
+      "policyRow": "Telefon, neobavezno",
+      "policyBasis": "Vaš pristanak"
     },
     {
       "name": "idNumber",

@@ -59,10 +59,27 @@
   padding: 0;
   float: none;
   width: 100%;
+  margin-bottom: var(--space-12);
   color: var(--text);
-  font-weight: 600;
-  font-size: 1rem;
+  font-weight: 700;
+  font-size: 1.125rem;
   line-height: 1.3;
+}
+
+/* Air between two groups, and more of it than there is between two fields of
+ * one group.
+ *
+ * Measured before this existed: the gap above a group name and the gap above a
+ * field were both 20 pixels and the name was 16 pixels at weight 600, which is
+ * what a field label is to the last pixel. So „Ko ste" read as one more label
+ * with an empty box missing, and the parts it was drawn to separate looked like
+ * one run of nineteen fields, which is the thing the owner asked to be rid of.
+ *
+ * `margin-bottom` on the name rather than the gap of the group: a `legend` is
+ * laid out by the browser's own rules inside a `fieldset` and does not take the
+ * gap, measured at zero pixels between the name and the first field under it. */
+.form__group + .form__group {
+  margin-top: var(--space-12);
 }
 
 /* A row of fields, and one field to a line until there is room for more.
