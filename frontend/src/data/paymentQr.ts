@@ -145,6 +145,41 @@ export function methodsFor(country: string): PaymentMethod[] {
 }
 
 /**
+ * THE SAME PAIRING ASKED THE OTHER WAY ROUND: by the MONEY rather than by the country.
+ *
+ * <p><b>It exists because one screen is served the money and not the country</b>, and that is a
+ * decision rather than an oversight: `data/types.ts#MembershipDue` says in as many words that no
+ * country comes with a row of `GET /api/payments`, while `currency` does. `POST /api/payments`
+ * nevertheless requires `method` - `PaymentApi.METHODS` is `Set.of("ips", "paypal")` - so the one
+ * screen that books a payment has to name it from what it holds.
+ *
+ * <p><b>Why it is the same fact and not a second one.</b> Both sides come off one question:
+ * {@link paysInDinars} is what makes a member's money dinars AND what makes his way to pay the
+ * slip, and `PaymentsDueApi` answers dinars for exactly the country that one returns true for
+ * (owner, PDL section 19: „Valuta zavisi od zemlje clana"; PDL 20a: „Srbin placa IPS uplatnicom,
+ * inostranstvo PayPal-om"). So this is not a new rule; it is {@link methodsFor} entered through
+ * the other door, which is why it lives beside it rather than on the screen that needs it.
+ * `paymentQr.test.ts` holds the two against each other in both directions, so a change to either
+ * one alone fails.
+ *
+ * <p><b>NULL FOR MONEY THE PORTAL DOES NOT KNOW, AND THAT IS THE WHOLE REASON THIS RETURNS
+ * NULL.</b> `currency` is served as a plain `string` on purpose - `MembershipDue` gives the
+ * reason, that a union here „would be a second home for a set the schema owns" - so a third
+ * currency is a thing that arrives at runtime rather than a compile error. Answering `paypal` for
+ * it, which is what „anything that is not dinars" would do, would book money into the euro
+ * account on the strength of not recognising it. Answering nothing instead leaves the row unable
+ * to act, which is the honest state: the screen cannot say how the money arrived, so it does not
+ * guess.
+ */
+export function methodFor(currency: string): PaymentMethod | null {
+  if (currency === 'RSD') {
+    return 'ips'
+  }
+
+  return currency === 'EUR' ? 'paypal' : null
+}
+
+/**
  * Whether this member pays, and is credited, in dinars.
  *
  * One question asked in one place. The membership screen decides three things by
