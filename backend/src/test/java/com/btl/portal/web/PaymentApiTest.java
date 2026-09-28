@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -111,6 +112,16 @@ class PaymentApiTest {
 
 	@Autowired
 	private ObjectMapper mapper;
+
+	/**
+	 * FOR THE ONE QUESTION THAT CANNOT BE ASKED ON THIS CLASS'S OWN TRANSACTION.
+	 *
+	 * <p>{@link #numbersHandedOutSoFar} carries the whole of why: a sequence is outside the
+	 * transaction, and a booking the database has refused leaves the connection it was refused on
+	 * unable to answer anything else.
+	 */
+	@Autowired
+	private javax.sql.DataSource dataSource;
 
 	@TestConfiguration(proxyBeanMethods = false)
 	static class TheClockThisFileUses {
@@ -1611,5 +1622,153 @@ class PaymentApiTest {
 		assertThat(bookOf(referrer, "EUR"))
 				.as("a line in euro was written onto a book that is kept in dinars")
 				.isEqualByComparingTo("0");
+	}
+
+	/**
+	 * HOW MANY MEMBER NUMBERS HAVE EVER BEEN HANDED OUT, ASKED ON A CONNECTION OF ITS OWN.
+	 *
+	 * <p><b>A connection of its own is the whole point and not a detail.</b> {@code nextval} is
+	 * outside the transaction by design - V16 chose a sequence exactly so that it survives a deleted
+	 * row - which is also why a draw inside a transaction that goes back is spent for good. A case
+	 * that wants to know whether a REFUSED booking spent one therefore has to ask from outside the
+	 * transaction this class rolls back, and after a booking the database refused there is no asking
+	 * on the inside at all: PostgreSQL will take nothing further on a connection whose statement has
+	 * failed.
+	 *
+	 * <p>{@code is_called} is what tells a sequence nobody has drawn from (which reports
+	 * {@code last_value = 1}) apart from one drawn from once (which reports the same number), so it
+	 * is read rather than assumed.
+	 */
+	private long numbersHandedOutSoFar() throws Exception {
+		try (java.sql.Connection outsideThisTransaction = dataSource.getConnection();
+				java.sql.Statement asking = outsideThisTransaction.createStatement();
+				java.sql.ResultSet answer = asking.executeQuery(
+						"select last_value, is_called from member_number_seq")) {
+
+			answer.next();
+
+			return answer.getBoolean(2) ? answer.getLong(1) : 0L;
+		}
+	}
+
+	/**
+	 * A MEMBERSHIP THE PRICE LIST GIVES AWAY IS REFUSED WITH A SENTENCE, AND THE COLUMN IS NEVER
+	 * REACHED.
+	 *
+	 * <p><b>Both halves of this are decided and the collision between them was live.</b> PDL 20b
+	 * (owner, 27.09.2026) lets a row of the price list be free so long as it is free in BOTH
+	 * currencies, and {@code PricingWriteApiTest} has the case that measures {@code PUT
+	 * /api/pricing/{key}} answering 200 to exactly that. {@code payment_amount_positive} (V16) is
+	 * {@code check (amount > 0)} and is in an applied migration, so ADL A2 leaves it where it is.
+	 * Between the two, {@code recordIt} used to write {@code amount = 0.00} and come back <b>ERROR:
+	 * new row for relation „payment" violates check constraint „payment_amount_positive"</b> - a 500
+	 * on a moderator entering a bank statement.
+	 *
+	 * <p><b>THE PERIOD ROW AND THE JUNIOR ROW ARE TWO SOURCES OF ONE AMOUNT, so both are set to
+	 * nought in turn and never together.</b> {@code MembershipPrice.on} replaces whichever period
+	 * the day falls in with the junior row for anybody young enough, so a guard reading the PERIOD
+	 * would let a free junior price through and meet the constraint anyway - and a case that made
+	 * only one row free could not tell the two apart. The clock is 3 October, so {@code early} is
+	 * the period either man falls in; the man born in 2015 is fifteen in the 2028 season this books
+	 * and takes the junior price ({@code OLDEST_JUNIOR_IN_A_SEASON}), and the man born in 1990 does
+	 * not.
+	 *
+	 * <p><b>And the sequence is read before and after</b>, because a refusal that had already drawn
+	 * a number would have spent it for good and nothing else in this file would say so: the
+	 * competitor's own {@code member_number} column is empty either way once the transaction has
+	 * gone back.
+	 */
+	@ParameterizedTest
+	@CsvSource({"early,1990-05-15", "junior,2015-05-15"})
+	void amembershipThePriceListGivesAwayIsRefusedRatherThanMeetingTheColumn(String free,
+			String birthDate) throws Exception {
+
+		long drawnBefore = numbersHandedOutSoFar();
+
+		db.sql("update price_row set eur = 0, rsd = 0 where key = ?").param(free).update();
+
+		long id = competitor("bf", null, false, birthDate);
+
+		/* THREE EURO IS THE PROCESSING FEE AND IS WHAT THE SCREEN WOULD BE ASKING FOR: V4 gives the
+		   fee its own row, `MembershipPrice.on` reads it from there and never from the period, so a
+		   free membership abroad is still a payment of 3 the moderator can plainly see arrive. The
+		   amount is therefore money by every question this route asks of it, and what refuses the
+		   booking is the price list alone. */
+		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+				new BigDecimal("3.00"), false, "paypal", null)), moderatorCookie);
+
+		assertThat(answer.getStatus())
+				.as("a membership priced at nought on the %s row reached the database, which is a 500"
+						+ " where a moderator should have been told something", free)
+				.isEqualTo(409);
+		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+				.isEqualTo(PaymentApi.THE_MEMBERSHIP_COSTS_NOTHING);
+
+		assertThat(paymentCount()).isZero();
+		assertThat(membershipCount()).isZero();
+		assertThat(db.sql("select member_number, active from competitor where id = ?").param(id)
+						.query((row, i) -> row.getString(1) + " " + row.getBoolean(2)).single())
+				.as("a refused booking numbered or activated the competitor anyway")
+				.isEqualTo("null false");
+
+		assertThat(numbersHandedOutSoFar())
+				.as("a member number was drawn for a booking that was refused, and the sequence only"
+						+ " counts up, so that number is gone for good (PDL 31.07.2026)")
+				.isEqualTo(drawnBefore);
+	}
+
+	/**
+	 * AND A BOOKING THE DATABASE ITSELF REFUSES SPENDS NO MEMBER NUMBER EITHER, WHICH IS THE HALF NO
+	 * SENTENCE ON THIS ROUTE CAN COVER.
+	 *
+	 * <p><b>The state is the one this class's own javadoc names as deliberately unguarded:</b> a
+	 * {@code payment} row sitting {@code awaited} for this (competitor, season) with no
+	 * {@code membership} beside it „is read exactly like no row at all and then {@code insert}ed as
+	 * though it were one, which collides with {@code payment_one_a_season} and answers 500 rather
+	 * than completing it". That 500 is unchanged and this case does not pretend otherwise - it
+	 * asserts the booking really was refused by the DATABASE, which is what makes the question below
+	 * worth asking at all.
+	 *
+	 * <p><b>What changed on 28.09.2026 is what it costs.</b> The number used to be drawn before the
+	 * two inserts, so every one of these 500s ate one out of {@code member_number_seq}, which does
+	 * not go back when a transaction does - and the owner's rule is „Clanski broj se nikad ne
+	 * dodeljuje dvaput" (PDL 31.07.2026). The draw is now the last thing {@code recordIt} does.
+	 *
+	 * <p><b>This is the case that measures the MOVE and not the sentence, and they are two different
+	 * things.</b> {@link #amembershipThePriceListGivesAwayIsRefusedRatherThanMeetingTheColumn} would
+	 * go on passing with the draw put back where it was, because that refusal returns before
+	 * anything is written at all. Only a booking that gets as far as the {@code insert} can say
+	 * where the draw now sits, and this is the one state that reaches it without needing two
+	 * requests at the same instant.
+	 *
+	 * <p><b>The membership row is deliberately NOT written beside the awaited payment</b>, which is
+	 * what separates this from {@code aSeasonHeldOnAPaymentNotYetRecognisedIsRefusedToo}: with one
+	 * there, {@code theSeasonIsAlreadyHeld} answers 409 and the {@code insert} is never reached, so
+	 * the case would measure the guard instead of the sequence.
+	 */
+	@Test
+	void abookingTheDatabaseRefusesSpendsNoMemberNumber() throws Exception {
+		long drawnBefore = numbersHandedOutSoFar();
+
+		long id = competitor("c0", null, false, "1990-05-15");
+
+		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
+						+ " currency, fee, method, state) values"
+						+ " (?, 2028, '20280099', (select id from price_row where key = 'early'),"
+						+ " 35.00, 'EUR', 3.00, 'paypal', 'awaited')")
+				.param(id).update();
+
+		assertThatThrownBy(() -> confirm(json(new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS,
+						false, "paypal", null)), moderatorCookie))
+				.as("the booking was completed, so this case no longer reaches the insert it is about"
+						+ " and says nothing about where the number is drawn")
+				.rootCause()
+				.hasMessageContaining("payment_one_a_season");
+
+		assertThat(numbersHandedOutSoFar())
+				.as("a member number was drawn before the insert that refused this booking, so the"
+						+ " transaction went back and took nothing with it except that number, which"
+						+ " the sequence never gives again (PDL 31.07.2026)")
+				.isEqualTo(drawnBefore);
 	}
 }
