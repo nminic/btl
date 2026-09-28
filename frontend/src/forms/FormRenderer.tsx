@@ -1045,14 +1045,20 @@ export function FormRenderer({
    * <p>It settles in one further draw and cannot loop: once the names are out of the
    * state, `holds` is false for them and nothing more is set.
    */
-  const held = goneFrom(filled).filter((name) => holds(values[name]))
+  /* A VALUE OR A MESSAGE ABOUT ONE, and the second is not the first over again. A
+     parent left blank on a form that was sent carries no value and does carry
+     „Ovo polje je obavezno.", so a sweep that asked only about values left the
+     message standing: correct the age twice and it came back over a box that is empty
+     only because this emptied it, scolding somebody for an answer nobody asked him for
+     again. That is the „jezivo, prenapadno" of 12.08.2026 arriving through a back door,
+     and it is measured in `pages/Registration.test.tsx`, „does not scold an empty
+     parent box it emptied itself". */
+  const held = goneFrom(filled).filter(
+    (name) => holds(values[name]) || errors[name] !== undefined,
+  )
 
   if (held.length > 0) {
     setValues(outside(held))
-    /* And the message goes with the value. Left behind, it comes back with the
-       field: an age corrected twice would draw „Obavezno polje." over a box that is
-       empty because this emptied it, which nobody has touched and nobody was asked
-       about. */
     setErrors(outside(held))
   }
 

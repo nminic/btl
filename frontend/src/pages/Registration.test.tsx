@@ -293,6 +293,36 @@ describe('Registration once it is open', () => {
       .toHaveValue('')
   })
 
+  it('does not scold an empty parent box it emptied itself', async () => {
+    /* The other half of forgetting, and it is not the same half: the VALUE goes, and the
+       message about the value has to go with it. Left behind, it comes back when the
+       field does, and „Ovo polje je obavezno." then stands under a box that is empty
+       only because the form emptied it, over an answer nobody was asked for again. That
+       is the „jezivo, prenapadno" the owner threw out on 12.08.2026 arriving by a back
+       door.
+
+       The message has to be raised first for there to be anything to lose, which is why
+       this sends the form once with the parent left blank. */
+    const user = setupUser()
+    renderForm()
+
+    const birth = () => screen.getByLabelText(/Datum rođenja/)
+
+    await user.type(birth(), '01012015')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.getByLabelText(/roditelja ili staratelja/), 'the parent was never refused')
+      .toHaveAttribute('aria-invalid', 'true')
+
+    await user.clear(birth())
+    await user.type(birth(), '01011990')
+    await user.clear(birth())
+    await user.type(birth(), '01012015')
+
+    expect(screen.getByLabelText(/roditelja ili staratelja/), 'the message came back with the field')
+      .toHaveAttribute('aria-invalid', 'false')
+  }, SLOW)
+
   it('asks the parent which of the three they are', async () => {
     /* Owner, 31.07.2026 and again 11.08.2026: the signature is kept with the
        relationship („padajući izbor: majka, otac, staratelj"), the date and time
@@ -706,6 +736,43 @@ describe('the country a member lives in', () => {
 })
 
 describe('an empty form', () => {
+  it('draws no list of what is wrong above it, and puts the cursor in it instead', async () => {
+    /* THE OWNER'S OWN SCREEN AND THE ONE HE PHOTOGRAPHED. 28.09.2026, over a picture of
+       „Prijava nije poslata. Popravi ova polja:" with eleven links under it: „U strani
+       registracije (a i na svim ostalim stranama) zbirne greske kao u prilogu ne treba
+       da se pojavljuju. Dovoljna je validacija na nivou polja kako je sad u
+       Registraciji."
+
+       An empty registration is the worst case there is for this - fourteen fields are
+       wrong at once - so if the box is ever rebuilt it is rebuilt here. Measured before
+       the change: the box was 437px tall at 360, 412 at 768 and 387 at 1280, and the
+       whole form sat under it.
+
+       Asked as „is there anything announcing itself above the form" rather than by
+       class name: what he objected to is the thing that hits the eye first, and one
+       built again under another class would be the same thing to him and to a screen
+       reader. The two halves of the replacement are asserted beside it, so a case that
+       merely deleted the box could not pass: the field says what is wrong with it, and
+       the cursor is put there. */
+    const user = setupUser()
+    renderForm()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    expect(screen.queryByRole('alert'), 'a summary of broken fields came back')
+      .not.toBeInTheDocument()
+    expect(screen.queryByText(/Popravi ova polja/), 'the words of the summary came back')
+      .toBeNull()
+
+    const first = screen.getByLabelText(/^Ime$/)
+
+    expect(first, 'the keyboard was left at the top of the document').toHaveFocus()
+    expect(
+      must(document.getElementById('field-firstName-error'), 'what the first field points at'),
+      'the field says nothing about what is wrong with it',
+    ).toHaveTextContent('Ovo polje je obavezno.')
+  }, SLOW)
+
   it('says the town is missing, and not that a country was not chosen', async () => {
     /* The town and the country are one field and two controls, so the rule about
        the country was written beside the rule about the town and then over the

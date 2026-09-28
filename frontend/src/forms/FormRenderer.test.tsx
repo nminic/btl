@@ -494,6 +494,15 @@ describe('FormRenderer', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
+    /* AND NOTHING WAS PUT ABOVE THE FORM, which is the owner's half of this. Two
+       obligatory fields are wrong here, so the old box would certainly be drawn; that
+       it is not is what „zbirne greske ne treba da se pojavljuju" comes to. Asserted
+       over `alert` rather than over a class name, because what he objected to is the
+       thing that announces itself and hits the eye first, and a summary rebuilt under
+       another name would be the same thing. */
+    expect(screen.queryByRole('alert'), 'a summary of broken fields came back')
+      .not.toBeInTheDocument()
+
     const first = screen.getByLabelText(/proba.ime/)
 
     expect(first, 'the cursor was left where the press put it').toHaveFocus()
