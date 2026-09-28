@@ -182,6 +182,15 @@ const THE_LANGUAGE_ASKED_FOR = 'lang'
  * caller at ONE address, so it is dropped when the caller changes
  * (`theInboxNowBelongsTo`, `data/useResource.ts`). A written page in two languages is two
  * addresses, so there is nothing to drop.
+ *
+ * <p><b>A tag and not a `Locale`, and that is a boundary rather than looseness.</b> This
+ * module imports nothing from `i18n/` and this is the parameter that would have made it: what
+ * the server is asked for is a language TAG, its own check is of the shape and not of a list
+ * (`PageApi.A_LANGUAGE_TAG`), and this file's one job is to turn a name and what was asked
+ * into an address. `data/useResource.ts` is the layer that knows the portal's locales, and it
+ * is the one that imports them. The encoding is therefore real rather than decorative: it
+ * cannot change anything for `sr` or `en`, but this signature does not promise it will only
+ * ever be handed one of those.
  */
 export function addressOf(name: ResourceName, language?: string): string {
   return language === undefined
