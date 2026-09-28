@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { categoryLabel } from '../data/categories'
 import { Link, useNavigate, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
@@ -18,6 +19,11 @@ import {
   totalsOf,
 } from '../data/derive'
 import { combineResources, useCompetitors, useResults, useTeams } from '../data/useResource'
+import { clearResourceCache } from '../data/client'
+import type { Competitor, Team } from '../data/types'
+import { askTheServer, type Answer } from './account/askTheServer'
+import { ServerSaid } from './account/ServerSaid'
+import { standsOnTheServer, WHEN_DELETING_A_TEAM } from './admin/teamWrites'
 import { formatNumber, formatPoints, formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
@@ -64,6 +70,96 @@ export function TeamDetail() {
   const navigate = useNavigate()
   const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
+
+  /** Why a deletion did not happen, for the one person who pressed it. */
+  const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+
+  /**
+   * TAKING THE TEAM AWAY, AND SINCE 28.09.2026 THROUGH THE ROUTE RATHER THAN THROUGH THE
+   * SESSION.
+   *
+   * <p>PDL P13b, owner 25.09.2026: „Superadmin i moderator sa pravom nad timovima imaju
+   * <b>isto dugme i iste posledice</b> kao administrator tog tima." One act, so one address:
+   * `DELETE /api/teams/{id}`, which `admin/AdminTeams.tsx` has sent since 26.09.2026 and this
+   * screen sends the same way. Until today it sent nothing at all, and the note that used to
+   * stand on `AdminTeams.deleteOne` named both halves of what that cost: the deletion did not
+   * outlive the tab, and the window bound the administration alone.
+   *
+   * <p><b>THE WINDOW IS THE ROUTE'S AND THIS SCREEN DRAWS NO CONDITION OF ITS OWN ABOUT
+   * IT.</b> `TeamWriteApi.removing` asks `SeasonClock.transferWindowOpen` and answers 409
+   * `theWindowIsShut` outside 1.10-31.12 - owner, 25.09.2026, choosing between three offered
+   * outcomes: „Van prozora 1.10-31.12 ruta vraca 409, i to <b>i administratoru tima i
+   * administraciji</b>", the outcome refused by name being „rok vazi za clana, ne za
+   * administraciju". A condition here would be 1 October with a second home, free to disagree
+   * with the route the day either was edited, so the reason the reader is given comes off the
+   * ANSWER. The button is therefore offered on every day of the year, exactly as the
+   * administration's is.
+   *
+   * <p><b>AND THE SENTENCE IS THE ADMINISTRATION'S OWN, imported rather than written
+   * again.</b> `WHEN_DELETING_A_TEAM` is the one map of this route's one refusal, and the note
+   * on it says why `theWindowIsShut` lives under two keys rather than one: what the word means
+   * to the reader depends on what he pressed. Pressed here and pressed there it is the same
+   * thing being refused - this team is not going anywhere until October - so a second Serbian
+   * sentence would be a second place to change and the first to drift.
+   *
+   * <p><b>WHAT GOES WITH THE TEAM IS THE ROUTE'S, ON THE HALF THE ROUTE OWNS.</b> The
+   * memberships cascade (V11), so nothing here writes over anybody's `teamId` and the two
+   * caches that carried the old answer are dropped instead. Written the other way round, a
+   * refused deletion would empty the roster of a team that is still standing - which is the
+   * fault `AdminTeams` removed an `alsoRemove` for on 26.09.2026.
+   *
+   * <p><b>AND THE OTHER HALF IS STILL THE SESSION'S, WHICH IS A BOUNDARY AND NOT AN
+   * OVERSIGHT.</b> A team approved during this visit is filed under an identity
+   * `admin/entityForms.ts` counts DOWN from nought, and `PendingQueue.tsx` writes its founder
+   * into the session and nowhere else. `DELETE /api/teams/-1` is an address nothing answers
+   * to, so that row is deleted where it lives and its roster is taken along by hand -
+   * `standsOnTheServer` is the question, and the note on it says what sending the other kind
+   * would have cost. There is nothing to be refused on that half, so the ordering that makes
+   * `editRecord` wrong beside a route cannot arise there.
+   */
+  async function deleteOne(team: Team, roster: Competitor[]): Promise<void> {
+    if (!standsOnTheServer(team.id)) {
+      /* The people in it are left without a team rather than left pointing at one that is
+         gone. Written as an empty string because the session keeps values as text and cannot
+         hold a `null`; `teamOf` is the one reading that knows the two mean the same thing. */
+      for (const one of roster) {
+        editRecord(recordKey(MEMBERS.id, one.memberNumber), { teamId: '' })
+      }
+
+      remove(TEAMS.id, String(team.id))
+      void navigate(`/${locale}/timovi`)
+
+      return
+    }
+
+    const answer = await askTheServer(`/api/teams/${team.id}`, {}, 'DELETE')
+
+    if (answer.got !== 'done') {
+      setRefused(answer)
+
+      return
+    }
+
+    /* THE NEXT MOUNT READS THE SERVER, AND FOR BOTH OF THE TWO RESOURCES THIS DELETION MOVED.
+       The list this screen leaves for is drawn from the same cache this visit filled, so
+       without this the team would still be standing in it. `competitors` beside `teams` is the
+       half that is easy to miss: the memberships cascade on the server (V11), and a member's
+       team reaches this portal as `Competitor.teamId` off `/api/competitors`, so every screen
+       that draws somebody's club would go on drawing a team that is gone.
+
+       AND NOTHING IS WRITTEN INTO THE SESSION BESIDE THEM, WHICH IS A DIFFERENCE FROM
+       `admin/AdminTeams.tsx` AND NOT AN OMISSION. That screen adds the deletion to the overlay
+       because it STAYS MOUNTED over the very list the row came out of, and a screen that is
+       still mounted never asks its resource again. This one leaves, so the next mount reads
+       the two answers above and the server is the only thing that decides what is in them. A
+       `remove` here would be a second answer to „what does this list show" - the fault
+       `AdminLeagues.tsx` names in its own words - and there would be no case able to tell the
+       two apart, because the row is gone either way. */
+    clearResourceCache('teams')
+    clearResourceCache('competitors')
+
+    void navigate(`/${locale}/timovi`)
+  }
 
   return (
     <Resource state={state}>
@@ -270,30 +366,34 @@ export function TeamDetail() {
                         <DeleteRecord
                           name={team.name}
                           look="button button--secondary"
+                          /* The team goes, and with it its points in the standing: there is
+                             no standing without a record, so the owner's „pa se tim briše
+                             kao i bodovi iz tabele za tu sezonu" is one act and not two. The
+                             frozen seasons are untouched, because nothing here writes a
+                             result (PDL, 04.09.2026), and since 28.09.2026 none of that is
+                             decided on this screen at all: `deleteOne` sends the act to the
+                             route the administration already sends it to. */
                           onDelete={() => {
-                            /* The team goes, and with it its points in the standing:
-                               there is no standing without a record, so the owner's „pa
-                               se tim briše kao i bodovi iz tabele za tu sezonu" is one
-                               act and not two. The frozen seasons are untouched, because
-                               nothing here writes a result (PDL, 04.09.2026).
-
-                               And the people in it are left without a team rather than
-                               left pointing at one that is gone. Written as an empty
-                               string because the session keeps values as text and cannot
-                               hold a `null`; `teamOf` is the one reading that knows the
-                               two mean the same thing. */
-                            for (const one of everMembers) {
-                              editRecord(recordKey(MEMBERS.id, one.memberNumber), { teamId: '' })
-                            }
-
-                            remove(TEAMS.id, String(team.id))
-                            void navigate(`/${locale}/timovi`)
+                            void deleteOne(team, everMembers)
                           }}
                         />
                       </>
                     )}
                     <SeasonPicker seasons={seasons} season={season} fallback={running} />
                   </div>
+                  {/* WHY A DELETION DID NOT HAPPEN, under the row it was pressed in and not
+                      inside it. `Rankings.css` gives whatever follows the control the whole
+                      width of the head („Whatever comes first after the control"); put among
+                      the buttons it would be a flex item in the narrow second track of that
+                      grid, and a sentence of this length would widen the track and squeeze
+                      the name of the team beside it.
+
+                      `ServerSaid` draws it as an alert, so the reader hears it without the
+                      focus being moved: `DeleteRecord` leaves the focus on „Potvrdi
+                      brisanje", which is still there because nothing was deleted. */}
+                  {refused !== null && (
+                    <ServerSaid answer={refused} refusals={WHEN_DELETING_A_TEAM} />
+                  )}
                 </div>
                 <p className="profile__meta">
                   {team.city}
