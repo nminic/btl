@@ -911,7 +911,29 @@ class PairWriteApi {
 				.update();
 	}
 
+	/**
+	 * A QUESTION THAT IS OVER, AND THE MESSAGE THAT CARRIED IT STAYS WHERE IT IS.
+	 *
+	 * <p>Called on BOTH doors - „Odbij" ({@link #settle}'s early return) and „Prihvati" (its
+	 * own end) - and the emptying is not tidiness. {@code message_pair_invite_fk} is
+	 * {@code on delete cascade} (V13, its own note: „an invitation that has been answered or
+	 * withdrawn leaves a message that is no longer a question, and the row would offer a
+	 * button that does nothing"), so deleting the row unchanged would delete the member's
+	 * message with it. The owner decided the opposite, PDL ("Više poziva istom čoveku"),
+	 * 06.09.2026: „Poruka sa pozivom ostaje u sandučetu, sa razlogom umesto dugmadi. Ne briše
+	 * se: brisanje poruke iz tuđeg sandučeta je brisanje istorije, a pitanje „šta se desilo sa
+	 * onim pozivom" mora da ima odgovor." Emptied first, the message stays and stops being a
+	 * question, which is exactly what V13's own note asks for.
+	 *
+	 * <p>The shape is {@link TeamJoiningWriteApi#theInvitationIsOver}'s own, found the same
+	 * way: {@code PairWriteApiTest.acceptingLeavesTheMessageThatAskedHimBehindWithoutItsKey}
+	 * and its „Odbij" twin are the tie that keeps this from drifting back to a bare delete.
+	 */
 	private void closed(long question) {
+		db.sql("update message set pair_invite_id = null where pair_invite_id = ?")
+				.param(question)
+				.update();
+
 		db.sql("delete from pair_invite where id = ?").param(question).update();
 	}
 

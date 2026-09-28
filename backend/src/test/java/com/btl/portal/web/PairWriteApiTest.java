@@ -1497,6 +1497,103 @@ class PairWriteApiTest {
 	}
 
 	/**
+	 * A message written directly, standing for the one {@link PairWriteApi#ask} would have
+	 * written for this same question - the shape
+	 * {@code TeamJoiningWriteApiTest.messageCarrying} already uses, and for the same reason:
+	 * this floor is about {@link PairWriteApi#closed} alone, not about whether {@code ask}
+	 * wrote the row correctly, which {@code aMemberAsksAnotherAndWhatStandsIsAQuestion} already
+	 * measures.
+	 */
+	private long messageCarrying(String memberNumber, long question) {
+		return db.sql("insert into message (to_id, from_id, from_name, subject, body,"
+						+ " pair_invite_id) values (?, null, 'Balkanska trkačka liga',"
+						+ " 'Poziv u trkački par', 'Tekst.', ?) returning id")
+				.params(competitorId(memberNumber), question)
+				.query(Long.class)
+				.single();
+	}
+
+	/**
+	 * A SECOND MESSAGE TO THE SAME MEMBER THAT HAS NOTHING TO DO WITH ANY PAIR, so that
+	 * „the message stands" cannot be satisfied by any row in his inbox: it has to be answered
+	 * of the one the case names.
+	 */
+	private long unrelatedMessageTo(String memberNumber) {
+		return db.sql("insert into message (to_id, from_id, from_name, subject, body)"
+						+ " values (?, null, 'Balkanska trkačka liga', 'Nešto sasvim drugo',"
+						+ " 'Tekst.') returning id")
+				.param(competitorId(memberNumber))
+				.query(Long.class)
+				.single();
+	}
+
+	private Long pointerOf(long message) {
+		return db.sql("select pair_invite_id from message where id = ?").param(message)
+				.query(Long.class).optional().orElse(null);
+	}
+
+	private boolean messageStands(long message) {
+		return db.sql("select exists(select 1 from message where id = ?)").param(message)
+				.query(Boolean.class).single();
+	}
+
+	/**
+	 * BOTH DOORS EMPTY THE POINTER BEFORE THEY TAKE THE ROW, WHICH IS WHAT KEEPS
+	 * {@code message_pair_invite_fk}'S CASCADE FROM TAKING THE MESSAGE WITH IT.
+	 *
+	 * <p>PDL ("Više poziva istom čoveku"), 06.09.2026: „Poruka sa pozivom ostaje u sandučetu,
+	 * sa razlogom umesto dugmadi. Ne briše se." Until {@link PairWriteApi#closed} emptied the
+	 * pointer first, the cascade V13 wrote for exactly the opposite reason - „an invitation
+	 * that has been answered or withdrawn leaves a message that is no longer a question" - took
+	 * the row instead of the question. {@code TeamJoiningWriteApiTest
+	 * .heAcceptsAndTheMessageThatAskedHimStaysBehindWithoutItsButtons} is the shape this pair
+	 * of cases copies.
+	 *
+	 * <p><b>A second, unrelated message in the same inbox</b> is the axis that stops „a message
+	 * stands" from being satisfied by any row at all: the mutation that deletes only the
+	 * `update` above and keeps the cascade still passes if the case only asks whether SOME
+	 * message survived.
+	 */
+	@Test
+	void acceptingLeavesTheMessageThatAskedHimBehindWithoutItsKey() throws Exception {
+		long question = questionFrom(HE_ASKS, SHE_IS_ASKED);
+		long asked = messageCarrying(SHE_IS_ASKED, question);
+		long somethingElse = unrelatedMessageTo(SHE_IS_ASKED);
+
+		assertThat(answerAs(SHE_IS_ASKED, question, answering(true)).getStatus()).isEqualTo(200);
+
+		assertThat(messageStands(asked))
+				.as("a message in somebody's inbox is history and is not deleted")
+				.isTrue();
+		assertThat(pointerOf(asked))
+				.as("and it is no longer a question, which is what the cascade was for")
+				.isNull();
+		assertThat(messageStands(somethingElse))
+				.as("the unrelated message in the same inbox is untouched")
+				.isTrue();
+	}
+
+	/** „Odbij", the twin of the case above: the question ends and his message stays. */
+	@Test
+	void refusingLeavesTheMessageThatAskedHimBehindWithoutItsKey() throws Exception {
+		long question = questionFrom(HE_ASKS, SHE_IS_ASKED);
+		long asked = messageCarrying(SHE_IS_ASKED, question);
+		long somethingElse = unrelatedMessageTo(SHE_IS_ASKED);
+
+		assertThat(answerAs(SHE_IS_ASKED, question, answering(false)).getStatus()).isEqualTo(204);
+
+		assertThat(messageStands(asked))
+				.as("a message in somebody's inbox is history and is not deleted")
+				.isTrue();
+		assertThat(pointerOf(asked))
+				.as("and it is no longer a question, which is what the cascade was for")
+				.isNull();
+		assertThat(messageStands(somethingElse))
+				.as("the unrelated message in the same inbox is untouched")
+				.isTrue();
+	}
+
+	/**
 	 * EITHER HALF ENDS THE PAIR, AND THE OTHER HALF IS TOLD BY NAME.
 	 *
 	 * <p>Owner, 24.09.2026: „Par sme da raskine SVAKA STRANA, bilo kad." Two runs and not
