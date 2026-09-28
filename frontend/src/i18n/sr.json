@@ -348,7 +348,6 @@
       "countryMissing": "Izaberi državu uz mesto."
     },
     "choose": "Izaberi",
-    "errorSummary": "Prijava nije poslata. Popravi ova polja:",
     "region": "Region",
     "restOfWorld": "Ostatak sveta",
     "openCalendar": "Otvori kalendar",
@@ -414,7 +413,7 @@
     "addressIsTaken": "Ta adresa elektronske pošte je već član lige. Prijavi se postojećom lozinkom ili se registruj sa druge adrese.",
     "password": "Lozinka",
     "passwordRepeat": "Ponovi lozinku",
-    "parentConsent": "Ime i prezime roditelja ili staratelja",
+    "parentConsent": "Kucani potpis roditelja ili staratelja",
     "parentConsentHint": "Takmičar je mlađi od 16 godina, pa nalog održava roditelj ili staratelj. Upisivanjem imena potvrđuješ da podržavaš prijavu svog deteta sa unetim podacima. Za mlađe od 14 godina to je ujedno i saglasnost za članstvo.",
     "opensOn": "Otvara se {date}.",
     "category": "Kategorija",
@@ -1002,6 +1001,24 @@
     "photoHint": "Snimak sa sata, diploma ili nešto treće. Komentar postaje obavezan, a link ka rezultatima neobavezan.",
     "comment": "Komentar"
   },
+  "results": {
+    "sending": "Šalje se",
+    "withdrawing": "Briše se",
+    "refused": {
+      "theFormIsNotComplete": "Rezultat nije poslat. Proveri dužinu, uspon, spust i vreme: nešto nedostaje ili je izvan dozvoljenih vrednosti.",
+      "theRaceIsNotKnown": "Trka koju si izabrao više ne stoji u kalendaru. Osveži stranu i izaberi je ponovo.",
+      "theRaceHasNotBeenRun": "Rezultat ne može da se pošalje pre dana same trke.",
+      "theRaceIsNamedTwice": "Rezultat nije poslat: trka je i izabrana iz kalendara i opisana rukom. Može samo jedno od toga.",
+      "theTownIsNotSaidOnce": "Mesto mora da se navede tačno jednom: ili izabrano iz šifarnika ili upisano rukom.",
+      "theTownIsNotKnown": "To mesto ne stoji u šifarniku.",
+      "theCountryIsNotKnown": "Ta država ne stoji u šifarniku.",
+      "theCountryBelongsToATypedTown": "Država se bira samo uz mesto koje je upisano rukom.",
+      "aTypedTownNamesItsCountry": "Uz mesto upisano rukom mora da stoji i država.",
+      "nothingShowsItHappened": "Nedostaje dokaz. Upiši link ka zvaničnim rezultatima.",
+      "aPhotographNeverStandsAlone": "Uz sliku mora da ide komentar u kom piše šta se na njoj vidi.",
+      "aLinkThatIsNotALink": "Link ka zvaničnim rezultatima nije ispravna veb adresa. Mora da počinje sa http:// ili https://."
+    }
+  },
   "status": {
     "pending": "Čeka proveru",
     "approved": "Odobreno",
@@ -1058,6 +1075,10 @@
     "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
     "transferShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
     "askToJoin": "Prelazak u drugi tim se dogovara van portala. Kad se dogovorite, administracija te upisuje u tim.",
+    "leaveTeam": "Izađi iz tima",
+    "leaveTeamAsk": "Sigurno izlaziš iz tima {team}? U tim se ne vraćaš sam: ponovo te upisuje administracija.",
+    "leaveTeamSure": "Potvrdi izlazak",
+    "leaveTeamKeep": "Odustani",
     "payNow": "Uplatnica",
     "details": "Podaci za uplatu",
     "toWhom": "Primalac",
@@ -1278,6 +1299,42 @@
       "theSeasonIsFrozen": "Sezona ove lige je zamrznuta, pa se liga više ne menja. Brisanje i dalje radi.",
       "theSeasonCannotMoveWhileRacesCount": "Sezona se ne može pomeriti dok liga broji makar jednu trku. Prvo izbaci trke, pa promeni sezonu."
     },
+    "eventSaveRefused": {
+      "theFormIsNotComplete": "Nedostaje naziv ili datum događaja.",
+      "theKindIsNotKnown": "Portal ne poznaje tu vrstu događaja.",
+      "theTownIsNotSaidOnce": "Mesto se kaže na jedan način: ili se bira iz šifarnika, ili se upisuje rukom uz državu.",
+      "theTownIsNotKnown": "Portal ne poznaje to mesto.",
+      "theCountryIsNotKnown": "Portal ne poznaje tu državu.",
+      "theCountryBelongsToATypedTown": "Mesto iz šifarnika već nosi svoju državu, pa se država uz njega ne bira.",
+      "aTypedTownNamesItsCountry": "Uz mesto upisano rukom mora da se izabere i država.",
+      "theLinkIsNotShaped": "Link mora da počne sa http:// ili https:// i ne sme da sadrži razmak.",
+      "theAddressIsTaken": "Na toj adresi već stoji jedan događaj. Promeni naziv ili datum.",
+      "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci ovog događaja upisan rezultat.",
+      "theRaceCountsInALeagueOfItsSeason": "Trka ovog događaja se broji u ligi svoje sezone, pa datum ne sme da izađe iz te godine."
+    },
+    "raceSaveRefused": {
+      "theFormIsNotComplete": "Redu trke nedostaje naziv ili događaj kome pripada.",
+      "theEventIsNotKnown": "Portal ne poznaje događaj kome ova trka pripada.",
+      "theEventHoldsNoRaces": "Taj događaj nije trka, pa ne može da nosi trke.",
+      "theRaceCannotChangeEvents": "Trka ne može da pređe u drugi događaj.",
+      "theKindIsNotKnown": "Portal ne poznaje tu vrstu trke.",
+      "theLimitBelongsToATimedRace": "Vremensko ograničenje se upisuje samo uz trku koja se trči na vreme.",
+      "theDistanceBelongsToARaceOfALength": "Dužina se upisuje samo uz trku koja ima utvrđenu dužinu.",
+      "theDistanceIsNotKeptExactly": "Dužina nije upisana u obliku koji portal čuva. Proveri broj decimala.",
+      "theClimbOrTheFallIsNegative": "Uspon i spust se upisuju kao pozitivni brojevi.",
+      "theRaceCountsInALeagueOfItsSeason": "Ova trka se broji u ligi svoje sezone, pa datum ne sme da izađe iz te godine.",
+      "theAddressIsTaken": "Na toj adresi već stoji jedna trka.",
+      "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci upisan rezultat."
+    },
+    "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
+    "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
+    "eventSavedRacesRefused": "Događaj je sačuvan, ali jedna njegova trka nije. Otvori događaj pa proveri trke.",
+    "eventDeleteTakes": {
+      "one": "Ovim brišeš i {count} rezultat.",
+      "few": "Ovim brišeš i {count} rezultata.",
+      "other": "Ovim brišeš i {count} rezultata."
+    },
+    "eventDeleteCountUnknown": "Broj rezultata koji odlaze još nije poznat.",
     "leagueGone": "Liga je obrisana.",
     "leagueSavedUnseen": "Liga je sačuvana, ali portal ne može da je prikaže u ovom spisku. Osveži stranu.",
     "leagueTextSaved": "Izmena je sačuvana.",

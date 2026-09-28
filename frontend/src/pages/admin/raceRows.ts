@@ -338,7 +338,29 @@ export function allFinished(rows: RaceRow[]): boolean {
  * store a row and this is it: a second caller working it out again is a second
  * chance to work it out differently (ADL A31).
  */
-export function storedRow(row: RaceRow, eventId: string): Record<string, string> {
+/**
+ * THE TEN FIELDS A STORED RACE CARRIES, named rather than left as an index signature.
+ *
+ * <p>It answered `Record<string, string>` until 28.09.2026, which says nothing about WHICH
+ * keys are there: under `noUncheckedIndexedAccess` every read of one is `string | undefined`,
+ * so `admin/eventWrites.ts` had to write a fallback for a key this function always fills -
+ * a branch nothing could ever take, and the coverage floor is what found it. The shape is
+ * written once here, where the keys are, instead of being guessed at wherever they are read.
+ */
+export type StoredRace = {
+  eventId: string
+  name: string
+  renamed: string
+  date: string
+  kind: string
+  limitSeconds: string
+  distanceKm: string
+  ascentM: string
+  descentM: string
+  category: string
+}
+
+export function storedRow(row: RaceRow, eventId: string): StoredRace {
   const distanceKm = Number(row.distanceKm)
 
   return {

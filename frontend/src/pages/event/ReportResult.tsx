@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useToday } from '../../clock/useClock'
 import { Resource } from '../../components/Resource'
@@ -17,6 +18,9 @@ import { useSend, useSent } from '../sent'
 import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
 import { useMemberScreen } from '../member/memberScreen'
+import type { Answer } from '../account/askTheServer'
+import { ServerSaid } from '../account/ServerSaid'
+import { theRunWasSentIn, WHEN_A_RESULT_IS_WRITTEN } from '../member/resultWrites'
 import '../member/Member.css'
 
 
@@ -69,6 +73,18 @@ export function ReportResult() {
   const said = useSent()
   const done = typeof said === 'number' ? said : null
   const confirm = useSend()
+  /* What the server answered, where it answered anything but „done". A run that went
+     through leaves this screen altogether (`confirm` below), so the only answer this ever
+     holds is one the reader is owed a sentence about - `RateEvent.tsx`'s own shape, on the
+     screen next door and for the identical reason. */
+  const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  const [sending, setSending] = useState(false)
+  /* A second press while the first is still out would file the same run twice, and a race
+     may be reported only once (PDL, 09.09.2026: „član ne može da ima dva rezultata na istoj
+     trci"). Guarded with a ref rather than the state beside it, because a ref is read and
+     written in the same tick and a redraw cannot land between two presses that arrive before
+     one - which is what `RateEvent.tsx`, `ProposeTeam.tsx` and `Registration.tsx` all do. */
+  const outstanding = useRef(false)
 
   if (who.memberNumber === null) {
     return who.instead
@@ -163,9 +179,78 @@ export function ReportResult() {
              administration does (`admin/AdminEvents.tsx`). */
           const kind = raceKind(race.kind)
 
+          /**
+           * SENDS THE RUN, AND DECIDES WHAT THE READER SEES BY WHAT CAME BACK.
+           *
+           * <p><b>THE CONFIRMATION IS DRAWN ONLY AFTER 201.</b> Until 28.09.2026 this
+           * screen wrote the run into the browser's own overlay and confirmed it on the
+           * spot, so a member was told his result was in the queue when nothing had left
+           * the machine. `POST /api/results` is what really puts it there, together with
+           * the row a moderator reads, the line in his inbox and the message PDL P22 makes
+           * mandatory.
+           *
+           * <p><b>Refused, nothing moves.</b> Every box stays exactly as it was and the
+           * sentence appears beneath the form, so a member who mistyped a link corrects
+           * that one field rather than typing the whole race again.
+           *
+           * <p><b>The overlay is written after the server agreed, never before.</b> No
+           * route serves a member his own submissions - measured 28.09.2026, the only route
+           * that reads `result_submission` to serve anything is the moderator's queue - so
+           * „Poslato" on `MyResults` still draws this overlay, and it is the only view of a
+           * waiting run there is. Written on the asking instead, it would show him a run the
+           * server had turned away.
+           */
+          async function send(run: ReturnType<typeof reportedResult>, values: FormValues) {
+            outstanding.current = true
+            setSending(true)
+            /* And the last refusal goes while this one is out, so a reader who presses
+               again is not left reading the old sentence over a request in flight. */
+            setRefusal(null)
+
+            const answer = await theRunWasSentIn({
+              /* THE RACE AND NOTHING ELSE ABOUT IT. This road always starts from a row of
+                 the calendar, so it is always the first of the two bodies:
+                 `ResultWriteApi.fromTheCalendar` refuses `theRaceIsNamedTwice` if a name, a
+                 kind or a town arrives beside the id, and the race answers for all three. */
+              raceId: race.id,
+              /* What was run, and which of these the race fixes rather than the member is
+                 `reportedResult.ts`'s answer here and `figuresOf`'s answer there. Both are
+                 sent; the server decides, which is the one home for that question. */
+              distanceKm: run.distanceKm,
+              ascentM: run.ascentM,
+              descentM: run.descentM,
+              seconds: run.seconds,
+              link: String(values.link),
+              comment: String(values.comment),
+            })
+
+            outstanding.current = false
+            setSending(false)
+
+            if (answer.got !== 'done') {
+              setRefusal(answer)
+
+              return
+            }
+
+            keep(run, values)
+            confirm(`/${locale}/moji-rezultati`, run.points)
+          }
+
           function onSubmit(values: FormValues) {
             const run = reportedResult(race, values)
 
+            /* Silently, the same way the rating next door refuses a second press: the first
+               one is still out and the reader has already been told so. */
+            if (outstanding.current) {
+              return
+            }
+
+            void send(run, values)
+          }
+
+          /** The run as the browser goes on drawing it until a moderator decides. */
+          function keep(run: ReturnType<typeof reportedResult>, values: FormValues) {
             submit({
               memberNumber: mine,
               /* Read off the race and its event, never asked. This road starts
@@ -213,8 +298,6 @@ export function ReportResult() {
               link: String(values.link),
               comment: String(values.comment),
             })
-
-            confirm(`/${locale}/moji-rezultati`, run.points)
           }
 
           return (
@@ -290,6 +373,15 @@ export function ReportResult() {
                 }
                 onSubmit={onSubmit}
               />
+
+              {/* Said out loud rather than left to a button that looks unpressed, the same
+                  reasoning `RateEvent.tsx` keeps beside its own `role="status"`
+                  (WCAG 2.2, 4.1.3). */}
+              {sending && <p role="status">{t('results.sending')}</p>}
+
+              {refusal !== null && (
+                <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />
+              )}
             </>
           )
         }}
