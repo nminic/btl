@@ -836,6 +836,12 @@ describe('writing to somebody else who is going', () => {
     expect(screen.queryByText(new RegExp('^Poruka je poslata članu'))).toBeNull()
     expect(box).toHaveValue('Imam mesta u kolima, javi se.')
     expect(screen.getByRole('button', { name: 'Pošalji poruku' })).toBeVisible()
+
+    /* AND THE FORM HAS STOPPED SAYING IT IS SENDING, asked HERE and not only on the case
+       about waiting: a note that was refused leaves the form standing, so this is the one
+       place where „that line is gone" is a fact about the line rather than about the form
+       having been replaced by the confirmation. */
+    expect(screen.queryByText('Šalje se')).toBeNull()
   })
 
   it('does not invent a sentence for a refusal it has no name for', async () => {
@@ -921,6 +927,12 @@ describe('writing to somebody else who is going', () => {
       screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
       'Imam mesta u kolima, javi se.',
     )
+    /* NOTHING IS IN FLIGHT YET, SO NOTHING SAYS IT IS, and this half is what makes the
+       other half a claim at all. Without it „it says so while it waits" is satisfied by
+       a line that is simply always there: measured, and a line drawn unconditionally
+       passed every other assertion in this case. */
+    expect(screen.queryByText('Šalje se')).toBeNull()
+
     await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
 
     expect(await screen.findByText('Šalje se')).toBeVisible()
