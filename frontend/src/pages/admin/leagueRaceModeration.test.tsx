@@ -103,9 +103,17 @@ describe('which races count towards a competition', () => {
        counts" give different numbers without anything being written at all. The generated
        file the portal still ships is exactly this shape - its three competitions name
        nineteen days between them and not one race - so this is real data rather than an
-       invention. */
+       invention.
+
+       **TWO DAYS NAMED AND ONE COUNTED, rather than one named and none counted**, and that
+       is a measured correction rather than a tidier fixture. Written the second way it read
+       „Bez događaja", which is what THREE other competitions on this screen read, so the
+       case that says the answer's own list is ignored was satisfied by any of them: swapping
+       the row it asks about for `Prva liga 2027` left the whole file green (measured
+       28.09.2026, mutation M17). One counted day gives it „1", which no other row on this
+       screen says until something is written. */
     { id: DISAGREES, slug: 'nesloga-2027', name: 'Nesloga liga 2027', season: 2027, rules: '',
-      prizes: '', eventIds: [A_DAY_NOBODY_COUNTS], raceIds: [] },
+      prizes: '', eventIds: [OVER_TWO_MORNINGS, A_DAY_NOBODY_COUNTS], raceIds: [ITS_FIRST_RACE] },
   ]
 
   /**
@@ -501,13 +509,17 @@ describe('which races count towards a competition', () => {
 
         renderAt('/sr/administracija/lige', 'superadmin')
 
-        /* The one whose two fields disagree, with nothing written at all. `eventIds` names a
-           day, `raceIds` names no race of it, and under V20 a competition's days ARE the days
-           of its races - so a badge reading the first would say „1" over a box saying the
-           competition counts nothing. */
-        await badgeSays(DISAGREEING_NAME, 'Bez događaja')
-        /* And the one beside it that really does count races is not silenced with it, so
-           „Bez događaja" is being worked out rather than drawn over the whole column. */
+        /* The one whose two fields disagree, with nothing written at all. `eventIds` names
+           TWO days, `raceIds` names one race of one of them, and under V20 a competition's
+           days ARE the days of its races - so a badge reading the first says „2" and a badge
+           reading the second says „1".
+
+           **„1" is a number no other row on this screen says at rest**, which is what makes
+           this a claim about THIS competition rather than about the column: three of the five
+           read „Bez događaja" and the fourth reads „2". */
+        await badgeSays(DISAGREEING_NAME, '1')
+        /* And the one beside it that counts two days still says so, so the smaller number is
+           being worked out rather than drawn over everything. */
         await badgeSays(ITS_NAME, '2')
 
         server.stop()
