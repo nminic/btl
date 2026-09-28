@@ -68,8 +68,11 @@ import java.util.Optional;
  * member reads is not a private one. The broadcast is the portal's own voice and belongs to
  * the decisions that produce one: PDL P9, „Skrivena kopija svakog takvog obavestenja ide na
  * administrativnu adresu lige, i ista poruka ide u portalski inboks", and
- * {@code data/seedMessages.ts} says the same from the screen's side, „Both are the league
- * talking to everybody, which is what an empty {@code to} means". So {@code to_id} is
+ * {@code session/context.ts} says the same from the screen's side, on {@code Message.to}:
+ * „Empty is the league talking to everybody". (It was {@code data/seedMessages.ts} that was
+ * quoted here until 28.09.2026, the file the prototype's two broadcasts lived in; PDL 34,
+ * „NECU MOCK PODATKE NIGDE", took it out of the bundle, and the field's own doc says the
+ * same thing and is where the meaning has always been decided.) So {@code to_id} is
  * filled on every row this writes, and an empty {@code to} is a field nobody filled in
  * rather than a way of addressing everybody. That is not a stylistic choice: this
  * repository's journal carries a measured finding about this exact table, that a case could

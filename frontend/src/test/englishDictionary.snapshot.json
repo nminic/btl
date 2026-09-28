@@ -841,11 +841,15 @@
     "inviteSent": "Invitations sent",
     "inviteAccepted": "You have accepted this invitation and from the next season you run for the team „{team}\".",
     "inviteOvertaken": "You have joined the team „{team}\" in the meantime, so this invitation no longer stands.",
+    "inviteOvertakenUnnamed": "You have joined a team in the meantime, so you can no longer accept this invitation.",
     "inviteClosed": "This invitation no longer stands.",
     "inviteGone": "The team that invited you no longer exists.",
     "inviteWaits": "The invitation waits: a team is joined during the transfer window only, from 1 October to 31 December.",
     "inviteMissedSubject": "An invitation into the team went unanswered",
-    "inviteMissedBody": "{name} has joined the team „{team}\" in the meantime, so your invitation no longer stands."
+    "inviteMissedBody": "{name} has joined the team „{team}\" in the meantime, so your invitation no longer stands.",
+    "answerRefused": {
+      "theFormIsNotComplete": "The answer did not reach the server in full, so the invitation was not answered. Refresh the page and try again."
+    }
   },
   "leagues": {
     "title": "Competitions",

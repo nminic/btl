@@ -224,7 +224,8 @@ class MyApplicationsApi {
 	 * Everything this competitor is waiting to hear back about, in four parts and one fact.
 	 *
 	 * @param alreadyInATeam WHETHER A TEAM HE ALREADY HAS STANDS IN THE WAY OF ACCEPTING AN
-	 *                       INVITATION, which is {@code PDL.md:6771} carried out rather than
+	 *                       INVITATION, which is PDL.md ("Poziv se ne pamti kao odgovoren")
+	 *                       carried out rather than
 	 *                       a convenience: „<b>[ODLUKA 06.09.2026] Poziv se ne pamti kao
 	 *                       odgovoren nego se pravo na odgovor računa u trenutku
 	 *                       iscrtavanja.</b> Čim član ima tim, nijedan drugi poziv ne nudi
