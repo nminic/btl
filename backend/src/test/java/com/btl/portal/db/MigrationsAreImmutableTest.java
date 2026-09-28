@@ -144,7 +144,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   ADL A2's protection for applied migrations does not cover it yet and this is not a
 			   rewrite of a migration anyone has run. */
 			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484),
-			new Applied("42", "V42__the_balance_is_one_amount_in_one_currency.sql", -1505949912));
+			new Applied("42", "V42__the_balance_is_one_amount_in_one_currency.sql", -1505949912),
+			/* REPINNED 28.09.2026, from 287136958: two comment citations pointed at PDL.md by line
+			   number ("PDL.md :3213") instead of by literal text, and a merge that lands after this
+			   one is written would move that number silently. Replaced with the decisive phrase
+			   itself, quoted, which is what PDL.md :3213 said when read for this fix and cannot go
+			   stale the same way. V43 had not merged to main at either point - the same condition
+			   V41's own repin note above checks rather than assumes - so this is not a rewrite of a
+			   migration anyone has run. */
+			new Applied("43", "V43__the_written_pages_speak_english.sql", -1054379915));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
