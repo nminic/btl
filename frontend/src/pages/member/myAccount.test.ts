@@ -9,6 +9,9 @@ import {
   WHAT_THIS_SCREEN_SENDS,
   WHEN_CHANGING_MY_DATA,
   WHEN_CHANGING_MY_PASSWORD,
+  hiddenIn,
+  standingTextIn,
+  waitingIn,
   whatChanged,
   type Standing,
   type Typed,
@@ -372,5 +375,80 @@ describe('telling the server to change something', () => {
     const headers = new Headers(asked.find((one) => one.path === '/api/me')?.init?.headers)
 
     expect(headers.get('X-XSRF-TOKEN')).toBe('a-token')
+  })
+})
+
+/**
+ * WHAT THE ANSWER SAID, READ WITHOUT AN ASSERTION.
+ *
+ * <p>Three readers rather than one taking the name of a field as an argument, which is the
+ * arrangement `member/photoWrites.ts#theRowIn` already has and the reason its own twin gives:
+ * a function whose callers decide what it means is a function nobody can hold to anything.
+ *
+ * <p><b>Read here rather than only through the screens</b>, because the ways an ANSWER can be
+ * wrong are more numerous than the ways a route can be, and the two panels that read them can
+ * reach at most a handful of those ways through a box and a button (ADL A14: what comes off
+ * the wire is `unknown` and is narrowed by looking at it, never claimed).
+ */
+describe('what the route said about the flag, read off the answer', () => {
+  it('is the flag where the answer carries one, in both of its states', () => {
+    expect(hiddenIn({ profileHidden: true })).toBe(true)
+    expect(hiddenIn({ profileHidden: false })).toBe(false)
+  })
+
+  it('is nothing where the answer carries no body at all', () => {
+    /* Which is what `askTheServer` hands over for a 204, and for a 200 whose body is not JSON:
+       `bodyIn` catches and answers `undefined`. */
+    expect(hiddenIn(undefined)).toBeNull()
+    expect(hiddenIn(null)).toBeNull()
+  })
+
+  it('is nothing where the field is absent, or is there as something else', () => {
+    /* A portal one release behind its server, and a route answering the WORD „true", which is
+       the shape the overlay keeps every value in and so the one a careless join would produce. */
+    expect(hiddenIn({ bio: '', waiting: null })).toBeNull()
+    expect(hiddenIn({ profileHidden: 'true' })).toBeNull()
+  })
+})
+
+describe('what the route said stands on the profile', () => {
+  it('is the text where the answer carries one, empty included', () => {
+    /* The empty string is an ANSWER - it is what a removal leaves behind - and telling it from
+       „the answer said nothing" is the whole reason this returns `string | null`. */
+    expect(standingTextIn({ bio: 'Trčim od 2015.' })).toBe('Trčim od 2015.')
+    expect(standingTextIn({ bio: '' })).toBe('')
+  })
+
+  it('is nothing where the answer carries none, or carries null', () => {
+    /* `competitor.bio` is nullable (V7) and `Competitor.bio` is `string | null`, so a member
+       who has never written one really is answered `null` - which this reads as „nothing to
+       set" rather than as the word „null" on his profile. */
+    expect(standingTextIn({ bio: null })).toBeNull()
+    expect(standingTextIn({ waiting: 7 })).toBeNull()
+    expect(standingTextIn(undefined)).toBeNull()
+    expect(standingTextIn('a string is not a record')).toBeNull()
+  })
+})
+
+describe('the key of the text standing in the queue', () => {
+  it('is the number the answer named', () => {
+    expect(waitingIn({ waiting: 7 })).toBe(7)
+  })
+
+  it('is nothing where nothing of his waits', () => {
+    expect(waitingIn({ bio: '', waiting: null })).toBeNull()
+    expect(waitingIn({ bio: '' })).toBeNull()
+    expect(waitingIn(undefined)).toBeNull()
+  })
+
+  it('refuses a key no row could have, rather than filing a decision under it', () => {
+    /* The same four guards `photoWrites.ts#theRowIn` keeps, and for the same reason: a key of
+       nought or below names no row of a `bigserial`, a fraction names none either, and the
+       TEXT „7" is what a route answering a string would send - all four would otherwise be
+       turned into `String(...)` and used to look a decision up. */
+    expect(waitingIn({ waiting: 0 })).toBeNull()
+    expect(waitingIn({ waiting: -1 })).toBeNull()
+    expect(waitingIn({ waiting: 1.5 })).toBeNull()
+    expect(waitingIn({ waiting: '7' })).toBeNull()
   })
 })

@@ -105,6 +105,10 @@
       "title": "Potvrda adrese",
       "description": "Potvrda adrese elektronske pošte preko veze iz poruke koju portal pošalje po registraciji."
     },
+    "forgottenPassword": {
+      "title": "Zaboravljena lozinka",
+      "description": "Zahtev za poruku sa vezom na kojoj se postavlja nova lozinka za nalog na portalu Balkanske trkačke lige."
+    },
     "admin": {
       "title": "Administracija",
       "description": "Ulaz u administrativni deo portala, sa redovima čekanja i svim entitetima lige."

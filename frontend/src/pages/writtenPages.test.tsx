@@ -1032,6 +1032,29 @@ describe('the privacy policy', () => {
     }
   })
 
+  it('keeps the profile picture among what membership produces, not what joining collects', () => {
+    /* An independent review found "Profilna fotografija" sitting in "Podaci koje unosite pri
+       učlanjenju" ("data you enter when you join"), but RegistrationApi never writes a
+       picture: it names "photo" in its own NOT_COLLECTED_YET, and the `insert into
+       competitor` statement that route runs never names photo_id among its columns. The
+       picture is written by POST /api/me/photo, called from a member's own account after
+       joining - the same shape the biography row already correctly sits under. V44 moved the
+       row for that reason; this reads the moved document rather than a remembered list, so a
+       mutation that puts the row back in the wrong table, or drops it from both, fails here.
+       The two tables merge into one `Map` a few lines up on purpose (a field only has to name
+       some row of the two), which is exactly why nothing above this case would have caught
+       the row sitting in the wrong one. */
+    const blocks = collectedRows().split('###')
+    const joining = blocks.find((block) => /Podaci koje unosite pri učlanjenju/.test(block))
+    const ongoing = blocks.find((block) => /Podaci koji nastaju dok ste član/.test(block))
+
+    expect(joining, 'the policy no longer has the "upon joining" table').toBeDefined()
+    expect(ongoing, 'the policy no longer has the "while you are a member" table').toBeDefined()
+
+    expect(String(ongoing)).toContain('Profilna fotografija')
+    expect(String(joining)).not.toContain('Profilna fotografija')
+  })
+
   it('names what is public and what never is', async () => {
     renderAt('/sr/politika-privatnosti')
 
