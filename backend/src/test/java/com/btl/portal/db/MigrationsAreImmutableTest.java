@@ -143,7 +143,11 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   point - checked with `git ls-tree origin/main` and `git merge-base`, not assumed - so
 			   ADL A2's protection for applied migrations does not cover it yet and this is not a
 			   rewrite of a migration anyone has run. */
-			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484));
+			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484),
+			/* PINNED LAST, 28.09.2026, once all four written pages were whole in this file - the
+			   rule this project keeps for every migration checksum, so that a later commit fixing
+			   one word in a comment cannot silently move this number out from under itself. */
+			new Applied("43", "V43__the_written_pages_speak_english.sql", 677440898));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

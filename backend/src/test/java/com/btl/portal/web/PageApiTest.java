@@ -326,12 +326,14 @@ class PageApiTest {
 	void pagesV43HasAlreadyTranslatedAnswerInRealEnglishWithNoFixtureOfItsOwn() throws Exception {
 		JsonNode ours = answerIn("en");
 
+		/* All four, now that politika-privatnosti and uslovi-koriscenja have landed in V43 too,
+		   translated against the text V41 (branch b143, merged as 5f464318) left behind rather
+		   than the stale text this branch's own tree held while it waited. */
 		assertThat(languagesOf(ours))
-				.as("politika-privatnosti and uslovi-koriscenja are not in V43 yet (held back for the"
-						+ " b143/V41 text-authority question) and must still answer in the original;"
-						+ " rec-predsednika and pravilnik are, and must answer in real English")
-				.containsExactly(entry("politika-privatnosti", PageApi.THE_ORIGINAL),
-						entry("uslovi-koriscenja", PageApi.THE_ORIGINAL),
+				.as("all four written pages are in V43 now, and each must answer in real English"
+						+ " rather than silently falling back to the original")
+				.containsExactly(entry("politika-privatnosti", "en"),
+						entry("uslovi-koriscenja", "en"),
 						entry("rec-predsednika", "en"),
 						entry("pravilnik", "en"));
 
@@ -359,6 +361,20 @@ class PageApiTest {
 						"14. Awards and honours", "15. Code of ethics", "16. Sanctions and disqualification",
 						"17. Publishing data and photographs", "18. Ducats",
 						"19. Amendments to the Rulebook and final provisions");
+
+		assertThat(pageNamed(ours, "politika-privatnosti").path("title").asString())
+				.as("politika-privatnosti's real English title did not reach the route")
+				.isEqualTo("Privacy policy");
+		assertThat(fieldOf(ours, "politika-privatnosti", "heading"))
+				.as("the privacy policy did not come back whole - seven real English headings")
+				.hasSize(7);
+
+		assertThat(pageNamed(ours, "uslovi-koriscenja").path("title").asString())
+				.as("uslovi-koriscenja's real English title did not reach the route")
+				.isEqualTo("Terms of use");
+		assertThat(fieldOf(ours, "uslovi-koriscenja", "heading"))
+				.as("the terms of use did not come back whole - twelve real English headings")
+				.hasSize(12);
 	}
 
 	/**

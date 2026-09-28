@@ -48,11 +48,12 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	 * Every slug V43 has translated to English AS OF THIS COMMIT to this file.
 	 *
 	 * <p>Extended by hand, one entry per commit to V43 - there is no table this could be derived
-	 * from that is not itself V43 in the middle of being written. The task's own plan
-	 * (politika-privatnosti and uslovi-koriscenja held back pending which Serbian text V41 leaves
-	 * behind) is why this is not simply "the four slugs {@code static_page} carries".
+	 * from that is not itself V43 in the middle of being written. Now equal to the four slugs
+	 * {@code static_page} carries, since politika-privatnosti and uslovi-koriscenja landed once
+	 * V41 (branch b143, merged as 5f464318) settled which Serbian text they translate.
 	 */
-	private static final List<String> TRANSLATED_SO_FAR = List.of("rec-predsednika", "pravilnik");
+	private static final List<String> TRANSLATED_SO_FAR =
+			List.of("rec-predsednika", "pravilnik", "politika-privatnosti", "uslovi-koriscenja");
 
 	private static final Pattern TABLE_ROW = Pattern.compile("(?m)^\\|.*\\|\\s*$");
 	private static final String MARK = "[[gallery]]";
@@ -73,7 +74,7 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "rec-predsednika", "pravilnik" })
+	@ValueSource(strings = { "rec-predsednika", "pravilnik", "politika-privatnosti", "uslovi-koriscenja" })
 	void everySerbianSectionOfATranslatedPageHasExactlyOneEnglishCounterpart(String slug) {
 		reapply();
 
@@ -121,7 +122,7 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "rec-predsednika", "pravilnik" })
+	@ValueSource(strings = { "rec-predsednika", "pravilnik", "politika-privatnosti", "uslovi-koriscenja" })
 	void aTranslatedSectionKeepsTheSameNumberOfMarkdownTableRowsAsTheSerbianOriginal(String slug) {
 		reapply();
 
@@ -150,7 +151,7 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "rec-predsednika", "pravilnik" })
+	@ValueSource(strings = { "rec-predsednika", "pravilnik", "politika-privatnosti", "uslovi-koriscenja" })
 	void aTranslatedSectionThatCarriesADrawingKeepsTheMarkAsAWholeLine(String slug) {
 		reapply();
 
@@ -255,5 +256,133 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 						+ " slugs, which the language prefix and not the path carries (PDL P18)")
 				.contains("(/politika-privatnosti)")
 				.contains("(/uslovi-koriscenja)");
+	}
+
+	/** The whole English text of one page, sections in position order, for cases that ask about
+	 *  the page rather than about one section. */
+	private String wholeEnglishBodyOf(String slug) {
+		return String.join("\n", db
+				.sql("select st.body from static_page_section s"
+						+ " join static_page p on p.id = s.page_id"
+						+ " join static_page_section_translation st on st.section_id = s.id"
+						+ " where p.slug = :slug and st.language = 'en' order by s.position")
+				.param("slug", slug)
+				.query(String.class)
+				.list());
+	}
+
+	/**
+	 * THE AUTHORITATIVE-VERSION SENTENCE (PDL.md, "Odredbu o merodavnosti nose SAMO engleske
+	 * strane", 27.09.2026) IS ON EXACTLY THE THREE NAMED PAGES, NEVER ON rec-predsednika.
+	 *
+	 * <p>Pravilnik carries it as its own Article 4, translated with the rest of the article - not
+	 * added beside it, so this asks for it once rather than twice. politika-privatnosti and
+	 * uslovi-koriscenja carry no such sentence in Serbian at all (measured: neither page's current
+	 * text, read from frontend/src/test/mock/pages.json after this branch merged V41 forward,
+	 * contains "merodavna" anywhere), so English adds it - the two-state axis this task's own
+	 * decision turns on: a page either already states which version binds (pravilnik) or it does
+	 * not (the other two), and either way the ENGLISH answer must state it exactly once.
+	 */
+	@Test
+	void theAuthoritativeVersionSentenceIsOnExactlyTheThreeNamedPagesAndNeverOnRecPredsednika() {
+		reapply();
+
+		String sentence = "the Serbian version is authoritative";
+
+		for (String namedByPdl : List.of("pravilnik", "politika-privatnosti", "uslovi-koriscenja")) {
+			String english = wholeEnglishBodyOf(namedByPdl);
+
+			assertThat(countOccurrences(english, sentence))
+					.as("%s's English translation must state exactly once that the Serbian version"
+							+ " is authoritative (PDL.md :3213 names this page)", namedByPdl)
+					.isEqualTo(1);
+		}
+
+		assertThat(wholeEnglishBodyOf("rec-predsednika"))
+				.as("rec-predsednika is not one of the three pages PDL.md :3213 names, so it must"
+						+ " not carry the authoritative-version sentence")
+				.doesNotContain(sentence);
+	}
+
+	private static int countOccurrences(String haystack, String needle) {
+		int count = 0;
+		int at = 0;
+
+		while ((at = haystack.indexOf(needle, at)) != -1) {
+			count++;
+			at += needle.length();
+		}
+
+		return count;
+	}
+
+	/**
+	 * ZERO MENTIONS OF A PAYMENT CARD IN EITHER PAGE V41 REMOVED THEM FROM, IN ENGLISH EITHER -
+	 * AND THIS IS A NARROWER QUESTION THAN "ZERO MENTIONS OF THE WORD card".
+	 *
+	 * <p>V41's own {@code StaticPageSectionTextCarriedOverTest} enforces the Serbian half of this
+	 * on the real migrated database, by searching the root "karti" rather than "kartic" - the
+	 * word removed was "kartično", with č, and a search for the plain root would have missed it
+	 * exactly as review's first pass did. Translated to English, "kartica" (payment card) and
+	 * "lična karta" (ID card, a different Serbian word) both surface the English word "card", and
+	 * the ID card is NOT one of the three sentences V41 removed - politika-privatnosti's own
+	 * section 2 keeps "since an ID card is issued at 16" from V24's untouched wording. A first
+	 * draft of this case asked {@code doesNotContainIgnoringCase("card")} and failed on exactly
+	 * that correct sentence, which is the measurement that narrowed the question: not "does the
+	 * word card appear" but "does the word card appear anywhere OTHER than in ID card".
+	 */
+	@Test
+	void neitherPageV41ClearedOfAPaymentCardMentionsOneInEnglishEitherOutsideAnIdCard() {
+		reapply();
+
+		Pattern cardNotPartOfIdCard = Pattern.compile("(?<!ID )(?i:card)");
+
+		for (String slug : List.of("politika-privatnosti", "uslovi-koriscenja")) {
+			String english = wholeEnglishBodyOf(slug);
+			List<String> matches = cardNotPartOfIdCard.matcher(english).results().map(m -> m.group()).toList();
+
+			assertThat(matches)
+					.as("%s's English translation mentions a card outside of \"ID card\", so it"
+							+ " disagrees with the Serbian original V41 cleared of every payment-card"
+							+ " mention", slug)
+					.isEmpty();
+		}
+
+		/* THE POSITIVE CONTROL, on the one page that has it: without this, an exception written
+		   too broadly (for example excluding the word "card" outright) would pass the loop above
+		   for a reason that has nothing to do with matching ID card correctly - it would pass
+		   because it excluded every card, the mistake the header above already measured once. */
+		assertThat(wholeEnglishBodyOf("politika-privatnosti"))
+				.as("politika-privatnosti no longer has the ID card sentence (V24's own wording,"
+						+ " untouched by V41) at all, so the exception above is not proven to admit"
+						+ " exactly ID card rather than every card")
+				.contains("ID card");
+	}
+
+	/**
+	 * ALL THREE LEGAL PAGES' ENGLISH SIGN-OFFS CARRY V41's DATE, 28.09.2026, AND NONE STILL CARRIES
+	 * THE STALE 15.09.2026 V41 OVERWROTE IN SERBIAN.
+	 *
+	 * <p>Measured rather than assumed: pravilnik's English translation was written and committed
+	 * BEFORE this branch merged V41 forward, against Article 4's own then-current sign-off date,
+	 * and carried the stale date until this very check was added and failed against it once.
+	 * politika-privatnosti and uslovi-koriscenja are written after the merge and so are checked
+	 * for the same regression from the start rather than after the fact.
+	 */
+	@Test
+	void allThreeLegalPagesSignOffWithV41sDateAndNoneKeepsTheStaleOne() {
+		reapply();
+
+		for (String slug : List.of("pravilnik", "politika-privatnosti", "uslovi-koriscenja")) {
+			String english = wholeEnglishBodyOf(slug);
+
+			assertThat(english)
+					.as("%s's English sign-off does not carry V41's date, 28.09.2026", slug)
+					.contains("Last amended: 28.09.2026.");
+			assertThat(english)
+					.as("%s's English sign-off still carries the date V41 overwrote in Serbian,"
+							+ " 15.09.2026", slug)
+					.doesNotContain("15.09.2026");
+		}
 	}
 }

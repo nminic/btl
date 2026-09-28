@@ -18,29 +18,49 @@
  * at all - the Serbian answer PageApiTest holds byte for byte against pages.json is
  * untouched by every statement below.
  *
- * ORDER, AND WHY THIS COMMIT IS SHORT. The owner asked for the president's own word first,
- * "najmanja, i vlasnik je bas nju pomenuo" - one section, 821 characters, no drawing, no
- * table, and no dependency on anything another branch is touching. The rulebook (pravilnik)
- * is the next to land in this same file, for the same reason: nineteen sections and no
- * pending question either. THE OTHER TWO PAGES OF THE FOUR, uslovi-koriscenja and
- * politika-privatnosti, ARE DELIBERATELY NOT IN THIS FILE YET: branch b143 (PR 410) rewrites
- * running text of both under its own V41, not yet merged at the time of this commit, and
- * translating ahead of that merge would either translate sentences V41 is about to delete or
- * hand V41's reviewer two Serbian originals to reconcile with one English page. They arrive
- * in a later commit to this same V43, once it is settled which Serbian text is the one being
- * translated.
+ * ORDER. The owner asked for the president's own word first, "najmanja, i vlasnik je bas nju
+ * pomenuo" - one section, 821 characters, no drawing, no table, and no dependency on anything
+ * another branch was touching. The rulebook (pravilnik) landed second in this same file, for
+ * the same reason: nineteen sections and no pending question either. politika-privatnosti and
+ * uslovi-koriscenja land last and in one further commit, because branch b143 (PR 410, merged
+ * to main as 5f464318, "The card leaves the public pages") rewrote running text of both under
+ * its own V41 while this file was already open. Translating either page before that merge
+ * would have translated sentences V41 was about to delete, or handed V41's reviewer two
+ * Serbian originals to reconcile with one English page; both are translated below against the
+ * text V41 actually left behind, read out of frontend/src/test/mock/pages.json after this
+ * branch merged origin/main forward to 5f464318 - not out of this repository's own stale copy
+ * of V24, which V26 and V41 have each since rewritten one section of.
  *
- * THE DISCLAIMER OF WHICH LANGUAGE BINDS IS NOT ADDED TO THIS PAGE. PDL.md, "Odredbu o
- * merodavnosti nose SAMO engleske strane" (27.09.2026, owner) settles that the Serbian
- * original is never touched and that the ENGLISH side of "pravni tekstovi i pravilnik" is
- * what states the Serbian version binds - the rulebook already carries exactly that sentence
- * as its own Article 4 ("Prevod na engleski ... je informativan, a u slucaju razlike
- * merodavna je srpska verzija"), translated faithfully below with the rest of the article.
- * [MOJE REZONOVANJE, nije vlasnikova odluka i trazi njegovu potvrdu ili prigovor.] The
- * president's word is neither a legal text nor the rulebook - it is "the actual copy the
- * owner approved" in V37's own words, a welcome rather than an instrument - so no such
- * sentence is added to it here. If the owner disagrees, one paragraph is added to the
- * section below in the next commit to this file.
+ * WHAT V41 CHANGED, AND WHY IT MATTERS TO A TRANSLATOR RATHER THAN JUST TO THE MIGRATION THAT
+ * MADE THE CHANGE. Card payment left the portal (owner, 26.09.2026: "Nece biti moguce placanje
+ * karticama do daljnjeg"), and V41 removed every sentence naming it from both pages: the
+ * "ili karticom" option and the whole paragraph about card data in uslovi-koriscenja position
+ * 4, the "Podatke o platnoj kartici..." sentence in politika-privatnosti position 2, and a
+ * third home in politika-privatnosti position 5 that V41's own header records was found only
+ * in review, by searching the root "karti" rather than "kartic" (the word was "kartično", with
+ * č). The English translations below were checked the same way, over the same root, and carry
+ * none of the three - V41's own StaticPageSectionTextCarriedOverTest enforces zero mentions of
+ * a card anywhere in either page's SERBIAN sections against the real migrated database, and an
+ * English page that reintroduced one of the three sentences would put Serbian and English at
+ * odds on the same fact, which is exactly the shape "dva doma jedne cinjenice" names as a
+ * defect rather than a translation choice. V41 also moved the shared sign-off
+ * ("Sportsko udruzenje BTL" / "Poslednja izmena:") on all three legal pages to 28.09.2026 -
+ * pravilnik's English sign-off below was written before that commit existed and is corrected
+ * to match in this same commit, alongside the two new translations.
+ *
+ * THE DISCLAIMER OF WHICH LANGUAGE BINDS. PDL.md, "Odredbu o merodavnosti nose SAMO engleske
+ * strane" (27.09.2026, owner) settles that the Serbian original is never touched and that the
+ * ENGLISH side of "politike privatnosti, uslova koriscenja i pravilnika" (PDL.md, named
+ * literally, today at :3213) is what states the Serbian version binds. Pravilnik already
+ * carried exactly that sentence as its own Article 4 and needed nothing added. Neither
+ * politika-privatnosti nor uslovi-koriscenja carries any such sentence in Serbian, so one is
+ * ADDED to each English translation below, in its last section, worded to match Article 4:
+ * "This [privacy policy / these terms of use] is published in the Serbian language, in the
+ * Latin script. A translation into English, or into any third language, is for information
+ * only, and in the event of a discrepancy the Serbian version is authoritative." Confirmed by
+ * the owner as the wording to use. rec-predsednika is not one of the three named pages (PDL.md
+ * :3213) and does not get this sentence, which the owner confirmed independently, citing the
+ * same two lines.
  *
  * VALUES ARE DOLLAR QUOTED ($$...$$) RATHER THAN QUOTED WITH DOUBLED APOSTROPHES, which V24
  * uses throughout (for example "Round ''n'' Around"). That form is exactly as valid here, but
@@ -728,4 +748,379 @@ The Rulebook is interpreted and applied by the association. A case not covered b
 ---
 
 BTL sports association
-Last amended: 15.09.2026.$$);
+Last amended: 28.09.2026.$$);
+
+/* PRIVACY POLICY, PAGE 3 OF 4. Translated against the text V41 left behind (see this file's own
+ * header): section 2's table lost its card-data sentence, section 5's table lost its own
+ * separate one, and section 7 gets both the new sign-off date and the new authoritative-version
+ * sentence PDL.md :3213 requires for this named page. */
+
+insert into static_page_translation (page_id, language, title) values
+    ((select id from static_page where slug = 'politika-privatnosti'), 'en', $$Privacy policy$$);
+
+insert into static_page_section_translation (section_id, language, heading, body) values
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'politika-privatnosti' and s.position = 1),
+     'en', $$1. Who we are and which regulations apply$$,
+     $$Your data is handled by the BTL sports association, which runs the Balkanska trkačka liga and the [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net) portal.
+
+| | |
+|---|---|
+| Registered seat | Beograd |
+| Registered address | Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd |
+| Registration number | 28815158 |
+| Tax ID (PIB) | 109089912 |
+| All privacy questions | [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net) |
+| Data Protection Officer | Nikola Minić |
+
+We process your data in accordance with the Personal Data Protection Act of the Republic of Serbia and, where applicable, the EU General Data Protection Regulation (GDPR).$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'politika-privatnosti' and s.position = 2),
+     'en', $$2. What data we process, why, and on what basis$$,
+     $$### Data you enter when you join
+
+| Data | Why | Legal basis | How long we keep it |
+|---|---|---|---|
+| First and last name | Identification, profile, tables | Performance of contract | Section 5 |
+| Date of birth | Age category and applying the rules for minor members | Performance of contract | Section 5 |
+| Sex | Men's and women's rankings | Performance of contract | Section 5 |
+| Choice of category, rookie or age based | Placement into the rankings | Performance of contract | Section 5 |
+| Place and country | Profile, map of countries visited, payment method, and citizenship in the membership records | Performance of contract and legal obligation | Section 5 |
+| E-mail address | Sign-in and mandatory notifications | Performance of contract | Section 5 |
+| Password | Account protection, kept only as a cryptographic hash | Performance of contract | For as long as the account exists |
+| Profile picture | Display on the public profile | Performance of contract | Section 5 |
+| T-shirt size | Making and delivering the T-shirt | Performance of contract | Until delivery |
+| Address | Sending the T-shirt and medal, and residential and mailing address in the membership records | Performance of contract and legal obligation | Section 5 |
+| Father's name | Membership records the association keeps by law | Legal obligation | Section 5 |
+| ID document number | Membership records the association keeps by law. It is requested from a member younger than 16 but is not mandatory, since an ID card is issued at 16. Only the administration sees it; it is not displayed anywhere and stands apart from the data the portal's screens read, in its own table with its own access rights | Legal obligation | Section 5 |
+| Phone, optional | To reach you quickly about a payment, an award, or an unclear result | Your consent | Section 5 |
+| Statement that you are familiar with the Rulebook and fit to compete | A condition of membership, confirmed in your application | Performance of contract | Section 5 |
+| For minors: the parent's or guardian's first and last name, relationship, and the date, time, and IP address the consent was given from | A parent's consent for a member younger than 14 and for maintaining the account of a member younger than 16, and proof that it was given | Performance of contract | Section 5 |
+
+### Data generated while you are a member
+
+| Data | Why | Legal basis | How long we keep it |
+|---|---|---|---|
+| Race results and everything calculated from them: points, placing, ducats, honours | The substance of the service | Performance of contract | Section 5 |
+| A photo of a watch or a screen as evidence | Checking a disputed result | Performance of contract | Deleted immediately after verification |
+| Biography, text about yourself, links to Strava and Instagram | Self-presentation, voluntary | Your consent | Section 5 |
+| Ratings and comments on events | A guide for other members | Performance of contract | Section 5 |
+| Team, racing pair, club | Team and pair standings | Performance of contract | Section 5 |
+| Private messages between members | Arranging transport and accommodation | Performance of contract | Section 5 |
+| Birthday, if you choose to publish it yourself | Birthday list | Your consent, off by default | Until you turn it off |
+| Internal administration notes | Records of disputed cases | Legitimate interest | Section 5 |
+
+### Membership fee
+
+| Data | Why | Legal basis | How long we keep it |
+|---|---|---|---|
+| Amount, date, method, and status of payment | Activating membership | Performance of contract | Section 5 |
+| Virtual balance and the ledger of its changes | The referral programme and paying future membership fees | Performance of contract | Section 5 |
+| Proof of payment | Bookkeeping | Legal obligation | Section 5 |
+
+### Data generated simply by visiting
+
+| Data | Why | Legal basis | How long we keep it |
+|---|---|---|---|
+| Choice of light or dark theme (`btl-theme`, local storage) | So the portal opens in the theme you chose | Necessary for the service provided, since you choose it yourself | Until you delete it yourself |
+| Security cookie, and a session cookie once sign-in is working | Without them, submitting a form and signing in cannot work safely | Necessary for the service provided | Until the end of the visit, or until sign-out |
+| Server logs | Security and detecting abuse | Legitimate interest | 30 days |$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'politika-privatnosti' and s.position = 3),
+     'en', $$3. What is public, and what never is$$,
+     $$The league is a public competition and your profile is a public page. That is the substance of the service we provide you, and you agree to it by joining.
+
+### Publicly displayed
+
+First and last name, member number, age and sex category, place and country, profile picture, every verified result with its dates and measurements, points and placing, ducats and honours, team, racing pair, and club, biography, ratings and comments on events, and links you add yourself.
+
+### Never displayed
+
+Date of birth, e-mail address, mailing address, everything related to the membership fee and payment, virtual balance, T-shirt size, father's name, ID document number, phone, private messages, internal administration notes, and everything related to the parental signature: the parent's name, relationship, date, time, and IP address.
+
+We ask for the date of birth only so that we know the age category, and we do not display it in full or in shortened form; only the category that follows from it is public. In settings you can hide your profile from visitors who are not signed in, but not from other members, since that would remove the point of ranking together. When your membership fee expires, your profile is no longer displayed, and your name remains in the historical tables of the seasons in which you were a member.
+
+### Photographs
+
+There is no gallery of race photos and no tagging of people in photographs. Your only photograph is your profile picture, which an administrator approves before publication. You give your consent to pictures the BTL staff take at the association's gatherings by accepting the Rulebook. If you request removal, we act proportionately: we remove a picture in which you are the subject, and from a group picture we remove whatever identifies you.
+
+### Minor members
+
+There is no minimum age for membership. For a member younger than 14, the prior consent of a parent or guardian is required. For members younger than 16, the account on the portal is maintained by a parent or guardian, with an electronic signature on the registration form, without which registration cannot be completed. Along with the signature we keep the parent's first and last name, the relationship (mother, father, or guardian), and the date, time, and IP address it was given from, since that is what makes the signature provable. The parent maintains the account until the child turns 16, and after that the member maintains the account themselves. We apply the 16-year threshold equally in every country.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'politika-privatnosti' and s.position = 4),
+     'en', $$4. Cookies and local storage$$,
+     $$The portal sets exactly one cookie, and it is a security cookie. It serves only to ensure that a form you submit was really sent from this site, and not planted from somewhere else. It does not track your behaviour, does not build a visitor profile, does not say who you are, and is not shared with anyone. No consent is asked for it, because it is necessary: without it, submitting a form cannot work safely.
+
+Once sign-in is working, a session cookie will stand alongside it, without which sign-in cannot work. The same applies to it too: it does not track your behaviour, does not build a visitor profile, and is not shared with anyone.
+
+Besides the cookie, something else is kept in your browser: the choice of light or dark theme, under the name `btl-theme`, in local storage. Legally that is the same as a cookie, so it is listed here even though it is not called one. It is set only once you choose a theme yourself, stays in your browser, and never reaches us: it is not sent with any request, so our server never sees it. Only the page itself reads it, in your browser, to know which theme to render in. No consent is asked for it, because it is a display setting you requested yourself. You delete it by clearing the site's data in your browser, and the portal will then open you in the dark theme, which is the default.
+
+There is no other storage. There is no analytics, ours or anyone else's, so there is no consent banner either: consent is asked for whatever is not necessary, and there is nothing of the kind here. If we ever introduce that, this page will say so before it is introduced.
+
+There are no advertising networks, social media pixels, or advertising cookies on the portal. We do not sell your data and do not hand it over to advertisers.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'politika-privatnosti' and s.position = 5),
+     'en', $$5. How long we keep it and who we pass it to$$,
+     $$| Situation | What happens |
+|---|---|
+| While you are a member | We keep it for as long as membership lasts |
+| You stop being a member | Five years from the last season, then the profile is permanently deleted |
+| ID document number and father's name | Five years from the last season, same as the rest of the profile. Membership records are kept under the Law on Sport and do not stop existing on the same day as membership |
+| The account is never activated | 12 months from opening the account, if it has not been activated in the meantime |
+| Bookkeeping documentation on payments | At least five years from the last day of the business year the document relates to, or longer if another applicable regulation requires it |
+| Internal administration notes | 5 years from the last season of membership, unless they cease to be needed earlier |
+| Archive of outgoing e-mails | 2 years from sending, except for messages that form part of documentation subject to a longer statutory period |
+
+### Two ways in which data disappears
+
+On a request for deletion, we remove data we no longer have a legal basis or obligation to keep. Data we are required to keep, or that we need to protect legal claims, we keep until the relevant period expires. Deleting a profile on the portal and the Association's mandatory records are two different things.
+
+Beyond that, the two paths deliberately differ. Once the five years expire, if you have not requested anything, only your first and last name remain in the historical tables, as plain text with no link: a season's official result is a record of competition that the league has a legitimate interest in keeping whole. If you request deletion yourself, or you have been disqualified, both the profile and the results are deleted, the name and member number disappear, and wherever you were mentioned an anonymized record remains. The number itself remains spent and is not given to anyone else.
+
+### Who we pass it to
+
+We do not sell your data and do not give it to third parties for their own purposes. We share it only with those without whom the portal cannot work, and to the smallest extent possible.
+
+| Who | What they receive | Where |
+|---|---|---|
+| Hetzner Online GmbH | Portal hosting | Germany |
+| Cloudflare | Traffic and IP addresses, protection, and the domain | USA and EU |
+| PayPal (Europe) S.à r.l. et Cie, S.C.A. | Name, e-mail address, and amount, for members from abroad | Luxembourg |
+| Brevo (Sendinblue SAS) | Your address and the content of the message | France |
+| The Association's business bank | Data from the payment order | Serbia |
+
+With each of them we have a formal relationship under which they may use the data only for the work they do for us. We provide data to a state authority only upon a request based on law, which we verify beforehand.
+
+The server is in Germany, that is, in the European Union. For transfers outside the European Union we use the prescribed safeguard mechanisms.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'politika-privatnosti' and s.position = 6),
+     'en', $$6. Your rights$$,
+     $$You have the right to: access to your data and a copy of it; rectification and completion; erasure; restriction of processing; portability; objection to processing based on legitimate interest; and withdrawal of consent.
+
+You exercise all your rights by writing to [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net). No form, no justification, and free of charge. The deadline is without undue delay, and at the latest 30 days from receiving the request; if the request is complex, we notify you of an extension and the reason within those 30 days. Before we send anything, we verify that it is really you, because data sent to the wrong person is worse than data that is late.
+
+Some of it you can do yourself: you change and delete profile fields in settings, and you turn notifications on and off there. Consent for cookies is not withdrawn because it is not given: the portal sets only one security cookie, without which submitting a form cannot work safely, and the only other thing it keeps in your browser is the choice of theme, which you requested yourself; consent is not asked for either one (section 4). There is no button that fetches all your data in one click; we prepare a copy by hand, in CSV or JSON form, if you request it.
+
+### If you are not satisfied
+
+Write to us first, since most things are resolved in a single message.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'politika-privatnosti' and s.position = 7),
+     'en', $$7. Security, automation, and amendments$$,
+     $$All traffic goes over an encrypted connection, passwords are kept only as a cryptographic hash, a small number of people with precisely defined rights have access to the data, and the account with the broadest rights uses two-factor sign-in. No system is completely secure; if a data breach occurs that could harm you, we notify you and the supervisory authority within the prescribed deadlines.
+
+The portal automatically calculates points, placing, and ducats, which is arithmetic under publicly known rules. No decision with legal consequences for you is made automatically: verifying results, approving profiles, and every measure against members is decided by a person.
+
+We change the policy when what we do changes. If a change materially affects your rights, we notify you by e-mail before it takes effect.
+
+This privacy policy is published in the Serbian language, in the Latin script. A translation into English, or into any third language, is for information only, and in the event of a discrepancy the Serbian version is authoritative.
+
+---
+
+BTL sports association
+Last amended: 28.09.2026.$$);
+
+/* TERMS OF USE, PAGE 4 OF 4. Translated against the text V41 left behind: section 4's payment
+ * methods table lost "ili karticom" from both rows and the whole paragraph naming the card, and
+ * section 12 gets both the new sign-off date and the new authoritative-version sentence PDL.md
+ * :3213 requires for this named page. */
+
+insert into static_page_translation (page_id, language, title) values
+    ((select id from static_page where slug = 'uslovi-koriscenja'), 'en', $$Terms of use$$);
+
+insert into static_page_section_translation (section_id, language, heading, body) values
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 1),
+     'en', $$1. Who we are and what these terms govern$$,
+     $$The [balkanskatrkackaliga.net](https://balkanskatrkackaliga.net) portal is run by the BTL sports association, registered with the Serbian Business Registers Agency, registration number 28815158, Tax ID (PIB) 109089912, registered seat Beograd, registered address Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd. Write to us at [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).
+
+These terms govern the use of the portal and membership in the league. By using the portal you accept them; if you do not agree, do not use the portal.
+
+Membership in, and the operation of, the Association are governed by the [Statute of the BTL sports association](/BTL%20Statut.pdf). In the event of any inconsistency between the Statute and other acts of the Association, the Statute prevails.
+
+Alongside them, two more documents apply: the [league's general Rulebook](/pravilnik), which governs only the competition and is adopted for each season, and the privacy policy, which governs what we do with your data. If these terms and the Rulebook differ on anything concerning the competition, the Rulebook prevails.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 2),
+     'en', $$2. Who can be a member$$,
+     $$Registration on the portal constitutes an application for membership. Admission to membership takes place in accordance with the Statute and the acts of the Managing Board. Membership takes effect once the membership fee payment has been recorded, if a fee has been set for that person.
+
+We require no result and no prior experience, races anywhere in the world count toward points, and membership is open to competitors from every country.
+
+Competitor status for a season is something different from membership. While competitor status is not active, the account exists, but results are not entered, are not ranked, and do not enter the tables, and the profile is not displayed. The membership fee is therefore not paid for access to the site but for membership in the league.
+
+There is no minimum age. For a member younger than 14, the prior consent of a parent or guardian is required. For members younger than 16, the account on the portal is maintained by a parent or guardian. Anyone who is 14 or 15 accepts membership themselves, while their account is still maintained by a parent or guardian.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 3),
+     'en', $$3. Membership fee$$,
+     $$The amount of the membership fee and the payment deadlines are set by the Managing Board through a separate decision. The current price list is published in the [league's general Rulebook](/pravilnik), alongside the article on the membership fee.
+
+The membership fee is paid for a season, which runs from 1 January to 31 December. The price list repeats every year: from 1 October the following season is sold, and from 1 January to 30 September the current one is, without the right to be ranked. We accept payments from 1 October. The dinar price is fixed for the whole season and does not change with the exchange rate.
+
+Anyone who joins during the season receives a profile and submits their own results, but does not compete for placings and does not appear in that season's rankings.
+
+There are no discounted prices, but the Managing Board may, by decision, exempt a regular member from paying the membership fee, with the same rights; for the right to be ranked in a given season, that decision must be made by 31 December of the previous year.
+
+The membership fee is not refunded. Membership is a leisure-time service with a predetermined period of provision: the season for which the fee was paid, from 1 January to 31 December of that calendar year. You may cancel at any time, but a paid membership fee is not refunded.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 4),
+     'en', $$4. Registration, payment, and activation$$,
+     $$An application for membership is submitted primarily through the portal.
+
+1. Fill in the form. Every field that has a rule carries an explanation of that rule.
+2. Confirm your e-mail address. Without confirmation the account is not activated.
+3. The account is open, but competitor status is not active yet. Until it is, you are not visible on the portal and cannot do anything. You see only what every visitor sees: the calendar, the rankings, and other competitors' profiles.
+4. Pay the membership fee.
+5. We record the payment and activate your competitor status. You see the status within two days, and that is when you receive your member number. A member exempted from the fee by the Managing Board goes through without step 4; they receive their member number and all rights at the same moment as any other member.
+
+A proper application submitted through the portal is accepted automatically, in accordance with the acts of the Association.
+
+The member number has the form `000001`, is six digits, unique for both sexes, stays the same through every season, and is displayed publicly next to your name. If you take a break, your number remains reserved. A number is never assigned twice, so it remains spent even when you request that your data be deleted.
+
+### Payment methods
+
+| Where you are from | How you pay |
+|---|---|
+| Serbia | By payment slip, for which the portal generates a QR code |
+| Every other country | By PayPal |
+
+PayPal is not shown to members from Serbia, and that is not a matter of choice but of regulation.
+
+The portal does not issue an invoice or proof of payment. The evidence is your bank's or payment system's confirmation, together with the notice we send when we activate your membership fee.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 5),
+     'en', $$5. Submitting and verifying results$$,
+     $$Results are the heart of the league, and this is the only part of these terms where we seriously rely on your honesty. You submit a result in two ways: through the form on your profile, where you enter the race's name, date, type of race, location, length, ascent, descent, time, and a link to the official results; or with the button in the race's row on the event's own page, where the portal takes from that race whatever it specifies. The link is mandatory unless you attach a picture; then a comment alongside it is mandatory.
+
+1. You submit only races you ran yourself.
+2. The deadline for submission is two days from the day of the race. We still enter a later submission, but breaching this rule is grounds for the measure in section 7.
+3. A link to the official results is mandatory unless you attach a picture. A picture, certificate, or watch screenshot is accepted as evidence only together with a comment stating why the link to the official results is missing, what is seen in the picture, and we delete it immediately after checking.
+4. Only a race with an officially measured time counts toward points.
+5. The net time is entered, in the form `hh:mm:ss`, without tenths of a second.
+6. For a marathon and a half marathon, the length is entered exactly as `42.2` and `21.1`, with no tolerance; any other value places the race in another category by length.
+7. If the race is not in the calendar, submit it anyway; the administrator will create both the event and the race along with your result.
+8. The same result is submitted once. From one event you may have more than one result if you ran more than one race, but not two from the same race.
+9. If you did not finish the race, there is no result. We do not record a withdrawal or a no-show.
+10. If you switched to a shorter race, we recognize the result only if you are in that shorter race's official results.
+
+### Verification of results
+
+No result enters the rankings until we approve it. An unverified result is not shown publicly anywhere. The administration may correct the factual data of a result during verification: the event's name, the race's name, the type of race, and the time. It never touches the points, since they are a calculated value. A competitor who believes a correction is a mistake contacts the league.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 6),
+     'en', $$6. Referral programme$$,
+     $$Every member has a personal referral link. Anyone who joins through it, and whose membership fee is activated the next time, brings you the amount that applies on that day, shown to you on your "My fee" page, next to the link itself. The amount lands on your balance at the moment of activation, not at the moment of application, and we notify you of this by message.
+
+The balance pays for future membership fees, in whole or in part. It is never paid out in cash and is not transferred to another member: it is tied to the account it was earned on. Every change is visible to you on your account, with the date and the reason.
+
+The programme may not be used to register fabricated accounts or accounts belonging to someone else. Such accounts are deleted, and the balance earned is voided.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 7),
+     'en', $$7. Rules of conduct and measures$$,
+     $$We expect every member to show fair play and respect for all participants, regardless of sex, ethnic origin, race, religion, or sexual orientation. This is the league's code of ethics and is part of the Rulebook.
+
+Not allowed: submitting a result you did not run, or with inaccurate data; insulting, threatening, and harassing other members; posting content you have no right to; opening fabricated accounts; and attempting to circumvent the scoring or verification rules.
+
+Comments are published only after approval.
+
+### Measures for breaching the rules
+
+The measures for breaching the rules and the procedure in which they are imposed are governed by the [league's general Rulebook](/pravilnik). In short: measures range from a warning, through disqualification from the current season, to expulsion from the Association for the most serious or repeated breaches. The measure is chosen in proportion to the severity of the breach, its consequences, repetition, and intent.
+
+The first-instance decision on the measure is made by the Managing Board, by a written and reasoned decision, after giving you the opportunity to respond. You may appeal the decision to the General Assembly within 15 days of delivery.
+
+The membership fee is not refunded.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 8),
+     'en', $$8. Awards$$,
+     $$Awards and honours are governed by the Rulebook for the current season, on the [league rulebook](/pravilnik) page. Three rules are worth knowing in advance:
+
+1. Digital awards and certificates are given out automatically when the tables are frozen, to everyone at the same moment, regardless of where you live.
+2. The deadline for collecting physical awards is one month, by prior arrangement with the Association. We do not send trophies by post; the season's T-shirt and the finisher's medal are sent, and together, as soon as a member collects 12 BTL points. Postal costs are borne by the member. The deadline exists so that collection is not dragged out indefinitely, not so that someone is left without an award: you can always arrange an in-person handover.
+3. With a button on your profile you can authorize another member to collect your award for you.
+
+Trophies are presented at a ceremony joined with the BTL dezorijentiring.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 9),
+     'en', $$9. Content you post$$,
+     $$You post a profile picture, a biography, text about yourself, and ratings and comments on events to the portal. That content remains yours, and we claim no rights to it.
+
+By posting it you give us a non-exclusive right to display it on the portal and use it to represent the portal and the league, for example in the image for sharing your profile. That right ends when you remove the content, except where it has already been embedded in a historical record of competition. By posting it you also confirm that you have the right to post it.
+
+We approve the profile picture and biography before publication, and we may remove content that breaches these rules, with notice to you.
+
+Content created by BTL, including texts, the logo, the portal's design, and the way points are calculated, remains ours and is not used without our permission.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 10),
+     'en', $$10. What the portal is and what it is not$$,
+     $$This is the most important section of these terms, so it stands on its own.
+
+### BTL is not the organizer of other people's races
+
+As a rule, the league does not organize races: it does not lay out courses, does not time them, and does not accept entries, but keeps a ranking of recreational runners under its own formula, based on results measured by the organizers. The exception is competitions the league organizes itself, today the Round n Around ultramarathon and the BTL dezorijentiring; for these the league is the organizer, with everything that comes with it.
+
+For all other races, the following applies:
+
+- The calendar is informational. We collect dates from the organizer and verify them, but the only authoritative source is always the organizer.
+- Registration for a race is done exclusively with the organizer, through the link listed with the race. The portal does not accept registrations and does not act as an intermediary.
+- The organizer is responsible for everything at the race: course safety, timing, the start package, cancellation, and refunding the entry fee.
+- When you express an intention on the portal to go to a race, that is not a registration either to us or to the organizer, but information for other members for arranging transport.
+- Except where this is precisely stated on the portal, BTL does not organize transport. You and the person you arrange it with are responsible for the arrangement and for the trip.
+
+### You run at your own risk
+
+Running and hiking carry risk. You are responsible for your own health and for judging whether you are ready for a given race, and you confirm this at registration.
+
+### The portal is regularly maintained
+
+We strive for the portal to run without interruption and for the data to be accurate, but we cannot guarantee this. We are not liable for damage arising from using the portal, from relying on race data, from the portal's unavailability, or from the actions of other members. This does not apply to damage we cause intentionally or through gross negligence, nor to cases in which liability cannot be excluded by law.
+
+### For race organizers
+
+If you see inaccurate information alongside your race, or you do not want your race to be in our calendar, write to [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net). We carry out the request as soon as possible, without argument and without asking for a justification. Alongside every race we display only facts, and nowhere do we claim to be the organizer, a partner, or a place of registration.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 11),
+     'en', $$11. Technical partners$$,
+     $$The portal is the technical property of the Green Time Consulting agency from Beograd.
+
+The list of places and countries the portal offers during entry is taken from the [GeoNames](https://www.geonames.org/) database, used under the [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) licence.$$),
+
+    ((select s.id from static_page_section s join static_page p on p.id = s.page_id
+        where p.slug = 'uslovi-koriscenja' and s.position = 12),
+     'en', $$12. Cancellation, deletion, changes, and disputes$$,
+     $$| What you want | What happens |
+|---|---|
+| Cancel for the current season | You stop entering results for that year, you remain in the historical tables, the membership fee is not refunded |
+| Not renewing competitor status for the next season | The profile is no longer displayed, the name remains in the historical tables, we keep the data for five years |
+| Deleting your data | We remove your first name, last name, and member number from everywhere, together with the results; wherever you were mentioned, an anonymized record remains |
+
+Measures against a member are imposed under the procedure in section 7. While competitor status for a season is not activated, the member does not appear in that season's rankings and their profile is not displayed. Once they activate it, it is displayed again. When competitor status is not active, the profile is not displayed; this is deliberate, since access to your own racing data is one of the things membership brings. Ducats and honours remain recorded forever and come back with you when you renew.
+
+We may change these terms, and we notify you by e-mail of every material change before it takes effect; if you do not agree with the change, you may terminate your membership.
+
+The law of the Republic of Serbia applies. If you live in another country, this does not deprive you of the protection given to you by the mandatory regulations of your country of residence.
+
+If you have a complaint, write to us first at [info@balkanskatrkackaliga.net](mailto:info@balkanskatrkackaliga.net).
+
+These terms of use are published in the Serbian language, in the Latin script. A translation into English, or into any third language, is for information only, and in the event of a discrepancy the Serbian version is authoritative.
+
+---
+
+BTL sports association
+Last amended: 28.09.2026.$$);
