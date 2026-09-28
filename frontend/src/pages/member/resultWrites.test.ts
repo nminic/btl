@@ -248,6 +248,20 @@ describe('every reason the result routes can name', () => {
   })
 })
 
+/**
+ * WHAT A REQUEST CARRIED, NARROWED BY LOOKING AT IT RATHER THAN CLAIMED.
+ *
+ * <p>ADL A14 bans a type assertion over a value this file did not make, and what comes off
+ * `init.body` is exactly that. Read this way, a body of some other shape answers „nothing of
+ * the kind is there" instead of being asserted into a type - the same reading
+ * `askTheServer`'s own `reasonIn` makes of what comes off the wire.
+ */
+function bodyOf(one: { init?: RequestInit }): Record<string, unknown> {
+  const said: unknown = JSON.parse(String(one.init?.body))
+
+  return typeof said === 'object' && said !== null ? { ...said } : {}
+}
+
 describe('where each of the three writes goes', () => {
   const FIGURES = { distanceKm: 21.1, ascentM: 120, descentM: 120, seconds: 5400 }
   const PROOF = { link: 'https://rezultati.example/1', comment: '' }
@@ -283,7 +297,7 @@ describe('where each of the three writes goes', () => {
          way would have been refused on EVERY race picked out of the calendar. */
       for (const beside of ['raceName', 'raceKind', 'placeId', 'city', 'country']) {
         expect(
-          Object.hasOwn(JSON.parse(String(first(sent).init?.body)) as object, beside),
+          Object.hasOwn(bodyOf(first(sent)), beside),
           `${beside} travelled beside a raceId, which the route refuses`,
         ).toBe(false)
       }
@@ -298,9 +312,7 @@ describe('where each of the three writes goes', () => {
     try {
       await theRunWasSentIn(DESCRIBED)
 
-      const body = JSON.parse(
-        String(first(asked.filter((one) => one.path === A_RUN_IS_SENT_TO)).init?.body),
-      ) as object
+      const body = bodyOf(first(asked.filter((one) => one.path === A_RUN_IS_SENT_TO)))
 
       expect(body).toEqual(DESCRIBED)
       /* `PlaceField` writes a town's NAME and its country CODE, never the GeoNames mark that
@@ -334,9 +346,7 @@ describe('where each of the three writes goes', () => {
       /* „Menja se sve osim trke" (owner, 27.08.2026). The record on the server declares no
          field for one, so a race sent here would be a key nothing reads. */
       for (const beside of ['raceId', 'raceName', 'day', 'raceKind']) {
-        expect(Object.hasOwn(JSON.parse(String(first(sent).init?.body)) as object, beside)).toBe(
-          false,
-        )
+        expect(Object.hasOwn(bodyOf(first(sent)), beside)).toBe(false)
       }
     } finally {
       stop()
