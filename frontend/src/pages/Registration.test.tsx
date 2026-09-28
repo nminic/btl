@@ -1091,9 +1091,20 @@ describe('what the registration sends', () => {
        that watched only this one would go on passing the day the dropping is taken out
        of the state again.
 
-       THE MUTATION THIS IS WRITTEN AGAINST IS A SWAP, NOT A DELETION: hand `onSubmit`
-       the values as typed instead of what is on screen, and the name of a parent nobody
-       is asking about goes to the server for a competitor born in 1985. */
+       THE MUTATION THAT FELLS IT IS THE REMOVAL OF THE FORGETTING, measured on
+       28.09.2026: take `setValues(outside(held))` out of `FormRenderer` and this case
+       fails beside the one on screen, 2 of 49.
+
+       AND A BOUNDARY, WRITTEN DOWN BECAUSE IT WAS MEASURED AND NOT ASSUMED. The swap
+       that ought to fell a case about the body - hand `onSubmit` the values as typed
+       instead of `onScreen(filled)` - SURVIVES this, and the reason is worth knowing
+       rather than hiding: once the form stops holding what it stops asking for, the two
+       sources agree, so nothing can tell them apart from out here. `onScreen` is a
+       second line and no case can see it fall on its own. It is kept anyway, because it
+       is what the body's shape is written against and it answers for a caller that hands
+       the form another definition without remounting it; but this case is held up by the
+       forgetting, and saying otherwise would be a comment claiming a guard that is not
+       there. */
     const user = setupUser()
     renderForm()
 
