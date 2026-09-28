@@ -5,7 +5,7 @@ import type { Competitor } from '../data/types'
 import { formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { ServerSaid } from './account/ServerSaid'
-import { WHEN_DECIDING_AN_APPLICATION } from './teamQueue'
+import { WHEN_DECIDING_AN_APPLICATION } from './joiningThisTeam'
 import { useTeamQueue, type QueueRefusal, type QueueRow } from './useTeamQueue'
 
 /**

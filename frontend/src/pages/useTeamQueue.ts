@@ -7,7 +7,7 @@ import {
   whatThisTeamHasAsked,
   type TeamApplication,
   type TeamInvitation,
-} from './teamQueue'
+} from './joiningThisTeam'
 
 /**
  * WHAT THE TEAM'S PAGE NEEDS TO DRAW ITS TWO QUEUES, AND WHAT HAPPENS WHEN SOMEBODY PRESSES.

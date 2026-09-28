@@ -446,6 +446,11 @@ describe('a sentence with a value put into it', () => {
       'teams.joinNoSubject',
       'teams.joinRefusedNamed',
       'teams.joinTakenNamed',
+      /* The third control of the same kind, added 29.09.2026 with the team's own queue going
+         to the server: „Povuci poziv: {name}", a person's name after a colon, which is the
+         nominative for the same reason the two above it are. The two sentences beside it
+         (`teams.decideRefused.*`) take no value at all and are not here. */
+      'teams.inviteWithdrawNamed',
       'teams.proposeBody',
       'teams.proposeDone',
       'topBoards.place',

@@ -18,10 +18,14 @@ import { askTheServer, type Answer } from './account/askTheServer'
  * that line. `react/only-export-components` asks for the same thing from the other
  * direction, and `TeamDetail.tsx` is a component file.
  *
- * <p><b>Beside `TeamDetail.tsx` rather than under `pages/member/`</b>, because its one
+ * <p><b>Beside `TeamDetail.tsx` rather than under `pages/member/`, and named for the ACT
+ * rather than for the screen</b>, because its one
  * caller is the team's own public page and not the member area: the reader is whoever leads
  * the team, standing on the team's page, and `pages/profileAddress.ts` and `pages/sent.ts`
- * are already modules of this level for the same reason.
+ * are already modules of this level for the same reason. The name is `joiningThisTeam` and
+ * not `teamQueue` for a reason `tsc` gives out loud (TS1149): `pages/TeamQueue.tsx` is the
+ * drawing, and on a case-insensitive filesystem two files whose names differ only in a
+ * capital letter are one file as far as the compiler is concerned.
  *
  * <p><b>THE TWO LISTS ARE NOT RESOURCES AND CANNOT BE.</b> `data/client.ts` builds every
  * resource address as `/api/<name>` out of a closed list, and both of these carry a team in
