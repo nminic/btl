@@ -939,7 +939,19 @@ describe('the privacy policy', () => {
        which is the only moment anybody is thinking about that field at all. `firstSeason2027`
        was collected for weeks with no row, and nothing said so.
        The row is matched on the cell rather than on the line, so a table reflowed by hand
-       does not read as a policy that lost a row. */
+       does not read as a policy that lost a row.
+
+       **THE BOUNDARY, WRITTEN DOWN RATHER THAN LEFT TO BE FOUND, AND IT WIDENED ON
+       28.09.2026.** This runs ONE WAY: every field the form asks for names a row, and no
+       row is held to being named by a field. That was always so - the register of members
+       needs facts nobody types, and the policy has rows for what arises from a visit. What
+       changed is that „Profilna fotografija" joined them: the owner took the picture out of
+       the registration („Profilna sekcija se sa slikom i svojim recima izbacuje iz
+       registracione forme"), so its row is still true - the portal still collects a picture,
+       at `POST /api/me/photo` - and nothing here holds the policy to saying so any more.
+       A form is the only thing this case can read, and the picture is no longer asked on
+       one. The day a member's own picture is asked for through a form definition, that row
+       gets its guard back for free. */
     const asked = registration.fields
 
     expect(asked.length, 'the registration form asks for nothing').toBeGreaterThan(0)

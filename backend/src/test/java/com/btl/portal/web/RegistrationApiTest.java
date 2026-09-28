@@ -759,6 +759,18 @@ class RegistrationApiTest {
 				.as("a body carrying a picture was refused, so this route is reading a name"
 						+ " the form no longer sends")
 				.isEqualTo(204);
+
+		/* TWO ROWS AND NOT ONE, ASKED BEFORE THE PICTURE IS. Both members' `photo_id` is
+		   null, so the line below would read the same answer off EITHER of them, and the
+		   half of this case about the picture that was sent would be satisfied by the
+		   member who sent none. Asked here, `theCompetitorBehind(second)` is a row this
+		   case can name, which is what makes the next line about the second registration
+		   rather than about whichever row the address happened to find. */
+		assertThat(theCompetitorBehind(second).get("id"))
+				.as("the second registration did not make a second member, so the line below"
+						+ " reads the first one's row")
+				.isNotEqualTo(theCompetitorBehind(ADDRESS).get("id"));
+
 		assertThat(theCompetitorBehind(second).get("photo_id"))
 				.as("a picture sent with the registration reached the member's row")
 				.isNull();

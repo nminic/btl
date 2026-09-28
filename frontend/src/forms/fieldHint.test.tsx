@@ -905,7 +905,7 @@ describe('an answer chosen from buttons', () => {
 /**
  * The words a key stands for, out of the dictionary the form is drawn in.
  *
- * Read rather than written out here: nineteen labels copied into this file would
+ * Read rather than written out here: eighteen labels copied into this file would
  * be a second home for every one of them, and the day one is reworded the guard
  * would be holding the old one.
  */
@@ -998,7 +998,7 @@ function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number; ofIt
  * read the definition at all.
  *
  * Its floor is the case below it, which holds this table and the form to the same
- * nineteen names in BOTH directions, so a field added without a place here, or a
+ * eighteen names in BOTH directions, so a field added without a place here, or a
  * line here for a field the form no longer asks for, fails on the day it happens
  * rather than the day somebody looks. The portal already does this once, in
  * `pages/publicData.test.tsx`, for the same reason.
@@ -1161,7 +1161,7 @@ describe('a form laid out in groups', () => {
     })
   })
 
-  it('names the same nineteen fields the form asks for, and no others', () => {
+  it('names the same eighteen fields the form asks for, and no others', () => {
     /* The floor under the table above. Held in both directions: a field added to
        the form without a place in the table fails here, and so does a line left
        behind for a field that is gone. */
@@ -1315,7 +1315,7 @@ describe('a form laid out in groups', () => {
       ).toBe(0)
     }
 
-    /* And then with a date that makes the competitor a child, when all nineteen
+    /* And then with a date that makes the competitor a child, when all eighteen
        are drawn. The guardian's two are the ones a reordering is likeliest to
        lose, because they are the only two that are not there to be seen. */
     await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
