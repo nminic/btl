@@ -6,28 +6,40 @@
       "memberNumber": "",
       "firstName": "Ana",
       "lastName": "Ilić",
-      "city": "Novi Sad"
+      "city": "Novi Sad",
+      "currency": "RSD",
+      "expected": 4800,
+      "balance": 0
     },
     {
       "competitorId": 23,
       "memberNumber": "000031",
       "firstName": "Jovana",
       "lastName": "Ilić",
-      "city": "Beograd"
+      "city": "Beograd",
+      "currency": "RSD",
+      "expected": 4800,
+      "balance": 6000
     },
     {
       "competitorId": 58,
       "memberNumber": "",
       "firstName": "Petar",
       "lastName": "Marko",
-      "city": "Niš"
+      "city": "Ljubljana",
+      "currency": "EUR",
+      "expected": 43.5,
+      "balance": 12.75
     },
     {
       "competitorId": 17,
       "memberNumber": "000009",
       "firstName": "Marko",
       "lastName": "Marković",
-      "city": "Beograd"
+      "city": "Beograd",
+      "currency": "RSD",
+      "expected": 4800,
+      "balance": 1500
     }
   ]
 }

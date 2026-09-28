@@ -75,11 +75,28 @@ export function FieldHint({
        sit on this same document on the way back up, which is where the calendar,
        the menus in the header and the list of towns all wait for it: a tooltip
        open anywhere on the page meant none of them closed (ADL A7 asks that each
-       of them does). What the stopping was for was a form inside a sheet, and
-       the portal has no such thing: there is no dialog, no `showModal`, nothing
-       with `aria-modal`, and none of the seven screens that draw a form stands
-       inside anything that answers Escape. A guard against a case that does not
-       exist, breaking three that do. */
+       of them does). What the stopping was for was a form inside a sheet, and no
+       screen that draws a form stands inside one: the hint is put away and the
+       calendar and the menus hear the press as well, which is what they are for.
+     *
+       THE SENTENCE THAT STOOD HERE UNTIL 28.09.2026 WENT FURTHER AND SAID THE
+       PORTAL HAD NO DIALOG AT ALL - „no `showModal`, nothing with `aria-modal`".
+       That half is now FALSE and is rewritten rather than left, which is the
+       class `CLAUDE.md` names: a sentence asserting an overturned state is an
+       instruction to the next reader to restore it. `components/Prompt.tsx` is a
+       real `aria-modal` sheet, and the payments screen opens it for each of the
+       three questions the owner's specification asks (PDL section 19).
+     *
+       WHAT THAT MEANS FOR THIS LISTENER, MEASURED RATHER THAN REASONED. It is
+       registered with `capture` true on the DOCUMENT, so it runs before anything
+       inside such a sheet and the sheet cannot stop it - a press answering the
+       sheet would also put away a hint standing behind it. That costs nothing
+       today and the reason is countable, not hopeful: this component is rendered
+       by `FormRenderer` and by `pages/account/NewPassword` only, and neither
+       stands on a screen that opens a prompt, so there is no hint on the page for
+       such a press to reach. The day one screen draws both, the answer belongs
+       here - this listener asking whether the press came from inside a dialog -
+       and not in the sheet, which by construction cannot be heard first. */
     function onKeyDown(pressed: KeyboardEvent) {
       if (pressed.key === 'Escape') {
         setDismissed(true)

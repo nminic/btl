@@ -300,7 +300,16 @@ const readAsModerator: Moderator = aModerator
 const anOutstandingAnswer = {
   season: 2027,
   accounts: [
-    { competitorId: 41, memberNumber: '', firstName: 'Ana', lastName: 'Ilić', city: 'Novi Sad' },
+    {
+      competitorId: 41,
+      memberNumber: '',
+      firstName: 'Ana',
+      lastName: 'Ilić',
+      city: 'Novi Sad',
+      currency: 'RSD',
+      expected: 4800,
+      balance: 0,
+    },
   ],
 }
 
@@ -312,6 +321,9 @@ const anAccountNotYetAMember = {
   firstName: 'Ana',
   lastName: 'Ilić',
   city: 'Novi Sad',
+  currency: 'RSD',
+  expected: 4800,
+  balance: 0,
 }
 
 const readAsOutstanding: Outstanding = anOutstandingAnswer
