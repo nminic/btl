@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { Competitor } from '../../data/types'
 import { clearResourceCache } from '../../data/client'
 import { must } from '../../test/at'
@@ -9,7 +9,9 @@ import { renderAt } from '../../test/render'
 import { refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { aCompetitor } from '../../test/theAnswer'
 import sr from '../../i18n/sr.json'
+import { translate } from '../../i18n/translate'
 import { SLOW } from '../../test/slow'
+import { inside, SEP, sources, WHOLE_PORTAL } from '../../test/sources'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
 
@@ -464,10 +466,21 @@ describe('the words a member wrote about themselves, changed later', () => {
       const panel = await panelFor()
 
       expect(await panel.findByText(sr.bio.waitingNote)).toBeVisible()
-      /* Nothing at all under the sentence, which is what „no words of his are drawn" means
-         here: the paragraph that carries them is the panel's only other text. */
       expect(panel.queryByText(must(withOne.bio, 'his standing words'))).not.toBeInTheDocument()
       expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
+
+      /* NO PARAGRAPH AT ALL UNDER THE SENTENCE, and that is the half a question about TEXT
+         cannot ask. Measured: with the guard removed the panel draws the paragraph with
+         nothing in it, and every assertion above goes on passing - „his old words are not
+         there" is exactly what an EMPTY paragraph says too. An empty frame reads as „the
+         text was lost" rather than „it was never here", which is `ProfilePicture.tsx`'s own
+         reason for the same guard over the picture.
+       *
+         Counted by role rather than by class, which the portal already does in two places
+         (`i18n/Sentence.test.tsx`, `pages/details.test.tsx`): the waiting sentence carries
+         `role="status"`, so an explicit role takes it out of this count and what is left is
+         the body paragraph and nothing else. */
+      expect(panel.queryAllByRole('paragraph')).toEqual([])
     } finally {
       stop()
     }
@@ -837,3 +850,271 @@ function Decide({ row, label = 'odluči' }: { row: string; label?: string }) {
     </button>
   )
 }
+
+describe('where a biography can be sent for review at all', () => {
+  it('is this screen and nowhere else, and the net says so by reading the sources', () => {
+    /* MOVED HERE ON 28.09.2026 from `pages/Registration.test.tsx`, where it stood beside
+       the registration's own biography box. The box left the registration that day, so a
+       net about „which screen can send a biography for review" no longer has anything to
+       do with that file, and what it names is this one.
+     *
+       ~~It had a second half, which spelt out the words of the rule beside the field:
+       `sr.registration.bioHint`.~~ That rule was one of the seven the owner kept on
+       31.08.2026 („Registracija → Svojim rečima"), and it was kept ON THE REGISTRATION -
+       the same day he deleted the identical sentence from THIS panel, by name, with two
+       others. So when the field moved here it moved to the one screen whose rule he had
+       already struck, and the sentence has no home left. The key is gone from both
+       dictionaries with it. What a member sees instead is the count in the box, which is
+       what that deletion left standing and what the two cases above measure.
+     *
+       Four attempts at mechanising this, and the fourth is the reason there is no fifth.
+       „These five words are not on the screen" was beaten by a review putting the same
+       promise back in different words. „One form definition has a box for a biography"
+       was beaten because the panel the owner decided on uses no form definition. „No
+       source file contains `kind: 'bio'`" was beaten by `const kind = SORT`, and by
+       double quotes: a guard that reads source text guards the spelling. Counting the
+       controls on Settings was beaten twice over.
+     *
+       **THE MARKER MOVED ON 28.09.2026, BECAUSE THE ACT MOVED, AND THIS IS NOT A FIFTH
+       ATTEMPT AT MECHANISING IT.** Until that day this panel minted the queue row itself
+       (`propose({ kind: 'bio', … })`) and the net read that sort. It sends
+       `PUT /api/me` now and the SERVER files the row (`MeWriteApi.queued`), so
+       `kind: 'bio'` is in no production file at all - measured, nought hits - and a net
+       still reading it would have gone green over a portal where a second screen could
+       send a biography tomorrow. So the marker is the body this screen sends: the account
+       route named beside a `bio`.
+     *
+       **It is the same KIND of guard as the one it replaces, and its blind spots are named
+       rather than mended.** A module that builds the body in a variable, that puts the two
+       arguments on two lines, or that reaches the same route under an address of its own
+       walks past. What it does catch is the plain one, which is how this panel is written,
+       and the one thing it now catches that the old marker could not is a SECOND screen
+       written the same plain way. Measured on the day it was written: of the four
+       production modules that name `THE_ACCOUNT_GOES_TO`, two also carry the word `bio`
+       and exactly one carries the two together. */
+    /* And the net is asked whether it caught anything at all before it is asked what it
+       caught. Narrowed to one folder by accident, it would go on passing over a panel
+       written in plain sight: measured, with the root cut to `src/clock`, the guard
+       stayed green while the panel stood there. */
+    const swept = sources()
+
+    expect(swept.length).toBeGreaterThan(WHOLE_PORTAL)
+    expect(swept.some(({ path }) => path.endsWith(inside('member', 'ProfileBio.tsx')))).toBe(true)
+    /* And it holds no helper. Nothing under `src/test/` ships, so a sentence written in
+       one of them is not something the portal does; read as though it were, a plain line
+       in a comment there failed a guard about screens. */
+    expect(swept.filter(({ path }) => path.includes(inside('src', 'test', '')))).toEqual([])
+
+    const sending = swept
+      .filter(({ code }) => code.includes('THE_ACCOUNT_GOES_TO, { bio:'))
+      /* Named from `src` down, and cut at the **last** `src` rather than the first: a
+         checkout into a folder that itself carries `src` would otherwise make every path
+         unrecognisable and this list impossible to read. */
+      .map(({ path }) => path.slice(path.lastIndexOf(inside('src', ''))).split(SEP).join('/'))
+
+    expect(sending).toEqual(['src/pages/member/ProfileBio.tsx'])
+  })
+})
+
+/**
+ * THE BOX ITSELF, WHICH MOVED HERE ON 28.09.2026 RATHER THAN BEING DELETED.
+ *
+ * These eight stood in `pages/Registration.test.tsx` and measured `forms/LongBox.tsx`
+ * through the registration's own biography field. The owner took that field off the
+ * registration that day („Profilna sekcija se sa slikom i svojim recima izbacuje iz
+ * registracione forme - to ce clan popunjavati naknadno kad bude odobren"), so the box
+ * they are about is THIS one: the only place on the portal a member writes about himself.
+ *
+ * **Moved and not rewritten from memory.** What each of them measures is unchanged, and so
+ * is the number, because the number moved with the box (`profil.form.json`). The old copy
+ * is gone rather than left standing: a case measuring a field no screen draws reads as
+ * cover, and `CLAUDE.md` names moving logic as the commonest way a dead copy is born.
+ */
+describe('the box a member writes about themselves in', () => {
+  it('counts down what is left and refuses more than the limit', async () => {
+    /* Owner, 01.08.2026. Three hundred and sixty is the limit the box has always
+       carried; what it did with it was mark the field wrong after the fact. It refuses
+       at the door now, and says how much room is left before anybody runs out of it. */
+    const user = setupUser()
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const panel = await panelFor()
+    const field = await box()
+
+    expect(panel.getByText('Još 360 znakova')).toBeVisible()
+
+    await user.type(field, 'Trčim zbog druženja.')
+    expect(panel.getByText('Još 340 znakova')).toBeVisible()
+
+    /* Tall enough for the whole of it from the start, so nothing that fits has to be
+       read through a scrollbar. */
+    expect(field).toHaveAttribute('rows', '6')
+    expect(field).toHaveAttribute('maxlength', '360')
+  })
+
+  it('tells whoever cannot see the count that it is there', async () => {
+    /* The count was printed under the box and described by nothing, so a screen reader
+       read the label on arrival and never the one number that says how much of the box
+       is already spent. */
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const field = await box()
+    const described = (field.getAttribute('aria-describedby') ?? '').split(' ')
+    const counter = must(document.getElementById(described[described.length - 1] ?? ''), 'brojač')
+
+    expect(counter).toHaveTextContent('Još 360 znakova')
+  })
+
+  it('counts in Serbian, which has three forms and not one', () => {
+    /* „Još 1 znakova" is not a sentence anybody writes. The engine has had plural forms
+       since it was written and this key was a single string.
+     *
+       The key is still called `registration.bioLeft` although the box is no longer on the
+       registration: `LongBox` draws it for every long box the portal has, so the prefix
+       names where it was first needed and not where it may be used. Said here so the next
+       reader does not take that prefix for a claim. */
+    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 1 })).toBe('Još 1 znak')
+    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 3 })).toBe('Još 3 znaka')
+    expect(translate(sr, 'sr', 'registration.bioLeft', { count: 7 })).toBe('Još 7 znakova')
+  })
+
+  it('says so when there is no room left, rather than counting nought', async () => {
+    const user = setupUser()
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const panel = await panelFor()
+    const field = await box()
+
+    await user.click(field)
+    /* Exactly the limit, so the box is full and nothing was lost filling it. */
+    await user.paste('x'.repeat(360))
+
+    expect(field).toHaveValue('x'.repeat(360))
+    /* Twice in the markup and once to a reader: the line under the box, hidden from the
+       reader because the same words reach it through `aria-describedby`, and the region
+       that says it. The region is on the page from the start and empty until now, because
+       one that is added together with its text is one a screen reader often misses. */
+    expect(panel.getAllByText('Dosta je, granica je 360 znakova.')).toHaveLength(2)
+    expect(panel.getByRole('status')).toHaveTextContent('Dosta je, granica je 360 znakova.')
+  })
+
+  it('keeps the region quiet while there is still room', async () => {
+    /* It used to hold the count and change on every keystroke, which is three hundred and
+       fifty-nine announcements of a number nobody was waiting to hear, each one to be got
+       through before anything else could be said.
+
+       **Asked of EVERY region and not of „the" one, which is what moving this case here
+       cost and what it bought.** On the registration the box was the only thing on the
+       screen that spoke, so `getByRole('status')` meant the box's region. This panel has
+       another: the one that says the text has not changed, drawn exactly while the box is
+       untouched, which is the state this case is about. `getByRole` therefore found two
+       and threw - measured, not foreseen.
+
+       So what is held is the thing that actually matters, and it is the stronger of the
+       two: NOTHING on this panel announces the wall or a lost paste while there is still
+       room. Written as „the region is empty" it was also a claim about which region that
+       is, and that claim was the half that did not survive the move. */
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const panel = await panelFor()
+
+    expect(panel.getAllByRole('status').length).toBeGreaterThan(0)
+    expect(
+      panel
+        .getAllByRole('status')
+        .map((one) => one.textContent ?? '')
+        .filter((said) => /Dosta je|Nalepljeni tekst/.test(said)),
+    ).toEqual([])
+  })
+
+  it('says how much of a paste was thrown away, rather than throwing it away in silence', async () => {
+    /* The limit is refused at the door, and the browser refuses in silence: 400
+       characters into a box that holds 360 keeps 360 and drops 40 without a word. The
+       counter then reads „the box is full", which is read as „I filled it". */
+    const user = setupUser()
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const panel = await panelFor()
+    const field = await box()
+
+    await user.click(field)
+    await user.paste('x'.repeat(400))
+
+    const said =
+      'Nalepljeni tekst je bio 40 znakova duži nego što staje, pa taj višak nije primljen.'
+
+    /* On the screen once and to a reader once: the visible sentence is hidden from the
+       reader, and the region that was there all along says it. */
+    expect(panel.getAllByText(said)).toHaveLength(2)
+    expect(panel.getByRole('status')).toHaveTextContent(said)
+
+    /* And it goes the moment the writer does anything themselves. Not when the box drops
+       below its limit, which was the first rule and left the message standing through
+       every edit that kept the length: typing over a selected character is an edit the
+       writer made and the length does not move. */
+    await user.type(field, '{Backspace}x')
+    expect(panel.queryByText(/Nalepljeni tekst/)).toBeNull()
+  })
+
+  it('counts what a paste over a selection really loses, not what it brought', async () => {
+    /* Pasting over the whole box is not an overflow: what the selection gives back is
+       room. Without this the rule is arithmetic no test touches, so taking the two the
+       wrong way round would go green.
+
+       The event is dispatched rather than performed, because neither Ctrl+A nor a
+       selection set on the element moves the selection userEvent pastes against, and a
+       paste into a box that is full is the other case, not this one. What is being checked
+       is the arithmetic the handler does with the selection it is given, and that is
+       exactly what this hands it. */
+    const user = setupUser()
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const panel = await panelFor()
+    /* Typed through the query rather than by an assertion, which ADL A14 bans and which
+       the lint enforces: `getByLabelText` takes the element type as a parameter, so the
+       selection below is reached by asking for the right thing and not by telling the
+       compiler it already is. */
+    const field = panel.getByLabelText<HTMLTextAreaElement>(/Svojim rečima|Tekst o sebi/)
+
+    await user.click(field)
+    await user.paste('x'.repeat(360))
+
+    field.setSelectionRange(0, 360)
+    fireEvent.paste(field, { clipboardData: { getData: () => 'y'.repeat(380) } })
+
+    expect(panel.getByRole('status')).toHaveTextContent(
+      'Nalepljeni tekst je bio 20 znakova duži nego što staje, pa taj višak nije primljen.',
+    )
+  })
+
+  it('does not charge a Windows clipboard for its line endings', async () => {
+    /* The clipboard carries CR LF and a textarea keeps LF, so counting the clipboard as it
+       comes charges the writer one character per line for something the box never held.
+       Ten lines of thirty-six, which is 360 in the box and 369 on the clipboard: it all
+       fits, and nothing is lost. */
+    const user = setupUser()
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const panel = await panelFor()
+    const field = await box()
+
+    await user.click(field)
+    await user.paste(Array.from({ length: 10 }, () => 'x'.repeat(35)).join('\r\n'))
+
+    expect(panel.queryByText(/Nalepljeni tekst/)).toBeNull()
+  })
+
+  it('says nothing when the paste fits', async () => {
+    const user = setupUser()
+    renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
+
+    const panel = await panelFor()
+    const field = await box()
+
+    await user.click(field)
+    await user.paste('x'.repeat(40))
+
+    expect(panel.queryByText(/Nalepljeni tekst/)).toBeNull()
+    expect(panel.getByText('Još 320 znakova')).toBeVisible()
+  })
+})
