@@ -977,6 +977,24 @@ export type PendingItem = {
    */
   crop: Crop
   /**
+   * The key of the row in `photo` while there still is one, and null on the three
+   * queues that never carry a picture and on everything this visit itself proposed.
+   *
+   * `VerificationApi.Waiting.photoId`, and the only name this row's answer carries
+   * that `PendingItem` did not use to have (see `ServedPendingItem` below, where it
+   * used to be added rather than inherited). Never an address: `GET
+   * /api/verification/{id}/photo` (`PhotoApi.waitingOn`) is keyed by THIS item's own
+   * `id`, not by this number, and answers 404 alike to a moderator with no right over
+   * the row and to a row that never held a picture - the two cannot be told apart
+   * from here, on purpose (ADL A8), so this field says only whether to ask at all.
+   *
+   * Null on a proposal (`prop-`) for the same reason `picture` and `crop` are empty
+   * on one: nothing this visit makes up locally has a server row to hold a key for.
+   * Both callers of `propose` (`pages/member/ProfileBio.tsx`,
+   * `pages/member/EditTeam.tsx`) write `photoId: null` for exactly that reason.
+   */
+  photoId: number | null
+  /**
    * The two days a reported change of term carried, off the one queue that asked for
    * them, and empty everywhere else since V9 first wrote this shape.
    *
@@ -1060,9 +1078,16 @@ export type PendingItem = {
  *   carries one date and no state for anybody to report a change against any more.
  *   Not a shortfall either: there is nothing left to answer.
  *
- * `photoId` is the one name the answer carries that `PendingItem` has not got. It is
- * the key of the row in `photo`, and it is here so that the day A60 is revisited there
- * is something to revisit rather than a field to invent.
+ * `photoId` USED TO BE the one name this answer carried that `PendingItem` had not
+ * got, kept so that the day A60 was revisited there would be something to revisit
+ * rather than a field to invent. That day is this one: PR 399 gave the picture an
+ * address of its own (`GET /api/verification/{id}/photo`, `PhotoApi.waitingOn`),
+ * `PendingItem` carries `photoId` too now (see it there), and `admin/pending.ts`
+ * stopped throwing the number away. So it is no longer added below - `Omit` leaves
+ * it alone and it comes through with everything else `PendingItem` already had.
+ * `picture` and `crop` are untouched by that: they are still not answered here, for
+ * the reason given above, and `admin/pending.ts` says why neither has gained a real
+ * reader on the strength of `photoId` alone.
  *
  * **TWO NAMES DIFFER BY SORT RATHER THAN BY PRESENCE, and those are written out rather
  * than omitted**, because a field that arrives as the wrong sort is read in silence
@@ -1102,7 +1127,7 @@ export type PendingItem = {
 export type ServedPendingItem = Omit<
   PendingItem,
   'id' | 'memberNumber' | 'email' | 'picture' | 'crop' | 'currentDate' | 'proposedDate'
-> & { id: number; memberNumber: string | null; photoId: number | null }
+> & { id: number; memberNumber: string | null }
 
 /**
  * ONE ACCOUNT WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, exactly as
@@ -1228,4 +1253,130 @@ export type MembershipDue = {
 export type Outstanding = {
   season: number
   accounts: MembershipDue[]
+}
+
+/**
+ * ONE LINE OF THE INBOX AS THE SERVER REALLY ANSWERS IT.
+ *
+ * **A `ServedMessage` and not a `Message`, for the same two words' worth of distinction
+ * `ServedPendingItem` is kept apart by** (`data/client.ts`): this is what comes off
+ * `GET /api/inbox`, and `session/context.ts`'s `Message` is what the prototype's own
+ * provider holds. The two agree on what a message IS and differ in three measured ways,
+ * each of which would be a silent fault if one type stood for both:
+ *
+ * <ul>
+ * <li>the key arrives as a NUMBER (`message.id` is a `bigserial`), while the session
+ * numbers its own with text and the address of one message is text either way;</li>
+ * <li>the two questions arrive as `teamInvitationId` and `pairInviteId`, keys into
+ * `team_invitation` and `pair_invite`, where the session carries `invitation` and
+ * `pairInvite`, the text identities of the records it made itself;</li>
+ * <li>`to` never leaves the server at all. The route spent it on the `where` clause
+ * before a row was read (`InboxApi`: „{@code to_id} ITSELF DOES NOT LEAVE"), so there is
+ * nothing here to filter by and nothing here that could leak whose a message is.</li>
+ * </ul>
+ *
+ * **Every name below is measured rather than hoped for**: `InboxApiTest`'s
+ * „everyFieldAScreenReadsIsAnsweredAndTheAddresseeNeverLeaves" asks the real answer for
+ * exactly these eight and refuses a ninth.
+ */
+export type ServedMessage = {
+  /**
+   * `message.id`, a number.
+   *
+   * The address of one message is text (`useParams`), so whoever compares the two puts
+   * this through `String` rather than the other way about - the same shape
+   * `event/GoingToEvent.tsx` and `useLive` already use for a key that is a number on one
+   * side of a comparison and text on the other.
+   */
+  id: number
+  /**
+   * `message.from_name`: a person's name, the league's own name, or the place a name used
+   * to be.
+   *
+   * **Never empty and never absent**, which is a fact about the schema rather than a
+   * hope: V13 holds this `not null` with `message_from_name_not_blank` beside it. So the
+   * screen draws it without asking, and the axis „did the portal write this or did a
+   * person" is NOT read off an absence here - the owner decided on 19.09.2026 that when
+   * the portal writes to a member the sender is the LEAGUE'S NAME, so both states of that
+   * axis arrive as an ordinary name and the portal has no business telling them apart.
+   */
+  from: string
+  subject: string
+  body: string
+  /** The day it was sent, in the league's own zone, as a calendar day and never an
+   *  instant: `InboxApi` converts it in `SeasonClock.ZONE` precisely so that the day is
+   *  not the day of whatever machine answered. */
+  date: string
+  /** Whether THE ONE ASKING has read it - never whether anybody has, which for a message
+   *  addressed to the whole league is a different question with a different answer per
+   *  member (`message_read`, keyed by message AND member). */
+  read: boolean
+  /**
+   * The invitation into a team this message asks about, or absent for one that only tells.
+   *
+   * **`null` and not absent, which is how the answer really arrives**: Jackson omits neither,
+   * so a message that only tells carries `null` here rather than nothing at all.
+   *
+   * **AND NOTHING READS IT YET, which is a refusal written down rather than a gap.**
+   * `data/useResource.ts` says why at `asServed`: the screen that answers an invitation
+   * treats one it cannot find as one that is OVER, so handing it a served key would tell a
+   * member a question was closed while the server still held it open. Kept apart from the
+   * field beside it rather than sharing one with a kind next to it, which is the reason
+   * `session/context.ts` gives for its own two: „the compiler is then the thing that keeps
+   * them apart".
+   */
+  teamInvitationId: number | null
+  /** The invitation into a racing pair this message asks about, kept apart from the one
+   *  above for the reason written there. */
+  pairInviteId: number | null
+}
+
+/**
+ * ONE LINE OF THE INBOX AS THE THREE SCREENS DRAW IT.
+ *
+ * **Why this is not `ServedMessage` and not `session/context.ts`'s `Message` either.** It
+ * is what the two have in common plus the one thing neither of them can say. The server's
+ * row has a number for a key and no `to`; the session's record has text for a key and a
+ * `to` it filters itself by. A screen needs the key as text, because the address of one
+ * message is text (`/:locale/poruke/:id`), and needs no `to` at all, because whose a
+ * message is was decided before it got here - by the route's `where` clause for a served
+ * row, and by the provider's own filter for a held one.
+ *
+ * **And `to` is deliberately absent rather than carried as an empty string**, which would
+ * be the one shape that lies: V13 gives „empty" a meaning - the whole league - so a field
+ * invented here to satisfy a type would say every served message was a broadcast.
+ */
+export type InboxLine = {
+  /** The key as text, whichever side it came from. */
+  id: string
+  from: string
+  subject: string
+  body: string
+  date: string
+  read: boolean
+  /** The team invitation this line asks about, for the one kind that asks rather than
+   *  tells. Absent for every other, which is what lets the screen ask about a value - and
+   *  absent on EVERY served line as well, whether it carries a question or not, for the
+   *  reason `data/useResource.ts` gives at `asServed`. */
+  invitation?: string
+  /** The racing pair invitation, kept apart from the one above for the reason
+   *  `session/context.ts` gives: the compiler is then the thing that keeps the two
+   *  answers apart. */
+  pairInvite?: string
+  /**
+   * WHETHER SAYING „I HAVE READ THIS" IS SOMETHING THE PORTAL CAN ACTUALLY DO WITH THIS
+   * LINE, and it is false for every line that came from the server.
+   *
+   * **A boundary put in the type rather than in a comment, because a comment cannot stop a
+   * screen drawing a button.** `message_read` is in the schema (V13) and `GET /api/inbox`
+   * reads it per caller, so a served line's read mark is real and is the server's. What
+   * does not exist is any route that WRITES it: measured 27.09.2026, the whole of
+   * `backend/src/main` maps two addresses on the inbox, `GET /api/inbox` and
+   * `POST /api/inbox`, and the second one sends a message rather than marking one read.
+   *
+   * So a served line is drawn with no „Označi kao pročitano" under it and opening it marks
+   * nothing, because both would be controls over a fact this portal cannot change. A line
+   * the browser is holding keeps both, because for it the portal IS the store.
+   */
+  canBeMarkedRead: boolean
 }
