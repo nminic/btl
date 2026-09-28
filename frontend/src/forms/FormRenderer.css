@@ -298,17 +298,43 @@
    UNDER `.field` AND NOT ON THE BARE CLASS, deliberately. `clock/DateSwitch.css`
    dresses a `.field__control` of its own in the shell of every screen and pins it
    to 2,4rem on purpose, because it is a switch in a corner and not a field
-   somebody fills in; it stands outside any `.field`, so this never reaches it. */
+   somebody fills in; it stands outside any `.field`, so this never reaches it.
+
+   THAT PARAGRAPH IS TRUE AND IT WAS READ AS SAYING MORE THAN IT SAYS, so what it
+   leaves out is written here rather than left to be worked out again. It names the
+   one thing outside a field that wears the class, and says nothing about what is
+   INSIDE one - and a field is not only what the renderer draws. Three screens write
+   the wrapper by hand (`pages/member/Settings.tsx`, `pages/member/Membership.tsx`,
+   `pages/event/GoingToEvent.tsx`), and two of them put a RADIO in it, which no
+   definition asks for and the renderer therefore never draws inside a field.
+   Measured in Chrome over the built package at 360, 768 and 1280: 13 by 48 where the
+   radio is 13 by 13, on the settings screen and on the two categories of the
+   membership screen alike. `forms/controlHeight.test.tsx` reads that list of screens
+   off the sources rather than keeping it, so a fourth asks the question again on the
+   day it is written. */
 .field .field__control,
 .field .choice__label,
 .field .datepicker__open {
   min-block-size: var(--control-height);
 }
 
-/* Except the one control that is a mark rather than a box. A tick is 1,15rem
-   square and always has been; given the height of a text box it becomes a
-   rectangle the size of a field with nothing in it. */
-.field .field__control[type='checkbox'] {
+/* Except the controls that are marks rather than boxes. A tick is 1,15rem square and
+   a radio is whatever the browser draws one as; given the height of a text box either
+   of them becomes a rectangle the size of a field with nothing in it.
+ *
+   ~~„THE ONE CONTROL THAT IS A MARK"~~ stood here and there are two, which a review
+   measured on 28.09.2026 rather than reasoned about: the renderer draws a tick and
+   never a bare radio, so the tick was the only mark anybody had in front of them. A
+   radio drawn by hand inside a field came out 48 tall on two screens a member uses.
+ *
+   TWO ATTRIBUTES AND NOT A CLASS, because the class is the same for both: a mark and
+   a box are one `.field__control` and the type is the only thing that tells them
+   apart. That is also the whole of the boundary, and it is stated rather than
+   guarded: nothing here can know that a THIRD kind of input is a mark, so what holds
+   it is the count of hand written fields in `forms/controlHeight.test.tsx` and the
+   measurement somebody makes when that count changes. */
+.field .field__control[type='checkbox'],
+.field .field__control[type='radio'] {
   min-block-size: auto;
 }
 
