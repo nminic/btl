@@ -250,6 +250,20 @@ class VerificationWriteApi {
 	private static final String THE_RACE_IS_NOT_IN_THE_CALENDAR =
 			"Trka nije u kalendaru, pa rezultat ne može odavde da se odobri.";
 
+	/**
+	 * AND A ROW IN THE RESULTS TAB THAT NAMES NO SUBMISSION AT ALL, which the schema permits
+	 * on purpose and this route therefore may not fall over.
+	 *
+	 * <p>V10 says so in as many words beside the constraint, and says it is one-directional
+	 * deliberately: „A results row without a submission is a real thing... so the other
+	 * direction would be false." Nothing on this server writes such a row today -
+	 * {@link ResultWriteApi#queue} always names the submission it just made - but a route that
+	 * read the pointer without asking would answer a state the schema allows with a server
+	 * fault, and a 500 tells the moderator nothing he can act on.
+	 */
+	private static final String THE_ITEM_CARRIES_NO_RUN =
+			"Stavka ne nosi prijavljen rezultat.";
+
 	/* PDL P10b, owner 22.09.2026: an event with a result already written may not be moved
 	   across 1 January on the race that result was run at. This route asked that question
 	   of its own approvals, over a schedule proposal's move, from V30 until PDL P10a,
@@ -603,7 +617,9 @@ class VerificationWriteApi {
 		   read for a REFUSAL too and not only for an approval, because {@link #tell} on a
 		   refused result says nothing about the run - the reason the moderator typed is the
 		   whole of that message - so nothing here depends on the answer. */
-		Submission sent = RESULTS.equals(item.queue()) ? submissionBehind(item) : null;
+		Submission sent = RESULTS.equals(item.queue()) && item.resultSubmissionId() != null
+				? submissionBehind(item)
+				: null;
 
 		/* THE SEASON, READ ONCE AND USED BY BOTH HALVES. See the head of this class for why
 		   it is this function and not the one beside it, and for the day the portal got it
@@ -621,9 +637,15 @@ class VerificationWriteApi {
 
 		/* AND THE SAME FOR A RESULT: asked before the row is claimed, writing nothing, so a
 		   run this route cannot count leaves the item standing in the queue rather than
-		   answered and unfulfilled. */
-		if (answer.yes() && sent != null && sent.raceId() == null) {
-			return new Carried(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_IN_THE_CALENDAR), null, null);
+		   answered and unfulfilled. Asked of the QUEUE and not of `sent`, because `sent` is
+		   empty for two different reasons - a row in another tab, and a results row naming no
+		   submission - and only the second is a refusal. */
+		if (answer.yes() && RESULTS.equals(item.queue())) {
+			Optional<ResponseEntity<?>> refused = whyTheRunCannotBeCounted(sent);
+
+			if (refused.isPresent()) {
+				return new Carried(refused.get(), null, null);
+			}
 		}
 
 		String state = answer.yes() ? DecidingOnASubmission.APPROVED : DecidingOnASubmission.REJECTED;
@@ -843,6 +865,29 @@ class VerificationWriteApi {
 						row.getDate(2).toLocalDate(), row.getString(3), row.getBigDecimal(4),
 						row.getInt(5), row.getInt(6), row.getInt(7), row.getObject(8, Long.class)))
 				.single();
+	}
+
+	/**
+	 * THE TWO THINGS THAT REFUSE AN APPROVED RESULT, ASKED WITHOUT WRITING ANYTHING.
+	 *
+	 * <p>Both are states the schema permits and this route cannot carry out, and both are
+	 * settled before the queue row is claimed for the reason {@link #whyTheTeamCannotBeMade}
+	 * gives from its own side: asked afterwards they would need the transaction rolled back,
+	 * and a rollback inside a test-managed transaction poisons the outer one instead.
+	 *
+	 * @param sent what the row names, or empty where it names nothing
+	 * @return the refusal, or nothing where there is none
+	 */
+	private static Optional<ResponseEntity<?>> whyTheRunCannotBeCounted(Submission sent) {
+		if (sent == null) {
+			return Optional.of(no(HttpStatus.CONFLICT, THE_ITEM_CARRIES_NO_RUN));
+		}
+
+		if (sent.raceId() == null) {
+			return Optional.of(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_IN_THE_CALENDAR));
+		}
+
+		return Optional.empty();
 	}
 
 	/**

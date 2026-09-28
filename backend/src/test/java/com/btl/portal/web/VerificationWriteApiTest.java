@@ -4,10 +4,15 @@ import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
+import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import com.btl.portal.domain.verification.HoldingAnItem;
+import com.icegreen.greenmail.junit5.GreenMailExtension;
+import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,11 +25,13 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -35,6 +42,7 @@ import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -81,8 +89,31 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
+@TestPropertySource(properties = {
+		"spring.mail.host=127.0.0.1",
+		"spring.mail.port=3334",
+		"spring.mail.properties.mail.smtp.auth=false"})
 @Transactional
 class VerificationWriteApiTest {
+
+	/**
+	 * ITS OWN MAIL PORT, 3334, and it is the tenth.
+	 *
+	 * <p>{@link MailServerForACase} carries the reason at length and takes the number as an
+	 * ARGUMENT precisely so two classes cannot quietly settle on one. The nine already spoken
+	 * for when this was written are 3325 to 3333 with no gap, across nine classes, so this is
+	 * the next number rather than a chosen one. A port taken twice is the worst failure this
+	 * suite has, because it reads EXACTLY like a caught mutation - exit code 1, a real
+	 * {@code Tests run:} line, a big number, and not one case actually run. The sign of it is
+	 * {@code Errors:} equal to {@code Tests run:}.
+	 *
+	 * <p>This class needs one at all from the day an approved result is posted (PDL P22, „Član
+	 * dobija mejl kad mu je rezultat odobren"). Without a server the send throws, the route
+	 * logs and carries on, and every case would be green over a letter nobody proved was
+	 * written.
+	 */
+	@RegisterExtension
+	static final GreenMailExtension SMTP = new GreenMailExtension(MailServerForACase.on(3334));
 
 	/**
 	 * Noon in Belgrade on 15 March 2027, and both halves of that are chosen.
@@ -134,6 +165,17 @@ class VerificationWriteApiTest {
 
 	private static final String THE_REASON = "Slika je mutna, posalji ostriju";
 
+	/** What Bojan and Vera ran their ten kilometres in. */
+	private static final int AN_HOUR = 3600;
+
+	/** What Ana ran the marathon in, and it is worth well over the twelve point threshold. */
+	private static final int FOUR_HOURS = 14400;
+
+	/** What Vera says her ten kilometres really took, and it is NOT {@link #AN_HOUR}: a
+	 *  correction whose figures equal the counted ones would let a case about „the standings
+	 *  changed" pass over a route that wrote nothing at all. */
+	private static final int CORRECTED_TIME = 3300;
+
 	private static final String THE_TEAM = "Timocka trkacka druzina";
 
 	/** The whole of {@code verification.body} for a comments row (dva izvora, jedna vrednost):
@@ -153,6 +195,11 @@ class VerificationWriteApiTest {
 
 	@Autowired
 	private AClockTheCaseMoves clock;
+
+	/** Asked by the cases about the beginners' category, so they read the answer through the
+	 *  same component the route does rather than through a query of their own. */
+	@Autowired
+	private BestOfficialSeason bestOfficialSeason;
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -198,6 +245,30 @@ class VerificationWriteApiTest {
 
 	/** The event every comment in this fixture is about. */
 	private long theWeekendEvent;
+
+	/** 42,195 km, the one value that tells a narrow column from a wide one. */
+	private long theMarathon;
+
+	/** A second race, so „the race" is never „the only race". */
+	private long theShortRace;
+
+	/** The result Vera already has counted, and the one her correction amends. */
+	private long verasCountedRun;
+
+	/** Made FIRST of the five, because the floor over the tabs reads the lowest id. */
+	private long bojansRun;
+
+	/** Made SECOND: neither the lowest nor the highest id in the tab. */
+	private long anasMarathon;
+
+	/** A correction of {@link #verasCountedRun}, which an approval must overwrite. */
+	private long verasCorrection;
+
+	/** A run on a race the calendar does not hold, which this route refuses. */
+	private long aRunOnARaceNobodyHasEnteredYet;
+
+	/** A results row naming no submission, which V10 permits and this route refuses. */
+	private long aResultsRowNamingNoRun;
 
 	/** A second, unrelated event: what proves a comment is filed under the one it was
 	 *  actually about rather than under any other row that happens to exist. */
@@ -303,9 +374,39 @@ class VerificationWriteApiTest {
 				5, 4, 5, "Sjajna organizacija");
 		verasComment = commentSubmissionWaitingFor(VERA, theWeekendEvent, "Komentar Vere", 0, 0, 0, "");
 
-		/* AND ONE ROW IN EVERY OTHER TAB, which is what the floor over the five reads. The
-		   comments rows above already are that one row for their own tab. */
-		waiting("results", ANA, "Rezultat", "", null);
+		/* TWO RACES IN THE CALENDAR AND NOT ONE, in two events, so „the race" is never „the
+		   only race" and a write that read `min(race.id)` has somewhere to be caught.
+
+		   THE MARATHON IS MEASURED AT 42,195 ON PURPOSE. It is the number V25 and V32 both
+		   use to say what a narrow column costs, and the only value in this fixture that
+		   tells a `numeric(6,2)` column apart from a `numeric(8,4)` one. Approved into the
+		   old column it would be stored as 42.20, and `result.category` would then say
+		   `marathon` while `race.category` says `long` - two rows about one run, disagreeing,
+		   silently. */
+		theMarathon = race(theWeekendEvent, "Maraton", SATURDAY, "42.1950", 300, 300);
+		theShortRace = race(anotherEvent, "Desetka", THE_OTHER_EVENTS_DAY, "10.00", 50, 50);
+
+		/* A RESULT VERA ALREADY HAS, so a correction is a correction OF something and the
+		   standings have an old value to keep while it waits. */
+		verasCountedRun = resultAlreadyCounted(VERA, theShortRace, THE_OTHER_EVENTS_DAY,
+				"10.00", 50, 50, AN_HOUR, "3.73");
+
+		/* FIVE ROWS IN THE RESULTS TAB, and each is a different one of the five states this
+		   route can meet. `bojansRun` is made FIRST because the floor over the five tabs takes
+		   `order by id limit 1`, and it is the one no other case depends on.
+
+		   `anasMarathon` is made SECOND, neither first nor last, so the case that approves it
+		   is caught by a read that fell back to the lowest id in the table and by one that
+		   fell back to the highest. */
+		bojansRun = runWaitingFor(BOJAN, theShortRace, THE_OTHER_EVENTS_DAY, "10.00", 50, 50,
+				AN_HOUR, null);
+		anasMarathon = runWaitingFor(ANA, theMarathon, SATURDAY, "42.1950", 300, 300,
+				FOUR_HOURS, null);
+		verasCorrection = runWaitingFor(VERA, theShortRace, THE_OTHER_EVENTS_DAY, "10.00", 50, 50,
+				CORRECTED_TIME, verasCountedRun);
+		aRunOnARaceNobodyHasEnteredYet = describedRunWaitingFor(ANA, THE_OTHER_EVENTS_DAY);
+		aResultsRowNamingNoRun = waiting("results", VERA, "Red bez prijave", "", null);
+
 		waiting("payments", VERA, "Uplata", "", null);
 	}
 
@@ -1001,6 +1102,327 @@ class VerificationWriteApiTest {
 		assertThat(db.sql("select count(*) from message").query(Integer.class).single()).isZero();
 	}
 
+	// ----- the results tab -------------------------------------------------------------
+
+	/**
+	 * AN APPROVED RUN BECOMES A RESULT, AND THE EXACT LENGTH SURVIVES THE JOURNEY.
+	 *
+	 * <p>PDL P9: „Rezultat ulazi u rang liste tek posle odobrenja." Nothing counts a
+	 * submission, so the row this writes is the whole of that sentence.
+	 *
+	 * <p><b>THE TWO ROWS ABOUT ONE RUN ARE ASSERTED TO AGREE, and that is the spoj this case
+	 * exists for rather than a flourish.</b> The length is asserted on the RESULT and the
+	 * category is asserted to equal the RACE's, which are two different tables reached by two
+	 * different statements. Without V44 the result's {@code numeric(6,2)} column rounds
+	 * 42,1950 to 42,20, its own generated column then says {@code marathon} while the race it
+	 * was run at says {@code long}, and nothing anywhere is violated - which is exactly what
+	 * V25 wrote down as the cost of leaving the column narrow. Reverting V44 alone fails both
+	 * halves of this case.
+	 *
+	 * <p>The points are asserted against {@link BtlScoreCalculator} rather than against a
+	 * number typed here, because the formula and its golden set are the one home for that
+	 * question and a second copy of the answer would be a second home.
+	 */
+	@Test
+	void anApprovedRunBecomesAResultAndTheExactLengthSurvives() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		Counted counted = counted(onlyResultOf(ANA)).orElseThrow();
+
+		assertThat(counted.distanceKm())
+				.as("the length the member ran is not the length the portal counted")
+				.isEqualByComparingTo("42.1950");
+		assertThat(counted.seconds()).isEqualTo(FOUR_HOURS);
+		assertThat(counted.points()).isEqualByComparingTo(
+				BtlScoreCalculator.calculate(new BigDecimal("42.1950").doubleValue(), 300, 300,
+						FOUR_HOURS));
+
+		assertThat(counted.category())
+				.as("the result and the race it was run at disagree about what sort of race it was")
+				.isEqualTo(db.sql("select category from race where id = ?").param(theMarathon)
+						.query(String.class).single());
+	}
+
+	/**
+	 * AND NOBODY ELSE IS TOUCHED BY IT.
+	 *
+	 * <p>Three members and three different states: Ana gains a result, Bojan's own waiting run
+	 * is still waiting, and Vera's counted run is untouched. A statement that wrote the result
+	 * against {@code min(competitor.id)} or against the moderator instead of the member passes
+	 * every case above and fails this one.
+	 */
+	@Test
+	void onlyHisOwnRunIsCountedAndTheOtherTwoMembersAreLeftAsTheyWere() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		assertThat(howManyResults(ANA)).as("his own").isEqualTo(1);
+		assertThat(howManyResults(BOJAN)).as("a member whose run is still waiting").isZero();
+		assertThat(howManyResults(VERA)).as("a member who had one before and sent nothing new")
+				.isEqualTo(1);
+		assertThat(counted(verasCountedRun).orElseThrow().seconds()).isEqualTo(AN_HOUR);
+	}
+
+	/**
+	 * A CORRECTION OVERWRITES THE RUN IT AMENDS AND DOES NOT ADD A SECOND ONE.
+	 *
+	 * <p>Owner, 28.08.2026, choosing between four outcomes: „Odobrenje ispravke zamenjuje
+	 * rezultat, dakle stari izlazi i novi ulazi u istom trenutku." Asserted as a COUNT and as
+	 * the same row id, not only as the new figures: a statement that inserted instead of
+	 * updating would leave the new numbers exactly where this case looks for them while
+	 * doubling the member's season.
+	 *
+	 * <p>The race is asserted unchanged because the owner said so the day before: „Menja se
+	 * sve osim trke."
+	 */
+	@Test
+	void anApprovedCorrectionOverwritesTheRunItAmendsAndDoesNotAddASecond() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, verasCorrection, true, null)).isEqualTo(200);
+
+		assertThat(howManyResults(VERA)).as("the correction added a second run").isEqualTo(1);
+		assertThat(onlyResultOf(VERA)).as("it is the same row and not a new one")
+				.isEqualTo(verasCountedRun);
+
+		Counted counted = counted(verasCountedRun).orElseThrow();
+
+		assertThat(counted.seconds()).isEqualTo(CORRECTED_TIME);
+		assertThat(counted.points()).isEqualByComparingTo(
+				BtlScoreCalculator.calculate(new BigDecimal("10.00").doubleValue(), 50, 50,
+						CORRECTED_TIME));
+		assertThat(db.sql("select race_id from result where id = ?").param(verasCountedRun)
+				.query(Long.class).single()).as("the race moved").isEqualTo(theShortRace);
+	}
+
+	/**
+	 * A REFUSED CORRECTION LEAVES THE STANDINGS EXACTLY WHERE THEY WERE.
+	 *
+	 * <p>Owner, 28.08.2026, and it is the half of his decision the portal once got wrong in
+	 * the direction that costs the member: „Odbijanje ne menja ništa." The fault that was
+	 * measured on the day is written down beside it - the profile fell from 180 runs and
+	 * 1.752,86 points to 179 and 1.744,60, with no way back.
+	 *
+	 * <p>Asserted on the OLD time and the OLD points rather than only on the count, because a
+	 * refusal that wrote the new figures anyway would leave the count at one.
+	 */
+	@Test
+	void aRefusedCorrectionLeavesTheStandingsExactlyWhereTheyWere() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, verasCorrection, false, THE_REASON)).isEqualTo(200);
+
+		assertThat(howManyResults(VERA)).isEqualTo(1);
+
+		Counted counted = counted(verasCountedRun).orElseThrow();
+
+		assertThat(counted.seconds()).as("a refusal moved the standings").isEqualTo(AN_HOUR);
+		assertThat(counted.points()).isEqualByComparingTo("3.73");
+
+		assertThat(bodyOfTheMessageTo(VERA)).contains(THE_REASON);
+	}
+
+	/**
+	 * APPROVING A RUN OVER THE THRESHOLD CLOSES THE BEGINNERS' CATEGORY FOR THE SEASON AFTER
+	 * IT, AND NEVER FOR THE SEASON THE RUN BELONGS TO.
+	 *
+	 * <p>Owner, 26.09.2026: „ako odobrenje prevede clanov zbir tekuce sezone na 12 ili vise,
+	 * pocetnicka mu se za NAREDNU sezonu zatvara istog trenutka." <b>Both halves are asserted
+	 * and the second is the one that cost a whole round of review once already</b>: the run is
+	 * in 2027 and it closes 2028, while 2027 itself stays open. A season's category was
+	 * decided off the seasons BEFORE it, and a season is never before itself - a portal that
+	 * let a running season close on itself from the inside would tell a member his category
+	 * was shut because he finished a season that is still being run.
+	 *
+	 * <p>Nothing is stored and nothing is asserted to be stored: the right is DERIVED (owner,
+	 * 26.09.2026, „racunaj da clan bira ono sto ZELI"), so what this reads is the same
+	 * question the screen asks, through the same two classes that own its halves.
+	 */
+	@Test
+	void anApprovalOverTheThresholdClosesTheNextSeasonAndLeavesTheRunsOwnSeasonOpen()
+			throws Exception {
+		long ana = memberId(ANA);
+
+		assertThat(beginnersCategoryIsOpenFor(ana, 2028)).as("the fixture starts with it open")
+				.isTrue();
+
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		assertThat(beginnersCategoryIsOpenFor(ana, 2028))
+				.as("the season after the run did not close").isFalse();
+		assertThat(beginnersCategoryIsOpenFor(ana, 2027))
+				.as("the run's own season closed on itself, which no decision asks for").isTrue();
+	}
+
+	/**
+	 * AND HE IS TOLD, WITH THE REASON IN IT.
+	 *
+	 * <p>Owner, 27.09.2026, choosing the first of three outcomes: „Poruka nosi razlog: koji
+	 * rezultat je odobren, koliko bodova nosi, i da mu je time pocetnicka zatvorena za narednu
+	 * sezonu." He refused silence and he refused an explanation on a page the member has no
+	 * reason to open.
+	 *
+	 * <p>The season in the message is asserted to be 2028 and not 2027, which is the same axis
+	 * as the case above read from the member's side: a message naming the run's own season
+	 * would be telling him something the portal does not do.
+	 */
+	@Test
+	void andHeIsToldWhichSeasonItClosedAndWhatClosedIt() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		String said = bodyOfTheMessageTo(ANA);
+
+		assertThat(said).contains("2028");
+		assertThat(said).as("it names the run's own season instead of the one that closed")
+				.doesNotContain("2027");
+		assertThat(said).contains(String.valueOf(Category.FIRST_SEASON_POINTS));
+	}
+
+	/**
+	 * A RUN WELL UNDER THE THRESHOLD CLOSES NOTHING AND SAYS NOTHING.
+	 *
+	 * <p>The other state of the same axis, and without it the case above is satisfied by a
+	 * route that sends that message on every approval. Ten kilometres in an hour is worth
+	 * under four points, so the threshold is nowhere near.
+	 */
+	@Test
+	void aRunUnderTheThresholdClosesNothingAndTheMemberHearsNothingAboutCategories()
+			throws Exception {
+		assertThat(answer(THE_SUPERADMIN, bojansRun, true, null)).isEqualTo(200);
+
+		assertThat(beginnersCategoryIsOpenFor(memberId(BOJAN), 2028)).isTrue();
+		assertThat(db.sql("select count(*) from message where to_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(BOJAN).query(Integer.class).single())
+				.as("he was told about a category nothing moved").isZero();
+	}
+
+	/**
+	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD IS REFUSED, AND STAYS IN THE QUEUE.
+	 *
+	 * <p>PDL: „Član sme da unese trku koje nema u kalendaru. Tada administrator kreira događaj
+	 * i trku uz rezultat, i sve troje nastaje istovremeno." That is three writes into two
+	 * tables this route does not touch, so it says so instead of doing half of it.
+	 *
+	 * <p><b>The item is asserted to be still WAITING, which is the whole point.</b> Recording
+	 * the decision and writing nothing would take the row out of every moderator's screen for
+	 * ever while the member's run reached nothing - the one outcome a screen cannot undo.
+	 */
+	@Test
+	void aRunOnARaceTheCalendarDoesNotHoldIsRefusedAndStaysInTheQueue() throws Exception {
+		MockHttpServletResponse refused = decide(THE_SUPERADMIN, aRunOnARaceNobodyHasEnteredYet,
+				true, null);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).startsWith("Trka nije u kalendaru");
+
+		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
+		assertThat(howManyResults(ANA)).isZero();
+	}
+
+	/**
+	 * AND SO IS A ROW IN THAT TAB THAT NAMES NO RUN AT ALL.
+	 *
+	 * <p>V10 permits it in as many words and says the one-directional check is deliberate: „A
+	 * results row without a submission is a real thing... so the other direction would be
+	 * false." Nothing writes one today, so this case builds one the way the schema allows and
+	 * asks what the route does with it. A route that read the pointer without asking answers
+	 * a permitted state with a 500, which tells the moderator nothing he can act on.
+	 */
+	@Test
+	void aResultsRowThatNamesNoRunIsRefusedRatherThanFallingOver() throws Exception {
+		MockHttpServletResponse refused = decide(THE_SUPERADMIN, aResultsRowNamingNoRun, true, null);
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).isEqualTo("Stavka ne nosi prijavljen rezultat.");
+
+		assertThat(stateOf(aResultsRowNamingNoRun)).isEqualTo("waiting");
+	}
+
+	/**
+	 * AN APPROVED RUN IS POSTED TO THE MEMBER, AND A REFUSED ONE IS NOT POSTED AT ALL.
+	 *
+	 * <p>PDL P22 names both and they are different channels on purpose: „Član dobija mejl kad
+	 * mu je rezultat odobren", and for a refusal „razlog stize u sanduce onome ko je stavku
+	 * poslao". So the letter goes out on an approval and the inbox carries the refusal, and a
+	 * route that sent both on both would pass either case written alone.
+	 *
+	 * <p>The address is asserted to be the MEMBER's and not the moderator's, which are two
+	 * different accounts here - the superadmin decides and Ana owns the run. A route that
+	 * posted to {@code asking.account()}, which is what the precedent in
+	 * {@code ResultWriteApi} does for its own routes, would send a moderator letters about
+	 * other people's running.
+	 */
+	@Test
+	void anApprovedRunIsPostedToTheMemberAndARefusedOneIsNotPostedAtAll() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).as("nothing went out about an approved result").isNotEmpty();
+		assertThat(arrived[0].getAllRecipients()[0].toString())
+				.as("the letter went to whoever decided instead of whoever ran")
+				.isEqualTo(A_COMPETITOR);
+		assertThat(arrived[0].getSubject()).contains("odobren");
+
+		int afterTheApproval = arrived.length;
+
+		assertThat(answer(THE_SUPERADMIN, bojansRun, false, THE_REASON)).isEqualTo(200);
+
+		assertThat(SMTP.getReceivedMessages())
+				.as("a refusal was posted, and no decision asks for that")
+				.hasSize(afterTheApproval);
+		assertThat(bodyOfTheMessageTo(BOJAN)).contains(THE_REASON);
+	}
+
+	/**
+	 * AND A MEMBER WITH NO ACCOUNT IS NOT AN ERROR, HE IS SIMPLY NOT POSTED TO.
+	 *
+	 * <p>Vera races and has no account, which is the ordinary state rather than a curiosity:
+	 * the league's imported history is members who never had one („NIKO SE NE DOVODI U PORTAL
+	 * DOK SE SAM NE PRIJAVI", owner 27.09.2026), and V23 lets an account go while the member
+	 * it belonged to stays. So the result is written and counted exactly as anybody else's,
+	 * and nothing goes out, and neither of those is allowed to depend on the other.
+	 */
+	@Test
+	void aMemberWithNoAccountIsCountedJustTheSameAndNothingIsPosted() throws Exception {
+		int before = SMTP.getReceivedMessages().length;
+
+		assertThat(answer(THE_SUPERADMIN, verasCorrection, true, null)).isEqualTo(200);
+
+		assertThat(counted(verasCountedRun).orElseThrow().seconds())
+				.as("having no address stopped the result being counted").isEqualTo(CORRECTED_TIME);
+		assertThat(SMTP.getReceivedMessages()).hasSize(before);
+	}
+
+	/**
+	 * A MODERATOR OF ANOTHER TAB IS TOLD THE ADDRESS IS NOT THERE, ON THIS TAB TOO.
+	 *
+	 * <p>The axis the whole file is built around, asked once more about the tab this increment
+	 * added: the comments moderator genuinely holds a queue, so a route asking „does he hold
+	 * any" rather than „may he moderate THIS one" lets him decide somebody's running. The
+	 * numbers are 401 and 404 and never 403 (ADL A8).
+	 */
+	@Test
+	void aModeratorOfAnotherTabIsToldTheResultsAddressIsNotThere() throws Exception {
+		assertThat(answer(COMMENTS_MODERATOR, anasMarathon, true, null)).isEqualTo(404);
+		assertThat(answer(A_COMPETITOR, anasMarathon, true, null)).isEqualTo(404);
+		assertThat(answer(null, anasMarathon, true, null)).isEqualTo(401);
+
+		assertThat(stateOf(anasMarathon)).isEqualTo("waiting");
+		assertThat(howManyResults(ANA)).isZero();
+	}
+
+	/**
+	 * AND A RUN THAT HAS ALREADY BEEN DECIDED IS NOT DECIDED AGAIN.
+	 *
+	 * <p>Without it an approval repeated - a double click, a retried request - writes the
+	 * member's run into the standings twice, and nothing in the schema refuses a second
+	 * identical result.
+	 */
+	@Test
+	void aRunAlreadyDecidedIsNotCountedASecondTime() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, bojansRun, true, null)).isEqualTo(200);
+		assertThat(answer(THE_SUPERADMIN, bojansRun, true, null)).isEqualTo(409);
+
+		assertThat(howManyResults(BOJAN)).as("it was counted twice").isEqualTo(1);
+	}
+
 	/*
 	 * SIX CASES STOOD HERE, FROM V30 UNTIL PDL P10a, 22.09.2026 (ADL A64 A2, A3): approving
 	 * moved an event and its races together, by the same number of days and reading the
@@ -1019,10 +1441,11 @@ class VerificationWriteApiTest {
 	 *
 	 * <p>It asks the DATABASE for every queue there is rather than repeating a list, so a
 	 * sixth tab - or a fifth that grows a consequence - fails here until somebody decides
-	 * what answering it means. Two of the five are refused today, {@code payments} and
-	 * {@code results}, and the second of those is refused because ADL A36 keeps its
-	 * transactional boundary expressly undecided: „trece mesto, verifikacija rezultata, i
-	 * dalje NIJE odluceno i ostaje otvoreno." A sixth was refused nowhere - {@code schedule}
+	 * what answering it means. ONE of the five is refused today, {@code payments}, and it is
+	 * refused because nothing lets a member reach that tab at all. {@code results} was the
+	 * second until ADL A36's boundary was settled („Rezultat i rang liste su UNUTAR
+	 * transakcije; dukati i posta idu POSLE nje", owner 21.09.2026) and V44 closed V25's debt
+	 * on the column an approval copies. A sixth was refused nowhere - {@code schedule}
 	 * carried out its own approval, from V30 until PDL P10a, 22.09.2026 took the tab away
 	 * the same day: „Redova je pet, ne šest."
 	 */
@@ -1041,7 +1464,7 @@ class VerificationWriteApiTest {
 
 			int status = answer(THE_SUPERADMIN, item, true, null);
 
-			if (List.of("profiles", "teams", "comments").contains(tab)) {
+			if (List.of("profiles", "teams", "comments", "results").contains(tab)) {
 				assertThat(status).as(tab + " is carried out").isEqualTo(200);
 				assertThat(stateOf(item)).isEqualTo("approved");
 			} else {
@@ -1231,6 +1654,142 @@ class VerificationWriteApiTest {
 						+ " returning id")
 				.params(slug, name, date)
 				.query(Long.class).single();
+	}
+
+	/**
+	 * A RACE IN THE CALENDAR, of the only kind a result can be reported for here.
+	 *
+	 * <p>The distance is handed over as TEXT and cast in SQL rather than as a {@code double},
+	 * so 42,195 arrives as the four decimals {@code race.distance_km} has held since V25 and
+	 * not as whatever a binary floating point number happens to be nearest to. That is the
+	 * same rule ADL A12 states for the column itself.
+	 */
+	private long race(long event, String name, LocalDate day, String distance, int ascent,
+			int descent) {
+		return db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m)"
+						+ " values (?, ?, false, ?, 'length', 0, cast(? as numeric), ?, ?)"
+						+ " returning id")
+				.params(event, name, day, distance, ascent, descent)
+				.query(Long.class).single();
+	}
+
+	/** A result that is already counted, written straight in: it is what the portal looked
+	 *  like before this fixture's queue rows were sent, not something a route here made. */
+	private long resultAlreadyCounted(String memberNumber, long raceId, LocalDate day,
+			String distance, int ascent, int descent, int seconds, String points) {
+		return db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
+						+ " ascent_m, descent_m, seconds, points)"
+						+ " values ((select id from competitor where member_number = ?), ?, ?,"
+						+ " cast(? as numeric), ?, ?, ?, cast(? as numeric)) returning id")
+				.params(memberNumber, raceId, day, distance, ascent, descent, seconds, points)
+				.query(Long.class).single();
+	}
+
+	/**
+	 * A RUN WAITING TO BE JUDGED, on a race the calendar holds.
+	 *
+	 * <p>No points column is written and there is none to write: V10 gave
+	 * {@code result_submission} the four figures the formula is fed and nothing else, which is
+	 * the schema saying what ADL A12a says in words - the server computes them.
+	 *
+	 * @param amends the result this corrects, or {@code null} for a first report
+	 */
+	private long runWaitingFor(String memberNumber, long raceId, LocalDate day, String distance,
+			int ascent, int descent, int seconds, Long amends) {
+		long submission = db.sql("insert into result_submission (competitor_id, race_id,"
+						+ " race_date, distance_km, ascent_m, descent_m, seconds, link, comment,"
+						+ " amends_result_id)"
+						+ " values ((select id from competitor where member_number = ?), ?, ?,"
+						+ " cast(? as numeric), ?, ?, ?, 'https://primer.rs/rezultati', '', ?)"
+						+ " returning id")
+				.params(memberNumber, raceId, day, distance, ascent, descent, seconds, amends)
+				.query(Long.class).single();
+
+		return queued(memberNumber, submission);
+	}
+
+	/**
+	 * AND ONE ON A RACE NOBODY HAS ENTERED IN THE CALENDAR, which V10 takes on purpose - „One
+	 * way or the other, never both and never neither" - and which this route refuses to
+	 * approve, because making the event and the race with it is a road of its own (PDL, „Član
+	 * sme da unese trku koje nema u kalendaru").
+	 */
+	private long describedRunWaitingFor(String memberNumber, LocalDate day) {
+		long submission = db.sql("insert into result_submission (competitor_id, race_id,"
+						+ " race_date, race_name, race_kind, place_id, distance_km, ascent_m,"
+						+ " descent_m, seconds, link, comment)"
+						+ " values ((select id from competitor where member_number = ?), null, ?,"
+						+ " 'Trka koje nema u kalendaru', 'length',"
+						+ " (select id from place where rank = 1), 12.00, 10, 10, 3000,"
+						+ " 'https://primer.rs/rezultati', '') returning id")
+				.params(memberNumber, day)
+				.query(Long.class).single();
+
+		return queued(memberNumber, submission);
+	}
+
+	private long queued(String memberNumber, long submission) {
+		return db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " result_submission_id) values ('results',"
+						+ " (select id from competitor where member_number = ?), 'Rezultat', '', ?)"
+						+ " returning id")
+				.params(memberNumber, submission)
+				.query(Long.class).single();
+	}
+
+	/**
+	 * THE ONE RESULT HE HAS, and it throws where he has none or more than one.
+	 *
+	 * <p>{@code single()} rather than a first row, on purpose: „he has exactly one" is half of
+	 * what most of these cases are asserting, and a helper that quietly took the first would
+	 * let a route that inserted a second pass every case that then read its figures.
+	 */
+	private long onlyResultOf(String memberNumber) {
+		return db.sql("select id from result where competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(memberNumber)
+				.query(Long.class).single();
+	}
+
+	/**
+	 * THE SAME QUESTION THE SCREEN ASKS, through the two classes that own its halves.
+	 *
+	 * <p>Twelve is not written here and must not be: {@link Category#FIRST_SEASON_POINTS} is
+	 * one number in one place, and a case carrying its own copy would go on passing after
+	 * somebody moved it.
+	 */
+	private boolean beginnersCategoryIsOpenFor(long member, int season) {
+		return Category.firstSeasonAllowed(bestOfficialSeason.pointsFor(member, season));
+	}
+
+	/** What the portal put in his inbox, and it throws where there is nothing or more than
+	 *  one - so a case about the message a member got cannot pass on somebody else's. */
+	private String bodyOfTheMessageTo(String memberNumber) {
+		return db.sql("select body from message where to_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(memberNumber)
+				.query(String.class).single();
+	}
+
+	/** What is counted for one member, or nothing where he has no result at all. */
+	private Optional<Counted> counted(long resultId) {
+		return db.sql("select distance_km, seconds, points, category from result where id = ?")
+				.param(resultId)
+				.query((row, one) -> new Counted(row.getBigDecimal(1), row.getInt(2),
+						row.getBigDecimal(3), row.getString(4)))
+				.optional();
+	}
+
+	private int howManyResults(String memberNumber) {
+		return db.sql("select count(*) from result where competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(memberNumber)
+				.query(Integer.class).single();
+	}
+
+	/** One counted run, in the four values every case below reads it by. */
+	private record Counted(BigDecimal distanceKm, int seconds, BigDecimal points, String category) {
 	}
 
 	/**
