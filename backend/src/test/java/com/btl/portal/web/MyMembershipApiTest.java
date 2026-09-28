@@ -304,7 +304,15 @@ class MyMembershipApiTest {
 
 		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(4200.0);
 
-		assertThat(owed.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+		/* AND NOTHING FOR PROCESSING, WHICH IS NOT A CHANGE OF RULE BUT THE DINAR SIDE OF ONE.
+		
+		   V4's `price_row_only_fee_has_no_rsd check ((rsd is null) = (kind = 'fee'))` gives the
+		   processing row no dinar side at all, for the reason V4 states: there is no payment
+		   intermediary on that side to pay. `payment_only_euro_carries_a_fee` (V16) says the same
+		   where a payment is written. This file's member lives in Serbia since V42, because that is
+		   what makes its dinar numbers mean themselves - so his invoice carries no fee, and the case
+		   that measures a fee BEING charged is the one with a member abroad. */
+		assertThat(owed.path("processingFeeEur").asDouble()).isZero();
 		assertThat(owed.path("coveredByTheBalance").asBoolean()).isFalse();
 		assertThat(owed.path("alreadyAMember").asBoolean()).isFalse();
 	}
@@ -327,9 +335,10 @@ class MyMembershipApiTest {
 		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(600.0);
 
 		assertThat(owed.path("coveredByTheBalance").asBoolean()).isFalse();
-		assertThat(owed.path("processingFeeEur").asDouble())
-				.as("there is a transfer, so there is something to process")
-				.isEqualTo(3.0);
+		/* NOUGHT BECAUSE HE IS BILLED IN DINARS AND V4 GIVES THE FEE ROW NO DINAR SIDE, not because
+		   there is no transfer: there plainly is one, 600 of it. The two are told apart by the case
+		   above about a member abroad, where a transfer and a charged fee stand together. */
+		assertThat(owed.path("processingFeeEur").asDouble()).isZero();
 	}
 
 	/**
@@ -497,7 +506,7 @@ class MyMembershipApiTest {
 						.param(BROUGHT_IN_SIX).query(Long.class).single())
 				.isOne();
 
-		assertThat(promiseTo(BROUGHT_IN_SIX)).isEqualTo("30.00 3600.00");
+		assertThat(promiseTo(BROUGHT_IN_SIX)).isEqualTo("3600.00 RSD");
 	}
 
 	/**
@@ -624,6 +633,31 @@ class MyMembershipApiTest {
 		belongsTo(email, number);
 
 		brought(number, howMany);
+
+		return email;
+	}
+
+	/**
+	 * A MEMBER OF HIS OWN WHO LIVES ABROAD, so that the euro side of the price list has a reader.
+	 *
+	 * <p>{@code rank = 1} is Shanghai, the town every fixture in this repository reaches for when it
+	 * wants somewhere that is not Serbia. His book is left empty on purpose: the case he is written for
+	 * is about the FEE and the currency, and a balance would put two facts in one answer.
+	 */
+	private String aMemberAbroad(String number) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+						+ " shirt_size, health_statement_at)"
+						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, true, 'payment', ?, '',"
+						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, String.format("%016x", ++issued))
+				.update();
+
+		String email = "inostranstvo-" + number + "@primer.rs";
+		account(email, "competitor");
+		belongsTo(email, number);
 
 		return email;
 	}
@@ -827,8 +861,11 @@ class MyMembershipApiTest {
 				.isEqualByComparingTo("3600.00");
 
 		/* AND THE PROCESSING FEE FOLLOWS THE TRANSFER AND NOT THE COVER, because a transfer that is
-		   asked for is a transfer somebody's bank charges for (V16). */
-		assertThat(after.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+		   asked for is a transfer somebody's bank charges for (V16) - which for a member billed in
+		   dinars is nought either way, because V4 gives the fee row no dinar side. What this case can
+		   still say is that it does not JUMP when the cover does, and the case about a member abroad is
+		   where a charged fee is measured. */
+		assertThat(after.path("processingFeeEur").asDouble()).isZero();
 
 		assertThat(http.perform(post(PATH).with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(him).secret())))
@@ -1008,7 +1045,37 @@ class MyMembershipApiTest {
 		assertThat(owed.path("toTransfer").path("amount").asDouble())
 				.as("he was billed nothing for a season he owes in full")
 				.isEqualTo(4200.0);
-		assertThat(owed.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+		assertThat(owed.path("processingFeeEur").asDouble()).isZero();
+	}
+
+	/**
+	 * AND A MEMBER ABROAD IS CHARGED THE PROCESSING FEE, WHICH IS THE ONLY SIDE OF THAT RULE THIS FILE
+	 * CAN NOW MEASURE.
+	 *
+	 * <p><b>Why this case has to exist since V42.</b> Everybody else in this file lives in Serbia, so
+	 * that their dinar amounts mean themselves - and V4 gives the processing row no dinar side, so their
+	 * invoices carry nought and four cases that used to assert 3 now assert 0. The fee is still charged
+	 * and still follows the transfer; it is charged to somebody billed in euro, and this is him.
+	 *
+	 * <p><b>His whole invoice is in euro, and every number on it is the other column of the same rows
+	 * the rest of this file reads</b>: the early period is 35 rather than 4.200 and a referral 5 rather
+	 * than 600. So this is also the case that says the currency reaches every field of the answer and
+	 * not only the label - a route reading the dinar column for a euro member would answer 4.200 here.
+	 */
+	@Test
+	void amemberAbroadIsBilledInEuroAndChargedTheProcessingFee() throws Exception {
+		String him = aMemberAbroad("007301");
+
+		JsonNode owed = invoiceFor(him);
+
+		assertThat(owed.path("fee").path("currency").asString()).isEqualTo("EUR");
+		assertThat(owed.path("fee").path("amount").asDouble()).isEqualTo(35.0);
+		assertThat(owed.path("balance").path("currency").asString()).isEqualTo("EUR");
+		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(35.0);
+
+		assertThat(owed.path("processingFeeEur").asDouble())
+				.as("a member whose transfer really is charged for was charged nothing")
+				.isEqualTo(3.0);
 	}
 
 	/**
