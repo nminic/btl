@@ -39,9 +39,9 @@ function java(file: string): string {
  * measured reason: read as a literal space, a declaration long enough to push its value onto
  * the next line is invisible, and `LeagueWriteApi` has one.
  */
-function declaredIn(file: string): Map<string, string> {
+function declaredIn(source: string): Map<string, string> {
   return new Map(
-    [...java(file).matchAll(/static final String (\w+)\s*=\s*"([^"]+)";/g)].map((one) => [
+    [...source.matchAll(/static final String (\w+)\s*=\s*"([^"]+)";/g)].map((one) => [
       one[1] ?? '',
       one[2] ?? '',
     ]),
@@ -81,32 +81,41 @@ const NOT_A_REASON = ['results', 'Rezultati']
  * </ol>
  */
 /** The four this class declares for itself, less the two that are not refusals at all. */
-function declaredHere(): string[] {
-  return [...declaredIn('ResultWriteApi.java').values()].filter(
-    (one) => !NOT_A_REASON.includes(one),
-  )
+function declaredHere(mine = java('ResultWriteApi.java')): string[] {
+  return [...declaredIn(mine).values()].filter((one) => !NOT_A_REASON.includes(one))
 }
 
 /** The town's five, whose NAME is read off this class and whose VALUE off the class that
  *  declares it, so a rename on either side fails here. */
-function borrowedForTheTown(): string[] {
-  const theirs = declaredIn('EventWriteApi.java')
+function borrowedForTheTown(mine = java('ResultWriteApi.java')): string[] {
+  const theirs = declaredIn(java('EventWriteApi.java'))
 
-  return [
-    ...new Set([...java('ResultWriteApi.java').matchAll(/EventWriteApi\.([A-Z_][A-Z_0-9]*)/g)]),
-  ].map((one) => theirs.get(one[1] ?? '') ?? `<${one[1] ?? ''} is not declared by EventWriteApi>`)
+  return [...new Set([...mine.matchAll(/EventWriteApi\.([A-Z_][A-Z_0-9]*)/g)])].map(
+    (one) => theirs.get(one[1] ?? '') ?? `<${one[1] ?? ''} is not declared by EventWriteApi>`,
+  )
 }
 
 /** The three `WHY_NOT` gives the outcomes of `ProofThatTheRunHappened`. Literals in a map
  *  rather than constants, so no reader of declarations can see them. */
-function forTheProof(): string[] {
-  return [
-    ...java('ResultWriteApi.java').matchAll(/words\.put\(Outcome\.[A-Z_]+,\s*"([^"]+)"\)/g),
-  ].map((one) => one[1] ?? '')
+function forTheProof(mine = java('ResultWriteApi.java')): string[] {
+  return [...mine.matchAll(/words\.put\(Outcome\.[A-Z_]+,\s*"([^"]+)"\)/g)].map(
+    (one) => one[1] ?? '',
+  )
 }
 
-function everyReasonTheRouteCanName(): string[] {
-  return [...new Set([...declaredHere(), ...borrowedForTheTown(), ...forTheProof()])]
+/**
+ * @param mine the text of `ResultWriteApi.java`. A PARAMETER and not a read, so the case
+ *             below can hand it a source this reader has never seen - which is the only way
+ *             to show that these readers really read Java rather than reciting the screen's
+ *             own map back. Measured 28.09.2026: with the union rewritten to answer
+ *             `Object.keys(WHEN_A_RESULT_IS_WRITTEN)` every other case here still passed,
+ *             because a correct map and a correct reading of the source are the same twelve
+ *             strings, so nothing that compares the two can tell them apart.
+ */
+function everyReasonTheRouteCanName(mine = java('ResultWriteApi.java')): string[] {
+  return [
+    ...new Set([...declaredHere(mine), ...borrowedForTheTown(mine), ...forTheProof(mine)]),
+  ]
 }
 
 describe('every reason the result routes can name', () => {
@@ -121,7 +130,7 @@ describe('every reason the result routes can name', () => {
    * with the number in the message, and somebody decides once what its sentence is.
    */
   it('is found by all three readers, and none of them has gone quiet', () => {
-    const ours = declaredIn('ResultWriteApi.java')
+    const ours = declaredIn(java('ResultWriteApi.java'))
 
     expect([...ours.values()], 'ResultWriteApi declares no constant at all').toHaveLength(6)
     expect(
@@ -144,18 +153,43 @@ describe('every reason the result routes can name', () => {
    * guard that reads as though it works, exactly the shape `CLAUDE.md` names. So the union
    * is compared against the three readers here, where the map has no part in it.
    */
-  it('is the three readers and nothing of the screen’s own', () => {
-    expect(new Set(everyReasonTheRouteCanName())).toEqual(
-      new Set([...declaredHere(), ...borrowedForTheTown(), ...forTheProof()]),
+  it.each([
+    [
+      'a constant it declares itself',
+      'static final String A_BRAND_NEW_ONE = "aBrandNewOne";',
+      'aBrandNewOne',
+    ],
+    [
+      'a word given to an outcome of the proof rule',
+      'words.put(Outcome.SOMETHING_ELSE, "andThisOneToo");',
+      'andThisOneToo',
+    ],
+  ])('sees %s the day it is written, and says it has no sentence', (_what, line, reason) => {
+    /* THE SOURCE IS DOCTORED RATHER THAN THE BACKEND TOUCHED. Handing the readers a copy of
+       the real file with one line spliced in is the only way to show they read Java at all:
+       against the file as it stands, a union that recited `WHEN_A_RESULT_IS_WRITTEN` back
+       gives the very same twelve strings, so every comparison between the two passes.
+
+       What this asks is the question the whole file exists for - „a reason added on the
+       server is a red gate on the day it is written" - and it asks it without waiting for
+       somebody to add one. */
+    const doctored = java('ResultWriteApi.java').replace(
+      'private final JdbcClient db;',
+      `	${line}
+
+	private final JdbcClient db;`,
     )
-    /* And it is not the map wearing the readers' name: every one of the twelve has to be
-       traceable to one of the three, which is false the moment the union answers the map. */
-    for (const reason of everyReasonTheRouteCanName()) {
-      expect(
-        [...declaredHere(), ...borrowedForTheTown(), ...forTheProof()],
-        `${reason} is in the union but in none of the three readers`,
-      ).toContain(reason)
-    }
+
+    expect(doctored, 'the splice found nowhere to go').not.toBe(java('ResultWriteApi.java'))
+    expect(everyReasonTheRouteCanName(doctored)).toContain(reason)
+    /* And the gate over it really would go red, which is the half that matters: the reason
+       is one no sentence answers. */
+    expect(Object.hasOwn(WHEN_A_RESULT_IS_WRITTEN, reason)).toBe(false)
+    expect(
+      everyReasonTheRouteCanName(doctored).filter(
+        (one) => !Object.hasOwn(WHEN_A_RESULT_IS_WRITTEN, one),
+      ),
+    ).toEqual([reason])
   })
 
   /**
@@ -168,7 +202,7 @@ describe('every reason the result routes can name', () => {
    * that the class really declares, and that no sentence answers.
    */
   it('excuses only a constant that is not a reason', () => {
-    const declared = [...declaredIn('ResultWriteApi.java').values()]
+    const declared = [...declaredIn(java('ResultWriteApi.java')).values()]
 
     for (const exempt of NOT_A_REASON) {
       expect(declared, `${exempt} is excused but ResultWriteApi does not declare it`).toContain(
