@@ -165,19 +165,28 @@ const ALL_FOUR = [ANOTHER_TEAM_QUESTION, A_PAIR_QUESTION, ONLY_TELLS, OPENED]
  * WHAT `GET /api/me/applications` ANSWERS, with the key 31 standing in three lists under three
  * different teams.
  *
- * <p>`alreadyInATeam` is the one field of this answer a case overrides, and it is a field on the
- * ANSWER rather than on any invitation, which is `MyApplicationsApi`'s own arrangement: „it
- * cannot differ between two of his invitations".
+ * <p>`alreadyInATeam` is one of the two fields a case overrides, and it is a field on the ANSWER
+ * rather than on any invitation, which is `MyApplicationsApi`'s own arrangement: „it cannot
+ * differ between two of his invitations".
+ *
+ * <p><b>The list of invitations is the other, and it is an argument rather than something a
+ * caller spreads over.</b> Written as a spread the one case that wants a shorter list needed a
+ * type assertion, which this portal bans outright - the three OTHER lists must stay exactly as
+ * they are for that case to mean anything, since what it measures is a screen finding the key
+ * in a list it should not be reading.
  */
-function waitingWhere(alreadyInATeam = false): unknown {
+function waitingWhere(
+  alreadyInATeam = false,
+  teamInvitations: { id: number; teamId: number; date: string }[] = [
+    { id: 44, teamId: 5, date: '2026-10-09' },
+    { id: HIS_INVITE, teamId: HIS_TEAM, date: '2026-10-06' },
+  ],
+): unknown {
   return {
     /* The same key under a different team, so reading the wrong list is a wrong address rather
        than no address. */
     teamApplications: [{ id: HIS_INVITE, teamId: 99, date: '2026-10-01' }],
-    teamInvitations: [
-      { id: 44, teamId: 5, date: '2026-10-09' },
-      { id: HIS_INVITE, teamId: HIS_TEAM, date: '2026-10-06' },
-    ],
+    teamInvitations,
     teamProposals: [{ id: HIS_INVITE, teamId: 77, name: 'Dunavski trkači', date: '2026-10-02' }],
     pairInvites: [{ id: 77, memberNumber: '000031', sentByMe: false, date: '2026-10-08' }],
     alreadyInATeam,
@@ -299,7 +308,21 @@ function verbFor(path: string): (string | undefined)[] {
   return (server?.asked ?? []).filter((one) => one.path === path).map((one) => one.init?.method)
 }
 
-function theAcceptButton(): HTMLElement | null {
+/**
+ * „Prihvati" where it has to be there, and it THROWS where it is not.
+ *
+ * <p>Two functions rather than one that answers `null`, which is the portal's own ban on type
+ * assertions carried out rather than worked around: a case that presses the button needs an
+ * `HTMLElement` and a case that asks whether it is absent needs `null`, and one signature
+ * serving both ends in `as HTMLElement` at every press. Split, the compiler gives each case
+ * what it really has and `getByRole` fails with the button's own name in the message.
+ */
+function theAcceptButton(): HTMLElement {
+  return screen.getByRole('button', { name: sr.teams.inviteAccept })
+}
+
+/** And the same question asked as „is it there at all". */
+function anyAcceptButton(): HTMLElement | null {
   return screen.queryByRole('button', { name: sr.teams.inviteAccept })
 }
 
@@ -341,10 +364,7 @@ describe('answering a served invitation into a team', () => {
       aServerWhere(waitingWhere())
       await openTheQuestion()
 
-      const accept = theAcceptButton()
-
-      expect(accept).not.toBeNull()
-      await user.click(accept as HTMLElement)
+      await user.click(theAcceptButton())
 
       /* **THE ADDRESS IS THE WHOLE OF THIS ASSERTION AND IT IS THE JOIN OF TWO ROUTES.** The
          invitation comes off `/api/inbox` and the team off `/api/me/applications`, and neither
@@ -407,15 +427,13 @@ describe('answering a served invitation into a team', () => {
         expect(arrivedResource('me/applications')).not.toBeUndefined()
       })
 
-      const accept = theAcceptButton()
-
-      await user.click(accept as HTMLElement)
+      await user.click(theAcceptButton())
 
       /* **The question is closed on the SERVER and the screen learns it by asking**, which is why
          the fake server above stops serving the pointer for an invitation it has answered. A
          screen that hid its own buttons would pass a case that only looked for them going. */
       await waitFor(() => {
-        expect(theAcceptButton()).toBeNull()
+        expect(anyAcceptButton()).toBeNull()
       })
 
       expect(asked().filter((one) => one === '/api/inbox').length).toBeGreaterThan(inboxBefore)
@@ -476,9 +494,7 @@ describe('answering a served invitation into a team', () => {
         expect(arrivedResource('teams')).not.toBeUndefined()
       })
 
-      const accept = theAcceptButton()
-
-      await user.click(accept as HTMLElement)
+      await user.click(theAcceptButton())
 
       /* **THE OTHER HALF OF THE SAME AXIS.** „Prihvati" is the one answer that writes
          `team_membership`, and `app/Shell.tsx` holds every screen under one outlet, so walking
@@ -503,7 +519,7 @@ describe('answering a served invitation into a team', () => {
          sentence, and the second is the one that goes missing: the same entry says what taking
          it away would cost, „član pozvan 30. decembra ne bi mogao ni da prihvati ni da se
          oslobodi pitanja do sledećeg oktobra". */
-      expect(theAcceptButton()).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
       expect(screen.getByText(sr.teams.inviteWaits)).toBeVisible()
 
       /* AND IT IS NOT MERELY DRAWN: it still reaches the route, on a day the window is shut. */
@@ -528,7 +544,7 @@ describe('answering a served invitation into a team', () => {
 
       /* **PDL, 06.09.2026: „Čim član ima tim, nijedan drugi poziv ne nudi „Prihvati"."** The
          sentence names one button and this case is the other one still being there. */
-      expect(theAcceptButton()).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
       expect(screen.getByText(sr.teams.inviteOvertakenUnnamed)).toBeVisible()
       /* AND NOT THE OTHER SENTENCE, which is the half the backend's own note insists on: folded
          together, „Poziv čeka" and „u međuvremenu si ušao/la u tim" „would call every waiting
@@ -560,7 +576,7 @@ describe('answering a served invitation into a team', () => {
          one (PDL, 24.09.2026), so by October he may be free to accept. */
       expect(screen.getByText(sr.teams.inviteWaits)).toBeVisible()
       expect(screen.queryByText(sr.teams.inviteOvertakenUnnamed)).toBeNull()
-      expect(theAcceptButton()).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
     },
     SLOW,
   )
@@ -568,7 +584,7 @@ describe('answering a served invitation into a team', () => {
   it(
     'draws no buttons at all for a question the server does not say he is waiting on',
     async () => {
-      aServerWhere({ ...(waitingWhere() as object), teamInvitations: [{ id: 44, teamId: 5, date: '2026-10-09' }] })
+      aServerWhere(waitingWhere(false, [{ id: 44, teamId: 5, date: '2026-10-09' }]))
 
       renderAt(
         `/sr/poruke/${String(OPENED.id)}`,
@@ -585,7 +601,7 @@ describe('answering a served invitation into a team', () => {
          pretended about.** `GET /api/me/applications` answers only about the caller, so a key
          naming another member's question is simply not in the list and the screen cannot tell the
          two apart. What it must never do is guess a team: half an address is worse than none. */
-      expect(theAcceptButton()).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
       expect(screen.queryByRole('button', { name: sr.teams.inviteRefuse })).toBeNull()
       expect(asked().filter((one) => one.startsWith('/api/teams/'))).toEqual([])
     },
@@ -608,7 +624,7 @@ describe('answering a served invitation into a team', () => {
 
       /* **Told INSTEAD of the buttons**, because a question the server says is not there cannot
          be answered by pressing again. */
-      expect(theAcceptButton()).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
       expect(screen.queryByRole('button', { name: sr.teams.inviteRefuse })).toBeNull()
 
       /* **AND NOTHING IS DROPPED WHERE THE SERVER DID NOT AGREE.** Re-read, the line would come
@@ -656,10 +672,7 @@ describe('answering a served invitation into a team', () => {
       aServerWhere(waitingWhere(), () => refused('heIsAlreadyInATeam', 409))
       await openTheQuestion()
 
-      const accept = theAcceptButton()
-
-      expect(accept).not.toBeNull()
-      await user.click(accept as HTMLElement)
+      await user.click(theAcceptButton())
 
       /* **THE JOIN BETWEEN THE TWO HALVES OF THIS GUARD, and it is one sentence read twice.** The
          case above draws this same sentence from `GET /api/me/applications` before anything is
@@ -732,7 +745,7 @@ describe('answering a served invitation into a team', () => {
 
       await screen.findByRole('heading', { level: 1, name: ONLY_TELLS.subject })
 
-      expect(theAcceptButton()).toBeNull()
+      expect(anyAcceptButton()).toBeNull()
       expect(screen.queryByRole('button', { name: sr.teams.inviteRefuse })).toBeNull()
       /* AND NO SENTENCE EITHER, which is the half that bites: a screen that ran on every message
          would find nothing in `teamInvitations` and draw „Ovaj poziv više ne stoji." under a
