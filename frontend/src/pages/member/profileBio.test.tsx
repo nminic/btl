@@ -541,7 +541,11 @@ describe('the box a member writes about themselves in', () => {
     renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
-    const field = (await box()) as HTMLTextAreaElement
+    /* Typed through the query rather than by an assertion, which ADL A14 bans and which
+       the lint enforces: `getByLabelText` takes the element type as a parameter, so the
+       selection below is reached by asking for the right thing and not by telling the
+       compiler it already is. */
+    const field = panel.getByLabelText<HTMLTextAreaElement>(/Svojim rečima|Tekst o sebi/)
 
     await user.click(field)
     await user.paste('x'.repeat(360))
