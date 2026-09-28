@@ -279,6 +279,28 @@ function aServerWhere(
       return did()
     }
 
+    /* **WHAT THE ONE ASKING IS WAITING ON, since 28.09.2026 and only because a served TEAM
+       question now has a screen.** `member/ServedTeamInvite.tsx` reads this to learn the team
+       half of `PUT /api/teams/{id}/invitations/{invitation}`, which `GET /api/inbox` cannot
+       say. It is answered here rather than left to the mock on the disc for the reason the whole
+       of this file exists: this answer, like the inbox, is different for every caller, and the
+       served fixture holds one member's. Only the invitation of `A_QUESTION` is in it, because
+       the one case below that opens a team question is about the buttons being there at all;
+       what each of them sends is measured where the mechanism lives
+       (`member/teamInviteAnswered.test.tsx`). */
+    if (path === '/api/me/applications') {
+      return new Response(
+        JSON.stringify({
+          teamApplications: [],
+          teamInvitations: [{ id: A_QUESTION.teamInvitationId, teamId: 4, date: '2026-10-06' }],
+          teamProposals: [],
+          pairInvites: [],
+          alreadyInATeam: false,
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    }
+
     return null
   })
 }
@@ -568,7 +590,7 @@ describe('what the portal may not claim about a message the server keeps', () =>
     })
   })
 
-  it('says nothing at all about an answer to a question the server keeps', async () => {
+  it('does offer an answer to a question about a team, and claims nothing it cannot keep', async () => {
     aServerWhere(him(), { [HIS_ADDRESS]: [A_QUESTION] })
 
     renderAt(`/sr/poruke/${String(A_QUESTION.id)}`, 'competitor', '000007')
@@ -580,21 +602,51 @@ describe('what the portal may not claim about a message the server keeps', () =>
 
     await screen.findByRole('heading', { level: 1, name: A_QUESTION.subject })
 
-    /* **THE BOUNDARY THIS INCREMENT ENDS ON, written as a case so that it is a decision and
-       not a gap.** `GET /api/inbox` answers `teamInvitationId`, and the route that answers
-       such a question exists too (`PUT /api/teams/{id}/invitations/{invitation}`). No screen
-       calls it: `InvitationAnswer` looks the invitation up in the session's own list and
-       treats one it cannot find as one that is OVER. So handing it a served key would tell a
-       member a question was closed while the server still held it open, and that is worse
-       than no buttons. Neither the buttons nor the sentence is here, and if either appears
-       this goes red. */
-    /* **THE FLOOR UNDER THAT, and it is why this reads a derived list rather than three
-       names.** Held as three sentences, this case was SURVIVED by exactly the mutation it was
-       written for: the screen drew a fourth sentence instead. The list is the dictionary's
-       own, so a fifth sentence written tomorrow is already on it. */
-    expect(WHAT_AN_ANSWER_WOULD_SAY.length).toBeGreaterThan(20)
+    /* **THIS CASE SAID THE OPPOSITE UNTIL 28.09.2026, AND THE BOUNDARY IT HELD WAS REAL.** It
+       read „says nothing at all about an answer to a question the server keeps", because
+       `PUT /api/teams/{id}/invitations/{invitation}` needs a TEAM and no field of
+       `GET /api/inbox` carries one, so the only screen that could have been handed the key was
+       `InvitationAnswer` - which looks an invitation up in the session's own list and treats one
+       it cannot find as OVER. That closed boundary is now open from the other end:
+       `GET /api/me/applications` answers the team, `member/ServedTeamInvite.tsx` is the screen it
+       is owed, and the fake server above answers it.
+
+       **What is asked here is only that the answer ARRIVES**, because this file's question is
+       whether the screen reading the server offers one at all. Which keys reached which address,
+       what each button sends, and what stands where „Prihvati" is held back are measured where
+       the mechanism lives (`member/teamInviteAnswered.test.tsx`).
+
+       **„Odbij" and never „Prihvati", and that is this file's own clock rather than caution.**
+       The gate reads this suite twice, as two days a season and a year apart
+       (`test/theDay.ts`), and this case names no day; „Prihvati" is held back outside 1 October
+       to 31 December (PDL, 06.09.2026), so a case asserting it would agree with itself in one
+       pass and not the other. „Odbij" is bound by nothing, which is the other half of that same
+       decision, so it is the one button true on every day of the year. */
+    /* **THE BUTTON IS WAITED FOR AND THE LOADER IS READ AFTER IT, WHICH IS A CHANGE OF ORDER
+       THIS INCREMENT FORCED AND IS WORTH THE SENTENCE.** Until 28.09.2026 the loader was gone by
+       the time the heading arrived, because everything this screen drew came off one read. It now
+       draws a part that waits for a SECOND read (`GET /api/me/applications`), and that part waits
+       INLINE with no label - so `theLoader()`, which asks for the portal's plain „Učitavanje",
+       matches the inline one as well as the sheet. Read before the buttons, it would be reading a
+       part that is honestly still waiting and calling it a screen that never finished. */
+    expect(await screen.findByRole('button', { name: sr.teams.inviteRefuse })).toBeVisible()
     expect(theLoader()).toBeNull()
-    expect(whatTheScreenClaimsAboutAnAnswer()).toEqual([])
+
+    /* **AND THE SENTENCE OF THE OTHER SCREEN IS NOT HERE, which is the half that bites.** A
+       mutation handing this served key to `InvitationAnswer` draws „Ovaj poziv više ne stoji." -
+       that screen finds nothing under it in the session's own list - and it would satisfy
+       „something about an answer is on the screen" while saying the one false thing this
+       arrangement exists to refuse. The same sentence is what `ServedTeamInvite` itself draws for
+       a key the server does not say he is waiting on, so its absence is also the assertion that
+       the two reads were joined rather than merely both made. */
+    expect(screen.queryByText(sr.teams.inviteClosed)).toBeNull()
+    expect(screen.queryByText(sr.teams.inviteGone)).toBeNull()
+
+    /* **THE FLOOR UNDER THE DERIVED LIST STAYS, and it is now the floor under a narrower claim.**
+       The list is the dictionary's own so that a sentence written tomorrow is already on it; what
+       it measures here is that the screen does not claim an answer for the PAIR half as well. */
+    expect(WHAT_AN_ANSWER_WOULD_SAY.length).toBeGreaterThan(20)
+    expect(whatTheScreenClaimsAboutAnAnswer().filter((one) => one.includes('par'))).toEqual([])
   })
 
   it('does offer an answer to a question about a racing pair, and says nothing about one', async () => {
