@@ -369,6 +369,31 @@ class PageApiTest {
 				.as("the privacy policy did not come back whole - seven real English headings")
 				.hasSize(7);
 
+		/* V44 moved "Profile picture" out of "Data you enter when you join" and into "Data
+		   generated while you are a member", in both languages - WrittenPageTranslationAppliesTest
+		   re-runs V43 in isolation and cannot see anything a later migration does to V43's own
+		   text, so it is this real, fully migrated answer that has to carry the correction. Read
+		   off section 2 alone (index 1, the same section fieldOf("heading") already sized above)
+		   rather than the whole page, so the three indexOf positions below are all offsets into
+		   the one string that actually holds both tables and stay comparable to one another. */
+		String whatDataIsProcessed = fieldOf(ours, "politika-privatnosti", "body").get(1);
+		int joinTableAt = whatDataIsProcessed.indexOf("### Data you enter when you join");
+		int memberTableAt = whatDataIsProcessed.indexOf("### Data generated while you are a member");
+		int pictureRowAt = whatDataIsProcessed.indexOf("Profile picture");
+
+		assertThat(joinTableAt)
+				.as("the English section no longer has the \"data you enter when you join\" table")
+				.isGreaterThanOrEqualTo(0);
+		assertThat(memberTableAt)
+				.as("the English section no longer has the \"data generated while you are a"
+						+ " member\" table, or it no longer follows the first one")
+				.isGreaterThan(joinTableAt);
+		assertThat(whatDataIsProcessed).containsOnlyOnce("Profile picture");
+		assertThat(pictureRowAt)
+				.as("the real English answer still lists the profile picture among what a member"
+						+ " enters when joining, not among what membership itself produces")
+				.isGreaterThan(memberTableAt);
+
 		assertThat(pageNamed(ours, "uslovi-koriscenja").path("title").asString())
 				.as("uslovi-koriscenja's real English title did not reach the route")
 				.isEqualTo("Terms of use");
