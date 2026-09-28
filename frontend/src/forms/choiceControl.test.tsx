@@ -145,6 +145,25 @@ describe('the buttons one answer is chosen from', () => {
     expect(choice.getPropertyValue('grid-auto-flow')).toBe('column')
     expect(choice.getPropertyValue('grid-auto-columns')).toBe('minmax(0, 1fr)')
 
+    /* THE JOIN BETWEEN THAT TRACK AND THE LABEL BELOW, which neither half on its
+       own says a word about. `.choice` gives every button an equal TRACK and
+       `.choice__label` FILLS whatever it is HANDED, but something has to hand
+       `.choice__one` the whole of that track rather than let it size to its own
+       content and sit at the track's start - it wraps an `inline-flex` box,
+       which does exactly that the moment nothing stops it. Nothing here sets
+       `justify-self` on `.choice__one`, so the sheet leans on Grid's own
+       default, `stretch`; measured in the browser at 1280, adding `justify-self:
+       start` here alone, nothing else touched, drops both options from
+       150.66/150.67px to 77.61/80.70px and makes them unequal - the two
+       assertions above and the two below this block stay green throughout,
+       because neither reads this rule. */
+    const one = ruleFor(SHEET, '.choice__one', 'FormRenderer.css')
+
+    expect(
+      ['', 'stretch'],
+      `.choice__one declares justify-self: ${JSON.stringify(one.getPropertyValue('justify-self'))}, so it no longer spans the track .choice hands it and shrinks to its own content instead`,
+    ).toContain(one.getPropertyValue('justify-self'))
+
     /* And the button filling the track it was given, rather than sitting in the
        middle of it at the width of its word. */
     const label = ruleFor(SHEET, '.choice__label', 'FormRenderer.css')
