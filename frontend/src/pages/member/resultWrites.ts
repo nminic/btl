@@ -194,6 +194,37 @@ export type ARunDescribed = Figures &
 export type ACorrection = Figures & Proof
 
 /**
+ * A BOUNDARY, WRITTEN DOWN RATHER THAN LEFT TO BE FOUND: THE POINTS ARE WORKED OUT TWICE,
+ * AND ON ONE ROAD THE TWO ANSWERS CAN DIFFER.
+ *
+ * <p>The screen works them out to say what the run earned the moment it is sent, which PDL
+ * P9 asks for („Član odmah po unosu vidi koliko je bodova dobio"), and the server works them
+ * out again because they are never accepted from a request. The two agree everywhere but one
+ * place.
+ *
+ * <p><b>Where they can differ.</b> `ResultWriteApi.figuresOf` takes the time off the RACE for
+ * a race run to a limit („jer je zadato trkom", owner 29.08.2026), and the length, climb and
+ * fall off the race for a race of a length. Every road but one hands the screen those same
+ * figures: `pages/event/reportForm.ts` drops the time boxes on a timed race altogether, and
+ * `member/racesToOffer.ts` fills and locks them with the race's own limit when a race is
+ * picked out of the list. The form for correcting a COUNTED result does neither - it keeps
+ * the three boxes open, seeded from the record - so a member correcting a result on a timed
+ * race may type a time the server will then ignore.
+ *
+ * <p><b>What that costs, as arithmetic rather than a worry.</b> On a six hour limit over 50 km
+ * with 1000 up and 1000 down, a member who types five hours is shown 41,19 while the server
+ * stores 27,90: the screen is 48 per cent high. What keeps it from being worse is that the
+ * screen already says the number is not the last word on every one of these roads
+ * (`newResult.pointsNotFinal`, PDL 30.08.2026 point 8), so nobody is shown a settled figure.
+ *
+ * <p><b>Why this increment does not close it.</b> Which of the two answers a member should be
+ * shown BEFORE verification is a decision nobody has made, and this increment carries none.
+ * <b>It is also unreachable with today's data, measured rather than assumed:</b>
+ * `test/mock/races.json` holds 1612 races and every one of them is of a length, so no counted
+ * result stands on a timed race at all. The day one does, this is where it was written down.
+ */
+
+/**
  * WHAT IS NO LONGER TRUE AFTER A RUN OR A CORRECTION IS WRITTEN, AND IT IS NOT THE
  * RESULTS.
  *
