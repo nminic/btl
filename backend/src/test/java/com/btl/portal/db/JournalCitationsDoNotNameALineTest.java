@@ -34,8 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * wrong paragraph.
  *
  * <p><b>The question is not whether the text reads "PDL.md" then a colon then digits - it is
- * whether anybody names a journal line by number at all, in whatever shape a sentence happens
- * to write it.</b> PR 155's own sweep left a gap: a comment that cites the journal once and
+ * whether the name and the number are GLUED together through one of the small set of
+ * connectors this codebase actually writes between them, however the name itself is
+ * spelled.</b> PR 155's own sweep left a gap: a comment that cites the journal once and
  * then, later in the same sentence, cites a SECOND line of the same document written only as a
  * bare colon-number - the shorthand the surrounding prose already uses throughout this
  * codebase for "same file, another line" - goes stale exactly the same way and was invisible to
@@ -43,6 +44,33 @@ import static org.assertj.core.api.Assertions.assertThat;
  * the same sweep: the file name closed with a backtick immediately before the colon, rather
  * than glued to it or held inside {@code @code}. All three are the same defect in different
  * clothing, and this test reads for the defect rather than for one spelling of it.
+ *
+ * <p><b>Independent review of this fix, 28.09.2026, found two more shapes of the identical
+ * defect that PR 155's sweep did not.</b> A name closed by {@code @code} and then glued
+ * straight to the colon - the closing brace standing exactly where the backtick stood before -
+ * is no less direct a splice than the backtick PR 155 already caught, so the brace joins it as
+ * a second connector the named-citation shape accepts. And the journal named through the real
+ * folder it lives in is still the journal, not "some other file": a number glued to the
+ * folder-qualified name used to read as a citation to a file nobody excludes, and a bare
+ * continuation that followed it used to inherit that same wrong belief and go unwatched. Both
+ * are closed the same way PR 155 closed its two - by teaching the code to see one more shape of
+ * the same thing, not by teaching it to guess.
+ *
+ * <p><b>Two shapes stay open, named here rather than left for the next reader to discover by
+ * missing them.</b> A line number spelled out in words - {@code at line}, this codebase's own
+ * house style for citing a SOURCE FILE's line - has no closed set of spellings to check the
+ * journal's name against; closing "at line" would still leave "on line", "row" and every other
+ * way of saying it, and a hand-written list of phrasings is exactly the kind of list PR 155
+ * already rejected for file names, for the same reason: it only defers the next false negative
+ * rather than removing it. And a bare colon with no {@code @code} marker at all cannot be told
+ * apart from {@link MigrationsAreImmutableTest}'s own repin note below, which writes out an old
+ * citation in quotes, on purpose, as the historical shape a live one must not be confused with;
+ * the {@code @code} wrapper is the only signal that marks a bare continuation as a live
+ * reference rather than prose mentioning a number, and a shape with no wrapper at all has no
+ * such signal left to read. Widening either gap by matching a number near the name instead of a
+ * number glued to it was tried and measured against this same tree before this paragraph was
+ * written: a name-then-nearby-number rule catches both of the repin note's quoted citations,
+ * which is the one thing this test exists not to do.
  *
  * <p><b>How that is done without a hand-written list of exceptions, which would only defer the
  * next false positive rather than remove it.</b> The scan walks each file's text in order and
@@ -56,14 +84,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * directions in the PR description: a bare continuation of a journal citation is caught, and
  * the same shape continuing a non-journal citation is not.
  *
- * <p><b>The name and the colon must be adjacent, with at most the one closing backtick
- * between them - never a space.</b> {@link MigrationsAreImmutableTest}'s own repin note
- * writes out, deliberately and in quotes, what an old citation of this journal used to look
- * like, as the historical reason for a checksum change; that citation is written with a
- * space before the colon, on purpose, precisely so a reader can tell it apart from a live one
- * without this test having to know that file exists. Loosening the pattern to tolerate a
- * space would catch that quote too, and there would be no way back to excluding it that did
- * not mean naming the file.
+ * <p><b>The name and the colon must be adjacent, with at most one closing backtick or one
+ * closing {@code @code} brace between them - never a space.</b> {@link
+ * MigrationsAreImmutableTest}'s own repin note writes out, deliberately and in quotes, what an
+ * old citation of this journal used to look like, as the historical reason for a checksum
+ * change; that citation is written with a space before the colon, on purpose, precisely so a
+ * reader can tell it apart from a live one without this test having to know that file exists.
+ * Loosening the pattern to tolerate a space - or to look for a number anywhere near the name
+ * rather than glued to it - would catch that quote too, twice over, since the repin note
+ * writes it out in full on two separate lines, and there would be no way back to excluding it
+ * that did not mean naming the file or the quote by hand.
  *
  * <p><b>Migrations are the one recorded exception, and it is a folder, not a list of
  * today's migrations.</b> Once a migration is applied it is immutable (ADL A2): its checksum
@@ -79,18 +109,21 @@ class JournalCitationsDoNotNameALineTest {
 	 * Three shapes in one pattern, tried left to right at each position, and none of them
 	 * spelled out below as a literal digit-bearing example for the same reason the class
 	 * javadoc gives - it would trip the very thing being described. A NAMED citation is a
-	 * file-like token, optionally closed by a single backtick, glued to a colon and a line
-	 * number: {@code PDL.md} joined straight to a colon and digits, the same joined through
-	 * a closing backtick first, and a source file such as {@code SomeScreen.tsx} joined the
-	 * same way all take this shape, and all three are told apart only by the name, not by
-	 * the punctuation around it. A BARE continuation is an {@code @code}-wrapped colon and
-	 * digits with no name of its own, meaning "the file just named". And the journal's own
-	 * name can appear with no number attached at all - the shape this repository's own
-	 * anchors now take, {@code PDL.md} followed by a parenthesized quote - which still has
-	 * to update what "just named" means for a bare continuation that follows it.
+	 * file-like token, optionally closed by a single backtick OR a single closing
+	 * {@code @code} brace, glued to a colon and a line number: {@code PDL.md} joined straight
+	 * to a colon and digits, the same joined through a closing backtick first, the same again
+	 * joined through the closing brace of its own {@code @code} wrapper, and a source file such
+	 * as {@code SomeScreen.tsx} joined any of those same ways all take this shape, and every one
+	 * of them is told apart only by the name, not by the punctuation around it - and the name
+	 * itself may be written bare or through the real folder it lives in, since a path that ends
+	 * in the journal's file name is still naming the journal. A BARE continuation is an
+	 * {@code @code}-wrapped colon and digits with no name of its own, meaning "the file just
+	 * named". And the journal's own name can appear with no number attached at all - the shape
+	 * this repository's own anchors now take, {@code PDL.md} followed by a parenthesized quote -
+	 * which still has to update what "just named" means for a bare continuation that follows it.
 	 */
 	private static final Pattern CITATION = Pattern.compile(
-			"\\b(?<namedFile>[A-Za-z][A-Za-z0-9_./]*\\.[A-Za-z0-9]+)`?:(?<namedNum>[0-9]+)"
+			"\\b(?<namedFile>[A-Za-z][A-Za-z0-9_./]*\\.[A-Za-z0-9]+)[`}]?:(?<namedNum>[0-9]+)"
 					+ "|\\{@code\\s*:\\s*(?<bareNum>[0-9]+)\\s*\\}"
 					+ "|\\b(?<journalNameOnly>PDL\\.md|ADL\\.md)\\b");
 
@@ -109,22 +142,67 @@ class JournalCitationsDoNotNameALineTest {
 					.toList();
 
 			assertThat(guilty)
-					.as("a citation of PDL.md or ADL.md that names a line number - directly, through a"
-							+ " bare continuation, or through a backtick before the colon - goes stale the"
-							+ " moment anybody edits the journal above that line (ADL, decision of"
-							+ " 27.09.2026); quote the decisive sentence instead, confirmed unique in the"
-							+ " journal with grep -c, and drop the line number")
+					.as("a citation of PDL.md or ADL.md, named bare or through its folder, that names a"
+							+ " line number - directly, through a bare continuation, or through a backtick"
+							+ " or a closing @code brace before the colon - goes stale the moment anybody"
+							+ " edits the journal above that line (ADL, decision of 27.09.2026); quote the"
+							+ " decisive sentence instead, confirmed unique in the journal with grep -c, and"
+							+ " drop the line number")
 					.isEmpty();
 		}
+	}
+
+	/**
+	 * The two shapes independent review of this fix (28.09.2026) found missing, proven directly
+	 * against {@link #citations(String)} rather than by planting them in a real file, and the
+	 * two shapes named in the class javadoc as staying open on purpose - proven the same way, so
+	 * a future change that starts catching them either updates this case on purpose or fails it
+	 * and is read before it merges.
+	 */
+	@Test
+	void aClosingBraceAndAFolderPrefixAreSeenThroughButAWordedNumberAndAnUnwrappedColonAreNot() {
+		// Built from pieces rather than written whole: the class javadoc's own reason for never
+		// spelling the pattern out literally applies just as much here - a literal digit-bearing
+		// example would trip the very check this file's own scan runs over this same source.
+		String pdl = "PDL" + ".md";
+		String adl = "ADL" + ".md";
+
+		assertThat(citations("{@code " + pdl + "}:" + "4242"))
+				.as("a closing @code brace between the name and the colon glues them exactly as"
+						+ " directly as the backtick PR 155 already caught")
+				.containsExactly(pdl + ":" + "4242");
+
+		assertThat(citations("btl-produkt/" + pdl + ":" + "4343"))
+				.as("the journal named through the real folder it lives in is still the journal")
+				.containsExactly("produkt/" + pdl + ":" + "4343");
+
+		assertThat(citations("btl-produkt/" + adl + ":" + "4444 and also {@code :" + "4545}"))
+				.as("a folder-qualified name updates the memory a later bare continuation reads,"
+						+ " the same as a bare name would")
+				.containsExactly("produkt/" + adl + ":" + "4444", "{@code :" + "4545}");
+
+		assertThat(citations(pdl + " at line " + "4646"))
+				.as("[known gap, named in the class javadoc 28.09.2026] a number spelled out in"
+						+ " words has no closed set of spellings to check for, so this stays open"
+						+ " rather than growing a list the next phrasing evades")
+				.isEmpty();
+
+		assertThat(citations(pdl + " (\"some decision\") and also :" + "4747 nearby"))
+				.as("[known gap, named in the class javadoc 28.09.2026] a bare colon with no"
+						+ " @code marker cannot be told apart from MigrationsAreImmutableTest's"
+						+ " own repin note, which writes the same name, a space, then a colon and"
+						+ " digits, in quotes on purpose")
+				.isEmpty();
 	}
 
 	/**
 	 * Walks every citation-shaped token in document order and remembers, as it goes, which
 	 * named file the most recent one was about - exactly the inference a person reading the
 	 * sentence makes for a bare continuation, and nothing more. A named citation to
-	 * {@code PDL.md} or {@code ADL.md} is flagged on the spot regardless of memory; a named
-	 * citation to anything else clears the memory instead of flagging; a bare continuation
-	 * is flagged only while the memory says journal.
+	 * {@code PDL.md} or {@code ADL.md} - bare, or written through the folder it lives in, since
+	 * a path ending in that file name still names that file - is flagged on the spot regardless
+	 * of memory; a named citation to anything else clears the memory instead of flagging; a bare
+	 * continuation is flagged only while the memory says journal.
 	 */
 	private static List<String> citations(String content) {
 		List<String> found = new ArrayList<>();
@@ -134,7 +212,8 @@ class JournalCitationsDoNotNameALineTest {
 		while (token.find()) {
 			String namedFile = token.group("namedFile");
 			if (namedFile != null) {
-				boolean isJournal = namedFile.equals("PDL.md") || namedFile.equals("ADL.md");
+				boolean isJournal = namedFile.equals("PDL.md") || namedFile.equals("ADL.md")
+						|| namedFile.endsWith("/PDL.md") || namedFile.endsWith("/ADL.md");
 				if (isJournal) {
 					found.add(namedFile + ":" + token.group("namedNum"));
 				}
