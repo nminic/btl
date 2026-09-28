@@ -54,22 +54,35 @@ import { theAnswerGoesTo, theServerWasAnswered } from './pairWrites'
  * screen reading that field instead finds nothing and draws no buttons at all.
  */
 
-const HIS_ADDRESS = 'ja@primer.rs'
-
+/* One reader and no second inbox, unlike `member/inboxFromTheServer.test.tsx` which keys its
+   answers by address: whose mail is served is that file's question, and every case here is
+   about what one member does with one question that is already his. */
 const HIM = { role: 'competitor', account: 1, member: { memberNumber: '000007' } }
 
 /** The key of the invitation this message asks about, which is the one thing that must reach
  *  the route. Not 612, not 44, not 77. */
 const HIS_INVITE = 31
 
-/** THE ONE HE OPENS, and it is the OLDEST of the four rather than the newest. */
+/**
+ * THE ONE HE OPENS, and it is the OLDEST of the four rather than the newest.
+ *
+ * <p><b>ALREADY READ, and that is a measurement rather than a detail of the fixture.</b>
+ * Opening an unread message sends `POST /api/inbox/{id}/read` and a receipt the server accepts
+ * drops the inbox cache (PDL 27a, `member/inboxRead.ts`) - so `/api/inbox` is asked a second
+ * time for a reason that has nothing to do with answering anything. Two cases below count those
+ * asks to tell „the screen read the server again" from „the screen hid its own buttons", and
+ * with an unread message they would have counted the receipt's re-read instead: the first draft
+ * of the 404 case did exactly that and went red on a count of two where the write had been
+ * refused. Read, there is one source for that number again. What opening does to the count is
+ * measured where it belongs, in `member/openingMarksItRead.test.tsx`.
+ */
 const OPENED = {
   id: 612,
   from: 'Milica Anđelković',
   subject: 'Poziv u trkački par',
   body: 'Milica te poziva u trkački par.',
   date: '2026-09-20',
-  read: false,
+  read: true,
   teamInvitationId: null,
   pairInviteId: HIS_INVITE,
 }
@@ -81,6 +94,7 @@ const ANOTHER_PAIR_QUESTION = {
   id: 611,
   subject: 'Poziv u trkački par od Jovane',
   date: '2026-09-26',
+  read: false,
   pairInviteId: 44,
 }
 
@@ -91,6 +105,7 @@ const A_TEAM_QUESTION = {
   subject: 'Tim te poziva',
   body: 'Dunavski trkači te pozivaju u tim.',
   date: '2026-09-22',
+  read: false,
   teamInvitationId: 77,
   pairInviteId: null,
 }
@@ -102,8 +117,13 @@ const ONLY_TELLS = {
   subject: 'Članarina je evidentirana',
   body: 'Uplata je proknjižena.',
   date: '2026-09-24',
+  read: false,
   pairInviteId: null,
 }
+
+/** How many of the four the envelope should be counting, which is every one but the one he has
+ *  already read. */
+const UNREAD = 3
 
 const ALL_FOUR = [ANOTHER_PAIR_QUESTION, ONLY_TELLS, A_TEAM_QUESTION, OPENED]
 
@@ -174,12 +194,18 @@ function aServerWhere(
 /** Which invitations the fake server has closed. */
 let answered = new Set<string>()
 
+/** One field off a row the fake server is holding, asked of the object rather than asserted out
+ *  of it (ADL A14, and `member/photoWrites.ts#theRowIn` reads an answer the same way). */
+function fieldOf(row: unknown, name: string): string {
+  return typeof row === 'object' && row !== null ? String(Reflect.get(row, name)) : ''
+}
+
 function keyOf(row: unknown): string {
-  return `message:${String(typeof row === 'object' && row !== null ? Reflect.get(row, 'id') : '')}`
+  return `message:${fieldOf(row, 'id')}`
 }
 
 function inviteOf(row: unknown): string {
-  return `invite:${String(Reflect.get(row as object, 'pairInviteId'))}`
+  return `invite:${fieldOf(row, 'pairInviteId')}`
 }
 
 /** Every address the portal asked for, in order. */
@@ -192,6 +218,11 @@ function sentTo(path: string): unknown[] {
   return (server?.asked ?? [])
     .filter((one) => one.path === path)
     .map((one) => JSON.parse(String(one.init?.body ?? 'null')))
+}
+
+/** The panel above every screen, which is where the count of unread messages is read. */
+function theEnvelope(): Promise<HTMLElement> {
+  return screen.findByRole('button', { name: /Otvori poruke/ })
 }
 
 function theAcceptButton(): HTMLElement {
@@ -285,17 +316,34 @@ describe('answering a served invitation into a racing pair', () => {
       aServerWhere(ALL_FOUR)
       await openTheQuestion()
 
+      /* Read off the envelope before the answer, so that what is asserted after it is the SAME
+         value and not a number typed here. Typed, it would also have to know how many of
+         `data/seedMessages.ts`'s broadcasts are unread, which is another file's business. */
+      const counting = (await theEnvelope()).getAttribute('aria-label')
+
+      expect(counting).toContain(String(UNREAD + 1))
+
+      const before = asked().filter((one) => one === '/api/inbox').length
+
       await user.click(theAcceptButton())
 
       /* **The question is closed on the SERVER and the screen learns it by asking**, which is
          why the fake server above stops serving `pairInviteId` for an invitation it has
          answered. A screen that hid its own buttons would pass a case that only looked for them
-         going; this one is green only if `/api/inbox` was asked a second time. */
+         going; this one is green only if `/api/inbox` was asked again. */
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: sr.pair.accept })).toBeNull()
       })
 
-      expect(asked().filter((one) => one === '/api/inbox').length).toBeGreaterThan(1)
+      expect(asked().filter((one) => one === '/api/inbox').length).toBeGreaterThan(before)
+
+      /* **AND ANSWERING READS NOTHING, which is measured rather than assumed.** PDL 27a makes
+         opening the one trigger for a read mark; nothing was decided that answering a question
+         marks anything, and the message he answered was already read besides. So the envelope
+         must stand exactly where it did - a route that marked on the way past would take a
+         number off it that the member never earned, and every other message here is unread and
+         would have somewhere to fall from. */
+      expect((await theEnvelope()).getAttribute('aria-label')).toBe(counting)
     },
     SLOW,
   )
