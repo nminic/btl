@@ -249,9 +249,46 @@ function inboxReads(): number {
  * because Serbian picks a different form at 0, 1 and 2 and this file asserts all three.
  * „nepročitana", „nepročitane" and „nepročitanih" written by hand is a fourth home for the
  * plural rule, and the first draft of this helper got 0 wrong.
+ *
+ * <p><b>SYNCHRONOUS SINCE 28.09.2026, because waiting for it was waiting for nothing.</b> It was
+ * `findByRole`, and what that waited for was the BUTTON - which `app/Shell.tsx` draws beside the
+ * outlet on every screen of the portal, with the count already in its name and the count starting
+ * at nought (`app/MessagesMenu.tsx` builds the label from `lines.filter(...)` over an empty list
+ * until the inbox lands). So the wait was over before the first paint finished and the COUNT was
+ * then read exactly once. What waits now is {@link theEnvelopeSays}, and it waits for the thing
+ * being asserted.
  */
-function theEnvelope(): Promise<HTMLElement> {
-  return screen.findByRole('button', { name: new RegExp(sr.shell.openMessages) })
+function theEnvelope(): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(sr.shell.openMessages) })
+}
+
+/**
+ * WAITS UNTIL THE ENVELOPE SAYS THIS MANY ARE UNREAD.
+ *
+ * <p><b>The one home for the question this file asks seven times</b>, and it is written this way
+ * round because of a measurement rather than a preference. Six of those seven read the name ONCE,
+ * off an element that had been waited for and was never the thing in doubt: the button is on every
+ * screen from the first paint, so `await theEnvelope()` resolved immediately and the assertion
+ * after it was a snapshot. The count, on the other hand, arrives in two steps - the served answer,
+ * and then the answer again after `POST /api/inbox/{id}/read` drops the cache and bumps the
+ * revision (`data/useResource.ts`) - so the number is right a beat after the button is there. One
+ * of the seven had it right already and polled the assertion (the case below about asking once);
+ * that shape is what the other six now share rather than a second spelling beside it.
+ *
+ * <p><b>Strictness is unchanged and that is the whole reason this is not a trade.</b> A count that
+ * never becomes the one asserted still fails - later, and saying what the envelope said instead.
+ * What stops failing is a count that was right and arrived a millisecond after it was read.
+ *
+ * <p><b>What it does NOT stand in for, and every case here keeps its own.</b> The floor that says
+ * the inbox really landed is the case's own `findByRole` for a subject or a heading, not this; a
+ * poll for nought alone would be satisfied by an envelope that has not been told anything yet,
+ * since nought is also what it says before the first answer. That is why the case about a held
+ * message waits for its link and its heading before asking this at all.
+ */
+async function theEnvelopeSays(unread: number): Promise<void> {
+  await waitFor(() => {
+    expect(theEnvelope()).toHaveAccessibleName(saysUnread(unread))
+  })
 }
 
 /**
@@ -362,7 +399,7 @@ describe('a served message the member opens', () => {
     /* And the count really falls, which is the half no assertion about the request can make:
        two unread arrived, one was opened, and the number the header draws comes from the
        server's own second answer. */
-    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
+    await theEnvelopeSays(1)
 
     /* **AND IT WENT BACK TO THE SERVER TO LEARN THAT, which is the half the count cannot say.**
        Two reads: the one every screen of this portal makes at mount, and the one the accepted
@@ -377,11 +414,7 @@ describe('a served message the member opens', () => {
 
     renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000007')
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: new RegExp(sr.shell.openMessages) })).toHaveAccessibleName(
-        saysUnread(1),
-      ),
-    )
+    await theEnvelopeSays(1)
 
     /* **A floor under the mechanism rather than a tidiness check.** A successful write drops
        the cached inbox and bumps the revision on purpose, so this screen reads the server
@@ -409,8 +442,14 @@ describe('a served message the member opens', () => {
     })
 
     /* **THE AXIS THIS FILE CANNOT GET WRONG: a refusal must leave the count exactly as the
-       server last said it was.** Both unread, still. */
-    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(2))
+       server last said it was.** Both unread, still.
+
+       **And the poll cannot soften this one, which is worth saying where it is asserted.** Two is
+       what the server's FIRST answer says, so it is already true when this line is reached; what a
+       poll would let through is a count that became two later, and nothing here can take it from
+       two to anything else and back. The line below - one read and one only - is what says the
+       portal never went back to ask. */
+    await theEnvelopeSays(2)
 
     /* Settled, so that a read arriving a tick late is inside this case rather than after it. */
     await new Promise((settle) => setTimeout(settle, 0))
@@ -435,8 +474,11 @@ describe('a served message the member opens', () => {
     await screen.findByRole('heading', { level: 1, name: ALREADY_READ.subject })
 
     /* One unread arrived and one was already read, so the count is the floor under this: it
-       says the inbox really landed before the absence below was asserted. */
-    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
+       says the inbox really landed before the absence below was asserted. **One and not nought
+       is what makes it a floor at all**: nought is what the envelope says before anything has
+       arrived, so a poll for nought would be satisfied by an inbox that never landed, and a poll
+       for one cannot be. */
+    await theEnvelopeSays(1)
 
     expect(whatWasMarked()).toEqual([])
   }, SLOW * 2)
@@ -480,8 +522,13 @@ describe('a message the browser is holding', () => {
     /* **The count falling to NOUGHT is what says the mark landed**, and it landed in the
        session: nothing was sent. A screen that sent `POST /api/inbox/msg-1/read` would be asking
        the server about a key it has never heard of, and one that sent nothing AND marked nothing
-       would leave this at one. */
-    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(0))
+       would leave this at one.
+
+       **Nought is also what the envelope says before anything arrives, so this one line cannot
+       carry its own floor and does not pretend to.** What says the inbox landed is the served
+       link waited for above it, and what says the held line reached the list is `withOneHeld`;
+       both are awaited before this, so the only road from there to nought is the mark. */
+    await theEnvelopeSays(0)
 
     expect(whatWasMarked()).toEqual([])
   }, SLOW * 2)
@@ -534,7 +581,7 @@ describe('an announcement two members are both served', () => {
     await screen.findByRole('heading', { level: 1, name: TO_EVERYBODY.subject })
 
     /* He has read it: two arrived and one is left. */
-    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
+    await theEnvelopeSays(1)
 
     expect(whatWasMarked()).toEqual([`/api/inbox/${String(TO_EVERYBODY.id)}/read`])
 
@@ -558,7 +605,7 @@ describe('an announcement two members are both served', () => {
     /* **Hers is the one announcement and it is STILL UNREAD**, which is the whole case: his
        reading of it wrote a row naming him, and a row naming him says nothing about her. One
        served, unread, plus the seeded broadcast she is served too. */
-    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(1))
+    await theEnvelopeSays(1)
   }, SLOW * 2)
 })
 
