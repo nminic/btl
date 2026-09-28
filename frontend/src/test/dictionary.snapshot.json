@@ -1460,7 +1460,8 @@
       "theAmountIsNotKeptExactly": "Iznos je veći nego što portal može da zapiše, pa uplata nije proknjižena i članstvo nije upisano. Proveri iznos i unesi ga ponovo.",
       "theMethodIsNotKnown": "Način plaćanja nije prepoznat, pa uplata nije proknjižena i članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "theReferenceIsNotShaped": "Poziv na broj nije ispravnog oblika, pa uplata nije proknjižena i članstvo nije upisano.",
-      "theReferenceIsTaken": "Ovaj poziv na broj je već zapisan na drugoj uplati, pa uplata nije proknjižena i članstvo nije upisano."
+      "theReferenceIsTaken": "Ovaj poziv na broj je već zapisan na drugoj uplati, pa uplata nije proknjižena i članstvo nije upisano.",
+      "theMembershipCostsNothing": "Cenovnik za ovu sezonu ne traži ništa, pa uplata ne može da se proknjiži. Članstvo se u tom slučaju upisuje kao oslobođenje od članarine."
     },
     "body": {
       "leagues": "Opis lige",

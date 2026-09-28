@@ -216,7 +216,7 @@ export const WHEN_ACTIVATING: Record<string, string> = {
 }
 
 /**
- * THE NINE REFUSALS `POST /api/payments` NAMES, and the sentence this screen turns each into.
+ * THE TEN REFUSALS `POST /api/payments` NAMES, and the sentence this screen turns each into.
  *
  * <p><b>ITS OWN MAP AND NOT AN ADDITION TO {@link WHEN_ACTIVATING}, because they are two routes
  * and `pages/account/refusals.test.ts` counts over the FILE.</b> That floor reads every
@@ -226,14 +226,14 @@ export const WHEN_ACTIVATING: Record<string, string> = {
  * precedent for the opposite arrangement - two acts of one class, two maps - and this is the same
  * question with the classes the other way round.
  *
- * <p><b>Four of the nine point at the sentences {@link WHEN_ACTIVATING} already uses, and that is
+ * <p><b>Four of the ten point at the sentences {@link WHEN_ACTIVATING} already uses, and that is
  * deliberate rather than lazy.</b> `theFormIsNotComplete`, `theCompetitorDoesNotExist`,
  * `theMembershipIsAlreadyHeld` and `thePaymentWasReversed` mean the same thing whichever door
  * refused them, and the moderator is looking at one row either way. A second Serbian sentence
  * saying the same thing would be a second place to change when the wording changes, and the two
  * would drift.
  *
- * <p><b>THE SCREEN CANNOT REACH FIVE OF THE NINE AND ANSWERS THEM ANYWAY</b>, which is the shape
+ * <p><b>THE SCREEN CANNOT REACH FIVE OF THE TEN AND ANSWERS THEM ANYWAY</b>, which is the shape
  * `admin/priceWrites.ts` and {@link WHEN_ACTIVATING} both keep and the reason they give: the
  * screen is the floor and the route decides. Counted, because „cannot reach" is a claim:
  *
@@ -251,6 +251,17 @@ export const WHEN_ACTIVATING: Record<string, string> = {
  * knows what `numeric(10,2)` holds. So a moderator who types eleven digits is refused by the
  * server and reads a sentence.
  * </ul>
+ *
+ * <p><b>THE TENTH, `theMembershipCostsNothing`, ADDED 28.09.2026, AND IT IS THE ONE REFUSAL ON
+ * THIS LIST THAT IS ABOUT NO FIELD ON THIS SCREEN AT ALL.</b> It says the PRICE LIST asks nothing
+ * for the season this member is being booked into, which `PUT /api/pricing/{key}` allows since PDL
+ * 20b (free in both currencies or in neither) while `payment_amount_positive` (V16) will not take
+ * a payment of nought. The moderator typed nothing wrong, and that is why its sentence sends him
+ * to the exemption rather than back to the amount box: PDL 19 point 5 already routes „no money is
+ * owed" to `POST /api/memberships`, and this is that same state arrived at from the price list's
+ * side. Nothing the screen is served would let it predict this - the expected amount it draws
+ * comes from the same row, so it would read „3 EUR" for a free membership abroad - so it is a
+ * sixth reason the screen answers without being able to reach.
  */
 export const WHEN_BOOKING_A_PAYMENT: Record<string, string> = {
   theFormIsNotComplete: 'verification.activationRefused.theFormIsNotComplete',
@@ -262,6 +273,7 @@ export const WHEN_BOOKING_A_PAYMENT: Record<string, string> = {
   theReferenceIsTaken: 'verification.activationRefused.theReferenceIsTaken',
   thePaymentWasReversed: 'verification.activationRefused.thePaymentWasReversed',
   theMembershipIsAlreadyHeld: 'verification.activationRefused.theMembershipIsAlreadyHeld',
+  theMembershipCostsNothing: 'verification.activationRefused.theMembershipCostsNothing',
 }
 
 /**
