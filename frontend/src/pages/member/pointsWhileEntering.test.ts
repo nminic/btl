@@ -155,6 +155,30 @@ function keysNamingPoints(): string[] {
   return walk(sr, '').sort()
 }
 
+/**
+ * Whether a module puts a figure of BTL points on a page, asked two ways.
+ *
+ * Two, because either alone has a direction it cannot see: the formatter misses a sentence
+ * that carries a figure worked out elsewhere, and the word misses a figure printed with no
+ * word beside it. Each way has a floor of its own below, naming a module only that way
+ * finds, so neither can quietly stop answering behind the other.
+ *
+ * The code is read with its comments blanked (`test/sources.ts`), so a note ABOUT a sentence
+ * - and this change left several, each naming what it removed - is not taken for the
+ * sentence being asked for.
+ */
+function writesAFigure(code: string, path: string, keys: string[]): boolean {
+  const formats = namesTakenFrom(code, path, FORMATTER_LIVES_IN).includes('formatPoints')
+  const written = bare(code)
+
+  return formats || keys.some((key) => written.includes(`'${key}'`))
+}
+
+/** Whether a module is one of the roads a result is sent in by. */
+function sendsAResult(code: string, path: string): boolean {
+  return namesTakenFrom(code, path, WRITES_LIVE_IN).some((name) => SENDS.includes(name))
+}
+
 /** Every module of the portal, sorted into the two answers that matter. */
 function sweep(): { walked: number; sending: string[]; writingAFigure: string[] } {
   const keys = keysNamingPoints()
@@ -165,18 +189,11 @@ function sweep(): { walked: number; sending: string[]; writingAFigure: string[] 
   for (const one of walked) {
     const where = named(one.path)
 
-    if (namesTakenFrom(one.code, one.path, WRITES_LIVE_IN).some((name) => SENDS.includes(name))) {
+    if (sendsAResult(one.code, one.path)) {
       sending.push(where)
     }
 
-    /* Two ways of putting a figure on a page, and a module doing either is one that writes
-       one. The code is read with its comments blanked (`test/sources.ts`), so the notes this
-       change left behind - each of which names the sentence it removed - are not taken for
-       the sentence being asked for again. */
-    const written = bare(one.code)
-    const formats = namesTakenFrom(one.code, one.path, FORMATTER_LIVES_IN).includes('formatPoints')
-
-    if (formats || keys.some((key) => written.includes(`'${key}'`))) {
+    if (writesAFigure(one.code, one.path, keys)) {
       writingAFigure.push(where)
     }
   }
@@ -209,6 +226,61 @@ describe('what a result is worth, while it is being entered', () => {
       sending.filter((one) => writingAFigure.includes(one)),
       'a screen that sends a result in has begun to write what it is worth',
     ).toEqual([])
+  })
+
+  it('finds a figure by the formatter and by the word, and neither alone', () => {
+    /* `MyResults.tsx` above does BOTH - it takes the formatter and names the unit - so it
+       would go on being found with either half of the reading switched off, and the case
+       above would pass over a guard reading half of what it says it reads. Measured:
+       switching off either half left every line above green.
+
+       So each half is floored on a module only IT finds. `Rankings.tsx` formats a figure
+       into a table cell and names no unit sentence; `home/Counters.tsx` says the word under
+       a counter and never touches the formatter. */
+    const { writingAFigure } = sweep()
+
+    expect(writingAFigure, 'nothing is found by the formatter alone').toContain(
+      'pages/Rankings.tsx',
+    )
+    expect(writingAFigure, 'nothing is found by the word alone').toContain(
+      'pages/home/Counters.tsx',
+    )
+  })
+
+  it('reads an import by what the other module calls it, and not by the local name', () => {
+    /* Nothing in the portal renames either import today, so the whole of this reading would
+       answer the same with the renaming dropped, and the sweep would then be blind to
+       exactly the one-token change somebody makes while tidying up. Asked here of a snippet
+       instead, since the portal has no instance to ask it of.
+
+       A real path is handed in with the made-up code, because the specifier is RESOLVED and
+       resolution needs somewhere to start from. */
+    const where = join(SRC, 'pages', 'member', 'NewResult.tsx')
+
+    expect(
+      namesTakenFrom("import { formatPoints as howMany } from '../../i18n/format'\n", where, FORMATTER_LIVES_IN),
+    ).toEqual(['formatPoints'])
+    expect(
+      namesTakenFrom("import { theRunWasSentIn as send } from './resultWrites'\n", where, WRITES_LIVE_IN),
+    ).toEqual(['theRunWasSentIn'])
+  })
+
+  it('counts a sentence being asked for, and never one being written about', () => {
+    /* This change left a note in four files naming the sentence it removed, and the removed
+       one is no longer in the dictionary so none of those notes is found. The next such note
+       may name a sentence that IS - `MyResults.tsx` already carries one - and a reading that
+       took prose for a call would report a screen as writing a figure because somebody
+       explained why it does not.
+
+       Asked of a snippet for the same reason as above: today's portal has no sending module
+       with such a comment in it, so the blanking carries nothing until it does. */
+    const where = join(SRC, 'pages', 'member', 'NewResult.tsx')
+    const keys = keysNamingPoints()
+
+    expect(writesAFigure("const said = t('units.btlPoints')\n", where, keys)).toBe(true)
+    expect(writesAFigure("/* Never t('units.btlPoints') on this screen. */\n", where, keys)).toBe(
+      false,
+    )
   })
 
   it('is asked of both roads, and there are two of them', () => {
