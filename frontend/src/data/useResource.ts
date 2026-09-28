@@ -2,7 +2,14 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { DucatFamily } from './ducatRule'
 import { useSession } from '../session/useSession'
 import type { Message } from '../session/context'
-import { arrivedResource, clearResourceCache, loadResource, type ResourceName } from './client'
+import {
+  addressOf,
+  arrivedResource,
+  clearResourceCache,
+  loadResource,
+  type ResourceName,
+} from './client'
+import { useI18n } from '../i18n/useI18n'
 import type {
   Attending,
   BtlEvent,
@@ -101,11 +108,31 @@ export type ResourceState<T> =
  * breath, and turning each of those into a re-read of a mounted screen is a change to every
  * administrative flow on the portal in a branch about an envelope.
  */
-export function useResource<T>(
-  name: ResourceName,
-  owner?: string,
-  revision?: number,
-): ResourceState<T> {
+export type HowToRead = {
+  owner?: string
+  revision?: number
+  /**
+   * The language to ask this resource for, absent on the fourteen that have no language.
+   *
+   * <p>It reaches the address through `client.ts`'s `addressOf` and reaches the effect below
+   * through that same address, so the language that is FETCHED and the language the effect
+   * re-runs FOR are one value read once. Written as one field rather than as a language here
+   * and an owner there for exactly that reason: those were the two halves the review of
+   * 28.09.2026 named as the shape that tells each half and never tells the join.
+   */
+  language?: string
+}
+
+export function useResource<T>(name: ResourceName, how: HowToRead = {}): ResourceState<T> {
+  const { owner, revision, language } = how
+
+  /* THE ADDRESS, WHICH IS WHAT THIS HOOK IS REALLY ABOUT, and the effect's dependency
+     instead of `name`. For the fourteen names that pass no language it IS the name, one for
+     one (`/api/<name>`), so nothing about them moves; for `pages` it is what makes a reader
+     who switches language ask again, because the address he is on is not the address he had.
+     Read from `client.ts` rather than built here, so there is no second place that decides
+     what a language does to an address. */
+  const address = addressOf(name, language)
   /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` or
    * `revision` changes, which the effect below now also answers to.
    *
@@ -113,7 +140,7 @@ export function useResource<T>(
    * decides whether the router has a page to put a scroll position back into.
    * Reading it on every render would be reading a value nothing here is
    * subscribed to. */
-  const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name))
+  const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name, language))
 
   useEffect(() => {
     /* Asked for even when the value is already in hand, and that is what closes
@@ -124,7 +151,7 @@ export function useResource<T>(
        is already holding, so what it costs is a render nobody sees. */
     let active = true
 
-    loadResource<T>(name).then(
+    loadResource<T>(name, language).then(
       (data) => {
         if (active) {
           setState({ status: 'ready', data })
@@ -140,14 +167,19 @@ export function useResource<T>(
     return () => {
       active = false
     }
-  }, [name, owner, revision])
+    /* `address` and not `name`: it carries the name and the language together, and for the
+       fourteen callers that pass no language the two are the same value in a different sort.
+       `language` is read inside and is not listed, which the linter would otherwise ask for -
+       it cannot change without `address` changing, because `address` is built from it. */
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [address, owner, revision])
 
   return state
 }
 
 /** What this visit already holds for a resource, as a state a screen can draw. */
-function atHand<T>(name: ResourceName): ResourceState<T> {
-  const known = arrivedResource<T>(name)
+function atHand<T>(name: ResourceName, language?: string): ResourceState<T> {
+  const known = arrivedResource<T>(name, language)
 
   return known === undefined ? { status: 'loading' } : { status: 'ready', data: known }
 }
@@ -356,7 +388,40 @@ export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'event
 export const useAttendance = () => useResource<Attending[]>('attendance')
 export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
-export const usePages = () => useResource<StaticPage[]>('pages')
+/**
+ * THE WRITTEN PAGES, IN THE LANGUAGE OF THE ADDRESS THE READER IS ON.
+ *
+ * <p><b>The only one of the seventeen that asks for a language, and the day it started is
+ * 28.09.2026.</b> `GET /api/pages?lang=en` has answered in English since V43 put the words in
+ * the tables, and this portal sent no parameter at all, so every reader on `/en` was served
+ * the SERBIAN rulebook, terms of use and privacy policy. Measured before the change on
+ * `/en/uslovi-koriscenja`: `/api/pages` asked for with no parameter, „Uslovi korišćenja"
+ * drawn, and `document.documentElement.lang` saying `en` over every word of it - which
+ * `i18n/config.ts` names as the one thing that must not happen, „`lang="en"` over Serbian
+ * text makes a screen reader read it with English phonetics, which is unintelligible".
+ *
+ * <p><b>Why the locale of the ADDRESS and not `dictionaryLocale(locale)`.</b> Those two
+ * answer different questions and `PageApi` says so in as many words: that table knows „the
+ * language of a SWITCH", and what is wanted here is the language the reader ASKED FOR. The
+ * server decides what it can answer with and says which language each page really came back
+ * in, per page; asking in the dictionary's language instead would hand the server an answer
+ * it had already worked out, and would ask in Serbian for a locale that has a translation of
+ * the pages but not of the interface.
+ *
+ * <p><b>What happens to a page that has no translation is the owner's decision and not this
+ * hook's</b> (ADL, 18.09.2026, his own choice among outcomes he was priced: „Kad prevoda nema,
+ * vraca se na srpski, BEZ napomene. Citalac uvek dobije tekst i portal nema rupu"). So nothing
+ * here checks, nothing falls back and nothing apologises: the route serves the original whole
+ * (`PageApi.pagesIn`, „whole or nothing") and the screen draws what came. The one thing the
+ * screens do add is the `lang` attribute of the element the words are drawn in, read off the
+ * page's own `language` field - which is not a notice to anybody, and is what keeps that
+ * decision from being read aloud in the wrong phonetics.
+ */
+export function usePages(): ResourceState<StaticPage[]> {
+  const { locale } = useI18n()
+
+  return useResource<StaticPage[]>('pages', { language: locale })
+}
 /**
  * The price list, in the order the server gave it.
  *
@@ -617,7 +682,10 @@ export function useInbox(
   /* `mine` again, as `useResource`'s owner - UNLESS this caller asked not to, in which case
      `undefined` is what every other one of `useResource`'s fourteen callers already passes,
      and this instance goes back to reading the cache once, at mount, same as they do. */
-  const served = useResource<ServedMessage[]>('inbox', reactive ? mine : undefined, revision)
+  const served = useResource<ServedMessage[]>('inbox', {
+    owner: reactive ? mine : undefined,
+    revision,
+  })
 
   return useMemo(() => {
     if (served.status !== 'ready') {

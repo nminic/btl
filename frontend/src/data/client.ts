@@ -149,8 +149,48 @@ export const RESOURCE_NAMES = [
 
 export type ResourceName = (typeof RESOURCE_NAMES)[number]
 
-async function request<T>(name: ResourceName): Promise<T> {
-  const response = await fetch(`${BASE}/${name}`)
+/**
+ * What the server calls the parameter, held once so the address and every case that reads it
+ * are one text rather than two that have to be kept equal.
+ *
+ * <p>It is `lang` while the column behind it is `language`, and that is deliberate on the
+ * server's side too ({@code PageApi.THE_LANGUAGE_ASKED_FOR}): the parameter is named for the
+ * `lang` attribute a screen reader reads, and the column is named for the thing it holds.
+ */
+const THE_LANGUAGE_ASKED_FOR = 'lang'
+
+/**
+ * THE ADDRESS OF A RESOURCE, AND THE ONE PLACE THAT KNOWS HOW A LANGUAGE GETS INTO IT.
+ *
+ * <p>Read by all four of {@link request}, {@link loadResource}, {@link arrivedResource} and
+ * {@link clearResourceCache}, so those four cannot disagree about what the address is. That
+ * is the whole reason it exists as a function: the two caches below are keyed by what comes
+ * out of here, so a fetch that built its address one way and a cache that built it another
+ * would hand one language's answer to the other reader and nothing would say so.
+ *
+ * <p><b>Why the language rides in the address rather than beside it.</b> `PageApi`'s own
+ * heading settles this on the server's side and this is the other half of it: „A query string
+ * is part of the address, so the edge holds the two languages as two resources." Anything
+ * outside the address - a header, a cookie - would have to be varied on at the edge, „što
+ * ruši keširanje na ivici (ADL.md, A6)" (PDL P18). The same sentence decides the cache here:
+ * two languages are two addresses, therefore two entries, and nothing has to be dropped when
+ * a reader switches language.
+ *
+ * <p><b>The fourteen names that pass no language get back exactly the address they had
+ * before</b> - `/api/<name>`, byte for byte - so nothing about them moves. This is not the
+ * shape `inbox` needed and the difference is worth the sentence: that answer differs per
+ * caller at ONE address, so it is dropped when the caller changes
+ * (`theInboxNowBelongsTo`, `data/useResource.ts`). A written page in two languages is two
+ * addresses, so there is nothing to drop.
+ */
+export function addressOf(name: ResourceName, language?: string): string {
+  return language === undefined
+    ? `${BASE}/${name}`
+    : `${BASE}/${name}?${THE_LANGUAGE_ASKED_FOR}=${encodeURIComponent(language)}`
+}
+
+async function request<T>(name: ResourceName, language?: string): Promise<T> {
+  const response = await fetch(addressOf(name, language))
 
   if (!response.ok) {
     throw new Error(`Cannot load ${name}: ${response.status}`)
@@ -171,8 +211,15 @@ async function request<T>(name: ResourceName): Promise<T> {
  * the browser cannot help either. The promise is cached rather than the value,
  * so two screens mounting at once share a single request.
  *
- * A failure is not cached: it is dropped so the next attempt can succeed. */
-const inFlight = new Map<ResourceName, Promise<unknown>>()
+ * A failure is not cached: it is dropped so the next attempt can succeed.
+ *
+ * **KEYED BY THE ADDRESS AND NOT BY THE NAME SINCE 28.09.2026**, which is what let one name
+ * answer in two languages. Keyed by name, `/en/uslovi-koriscenja` was served whatever
+ * `/sr/uslovi-koriscenja` had already fetched: measured before the change, switching the
+ * language on a written page made NO new request and left the Serbian text on screen. The key
+ * comes out of {@link addressOf} and out of nowhere else, so what is fetched and what is
+ * stored cannot drift apart. */
+const inFlight = new Map<string, Promise<unknown>>()
 
 /* What has already arrived, kept beside the promise that fetched it.
  *
@@ -183,7 +230,7 @@ const inFlight = new Map<ResourceName, Promise<unknown>>()
  * scroll back, so the browser has nowhere to scroll to and the position is lost
  * (owner, 04.08.2026). The value is what makes the second visit whole from the
  * first paint. */
-const arrived = new Map<ResourceName, unknown>()
+const arrived = new Map<string, unknown>()
 
 /*
  * The two assertions below, with the one in `request` above, are three of the
@@ -224,26 +271,27 @@ const arrived = new Map<ResourceName, unknown>()
  * then: the stored value wraps the indexed type in a promise, and TypeScript
  * refuses the correlated write.
  */
-export function loadResource<T>(name: ResourceName): Promise<T> {
-  const cached = inFlight.get(name)
+export function loadResource<T>(name: ResourceName, language?: string): Promise<T> {
+  const at = addressOf(name, language)
+  const cached = inFlight.get(at)
 
   if (cached !== undefined) {
     // oxlint-disable-next-line typescript/consistent-type-assertions
     return cached as Promise<T>
   }
 
-  const promise = request<T>(name)
+  const promise = request<T>(name, language)
     .then((data) => {
-      arrived.set(name, data)
+      arrived.set(at, data)
 
       return data
     })
     .catch((error: unknown) => {
-      inFlight.delete(name)
+      inFlight.delete(at)
       throw error
     })
 
-  inFlight.set(name, promise)
+  inFlight.set(at, promise)
 
   return promise
 }
@@ -254,8 +302,8 @@ export function loadResource<T>(name: ResourceName): Promise<T> {
  * Read while rendering, which is the whole point of it: absence here means the
  * screen has to wait, and that is a fact about the visit rather than a failure.
  */
-export function arrivedResource<T>(name: ResourceName): T | undefined {
-  const known = arrived.get(name)
+export function arrivedResource<T>(name: ResourceName, language?: string): T | undefined {
+  const known = arrived.get(addressOf(name, language))
 
   // oxlint-disable-next-line typescript/consistent-type-assertions
   return known === undefined ? undefined : (known as T)
@@ -272,8 +320,16 @@ export function arrivedResource<T>(name: ResourceName): T | undefined {
  * called this at all; both screens held what they wrote in the session's own provider
  * instead, which is what let them survive being unmounted without asking again, and this
  * cache staying full for the whole visit was never the fault while that was true.
+ *
+ * **A language narrows it further, and it is asked for through {@link addressOf} like
+ * everything else here.** Nothing calls it that way today - the one name that carries a
+ * language is `pages`, and nothing on the portal writes a written page (ADL, 18.09.2026:
+ * „Upisne rute za strane nema i nece je biti"). It takes the argument regardless, because
+ * the alternative is worse than an argument nobody passes: without it this function would
+ * build `/api/pages`, an address the cache has not held since the language went into it, and
+ * a caller clearing the written pages would be handed a silence that reads as success.
  */
-export function clearResourceCache(name?: ResourceName): void {
+export function clearResourceCache(name?: ResourceName, language?: string): void {
   if (name === undefined) {
     inFlight.clear()
     arrived.clear()
@@ -281,6 +337,8 @@ export function clearResourceCache(name?: ResourceName): void {
     return
   }
 
-  inFlight.delete(name)
-  arrived.delete(name)
+  const at = addressOf(name, language)
+
+  inFlight.delete(at)
+  arrived.delete(at)
 }

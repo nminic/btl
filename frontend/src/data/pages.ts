@@ -10,7 +10,10 @@ import type { PageSection, StaticPage } from './types'
  * say which.
  */
 
-const MISSING: StaticPage = { slug: '', title: '', sections: [] }
+/* A page that is not there, and therefore in no language: the empty tag is what HTML itself
+ * means by „not known" on a `lang` attribute, and it is never drawn, because a page with no
+ * sections renders nothing. */
+const MISSING: StaticPage = { slug: '', title: '', language: '', sections: [] }
 
 /** The address of the president, which the front page draws inside itself. */
 export const PRESIDENT_PAGE = 'rec-predsednika'
