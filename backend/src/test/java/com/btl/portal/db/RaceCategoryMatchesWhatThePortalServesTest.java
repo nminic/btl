@@ -213,10 +213,15 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 	 * <p><b>And that is not free, which is measured rather than guessed.</b> V25 widened
 	 * {@code race.distance_km} from {@code numeric(6,2)} to {@code numeric(8,4)}, so the
 	 * sweep over that table went from a million values to a hundred million - 0.95s to
-	 * 35s against postgres:18. {@code result.distance_km} is still {@code numeric(6,2)}
-	 * and still sweeps a million. The cost is left where it is on purpose: a bound picked
-	 * to be cheap is a bound somebody chose, and the two rounds above are what that costs
-	 * when it is wrong.
+	 * 35s against postgres:18. <b>V44 did the same to {@code result.distance_km}</b>, in
+	 * the commit that first lets a moderator approve a result, because a submission
+	 * carrying 42,1950 copied into a narrow column is rounded to 42,20 and then says
+	 * {@code marathon} while the race it was run at says {@code long}. This class paid for
+	 * that the way it said it would: measured on the same machine either side of the one
+	 * statement, the class went from <b>31,57s to 62,88s</b>, which is the second sweep
+	 * arriving at the size of the first. The cost is left where it is on purpose: a bound
+	 * picked to be cheap is a bound somebody chose, and the two rounds above are what that
+	 * costs when it is wrong.
 	 *
 	 * <p>Neither side is typed out here: one comes off the file the portal serves,
 	 * the other off what the database answered, and the domain off the catalogue.
