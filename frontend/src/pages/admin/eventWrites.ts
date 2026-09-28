@@ -110,17 +110,25 @@ export type RaceUpsert = {
  */
 export function raceUpsertFrom(row: RaceRow, eventId: string): RaceUpsert {
   const stored = storedRow(row, eventId)
+  /* `storedRow` answers a `Record<string, string>`, and `noUncheckedIndexedAccess`
+     is on (`tsconfig.app.json`), so nothing in the TYPE promises the nine keys it
+     writes. The empty string is therefore what „the record did not carry it" reads
+     as, and it is not a second rule: an empty name is what `RaceWriteApi` refuses as
+     `theFormIsNotComplete`, and an empty number reads as nought, which is what a race
+     that fixes no length carries. Written as a fallback the route would never see, it
+     would be a branch nothing could fell; written like this, the route decides. */
+  const text = (name: string): string => stored[name] ?? ''
 
   return {
     eventId: Number(eventId),
-    name: stored.name,
-    renamed: stored.renamed === 'true',
-    date: stored.date,
-    kind: stored.kind,
-    limitSeconds: Number(stored.limitSeconds),
-    distanceKm: Number(stored.distanceKm),
-    ascentM: Number(stored.ascentM),
-    descentM: Number(stored.descentM),
+    name: text('name'),
+    renamed: text('renamed') === 'true',
+    date: text('date'),
+    kind: text('kind'),
+    limitSeconds: Number(text('limitSeconds')),
+    distanceKm: Number(text('distanceKm')),
+    ascentM: Number(text('ascentM')),
+    descentM: Number(text('descentM')),
   }
 }
 

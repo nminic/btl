@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useToday } from '../../clock/useClock'
 import { fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { Resource } from '../../components/Resource'
+import { clearResourceCache } from '../../data/client'
+import type { BtlEvent } from '../../data/types'
 import {
   RESULTS,
   combinePair,
@@ -13,9 +15,17 @@ import {
 } from '../../data/useResource'
 import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useSession } from '../../session/useSession'
-import { EntityBar, EntityEditor, RowActions } from './EntityEditor'
-import { EVENTS, RACES, eventClash, recordsOf, type Editing, type EntityDef } from './entityForms'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { ServerSaid } from '../account/ServerSaid'
+import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
+import {
+  EVENTS,
+  RACES,
+  eventClash,
+  recordsOf,
+  type Editing,
+  type Overlay,
+} from './entityForms'
 import { recordKey } from '../../session/context'
 import { dogadjaj } from '../../forms/definitions'
 import type { FormDef, FormValues } from '../../forms/types'
@@ -23,12 +33,20 @@ import type { FormDef, FormValues } from '../../forms/types'
 import { categoryOf } from '../../data/raceCategory'
 import { EventRaces } from './EventRaces'
 import { raceKind } from '../../data/raceKind'
-import { allFinished, rowsOf, storedRow, type RaceOfRow, type RaceRow } from './raceRows'
-import { nextIdentity } from './raceIds'
+import { allFinished, rowsOf, type RaceOfRow, type RaceRow } from './raceRows'
 import { nextSeason } from './nextSeason'
-import { useOverlay } from './overlay'
+import {
+  WHEN_WRITING_AN_EVENT,
+  WHEN_WRITING_A_RACE,
+  raceUpsertFrom,
+  upsertFrom,
+  writtenIn,
+} from './eventWrites'
 import '../member/Member.css'
 import { useFilterParams } from '../../app/useFilterParams'
+
+/** An overlay holding nothing, which is what this screen starts every visit with. */
+const NOTHING_YET: Overlay = { edits: {}, creations: {}, deletions: {} }
 
 /**
  * The event form as a copy is asked it: without the town, the country and the
@@ -99,8 +117,33 @@ function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] 
  * in, so it opens on what is still ahead rather than on the whole archive. */
 export function AdminEvents() {
   const { locale, t } = useI18n()
-  const { editRecord, remove, create } = useSession()
-  const overlay = useOverlay()
+  /**
+   * WHAT THIS VISIT HAS WRITTEN, HELD HERE AND NO LONGER IN THE SESSION.
+   *
+   * <p><b>This is the whole of the fault this screen was carrying.</b> Every one of its
+   * actions used to write into the session overlay (`session/context.ts`), which is what a
+   * portal without a database did: the row appeared, the confirmation said „Sačuvano", and
+   * all of it went on the next F5 while the database had never heard of it. Worse in one
+   * direction than the others - a deletion filed there is read by `useLive`
+   * (`data/useResource.ts`), which every screen that draws an event goes through, so
+   * deleting an event took it off the PUBLIC calendar for the rest of that visit while the
+   * row stood in the database and every other visitor still saw it.
+   *
+   * <p><b>Why anything is held at all, now that the server knows.</b> A screen that is
+   * still mounted never asks its resource again - `useResource`'s effect runs once, on the
+   * name - so there is nothing here to re-read the moment a write comes back. What is held
+   * is therefore what the server has just ACCEPTED, never what this screen hopes it did:
+   * every write below happens inside the branch that ran only because an answer said so.
+   * That is the arrangement `admin/AdminLeagues.tsx` already uses and gives its reason for.
+   *
+   * <p><b>And the cache does not outlive a successful write either.</b> This overlay dies
+   * with the component while the served array does not, so without
+   * `clearResourceCache('events')` an event entered here was gone the instant the router
+   * carried the reader to another screen and back - the row was never lost, only what this
+   * component remembered.
+   */
+  const [written, setWritten] = useState<Overlay>(NOTHING_YET)
+  const overlay = written
   const [search, setSearch] = useState('')
   /* And what was opened by pressing something somewhere else. The calendar
      sends a date here (`?nov=2027-05-08`), which is a `+` pressed on that day
@@ -174,6 +217,84 @@ export function AdminEvents() {
      season later, and both its id and its `copiedFrom` would still say „copy"
      then (event/EventActions.tsx). */
   const copying = params.get('kopija') === '1'
+  /**
+   * THE EVENT THIS EDITOR HAS ALREADY MADE ON THE SERVER, so a second press changes it
+   * rather than making another one.
+   *
+   * <p><b>A press can end without the form closing, and that is new.</b> The session write
+   * could not fail, so „pressed twice" meant nothing; a route can accept the event and then
+   * refuse one of its mornings, and the editor stays open with everything still typed so the
+   * reader can put the race right and press again. Without this, that second press would
+   * `POST` a second event - at the same address, so the route would answer
+   * `theAddressIsTaken` and the reader would be told his event is a duplicate of itself.
+   *
+   * <p>A ref and not state, for the same reason `EntityEditor`'s own `asking` is one: it is
+   * read inside the press that is running, and a value React has not re-rendered yet is a
+   * value the next press reads as it was.
+   */
+  const madeHere = useRef<number | null>(null)
+
+  /** What just happened, for whoever is not watching the list. */
+  const [said, setSaid] = useState('')
+
+  /** Why a deletion did not happen, beside the row it was pressed on. */
+  const [refusedDelete, setRefusedDelete] = useState<{
+    id: number
+    answer: Exclude<Answer, { got: 'done' }>
+  } | null>(null)
+
+  /** The words for an answer that was not „it was done". */
+  function saying(answer: Exclude<Answer, { got: 'done' }>, refusals: Record<string, string>) {
+    return <ServerSaid answer={answer} refusals={refusals} />
+  }
+
+  /**
+   * AND TAKING ONE AWAY, WITH EVERYTHING THAT HANGS OFF IT.
+   *
+   * <p>One request, because `DELETE /api/events/{id}` is one statement and the schema
+   * cascades the rest: the races from the event, the results from the race, and the
+   * attendance and the comments beside them. Owner, 03.08.2026: an event is deleted with
+   * all of its races, and that is the only action there is.
+   *
+   * <p><b>All three names are dropped from the cache, not just the event's.</b> The races
+   * and the results this took down are still sitting in the two arrays this visit fetched,
+   * and a screen that asked for them again would draw races belonging to an event that is
+   * gone. The overlay below only says the EVENT is gone, because that is all it can say
+   * honestly: which races went with it is the database's answer, and the next read is
+   * where it comes from.
+   */
+  async function deleteOne(event: BtlEvent): Promise<void> {
+    const answer = await askTheServer(`/api/events/${String(event.id)}`, {}, 'DELETE')
+
+    if (answer.got !== 'done') {
+      setRefusedDelete({ id: event.id, answer })
+
+      return
+    }
+
+    clearResourceCache('events')
+    clearResourceCache('races')
+    clearResourceCache(RESULTS)
+    setRefusedDelete(null)
+    setSaid(t('admin.eventGone'))
+    setWritten((before) => ({
+      ...before,
+      /* OUT OF BOTH STORES, because an event entered during this visit is held as a
+         CREATION and one that was served is filtered out by a DELETION. Written into the
+         second only, the row somebody just made would go on standing and he would press
+         Delete on it again, against an event the server has already forgotten. */
+      creations: {
+        ...before.creations,
+        [EVENTS.id]: (before.creations[EVENTS.id] ?? []).filter(
+          (made) => made.id !== String(event.id),
+        ),
+      },
+      deletions: {
+        ...before.deletions,
+        [EVENTS.id]: [...(before.deletions[EVENTS.id] ?? []), String(event.id)],
+      },
+    }))
+  }
 
   return (
     <div className="member">
@@ -189,14 +310,15 @@ export function AdminEvents() {
              the file the count below said an event copied here had no races,
              while its races were on the next screen along. */
           const allRaces = recordsOf(RACES, races, overlay)
-          /* A result is not an entity anybody edits here, so there is no
-             definition of one to reach for. What `recordsOf` reads off a
-             definition is its `id` and its `idField`; everything else is carried
-             along unread, and `EVENTS` is here only because the parameter is
-             typed as a whole definition. Written out so the line is not read as
-             a claim that a result is an event. */
-          const asResults: EntityDef = { ...EVENTS, id: RESULTS, idField: 'id' }
-          const allResults = results === null ? [] : recordsOf(asResults, results, overlay)
+          /* THE RESULTS ARE READ AND NO LONGER LISTED, and the difference is the
+             whole of what the cascade took over. This screen used to build records
+             of them so that deleting an event or a race could file each one as a
+             session deletion by hand; `result_race_fk` cascades from the race, so
+             the database does it in the statement that takes the race down.
+
+             What is still read is whether the file is HERE, which is the one thing
+             the row's delete button waits for (`whyNoRemove` below). That gate is
+             older than this change and is left exactly as it was. */
           /* Worked out rather than copied into state.
            *
              It was an effect that put the record from the address into state,
@@ -240,6 +362,186 @@ export function AdminEvents() {
                 : rowsOf(racesUnder(allRaces, under), fieldDate)
             const setCurrent = (next: RaceRow[]) => {
               setHeld({ of: under, rows: next })
+            }
+
+            /**
+             * THE MORNINGS OF THIS EVENT, WRITTEN ONE AT A TIME, AFTER THE EVENT ITSELF.
+             *
+             * <p>Three things happen and the order is the order the session write kept, for
+             * the same reason: a race taken off the table goes first, so a length deleted and
+             * entered again in one sitting does not meet itself at its own address
+             * (`theAddressIsTaken`). A race that already exists is written over. A row that is
+             * new is created under the identity the event write just handed back.
+             *
+             * <p><b>What is NOT here, and it is the largest thing this change removed.</b> The
+             * session write had to take the results down by hand - by the race that went, and
+             * by the event's address where the whole event stopped being a race - because
+             * nothing else would have. The database does it: `result_race_fk` cascades from
+             * the race (`EventWriteApi`'s own class note names it), so a race deleted here
+             * takes its results with it in the same statement. Written again on this side it
+             * would be a second answer to a question the schema has already answered, and the
+             * day the two disagreed the schema would win silently.
+             *
+             * <p><b>Nothing is sent for a gathering or a training.</b> Owner, 23.08.2026, on
+             * what changing the kind does: „prvo se sakriju sve trke sa ekrana, ali mogu da se
+             * vrate ukoliko vratiš da je tip Trka. Ako se sačuva kao neki drugi tip, u to
+             * čuvanje spada i brisanje svih trka koje su bile povezane." So the rows stay on
+             * the screen, `kept` is empty, and every filed race is deleted.
+             *
+             * @returns the answer that refused one of them, or null where every one went
+             *          through
+             */
+            async function writeTheRaces(
+              values: FormValues,
+              eventId: string,
+            ): Promise<Exclude<Answer, { got: 'done' }> | null> {
+              const was = allRaces.filter((one) => String(one.eventId) === eventId)
+              const kept =
+                kindOf(values) === 'race'
+                  ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
+                  : new Set<string>()
+
+              for (const race of was) {
+                if (!kept.has(String(race.id))) {
+                  const answer = await askTheServer(`/api/races/${String(race.id)}`, {}, 'DELETE')
+
+                  if (answer.got !== 'done') {
+                    return answer
+                  }
+                }
+              }
+
+              for (const row of kindOf(values) === 'race' ? current : []) {
+                /* A row that never was a race is made, and one that is, is written over.
+                   Read off the row's own identity rather than off anything counted here:
+                   the numbers this screen used to hand out came from `admin/raceIds.ts`,
+                   which counts DOWN from nought, and the whole of that is gone - a
+                   `bigserial` is what a race is addressed by now. */
+                const answer =
+                  row.id === ''
+                    ? await askTheServer('/api/races', raceUpsertFrom(row, eventId))
+                    : await askTheServer(
+                        `/api/races/${row.id}`,
+                        raceUpsertFrom(row, eventId),
+                        'PUT',
+                      )
+
+                if (answer.got !== 'done') {
+                  return answer
+                }
+              }
+
+              return null
+            }
+
+            /**
+             * THE EVENT AND ITS MORNINGS, IN ONE PRESS, AGAINST THE ROUTES.
+             *
+             * <p>`POST /api/events` answers 201 with the id AND the address it filed the event
+             * under, `PUT` answers 200 with the same pair, and both are read off the answer
+             * rather than worked out here. This portal knows the address rule and so does the
+             * server (`eventWrites.ts`, `writtenIn`); the route is the one that decides.
+             *
+             * <p><b>WHAT HAPPENS WHEN THE EVENT GOES THROUGH AND A RACE DOES NOT, which is the
+             * one thing this press must never lie about.</b> The event is on the server at that
+             * point. Answering „it was not saved" would send the reader to enter it again, onto
+             * its own address, and the route would tell him it is taken. So the refusal that
+             * comes back says the truth in one sentence - the event is saved, a race is not -
+             * and the form stays open with everything he typed, so he can put the row right and
+             * press again. `madeHere` is what makes that second press a change rather than a
+             * second event.
+             *
+             * <p><b>The portal has no precedent for this and that is measured, not assumed.</b>
+             * The one other screen that writes a record and its children in one press is
+             * `admin/LeagueRaceModeration.tsx`, and it never makes N writes: it hands the whole
+             * day to the server as `{eventId}` and the route walks it. `/api/races` takes one
+             * race, so there is no such door here. What is written above is therefore the least
+             * that is true rather than a protocol copied from somewhere, and the boundary is
+             * written down: a press refused on its third race leaves the first two written.
+             */
+            async function saveOne(
+              values: FormValues,
+              text: Record<string, string>,
+            ): Promise<Saving> {
+              const standing =
+                madeHere.current ??
+                (editing !== null && editing.mode === 'one'
+                  ? Number(editing.record[EVENTS.idField])
+                  : null)
+              const answer = await askTheServer(
+                standing === null ? '/api/events' : `/api/events/${String(standing)}`,
+                upsertFrom(values),
+                standing === null ? 'POST' : 'PUT',
+              )
+
+              if (answer.got !== 'done') {
+                return { said: saying(answer, WHEN_WRITING_AN_EVENT) }
+              }
+
+              /* THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER. All three
+                 names, because one press moves all three: the event, its races, and the
+                 results the database takes down with a race that goes. Cleared before the
+                 races are written rather than after, so a press that fails half way still
+                 leaves the next mount reading what really stands. */
+              clearResourceCache('events')
+              clearResourceCache('races')
+              clearResourceCache(RESULTS)
+
+              const made = writtenIn(answer.body)
+
+              if (made === null) {
+                return {
+                  said: (
+                    <p className="field__error" role="alert">
+                      {t('admin.eventSavedUnseen')}
+                    </p>
+                  ),
+                }
+              }
+
+              madeHere.current = made.id
+
+              const refusedRace = await writeTheRaces(values, String(made.id))
+
+              if (refusedRace !== null) {
+                return {
+                  said: (
+                    <>
+                      <p className="field__error" role="alert">
+                        {t('admin.eventSavedRacesRefused')}
+                      </p>
+                      {saying(refusedRace, WHEN_WRITING_A_RACE)}
+                    </>
+                  ),
+                }
+              }
+
+              /* The address is the server's answer and not the rule's, so the confirmation
+                 shows what an administrator would really send somebody. */
+              const filed = { ...text, slug: made.slug }
+
+              setWritten((before) =>
+                standing === null
+                  ? {
+                      ...before,
+                      creations: {
+                        ...before.creations,
+                        [EVENTS.id]: [
+                          ...(before.creations[EVENTS.id] ?? []),
+                          { id: String(made.id), values: filed },
+                        ],
+                      },
+                    }
+                  : {
+                      ...before,
+                      edits: {
+                        ...before.edits,
+                        [recordKey(EVENTS.id, made.id)]: filed,
+                      },
+                    },
+              )
+
+              return { written: String(made.id) }
             }
 
             /**
@@ -447,149 +749,7 @@ export function AdminEvents() {
                         openEvent,
                       )
                     }
-                    /**
-                     * And its races, in the same press (owner, 23.08.2026).
-                     *
-                     * Three things happen and the order matters. A row that was a
-                     * race and is no longer on the table is taken away first, so a
-                     * length deleted and entered again in one sitting does not
-                     * meet itself. A row that is already a race is written over. A
-                     * row that is new is created under the event that was written
-                     * a line above, which is what the identity handed in is for: a
-                     * new event has none until that moment.
-                     *
-                     * The day the event begins is folded into the values before
-                     * any of this, in `alsoFolds` below.
-                     */
-                    alsoSave={(values, written) => {
-                      const was = allRaces.filter((one) => String(one.eventId) === written)
-
-                      /* A gathering or a training has no races, and saving one as
-                         such is what takes the races it used to have away. Owner,
-                         23.08.2026, on what changing the kind does and does not do:
-                         „prvo se sakriju sve trke sa ekrana, ali mogu da se vrate
-                         ukoliko vratiš da je tip Trka. Ako se sačuva kao neki drugi
-                         tip, u to čuvanje spada i brisanje svih trka koje su bile
-                         povezane."
-
-                         So the rows are kept on the screen while the table is
-                         hidden, and nothing is written for them here: they are all
-                         unkept, and the loop below has nothing to walk. */
-                      const kept =
-                        kindOf(values) === 'race'
-                          ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
-                          : new Set<string>()
-
-                      const gone = new Set<string>()
-
-                      for (const race of was) {
-                        if (!kept.has(String(race.id))) {
-                          remove(RACES.id, String(race.id))
-                          gone.add(String(race.id))
-                        }
-                      }
-
-                      /* And the results of the races that just went, because a result
-                         of a race that does not exist still counts in the standings
-                         and in the boards. Measured by a round before this was here:
-                         an event with twelve races saved as a gathering deleted all
-                         twelve and left thirteen results behind.
-                       *
-                         Not asked of the owner, because it follows from what the
-                         portal already does at both of its other mass deletions: the
-                         row that removes an event and the button on the event's own
-                         page each take the results down with the races, and each says
-                         why. Written here in the same shape, including the one guard
-                         those two carry: while two events answer at one address there
-                         is no telling whose result is whose, so the results are left
-                         rather than taken with somebody else's. */
-                      /* The address is read off the record and not off the values:
-                         it is derived rather than asked for, so the form carries no
-                         `slug` at all. Written out of the values it was `undefined`,
-                         nothing matched it, and every result stayed while the races
-                         went. Changing the kind does not move the address, so the
-                         record's own is the one the results point at. */
-                      const address = String(openEvent?.slug ?? '')
-                      const shares =
-                        address === '' ||
-                        all.some((each) => String(each.id) !== written && each.slug === address)
-
-                      const byAddress =
-                        kindOf(values) === 'race' || shares
-                          ? []
-                          : allResults.filter((each) => each.eventSlug === address)
-
-                      /* And by the race rather than by the address, which is what a
-                         single row deleted from the table needs. The sweep above only
-                         fires where the event stops being a race, so a race taken off
-                         an event that stays a race left its results behind, each still
-                         counting in the standings and pointing at a race that is gone.
-                         Measured on a live event: delete one of two race rows, save,
-                         and both results are still there. Owner, 24.08.2026: „Brisanje
-                         trke treba da pobriše i njene rezultate."
-
-                         No `shares` guard on this route, and that is not an omission.
-                         The guard above exists because one address can answer for two
-                         events and there is then no telling whose result is whose; a
-                         race identity answers for one race, so a result that names it
-                         is that race's and nobody else's.
-
-                         Gathered into one set rather than removed twice: a save that
-                         turns an event with races into a gathering walks both routes
-                         over the same records. */
-                      const taken = new Set(byAddress.map((each) => String(each.id)))
-
-                      for (const result of allResults) {
-                        if (gone.has(String(result.raceId))) {
-                          taken.add(String(result.id))
-                        }
-                      }
-
-                      for (const id of taken) {
-                        remove(RESULTS, id)
-                      }
-
-                      /* Counted down from the lowest number already used, over every
-                         race the screen is holding (`raceIds.ts`, `nextIdentity`).
-                         The file's races are on that list and change nothing, because
-                         they carry a `bigserial` and this counts below nought; what
-                         the list is really there for is the races this visit has
-                         already made. Counted rather than measured, it handed a new
-                         race the number a deleted one had freed and two records
-                         answered to one id.
-
-                         **Asked again for each row, over what this press has handed
-                         out as well**, which is the shape `pages/event/EventActions.tsx`
-                         already keeps for the same work: it copies an event and its
-                         races in one go and reads `nextIdentity` once per race, over
-                         the list plus what it has just made. Stepped instead, this
-                         went the wrong way: `nextIdentity` counts DOWN from nought and
-                         a step of one counts up, so the second new race of a press
-                         walked back into the numbers the press before it had taken,
-                         and the third reached `1`, which is a race the file serves.
-                         Measured on the screen: two presses of two new races each, and
-                         renaming one of them renamed two.
-
-                         The creations of this press are not in `allRaces`: that list
-                         is this render's, and what `create` writes is not in it until
-                         the next one. */
-                      const handedOut: number[] = []
-
-                      for (const row of kindOf(values) === 'race' ? current : []) {
-                        if (row.id === '') {
-                          const made = nextIdentity([
-                            ...allRaces.map((one) => one.id),
-                            ...handedOut,
-                          ])
-
-                          handedOut.push(made)
-                          create(RACES.id, String(made), storedRow(row, written))
-                        } else {
-                          editRecord(recordKey(RACES.id, row.id), storedRow(row, written))
-                        }
-                      }
-
-                    }}
+                    save={saveOne}
                     /**
                      * The event follows its first morning (owner, 10.08.2026): its
                      * date is the day it begins, so a race entered on an earlier
@@ -731,53 +891,51 @@ export function AdminEvents() {
                                   ? t('admin.resultsFailed')
                                   : t('admin.waitingForResults')
                             }
-                            /* With its races and its results, which is what the
-                               same deletion does from the event's own page
-                               (event/EventActions.tsx). The races are defined
-                               inside it and are shown nowhere else, so an event
-                               deleted alone leaves them belonging to nothing and
-                               invisible; a result carries the address of its
-                               event, so left behind it goes on counting in the
-                               standing, in the top boards and in the team
-                               totals, each of them linking to a page that says
-                               the event does not exist. Two buttons that delete
-                               one thing must not delete two different amounts of
-                               it. */
-                            alsoRemove={() => {
-                              for (const race of allRaces.filter(
-                                (each) => each.eventId === one.id,
-                              )) {
-                                remove(RACES.id, String(race.id))
-                              }
+                            /* WITH ITS RACES AND ITS RESULTS, AND THE DATABASE IS
+                               WHAT TAKES THEM. `DELETE /api/events/{id}` is one
+                               statement, and `race_event_fk`, `attending_event_fk`
+                               and `event_comment_event_fk` all cascade from the
+                               event while `result_race_fk` cascades from the race
+                               (`EventWriteApi`'s own class note names all four).
 
-                              /* Only where the address belongs to this event
-                                 alone. A result names its event by address, and
-                                 a copy keeps the name and the day it was copied
-                                 from until somebody changes the date, so for as
-                                 long as two events answer at one address there
-                                 is no telling whose result is whose. Deleting
-                                 them then takes the other event's with it, which
-                                 is worse than leaving them: the form refuses to
-                                 save a second event onto a taken address
-                                 (`eventClash`), so this is the window before
-                                 that save. */
-                              const shared = all.some(
-                                (each) => each.id !== one.id && each.slug === one.slug,
-                              )
+                               So the loop that used to stand here is gone, and its
+                               going is the point rather than a tidy-up: it filed
+                               the races and the results as SESSION deletions, which
+                               `useLive` reads (`data/useResource.ts`), so a
+                               moderator who deleted an event took it off the public
+                               calendar for the rest of his visit while the row
+                               stood in the database and every other visitor still
+                               saw it. Written on this side as well it would now be
+                               a second answer to a question the schema has already
+                               answered.
 
-                              for (const result of shared
-                                ? []
-                                : allResults.filter((each) => each.eventSlug === one.slug)) {
-                                remove(RESULTS, String(result.id))
-                              }
-                            }}
+                               The `shares` guard went with it for the same reason,
+                               and nothing is lost: it existed because a result is
+                               joined to its event by ADDRESS, so two events at one
+                               address made it impossible to say whose result was
+                               whose. The cascade joins by the race's own key, which
+                               answers for one race and no other. */
+                            deleteRecord={() => void deleteOne(one)}
                           />
+                          {/* Beside the row it was pressed on, because a refusal that
+                              named no row would be a sentence about one of sixty. The
+                              same place `admin/AdminLeagues.tsx` puts it. */}
+                          {refusedDelete !== null &&
+                            refusedDelete.id === one.id &&
+                            saying(refusedDelete.answer, WHEN_WRITING_AN_EVENT)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
+              {/* Said once and politely: the list beside it has already changed, and a
+                  reader who is not looking at it gets the one sentence that says so.
+                  The same shape `admin/AdminLeagues.tsx` uses. */}
+              <p aria-live="polite" className="visually-hidden">
+                {said}
+              </p>
             </>
           )
         }}
