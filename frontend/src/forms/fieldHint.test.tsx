@@ -1173,20 +1173,20 @@ describe('a form laid out in groups', () => {
   })
 
   it('draws the groups in the order that was settled on', () => {
-    /* What neither the floor above nor any case before it asks: not which group
-       a field is in, but which group stands before which. Read in one call
-       rather than looked up one name at a time, because `getByRole('group', {
-       name })` finds a group wherever it stands on the page and would say
-       nothing about whether it stands in the right place.
-
-       `role="group"` on this form is only ever the renderer's own `fieldset`:
-       the portal's other two owners of that role, `CropChooser` and
-       `GenderTabs` (named below, in `draws no group at all on a form whose
-       fields name none`), draw on neither the registration screen nor any field
-       this form asks for. */
+    /* Asked of the element and not of the role, for the same reason `draws no
+       group at all on a form whose fields name none` below asks it that way:
+       `group` is a role the portal uses elsewhere for its own reasons, and on
+       THIS form the country list beside „Mesto" is one more owner of it,
+       through the native role `<optgroup>` carries (`CountryOptions.tsx`).
+       Measured directly: `screen.getAllByRole('group')` here finds nine
+       elements where the renderer draws seven groups, because the list's two
+       `<optgroup>`s sit nested inside the fieldset „Kontakt i adresa" and no
+       role tells the two kinds apart. What must be counted is the renderer's
+       own wrapper, which is a `fieldset` standing directly in the form. */
     renderForm()
 
-    const groups = screen.getAllByRole('group')
+    const form = must(document.querySelector('form'), 'the form')
+    const groups = [...form.querySelectorAll<HTMLElement>(':scope > fieldset')]
 
     expect(groups.length, 'the form draws a different number of groups than were settled on').toBe(
       GROUPS_ARE.length,
