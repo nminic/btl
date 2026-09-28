@@ -140,7 +140,13 @@ describe('activating a membership from the payments screen', () => {
    * <p>Its own server rather than the shared one, for the reason `adminPayments.test.tsx` gives
    * about its own: a case that has to know WHAT WAS SENT has to record the requests.
    */
-  function serving(answer: Outstanding = OUTSTANDING, writeAnswers = () => new Response(null, { status: 201 })) {
+  function serving(
+    answer: Outstanding = OUTSTANDING,
+    /* `Response | Promise<Response>`, widened for the one caller that needs the second half
+       (`servingSlowly` below): a promise that has not come back yet is the only way to measure
+       what the row does while its own request is still out (`test/serverAnswers.ts`). */
+    writeAnswers: () => Response | Promise<Response> = () => new Response(null, { status: 201 }),
+  ) {
     clearResourceCache()
 
     return serverThat((path, init) => {
