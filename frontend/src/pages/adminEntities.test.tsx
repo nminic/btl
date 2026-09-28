@@ -2546,8 +2546,13 @@ describe('an event that is deleted', () => {
     const events = await loadResource<BtlEvent[]>('events')
     const races = await loadResource<Race[]>('races')
     const scored = await loadResource<Result[]>('results')
+    /* NEVER THE FIRST EVENT THE FILE CARRIES, and that is a measurement rather than
+       neatness: a mutation that addressed `/api/events/1` instead of the row pressed
+       SURVIVED this case, because the first event with results is id 1 and the two
+       values were the same string. The one furthest down the list shares nothing with
+       a number written out by hand. */
     const mine = must(
-      events.find((one) => resultsUnder(one, races, scored) > 0),
+      events.filter((one) => resultsUnder(one, races, scored) > 0).at(-1),
       'an event with results',
     )
 
@@ -2583,8 +2588,13 @@ describe('an event that is deleted', () => {
     const events = await loadResource<BtlEvent[]>('events')
     const races = await loadResource<Race[]>('races')
     const scored = await loadResource<Result[]>('results')
+    /* NEVER THE FIRST EVENT THE FILE CARRIES, and that is a measurement rather than
+       neatness: a mutation that addressed `/api/events/1` instead of the row pressed
+       SURVIVED this case, because the first event with results is id 1 and the two
+       values were the same string. The one furthest down the list shares nothing with
+       a number written out by hand. */
     const mine = must(
-      events.find((one) => resultsUnder(one, races, scored) > 0),
+      events.filter((one) => resultsUnder(one, races, scored) > 0).at(-1),
       'an event with results',
     )
 
@@ -2625,12 +2635,19 @@ describe('an event that is deleted', () => {
     const events = await loadResource<BtlEvent[]>('events')
     const races = await loadResource<Race[]>('races')
     const scoredAt = await loadResource<Result[]>('results')
+    /* NEVER THE FIRST EVENT THE FILE CARRIES, and that is a measurement rather than
+       neatness: a mutation that addressed `/api/events/1` instead of the row pressed
+       SURVIVED this case, because the first event with results is id 1 and the two
+       values were the same string. The one furthest down the list shares nothing with
+       a number written out by hand. */
     const one = must(
-      events.find(
-        (each) =>
-          races.some((race) => race.eventId === each.id) &&
-          scoredAt.some((result) => result.eventSlug === each.slug),
-      ),
+      events
+        .filter(
+          (each) =>
+            races.some((race) => race.eventId === each.id) &&
+            scoredAt.some((result) => result.eventSlug === each.slug),
+        )
+        .at(-1),
       'an event that has both races and results',
     )
     const its = races.filter((race) => race.eventId === one.id).map((race) => race.id)
