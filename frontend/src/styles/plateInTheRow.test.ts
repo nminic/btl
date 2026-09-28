@@ -143,31 +143,42 @@ function named(path: string): string {
 }
 
 /**
- * An element wearing exactly the classes the component puts on the plate itself, so a selector can
- * be asked whether it reaches THE PLATE rather than something drawn inside it.
+ * THE PLATE IN BOTH SHAPES IT IS EVER DRAWN IN, so a selector can be asked whether it reaches THE
+ * PLATE rather than something drawn inside it.
  *
  * The classes come from `test/plate.ts`, whose floor is `components/namePlate.test.tsx`: it renders
  * every shape the component has and reads `classList` off the DOM. The outer element writes its two
  * through a template (`` `plate${pair ? ' plate--pair' : ''}` ``), so no reading of the source has
  * them, and three guards on this portal have already died reading source for this.
  *
- * Both are worn at once, which is what a pair is; a plate that is not a pair wears the first alone,
- * and no rule can reach that one without reaching this.
+ * **Two elements and not one**, which is a hole closed rather than a symmetry: one competitor wears
+ * `plate` alone and a pair wears both, and a rule written `.plate:not(.plate--pair)` reaches the
+ * first and not the second. Asked of a single element carrying both, such a rule would answer no
+ * and a margin under every single name would go unseen.
  */
-function thePlate(): HTMLElement {
-  const element = document.createElement('span')
+function everyShapeOfThePlate(): HTMLElement[] {
+  const own = PLATE_CLASSES.filter((one) => one === 'plate' || one === 'plate--pair')
 
-  element.className = PLATE_CLASSES.filter((one) => one === 'plate' || one === 'plate--pair').join(' ')
+  expect(own, 'the plate no longer wears the classes this guard is written against').toEqual([
+    'plate',
+    'plate--pair',
+  ])
 
-  return element
+  return [['plate'], own].map((classes) => {
+    const element = document.createElement('span')
+
+    element.className = classes.join(' ')
+
+    return element
+  })
 }
 
-/** Whether that selector reaches the plate itself, asked of the DOM rather than read off the text.
- *  A selector jsdom cannot evaluate is not judged either way: the sweep stops and names it, because
- *  „I could not tell" is not „nothing moves the box". */
-function reaches(selector: string, plate: HTMLElement): boolean {
+/** Whether that selector reaches the plate in either shape, asked of the DOM rather than read off
+ *  the text. A selector jsdom cannot evaluate is not judged either way: the sweep stops and names
+ *  it, because „I could not tell" is not „nothing moves the box". */
+function reaches(selector: string, shapes: HTMLElement[]): boolean {
   try {
-    return plate.matches(selector)
+    return shapes.some((one) => one.matches(selector))
   } catch {
     expect.fail(`this guard cannot tell whether ${selector} reaches the plate`)
   }
@@ -215,8 +226,9 @@ describe('the plate on the middle of its row', () => {
        - **which rules each sheet has, wherever it is written:** the browser's own parser
          (`everyRule`, which reaches inside a media query as well, so a rule that moves the plate on
          telephones alone is in here too).
-       - **which of them reach the plate:** the DOM (`matches`), not a reading of the selector text.
-         Four drafts of another guard on this portal died reading selectors as text.
+       - **which of them reach the plate:** the DOM (`matches`), not a reading of the selector text,
+         and in both shapes the plate is ever drawn in. Four drafts of another guard on this portal
+         died reading selectors as text.
 
        **The boundary, written rather than left for a review to find.** A rule can reach the plate
        through an ancestor this fixture does not have — `.rankings__table .plate` would be such a
@@ -225,13 +237,13 @@ describe('the plate on the middle of its row', () => {
        names one of its classes at all, with a count, so a sheet beginning to reach in fails there
        first. What that file says it does NOT do is read what such a rule says, and that is exactly
        what is read here. */
-    const plate = thePlate()
+    const shapes = everyShapeOfThePlate()
 
     const found = everySheet(SRC).flatMap((path) => {
       const sheet = named(path)
 
       return everyRule(readFileSync(path, 'utf-8'), sheet)
-        .filter((rule) => reaches(rule.selectorText, plate))
+        .filter((rule) => reaches(rule.selectorText, shapes))
         .flatMap((rule) =>
           [...rule.style].flatMap((property) => {
             const decides = MOVES_THE_BOX.get(property)
