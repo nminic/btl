@@ -200,8 +200,17 @@ export type Message = {
    * The portal writes to one person often enough that "the inbox" cannot mean
    * "every message there is": a moderator who hands a profile picture back with
    * an instruction (PDL P22) must not find that instruction in their own inbox a
-   * moment later. Empty is the league talking to everybody, which is what the
-   * messages the prototype starts with are.
+   * moment later. Empty is the league talking to everybody, which is how the
+   * inbox reads it (`SessionProvider`) and how the server sends one
+   * (`InboxApi`'s `m.to_id is null`).
+   *
+   * **Named the two messages the prototype started with until 28.09.2026, and
+   * names nothing now.** PDL 34 („NECU MOCK PODATKE NIGDE", owner) took those
+   * out of the bundle. Measured the same day: `to: ''` is written nowhere in
+   * `frontend/src` outside the tests, and every one of the fourteen `notify`
+   * calls names somebody. So a broadcast a member reads today reaches him off
+   * the server, and what is kept here is the agreement between the two readers
+   * above rather than a shape any screen produces.
    */
   to: string
   subject: string
@@ -819,9 +828,13 @@ export type SessionValue = {
    * `readMarkIsTheServers` inverted - and `member/openingMarksItRead.test.tsx` fails both ways
    * round.
    *
-   * <p><b>It is reachable in production and not only from a seed</b>: `data/seedMessages.ts`
-   * holds „Dobro došao u pripremu sezone" addressed to the whole league and unread, so every
-   * member of the prototype has one held line this is the only road for.
+   * <p><b>What puts a held line there, since PDL 34 (28.09.2026)</b>: `notify` and nothing
+   * else. Until that day `data/seedMessages.ts` put two into every visit before anything
+   * happened, and this doc named them as the proof that the road was walked; the owner took
+   * that file out of the bundle („NECU MOCK PODATKE NIGDE"), so a visit now begins holding
+   * nothing and the first held line is one some screen wrote. Nine screens call `notify`, an
+   * invitation to a team and to a racing pair among them, and every one of those lines is
+   * numbered `msg-N` and names no row anywhere - so this is still the only road for them.
    */
   markRead: (id: string) => void
   /** Writes to one member's inbox. The portal already has one and it is where

@@ -63,9 +63,13 @@ import java.util.List;
  * <p><b>THE DAY IS THE DAY IN BELGRADE, not the instant.</b> {@code sent_at} is a
  * {@code timestamptz} because sending a message is a technical instant, but every screen
  * that draws one - {@code MessagesMenu}, {@code Messages}, {@code MessageDetail} - passes
- * it through {@code formatShortDate}, which takes a calendar day, and the mock messages
- * this prototype starts with (`data/seedMessages.ts`) carry one (`'2026-07-20'`), never a
- * time. Converted here in {@link SeasonClock#ZONE} for the same reason
+ * it through {@code formatShortDate}, which takes a calendar day, and the one place that sorts
+ * the two halves of that list together says the same of the field in its own words
+ * ({@code data/useResource.ts}, {@code newestFirst}): „these are ISO days, where plain string
+ * order IS date order". (A second witness stood here until 28.09.2026, the two messages the
+ * prototype started with; PDL 34, „NECU MOCK PODATKE NIGDE", took them out of the bundle, and
+ * what the screens do with a day did not move with them.) Converted here in
+ * {@link SeasonClock#ZONE} for the same reason
  * {@link VerificationApi.Waiting#date} is: read as the machine's own zone, the day would
  * be wrong on every server this portal runs on.
  *
