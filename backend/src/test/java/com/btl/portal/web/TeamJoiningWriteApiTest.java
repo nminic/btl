@@ -1202,9 +1202,17 @@ class TeamJoiningWriteApiTest {
 	}
 
 	/**
-	 * SOMEBODY WHO ALREADY HAS A TEAM IS NOT ASKED - P13's single-team rule, PDL.md
-	 * ("je član u jednom timu") - and the reason names
-	 * it because a squad is public.
+	 * SOMEBODY WHO ALREADY HAS A TEAM IS NOT ASKED, which is PDL.md ("Čim član ima tim, nijedan
+	 * drugi poziv ne nudi") read for an invitation rather than an answer: once a member stands in
+	 * a squad, nothing else offers him anything either.
+	 *
+	 * <p><b>That the reason is allowed to say so plainly, rather than staying vague, is derived
+	 * here and is not itself a decision - marked as such rather than quoted as one.</b> ADL.md
+	 * ("Za svih sedam preostalih resursa") is the owner's rule that a team is public exactly to
+	 * the extent Article 73 lists it, and PDL.md ("O timu su javni i naziv, i grad, i zemlja") is
+	 * what Article 73 lists for a team. Put together: whether this member already stands in a
+	 * team is not a fact this route would be the first to reveal, so the refusal may name that
+	 * fact instead of hiding behind a generic 409.
 	 *
 	 * @param whom a member standing in a team from a season already running, and one from a
 	 *             season still to come

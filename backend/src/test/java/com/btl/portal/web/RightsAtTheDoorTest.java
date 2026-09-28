@@ -1264,7 +1264,8 @@ class RightsAtTheDoorTest {
 	 * „reading", while the line below has always demanded {@code OPTIONS} as well -
 	 * {@code ApiSecurity} says so in as many words („AND OPTIONS, which is NOT a read and is
 	 * opened anyway"), and the decision to leave it open is the owner's and is written down
-	 * (`ADL.md`:801). So the claim was narrower than the code, which is the shape of thing
+	 * (ADL.md ("OPTIONS zahtev je prolazio pored sloja i vracao 200 sa zaglavljem")). So the
+	 * claim was narrower than the code, which is the shape of thing
 	 * this whole branch exists to remove.
 	 *
 	 * <p><b>AND IT IS NO LONGER A CASE ABOUT ONE LIST, which is the correction of

@@ -69,8 +69,9 @@ import java.util.Optional;
  * </ul>
  *
  * <p><b>Three older sentences of PDL said the administrator sends invitations too</b>
- * (PDL.md ("Administrator tima odobrava zahteve za učlanjenje"), {@code :2435},
- * {@code :2564}) <b>and were struck through on
+ * (PDL.md ("Administrator tima odobrava zahteve za učlanjenje"),
+ * PDL.md ("takmičar šalje administratoru tima zahtev na odobrenje"),
+ * PDL.md ("Tim ima svog administratora, i to je")) <b>and were struck through on
  * 27.09.2026</b>, the decision of 05.09.2026 having overturned that half of each of them
  * without anybody crossing them out at the time. Named here because a reader who finds one
  * of them uncrossed in an older copy of the journal would write this route the wrong way
@@ -482,7 +483,8 @@ class TeamJoiningWriteApi {
 	 *
 	 * <p>PDL.md ("„Prijavi se u tim" stoji na strani tima"):
 	 * „**[ODLUKA 05.09.2026] „Prijavi se u tim" stoji na strani
-	 * tima.**" and {@code :6674}: „**Vidi ga član koji nema tim, i samo u prelaznom roku**
+	 * tima.**" and PDL.md ("Vidi ga član koji nema tim, i samo u prelaznom roku"):
+	 * „**Vidi ga član koji nema tim, i samo u prelaznom roku**
 	 * (1.10-31.12)."
 	 *
 	 * <p><b>Three refusals are one empty 404 and that is {@link TeamWriteApi#propose}'s

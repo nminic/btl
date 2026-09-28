@@ -41,8 +41,9 @@ import java.util.Optional;
  * <ul>
  * <li><b>„Brisanje slike stupa odmah, bez moderacije."</b> The owner derived it in the entry
  * itself, from PDL.md ("Prazan tekst znaci BRISANJE biografije") (an empty biography is a
- * removal that takes effect at once) and {@code :1655} (a member changes or removes his
- * picture „kad god hoce"), with the
+ * removal that takes effect at once) and PDL.md
+ * ("Član menja ili briše profilnu sliku i kasnije, kad god hoće") (a member changes or
+ * removes his picture „kad god hoce"), with the
  * reason beside it: „Uklanjanje ne moze da bude sporno."
  * <li>~~<b>„Dok slika ceka odobrenje, clan vidi SVOJU novu sliku sa oznakom da ceka; svi
  * ostali vide staru ili nijednu."</b>~~ <b>[OBORENO 27.09.2026, owner, PDL 21.]</b> The
