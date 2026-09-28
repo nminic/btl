@@ -977,6 +977,24 @@ export type PendingItem = {
    */
   crop: Crop
   /**
+   * The key of the row in `photo` while there still is one, and null on the three
+   * queues that never carry a picture and on everything this visit itself proposed.
+   *
+   * `VerificationApi.Waiting.photoId`, and the only name this row's answer carries
+   * that `PendingItem` did not use to have (see `ServedPendingItem` below, where it
+   * used to be added rather than inherited). Never an address: `GET
+   * /api/verification/{id}/photo` (`PhotoApi.waitingOn`) is keyed by THIS item's own
+   * `id`, not by this number, and answers 404 alike to a moderator with no right over
+   * the row and to a row that never held a picture - the two cannot be told apart
+   * from here, on purpose (ADL A8), so this field says only whether to ask at all.
+   *
+   * Null on a proposal (`prop-`) for the same reason `picture` and `crop` are empty
+   * on one: nothing this visit makes up locally has a server row to hold a key for.
+   * Both callers of `propose` (`pages/member/ProfileBio.tsx`,
+   * `pages/member/EditTeam.tsx`) write `photoId: null` for exactly that reason.
+   */
+  photoId: number | null
+  /**
    * The two days a reported change of term carried, off the one queue that asked for
    * them, and empty everywhere else since V9 first wrote this shape.
    *
@@ -1060,9 +1078,16 @@ export type PendingItem = {
  *   carries one date and no state for anybody to report a change against any more.
  *   Not a shortfall either: there is nothing left to answer.
  *
- * `photoId` is the one name the answer carries that `PendingItem` has not got. It is
- * the key of the row in `photo`, and it is here so that the day A60 is revisited there
- * is something to revisit rather than a field to invent.
+ * `photoId` USED TO BE the one name this answer carried that `PendingItem` had not
+ * got, kept so that the day A60 was revisited there would be something to revisit
+ * rather than a field to invent. That day is this one: PR 399 gave the picture an
+ * address of its own (`GET /api/verification/{id}/photo`, `PhotoApi.waitingOn`),
+ * `PendingItem` carries `photoId` too now (see it there), and `admin/pending.ts`
+ * stopped throwing the number away. So it is no longer added below - `Omit` leaves
+ * it alone and it comes through with everything else `PendingItem` already had.
+ * `picture` and `crop` are untouched by that: they are still not answered here, for
+ * the reason given above, and `admin/pending.ts` says why neither has gained a real
+ * reader on the strength of `photoId` alone.
  *
  * **TWO NAMES DIFFER BY SORT RATHER THAN BY PRESENCE, and those are written out rather
  * than omitted**, because a field that arrives as the wrong sort is read in silence
@@ -1102,7 +1127,7 @@ export type PendingItem = {
 export type ServedPendingItem = Omit<
   PendingItem,
   'id' | 'memberNumber' | 'email' | 'picture' | 'crop' | 'currentDate' | 'proposedDate'
-> & { id: number; memberNumber: string | null; photoId: number | null }
+> & { id: number; memberNumber: string | null }
 
 /**
  * ONE ACCOUNT WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, exactly as
