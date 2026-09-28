@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, expect, vi } from 'vitest'
 import { clearResourceCache } from '../data/client'
+import { forgetTheInbox } from '../data/useResource'
+import { forgetWhatHasBeenOpened } from '../pages/member/inboxRead'
 import { asAnswered, myOwnRecordFromMe, whoIAm } from './theAnswer'
 import { SLOW } from './slow'
 
@@ -76,6 +78,14 @@ configure({ asyncUtilTimeout: SLOW })
 // next one.
 beforeEach(() => {
   clearResourceCache()
+  /* AND THE THREE FACTS THE INBOX KEEPS BESIDE THAT CACHE, which outlive a render tree the
+     same way it does (PDL 27a, 27.09.2026). Whose the cached answer was, how many times it
+     has gone out of date, and which keys this visit has already told the server it opened.
+     The last of the three is the one that bites: it refuses to ask twice about one message,
+     so a case that opened message 501 would leave the next case unable to open it at all -
+     and that next case would pass while measuring nothing. */
+  forgetTheInbox()
+  forgetWhatHasBeenOpened()
   sessionStorage.clear()
   whoTheCookieNames = null
 })

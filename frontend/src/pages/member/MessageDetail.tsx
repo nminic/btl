@@ -13,6 +13,7 @@ import { PairInviteAnswer } from './PairInviteAnswer'
 import { NotFound } from '../NotFound'
 import { Resource } from '../../components/Resource'
 import { useMemberScreen } from './memberScreen'
+import { theServerHasSeenThisOpened } from './inboxRead'
 import './Member.css'
 
 /* Where a subject in the header panel leads: the message, opened out, on its
@@ -125,18 +126,30 @@ function TheMessage({ lines }: { lines: InboxLine[] }) {
   /* The same, for the one that asks about a racing pair. Two fields rather than one with a kind
      beside it, so the compiler keeps the two answers apart (`session/context.ts`). */
   const pairInvite = message?.pairInvite
-  /* **AND ONLY WHERE SAYING SO REACHES ANYTHING, since 27.09.2026.** Opening a message is what
-     marks it read, and for a line that came off the server there is nothing for that to write
-     to: `message_read` is in the schema and no route on the portal writes it (measured over the
-     whole of `backend/src/main`). So a served line is left as the server has it rather than
-     marked in a store the next visit will not read (`data/types.ts`, `canBeMarkedRead`). */
-  const unread = message !== undefined && !message.read && message.canBeMarkedRead
+  /* **AND OPENING IT IS THE ONLY THING THAT EVER MARKS IT, since PDL 27a (27.09.2026).** The
+     owner's own narrowing: „Ne treba mi dugme da se nesto oznaci kao procitano ili
+     neprocitano." There is no control for this anywhere on the portal - not on this screen and
+     not on the list behind it - so this effect is the whole of the mechanism. */
+  const unread = message !== undefined && !message.read
+  /* **WHICH STORE the mark goes into is decided in one place and carried on the line**
+     (`data/types.ts`, `readMarkIsTheServers`). Read out into a value rather than asked inside
+     the effect below, for the reason the two lines above it give about `invitation`: asked as a
+     property of a possibly absent record, the fallback is a branch nothing can reach. */
+  const theServerKeepsThisOne = message?.readMarkIsTheServers === true
 
   useEffect(() => {
     if (unread && id !== undefined) {
-      markRead(id)
+      if (theServerKeepsThisOne) {
+        /* `void`, because nothing on this screen waits for it: the message is already drawn
+           and what the answer changes is a number in the header. The function refuses to ask
+           twice about one key, which is what keeps this effect from a loop when the route
+           refuses - `inboxRead.ts` has the measurement. */
+        void theServerHasSeenThisOpened(id)
+      } else {
+        markRead(id)
+      }
     }
-  }, [unread, id, markRead])
+  }, [unread, id, markRead, theServerKeepsThisOne])
 
   if (message === undefined) {
     return <NotFound />

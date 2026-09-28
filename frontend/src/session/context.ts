@@ -800,6 +800,29 @@ export type SessionValue = {
    *  elsewhere. The message stays in the inbox either way, because deleting
    *  somebody's mail is deleting the answer to „what happened to that". */
   close: (id: string) => void
+  /**
+   * Marks a message the BROWSER is holding read, which since PDL 27a (27.09.2026) has exactly
+   * one caller and it is not a button.
+   *
+   * <p><b>What changed that day and what deliberately did not.</b> „Ne treba mi dugme da se
+   * nesto oznaci kao procitano ili neprocitano" (owner) took the „Označi kao pročitano" control
+   * off `member/Messages.tsx` for both halves of that list. This function stayed, because the
+   * thing it writes to is still the only store a held line has: a served line's key names a row
+   * in `message` and its mark goes to `POST /api/inbox/{id}/read`, while a held one is numbered
+   * `msg-N` and names no row anywhere. `member/MessageDetail.tsx` chooses between the two off
+   * `InboxLine.readMarkIsTheServers` and calls this for the second.
+   *
+   * <p><b>And the two stores cannot disagree about one message, which is why this is not a
+   * second home for one fact.</b> The two halves number themselves differently, so no key is in
+   * both: `data/useResource.ts` builds a line from one side or the other and never from both.
+   * The mutation that would catch them drifting is swapping which store a line is marked in -
+   * `readMarkIsTheServers` inverted - and `member/openingMarksItRead.test.tsx` fails both ways
+   * round.
+   *
+   * <p><b>It is reachable in production and not only from a seed</b>: `data/seedMessages.ts`
+   * holds „Dobro došao u pripremu sezone" addressed to the whole league and unread, so every
+   * member of the prototype has one held line this is the only road for.
+   */
   markRead: (id: string) => void
   /** Writes to one member's inbox. The portal already has one and it is where
    *  the sideways messages belong: the bell always, the mail only if the member

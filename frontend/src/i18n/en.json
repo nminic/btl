@@ -987,8 +987,7 @@
       "few": "{count} unread",
       "other": "{count} unread"
     },
-    "empty": "You have no messages.",
-    "markRead": "Mark as read"
+    "empty": "You have no messages."
   },
   "membership": {
     "title": "My fee",
