@@ -127,29 +127,29 @@ export function AdminTeams() {
   } | null>(null)
 
   /**
-   * TAKING A TEAM AWAY THROUGH THE ROUTE, WHICH IS ONLY HALF OF THE ACT PDL P13b CALLS
-   * THE SAME.
+   * TAKING A TEAM AWAY THROUGH THE ROUTE, WHICH IS SINCE 28.09.2026 THE WHOLE OF THE ACT PDL
+   * P13b CALLS THE SAME.
    *
    * <p>PDL P13b, owner 25.09.2026: brisanje tima iz administracije je <b>ista radnja</b> kao
    * brisanje od strane njegovog administratora, pa je i adresa ista - this function calls
-   * `DELETE /api/teams/{id}` rather than an address of its own. <b>Measured on 26.09.2026,
-   * the other half of that pair has not moved here yet.</b> `TeamDetail.tsx`'s own „Obriši"
-   * button, the one the team's administrator presses, still only calls `editRecord` and
-   * `remove` on the session: `askTheServer` has exactly thirteen call sites in this portal,
-   * this function's among them, and `TeamDetail.tsx` is not a fourteenth. So the decision
-   * names one act; the code today has two, and the two differences that follow from that
-   * are named here rather than left for the next reader to take the title above at its word.
+   * `DELETE /api/teams/{id}` rather than an address of its own.
+   *
+   * <p><b>THE OTHER HALF OF THAT PAIR HAS MOVED, AND WHAT IT COST WHILE IT HAD NOT IS KEPT
+   * HERE BECAUSE IT SAYS WHAT THE TWO HALVES OWE EACH OTHER.</b> ~~Measured on 26.09.2026,
+   * `TeamDetail.tsx`'s own „Obriši" button still only calls `editRecord` and `remove` on the
+   * session.~~ It calls `TeamDetail.deleteOne` now, which sends this verb to this address, so
+   * the decision names one act and the code has one. The two differences that stood between
+   * them for two days were:
    *
    * <ul>
-   * <li><b>Permanence.</b> This function's deletion is the server's and outlives the tab.
-   * `TeamDetail.tsx`'s is the session's alone, so nothing tells the server; a refresh reads
-   * the team back off it.</li>
+   * <li><b>Permanence.</b> A deletion that reaches the route is the server's and outlives the
+   * tab. The session's alone told the server nothing, and a refresh read the team back off
+   * it.</li>
    * <li><b>The window.</b> The refusal below is `SeasonClock.transferWindowOpen` answering
    * 409 outside 1.10-31.12, and PDL P13b names that rule „i to i administratoru tima i
-   * administraciji" - the same rule for both. `TeamDetail.tsx` asks the route nothing, so
-   * the window binds this function alone: the team's own administrator can delete in June
-   * exactly as freely as in November, which is the half of that sentence the code does not
-   * yet keep.</li>
+   * administraciji" - the same rule for both. A screen that asks the route nothing cannot
+   * keep it, so the team's own administrator deleted in June exactly as freely as in
+   * November, which was the half of that sentence the code did not yet keep.</li>
    * </ul>
    *
    * <p>What follows from a deletion THAT REACHES THE ROUTE is the server's and is not
