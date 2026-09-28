@@ -455,6 +455,13 @@ describe('how tall a control in a form is', () => {
       'forms/FormRenderer.tsx',
       'pages/event/GoingToEvent.tsx',
       'pages/member/Membership.tsx',
+      /* THE FIRST SCREEN THIS CASE EVER STOPPED, and it stopped it the day it arrived: the
+         block that hides a profile moved out of the settings into a screen of its own, and
+         a screen that writes a field by hand is a screen nobody has measured. Measured in
+         Chrome over the built package at 360, 768 and 1280 before it was written down
+         here: the tick is 18,39 square, which is the 1,15rem it is given and not the
+         height of a text box, so the way out above already reaches it. */
+      'pages/member/ProfileVisibility.tsx',
       'pages/member/Settings.tsx',
     ])
   })
