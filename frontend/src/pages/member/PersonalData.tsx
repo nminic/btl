@@ -7,6 +7,7 @@ import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import {
   AS_LONG_AS_THE_FORM_ALLOWS,
+  THE_ACCOUNT_GOES_TO,
   WHAT_THIS_SCREEN_SENDS,
   WHEN_CHANGING_MY_DATA,
   whatChanged,
@@ -96,7 +97,7 @@ export function PersonalData({ me }: { me: Competitor }) {
   async function send(): Promise<void> {
     setAsking(true)
 
-    const answered = await askTheServer('/api/me', changed, 'PUT')
+    const answered = await askTheServer(THE_ACCOUNT_GOES_TO, changed, 'PUT')
 
     /* WHAT WAS SENT BECOMES WHAT STANDS, and only what was sent. A field left out of the
        request is a field the route did not touch (ADL A54), so folding everything typed in
