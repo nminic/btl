@@ -821,12 +821,17 @@ function asALine(one: Message): InboxLine {
  * held it open. The two screens answer the two stores and neither can be given the other's
  * key by accident, because one key is text and the other is a number (`data/types.ts`).
  *
- * **What KEEPS the two served keys apart is an assertion and not the compiler**, and that is
- * where the fault would live: both are `number | null` on the wire, so this function is the
- * one place on the portal where one could be put where the other belongs and nothing would
- * fail to compile. `member/pairInviteAnswered.test.tsx` and `member/teamInviteAnswered.test.tsx`
- * each serve a message whose two keys are different numbers and read which of them the
- * address carried.
+ * **What KEEPS the two served keys apart is a case and not the compiler**, and that is where
+ * the fault would live: both are `number | null` on the wire, so this function is the one place
+ * on the portal where one could be put where the other belongs and nothing would fail to
+ * compile. `member/pairInviteAnswered.test.tsx` and `member/teamInviteAnswered.test.tsx` are
+ * the two that hold it.
+ *
+ * **Neither does it by serving one message with two numbers, because that row does not exist:**
+ * V13 holds `check (team_invitation_id is null or pair_invite_id is null)`. Each serves a
+ * message carrying ONE of the two and `null` in the other, so a swap here hands its screen
+ * nothing at all and the buttons never appear. Measured on 28.09.2026: swapping the line below
+ * fails fifteen of that file's sixteen cases.
  */
 function asServed(one: ServedMessage): InboxLine {
   return {

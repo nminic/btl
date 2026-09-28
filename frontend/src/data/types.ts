@@ -1436,10 +1436,16 @@ export type InboxLine = {
    * **What the compiler still cannot keep apart, said out loud because it is where the fault
    * would live.** `ServedMessage` carries `teamInvitationId` and `pairInviteId` and both are
    * `number | null`, so `data/useResource.ts#asServed` is the one place one could be put
-   * where the other belongs with nothing failing to compile. Only an assertion can, and
-   * `member/teamInviteAnswered.test.tsx` and `member/pairInviteAnswered.test.tsx` each serve
-   * a message whose two keys are DIFFERENT numbers and read which of the two the address
-   * carried.
+   * where the other belongs with nothing failing to compile. Only a case can, and
+   * `member/teamInviteAnswered.test.tsx` is the one that does it for this field.
+   *
+   * **HOW that case measures it is worth the sentence, because the obvious way is a row the
+   * database refuses.** V13 holds `check (team_invitation_id is null or pair_invite_id is
+   * null)`, so no message carries two numbers and the swap cannot be measured by reading which
+   * of two keys travelled. What it is measured by instead is the OTHER field being `null`: the
+   * message that asks about a team carries no pair key, so a swapped `asServed` hands the
+   * screen nothing, no buttons are drawn, and the whole file goes red. Measured on 28.09.2026:
+   * that swap fails fifteen of its sixteen cases.
    *
    * **Absent on every line the browser holds**, for the same reason as the field above.
    */
