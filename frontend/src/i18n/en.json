@@ -987,6 +987,24 @@
     "photoHint": "A shot from a watch, a certificate or something else. A comment becomes required, and the link to the results becomes optional.",
     "comment": "Comment"
   },
+  "results": {
+    "sending": "Sending",
+    "withdrawing": "Deleting",
+    "refused": {
+      "theFormIsNotComplete": "The result was not sent. Check the distance, the climb, the descent and the time: something is missing or outside the allowed range.",
+      "theRaceIsNotKnown": "The race you chose is no longer in the calendar. Refresh the page and choose it again.",
+      "theRaceHasNotBeenRun": "A result cannot be sent before the day of the race itself.",
+      "theRaceIsNamedTwice": "The result was not sent: the race is both chosen from the calendar and described by hand. Only one of the two is allowed.",
+      "theTownIsNotSaidOnce": "The town must be given exactly once: either chosen from the codebook or typed in by hand.",
+      "theTownIsNotKnown": "That town is not in the codebook.",
+      "theCountryIsNotKnown": "That country is not in the codebook.",
+      "theCountryBelongsToATypedTown": "A country is chosen only beside a town that was typed in by hand.",
+      "aTypedTownNamesItsCountry": "A town typed in by hand must name its country as well.",
+      "nothingShowsItHappened": "Proof is missing. Enter a link to the official results.",
+      "aPhotographNeverStandsAlone": "A picture must come with a comment saying what can be seen in it.",
+      "aLinkThatIsNotALink": "The link to the official results is not a valid web address. It must begin with http:// or https://."
+    }
+  },
   "status": {
     "pending": "Waiting to be checked",
     "approved": "Approved",
