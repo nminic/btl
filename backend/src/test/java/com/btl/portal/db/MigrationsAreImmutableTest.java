@@ -136,7 +136,8 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			new Applied("38", "V38__the_balance_is_a_book.sql", 2032527406),
 			new Applied("39", "V39__the_money_arrives_two_ways_and_the_slip_is_ips.sql", -1797253810),
 			new Applied("40", "V40__a_price_row_is_free_in_both_currencies_or_in_neither.sql",
-					-1581242756));
+					-1581242756),
+			new Applied("42", "V42__the_balance_is_one_amount_in_one_currency.sql", -1505949912));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
