@@ -48,39 +48,54 @@ export function MessageDetail() {
  * like „there is no such message" to anything reading the list. Read with a fallback, every
  * visit to a real message would show the not found page first and correct itself after.
  *
- * **`{ reactive: false }`, and this is the one caller of `useInbox` that asks for it, for a
- * reason measured rather than assumed (review of PR 406, second round).** A caller who
+ * **`{ reactive: false }`, and this is the one caller of `useInbox` that asks for it - out of
+ * caution in front of an unresolved race, not because every reacting form was measured to
+ * fail (review of PR 406, third round corrects the second's overreach here).** A caller who
  * switches here without navigating away should in principle meet the same fate as on the
- * panel - a fresh read, and this screen's own message gone if it is no longer theirs. Built
- * that way once, with `useInbox(mine)` plain: `TheMessage` below correctly finds no message,
- * correctly returns `<NotFound />`, and `<NotFound />`'s own `<Navigate replace>` fires from
- * an effect that lands OUTSIDE the click that triggered the switch. Where that lands is a
- * race, not a bug in either side: `teamInvite.test.tsx` (untouched, and it is right to insist
- * on that) switches identity on THIS screen and immediately calls `router.navigate` to a
- * different address of its own, and measured three separate times, the redirect from
+ * panel - a fresh read, and this screen's own message gone if it is no longer theirs. Two
+ * forms that give it that fate were built and both lost the same race, measured on
+ * `teamInvite.test.tsx` (untouched, and it is right to insist on that): a `key` on this
+ * element, and `useResource`'s own render-time state adjustment, an earlier draft of the
+ * hook this file no longer carries. Both correctly reach `TheMessage` finding no message,
+ * correctly return `<NotFound />`, and both then lose to `<NotFound />`'s own
+ * `<Navigate replace>`, fired from an effect that lands OUTSIDE the click that triggered the
+ * switch: `teamInvite.test.tsx` switches identity on THIS screen and immediately calls
+ * `router.navigate` to a different address of its own, and both times the redirect from
  * `NotFound` won it - `Unable to find … Dunavski trkači`, a screen that was never about a
  * message at all, timing out at twenty seconds because `TeamDetail` was never even called.
- * `key`-based remounting and `useResource`'s own render-time state adjustment both reach
- * `NotFound` the same way and both lose the same race, so the choice was not between two
- * mechanisms: it is between reacting here and not.
  *
- * **What makes „not" the answer for now and not a shrug.** Measured over what
+ * **What `useInbox` actually carries today - `owner` read only through the effect's own
+ * `[name, owner]`, nothing adjusted during render - was NOT among those two, and measured
+ * the same way it does not fail.** A later review of this fix ran `teamInvite.test.tsx`
+ * twice with this screen reacting (34 passed, 0 failed, both times) and the whole frontend
+ * package once (3396 passed, 1 failed - the one case built to require the narrower
+ * behaviour below). That is a reproduced number, and an earlier draft of this comment said
+ * otherwise about this exact mechanism; it does not anymore.
+ *
+ * **A green package is not the same claim as a closed race, which is why `{ reactive: false }`
+ * stays regardless.** `NotFound.tsx` is still `<Navigate replace>` fired from an effect
+ * neither this file nor `useResource` controls, and a run that does not happen to hit the
+ * timing on one machine says something about that machine's scheduling, not about whether
+ * the window can still open under a slower fetch, a busier event loop, or a future React.
+ * Reacting here is withheld on that uncertainty, not on a measurement that it fails.
+ *
+ * **What makes withholding it defensible rather than a shrug.** Measured over what
  * `theServerSignedMeIn` is - the one function `member/SignIn.tsx` calls after
  * `GET /api/me` - it is reachable from exactly one screen, `/sr/prijava`, which this address
- * is not. `app/routeObjects.tsx` puts every route including that one under the same
- * `<Outlet />` `app/Shell.tsx` holds, so reaching the sign in screen and coming back BOTH
- * unmount this component - the very thing `MessagesMenu.tsx` cannot say, since it sits beside
- * the outlet and never comes down. So the shared-laptop road this increment closes (owner,
- * 27.09.2026) is closed here already, by routing, exactly as PR 406's own review measured
- * before asking for a key on this element in the first place: „the detail screen mounts
- * again and reads again." What a `{ reactive: false }` caller does NOT close is a switch
- * reached by calling `theServerSignedMeIn` directly without going through that screen at
- * all, which is not a road production has - it is how `pictureIsOneRow.test.tsx` and this
- * file's own `inboxFromTheServer.test.tsx` reach it, on purpose, to measure the general
- * case. That gap is real, is narrower than it was, and is written down rather than hidden:
- * closing it needs either a change to the shared `NotFound.tsx` or a new, non-redirecting
- * answer for „not yours any more" as opposed to „never was anybody's" - both of which are
- * product decisions this increment does not carry a mandate for.
+ * is not. `app/routeObjects.tsx` puts every route including that one under the same `<Outlet />`
+ * `app/Shell.tsx` holds, so reaching the sign in screen and coming back BOTH unmount this
+ * component - the very thing `MessagesMenu.tsx` cannot say, since it sits beside the outlet
+ * and never comes down. So the shared-laptop road this increment closes (owner, 27.09.2026)
+ * is closed here already, by routing, exactly as PR 406's own review measured before asking
+ * for a key on this element in the first place: „the detail screen mounts again and reads
+ * again." What `{ reactive: false }` does NOT close is a switch reached by calling
+ * `theServerSignedMeIn` directly without going through that screen at all, which is not a
+ * road production has - it is how `pictureIsOneRow.test.tsx` and this file's own
+ * `inboxFromTheServer.test.tsx` reach it, on purpose, to measure the general case. That gap
+ * is real, is narrower than it was, and is written down rather than hidden: closing it for
+ * good needs either a change to the shared `NotFound.tsx` or a new, non-redirecting answer
+ * for „not yours any more" as opposed to „never was anybody's" - both of which are product
+ * decisions this increment does not carry a mandate for.
  */
 function TheMessageAsked({ mine }: { mine: string }) {
   return (

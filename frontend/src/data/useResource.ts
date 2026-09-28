@@ -55,21 +55,35 @@ export type ResourceState<T> =
  * form is what stayed; naming the one-frame case this does not independently cover is more
  * honest than a `useState` nothing here exercises.
  *
- * **What this does NOT do, measured rather than assumed, so the next reader does not reach
- * for it to solve the same thing it already failed to.** A `key` on the caller was tried
- * first (review of PR 406, second round): it forces a fresh read by tearing the whole
- * subtree down, `MessageDetail.tsx`'s `useCompetitors`/`useTeams`/`usePairs`/`useOverlay`
- * included. Reading `owner` in the effect's own dependency list was tried next, on the
- * theory that skipping that teardown would close the window - measured on
- * `teamInvite.test.tsx`, it did not: the same three cases fail the same way, on the same
- * twenty second timeout, `TeamDetail` still never called. **Both reach `NotFound` and both
- * lose to it**, because the fault is not in how the new answer arrives; it is that
- * `NotFound`'s own `<Navigate replace>` fires from an effect that can land after a DIFFERENT
- * navigation the caller already started (`router.navigate` to the team page, in that file),
- * and whichever one the router hears last is the one that sticks. That race is
- * `member/MessageDetail.tsx`'s to answer, by not reacting to owner there at all; the doc on
- * its `TheMessageAsked` has the full measurement and the reason that boundary is acceptable
- * for now.
+ * **Two forms that DID fail on `teamInvite.test.tsx` with `MessageDetail.tsx` reacting,
+ * kept apart from what this file actually runs so the next reader does not reach for a
+ * mechanism already measured against the wrong one.** A `key` on the caller was tried first
+ * (review of PR 406, second round): it forces a fresh read by tearing the whole subtree
+ * down, `MessageDetail.tsx`'s `useCompetitors`/`useTeams`/`usePairs`/`useOverlay` included.
+ * The render-time state adjustment described two paragraphs up - an earlier draft of this
+ * very hook - was tried next. Both reached `TheMessage` finding no message, both correctly
+ * returned `<NotFound />`, and both lost to it: `NotFound`'s own `<Navigate replace>` fired
+ * from an effect that can land after a DIFFERENT navigation the caller already started
+ * (`router.navigate` to the team page, in that file), and the router heard the redirect
+ * last - three cases, same twenty second timeout, `TeamDetail` never called, both times.
+ *
+ * **What ships today - `owner` read only through this effect's `[name, owner]`, nothing
+ * adjusted during render at all - is neither of those two, and a later review of this fix
+ * measured it separately rather than carrying the verdict over: with `MessageDetail.tsx`
+ * reacting, `teamInvite.test.tsx` ran twice at 34 passed, 0 failed, and the whole frontend
+ * package once at 3396 passed, 1 failed - the one case built to require the narrower
+ * behaviour `member/MessageDetail.tsx` still chooses.** An earlier draft of this doc
+ * attached the first two mechanisms' failure to this one; that was wrong about which
+ * mechanism it was describing, and is corrected here rather than left for the next reader
+ * to disprove again.
+ *
+ * **That green run is not the same claim as a closed race, and is not why
+ * `member/MessageDetail.tsx` still opts out.** `NotFound.tsx` is still `<Navigate replace>`
+ * fired from an effect nothing here controls; a package that does not happen to hit this
+ * timing on one machine says something about that machine's scheduling, not about whether
+ * the window can still open under a slower fetch or a busier event loop. The doc on
+ * `TheMessageAsked` has the full measurement and names what closing that gap for good
+ * would need.
  */
 export function useResource<T>(name: ResourceName, owner?: string): ResourceState<T> {
   /* Read once, as this mounts, and never again while it is mounted - UNLESS `owner` changes,
