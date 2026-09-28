@@ -16,6 +16,7 @@ import {
 import { WHEN_WRITING_A_PRICE } from '../admin/priceWrites'
 import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
+import { WHEN_ACTIVATING } from '../admin/activation'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
@@ -126,6 +127,12 @@ const NOT_A_REASON: Record<string, string[]> = {
      `<Obrisana članica>` and `M` are what stands where a deleted member's name stood, and
      the letter the route reads his gender off to choose between the first two. */
   'CompetitorWriteApi.java': ['delete', 'anonymise', '<Obrisani član>', '<Obrisana članica>', 'M'],
+  /* THE TWO WORDS `membership.basis` SPELLS, and they are the schema's vocabulary rather than
+     anything the route refuses. `MembershipWriteApi` turns the ground a moderator pressed into
+     one of them and writes it to the column; `membership_basis_known` (V38) is what decides the
+     set, and `MembershipConstraintsTest` reads it out of `pg_constraint` rather than believing a
+     copy. Same kind of constant as `PricingWriteApi`'s two above. */
+  'MembershipWriteApi.java': ['feeExempt', 'balance'],
 }
 
 /**
@@ -280,6 +287,17 @@ describe('the reasons the server can name', () => {
        answers prose here where every other route answers a code, and why the screen maps it
        rather than letting `ServerSaid` print it. */
     ['CompetitorWriteApi.java', [WHEN_DELETING_A_MEMBER], 14],
+    /* THE TENTH, ADDED 28.09.2026 WITH THE SCREEN THAT ACTIVATES A MEMBERSHIP. Nine constants
+       and SEVEN reasons, which is the third file on this list where those two numbers differ;
+       `NOT_A_REASON` above says which two are not refusals and why. The payments screen answers
+       all seven.
+
+       THE SCREEN CANNOT REACH ALL SEVEN AND ANSWERS THEM ANYWAY, which is the arrangement
+       `WHEN_WRITING_A_PRICE` already keeps and gives the reason for: the screen is the floor and
+       the route decides. One of the seven it could not predict even in principle -
+       `nothingWouldComeOffTheBalance`, which the server settles on the PAIR of currencies while
+       the screen is served one - and that is set out on `admin/activation.ts`. */
+    ['MembershipWriteApi.java', [WHEN_ACTIVATING], 9],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every
