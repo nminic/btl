@@ -129,10 +129,11 @@ class BalanceCarriedOverTest extends DatabaseTest {
 	private void payment(String number, int season, String reference, String recognisedOn,
 			String account, String name) {
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount, currency,"
-						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name) values ("
+						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name, received)"
+						+ " values ("
 						+ " (select id from competitor where member_number = ?), ?, ?, " + A_PRICE_ROW
 						+ ", 4200.00, 'RSD', 0, 'ips', 'recorded', timestamptz '" + recognisedOn
-						+ "', " + account + ", ?)")
+						+ "', " + account + ", ?, 4200.00)")
 				.params(number, season, reference, name).update();
 	}
 

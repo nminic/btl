@@ -66,11 +66,11 @@ public class MembershipPriceTest {
 	/** What a member pays in each period, in both currencies. */
 	@Test
 	void thePriceIsThePriceOfTheDay() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, true).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("35");
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, false).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.RSD).amount())
 				.isEqualByComparingTo("4200");
-		assertThat(MembershipPrice.on(ROWS, monthDay("12-15"), 1990, 2027, true).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("12-15"), 1990, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("50");
 	}
 
@@ -84,13 +84,13 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theFeeIsOnEuroPaymentsAndNeverOnDinarOnes() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, true).fee())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.EUR).fee())
 				.isEqualByComparingTo("3");
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, false).fee())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.RSD).fee())
 				.as("a dinar payment was charged a fee that covers an intermediary it does not use")
 				.isEqualByComparingTo("0");
 
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, true).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.EUR).amount())
 				.as("the fee was added into the membership instead of standing beside it")
 				.isEqualByComparingTo("35");
 	}
@@ -104,11 +104,11 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theJuniorPriceIsTheSameWheneverItIsPaid() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 2015, 2027, true).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
-		assertThat(MembershipPrice.on(ROWS, monthDay("12-31"), 2015, 2027, true).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("12-31"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
-		assertThat(MembershipPrice.on(ROWS, monthDay("12-31"), 2015, 2027, true).key())
+		assertThat(MembershipPrice.on(ROWS, monthDay("12-31"), 2015, 2027, Currency.EUR).key())
 				.isEqualTo("junior");
 	}
 
@@ -123,16 +123,16 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void aJuniorWhoPaysInMarchIsNoMoreRankedThanAnybodyElseWhoDoes() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 2015, 2027, true).ranking())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 2015, 2027, Currency.EUR).ranking())
 				.as("a junior who paid in the window was refused a place")
 				.isTrue();
 
-		assertThat(MembershipPrice.on(ROWS, monthDay("03-15"), 2015, 2027, true).ranking())
+		assertThat(MembershipPrice.on(ROWS, monthDay("03-15"), 2015, 2027, Currency.EUR).ranking())
 				.as("a junior who paid in March was told he could be ranked, and nobody else who"
 						+ " paid that day can be")
 				.isFalse();
 
-		assertThat(MembershipPrice.on(ROWS, monthDay("03-15"), 1990, 2027, true).ranking()).isFalse();
+		assertThat(MembershipPrice.on(ROWS, monthDay("03-15"), 1990, 2027, Currency.EUR).ranking()).isFalse();
 	}
 
 	/**
@@ -175,7 +175,7 @@ public class MembershipPriceTest {
 				.filter(row -> !MembershipPrice.PROCESSING.equals(row.key()))
 				.toList();
 
-		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, monthDay("10-03"), 1990, 2027, true))
+		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, monthDay("10-03"), 1990, 2027, Currency.EUR))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining(MembershipPrice.PROCESSING);
 	}

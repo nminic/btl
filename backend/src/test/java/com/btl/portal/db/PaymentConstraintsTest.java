@@ -80,8 +80,27 @@ class PaymentConstraintsTest extends DatabaseTest {
 	private static final String COLUMNS = "competitor_id, season, reference, price_row_id, amount, currency,"
 			+ " fee, method, state, recorded_at, recorded_by, recorded_by_name";
 
+	/**
+	 * WHAT ARRIVED RIDES ON THE STATE RATHER THAN BEING A THIRTEENTH ARGUMENT AT FORTY CALL SITES.
+	 *
+	 * <p>{@code payment_recognised_says_what_arrived} (V42) has the shape
+	 * {@code payment_recognised_says_when} and {@code payment_recognised_says_who} (V16) already have:
+	 * an awaited payment carries no day, no name and no arrived amount, and a recognised one carries all
+	 * three. So a row's state is the only thing that decides it, and reading it off the row the caller
+	 * wrote keeps every OTHER row in this list breaking exactly one constraint - which is the whole
+	 * point of the list. A row that broke two would say nothing about either.
+	 *
+	 * <p><b>This derivation is not what proves the new constraint.</b> Its own violations are written
+	 * through {@link #paymentWith}, with the amount said out loud, in both directions.
+	 */
 	private static String payment(String values) {
-		return "insert into payment (" + COLUMNS + ") values (" + values + ")";
+		return paymentWith(values, values.contains("'awaited'") ? "null" : "38.00");
+	}
+
+	/** The same row with what arrived said explicitly, for the cases that are about that column. */
+	private static String paymentWith(String values, String received) {
+		return "insert into payment (" + COLUMNS + ", received) values (" + values + ", " + received
+				+ ")";
 	}
 
 	/** Waiting: no reference yet, because he has no number yet, and nobody has recognised it. */
@@ -122,13 +141,13 @@ class PaymentConstraintsTest extends DatabaseTest {
 	static List<Violation> violations() {
 		return List.of(
 				Violation.notNull("payment_id_not_null", "id",
-						"insert into payment (id, " + COLUMNS + ") values (null, " + A_MEMBER + ", 2028,"
-								+ " null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited', null, null,"
-								+ " null)"),
+						"insert into payment (id, " + COLUMNS + ", received) values (null, " + A_MEMBER
+								+ ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
+								+ " null, null, null, null)"),
 				Violation.of("payment_pk",
-						"insert into payment (id, " + COLUMNS + ") select id, " + A_MEMBER + ", 2028,"
-								+ " null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited', null, null,"
-								+ " null from payment limit 1"),
+						"insert into payment (id, " + COLUMNS + ", received) select id, " + A_MEMBER
+								+ ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
+								+ " null, null, null, null from payment limit 1"),
 
 				Violation.notNull("payment_competitor_id_not_null", "competitor_id",
 						payment("null, 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal', 'awaited',"
@@ -238,6 +257,27 @@ class PaymentConstraintsTest extends DatabaseTest {
 				Violation.of("payment_recognised_says_who",
 						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'awaited', null, null, 'Blagajnik Probni'")),
+				/* AND WHAT ARRIVED IS SAID EXACTLY WHEN THOSE TWO ARE, in both directions, and a
+				   recognised row that says nothing arrived is the shape every fixture in this repository
+				   held until V42 - so this is the case that would have told them so. */
+				Violation.of("payment_recognised_says_what_arrived",
+						paymentWith(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+								+ " 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni'",
+								"null")),
+				Violation.of("payment_recognised_says_what_arrived",
+						paymentWith(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+								+ " 'awaited', null, null, null", "38.00")),
+
+				/* AND MONEY THAT ARRIVED IS MONEY. A nought would be a moderator recording that nothing
+				   came while recording that something did; the owner settled that an empty field and a
+				   typed nought are one state and belong at the other door (PDL 19, point 5), so this
+				   column never carries one. The row is otherwise a legal recognised payment, so it
+				   breaks this and nothing else. */
+				Violation.of("payment_received_positive",
+						paymentWith(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
+								+ " 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT + ", 'Blagajnik Probni'",
+								"0")),
+
 				Violation.of("payment_recorded_by_name_not_blank",
 						payment(A_MEMBER + ", 2028, null, " + A_PRICE_ROW + ", 35, 'EUR', 0, 'paypal',"
 								+ " 'recorded', " + AN_INSTANT + ", " + AN_ACCOUNT + ", '   '")),

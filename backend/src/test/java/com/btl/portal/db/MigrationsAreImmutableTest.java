@@ -144,6 +144,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   ADL A2's protection for applied migrations does not cover it yet and this is not a
 			   rewrite of a migration anyone has run. */
 			new Applied("41", "V41__the_card_leaves_the_public_pages.sql", 1470407484),
+			new Applied("42", "V42__the_balance_is_one_amount_in_one_currency.sql", -1505949912),
 			/* REPINNED 28.09.2026, from 677440898: independent review of PR 414 found Article 36
 			   naming the rookie category by a Serbian word no English screen shows, and a header
 			   sentence attributing the assistant's own derivation to the owner as an independent

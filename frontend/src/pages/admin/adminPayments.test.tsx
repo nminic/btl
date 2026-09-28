@@ -43,21 +43,45 @@ describe('the payments screen', () => {
   const ADDRESS = `/sr/${QUEUE.payments.path}`
 
   const ACCOUNTS: MembershipDue[] = [
-    { competitorId: 41, memberNumber: '', firstName: 'Ana', lastName: 'Ilić', city: 'Novi Sad' },
+    {
+      competitorId: 41,
+      memberNumber: '',
+      firstName: 'Ana',
+      lastName: 'Ilić',
+      city: 'Novi Sad',
+      currency: 'RSD',
+      expected: 4800,
+      balance: 0,
+    },
     {
       competitorId: 23,
       memberNumber: '000031',
       firstName: 'Jovana',
       lastName: 'Ilić',
       city: 'Beograd',
+      currency: 'RSD',
+      expected: 4800,
+      balance: 6000,
     },
-    { competitorId: 58, memberNumber: '', firstName: 'Petar', lastName: 'Marko', city: 'Niš' },
+    {
+      competitorId: 58,
+      memberNumber: '',
+      firstName: 'Petar',
+      lastName: 'Marko',
+      city: 'Niš',
+      currency: 'EUR',
+      expected: 43.5,
+      balance: 12.75,
+    },
     {
       competitorId: 17,
       memberNumber: '000009',
       firstName: 'Marko',
       lastName: 'Marković',
       city: 'Niš',
+      currency: 'RSD',
+      expected: 4800,
+      balance: 1500,
     },
   ]
 
@@ -147,11 +171,17 @@ describe('the payments screen', () => {
     server.stop()
   })
 
-  it('reads the list and never writes to it', async () => {
-    /* THE WHOLE OF WHAT THIS SCREEN DOES TODAY, held as a fact about the requests rather than
-       as an absence of buttons. Written this way it also says what the next increment changes:
-       the day a booking is sent, this case names the verb that arrived and somebody decides
-       once whether it belongs here. */
+  it('never writes to the list itself, whatever is pressed on it', async () => {
+    /* THE LIST IS DERIVED AND IS NEVER WRITTEN TO, which outlived the arrival of activation and
+       is the reason this case was kept rather than deleted with its old name. A row leaves by a
+       MEMBERSHIP being written - `POST /api/memberships` - and never by anything being recorded
+       against `/api/payments`, which has no queue behind it: five places in the backend write
+       `verification` and not one writes the word `payments`.
+
+       WHAT CHANGED ON 28.09.2026 is that the screen now presses something. Every button on it is
+       pressed here and the verbs that reached `/api/payments` are counted: one GET and nothing
+       else. `paymentsActivation.test.tsx` measures what activation DOES send, and this measures
+       what it must never send. */
     const server = serving()
     const user = setupUser()
     renderAt(ADDRESS, 'superadmin')
@@ -167,18 +197,20 @@ describe('the payments screen', () => {
     server.stop()
   })
 
-  it('offers no way to activate anybody, one at a time or all at once', async () => {
-    /* THE ABSENCE OF THE SWEEP IS ITSELF A DECISION and does not wait on the specification. On
-       the old queue a row meant „somebody says the money arrived"; on a derived list it means
-       the opposite, so one press would activate every debtor at once and spend a member number
-       on each - and the sequence only counts up, so a number spent in error is spent for good.
+  it('activates one man at a time and never all at once, and hands nothing back', async () => {
+    /* THE ABSENCE OF THE SWEEP IS ITS OWN DECISION AND OUTLIVED THE SPECIFICATION. On the old
+       queue a row meant „somebody says the money arrived"; on a derived list it means the
+       OPPOSITE, so one press would activate every debtor at once and spend a member number on
+       each - and the sequence only counts up, so a number spent in error is spent for good.
 
-       The absence of the single button is the other thing, and it is temporary: it waits on the
-       owner's specification rather than on an argument. Both are read off the screen here, so
-       neither can come back without somebody meeting this case.
+       And „Odbij" is gone with it: it existed to hand back something somebody had sent in, and
+       nobody sends anything in here, so a reason written against one of these rows would reach a
+       member as „your submission was handed back" about a submission he never made.
 
-       And „Odbij" is gone with them: it existed to hand back something somebody had sent in,
-       and nobody sends anything in here. */
+       THE SINGLE BUTTON IS NOW THERE, which is what changed on 28.09.2026, and it is counted
+       rather than merely found: FOUR buttons named „Aktiviraj" for four rows. Asserted as a
+       count because „there is a button called Aktiviraj" would pass a screen that drew one for
+       the whole table, which is the very thing the paragraph above forbids. */
     const server = serving()
     renderAt(ADDRESS, 'superadmin')
 
@@ -187,7 +219,8 @@ describe('the payments screen', () => {
     const pressable = screen.getAllByRole('button').map((one) => one.textContent ?? '')
 
     expect(pressable.filter((one) => /sve/i.test(one))).toEqual([])
-    expect(pressable.filter((one) => /aktiv|evidentiraj|oslobodi|odbij/i.test(one))).toEqual([])
+    expect(pressable.filter((one) => /odbij/i.test(one))).toEqual([])
+    expect(pressable.filter((one) => one === 'Aktiviraj')).toHaveLength(ACCOUNTS.length)
 
     server.stop()
   })

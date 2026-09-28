@@ -678,7 +678,11 @@ class PricingWriteApiTest {
 						.cookie(new Cookie(SessionCookie.NAME, booksPaymentsCookie))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(new ObjectMapper().writeValueAsString(
-								new PaymentApi.Confirm(whoPaysLater, "EUR", "ips", null))))
+								/* Short, with the balance switched off: this case is about which price
+								   row the payment names, and a balance or a surplus would write lines
+								   into the book that have nothing to do with that. */
+								new PaymentApi.Confirm(whoPaysLater, new BigDecimal("1.00"), false,
+										"ips", null))))
 				.andReturn().getResponse();
 
 		assertThat(booked.getStatus())
@@ -1486,11 +1490,11 @@ class PricingWriteApiTest {
 	private long payment(long competitor, String priceRow, BigDecimal amount, String currency,
 			BigDecimal fee) {
 		return db.sql("insert into payment (competitor_id, season, price_row_id, amount, currency,"
-						+ " fee, method, state, recorded_at, recorded_by_name)"
+						+ " fee, method, state, recorded_at, recorded_by_name, received)"
 						+ " values (?, ?, (select id from price_row where key = ?), ?, ?, ?, 'ips',"
-						+ " 'recorded', ?, 'Probni Probic') returning id")
+						+ " 'recorded', ?, 'Probni Probic', ?::numeric + ?::numeric) returning id")
 				.params(competitor, SeasonClock.seasonBeingPaidFor(IN_MARCH.atZone(SeasonClock.ZONE)),
-						priceRow, amount, currency, fee, Timestamp.from(IN_MARCH))
+						priceRow, amount, currency, fee, Timestamp.from(IN_MARCH), amount, fee)
 				.query(Long.class).single();
 	}
 }

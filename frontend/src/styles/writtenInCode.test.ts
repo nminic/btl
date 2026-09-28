@@ -266,6 +266,12 @@ describe('what a screen says in its own voice', () => {
       'aria-hidden',
       'aria-labelledby',
       'aria-live',
+      /* THE PORTAL'S FIRST ONE, 28.09.2026, and it is machinery rather than speech. It carries
+         the word „true" and a reader never meets that word: what he meets is that the sheet is a
+         dialogue and the page behind it is not listening, which the browser tells him in his own
+         language. Same kind of name as `aria-hidden` two lines up. `components/Prompt.tsx` is the
+         only thing that writes it, and the note there says why the portal had none until now. */
+      'aria-modal',
       'aria-required',
       'autoComplete',
       'className',

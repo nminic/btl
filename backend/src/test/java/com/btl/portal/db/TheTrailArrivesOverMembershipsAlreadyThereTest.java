@@ -162,10 +162,11 @@ class TheTrailArrivesOverMembershipsAlreadyThereTest extends DatabaseTest {
 				.update();
 
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount,"
-						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name)"
+						+ " currency, fee, method, state, recorded_at, recorded_by, recorded_by_name,"
+						+ " received)"
 						+ " values (" + A_PAYER + ", 2027, '20271001', " + A_PRICE_ROW + ", 4200.00,"
 						+ " 'RSD', 0, 'ips', 'recorded', " + AN_INSTANT + ", " + THE_MODERATOR
-						+ ", 'Probni Probic')")
+						+ ", 'Probni Probic', 4200.00)")
 				.update();
 	}
 

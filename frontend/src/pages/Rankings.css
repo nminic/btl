@@ -296,6 +296,69 @@
   font-size: 0.85rem;
 }
 
+/* **Every cell of this row centred on the circle, not merely the one that carries it** (owner,
+   28.09.2026, from a screenshot of this very row: „Sve mora biti centrirano vertikalno u njemu").
+   `styles/table.css` sets `.table th, .table td { vertical-align: top }` for every table on the
+   portal, deliberately: a table is read across, and top keeps every column on one shared line
+   while nothing in a row is taller than a line of text (`styles/table.css`, the comment over that
+   rule). This row is the one place that stops being true, because the circle beside a name is
+   taller than the single line every other cell holds, so under the shared rule the category, the
+   figures and the points all stood above the middle of the row instead of beside the circle.
+
+   `.rankings__table tbody td` is not written to tie with `.table td` and hope the bundler keeps
+   this sheet after it: weighed the way `styles/cellSpecificity.test.ts` weighs a selector, one
+   class and two elements, `(0,1,2)`, beats one class and one element, `(0,1,1)`, outright, so this
+   wins wherever the shared sheet happens to land. */
+.rankings__table tbody td {
+  vertical-align: middle;
+}
+
+/* **The member number under the name, and not beside it** (owner, 28.09.2026, the same
+   screenshot: „clanski broj treba da ide ispod Imena i prezimena"). `NamePlate` draws the circle
+   and leaves the shape of the words beside it to the screen that writes them
+   (`components/NamePlate.tsx`: „The circles are its business and the words are not"); this is
+   this screen's own shape, the same way `OverTwoLines` is the league grid's and three of the top
+   boards'. `Rankings.tsx` passes both lines as children of `NamePlate` now, so both stand in
+   `.plate__words`, and two block boxes with nothing inline between them stack top to bottom on
+   their own, the way `.plate__given` and `.plate__family` already do for the two screens that
+   break the NAME instead (`components/NamePlate.css`). Nothing here touches `.plate__words`
+   itself, or any class `NamePlate.css` defines: `styles/leagueLayout.test.ts` holds that sheet to
+   a golden text and tracks every sheet that reaches into one of its classes, and this row asks
+   nothing of it beyond the plate it already had.
+
+   `table__member-number` keeps doing what it does for the other three screens that wear it
+   (`styles/table.css`: the colour and the smaller size); the second class here is only what those
+   three do not need. */
+/* **The two lines together as tall as the circle beside them** (owner, 28.09.2026, the same
+   screenshot: „ukupna visina punog imena i broja odgovara ukupnoj visini slike / inicijala u
+   krugu"). Three shapes were weighed for this and are not equal: the circle could follow the
+   text, the text could follow the circle, or both could be pinned to one value neither of them
+   already had reason to hold. There is no place on the portal that does the first or the third
+   today, and reaching for either would mean giving one of `NamePlate`'s six screens a size the
+   other five never asked for, which is the coupling that component's own docstring warns against.
+   So this is the second: the circle keeps the 2.1rem it already has at `.plate .portrait`
+   (`components/NamePlate.css`, unchanged, still shared and still held by the golden text in
+   `styles/leagueLayout.test.ts`), and the name and the number are asked to add up to it.
+
+   1.05rem is written twice rather than expressed as a multiple of either line's own font size,
+   because the two lines are not one size: the number is smaller than the name
+   (`table__member-number`, 0.8rem), and a unitless line-height like `.plate__given`'s 1.2 would
+   give the two lines two different heights instead of the one each needs to make 2.1rem exactly.
+   The two files are read independently of one another and cross-checked, in
+   `styles/rankingsMemberRow.test.ts`, rather than one deriving its number from the other, so a
+   change to either 2.1rem or 1.05rem alone is what that guard exists to catch.
+
+   **The boundary this does not close:** below 700px this table draws no circle at all (the media
+   query right after this one), so a long name that wraps to two lines there has nothing to
+   disagree with. Above 700px, where the circle returns, a name wide enough to wrap would still
+   break this correspondence, the same way it would on the two screens that already break a name
+   over two lines on purpose; nothing here claims otherwise; measured in a browser rather than
+   asserted, since jsdom lays nothing out. */
+.rankings__member-name,
+.rankings__member-number {
+  display: block;
+  line-height: 1.05rem;
+}
 
 /* **Krug ustupa mesto imenu na telefonu, i to samo u ovoj tabeli** (owner, 07.09.2026, asked with
    the measurement in front of him: „Krug se ne crta ispod 700px").

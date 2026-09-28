@@ -77,12 +77,17 @@ class MembershipCarriedOverTest extends DatabaseTest {
 	}
 
 	private void payment(String number, int season, String state, String recognisedOn, String reference) {
+		/* AND WHAT ARRIVED IS SAID EXACTLY WHEN THE DAY AND THE NAME ARE (V42,
+		   `payment_recognised_says_what_arrived`), which is why it rides on the same branch: an awaited
+		   payment has all three empty and a recognised one has all three. */
 		db.sql("insert into payment (competitor_id, season, reference, price_row_id, amount, currency,"
-						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name) values ("
+						+ " fee, method, state, recorded_at, recorded_by, recorded_by_name, received)"
+						+ " values ("
 						+ " (select id from competitor where member_number = ?), ?, ?, " + A_PRICE_ROW
 						+ ", 4200.00, 'RSD', 0, 'ips', ?, "
-						+ (recognisedOn == null ? "null, null, null" : "timestamptz '" + recognisedOn
-								+ "', " + AN_ACCOUNT + ", 'Blagajnik Probni'") + ")")
+						+ (recognisedOn == null ? "null, null, null, null"
+								: "timestamptz '" + recognisedOn + "', " + AN_ACCOUNT
+										+ ", 'Blagajnik Probni', 4200.00") + ")")
 				.params(number, season, reference, state).update();
 	}
 

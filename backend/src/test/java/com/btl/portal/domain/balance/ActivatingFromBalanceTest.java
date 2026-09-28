@@ -1,6 +1,7 @@
 package com.btl.portal.domain.balance;
 
 import com.btl.portal.domain.member.MemberNumber;
+import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.payment.RecordingAPayment;
 import org.junit.jupiter.api.Test;
 
@@ -21,15 +22,27 @@ class ActivatingFromBalanceTest {
 	private static final MemberNumber HE_HAS_ONE = new MemberNumber("001234");
 
 	private static Balance.Settlement covered() {
-		return Balance.against(fee(), new Balance.Money(new BigDecimal("40"), new BigDecimal("4800")));
+		return Balance.against(fee(), dinars("4800"));
 	}
 
 	private static Balance.Settlement short_() {
-		return Balance.against(fee(), new Balance.Money(new BigDecimal("30"), new BigDecimal("3600")));
+		return Balance.against(fee(), dinars("3600"));
 	}
 
 	private static Balance.Money fee() {
-		return new Balance.Money(new BigDecimal("35.00"), new BigDecimal("4200.00"));
+		return dinars("4200.00");
+	}
+
+	/**
+	 * EVERY AMOUNT IN THIS FILE IS IN DINARS, and that is deliberate rather than arbitrary.
+	 *
+	 * <p>Since V42 a {@link Balance.Money} is one amount and one money (owner, 27.09.2026, PDL 25), so
+	 * the cheapest mistake anybody can make is to read one money against another - at the seeded rate of
+	 * 120 that is wrong by two orders of magnitude and still perfectly ordinary arithmetic. Dinars are
+	 * the side where such a mistake is LARGE, so it is the side these cases are written on.
+	 */
+	private static Balance.Money dinars(String amount) {
+		return new Balance.Money(new BigDecimal(amount), Currency.RSD);
 	}
 
 	private static ActivatingFromBalance.Asking asking(boolean alreadyAMember, boolean exempt,
@@ -117,8 +130,8 @@ class ActivatingFromBalanceTest {
 	 */
 	@Test
 	void afeeOfNothingIsRefusedForTheSameReasonAndHeIsNeitherExemptNorEmpty() {
-		Balance.Settlement nothingToPay = Balance.against(Balance.Money.NOTHING,
-				new Balance.Money(new BigDecimal("40"), new BigDecimal("4800")));
+		Balance.Settlement nothingToPay = Balance.against(Balance.Money.nothingIn(Currency.RSD),
+				dinars("4800"));
 
 		assertThat(nothingToPay.coveredByTheBalance())
 				.as("a fee of nothing is not covered, so this case cannot be about a fee of nothing")
@@ -135,7 +148,8 @@ class ActivatingFromBalanceTest {
 		   empty book answers the same, which is the one substitution that would pass if the guard had
 		   been written over the balance instead. */
 		assertThat(ActivatingFromBalance.decide(asking(false, false,
-				Balance.against(Balance.Money.NOTHING, Balance.Money.NOTHING), HE_HAS_ONE)))
+				Balance.against(Balance.Money.nothingIn(Currency.RSD),
+						Balance.Money.nothingIn(Currency.RSD)), HE_HAS_ONE)))
 				.isEqualTo(ActivatingFromBalance.Outcome.HE_OWES_NOTHING);
 
 		/* And a fee that IS money is untouched by this clause, so it refuses a price and not a
