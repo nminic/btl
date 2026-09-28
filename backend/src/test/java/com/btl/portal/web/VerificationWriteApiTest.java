@@ -79,6 +79,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * purpose and a decision must not fall over it.
  * <li><b>Three members plus the moderator's own child</b>, so „that member" is never „the
  * only member".
+ * <li><b>TWO RUNS CLIMB FURTHER THAN THEY FALL</b> (PR 443 review), where every other run
+ * climbs exactly as far as it falls and sits on a race carrying the same two numbers. On those
+ * the formula gives the same points either way round, so an approval that wrote the drop where
+ * the climb belongs, worked the points out from the two swapped, or read them off the race
+ * instead of off the run agreed with every assertion made about it. One of the two is a first
+ * report and one a correction, because different statements write them; and the first is run
+ * at a race that fixes nothing, so the race has no figures of its own to stand in for what the
+ * runner sent.
  * <li><b>THE CLOCK STANDS IN MARCH</b>, where {@link SeasonClock#transfersTakeEffect} answers
  * 2028 and {@link SeasonClock#seasonBeingPaidFor} answers 2027. Inside the transfer window
  * the two agree and a route reading the wrong one is right anyway - which is exactly how the
@@ -175,6 +183,25 @@ class VerificationWriteApiTest {
 	 *  correction whose figures equal the counted ones would let a case about „the standings
 	 *  changed" pass over a route that wrote nothing at all. */
 	private static final int CORRECTED_TIME = 3300;
+
+	/** What Vera's correction says her ten kilometres climbed and fell. The climb is not the
+	 *  drop, and neither is the {@code 50} that the result she is correcting and the race both
+	 *  carry: a correction that wrote nothing of them, or the wrong one of them, would
+	 *  otherwise leave a row that is right by accident. */
+	private static final int CORRECTED_CLIMB = 170;
+
+	private static final int CORRECTED_DROP = 55;
+
+	/** Ana's run at the free race: how long it took her, how far she went, and how far she
+	 *  climbed and fell - four numbers the race says nothing about. The climb is not the drop
+	 *  here either. */
+	private static final int TWO_HOURS = 7200;
+
+	private static final String TRAIL_KM = "14.35";
+
+	private static final int TRAIL_CLIMB = 780;
+
+	private static final int TRAIL_DROP = 210;
 
 	/** What a member who left the beginners' category months ago already carries. It is not
 	 *  written as twelve: the threshold is {@link Category#FIRST_SEASON_POINTS} and one place,
@@ -277,6 +304,12 @@ class VerificationWriteApiTest {
 
 	/** A second run for a member who was over the threshold before this branch existed. */
 	private long detesSecondRun;
+
+	/** A race that fixes nothing, so what a run at it says is all the runner's own. */
+	private long theTrail;
+
+	/** A first report whose climb is not its drop, at {@link #theTrail}. */
+	private long anasTrailRun;
 
 	/** A second, unrelated event: what proves a comment is filed under the one it was
 	 *  actually about rather than under any other row that happens to exist. */
@@ -410,8 +443,8 @@ class VerificationWriteApiTest {
 				AN_HOUR, null);
 		anasMarathon = runWaitingFor(ANA, theMarathon, SATURDAY, "42.1950", 300, 300,
 				FOUR_HOURS, null);
-		verasCorrection = runWaitingFor(VERA, theShortRace, THE_OTHER_EVENTS_DAY, "10.00", 50, 50,
-				CORRECTED_TIME, verasCountedRun);
+		verasCorrection = runWaitingFor(VERA, theShortRace, THE_OTHER_EVENTS_DAY, "10.00",
+				CORRECTED_CLIMB, CORRECTED_DROP, CORRECTED_TIME, verasCountedRun);
 		aRunOnARaceNobodyHasEnteredYet = describedRunWaitingFor(ANA, THE_OTHER_EVENTS_DAY);
 		aResultsRowNamingNoRun = waiting("results", VERA, "Red bez prijave", "", null);
 
@@ -425,6 +458,22 @@ class VerificationWriteApiTest {
 				WELL_OVER_THE_THRESHOLD);
 		detesSecondRun = runWaitingFor(DETE, theShortRace, THE_OTHER_EVENTS_DAY, "10.00", 50, 50,
 				AN_HOUR, null);
+
+		/* A RUN WHOSE CLIMB IS NOT ITS DROP, AT A RACE THAT CARRIES NEITHER (PR 443 review).
+		   Every run above climbs exactly as far as it falls and sits on a race carrying the
+		   same two numbers, so an approval that swapped them, or read them off the race,
+		   agreed with every assertion made about it. This is the first-report half of the
+		   answer, and `verasCorrection` above is the other half, for the statement that
+		   overwrites.
+
+		   It is Ana's because she has an account, so the letter about it has somewhere to go,
+		   and no counted result, so `onlyResultOf` still names the one row it writes. The race
+		   is FREE, which is what makes the figures hers: on a free race the four figures are
+		   what THIS runner covered (V7), so nothing on the race can be mistaken for what she
+		   sent. */
+		theTrail = freeRace(theWeekendEvent, "Brdska trka", SATURDAY);
+		anasTrailRun = runWaitingFor(ANA, theTrail, SATURDAY, TRAIL_KM, TRAIL_CLIMB, TRAIL_DROP,
+				TWO_HOURS, null);
 
 		waiting("payments", VERA, "Uplata", "", null);
 	}
@@ -1163,6 +1212,49 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * A RUN THAT CLIMBS FURTHER THAN IT FALLS IS COUNTED WITH EACH FIGURE WHERE HE SENT IT
+	 * (PR 443 review).
+	 *
+	 * <p>The route hands the pair {@code (climb, drop)} side by side to a call that works out
+	 * the points and to two statements, one for a first report and one for a correction, so a
+	 * pair the wrong way round is one transposition from the right one, and it is invisible
+	 * on any run whose two figures are the same number, which was every run this file made
+	 * before this one. It is not a small fault: the formula weighs a metre climbed by 1.25 and
+	 * a metre fallen by 0.75, so on this run the points differ between the two orders. This
+	 * case is the first report; {@link #anApprovedCorrectionOverwritesTheRunItAmendsAndDoesNotAddASecond}
+	 * is the correction.
+	 *
+	 * <p><b>Every place the figures could come from is a different number here</b>, so
+	 * passing cannot have been done by any of the others: the climb he sent, the drop he
+	 * sent, and the race's own figures, which are nought because the race is free.
+	 *
+	 * <p>The points are asked of {@link BtlScoreCalculator} rather than typed, for the reason
+	 * {@link #anApprovedRunBecomesAResultAndTheExactLengthSurvives} gives, and the first
+	 * assertion is the floor under that: it fails if the figures are ever moved to two the
+	 * formula cannot tell apart.
+	 */
+	@Test
+	void aRunWhoseClimbIsNotItsDropIsCountedWithEachFigureWhereHeSentIt() throws Exception {
+		theFormulaTellsTheTwoOrdersApart(TRAIL_KM, TRAIL_CLIMB, TRAIL_DROP, TWO_HOURS);
+
+		assertThat(answer(THE_SUPERADMIN, anasTrailRun, true, null)).isEqualTo(200);
+
+		Counted counted = counted(onlyResultOf(ANA)).orElseThrow();
+
+		assertThat(counted.ascentM())
+				.as("the climb that was counted is not the one he sent")
+				.isEqualTo(TRAIL_CLIMB);
+		assertThat(counted.descentM())
+				.as("the drop that was counted is not the one he sent")
+				.isEqualTo(TRAIL_DROP);
+		assertThat(counted.points())
+				.as("the points were worked out from something other than what he sent")
+				.isEqualByComparingTo(BtlScoreCalculator.calculate(
+						new BigDecimal(TRAIL_KM).doubleValue(), TRAIL_CLIMB, TRAIL_DROP,
+						TWO_HOURS));
+	}
+
+	/**
 	 * AND NOBODY ELSE IS TOUCHED BY IT.
 	 *
 	 * <p>Three members and three different states: Ana gains a result, Bojan's own waiting run
@@ -1192,9 +1284,28 @@ class VerificationWriteApiTest {
 	 *
 	 * <p>The race is asserted unchanged because the owner said so the day before: „Menja se
 	 * sve osim trke."
+	 *
+	 * <p><b>The climb and the drop are asserted as well</b> (PR 443 review). The statement that
+	 * overwrites names them beside the time, and a correction that changed only the time
+	 * would keep the old two while the points, worked out from the new ones, no longer agreed
+	 * with them. The correction sends a climb that is not its drop and unlike the two it
+	 * replaces, so swapping them, or writing neither, is a different row from the right one.
 	 */
 	@Test
 	void anApprovedCorrectionOverwritesTheRunItAmendsAndDoesNotAddASecond() throws Exception {
+		/* THE FIXTURE STARTS WITH FIGURES UNLIKE THE ONES SENT, and each is asked rather than
+		   assumed: a correction that wrote nothing of them would otherwise agree with this
+		   case exactly as one that wrote them. */
+		Counted before = counted(verasCountedRun).orElseThrow();
+
+		assertThat(before.ascentM())
+				.as("the counted climb is the correction's, so this measures nothing")
+				.isNotEqualTo(CORRECTED_CLIMB);
+		assertThat(before.descentM())
+				.as("the counted drop is the correction's, so this measures nothing")
+				.isNotEqualTo(CORRECTED_DROP);
+		theFormulaTellsTheTwoOrdersApart("10.00", CORRECTED_CLIMB, CORRECTED_DROP, CORRECTED_TIME);
+
 		assertThat(answer(THE_SUPERADMIN, verasCorrection, true, null)).isEqualTo(200);
 
 		assertThat(howManyResults(VERA)).as("the correction added a second run").isEqualTo(1);
@@ -1204,9 +1315,15 @@ class VerificationWriteApiTest {
 		Counted counted = counted(verasCountedRun).orElseThrow();
 
 		assertThat(counted.seconds()).isEqualTo(CORRECTED_TIME);
+		assertThat(counted.ascentM())
+				.as("the correction kept the climb it replaced, or wrote the drop in its place")
+				.isEqualTo(CORRECTED_CLIMB);
+		assertThat(counted.descentM())
+				.as("the correction kept the drop it replaced, or wrote the climb in its place")
+				.isEqualTo(CORRECTED_DROP);
 		assertThat(counted.points()).isEqualByComparingTo(
-				BtlScoreCalculator.calculate(new BigDecimal("10.00").doubleValue(), 50, 50,
-						CORRECTED_TIME));
+				BtlScoreCalculator.calculate(new BigDecimal("10.00").doubleValue(),
+						CORRECTED_CLIMB, CORRECTED_DROP, CORRECTED_TIME));
 		assertThat(db.sql("select race_id from result where id = ?").param(verasCountedRun)
 				.query(Long.class).single()).as("the race moved").isEqualTo(theShortRace);
 	}
@@ -1437,6 +1554,28 @@ class VerificationWriteApiTest {
 				.as("a refusal was posted, and no decision asks for that")
 				.hasSize(afterTheApproval);
 		assertThat(bodyOfTheMessageTo(BOJAN)).contains(THE_REASON);
+	}
+
+	/**
+	 * AND THE LETTER NAMES THE CLIMB AND THE DROP IN THE ORDER HE SENT THEM (PR 443 review).
+	 *
+	 * <p>The run the letter tells him about is built at a third place, beside the two
+	 * statements and from the same two figures, so it is a third place they can be turned
+	 * round. The sister route asserts this of its own letter
+	 * ({@code ResultWriteApiTest.aFreshReportCarriesWhatWasSentInAndThePointsTheFormulaGives});
+	 * this route's letter was asserted for its recipient and its subject and not for a word
+	 * of its body.
+	 */
+	@Test
+	void theLetterAboutSuchARunNamesTheClimbAndTheDropInTheOrderHeSentThem() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, anasTrailRun, true, null)).isEqualTo(200);
+
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).as("nothing went out about an approved result").isNotEmpty();
+		assertThat(arrived[0].getContent().toString())
+				.as("the letter names the climb and the drop the other way round")
+				.contains("uspon " + TRAIL_CLIMB + " m, spust " + TRAIL_DROP + " m");
 	}
 
 	/**
@@ -1743,6 +1882,22 @@ class VerificationWriteApiTest {
 				.query(Long.class).single();
 	}
 
+	/**
+	 * A RACE THAT FIXES NOTHING: no length, no time limit, no climb and no drop.
+	 *
+	 * <p>On a free race the four figures of a run are what THAT runner covered (V7), so the
+	 * race's own two, which {@link RaceWriteApi} writes as nought when they are left out, are
+	 * not the runner's and nothing read off it can be mistaken for them. {@link #race} cannot
+	 * make this one, because it writes a race of a length.
+	 */
+	private long freeRace(long event, String name, LocalDate day) {
+		return db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m)"
+						+ " values (?, ?, false, ?, 'free', 0, 0, 0, 0) returning id")
+				.params(event, name, day)
+				.query(Long.class).single();
+	}
+
 	/** A result that is already counted, written straight in: it is what the portal looked
 	 *  like before this fixture's queue rows were sent, not something a route here made. */
 	private long resultAlreadyCounted(String memberNumber, long raceId, LocalDate day,
@@ -1832,6 +1987,25 @@ class VerificationWriteApiTest {
 		return Category.firstSeasonAllowed(bestOfficialSeason.pointsFor(member, season));
 	}
 
+	/**
+	 * THE FLOOR UNDER A CASE THAT READS POINTS OFF A RUN WHOSE CLIMB IS NOT ITS DROP.
+	 *
+	 * <p>The formula weighs the two differently, but at two decimals two figures close enough
+	 * give the same points either way round, and then a swap the case exists to see would go
+	 * on passing. Asked inside the case itself, so the figures cannot be moved to something
+	 * that measures nothing without this failing first.
+	 */
+	private static void theFormulaTellsTheTwoOrdersApart(String km, int climb, int drop,
+			int seconds) {
+		double distance = new BigDecimal(km).doubleValue();
+
+		assertThat(BtlScoreCalculator.calculate(distance, climb, drop, seconds))
+				.as("the formula gives the run the same points either way round, so this"
+						+ " measures nothing")
+				.isNotEqualByComparingTo(BtlScoreCalculator.calculate(distance, drop, climb,
+						seconds));
+	}
+
 	/** What the portal put in his inbox, and it throws where there is nothing or more than
 	 *  one - so a case about the message a member got cannot pass on somebody else's. */
 	private String bodyOfTheMessageTo(String memberNumber) {
@@ -1843,10 +2017,11 @@ class VerificationWriteApiTest {
 
 	/** What is counted for one member, or nothing where he has no result at all. */
 	private Optional<Counted> counted(long resultId) {
-		return db.sql("select distance_km, seconds, points, category from result where id = ?")
+		return db.sql("select distance_km, ascent_m, descent_m, seconds, points, category"
+						+ " from result where id = ?")
 				.param(resultId)
-				.query((row, one) -> new Counted(row.getBigDecimal(1), row.getInt(2),
-						row.getBigDecimal(3), row.getString(4)))
+				.query((row, one) -> new Counted(row.getBigDecimal(1), row.getInt(2), row.getInt(3),
+						row.getInt(4), row.getBigDecimal(5), row.getString(6)))
 				.optional();
 	}
 
@@ -1857,8 +2032,11 @@ class VerificationWriteApiTest {
 				.query(Integer.class).single();
 	}
 
-	/** One counted run, in the four values every case below reads it by. */
-	private record Counted(BigDecimal distanceKm, int seconds, BigDecimal points, String category) {
+	/** One counted run, in the six values every case below reads it by. The climb and the drop
+	 *  are here from PR 443's review on: until then no assertion in this file read either off
+	 *  a counted row, and every run it wrote had the two equal. */
+	private record Counted(BigDecimal distanceKm, int ascentM, int descentM, int seconds,
+			BigDecimal points, String category) {
 	}
 
 	/**
