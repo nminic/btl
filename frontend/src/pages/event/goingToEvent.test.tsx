@@ -5,6 +5,7 @@ import type { Attending, BtlEvent, Competitor } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { useSession } from '../../session/useSession'
 
 /**
  * Saying you are going to a race, and writing to somebody else who is.
@@ -17,6 +18,21 @@ import { setupUser } from '../../test/user'
 
 /** Somebody signed in. */
 const ME = '000007'
+
+/** The reader stops being signed in without leaving the visit, the way `AccountMenu`
+ *  really does it: in place, no navigation and no reload (`data/client.ts`). The same
+ *  shape as `pages/profilePrivacy.test.tsx`'s own `SignOut`, for the same reason - a
+ *  case about what a signed-out visit still shows has to sign out without walking the
+ *  menu that offers it. */
+function SignOut() {
+  const { signOut } = useSession()
+
+  return (
+    <button type="button" onClick={() => { signOut() }}>
+      odjavi se
+    </button>
+  )
+}
 
 /** An event ahead of us that somebody has already said they are going to, and
  *  the day it is read on. Read off the record, so the fixture may change under
@@ -515,6 +531,45 @@ describe('writing to somebody else who is going', () => {
     ).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'Zatvori' }))
+
+    expect(
+      screen.queryByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+    ).toBeNull()
+  })
+
+  it('closes on its own when the visit signs out from under it, naming nobody afterwards', async () => {
+    /* HIGH finding, review 28.09.2026. `writingTo` belongs to `Going`, and signing out
+       happens IN PLACE - no navigation, no reload (`data/client.ts`, `AccountMenu.tsx`)
+       - so `Going` is never unmounted by it and keeps the note open with only `me`
+       gone to null. A member who opened this form and then signed out of the same
+       visit kept seeing it, under the full name of whoever's envelope they had
+       pressed, after they were nobody any more. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day, <SignOut />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+
+    expect(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
 
     expect(
       screen.queryByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),

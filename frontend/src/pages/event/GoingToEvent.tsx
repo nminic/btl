@@ -202,12 +202,20 @@ function Going({
       {/* AND NOTHING HERE ASKS AGAIN WHO IS WRITING, since 28.09.2026. The note used
           to carry a name this screen worked out, so `WriteTo` was handed `me` and the
           whole competitor list to look it up in; the server reads the sender off his
-          own row now (`InboxWriteApi.nameTheLeagueKnowsHimBy`), so both are gone. A
-          `me !== null` beside the line below went with them: the envelope is only ever
-          drawn where `me` is somebody, so as a condition ON THIS LINE it was one no
-          render could take the other way - and a branch nothing reaches is a branch
-          that hides what it would have done. */}
-      {writingTo !== null && (
+          own row now (`InboxWriteApi.nameTheLeagueKnowsHimBy`), so both are gone.
+
+          **`me !== null` STAYS ON THIS LINE, though.** Dropping it here was a HIGH
+          finding (review, 28.09.2026), and the claim that carried it - „a branch
+          nothing reaches" - was measured and was wrong: `writingTo` is state that
+          belongs to `Going`, and signing out does not take `Going` down with it.
+          Signing out and back in both happen IN PLACE, no navigation and no reload
+          (`data/client.ts`, `AccountMenu.tsx`), so `Going` keeps running with the same
+          `writingTo` it already had and only `me` drops to null. Without the guard the
+          form a member opened stayed on screen after they signed out of that same
+          visit, under the full name of whoever's envelope they had pressed - to
+          somebody no longer signed in at all. Proven by a case that opens the form and
+          then signs out from a live session. */}
+      {writingTo !== null && me !== null && (
         <WriteTo
           /* Keyed by whoever is being written to, so pressing another envelope
              is a new note rather than the last one's confirmation. */
