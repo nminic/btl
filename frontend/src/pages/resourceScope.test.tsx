@@ -236,6 +236,65 @@ describe('a part of a screen waits without covering the page', () => {
     SLOW,
   )
 
+  it.each(BOTH)(
+    'leaves the day count of an administered league empty while %s is still on the way',
+    async (name) => {
+      /* **The copy this guards, and the precedent right above it.** `pages/admin/AdminLeagues.tsx`
+         carries its own `CountedDays`, rewritten on 28.09.2026 to read the panel's own races
+         rather than the stale `eventIds` a competition was served with (PDL, 28.09.2026:
+         „Popunim ovo ovako i onda se nista ne sacuva, nije se kreirala Liga sa ovim
+         dogadjajem"). The rewrite copied the three-state shape proven two cases above -
+         nothing while the calendar is on its way, „nepoznato" if it never comes, the count
+         once it has - and did not copy a case measuring the first of the three. Without one,
+         `return null` swapped for anything that draws (a tag saying „Bez događaja", the same
+         lie in a smaller size the public list was corrected of on 13.09.2026) passed the
+         whole admin suite green. */
+      const stalled = stallResource(name)
+      restore = stalled.restore
+      renderAt('/sr/administracija/lige', 'superadmin')
+
+      const table = await screen.findByRole('table', { name: 'Lige' })
+
+      /* **And what DID arrive is waited for**, the same positive anchor as above: read the
+         instant the screen mounts, every row would still say nothing and the case would pass
+         for having measured only the first render. */
+      expect(
+        await landed(name === 'races' ? 'events' : 'races'),
+        'nothing landed, so the assertions below are about the first render',
+      ).not.toHaveLength(0)
+
+      /* The day column, found by the word its own header carries rather than by position, so
+         a column added or reordered here fails loudly instead of silently measuring the
+         wrong cell. */
+      const heads = within(table).getAllByRole('columnheader')
+      const dayColumn = heads.findIndex((head) => head.textContent === 'Događaja')
+
+      expect(dayColumn, 'no column of the table is named "Događaja"').toBeGreaterThanOrEqual(0)
+
+      /* **Every OTHER row, and it is measured rather than assumed.** Each league in this table
+         sits above a second `<tr>` that carries its folded panel of races in one cell spanning
+         every column (`leagues__counting`, opened by „Trke u ligi …"); that row answers
+         `getAllByRole('cell')` with a single cell, not five, so filtering on the cell count
+         this table's own header defines is what tells a row of data from a row of panel. */
+      const rows = within(table)
+        .getAllByRole('row')
+        .slice(1)
+        .filter((row) => within(row).getAllByRole('cell').length === heads.length)
+
+      expect(rows, 'no league row to measure the day column on').not.toHaveLength(0)
+
+      for (const row of rows) {
+        const cell = within(row).getAllByRole('cell')[dayColumn]
+
+        expect(
+          cell?.textContent,
+          'the day count, or the word for none of it, arrived while the file was held',
+        ).toBe('')
+      }
+    },
+    SLOW,
+  )
+
   it('says so rather than counting nought when that file never arrives', async () => {
     /* The other half of the same finding. A count of none where the file failed is a lie in the
        other direction, and the word for it has to be a word. */
