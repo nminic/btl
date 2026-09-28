@@ -2,7 +2,7 @@ import { act, cleanup, screen, within } from '@testing-library/react'
 import { clearResourceCache } from '../data/client'
 import type { StaticPage } from '../data/types'
 import { renderAt } from '../test/render'
-import { serverThat, type Asked } from '../test/serverAnswers'
+import { isResource, serverThat, type Asked } from '../test/serverAnswers'
 
 /**
  * THE WRITTEN PAGES IN THE LANGUAGE OF THE ADDRESS, WHICH THE PORTAL DID NOT ASK FOR UNTIL
@@ -336,6 +336,34 @@ describe('switching the language of a page that is already on screen', () => {
     expect(await screen.findByRole('alert')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 1, name: 'Uslovi korišćenja' })).not.toBeInTheDocument()
     expect(askedForPages(asked)).toEqual(['/api/pages?lang=sr', '/api/pages?lang=en'])
+  })
+})
+
+describe('an address with a question on it is still the resource it names', () => {
+  /* THE HARNESS'S OWN HALF OF THIS CHANGE, AND IT IS HERE BECAUSE A MUTATION SURVIVED.
+   *
+   * `test/serverAnswers.ts`'s `isResource` is how three cases ask „did this screen spend
+   * anything it should not", and it compared the WHOLE address to `/api/<name>`. With a
+   * language on the address that answered false, so the written pages would have counted as a
+   * write. Reverting that fix left all 84 cases in the four files that call it green, for a
+   * reason worth writing down rather than reading as safety: not one of those four screens
+   * asks for the written pages, so nothing called it with a question mark at all.
+   *
+   * So the fix had no reader and the revert had no witness. Asked directly instead, which is
+   * the one place the question is live - and it is not hypothetical for `pages` alone:
+   * `GET /api/payments` accepts `?search=` too (`data/client.ts` says why the screen filters
+   * the answer itself instead), so the second resource with a parameter already exists. */
+
+  it('is recognised with a language on it, and a write still is not', () => {
+    expect(isResource('/api/pages?lang=en')).toBe(true)
+    expect(isResource('/api/pages?lang=sr')).toBe(true)
+    expect(isResource('/api/payments?search=Nikola')).toBe(true)
+
+    /* And the other direction, so this is not satisfied by a function that says yes to
+       everything: what is not a resource stays not one, with or without a question. */
+    expect(isResource('/api/pages/en')).toBe(false)
+    expect(isResource('/api/me')).toBe(false)
+    expect(isResource('/api/sign-in?lang=en')).toBe(false)
   })
 })
 
