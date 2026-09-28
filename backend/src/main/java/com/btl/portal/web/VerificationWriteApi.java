@@ -98,7 +98,7 @@ import java.util.Set;
  * transakcije; dukati i posta idu POSLE nje", by the measure he set the same day - which half
  * outcome can repair itself. So the result is written inside the transaction and the letter
  * goes after it, and the two things V25 and V32 said this increment must carry with it are
- * carried: V44 widens {@code result.distance_km} and {@link
+ * carried: V45 widens {@code result.distance_km} and {@link
  * com.btl.portal.domain.ranking.Totals} was taught the same width.
  *
  * <p><b>{@code payments} is the one still refused</b>, and for the reason it always was: it

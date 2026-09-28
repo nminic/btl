@@ -213,7 +213,7 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 	 * <p><b>And that is not free, which is measured rather than guessed.</b> V25 widened
 	 * {@code race.distance_km} from {@code numeric(6,2)} to {@code numeric(8,4)}, so the
 	 * sweep over that table went from a million values to a hundred million - 0.95s to
-	 * 35s against postgres:18. <b>V44 did the same to {@code result.distance_km}</b>, in
+	 * 35s against postgres:18. <b>V45 did the same to {@code result.distance_km}</b>, in
 	 * the commit that first lets a moderator approve a result, because a submission
 	 * carrying 42,1950 copied into a narrow column is rounded to 42,20 and then says
 	 * {@code marathon} while the race it was run at says {@code long}. This class paid for

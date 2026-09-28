@@ -1132,10 +1132,10 @@ class VerificationWriteApiTest {
 	 * <p><b>THE TWO ROWS ABOUT ONE RUN ARE ASSERTED TO AGREE, and that is the spoj this case
 	 * exists for rather than a flourish.</b> The length is asserted on the RESULT and the
 	 * category is asserted to equal the RACE's, which are two different tables reached by two
-	 * different statements. Without V44 the result's {@code numeric(6,2)} column rounds
+	 * different statements. Without V45 the result's {@code numeric(6,2)} column rounds
 	 * 42,1950 to 42,20, its own generated column then says {@code marathon} while the race it
 	 * was run at says {@code long}, and nothing anywhere is violated - which is exactly what
-	 * V25 wrote down as the cost of leaving the column narrow. Reverting V44 alone fails both
+	 * V25 wrote down as the cost of leaving the column narrow. Reverting V45 alone fails both
 	 * halves of this case.
 	 *
 	 * <p>The points are asserted against {@link BtlScoreCalculator} rather than against a
@@ -1513,7 +1513,7 @@ class VerificationWriteApiTest {
 	 * what answering it means. ONE of the five is refused today, {@code payments}, and it is
 	 * refused because nothing lets a member reach that tab at all. {@code results} was the
 	 * second until ADL A36's boundary was settled („Rezultat i rang liste su UNUTAR
-	 * transakcije; dukati i posta idu POSLE nje", owner 21.09.2026) and V44 closed V25's debt
+	 * transakcije; dukati i posta idu POSLE nje", owner 21.09.2026) and V45 closed V25's debt
 	 * on the column an approval copies. A sixth was refused nowhere - {@code schedule}
 	 * carried out its own approval, from V30 until PDL P10a, 22.09.2026 took the tab away
 	 * the same day: „Redova je pet, ne šest."

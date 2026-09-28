@@ -153,11 +153,11 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   V41's own repin note above checks rather than assumes - so this is not a rewrite of a
 			   migration anyone has run. */
 			new Applied("43", "V43__the_written_pages_speak_english.sql", -1054379915),
-			/* PINNED LAST, when the file was final. V44's header quotes V25 and V32 at length
+			/* PINNED LAST, when the file was final. V45's header quotes V25 and V32 at length
 			   and both quotations were settled before this number was taken: a commit that
 			   afterwards corrects one sentence of that prose changes the bytes, and the gate
 			   then fails on a checksum that was right when it was written. */
-			new Applied("44", "V44__a_moderator_decides_a_result.sql", 1500230178));
+			new Applied("45", "V45__a_moderator_decides_a_result.sql", 1500230178));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
