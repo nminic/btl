@@ -141,6 +141,47 @@
     grid-column: span 2;
   }
 
+  /* And the two halves of it are those two columns, one each.
+   *
+     Owner, 28.09.2026: „Drugi red su jednake trećine za Mesto i Državu (Treća
+     kolona je prazna)." Measured at 1280 before this rule: the town was 434,67px
+     and the country 192px inside 634,67px of field, because `PlaceField.css`
+     gives the country a fixed 12rem and lets the town take what is left. Two
+     columns wide is not the same as two columns.
+   *
+     Here and not in `PlaceField.css`, and inside this query, because it is true
+     of a town standing on a ROW IN COLUMNS and of nothing else. Two other forms
+     draw a town (`admin-dogadjaj`, `unos-rezultata`) and in both it stands on no
+     row, where there are no thirds to be equal to and where the reason for the
+     fixed width still holds: the town is typed and the country is chosen from a
+     list, so the one that is typed is given the room. Left global, this would
+     have widened a control on two administrative screens nobody asked about.
+   *
+     `flex: 1 1 0%` and not `1 1 auto`: a basis of `auto` starts from the width of
+     the content, and the content of one is a box and of the other a list of two
+     hundred and forty six countries. */
+  /* Both halves on one line, because a selector list broken over two carries the
+     newline into `selectorText` and the guard that reads it by name then has to
+     know how this file is laid out (`forms/formStyle.test.ts`). */
+  .form__row .field--place .place__town, .form__row .field--place .place__country-pick {
+    flex: 1 1 0%;
+    min-inline-size: 0;
+    inline-size: auto;
+    max-inline-size: none;
+  }
+
+  /* And the gap between them is the gap between the columns, so that the two
+     halves land ON the two columns rather than merely beside each other.
+   *
+     `PlaceField.css` sets 8px, which is right for a pair standing on its own.
+     Inside a row of thirds it is wrong by exactly the difference: measured, the
+     halves came out 313,33px against the 309,33px of a third, and the left edge
+     of „Država" stood four pixels left of „Telefon" on the row above it. Equal
+     to each other and on neither column. */
+  .form__row .field--place .place {
+    gap: var(--space-16);
+  }
+
   /* And a field standing on its own inside such a form keeps the width one
      field should have. „Svojim rečima" stretched to the full sixty rem, and a
      box whose ends are that far apart is two places to look rather than one. */
