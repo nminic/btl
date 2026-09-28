@@ -76,34 +76,51 @@
  * that exception is the 24.09.2026 decision said plainly; the choice to state it there rather than
  * to narrow the owner's sentence is MINE.
  *
- * A SECOND HOME OF THE SAME FACT, REPORTED AND DELIBERATELY NOT TOUCHED. Sweeping the whole
- * rulebook (not only this section) for the penalty and for the moment - "suspenz", "zabran",
- * "izlazak iz tima", "1. januar", "1. oktobr", "31. decembr", "promen. tima" - turns up exactly one
- * other place that speaks about this: section 2, "Clan 9. Rokovi za promene tima i trkackog para",
- * "Sve promene tima i trkackog para moraju biti zavrsene do 31. decembra, da bi vazile u narednoj
- * sezoni. Detalji su u sekciji 12." It does NOT carry the abolished penalty. It does bind team and
- * pair together under one deadline, which the 24.09.2026 decision separates, so after this
- * migration Clan 9 over-claims for the pair. THERE IS NO DECISION ABOUT CLAN 9 and it is not this
- * migration's to make, so it is left exactly as it stands and reported instead. Note also that
- * Clan 9 is where that deadline's own qualifier already lives, in the rulebook's own words - "da
- * bi vazile u narednoj sezoni" - which is the reading under which the sentence kept below is true.
+ * THE SECOND HOME OF THE SAME FACT, WHICH IS ARTICLE 9, AND WHY IT IS IN THIS SAME MIGRATION.
+ * Sweeping the whole rulebook (not only section 12) for the penalty and for the moment -
+ * "suspenz", "zabran", "izlazak iz tima", "1. januar", "1. oktobr", "31. decembr", "promen. tima",
+ * and on the English side "three years", "both options", "suspend" - turns up exactly one other
+ * place that speaks about this, in both languages: section 2, "Clan 9. Rokovi za promene tima i
+ * trkackog para" / "Article 9. Deadlines for team and racing pair changes", reading "Sve promene
+ * tima i trkackog para moraju biti zavrsene do 31. decembra, da bi vazile u narednoj sezoni.
+ * Detalji su u sekciji 12."
+ *   It does NOT carry the abolished penalty. What it does is bind team and pair together under one
+ * deadline, which is the very thing the 24.09.2026 decision separates - so this migration fixing
+ * section 12 alone would have left the rulebook saying two different things about the pair, on its
+ * launch day, and a member would have found it rather than us. Owner, 29.09.2026, choosing between
+ * three offered outcomes: the deadline is stated as the TEAM's, and the pair is bound by NO
+ * deadline. Both languages, this same migration, this same guard.
+ *   THE ARTICLE'S HEADING IS DELIBERATELY KEPT, AND THAT IS MY CALL RATHER THAN A DECISION. It goes
+ * on naming the pair ("Rokovi za promene tima i trkackog para") although the pair now has no
+ * deadline, for one reason: this is the article a member reads to find out what deadline applies to
+ * breaking up a pair, and the answer - none - has to be findable from the heading that promises it.
+ * A heading narrowed to the team would send that reader away empty. It is also the shape the owner
+ * already approved one section further down, where Article 56 keeps both subjects in its heading and
+ * separates them in its body. Nothing measured requires the heading to move, so it does not.
+ *   Nothing points at this article by name that a rewrite could break: searched the whole repository
+ * for "Clan 9." and "Article 9.", and the only hit outside these page files is GuardianshipTest,
+ * which cites the STATUTE's Article 9, a different document. The pointer "Detalji su u sekciji 12"
+ * is kept exactly as it was and still lands where it always did.
  *
- * WHAT HOLDS THE FOUR HOMES TOGETHER. frontend/src/test/mock/pages.json, which PageApiTest
- * compares this server's Serbian answer against field by field, and
- * frontend/src/test/writtenPages.snapshot.json, which writtenVerification.test.ts holds that mock
- * file to in the other direction. Both are rewritten out of this same corrected text rather than
- * retyped, by one script reading one string. The English side keeps no fixture:
+ * WHAT HOLDS THE HOMES TOGETHER. frontend/src/test/mock/pages.json, which PageApiTest compares this
+ * server's Serbian answer against field by field, and frontend/src/test/writtenPages.snapshot.json,
+ * which writtenVerification.test.ts holds that mock file to in the other direction. Both sections,
+ * 12 and 2, are rewritten in both files out of this same corrected text rather than retyped, by one
+ * script reading one string. The English side keeps no fixture:
  * WrittenPageTranslationAppliesTest asks that Serbian and English carry one row per section and
- * the same number of markdown table rows per section body - this section has ZERO markdown table
- * rows before and after, on both sides, counted with that test's own regex rather than assumed, so
- * that count is unchanged. And RulebookPenaltyIsGoneTest, added with this migration, asserts over
- * the real migrated rows that the abolished penalty is absent from EVERY section of EVERY page in
- * BOTH languages, not merely from this one - so the day a second home of it appears anywhere, it
- * falls.
+ * the same number of markdown table rows per section body. Section 12 has ZERO such rows before and
+ * after on both sides; section 2 has FIVE, because Article 7 closes the season in a table, and that
+ * table is untouched - all of it counted with that test's own regex, in three directions (Serbian
+ * before against after, English before against after, and Serbian against English), rather than
+ * assumed. And RulebookPenaltyIsGoneTest, added with this migration, asserts over the real migrated
+ * rows that the abolished penalty is absent from EVERY section of EVERY page in BOTH languages, and
+ * that no section still binds team and pair to one deadline - so the day a further home of either
+ * appears anywhere, it falls there rather than waiting to be found by a member.
  *
- * WHAT THIS DOES NOT TOUCH: no schema change of any kind, no constraint, no key, no index - two
- * UPDATE statements against two body columns. Clan 9 above. The exit route itself, which already
- * behaves the way this text now describes. And any other section of any other page. */
+ * WHAT THIS DOES NOT TOUCH: no schema change of any kind, no constraint, no key, no index - four
+ * UPDATE statements against two body columns, two sections, two languages. The exit route itself,
+ * which already behaves the way this text now describes. Article 7's table, and every other article
+ * of both sections. And any other section of any other page. */
 
 update static_page_section
 set body = '### Član 52. Tim i klub nisu isto
@@ -184,4 +201,63 @@ where language = 'en'
   and section_id = (
     select s.id from static_page_section s join static_page p on p.id = s.page_id
     where p.slug = 'pravilnik' and s.position = 12
+  );
+
+/* AND ARTICLE 9, THE ONLY OTHER PLACE IN THE RULEBOOK THAT SPEAKS ABOUT THIS - see the
+ * header above for why it is in this same migration rather than left standing. */
+update static_page_section
+set body = '### Član 6. Trajanje sezone
+
+Sezona traje od 1. januara u 00:00 do 31. decembra u 24:00 po srednjoevropskom vremenu (CET). Da bi ušla u bodovanje, trka mora početi unutar tog razdoblja.
+
+### Član 7. Zatvaranje sezone
+
+Sezona se zatvara u tri koraka, sve po CET:
+
+| Trenutak | Šta se dešava |
+|---|---|
+| 31. decembar, 24:00 | Kraj sezone. Trka koja počne posle ovog trenutka pripada narednoj sezoni |
+| 1. januar, 10:00 | Poslednji rok da prijavite sve zaostale rezultate prethodne sezone |
+| 1. januar, 16:00 | Tabele se zamrzavaju i taj snimak postaje zvanični rezultat sezone |
+
+### Član 8. Posle zamrzavanja
+
+Zamrznuti snimak tabela čuva se kao zvanični rezultat sezone i više se ne menja.
+
+Rezultate sa te sezone i posle zamrzavanja smete unositi, da bi vaš profil bio potpun, ali oni ne ulaze ni u jednu tabelu, rang listu ni priznanje.
+
+### Član 9. Rokovi za promene tima i trkačkog para
+
+Promene tima moraju biti završene do 31. decembra, da bi važile u narednoj sezoni. Trkački par nije vezan nijednim rokom: raskida ga svaka strana, bilo kada, i raskid važi odmah. Detalji su u sekciji 12.'
+where page_id = (select id from static_page where slug = 'pravilnik')
+  and position = 2;
+
+update static_page_section_translation
+set body = $$### Article 6. Duration of the season
+
+The season runs from 1 January at 00:00 to 31 December at 24:00, Central European Time (CET). To count toward points, a race must start within that period.
+
+### Article 7. Closing the season
+
+The season closes in three steps, all times CET:
+
+| Moment | What happens |
+|---|---|
+| 31 December, 24:00 | End of the season. A race that starts after this moment belongs to the next season |
+| 1 January, 10:00 | The final deadline to submit any outstanding results from the previous season |
+| 1 January, 16:00 | The tables are frozen, and that snapshot becomes the season's official result |
+
+### Article 8. After freezing
+
+The frozen snapshot of the tables is kept as the season's official result and is no longer changed.
+
+You may still submit results from that season after freezing, so that your profile is complete, but they do not enter any table, ranking, or award.
+
+### Article 9. Deadlines for team and racing pair changes
+
+Team changes must be completed by 31 December to take effect in the following season. A racing pair is bound by no deadline: it may be ended by either side, at any time, and the ending takes effect immediately. Details are in section 12.$$
+where language = 'en'
+  and section_id = (
+    select s.id from static_page_section s join static_page p on p.id = s.page_id
+    where p.slug = 'pravilnik' and s.position = 2
   );

@@ -3,6 +3,7 @@ package com.btl.portal.db;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,6 +42,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * kaznu" - it names the penalty in order to deny it - so a marker on the root of that word would
  * fail on the correct text. Each marker below is instead a phrase that only the ABOLISHED claim
  * ever used, checked to appear exactly once in the text V46 replaces and not once in what it writes.
+ *
+ * <p><b>AND A SECOND CLAIM, WHICH IS NOT THE PENALTY.</b> V46 also corrects Article 9, the one other
+ * place in the rulebook that speaks about this, where a single deadline was put on the team and the
+ * pair together. That is a different mistake from the penalty and it gets its own marker list, its
+ * own sweep and its own positive case, for the same reason the penalty does: left alone it would
+ * have had the rulebook saying two different things about the pair, in two articles of one document,
+ * on the day it launched. The sweeps below are over every row of both tables, so neither claim can
+ * come back in an article nobody thought to look at.
  */
 class RulebookPenaltyIsGoneTest extends DatabaseTest {
 
@@ -58,6 +67,26 @@ class RulebookPenaltyIsGoneTest extends DatabaseTest {
 			"from the team's tally",
 			"three years",
 			"both options");
+
+	/**
+	 * The OTHER thing V46 corrects, and it is a different claim from the penalty above.
+	 *
+	 * <p>Article 9 used to put a team and a racing pair under one deadline - "Sve promene tima i
+	 * trkackog para moraju biti zavrsene do 31. decembra" - which is exactly what the owner's
+	 * 24.09.2026 decision separates: a team moves only in the window, a pair may be broken by
+	 * either side at any time. Left standing, the rulebook would have said two different things
+	 * about the pair in two articles of the same document, on its launch day.
+	 *
+	 * <p>One phrase per language, and it is the SUBJECT of the sentence rather than the deadline
+	 * itself: the 31 December deadline is still true of the team and still written in both
+	 * articles, so a marker on the date would fail on the corrected text. What may not come back
+	 * is the two of them sharing one subject.
+	 */
+	private static final List<String> ONE_DEADLINE_FOR_BOTH_IN_SERBIAN =
+			List.of("Sve promene tima i trkačkog para");
+
+	private static final List<String> ONE_DEADLINE_FOR_BOTH_IN_ENGLISH =
+			List.of("All team and racing pair changes");
 
 	private List<String> serbianBodies() {
 		return db.sql("select body from static_page_section").query(String.class).list();
@@ -95,31 +124,58 @@ class RulebookPenaltyIsGoneTest extends DatabaseTest {
 		}
 	}
 
+	@Test
+	void noSectionOfAnyPageStillBindsTheTeamAndThePairToOneDeadline() {
+		List<String> serbian = serbianBodies();
+		List<String> english = englishBodies();
+
+		assertThat(serbian).as("there is no page text at all, so this case measures nothing").isNotEmpty();
+		assertThat(english).as("there is no translated text at all, so this case measures nothing").isNotEmpty();
+
+		for (String marker : ONE_DEADLINE_FOR_BOTH_IN_SERBIAN) {
+			assertThat(serbian)
+					.as("a section still carries \"%s\", so one deadline is put on the team and the"
+							+ " pair together, against the owner's decision of 24.09.2026", marker)
+					.noneMatch(body -> body.contains(marker));
+		}
+
+		for (String marker : ONE_DEADLINE_FOR_BOTH_IN_ENGLISH) {
+			assertThat(english)
+					.as("a translated section still carries \"%s\", so the two languages disagree"
+							+ " about whether a pair has a deadline", marker)
+					.noneMatch(body -> body.contains(marker));
+		}
+	}
+
 	/**
-	 * The floor under both lists above: every marker really did name a piece of the abolished text.
+	 * The floor under every list above: each marker really did name a piece of the text V46 replaced.
 	 *
 	 * <p>Asked of the migrations that wrote it rather than of a second copy of the prose, and of
-	 * those two specifically because they are the only ones that have ever written this section -
-	 * V24 for the Serbian body, V43 for the English one.
+	 * those two specifically because they are the only ones that have ever written these sections -
+	 * V24 for the Serbian bodies, V43 for the English ones.
 	 */
 	@Test
 	void everyMarkerReallyNamesSomethingThatWasThere() {
 		String serbianAsItWas = migrationSql("24");
 		String englishAsItWas = migrationSql("43");
 
-		for (String marker : ABOLISHED_IN_SERBIAN) {
+		for (String marker : concat(ABOLISHED_IN_SERBIAN, ONE_DEADLINE_FOR_BOTH_IN_SERBIAN)) {
 			assertThat(serbianAsItWas)
 					.as("\"%s\" is not in V24, so it names nothing and the sweep above is weaker"
 							+ " than it looks", marker)
 					.contains(marker);
 		}
 
-		for (String marker : ABOLISHED_IN_ENGLISH) {
+		for (String marker : concat(ABOLISHED_IN_ENGLISH, ONE_DEADLINE_FOR_BOTH_IN_ENGLISH)) {
 			assertThat(englishAsItWas)
 					.as("\"%s\" is not in V43, so it names nothing and the sweep above is weaker"
 							+ " than it looks", marker)
 					.contains(marker);
 		}
+	}
+
+	private static List<String> concat(List<String> one, List<String> other) {
+		return Stream.concat(one.stream(), other.stream()).toList();
 	}
 
 	/**
@@ -130,6 +186,29 @@ class RulebookPenaltyIsGoneTest extends DatabaseTest {
 	 * UKINUTO 24.09.2026, "Ostaje jedan put, nekaznjen"), and that the pair is no longer bound to the
 	 * team's rule (owner, 24.09.2026, "Par sme da raskine svaka strana, bilo kad").
 	 */
+	/**
+	 * And the same for Article 9, so that DELETING it does not pass the sweep above either.
+	 *
+	 * <p>Both halves are asserted because the correction has two: the deadline is still stated, and
+	 * it is now the TEAM's; and the pair is said to have none. A change that dropped either half
+	 * would leave the sweep green while the rulebook went quiet about one of them.
+	 */
+	@Test
+	void articleNineGivesTheDeadlineToTheTeamAndFreesThePairOfIt() {
+		String body = db
+				.sql("select s.body from static_page_section s join static_page p on p.id = s.page_id"
+						+ " where p.slug = 'pravilnik' and s.position = 2")
+				.query(String.class)
+				.single();
+
+		assertThat(body)
+				.as("Article 9 no longer states the 31 December deadline as the team's")
+				.contains("Promene tima moraju biti završene do 31. decembra");
+		assertThat(body)
+				.as("Article 9 no longer says the pair is bound by no deadline")
+				.contains("Trkački par nije vezan nijednim rokom");
+	}
+
 	@Test
 	void articleFiftySixCarriesTheRuleThatReplacedIt() {
 		String body = db
