@@ -438,6 +438,22 @@ class RightsAtTheDoorTest {
 					"POST /api/teams/{id}/invitations",
 					"PUT /api/teams/{id}/invitations/{invitation}",
 					"DELETE /api/teams/{id}/invitations/{invitation}",
+					/* AND READING THOSE TWO LISTS, ADDED WITH B175. They belong here for the
+					   reason the six write routes above do and for one more that is worth
+					   saying out loud, because it is the tempting mistake: a right over the
+					   teams is NOT what opens them. `entity:teams` is a second reader and not
+					   the reader - what these two answer is a TEAM'S own queue, and the man
+					   the portal gives it to is whoever leads that team, who holds no right at
+					   all and never will („Prijavu u tim odobrava administrator tog tima",
+					   owner, 05.09.2026). Declared with `RightIsNeeded` they would be shut to
+					   exactly the caller they exist for. So the door is the session weighed
+					   against the roster, inside the handler, administration is asked as a
+					   second question through `WhatHeMayDo`, and everybody else is answered
+					   404 rather than 403 (ADL A8). Unauthenticated is 401 from the chain, for
+					   the reason written above: `READ_BY_ANYBODY` opens `/api/teams` itself
+					   and no sub-path of it. See `TeamJoiningApi`. */
+					"GET /api/teams/{id}/applications",
+					"GET /api/teams/{id}/invitations",
 					/* A MEMBER'S OWN ACCOUNT AND HIS OWN PORTRAIT, ADDED 24.09.2026 WITH
 					   INCREMENT A. Each of the three is here for the reason `PUT /api/me` is:
 					   no box anybody could tick would let one member change another's
