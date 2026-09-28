@@ -86,17 +86,21 @@ const COLUMNS = ['grid-template-columns', 'grid-template', 'grid:', 'column-coun
  * with CRLF on one machine and LF on another, and a golden text nobody can regenerate with a flag
  * is a golden text nobody regenerates without reading it.
  *
- * **Six of the owner's sentences are in here**, so the moment this fails is the moment to say
+ * **Seven of the owner's sentences are in here**, so the moment this fails is the moment to say
  * whether the edit keeps them: no capitals and no weight on a name (07.09.2026, and 13.08.2026 for
  * the weight); the circle beside the words rather than above them; two lines in the standing of a
  * competition and one in the tables; a pair as two circles above one another with a name beside
- * each; the circle smaller where the frozen column is capped; and the circle round, in white on
- * the member's own colour (PDL P13, and `styles/circle.test.ts` says the same in words).
+ * each; the circle smaller where the frozen column is capped; the circle round, in white on
+ * the member's own colour (PDL P13, and `styles/circle.test.ts` says the same in words); and the
+ * whole plate on the middle of its row rather than above it (28.09.2026, „Ceo taj boks treba
+ * spustiti dodatno par piksela"), which is the `vertical-align` and is held in words by
+ * `styles/plateInTheRow.test.ts`.
  */
 const PLATE_SHEETS = `=== components/NamePlate.css ===
 @import './Portrait.css';
 .plate {
   display: inline-flex;
+  vertical-align: middle;
   align-items: center;
   gap: var(--space-10);
   text-align: start;
