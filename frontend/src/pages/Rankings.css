@@ -340,24 +340,54 @@
    (`components/NamePlate.css`, unchanged, still shared and still held by the golden text in
    `styles/leagueLayout.test.ts`), and the name and the number are asked to add up to it.
 
-   1.05rem is written twice rather than expressed as a multiple of either line's own font size,
-   because the two lines are not one size: the number is smaller than the name
-   (`table__member-number`, 0.8rem), and a unitless line-height like `.plate__given`'s 1.2 would
-   give the two lines two different heights instead of the one each needs to make 2.1rem exactly.
-   The two files are read independently of one another and cross-checked, in
-   `styles/rankingsMemberRow.test.ts`, rather than one deriving its number from the other, so a
-   change to either 2.1rem or 1.05rem alone is what that guard exists to catch.
+   **The two lines are NOT the same height, and that is the whole of the fix of 28.09.2026**
+   (owner, from a second screenshot of the same row: „i dalje je deo sa imenom prezimenom slikom i
+   članskim brojem vertikalno neki piksel iznad ostatka podataka u toj liniji. Iznad te grupe ima
+   manje piksela do vrha linije nego što je ispod do dna."). ~~Both lines were 1.05rem.~~ They
+   added up to 2.1rem exactly and every BOX in the row measured dead centre - the circle, the
+   words beside it, and the cell itself were each within 0,01px of the middle. What was off was
+   the INK, and a box that is centred says nothing about that: 1.05rem is 16,8px, and a name set
+   at 1rem needs 21,33px, so 2,67px of the name's ascent hung out of the top of its own line. The
+   number is smaller (`table__member-number`, 0.8rem, natural 17,33px) and had room to spare, so
+   nothing hung out of the bottom. **All of the overflow escaped upwards, and only upwards,
+   because the bigger line is the one on top.** Measured in a browser at 1280px, which is the only
+   place it can be measured: the group stood 9,67px from the top of the row and 12,34px from the
+   bottom, and its text sat 1,17px above the text of every other cell in the row.
+
+   **So each line gives up the SAME amount of leading instead of the same number of pixels.**
+   1.175rem and 0.925rem still add up to 2.1rem, and they differ by 0.25rem, which is exactly the
+   difference between the two natural line boxes (21,33px at 1rem and 17,33px at 0.8rem, both
+   measured in the browser rather than worked out: `normal` is not proportional to the font size,
+   so 0.25rem cannot be derived from 0.2rem and is a fact about this font at these two sizes). The
+   deficit is then 1,265px on each line, the overflow is the same above and below, and the group
+   is centred on its ink and not merely on its box: 11,00px above and 11,14px below, with its text
+   0,16px from the text beside it, where the device pixel is 0,67px wide.
+
+   The two sheets are read independently of one another and cross-checked, in
+   `pages/rankingsMemberRow.test.ts`, rather than one deriving its number from the other, so a
+   change to 2.1rem alone, or to either line alone, is what that guard exists to catch. It reads
+   `table__member-number`'s own font size out of a third sheet as well, because a number set at
+   the name's size would need no different leading at all and this whole rule would be wrong
+   rather than merely unnecessary.
 
    **The boundary this does not close:** below 700px this table draws no circle at all (the media
    query right after this one), so a long name that wraps to two lines there has nothing to
    disagree with. Above 700px, where the circle returns, a name wide enough to wrap would still
    break this correspondence, the same way it would on the two screens that already break a name
-   over two lines on purpose; nothing here claims otherwise; measured in a browser rather than
-   asserted, since jsdom lays nothing out. */
+   over two lines on purpose - and it now breaks it by 2px more than it used to, since a wrapped
+   name spends the taller line twice; nothing here claims otherwise; measured in a browser rather
+   than asserted, since jsdom lays nothing out. */
 .rankings__member-name,
 .rankings__member-number {
   display: block;
-  line-height: 1.05rem;
+}
+
+.rankings__member-name {
+  line-height: 1.175rem;
+}
+
+.rankings__member-number {
+  line-height: 0.925rem;
 }
 
 /* **Krug ustupa mesto imenu na telefonu, i to samo u ovoj tabeli** (owner, 07.09.2026, asked with

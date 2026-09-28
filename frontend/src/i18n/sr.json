@@ -509,7 +509,11 @@
     "mine": "Trkački par",
     "none": "Nije u trkačkom paru.",
     "breakUp": "Raskini trkački par",
-    "forSeason": "Za sezonu {season}."
+    "forSeason": "Za sezonu {season}.",
+    "answerRefused": {
+      "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa trkački par nije napravljen. Osveži stranicu i pokušaj ponovo.",
+      "thePairWouldNotBeMixed": "Trkački par mora da ima jednog muškarca i jednu ženu, pa ovaj par nije napravljen."
+    }
   },
   "topBoards": {
     "title": "Top liste",

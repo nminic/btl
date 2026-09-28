@@ -20,6 +20,7 @@ import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
+import { WHEN_ANSWERING_A_PAIR_INVITE } from '../member/pairWrites'
 
 /**
  * EVERY REASON THESE TWO ROUTES CAN NAME HAS A SENTENCE ON THE SCREEN THAT MEETS IT.
@@ -133,6 +134,17 @@ const NOT_A_REASON: Record<string, string[]> = {
      set, and `MembershipConstraintsTest` reads it out of `pg_constraint` rather than believing a
      copy. Same kind of constant as `PricingWriteApi`'s two above. */
   'MembershipWriteApi.java': ['feeExempt', 'balance'],
+  /* `PairWriteApi` declares three that are not refusals, and none of them is a new KIND: a
+     subject line, a sender's name and a letter, the same three shapes `CompetitorWriteApi` and
+     `MePhotoApi` already hold above. `THE_PAIR_IS_BROKEN` is what the other half reads in his
+     inbox when a pair ends (`pair.brokenSubject` in `i18n/sr.json`); `THE_LEAGUE` is who the
+     portal says it is when it writes to a member itself, the owner's choice of 19.09.2026
+     between three offered answers; `MAN` is the letter `competitor.gender` carries for a man,
+     the same value `CompetitorWriteApi`'s own `M` already excuses above, read here off a
+     different class for a different reason. None of the three is answered by asking a
+     question and none is refused by anybody: the class writes them rather than replies with
+     them. */
+  'PairWriteApi.java': ['Trkački par je raskinut', 'Balkanska trkačka liga', 'M'],
 }
 
 /**
@@ -169,6 +181,16 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
     'theAddressIsNotShaped',
     'theAddressIsTaken',
   ],
+  /* `PairWriteApi` names two more this way, both `POST /api/pairs`'s: `aQuestionAlreadyStands`
+     and `aPairAlreadyHolds`. Measured rather than assumed: `grep -rn "api/pairs" frontend/src`
+     finds every occurrence of the address in the repo, and none of them is a caller of this
+     route - the tests that touch it stand up a fake `GET` for the public list, and
+     `profile/InviteToPair.tsx`, the screen `PairWriteApi`'s own javadoc names as „the portal's
+     own half of it", writes its question into `useSession().invitePair` rather than asking the
+     server at all. The day that screen calls the route for real, these two move into a
+     dictionary and this entry shrinks to nothing, the same way `CompetitorWriteApi`'s six above
+     are waiting to. */
+  'PairWriteApi.java': ['aQuestionAlreadyStands', 'aPairAlreadyHolds'],
 }
 
 describe('the reasons the server can name', () => {
@@ -321,6 +343,18 @@ describe('the reasons the server can name', () => {
        change. What this gate asks is that every name be answered, not that every name have a
        sentence of its own. */
     ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 9],
+    /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
+       Seven constants, and the count splits three ways: three are not refusals at all
+       (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers
+       and have no screen yet (`NOT_YET_ON_ANY_SCREEN` above), and the remaining two are the
+       whole of what `PUT /api/pairs/{id}` can actually name - `theFormIsNotComplete` for a
+       body naming neither „Prihvati" nor „Odbij", `thePairWouldNotBeMixed` for the two turning
+       out to be the same sex by the time the answer is read again. Both read straight off
+       `PairWriteApi.answer` and `settle`; `A_QUESTION_ALREADY_STANDS` and `A_PAIR_ALREADY_HOLDS`
+       are `ask`'s, eleven lines above `settle` in the same file, and this route never reaches
+       them. `member/pairWrites.ts`'s own comment on `WHEN_ANSWERING_A_PAIR_INVITE` names this
+       same split and says why the other five are not here; this entry is that decision taken. */
+    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE], 7],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every
