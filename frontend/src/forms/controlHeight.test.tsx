@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { createElement } from 'react'
+
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ClockProvider } from '../clock/ClockProvider'
@@ -197,15 +197,11 @@ describe('how tall a control in a form is', () => {
        jsdom as on a screen. */
     for (const form of Object.values(FORMS)) {
       render(
-        createElement(
-          ClockProvider,
-          { simulatedDay: null },
-          createElement(
-            I18nProvider,
-            { locale: 'sr' },
-            createElement(FormRenderer, { form, onSubmit: () => undefined }),
-          ),
-        ),
+        <ClockProvider simulatedDay={null}>
+          <I18nProvider locale="sr">
+            <FormRenderer form={form} onSubmit={() => undefined} />
+          </I18nProvider>
+        </ClockProvider>,
       )
     }
 
