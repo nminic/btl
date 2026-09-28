@@ -357,7 +357,16 @@ export function AdminLeagues() {
                       <th scope="col">{t('leagues.name')}</th>
                       <th scope="col">{t('admin.address')}</th>
                       <th scope="col">{t('rankings.season')}</th>
-                      <th scope="col">{t('event.races')}</th>
+                      {/* „Događaja", not `event.races`: this column has never counted races
+                          (PDL, 28.09.2026, „Kolona u administraciji liga broji DANE, pa se
+                          tako i zove"). The header used to borrow `event.races` and said
+                          „Trke" over a cell that counts days, which is the same lie the public
+                          list corrected on 13.09.2026 for the same fact - so this reads the
+                          list's own key, `leagues.events`, rather than adding a second name
+                          for one number. `event.races` stays exactly as it is for the three
+                          screens that really do show races (`AdminEvents.tsx`, `EventDetail.tsx`
+                          twice): reusing it here would have renamed their heading too. */}
+                      <th scope="col">{t('leagues.events')}</th>
                       <th scope="col">{t('admin.form.record')}</th>
                     </tr>
                   </thead>
