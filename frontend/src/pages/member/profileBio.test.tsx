@@ -705,6 +705,87 @@ describe('the words a member wrote about themselves, changed later', () => {
     }
   }, SLOW)
 
+  it('drops the queue after a text and the member list after a removal, and never the other way', async () => {
+    /* WHICH RESOURCE EACH ROAD SPOILS, and they are different ones. A new text writes a row
+       into `verification` (`MeWriteApi.queued`), so a moderator who had already opened the
+       queue this visit would never see it; a removal writes `competitor.bio`, which
+       `/api/competitors` carries on every row, so the profile this visit is holding would go
+       on drawing words the member has taken down. `data/client.ts` fetches a resource once per
+       visit, so neither corrects itself.
+     *
+       **Both roads in one case and both names counted, because the two are one ternary in the
+       code**: measured on one road only, swapping the two arms would pass. Counted rather than
+       compared against a number written here, since the shell asks for the list on its own. */
+    const user = setupUser()
+    let standing: string | null = withOne.bio
+    const { asked, stop } = serverThat((path, init) => {
+      if (path === '/api/me' && init?.method === 'PUT') {
+        const removing = String(init.body).includes('"bio":""')
+
+        standing = removing ? '' : standing
+
+        return answering({ bio: standing, waiting: removing ? null : THE_ROW })
+      }
+
+      return null
+    })
+    const counted = (name: string) => asked.filter((one) => one.path === `/api/${name}`).length
+
+    try {
+      /* As a member who may also moderate, which is what the owner is and the one session in
+         which both halves of this walk are reachable (`pictureIsOneRow.test.tsx` says the
+         same of its own). */
+      const { router } = renderAt(
+        '/sr/podesavanja',
+        'superadmin',
+        withOne.memberNumber,
+        undefined,
+        undefined,
+        <Decide row={String(THE_ROW)} />,
+      )
+
+      await panelFor()
+
+      const queueBefore = counted('verification')
+      const listBefore = counted('competitors')
+
+      await user.clear(await box())
+      await user.type(await box(), 'Nova rečenica o sebi.')
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await (await panelFor()).findByText(sr.bio.waitingNote)
+
+      /* Read by walking to the queue, because dropping a name is only half of it: what the
+         name is FOR is that somebody asks again. */
+      await user.click(screen.getByRole('button', { name: 'odluči' }))
+      await router.navigate('/sr/administracija/verifikacija/trkacki-profil')
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      await waitFor(() => {
+        expect(counted('verification')).toBeGreaterThan(queueBefore)
+      })
+
+      expect(counted('competitors')).toBe(listBefore)
+
+      await router.navigate('/sr/podesavanja')
+      await panelFor()
+
+      const listBeforeRemoval = counted('competitors')
+
+      await user.clear(await box())
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+      await (await panelFor()).findByText(sr.account.saved)
+
+      await router.navigate('/sr/takmicari')
+      await screen.findByRole('heading', { level: 1, name: 'Takmičari' })
+
+      await waitFor(() => {
+        expect(counted('competitors')).toBeGreaterThan(listBeforeRemoval)
+      })
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
   it('downloads nothing about anybody else to say what is waiting', async () => {
     /* The same limit the picture panel carries, and for the same reason: the
        only place an earlier visit is written is the whole verification queue,
