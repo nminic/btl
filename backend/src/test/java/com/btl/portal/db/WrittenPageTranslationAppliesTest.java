@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -369,6 +370,85 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	 * politika-privatnosti and uslovi-koriscenja are written after the merge and so are checked
 	 * for the same regression from the start rather than after the fact.
 	 */
+	private static final Pattern LEADING_NUMBER = Pattern.compile("^(\\d+)\\.");
+
+	/**
+	 * THE LEADING NUMBER OF AN ENGLISH HEADING EQUALS THE LEADING NUMBER OF THE SERBIAN HEADING
+	 * PAIRED WITH IT BY (slug, position) - asked of the PAIR itself, never of a list, so it
+	 * catches a swapped position on every page today and on any page this migration reaches
+	 * tomorrow.
+	 *
+	 * <p><b>Why a list could not have caught this.</b> Independent review of PR 414 swapped only
+	 * two literal position numbers in two of V43's subqueries (uslovi-koriscenja and
+	 * politika-privatnosti, no other byte touched) and the full narrow gate over three test
+	 * classes stayed green - because {@link #everySerbianSectionOfATranslatedPageHasExactlyOneEnglishCounterpart}
+	 * only compares the SET of positions, and {@code PageApiTest} asked only
+	 * {@code hasSize(7)}/{@code hasSize(12)} for those two pages rather than the pravilnik case's
+	 * own {@code containsExactly} of all nineteen headings in order. A swap that keeps the same
+	 * seven, or twelve, headings, only reattached to the wrong position, is invisible to a case
+	 * that counts or that orders without naming.
+	 *
+	 * <p><b>The exception for rec-predsednika's one section is DERIVED, not named.</b> Its
+	 * heading carries no number in either language ("Reč predsednika" / "President's word"), so
+	 * the pair is skipped by asking the same question a numbered pair answers - does the Serbian
+	 * heading carry a leading number at all - rather than by naming the slug. A future page whose
+	 * heading also carries no number is covered by the same line; a hand written "except
+	 * rec-predsednika" would not have been, and would itself be a list with one entry.
+	 */
+	@Test
+	void theLeadingNumberOfAnEnglishHeadingMatchesTheSerbianHeadingItIsPairedWith() {
+		reapply();
+
+		record HeadingPair(String slug, int position, String serbian, String english) {
+		}
+
+		List<HeadingPair> pairs = db
+				.sql("select p.slug, s.position, s.heading, st.heading"
+						+ " from static_page_section s"
+						+ " join static_page p on p.id = s.page_id"
+						+ " join static_page_section_translation st on st.section_id = s.id"
+						+ " where st.language = 'en' order by p.slug, s.position")
+				.query((row, i) -> new HeadingPair(row.getString(1), row.getInt(2), row.getString(3),
+						row.getString(4)))
+				.list();
+
+		assertThat(pairs).as("no translated section was found to check heading numbers on").isNotEmpty();
+
+		int numberedPairsChecked = 0;
+
+		for (HeadingPair pair : pairs) {
+			Matcher serbianNumber = LEADING_NUMBER.matcher(pair.serbian());
+			Matcher englishNumber = LEADING_NUMBER.matcher(pair.english());
+
+			if (!serbianNumber.find()) {
+				assertThat(englishNumber.find())
+						.as("%s position %d: the Serbian heading \"%s\" carries no leading number,"
+								+ " but the English heading \"%s\" does", pair.slug(), pair.position(),
+								pair.serbian(), pair.english())
+						.isFalse();
+				continue;
+			}
+
+			assertThat(englishNumber.find())
+					.as("%s position %d: the Serbian heading \"%s\" carries a leading number, but"
+							+ " the English heading \"%s\" does not", pair.slug(), pair.position(),
+							pair.serbian(), pair.english())
+					.isTrue();
+			assertThat(englishNumber.group(1))
+					.as("%s position %d: the English heading's leading number does not match the"
+							+ " Serbian one it is paired with - Serbian \"%s\", English \"%s\"",
+							pair.slug(), pair.position(), pair.serbian(), pair.english())
+					.isEqualTo(serbianNumber.group(1));
+			numberedPairsChecked++;
+		}
+
+		assertThat(numberedPairsChecked)
+				.as("thirty-eight of the thirty-nine sections carry a number in their heading (every"
+						+ " one except rec-predsednika's single section); this case checked fewer than"
+						+ " that, so the derived exception is swallowing more pairs than it should")
+				.isEqualTo(38);
+	}
+
 	@Test
 	void allThreeLegalPagesSignOffWithV41sDateAndNoneKeepsTheStaleOne() {
 		reapply();
