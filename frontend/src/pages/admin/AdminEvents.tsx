@@ -507,7 +507,7 @@ export function AdminEvents() {
                 }
               }
 
-              for (const [rowAt, row] of (kindOf(values) === 'race' ? current : []).entries()) {
+              for (const row of kindOf(values) === 'race' ? current : []) {
                 /* A row that never was a race is made, and one that is, is written over.
                    Read off the row's own identity rather than off anything counted here:
                    the numbers this screen used to hand out came from `admin/raceIds.ts`,
@@ -561,20 +561,21 @@ export function AdminEvents() {
                        that id did not exist, and the retry deleted the very race this
                        press had just made and then made it again - a destructive request
                        against a row the route had only just accepted, measured by a
-                       nezavisna recenzija. Matched by position and guarded by `held.of`,
-                       the same way `EventRaces.tsx`'s own `change` corrects one row: a
-                       table the reader has since reopened on a different event is not
-                       this one to correct. */
-                    setHeld((before) =>
-                      before.of !== under
-                        ? before
-                        : {
-                            of: before.of,
-                            rows: before.rows.map((each, index) =>
-                              index === rowAt ? { ...each, id: String(made) } : each,
-                            ),
-                          },
-                    )
+                       nezavisna recenzija.
+
+                       Matched by the row's own OBJECT, the same way `EventRaces.tsx`'s
+                       own `change` corrects one row - never by position. This answer
+                       comes back after a wait, and `held` can have moved on by then: the
+                       reader left for the list (`onDone` empties it) or reopened this
+                       table after touching a different event's. A row found by INDEX
+                       would then correct whatever happens to occupy that index in
+                       whatever `held` holds now, which is nothing this press wrote. A row
+                       found by IDENTITY is simply absent once that happens, and `map`
+                       leaves every row exactly as it was. */
+                    setHeld((before) => ({
+                      ...before,
+                      rows: before.rows.map((each) => (each === row ? { ...each, id: String(made) } : each)),
+                    }))
                   }
                 } else {
                   setWritten((before) => ({
