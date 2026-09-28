@@ -248,6 +248,51 @@ describe('Registration once it is open', () => {
     expect(screen.queryByLabelText(/roditelja ili staratelja/)).not.toBeInTheDocument()
   })
 
+  it('forgets what it was told about a parent the moment it stops asking', async () => {
+    /* Owner, 28.09.2026: „Ukoliko ukucam greskom 2026 godinu za koju mi trazi povezano
+       lice, a onda promenim na 2006 godinu za koju mi ne trazi, bitno mi je da se ne
+       cuvaju nepotrebni podaci o staratelju koje sam mozda uneo pa izgubio uvid u
+       njih." His reason is the whole of it and it is not tidiness: he has lost sight of
+       them. A third person named in a form nobody can see any more is a record with
+       nothing holding it up (PDL P23 collects nothing that is not needed).
+
+       BOTH DIRECTIONS, AND THE SECOND IS THE ONE THAT SHOWS. Going back to an age that
+       asks again has to give EMPTY boxes; a form that hands back what was typed is the
+       fault itself wearing the look of a convenience. Measured in a browser on
+       28.09.2026 before the change, both came back - „Milan Đurišić" and „father" - so
+       this case fails on the code as it stood.
+
+       THE OTHER HOME OF THE SAME FACT IS THE BODY, and it is asserted separately, in
+       „sends nothing about a parent…" below. Only one of the two was ever broken:
+       `onScreen` has left hidden fields out of what is sent since it was written, so a
+       case that looked only at the body passed the whole time the box still said the
+       name. One of them alone says nothing about the other. */
+    const user = setupUser()
+    renderForm()
+
+    const birth = () => screen.getByLabelText(/Datum rođenja/)
+
+    await user.type(birth(), '01012015')
+    await user.type(screen.getByLabelText(/roditelja ili staratelja/), 'Milan Đurišić')
+    await user.selectOptions(screen.getByLabelText(/Srodstvo/), 'father')
+
+    expect(screen.getByLabelText(/roditelja ili staratelja/), 'the form never took the name')
+      .toHaveValue('Milan Đurišić')
+
+    await user.clear(birth())
+    await user.type(birth(), '01011990')
+
+    expect(screen.queryByLabelText(/roditelja ili staratelja/)).not.toBeInTheDocument()
+
+    await user.clear(birth())
+    await user.type(birth(), '01012015')
+
+    expect(screen.getByLabelText(/roditelja ili staratelja/), 'the name came back with the field')
+      .toHaveValue('')
+    expect(screen.getByLabelText(/Srodstvo/), 'the relationship came back with the field')
+      .toHaveValue('')
+  })
+
   it('asks the parent which of the three they are', async () => {
     /* Owner, 31.07.2026 and again 11.08.2026: the signature is kept with the
        relationship („padajući izbor: majka, otac, staratelj"), the date and time
@@ -530,7 +575,15 @@ describe('the address, at the moment of joining', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
     expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /^Adresa za slanje$/ })).toBeVisible()
+    /* ~~And the summary above the form links to it.~~ The summary went on 28.09.2026;
+       the cursor goes to the field instead (`forms/FormRenderer.tsx`, `owed`). This is
+       the real form's version of that road, and the strongest shape it can take here:
+       everything else on the form is answered, so the address is the ONE field that is
+       wrong, and a cursor that merely went to the top of the form would fail. */
+    const address = screen.getByLabelText(/^Adresa za slanje$/)
+
+    expect(address).toHaveFocus()
+    expect(address).toHaveAttribute('aria-invalid', 'true')
   }, SLOW)
 })
 
@@ -676,27 +729,37 @@ describe('an empty form', () => {
     expect(screen.getByRole('combobox', { name: /^Država/ })).toHaveAttribute('aria-invalid', 'false')
   })
 
-  it('names the confirmation in the summary of errors without the mark in it', async () => {
-    /* The sentence carries `{link}` where the link to the rulebook goes, and the
-       summary writes the name of the field on its own: „Potvrđujem da sam
-       upoznat sa {link} i da sam zdravstveno sposoban" is what a visitor read
-       the day the first sentence carried one. A link inside a link is not a
-       thing, so what the summary carries is the words the link would have led
-       with (forms/worded.tsx). */
+  it('never shows a visitor the mark where the link to the rulebook goes', async () => {
+    /* ~~And names the confirmation in the summary of errors without the mark in it.~~
+       The summary went on 28.09.2026, and with it the one place on this form that had
+       to write the name of a field WITHOUT its link: a link inside a link is not a
+       thing, so the list wrote the plain words instead (`forms/worded.tsx`,
+       `plainWords`). Nothing on the registration asks for that shape any more, and
+       `plainWords` is measured where it still has a reader, in
+       `forms/FormRenderer.test.tsx` and on `pages/admin/EntityEditor.tsx`.
+
+       WHAT SURVIVES IS THE HALF THAT IS ABOUT A VISITOR: the sentence carries `{link}`
+       where the link goes, and „Potvrđujem da sam upoznat sa {link} i da sam
+       zdravstveno sposoban" is what was really on the screen the day the first sentence
+       carried one. Asserted over the whole form and not over one field, because the
+       mark reaching the screen is a fault wherever it happens. */
     const user = setupUser()
     renderForm()
 
     await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
 
-    const summary = within(screen.getByRole('alert'))
-    const toConfirm = summary.getByRole('link', { name: /zdravstveno sposoban/ })
+    expect(screen.queryByText(/\{link\}/)).toBeNull()
 
-    expect(toConfirm).toHaveTextContent(
-      'Potvrđujem da sam upoznat sa pravilnikom i da sam zdravstveno sposoban za rekreativan sport.',
-    )
-    expect(summary.queryByText(/\{link\}/)).toBeNull()
-    /* And it is one link, not a link inside a link. */
-    expect(within(toConfirm).queryByRole('link')).toBeNull()
+    const confirm = screen.getByLabelText(/zdravstveno sposoban/)
+
+    /* And the confirmation is drawn as one link inside its words, rather than as words
+       with a mark left in them: without this the case above passes on a form that lost
+       the link altogether. */
+    expect(within(must(confirm.closest<HTMLElement>('.field'), 'the field of the confirmation'))
+      .getByRole('link', { name: 'pravilnikom' })).toBeVisible()
+    /* And it is marked wrong, which is what the cursor is found by now that there is no
+       list to follow (`forms/FormRenderer.tsx`, `owed`). */
+    expect(confirm).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('points at the country once the town is one the codebook does not know', async () => {
@@ -713,15 +776,16 @@ describe('an empty form', () => {
     expect(screen.getByLabelText(/^Mesto$/)).toHaveAttribute('aria-invalid', 'false')
     expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
 
-    /* And the list of things to fix leads to the country, not to the town: it
-       said „Mesto" and led to a box that was already filled in, while the one
-       marked wrong could not be reached from the list at all. */
-    const summary = within(screen.getByRole('alert'))
-    const toFix = summary.getByRole('link', { name: /^Država/ })
-    const at = must(toFix.getAttribute('href'), 'the address the summary points at')
-
-    expect(document.getElementById(at.replace('#', ''))).toBe(country)
-    expect(summary.queryByRole('link', { name: 'Mesto' })).toBeNull()
+    /* ~~And the list of things to fix leads to the country, not to the town: it said
+       „Mesto" and led to a box that was already filled in, while the one marked wrong
+       could not be reached from the list at all.~~ The list went on 28.09.2026 and the
+       cursor took over its job, so what has to lead to the country is the mark, and it
+       is the two assertions above: the country carries `aria-invalid="true"` and the
+       town does not, which is the whole of what the cursor reads
+       (`forms/FormRenderer.tsx`, `owed`). The cursor actually landing on the country
+       half of a place is measured in `forms/FormRenderer.test.tsx`, „lands on the
+       country when the country is the half that is wrong"; here the form is otherwise
+       empty, so the first field that is wrong is the name and not this. */
 
     /* And the town says nothing at all while somebody else's error is shown. It
        used to keep its own rule beside it, because the rule and the error arrived
@@ -950,6 +1014,45 @@ describe('what the registration sends', () => {
     /* And the date is the child's, not the grown competitor's: without this the two
        cases differ only in two fields nothing else looks at. */
     expect(Reflect.get(body, 'birthDate')).toBe('2012-05-20')
+  }, SLOW)
+
+  it('sends nothing about a parent for somebody who stopped being a child', async () => {
+    /* The second home of the fact the case „forgets what it was told about a parent…"
+       holds on screen, and the two are asserted apart on purpose: this one has been
+       right all along (`onScreen` drops a field the form has stopped asking for), so
+       every guard over the body passed while the box still carried the name. A case
+       that watched only this one would go on passing the day the dropping is taken out
+       of the state again.
+
+       THE MUTATION THIS IS WRITTEN AGAINST IS A SWAP, NOT A DELETION: hand `onSubmit`
+       the values as typed instead of what is on screen, and the name of a parent nobody
+       is asking about goes to the server for a competitor born in 1985. */
+    const user = setupUser()
+    renderForm()
+
+    await fillEverythingExceptBirthDate(user)
+
+    const birth = () => screen.getByLabelText(/Datum rođenja/)
+
+    await user.type(birth(), A_CHILD)
+    await user.type(screen.getByLabelText(/roditelja ili staratelja/), 'Milan Đurišić')
+    await user.selectOptions(screen.getByLabelText(/Srodstvo/), 'father')
+
+    await user.clear(birth())
+    await user.type(birth(), GROWN)
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    const body = Object(theBodySent())
+
+    expect(Reflect.get(body, 'parentConsent')).toBe('')
+    expect(Reflect.get(body, 'parentRelation')).toBe('')
+    /* And the registration went through as the grown competitor it now describes,
+       rather than being refused for a reason that would have hidden all of the above. */
+    expect(Reflect.get(body, 'birthDate')).toBe('1985-04-12')
   }, SLOW)
 
   it('carries the referral code itself, and never the empty string', async () => {

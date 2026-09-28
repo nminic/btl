@@ -568,20 +568,31 @@ const Field = memo(function Field({
            nothing else: around the whole field it held the letter and the line
            of the error as well.
 
-           And it carries the id the summary of errors links to, and takes the
-           cursor when that link is followed: every other field is reached
-           through its own control, a group has no one control, so the group is
-           what the link leads to. Sex and category are the two things nothing is
-           chosen for, so they are the likeliest errors on this form. */}
+           And it takes the cursor when a press is refused over it: every other
+           field is reached through its own control, a group has no one control,
+           so the group is what the cursor is put on, and that is why it carries
+           `tabIndex={-1}`. ~~It carries the id the summary of errors links to.~~
+           The summary went on 28.09.2026 and the cursor took over its job; the id
+           stays because `forms/choiceControl.test.tsx` finds the group by it, and
+           because a control group with no name in the document is a thing nothing
+           can point at. Sex and category are the two things nothing is chosen for,
+           so they are the likeliest errors on this form. */}
         <div
           className="choice"
           role="radiogroup"
           aria-required={asked}
           aria-labelledby={labelId}
-          /* The error, on the group as well as on the buttons: the summary of
-             errors leads here and puts the cursor on the group itself, and
-             a group that says only „Pol" does not say what is wrong with it. */
+          /* The error, on the group as well as on the buttons, and a group that
+             says only „Pol" does not say what is wrong with it. */
           aria-describedby={error === undefined ? undefined : errorId}
+          /* AND THE MARK ON THE GROUP TOO, WHICH IS WHAT PUTS THE CURSOR HERE
+             RATHER THAN ON THE FIRST BUTTON. The cursor is found by asking the
+             document for the first control marked wrong (`owed`, above), and the
+             group stands before its buttons in the document, so marking it is the
+             whole of how a choice is reached. Marked only on the buttons, the
+             reader landed on „Muški" and heard one option out of two before he
+             heard what the question was. */
+          aria-invalid={error !== undefined}
           id={inputId}
           tabIndex={-1}
         >
