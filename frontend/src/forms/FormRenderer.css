@@ -141,6 +141,47 @@
     grid-column: span 2;
   }
 
+  /* And the two halves of it are those two columns, one each.
+   *
+     Owner, 28.09.2026: „Drugi red su jednake trećine za Mesto i Državu (Treća
+     kolona je prazna)." Measured at 1280 before this rule: the town was 434,67px
+     and the country 192px inside 634,67px of field, because `PlaceField.css`
+     gives the country a fixed 12rem and lets the town take what is left. Two
+     columns wide is not the same as two columns.
+   *
+     Here and not in `PlaceField.css`, and inside this query, because it is true
+     of a town standing on a ROW IN COLUMNS and of nothing else. Two other forms
+     draw a town (`admin-dogadjaj`, `unos-rezultata`) and in both it stands on no
+     row, where there are no thirds to be equal to and where the reason for the
+     fixed width still holds: the town is typed and the country is chosen from a
+     list, so the one that is typed is given the room. Left global, this would
+     have widened a control on two administrative screens nobody asked about.
+   *
+     `flex: 1 1 0%` and not `1 1 auto`: a basis of `auto` starts from the width of
+     the content, and the content of one is a box and of the other a list of two
+     hundred and forty six countries. */
+  /* Both halves on one line, because a selector list broken over two carries the
+     newline into `selectorText` and the guard that reads it by name then has to
+     know how this file is laid out (`forms/formStyle.test.ts`). */
+  .form__row .field--place .place__town, .form__row .field--place .place__country-pick {
+    flex: 1 1 0%;
+    min-inline-size: 0;
+    inline-size: auto;
+    max-inline-size: none;
+  }
+
+  /* And the gap between them is the gap between the columns, so that the two
+     halves land ON the two columns rather than merely beside each other.
+   *
+     `PlaceField.css` sets 8px, which is right for a pair standing on its own.
+     Inside a row of thirds it is wrong by exactly the difference: measured, the
+     halves came out 313,33px against the 309,33px of a third, and the left edge
+     of „Država" stood four pixels left of „Telefon" on the row above it. Equal
+     to each other and on neither column. */
+  .form__row .field--place .place {
+    gap: var(--space-16);
+  }
+
   /* And a field standing on its own inside such a form keeps the width one
      field should have. „Svojim rečima" stretched to the full sixty rem, and a
      box whose ends are that far apart is two places to look rather than one. */
@@ -365,9 +406,31 @@
   min-inline-size: 0;
 }
 
+/* The options share the field, in equal parts, whatever they say.
+ *
+   Owner, 28.09.2026: „pol zauzima tačno trećinu, dakle opcije su širine kao
+   polje za ime." A row of this form is three columns (`registracija.form.json`,
+   `columns`), so the field is already a third of it; what was not a third was
+   what stands INSIDE the field, because the buttons were laid out by flex and
+   took the width of their own words. „Muški" and „Ženski" came to about half of
+   what the box for a name beside them is.
+
+   Columns rather than `flex`, and this is the half that answers his other
+   sentence as well: „Ne postoji štikliranje dugmića koje poremeti širinu polja."
+   A grid track of `minmax(0, 1fr)` is a share of the field and is not read off
+   what stands in it, so what a button holds cannot move its edges - not a mark
+   put there when it is taken, not a longer word, not a translation. The width is
+   the same in both states BY CONSTRUCTION rather than by nothing having been
+   added to it, which is what „changes nothing but paint when an option is taken" measures
+   (`forms/choiceControl.test.tsx`).
+
+   `grid-auto-flow: column` and auto columns rather than
+   `repeat(2, ...)`: the renderer draws as many buttons as the definition names,
+   and a number written here would be a second copy of that count. */
 .choice {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: var(--space-8);
 }
 
@@ -398,6 +461,10 @@
 
 .choice__label {
   display: inline-flex;
+  /* Filling the share of the field its grid track was given, rather than the
+     width of the word it holds. */
+  flex: 1 1 auto;
+  min-inline-size: 0;
   align-items: center;
   justify-content: center;
   min-block-size: 2.75rem;
@@ -418,19 +485,36 @@
   border-color: var(--text-muted);
 }
 
-/* The one that is taken, said twice over: filled, and with a mark on it. Colour
-   alone would leave it unsaid for anybody who cannot tell these two apart
-   (WCAG 2.2 SC 1.4.1). */
+/* The one that is taken: filled.
+ *
+   ~~And with a mark on it, because colour alone would leave it unsaid for
+   anybody who cannot tell these two apart (WCAG 2.2 SC 1.4.1).~~ **The mark is
+   gone as of 28.09.2026, on the owner's decision, and this sentence is rewritten
+   rather than deleted because what it was guarding is real and is still owed an
+   answer.** His words: „Ne postoji štikliranje dugmića koje poremeti širinu
+   polja, nego samo treba da se promeni boja kao da je odabrano."
+
+   **What still carries the state once the mark is gone, and it is not hue.
+   MEASURED, not assumed.** SC 1.4.1 is about a difference nobody can see who
+   cannot tell two HUES apart; a difference in LIGHTNESS is one that survives
+   being read in grey. The two states here differ in lightness by 8.97:1 in the
+   light theme (`--surface` #ffffff against `--accent` #10459a) and by 5.65:1 in
+   the dark one (#101a2e against #5b93ec), which is an unfilled box against a
+   filled one and not one colour against another. The words on it move with it:
+   8.97:1 and 5.16:1 against what they now stand on, both past the 4.5:1 of SC
+   1.4.3. `forms/choiceControl.test.tsx` is what holds those numbers, so a token
+   retuned to something prettier and flatter fails on the day it happens.
+
+   **And the state is announced, which the mark was never needed for.** These are
+   real radios (`FormRenderer.tsx`) and `checked` is what a screen reader reads;
+   it was true while the mark was here and it is true now, and it does not touch
+   the width. **That last clause is derivation from `ADL` A7 and WCAG 2.2 AA,
+   which say colour may not be the only carrier - it is not the owner's
+   sentence.** */
 .choice__input:checked + .choice__label {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
-}
-
-.choice__input:checked + .choice__label::before {
-  content: '✓';
-  margin-inline-end: var(--space-6);
-  font-weight: 700;
 }
 
 /* The focus ring belongs on what is seen, since the control itself is not. */

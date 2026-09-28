@@ -372,13 +372,11 @@
     "title": "Registration",
     "submit": "Send the application",
     "group": {
-      "whoYouAre": "Who you are",
+      "basics": "Basic details",
       "theWayIn": "Your account",
-      "contact": "Contact and address",
-      "forTheRegister": "For the register of members",
+      "contact": "Contact and delivery",
       "competing": "Competing",
-      "profile": "Profile",
-      "consents": "Consents"
+      "profile": "Profile"
     },
     "firstName": "First name",
     "lastName": "Last name",

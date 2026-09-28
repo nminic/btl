@@ -2,6 +2,7 @@
   "id": "registracija",
   "titleKey": "registration.title",
   "submitKey": "registration.submit",
+  "columns": 3,
   "fields": [
     {
       "name": "firstName",
@@ -10,7 +11,7 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "groupKey": "registration.group.whoYouAre",
+      "groupKey": "registration.group.basics",
       "policyRow": "Ime i prezime",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -21,7 +22,7 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "groupKey": "registration.group.whoYouAre",
+      "groupKey": "registration.group.basics",
       "policyRow": "Ime i prezime",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -33,27 +34,15 @@
       "required": true,
       "maxLength": 60,
       "row": 1,
-      "groupKey": "registration.group.whoYouAre",
+      "groupKey": "registration.group.basics",
       "policyRow": "Ime oca",
       "policyBasis": "Pravna obaveza"
-    },
-    {
-      "name": "birthDate",
-      "type": "date",
-      "labelKey": "registration.birthDate",
-      "required": true,
-      "row": 2,
-      "groupKey": "registration.group.whoYouAre",
-      "policyRow": "Datum rođenja",
-      "policyBasis": "Izvršenje ugovora"
     },
     {
       "name": "gender",
       "type": "choice",
       "labelKey": "registration.gender",
       "required": true,
-      "row": 2,
-      "groupKey": "registration.group.whoYouAre",
       "options": [
         {
           "value": "M",
@@ -64,8 +53,36 @@
           "labelKey": "registration.genderFemale"
         }
       ],
+      "row": 2,
+      "groupKey": "registration.group.basics",
       "policyRow": "Pol",
       "policyBasis": "Izvršenje ugovora"
+    },
+    {
+      "name": "birthDate",
+      "type": "date",
+      "labelKey": "registration.birthDate",
+      "required": true,
+      "row": 2,
+      "groupKey": "registration.group.basics",
+      "policyRow": "Datum rođenja",
+      "policyBasis": "Izvršenje ugovora"
+    },
+    {
+      "name": "idNumber",
+      "type": "text",
+      "labelKey": "registration.idNumber",
+      "hintKey": "registration.idNumberHint",
+      "required": true,
+      "maxLength": 20,
+      "row": 2,
+      "groupKey": "registration.group.basics",
+      "optionalWhenYoungerThan": {
+        "field": "birthDate",
+        "years": 16
+      },
+      "policyRow": "Broj ličnog dokumenta",
+      "policyBasis": "Pravna obaveza"
     },
     {
       "name": "email",
@@ -111,6 +128,16 @@
       "policyBasis": "Izvršenje ugovora i pravna obaveza"
     },
     {
+      "name": "phone",
+      "type": "text",
+      "labelKey": "registration.phone",
+      "maxLength": 30,
+      "row": 4,
+      "groupKey": "registration.group.contact",
+      "policyRow": "Telefon, neobavezno",
+      "policyBasis": "Vaš pristanak"
+    },
+    {
       "name": "city",
       "type": "place",
       "labelKey": "registration.city",
@@ -122,37 +149,10 @@
       "policyBasis": "Izvršenje ugovora i pravna obaveza"
     },
     {
-      "name": "phone",
-      "type": "text",
-      "labelKey": "registration.phone",
-      "maxLength": 30,
-      "row": 5,
-      "groupKey": "registration.group.contact",
-      "policyRow": "Telefon, neobavezno",
-      "policyBasis": "Vaš pristanak"
-    },
-    {
-      "name": "idNumber",
-      "type": "text",
-      "labelKey": "registration.idNumber",
-      "hintKey": "registration.idNumberHint",
-      "required": true,
-      "maxLength": 20,
-      "groupKey": "registration.group.forTheRegister",
-      "optionalWhenYoungerThan": {
-        "field": "birthDate",
-        "years": 16
-      },
-      "policyRow": "Broj ličnog dokumenta",
-      "policyBasis": "Pravna obaveza"
-    },
-    {
       "name": "firstSeason2027",
       "type": "choice",
       "labelKey": "registration.category",
       "required": true,
-      "row": 6,
-      "groupKey": "registration.group.competing",
       "options": [
         {
           "value": "yes",
@@ -163,6 +163,8 @@
           "labelKey": "registration.categoryByAge"
         }
       ],
+      "row": 6,
+      "groupKey": "registration.group.competing",
       "policyRow": "Izbor kategorije, početnička ili starosna",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -171,8 +173,6 @@
       "type": "select",
       "labelKey": "registration.shirtSize",
       "required": true,
-      "row": 6,
-      "groupKey": "registration.group.competing",
       "options": [
         {
           "value": "XS",
@@ -203,6 +203,8 @@
           "labelKey": "shirt.XXXL"
         }
       ],
+      "row": 6,
+      "groupKey": "registration.group.competing",
       "policyRow": "Veličina majice",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -234,7 +236,6 @@
       "linkKey": "registration.healthStatementLink",
       "linkTo": "pravilnik",
       "required": true,
-      "groupKey": "registration.group.consents",
       "policyRow": "Izjava da ste upoznati sa pravilnikom i zdravstveno sposobni",
       "policyBasis": "Izvršenje ugovora"
     },
@@ -245,7 +246,6 @@
       "hintKey": "registration.parentConsentHint",
       "required": true,
       "maxLength": 120,
-      "groupKey": "registration.group.consents",
       "showWhenYoungerThan": {
         "field": "birthDate",
         "years": 16
@@ -258,7 +258,6 @@
       "type": "select",
       "labelKey": "registration.parentRelation",
       "required": true,
-      "groupKey": "registration.group.consents",
       "options": [
         {
           "value": "mother",
