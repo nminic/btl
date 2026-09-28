@@ -43,7 +43,11 @@ export function President() {
                 read it (src/data/pages.ts). Three screens over one record must
                 not disagree about what the record says. */}
             {sectionsOf(pages, page).map((section) => (
-              <article className="address" key={section.heading}>
+              /* The language of the words, the record's own and not the address's - the same
+                 attribute and the same reason as `pages/StaticPage.tsx`, which says it in
+                 full. Per block here rather than round the card, because the card is this
+                 screen's and the words inside it are the record's. */
+              <article className="address" key={section.heading} lang={page.language}>
                 <h2 className="card__title">{section.heading}</h2>
                 <PageSectionBody section={section} />
               </article>

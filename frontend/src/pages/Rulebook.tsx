@@ -91,7 +91,11 @@ function RulebookPage({ pages, page }: { pages: StaticPage[]; page: StaticPage }
   const current = useCurrentSection(ids)
 
   return (
-    <article className="rulebook">
+    /* The language of the words, the page's own and not the address's - the same attribute
+       and the same reason as `pages/StaticPage.tsx`, which says it in full. It goes on the
+       article and therefore over the contents beside the text as well, which is right: those
+       headings are the sections' own headings and fall back with them. */
+    <article className="rulebook" lang={page.language}>
       <h1>{page.title}</h1>
 
       <div className="rulebook__layout">

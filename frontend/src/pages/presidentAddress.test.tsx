@@ -197,12 +197,14 @@ describe('sectionsOf', () => {
   const prva: StaticPage = {
     slug: 'prva',
     title: 'Prva',
+    language: 'sr',
     sections: [{ heading: 'Svoja', body: 'x' }],
     includes: ['druga', 'nema'],
   }
   const druga: StaticPage = {
     slug: 'druga',
     title: 'Druga',
+    language: 'sr',
     sections: [{ heading: 'Uzeta', body: 'y' }],
   }
   const pages = [prva, druga]

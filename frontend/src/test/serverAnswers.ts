@@ -38,7 +38,24 @@ export type Asked = { path: string; init: RequestInit | undefined }
  * these on the day it is added rather than on the day somebody remembers.
  */
 export function isResource(path: string): boolean {
-  return RESOURCE_NAMES.some((name) => path === `/api/${name}`)
+  return RESOURCE_NAMES.some((name) => withoutTheQuery(path) === `/api/${name}`)
+}
+
+/**
+ * The address without what was asked OF it.
+ *
+ * <p><b>A query names a narrower answer and never another resource</b>, which is the whole of
+ * why this exists: `/api/pages?lang=en` is the written pages and `/api/payments?search=x` is
+ * the payments. Compared whole, the one name that sends a parameter since 28.09.2026 would
+ * have answered false here, and the three cases that read this as „did this screen spend
+ * anything it should not" would have counted a resource as a write.
+ */
+function withoutTheQuery(path: string): string {
+  /* Written as a replacement rather than as `split('?')[0]`, which under this project's
+     `noUncheckedIndexedAccess` needs a fallback for an element that cannot be absent - a
+     branch nothing could ever take, which is exactly what the 100 per cent branch floor
+     exists to catch. */
+  return path.replace(/\?.*$/, '')
 }
 
 /**

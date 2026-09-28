@@ -2161,12 +2161,15 @@ describe('the written pages', () => {
        empty heading rather than being left off"). Server data does not carry this
        shape today - all four written pages have at least one section - so it is
        made here rather than found, the same way the deleted form-test made it. */
+    /* The address carries the language since 28.09.2026 (`/api/pages?lang=sr`), so this looks
+       for the resource rather than for the end of the address. */
     const real = globalThis.fetch
     globalThis.fetch = (async (input: RequestInfo | URL) =>
-      String(input).endsWith('/api/pages')
-        ? new Response(JSON.stringify([{ slug: 'nova', title: 'Nova strana', sections: [] }]), {
-            status: 200,
-          })
+      String(input).includes('/api/pages')
+        ? new Response(
+            JSON.stringify([{ slug: 'nova', title: 'Nova strana', language: 'sr', sections: [] }]),
+            { status: 200 },
+          )
         : real(input))
 
     try {

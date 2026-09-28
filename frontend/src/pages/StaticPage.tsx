@@ -34,7 +34,14 @@ export function StaticPage({ slug }: { slug: string }) {
         }
 
         return (
-          <article className="page">
+          /* THE LANGUAGE OF THE WORDS, WHICH IS THE PAGE'S OWN AND NOT THE ADDRESS'S.
+             A page answers in the language asked for only when it is whole in it
+             (`PageApi.pagesIn`), and the owner's decision is that one which is not falls back
+             to Serbian with no notice (ADL, 18.09.2026). This attribute is not a notice - no
+             reader sees it - and without it a screen reader on /en would read that Serbian
+             with English phonetics, which `i18n/config.ts` names as unintelligible (WCAG 2.2
+             AA 3.1.2). On the title too, because the title falls back with the blocks. */
+          <article className="page" lang={page.language}>
             <h1>{page.title}</h1>
 
             {sectionsOf(pages, page).map((section) => (
