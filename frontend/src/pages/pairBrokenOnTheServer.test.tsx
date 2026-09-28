@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { at, must } from '../test/at'
@@ -6,6 +7,7 @@ import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { answeredWith, did, forgetEveryCookie, serverThat, type Asked } from '../test/serverAnswers'
 import { clearResourceCache } from '../data/client'
+import { useSession } from '../session/useSession'
 import sr from '../i18n/sr.json'
 
 /**
@@ -139,14 +141,53 @@ const pairRows = (): string[] =>
 
 const breakButtons = () => screen.queryAllByRole('button', { name: sr.pair.breakUp })
 
+/**
+ * THE READER BECOMES SOMEBODY ELSE INSIDE ONE VISIT, which is `pages/racingPair.test.tsx`'s own
+ * probe and is here for one reason: a message is addressed, and the one place it can be read is
+ * the inbox of whoever it was addressed TO.
+ */
+function Become({ who }: { who: string }) {
+  const { signIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        signIn(who)
+      }}
+    >
+      postani {who}
+    </button>
+  )
+}
+
+/** The two members a notice about this break could reach: the half whose pair ended, and a third
+ *  member who has nothing to do with either of them. */
+const THE_OTHERS = (
+  <>
+    <Become who="000004" />
+    <Become who="000005" />
+  </>
+)
+
 /** Her own page, drawn and waited for. */
-async function herProfile(): Promise<void> {
-  renderAt(HER, 'competitor', '000015', undefined, TODAY)
+async function herProfile(probe: ReactNode = null): Promise<void> {
+  renderAt(HER, 'competitor', '000015', undefined, TODAY, probe)
 
   await screen.findByRole('heading', { level: 1, name: /Katarina/ })
   await waitFor(() => {
     expect(breakButtons().length).toBe(2)
   })
+}
+
+/** Every message in the panel in the header, the way the panel draws them. The trailing slash is
+ *  what keeps „Sve poruke" out: that link is `/sr/poruke` and names no message. */
+async function panel(user: ReturnType<typeof setupUser>) {
+  await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
+
+  return screen
+    .queryAllByRole('link')
+    .filter((one) => /\/poruke\/./.test(one.getAttribute('href') ?? ''))
 }
 
 beforeEach(() => {
@@ -295,7 +336,7 @@ describe('„Raskini" on a pair the server is keeping', () => {
       const user = setupUser()
 
       aServerWhere()
-      await herProfile()
+      await herProfile(THE_OTHERS)
 
       await user.click(at(breakButtons(), 1))
 
@@ -307,18 +348,41 @@ describe('„Raskini" on a pair the server is keeping', () => {
          itself, in the same transaction as the delete, with the portal’s own `pair.endedBody`
          (`theBrokenPairReads`). A `notify` beside the send would be the same fact in two homes -
          one durable row and one copy that dies with the tab - and the member on the far side
-         would be told twice or, worse, only in somebody else’s browser.
+         would be told twice, or, worse, only inside the presser’s own browser.
        *
-         Read off the panel in the header, which is where a message this visit wrote would
-         appear. */
-      await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
+         **READ IN THE INBOX OF THE MEMBER IT WOULD BE ADDRESSED TO, AND THAT IS THE WHOLE
+         CORRECTION.** The first draft of this case read HER panel, and it could not have caught
+         anything: `session/SessionProvider.tsx` filters the held inbox with
+         `one.to === '' || one.to === memberNumber`, and such a notice is addressed to the
+         PARTNER. So the assertion was satisfied by a message it is unable to see, which is „two
+         sources for one value" in the fixture rather than in the code - and the mutation that
+         restores `notify` sailed through it. Measured: with her panel it passed, with his it
+         fails. */
+      await user.click(screen.getByRole('button', { name: 'postani 000004' }))
 
-      const written = screen
-        .queryAllByRole('link')
-        .filter((one) => /\/poruke\/./.test(one.getAttribute('href') ?? ''))
-        .filter((one) => new RegExp(sr.pair.brokenSubject).test(one.textContent ?? ''))
+      const his = await panel(user)
 
-      expect(written.length).toBe(0)
+      /* **The panel is really open, and that is asserted rather than assumed.** „He was told
+         nothing" is a claim about absence, and a panel that never opened answers it exactly as
+         well as a portal that wrote nothing. The served inbox carries rows for every member, so
+         the same read witnesses itself. */
+      expect(his.length).toBeGreaterThan(0)
+      expect(his.filter((one) => new RegExp(sr.pair.brokenSubject).test(one.textContent ?? ''))
+        .length).toBe(0)
+
+      /* **And a third member who is in neither half of that pair**, which is the axis that
+         catches a notice written to the whole league: `to: ''` passes the filter above for
+         EVERYBODY, so a mutation that addressed it that way would still be absent from one named
+         inbox and present in every one. */
+      await user.click(screen.getByRole('button', { name: 'postani 000005' }))
+
+      const anybody = await panel(user)
+
+      expect(anybody.length).toBeGreaterThan(0)
+      expect(
+        anybody.filter((one) => new RegExp(sr.pair.brokenSubject).test(one.textContent ?? ''))
+          .length,
+      ).toBe(0)
     },
     SLOW,
   )
