@@ -653,7 +653,9 @@
     "written": "The message has been sent to {name}, into Messages on the portal.",
     "someMember": "A League member",
     "commentsForMembers": "Comments are seen by members who are signed in.",
-    "writeNeedsWords": "Write a message so that you can send it."
+    "writeNeedsWords": "Write a message so that you can send it.",
+    "writeFormIncomplete": "The server did not accept the message, because it did not reach it whole. Refresh the page and try again.",
+    "writeMemberUnknown": "The portal does not know that member, so the message was not sent."
   },
   "category": {
     "rookieMale": "Rookies",
