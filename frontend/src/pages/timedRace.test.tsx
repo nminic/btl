@@ -39,9 +39,24 @@ function servingRaces(
   real: typeof globalThis.fetch,
   said: (race: Race) => Record<string, unknown>,
 ): typeof globalThis.fetch {
-  return async (input: RequestInfo | URL) => {
-    if (!String(input).endsWith('/api/races')) {
-      return real(input)
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    /**
+     * ONLY THE READ IS DRESSED UP, AND `init` IS HANDED ON WHATEVER HAPPENS.
+     *
+     * <p><b>Both halves of this were wrong until 28.09.2026 and neither could show.</b>
+     * The stub took one argument, so anything it passed to the floor arrived as a plain
+     * `GET` - method and body gone - and it answered every `/api/races` with the mapped
+     * LIST, whatever verb had been used. Nothing noticed while this screen wrote into the
+     * session overlay, because it called `fetch` for reads and for nothing else.
+     *
+     * <p>It calls the routes now. Left as it was, `PUT /api/events/{id}` reached the floor
+     * as a read of the events file and came back 200 with an array, which `askTheServer`
+     * reads as „it was done" and `writtenIn` reads as „no identity here", so the screen
+     * said it could not show what it had saved and no confirmation ever appeared. The case
+     * waited its five seconds for one.
+     */
+    if (!String(input).endsWith('/api/races') || (init?.method ?? 'GET') !== 'GET') {
+      return real(input, init)
     }
 
     const all: Race[] = await (await real(input)).json()

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/types'
@@ -467,7 +467,7 @@ export function RowActions({
   onOpen,
   alsoRemove,
   deleteRecord,
-  whyNoRemove,
+  asksWith,
 }: {
   entity: EntityDef
   record: object
@@ -499,18 +499,25 @@ export function RowActions({
    */
   alsoRemove?: () => void
   /**
-   * Why this record cannot be deleted, where something stops it.
+   * WHAT ELSE GOES WITH THIS RECORD, SAID WHILE THE QUESTION IS ON SCREEN.
    *
-   * The events screen reads the results only so that deleting an event takes
-   * them along, and it no longer waits for them: a file of a million and a half
-   * bytes must not decide whether an event can be edited. While they are on
-   * their way there is nothing to take along, and a deletion in that window
-   * leaves results pointing at an event that is gone, each of them still
-   * counting in the standing and linking to a page that says so. The answer is
-   * to wait for the one thing the deletion needs rather than for the screen, and
-   * to say what is being waited for.
+   * <p><b>It was `whyNoRemove` until 28.09.2026, and the change is the owner's</b>
+   * (28.09.2026, chosen between three outcomes he was priced). That prop held the
+   * deletion BACK while the results were on their way: the events screen took the
+   * results down itself, one by one, so a deletion before the file arrived left them
+   * pointing at an event that was gone. The route deletes the event in one statement and
+   * the schema cascades the rest (`result_race_fk` from the race), so there is nothing
+   * left for this screen to wait for - and waiting on the largest file the portal has,
+   * to do nothing with it, was the whole of the cost.
+   *
+   * <p>So the guard became a WARNING rather than a wait: the button works at once, and
+   * what it will take with it is said in the question, where somebody who has pressed
+   * once still has the second press to think about.
+   *
+   * <p>Named on the confirming button through `aria-describedby`, so it is read out to
+   * whoever arrives there by keyboard rather than being a sentence only the sighted meet.
    */
-  whyNoRemove?: string
+  asksWith?: string
 }) {
   const { remove } = useSession()
   const id = String(fieldValue(record, entity.idField))
@@ -541,21 +548,7 @@ export function RowActions({
   return (
     <span className="entity-row-actions">
       <OpenRecord name={name} onOpen={onOpen} />
-      {whyNoRemove === undefined ? (
-        <DeleteRecord name={name} onDelete={deleteRow} />
-      ) : (
-        /* Said rather than drawn and refused. A button that answers nothing is
-           worse than no button, and the words are in the row, where anybody
-           running the row meets them in the place the second button would be.
-
-           Not a live region. It was one, and there are forty five rows on the
-           events screen: forty five regions carrying one sentence, all of them
-           changing together the moment the file fails, is forty five identical
-           announcements. What is said once is worth saying; said forty five
-           times it is noise, which is the rule the event page already keeps
-           (resourceScope.test). */
-        <span className="entity-row-note">{whyNoRemove}</span>
-      )}
+      <DeleteRecord name={name} onDelete={deleteRow} asksWith={asksWith} />
     </span>
   )
 }
@@ -632,9 +625,23 @@ export function OpenRecord({
  * what?" is answered without reading back up the row, and two rows asking at
  * once are two different questions rather than two buttons called Odustani.
  */
-export function DeleteRecord({ name, onDelete, look = 'entity-open' }: {
+export function DeleteRecord({ name, onDelete, look = 'entity-open', asksWith }: {
   name: string
   onDelete: () => void
+  /**
+   * WHAT ELSE THIS DELETION TAKES, said between the question and the answer.
+   *
+   * <p>Owner, 28.09.2026, choosing between three outcomes: the button works at once and
+   * the reader is told the number before he confirms. So this is drawn only while the
+   * question stands - the row of sixty says nothing until somebody has pressed once,
+   * which is the same reason the question itself is two presses rather than a dialogue.
+   *
+   * <p>Only the events screen passes one. It is optional rather than required because the
+   * other three lists take nothing else with them: a moderator, a team and a competition
+   * are one row each, and a sentence saying „and nothing else" on every one of them is
+   * noise on three screens to be honest on a fourth.
+   */
+  asksWith?: string
   /**
    * What the three buttons are dressed as.
    *
@@ -650,6 +657,10 @@ export function DeleteRecord({ name, onDelete, look = 'entity-open' }: {
 }) {
   const { t } = useI18n()
   const [asking, setAsking] = useState(false)
+  /* One id per row. Sixty rows sharing one would point every confirming button at the
+     first row's sentence, which is the same fault an `id` written out by hand always
+     has on a list (`OpenRecord`, `describedBy`, says it one control along). */
+  const saying = useId()
 
   if (!asking) {
     return (
@@ -666,10 +677,22 @@ export function DeleteRecord({ name, onDelete, look = 'entity-open' }: {
 
   return (
     <>
+      {/* Before the buttons rather than after them, so it is read on the way to the
+          one that cannot be undone rather than behind it. */}
+      {asksWith !== undefined && (
+        <span className="entity-row-note" id={saying}>
+          {asksWith}
+        </span>
+      )}
       <button
         type="button"
         className={`${look} entity-delete entity-delete--sure`}
         aria-label={t('admin.form.deleteSureNamed', { name })}
+        /* So whoever arrives here by keyboard is told what goes with it. Named
+           through the element rather than folded into the label, because the label
+           is what tells twenty of these buttons apart and a number in it would make
+           two rows with the same count read as one control. */
+        aria-describedby={asksWith === undefined ? undefined : saying}
         onClick={onDelete}
       >
         {t('admin.form.deleteSure')}
