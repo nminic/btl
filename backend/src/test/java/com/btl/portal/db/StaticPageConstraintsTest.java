@@ -80,16 +80,31 @@ class StaticPageConstraintsTest extends DatabaseTest {
 					+ "select a.id, 900, b.id from static_page a, static_page b "
 					+ "where a.slug = 'pravilnik' and b.slug = 'politika-privatnosti'";
 	/* `en` throughout the two translation fixtures, because it is the tag the portal is
-	   actually getting (owner, 26.09.2026) and the only one V37 will hold before launch. The
-	   shape check is asked about separately, with a tag nobody would write on purpose. */
+	   actually getting (owner, 26.09.2026) and the shape check is asked about separately, with a
+	   tag nobody would write on purpose.
+
+	   NEITHER ONE MAY BE BUILT OVER A SEEDED PAGE ANY LONGER, and that is measured rather than
+	   tidiness: V43 gives the real pages real English rows, one page and one commit at a time, so
+	   `where slug = 'pravilnik'` here used to insert a SECOND English title for a page that
+	   already had one the moment V43's own commit for the rulebook landed -
+	   `static_page_translation_once_per_language` refused it and this fixture, which is meant to
+	   prove a LEGITIMATE row is accepted, started proving the opposite. The same fate waits for
+	   every other seeded slug as V43 reaches it, so the fix is not "pick a page V43 has not
+	   reached yet" but a page of its own that V43 can never reach: created fresh, in the same
+	   statement, through a data-modifying CTE, the way `static_page_include`'s own temporary pages
+	   are created inline elsewhere in this class. */
 	private static final String GOOD_TRANSLATION =
-			"insert into static_page_translation (page_id, language, title) "
-					+ "select id, 'en', 'Proba' from static_page where slug = 'pravilnik'";
+			"with fresh_page as (insert into static_page (slug, title) "
+					+ "values ('proba-prevod-dobar-naslov', 'Proba') returning id) "
+					+ "insert into static_page_translation (page_id, language, title) "
+					+ "select id, 'en', 'Proba' from fresh_page";
 	private static final String GOOD_SECTION_TRANSLATION =
-			"insert into static_page_section_translation (section_id, language, heading, body) "
-					+ "select s.id, 'en', 'Proba', 'Tekst' from static_page_section s "
-					+ "join static_page p on p.id = s.page_id "
-					+ "where p.slug = 'pravilnik' and s.position = 1";
+			"with fresh_page as (insert into static_page (slug, title) "
+					+ "values ('proba-prevod-dobra-sekcija', 'Proba') returning id), "
+					+ "fresh_section as (insert into static_page_section (page_id, position, heading, body) "
+					+ "select id, 1, 'Proba', 'Tekst' from fresh_page returning id) "
+					+ "insert into static_page_section_translation (section_id, language, heading, body) "
+					+ "select id, 'en', 'Proba', 'Tekst' from fresh_section";
 
 	/* One seeded block, named by the PAIR that identifies it - the address of its page and
 	   its position - because a block has no address of its own. That is the same pair the
@@ -226,12 +241,22 @@ class StaticPageConstraintsTest extends DatabaseTest {
 				   rows differ in the OTHER dimension each time, so each statement trips one
 				   constraint: same id and different pages for the key, same page and same
 				   language for the unique key. */
+				/* Built over two FRESH pages rather than two seeded ones (originally pravilnik and
+				   uslovi-koriscenja), for the reason GOOD_TRANSLATION's own comment gives: once V43
+				   gives a seeded page a real English title, the first row below trips
+				   static_page_translation_once_per_language against that real row before the UNION's
+				   second row is ever reached, and this case starts naming the wrong constraint. Two
+				   distinct fresh pages keep (page_id, language) unique on each row by itself, so the
+				   only thing either row can trip is the shared literal id. */
 				Violation.of("static_page_translation_pk",
-						"insert into static_page_translation (id, page_id, language, title) "
-								+ "select 555555, id, 'en', 'Proba' from static_page where slug = 'pravilnik' "
+						"with page_a as (insert into static_page (slug, title) "
+								+ "values ('proba-prevod-pk-a', 'Proba') returning id), "
+								+ "page_b as (insert into static_page (slug, title) "
+								+ "values ('proba-prevod-pk-b', 'Proba') returning id) "
+								+ "insert into static_page_translation (id, page_id, language, title) "
+								+ "select 555555, page_a.id, 'en', 'Proba' from page_a "
 								+ "union all "
-								+ "select 555555, id, 'en', 'Proba' from static_page "
-								+ "where slug = 'uslovi-koriscenja'"),
+								+ "select 555555, page_b.id, 'en', 'Proba' from page_b"),
 				Violation.of("static_page_translation_page_fk",
 						"insert into static_page_translation (page_id, language, title) "
 								+ "values (-1, 'en', 'Proba')"),
@@ -280,11 +305,23 @@ class StaticPageConstraintsTest extends DatabaseTest {
 								+ "select id, 'en', null from static_page where slug = 'pravilnik'"),
 
 				// ----------------------------------------- static_page_section_translation
+				/* Built over two FRESH sections of one fresh page, not A_SECTION and ANOTHER_SECTION
+				   (both positions of the seeded rulebook): the same reason as the translation table's
+				   own PK case just above applies here a section at a time rather than a page at a
+				   time - once V43 gives the rulebook's own sections real English rows, the first of
+				   these two trips static_page_section_translation_once_per_language against real data
+				   before the shared literal id is ever compared. */
 				Violation.of("static_page_section_translation_pk",
-						"insert into static_page_section_translation "
-								+ "(id, section_id, language, heading, body) values "
-								+ "(555555, " + A_SECTION + ", 'en', 'Proba', 'Tekst'), "
-								+ "(555555, " + ANOTHER_SECTION + ", 'en', 'Proba', 'Tekst')"),
+						"with fresh_page as (insert into static_page (slug, title) "
+								+ "values ('proba-prevod-pk-sekcije', 'Proba') returning id), "
+								+ "section_a as (insert into static_page_section (page_id, position, heading, body) "
+								+ "select id, 1, 'Proba', 'Tekst' from fresh_page returning id), "
+								+ "section_b as (insert into static_page_section (page_id, position, heading, body) "
+								+ "select id, 2, 'Proba', 'Tekst' from fresh_page returning id) "
+								+ "insert into static_page_section_translation (id, section_id, language, heading, body) "
+								+ "select 555555, section_a.id, 'en', 'Proba', 'Tekst' from section_a "
+								+ "union all "
+								+ "select 555555, section_b.id, 'en', 'Proba', 'Tekst' from section_b"),
 				Violation.of("static_page_section_translation_section_fk",
 						"insert into static_page_section_translation "
 								+ "(section_id, language, heading, body) "

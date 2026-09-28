@@ -52,7 +52,7 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	 * (politika-privatnosti and uslovi-koriscenja held back pending which Serbian text V41 leaves
 	 * behind) is why this is not simply "the four slugs {@code static_page} carries".
 	 */
-	private static final List<String> TRANSLATED_SO_FAR = List.of("rec-predsednika");
+	private static final List<String> TRANSLATED_SO_FAR = List.of("rec-predsednika", "pravilnik");
 
 	private static final Pattern TABLE_ROW = Pattern.compile("(?m)^\\|.*\\|\\s*$");
 	private static final String MARK = "[[gallery]]";
@@ -73,7 +73,7 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "rec-predsednika" })
+	@ValueSource(strings = { "rec-predsednika", "pravilnik" })
 	void everySerbianSectionOfATranslatedPageHasExactlyOneEnglishCounterpart(String slug) {
 		reapply();
 
@@ -121,7 +121,7 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "rec-predsednika" })
+	@ValueSource(strings = { "rec-predsednika", "pravilnik" })
 	void aTranslatedSectionKeepsTheSameNumberOfMarkdownTableRowsAsTheSerbianOriginal(String slug) {
 		reapply();
 
@@ -150,7 +150,7 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "rec-predsednika" })
+	@ValueSource(strings = { "rec-predsednika", "pravilnik" })
 	void aTranslatedSectionThatCarriesADrawingKeepsTheMarkAsAWholeLine(String slug) {
 		reapply();
 
@@ -221,5 +221,39 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 				.as("the president's own name is a person's name, and task rule 5 forbids translating"
 						+ " a name")
 				.contains("Nikola Minić");
+	}
+
+	/**
+	 * The rulebook's own untranslatable tokens: three competition names PDL P18 forbids
+	 * translating ("Nazivi trka i mesta ostaju u originalu, bez prevoda, na svim jezicima"), the
+	 * one race name used as an illustrative example in Article 20, and the two internal links
+	 * Article 76 points at, whose slugs stay Serbian by the same rule that keeps this page's own
+	 * address as {@code /pravilnik} in English.
+	 */
+	@Test
+	void theUntranslatableTokensOfThePravilnikSurvive() {
+		reapply();
+
+		String whole = String.join("\n", db
+				.sql("select st.body from static_page_section s"
+						+ " join static_page p on p.id = s.page_id"
+						+ " join static_page_section_translation st on st.section_id = s.id"
+						+ " where p.slug = 'pravilnik' and st.language = 'en' order by s.position")
+				.query(String.class)
+				.list());
+
+		assertThat(whole)
+				.as("BTL's own competition names are proper names and PDL P18 forbids translating"
+						+ " them on any language")
+				.contains("Round 'n' Around", "BTL dezorijentiring", "BTL sreda");
+		assertThat(whole)
+				.as("the illustrative relay example names a real race, which rule 5 forbids"
+						+ " translating even though the words around it are translated")
+				.contains("Beogradski maraton");
+		assertThat(whole)
+				.as("Article 76 links to the privacy policy and the terms of use by their Serbian"
+						+ " slugs, which the language prefix and not the path carries (PDL P18)")
+				.contains("(/politika-privatnosti)")
+				.contains("(/uslovi-koriscenja)");
 	}
 }
