@@ -10,6 +10,7 @@ import { pairsNow } from '../../data/derive'
 import { useOverlay } from '../admin/overlay'
 import { InvitationAnswer } from './InvitationAnswer'
 import { PairInviteAnswer } from './PairInviteAnswer'
+import { ServedPairInvite } from './ServedPairInvite'
 import { NotFound } from '../NotFound'
 import { Resource } from '../../components/Resource'
 import { useMemberScreen } from './memberScreen'
@@ -126,6 +127,12 @@ function TheMessage({ lines }: { lines: InboxLine[] }) {
   /* The same, for the one that asks about a racing pair. Two fields rather than one with a kind
      beside it, so the compiler keeps the two answers apart (`session/context.ts`). */
   const pairInvite = message?.pairInvite
+  /* AND THE SAME QUESTION WHEN THE SERVER IS THE ONE HOLDING IT, which is a third field and not
+     a second state of the one above. The two are answered by two different screens writing to
+     two different stores, and the key is a number here against text there, so the compiler is
+     what keeps them apart (`data/types.ts`, `pairInviteOnTheServer`). Read out into a value for
+     the reason the two lines above give. */
+  const pairInviteOnTheServer = message?.pairInviteOnTheServer
   /* **AND OPENING IT IS THE ONLY THING THAT EVER MARKS IT, since PDL 27a (27.09.2026).** The
      owner's own narrowing: „Ne treba mi dugme da se nesto oznaci kao procitano ili
      neprocitano." There is no control for this anywhere on the portal - not on this screen and
@@ -203,6 +210,16 @@ function TheMessage({ lines }: { lines: InboxLine[] }) {
             />
           )}
         </Resource>
+      )}
+
+      {/* AND THE SAME QUESTION WHEN THE SERVER IS KEEPING IT (PDL 27b, 27.09.2026). Outside the
+          `Resource` above and holding nothing but the key, which is the whole difference: the
+          screen above answers by writing records this visit is holding, so it has to be held
+          against every one of them, while this one hands a key to `PUT /api/pairs/{id}` and the
+          route reads both halves again itself, in the transaction that makes the pair. So there
+          is nothing here to wait for and no loader between the message and its buttons. */}
+      {pairInviteOnTheServer !== undefined && (
+        <ServedPairInvite invite={pairInviteOnTheServer} />
       )}
     </div>
   )
