@@ -43,10 +43,19 @@ export type ResourceState<T> =
  * they were as soon as the screen commits, and a screen that is one loading box
  * tall at that moment has nowhere to be put back to (owner, 04.08.2026).
  *
+ * @param how the three things a caller can say about HOW to read, all optional and all
+ * absent on the fourteen that say nothing. Gathered into one record on 28.09.2026, when the
+ * third arrived: a fourth positional argument would have made the one caller that wants only
+ * the third pass two `undefined`s to reach it, which is the shape that later reads as a
+ * mystery. See {@link HowToRead}.
+ *
  * @param owner **Written the day a caller needed it, which is `useInbox` and no other**
- * (review of PR 406). Fourteen callers never pass this and are exactly as they were: every
+ * (review of PR 406). Fifteen callers never pass this and are exactly as they were: every
  * one of them reads a resource whose answer is the same for anybody asking, so there is
- * nobody it could be owned by. `useInbox` is the one resource whose answer differs per
+ * nobody it could be owned by - `usePages`, the one that asks in a LANGUAGE, included, and
+ * that is the distinction the two fields keep apart: a language changes the ADDRESS and so
+ * is answered by the cache, while an owner is the same address answered differently per
+ * caller and so has to be dropped. `useInbox` is the one resource whose answer differs per
  * caller (its own doc says so), and the owner it passes is the member asking - except on
  * `member/MessageDetail.tsx`, which asks `useInbox` for `{ reactive: false }` and so never
  * changes this hook's owner at all; its own doc has the measurement of why.
@@ -167,11 +176,12 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
     return () => {
       active = false
     }
-    /* `address` and not `name`: it carries the name and the language together, and for the
-       fourteen callers that pass no language the two are the same value in a different sort.
-       `language` is read inside and is not listed, which the linter would otherwise ask for -
-       it cannot change without `address` changing, because `address` is built from it. */
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    /* `address` AND NOT `name`: it carries the name and the language together, and for the
+       fifteen callers that pass no language the two are the same value in a different sort
+       (`/api/<name>`), so nothing about them moves. `language` is read inside this effect and
+       is deliberately not listed beside it: it cannot change without `address` changing,
+       because `address` is built from it, so listing it would be a second dependency saying
+       the same thing. */
   }, [address, owner, revision])
 
   return state
@@ -680,7 +690,7 @@ export function useInbox(
   const revision = useSyncExternalStore(whileDrawingTheInbox, theInboxRevisionNow)
 
   /* `mine` again, as `useResource`'s owner - UNLESS this caller asked not to, in which case
-     `undefined` is what every other one of `useResource`'s fourteen callers already passes,
+     `undefined` is what every other one of `useResource`'s fifteen callers already passes,
      and this instance goes back to reading the cache once, at mount, same as they do. */
   const served = useResource<ServedMessage[]>('inbox', {
     owner: reactive ? mine : undefined,

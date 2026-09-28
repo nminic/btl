@@ -51,7 +51,11 @@ export function isResource(path: string): boolean {
  * anything it should not" would have counted a resource as a write.
  */
 function withoutTheQuery(path: string): string {
-  return path.split('?')[0] ?? path
+  /* Written as a replacement rather than as `split('?')[0]`, which under this project's
+     `noUncheckedIndexedAccess` needs a fallback for an element that cannot be absent - a
+     branch nothing could ever take, which is exactly what the 100 per cent branch floor
+     exists to catch. */
+  return path.replace(/\?.*$/, '')
 }
 
 /**
