@@ -1,7 +1,8 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { DAY, PUBLIC } from '../test/addresses'
 import { renderAt } from '../test/render'
+import { serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 import { useSession } from '../session/useSession'
@@ -29,6 +30,68 @@ function Become({ who }: { who: string }) {
       postani {who}
     </button>
   )
+}
+
+/**
+ * THE ROUTE THAT TAKES THE CHOICE, IN FRONT OF THE DISC READER FOR EVERY CASE IN THIS FILE.
+ *
+ * <p><b>Why this file needs one at all, since 28.09.2026.</b> The box used to write into the
+ * session overlay and stop there, so the whole of this file ran with no server. It sends
+ * `PUT /api/me` now and writes the overlay only inside the arm the ANSWER authorised
+ * (`member/ProfileVisibility.tsx`), and `test/setup.ts` answers every write 404 - so without
+ * this, every case below would press a box that changed nothing and would fail for a reason
+ * that has nothing to do with what it is about.
+ *
+ * <p><b>What it answers is read off the REQUEST, which is what makes these cases stronger
+ * than they were.</b> `MeWriteApi.Changed` carries „the flag as the row now holds it", and
+ * this route needs nobody's approval for that half, so the row really does end up holding what
+ * arrived. A server that always answered `true` would let a panel that ignored the answer
+ * pass; answering what was sent keeps the two honest, and `member/profileVisibility.test.tsx`
+ * is where the two are deliberately made to DISAGREE.
+ *
+ * <p>Everything that is not this write goes on to the disc reader, exactly as before
+ * (`test/serverAnswers.ts` says why replacing it outright empties every screen in the shell).
+ */
+beforeEach(() => {
+  theRoute = serverThat((path, init) =>
+    path === '/api/me' && init?.method === 'PUT'
+      ? new Response(JSON.stringify({ profileHidden: hiddenIn(init), bio: null, waiting: null }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      : null,
+  )
+})
+
+afterEach(() => {
+  theRoute?.stop()
+  theRoute = null
+})
+
+let theRoute: { stop: () => void } | null = null
+
+/** What the panel asked for, off the body it really sent. */
+function hiddenIn(init: RequestInit): boolean {
+  const sent: unknown = JSON.parse(String(init.body))
+
+  return typeof sent === 'object' && sent !== null && Reflect.get(sent, 'profileHidden') === true
+}
+
+/**
+ * The box in the settings, pressed, and WAITED FOR UNTIL THE SERVER HAS AGREED.
+ *
+ * <p>The waiting is the whole of why this is a function. Nothing outside the panel moves until
+ * the answer lands - that is the order the panel keeps on purpose - so a case that pressed and
+ * navigated at once would be reading the screens before the choice existed anywhere but in the
+ * request. „Sačuvano." is what the panel says when the answer has been read and the overlay
+ * written, so it is the one signal that means both.
+ */
+async function hide(user: ReturnType<typeof setupUser>): Promise<void> {
+  await user.click(
+    await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
+  )
+
+  await within(screen.getByRole('region', { name: 'Privatnost' })).findByText('Sačuvano.')
 }
 
 /**
@@ -137,9 +200,7 @@ describe('hiding a profile from readers who are not signed in', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
 
     /* Still everything, to the member themselves. */
     await router.navigate(HIM)
@@ -170,9 +231,7 @@ describe('hiding a profile from readers who are not signed in', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
 
     /* **The two have to be one answer.** A „nije pronađen" for a number nobody has and a redirect
@@ -195,9 +254,7 @@ describe('hiding a profile from readers who are not signed in', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
     await router.navigate('/sr/takmicari')
 
@@ -244,12 +301,7 @@ describe('hiding a profile from readers who are not signed in', () => {
         <SignOut />
       </>,
     )
-    const hide = async () =>
-      user.click(
-        await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-      )
-
-    await hide()
+    await hide(user)
 
     /* **Two members hidden in one visit, because one member is not on every screen** (review,
        07.09.2026). The walk hid `000007` alone and asked five screens about him, and on the fifth
@@ -266,7 +318,7 @@ describe('hiding a profile from readers who are not signed in', () => {
        enough. */
     await user.click(screen.getByRole('button', { name: 'postani 000001' }))
     await router.navigate('/sr/podesavanja')
-    await hide()
+    await hide(user)
 
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
 
@@ -352,9 +404,7 @@ describe('hiding a profile from readers who are not signed in', () => {
       </>,
     )
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
 
     /* Another member, not the one who is hiding: hiding is from readers who are not signed in and
        from nobody else, so a member reading somebody else's list sees the way in (P23). */
@@ -368,9 +418,7 @@ describe('hiding a profile from readers who are not signed in', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
     await router.navigate('/sr/takmicar/000002-relja-momcilovic')
 
@@ -395,9 +443,7 @@ describe('hiding a profile from readers who are not signed in', () => {
       <Become who="000012" />,
     )
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
     await user.click(screen.getByRole('button', { name: 'postani 000012' }))
     await router.navigate(HIM)
 
@@ -421,9 +467,7 @@ describe('hiding a profile from readers who are not signed in', () => {
       <SignOut />,
     )
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
     await user.click(screen.getByRole('button', { name: 'odjavi se' }))
     await router.navigate(`${HIM}/priznanja`)
 
@@ -489,9 +533,7 @@ describe('what the settings show back', () => {
     const user = setupUser()
     const { router } = renderAt('/sr/podesavanja', 'competitor', '000007')
 
-    await user.click(
-      await screen.findByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni'),
-    )
+    await hide(user)
     /* Away and back, so what is read is the record and not what the screen was holding. */
     await router.navigate(HIM)
     await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })

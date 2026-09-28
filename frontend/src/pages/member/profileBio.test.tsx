@@ -400,6 +400,79 @@ describe('the words a member wrote about themselves, changed later', () => {
     }
   }, SLOW)
 
+  it('says nothing new about the profile when the answer names no text at all', async () => {
+    /* A 200 this screen cannot read the standing text out of, which is a portal one release
+       behind its server. What it must NOT do is fall back on what was sent: that is the one
+       reading `MeWriteApi.Changed` exists to prevent, and it would put a member's unapproved
+       words on his own profile page through the screen instead of through the table. So the
+       sentence above the box goes on saying exactly what it said before he pressed. */
+    const user = setupUser()
+    const { stop } = serverThat((path, init) =>
+      path === '/api/me' && init?.method === 'PUT'
+        ? new Response(JSON.stringify({ profileHidden: false, waiting: THE_ROW }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber, undefined, undefined, (
+        <Decide row={String(THE_ROW)} />
+      ))
+
+      await panelFor()
+      await user.type(await box(), 'Nešto o sebi, prvi put.')
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+
+      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: 'odluči' }))
+
+      const panel = await panelFor()
+
+      expect(panel.getByText(sr.bio.none)).toBeVisible()
+      expect(panel.queryByText(sr.bio.standing)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('tells him a text of his still waits after a removal, without inventing its words', async () => {
+    /* THE ONE PLACE THE TWO ROADS MEET, and it is reachable rather than a curiosity: after a
+       reload this panel cannot know a text of his is with a moderator (nothing serves that),
+       so he is met by the box, empties it, and the removal takes effect while the older
+       proposal is still undecided. `MeWriteApi.Changed` answers the key of whatever of his is
+       standing in the queue, „read the same way whether or not THIS request put it there".
+     *
+       So the wait is said, and the words are NOT drawn: this visit never carried them, and an
+       empty paragraph would say the text had been lost rather than that it was never here. */
+    const user = setupUser()
+    const { stop } = serverThat((path, init) =>
+      path === '/api/me' && init?.method === 'PUT'
+        ? answering({ bio: '', waiting: THE_ROW })
+        : null,
+    )
+
+    try {
+      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber)
+
+      await panelFor()
+      await user.clear(await box())
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+
+      const panel = await panelFor()
+
+      expect(await panel.findByText(sr.bio.waitingNote)).toBeVisible()
+      /* Nothing at all under the sentence, which is what „no words of his are drawn" means
+         here: the paragraph that carries them is the panel's only other text. */
+      expect(panel.queryByText(must(withOne.bio, 'his standing words'))).not.toBeInTheDocument()
+      expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
   it('says what the server refused, keeps the words, and puts nothing in front of a moderator', async () => {
     /* The route refuses a second text while one of his waits (PDL, owner 19.09.2026: „Nov
        tekst o sebi se ODBIJA dok prethodni ceka odluku moderatora. Odgovor je 409"), and
