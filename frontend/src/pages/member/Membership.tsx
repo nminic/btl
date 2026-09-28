@@ -1013,61 +1013,71 @@ export function Membership() {
                   thirty two members in the data, and „Trenutno nisi ni u jednom timu." is
                   what they read above instead. */}
               {windowOpen && team !== undefined && (
-                <div className="member__links">
-                  {asking ? (
-                    <>
-                      {/* The question carries the name of the team, so the two buttons under
-                          it need no name of their own: `aria-describedby` hands a screen
-                          reader the whole sentence when „Potvrdi izlazak" takes focus. There
-                          is one of these on the page, so there is no second question it could
-                          be confused with - which is the reason `admin/EntityEditor.tsx` puts
-                          the name on all three of ITS buttons and this does not. */}
-                      <p className="member__note" id="leave-team-ask">
-                        {t('membership.leaveTeamAsk', { team: team.name })}
-                      </p>
-                      <button
-                        type="button"
-                        className="button button--primary"
-                        aria-describedby="leave-team-ask"
-                        aria-disabled={leaving ? true : undefined}
-                        onClick={() => {
-                          /* Reachable means pressable, as everywhere else on this portal:
-                             `aria-disabled` does not stop a click by itself, so the refusal
-                             lives here as well as on the attribute. */
-                          if (outstanding.current) {
-                            return
-                          }
+                <>
+                  {/* THE QUESTION STANDS ABOVE THE ROW AND NOT INSIDE IT, WHICH IS MEASURED
+                      RATHER THAN A PREFERENCE. `member__links` is a flex row with `wrap`, so
+                      a paragraph put among the buttons is a flex item: at 360 it took a line
+                      of its own and the two buttons dropped under it, and at 1280 it sat on
+                      ONE line with „Potvrdi izlazak" jammed against the full stop after
+                      „administracija." Two widths, two different things being read. Outside
+                      the row it is a paragraph at every width and the row underneath holds
+                      buttons only, which is the arrangement `pages/TeamDetail.tsx` states the
+                      reason for on its own refusal sentence.
 
-                          void leaveTheTeam(team.id)
-                        }}
-                      >
-                        {t('membership.leaveTeamSure')}
-                      </button>
-                      <button
-                        type="button"
-                        className="button"
-                        onClick={() => {
-                          setAsking(false)
-                          /* The reason goes with the question it was an answer to. Left
-                             standing, „Prelazni rok je zatvoren..." would sit under a button
-                             that had just been put away and read as a refusal of the NEXT
-                             thing pressed. */
-                          setRefusedTheExit(null)
-                        }}
-                      >
-                        {t('membership.leaveTeamKeep')}
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="button"
-                      onClick={() => setAsking(true)}
-                    >
-                      {t('membership.leaveTeam')}
-                    </button>
+                      It carries the name of the team, so the two buttons under it need no
+                      name of their own: `aria-describedby` hands a screen reader the whole
+                      sentence when „Potvrdi izlazak" takes focus. There is one of these on
+                      the page, so there is no second question it could be confused with -
+                      which is why `admin/EntityEditor.tsx` puts the name on all three of ITS
+                      buttons and this does not. */}
+                  {asking && (
+                    <p className="member__note" id="leave-team-ask">
+                      {t('membership.leaveTeamAsk', { team: team.name })}
+                    </p>
                   )}
-                </div>
+                  <div className="member__links">
+                    {asking ? (
+                      <>
+                        <button
+                          type="button"
+                          className="button button--primary"
+                          aria-describedby="leave-team-ask"
+                          aria-disabled={leaving ? true : undefined}
+                          onClick={() => {
+                            /* Reachable means pressable, as everywhere else on this portal:
+                               `aria-disabled` does not stop a click by itself, so the refusal
+                               lives here as well as on the attribute. */
+                            if (outstanding.current) {
+                              return
+                            }
+
+                            void leaveTheTeam(team.id)
+                          }}
+                        >
+                          {t('membership.leaveTeamSure')}
+                        </button>
+                        <button
+                          type="button"
+                          className="button"
+                          onClick={() => {
+                            setAsking(false)
+                            /* The reason goes with the question it was an answer to. Left
+                               standing, „Prelazni rok je zatvoren..." would sit under a
+                               button that had just been put away and read as a refusal of
+                               the NEXT thing pressed. */
+                            setRefusedTheExit(null)
+                          }}
+                        >
+                          {t('membership.leaveTeamKeep')}
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="button" onClick={() => setAsking(true)}>
+                        {t('membership.leaveTeam')}
+                      </button>
+                    )}
+                  </div>
+                </>
               )}
               {/* WHY A LEAVING DID NOT HAPPEN, under the row it was pressed in rather than
                   inside it, which is `pages/TeamDetail.tsx`'s own arrangement: `member__links`
