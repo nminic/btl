@@ -9,7 +9,7 @@ import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
-import { did, refused, serverThat } from '../../test/serverAnswers'
+import { did, serverThat } from '../../test/serverAnswers'
 
 /**
  * What a member may do with a result of their own after sending it.

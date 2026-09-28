@@ -285,8 +285,23 @@ function fileFor(path: string): string {
 }
 
 /**
- * THE TWO WRITES THAT ANSWER 201 RATHER THAN A FILE, standing in for
- * `TeamWriteApi` and `CommentWriteApi` when a case installs no server of its own.
+ * THE THREE WRITES THAT ANSWER 201 RATHER THAN A FILE, standing in for
+ * `TeamWriteApi`, `CommentWriteApi` and `ResultWriteApi` when a case installs no server of
+ * its own.
+ *
+ * <p><b>`/api/results` joined them on 28.09.2026 and the reason is the paragraph below,
+ * which had been true of it all along.</b> `POST /api/results` was falling through to
+ * {@link fileFor}, which does not look at the verb, so a run sent in was answered with
+ * `mock/results.json` - 200 and an array of somebody else's counted results. That happened
+ * to read as done, because `askTheServer` has counted 200 as success since `PUT` came back
+ * with its caller, so it looked exactly like a floor that worked. It stands here now
+ * answering 201 with an id, which is what `ResultWriteApi.write` really answers.
+ *
+ * <p><b>The other two verbs of that class are deliberately NOT here.</b>
+ * `PUT` and `DELETE /api/results/{id}` carry a digit, so {@link fileFor} refuses them and
+ * they meet the 404 at the bottom - which is right: correcting or taking back a counted
+ * result is a case that has to say what the server answered, because the screen's whole
+ * behaviour turns on it.
  *
  * <p>Read by the VERB and not by the path alone, and asked before {@link fileFor}
  * ever runs: that function does not look at the method at all, so a bare path
@@ -298,7 +313,7 @@ function fileFor(path: string): string {
  * `whatMeAnswers` has with every case that wants a different answer to
  * `/api/me`.
  */
-const WRITES_THAT_QUEUE = new Set(['/api/teams', '/api/comments'])
+const WRITES_THAT_QUEUE = new Set(['/api/teams', '/api/comments', '/api/results'])
 
 /**
  * AND THE WRITE THAT TAKES A ROW OUT OF A QUEUE, standing in for
