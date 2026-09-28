@@ -162,9 +162,16 @@ export function ProfileBio({ me }: { me: Competitor }) {
   const same = written.trim() === standing.trim()
   const refusal = answer !== null && answer.got !== 'done' ? answer : null
   /* A removal LANDED, which is the one road out of here that says „done" rather than „it is
-     with somebody". Read off the two states rather than remembered as a third: nothing is
-     waiting, and this visit has sent something. */
-  const removed = justSent && waiting === undefined
+     with somebody". Read off `sent` alone, and NEVER off `waiting` (review, 28.09.2026, HIGH):
+     `waiting` turns `undefined` for TWO different reasons and this used to fold them into one -
+     nothing of his is queued at all (`sent === null`, a removal), and something of his WAS
+     queued and has just been DECIDED, approved or refused (`sent !== null` but
+     `decisions[sent.row]` is now set). A moderator settling that row while the member is still
+     on this screen hit the second reason and got the first one's sentence: „Sačuvano." drawn
+     over a text a moderator had just REFUSED. Measured on both decisions, because `waiting`
+     cannot tell them apart once `decisions` catches up with it and the fault reproduced for an
+     approval exactly as it did for a refusal (`profileBio.test.tsx`). */
+  const removed = justSent && sent === null
 
   /**
    * Sends the text, or takes the standing one down, and says nothing until the server has.

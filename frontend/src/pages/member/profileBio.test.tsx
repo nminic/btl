@@ -607,7 +607,13 @@ describe('the words a member wrote about themselves, changed later', () => {
        all passes a case with one row in it, which is why somebody else's is decided first and
        the wait is asserted to be still standing. The key is the SERVER'S: `settle` files a
        decision under the id of the row the server made, and this panel reads that same id.
-       Under a key of the browser's own the two never met. */
+       Under a key of the browser's own the two never met.
+     *
+       **AND THE BOX COMES BACK WITHOUT „Sačuvano." OVER IT (review, 28.09.2026, HIGH).** An
+       approval is not a removal: nothing was taken down, so nothing was „saved" by this visit.
+       `removed` used to read `waiting === undefined`, which an approval clears exactly the way
+       a removal does, and the panel said so - the twin of this case with `status: 'rejected'`
+       proves the identical fault for a refusal. */
     const user = setupUser()
     const { stop } = serverThat((path, init) =>
       path === '/api/me' && init?.method === 'PUT'
@@ -640,6 +646,48 @@ describe('the words a member wrote about themselves, changed later', () => {
 
       expect(panel.queryByText(sr.bio.waitingNote)).not.toBeInTheDocument()
       expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+      expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('hands the box straight back once THAT text is REFUSED, without claiming it was saved', async () => {
+    /* THE HIGH FINDING THIS CASE PROVES ON ITS OWN (review, 28.09.2026). A member (or a
+       moderator over his own row, which is the same visit) writes a new text, it goes to a
+       moderator, and the SAME moderator refuses it while he is still on this very screen.
+       `waiting` clears exactly as it does on an approval or on a removal, and the panel used
+       to fold all three into „Sačuvano." - telling him his words were saved over a text a
+       moderator had just sent back. Copied from the approval case above, which proves the
+       identical fault for the other decision; between the two, `waiting` cannot tell a
+       removal from a settled row at all, so each decision gets its own case rather than one
+       standing for both. */
+    const user = setupUser()
+    const { stop } = serverThat((path, init) =>
+      path === '/api/me' && init?.method === 'PUT'
+        ? answering({ bio: withOne.bio, waiting: THE_ROW })
+        : null,
+    )
+
+    try {
+      renderAt('/sr/podesavanja', 'competitor', withOne.memberNumber, undefined, undefined, (
+        <Decide row={String(THE_ROW)} status="rejected" />
+      ))
+
+      await panelFor()
+      await user.clear(await box())
+      await user.type(await box(), 'Trčim jer volim šumu.')
+      await user.click((await panelFor()).getByRole('button', { name: 'Pošalji na odobrenje' }))
+
+      expect((await panelFor()).getByText(sr.bio.waitingNote)).toBeVisible()
+
+      await user.click(screen.getByRole('button', { name: 'odluči' }))
+
+      const panel = await panelFor()
+
+      expect(panel.queryByText(sr.bio.waitingNote)).not.toBeInTheDocument()
+      expect(panel.getByRole('button', { name: 'Pošalji na odobrenje' })).toBeVisible()
+      expect(panel.queryByText(sr.account.saved)).not.toBeInTheDocument()
     } finally {
       stop()
     }
@@ -836,14 +884,25 @@ describe('the words a member wrote about themselves, changed later', () => {
  * itself lives where it belongs, in `pictureIsOneRow.test.tsx`, which decides through the
  * real queue.
  */
-function Decide({ row, label = 'odluči' }: { row: string; label?: string }) {
+function Decide({
+  row,
+  label = 'odluči',
+  status = 'approved',
+}: {
+  row: string
+  label?: string
+  /** Which of the two decisions this button files, so the same helper proves the fault named
+   *  in the review of 28.09.2026 for BOTH: `waiting` turns `undefined` the same way whichever
+   *  one lands, and the panel used to read that as a removal regardless of which. */
+  status?: 'approved' | 'rejected'
+}) {
   const { settle } = useSession()
 
   return (
     <button
       type="button"
       onClick={() => {
-        settle(row, { status: 'approved', note: '', basis: '', memberNumber: '' })
+        settle(row, { status, note: '', basis: '', memberNumber: '' })
       }}
     >
       {label}
