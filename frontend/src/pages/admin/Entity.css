@@ -163,9 +163,16 @@
   gap: var(--space-6);
 }
 
-/* And what stands where the delete button is held back. Quiet, because it is
-   not a control: it is the row saying why the button is not there, whether the
-   file it needs is on its way or will not come. */
+/* And what the question says goes with the record. Quiet, because it is not a
+   control: it is the row saying what the second press will take.
+
+   It stood where the delete button was HELD BACK until 28.09.2026, saying why the
+   button was not there. The owner decided that day, between three outcomes he was
+   priced, that the button works at once and the number is said before the deletion
+   is sent, so this now stands BESIDE the two buttons rather than instead of them.
+   Nothing about the sheet moved: `.entity-row-actions` wraps, so the sentence takes
+   a line of its own where the row is narrow, and the table it sits in scrolls on its
+   own (`.table-scroll`) rather than pushing the page sideways. */
 .entity-row-note {
   color: var(--text-muted);
   font-size: 0.85rem;
