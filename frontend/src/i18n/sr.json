@@ -1002,6 +1002,24 @@
     "photoHint": "Snimak sa sata, diploma ili nešto treće. Komentar postaje obavezan, a link ka rezultatima neobavezan.",
     "comment": "Komentar"
   },
+  "results": {
+    "sending": "Šalje se",
+    "withdrawing": "Briše se",
+    "refused": {
+      "theFormIsNotComplete": "Rezultat nije poslat. Proveri dužinu, uspon, spust i vreme: nešto nedostaje ili je izvan dozvoljenih vrednosti.",
+      "theRaceIsNotKnown": "Trka koju si izabrao više ne stoji u kalendaru. Osveži stranu i izaberi je ponovo.",
+      "theRaceHasNotBeenRun": "Rezultat ne može da se pošalje pre dana same trke.",
+      "theRaceIsNamedTwice": "Rezultat nije poslat: trka je i izabrana iz kalendara i opisana rukom. Može samo jedno od toga.",
+      "theTownIsNotSaidOnce": "Mesto mora da se navede tačno jednom: ili izabrano iz šifarnika ili upisano rukom.",
+      "theTownIsNotKnown": "To mesto ne stoji u šifarniku.",
+      "theCountryIsNotKnown": "Ta država ne stoji u šifarniku.",
+      "theCountryBelongsToATypedTown": "Država se bira samo uz mesto koje je upisano rukom.",
+      "aTypedTownNamesItsCountry": "Uz mesto upisano rukom mora da stoji i država.",
+      "nothingShowsItHappened": "Nedostaje dokaz. Upiši link ka zvaničnim rezultatima.",
+      "aPhotographNeverStandsAlone": "Uz sliku mora da ide komentar u kom piše šta se na njoj vidi.",
+      "aLinkThatIsNotALink": "Link ka zvaničnim rezultatima nije ispravna veb adresa. Mora da počinje sa http:// ili https://."
+    }
+  },
   "status": {
     "pending": "Čeka proveru",
     "approved": "Odobreno",
