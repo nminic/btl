@@ -40,8 +40,9 @@ import java.util.Optional;
  *
  * <ul>
  * <li><b>„Brisanje slike stupa odmah, bez moderacije."</b> The owner derived it in the entry
- * itself, from {@code PDL.md:1694} (an empty biography is a removal that takes effect at
- * once) and {@code :1655} (a member changes or removes his picture „kad god hoce"), with the
+ * itself, from PDL.md ("Prazan tekst znaci BRISANJE biografije") (an empty biography is a
+ * removal that takes effect at once) and {@code :1655} (a member changes or removes his
+ * picture „kad god hoce"), with the
  * reason beside it: „Uklanjanje ne moze da bude sporno."
  * <li>~~<b>„Dok slika ceka odobrenje, clan vidi SVOJU novu sliku sa oznakom da ceka; svi
  * ostali vide staru ili nijednu."</b>~~ <b>[OBORENO 27.09.2026, owner, PDL 21.]</b> The
@@ -392,7 +393,8 @@ class MePhotoApi {
 	 *
 	 * <p><b>Both null for a member with no picture at all</b>, which is the shape PDL P28f fixed
 	 * for {@link CompetitorApi}: „oba `null` za clana bez slike". An absent key would tell the
-	 * two states apart by their SHAPE, which is what {@code PDL.md:6258} refuses for hiding, and
+	 * two states apart by their SHAPE, which is what PDL.md ("postoji jedno stanje profila i
+ * jedno ponašanje veze") refuses for hiding, and
 	 * there is no reason for this answer to invent a second convention.
 	 *
 	 * @param waiting  at {@code /api/me/photo/<digest>}, served by

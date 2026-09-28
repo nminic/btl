@@ -212,7 +212,7 @@ class ATeamGoesWithItsLastMember {
 	 * AND THE SAME TEAM TAKEN AWAY WHATEVER ITS ROSTER, WHICH IS THE OTHER THING THE OWNER
 	 * DECIDED ABOUT A TEAM DISAPPEARING.
 	 *
-	 * <p>PDL, owner, 04.09.2026 (`PDL.md:6396`): „„Obrisi" trazi potvrdu („Da li ste
+	 * <p>PDL, owner, 04.09.2026 (`PDL.md`, "traži potvrdu"): „„Obrisi" trazi potvrdu („Da li ste
 	 * sigurni?") pa brise tim i bodove tog tima iz tabele za tu sezonu", and PDL P13b,
 	 * 25.09.2026, which says the administration presses the same button with the same
 	 * consequences. The team that is pressed on is a team that normally still HAS members -
