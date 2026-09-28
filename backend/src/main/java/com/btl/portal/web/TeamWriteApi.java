@@ -718,7 +718,8 @@ class TeamWriteApi {
 	/**
 	 * „OBRISI": THE TEAM ITSELF GOES, AND THE SAME BUTTON IS THE ADMINISTRATION'S.
 	 *
-	 * <p>Owner, 04.09.2026 (`PDL.md`, "traži potvrdu"): „„Obrisi" trazi potvrdu („Da li ste sigurni?")
+	 * <p>Owner, 04.09.2026 (`PDL.md`, "traži potvrdu"): „„Obrisi" trazi potvrdu
+	 * („Da li ste sigurni?")
 	 * pa brise tim i bodove tog tima iz tabele za tu sezonu", and „Na strani tima,
 	 * administrator tog tima ima „Izmeni" i „Obrisi". Nijedan drugi clan ih ne vidi."
 	 * <b>PDL P13b, 25.09.2026</b> adds the other caller in as many words: „Superadmin i
