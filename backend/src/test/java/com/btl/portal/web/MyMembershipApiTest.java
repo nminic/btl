@@ -160,9 +160,9 @@ class MyMembershipApiTest {
 			String newcomer = "008" + String.format("%03d", ++issued);
 			competitor(newcomer);
 
-			db.sql("insert into balance_entry (competitor_id, eur, rsd, reason,"
+			db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
 							+ " referred_competitor_id, occurred_at, recorded_by, recorded_by_name)"
-							+ " values ((select id from competitor where member_number = ?), 5, 600,"
+							+ " values ((select id from competitor where member_number = ?), 600, 'RSD',"
 							+ " 'referral', (select id from competitor where member_number = ?), ?,"
 							+ " (select id from account where email = ?), 'Blagajnik Probni')")
 					.params(referrer, newcomer, Timestamp.from(NOW.minus(Duration.ofDays(30))),
@@ -171,13 +171,30 @@ class MyMembershipApiTest {
 		}
 	}
 
+	/**
+	 * THE FIRST SERBIAN TOWN THE CODEBOOK OFFERS, so that every dinar amount in this file means itself.
+	 *
+	 * <p><b>Since V42 a member's country decides the money he is billed in</b> (owner, 27.09.2026,
+	 * PDL 25), so the town a fixture puts him in IS the currency of every number asserted about him.
+	 * This file's numbers are the price list's dinar column - 4.200 for the early period, 600 a
+	 * referral - so the member has to live where dinars are what he pays in. Until V42 he lived in
+	 * Shanghai and it made no difference, because an invoice carried both columns.
+	 *
+	 * <p>Asked as a query and not as a rank number for the reason V3 gives about {@code rank}: it is „a
+	 * position in a file and not a fact about a town", so the day the codebook is regenerated a written
+	 * number moves to a different town while this goes on meaning what it says.
+	 */
+	private static final String A_TOWN_IN_SERBIA =
+			"(select id from place where country_id = (select id from country where code = 'RS')"
+					+ " order by rank limit 1)";
+
 	private void competitor(String number) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
 						+ " place_id, first_season, first_season_2027, active, membership_basis,"
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, true, 'payment', ?, '',"
+						+ " " + A_TOWN_IN_SERBIA + ", 2027, false, true, 'payment', ?, '',"
 						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				.params(number, String.format("%016x", ++issued))
 				.update();
@@ -223,23 +240,15 @@ class MyMembershipApiTest {
 		return new ObjectMapper().readTree(whole(SIGNS_IN_AS.get(memberNumber)));
 	}
 
-	private java.math.BigDecimal promisedEur(String memberNumber) {
-		return promisedColumn("eur", memberNumber);
-	}
-
-	private java.math.BigDecimal promisedRsd(String memberNumber) {
-		return promisedColumn("rsd", memberNumber);
-	}
-
-	private java.math.BigDecimal promisedColumn(String column, String memberNumber) {
-		return db.sql("select " + column + " from balance_promise where competitor_id ="
+	private java.math.BigDecimal promisedAmount(String memberNumber) {
+		return db.sql("select amount from balance_promise where competitor_id ="
 						+ " (select id from competitor where member_number = ?) and season = ?")
 				.params(memberNumber, THE_SEASON_ON_SALE)
 				.query(java.math.BigDecimal.class).single();
 	}
 
 	private String promiseTo(String memberNumber) {
-		return db.sql("select coalesce((select eur || ' ' || rsd from balance_promise"
+		return db.sql("select coalesce((select amount || ' ' || currency from balance_promise"
 						+ " where competitor_id = (select id from competitor where member_number = ?)"
 						+ " and season = ?), 'nothing promised')")
 				.params(memberNumber, THE_SEASON_ON_SALE)
@@ -283,16 +292,27 @@ class MyMembershipApiTest {
 		assertThat(owed.path("season").asInt()).isEqualTo(THE_SEASON_ON_SALE);
 		assertThat(owed.path("priceKey").asString()).isEqualTo("early");
 
-		assertThat(owed.path("fee").path("eur").asDouble()).isEqualTo(35.0);
-		assertThat(owed.path("fee").path("rsd").asDouble()).isEqualTo(4200.0);
+		/* AND THE MONEY IS HIS, which is the half the pair could not get wrong and one amount can:
+		   until V42 an invoice carried both columns and a reader took the one he wanted, so no answer
+		   could be in the wrong currency. Now it can, and 4.200 read as euro is the same number said
+		   about a hundred and twenty times too much money. */
+		assertThat(owed.path("fee").path("currency").asString()).isEqualTo("RSD");
+		assertThat(owed.path("fee").path("amount").asDouble()).isEqualTo(4200.0);
 
-		assertThat(owed.path("balance").path("rsd").asDouble()).isZero();
-		assertThat(owed.path("fromTheBalance").path("rsd").asDouble()).isZero();
+		assertThat(owed.path("balance").path("amount").asDouble()).isZero();
+		assertThat(owed.path("fromTheBalance").path("amount").asDouble()).isZero();
 
-		assertThat(owed.path("toTransfer").path("eur").asDouble()).isEqualTo(35.0);
-		assertThat(owed.path("toTransfer").path("rsd").asDouble()).isEqualTo(4200.0);
+		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(4200.0);
 
-		assertThat(owed.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+		/* AND NOTHING FOR PROCESSING, WHICH IS NOT A CHANGE OF RULE BUT THE DINAR SIDE OF ONE.
+		
+		   V4's `price_row_only_fee_has_no_rsd check ((rsd is null) = (kind = 'fee'))` gives the
+		   processing row no dinar side at all, for the reason V4 states: there is no payment
+		   intermediary on that side to pay. `payment_only_euro_carries_a_fee` (V16) says the same
+		   where a payment is written. This file's member lives in Serbia since V42, because that is
+		   what makes its dinar numbers mean themselves - so his invoice carries no fee, and the case
+		   that measures a fee BEING charged is the one with a member abroad. */
+		assertThat(owed.path("processingFeeEur").asDouble()).isZero();
 		assertThat(owed.path("coveredByTheBalance").asBoolean()).isFalse();
 		assertThat(owed.path("alreadyAMember").asBoolean()).isFalse();
 	}
@@ -308,18 +328,17 @@ class MyMembershipApiTest {
 	void sixMembersBroughtInComeOffTheInvoice() throws Exception {
 		JsonNode owed = invoiceOf(BROUGHT_IN_SIX);
 
-		assertThat(owed.path("balance").path("eur").asDouble()).isEqualTo(30.0);
-		assertThat(owed.path("balance").path("rsd").asDouble()).isEqualTo(3600.0);
+		assertThat(owed.path("balance").path("amount").asDouble()).isEqualTo(3600.0);
 
-		assertThat(owed.path("fromTheBalance").path("rsd").asDouble()).isEqualTo(3600.0);
+		assertThat(owed.path("fromTheBalance").path("amount").asDouble()).isEqualTo(3600.0);
 
-		assertThat(owed.path("toTransfer").path("eur").asDouble()).isEqualTo(5.0);
-		assertThat(owed.path("toTransfer").path("rsd").asDouble()).isEqualTo(600.0);
+		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(600.0);
 
 		assertThat(owed.path("coveredByTheBalance").asBoolean()).isFalse();
-		assertThat(owed.path("processingFeeEur").asDouble())
-				.as("there is a transfer, so there is something to process")
-				.isEqualTo(3.0);
+		/* NOUGHT BECAUSE HE IS BILLED IN DINARS AND V4 GIVES THE FEE ROW NO DINAR SIDE, not because
+		   there is no transfer: there plainly is one, 600 of it. The two are told apart by the case
+		   above about a member abroad, where a transfer and a charged fee stand together. */
+		assertThat(owed.path("processingFeeEur").asDouble()).isZero();
 	}
 
 	/**
@@ -349,8 +368,7 @@ class MyMembershipApiTest {
 				.as("a balance equal to the fee was treated as short")
 				.isTrue();
 
-		assertThat(owed.path("toTransfer").path("eur").asDouble()).isZero();
-		assertThat(owed.path("toTransfer").path("rsd").asDouble()).isZero();
+		assertThat(owed.path("toTransfer").path("amount").asDouble()).isZero();
 
 		assertThat(owed.path("processingFeeEur").asDouble())
 				.as("a fee for processing a transfer that is not happening")
@@ -359,15 +377,14 @@ class MyMembershipApiTest {
 		/* THE SECOND LOOK, over a book that has not moved a dinar. */
 		JsonNode again = invoiceOf(BROUGHT_IN_SEVEN);
 
-		assertThat(again.path("balance").path("rsd").decimalValue())
+		assertThat(again.path("balance").path("amount").decimalValue())
 				.as("his book moved between the two looks, so this case is no longer about a second"
 						+ " look at an unchanged book")
-				.isEqualByComparingTo(owed.path("balance").path("rsd").decimalValue());
+				.isEqualByComparingTo(owed.path("balance").path("amount").decimalValue());
 
-		assertThat(again.path("toTransfer").path("rsd").asDouble())
+		assertThat(again.path("toTransfer").path("amount").asDouble())
 				.as("a second look billed him the whole fee for a membership his balance had covered")
 				.isZero();
-		assertThat(again.path("toTransfer").path("eur").asDouble()).isZero();
 
 		assertThat(again.path("processingFeeEur").asDouble())
 				.as("a bank charge appeared on a second reading of an invoice that asks for no transfer")
@@ -377,9 +394,9 @@ class MyMembershipApiTest {
 				.as("the one field that drives the button stopped agreeing with the amounts beside it")
 				.isTrue();
 
-		assertThat(again.path("fromTheBalance").path("rsd").decimalValue())
+		assertThat(again.path("fromTheBalance").path("amount").decimalValue())
 				.as("what his balance pays changed although his balance did not")
-				.isEqualByComparingTo(owed.path("fromTheBalance").path("rsd").decimalValue());
+				.isEqualByComparingTo(owed.path("fromTheBalance").path("amount").decimalValue());
 	}
 
 	/**
@@ -392,10 +409,10 @@ class MyMembershipApiTest {
 	void eightMembersBroughtInSpendOnlyTheFeeAndKeepTheRest() throws Exception {
 		JsonNode owed = invoiceOf(BROUGHT_IN_EIGHT);
 
-		assertThat(owed.path("balance").path("eur").asDouble()).isEqualTo(40.0);
-		assertThat(owed.path("fromTheBalance").path("eur").asDouble())
+		assertThat(owed.path("balance").path("amount").asDouble()).isEqualTo(4800.0);
+		assertThat(owed.path("fromTheBalance").path("amount").asDouble())
 				.as("the whole balance was put against a smaller fee, so the surplus is gone")
-				.isEqualTo(35.0);
+				.isEqualTo(4200.0);
 		assertThat(owed.path("coveredByTheBalance").asBoolean()).isTrue();
 	}
 
@@ -408,10 +425,10 @@ class MyMembershipApiTest {
 	 */
 	@Test
 	void eachMemberIsServedHisOwnBalanceAndNobodyElsesBalance() throws Exception {
-		assertThat(invoiceOf(BROUGHT_IN_NOBODY).path("balance").path("rsd").asDouble()).isZero();
-		assertThat(invoiceOf(BROUGHT_IN_SIX).path("balance").path("rsd").asDouble()).isEqualTo(3600.0);
-		assertThat(invoiceOf(BROUGHT_IN_SEVEN).path("balance").path("rsd").asDouble()).isEqualTo(4200.0);
-		assertThat(invoiceOf(BROUGHT_IN_EIGHT).path("balance").path("rsd").asDouble()).isEqualTo(4800.0);
+		assertThat(invoiceOf(BROUGHT_IN_NOBODY).path("balance").path("amount").asDouble()).isZero();
+		assertThat(invoiceOf(BROUGHT_IN_SIX).path("balance").path("amount").asDouble()).isEqualTo(3600.0);
+		assertThat(invoiceOf(BROUGHT_IN_SEVEN).path("balance").path("amount").asDouble()).isEqualTo(4200.0);
+		assertThat(invoiceOf(BROUGHT_IN_EIGHT).path("balance").path("amount").asDouble()).isEqualTo(4800.0);
 	}
 
 	/**
@@ -430,14 +447,15 @@ class MyMembershipApiTest {
 
 		JsonNode owed = invoiceOf(BROUGHT_IN_SIX);
 
-		/* Compared as NUMBERS and not as text: JSON writes 30.00 as 30.0 and `numeric(10,2)` reads
-		   back as 30.00, so a string comparison would fail over the spelling of a number that is
+		/* Compared as NUMBERS and not as text: JSON writes 3600.00 as 3600.0 and `numeric(10,2)` reads
+		   back as 3600.00, so a string comparison would fail over the spelling of a number that is
 		   the same number. What is being asserted is that the amount written down is the amount
-		   served, in both currencies. */
-		assertThat(promisedEur(BROUGHT_IN_SIX))
-				.isEqualByComparingTo(owed.path("fromTheBalance").path("eur").decimalValue());
-		assertThat(promisedRsd(BROUGHT_IN_SIX))
-				.isEqualByComparingTo(owed.path("fromTheBalance").path("rsd").decimalValue());
+		   served. */
+		assertThat(promisedAmount(BROUGHT_IN_SIX))
+				.isEqualByComparingTo(owed.path("fromTheBalance").path("amount").decimalValue());
+
+		/* AND IN THE SAME MONEY, which is the half a pair could not get wrong and one amount can. */
+		assertThat(owed.path("fromTheBalance").path("currency").asString()).isEqualTo("RSD");
 	}
 
 	/**
@@ -488,7 +506,7 @@ class MyMembershipApiTest {
 						.param(BROUGHT_IN_SIX).query(Long.class).single())
 				.isOne();
 
-		assertThat(promiseTo(BROUGHT_IN_SIX)).isEqualTo("30.00 3600.00");
+		assertThat(promiseTo(BROUGHT_IN_SIX)).isEqualTo("3600.00 RSD");
 	}
 
 	/**
@@ -543,24 +561,32 @@ class MyMembershipApiTest {
 	 * THE BOOK IS WHAT THE INVOICE SAID.
 	 *
 	 * <p><b>Why this case exists and why it is here rather than in either of the two files that own
-	 * one half.</b> {@code MyMembershipApiTest} proves the promise is written down;
-	 * {@code PaymentApiTest} proves a promise that is already there is honoured. Neither of them
-	 * proves the two JOIN UP - and that was measured rather than suspected: a mutation that stopped
-	 * this route recording anything at all SURVIVED the whole of {@code PaymentApiTest}, because that
-	 * file writes its own promises straight into the table. The seam between the two doors had no
-	 * case over it, so a portal that promised a discount and then charged in full would have been
-	 * green.
+	 * one half.</b> This file proves what the MEMBER is told; {@code PaymentApiTest} proves what the
+	 * moderator's tick box does. Neither of them proves the two JOIN UP, and that was measured rather
+	 * than suspected: a mutation that stopped this route recording anything at all once SURVIVED the
+	 * whole of {@code PaymentApiTest}, because that file writes its own fixtures straight into the
+	 * tables. The seam between the two doors had no case over it, so a portal that promised a discount
+	 * and then charged in full would have been green.
 	 *
-	 * <p>Nothing here is arranged by hand: the number asserted is read off the ANSWER the member was
-	 * served, and the number compared with it is read off the book after a moderator recognised the
-	 * money. If they are ever two numbers, this is what says so.
+	 * <p><b>AND THE SEAM IS A DIFFERENT AND STRONGER ONE SINCE 27.09.2026, which is the whole reason
+	 * this case was rewritten rather than deleted.</b> Owner, PDL 23a: „Na moderatorovom ekranu
+	 * odlucuje kucica i iznos u njenoj labeli, ne ono sto je QR kod obecao." So the booking no longer
+	 * reads the promise at all, and the two numbers are no longer one number by CONSTRUCTION - they
+	 * are one number by ARITHMETIC: the invoice tells him to transfer 600 of a 4.200 fee because his
+	 * book holds 3.600, he transfers 600, and the shortfall the tick box covers is 4.200 less 600,
+	 * which is the same 3.600. <b>Two independent computations of one figure, and this case is the
+	 * only thing in the portal that puts them side by side.</b>
+	 *
+	 * <p>Nothing here is arranged by hand: what is transferred is read off the ANSWER the member was
+	 * served, and what came off his book is read off the book after a moderator typed that same
+	 * figure in. If they are ever two numbers, this is what says so.
 	 */
 	@Test
 	void whatTheInvoiceSaidIsWhatComesOffTheBookWhenTheMoneyLands() throws Exception {
 		JsonNode owed = invoiceOf(BROUGHT_IN_SIX);
 
-		java.math.BigDecimal offTheBalance = owed.path("fromTheBalance").path("rsd").decimalValue();
-		java.math.BigDecimal toTransfer = owed.path("toTransfer").path("rsd").decimalValue();
+		java.math.BigDecimal offTheBalance = owed.path("fromTheBalance").path("amount").decimalValue();
+		java.math.BigDecimal toTransfer = owed.path("toTransfer").path("amount").decimalValue();
 
 		assertThat(offTheBalance.signum())
 				.as("he was offered nothing off his invoice, so this case cannot tell a discount"
@@ -574,23 +600,18 @@ class MyMembershipApiTest {
 		long id = db.sql("select id from competitor where member_number = ?").param(BROUGHT_IN_SIX)
 				.query(Long.class).single();
 
-		assertThat(http.perform(post("/api/payments").with(csrf())
-						.cookie(new Cookie(SessionCookie.NAME, sessions.get(THE_PAYMENTS_QUEUE).secret()))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"competitorId\":" + id + ",\"currency\":\"RSD\",\"method\":\"ips\"}"))
-				.andReturn().getResponse().getStatus())
-				.isEqualTo(201);
+		/* HE TRANSFERS EXACTLY WHAT HIS INVOICE ASKED FOR, and a moderator types that figure in. */
+		assertThat(bookedFor(id, toTransfer)).isEqualTo(201);
 
 		/* Compared with the number the MEMBER WAS SERVED, never with one written in this file: that
 		   is what makes this a case about the seam rather than about arithmetic either side of it. */
-		assertThat(db.sql("select -rsd from balance_entry where competitor_id = ? and reason ="
+		assertThat(db.sql("select -amount from balance_entry where competitor_id = ? and reason ="
 						+ " 'membership'").param(id).query(java.math.BigDecimal.class).single())
 				.as("what came off the book is not what the member was told his balance would cover")
 				.isEqualByComparingTo(offTheBalance);
 
-		assertThat(db.sql("select coalesce(sum(rsd), 0) from balance_entry where competitor_id = ?")
-						.param(id).query(java.math.BigDecimal.class).single())
-				.as("more came off than he was promised, or less")
+		assertThat(bookAddsUpTo(id))
+				.as("more came off than he was told, or less")
 				.isEqualByComparingTo("0.00");
 	}
 
@@ -616,6 +637,31 @@ class MyMembershipApiTest {
 		return email;
 	}
 
+	/**
+	 * A MEMBER OF HIS OWN WHO LIVES ABROAD, so that the euro side of the price list has a reader.
+	 *
+	 * <p>{@code rank = 1} is Shanghai, the town every fixture in this repository reaches for when it
+	 * wants somewhere that is not Serbia. His book is left empty on purpose: the case he is written for
+	 * is about the FEE and the currency, and a balance would put two facts in one answer.
+	 */
+	private String aMemberAbroad(String number) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+						+ " shirt_size, health_statement_at)"
+						+ " values (?, 'Probni', 'Clan', 'M', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, true, 'payment', ?, '',"
+						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, String.format("%016x", ++issued))
+				.update();
+
+		String email = "inostranstvo-" + number + "@primer.rs";
+		account(email, "competitor");
+		belongsTo(email, number);
+
+		return email;
+	}
+
 	private JsonNode invoiceFor(String email) throws Exception {
 		return new ObjectMapper().readTree(whole(email));
 	}
@@ -625,16 +671,30 @@ class MyMembershipApiTest {
 				.query(Long.class).single();
 	}
 
-	private int bookedFor(long competitorId) throws Exception {
+	/**
+	 * A MODERATOR RECOGNISING THE MONEY, AS THE OWNER'S SPECIFICATION OF 27.09.2026 HAS HIM DO IT.
+	 *
+	 * <p><b>The currency is not sent and cannot be</b>: since V42 it is worked out from the member's
+	 * country, and this fixture's town is in Serbia, so every amount here is dinars.
+	 *
+	 * @param arrived what he typed into the field beside „Ocekivan iznos". Always the amount the
+	 *                member's own invoice asked him to transfer, because that is what a member who
+	 *                paid his slip actually sends - and the point of these cases is the SEAM, so a
+	 *                number written by hand here would break the one thing they measure
+	 */
+	private int bookedFor(long competitorId, java.math.BigDecimal arrived) throws Exception {
 		return http.perform(post("/api/payments").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(THE_PAYMENTS_QUEUE).secret()))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content("{\"competitorId\":" + competitorId + ",\"currency\":\"RSD\",\"method\":\"ips\"}"))
+						.content("{\"competitorId\":" + competitorId + ",\"received\":" + arrived
+								+ ",\"useTheBalance\":true,\"method\":\"ips\"}"))
 				.andReturn().getResponse().getStatus();
 	}
 
+	/** In HIS money, which since V42 is what a balance is: this fixture's town is in Serbia. */
 	private java.math.BigDecimal bookAddsUpTo(long competitorId) {
-		return db.sql("select coalesce(sum(rsd), 0) from balance_entry where competitor_id = ?")
+		return db.sql("select coalesce(sum(amount), 0) from balance_entry"
+						+ " where competitor_id = ? and currency = 'RSD'")
 				.param(competitorId).query(java.math.BigDecimal.class).single();
 	}
 
@@ -664,9 +724,9 @@ class MyMembershipApiTest {
 	 * {@code membership_basis_says_whether_a_book_entry_is_named} (V38) requires.
 	 */
 	private void alreadyInOnHisOwnBalance(String memberNumber, int season) {
-		long entry = db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+		long entry = db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season,"
 						+ " occurred_at, recorded_by, recorded_by_name)"
-						+ " values ((select id from competitor where member_number = ?), -5, -600,"
+						+ " values ((select id from competitor where member_number = ?), -600, 'RSD',"
 						+ " 'membership', ?, ?, (select id from account where email = ?),"
 						+ " 'Blagajnik Probni') returning id")
 				.params(memberNumber, season, Timestamp.from(NOW), A_MODERATOR_WHO_DOES_NOT_RACE)
@@ -710,9 +770,9 @@ class MyMembershipApiTest {
 
 		JsonNode firstLook = invoiceFor(him);
 
-		java.math.BigDecimal offTheBookAsMinted = firstLook.path("fromTheBalance").path("rsd")
+		java.math.BigDecimal offTheBookAsMinted = firstLook.path("fromTheBalance").path("amount")
 				.decimalValue();
-		java.math.BigDecimal toTransferAsMinted = firstLook.path("toTransfer").path("rsd").decimalValue();
+		java.math.BigDecimal toTransferAsMinted = firstLook.path("toTransfer").path("amount").decimalValue();
 
 		assertThat(offTheBookAsMinted).isEqualByComparingTo("600.00");
 		assertThat(toTransferAsMinted).isEqualByComparingTo("3600.00");
@@ -727,29 +787,38 @@ class MyMembershipApiTest {
 
 		JsonNode secondLook = invoiceFor(him);
 
-		assertThat(secondLook.path("balance").path("rsd").decimalValue())
+		assertThat(secondLook.path("balance").path("amount").decimalValue())
 				.as("the second look did not see the balance grow, so nothing here is about a balance"
 						+ " that grew")
 				.isEqualByComparingTo("1200.00");
 
-		assertThat(secondLook.path("fromTheBalance").path("rsd").decimalValue())
+		assertThat(secondLook.path("fromTheBalance").path("amount").decimalValue())
 				.as("a refresh moved what the code promises, so the slip in his hand and the row in the"
 						+ " book now say two different numbers")
 				.isEqualByComparingTo(offTheBookAsMinted);
 
-		assertThat(secondLook.path("toTransfer").path("rsd").decimalValue())
+		assertThat(secondLook.path("toTransfer").path("amount").decimalValue())
 				.as("a refresh changed what he is asked to send, so his printed slip is no longer the"
 						+ " amount the portal expects")
 				.isEqualByComparingTo(toTransferAsMinted);
 
-		assertThat(promiseTo("007101")).isEqualTo("5.00 600.00");
+		assertThat(promiseTo("007101")).isEqualTo("600.00 RSD");
 
-		/* AND THEN THE MONEY LANDS, WHICH IS WHERE THE MONEY WAS LOST. */
-		assertThat(bookedFor(id)).isEqualTo(201);
+		/* AND THEN THE MONEY LANDS, WHICH IS WHERE THE MONEY WAS LOST.
 
-		assertThat(db.sql("select -rsd from balance_entry where competitor_id = ? and reason ="
+		   AND SINCE 27.09.2026 IT IS THE TICK BOX THAT DECIDES HERE, NOT THE PROMISE, AND THE OWNER'S
+		   REFUSED OUTCOME IS NOW UNREACHABLE RATHER THAN GUARDED AGAINST. He refused taking today's
+		   1.200 against a discount of 600, and under the old shape a cap on the promise was the only
+		   thing stopping it. Under the tick box the cap is the SHORTFALL: he transfers 3.600 of a 4.200
+		   fee, so 600 is all that is still owed, so 600 is all his book can pay however much is in it.
+		   A book that grew to 1.200, to 12.000 or to nothing at all makes no difference to what comes
+		   off - which is a stronger statement than the one this case used to make, and it is the reason
+		   the growth stays in the fixture. */
+		assertThat(bookedFor(id, toTransferAsMinted)).isEqualTo(201);
+
+		assertThat(db.sql("select -amount from balance_entry where competitor_id = ? and reason ="
 						+ " 'membership'").param(id).query(java.math.BigDecimal.class).single())
-				.as("more came off his book than the code he paid ever promised")
+				.as("more came off his book than the slip he paid ever asked his balance to cover")
 				.isEqualByComparingTo(offTheBookAsMinted);
 
 		assertThat(bookAddsUpTo(id))
@@ -786,14 +855,17 @@ class MyMembershipApiTest {
 						+ " nothing is told to pay")
 				.isTrue();
 
-		assertThat(after.path("toTransfer").path("rsd").decimalValue())
+		assertThat(after.path("toTransfer").path("amount").decimalValue())
 				.as("the slip in his hand stopped being described, so whatever he already posted is"
 						+ " an amount the portal no longer expects")
 				.isEqualByComparingTo("3600.00");
 
 		/* AND THE PROCESSING FEE FOLLOWS THE TRANSFER AND NOT THE COVER, because a transfer that is
-		   asked for is a transfer somebody's bank charges for (V16). */
-		assertThat(after.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+		   asked for is a transfer somebody's bank charges for (V16) - which for a member billed in
+		   dinars is nought either way, because V4 gives the fee row no dinar side. What this case can
+		   still say is that it does not JUMP when the cover does, and the case about a member abroad is
+		   where a charged fee is measured. */
+		assertThat(after.path("processingFeeEur").asDouble()).isZero();
 
 		assertThat(http.perform(post(PATH).with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, sessions.get(him).secret())))
@@ -825,29 +897,34 @@ class MyMembershipApiTest {
 		String him = aMemberOfHisOwn("007104", 0);
 		long id = idOf("007104");
 
-		assertThat(invoiceFor(him).path("fromTheBalance").path("rsd").asDouble()).isEqualTo(0.0);
+		assertThat(invoiceFor(him).path("fromTheBalance").path("amount").asDouble()).isEqualTo(0.0);
 		assertThat(promiseTo("007104"))
 				.as("nothing was written down for a member with an empty book, so his next look is free"
 						+ " to promise something while his first slip is still live")
-				.isEqualTo("0.00 0.00");
+				.isEqualTo("0.00 RSD");
 
 		brought("007104", 1);
 
 		JsonNode second = invoiceFor(him);
 
-		assertThat(second.path("balance").path("rsd").decimalValue())
+		assertThat(second.path("balance").path("amount").decimalValue())
 				.as("his book did not grow, so nothing here is about a book that grew")
 				.isEqualByComparingTo("600.00");
 
-		assertThat(second.path("fromTheBalance").path("rsd").asDouble())
+		assertThat(second.path("fromTheBalance").path("amount").asDouble())
 				.as("the code he is holding was re-priced, so the slip for the whole fee and the row in"
 						+ " the book now say two different numbers")
 				.isEqualTo(0.0);
 
-		assertThat(second.path("toTransfer").path("rsd").decimalValue())
-				.isEqualByComparingTo(second.path("fee").path("rsd").decimalValue());
+		assertThat(second.path("toTransfer").path("amount").decimalValue())
+				.isEqualByComparingTo(second.path("fee").path("amount").decimalValue());
 
-		assertThat(bookedFor(id)).isEqualTo(201);
+		/* AND HE PAYS THE WHOLE FEE IN CASH, because that is what the slip in his hand says - and the
+		   tick box on the moderator's screen is left TICKED, which is the arrangement that makes this
+		   case say something since 27.09.2026. Under the old shape the promise of nought was what
+		   protected his book; under the tick box it is protected by there being no shortfall at all,
+		   and a box left ticked over a member who owes nothing takes nothing. */
+		assertThat(bookedFor(id, new java.math.BigDecimal("4200.00"))).isEqualTo(201);
 
 		assertThat(bookAddsUpTo(id))
 				.as("he paid the whole fee in cash and a discount was taken off his book as well")
@@ -919,7 +996,7 @@ class MyMembershipApiTest {
 		   than from here - an exemption IS a membership, so that door has nothing left to record.
 		   Before the fix this file wrote the exemption into a column, no `membership` row existed at
 		   all, the booking went through with 201, and the balance came off a man the Board had freed. */
-		assertThat(bookedFor(id))
+		assertThat(bookedFor(id, new java.math.BigDecimal("4200.00")))
 				.as("money was booked against a season the Board had already given him")
 				.isEqualTo(409);
 
@@ -964,11 +1041,41 @@ class MyMembershipApiTest {
 				.as("he holds no row for this season, so nothing here says he is already in")
 				.isFalse();
 
-		assertThat(owed.path("fee").path("rsd").asDouble()).isEqualTo(4200.0);
-		assertThat(owed.path("toTransfer").path("rsd").asDouble())
+		assertThat(owed.path("fee").path("amount").asDouble()).isEqualTo(4200.0);
+		assertThat(owed.path("toTransfer").path("amount").asDouble())
 				.as("he was billed nothing for a season he owes in full")
 				.isEqualTo(4200.0);
-		assertThat(owed.path("processingFeeEur").asDouble()).isEqualTo(3.0);
+		assertThat(owed.path("processingFeeEur").asDouble()).isZero();
+	}
+
+	/**
+	 * AND A MEMBER ABROAD IS CHARGED THE PROCESSING FEE, WHICH IS THE ONLY SIDE OF THAT RULE THIS FILE
+	 * CAN NOW MEASURE.
+	 *
+	 * <p><b>Why this case has to exist since V42.</b> Everybody else in this file lives in Serbia, so
+	 * that their dinar amounts mean themselves - and V4 gives the processing row no dinar side, so their
+	 * invoices carry nought and four cases that used to assert 3 now assert 0. The fee is still charged
+	 * and still follows the transfer; it is charged to somebody billed in euro, and this is him.
+	 *
+	 * <p><b>His whole invoice is in euro, and every number on it is the other column of the same rows
+	 * the rest of this file reads</b>: the early period is 35 rather than 4.200 and a referral 5 rather
+	 * than 600. So this is also the case that says the currency reaches every field of the answer and
+	 * not only the label - a route reading the dinar column for a euro member would answer 4.200 here.
+	 */
+	@Test
+	void amemberAbroadIsBilledInEuroAndChargedTheProcessingFee() throws Exception {
+		String him = aMemberAbroad("007301");
+
+		JsonNode owed = invoiceFor(him);
+
+		assertThat(owed.path("fee").path("currency").asString()).isEqualTo("EUR");
+		assertThat(owed.path("fee").path("amount").asDouble()).isEqualTo(35.0);
+		assertThat(owed.path("balance").path("currency").asString()).isEqualTo("EUR");
+		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(35.0);
+
+		assertThat(owed.path("processingFeeEur").asDouble())
+				.as("a member whose transfer really is charged for was charged nothing")
+				.isEqualTo(3.0);
 	}
 
 	/**
@@ -1006,7 +1113,7 @@ class MyMembershipApiTest {
 				.as("last season's membership answered for this one")
 				.isFalse();
 
-		assertThat(owed.path("toTransfer").path("rsd").asDouble()).isEqualTo(4200.0);
+		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(4200.0);
 	}
 
 	/**
@@ -1028,15 +1135,15 @@ class MyMembershipApiTest {
 
 		JsonNode owed = invoiceOf(BROUGHT_IN_SIX);
 
-		assertThat(owed.path("fee").path("rsd").asDouble()).isEqualTo(0.0);
-		assertThat(owed.path("toTransfer").path("rsd").asDouble()).isEqualTo(0.0);
-		assertThat(owed.path("fromTheBalance").path("rsd").asDouble()).isEqualTo(0.0);
+		assertThat(owed.path("fee").path("amount").asDouble()).isEqualTo(0.0);
+		assertThat(owed.path("toTransfer").path("amount").asDouble()).isEqualTo(0.0);
+		assertThat(owed.path("fromTheBalance").path("amount").asDouble()).isEqualTo(0.0);
 
 		assertThat(owed.path("processingFeeEur").asDouble())
 				.as("a bank was asked to process a transfer of nothing")
 				.isEqualTo(0.0);
 
-		assertThat(owed.path("balance").path("rsd").asDouble())
+		assertThat(owed.path("balance").path("amount").asDouble())
 				.as("his book was emptied by a price change")
 				.isEqualTo(3600.0);
 	}

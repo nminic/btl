@@ -1,5 +1,7 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.balance.Balance;
+import com.btl.portal.domain.pricing.Currency;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -534,13 +536,29 @@ class MeWriteApi {
 	 */
 	private final TransactionTemplate inOneTransaction;
 
+	/**
+	 * THE BOOK OF BALANCE, BECAUSE A MEMBER MOVING COUNTRY MOVES HIS MONEY WITH HIM.
+	 *
+	 * <p>The owner decided on 27.09.2026 (PDL 26) that a balance is translated at 1 EUR = 120 RSD when
+	 * a member changes country, and „trenutak je promena zemlje na zapisu clana" - which is this route
+	 * and no other. So the screen that edits a profile is also, on exactly one of its fields, a route
+	 * that writes two lines into an immutable ledger.
+	 */
+	private final BalanceBook book;
+
+	/** Read twice on such a request, before and after, because the question is whether it CHANGED. */
+	private final CurrencyOfMember currencyOf;
+
 	MeWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, ObjectMapper json,
-			TransactionTemplate inOneTransaction) {
+			TransactionTemplate inOneTransaction, BalanceBook book,
+			CurrencyOfMember currencyOf) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.json = json;
 		this.inOneTransaction = inOneTransaction;
+		this.book = book;
+		this.currencyOf = currencyOf;
 	}
 
 	/**
@@ -794,7 +812,8 @@ class MeWriteApi {
 			return no(HttpStatus.BAD_REQUEST, town.orElseThrow().refused());
 		}
 
-		return inOneTransaction.execute(committing -> write(me, typed, town.orElse(null)));
+		return inOneTransaction.execute(
+				committing -> write(me, asking.account(), typed, town.orElse(null)));
 	}
 
 	/**
@@ -1041,7 +1060,7 @@ class MeWriteApi {
 	 * TheSwitchAndTheTextAreOneThingTest} measures, is this statement together with the queue
 	 * row, where a lever does exist.
 	 */
-	private ResponseEntity<?> write(long me, Change typed, Town town) {
+	private ResponseEntity<?> write(long me, long account, Change typed, Town town) {
 		boolean removing = typed.bio() != null && typed.bio().isBlank();
 
 		if (typed.bio() != null && !removing && theTextThatWaits(me).isPresent()) {
@@ -1079,6 +1098,12 @@ class MeWriteApi {
 			   would leave `city` standing beside a `place_id` and the row would be refused
 			   by `competitor_town_is_from_the_codebook_or_typed`, which is a 500 where he
 			   should have been told something. */
+			/* WHICH MONEY HE IS BILLED IN BEFORE THE ROW MOVES, because afterwards there is
+			   nothing left to compare with. Read only when a town is actually being written: the
+			   request that merely renames him cannot change his country, and asking otherwise would
+			   be a statement on every edit of a profile form. */
+			Currency was = town == null ? null : currencyOf.of(me);
+
 			db.sql("update competitor set bio = coalesce(cast(? as text), bio),"
 							+ " profile_hidden = coalesce(cast(? as boolean), profile_hidden),"
 							+ " first_name = coalesce(cast(? as text), first_name),"
@@ -1102,6 +1127,57 @@ class MeWriteApi {
 							town != null, town == null ? null : town.countryId(),
 							me)
 					.update();
+
+			/* AND IF THE MONEY HE IS BILLED IN HAS CHANGED, HIS BALANCE IS RESTATED IN THE NEW ONE.
+
+			   Owner, 27.09.2026 (PDL, section 26), chosen between three outcomes: „Dvojka, 120 je
+			   kurs i tako ostaje do daljnjeg." And PDL 25 is why it has to happen at all: a balance is
+			   „uvek u valuti zavisno od drzave", so a member billed in euro from now on cannot go on
+			   holding dinars.
+
+			   THE MOMENT IS THIS ONE AND NOT ANY OTHER, WHICH IS HIS SENTENCE AND NOT A CHOICE MADE
+			   HERE: „Trenutak je promena zemlje na zapisu clana, ne prijava i ne pocetak sezone."
+			   This is the only route in the portal that writes `competitor.country_id`, and that is
+			   measured rather than assumed: every `update competitor set` and every
+			   `insert into competitor` in `src/main` was counted, and no administrative route touches a
+			   member's town. So this is the only place that sentence can live.
+
+			   THREE STATES AND ONLY ONE OF THEM MOVES ANY MONEY, and the two that do not are the
+			   ordinary ones: he named no town at all, so his country cannot have moved; he named one and
+			   the MONEY did not change, which is Belgrade to Novi Sad and equally Germany to France; or
+			   the money changed, and then his whole book is restated.
+
+			   AND AN EMPTY BOOK WRITES NO LINES EITHER, which is not an optimisation:
+			   `balance_entry_a_conversion_moves_something` (V42) refuses a line of nought, and rightly -
+			   a member with no balance has nothing to restate, and a pair of lines saying so would be
+			   two facts about money that never moved.
+
+			   THE PROMISE GOES EVEN WHEN THE BOOK IS EMPTY, and that is the one place these two
+			   conditions come apart rather than being one. A member whose book was empty was still
+			   minted a code, for the whole fee, and `balance_promise` records that nought so his next
+			   look is held to it (`BalanceBook.promise` says why at length). That slip is in the old
+			   money and is not payable, so it goes with every other. Written as one condition, his
+			   unpayable slip would survive exactly because he had no balance.
+
+			   WHO THE BOOK SAYS DID IT IS HE HIMSELF, which is the honest answer and the reason the
+			   account is threaded down here. `balance_entry.recorded_by_name` is `not null` and ADL asks
+			   for „ko"; nobody in the administration was involved, so naming a moderator would be a
+			   false record and leaving the name blank is refused by
+			   `balance_entry_recorded_by_name_not_blank`. */
+			if (was != null) {
+				Currency now = currencyOf.of(me);
+
+				if (was != now) {
+					book.forgetEveryPromise(me);
+
+					Balance.Money had = book.of(me, was);
+
+					if (had.isMoney()) {
+						book.translated(me, had, Balance.translated(had, now), account,
+								memberOfAccount.nameOf(account));
+					}
+				}
+			}
 		}
 
 		if (typed.bio() != null && !removing) {

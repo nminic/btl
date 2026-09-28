@@ -82,10 +82,12 @@ public final class GrantingAMembership {
 	 *                           that was asked for" is asked of the column itself
 	 * @param aPaymentWasReversed a payment for this season went back, which is its own refusal
 	 * @param offTheBook         what this activation would take out of his book, which is
-	 *                           {@link Balance.Money#NOTHING} for {@link Ground#FREE_OF_THE_FEE}
+	 *                           {@link Balance.Money#nothingIn} for {@link Ground#FREE_OF_THE_FEE}
 	 *                           because a man who owes nothing has nothing for a balance to pay.
-	 *                           See {@link #whatComesOffTheBook} for how it is worked out and
-	 *                           why it is not the obvious subtraction
+	 *                           It is {@link Balance.Settlement#fromTheBalance()} and nothing
+	 *                           else: until V42 this door needed a rule of its own, and the note
+	 *                           on {@link Outcome#NOTHING_WOULD_COME_OFF_THE_BOOK} says why it
+	 *                           no longer does
 	 * @param numberHeAlreadyHas his member number, or {@code null} if he has never had one
 	 */
 	public record Asking(Ground ground, String heldOn, boolean aPaymentWasReversed,
@@ -157,91 +159,33 @@ public final class GrantingAMembership {
 		THE_PAYMENT_WAS_REVERSED,
 
 		/**
-		 * Nothing. What would come off the book is not a whole amount in both currencies, so
-		 * there is no line {@code balance_entry_a_membership_takes} (V38) would accept.
+		 * Nothing. What would come off the book is not money at all, so there is no line
+		 * {@code balance_entry_a_membership_takes} (V42) would accept.
 		 *
-		 * <p><b>Reachable only for {@link Ground#THE_BALANCE}, by three roads that end in one
+		 * <p><b>Reachable only for {@link Ground#THE_BALANCE}, by two roads that end in one
 		 * state, and it is guarded here rather than met in the database.</b> The constraint
-		 * reads {@code eur < 0 and rsd < 0} for a spend, BOTH STRICTLY - not „not both
-		 * nothing" - so it refuses a spend the moment EITHER half is not strictly positive,
-		 * and without this guard asking the same question the route answers 500. The three
-		 * roads: a member whose book is EMPTY in both currencies, which is most members; a
-		 * price list edited so the row that applies to him is worth nothing in both, which
-		 * {@code price_row_eur_not_negative} (V4) allows and {@code PUT /api/pricing/{key}}
-		 * has no lower bound against; and a book holding money in exactly ONE currency, which
-		 * is the third road and is named below.
+		 * reads {@code amount < 0} for a spend, strictly, so it refuses a spend of nothing and
+		 * without this guard asking the same question the route answers 500. The two roads: a
+		 * member whose book is EMPTY, which is most members; and a price list edited so the row
+		 * that applies to him is worth nothing, which {@code price_row_eur_not_negative} (V4)
+		 * allows and {@code PUT /api/pricing/{key}} has no lower bound against.
 		 *
-		 * <p><b>THE THIRD ROAD IS NOT REACHABLE UNDER THE SHIPPED PRICE LIST, said rather than
-		 * left for the next reader to wonder.</b> {@code V4} seeds every row a referral or a
-		 * fee can ever be built from at one uniform rate, 120 dinars to the euro (35/4.200,
-		 * 40/4.800, 50/6.000, 20/2.400, 5/600), so a book made only of such rows stays on that
-		 * same rate and a total on it is either nothing in both currencies or something in
-		 * both - it cannot land on one at nothing with the other positive. {@code
-		 * whatComesOffTheBook} above says the reason a rate can ever come apart at all: {@code
-		 * PUT /api/pricing/{key}} moves one column of one row without the other, and one such
-		 * edit is enough to make the third road reachable. The guard is written for that
-		 * general case rather than for today's data.
+		 * <p><b>THERE WERE THREE ROADS UNTIL V42 AND THE THIRD ONE CLOSED WITH THE PAIR, which
+		 * is said here because V38 predicted it in as many words.</b> While a balance was
+		 * {@code eur} AND {@code rsd}, a book could hold money in exactly ONE currency - 15.00
+		 * and 0.00 - and the old constraint read {@code eur < 0 and rsd < 0}, BOTH strictly, so
+		 * such a spend was refused exactly as a spend of nothing was. That road needed a
+		 * question of its own, {@code Balance.Money.isMoneyInBothCurrencies}, and V38's note
+		 * here ended: „Once the book is one amount in one currency rather than a pair, there is
+		 * no second currency left to be nothing while the first is not, and this road closes
+		 * with the pair it depends on." The owner decided that on 27.09.2026 (PDL, section 25),
+		 * V42 carried it out, and the third road and the question written for it are both gone.
 		 *
-		 * <p><b>AND THE THIRD ROAD IS TEMPORARY, said so nobody refines this guard further
-		 * instead of removing it.</b> The owner, 27.09.2026 (PDL, section 25): „balans je uvek
-		 * u valuti zavisno od drzave... Balans uvek skida u svojoj valuti, tako da nije ni
-		 * bitno koliko je to u drugoj valuti. Nema ni potrebe da cuva par, nego moze da cuva
-		 * samo iznos i valutu, to je bolje." Once the book is one amount in one currency
-		 * rather than a pair, there is no second currency left to be nothing while the first
-		 * is not, and this road closes with the pair it depends on.
-		 *
-		 * <p>One outcome and not two or three, because the question the schema asks is one
-		 * question: would this entry move money in every currency it must. More outcomes
-		 * would be more names for one refusal and would invite a caller to tell the member
-		 * which road it was, when two of the three are about the price list and not about
-		 * him.
+		 * <p>One outcome and not two, because the question the schema asks is one question:
+		 * would this entry move any money. Two outcomes would invite a caller to tell the
+		 * member which road it was, when one of them is about the price list and not about him.
 		 */
 		NOTHING_WOULD_COME_OFF_THE_BOOK
-	}
-
-	/**
-	 * WHAT AN ACTIVATION ON A BALANCE TAKES OUT OF THE BOOK, and it is NOT
-	 * {@link Balance.Settlement#fromTheBalance()}.
-	 *
-	 * <p><b>The difference shows up in exactly one state and is invisible in every other, which
-	 * is why it is a method with a reason on it rather than a line at the call site.</b>
-	 * {@code fromTheBalance} is {@code min(balance, fee)} taken in each currency on its own. That
-	 * is the right answer for the member's own door, where a short balance is refused outright, so
-	 * the only case it ever runs in is one where the balance covers the fee in BOTH currencies.
-	 * The moderator's door is the opposite: case 5 exists precisely to let a SHORT balance through.
-	 *
-	 * <p><b>So take a balance of 50 EUR / 600 RSD against a fee of 40 / 4.800.</b> It covers in
-	 * euro and is short in dinars, which {@link Balance.Settlement#coveredByTheBalance()} calls
-	 * not covered - it asks both currencies, for the reason {@link Balance} gives at length: there
-	 * is no such thing as this member's currency when nobody is reading a bank statement. Case 5
-	 * therefore applies and „umanjen iznos iz balansa" means his balance is spent. But
-	 * {@code min} per currency answers <b>40 EUR and 600 RSD</b>, which leaves 10 EUR of his book
-	 * standing while taking every dinar of it - and 40 against 600 is a rate of fifteen to one,
-	 * a conversion the portal is forbidden to perform („Dve valute su dva zasebna cenovnika, ne
-	 * jedan sa konverzijom").
-	 *
-	 * <p><b>The rule that has no such state is binary and it is what this returns:</b> covered in
-	 * both, take exactly the fee; otherwise take the WHOLE balance. Both answers are pairs that
-	 * already stood together - one is a row of the price list, the other is the sum of a book
-	 * whose every entry copied a pair off such a row - so no rate is applied in either.
-	 *
-	 * <p><b>How that state is reached, because a rule guarding an unreachable state is
-	 * decoration.</b> Every entry in the book copies both numbers off one row of the price list
-	 * (V38, {@code balance_entry_a_referral_adds} demanding both are money), so a book built out of
-	 * referrals alone keeps whatever ratio the referral row had. {@code PUT /api/pricing/{key}}
-	 * moves one column without the other - {@link Balance} says so in as many words, „can edit one
-	 * column without the other" - so two referrals earned either side of such an edit leave a book
-	 * whose two halves stand in no single ratio, and the fee they are measured against is a third.
-	 *
-	 * @param fee     the membership fee that applies to him, both currencies, off the row of the
-	 *                price list
-	 * @param balance what his book adds up to right now
-	 */
-	public static Balance.Money whatComesOffTheBook(Balance.Money fee, Balance.Money balance) {
-		Objects.requireNonNull(fee, "fee");
-		Objects.requireNonNull(balance, "balance");
-
-		return Balance.against(fee, balance).coveredByTheBalance() ? fee : balance;
 	}
 
 	/**
@@ -286,7 +230,7 @@ public final class GrantingAMembership {
 			return Outcome.THE_PAYMENT_WAS_REVERSED;
 		}
 
-		if (asking.ground() == Ground.THE_BALANCE && !asking.offTheBook().isMoneyInBothCurrencies()) {
+		if (asking.ground() == Ground.THE_BALANCE && !asking.offTheBook().isMoney()) {
 			return Outcome.NOTHING_WOULD_COME_OFF_THE_BOOK;
 		}
 

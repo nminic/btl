@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
@@ -448,20 +449,20 @@ class PaymentsDueApiTest {
 		/* THE BOOK, AND NOT EVERYBODY'S IS THE SAME SIZE. Two members carry DIFFERENT non-zero
 		   balances, because a query that dropped the condition on the member would serve one total
 		   to every row and a fixture with one balance in it could not tell. */
-		earnedAReferral(neverPaid, paid, "5", "600");
-		earnedAReferral(billedInDinars, didNotRenew, "50", "6000");
+		earnedAReferral(neverPaid, paid, "5", "EUR");
+		earnedAReferral(billedInDinars, didNotRenew, "6000", "RSD");
 
 		/* ONE MEMBER HAS ALREADY SPENT PART OF HIS, for a season that is not the one on sale, so
 		   his balance is a NET. Summing only the referrals answers 5 where the truth is 3. */
-		earnedAReferral(surnamedNovak, paidAhead, "5", "600");
-		spentOnAMembership(surnamedNovak, 2028, "2", "200");
+		earnedAReferral(surnamedNovak, paidAhead, "5", "EUR");
+		spentOnAMembership(surnamedNovak, 2028, "2", "EUR");
 
 		/* AND ONE HAS A PROMISE THAT DISAGREES WITH HIS BOOK, which is the whole of PDL 23a.
 		   The numbers are ones nothing else here uses, so a route serving the promise is caught by
 		   the value. Most members have no promise at all - nobody ever opened their membership
 		   screen - and that is the commonest state and the reason the owner chose the book. */
-		earnedAReferral(notConfirmed, flagSaysOtherwise, "5", "600");
-		acodeOncePromisedHim(notConfirmed, 2027, "99", "9999");
+		earnedAReferral(notConfirmed, flagSaysOtherwise, "5", "EUR");
+		acodeOncePromisedHim(notConfirmed, 2027, "99", "EUR");
 
 		/* FOUR MEMBERSHIPS, ALONG EVERY AXIS THE ROUTE READS ONE.
 		   2027 is the season on sale at `IN_OCTOBER_2026` and at `IN_JUNE_2027`; 2028 is the
@@ -1110,6 +1111,61 @@ class PaymentsDueApiTest {
 	}
 
 	/**
+	 * AND A LINE IN A MONEY THAT IS NO LONGER HIS IS NOT ON THE LABEL, WHICH IS WHAT A MEMBER WHO HAS
+	 * MOVED COUNTRY REALLY LOOKS LIKE.
+	 *
+	 * <p><b>This is production-reachable and not a contrived state.</b> A member who changes country has
+	 * his balance restated (owner, 27.09.2026, PDL 26, at 1 EUR = 120 RSD), and the restating is TWO
+	 * LINES rather than a rewrite: {@code a_balance_entry_is_written_once} (V38) refuses a rewrite, and
+	 * ADL asks for „nepromenljive stavke". So his old-money lines stay in the book for ever, and every
+	 * reader of the book has to know they are not his balance.
+	 *
+	 * <p><b>Why it needs a case here and not only in {@code MeWriteApiTest}.</b> This route reads the
+	 * book for a whole LIST at once, which is a second statement over one table
+	 * ({@code BalanceBook.forEveryOneOf}), and it has to pick each member's own money out of a result
+	 * grouped both ways. A reading that took whichever group came back first would answer this member's
+	 * dinars in euro, which at the seeded rate is a hundred and twenty times the money.
+	 *
+	 * <p><b>THE MEMBER HOLDS NOTHING IN HIS OWN MONEY, AND THAT IS THE WHOLE DESIGN OF THE CASE.</b> A
+	 * first draft gave him 5 euro BESIDE the stray 6.000 dinars, and a mutation walked through it: with
+	 * the currency test taken out, the statement puts BOTH groups into the map one after the other and
+	 * the last one wins - so whether the answer is 5 or 6.000 depends on the order {@code group by}
+	 * happens to return, and it happened to end on the euro group. <b>Measured, not reasoned about:</b>
+	 * that draft survived the mutation with all 39 cases green.
+	 *
+	 * <p>With ONE group there is no order for the answer to depend on. Filtered, nothing of his is in
+	 * euro and the label says nought - which is the value the route fills in for every member with no
+	 * lines at all. Unfiltered, the one group there is becomes his balance and the label says 6.000,
+	 * labelled in euro, which is a hundred and twenty times the money it is not.
+	 */
+	@Test
+	void alineInAmoneyThatIsNoLongerHisIsNotOnTheLabel() throws Exception {
+		long whoMovedAbroad = competitor("000295", "Nekad", "Dinarski", false);
+		long alsoBroughtIn = competitor("000296", "Doveden", "Nekada", true);
+
+		/* AND AN ACCOUNT, because this screen reads `from account a join competitor c` - a competitor
+		   nobody can sign in as is nobody the association can ask for money. */
+		account("nekad-dinarski@primer.rs", "competitor", "Nekad", "Dinarski", true, whoMovedAbroad);
+
+		earnedAReferral(whoMovedAbroad, alsoBroughtIn, "6000", "RSD");
+
+		Map<Long, BigDecimal> balances = new HashMap<>();
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			balances.put(row.get("competitorId").asLong(), row.get("balance").decimalValue());
+		}
+
+		assertThat(balances)
+				.as("he is not on the screen at all, so nothing here is about what his label says")
+				.containsKey(whoMovedAbroad);
+
+		assertThat(balances.get(whoMovedAbroad))
+				.as("a line in the money he has left was counted as his balance, so the label shows him"
+						+ " money he does not have - and shows it in the wrong money")
+				.isEqualByComparingTo("0");
+	}
+
+	/**
 	 * AND IT IS THE BOOK RATHER THAN WHAT A CODE ONCE PROMISED HIM.
 	 *
 	 * <p>Owner, 27.09.2026 (PDL 23a), choosing between the two: „Moderator aktivira sa svog ekrana:
@@ -1123,7 +1179,7 @@ class PaymentsDueApiTest {
 	 */
 	@Test
 	void thelabelCarriesWhatHeHasTodayAndNotWhatAPaymentCodePromised() throws Exception {
-		assertThat(db.sql("select eur from balance_promise where competitor_id = ? and season = 2027")
+		assertThat(db.sql("select amount from balance_promise where competitor_id = ? and season = 2027")
 				.param(notConfirmed).query(BigDecimal.class).single())
 				.as("the fixture stopped saying what it is for: the promise must differ from the book")
 				.isEqualByComparingTo("99");
@@ -1162,7 +1218,10 @@ class PaymentsDueApiTest {
 		}
 
 		assertThat(served).isNotNull();
-		assertThat(served).isEqualByComparingTo(book.of(surnamedNovak).eur());
+		/* ASKED IN HIS MONEY, which is what the book is now summed in: this fixture's default town is
+		   `rank = 1`, Shanghai, so he is billed in euro. Asking in the other money would answer nought
+		   and the comparison would be between two things that are both wrong. */
+		assertThat(served).isEqualByComparingTo(book.of(surnamedNovak, Currency.EUR).amount());
 	}
 
 	/**
@@ -1333,15 +1392,19 @@ class PaymentsDueApiTest {
 	/**
 	 * ONE REFERRAL EARNED, which is the only way a balance comes to exist at all.
 	 *
-	 * <p>{@code balance_entry_reason_known} (V38) knows two reasons and
-	 * {@code balance_entry_a_referral_adds} demands both currencies be money, so a bare credit is
-	 * not a row the portal could ever write and is not one this fixture invents.
+	 * <p>{@code balance_entry_reason_known} (V42) knows four reasons and
+	 * {@code balance_entry_a_referral_adds} demands a referral be money, so a bare credit is not a row
+	 * the portal could ever write and is not one this fixture invents.
+	 *
+	 * @param currency the money the member is billed in, which since V42 is what makes a line his
+	 *                 balance at all: this fixture holds members on both sides of the country axis, so
+	 *                 it cannot be a constant
 	 */
-	private void earnedAReferral(long competitorId, long broughtIn, String eur, String rsd) {
-		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, referred_competitor_id,"
-						+ " occurred_at, recorded_by_name)"
-						+ " values (?, ?::numeric, ?::numeric, 'referral', ?, ?, 'Neko Ko Je Knjizio')")
-				.params(competitorId, eur, rsd, broughtIn, Timestamp.from(IN_OCTOBER_2026))
+	private void earnedAReferral(long competitorId, long broughtIn, String amount, String currency) {
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
+						+ " referred_competitor_id, occurred_at, recorded_by_name)"
+						+ " values (?, ?::numeric, ?, 'referral', ?, ?, 'Neko Ko Je Knjizio')")
+				.params(competitorId, amount, currency, broughtIn, Timestamp.from(IN_OCTOBER_2026))
 				.update();
 	}
 
@@ -1352,12 +1415,11 @@ class PaymentsDueApiTest {
 	 * <p>Without a spend anywhere in this fixture, „sum every line" and „sum the referrals" answer
 	 * alike for every member on the screen, and a route written the second way passes.
 	 */
-	private void spentOnAMembership(long competitorId, int season, String eur, String rsd) {
-		db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+	private void spentOnAMembership(long competitorId, int season, String amount, String currency) {
+		db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season,"
 						+ " occurred_at, recorded_by_name)"
-						+ " values (?, (0 - ?::numeric), (0 - ?::numeric), 'membership', ?, ?,"
-						+ " 'Neko Ko Je Knjizio')")
-				.params(competitorId, eur, rsd, season, Timestamp.from(IN_OCTOBER_2026))
+						+ " values (?, (0 - ?::numeric), ?, 'membership', ?, ?, 'Neko Ko Je Knjizio')")
+				.params(competitorId, amount, currency, season, Timestamp.from(IN_OCTOBER_2026))
 				.update();
 	}
 
@@ -1369,10 +1431,10 @@ class PaymentsDueApiTest {
 	 * else in the fixture uses, so a route reading the promise instead of the book is caught by the
 	 * value rather than by a shape.
 	 */
-	private void acodeOncePromisedHim(long competitorId, int season, String eur, String rsd) {
-		db.sql("insert into balance_promise (competitor_id, season, eur, rsd, promised_at)"
-						+ " values (?, ?, ?::numeric, ?::numeric, ?)")
-				.params(competitorId, season, eur, rsd, Timestamp.from(IN_OCTOBER_2026))
+	private void acodeOncePromisedHim(long competitorId, int season, String amount, String currency) {
+		db.sql("insert into balance_promise (competitor_id, season, amount, currency, promised_at)"
+						+ " values (?, ?, ?::numeric, ?, ?)")
+				.params(competitorId, season, amount, currency, Timestamp.from(IN_OCTOBER_2026))
 				.update();
 	}
 
@@ -1396,17 +1458,17 @@ class PaymentsDueApiTest {
 	 * <p><b>The boundary that finding names, recorded rather than left:</b> nothing in the schema
 	 * stops a book summing below nothing. {@code balance_entry_a_membership_takes} (V38) fixes the
 	 * SIGN of one line and says nothing about the total. What keeps production above it is that every
-	 * spend is capped at what is there - {@code Balance.honouring} at the paying door and
-	 * {@code GrantingAMembership.whatComesOffTheBook} at the moderator's - and not a constraint. So a
+	 * spend is capped at what is there - {@code Balance.Settlement.fromTheBalance()}, which is
+	 * {@code min(balance, what is owed)} and is what BOTH doors read since V42 - and not a constraint. So a
 	 * book driven negative by anything else would make this screen throw for that member, which is a
 	 * loud failure rather than a wrong number, and that is the better of the two.
 	 */
 	private void membershipOnABalance(long member, long broughtIn, int season) {
-		earnedAReferral(member, broughtIn, "5", "600");
+		earnedAReferral(member, broughtIn, "5", "EUR");
 
-		long entry = db.sql("insert into balance_entry (competitor_id, eur, rsd, reason, season,"
+		long entry = db.sql("insert into balance_entry (competitor_id, amount, currency, reason, season,"
 						+ " occurred_at, recorded_by_name)"
-						+ " values (?, -1, -120, 'membership', ?, ?, 'Neko Ko Je Knjizio')"
+						+ " values (?, -1, 'EUR', 'membership', ?, ?, 'Neko Ko Je Knjizio')"
 						+ " returning id")
 				.params(member, season, Timestamp.from(IN_OCTOBER_2026))
 				.query(Long.class).single();
@@ -1431,10 +1493,10 @@ class PaymentsDueApiTest {
 	/** A membership standing on a recorded payment, which is the ordinary way one is held. */
 	private void membershipOnAPayment(long member, int season) {
 		long payment = db.sql("insert into payment (competitor_id, season, price_row_id, amount,"
-						+ " currency, fee, method, state, recorded_at, recorded_by_name)"
+						+ " currency, fee, method, state, recorded_at, recorded_by_name, received)"
 						+ " values (?, ?, (select id from price_row order by sort_order limit 1),"
-						+ " 30.00, 'EUR', 3.00, 'ips', 'recorded', ?, 'Moderator Koji Je Proknjizio')"
-						+ " returning id")
+						+ " 30.00, 'EUR', 3.00, 'ips', 'recorded', ?, 'Moderator Koji Je Proknjizio',"
+						+ " 33.00) returning id")
 				.params(member, season, Timestamp.from(IN_OCTOBER_2026))
 				.query(Long.class).single();
 

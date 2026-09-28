@@ -80,6 +80,35 @@ class PageApiTest {
 	 *  ({@code frontend/src/components/PageSectionBody.tsx}). */
 	private static final String MARK = "[[gallery]]";
 
+	/**
+	 * THE LANGUAGE TAG THESE FIXTURES WRITE THEIR OWN WORDS UNDER, and it is deliberately
+	 * NOT {@code "en"}.
+	 *
+	 * <p>V43 seeds REAL English translations for the four written pages this class shares
+	 * with the database, one page and one commit at a time. A fixture that wrote under
+	 * {@code 'en'} would collide with whichever of those V43 has already shipped -
+	 * {@code static_page_translation_once_per_language} and
+	 * {@code static_page_section_translation_once_per_language} both key on
+	 * {@code (page_id, language)} / {@code (section_id, language)}, and Testcontainers
+	 * applies the full migration history before any test method runs, so "not translated
+	 * yet" is not a state this suite can keep assuming about any of the four slugs.
+	 *
+	 * <p><b>Measured, not guessed:</b> the moment V43 gave {@code rec-predsednika} a real
+	 * English title and section,
+	 * {@code aPageAnswersInEnglishOnlyWhenItIsWholeInEnglish} started failing on ITS OWN
+	 * hard-coded expectation that {@code rec-predsednika} answers {@code "sr"} - a page this
+	 * method never touches. So the fix has to be the TAG these fixtures use, not a
+	 * case-by-case exclusion of whichever slug V43 has reached.
+	 *
+	 * <p>This tag is still shaped like a language ({@link PageApi} checks the shape, not a
+	 * list of the ones that exist), but the portal never seeds it for anything, so every
+	 * case below stays true regardless of how much of V43 has landed. {@code "de"},
+	 * {@code "fr"} and {@code "cnr"} elsewhere in this file are the same idea for a
+	 * different purpose (a second real-looking language, or one the portal has no words in
+	 * at all) and are left alone.
+	 */
+	private static final String A_LANGUAGE_THESE_FIXTURES_OWN = "xx";
+
 	private JsonNode answer() throws Exception {
 		return new ObjectMapper().readTree(http.perform(get("/api/pages"))
 				.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
@@ -130,10 +159,13 @@ class PageApiTest {
 		return words;
 	}
 
-	/** One page's title in English. */
+	/** One page's title, written under {@link #A_LANGUAGE_THESE_FIXTURES_OWN} rather than
+	 *  under {@code "en"} - see that constant for why - and still called "english" because
+	 *  the VALUE it writes is what a translation would read, {@link #ENGLISH_TITLE}. */
 	private void englishTitleFor(String slug) {
 		assertThat(db.sql("insert into static_page_translation (page_id, language, title)"
-						+ " select id, 'en', '" + ENGLISH_TITLE + "' || slug from static_page"
+						+ " select id, '" + A_LANGUAGE_THESE_FIXTURES_OWN + "', '" + ENGLISH_TITLE
+						+ "' || slug from static_page"
 						+ " where slug = :slug")
 				.param("slug", slug).update())
 				.as("there is no page at %s to write an English title for", slug)
@@ -152,7 +184,8 @@ class PageApiTest {
 	private int englishBlocksFor(String slug, int blocks) {
 		return db.sql("insert into static_page_section_translation"
 						+ " (section_id, language, heading, body)"
-						+ " select s.id, 'en', '" + ENGLISH_HEADING + "' || s.position,"
+						+ " select s.id, '" + A_LANGUAGE_THESE_FIXTURES_OWN + "', '" + ENGLISH_HEADING
+						+ "' || s.position,"
 						+ "   '" + ENGLISH_BODY + "' || s.position"
 						+ "   || case when s.gallery is null then ''"
 						+ "           else E'\\n\\n" + MARK + "\\n' end"
@@ -264,6 +297,84 @@ class PageApiTest {
 				.as("the thirty-nine sections of the four pages were not all compared, so this case"
 						+ " measures less than it says")
 				.isEqualTo(39);
+	}
+
+	/**
+	 * ASKED IN REAL {@code "en"}, WITH NO FIXTURE OF ITS OWN, THE PAGES V43 HAS ALREADY
+	 * TRANSLATED COME BACK IN ENGLISH.
+	 *
+	 * <p><b>Why this case writes nothing.</b> Every other case in this file that reaches
+	 * {@code "en"} goes through {@link #A_LANGUAGE_THESE_FIXTURES_OWN} precisely because a
+	 * literal {@code "en"} fixture would collide with V43's real seed - see that constant.
+	 * This is the one case that deliberately asks for the real tag against the real data
+	 * V43 shipped, with no insert of its own, because that is the only way to measure the
+	 * thing the task instruction asks for: "ruta koja servira strane mora sada za engleski
+	 * da vrati language:en i engleski tekst ... to je prva prilika da se ta grana koda
+	 * izvrsi" - the branch of {@code PageApi} that serves a real translation has, until
+	 * V43, only ever been exercised by fixtures it wrote and rolled back itself.
+	 *
+	 * <p><b>Only asserts what is true regardless of which page V43 reaches next.</b> The
+	 * exact English wording is not repeated here - that duplication is exactly what
+	 * {@link WrittenPageTranslationAppliesTest} exists to avoid, and what it already checks
+	 * structurally, section by section, against the real migration. What is worth a
+	 * MockMvc case is the one thing that file cannot see: that the HTTP route itself,
+	 * asked in the language a real visitor's browser sends, reports {@code "en"} rather than
+	 * silently falling back to {@code "sr"} the way it would for a page V43 has not
+	 * reached yet.
+	 */
+	@Test
+	void pagesV43HasAlreadyTranslatedAnswerInRealEnglishWithNoFixtureOfItsOwn() throws Exception {
+		JsonNode ours = answerIn("en");
+
+		/* All four, now that politika-privatnosti and uslovi-koriscenja have landed in V43 too,
+		   translated against the text V41 (branch b143, merged as 5f464318) left behind rather
+		   than the stale text this branch's own tree held while it waited. */
+		assertThat(languagesOf(ours))
+				.as("all four written pages are in V43 now, and each must answer in real English"
+						+ " rather than silently falling back to the original")
+				.containsExactly(entry("politika-privatnosti", "en"),
+						entry("uslovi-koriscenja", "en"),
+						entry("rec-predsednika", "en"),
+						entry("pravilnik", "en"));
+
+		assertThat(pageNamed(ours, "rec-predsednika").path("title").asString())
+				.as("rec-predsednika's real English title did not reach the route")
+				.isEqualTo("President's word");
+		assertThat(fieldOf(ours, "rec-predsednika", "body"))
+				.as("rec-predsednika does not have real English words in its one section")
+				.hasSize(1)
+				.first().asString().contains("Balkanska trkačka liga");
+
+		assertThat(pageNamed(ours, "pravilnik").path("title").asString())
+				.as("pravilnik's real English title did not reach the route")
+				.contains("2027 season");
+		assertThat(fieldOf(ours, "pravilnik", "heading"))
+				.as("the rulebook did not come back whole - nineteen real English headings, in"
+						+ " order - which is the exact condition PageApi.pagesIn requires before it"
+						+ " will call a page English at all")
+				.containsExactly("1. Introductory provisions", "2. Season and deadlines",
+						"3. Who competes", "4. Membership fee", "5. What counts toward points",
+						"6. How points are calculated", "7. Categories by race length",
+						"8. Competitor categories", "9. Submitting results",
+						"10. Verification of results", "11. Rankings and placing",
+						"12. Teams, racing pairs, and clubs", "13. Accompanying competitions and leagues",
+						"14. Awards and honours", "15. Code of ethics", "16. Sanctions and disqualification",
+						"17. Publishing data and photographs", "18. Ducats",
+						"19. Amendments to the Rulebook and final provisions");
+
+		assertThat(pageNamed(ours, "politika-privatnosti").path("title").asString())
+				.as("politika-privatnosti's real English title did not reach the route")
+				.isEqualTo("Privacy policy");
+		assertThat(fieldOf(ours, "politika-privatnosti", "heading"))
+				.as("the privacy policy did not come back whole - seven real English headings")
+				.hasSize(7);
+
+		assertThat(pageNamed(ours, "uslovi-koriscenja").path("title").asString())
+				.as("uslovi-koriscenja's real English title did not reach the route")
+				.isEqualTo("Terms of use");
+		assertThat(fieldOf(ours, "uslovi-koriscenja", "heading"))
+				.as("the terms of use did not come back whole - twelve real English headings")
+				.hasSize(12);
 	}
 
 	/**
@@ -494,14 +605,20 @@ class PageApiTest {
 						+ " something other than a whole page and the case below says nothing")
 				.isEqualTo(12);
 
-		JsonNode ours = answerIn("en");
+		JsonNode ours = answerIn(A_LANGUAGE_THESE_FIXTURES_OWN);
 
+		/* Asked in the FIXTURES' OWN tag rather than in real "en": V43 gives some of these
+		   four pages real English before it gives all four, and this case's whole point is
+		   that the OTHER pages stay in the original - a literal "en" here would start
+		   failing on whichever page V43 reaches next, exactly as it did the day V43 gave
+		   rec-predsednika real words and this assertion, still written against "en", called
+		   that a bug. See A_LANGUAGE_THESE_FIXTURES_OWN. */
 		assertThat(languagesOf(ours))
-				.as("asked in English, exactly the page that has been written in English should"
-						+ " say its words are English, and every other page should say its words"
-						+ " are still the original")
+				.as("asked in the fixtures' own tag, exactly the page that has been written in"
+						+ " it should say its words are in it, and every other page should say"
+						+ " its words are still the original")
 				.containsExactly(entry("politika-privatnosti", "sr"),
-						entry("uslovi-koriscenja", "en"),
+						entry("uslovi-koriscenja", A_LANGUAGE_THESE_FIXTURES_OWN),
 						entry("rec-predsednika", "sr"),
 						entry("pravilnik", "sr"));
 
@@ -631,23 +748,26 @@ class PageApiTest {
 						+ " boundary is where the case says it is")
 				.isEqualTo(11);
 
-		JsonNode shortOfOne = answerIn("en");
+		JsonNode shortOfOne = answerIn(A_LANGUAGE_THESE_FIXTURES_OWN);
 
 		assertThat(languagesOf(shortOfOne))
-				.as("a page missing the words of one block answered in English anyway, so a"
+				.as("a page missing the words of one block answered in its language anyway, so a"
 						+ " reader can be handed a legal text that is part one language and part"
 						+ " another")
 				.containsEntry("uslovi-koriscenja", PageApi.THE_ORIGINAL);
 		assertThat(fieldOf(shortOfOne, "uslovi-koriscenja", "heading"))
-				.as("the eleven blocks that DO have English words were served in English while"
-						+ " the page as a whole could not be")
+				.as("the eleven blocks that DO have words in it were served in it while the page"
+						+ " as a whole could not be")
 				.doesNotContain(ENGLISH_HEADING + "1");
 
 		/* AND THE TWELFTH TURNS IT. Written by position rather than by „the rest", so what
-		   completes the page is one named row and not a repeat of the insert above. */
+		   completes the page is one named row and not a repeat of the insert above. Written
+		   under A_LANGUAGE_THESE_FIXTURES_OWN directly, like englishBlocksFor itself, rather
+		   than through real "en" - see that constant for why. */
 		assertThat(db.sql("insert into static_page_section_translation"
 						+ " (section_id, language, heading, body)"
-						+ " select s.id, 'en', '" + ENGLISH_HEADING + "' || s.position,"
+						+ " select s.id, '" + A_LANGUAGE_THESE_FIXTURES_OWN + "', '" + ENGLISH_HEADING
+						+ "' || s.position,"
 						+ "   '" + ENGLISH_BODY + "' || s.position"
 						+ " from static_page_section s"
 						+ " join static_page p on p.id = s.page_id"
@@ -656,11 +776,11 @@ class PageApiTest {
 				.as("the twelfth block of the terms of use was not found by its position")
 				.isOne();
 
-		assertThat(languagesOf(answerIn("en")))
-				.as("every block of the page now has English words and the page still answers in"
+		assertThat(languagesOf(answerIn(A_LANGUAGE_THESE_FIXTURES_OWN)))
+				.as("every block of the page now has words in it and the page still answers in"
 						+ " the original, so nothing can ever complete a translation")
-				.containsEntry("uslovi-koriscenja", "en");
-		assertThat(fieldOf(answerIn("en"), "uslovi-koriscenja", "heading"))
+				.containsEntry("uslovi-koriscenja", A_LANGUAGE_THESE_FIXTURES_OWN);
+		assertThat(fieldOf(answerIn(A_LANGUAGE_THESE_FIXTURES_OWN), "uslovi-koriscenja", "heading"))
 				.isEqualTo(expected(ENGLISH_HEADING, 12));
 	}
 
@@ -764,7 +884,7 @@ class PageApiTest {
 						+ " where slug = 'uslovi-koriscenja'")
 				.update()).isOne();
 
-		JsonNode english = answerIn("en");
+		JsonNode english = answerIn(A_LANGUAGE_THESE_FIXTURES_OWN);
 		JsonNode german = answerIn("de");
 		JsonNode french = answerIn("fr");
 
@@ -806,7 +926,7 @@ class PageApiTest {
 				.as("asked in French the page handed over another language's blocks")
 				.doesNotContain(ENGLISH_HEADING + "1", "Deutsche Ueberschrift 1");
 
-		assertThat(languagesOf(english)).containsEntry("uslovi-koriscenja", "en");
+		assertThat(languagesOf(english)).containsEntry("uslovi-koriscenja", A_LANGUAGE_THESE_FIXTURES_OWN);
 		assertThat(languagesOf(german)).containsEntry("uslovi-koriscenja", "de");
 	}
 
@@ -861,11 +981,12 @@ class PageApiTest {
 						+ " and asserts nothing")
 				.isNotEmpty();
 
-		JsonNode rulebook = pageNamed(answerIn("en"), "pravilnik");
+		JsonNode rulebook = pageNamed(answerIn(A_LANGUAGE_THESE_FIXTURES_OWN), "pravilnik");
 
 		assertThat(rulebook.path("language").asString())
-				.as("the rulebook was written whole in English and did not come back in it")
-				.isEqualTo("en");
+				.as("the rulebook was written whole in the fixtures' own tag and did not come back"
+						+ " in it")
+				.isEqualTo(A_LANGUAGE_THESE_FIXTURES_OWN);
 
 		List<String> served = new ArrayList<>();
 		int markedBlocks = 0;
