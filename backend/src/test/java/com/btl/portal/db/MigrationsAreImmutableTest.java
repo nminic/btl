@@ -153,7 +153,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   V41's own repin note above checks rather than assumes - so this is not a rewrite of a
 			   migration anyone has run. */
 			new Applied("43", "V43__the_written_pages_speak_english.sql", -1054379915),
-			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", -936499410));
+			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", -605669233));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

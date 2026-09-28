@@ -19,14 +19,17 @@
  * biografija izlaze iz registracije" (owner, 28.09.2026), moves the same fact one step
  * further: the whole profile section, picture and biography together, is coming off the
  * registration FORM too - his own words, "to će član popunjavati naknadno kad bude odobren".
- * That half of the change is its own increment (branch b159-slika-van-registracije, PR 427,
- * open and not yet merged to origin/main as this migration is written - checked with `gh pr
- * view 427`, not assumed) because it crosses WhatRegistrationAsksFor, RegistrationApi's
- * NOT_COLLECTED_YET and CompetitorWriteApi and needs a full backend gate of its own (PDL.md
- * names the same five-step chain as the reason it is a separate branch). This migration does
- * not wait for it: the policy row has been false about what the server PERSISTS regardless of
- * whether the FORM still asks, which is a fact about this migration's own moment, independent
- * of when that separate increment lands.
+ * That half of the change was its own increment (branch b159-slika-van-registracije, PR 427)
+ * because it crosses WhatRegistrationAsksFor, RegistrationApi's NOT_COLLECTED_YET and
+ * CompetitorWriteApi and needed a full backend gate of its own (PDL.md names the same
+ * five-step chain as the reason it was a separate branch). It was open, not yet merged to
+ * origin/main, when this migration was first written; it merged as 1c19c648 while this
+ * branch was still being worked, checked with `gh pr view 427` rather than assumed, and
+ * registracija.form.json no longer asks for a picture at all - confirmed by re-reading it
+ * and profil.form.json after the merge, neither names "photo". This migration never waited
+ * for it either way: the policy row was false about what the server PERSISTS regardless of
+ * whether the FORM still asked, which was a fact about this migration's own moment,
+ * independent of when that separate increment landed.
  *
  * WHAT DOES NOT MOVE WITH IT. The picture stays on "Izvršenje ugovora" (performance of
  * contract), not "Vaš pristanak" (your consent) like the biography row beside its new home:
