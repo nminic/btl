@@ -10,7 +10,7 @@ import { useSession } from '../session/useSession'
 import { AdminEvents } from './admin/AdminEvents'
 import { at, first, inputElement, must, selectElement } from '../test/at'
 import { Saved } from '../test/saved'
-import { serverThat } from '../test/serverAnswers'
+import { refused, serverThat } from '../test/serverAnswers'
 import { whatWasSent, whereItWrote } from '../test/sent'
 import { clearResourceCache, loadResource } from '../data/client'
 import { eventSlug } from './admin/entityForms'
@@ -1298,6 +1298,147 @@ describe('the races of an event', () => {
       'the screen took results down by address, which is what the copy made unsafe',
     ).toEqual([])
   })
+
+  it('never says it was saved when the event went and one of its races did not', async () => {
+    /**
+     * AXIS 13, AND IT IS THE ONE THING THIS PRESS MUST NEVER LIE ABOUT.
+     *
+     * <p>One press writes an event and then its mornings, one at a time, because
+     * `/api/races` takes one race. There is no door that takes them together: the only
+     * other screen that writes a record and its children in one press
+     * (`admin/LeagueRaceModeration.tsx`) hands the whole day to the server as `{eventId}`
+     * and lets the route walk it. So a press CAN end with the event written and a race
+     * refused, and nothing on this side can undo the first half.
+     *
+     * <p><b>What must not happen, in either direction.</b> Answering "Sačuvano" would say
+     * the mornings are filed when one of them is not. Answering "it was not saved" would
+     * send the reader to enter the event again, onto its own address, where the route
+     * would tell him it is taken - a refusal about a collision with himself.
+     *
+     * <p>So the reader is told the truth in one sentence: the event is saved, a race is
+     * not. The form stays open with everything he typed, and `madeHere` makes his second
+     * press a change rather than a second event, which the case below measures.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const races = await loadResource<Race[]>('races')
+    const mine = must(
+      events.filter((one) => races.some((race) => race.eventId === one.id)).at(-1),
+      'an event that has races',
+    )
+
+    /* The event goes through and every race is refused, which is the shape of the
+       hazard: the halves of one press answered differently. */
+    answering = (path, init) =>
+      path.startsWith('/api/races') && (init?.method ?? 'GET') !== 'GET'
+        ? refused('theDistanceIsNotKeptExactly')
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.type(search, mine.name)
+
+    const shown = formatShortDate(mine.date, 'sr-Latn')
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (each) =>
+            (each.textContent ?? '').includes(mine.name) &&
+            (each.textContent ?? '').includes(shown),
+        ),
+      `the row for ${mine.name} on ${shown}`,
+    )
+
+    await user.click(within(row).getByRole('button', { name: `Otvori: ${mine.name}` }))
+    await user.type(await screen.findByLabelText(/^Opis događaja/), 'jedna rečenica')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = await screen.findAllByRole('alert')
+    const words = said.map((one) => one.textContent ?? '').join(' ')
+
+    /* It says the event IS saved, which is true, and that a race is not. */
+    expect(words).toContain('Događaj je sačuvan')
+    /* And it names what the route refused, in the reader s own language rather than
+       as a code he cannot read. */
+    expect(words).toContain('Dužina nije upisana u obliku koji portal čuva.')
+
+    /* No confirmation, so nothing tells him the mornings are filed. */
+    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+    /* And the form is still there with what he typed, so he can put the row right. */
+    expect(screen.getByRole('button', { name: 'Sačuvaj' })).toBeVisible()
+    expect(screen.getByLabelText(/^Opis događaja/)).toHaveValue('jedna rečenica')
+
+    /* The event was written once and only once: pressing again after reading why must
+       change it rather than file a second one at the same address. */
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(
+      whereItWrote(watching.asked).filter((one) => one.includes('/api/events')),
+      'the second press made a second event instead of changing the first',
+    ).toEqual([`PUT /api/events/${String(mine.id)}`, `PUT /api/events/${String(mine.id)}`])
+  }, SLOW)
+
+  it('drops the cache when a save goes through, so the next read asks the server', async () => {
+    /**
+     * THE OVERLAY DIES WITH THIS COMPONENT AND THE CACHE DOES NOT.
+     *
+     * <p>What this screen holds after a write is what the route ACCEPTED, and it holds it
+     * only while it is mounted. The array fetched at its first read outlives it, so
+     * without dropping that name an event entered here was gone the instant the router
+     * carried a reader to another screen and back - the row was never lost, only what this
+     * component remembered. A review measured exactly that one increment earlier, on the
+     * competitions (25.09.2026).
+     *
+     * <p>Measured as a READ that really happens: `loadResource` answers from the cache
+     * while it holds one, so a fetch after the save is the cache having been dropped, and
+     * no fetch is the cache still standing.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(
+      events.filter((one) => one.kind !== 'race').at(-1),
+      'an event with no races, so one press is one request',
+    )
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.type(search, mine.name)
+
+    const shown = formatShortDate(mine.date, 'sr-Latn')
+    const row = must(
+      (await table('Događaji'))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (each) =>
+            (each.textContent ?? '').includes(mine.name) &&
+            (each.textContent ?? '').includes(shown),
+        ),
+      `the row for ${mine.name} on ${shown}`,
+    )
+
+    await user.click(within(row).getByRole('button', { name: `Otvori: ${mine.name}` }))
+    await user.type(await screen.findByLabelText(/^Opis događaja/), 'jedna rečenica')
+
+    const read = () =>
+      watching.asked.filter(
+        (one) => one.path === '/api/events' && (one.init?.method ?? 'GET') === 'GET',
+      ).length
+    const before = read()
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await loadResource<BtlEvent[]>('events')
+
+    expect(read(), 'the next reader was handed the array this visit fetched before the save')
+      .toBeGreaterThan(before)
+  }, SLOW)
 
   it('changes a served event through its own address, and makes no second one', async () => {
     /**
