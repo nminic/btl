@@ -331,8 +331,9 @@
    a box are one `.field__control` and the type is the only thing that tells them
    apart. That is also the whole of the boundary, and it is stated rather than
    guarded: nothing here can know that a THIRD kind of input is a mark, so what holds
-   it is the count of hand written fields in `forms/controlHeight.test.tsx` and the
-   measurement somebody makes when that count changes. */
+   it is the list of screens that write a field by hand, read off the sources in
+   `forms/controlHeight.test.tsx`, and the measurement somebody makes when a screen
+   joins that list. */
 .field .field__control[type='checkbox'],
 .field .field__control[type='radio'] {
   min-block-size: auto;
