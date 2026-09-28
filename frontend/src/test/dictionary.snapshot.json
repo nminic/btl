@@ -1044,7 +1044,7 @@
     "transferShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
     "askToJoin": "Prelazak u drugi tim se dogovara van portala. Kad se dogovorite, administracija te upisuje u tim.",
     "leaveTeam": "Izađi iz tima",
-    "leaveTeamAsk": "Sigurno izlaziš iz tima {team}? Nazad se ne vraćaš sam: u tim te ponovo upisuje administracija.",
+    "leaveTeamAsk": "Sigurno izlaziš iz tima {team}? U tim se ne vraćaš sam: ponovo te upisuje administracija.",
     "leaveTeamSure": "Potvrdi izlazak",
     "leaveTeamKeep": "Odustani",
     "payNow": "Uplatnica",
