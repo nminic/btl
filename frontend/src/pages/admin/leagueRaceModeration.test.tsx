@@ -1,9 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
-import { clearResourceCache } from '../../data/client'
+import { arrivedResource, clearResourceCache } from '../../data/client'
 import { renderAt } from '../../test/render'
 import { did, isResource, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
-import { first, must } from '../../test/at'
+import { at, first, must } from '../../test/at'
 import { SLOW } from '../../test/slow'
 
 /**
@@ -66,6 +68,16 @@ describe('which races count towards a competition', () => {
 
   const ITS_NAME = 'Druga liga 2027'
 
+  /** The one that counts nothing yet, which is the state a competition made today is in. */
+  const COUNTS_NOTHING = 7
+
+  const NOTHING_YET = 'Prva liga 2027'
+
+  /** And the one whose served answer names a day none of whose races it counts. */
+  const DISAGREES = 15
+
+  const DISAGREEING_NAME = 'Nesloga liga 2027'
+
   const LEAGUES = [
     { id: 7, slug: 'prva-2027', name: 'Prva liga 2027', season: 2027, rules: '', prizes: '',
       eventIds: [], raceIds: [] },
@@ -86,6 +98,14 @@ describe('which races count towards a competition', () => {
        the one arrangement in which the chooser has nothing to offer. */
     { id: 13, slug: 'buduca-2035', name: 'Buduća liga 2035', season: 2035, rules: '', prizes: '',
       eventIds: [], raceIds: [] },
+    /* AND ONE WHOSE TWO FIELDS DISAGREE, which is the one arrangement in which „the badge
+       counts the DAYS the answer named" and „the badge counts the days of the RACES it
+       counts" give different numbers without anything being written at all. The generated
+       file the portal still ships is exactly this shape - its three competitions name
+       nineteen days between them and not one race - so this is real data rather than an
+       invention. */
+    { id: DISAGREES, slug: 'nesloga-2027', name: 'Nesloga liga 2027', season: 2027, rules: '',
+      prizes: '', eventIds: [A_DAY_NOBODY_COUNTS], raceIds: [] },
   ]
 
   /**
@@ -124,6 +144,33 @@ describe('which races count towards a competition', () => {
     )
 
     return user
+  }
+
+  /**
+   * The same four competitions, with one of the two big files refusing to come.
+   *
+   * The badge that counts days reads the races and the events, and neither of them is the
+   * file the names and the seasons come out of. So a screen that waited on them would be a
+   * screen a failed calendar replaces with an error, and a badge that counted nought would be
+   * this cell telling the same lie the whole branch is about, one file further back.
+   */
+  function servingWithout(broken: 'races' | 'events') {
+    clearResourceCache()
+
+    return serverThat((path) => {
+      if (path === '/api/leagues') {
+        return new Response(JSON.stringify(LEAGUES), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+
+      if (path === `/api/${broken}`) {
+        return new Response('greska', { status: 500 })
+      }
+
+      return isResource(path) ? null : did()
+    })
   }
 
   /** What was written, and to where: the recording server's own account of it. */
@@ -407,4 +454,296 @@ describe('which races count towards a competition', () => {
 
       server.stop()
     }, SLOW)
+
+  /**
+   * THE ROW ABOVE THE BOX, WHICH IS WHERE THIS PANEL'S WRITES WERE NOT ARRIVING.
+   *
+   * **The owner met it on QA and read it as work lost** (28.09.2026: „Popunim ovo ovako i
+   * onda se nista ne sacuva, nije se kreirala Liga sa ovim dogadjajem"). Nothing had been
+   * lost: `league` held one row, `league_race` held four, and `GET /api/leagues` answered
+   * with `raceIds` and `eventIds` both filled in. The badge beside the name was drawing
+   * `League.eventIds` off the answer this screen had been served BEFORE the panel wrote
+   * anything, and for a competition made during the visit that field is the empty list a new
+   * record is given and can never stop being. So the box listed four races under a badge
+   * saying „Bez dogadjaja".
+   *
+   * **Nothing in this file could see it, and that is the measurement rather than an
+   * apology.** Every case here read the BOX, so the whole package stayed green while the row
+   * above the box said the opposite. What the cases below add is the JOIN: one press, and
+   * both the thing that lists and the thing that counts are read after it.
+   */
+  describe('and the badge on the row says what the box under it counts', () => {
+    /** The row a competition is named in, which is the first one carrying its name. */
+    async function rowOf(name: string): Promise<HTMLElement> {
+      const table = within(await screen.findByRole('table', { name: 'Lige' }))
+
+      return must(
+        table.getAllByRole('row').find((one) => one.textContent?.includes(name)),
+        `the row of ${name}`,
+      )
+    }
+
+    /**
+     * Waits for the cell that counts days to say a thing, in the row of a named competition.
+     *
+     * The fourth cell and not a search over the row: the season is in the third and „2027"
+     * would answer a search for a number as readily as the count does.
+     */
+    async function badgeSays(name: string, words: string): Promise<void> {
+      const cell = at(within(await rowOf(name)).getAllByRole('cell'), 3)
+
+      await within(cell).findByText(words)
+    }
+
+    it('counts the days of the races it counts, and not the days the answer happened to name',
+      async () => {
+        const server = serving()
+
+        renderAt('/sr/administracija/lige', 'superadmin')
+
+        /* The one whose two fields disagree, with nothing written at all. `eventIds` names a
+           day, `raceIds` names no race of it, and under V20 a competition's days ARE the days
+           of its races - so a badge reading the first would say „1" over a box saying the
+           competition counts nothing. */
+        await badgeSays(DISAGREEING_NAME, 'Bez događaja')
+        /* And the one beside it that really does count races is not silenced with it, so
+           „Bez događaja" is being worked out rather than drawn over the whole column. */
+        await badgeSays(ITS_NAME, '2')
+
+        server.stop()
+      }, SLOW)
+
+    it('moves the moment the route accepts a race, in the row that was written to and in no other',
+      async () => {
+        const server = serving()
+        const user = setupUser()
+
+        renderAt('/sr/administracija/lige', 'superadmin')
+
+        await user.click(
+          await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }),
+        )
+
+        await badgeSays(NOTHING_YET, 'Bez događaja')
+
+        await user.selectOptions(
+          screen.getByLabelText('Događaj', {
+            selector: `#league-moderation-${COUNTS_NOTHING}-event`,
+          }),
+          String(OVER_TWO_MORNINGS),
+        )
+        await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+
+        const box = must(
+          document.getElementById(`league-moderation-${COUNTS_NOTHING}`),
+          'the box of the competition that counted nothing',
+        )
+
+        /* THE TWO HALVES READ AFTER ONE PRESS, which is the whole of this case: the box lists
+           both races of the morning that went in, and the badge over it says the one day they
+           are. Either one alone is what the package already had. */
+        expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
+        await badgeSays(NOTHING_YET, '1')
+        /* And the competition next to it has not moved, so the press reached one row rather
+           than the column. */
+        await badgeSays(ITS_NAME, '2')
+
+        server.stop()
+      }, SLOW)
+
+    it('falls back to the words when the last race is taken out again', async () => {
+      const server = serving()
+      const user = await openTheBox()
+
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+
+      await badgeSays(ITS_NAME, '2')
+
+      for (const out of [...within(box).getAllByRole('button', { name: /^Izbaci trku/ })]) {
+        await user.click(out)
+      }
+
+      /* Both races gone is both DAYS gone, because a day is on the list only through a race
+         of it. A badge that counted the served `eventIds` would still be saying „2". */
+      await badgeSays(ITS_NAME, 'Bez događaja')
+
+      server.stop()
+    }, SLOW)
+
+    it('empties the answer it was served, so the next screen to read a competition asks again',
+      async () => {
+        const server = serving()
+        const user = await openTheBox()
+
+        /* `POST /api/leagues/{id}/races` changes what `GET /api/leagues` answers with, and
+           this was the third write on this screen and the only one that cleared nothing: the
+           public list at `/lige` and this screen entered again both read that cached array.
+           Read through `arrivedResource` rather than through a second screen, because what is
+           being asked is about the cache itself. */
+        expect(arrivedResource('leagues'), 'the competitions never landed').not.toBeUndefined()
+
+        await user.selectOptions(
+          screen.getByLabelText('Događaj', { selector: `#league-moderation-${ACTED}-event` }),
+          String(A_DAY_NOBODY_COUNTS),
+        )
+        await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+
+        expect(arrivedResource('leagues')).toBeUndefined()
+
+        server.stop()
+      }, SLOW)
+
+    it.each([['races'], ['events']] as const)(
+      'says the count is unknown rather than nought when the %s never arrive',
+      async (broken) => {
+        const server = servingWithout(broken)
+
+        renderAt('/sr/administracija/lige', 'superadmin')
+
+        /* A count of NOUGHT over a file that failed is the same lie this whole branch is
+           about, one file further back: „Bez događaja" would be the screen saying a
+           competition counts nothing when what it really knows is nothing. The word is the
+           one the public list already uses for it (`pages/Leagues.tsx`, 13.09.2026). */
+        await badgeSays(ITS_NAME, 'nepoznato')
+        /* And the screen itself is not replaced by an error: what failed is one number in one
+           column, and the names, the addresses and the seasons come out of a different file
+           altogether. */
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+        expect(await screen.findByRole('table', { name: 'Lige' })).toBeVisible()
+
+        server.stop()
+      },
+      SLOW,
+    )
+
+    it('keeps the races entered during a visit when a form is opened over them and closed',
+      async () => {
+        const server = serving()
+        const user = setupUser()
+
+        renderAt('/sr/administracija/lige', 'superadmin')
+
+        await user.click(
+          await screen.findByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }),
+        )
+        await user.selectOptions(
+          screen.getByLabelText('Događaj', {
+            selector: `#league-moderation-${COUNTS_NOTHING}-event`,
+          }),
+          String(OVER_TWO_MORNINGS),
+        )
+        await user.click(screen.getByRole('button', { name: 'Dodaj u ligu' }))
+
+        /* OPENING A FORM SWAPS THIS WHOLE SUBTREE, so every panel is unmounted and mounted
+           again. While the list lived inside the panel, that took every race entered during
+           the visit with it: the races were on the server and the screen drew them gone,
+           which is the same sentence the owner read as „nothing was saved". */
+        await user.click(
+          within(await rowOf(NOTHING_YET)).getByRole('button', { name: `Otvori: ${NOTHING_YET}` }),
+        )
+        await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+        await badgeSays(NOTHING_YET, '1')
+
+        await user.click(screen.getByRole('button', { name: `Trke u ligi ${NOTHING_YET}` }))
+
+        const box = must(
+          document.getElementById(`league-moderation-${COUNTS_NOTHING}`),
+          'the box of the competition that counted nothing',
+        )
+
+        expect(within(box).getAllByRole('button', { name: /^Izbaci trku/ })).toHaveLength(2)
+
+        server.stop()
+      }, SLOW)
+  })
+
+  /**
+   * WHAT THE PANEL LOOKS LIKE, WHICH IS TWO CLASSES AND NOTHING ELSE, AND BOTH ENDS OF EACH
+   * ARE ASKED FOR HERE.
+   *
+   * **Written as one case per class and not as two files, because the fault this guards
+   * against is the JOIN** (28.09.2026): a sheet that carries a rule for a class nothing wears,
+   * or markup wearing a class no sheet has a rule for, each reads as though it works. So the
+   * class name is asserted at both ends, and the mutation that proves it is a change to the
+   * name at one end alone.
+   *
+   * **Who wins the cascade is not asked here and cannot be.** jsdom applies no stylesheet, so
+   * this says that the rule is written and that the element carries the class; how it looks
+   * at 360, 768 and 1280 pixels is measured in a browser (`admin/entityStyle.test.ts` gives
+   * the full reasoning for that division).
+   */
+  describe('and it wears what the portal already dresses a chooser and a row in', () => {
+    /** Every selector the screen's own sheet declares a rule for, unconditionally or not. */
+    function selectorsOfLeaguesCss(): string[] {
+      const tag = document.createElement('style')
+
+      tag.textContent = readFileSync(join(process.cwd(), 'src/pages/Leagues.css'), 'utf-8')
+      document.head.append(tag)
+
+      const sheet = must(tag.sheet, 'jsdom did not parse Leagues.css')
+      const found = [...sheet.cssRules].flatMap((rule) =>
+        rule instanceof CSSStyleRule ? [rule.selectorText] : [],
+      )
+
+      tag.remove()
+
+      return found
+    }
+
+    it('puts both choosers in the field administration already puts a chooser in', async () => {
+      const server = serving()
+
+      await openTheBox()
+
+      const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+
+      /* THE CLASS IS THE JOIN, so it is read off the element rather than assumed from the
+         markup. Bare, these two were the browser's own control - white on the portal's dark
+         ground - which is what the owner asked about („zasto su dropdowns ovako nakaradni?").
+         `.rankings__field` is what `admin/PendingQueue.tsx` puts a country chooser in, and the
+         sheet that carries it is already asked for by `Leagues.css`. */
+      for (const label of ['Događaj', 'Trka']) {
+        const chooser = within(box).getByLabelText(label)
+
+        expect(
+          chooser.closest('.rankings__field'),
+          `the ${label} chooser is not in a field`,
+        ).not.toBeNull()
+      }
+
+      /* And the other end of the join: the screen's own sheet lays that field out, because a
+         field inside a row of a table has to be told what width to take. */
+      expect(selectorsOfLeaguesCss()).toContain('.leagues__adding .rankings__field')
+
+      server.stop()
+    }, SLOW)
+
+    it('gives every race that counts a row of its own, so the controls stand in a column',
+      async () => {
+        const server = serving()
+
+        await openTheBox()
+
+        const box = must(document.getElementById(`league-moderation-${ACTED}`), 'the box')
+        const out = within(box).getAllByRole('button', { name: /^Izbaci trku/ })
+
+        expect(out).toHaveLength(2)
+
+        /* Each control's own item carries the class, and not the list it is in: the public
+           competition page draws its races in the same list (`league/LeagueEvents.tsx`) and
+           has no control to line up, so a rule on the list would reach a screen this branch
+           is not about. */
+        for (const one of out) {
+          expect(
+            one.closest('.leagues__counted-race'),
+            'a control to take a race out is not in a row of its own',
+          ).not.toBeNull()
+        }
+
+        expect(selectorsOfLeaguesCss()).toContain('.leagues__counted-race')
+
+        server.stop()
+      }, SLOW)
+  })
 })
