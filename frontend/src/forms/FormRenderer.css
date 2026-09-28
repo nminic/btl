@@ -19,6 +19,69 @@
   max-width: none;
 }
 
+/* A named part of a form, and the one construct a screen reader repeats before
+ * every field inside it.
+ *
+ * A `fieldset` rather than a `div` with a heading: a heading is read once, on
+ * the way past, so somebody who tabs straight into the third field of a group
+ * is never told which part of the form he is in. The `legend` is read before
+ * each of them.
+ *
+ * `min-inline-size: 0` is the one line here that is not decoration. A
+ * `fieldset` carries `min-inline-size: min-content` from the browser, not from
+ * any stylesheet, and the rows inside are grids: without it the widest single
+ * control sets a floor under the whole group, and a form that fits everywhere
+ * else pushes the page sideways on a telephone. Measured at 360.
+ *
+ * The rest undoes the border and the inset the browser draws, because the
+ * grouping is said by the words and by the gap, not by a box around it. */
+.form__group {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-20);
+}
+
+/* The words over a group.
+ *
+   Full text colour and not the muted grey the note about the star uses: this is
+   read to find a part of the form, not remembered once, so it holds the 4.5:1
+   the portal keeps everywhere (WCAG 2.2 SC 1.4.3).
+
+   `padding: 0` because a browser insets a `legend` by default, and `float:
+   none` with a width because a `legend` is laid out by rules of its own inside
+   a flex container: without them Safari has been seen to shrink it to its
+   content and sit the first row beside it. */
+.form__groupName {
+  padding: 0;
+  float: none;
+  width: 100%;
+  margin-bottom: var(--space-12);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+/* Air between two groups, and more of it than there is between two fields of
+ * one group.
+ *
+ * Measured before this existed: the gap above a group name and the gap above a
+ * field were both 20 pixels and the name was 16 pixels at weight 600, which is
+ * what a field label is to the last pixel. So „Ko ste" read as one more label
+ * with an empty box missing, and the parts it was drawn to separate looked like
+ * one run of nineteen fields, which is the thing the owner asked to be rid of.
+ *
+ * `margin-bottom` on the name rather than the gap of the group: a `legend` is
+ * laid out by the browser's own rules inside a `fieldset` and does not take the
+ * gap, measured at zero pixels between the name and the first field under it. */
+.form__group + .form__group {
+  margin-top: var(--space-12);
+}
+
 /* A row of fields, and one field to a line until there is room for more.
  *
  * Written the other way round, as columns undone by a query, the two rules met

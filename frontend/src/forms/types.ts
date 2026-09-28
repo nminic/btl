@@ -105,6 +105,29 @@ export type FieldDef = {
    */
   row?: number
   /**
+   * Which group of the form this field belongs to, named by what the group is
+   * called (owner, 28.09.2026: „organizuj je bolje, možda ponovo jedno ispod
+   * drugog", answered with groups rather than with one column).
+   *
+   * Drawn as a `fieldset` with a `legend`, which is the one construct a screen
+   * reader says before every field inside it: a heading over a run of fields
+   * says nothing about which fields it covers, and a member who arrives at
+   * „Broj ličnog dokumenta" by keyboard is told which part of the form he is
+   * in only if the grouping is the real one.
+   *
+   * Grouped by walking the list in order, the same way rows are, so a group is
+   * a run of neighbours and what is on screen is always in the order of the
+   * file. Fields without it are drawn exactly as they were before groups
+   * existed, which is what the other eleven forms rely on.
+   *
+   * Rows live INSIDE groups and keep their thirds (`PDL.md`, owner 12.08.2026:
+   * „Podeli je racionalno na trećine horizontalno"). What the group removes is
+   * only the need to fill a row to three ACROSS a boundary: before groups, the
+   * three fields nothing else claimed had to share a row, and the number of an
+   * identity document sat beside the size of a shirt.
+   */
+  groupKey?: string
+  /**
    * A link inside the words of the field, where the words point somewhere.
    *
    * One case, and it is the one that matters: the confirmation that the rules
