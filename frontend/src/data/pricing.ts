@@ -31,10 +31,11 @@ import { FIRST_SEASON, transfersTakeEffect } from './season'
  *
  * **Which means: adding a reader here that draws an amount is undoing this increment.** The
  * question „what does membership cost" is answered by the route, and by nothing in this
- * file. The one exception is named and is not a screen: `data/seedMessages.ts` quotes the
- * fee in a seeded inbox message, through `priceOn`, and it is a record standing in for a row
- * a database will hold rather than a price anybody is quoted - see the boundary written
- * there.
+ * file. **There is no exception left, since 28.09.2026.** There was one until that day:
+ * `data/seedMessages.ts` quoted the fee through `priceOn` in a message the inbox started
+ * with, and it was allowed to because it was a record standing in for a row rather than a
+ * price anybody was quoted. PDL 34 („NECU MOCK PODATKE NIGDE", owner) took that file out of
+ * the bundle altogether, so the sentence above now holds without a but.
  *
  * Two currencies are two price lists, not one with a conversion, and since PDL P12d (owner,
  * 25.09.2026) that is a decision and not merely a description: the rate of 120 dinars to the

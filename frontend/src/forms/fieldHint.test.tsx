@@ -953,7 +953,7 @@ function labelFound(labelKey: string): RegExp {
  * field moved from one row to another is a failure here rather than a table in
  * this file quietly describing a form that no longer exists.
  */
-function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number }[] {
+function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number; ofItsOwn: number }[] {
   const rows: FieldDef[][] = []
 
   for (const field of registracija.fields) {
@@ -970,12 +970,24 @@ function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number }[] {
     .filter((fields) => fields[0]?.row !== undefined)
     .map((fields) => ({
       fields,
-      columns: fields.reduce((so, one) => so + (one.type === 'place' ? 2 : 1), 0),
+      /* Never under what the form itself declares, which is how a row of two
+         fields is two THIRDS of the line and not two halves (`types.ts`,
+         `FormDef.columns`). The larger of the two, because the number on the
+         form is a floor: this reads the renderer's rule rather than repeating
+         its outcome. */
+      columns: Math.max(
+        registracija.columns ?? 0,
+        fields.reduce((so, one) => so + (one.type === 'place' ? 2 : 1), 0),
+      ),
+      /* And what the fields alone would have asked for, which is the only way to
+         say whether the floor is ever actually a ceiling. */
+      ofItsOwn: fields.reduce((so, one) => so + (one.type === 'place' ? 2 : 1), 0),
     }))
 }
 
 /**
- * Which part of the form each field stands in, as it was settled on 28.09.2026.
+ * Which part of the form each field stands in, as the owner settled it on the
+ * EVENING of 28.09.2026, having seen the first draft on QA.
  *
  * Written out by hand, and that is the whole point of it. Every other case in
  * this describe reads the grouping OUT of the definition, which is right for
@@ -990,27 +1002,44 @@ function rowsTheDefinitionAsksFor(): { fields: FieldDef[]; columns: number }[] {
  * line here for a field the form no longer asks for, fails on the day it happens
  * rather than the day somebody looks. The portal already does this once, in
  * `pages/publicData.test.tsx`, for the same reason.
+ *
+ * **`null` is a place too, and it is the one thing this table could not say
+ * before today.** Owner: „Sekcija Saglasnosti ne treba da ima naziv, samo ispod
+ * Kategorije i veličine majice treba da stoji checkbox koji je tu i sada sa
+ * opisom, i na kraju dugme za slanje prijave." A field written here with a name
+ * would pass by standing in any group at all; written as `null` it fails the
+ * moment anything wraps it, which is the only way to hold a part of a form that
+ * is not a part.
  */
-const STANDS_IN: Record<string, string> = {
-  firstName: 'Ko ste',
-  lastName: 'Ko ste',
-  fatherName: 'Ko ste',
-  birthDate: 'Ko ste',
-  gender: 'Ko ste',
+const STANDS_IN: Record<string, string | null> = {
+  firstName: 'Osnovni podaci',
+  lastName: 'Osnovni podaci',
+  fatherName: 'Osnovni podaci',
+  gender: 'Osnovni podaci',
+  birthDate: 'Osnovni podaci',
+  idNumber: 'Osnovni podaci',
   email: 'Pristup nalogu',
   password: 'Pristup nalogu',
   passwordRepeat: 'Pristup nalogu',
-  address: 'Kontakt i adresa',
-  city: 'Kontakt i adresa',
-  phone: 'Kontakt i adresa',
-  idNumber: 'Za evidenciju članova',
+  address: 'Kontakt i dostava',
+  phone: 'Kontakt i dostava',
+  city: 'Kontakt i dostava',
   firstSeason2027: 'Takmičenje',
   shirtSize: 'Takmičenje',
+  /* Still a group of its own, and NOT because anybody chose that today: the
+     owner asked for the picture and the words about oneself to leave the
+     registration altogether („Profilna sekcija se sa slikom i svojim rečima
+     izbacuje iz registracione forme"), and they cannot, yet.
+     `WhatRegistrationAsksForTest.everyFieldTheFormAsksForIsOneTheServerKnows`
+     reads THIS file and holds the server's four sets to the names it draws, in
+     both directions, so taking two fields out of the form here fails a backend
+     test that no frontend gate runs. Measured, not assumed. It is written up in
+     the description of this branch and it is one change across both halves. */
   photo: 'Profil',
   bio: 'Profil',
-  healthStatement: 'Saglasnosti',
-  parentConsent: 'Saglasnosti',
-  parentRelation: 'Saglasnosti',
+  healthStatement: null,
+  parentConsent: null,
+  parentRelation: null,
 }
 
 /**
@@ -1032,10 +1061,20 @@ const STANDS_IN: Record<string, string> = {
  */
 const ROWS_ARE: string[][] = [
   ['firstName', 'lastName', 'fatherName'],
-  ['birthDate', 'gender'],
+  /* „U drugom redu idu Pol […], polje datum rođenja koje je sa sve date pickerom
+     u liniji sa Prezime poljem i na kraju broj ličnog dokumenta." The date in
+     the SECOND column is the whole of why the order is this one and not the
+     other: under „Prezime". */
+  ['gender', 'birthDate', 'idNumber'],
   ['email', 'password', 'passwordRepeat'],
-  ['address'],
-  ['city', 'phone'],
+  /* „Prvi red je Adresa […] i telefon (Treća kolona je prazna)", after his own
+     correction a minute later: „Moja greška, izvini, adresa ne zauzima duplu
+     širinu. PO trećinu". */
+  ['address', 'phone'],
+  /* „Drugi red su jednake trećine za Mesto i Državu (Treća kolona je prazna)",
+     which is ONE field: the town carries the country beside it and the two are
+     two columns of the three (`FormRenderer.css`, `.field--place`). */
+  ['city'],
   ['firstSeason2027', 'shirtSize'],
   ['photo', 'bio'],
 ]
@@ -1060,13 +1099,11 @@ const ROWS_ARE: string[][] = [
  * fields into must be the same names, once each, in both directions.
  */
 const GROUPS_ARE: string[] = [
-  'Ko ste',
+  'Osnovni podaci',
   'Pristup nalogu',
-  'Kontakt i adresa',
-  'Za evidenciju članova',
+  'Kontakt i dostava',
   'Takmičenje',
   'Profil',
-  'Saglasnosti',
 ]
 
 describe('a form laid out in groups', () => {
@@ -1150,6 +1187,22 @@ describe('a form laid out in groups', () => {
         `the form no longer asks for ${name}`,
       )
 
+      if (stands === null) {
+        /* The tail, which is a part of the form that is not a part of it. Asked
+           of the element and not of the role, for the reason the case below
+           gives: `group` is a role the country list carries too, so „inside no
+           group" read through the role would be answered by a field that sits
+           inside the renderer's own fieldset and merely outside an `optgroup`.
+           What must not be over it is `.form__group`, which is the wrapper the
+           renderer draws and the only thing that puts a name over anything. */
+        expect(
+          screen.getByLabelText(labelFound(field.labelKey)).closest('.form__group'),
+          `${name} is drawn inside a group, and the owner asked for it to stand under none`,
+        ).toBeNull()
+
+        continue
+      }
+
       expect(
         within(screen.getByRole('group', { name: stands }))
           .queryAllByLabelText(labelFound(field.labelKey)).length,
@@ -1158,14 +1211,24 @@ describe('a form laid out in groups', () => {
     }
   })
 
-  it('names the same seven groups STANDS_IN sorts fields into, once each', () => {
+  it('names the same five groups STANDS_IN sorts fields into, once each', () => {
     /* The floor under `GROUPS_ARE`, the same shape as the floor under `STANDS_IN`
        two cases above and under `ROWS_ARE` at the top of this describe: held in
        both directions, so a group that reaches `STANDS_IN` without a line here,
        or a line here for a group nothing stands in any longer, fails on the day
        it happens rather than the day somebody looks. */
-    const named = [...new Set(Object.values(STANDS_IN))]
+    /* The names, and not the absence of one: a field that stands under no group
+       has no line to be owed here, and `null` swept in among them would ask this
+       table to carry a group that is not drawn. What holds THOSE fields is the
+       case above, which looks for the wrapper over each one and demands there be
+       none. */
+    const named = [...new Set(Object.values(STANDS_IN).filter((one) => one !== null))]
 
+    expect(named.length, 'no field of the form stands in a named group').toBeGreaterThan(0)
+    expect(
+      Object.values(STANDS_IN).filter((one) => one === null).length,
+      'no field of the form stands outside every group, and the owner asked for a tail that does',
+    ).toBeGreaterThan(0)
     expect(GROUPS_ARE.length, 'a group is written into the table of groups twice').toBe(
       new Set(GROUPS_ARE).size,
     )
@@ -1223,12 +1286,19 @@ describe('a form laid out in groups', () => {
        nowhere in the other. First as the form opens, when the two a guardian
        answers are not drawn at all. */
     for (const field of asked.filter((one) => one.showWhenYoungerThan === undefined)) {
-      const named = must(field.groupKey, `${field.name} is asked for and names no group`)
+      if (field.groupKey === undefined) {
+        expect(
+          screen.getByLabelText(labelFound(field.labelKey)).closest('.form__group'),
+          `${field.name} names no group and is drawn inside one`,
+        ).toBeNull()
+
+        continue
+      }
 
       expect(
-        within(screen.getByRole('group', { name: words(named) }))
+        within(screen.getByRole('group', { name: words(field.groupKey) }))
           .queryAllByLabelText(labelFound(field.labelKey)).length,
-        `${field.name} is not drawn inside „${words(named)}"`,
+        `${field.name} is not drawn inside „${words(field.groupKey)}"`,
       ).toBeGreaterThan(0)
     }
 
@@ -1245,12 +1315,19 @@ describe('a form laid out in groups', () => {
     await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
 
     for (const field of asked) {
-      const named = must(field.groupKey, `${field.name} is asked for and names no group`)
+      if (field.groupKey === undefined) {
+        expect(
+          screen.getByLabelText(labelFound(field.labelKey)).closest('.form__group'),
+          `${field.name} names no group and is drawn inside one once a guardian is asked for`,
+        ).toBeNull()
+
+        continue
+      }
 
       expect(
-        within(screen.getByRole('group', { name: words(named) }))
+        within(screen.getByRole('group', { name: words(field.groupKey) }))
           .queryAllByLabelText(labelFound(field.labelKey)).length,
-        `${field.name} is not drawn inside „${words(named)}" once a guardian is asked for`,
+        `${field.name} is not drawn inside „${words(field.groupKey)}" once a guardian is asked for`,
       ).toBeGreaterThan(0)
     }
   })
@@ -1274,8 +1351,19 @@ describe('a form laid out in groups', () => {
     expect(wanted.length, 'the definition puts no field on a row').toBeGreaterThan(0)
     expect(document.querySelectorAll('.form__row')).toHaveLength(wanted.length)
 
-    for (const { fields, columns } of wanted) {
+    for (const { fields, columns, ofItsOwn } of wanted) {
       const first = must(fields[0], 'a row of the definition holds no field')
+
+      /* **The floor under `FormDef.columns` being a FLOOR.** A number declared on
+         the form widens a row that would have been narrower; it must never be
+         asked to narrow one, because a row with more fields than columns does
+         not lose them, it drops them onto a second line where nothing on this
+         form would say a word about it. Measured here rather than promised in a
+         comment on the type. */
+      expect(
+        ofItsOwn,
+        `the row ${first.name} stands in holds more than the ${String(registracija.columns)} columns the form declares`,
+      ).toBeLessThanOrEqual(columns)
       const drawn = must(
         screen.getByLabelText(labelFound(first.labelKey)).closest<HTMLElement>('.form__row'),
         `the row ${first.name} stands in`,
@@ -1360,5 +1448,101 @@ describe('a form laid out in groups', () => {
         `${field.name} is on a row, and the definition puts it on none`,
       ).toBeNull()
     }
+  })
+
+  /**
+   * EVERY ROW OF THIS FORM IS THREE COLUMNS, WHATEVER STANDS ON IT.
+   *
+   * Owner, 12.08.2026: „Podeli je racionalno na trećine horizontalno", and on
+   * 28.09.2026 three times over about the rows that do not fill them: „Treća
+   * kolona je prazna", „(Treća kolona je prazna)", „treća trećina je prazna".
+   *
+   * Asked of EVERY row rather than of the three he named, and that is the whole
+   * difference between this case and a list of three: „Adresa, Telefon" being
+   * three columns wide is not a fact about that row, it is the same fact as
+   * „Mesto" being three columns wide, and a case that names three rows goes on
+   * passing the day a fourth is added narrow.
+   *
+   * The number is read off the form rather than written here, so there is one
+   * place to move it; that it is THREE and not something else is the line below,
+   * which is the only thing in this file that says so out loud.
+   */
+  it('draws every row of the registration in thirds, filled or not', async () => {
+    const user = setupUser()
+
+    renderForm()
+    await user.type(screen.getByLabelText(/Datum rođenja/), '01012015')
+
+    expect(registracija.columns, 'the registration form no longer asks for thirds').toBe(3)
+
+    const drawn = [...document.querySelectorAll<HTMLElement>('.form__row')]
+
+    expect(drawn.length, 'the registration draws no rows at all').toBeGreaterThan(0)
+
+    /* And at least one row that does NOT fill them, or this case is satisfied by
+       a form on which every row happens to hold three fields and says nothing
+       about the empty third at all. Three such rows today; one is the floor. */
+    const short = rowsTheDefinitionAsksFor().filter(({ ofItsOwn }) => ofItsOwn < 3)
+
+    expect(
+      short.length,
+      'no row of the registration leaves a column empty, so this case cannot see one',
+    ).toBeGreaterThan(0)
+
+    for (const row of drawn) {
+      expect(row, 'a row of the registration is not drawn in thirds').toHaveStyle({
+        '--columns': '3',
+      })
+    }
+  })
+
+  /**
+   * THE TAIL: no name over it, the confirmation in it, and the button last.
+   *
+   * Owner, 28.09.2026: „Sekcija Saglasnosti ne treba da ima naziv, samo ispod
+   * Kategorije i veličine majice treba da stoji checkbox koji je tu i sada sa
+   * opisom, i na kraju dugme za slanje prijave."
+   *
+   * Three things and three assertions, because they fail apart: a tail drawn
+   * inside a nameless wrapper, a tail drawn before the groups, and a button
+   * drawn above what it sends are three different mistakes and the first two
+   * both pass a case that only looks for the confirmation.
+   */
+  it('ends in a tail nothing is written over, after the last group and before the button', () => {
+    renderForm()
+
+    const form = must(document.querySelector('form'), 'the form')
+    const confirmation = screen.getByLabelText(labelFound('registration.healthStatement'))
+
+    /* Nothing over it. Not „the legend says nothing", which a legend drawn empty
+       would satisfy: no wrapper at all. */
+    expect(
+      confirmation.closest('.form__group'),
+      'the confirmation is wrapped in a group, and the owner asked for no name over it',
+    ).toBeNull()
+
+    /* And after the last of them. `compareDocumentPosition` alone would answer
+       „following" for a node the group CONTAINS, so containment is refused
+       first: `DOCUMENT_POSITION_CONTAINED_BY` always carries `FOLLOWING` with
+       it, and without this the confirmation would satisfy „after the last
+       group" by being inside it. */
+    const groups = [...form.querySelectorAll<HTMLElement>(':scope > fieldset')]
+    const last = must(groups.at(-1), 'the form draws no group')
+
+    expect(last.contains(confirmation), 'the confirmation stands inside the last group').toBe(false)
+    expect(
+      Boolean(last.compareDocumentPosition(confirmation) & Node.DOCUMENT_POSITION_FOLLOWING),
+      'the confirmation is drawn before the last group rather than after it',
+    ).toBe(true)
+
+    /* And the button after the confirmation, which is the last of his sentence.
+       Same refusal of containment, for the same reason. */
+    const sending = screen.getByRole('button', { name: words('registration.submit') })
+
+    expect(sending.contains(confirmation), 'the confirmation stands inside the button').toBe(false)
+    expect(
+      Boolean(confirmation.compareDocumentPosition(sending) & Node.DOCUMENT_POSITION_FOLLOWING),
+      'the button that sends the form is drawn above what it sends',
+    ).toBe(true)
   })
 })

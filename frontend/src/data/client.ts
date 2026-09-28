@@ -109,6 +109,29 @@ export const RESOURCE_NAMES = [
      that a name in the key would otherwise have had to buy. */
   'inbox',
   'leagues',
+  /* EVERYTHING THE ONE ASKING IS WAITING TO HEAR BACK ABOUT (`MyApplicationsApi`). The
+     eighteenth, since 28.09.2026, and the fourth name here that was ANSWERED long before
+     anything asked for it.
+
+     **Why a screen needs it at all, which is a fact about two routes rather than a
+     preference.** `GET /api/inbox` answers `teamInvitationId` and nothing else about the
+     question it carries, while `PUT /api/teams/{id}/invitations/{invitation}` needs the TEAM
+     in its path as well. This is the only route that hands the invited member both halves,
+     which `data/useResource.ts` wrote down as the boundary that increment ended on: „the
+     screen it is owed is the increment that reads `/api/me/applications`."
+
+     **THE FIRST NAME ON THIS LIST WITH A SLASH IN IT, and that is the address rather than a
+     nesting.** `addressOf` builds `/api/<name>`, the route really is declared at
+     `/api/me/applications` (`MyApplicationsApi`, a `@GetMapping` `data/contract.test.ts`
+     reads out of the Java source), and a name that dropped the `me/` would be this file
+     inventing an address the backend does not answer.
+
+     **THE SECOND NAME WHOSE ANSWER IS DIFFERENT FOR EVERY CALLER**, after `inbox`, and the
+     cache above is keyed by name with nobody in the key. It is dropped the moment the caller
+     changes for exactly the reason written over `inbox`: signing out and back in happen IN
+     PLACE, so a visit is not one person. That is `theWaitingNowBelongsTo` in
+     `data/useResource.ts`. */
+  'me/applications',
   'moderators',
   'pages',
   'pairs',

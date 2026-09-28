@@ -551,7 +551,7 @@ class PageApiTest {
 	 * AND IT IS READABLE WITHOUT SIGNING IN.
 	 *
 	 * <p>The privacy policy and the terms of use must be readable before anybody accepts
-	 * them by registering (`PDL.md`:3094, „moraju postojati pre lansiranja"), and the
+	 * them by registering (PDL.md ("moraju postojati pre lansiranja")), and the
 	 * terms themselves point a prospective member at the rulebook for the price of
 	 * joining. {@code ApiSecurityTest} holds the sub-paths, the spellings and the
 	 * writing for every route already on {@code ApiSecurity.READ_BY_ANYBODY}; what it

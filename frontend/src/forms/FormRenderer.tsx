@@ -189,9 +189,26 @@ type Drawn = { field: FieldDef; value: string | boolean }
  *
  * A town counts as two, because it carries the country beside it and the two are
  * two controls: „Adresa, Mesto, Država" is three columns and two fields.
+ *
+ * <p><b>And never narrower than the form itself asks for.</b> A form may declare
+ * a width every one of its rows has (`types.ts`, `FormDef.columns`), which is
+ * how a row of two fields leaves a third of the line empty rather than becoming
+ * two halves. Owner, 28.09.2026, three times over: „Treća kolona je prazna".
+ *
+ * <p>The larger of the two rather than the declared one, so the number on the
+ * form is a FLOOR. A row that outgrows it keeps the width it needs, instead of
+ * having its last field pushed onto a second line by a number written elsewhere
+ * and for another row.
+ *
+ * <p>`declared` is a number and never nothing: a form that names no width is
+ * read as nought before this is called, where a form that names none is really
+ * drawn. See `floor` in the component.
  */
-function columnsOf(fields: Drawn[]): number {
-  return fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0)
+function columnsOf(fields: Drawn[], declared: number): number {
+  return Math.max(
+    declared,
+    fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0),
+  )
 }
 
 /**
@@ -906,6 +923,21 @@ export function FormRenderer({
   )
   const broken = visible.filter((field) => shown[field.name] !== undefined)
   const titleId = `form-${form.id}-title`
+  /* The width this form gives every one of its rows, or nought where it names
+     none (`types.ts`, `FormDef.columns`).
+   *
+     Read HERE, once for the form, and not inside `columnsOf` where it is used.
+     Inside, the fallback is unreachable: `columnsOf` is called for a ROW, the
+     registration is the only form of the twelve that puts a field on one, and it
+     is the only one that declares a width - so a form arriving without one never
+     reaches that line and the coverage gate says so, at 99,97% of branches with
+     3575 cases green. Out here it is read for every form the renderer draws,
+     eleven of which declare nothing, and both answers are live.
+
+     The gate finding it is the point rather than an inconvenience: a fallback
+     nothing can reach is a promise nobody is keeping, and a case written to
+     reach it sideways would only have hidden that. */
+  const floor = form.columns ?? 0
 
   /**
    * What is on screen, which is what may be sent.
@@ -1198,7 +1230,7 @@ export function FormRenderer({
                  variable on it makes (components/ColumnChart.tsx): TypeScript's
                  `CSSProperties` has no room for a custom property, and there is no
                  other way to hand a number to a stylesheet. */
-              style={{ '--columns': columnsOf(fields) }}
+              style={{ '--columns': columnsOf(fields, floor) }}
             >
               {drawnRow}
             </div>

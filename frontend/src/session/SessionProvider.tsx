@@ -27,7 +27,6 @@ import {
   type SubmissionStatus,
   type Amendment,
 } from './context'
-import { FIRST_MESSAGES } from '../data/seedMessages'
 
 export function SessionProvider({
   initialMemberNumber = null,
@@ -70,7 +69,22 @@ export function SessionProvider({
      identity of the record each one replaces. Read by `useResults`, so the
      standing, the profile, the boards and the league all see one answer. */
   const [corrected, setCorrected] = useState<Record<string, Result>>({})
-  const [messages, setMessages] = useState<Message[]>(FIRST_MESSAGES)
+  /* EMPTY, AND IT IS THE OWNER'S OWN DECISION RATHER THAN A TIDY-UP (PDL 34, 28.09.2026).
+     Two records lived here as the starting value until that day - `data/seedMessages.ts`,
+     „Dobro došao u pripremu sezone 2027" and „Rezultat je odobren" - and they shipped, so
+     every member on QA was greeted with mail nobody had sent him. His words, looking at it:
+     „Zasto su ove testne poruke i dalje tu?????? NECU MOCK PODATKE NIGDE".
+
+     What that decision says, in its three parts: the inbox shows exactly what
+     `GET /api/inbox` answers and nothing besides; no record standing in for a row of the
+     database may be in the shipped bundle; and a case that needs a message writes one
+     itself. An empty inbox is an empty inbox, and drawing it is the true picture.
+
+     What this list still holds is everything `notify` puts in it during a visit - nine
+     screens write here - and `data/useResource.ts` merges that half with the served one. So
+     nothing about the two halves changed; what went is the pretence that the browser starts
+     holding two rows it was never given. */
+  const [messages, setMessages] = useState<Message[]>([])
   const [edits, setEdits] = useState<Edits>({})
   const [creations, setCreations] = useState<Creations>({})
   const [rights, setRights] = useState<Rights>({})

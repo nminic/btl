@@ -3351,11 +3351,17 @@ describe('the five queues read from the file', () => {
 
     /* This inbox is not simply empty, and it is not proved so by counting links:
        the first version did that and counted the navigation, which draws „Sve
-       poruke" whether or not there is a message. A review emptied the seeded
-       messages and it still passed. What is asked for is one of those messages by
-       name, since a message written to everybody is exactly what an empty
-       recipient would be mixed up with. */
-    expect(await screen.findByText(/Dobro došao u pripremu sezone 2027/)).toBeVisible()
+       poruke" whether or not there is a message. A review emptied the messages and
+       it still passed. What is asked for is one of them by name.
+
+       **Off the SERVER since 28.09.2026, and it used to be a broadcast the bundle
+       seeded.** PDL 34 („NECU MOCK PODATKE NIGDE", owner) took those two records
+       out, so the witness that this panel really drew something is now a row
+       `GET /api/inbox` answers - `test/mock/inbox.json`, which the harness serves
+       to whoever asks. The claim underneath is untouched: a message written to
+       everybody is exactly what an empty recipient would be mixed up with, and the
+       line below is what says this reader was not written to. */
+    expect(await screen.findByText(/Fotografija je prihvaćena/)).toBeVisible()
     expect(screen.queryByText(/Tekst o sebi je vraćen/)).not.toBeInTheDocument()
   })
 

@@ -247,8 +247,30 @@ describe('which fields the portal serves', () => {
        amount is what the price list says he should send, and the balance is what his own book
        adds up to. None is countable about him, and none can be year-shaped in the way the rule
        below cares about - a fee is thousands of dinars or tens of euro, and a balance is money
-       rather than a year. The three were added to the snapshot by hand, as this file requires. */
-    expect(Object.keys(served)).toHaveLength(16)
+       rather than a year. The three were added to the snapshot by hand, as this file requires.
+
+       **Seventeen files since 28.09.2026, and this one is the first that is not at the top of
+       the folder: `me/applications.json` sits one level down, because the address it stands in
+       for is `/api/me/applications` and `test/setup.ts` turns an address into a path.** The
+       sweep above already descends and has its own case saying so; what moves here is the
+       count. Nineteen more paths, fifteen of them nested, over four lists of what one member is
+       waiting to hear back about.
+
+       **None of the nineteen is about a person except one, and that one is a member NUMBER**:
+       `pairInvites.memberNumber` is the other half of a racing pair, which is the spelling every
+       public answer on this portal already uses for somebody (`PairApi`, `AttendanceApi`) and is
+       exactly what `/api/competitors` is keyed by. The route drops it where that member's fee
+       has lapsed, for the rule of 13.09.2026 - „Nijedan javni odgovor ne sme da imenuje člana
+       kome je članarina istekla, NI POSREDNO" - so the field has two states and the served file
+       holds the named one.
+
+       **And none of the nineteen can be year-shaped in the way the rule below cares about.**
+       The four dates leave as DAYS (`2026-10-06`), the same as the inbox's two; the keys are
+       identifiers a sequence handed out; `teamId` is a team's key and not a season, and the
+       one field that sounds like a year is not there at all - `MyApplicationsApi` answers no
+       `season` on any of the four lists, which is `TeamJoiningWriteApi`'s own decision that the
+       season is read on the day of the ANSWER and never off the question. */
+    expect(Object.keys(served)).toHaveLength(17)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,

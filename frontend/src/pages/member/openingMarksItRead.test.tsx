@@ -8,9 +8,10 @@ import {
   serverThat,
   type Asked,
 } from '../../test/serverAnswers'
-import { FIRST_MESSAGES } from '../../data/seedMessages'
 import { SLOW } from '../../test/slow'
 import { translate } from '../../i18n/translate'
+import { useSession } from '../../session/useSession'
+import { setupUser, type Pressing } from '../../test/user'
 import sr from '../../i18n/sr.json'
 
 /**
@@ -254,24 +255,66 @@ function theEnvelope(): Promise<HTMLElement> {
 }
 
 /**
- * WHAT THE ENVELOPE SAYS WHEN THIS MANY SERVED MESSAGES ARE UNREAD.
+ * WHAT THE ENVELOPE SAYS WHEN THIS MANY MESSAGES ARE UNREAD.
  *
- * <p><b>The held half is added in here rather than into each number, and it is READ OFF THE SEED
- * rather than remembered.</b> Every screen of this file draws both halves of the inbox: what the
- * server answered, and what `data/seedMessages.ts` addresses to the whole league. One of those
- * seeded records is unread, so every count in this file is „the served ones, plus that". Written
- * as a bare number per case, each of them would be an unexplained arithmetic that the next reader
- * has to rediscover - and the first draft of this file got all five wrong in the same direction.
+ * <p><b>The number is the whole number, since 28.09.2026.</b> It used to add a held record in on
+ * top of the served ones, read off `data/seedMessages.ts`: the bundle put two broadcasts into
+ * every session, one of them unread, so every count in this file was „the served ones, plus that
+ * one". PDL 34 („NECU MOCK PODATKE NIGDE", owner) took that file out of the shipped bundle, so a
+ * session begins holding nothing and what the envelope counts is what the case itself put on the
+ * screen - served rows, plus any message a case writes with `notify`.
  *
- * <p><b>Derived, so that the day somebody marks that seeded record read or adds a second, this
- * file moves with it</b> instead of going red five times over something that is not its subject.
- * A broadcast (`to: ''`) is counted for every member; anything addressed to one member is not
- * this reader's business, which is the provider's own filter (`session/SessionProvider.tsx`).
+ * <p>Kept as a helper rather than written out per case for the reason it was always here: the
+ * plural rule is the dictionary's and „1 nepročitana" against „2 nepročitane" is not arithmetic
+ * anybody should be doing by hand.
  */
-function saysUnread(served: number): string {
-  const held = FIRST_MESSAGES.filter((one) => one.to === '' && !one.read).length
+function saysUnread(unread: number): string {
+  return `${sr.shell.openMessages}, ${translate(sr, 'sr', 'shell.unread', { count: unread })}`
+}
 
-  return `${sr.shell.openMessages}, ${translate(sr, 'sr', 'shell.unread', { count: served + held })}`
+/**
+ * A MESSAGE THIS VISIT WROTE, which since 28.09.2026 is the only way a line lands in the
+ * browser's half of the inbox.
+ *
+ * <p>Both cases about that half read a seeded record until then. What replaces it is the road
+ * nine screens really use, `notify`, so what those cases measure is now reachable in production
+ * for the same reason it is reachable here.
+ *
+ * <p><b>Dated BEFORE the served row every one of those cases also serves</b> (`ALREADY_READ`,
+ * 2026-09-19), which is the whole reason the date is written out: sorted together, the held line
+ * must not be `lines[0]`, or „the message in the address" and „the first message on the screen"
+ * become one value again and `markRead(lines[0].id)` has nowhere to be wrong.
+ */
+function WritesOneHeldMessage() {
+  const { notify } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        notify({
+          from: 'Balkanska trkačka liga',
+          /* To him and not to the league, so no case below can be satisfied by a message
+             everybody would have been sent. */
+          to: '000007',
+          subject: 'Predlog tima čeka odgovor',
+          body: 'Dunavski trkači te pozivaju u tim.',
+          date: '2026-09-15',
+        })
+      }}
+    >
+      napisi poruku u posetu
+    </button>
+  )
+}
+
+/** Writes it and waits for the row, so what follows reads a list that really holds both halves.
+ *  The key `notify` gives the first message of a visit is `msg-1`, which is the address the
+ *  link below carries. */
+async function withOneHeld(user: Pressing): Promise<HTMLElement> {
+  await user.click(screen.getByRole('button', { name: 'napisi poruku u posetu' }))
+
+  return screen.findByRole('link', { name: /Predlog tima čeka odgovor/ })
 }
 
 /** The list item one subject stands in, so that what is asserted about a message is read off
@@ -410,34 +453,35 @@ describe('a message the browser is holding', () => {
        This row is what `OPENED` is for the served half above (line 55) - it exists so the
        message being opened is not first.
 
-       Already read, and dated after the seed rather than before it, so nothing here moves
+       Already read, and dated after the held one rather than before it, so nothing here moves
        the count this case ends on: it arrives read, stays read, and is never opened, same
        as `ALREADY_READ` behaves in the served cases above. A row still unread when the
-       case ends would change what „nought" below has to mean; this one does not. */
+       case ends would change what „nought" below has to mean; this one does not.
+
+       **AND THE HELD LINE IS ONE THIS CASE WRITES, since 28.09.2026.** It was a record the
+       bundle seeded into every session until PDL 34 („NECU MOCK PODATKE NIGDE", owner) took
+       that out; `notify` is what puts one there in production, so the case walks that road
+       and then opens the message through the link the member would press. */
     aServerKeepingMarks({ [HIS_ADDRESS]: [ALREADY_READ] })
 
-    const seeded = 'msg-1'
+    const user = setupUser()
 
-    renderAt(`/sr/poruke/${seeded}`, 'competitor', '000007')
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, <WritesOneHeldMessage />)
+
+    await screen.findByRole('link', { name: ALREADY_READ.subject })
+
+    await user.click(await withOneHeld(user))
 
     await screen.findByRole('heading', {
       level: 1,
-      name: /Dobro došao u pripremu sezone/,
+      name: 'Predlog tima čeka odgovor',
     })
 
     /* **The count falling to NOUGHT is what says the mark landed**, and it landed in the
        session: nothing was sent. A screen that sent `POST /api/inbox/msg-1/read` would be asking
        the server about a key it has never heard of, and one that sent nothing AND marked nothing
-       would leave this at one.
-
-       Written out rather than through `saysUnread`, and that is the difference this case turns
-       on: every other count in this file is „served, plus the held one that is always there",
-       while here the held one is the very message being opened. So nought is nought on both
-       halves, and a helper that added the seed back in would be asserting the opposite of the
-       point. */
-    expect(await theEnvelope()).toHaveAccessibleName(
-      `${sr.shell.openMessages}, ${translate(sr, 'sr', 'shell.unread', { count: 0 })}`,
-    )
+       would leave this at one. */
+    expect(await theEnvelope()).toHaveAccessibleName(saysUnread(0))
 
     expect(whatWasMarked()).toEqual([])
   }, SLOW * 2)
@@ -446,17 +490,21 @@ describe('a message the browser is holding', () => {
 describe('what the portal offers for saying so by hand', () => {
   it('offers nothing, on either half of the list', async () => {
     /* **Both halves in one case, because the owner refused it for both in one sentence.** The
-       served row is unread and so is the seeded broadcast the browser holds, so a screen that
-       kept the old button for „whichever one the portal is the store of" still fails here. */
+       served row is unread and so is the one the browser is handed below, so a screen that
+       kept the old button for „whichever one the portal is the store of" still fails here.
+       The held one is written by this case since 28.09.2026 (PDL 34); it was a seeded record
+       until then, and what it is here for did not change. */
     aServerKeepingMarks({ [HIS_ADDRESS]: [OPENED] })
 
-    renderAt('/sr/poruke', 'competitor', '000007')
+    const user = setupUser()
+
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, <WritesOneHeldMessage />)
 
     await screen.findByRole('link', { name: OPENED.subject })
 
-    /* A floor under the absence: the seeded held line is on this screen too, so both states of
+    /* A floor under the absence: the held line is on this screen too, so both states of
        „where does the mark live" are really drawn here. */
-    expect(screen.getByRole('link', { name: /Dobro došao u pripremu sezone/ })).toBeVisible()
+    expect(await withOneHeld(user)).toBeVisible()
 
     /* **ASKED OF THE LIST ITSELF AND NOT OF THE DOCUMENT, which is a measurement rather than
        caution.** A first draft asked the whole page for a button named `/pročitan/i` and it
@@ -470,7 +518,7 @@ describe('what the portal offers for saying so by hand', () => {
        pročitano" would go on passing for ever whatever the screen drew - a case that cannot
        fail. What a row of this list may carry is a link to the message and nothing else. */
     expect(within(rowOf(OPENED.subject)).queryAllByRole('button')).toEqual([])
-    expect(within(rowOf(/Dobro došao u pripremu sezone/)).queryAllByRole('button')).toEqual([])
+    expect(within(rowOf(/Predlog tima čeka odgovor/)).queryAllByRole('button')).toEqual([])
   }, SLOW * 2)
 })
 

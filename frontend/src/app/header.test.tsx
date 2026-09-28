@@ -5,6 +5,7 @@ import { I18nProvider } from '../i18n/I18nProvider'
 import { SessionContext, type Message, type SessionValue, type SignedIn } from '../session/context'
 import { clearResourceCache } from '../data/client'
 import { serverThat } from '../test/serverAnswers'
+import { useSession } from '../session/useSession'
 import { renderAt } from '../test/render'
 import { setupUser } from '../test/user'
 import { monogramFor } from './monogram'
@@ -232,9 +233,61 @@ describe('the account menu', () => {
   })
 })
 
+/**
+ * A MESSAGE THIS VISIT WROTE, put there by the one thing that still writes into the browser's
+ * half of the inbox.
+ *
+ * <p><b>Both cases below wrote themselves until 28.09.2026 and neither of them knew it.</b> The
+ * bundle seeded two broadcasts into every session (`data/seedMessages.ts`), so the held half
+ * arrived free, one of them unread, and the counts and the order below were read off records
+ * nobody had sent. The owner found them on QA - „Zasto su ove testne poruke i dalje tu??????
+ * NECU MOCK PODATKE NIGDE" - and PDL 34 took them out of the shipped bundle.
+ *
+ * <p>What replaces them is the real road: `notify`, which nine screens call and which is the
+ * only way a line lands in the browser's half now. Dated between the two rows the served
+ * fixture holds, on purpose - see the case that reads the order.
+ */
+function WritesOneMessage() {
+  const { notify } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        notify({
+          from: 'Balkanska trkačka liga',
+          /* To this member and not to the league, so the case cannot be satisfied by a
+             message everybody would have got anyway. */
+          to: '000007',
+          subject: 'Profilna slika je vraćena',
+          body: 'Pošalji sliku na kojoj ti se vidi lice.',
+          date: '2026-08-15',
+        })
+      }}
+    >
+      napisi poruku ovom clanu
+    </button>
+  )
+}
+
 describe('the inbox in the header', () => {
   it('carries the number of unread messages in the name of the button', async () => {
-    renderAt('/sr', 'competitor', '000007')
+    /* **THE CASE BRINGS THE UNREAD MESSAGE ITSELF (PDL 34, 28.09.2026).** It read „1" off a
+       seeded record until that day, so the number came from the build rather than from
+       anything a member had been sent. The served fixture the harness answers with holds two
+       rows and both are read, so the one unread line here is the held one below and the count
+       is a claim about both halves being counted. */
+    renderInbox([
+      {
+        id: 'msg-1',
+        from: 'Balkanska trkačka liga',
+        to: '000007',
+        subject: 'Profilna slika je vraćena',
+        body: 'Pošalji sliku na kojoj ti se vidi lice.',
+        date: '2026-08-15',
+        read: false,
+      },
+    ])
 
     // The count is part of the name, not a counter nobody hears: an aria-label
     // replaces the contents of the button.
@@ -243,36 +296,36 @@ describe('the inbox in the header', () => {
 
   it('lists what arrived, newest first, and opens one of them', async () => {
     const user = setupUser()
-    renderAt('/sr', 'competitor', '000007')
+    renderAt('/sr', 'competitor', '000007', undefined, null, <WritesOneMessage />)
 
+    await user.click(screen.getByRole('button', { name: 'napisi poruku ovom clanu' }))
     await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
 
     /* **THE ORDER IS ASSERTED HERE, so the title above is a claim rather than a decoration.**
-       Copied from `inboxFromTheServer.test.tsx`'s „puts the newest first" case: the served
-       half's own fixture (`test/mock/inbox.json`) sends one row dated after the seeded „Dobro
-       došao" (2026-09-25) and one before it (2026-07-09), so the merged list only reads
-       newest-first if both halves are sorted together - keeping either half's own order intact
-       instead would pass with the served half first or the held half first, and neither is
-       what „newest first" means.
+       The served half's own fixture (`test/mock/inbox.json`) sends one row dated after the
+       message written above (2026-09-25) and one before it (2026-07-09), so the merged list
+       only reads newest-first if both halves are sorted together - keeping either half's own
+       order intact instead would pass with the served half first or the held half first, and
+       neither is what „newest first" means. The date the button writes is chosen for exactly
+       that, and it is the only thing about it that matters here.
 
        Each link's own text carries the date after the subject (`MessagesMenu.tsx` draws both
        inside the one link), so the expected strings below end in the day this panel shows -
        not a formatting choice made here, just what `textContent` already returns. */
     expect(
-      screen.getAllByRole('link', { name: /Fotografija|Dobro do|Rezultat|Prevoz/ }).map(
+      screen.getAllByRole('link', { name: /Fotografija|Profilna|Prevoz/ }).map(
         (one) => one.textContent,
       ),
     ).toEqual([
       'Fotografija je prihvaćena25. 9. 2026.',
-      'Dobro došao u pripremu sezone 202720. 7. 2026.',
-      'Rezultat je odobren12. 7. 2026.',
+      'Profilna slika je vraćena15. 8. 2026.',
       'Prevoz do Jadovnika9. 7. 2026.',
     ])
 
-    await user.click(screen.getByRole('link', { name: /Dobro došao u pripremu sezone 2027/ }))
+    await user.click(screen.getByRole('link', { name: /Profilna slika je vraćena/ }))
 
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Dobro došao u pripremu sezone 2027' }),
+      await screen.findByRole('heading', { level: 1, name: 'Profilna slika je vraćena' }),
     ).toBeVisible()
     // Reading it is what marks it read, so the header says nothing is waiting.
     expect(screen.getByRole('button', { name: 'Otvori poruke, 0 nepročitanih' })).toBeVisible()
