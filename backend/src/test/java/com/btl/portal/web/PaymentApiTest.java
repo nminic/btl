@@ -6,6 +6,9 @@ import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -751,24 +754,30 @@ class PaymentApiTest {
 	 * <p><b>And nothing is written on any of the three</b>, which is asserted rather than assumed: a 400
 	 * that had already drawn a member number would have spent it for good, because the sequence only
 	 * counts up.
+	 *
+	 * <p><b>ONE INVOCATION PER FORM AND NOT A LOOP INSIDE ONE CASE, and that is measured rather than
+	 * tidy.</b> Written as a loop, the first form THREW under the mutation that removes the guard - the
+	 * refusal reaches this route as an exception and not as a 500 body - so the loop stopped there and
+	 * the other two forms were never measured under that mutation at all. A case whose later assertions
+	 * only run while the code is correct is a case that measures the first one. Each form now gets its
+	 * own transaction and its own verdict.
 	 */
-	@Test
-	void anamountTheColumnWouldNotKeepIsRefusedInAllThreeOfItsForms() throws Exception {
+	@ParameterizedTest
+	@ValueSource(strings = {"38.001", "38.006", "99999999999.00"})
+	void anamountTheColumnWouldNotKeepIsRefused(String notKept) throws Exception {
 		long id = competitor("cb", null, false, "1990-05-15");
 
-		for (String notKept : new String[] {"38.001", "38.006", "99999999999.00"}) {
-			MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
-					new BigDecimal(notKept), true, "paypal", null)), moderatorCookie);
+		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+				new BigDecimal(notKept), true, "paypal", null)), moderatorCookie);
 
-			assertThat(answer.getStatus())
-					.as("an amount of %s reached the database, which is a 500 where a moderator should"
-							+ " have been told something", notKept)
-					.isEqualTo(400);
-			assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-					.as("an amount of %s was reported as something other than a number the column will"
-							+ " not keep", notKept)
-					.isEqualTo(PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
-		}
+		assertThat(answer.getStatus())
+				.as("an amount of %s reached the database, which is a 500 where a moderator should"
+						+ " have been told something", notKept)
+				.isEqualTo(400);
+		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+				.as("an amount of %s was reported as something other than a number the column will"
+						+ " not keep", notKept)
+				.isEqualTo(PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
 
 		assertThat(paymentCount()).isZero();
 		assertThat(membershipCount()).isZero();
@@ -792,30 +801,35 @@ class PaymentApiTest {
 	 *
 	 * <p><b>So this case is about the JOIN and not about either half.</b> Each half has its own cases
 	 * above; what neither of them can say is which word comes out of which condition, and swapping the
-	 * two words over is a mutation both halves survive. Three amounts, three pairs, read together:
-	 * nought and a negative keep the older sentence, and something the column will not keep gets the
-	 * newer one.
+	 * two words over is a mutation both halves survive. Three amounts, three pairs: nought and a
+	 * negative keep the older sentence, and something the column will not keep gets the newer one.
+	 *
+	 * <p><b>One invocation per pair</b>, for the reason the case above gives at length: an amount that
+	 * reaches the database throws rather than answering, so a loop would measure only its first row the
+	 * moment anything is wrong.
 	 */
-	@Test
-	void eachAmountGetsItsOwnRefusalAndTheOrderIsWhatKeepsThemApart() throws Exception {
+	@ParameterizedTest
+	@CsvSource({"0.00,theAmountIsNotMoney", "-38.00,theAmountIsNotMoney",
+			"38.001,theAmountIsNotKeptExactly"})
+	void eachAmountGetsItsOwnRefusalAndTheOrderIsWhatKeepsThemApart(String amount, String reason)
+			throws Exception {
+
+		/* THE TWO WORDS ARE COMPARED WITH THE CONSTANTS AND NOT ONLY WITH THE TEXT IN THE TABLE ABOVE,
+		   so a constant renamed on the route cannot leave this case agreeing with a string nothing
+		   answers any more. The table has to carry text because `@CsvSource` takes no expressions. */
+		assertThat(reason)
+				.as("the expected reason is not one of the two words this route can say")
+				.isIn(PaymentApi.THE_AMOUNT_IS_NOT_MONEY, PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
+
 		long id = competitor("cc", null, false, "1990-05-15");
 
-		record Pair(String amount, String reason) {
-		}
+		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+				new BigDecimal(amount), true, "paypal", null)), moderatorCookie);
 
-		for (Pair each : new Pair[] {
-				new Pair("0.00", PaymentApi.THE_AMOUNT_IS_NOT_MONEY),
-				new Pair("-38.00", PaymentApi.THE_AMOUNT_IS_NOT_MONEY),
-				new Pair("38.001", PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY)}) {
-
-			MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
-					new BigDecimal(each.amount()), true, "paypal", null)), moderatorCookie);
-
-			assertThat(answer.getStatus()).isEqualTo(400);
-			assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-					.as("an amount of %s was answered with the wrong one of the two sentences", each.amount())
-					.isEqualTo(each.reason());
-		}
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+				.as("an amount of %s was answered with the wrong one of the two sentences", amount)
+				.isEqualTo(reason);
 	}
 
 	/**
