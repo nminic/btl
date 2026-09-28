@@ -244,6 +244,7 @@ describe('what the screen says about the answer', () => {
        Read as text rather than as two renders compared by eye: both are asked, both
        answers are collected, and the two strings must be identical. */
     const said: string[] = []
+    const wentTo: unknown[] = []
 
     for (const address of [TYPED, SOMEBODY_ELSE]) {
       server = serverThat((path) => (path === ASKS_FOR_A_LINK ? did() : null))
@@ -256,10 +257,18 @@ describe('what the screen says about the answer', () => {
 
       /* Both really went, so this is two answers and not one measured twice. */
       expect(addressIn(at(sentToTheRoute(), 0))).toBe(address)
+      wentTo.push(addressIn(at(sentToTheRoute(), 0)))
 
       unmount()
       server.stop()
     }
+
+    /* AND THE TWO ADDRESSES WERE REALLY TWO, which is the whole postavka of this case
+       and was measured to be missing: with the same address asked about twice, every
+       assertion below is satisfied by one answer compared with itself, and the case
+       would claim the portal says the same thing either way while having looked at only
+       one of the two ways. */
+    expect(new Set(wentTo).size).toBe(2)
 
     expect(said).toHaveLength(2)
     expect(at(said, 0)).toBe(at(said, 1))
