@@ -261,6 +261,10 @@ describe('a sentence with a value put into it', () => {
          wrong in - it stands after „trku" as the thing being named, and a proper name in
          Serbian keeps its written form there. */
       'admin.dropRaceNamed',
+      /* „Ovim brišeš i {count} rezultata.", asked before an event is deleted (owner,
+         28.09.2026). The value is a COUNT, so it governs the noun rather than being
+         governed by one, and the three plural forms are where that is answered. */
+      'admin.eventDeleteTakes',
       'admin.form.deleteNamed',
       'admin.form.deleteSureNamed',
       'admin.form.keepNamed',
