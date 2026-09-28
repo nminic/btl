@@ -472,12 +472,30 @@ describe('the box a member writes about themselves in', () => {
   it('keeps the region quiet while there is still room', async () => {
     /* It used to hold the count and change on every keystroke, which is three hundred and
        fifty-nine announcements of a number nobody was waiting to hear, each one to be got
-       through before anything else could be said. */
+       through before anything else could be said.
+
+       **Asked of EVERY region and not of „the" one, which is what moving this case here
+       cost and what it bought.** On the registration the box was the only thing on the
+       screen that spoke, so `getByRole('status')` meant the box's region. This panel has
+       another: the one that says the text has not changed, drawn exactly while the box is
+       untouched, which is the state this case is about. `getByRole` therefore found two
+       and threw - measured, not foreseen.
+
+       So what is held is the thing that actually matters, and it is the stronger of the
+       two: NOTHING on this panel announces the wall or a lost paste while there is still
+       room. Written as „the region is empty" it was also a claim about which region that
+       is, and that claim was the half that did not survive the move. */
     renderAt('/sr/podesavanja', 'competitor', withNone.memberNumber)
 
     const panel = await panelFor()
 
-    expect(panel.getByRole('status')).toHaveTextContent('')
+    expect(panel.getAllByRole('status').length).toBeGreaterThan(0)
+    expect(
+      panel
+        .getAllByRole('status')
+        .map((one) => one.textContent ?? '')
+        .filter((said) => /Dosta je|Nalepljeni tekst/.test(said)),
+    ).toEqual([])
   })
 
   it('says how much of a paste was thrown away, rather than throwing it away in silence', async () => {
