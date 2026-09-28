@@ -2801,6 +2801,65 @@ describe('an event that is deleted', () => {
     }
   }, SLOW)
 
+  it('draws no race of its own when the route made one and named no identity', async () => {
+    /**
+     * THE WRITE HAPPENED AND THERE IS NOTHING TO ADDRESS IT BY.
+     *
+     * <p>`POST /api/races` answers 201 with the identity the database chose, and that is
+     * the whole of what a row can then be drawn under. An answer of another shape is read
+     * as "no identity here" rather than asserted into one (ADL A14, `raceWrittenIn`), so
+     * the race is NOT put into this visit's list: a row drawn under a number nobody handed
+     * out is the fault this change closes, one table along.
+     *
+     * <p>The press still confirms, because it is still true: the event is written and so is
+     * the race. What the screen cannot do is show the race before it reads the file again,
+     * and it drops the cache in the same breath so the next mount does.
+     */
+    const user = setupUser()
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = must(
+      events.filter((one) => one.kind === 'race').at(-1),
+      'an event that is a race',
+    )
+
+    answering = (path, init) =>
+      path === '/api/races' && init?.method === 'POST'
+        ? new Response(JSON.stringify({ made: true }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null, undefined, null, null)
+
+    const row = await rowOf(mine, user)
+
+    await user.click(within(row).getByRole('button', { name: `Otvori: ${mine.name}` }))
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const was = screen.getAllByLabelText(/^Dužina/).length
+
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const rows = screen.getAllByLabelText(/^Dužina/)
+
+    await user.type(must(rows[rows.length - 1], 'the row just added'), '10')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* It confirms, because the event and the race really were written. */
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+    await user.click(
+      within(await rowOf(mine, user)).getByRole('button', { name: `Otvori: ${mine.name}` }),
+    )
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    expect(
+      screen.getAllByLabelText(/^Dužina/).length,
+      'a race was drawn under a number nobody handed out',
+    ).toBe(was)
+  }, SLOW)
+
   it('says why the route refused a deletion, beside the row it was pressed on', async () => {
     /* A deletion that did not happen must not read as one that did. The row stays, the
        reader is told in his own language, and the sentence is beside the row he pressed
