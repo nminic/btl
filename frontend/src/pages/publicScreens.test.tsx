@@ -563,6 +563,18 @@ describe('Rankings', () => {
     expect(plateWords.contains(number)).toBe(true)
     expect(link.contains(number)).toBe(false)
     expect(link.compareDocumentPosition(number) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    /* Independent review of PR 412: nothing above asks whether `link` and `number` actually
+       carry the classes `Rankings.css` writes its two-line rule for. Dropping
+       `rankings__member-name` from Rankings.tsx:269, or `rankings__member-number` from the span
+       on :270, left every case in this file and in rankingsMemberRow.test.ts green: the list
+       there only reads that the rule exists, and the tree above only reads where the number
+       sits, never which class put it there. Not a silent difference on screen either, the review
+       measured it: the anchor falls back to `display: inline` and an inherited line-height, so
+       `.plate__words` grows to 41.59px against the circle's own 33.59px, 8px past the owner's
+       equal-height sentence at the top of rankingsMemberRow.test.ts, on every row. */
+    expect(link.className).toContain('rankings__member-name')
+    expect(number.className).toContain('rankings__member-number')
   })
 })
 
