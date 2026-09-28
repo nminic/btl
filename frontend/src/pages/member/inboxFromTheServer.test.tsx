@@ -13,6 +13,7 @@ import { clearResourceCache } from '../../data/client'
 import { SLOW } from '../../test/slow'
 import sr from '../../i18n/sr.json'
 import { useSession } from '../../session/useSession'
+import type { Message } from '../../session/context'
 
 /**
  * THE INBOX AS THE SERVER REALLY KEEPS IT.
@@ -26,12 +27,15 @@ import { useSession } from '../../session/useSession'
  * `session/SessionProvider.tsx`'s `useState`, and a copy in a component dies with it.
  *
  * <p><b>So every case here is written so that it cannot be satisfied by the browser's own
- * half.</b> The session in these cases holds nothing at all: `renderAt` starts a
- * `SessionProvider` whose only seeded messages are the two broadcasts in
- * `data/seedMessages.ts`, and every subject asserted below is one only this file's server
- * says. Put the server read back out of any of the three screens and these go red; leave the
- * read in and take the SESSION half out, and they stay green, which is the direction that
- * tells this file from the flow cases in `memberFlows.test.tsx`.
+ * half.</b> The session in these cases holds nothing at all, and since 28.09.2026 that is
+ * literally true rather than nearly: `renderAt` used to start a `SessionProvider` carrying the
+ * two broadcasts of `data/seedMessages.ts`, and PDL 34 („NECU MOCK PODATKE NIGDE", owner) took
+ * that file out of the shipped bundle, so the browser's half is empty unless a case fills it
+ * (`WritesIntoTheVisit` below, which the four cases about the two halves TOGETHER use). Every
+ * subject asserted below is one only this file's server says. Put the server read back out of
+ * any of the three screens and these go red; leave the read in and take the SESSION half out,
+ * and they stay green, which is the direction that tells this file from the flow cases in
+ * `memberFlows.test.tsx`.
  *
  * <p><b>The fake server is a state machine and not a table</b>, copied from
  * `member/signIn.test.tsx` for the reason that file gives: a visit begins with
@@ -347,6 +351,59 @@ function theEnvelope(): Promise<HTMLElement> {
   return screen.findByRole('button', { name: /Otvori poruke/ })
 }
 
+/**
+ * WHAT THIS VISIT WRITES INTO THE BROWSER'S OWN HALF OF THE INBOX.
+ *
+ * <p><b>Four cases here are about the two halves TOGETHER, and until 28.09.2026 the second half
+ * arrived for nothing.</b> `data/seedMessages.ts` put two broadcasts into every session before
+ * anything happened, so a count, an order or „a row of each kind" could be asserted without the
+ * case doing anything. The owner found those two on QA - „Zasto su ove testne poruke i dalje
+ * tu?????? NECU MOCK PODATKE NIGDE" - and PDL 34 took them out of the shipped bundle, so a
+ * session now begins holding nothing at all.
+ *
+ * <p><b>Which makes the rest of this file STRICTER rather than weaker</b>, and the header above
+ * says why: every other case is written so that it cannot be satisfied by the browser's half,
+ * and that half is now empty unless the case in front of you filled it.
+ *
+ * <p>What fills it is `notify`, the road nine screens really use. Addressed to this member and
+ * never to the league, so nothing below can be satisfied by a message everybody would have been
+ * sent.
+ */
+function WritesIntoTheVisit({ these }: { these: Omit<Message, 'id' | 'read'>[] }) {
+  const { notify } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        for (const one of these) {
+          notify(one)
+        }
+      }}
+    >
+      napisi u posetu
+    </button>
+  )
+}
+
+/** One message the browser holds, unread, dated between the two served rows every case that
+ *  uses it also serves. */
+const HELD = {
+  from: 'Balkanska trkačka liga',
+  to: '000007',
+  subject: 'Predlog tima čeka odgovor',
+  body: 'Dunavski trkači te pozivaju u tim.',
+  date: '2026-07-20',
+}
+
+/** And a second one, for the case about order: two held lines and three served ones, dated so
+ *  that the right answer interleaves the halves rather than keeping either of them together. */
+const HELD_OLDER = {
+  ...HELD,
+  subject: 'Prijava za trku je zabeležena',
+  date: '2026-07-12',
+}
+
 /** The list item one subject stands in, so that what is asserted about a message is read off
  *  that message and not off the page. */
 function rowOf(subject: string): HTMLElement {
@@ -389,10 +446,11 @@ describe('the inbox a member reads', () => {
     expect(await screen.findByRole('link', { name: FORGED.subject })).toBeVisible()
 
     /* **The sender is read INSIDE the row it belongs to, and that is not tidiness.** „Balkanska
-       trkačka liga" is on this page three times over before the inbox is drawn at all - it is
-       the name in the mark at the top of every screen, and it is the sender of both seeded
-       broadcasts - so a case reading it off the page would pass with the served row carrying
-       nobody's name at all, or the wrong one. */
+       trkačka liga" is already on this page before the inbox is drawn at all - it is the name in
+       the mark at the top of every screen - so a case reading it off the page would pass with
+       the served row carrying nobody's name at all, or the wrong one. (It was on the page more
+       often still while the bundle seeded two broadcasts from the league; PDL 34 took those out
+       on 28.09.2026, and the mark alone is enough for the collision this is written against.) */
     expect(within(rowOf(FORGED.subject)).getByText(FORGED.body)).toBeVisible()
     expect(within(rowOf(FORGED.subject)).getByText(FORGED.from)).toBeVisible()
     /* And the second state of the same field: a person's name, where the one above is the
@@ -402,28 +460,47 @@ describe('the inbox a member reads', () => {
   })
 
   it('counts the unread among them and leaves the read alone', async () => {
+    const user = setupUser()
+
     aServerWhere(him(), { [HIS_ADDRESS]: [FORGED, WRITTEN] })
 
-    renderAt('/sr/poruke', 'competitor', '000007')
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, (
+      <WritesIntoTheVisit these={[HELD]} />
+    ))
 
-    /* One of the two served rows is unread and one is read, and the two seeded broadcasts
-       the provider starts with carry one unread between them. So the number is the sum and
-       not either half: served alone it would be one, seeded alone it would be one, and a
-       screen reading only one of the two sources would pass a case that asserted „1". */
+    await screen.findByRole('link', { name: FORGED.subject })
+    await user.click(screen.getByRole('button', { name: 'napisi u posetu' }))
+
+    /* One of the two served rows is unread and one is read, and the visit wrote one more
+       unread line of its own. So the number is the sum and not either half: served alone it
+       would be one, held alone it would be one, and a screen reading only one of the two
+       sources would pass a case that asserted „1". (The held half arrived from the bundle
+       until 28.09.2026 and this case wrote none of it; PDL 34 took that out, and what the
+       number has to be a sum OF did not change.) */
     expect(await screen.findByText('2 nepročitane')).toBeVisible()
   })
 
   it('says there is nothing when the server answers nothing, and asks nobody else', async () => {
+    const user = setupUser()
+
     aServerWhere(him(), { [HIS_ADDRESS]: [] })
 
-    renderAt('/sr/poruke', 'competitor', '000007')
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, (
+      <WritesIntoTheVisit these={[HELD]} />
+    ))
 
-    /* The two seeded broadcasts are still in the session here, so this is NOT an empty
-       inbox on the screen - and that is the honest thing to assert: the empty answer took
-       nothing away that the browser was holding. What it says is that an empty answer is a
-       state the screen survives, which is the half `header.test.tsx` measures on a session
-       holding nothing at all. */
-    expect(await screen.findByRole('link', { name: /Dobro došao u pripremu sezone/ })).toBeVisible()
+    /* **The visit writes one line, so this is NOT an empty inbox on the screen** - and that is
+       the honest thing to assert: the empty answer took nothing away that the browser was
+       holding. What it says is that an empty answer is a state the screen survives, which is
+       the half `header.test.tsx` measures on a session holding nothing at all.
+
+       Written here since 28.09.2026. Two seeded broadcasts stood in for it until then and the
+       case wrote nothing; PDL 34 („NECU MOCK PODATKE NIGDE", owner) took them out of the
+       bundle, and the state being measured - a served half that answered nothing beside a held
+       half that has something - is the same one. */
+    await user.click(screen.getByRole('button', { name: 'napisi u posetu' }))
+
+    expect(await screen.findByRole('link', { name: new RegExp(HELD.subject) })).toBeVisible()
     expect(screen.queryByRole('link', { name: FORGED.subject })).not.toBeInTheDocument()
     expect(screen.queryByText(sr.messages.empty)).not.toBeInTheDocument()
   })
@@ -473,10 +550,12 @@ describe('the inbox a member reads', () => {
   })
 
   it('puts the newest first, whichever of the two sides each one came from', async () => {
-    /* Three served rows and two seeded ones, dated so that the right answer INTERLEAVES them:
-       27.09. and 20.09. served, 20.07. and 12.07. seeded, and 11.07. served last. Any order
-       that keeps one side together - served first, or held first, which is what dropping the
-       sort gives - fails here, and so does one that sorts the wrong way round.
+    /* Four served rows and two the visit writes, dated so that the right answer INTERLEAVES
+       them: 27.09. and twice 20.09. served, 20.07. and 12.07. held, and 11.07. served last.
+       Any order that keeps one side together - served first, or held first, which is what
+       dropping the sort gives - fails here, and so does one that sorts the wrong way round.
+       (The two held ones were records the bundle seeded until 28.09.2026; PDL 34 took those
+       out, so this case writes its own and the dates are chosen for the same reason.)
 
        **And the day is the only thing sorted on, deliberately.** What leaves the server is the
        calendar day and not the instant (`InboxApi` converts in the league's own zone), so two
@@ -496,20 +575,27 @@ describe('the inbox a member reads', () => {
       ],
     })
 
-    renderAt('/sr/poruke', 'competitor', '000007')
+    const user = setupUser()
+
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, (
+      <WritesIntoTheVisit these={[HELD, HELD_OLDER]} />
+    ))
 
     await screen.findByRole('link', { name: FORGED.subject })
+    await user.click(screen.getByRole('button', { name: 'napisi u posetu' }))
+
+    await screen.findByRole('link', { name: new RegExp(HELD.subject) })
 
     expect(
-      screen.getAllByRole('link', { name: /Fotografija|Prevoz|Majica|Dobro do|Rezultat/ }).map(
+      screen.getAllByRole('link', { name: /Fotografija|Prevoz|Majica|Predlog|Prijava|Rezultat/ }).map(
         (one) => one.textContent,
       ),
     ).toEqual([
       FORGED.subject,
       WRITTEN.subject,
       'Majica je poslata',
-      'Dobro došao u pripremu sezone 2027',
-      'Rezultat je odobren',
+      HELD.subject,
+      HELD_OLDER.subject,
       'Rezultat je primljen',
     ])
   })
@@ -517,11 +603,16 @@ describe('the inbox a member reads', () => {
 
 describe('what the portal may not claim about a message the server keeps', () => {
   it('offers no way to mark a message read by hand, on either half of the list', async () => {
+    const user = setupUser()
+
     aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
 
-    renderAt('/sr/poruke', 'competitor', '000007')
+    renderAt('/sr/poruke', 'competitor', '000007', undefined, null, (
+      <WritesIntoTheVisit these={[HELD]} />
+    ))
 
     await screen.findByRole('link', { name: FORGED.subject })
+    await user.click(screen.getByRole('button', { name: 'napisi u posetu' }))
 
     /* **BOTH HALVES ARE DRAWN HERE AND NEITHER CARRIES A CONTROL, since PDL 27a
        (27.09.2026).** There was one button on this list until that day, on whichever row the
@@ -530,20 +621,29 @@ describe('what the portal may not claim about a message the server keeps', () =>
        onu koja zivi u poseti" - so a screen that kept it for the held half fails here exactly
        as one that kept it for the served half does.
 
-       The floor under the absence is the row below: the seeded broadcast really is on this
+       The floor under the absence is the row below: the line this visit wrote really is on this
        screen, so „no button" is measured where both states of „where does the mark live" are
        present rather than over an empty list. What replaced the button is on
        `member/MessageDetail.tsx`, and `member/openingMarksItRead.test.tsx` measures it. */
     expect(within(rowOf(FORGED.subject)).queryAllByRole('button')).toEqual([])
 
-    const held = screen.getByRole('link', { name: /Dobro došao u pripremu sezone/ })
+    const held = await screen.findByRole('link', { name: new RegExp(HELD.subject) })
 
     expect(held).toBeVisible()
     expect(within(rowOf(held.textContent ?? '')).queryAllByRole('button')).toEqual([])
   })
 
   it('marks a served message read once it has been opened, and the count falls', async () => {
-    aServerWhere(him(), { [HIS_ADDRESS]: [FORGED] })
+    /* **TWO UNREAD ROWS AND NOT ONE, AND THAT IS A MEASUREMENT RATHER THAN CAUTION
+       (28.09.2026).** The second unread line was a seeded broadcast until PDL 34 took the seed
+       out of the bundle. Written with the seed simply gone and one served row left, this case
+       PASSED WITHOUT MEASURING ANYTHING: the envelope says „1 nepročitana" from the first paint,
+       before the mark is written, so `waitFor` was satisfied by the state the case exists to
+       see the portal leave. A second unread row puts the starting number at two, so „one" can
+       only be reached by the mark landing. */
+    aServerWhere(him(), {
+      [HIS_ADDRESS]: [FORGED, { ...FORGED, id: 598, subject: 'Prijava za trku je primljena' }],
+    })
 
     renderAt(`/sr/poruke/${String(FORGED.id)}`, 'competitor', '000007')
 
@@ -557,9 +657,9 @@ describe('what the portal may not claim about a message the server keeps', () =>
        sam, bez ijedne radnje clana osim citanja."
 
        **The count is the measurement and not the request**, because the envelope is what the
-       member actually sees and it stands above every screen (`app/Shell.tsx`). The seeded
-       broadcast keeps the one that is left, so this number distinguishes „the served row was
-       marked" from „everything was marked" and from „nothing was". The request itself, the
+       member actually sees and it stands above every screen (`app/Shell.tsx`). The row that is
+       never opened keeps the one that is left, so this number distinguishes „the served row was
+       marked" (one) from „everything was marked" (nought) and from „nothing was" (two). The request itself, the
        key it carried and what happens when it is refused are measured where the mechanism
        lives (`member/openingMarksItRead.test.tsx`); this file's question is only that the
        screen reading the server does it at all. */
@@ -677,10 +777,10 @@ describe('the inbox across signing out and signing back in', () => {
        day together, so it is matched loosely on purpose.
 
        **AND WHAT MAKES IT MEAN SOMETHING IS THAT THIS MESSAGE WAS NEVER IN THE SESSION.**
-       `notify` is not called anywhere in this file and the provider seeds only the two
-       broadcasts of `data/seedMessages.ts`, so `GET /api/inbox` is the one place this subject
-       can have come from at any point in the walk. Take the server read out of either screen
-       and this goes red at the first assertion, before the walk even starts.
+       This case draws no `WritesIntoTheVisit`, so nothing calls `notify` in it, and since
+       28.09.2026 the provider seeds nothing at all (PDL 34): `GET /api/inbox` is the one place
+       this subject can have come from at any point in the walk. Take the server read out of
+       either screen and this goes red at the first assertion, before the walk even starts.
 
        **What is deliberately NOT claimed here is that the portal asked again.** It need not
        have: the resource cache holds one answer per name for the whole visit, by the portal's

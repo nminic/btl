@@ -132,6 +132,13 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/moja-clanarina', 'Za ovo treba prijava', 'Moja članarina'],
   ['/sr/podesavanja', 'Za ovo treba prijava', 'Podešavanja'],
   ['/sr/poruke', 'Za ovo treba prijava', 'Poruke'],
-  ['/sr/poruke/msg-1', 'Za ovo treba prijava', 'Dobro došao u pripremu sezone 2027'],
+  /* A message the SERVER kept, since 28.09.2026. It named `msg-1` until that day, one of the
+     two records the bundle seeded into every session (`data/seedMessages.ts`); PDL 34 („NECU
+     MOCK PODATKE NIGDE", owner) took them out, so the only message a sweep can open without
+     writing one first is a row `GET /api/inbox` answers - here the harness's own
+     `test/mock/inbox.json`, whose first row is `41`. The heading is that row's subject, which
+     is what makes this line worth a row at all: read as „any heading", an address that fell
+     through to the front page would pass. */
+  ['/sr/poruke/41', 'Za ovo treba prijava', 'Fotografija je prihvaćena'],
   ['/sr/rezultat/novi', 'Za ovo treba prijava', 'Unos rezultata'],
 ]

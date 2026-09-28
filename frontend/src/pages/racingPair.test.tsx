@@ -122,13 +122,26 @@ const THREE = (
   </>
 )
 
-/** Every message in the panel in the header, newest first, the way the panel draws them. */
+/**
+ * Every message in the panel in the header, newest first, the way the panel draws them.
+ *
+ * **Any message address and no longer only `msg-N`, since 28.09.2026.** The inbox has two
+ * halves and they number themselves differently: what this visit wrote is `msg-N`, what the
+ * server kept is its own key (`data/useResource.ts`). Read as `msg-` only, this saw the browser's
+ * half alone, which was enough while the bundle seeded two broadcasts into every session - and
+ * PDL 34 („NECU MOCK PODATKE NIGDE", owner) took those out, so the two cases that use this list
+ * to prove the panel is really OPEN had nothing left to see. The subject is what every caller
+ * filters on afterwards, so widening the address costs none of them anything.
+ *
+ * The trailing slash is what keeps „Sve poruke" out: that link is `/sr/poruke` and names no
+ * message.
+ */
 async function inbox(user: ReturnType<typeof setupUser>) {
   await user.click(await screen.findByRole('button', { name: /Otvori poruke/ }))
 
   return screen
     .queryAllByRole('link')
-    .filter((one) => /\/poruke\/msg-/.test(one.getAttribute('href') ?? ''))
+    .filter((one) => /\/poruke\/./.test(one.getAttribute('href') ?? ''))
 }
 
 /** The reader's own profile, reached the way a member reaches it: through the account menu in the
@@ -1246,8 +1259,10 @@ describe('a member who holds a pair for this season and one for the next', () =>
 
     /* **The panel is open, and that is asserted rather than assumed.** „Relja hears nothing" is a
        claim about absence, and a panel that never opened answers it exactly as well as a portal
-       that wrote to the right member. Every inbox in the portal holds the two messages the league
-       is seeded with (`data/seedMessages.ts`, both `to: ''`), so the same read witnesses itself. */
+       that wrote to the right member. Every member is served the same two rows here
+       (`test/mock/inbox.json`), so the same read witnesses itself. It witnessed itself off the
+       two records the bundle seeded until 28.09.2026; PDL 34 took those out, and the served half
+       does the same work without anything shipping to a member who was sent nothing. */
     expect(his.length).toBeGreaterThan(0)
     expect(toldAnyway.length).toBe(0)
 
