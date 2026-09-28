@@ -133,17 +133,6 @@ public final class WhatAFieldMeans {
 	}
 
 	/**
-	 * The biography, which is never null in the row and may be empty.
-	 *
-	 * <p>V7: „`bio` is NOT NULL and may be empty, and that is the difference between it and
-	 * a name: twenty of the thirty two members in the shipped data have written none, and
-	 * an empty biography is a state the profile has to look right in."
-	 */
-	public static String theBio(String written) {
-		return isNothing(written) ? "" : written.strip();
-	}
-
-	/**
 	 * The telephone number, which is null when there is none and never an empty string.
 	 *
 	 * <p>V8: „Optional, and the only optional field of the thirteen, so an empty string
