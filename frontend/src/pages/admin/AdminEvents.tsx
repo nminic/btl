@@ -507,7 +507,7 @@ export function AdminEvents() {
                 }
               }
 
-              for (const row of kindOf(values) === 'race' ? current : []) {
+              for (const [rowAt, row] of (kindOf(values) === 'race' ? current : []).entries()) {
                 /* A row that never was a race is made, and one that is, is written over.
                    Read off the row's own identity rather than off anything counted here:
                    the numbers this screen used to hand out came from `admin/raceIds.ts`,
@@ -552,6 +552,29 @@ export function AdminEvents() {
                         ],
                       },
                     }))
+
+                    /* AND THE ROW ON THE TABLE LEARNS THE SAME IDENTITY, not only the
+                       overlay above. Left at '', a row already written this way read as
+                       a SERVED race no surviving row keeps the moment ANYTHING refused
+                       a later row of the same press and the reader pressed again: `was`
+                       (above) named it by the id just handed out, `kept` went on saying
+                       that id did not exist, and the retry deleted the very race this
+                       press had just made and then made it again - a destructive request
+                       against a row the route had only just accepted, measured by a
+                       nezavisna recenzija. Matched by position and guarded by `held.of`,
+                       the same way `EventRaces.tsx`'s own `change` corrects one row: a
+                       table the reader has since reopened on a different event is not
+                       this one to correct. */
+                    setHeld((before) =>
+                      before.of !== under
+                        ? before
+                        : {
+                            of: before.of,
+                            rows: before.rows.map((each, index) =>
+                              index === rowAt ? { ...each, id: String(made) } : each,
+                            ),
+                          },
+                    )
                   }
                 } else {
                   setWritten((before) => ({
@@ -596,11 +619,19 @@ export function AdminEvents() {
               values: FormValues,
               text: Record<string, string>,
             ): Promise<Saving> {
+              /* THE RECORD THE FORM IS OPEN ON WINS OVER THE REF, where there is one.
+                 Found by a nezavisna recenzija: read as `madeHere.current ?? …`, the ref
+                 answered first and `editing.record` was only ever reached on a session
+                 that had made nothing yet, so a ref left standing by an EARLIER session
+                 outranked the record plainly on screen - a served event opened after a
+                 new one was entered saved onto the new one's address instead of its own.
+                 `editing.record` is the truth about which single record this is; the ref
+                 is only ever needed where there is no record at all to ask, a "new" form
+                 that has already written one and is being pressed again. */
               const standing =
-                madeHere.current ??
-                (editing !== null && editing.mode === 'one'
+                editing !== null && editing.mode === 'one'
                   ? Number(editing.record[EVENTS.idField])
-                  : null)
+                  : madeHere.current
               const answer = await askTheServer(
                 standing === null ? '/api/events' : `/api/events/${String(standing)}`,
                 upsertFrom(values),
@@ -966,6 +997,13 @@ export function AdminEvents() {
                       /* And the address forgets it, so leaving the form and coming
                          back to this screen does not open it again. */
                       setParams({}, { replace: true })
+                      /* AND THE EVENT THIS SESSION MADE IS FORGOTTEN HERE TOO, not only
+                         what the form held. Left standing, `madeHere` answered for a
+                         session that had not made anything: two events entered one
+                         after another sent the second's save as a change to the first
+                         (`saveOne`, `standing`), because leaving the form was never
+                         where the identity it remembers was cleared. */
+                      madeHere.current = null
                     }}
                   />
                 )}
@@ -1028,7 +1066,16 @@ export function AdminEvents() {
 
           return (
             <>
-              <EntityBar entity={EVENTS} onNew={() => setChosen({ mode: 'new' })}>
+              <EntityBar
+                entity={EVENTS}
+                onNew={() => {
+                  /* Same reason as `onDone`: a fresh "new" editor must never read the
+                     event a PAST session made off `madeHere`, or its first press
+                     changes that one instead of making its own. */
+                  madeHere.current = null
+                  setChosen({ mode: 'new' })
+                }}
+              >
                 <div className="rankings__filters">
                   <label className="rankings__field rankings__field--wide">
                     <span>{t('competitors.search')}</span>
@@ -1101,7 +1148,14 @@ export function AdminEvents() {
                             entity={EVENTS}
                             record={one}
                             name={one.name}
-                            onOpen={() => setChosen({ mode: 'one', record: one })}
+                            onOpen={() => {
+                              /* Same reason as `onNew`: opening a served event must not
+                                 inherit a ref a session that made a DIFFERENT one left
+                                 behind, or its first press changes that one instead of
+                                 the record just opened. */
+                              madeHere.current = null
+                              setChosen({ mode: 'one', record: one })
+                            }}
                             asksWith={goingWith(one)}
                             /* WITH ITS RACES AND ITS RESULTS, AND THE DATABASE IS
                                WHAT TAKES THEM. `DELETE /api/events/{id}` is one
