@@ -168,7 +168,15 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   with `git ls-tree origin/main` and `git merge-base --is-ancestor`, not assumed - so
 			   neither repin is a rewrite of a migration anyone has run, the same condition V41's
 			   and V43's repin notes above check. */
-			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", 373307075));
+			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", 373307075),
+
+			/* V47. The six social notices lose their mail, so the six switches and the table
+			   holding them go with it (owner, 29.09.2026: „da funkcionise samo kao poruke u
+			   inbox portala"). The number is not 45 or 46 on purpose: both were taken by
+			   branches open at the same time, checked with `git ls-tree` over origin/main and
+			   over each of them rather than by taking the first free one, which is how two
+			   branches collided on one number the day before. */
+			new Applied("47", "V47__the_social_notices_go_only_to_the_inbox.sql", -1376320615));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
