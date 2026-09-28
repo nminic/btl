@@ -219,6 +219,37 @@ class PaymentApi {
 	 */
 	static final String THE_AMOUNT_IS_NOT_MONEY = "theAmountIsNotMoney";
 
+	/**
+	 * AND WHAT ARRIVED HAS TO BE A NUMBER THE COLUMN KEEPS, which is the same question
+	 * {@link PricingWriteApi#THE_AMOUNT_IS_NOT_KEPT_EXACTLY} asks of a price and is deliberately the
+	 * same word.
+	 *
+	 * <p><b>Why it is one sentence and not two, which is the precedent's own reasoning rather than a
+	 * saving.</b> {@code MembershipPrice.amountIsKeptExactly} asks three things at once - not negative,
+	 * no more para than the column keeps, and inside what it can hold - and {@code PricingWriteApi} puts
+	 * all three under THIS one name, with its own note saying so: „Negative, or with more para than the
+	 * column keeps, or past what it can hold." Its SECOND name,
+	 * {@code THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST}, is a different question entirely: a PRODUCT
+	 * ceiling the owner decided on 25.09.2026 (PDL P12c, 1.000 EUR and 200.000 RSD) which „the column
+	 * knows nothing about". <b>A payment has no such ceiling and nobody has decided one</b> - case 7 of
+	 * PDL 19 lets a member send MORE than was expected on purpose - so a second name here would be a
+	 * second name for one question, and inventing a maximum a member may send would be deciding
+	 * something nobody asked for.
+	 *
+	 * <p><b>THE BOUNDARY THAT LEAVES, named rather than closed:</b> a moderator who mistypes an amount
+	 * INSIDE the column - 99.999.999,99 instead of 38 - is taken at his word, and the surplus goes onto
+	 * the member's balance as a credit. Nothing here refuses that, because what a member may plausibly
+	 * send is a product decision and not a fact about a column. What limits the damage today is that the
+	 * balance is a book: the credit is one immutable line naming who wrote it and when.
+	 *
+	 * <p><b>AFTER {@link #THE_AMOUNT_IS_NOT_MONEY} AND NOT BEFORE IT, which is chosen and is the
+	 * precedent's order too.</b> A negative amount fails both questions - {@code amountIsKeptExactly}
+	 * asks {@code signum() >= 0} as well - so asked first, this would move an answer three existing
+	 * cases already have. {@code PricingWriteApi} states the same reason in as many words: „a change that
+	 * quietly restates old cases is a change nobody measured."
+	 */
+	static final String THE_AMOUNT_IS_NOT_KEPT_EXACTLY = "theAmountIsNotKeptExactly";
+
 	static final String THE_METHOD_IS_NOT_KNOWN = "theMethodIsNotKnown";
 
 	static final String THE_REFERENCE_IS_NOT_SHAPED = "theReferenceIsNotShaped";
@@ -413,6 +444,32 @@ class PaymentApi {
 			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_MONEY);
 		}
 
+		/* AND THAT IT IS A NUMBER `numeric(10,2)` KEEPS, ASKED OF THE ONE PLACE THAT ALREADY KNOWS.
+
+		   WHY IT IS OWED HERE, and it is two separate faults rather than one theoretical one. Without
+		   it, `38.001` against an expected `38.00` leaves a surplus of `0.001`, which `isMoney()` calls
+		   money because its sign is positive; the column then ROUNDS it to `0.00` and
+		   `balance_entry_an_overpayment_adds` (V42) refuses a credit of nothing. The whole transaction
+		   goes back: no payment, no membership, no member number, and a 500 with no sentence on it. And
+		   `99999999999.00`, an ordinary mistyping, is `numeric field overflow` on the `insert` itself,
+		   which is the same 500 by a shorter road.
+
+		   AND THE HALF THAT IS SILENT, which is the same fault and not a second one: `38.006` is not
+		   refused by anything, the surplus `0.006` enters the column as `0.01`, and `received` becomes
+		   `38.01` - a number nobody typed, in the books, for ever. On the dinar side `3600.004` short of
+		   4.200 leaves `599.996` and the book is charged `-600.00`. Closing the scale closes all three,
+		   because every other amount in the arithmetic comes out of a `numeric(10,2)` column already:
+		   `price.amount()` and `price.fee()` are read from `price_row`, so once what ARRIVED has two
+		   decimals at most, the difference has two decimals at most and nothing can round.
+
+		   ASKED OF `MembershipPrice` AND NOT WRITTEN HERE, because the scale and the ceiling are the
+		   COLUMN'S and `AnAmountMatchesTheSchemaTest` rebuilds both of them out of `information_schema`.
+		   A second copy of either number would be a second home for a fact a migration is allowed to
+		   change. `RaceWriteApi` refuses a distance for the same reason and in the same words. */
+		if (!MembershipPrice.amountIsKeptExactly(typed.received())) {
+			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
+		}
+
 		if (!METHODS.contains(typed.method())) {
 			return no(HttpStatus.BAD_REQUEST, THE_METHOD_IS_NOT_KNOWN);
 		}
@@ -589,15 +646,30 @@ class PaymentApi {
 		   what it already owed the member." V42 added the second column so that the owner's
 		   specification of 27.09.2026 - a moderator typing what the statement shows - could be recorded
 		   without either sentence becoming false. */
-		long paymentId = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
+		/* AND WHAT THE ROW TOOK IS READ BACK OUT OF IT RATHER THAN ECHOED FROM THE REQUEST.
+
+		   `returning id, received` costs nothing - the statement is already returning - and it makes the
+		   answer and the row ONE number by construction instead of by argument. Until the scale was
+		   bounded above they really could be two: a request carrying `38.006` was answered `38.006`
+		   while the row held `38.01`. With the bound in place they agree by value, and this makes them
+		   agree by SOURCE, which is the difference between a rule that holds and a rule that happens to
+		   hold. It is also what the repeat branch has always done - `alreadyRecorded` reads `received`
+		   off the row - so the two branches now answer the same question the same way. */
+		record Written(long id, BigDecimal received) {
+		}
+
+		Written written = db.sql("insert into payment (competitor_id, season, reference, price_row_id,"
 						+ " amount, currency, fee, method, state, recorded_at, recorded_by,"
 						+ " recorded_by_name, received)"
 						+ " values (?, ?, ?, ?, ?, ?, ?, ?, 'recorded', ?, ?, ?, ?)"
-						+ " returning id")
+						+ " returning id, received")
 				.params(competitor.id(), season, reference, priceRowId, price.amount(),
 						his.name(), price.fee(), typed.method(), now, asking.account(), recordedByName,
 						typed.received())
-				.query(Long.class).single();
+				.query((row, i) -> new Written(row.getLong(1), row.getBigDecimal(2)))
+				.single();
+
+		long paymentId = written.id();
 
 		db.sql("insert into membership (competitor_id, season, basis, payment_id) values (?, ?, 'payment', ?)")
 				.params(competitor.id(), season, paymentId).update();
@@ -667,7 +739,7 @@ class PaymentApi {
 		book.aReferralWasActivated(competitor.id(), asking.account(), recordedByName);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Confirmed(paymentId, memberNumber,
-				price.amount(), price.fee(), his.name(), typed.received(), fromTheBalance, credited));
+				price.amount(), price.fee(), his.name(), written.received(), fromTheBalance, credited));
 	}
 
 	private static boolean isNothing(String value) {

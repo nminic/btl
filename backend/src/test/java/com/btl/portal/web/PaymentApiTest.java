@@ -723,6 +723,148 @@ class PaymentApiTest {
 	}
 
 	/**
+	 * AN AMOUNT THE COLUMN WOULD NOT KEEP IS REFUSED, IN ALL THREE OF THE WAYS IT CAN FAIL TO BE ONE.
+	 *
+	 * <p><b>Every one of the three reached the database before this, and two of them answered 500.</b>
+	 * The route asked only whether what arrived was positive, so:
+	 *
+	 * <ul>
+	 * <li>{@code 38.001} against an expected 38.00 left a surplus of {@code 0.001}, which
+	 * {@code Balance.Money.isMoney} calls money because its sign is positive. The column then ROUNDED it
+	 * to {@code 0.00} and {@code balance_entry_an_overpayment_adds} (V42) refused a credit of nothing, so
+	 * the whole transaction went back: no payment, no membership, no member number, and a 500 carrying no
+	 * sentence a moderator could read.
+	 * <li>{@code 99999999999.00}, an ordinary mistyping, was {@code numeric field overflow} on the
+	 * {@code insert} itself - the same 500 by a shorter road.
+	 * <li>{@code 38.006} was the SILENT one and is in the same case because it is the same fault: nothing
+	 * refused it, the surplus {@code 0.006} entered the column as {@code 0.01}, and {@code received}
+	 * became {@code 38.01} - a number nobody typed, in the books, for ever.
+	 * </ul>
+	 *
+	 * <p><b>All three carry the SAME word, and that is the precedent's own choice rather than a
+	 * shortcut.</b> {@code PricingWriteApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY} covers „negative, or with more
+	 * para than the column keeps, or past what it can hold" under one name, and reserves its second name
+	 * for a PRODUCT ceiling the owner decided (PDL P12c). A payment has no product ceiling - case 7 lets a
+	 * member send more than was expected on purpose - so a second name here would be two names for one
+	 * question.
+	 *
+	 * <p><b>And nothing is written on any of the three</b>, which is asserted rather than assumed: a 400
+	 * that had already drawn a member number would have spent it for good, because the sequence only
+	 * counts up.
+	 */
+	@Test
+	void anamountTheColumnWouldNotKeepIsRefusedInAllThreeOfItsForms() throws Exception {
+		long id = competitor("cb", null, false, "1990-05-15");
+
+		for (String notKept : new String[] {"38.001", "38.006", "99999999999.00"}) {
+			MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+					new BigDecimal(notKept), true, "paypal", null)), moderatorCookie);
+
+			assertThat(answer.getStatus())
+					.as("an amount of %s reached the database, which is a 500 where a moderator should"
+							+ " have been told something", notKept)
+					.isEqualTo(400);
+			assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+					.as("an amount of %s was reported as something other than a number the column will"
+							+ " not keep", notKept)
+					.isEqualTo(PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
+		}
+
+		assertThat(paymentCount()).isZero();
+		assertThat(membershipCount()).isZero();
+		assertThat(db.sql("select member_number from competitor where id = ?").param(id)
+						.query(String.class).optional())
+				.as("a member number was drawn for a request that was refused, and the sequence only"
+						+ " counts up")
+				.isEmpty();
+	}
+
+	/**
+	 * AND WHICH REFUSAL GOES WITH WHICH CONDITION, WHICH IS THE ONE THING TWO HALVES CANNOT ASSERT ON
+	 * THEIR OWN.
+	 *
+	 * <p><b>A negative amount fails BOTH questions and must keep the sentence it already had.</b>
+	 * {@code MembershipPrice.amountIsKeptExactly} asks {@code signum() >= 0} as well as the scale and the
+	 * ceiling, so had the new question been asked FIRST, three cases that have answered
+	 * {@link PaymentApi#THE_AMOUNT_IS_NOT_MONEY} since this route was written would quietly have started
+	 * answering something else. {@code PricingWriteApi} states the same reason for the same order: „a
+	 * change that quietly restates old cases is a change nobody measured."
+	 *
+	 * <p><b>So this case is about the JOIN and not about either half.</b> Each half has its own cases
+	 * above; what neither of them can say is which word comes out of which condition, and swapping the
+	 * two words over is a mutation both halves survive. Three amounts, three pairs, read together:
+	 * nought and a negative keep the older sentence, and something the column will not keep gets the
+	 * newer one.
+	 */
+	@Test
+	void eachAmountGetsItsOwnRefusalAndTheOrderIsWhatKeepsThemApart() throws Exception {
+		long id = competitor("cc", null, false, "1990-05-15");
+
+		record Pair(String amount, String reason) {
+		}
+
+		for (Pair each : new Pair[] {
+				new Pair("0.00", PaymentApi.THE_AMOUNT_IS_NOT_MONEY),
+				new Pair("-38.00", PaymentApi.THE_AMOUNT_IS_NOT_MONEY),
+				new Pair("38.001", PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY)}) {
+
+			MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+					new BigDecimal(each.amount()), true, "paypal", null)), moderatorCookie);
+
+			assertThat(answer.getStatus()).isEqualTo(400);
+			assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+					.as("an amount of %s was answered with the wrong one of the two sentences", each.amount())
+					.isEqualTo(each.reason());
+		}
+	}
+
+	/**
+	 * AND WHAT THE ANSWER SAYS ARRIVED IS READ OFF THE ROW, NOT ECHOED BACK FROM THE REQUEST.
+	 *
+	 * <p><b>The amount is sent as {@code 38.0} on purpose, and the SCALE is what this case reads.</b>
+	 * That is a number the bound accepts - {@code stripTrailingZeros().scale()} of {@code 38.0} is
+	 * {@code -1} - and the column stores it as {@code 38.00}. So the two possible sources answer the same
+	 * VALUE with two different spellings, and the spelling is the only thing that says which of them
+	 * answered. Asserting it is therefore asserting the SOURCE, which is what the rule about two sources
+	 * of one value asks for; {@code isEqualByComparingTo} would call both correct and measure nothing.
+	 *
+	 * <p><b>Why it matters that it is the row.</b> Before the scale was bounded the two could differ by
+	 * VALUE and not only by spelling: a request carrying {@code 38.006} was answered {@code 38.006} while
+	 * the row held {@code 38.01}. The bound closes that, and reading the row closes it by CONSTRUCTION
+	 * rather than by argument - which is the difference between a rule that holds and one that happens
+	 * to. It also makes this branch answer the way the repeat branch always has:
+	 * {@code alreadyRecorded} reads {@code received} off the row.
+	 *
+	 * <p>The row's own value is read and compared as well, so a route that served something neither the
+	 * request nor the row carries is caught by the number rather than by the scale.
+	 */
+	@Test
+	void whatTheAnswerSaysArrivedIsTheRowsOwnValueAndNotTheRequests() throws Exception {
+		long id = competitor("cd", null, false, "1990-05-15");
+
+		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+				new BigDecimal("38.0"), false, "paypal", null)), moderatorCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+
+		PaymentApi.Confirmed body = mapper.readValue(answer.getContentAsString(),
+				PaymentApi.Confirmed.class);
+
+		BigDecimal onTheRow = db.sql("select received from payment where id = ?")
+				.param(body.paymentId()).query(BigDecimal.class).single();
+
+		assertThat(onTheRow)
+				.as("the column did not keep it as the two decimals it is declared with, so this case"
+						+ " cannot tell the row from the request")
+				.isEqualTo(new BigDecimal("38.00"));
+
+		assertThat(body.received())
+				.as("the answer echoed the request instead of reading the row, so the two can be two"
+						+ " numbers the day anything rounds")
+				.isEqualTo(onTheRow);
+	}
+
+	/**
 	 * AND AN EMPTY REFERENCE BOX IS NO REFERENCE AT ALL, WHICH IS THE ORDINARY THING A SCREEN SENDS.
 	 *
 	 * <p><b>This is the second caller of the same question and the one where getting it wrong costs
