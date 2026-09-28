@@ -490,9 +490,16 @@ describe('a team its administrator takes down', () => {
         expect(router.state.location.pathname).toBe(`/sr/tim/${VARDAR}`)
         expect(screen.getByRole('heading', { level: 1, name: ITS_NAME })).toBeVisible()
 
-        /* AND THE TEAM IS STILL THERE, because nothing happened - roster and all. Read on
-           the list rather than on this page, which is where a session write would have shown
-           itself. */
+        /* AND THE ROSTER IS UNTOUCHED, which the check below cannot see by itself: it reads
+           `TEAMS`, and `deleteOne` leaves `remove(TEAMS.id, ...)` uncalled on this branch, but
+           nothing before this line said the same about `editRecord` over `roster`. Read right
+           here rather than after navigating away, because a member written out of Vardar shows
+           up in `everMembers` on this very page's next render, before anybody moves anywhere.
+           Vardar has five (see the class comment above). */
+        expect(await screen.findByText('Skoplje · 5 članova')).toBeVisible()
+
+        /* AND THE TEAM IS STILL THERE, because nothing happened. Read on the list rather than
+           on this page, which is where a session write to `TEAMS` would have shown itself. */
         await router.navigate('/sr/timovi')
 
         expect(
