@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { ServerSaid } from '../account/ServerSaid'
@@ -34,11 +34,21 @@ import './Member.css'
  * `SignIn.ENOUGH_MISSES_TO_LOCK` and `SignIn.LOCKED_FOR` on the server, and a copy of
  * them on a screen is a second home for a fact the server owns.
  *
- * <p><b>What this does NOT do, and it is written down rather than left to be
- * noticed.</b> There is no way to a forgotten password from here: PDL records that the
- * road exists („link na mejl, pa unos nove lozinke") and `NewPassword` is the far end
- * of it, but the screen that asks for the message to be sent is not built, so a link to
- * it would point at nothing.
+ * <p><b>THE WAY TO A FORGOTTEN PASSWORD IS HERE, AND SINCE 28.09.2026 IT LEADS
+ * SOMEWHERE.</b> ~~There is no way to a forgotten password from here: PDL records that
+ * the road exists („link na mejl, pa unos nove lozinke") and `NewPassword` is the far
+ * end of it, but the screen that asks for the message to be sent is not built, so a
+ * link to it would point at nothing.~~ That was true until `ForgottenPassword` was
+ * written and is the sentence this one replaces: a note claiming a screen that now
+ * exists is an instruction to the next reader to take it away again.
+ *
+ * <p><b>The link is called what the portal has been calling it in messages already
+ * posted</b>, „Zaboravljena lozinka" - `mail/sr.properties` sends a member whose link
+ * ran out „sa strane za prijavu, na „Zaboravljena lozinka"", and the two sentences the
+ * other screens draw for a spent link („Zatraži novu sa strane za prijavu") point at
+ * this same page. That name is therefore not a caption chosen here, and
+ * `forgottenPassword.test.tsx` reads it out of the properties file rather than writing
+ * it down a second time.
  *
  * <p><b>Nothing here writes what it is given anywhere but into the body of one
  * request</b> - not to the console, not into an address, not into storage, and not into
@@ -194,6 +204,14 @@ export function SignIn() {
           </p>
         )}
       </form>
+
+      {/* OUTSIDE THE FORM, because it is a way out of it rather than another thing to
+          press in it: inside, a reader tabbing from the password field would meet it
+          before the button that signs him in. The words are the ones the messages
+          already use for this page. */}
+      <p>
+        <Link to={`/${locale}/zaboravljena-lozinka`}>{t('signIn.forgotten')}</Link>
+      </p>
 
       {trouble === 'noWho' && (
         <p className="field__error" role="alert">

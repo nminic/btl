@@ -23,6 +23,7 @@ import { NotFound } from '../pages/NotFound'
 import { Placeholder } from '../pages/Placeholder'
 import { Registration } from '../pages/Registration'
 import { ConfirmAddress } from '../pages/account/ConfirmAddress'
+import { ForgottenPassword } from '../pages/account/ForgottenPassword'
 import { NewPassword } from '../pages/account/NewPassword'
 import { StaticPage } from '../pages/StaticPage'
 import { Admin } from '../pages/admin/Admin'
@@ -68,6 +69,7 @@ const SCREENS: Record<string, ReactElement> = {
   prijava: <SignIn />,
   'nova-lozinka': <NewPassword />,
   'potvrda-adrese': <ConfirmAddress />,
+  'zaboravljena-lozinka': <ForgottenPassword />,
   'moj-profil': <MyProfile />,
   'moji-rezultati': <MyResults />,
   'moja-clanarina': <Membership />,

@@ -91,6 +91,10 @@
       "title": "Confirming the address",
       "description": "Confirming the email address through the link in the message the portal sends after registration."
     },
+    "forgottenPassword": {
+      "title": "A forgotten password",
+      "description": "Asking for the message with the link on which a new password is set for a portal account."
+    },
     "admin": {
       "title": "Administration",
       "description": "The way into the administrative part of the portal, with the queues and every record of the League."
@@ -233,6 +237,7 @@
     "register": "Register",
     "newPassword": "New password",
     "confirmAddress": "Address confirmation",
+    "forgottenPassword": "A forgotten password",
     "myProfile": "My profile",
     "myResults": "My results",
     "membership": "My fee",
@@ -901,7 +906,8 @@
     "noRecordText": "You are signed in, but there is no competitor record on this account, so there is nothing to show here.",
     "needsBoth": "Enter an address and a password so that you can sign in.",
     "refused": "The sign-in did not succeed. The address or the password is wrong, or the account is locked for a while after too many failed attempts.",
-    "noWho": "The sign-in went through, but the portal did not manage to learn who you are. Refresh the page, and if it happens again, let us know."
+    "noWho": "The sign-in went through, but the portal did not manage to learn who you are. Refresh the page, and if it happens again, let us know.",
+    "forgotten": "A forgotten password"
   },
   "newPassword": {
     "title": "A new password",
@@ -916,6 +922,15 @@
     "linkIsNotValid": "The link has expired or has already been used. Ask for a new one from the sign-in page.",
     "formIsNotComplete": "Both passwords must be filled in, the same, and at least {count} characters long.",
     "passwordHasLeaked": "This password has already appeared in publicly published breaches, so the portal does not take it. Choose another."
+  },
+  "forgottenPassword": {
+    "title": "A forgotten password",
+    "intro": "Enter the email address of your account. If there is an account at it, a message reaches you with the link on which you set a new password.",
+    "email": "Email address",
+    "submit": "Send the link",
+    "sending": "Sending",
+    "needsAddress": "Enter an email address so that you can ask for the link.",
+    "done": "If there is an account at that address, the message with the link has been sent. Look in your mailbox, and in the junk mail if it is not there."
   },
   "confirmAddress": {
     "title": "Address confirmation",
@@ -1460,7 +1475,8 @@
       "theAmountIsNotKeptExactly": "The amount is larger than the portal can record, so no payment was booked and no membership was recorded. Check the amount and type it again.",
       "theMethodIsNotKnown": "The way the money arrived was not recognised, so no payment was booked and no membership was recorded. Refresh the page and try again.",
       "theReferenceIsNotShaped": "The payment reference is not of the right shape, so no payment was booked and no membership was recorded.",
-      "theReferenceIsTaken": "This payment reference is already recorded against another payment, so no payment was booked and no membership was recorded."
+      "theReferenceIsTaken": "This payment reference is already recorded against another payment, so no payment was booked and no membership was recorded.",
+      "theMembershipCostsNothing": "The price list asks for nothing this season, so no payment can be booked. A membership is recorded as an exemption from the fee instead."
     },
     "body": {
       "leagues": "Competition description",

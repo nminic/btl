@@ -119,6 +119,15 @@ const UNLISTED_ROUTES: RouteDef[] = [
      segment that is not a language is sent on to `/sr` with the query intact. */
   { path: 'nova-lozinka', labelKey: 'nav.newPassword', seoKey: 'newPassword' },
   { path: 'potvrda-adrese', labelKey: 'nav.confirmAddress', seoKey: 'confirmAddress' },
+  /* Where a forgotten password is asked about, which is the near end of the road the
+     two addresses above are the far end of. Unlike them, THIS ONE IS OURS TO NAME: the
+     server posts no link to it, so nothing already sent carries it and it is not in
+     `postedAddresses.json`. Reached from the sign in page, by the name the messages
+     themselves already use for it - „zatražite novu sa strane za prijavu, na
+     „Zaboravljena lozinka"" (backend/src/main/resources/mail/sr.properties) - which is
+     why it is unlisted rather than in the navigation: somebody who can sign in has no
+     use for it. */
+  { path: 'zaboravljena-lozinka', labelKey: 'nav.forgottenPassword', seoKey: 'forgottenPassword' },
   /* Reached from the standing of the teams, by whoever is signed in. Not in the
      navigation: proposing a team is something a member does once, if ever. */
   { path: 'novi-tim', labelKey: 'teams.propose', seoKey: 'proposeTeam' },

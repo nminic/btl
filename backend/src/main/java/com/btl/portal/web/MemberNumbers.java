@@ -38,6 +38,40 @@ import org.springframework.stereotype.Component;
  * which is what makes two simultaneous activations safe without a lock anywhere.
  * {@code PaymentNumberConcurrencyTest} is the floor under that, and it measures this
  * statement whichever route reaches it.
+ *
+ * <p><b>AND THE OTHER HALF OF THAT SAME PROPERTY, WHICH IS WHAT IT COSTS: A NUMBER DRAWN
+ * INSIDE A TRANSACTION THAT GOES BACK IS SPENT ANYWAY.</b> {@code nextval} is outside the
+ * transaction by construction - that is the whole of why it survives a deleted row - so a
+ * booking the database then refuses leaves the sequence one higher with nothing to show for
+ * it, and the owner's rule has no room for that: „Clanski broj se nikad ne dodeljuje dvaput"
+ * (PDL 31.07.2026). Nothing here can fix that; where the draw SITS is the only lever there
+ * is, and it belongs to each caller.
+ *
+ * <p><b>Where the three callers stand, measured on 28.09.2026 rather than assumed, and the
+ * boundary written down rather than left to be found:</b>
+ *
+ * <ul>
+ * <li>{@link PaymentApi#recordIt} draws LAST, after both of its inserts and after every line
+ * it writes into the book. It used to draw first, and that cost a number on every 500 the
+ * route could reach - measured on a price list row set free, which answered
+ * {@code payment_amount_positive} and ate one. Nothing is left after the draw but the
+ * {@code update} that writes it down, which nothing can refuse.
+ * <li>{@link MyMembershipWriteApi#letHimIn} already drew after its own
+ * {@code insert into membership}, and still does.
+ * <li>{@link MembershipWriteApi#grant} draws BEFORE its {@code insert into membership}, and
+ * it is left that way. What stands between the two cannot fail on anything this portal can
+ * reach: the account's name is {@code not null} on both halves (V23), and the one book entry
+ * is guarded ahead of {@code grant} by
+ * {@link com.btl.portal.domain.membership.GrantingAMembership.Outcome#NOTHING_WOULD_COME_OFF_THE_BOOK}.
+ * So the only thing left that could spend a number there is {@code membership_pk} met under
+ * TRUE simultaneity, and a move with no case that can fail on it is a change nobody measured.
+ * </ul>
+ *
+ * <p><b>What that leaves open, in one sentence:</b> two requests activating the same
+ * (competitor, season) at the same instant still cost the loser a number on the balance and
+ * exemption doors, and on all three doors a booking that SUCCEEDS spends one for good, which
+ * is the owner's own named boundary (PDL section 19, „Aktivacija trosi clanski broj
+ * nepovratno").
  */
 @Component
 class MemberNumbers {

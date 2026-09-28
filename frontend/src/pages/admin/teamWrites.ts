@@ -2,6 +2,13 @@
  * WHAT THE ADMINISTRATION'S SCREEN OF TEAMS SENDS, AND WHAT THE ONE REFUSAL OF IT IS
  * CALLED.
  *
+ * <p><b>Read by TWO screens since 28.09.2026, and the second one is not the
+ * administration's.</b> `pages/TeamDetail.tsx` sends the same verb to the same address, because
+ * PDL P13b calls the two „ista radnja"; it is this file rather than a copy beside that screen
+ * for the reason the whole portal keeps one home per fact. The name stands as it was written
+ * because the administration is where this delete first got a route, not because it is the only
+ * caller.
+ *
  * <p>Its own module rather than a constant beside the screen, which is the arrangement
  * `admin/leagueWrites.ts` and `pages/member/myAccount.ts` already have and the reason they
  * give: `react/only-export-components` asks for it, and a test reading a component file to
@@ -37,10 +44,20 @@
  * `theSeasonIsFrozen` and states the reason for: the route answers one word, and what it
  * means to the reader depends on what he pressed. Pressed on the membership page it means
  * „you are staying in the team you are in", and `membership.transferShut` ends on exactly
- * that clause - „Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi." Pressed here it
- * means „this team is not going anywhere until October", and the reader is not in it. One
- * sentence covering both would be half wrong in each place, and the half that was wrong
- * here would be the half that tells the administration it stays somewhere.
+ * that clause - „Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi." Pressed on a
+ * DELETE it means „this team is not going anywhere until October", which is a fact about the
+ * team rather than about where the reader stands. One sentence covering both would be half
+ * wrong in each place, and the half that was wrong here would be the half that tells
+ * somebody deleting a team that he stays somewhere.
+ *
+ * <p><b>AND IT IS THE SAME SENTENCE FOR BOTH OF THE TWO SCREENS THAT PRESS THIS DELETE,
+ * SINCE 28.09.2026.</b> ~~The reader is not in it.~~ `pages/TeamDetail.tsx` imports this map
+ * too, and that reader is the team's own administrator, standing in the team he is taking
+ * away. The sentence did not move with him, because what it says is true of both: the team
+ * is not going anywhere until October, and „ni iz administracije" is the clause that keeps a
+ * moderator from pressing again tomorrow. A second Serbian sentence for the team's own page
+ * would have been a second place to change and the first of the two to drift - which is the
+ * fault the two keys above exist to prevent, not to licence.
  *
  * <p><b>AND THE SENTENCE SAYS THAT THE ADMINISTRATION IS NOT EXEMPT, because that is the
  * decision and not a nicety.</b> PDL P13b, 25.09.2026, owner, choosing between three
