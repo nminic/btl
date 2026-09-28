@@ -52,11 +52,18 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p><b>WHAT THE FAULT COST, which is why it was high rather than tidy.</b> A passing fault
  * of the disk - full, unwritable, a folder that is not there - left a queue card pointing at
- * a {@code photo} row whose file never existed. The member was answered 500, and then refused
- * for ever: the next attempt met {@code aPictureAlreadyWaits}, and he cannot take back a
- * picture a moderator is holding, because {@code DELETE /api/me/photo} deliberately removes
- * only what STANDS. The one way out was a moderator approving a picture {@link PhotoApi}
- * could never serve.
+ * a {@code photo} row whose file never existed. The member was answered 500, and the one way
+ * out was a moderator approving a picture {@link PhotoApi} could never serve.
+ *
+ * <p><b>ONE HALF OF THAT COST HAS GONE AND THE GUARD HAS NOT, which is why it is set out here
+ * rather than left reading as it did.</b> Until PDL 21c the member was also refused FOR EVER:
+ * his next attempt met a 409 {@code aPictureAlreadyWaits} and he could not take back a picture a
+ * moderator was holding, because {@code DELETE /api/me/photo} deliberately removes only what
+ * STANDS. That 409 is what 21c removed - „opet se salje na verifikaciju i gazi trenutan red kod
+ * verifikatora" - so he is no longer stuck. <b>The rollback matters MORE since that day and not
+ * less:</b> a card in front of a moderator naming bytes nobody can read is wrong whether or not
+ * its member can send again, and an overwrite DELETES the picture it replaces, so a half-written
+ * send that committed would take a good picture down with it.
  *
  * <p><b>HOW THE WRITE IS MADE TO FAIL, with no line of production code knowing about this
  * case.</b> The folder setting is pointed at an ordinary FILE. {@code Files.createDirectories}
@@ -232,8 +239,10 @@ class ThePictureAndItsFileAreOneThingTest {
 				.isEqualTo(howMany);
 
 		assertThat(howManyQueueRowsOfMine())
-				.as("a queue card survived, so the member meets aPictureAlreadyWaits on every"
-						+ " later attempt and cannot take back what a moderator is holding")
+				.as("A QUEUE CARD SURVIVED a file that was never written, so a moderator is looking"
+						+ " at bytes nobody can read - and since PDL 21c the member's next send"
+						+ " would DELETE the picture that card names, which is a good picture taken"
+						+ " down by a fault of the disk")
 				.isZero();
 	}
 

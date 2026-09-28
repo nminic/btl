@@ -1444,7 +1444,8 @@
     "deleteNote": "Napomena o brisanju",
     "deleteNotePlaceholder": "Zašto je sklonjen, za moderatore. Sme da ostane prazno.",
     "confirmDelete": "Obriši komentar",
-    "pictureAlt": "Slika koju je poslao {who}, sa uokvirenim delom koji će se videti",
+    "pictureAlt": "Slika koju je poslao {who}",
+    "pictureUnavailable": "Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.",
     "resultReturned": "Rezultat je vraćen",
     "teamReturned": "Predlog tima je vraćen",
     "teamChangeReturned": "Izmena tima je vraćena",
@@ -1525,7 +1526,6 @@
     "sentAlt": "Slika koju si poslao na odobrenje, sa uokvirenim delom koji će se videti",
     "sending": "Slika se šalje...",
     "sendRefused": {
-      "aPictureAlreadyWaits": "Tvoja prethodna slika još čeka odluku moderatora. Kad o njoj odluči, možeš da pošalješ novu.",
       "theFormIsNotComplete": "Slika nije stigla do servera. Izaberi je ponovo i pošalji.",
       "thePictureIsTooBig": "Slika je prevelika za portal. Izaberi manju ili je smanji pre slanja.",
       "thisIsNotAPicture": "Ovaj fajl nije slika, kako se god zove. Pošalji fotografiju, na primer u JPG ili PNG obliku.",

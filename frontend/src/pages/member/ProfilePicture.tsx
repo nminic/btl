@@ -96,7 +96,7 @@ export function ProfilePicture({ me }: { me: Competitor }) {
   const [sending, setSending] = useState(false)
   const outstanding = useRef(false)
   /* Whatever came back that was not „it is done". Held here and shown under the
-     button, never folded into one sentence of our own: the route tells five refusals
+     button, never folded into one sentence of our own: the route tells four refusals
      apart on purpose (`photoWrites.ts`), and a screen that said „nešto je puklo"
      hands the reader a button to press again with no idea what to change. */
   const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
@@ -118,7 +118,8 @@ export function ProfilePicture({ me }: { me: Competitor }) {
      gone the moment the tab is reloaded while the row this screen cannot see is
      still open on the server. A member who comes back to a picture still waiting
      is met by `picture.none` - „Portal još nema fotografije" - exactly as if he
-     had sent nothing, sends again, and is refused `aPictureAlreadyWaits`, 409.
+     had sent nothing, sends again, and since PDL 21c that overwrites the row he
+     forgot was waiting rather than being refused for it.
      PDL 21b is what that fails (owner, 27.09.2026): „ukoliko udjem da posaljem
      ponovo, vidim da je trenutno slika u statusu cekanja i tu vidim trenutno
      azuriranu sliku sa krugom." It holds within the visit that sent the picture

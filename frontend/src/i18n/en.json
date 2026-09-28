@@ -1444,7 +1444,8 @@
     "deleteNote": "A note about the deletion",
     "deleteNotePlaceholder": "Why it was taken down, for the moderators. It may stay empty.",
     "confirmDelete": "Delete the comment",
-    "pictureAlt": "The picture sent by {who}, with the part that will be seen framed",
+    "pictureAlt": "The picture sent by {who}",
+    "pictureUnavailable": "The picture is not available: the file cannot be loaded, so this item cannot be approved until the picture can be seen. Rejecting it still works.",
     "resultReturned": "The result has been sent back",
     "teamReturned": "The team proposal has been sent back",
     "teamChangeReturned": "The change to the team has been sent back",
@@ -1525,7 +1526,6 @@
     "sentAlt": "The picture you sent for approval, with the part that will be seen framed",
     "sending": "The picture is being sent...",
     "sendRefused": {
-      "aPictureAlreadyWaits": "Your previous picture is still waiting for a moderator's decision. You may send a new one once it has been decided.",
       "theFormIsNotComplete": "The picture did not reach the server. Choose it again and send it.",
       "thePictureIsTooBig": "The picture is too big for the portal. Choose a smaller one, or reduce it before sending.",
       "thisIsNotAPicture": "This file is not a picture, whatever it is called. Send a photograph, in JPG or PNG form for instance.",
