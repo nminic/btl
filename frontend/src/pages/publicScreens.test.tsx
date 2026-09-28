@@ -538,6 +538,44 @@ describe('Rankings', () => {
 
     expect(link).toHaveAttribute('href', expect.stringContaining('/sr/takmicar/'))
   })
+
+  it('puts the member number under the name, in the same plate and never inside the link', async () => {
+    /* Owner, 28.09.2026, from a screenshot of this exact row: „clanski broj treba da ide ispod
+       Imena i prezimena." Before that the number stood outside `NamePlate` entirely, a sibling of
+       the whole plate rather than a second line inside it, so a mutation that put it back there is
+       what this asks the DOM to catch; jsdom lays nothing out, so the stylesheet cannot answer this
+       and the DOM has to (`components/NamePlate.css` stacks two block children of `.plate__words`
+       one under the other, and this is the same question asked of the tree instead of the sheet).
+
+       And the number still never becomes part of what the link says: a screen reader must not read
+       a member's name and his number as one word, which is why `link.contains(number)` is asked
+       before anything about order. `compareDocumentPosition` sets FOLLOWING for a descendant too
+       (`CLAUDE.md`, „bez izricitog !a.contains(b) tvrdnja o redosledu je tvrdnja o hijerarhiji"), so
+       containment is refused first and order is asked only once containment is already false. */
+    renderAt('/sr/tabela?sezona=2020')
+
+    const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+    const cell = at(within(first(rows)).getAllByRole('cell'), 1)
+    const link = within(cell).getByRole('link')
+    const number = within(cell).getByText(/^\d+$/)
+    const plateWords = must(cell.querySelector('.plate__words'), 'the words beside the circle')
+
+    expect(plateWords.contains(number)).toBe(true)
+    expect(link.contains(number)).toBe(false)
+    expect(link.compareDocumentPosition(number) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    /* Independent review of PR 412: nothing above asks whether `link` and `number` actually
+       carry the classes `Rankings.css` writes its two-line rule for. Dropping
+       `rankings__member-name` from Rankings.tsx:269, or `rankings__member-number` from the span
+       on :270, left every case in this file and in rankingsMemberRow.test.ts green: the list
+       there only reads that the rule exists, and the tree above only reads where the number
+       sits, never which class put it there. Not a silent difference on screen either, the review
+       measured it: the anchor falls back to `display: inline` and an inherited line-height, so
+       `.plate__words` grows to 41.59px against the circle's own 33.59px, 8px past the owner's
+       equal-height sentence at the top of rankingsMemberRow.test.ts, on every row. */
+    expect(link.className).toContain('rankings__member-name')
+    expect(number.className).toContain('rankings__member-number')
+  })
 })
 
 /* The words on the row of filters, and the count under it (owner, 05.08.2026).

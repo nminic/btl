@@ -234,10 +234,28 @@ function Standing({
                     )}
                   </td>
                   <td>
-                    {/* The circle before the name, and the name **not** broken over two lines
-                        (owner, 07.09.2026: „U ligi dva reda, u tabelama jedan"). The standing of a
-                        competition breaks it on purpose; this table does not.
-                     *
+                    {/* The circle before the name, and the name itself **not** broken over two
+                        lines (owner, 07.09.2026: „U ligi dva reda, u tabelama jedan"). The standing
+                        of a competition breaks the NAME on purpose; this table does not, and this
+                        is still that same decision. What this table now breaks instead is a
+                        different fact: the member number moves to a line of its own **under** the
+                        name (owner, 28.09.2026, from a screenshot: „clanski broj treba da ide ispod
+                        Imena i prezimena"), which is a second row, not a second name.
+
+                        Written as two children of `NamePlate` rather than as a sibling after it, so
+                        both sit in `.plate__words` and stack the way `.plate__given`/`.plate__family`
+                        already do for the two screens that break the NAME (`components/NamePlate.css`):
+                        two block boxes with nothing inline between them need no flex or grid to fall
+                        one under the other. `table__member-number` still carries the colour and size
+                        the other three screens that wear it keep (`styles/table.css`);
+                        `rankings__member-name`/`rankings__member-number` in `Rankings.css` are this
+                        screen's own, the same way `OverTwoLines` is the league grid's own.
+
+                        The link stays exactly what it was: `CompetitorName` renders the anchor, the
+                        number is its sibling and never its child, so the accessible name of the link
+                        is still only the name and a screen reader is never asked to read a name and a
+                        digit string as one word.
+
                         **And on a telephone the circle is not drawn at all**, which is the owner's
                         own answer of 07.09.2026, given with the measurement in front of him: „Krug
                         se ne crta ispod 700px." The circle took about thirty four pixels of a
@@ -248,9 +266,11 @@ function Standing({
                         way. The rule is in `Rankings.css` and is held, with the class it hangs
                         off, by `styles/leagueLayout.test.ts`. */}
                     <NamePlate competitors={[row.competitor]}>
-                      <CompetitorName competitor={row.competitor} />
-                    </NamePlate>{' '}
-                    <span className="table__member-number">{row.competitor.memberNumber}</span>
+                      <CompetitorName competitor={row.competitor} className="rankings__member-name" />
+                      <span className="table__member-number rankings__member-number">
+                        {row.competitor.memberNumber}
+                      </span>
+                    </NamePlate>
                   </td>
                   <td>{categoryLabel(categoryOfMember(row.competitor), t)}</td>
                   <td className="table__hide-phone">{row.races}</td>
