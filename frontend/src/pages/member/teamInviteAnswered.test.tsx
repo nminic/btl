@@ -452,6 +452,43 @@ describe('answering a served invitation into a team', () => {
   )
 
   it(
+    'reads the inbox again once the server took the refusal too, and drops what he is waiting on',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(waitingWhere())
+      await openTheQuestion()
+
+      const inboxBefore = asked().filter((one) => one === '/api/inbox').length
+
+      await waitFor(() => {
+        expect(arrivedResource('me/applications')).not.toBeUndefined()
+      })
+
+      await user.click(theRefuseButton())
+
+      /* **THE MIRROR OF THE CASE ABOVE, MISSING UNTIL A REVIEW OF PR 423 NAMED IT.**
+         `member/teamWrites.ts`'s own javadoc claims „TWO ARE DROPPED EITHER WAY AND THE THIRD
+         ONLY ON „Prihvati"" - `theInboxHasChanged()` and `clearResourceCache('me/applications')`
+         sit OUTSIDE `if (accepted)` on purpose. Every other case in this file that presses
+         „Odbij" either answers before either cache is read again or never reads either cache at
+         all, so gating both calls behind `if (accepted)` left every one of them green: the claim
+         „either way" had a case for „Prihvati" and none for its other half. */
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: sr.teams.inviteRefuse })).toBeNull()
+      })
+
+      expect(asked().filter((one) => one === '/api/inbox').length).toBeGreaterThan(inboxBefore)
+
+      /* **AND THE SAME SECOND CACHE, DROPPED RATHER THAN RE-READ, for the same reason**: this
+         component goes with the answer either way, so there is no mounted reader left to hand a
+         fresh one to. */
+      expect(arrivedResource('me/applications')).toBeUndefined()
+    },
+    SLOW,
+  )
+
+  it(
     'drops the teams it has read on „Prihvati" and leaves them alone on „Odbij"',
     async () => {
       const user = setupUser()
