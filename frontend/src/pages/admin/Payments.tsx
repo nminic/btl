@@ -9,13 +9,13 @@ import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import {
-  FREE_OF_THE_FEE,
-  ON_THE_BALANCE,
-  theServerCanDoIt,
+  MEMBERSHIPS,
+  sending,
   typedIn,
-  whatToDo,
   WHEN_ACTIVATING,
-  type Actionable,
+  WHEN_BOOKING_A_PAYMENT,
+  type Question,
+  type Sending,
 } from './activation'
 import { matching } from './paymentSearch'
 import { QueueMeta } from './QueueMeta'
@@ -126,8 +126,22 @@ function Row({
      own state rather than derived from the balance, because a moderator clearing it over a
      member who HAS money is exactly cases 3b and 6. */
   const [including, setIncluding] = useState(true)
-  const [asking, setAsking] = useState<Actionable | null>(null)
-  const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  const [asking, setAsking] = useState<Question | null>(null)
+  /**
+   * WHAT THE SERVER SAID AND WHICH DOOR SAID IT, held together as one value.
+   *
+   * <p><b>The map has to come with the answer rather than be chosen where it is drawn, because
+   * this row now knocks on TWO doors and they name different reasons.</b> `POST /api/payments`
+   * names nine and `POST /api/memberships` seven, and only four of the sixteen are spelt the
+   * same. Picking the map at the point of drawing would mean asking again which door had been
+   * used, from state that has since moved on; carried with the answer, the pair cannot come
+   * apart. The one this would get wrong is exactly the four that overlap - they would look right
+   * under either map - so the mistake would hide in the half that agrees.
+   */
+  const [refused, setRefused] = useState<{
+    answer: Exclude<Answer, { got: 'done' }>
+    refusals: Record<string, string>
+  } | null>(null)
   /**
    * WHETHER A REQUEST THIS ROW STARTED IS STILL OUT WITH THE SERVER, so a second press before
    * the first has answered cannot send a second identical body.
@@ -154,12 +168,27 @@ function Row({
   const [activating, setActivating] = useState(false)
 
   const read = typedIn(typed)
-  const what = whatToDo(read, one.expected, one.balance, including)
-  /* NARROWED ONCE, HERE, and both the button's disabling and its press read this one answer.
-     `theServerCanDoIt` is a type guard, so this is also what makes `what` something `Asking`
-     will accept: four of the owner's seven cases have no route, and `activation.ts` names what
-     is missing for them. */
-  const canAct = theServerCanDoIt(what) ? what : null
+  /* DECIDED ONCE, HERE, and the button's disabling, its press and the question all read this one
+     answer. It carries the body of every request this row could send, so nothing below assembles
+     one: `activation.ts#sending` is where „which number goes into which field" is decided, and a
+     test can ask it without mounting a row. */
+  const press = sending(one, read, including)
+  /**
+   * THE TWO THINGS A PRESS CAN DO, NARROWED HERE IN THE RENDER AND NEVER IN THE HANDLER.
+   *
+   * <p><b>That is not a matter of taste, and the 100 per cent threshold is what decides it.</b> A
+   * native `disabled` button fires no click, so any test of `'nothing'` written INSIDE the handler
+   * is a branch nothing can reach - which is what the comment on the button below records as
+   * having been found once already. Here it is reachable in every direction, because every state
+   * of a row really is rendered: a field that cannot be read renders `'nothing'`, his case 1
+   * renders `'sends'`, his case 6 renders a question.
+   *
+   * <p>Exactly one of the two is ever set, which is what makes the handler a pair of lines rather
+   * than a second reading of the row.
+   */
+  const sendsAtOnce: Sending | null = press.press === 'sends' ? press.sending : null
+  const question: Question | null =
+    press.press === 'nothing' || press.press === 'sends' ? null : press
 
   const amountId = `paid-${one.competitorId}`
   const balanceId = `balance-${one.competitorId}`
@@ -170,7 +199,13 @@ function Row({
    *  same pair for the member's own side of this. */
   const inHisCurrency = (amount: number): string => `${money(amount, locale)} ${one.currency}`
 
-  async function activate(ground: string) {
+  /**
+   * @param what the whole request, address and body together, as `activation.ts#sending` built it.
+   *             <b>Taken whole rather than as a ground</b>, which is what it used to take: there
+   *             is more than one door now, and a function taking the pieces is a function that can
+   *             send one door's body to the other.
+   */
+  async function activate(what: Sending) {
     /* SET BEFORE ANYTHING BELOW AWAITS ANYTHING, the same order `PendingQueue.tsx#approveAll`
        keeps and for the same reason: a second call reading this after the first has already set
        it is what makes the guard at both doors below mean anything. Reset in `finally`, so a
@@ -179,10 +214,7 @@ function Row({
     setActivating(true)
 
     try {
-      const answer = await askTheServer('/api/memberships', {
-        competitorId: one.competitorId,
-        ground,
-      })
+      const answer = await askTheServer(what.to, what.body)
 
       /* CLOSED HERE, ONCE THE SERVER HAS ANSWERED, AND NOT BEFORE. This used to be the first
          line of the function, closing the sheet before anything was asked - which is what a
@@ -204,8 +236,17 @@ function Row({
          tabele za aktivaciju, samo odlaze odluku dok se stvari ne rese van portala." A refusal is
          the same shape - nothing was written, so nothing about the row has changed - and the one
          refusal this screen cannot see coming is `nothingWouldComeOffTheBalance`, for the reason
-         `activation.ts` sets out. */
-      setRefused(answer)
+         `activation.ts` sets out.
+
+         AND THE MAP COMES OFF THE ADDRESS THAT WAS ACTUALLY CALLED, never off the state of the
+         row. The field and the box can both be changed while a request is out, so a map worked
+         out from them once the answer lands could belong to the other door - and the four reasons
+         the two doors spell the same way would still read correctly, so the mistake would hide in
+         the half that agrees. */
+      setRefused({
+        answer,
+        refusals: what.to === MEMBERSHIPS ? WHEN_ACTIVATING : WHEN_BOOKING_A_PAYMENT,
+      })
     } finally {
       /* Read at both doors before either starts a request (below, and `onChoose` where this is
          handed to `Asking`), so the next press is let through the moment this one has actually
@@ -312,21 +353,26 @@ function Row({
         <button
           type="button"
           className="button"
-          /* DISABLED FOR FOUR OF THE OWNER'S SEVEN CASES, and `activation.ts#theServerCanDoIt`
-             is the one place that says which four and what exactly is missing for them. Not a
-             sentence on the screen: what is missing is a route's shape rather than anything the
-             moderator did or could put right, and the wording for such a sentence is the
-             owner's to give.
+          /* DISABLED FOR THE ONE CASE THAT SENDS NOTHING, which since 28.09.2026 is no longer
+             four of the owner's seven but the eighth that is not his: a field that cannot be read
+             (`activation.ts#Press`, `'nothing'`). It carries a sentence of its own beside the
+             field, so the row says why.
 
-             The guard is asked ONCE, above, and both the disabling and the press read its
-             answer. Asked again inside the press it would be a branch nothing can reach - the
-             button is disabled in exactly the case that would make it false - and the 100 per
-             cent threshold is what found that, which is the one tool that sees such a branch. */
-          disabled={canAct === null}
+             `'nothing'` is also what a currency the portal cannot name a way to pay for gives,
+             and THAT one says nothing at all. It is named as a boundary on `Press` rather than
+             guarded: `Currency` holds two and `paymentQr.test.ts` reads that enum, so a third
+             cannot arrive without somebody deciding how it is paid.
+
+             Asked ONCE, above, and both the disabling and the press read the one answer. Asked
+             again inside the press it would be a branch nothing can reach - the button is
+             disabled in exactly the case that would make it false - and the 100 per cent
+             threshold is what found that, which is the one tool that sees such a branch. */
+          disabled={press.press === 'nothing'}
           /* TOLD OFF WHILE ITS OWN REQUEST IS OUT, NOT SWITCHED OFF: `activating` never changes
-             `canAct`, so the native `disabled` above stays reserved for the four cases with no
-             route (`activation.ts#theServerCanDoIt`) and this is the second, independent reason
-             the row can give (`PendingQueue.tsx`'s own „Odobri" keeps the same two apart). */
+             `press`, so the native `disabled` above stays reserved for the one case that can send
+             nothing at all (`activation.ts#Press`, `'nothing'`) and this is the second,
+             independent reason the row can give (`PendingQueue.tsx`'s own „Odobri" keeps the same
+             two apart). */
           aria-disabled={activating ? true : undefined}
           onClick={() => {
             /* THE SAME REF `activate` SETS, CHECKED HERE SO A PRESS ON THIS BUTTON WHILE THE
@@ -337,7 +383,19 @@ function Row({
               return
             }
 
-            setAsking(canAct)
+            /* THREE OF HIS SEVEN GO STRAIGHT THROUGH AND FOUR ASK FIRST, which is his table read
+               literally: cases 1, 2 and 7 say „aktivacija prolazi" with no question in the cell,
+               and the rest name a prompt. Which of the two this row is, and the body either way,
+               was decided above rather than read off the field again here. */
+            if (sendsAtOnce !== null) {
+              void activate(sendsAtOnce)
+
+              return
+            }
+
+            /* And `question` is null for the one case the button above is disabled for, so a press
+               arriving some other way closes a sheet that was not open and does nothing else. */
+            setAsking(question)
           }}
         >
           {t('verification.activate')}
@@ -348,7 +406,9 @@ function Row({
             its text is one a screen reader often misses, because there was nothing there to be
             watching. */}
         <div className="activate__said" role="status">
-          {refused === null ? null : <ServerSaid answer={refused} refusals={WHEN_ACTIVATING} />}
+          {refused === null ? null : (
+            <ServerSaid answer={refused.answer} refusals={refused.refusals} />
+          )}
         </div>
 
         {asking === null ? null : (
@@ -360,13 +420,17 @@ function Row({
             /* THE OTHER DOOR TO THE SAME REQUEST, guarded the same way as the button above: a
                second „Da" fired at this same open sheet before the first has answered - a real
                double press, not only a reopened sheet - must not start a second `activate` any
-               more than a second „Aktiviraj" may (VISOK 1, review of PR 411). */
-            onChoose={(ground) => {
+               more than a second „Aktiviraj" may (VISOK 1, review of PR 411).
+
+               IT NOW HANDS BACK A WHOLE REQUEST RATHER THAN A GROUND, and the guard is untouched
+               by that: the sheet picks which of the bodies its own question carries, and this
+               still reads the one ref before anything is sent. */
+            onChoose={(what) => {
               if (outstanding.current) {
                 return
               }
 
-              void activate(ground)
+              void activate(what)
             }}
             onDecline={() => setAsking(null)}
           />
@@ -380,8 +444,14 @@ function Row({
  * THE QUESTION ITSELF, in the owner's own words and with his own buttons.
  *
  * <p>Split out from the row because the row is about controls and this is about which of three
- * questions is being put. Two of the three offer a choice of ground and one is a yes or no, and
+ * questions is being put. One of the three offers a choice of ground and two are a yes or no, and
  * `components/Prompt` takes both shapes.
+ *
+ * <p><b>IT CHOOSES BETWEEN BODIES AND NEVER BUILDS ONE, which is what changed on 28.09.2026.</b>
+ * Every request its question could send arrives already made, on the {@link Question} it is
+ * handed; this file decides which button carries which of them and what the words on it are. So
+ * „which number out of the row goes into which field of the request" is not a question that can be
+ * answered wrongly here, because it is not answered here at all.
  *
  * <p><b>The word „pocasno" appears nowhere, and that is a decision rather than a choice of
  * phrasing.</b> The owner used it three times while dictating, and the Statute of 17.08.2026
@@ -398,23 +468,26 @@ function Asking({
 }: {
   one: MembershipDue
   season: number
-  /** Narrowed to the cases that reach a route, so the question about a shortfall cannot be
-   *  built here at all: it needs an amount on the wire and there is none. See `Actionable`. */
-  what: Actionable
+  /** One of the three presses that put a question, with the request each answer sends already on
+   *  it. See `activation.ts#Question` for why that is a type and not a comment. */
+  what: Question
   inHisCurrency: (amount: number) => string
-  onChoose: (ground: string) => void
+  onChoose: (what: Sending) => void
   onDecline: () => void
 }) {
   const { t } = useI18n()
 
   const whose = `${one.firstName} ${one.lastName}`
 
-  if (what.does === 'offersTheBalanceOrTheExemption') {
+  if (what.press === 'asksAboutTheGround') {
     return (
       <Prompt
         title={t('verification.askGround', { whose, season })}
         choices={[
-          { label: t('verification.grantExemption'), onChoose: () => onChoose(FREE_OF_THE_FEE) },
+          {
+            label: t('verification.grantExemption'),
+            onChoose: () => onChoose(what.freeOfTheFee),
+          },
           {
             /* ONE GROUND AND TWO LABELS, which is the owner's grid and the server's own word for
                it: cases 4 and 5 both send `balance` and differ in what the button says. The
@@ -423,7 +496,7 @@ function Asking({
             label: what.covers
               ? t('verification.grantFromBalance')
               : t('verification.grantReducedFromBalance'),
-            onChoose: () => onChoose(ON_THE_BALANCE),
+            onChoose: () => onChoose(what.onTheBalance),
           },
         ]}
         decline={t('review.cancel')}
@@ -435,20 +508,42 @@ function Asking({
     )
   }
 
-  /* CASE 6, in his own words - „Odobri oslobodjenje od clanarine? Da / Ne" - and with it the
-     state his grid does not name: the box ticked over an empty book.
+  /**
+   * HIS CASES 3 AND 3b, IN HIS OWN WORDS: „Prihvatam umanjen ukupan iznos? Da / Ne".
+   *
+   * <p><b>Drawn since 28.09.2026, and it is the question this file was written around the absence
+   * of.</b> What stood here said it „is reached only with an amount typed, and no route takes an
+   * amount... so its „Da" would have nowhere to go". `POST /api/payments` takes one, so it does.
+   *
+   * <p><b>ONE QUESTION FOR BOTH OF HIS ROWS, which is his own table rather than an economy</b>: 3
+   * and 3b share a cell („isti prompt"). 3 is the box ticked with the balance spent to the last
+   * and 3b is the box cleared, and what the moderator is being asked is the same either way.
+   *
+   * <p><b>What is missing is NAMED, and that is the whole reason this is a question and not a
+   * warning.</b> He is accepting a total short of the price, so the number he needs is how short,
+   * and it is in his own money like every other number on the row.
+   */
+  if (what.press === 'asksAboutTheShortfall') {
+    return (
+      <Prompt
+        title={t('verification.askShortfall')}
+        choices={[{ label: t('admin.yes'), onChoose: () => onChoose(what.sending) }]}
+        decline={t('admin.no')}
+        onDecline={onDecline}
+      >
+        <p>{t('verification.askExemptionWhose', { whose, season })}</p>
+        <p>{t('verification.askGroundExpected', { amount: inHisCurrency(one.expected) })}</p>
+        <p>{t('verification.askShortfallShort', { amount: inHisCurrency(what.short) })}</p>
+      </Prompt>
+    )
+  }
 
-     THE QUESTION ABOUT A SHORTFALL IS NOT HERE, AND ITS ABSENCE IS THE BOUNDARY RATHER THAN AN
-     OMISSION. „Prihvatam umanjen ukupan iznos? Da / Ne" is reached only with an amount typed,
-     and no route takes an amount (`activation.ts#theServerCanDoIt`), so its „Da" would have
-     nowhere to go. `Actionable` is what keeps it out: the type narrows to the cases that reach a
-     route, so drawing it here would not compile. The day an amount can be sent, widening that
-     type breaks this file until the question is written, which is the opposite of a boundary
-     somebody has to remember. */
+  /* CASE 6, in his own words - „Odobri oslobodjenje od clanarine? Da / Ne" - and with it the
+     state his grid does not name: the box ticked over an empty book. */
   return (
     <Prompt
       title={t('verification.askExemption')}
-      choices={[{ label: t('admin.yes'), onChoose: () => onChoose(FREE_OF_THE_FEE) }]}
+      choices={[{ label: t('admin.yes'), onChoose: () => onChoose(what.freeOfTheFee) }]}
       decline={t('admin.no')}
       onDecline={onDecline}
     >
@@ -477,15 +572,30 @@ function Asking({
  * as the definitive specification of this screen (PDL section 19): what stands in the row, seven
  * cases of what is typed, and two rules over all of them.
  *
- * <p><b>WHAT IS CARRIED OUT AND WHAT IS NOT, counted rather than described.</b> Three of his
- * seven cases reach the server today - the three where nothing is typed, which are his 4, 5 and
- * 6 - and they go to `POST /api/memberships` on one of two grounds. The four that need the
- * amount on the wire cannot, and `activation.ts#theServerCanDoIt` names exactly what is missing
- * and where it stands today: no amount on `POST /api/payments` at all, a balance spent by what a
- * QR code promised instead of by the tick box, and a `method` whose only correct value for
- * Serbia the schema does not know. The button is disabled for those four, which is the one
- * honest state: a prompt whose „Da" had nowhere to go would tell the moderator a row had been
- * dealt with.
+ * <p><b>ALL SEVEN ARE CARRIED OUT SINCE 28.09.2026, AND WHAT STOOD HERE SAYING FOUR OF THEM ARE
+ * NOT IS REWRITTEN RATHER THAN LEFT.</b> It said the four needing „the amount on the wire" could
+ * not reach the server, on three counts: no amount on `POST /api/payments`, a balance spent by
+ * what a QR code promised, and a `method` the schema did not know. All three were true when
+ * written; `V42` and PR 407 overturned all three, and the sentence survived because a MERGE is
+ * what brought the two halves together and neither half disagreed with itself (found by the
+ * independent review of PR 413, round 2).
+ *
+ * <p><b>SO THE ROW KNOCKS ON TWO DOORS NOW, and which one is decided by whether money arrived.</b>
+ * His 1, 2, 3, 3b and 7 - anything with an amount typed - go to `POST /api/payments`, which takes
+ * `received` and `useTheBalance` and works out for itself what comes off the book and what goes
+ * back onto it. His 4, 5 and 6 - nothing typed - go to `POST /api/memberships` on one of two
+ * grounds, exactly as before. `activation.ts#sending` is the one place that decides which, and it
+ * hands back the whole request rather than a piece of one, so no part of a body is assembled on
+ * this screen.
+ *
+ * <p><b>AND THREE OF THE SEVEN NO LONGER ASK ANYTHING, which is his table read literally.</b>
+ * Cases 1, 2 and 7 say „aktivacija prolazi" with no question in the cell, so one press books
+ * them. A prompt invented for case 2 - „his balance is about to be spent, are you sure" - would be
+ * a decision he did not ask for on a row he said simply goes through. The four that DO name a
+ * prompt get one, „Prihvatam umanjen ukupan iznos? Da / Ne" among them.
+ *
+ * <p><b>The button is disabled for one case only, and it is not one of his:</b> a field that
+ * cannot be read. That case carries a sentence beside the field saying so.
  *
  * <p><b>„NE" NEVER TAKES A ROW OFF THE LIST.</b> Owner, over the whole specification: „Odluka NE
  * ni ovde niti u ostatku opisa funkcionalnosti ne brise red iz tabele za aktivaciju, samo odlaze

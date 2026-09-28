@@ -1434,6 +1434,8 @@
     "grantReducedFromBalance": "Grant a reduced amount from the balance",
     "askExemption": "Grant exemption from the fee?",
     "askExemptionWhose": "{whose}, season {season}.",
+    "askShortfall": "Accept a reduced total?",
+    "askShortfallShort": "Missing: {amount}",
     "activationRefused": {
       "theFormIsNotComplete": "The activation was not sent in full, so no membership was recorded. Refresh the page and try again.",
       "theGroundIsNotKnown": "The ground for the activation was not recognised, so no membership was recorded. Refresh the page and try again.",
@@ -1441,7 +1443,12 @@
       "theMembershipIsAlreadyHeld": "This member already holds a membership for this season, so nothing was recorded again.",
       "theCompetitorDoesNotExist": "This member is no longer there, so no membership was recorded. Refresh the page.",
       "theFeeIsAlreadyRecorded": "This member's fee has already been recorded, so no exemption was granted.",
-      "thePaymentWasReversed": "The payment for this season was reversed, so a membership is not recorded from here. A reversal is turned back by a person, away from this screen."
+      "thePaymentWasReversed": "The payment for this season was reversed, so a membership is not recorded from here. A reversal is turned back by a person, away from this screen.",
+      "theAmountIsNotMoney": "The amount paid has to be more than nought, so no payment was booked and no membership was recorded.",
+      "theAmountIsNotKeptExactly": "The amount is larger than the portal can record, so no payment was booked and no membership was recorded. Check the amount and type it again.",
+      "theMethodIsNotKnown": "The way the money arrived was not recognised, so no payment was booked and no membership was recorded. Refresh the page and try again.",
+      "theReferenceIsNotShaped": "The payment reference is not of the right shape, so no payment was booked and no membership was recorded.",
+      "theReferenceIsTaken": "This payment reference is already recorded against another payment, so no payment was booked and no membership was recorded."
     },
     "body": {
       "leagues": "Competition description",

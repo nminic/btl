@@ -466,6 +466,18 @@ describe('a sentence with a value put into it', () => {
          currencies stand in NO ratio anywhere in this portal - there is no rate in it at all. */
       'verification.askGroundBalance',
       'verification.askGroundExpected',
+      /* „Nedostaje: {amount}" - what is still missing under the question „Prihvatam umanjen
+         ukupan iznos? Da / Ne", which is the owner's cases 3 and 3b (PDL section 19). After a
+         colon it is the thing being named, so the nominative, exactly as the two amounts above
+         it; and it is written by the same helper on the same screen, so the number and its
+         currency cannot come apart.
+         WHAT THE NUMBER IS, and it is worth saying on this line because the case is the easy half
+         of the question: it is the shortfall left AFTER everything being counted - what arrived,
+         plus the balance where the box is ticked - and never the expected amount and never the
+         balance. The owner's own sentence for case 3 is what fixes that („ukljucen balans koji
+         kad se iskoristi POTPUNO i dalje nije ukupan zbir jednak ocekivanog"), so the moderator
+         is accepting a total short by this much rather than being shown what the fee was. */
+      'verification.askShortfallShort',
       'verification.deleteNamed',
       'verification.foldCardNamed',
       /* „uključi balans ({amount})" - the owner's own label for the tick box, with the amount

@@ -20,13 +20,22 @@ import { QUEUE } from './queues'
  * box „ukljuci balans (iznos balansa)" which is ticked to begin with and carries the amount in
  * its own label. Seven cases of what is typed, and two rules over all of them.
  *
- * <p><b>THREE OF THE SEVEN REACH A ROUTE TODAY AND FOUR DO NOT, and which four is measured
- * rather than asserted here.</b> `activation.test.ts` holds the whole grid without mounting
- * anything, and `activation.ts#theServerCanDoIt` names what is missing for the other four: no
- * amount on `POST /api/payments` at all, a balance spent by what a QR code promised rather than
- * by the tick box, and a `method` whose only correct value for Serbia the schema does not know.
- * What this file measures is the SCREEN: which control is drawn, which is disabled, what is sent,
- * and what is not sent.
+ * <p><b>ALL SEVEN REACH A ROUTE SINCE 28.09.2026, AND WHAT STOOD HERE SAYING FOUR OF THEM DO NOT
+ * IS REWRITTEN RATHER THAN LEFT.</b> It named what was missing for those four - no amount on
+ * `POST /api/payments`, a balance spent by what a QR code promised, a `method` the schema did not
+ * know - and `V42` and PR 407 overturned all three. The row knocks on TWO doors now: anything with
+ * an amount typed goes to `POST /api/payments`, and his 4, 5 and 6 go to `POST /api/memberships`
+ * on a ground.
+ *
+ * <p><b>Which means „nothing was sent" is now a claim about TWO addresses</b>, and a case counting
+ * one of them says nothing about the other. That is not theoretical: the case this file used to
+ * hold for „sends nothing at all while an amount stands in the field" went on passing once the
+ * screen began booking payments, because it filtered for the membership door. Every case whose
+ * point is that nothing left the screen uses {@link everythingWritten}.
+ *
+ * <p>`activation.test.ts` holds the whole grid and every request body without mounting anything.
+ * What this file measures is the SCREEN: which control is drawn, which is disabled, which question
+ * is put, what is sent, and what is not sent.
  *
  * <p><b>NOTHING IN THE FIXTURE IS THE ONLY ONE OF ITS KIND, AND THE AXES ARE COUNTED</b>, the way
  * `adminMemberWrites.test.tsx` counts its own. Every number below differs from every other number
@@ -157,7 +166,16 @@ describe('activating a membership from the payments screen', () => {
         })
       }
 
-      if (path === '/api/memberships' && init?.method === 'POST') {
+      /* BOTH WRITE DOORS ANSWER THE SAME WAY, and the `POST` is what tells the second of them from
+         the read above. The row knocks on one or the other depending on whether an amount was
+         typed (`activation.ts#sending`), and a harness answering only one of the two would make
+         „nothing was sent" true of the other by construction - which is exactly what happened to
+         the case this block replaces: it filtered for the membership door alone, so it went on
+         passing once the same press began booking a payment. */
+      if (
+        (path === '/api/memberships' || path === '/api/payments') &&
+        init?.method === 'POST'
+      ) {
         return writeAnswers()
       }
 
@@ -165,11 +183,33 @@ describe('activating a membership from the payments screen', () => {
     })
   }
 
-  /** What was sent to the write route, as the body the server actually received. */
-  function grantsIn(asked: Asked[]): unknown[] {
+  /** What was sent to one write door, as the body the server actually received. */
+  function sentTo(asked: Asked[], door: string): unknown[] {
     return asked
-      .filter((one) => one.path === '/api/memberships' && one.init?.method === 'POST')
+      .filter((one) => one.path === door && one.init?.method === 'POST')
       .map((one) => JSON.parse(String(one.init?.body)))
+  }
+
+  /** The membership door, which takes a ground and no money. */
+  function grantsIn(asked: Asked[]): unknown[] {
+    return sentTo(asked, '/api/memberships')
+  }
+
+  /** The payment door, which takes what arrived and the tick box. */
+  function paymentsIn(asked: Asked[]): unknown[] {
+    return sentTo(asked, '/api/payments')
+  }
+
+  /**
+   * EVERYTHING THAT LEFT THE SCREEN THROUGH EITHER WRITE DOOR, for the cases whose whole assertion
+   * is that NOTHING did.
+   *
+   * <p><b>Both doors and not one, which is the measurement this file lost once and must not lose
+   * again.</b> „Ne" and a disabled button have to send nothing ANYWHERE; a count over one address
+   * is satisfied by a request to the other.
+   */
+  function everythingWritten(asked: Asked[]): unknown[] {
+    return [...paymentsIn(asked), ...grantsIn(asked)]
   }
 
   describe('what stands in the row', () => {
@@ -333,22 +373,44 @@ describe('activating a membership from the payments screen', () => {
     })
   })
 
-  describe('the four cases that need an amount on the wire', () => {
+  /**
+   * THE FIVE ROWS OF HIS TABLE THAT HAVE AN AMOUNT IN THEM, AND THEY REACH THE SERVER SINCE
+   * 28.09.2026.
+   *
+   * <p><b>What stood here was a block called „the four cases that need an amount on the wire" and
+   * every case in it asserted the button was DISABLED.</b> That was true of `origin/main` when it
+   * was written and `V42` overturned it; the sentences on `admin/activation.ts` explaining WHY it
+   * was disabled survived a merge that made them false, which is what the independent review of
+   * PR 413 found.
+   *
+   * <p><b>And one case in it went on PASSING after the screen started booking payments, which is
+   * the part worth keeping in mind.</b> „sends nothing at all while an amount stands in the field"
+   * read `grantsIn`, which filters for `POST /api/memberships` - so a press that sent a perfectly
+   * good `POST /api/payments` satisfied it. A count over one door says nothing about the other,
+   * and {@link everythingWritten} is what this file uses now wherever the assertion is that
+   * nothing was sent.
+   *
+   * <p><b>Measured against PETAR throughout</b>, fourth of six and in euro, whose expected amount,
+   * balance and id all differ from the first row's - so a screen reading any of the three off
+   * `accounts[0]` fails rather than passes.
+   */
+  describe('the five rows of his table with an amount typed', () => {
     /**
-     * <p><b>THE BUTTON IS DISABLED FOR ALL FOUR, and the four are measured one by one rather than
-     * as „an amount was typed".</b> Each is one of the owner's own cases and each would be a
-     * different write: equal (his 1), more (7), less and covered (2), less and short (3).
-     * `activation.ts#theServerCanDoIt` says what is missing for them.
+     * HIS CASES 1, 2 AND 7: „aktivacija prolazi", so one press books it and asks nothing.
      *
-     * <p>Measured against PETAR, fourth row, in euro, so the amounts are his and not the first
-     * row's.
+     * <p><b>What was typed is asserted on the wire and it is never the expected amount</b>, except
+     * for his case 1 where the two are the same number by definition - which is why 50 and 35 are
+     * in this table as well. A screen sending `expected` instead of what was read would book Petar
+     * as having paid 43.50 when he sent 20.
+     *
+     * <p><b>AND NO QUESTION IS PUT, which is his table read literally:</b> the cell for these three
+     * holds no prompt, and one invented for case 2 would be a decision he did not ask for.
      */
     it.each([
-      ['the expected amount, which is his case 1', '43,50'],
-      ['more than expected, his case 7', '50'],
-      ['less, with a balance that covers the difference, his case 2', '35'],
-      ['less, short even with the whole balance, his case 3', '20'],
-    ])('will not activate on %s', async (_what, typed) => {
+      ['the expected amount, his case 1', '43,50', 43.5],
+      ['more than expected, his case 7', '50', 50],
+      ['less, with a balance that covers the difference, his case 2', '35', 35],
+    ])('books what arrived with no question on %s', async (_what, typed, received) => {
       const server = serving()
       const user = setupUser()
       renderAt(ADDRESS, 'superadmin')
@@ -356,27 +418,219 @@ describe('activating a membership from the payments screen', () => {
       const row = await rowOf('Petar Marko')
 
       await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), typed)
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
 
-      expect(within(row).getByRole('button', { name: 'Aktiviraj' })).toBeDisabled()
+      await waitFor(() => {
+        expect(paymentsIn(server.asked)).toEqual([
+          {
+            competitorId: 58,
+            received,
+            useTheBalance: true,
+            method: 'paypal',
+            reference: null,
+          },
+        ])
+      })
+
+      /* AND NOTHING WENT TO THE OTHER DOOR, so „a payment was booked" is not being satisfied by a
+         grant that happens to have been sent as well. */
+      expect(grantsIn(server.asked)).toEqual([])
+      expect(screen.queryByRole('dialog')).toBeNull()
 
       server.stop()
     })
 
     /**
-     * <p><b>AND NOTHING IS SENT, which is the half a disabled attribute does not prove.</b> A
-     * button drawn disabled but still wired would send on a press that arrived some other way.
+     * <p><b>THE TICK BOX IS WHAT GOES ON THE WIRE, and it is measured over a balance that does NOT
+     * cover the fee.</b> Petar has 12.75 against 43.50 expected, so „is it ticked" and „does it
+     * cover" are two different answers here and a screen sending the wrong one shows. The amount
+     * is 50, which covers it on its own, so the box is the only thing that moves.
      */
-    it('sends nothing at all while an amount stands in the field', async () => {
+    it('sends the tick box as the moderator left it, cleared', async () => {
       const server = serving()
       const user = setupUser()
       renderAt(ADDRESS, 'superadmin')
 
       const row = await rowOf('Petar Marko')
 
-      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43,50')
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '50')
+      await user.click(within(row).getByLabelText(/uključi balans/))
       await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
 
-      expect(grantsIn(server.asked)).toEqual([])
+      await waitFor(() => {
+        expect(paymentsIn(server.asked)).toEqual([
+          {
+            competitorId: 58,
+            received: 50,
+            useTheBalance: false,
+            method: 'paypal',
+            reference: null,
+          },
+        ])
+      })
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>AND THE DINAR ROW PAYS THE DINAR WAY</b>, which is the whole of what
+     * `paymentQr.ts#methodFor` decides. Jovana is second, in dinars, with an expected 4.500 and
+     * 6.000 on her book - none of those three numbers Petar's - so a screen naming the way to pay
+     * off a constant rather than off her money sends `paypal` here.
+     */
+    it('names the dinar way of paying for a row billed in dinars', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Jovana Ilić')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (RSD)'), '4500')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      await waitFor(() => {
+        expect(paymentsIn(server.asked)).toEqual([
+          {
+            competitorId: 23,
+            received: 4500,
+            useTheBalance: true,
+            method: 'ips',
+            reference: null,
+          },
+        ])
+      })
+
+      server.stop()
+    })
+
+    /**
+     * HIS CASES 3 AND 3b: „Prihvatam umanjen ukupan iznos? Da / Ne", which is the question this
+     * screen was written around the absence of.
+     *
+     * <p><b>The question NAMES what is missing</b>, and the number is his own: 43.50 expected, 20
+     * sent, 12.75 on the book, so 10.75 short. That figure appears nowhere else on the row, so a
+     * question drawing the expected amount or the balance in its place fails.
+     */
+    it('asks about the shortfall, names it, and books on „Da" (his case 3)', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '20')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const sheet = await screen.findByRole('dialog')
+
+      expect(within(sheet).getByText(/Prihvatam umanjen ukupan iznos/)).toBeVisible()
+      expect(within(sheet).getByText('Nedostaje: 10,75 EUR')).toBeVisible()
+
+      /* NOTHING HAS BEEN SENT YET, which is what makes this a question rather than a notice. */
+      expect(everythingWritten(server.asked)).toEqual([])
+
+      await user.click(within(sheet).getByRole('button', { name: 'Da' }))
+
+      await waitFor(() => {
+        expect(paymentsIn(server.asked)).toEqual([
+          {
+            competitorId: 58,
+            received: 20,
+            useTheBalance: true,
+            method: 'paypal',
+            reference: null,
+          },
+        ])
+      })
+
+      server.stop()
+    })
+
+    /**
+     * HIS CASE 3b: the same question with the box cleared, and <b>over a balance that WOULD have
+     * covered the difference</b>. 35 with 12.75 reaches 47.75, past the 43.50 expected, so a screen
+     * that ignored the cleared box would make this his case 2 and put no question at all. The
+     * shortfall named is the whole 8.50 rather than nothing.
+     */
+    it('asks the same question with the box cleared over a balance that would cover (his 3b)', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '35')
+      await user.click(within(row).getByLabelText(/uključi balans/))
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const sheet = await screen.findByRole('dialog')
+
+      expect(within(sheet).getByText('Nedostaje: 8,50 EUR')).toBeVisible()
+
+      await user.click(within(sheet).getByRole('button', { name: 'Da' }))
+
+      await waitFor(() => {
+        expect(paymentsIn(server.asked)).toEqual([
+          {
+            competitorId: 58,
+            received: 35,
+            useTheBalance: false,
+            method: 'paypal',
+            reference: null,
+          },
+        ])
+      })
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>AND „NE" ON THAT QUESTION WRITES NOTHING AND KEEPS THE ROW</b>, which is the owner's
+     * rule over the whole of his specification: „Odluka NE ni ovde niti u ostatku opisa
+     * funkcionalnosti ne brise red iz tabele za aktivaciju, samo odlaze odluku dok se stvari ne
+     * rese van portala." <b>Both doors are counted</b>, not the one this question would have used.
+     */
+    it('writes nothing and keeps the row when the shortfall question is declined', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '20')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Ne' }),
+      )
+
+      expect(everythingWritten(server.asked)).toEqual([])
+      expect(await rowOf('Petar Marko')).toBeVisible()
+      /* And the amount he typed is still there, so „Ne" put the decision off rather than undoing
+         his reading of the statement. */
+      expect(within(await rowOf('Petar Marko')).getByLabelText('Uplaćeno (EUR)')).toHaveValue('20')
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>AND THE ONE CASE THE BUTTON IS STILL DISABLED FOR SENDS NOTHING THROUGH EITHER DOOR.</b>
+     * A field that cannot be read is the eighth case and is not one of his; the assertion that no
+     * request leaves is over both addresses, which is the mistake this block was rewritten to stop
+     * repeating.
+     */
+    it('sends nothing at all while the field cannot be read', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '4.800')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      expect(within(row).getByRole('button', { name: 'Aktiviraj' })).toBeDisabled()
+      expect(everythingWritten(server.asked)).toEqual([])
       expect(screen.queryByRole('dialog')).toBeNull()
 
       server.stop()
@@ -955,6 +1209,51 @@ describe('activating a membership from the payments screen', () => {
 
       server.stop()
     })
+
+    /**
+     * AND A REASON ONLY THE PAYMENT DOOR CAN NAME, WHICH IS WHAT SAYS THE RIGHT MAP WAS READ.
+     *
+     * <p><b>`theAmountIsNotKeptExactly` is on `PaymentApi` and NOT on `MembershipWriteApi`</b>, so
+     * a row that kept reading `WHEN_ACTIVATING` after it began booking payments would fall through
+     * to `ServerSaid`'s honest branch and print the camel-case code at the moderator instead of a
+     * sentence. Measured by the SENTENCE being there and the CODE not being, because the honest
+     * branch draws a sentence of its own around the code and a case looking only for Serbian words
+     * would pass on it.
+     *
+     * <p><b>It is also the one of the five new reasons a moderator can really provoke:</b> the
+     * field refuses a third decimal but puts no ceiling on the digits before the separator, and
+     * `numeric(10,2)` has one - so eleven digits is a typing mistake that reaches the server.
+     */
+    it('reads the payment door’s own sentences, not the membership door’s', async () => {
+      const server = serving(OUTSTANDING, () =>
+        new Response(JSON.stringify({ reason: 'theAmountIsNotKeptExactly' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '99999999999')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const said = await within(await rowOf('Petar Marko')).findByText(
+        /Iznos je veći nego što portal može da zapiše/,
+      )
+
+      expect(said).toBeVisible()
+      expect(said).not.toHaveTextContent('theAmountIsNotKeptExactly')
+
+      /* AND THE ROW IS STILL THERE with what he typed, so he can correct it rather than start
+         again. */
+      expect(within(await rowOf('Petar Marko')).getByLabelText('Uplaćeno (EUR)')).toHaveValue(
+        '99999999999',
+      )
+
+      server.stop()
+    })
   })
 
   describe('when it goes through', () => {
@@ -1145,14 +1444,71 @@ describe('activating a membership from the payments screen', () => {
     })
 
     /**
+     * AND THE SAME RACE ON THE PATH THAT HAS NO SHEET AT ALL, WHICH IS NEW ON 28.09.2026.
+     *
+     * <p><b>Both cases above press „Da" on a sheet, and his cases 1, 2 and 7 never open one.</b>
+     * „Aktivacija prolazi" means one press on „Aktiviraj" goes straight to
+     * `POST /api/payments` - so the button itself became a door that starts a request, where before
+     * it only ever opened a question. Neither case above reaches that door, so without this one the
+     * guard on it would be unmeasured on the very path that is easiest to double-press: there is no
+     * sheet in the way and nothing moves on the screen to tell the moderator his press landed.
+     *
+     * <p><b>And it is the path where the stake is highest.</b> A grant and a booking both draw a
+     * member number and `nextval('member_number_seq')` never gives one back (PDL section 19,
+     * „Aktivacija trosi clanski broj nepovratno"); the loser of two requests in the air fails on
+     * `membership_pk` with the number it drew already spent.
+     *
+     * <p><b>Two raw clicks in one `act`</b>, for the reason the case above gives: `user.click`
+     * awaits its own click through, so `activating` would have caught up and a mutation swapping
+     * the ref for that state would survive. A ref is read fresh whichever closure asks.
+     */
+    it('sends only one payment for two presses on „Aktiviraj" with nothing awaited between', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      /* His case 1, so the press books it and opens nothing. */
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43,50')
+
+      const aktiviraj = within(row).getByRole('button', { name: 'Aktiviraj' })
+
+      act(() => {
+        aktiviraj.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        aktiviraj.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      })
+
+      settle(new Response(null, { status: 201 }))
+
+      await waitFor(() => {
+        expect(paymentsIn(server.asked)).toEqual([
+          {
+            competitorId: 58,
+            received: 43.5,
+            useTheBalance: true,
+            method: 'paypal',
+            reference: null,
+          },
+        ])
+      })
+
+      /* AND NO SHEET WAS EVER PUT UP, so this really did measure the path without one. */
+      expect(screen.queryByRole('dialog')).toBeNull()
+
+      server.stop()
+    })
+
+    /**
      * WCAG 2.2 AA 4.1.2: A CONTROL SAYS ITS OWN STATE, AND „AKTIVIRAJ" HAS TWO OF THEM NOW.
      *
      * <p><b>`aria-disabled` and not `disabled`</b> - measured rather than assumed, because the
      * two read differently to a test as well as to a screen reader: `disabled` takes the
-     * control out of the tab order, and the four cases with no route
-     * (`activation.ts#theServerCanDoIt`) still use exactly that. This is the second, independent
-     * reason the same row can give, the shape `PendingQueue.tsx`'s own „Odobri" already carries
-     * for the same reason: a control that leaves the row takes the keyboard with it.
+     * control out of the tab order, and the one case that can send nothing at all
+     * (`activation.ts#Press`, `'nothing'`) still uses exactly that. This is the second,
+     * independent reason the same row can give, the shape `PendingQueue.tsx`'s own „Odobri"
+     * already carries for the same reason: a control that leaves the row takes the keyboard with
+     * it.
      */
     it('says it cannot act while its own request is out, without leaving the tab order', async () => {
       const { server, settle } = servingSlowly()
