@@ -343,7 +343,6 @@
       "countryMissing": "Izaberi državu uz mesto."
     },
     "choose": "Izaberi",
-    "errorSummary": "Prijava nije poslata. Popravi ova polja:",
     "region": "Region",
     "restOfWorld": "Ostatak sveta",
     "openCalendar": "Otvori kalendar",
@@ -409,7 +408,7 @@
     "addressIsTaken": "Ta adresa elektronske pošte je već član lige. Prijavi se postojećom lozinkom ili se registruj sa druge adrese.",
     "password": "Lozinka",
     "passwordRepeat": "Ponovi lozinku",
-    "parentConsent": "Ime i prezime roditelja ili staratelja",
+    "parentConsent": "Kucani potpis roditelja ili staratelja",
     "parentConsentHint": "Takmičar je mlađi od 16 godina, pa nalog održava roditelj ili staratelj. Upisivanjem imena potvrđuješ da podržavaš prijavu svog deteta sa unetim podacima. Za mlađe od 14 godina to je ujedno i saglasnost za članstvo.",
     "opensOn": "Otvara se {date}.",
     "category": "Kategorija",

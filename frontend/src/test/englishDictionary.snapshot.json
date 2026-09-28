@@ -343,7 +343,6 @@
       "countryMissing": "Choose a country for the town."
     },
     "choose": "Choose",
-    "errorSummary": "The form was not sent. Correct these fields:",
     "region": "Region",
     "restOfWorld": "Rest of the world",
     "openCalendar": "Open the calendar",
@@ -409,7 +408,7 @@
     "addressIsTaken": "That email address is already a member of the League. Sign in with the existing password, or register from another address.",
     "password": "Password",
     "passwordRepeat": "Repeat the password",
-    "parentConsent": "The parent's or guardian's full name",
+    "parentConsent": "Typed signature of a parent or guardian",
     "parentConsentHint": "The competitor is under sixteen, so the account is kept by a parent or a guardian. By entering your name you confirm that you support your child's application with the details given. For anybody under fourteen it is at the same time the consent to membership.",
     "opensOn": "It opens on {date}.",
     "category": "Category",

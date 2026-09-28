@@ -342,35 +342,32 @@
   background: var(--accent-hover);
 }
 
-/* The list of what is still unanswered.
+/* What the form was refused over as a whole, which is never a field.
  *
-   It stays, because a form that refuses without saying what it refuses over is
-   a dead end (WCAG 2.2 SC 3.3.1), and because somebody who cannot see the form
-   presses the button and hears this and nothing else.
+   ~~The list of what is still unanswered.~~ The title and the list of links went
+   on 28.09.2026 (owner: „zbirne greske kao u prilogu ne treba da se pojavljuju.
+   Dovoljna je validacija na nivou polja"). What a field is refused over is said in
+   red beside that field, once per field, where it can be acted on; what the FORM is
+   refused over has no field to be said beside, and is said here.
 
-   It is quiet, because the owner asked for the refusal to be carried by the
-   fields themselves and not by a red frame thrown across the top of the page
-   (12.08.2026: „jezivo, prenapadno... treba da bude suptilnije, na nivou
-   polja"). A rule down its leading edge instead of a border around all four
-   sides, and its title in the colour of ordinary text: what is wrong is said in
-   red beside each field, once per field, where it can be acted on. */
-.form__summary {
+   It stays for the reason the box was quiet in the first place, and that reason is
+   older than this: a form that refuses without saying what it refuses over is a dead
+   end (WCAG 2.2 SC 3.3.1), and somebody who cannot see the form presses the button
+   and hears this and nothing else.
+
+   Quiet, because the owner asked for the refusal to be carried by the fields
+   themselves and not by a red frame thrown across the top of the page (12.08.2026:
+   „jezivo, prenapadno... treba da bude suptilnije, na nivou polja"). A rule down its
+   leading edge instead of a border around all four sides, and in the colour of
+   ordinary text. */
+.form__refused {
   border: 0;
   border-inline-start: 3px solid var(--down);
   border-radius: 0;
   padding: var(--space-6) var(--space-14);
-}
-
-.form__summary-title {
-  margin: 0 0 var(--space-6);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.form__summary ul {
   margin: 0;
-  padding-left: var(--space-20);
+  font-size: 0.9rem;
+  color: var(--text);
 }
 
 .field--checkbox {
