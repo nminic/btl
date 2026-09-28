@@ -93,10 +93,21 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 				.query(Integer.class)
 				.list();
 
+		/* Named by POSITION, not just counted, so a failure over the rulebook's nineteen sections
+		   says which one is missing rather than "the two lists disagree" - the task's own mutation
+		   1 asks for the missing section to be named, not just a mismatched count. */
+		List<Integer> missing = serbianPositions.stream().filter(p -> !englishPositions.contains(p)).toList();
+		List<Integer> extra = englishPositions.stream().filter(p -> !serbianPositions.contains(p)).toList();
+
+		assertThat(missing)
+				.as("%s section(s) at position(s) %s have no English row, so PageApi serves the whole"
+						+ " page in Serbian (\"whole or nothing\")", slug, missing)
+				.isEmpty();
+		assertThat(extra)
+				.as("%s carries English row(s) at position(s) %s that name no Serbian section", slug, extra)
+				.isEmpty();
 		assertThat(englishPositions)
-				.as("%s is missing an English row for one of its Serbian sections, or carries an"
-						+ " extra one - PageApi serves the whole page in Serbian until every"
-						+ " position has a row (\"whole or nothing\")", slug)
+				.as("%s's English sections are not in the same order as the Serbian ones", slug)
 				.isEqualTo(serbianPositions);
 
 		Long titles = db
