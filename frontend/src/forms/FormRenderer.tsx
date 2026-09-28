@@ -2,6 +2,7 @@ import {
   Fragment,
   memo,
   useCallback,
+  useEffect,
   useRef,
   useState,
   type FormEvent,
@@ -12,7 +13,11 @@ import { useI18n } from '../i18n/useI18n'
 import { RequiredMark, RequiredNote } from './AskedLabel'
 import { FieldHint } from './FieldHint'
 import { heldControl } from './held'
-import { plainWords, worded } from './worded'
+/* `plainWords` went with the summary of errors on 28.09.2026: it was here to write a
+   field's name into a link without the star and without a link inside the link, and
+   there is no such list any more. It is still exported, and `pages/admin/EntityEditor.tsx`
+   still reads it. */
+import { worded } from './worded'
 import { LongBox } from './LongBox'
 import type {
   DerivedField,
@@ -179,6 +184,21 @@ type Props = {
 /** Whether what is wrong about a place is the country rather than the town. */
 function aboutCountry(error: FieldError | undefined): boolean {
   return error?.key === 'form.errors.countryMissing'
+}
+
+/** Everything but the names given, which is the one shape both the values and the
+ *  errors of a form are narrowed by. */
+function outside<T>(names: string[]): (current: Record<string, T>) => Record<string, T> {
+  return (current) =>
+    Object.fromEntries(Object.entries(current).filter(([name]) => !names.includes(name)))
+}
+
+/** Whether somebody put this there, as against the nothing every field starts life
+ *  holding (`emptyValues`). Asked of the state rather than of the drawn value: the
+ *  drawn value is never missing, because the definition supplies a blank for every
+ *  field the form has. */
+function holds(value: string | boolean | undefined): boolean {
+  return value !== undefined && value !== ''
 }
 
 /** A field beside the value it is holding, which is what the form draws. */
@@ -548,20 +568,31 @@ const Field = memo(function Field({
            nothing else: around the whole field it held the letter and the line
            of the error as well.
 
-           And it carries the id the summary of errors links to, and takes the
-           cursor when that link is followed: every other field is reached
-           through its own control, a group has no one control, so the group is
-           what the link leads to. Sex and category are the two things nothing is
-           chosen for, so they are the likeliest errors on this form. */}
+           And it takes the cursor when a press is refused over it: every other
+           field is reached through its own control, a group has no one control,
+           so the group is what the cursor is put on, and that is why it carries
+           `tabIndex={-1}`. ~~It carries the id the summary of errors links to.~~
+           The summary went on 28.09.2026 and the cursor took over its job; the id
+           stays because `forms/choiceControl.test.tsx` finds the group by it, and
+           because a control group with no name in the document is a thing nothing
+           can point at. Sex and category are the two things nothing is chosen for,
+           so they are the likeliest errors on this form. */}
         <div
           className="choice"
           role="radiogroup"
           aria-required={asked}
           aria-labelledby={labelId}
-          /* The error, on the group as well as on the buttons: the summary of
-             errors leads here and puts the cursor on the group itself, and
-             a group that says only „Pol" does not say what is wrong with it. */
+          /* The error, on the group as well as on the buttons, and a group that
+             says only „Pol" does not say what is wrong with it. */
           aria-describedby={error === undefined ? undefined : errorId}
+          /* AND THE MARK ON THE GROUP TOO, WHICH IS WHAT PUTS THE CURSOR HERE
+             RATHER THAN ON THE FIRST BUTTON. The cursor is found by asking the
+             document for the first control marked wrong (`owed`, above), and the
+             group stands before its buttons in the document, so marking it is the
+             whole of how a choice is reached. Marked only on the buttons, the
+             reader landed on „Muški" and heard one option out of two before he
+             heard what the question was. */
+          aria-invalid={error !== undefined}
           id={inputId}
           tabIndex={-1}
         >
@@ -842,6 +873,56 @@ export function FormRenderer({
   /** What was refused beneath the form when it was last sent, so the sentence is
    *  drawn where the field errors are and goes when the press succeeds. */
   const [refused, setRefused] = useState<string | undefined>(undefined)
+  /** The form itself, so the cursor can be put back inside it without asking the
+   *  whole document for an address (`components/Prompt.tsx` does the same). */
+  const sheet = useRef<HTMLFormElement>(null)
+  /** Whether the last press was refused over a field, and the cursor is therefore
+   *  owed to the first field that is wrong. Set on the press and spent by the
+   *  effect below, so a redraw for any other reason never moves the cursor. */
+  const owed = useRef(false)
+
+  /**
+   * THE CURSOR GOES TO THE FIRST FIELD THAT IS WRONG, AFTER A PRESS THAT WAS REFUSED.
+   *
+   * <p><b>This is what replaces the summary of errors, and it is not decoration.</b>
+   * Until 28.09.2026 the one road back to a broken field was the list of links above
+   * the form, and the decision that kept that list said so in as many words (PDL,
+   * „[ODLUKA 12.08.2026, vlasnik] Forme se dele na trecine": „veza iz sazetka ka polju
+   * ostaje, jer je to ono sto tastaturu vraca na gresku (WCAG 2.2 SC 3.3.1)"). The
+   * owner took the LIST away on 28.09.2026; he did not take the ROAD away. Measured in
+   * a browser before the change: after a refused press `document.activeElement` was
+   * `body`, with fourteen messages on the screen and no way to reach any of them from
+   * the keyboard.
+   *
+   * <p><b>WHICH CONTROL, ASKED OF THE DOCUMENT RATHER THAN WORKED OUT AGAIN.</b> Every
+   * control that is wrong already carries `aria-invalid="true"`, and the document holds
+   * them in the order the form draws them, so the first one found is the first field
+   * that is wrong. Worked out from `broken` instead, this would have to know the one
+   * thing the list of links also had to know: that the half of a place field which is
+   * wrong may be the COUNTRY, which has an address of its own
+   * (`PlaceField.tsx`, `field-<name>-country`). The document answers that already,
+   * because in exactly that case the town is marked valid and the country invalid
+   * (`invalid` and `countryInvalid`, where the field is drawn). One home for the
+   * question, and it is the home that cannot fall out of step with what is on screen.
+   *
+   * <p><b>No dependency list, on purpose.</b> It must run after the draw that carries
+   * the new errors, whichever draw that is, and `owed` is what decides whether it does
+   * anything at all. A list would have to name the errors, and the errors are not what
+   * this waits for: the draw is.
+   *
+   * <p>The scroll is <b>not</b> prevented here, unlike the landmark on a new screen
+   * (`app/useNewScreen.ts`). There the scroll had just been put where it belongs and
+   * focus would have undone it; here the field may be below the fold and taking the
+   * reader to it is the whole point.
+   */
+  useEffect(() => {
+    if (!owed.current) {
+      return
+    }
+
+    owed.current = false
+    sheet.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+  })
   /* The fields that were filled from a chosen entry, and are therefore not this
      reader's to change. Names and not a flag per field, because what is locked is
      decided by the entry that was chosen and differs from one list to the next. */
@@ -921,7 +1002,66 @@ export function FormRenderer({
         : [[field.name, error] as const]
     }),
   )
-  const broken = visible.filter((field) => shown[field.name] !== undefined)
+  /* ~~`broken`, the visible fields that carry an error.~~ It existed to be listed
+     above the form, and that list went on 28.09.2026. Nothing derives the set any
+     more: which field is wrong is said on the field itself, through `shown` just
+     above, and WHICH ONE IS FIRST is answered by the document rather than here
+     (`owed`, above), so that the country half of a place field is not a second thing
+     to be remembered in a second place. */
+
+  /**
+   * WHAT THE FORM HAS STOPPED ASKING FOR, IT ALSO STOPS HOLDING.
+   *
+   * <p><b>Owner, 28.09.2026:</b> „Ukoliko ukucam greskom 2026 godinu za koju mi trazi
+   * povezano lice, a onda promenim na 2006 godinu za koju mi ne trazi, bitno mi je da
+   * se ne cuvaju nepotrebni podaci o staratelju koje sam mozda uneo pa izgubio uvid u
+   * njih." It is a question of privacy and not of tidiness, and his own reason says so:
+   * he has lost sight of them. A third person named in a form nobody can see any more
+   * is a record with nothing holding it (PDL P23 collects nothing that is not needed).
+   *
+   * <p><b>The body was already clean and that is exactly why this was invisible.</b>
+   * `onScreen` has left hidden fields out of what is sent since it was written, so
+   * every guard over the REQUEST body passed while the form went on holding the name
+   * in its state. Measured in a browser on 28.09.2026: type a parent, move the date of
+   * birth to an adult year and back, and „Milan Djurisic" is still in the box. Two
+   * homes for one fact, one of them right, and only the wrong one is what the reader
+   * meets.
+   *
+   * <p><b>Both directions matter and the second is the one that shows.</b> Going back
+   * to an age that asks for a parent again must give EMPTY boxes; leaving the state
+   * alone gives back what was typed, which is the fault itself wearing the look of a
+   * convenience.
+   *
+   * <p><b>Adjusted while drawing, not in the change handler.</b> The handler is made
+   * once for the whole form and must stay that way (ADL A2: a field handed a new
+   * handler every draw redraws with it, which is what a form of 1187 options cannot
+   * afford), and it can reach neither the definition nor the day without taking both
+   * as dependencies - and `useTodayDate` returns a fresh `Date` on every draw, so that
+   * alone would rebuild the handler constantly. Asked here instead, where both are
+   * already in hand, and it answers for every reason a field can go, not only for
+   * somebody typing: a caller handing the form another definition, or the day itself
+   * turning over.
+   *
+   * <p>It settles in one further draw and cannot loop: once the names are out of the
+   * state, `holds` is false for them and nothing more is set.
+   */
+  /* A VALUE OR A MESSAGE ABOUT ONE, and the second is not the first over again. A
+     parent left blank on a form that was sent carries no value and does carry
+     „Ovo polje je obavezno.", so a sweep that asked only about values left the
+     message standing: correct the age twice and it came back over a box that is empty
+     only because this emptied it, scolding somebody for an answer nobody asked him for
+     again. That is the „jezivo, prenapadno" of 12.08.2026 arriving through a back door,
+     and it is measured in `pages/Registration.test.tsx`, „does not scold an empty
+     parent box it emptied itself". */
+  const held = goneFrom(filled).filter(
+    (name) => holds(values[name]) || errors[name] !== undefined,
+  )
+
+  if (held.length > 0) {
+    setValues(outside(held))
+    setErrors(outside(held))
+  }
+
   const titleId = `form-${form.id}-title`
   /* The width this form gives every one of its rows, or nought where it names
      none (`types.ts`, `FormDef.columns`).
@@ -955,25 +1095,44 @@ export function FormRenderer({
    * a value beside its own, the country the town came with, and that value has
    * no field of its own to be found under (src/forms/types.ts).
    */
-  function onScreen(all: FormValues): FormValues {
+  /**
+   * THE NAMES THE FORM HAS STOPPED ASKING FOR, and whatever those fields were
+   * writing beside themselves.
+   *
+   * <p><b>One home, because two things now ask this same question.</b> The body that
+   * goes to the server leaves these out (`onScreen`, just below), and since
+   * 28.09.2026 the state of the form drops them outright as well (`held`, further
+   * down). Asked in two places, the two would answer differently the day a second
+   * kind of field starts writing a value beside its own, and then the body would be
+   * clean while the form went on holding what the reader can no longer see - which is
+   * the half the owner actually complained about.
+   */
+  function goneFrom(all: FormValues): string[] {
     const gone = form.fields.filter((field) => !isVisible(field, all, today))
+
     /* And whatever a field that has gone was writing beside itself. A place
        field writes the country its town came with, under a name of its own, so
        hiding the town used to leave the country behind with nothing holding it
        (src/forms/types.ts). Nothing draws that arrangement today; the fault was
        built in the moment the country was let through by name. */
-    const alongside = gone.flatMap((field) => (field.type === 'place' ? ['country'] : []))
+    return [
+      ...gone.map((field) => field.name),
+      ...gone.flatMap((field) => (field.type === 'place' ? ['country'] : [])),
+    ]
+  }
+
+  function onScreen(all: FormValues): FormValues {
     /* A field that only agrees with another one carries nothing of its own. The
        repeated password is the whole of that case, and it was going out in the
        body beside the first: a secret sent twice is a second place for it to end
        up in a proxy log or a crash report. Whether the two matched is a rule of
        the form, answered here, and not a fact a backend is owed. */
-    const confirming = form.fields.filter((field) => field.matches !== undefined)
-    const left = [...gone, ...confirming].map((field) => field.name)
+    const confirming = form.fields
+      .filter((field) => field.matches !== undefined)
+      .map((field) => field.name)
+    const left = [...goneFrom(all), ...confirming]
 
-    return Object.fromEntries(
-      Object.entries(all).filter(([name]) => !left.includes(name) && !alongside.includes(name)),
-    )
+    return Object.fromEntries(Object.entries(all).filter(([name]) => !left.includes(name)))
   }
 
   /**
@@ -1032,6 +1191,13 @@ export function FormRenderer({
 
     setRefused(beyond)
 
+    /* Owed only where a FIELD is wrong. A form refused as a whole has no field to
+       be taken to - what `alsoRefuses` names is the table below it - and that
+       sentence announces itself where it is drawn, through `role="alert"`. Asked
+       of `found` rather than of `beyond` for that reason, and the two are not the
+       same question. */
+    owed.current = Object.keys(found).length > 0
+
     if (Object.keys(found).length === 0 && beyond === undefined) {
       /* BOTH THROUGH `trimValues`, AND THE DEFINITION GOES WITH THEM. Handed the same
          form, the two sides treat a field the same way - which matters most for the one
@@ -1055,11 +1221,15 @@ export function FormRenderer({
    * `setErrors({})` stood here until 23.08.2026 and emptied the whole form: one
    * letter typed into the name of an event took away nine messages and the summary
    * over them, while the same letter typed into „Sati" took away one. A reader
-   * walking the summary with a screen reader lost it on touching the first field
-   * and had to send the form unfinished again to get it back (WCAG 2.2 SC 3.3.1).
+   * walking those messages with a screen reader lost them on touching the first field
+   * and had to send the form unfinished again to get them back (WCAG 2.2 SC 3.3.1).
+   *
+   * <p><b>The rule outlived the thing it was first written for.</b> The summary went on
+   * 28.09.2026, and this matters more without it, not less: the messages are now the
+   * only account of what is wrong, and they are what `aria-invalid` marks, so a sweep
+   * that emptied them would also take away every place the cursor has to go back to.
    */
-  const without = (names: string[]) => (current: Record<string, FieldError>) =>
-    Object.fromEntries(Object.entries(current).filter(([name]) => !names.includes(name)))
+  const without = (names: string[]) => outside<FieldError>(names)
 
   const handleChange = useCallback(
     (field: FieldDef, next: string | boolean, also?: Record<string, string>) => {
@@ -1135,7 +1305,7 @@ export function FormRenderer({
     <form /* Wide where the screen has put a table under the fields: the ceiling on
          a form is a measure for reading, and a table is not prose
          (FormRenderer.css). */
-      className={beneath === undefined ? 'form' : 'form form--wide'} aria-labelledby={titleId} onSubmit={handleSubmit} noValidate>
+      className={beneath === undefined ? 'form' : 'form form--wide'} aria-labelledby={titleId} onSubmit={handleSubmit} noValidate ref={sheet}>
       {title === undefined ? (
         <h1 className="form__title" id={titleId}>
           {t(form.titleKey)}
@@ -1156,37 +1326,32 @@ export function FormRenderer({
           field that may be left empty. */}
       {visible.some((one) => one.required === true) && <RequiredNote />}
 
-      {/* Announced the moment it appears. Without it, pressing the button with
-          a broken form does nothing perceivable for a blind visitor. */}
-      {(broken.length > 0 || refused !== undefined) && (
-        <div className="form__summary" role="alert">
-          <p className="form__summary-title">{t('form.errorSummary')}</p>
-          {/* What was refused under the form, said in the same place as what was
-              refused in it. Above the list rather than inside it, because it is
-              not a field and has no address to be led to; what it names is the
-              table below, and the row that is wrong says so itself. */}
-          {refused !== undefined && <p className="form__summary-beneath">{t(refused)}</p>}
-          <ul>
-            {broken.map((field) => (
-              <li key={field.name}>
-                {/* To the control that is unanswered, which for a town is not
-                    always the town: the country beside it is the other half of
-                    the same field and has an id of its own (PlaceField.tsx).
-                    Written as one address for the field, the list said „Mesto"
-                    and led to a box that had already been filled in, while the
-                    one marked wrong could not be reached from here at all
-                    (WCAG 2.2 SC 2.4.3). */}
-                <a href={`#field-${field.name}${aboutCountry(shown[field.name]) ? '-country' : ''}`}>
-                  {aboutCountry(shown[field.name])
-                    ? t('form.country')
-                    : /* Without the mark, and without a link inside this link
-                         (forms/worded.tsx). */
-                      plainWords(t(field.labelKey), field, t)}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* WHAT WAS REFUSED OVER THE WHOLE FORM, AND NOTHING THAT BELONGS TO A FIELD.
+       *
+         The summary that stood here until 28.09.2026 - a title and a list of links,
+         one per broken field - is gone. Owner, that day, over a picture of it on the
+         registration: „U strani registracije (a i na svim ostalim stranama) zbirne
+         greske kao u prilogu ne treba da se pojavljuju. Dovoljna je validacija na
+         nivou polja kako je sad u Registraciji." It went from all thirteen forms at
+         once, because there is one renderer and he said „na svim ostalim stranama".
+       *
+         WHAT IS LEFT IS THE ONE SENTENCE THAT HAS NO FIELD TO STAND BESIDE. What
+         `alsoRefuses` answers for is the form as a whole, and what it names is the
+         table below it rather than any box on it, so there is no field-level place it
+         could be moved to and no address it could be led to. Three screens say
+         something here - `pages/member/NewResult.tsx`, `pages/event/ReportResult.tsx`
+         and `pages/admin/AdminEvents.tsx` - and taken away with the list, all three
+         would refuse a press with nothing whatever on the screen.
+       *
+         `role="alert"` stays, and for the reason it was there: it appears in answer to
+         a press, and a press that does nothing perceivable is a press a blind visitor
+         cannot tell went wrong. What the FIELDS say is announced the other way now, by
+         the cursor being put on the first of them (`owed`, above), which is what took
+         over the job the links used to do. */}
+      {refused !== undefined && (
+        <p className="form__refused" role="alert">
+          {t(refused)}
+        </p>
       )}
 
       {groupsOf(rowsOf(drawn)).map(({ groupKey, rows, key: groupOwnKey }) => {

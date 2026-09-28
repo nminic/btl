@@ -425,17 +425,23 @@ export function PlaceField({
           for a town it does not have, which is how a race in a hamlet stops
           being filed wherever the last chosen town was. */}
       {/* Its own name, and the same mark every other name on the portal carries:
-          the country is a second control with its own error and its own line in
-          the summary, so „Država" standing bare under a legend that says fields
-          with a star are obligatory said neither of the two things (owner,
-          12.08.2026; forms/AskedLabel.tsx). Outside the label, as everywhere. */}
+          the country is a second control with its own error, so „Država" standing
+          bare under a legend that says fields with a star are obligatory said
+          neither of the two things (owner, 12.08.2026; forms/AskedLabel.tsx).
+          ~~and its own line in the summary~~: the summary went on 28.09.2026, and
+          what it leaves behind is the more important half anyway, since the error
+          is what the cursor is found by. Outside the label, as everywhere. */}
       <span className="place__country-pick">
         <AskedLabel id={`${id}-country`} asked={required === true}>
           {t('form.country')}
         </AskedLabel>
         <select
-          /* An id of its own, because it is a control of its own: the summary of
-             errors leads here when the country is what is unanswered. */
+          /* An id of its own, because it is a control of its own: it is what its
+             own label points at, and what the cursor is put on when the country is
+             the half of this field that is unanswered. ~~The summary of errors
+             leads here.~~ That is how it used to be reached, until 28.09.2026;
+             the road now is `aria-invalid` below, which is set on this control and
+             not on the town in exactly that case (`forms/FormRenderer.tsx`). */
           id={`${id}-country`}
           /* Held by either of two rules, which is why the question is asked
              here and the answer is dressed in one place (`forms/held.ts`): a
