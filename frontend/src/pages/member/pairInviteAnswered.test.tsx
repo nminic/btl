@@ -635,4 +635,32 @@ describe('what an answered invitation makes stale', () => {
        drawing a pair the server refused to make. */
     expect(arrivedResource('pairs')).not.toBeUndefined()
   })
+
+  /** `withPairsInHand`'s own shape, over `'inbox'`. Confirms the cache truly held a value
+   *  first, so its absence afterward is the answer dropping it and not the value never
+   *  having arrived - the other source an empty cache could have, ruled out before the
+   *  case below reads anything into the one that is left. */
+  async function withInboxInHand(): Promise<void> {
+    clearResourceCache()
+    await loadResource('inbox')
+
+    expect(arrivedResource('inbox')).not.toBeUndefined()
+  }
+
+  it('drops the inbox too when the answer was „Odbij", the other half of „either way"', async () => {
+    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? did() : null))
+
+    await withInboxInHand()
+    await theServerWasAnswered(HIS_INVITE, false)
+
+    /* **THE HALF OF „EITHER WAY" A REVIEW FOUND MEASURED BY NOTHING.** `member/pairWrites.ts`
+       states the axis in its own words - „Both close the question, so the inbox is stale
+       either way" - and only „Prihvati" proved it, by watching the screen re-read
+       (`takes the buttons away...`, above). Read here instead of there: that case waits for a
+       second `/api/inbox` to land and a whole render after it, which against the very mutation
+       this guards never happens, so it spends the twenty seconds `test/setup.ts` gives
+       `waitFor` before it fails at all. This reads the one value that changes the moment the
+       `await` above returns - nothing to wait for and nothing to time out on. */
+    expect(arrivedResource('inbox')).toBeUndefined()
+  })
 })
