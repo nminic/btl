@@ -1266,6 +1266,36 @@
       "theSeasonIsFrozen": "The season of this competition is frozen, so the competition is no longer changed. Deleting still works.",
       "theSeasonCannotMoveWhileRacesCount": "The season cannot be moved while the competition counts even one race. Drop the races first, then change the season."
     },
+    "eventSaveRefused": {
+      "theFormIsNotComplete": "A name or a date is missing.",
+      "theKindIsNotKnown": "The portal does not know that kind of event.",
+      "theTownIsNotSaidOnce": "A town is given one way: either chosen from the codebook, or typed by hand with the country beside it.",
+      "theTownIsNotKnown": "The portal does not know that town.",
+      "theCountryIsNotKnown": "The portal does not know that country.",
+      "theCountryBelongsToATypedTown": "A town from the codebook already carries its country, so no country is chosen beside it.",
+      "aTypedTownNamesItsCountry": "A town typed by hand has to name its country.",
+      "theLinkIsNotShaped": "A link has to begin with http:// or https:// and may not contain a space.",
+      "theAddressIsTaken": "There is already an event at that address. Change the name or the date.",
+      "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at a race of this event.",
+      "theRaceCountsInALeagueOfItsSeason": "A race of this event counts in a competition of its season, so the date may not leave that year."
+    },
+    "raceSaveRefused": {
+      "theFormIsNotComplete": "The race row is missing a name or the event it belongs to.",
+      "theEventIsNotKnown": "The portal does not know the event this race belongs to.",
+      "theEventHoldsNoRaces": "That event is not a race, so it cannot hold races.",
+      "theRaceCannotChangeEvents": "A race cannot move to another event.",
+      "theKindIsNotKnown": "The portal does not know that kind of race.",
+      "theLimitBelongsToATimedRace": "A time limit is set only on a race run against one.",
+      "theDistanceBelongsToARaceOfALength": "A length is set only on a race that fixes one.",
+      "theDistanceIsNotKeptExactly": "The length is not in the shape the portal keeps. Check the decimals.",
+      "theClimbOrTheFallIsNegative": "The climb and the fall are given as positive numbers.",
+      "theRaceCountsInALeagueOfItsSeason": "This race counts in a competition of its season, so the date may not leave that year.",
+      "theAddressIsTaken": "There is already a race at that address.",
+      "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at this race."
+    },
+    "eventGone": "The event has been deleted, with its races and its results.",
+    "eventSavedUnseen": "The event was saved, but the portal cannot show it in this list. Reload the page.",
+    "eventSavedRacesRefused": "The event was saved, but one of its races was not. Open the event and check its races.",
     "leagueGone": "The competition has been deleted.",
     "teamGone": "The team has been deleted.",
     "teamDeleteRefused": {
