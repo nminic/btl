@@ -1801,12 +1801,23 @@ class MeWriteApiTest {
 	 * somewhere else again.
 	 */
 	private void earnedAReferral(String memberNumber, String amount, String currency) {
+		earnedAReferral(memberNumber, amount, currency, WHOSE_TEXT_WAS_REFUSED);
+	}
+
+	/**
+	 * @param broughtIn whose activation earned it. It is a parameter because
+	 *                  {@code balance_entry_one_a_referral} (V38) allows one reward per person brought
+	 *                  in, so a member holding two lines has to have brought in two people
+	 */
+	private void earnedAReferral(String memberNumber, String amount, String currency,
+			String broughtIn) {
+
 		db.sql("insert into balance_entry (competitor_id, amount, currency, reason,"
 						+ " referred_competitor_id, occurred_at, recorded_by_name) values ("
 						+ " (select id from competitor where member_number = ?), ?::numeric, ?,"
 						+ " 'referral', (select id from competitor where member_number = ?),"
 						+ " timestamptz '2026-10-02 09:00:00+00', 'Neko Ko Je Knjizio')")
-				.params(memberNumber, amount, currency, WHOSE_TEXT_WAS_REFUSED)
+				.params(memberNumber, amount, currency, broughtIn)
 				.update();
 	}
 
@@ -1954,6 +1965,43 @@ class MeWriteApiTest {
 				.isEqualTo(200);
 
 		assertThat(bookOf(ME)).isEmpty();
+	}
+
+	/**
+	 * AND A LINE IN A MONEY THAT IS NOT HIS IS NOT HIS BALANCE, WHICH IS THE ONE THING NO OTHER CASE
+	 * CAN SAY.
+	 *
+	 * <p><b>This case exists because a mutation survived, and the survival was predicted.</b>
+	 * {@code BalanceBook.of} sums his lines filtered by his currency, and
+	 * {@code BalanceBook}'s own note says why that filter looks redundant: a correct translation takes
+	 * the whole of the old balance OUT of the old money, so a member's lines in a currency he has left
+	 * sum to exactly nought and an UNFILTERED sum would come out right anyway. Measured on this branch:
+	 * loosening the filter to {@code (currency = ? or true)} left all 73 cases of this file green.
+	 *
+	 * <p><b>Which is precisely the trap, and it is the reason the filter is there.</b> The two readings
+	 * agree while the translation is correct and part company the moment it is not - and that is the one
+	 * moment anybody needs them to disagree. No behaviour can reach that state, because every route that
+	 * writes a line writes it in the member's own money; so the state is arranged by the FIXTURE, which
+	 * is what a fixture is for.
+	 *
+	 * <p><b>The numbers are chosen so a wrong reading is loud.</b> He is billed in euro and holds 5 of
+	 * them, plus a stray 600 in dinars that is nobody's business. Filtered, he takes 5 euro to Serbia
+	 * and gets 600 dinars - which is V4's own dinar figure for the same thing. Unfiltered he would take
+	 * 605 and get 72.600, so a filter that stopped binding is out by two orders of magnitude rather than
+	 * by a rounding.
+	 */
+	@Test
+	void alineInAmoneyThatIsNotHisIsNotHisBalance() throws Exception {
+		earnedAReferral(ME, "5", "EUR");
+		earnedAReferral(ME, "600", "RSD", WAITING_IN_ANOTHER_TAB);
+
+		assertThat(changeAs(ME, changing("placeId", atownInSerbia())).getStatus()).isEqualTo(200);
+
+		assertThat(bookOf(ME))
+				.as("the stray line in a money he is not billed in was counted as his, so the whole"
+						+ " translation is out by the rate")
+				.containsExactly("referral 5.00 EUR", "referral 600.00 RSD", "conversion -5.00 EUR",
+						"conversion 600.00 RSD");
 	}
 
 	/**
