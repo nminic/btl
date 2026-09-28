@@ -29,6 +29,7 @@ const item = (over: Partial<PendingItem> = {}): PendingItem => ({
   body: '',
   picture: '',
   crop: { x: 0.5, y: 0.5, size: 1 },
+  photoId: null,
   currentDate: '',
   proposedDate: '',
   rating: NO_RATING,

@@ -457,13 +457,12 @@ describe('a sentence with a value put into it', () => {
          it is gone from the screen of payments, because on a derived list a row means „no
          money has arrived" and one press would have activated every debtor at once. */
       'verification.paymentsSeason',
-      /* `verification.pictureAlt` stood here until 27.09.2026 and left with its only call:
-         the frame it named was drawn on a moderator's card, and nothing could fill that
-         card's picture once the row the browser minted beside the server's was gone
-         (`admin/PendingQueue.tsx` says the whole of it where the frame stood). The KEY is
-         still in the dictionary on purpose, because the branch that serves the picture out
-         has to draw the frame again and will need it; what left is the call that passes a
-         value INTO it, which is all this list is about. */
+      /* `verification.pictureAlt` left this list on 27.09.2026 when the only call passing a
+         value into it went with the frame it named (`admin/PendingQueue.tsx` said the whole
+         of why). It is back: `WaitingPicture` feeds it `{ who: item.who }` for the picture
+         served from `GET /api/verification/{id}/photo` (PR 399), and the guard in
+         `data/theRealAnswer.test.tsx` is written against exactly this literal call. */
+      'verification.pictureAlt',
       'verification.sentBy',
       'verification.teamAccepted',
       'verification.teamAcceptedBody',
