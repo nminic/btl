@@ -59,11 +59,14 @@ import java.util.regex.Pattern;
  * <p><b>WHAT EACH OF THE FOUR OUTCOMES DOES HERE:</b>
  *
  * <ul>
- * <li>{@link Outcome#RECORD_IT_AND_NUMBER_HIM} - a number is drawn from
- * {@link MemberNumbers} (a sequence and never a query, for the reason V16 gives: a
- * query reads what is there, and what is there is missing exactly the people who
- * left), the payment is written {@code recorded}, and a {@code membership} row is
- * written beside it naming the receipt (ADL A12).
+ * <li>{@link Outcome#RECORD_IT_AND_NUMBER_HIM} - the payment is written
+ * {@code recorded}, a {@code membership} row is written beside it naming the receipt
+ * (ADL A12), and LAST of all a number is drawn from {@link MemberNumbers} (a sequence
+ * and never a query, for the reason V16 gives: a query reads what is there, and what
+ * is there is missing exactly the people who left). Last, because a sequence is not
+ * transactional and a number drawn before a row that the database then refuses is
+ * spent for good - {@code recordIt} carries the whole of that reasoning and the
+ * measurement behind it.
  * <li>{@link Outcome#RECORD_IT} - the same two rows, and the number already on the
  * competitor is kept exactly as it is (PDL, 11.08.2026: „Clanski broj ostaje zauvek
  * vezan za tu osobu... Ako se nekad ponovo aktivira postace mu i profil ponovo
@@ -174,14 +177,13 @@ import java.util.regex.Pattern;
  *
  * <ul>
  * <li>Two requests confirming the identical (competitor, season) at the same
- * instant, both reading no existing row before either writes, both draw two
- * DIFFERENT numbers - the sequence guarantees that much and is what the case in
- * {@code PaymentApiTest} measures - but the second {@code insert} then loses to
- * {@code payment_one_a_season} and answers 500, its drawn number already spent
- * for good. Nothing in this increment's brief asks the
- * SAME payment to be idempotent under true simultaneity, only that two DIFFERENT
- * people never receive the same number; catching that race and folding it back
- * into {@code ALREADY_RECORDED} is a real improvement and a separate one.
+ * instant, both reading no existing row before either writes: the second
+ * {@code insert} loses to {@code payment_one_a_season} and answers 500. Nothing in
+ * this increment's brief asks the SAME payment to be idempotent under true
+ * simultaneity, only that two DIFFERENT people never receive the same number, which
+ * is what {@code PaymentNumberConcurrencyTest} measures; catching that race and
+ * folding it back into {@code ALREADY_RECORDED} is a real improvement and a separate
+ * one.
  * <li>A {@code payment} row already sitting as {@code awaited} for this
  * (competitor, season) - which nothing on this portal writes today, but which
  * V16's own {@code default 'awaited'} leaves room for - is read exactly like no
@@ -190,6 +192,14 @@ import java.util.regex.Pattern;
  * that {@code insert} into an update of the row already there is real work with
  * its own guard, and nothing writes the row it would protect yet.
  * </ul>
+ *
+ * <p><b>WHAT BOTH OF THOSE COST UNTIL 28.09.2026 AND NO LONGER DO, because the
+ * sentence that stood here said it and was then made false on purpose.</b> Each of
+ * them used to add „its drawn number already spent for good" to the 500, because the
+ * number was drawn before the two inserts and {@code member_number_seq} does not go
+ * back when a transaction does. The draw is now the LAST thing {@code recordIt} does,
+ * so a booking the database refuses spends nothing and the 500 is all it costs. The
+ * 500s themselves are unchanged and are still what the two entries above describe.
  */
 @RestController
 class PaymentApi {
@@ -249,6 +259,58 @@ class PaymentApi {
 	 * quietly restates old cases is a change nobody measured."
 	 */
 	static final String THE_AMOUNT_IS_NOT_KEPT_EXACTLY = "theAmountIsNotKeptExactly";
+
+	/**
+	 * AND THE PRICE LIST ITSELF CAN NAME AN AMOUNT NO PAYMENT MAY CARRY, WHICH IS A DIFFERENT
+	 * QUESTION FROM EITHER OF THE TWO ABOVE AND IS ABOUT A FIELD NOBODY ON THIS SCREEN TYPED.
+	 *
+	 * <p><b>Both halves of the collision are decided and neither is wrong.</b> A row of the price
+	 * list may be free: {@code price_row_eur_not_negative} (V4) allows nought,
+	 * {@link MembershipPrice#amountIsKeptExactly} says so in as many words („a price list in which
+	 * something is free is a decision rather than a fault"), and the owner settled on 27.09.2026
+	 * (PDL 20b) only that it must be free in BOTH currencies or in neither -
+	 * {@code PricingWriteApi.THE_ROW_IS_FREE_IN_ONE_CURRENCY_ONLY} is that rule, and it lets a row
+	 * free in both straight through. And a payment may not be nought:
+	 * {@code payment_amount_positive} (V16) is {@code check (amount > 0)}, it is in a migration
+	 * that has been applied, and ADL A2 does not let it be loosened in place.
+	 *
+	 * <p><b>WHAT THAT COST BEFORE THIS SENTENCE EXISTED, measured on this route rather than
+	 * argued.</b> With {@code early} set to 0 EUR / 0 RSD through {@code PUT /api/pricing/{key}} -
+	 * a request that answers 200, and {@code PricingWriteApiTest} has the case that says so - the
+	 * next confirmation of a payment reached {@code insert into payment} with
+	 * {@code amount = 0.00} and came back <b>ERROR: new row for relation „payment" violates check
+	 * constraint „payment_amount_positive"</b>. That is a 500 on a moderator entering a bank
+	 * statement, with nothing on it he could read; and because the number was drawn before the
+	 * insert, {@code member_number_seq} stood one higher afterwards <b>although the transaction had
+	 * gone back</b>. A sequence is not transactional, so every retry ate another number, and PDL
+	 * 31.07.2026 is „Clanski broj se nikad ne dodeljuje dvaput". That half is closed twice over -
+	 * by this sentence and by the draw having moved to the end of {@code recordIt} - and the second
+	 * of the two is what covers the failures this one does not name.
+	 *
+	 * <p><b>WHY THE SHARED QUESTION WAS NOT CHANGED INSTEAD, which was the shorter road.</b>
+	 * Teaching {@link MembershipPrice#amountIsKeptExactly} {@code signum() > 0} would close this in
+	 * one character and would <b>overturn PDL 20b</b>: {@code PricingWriteApi} asks that same method
+	 * of {@code eur} and {@code rsd}, so a free row would stop being writable at all. The price of a
+	 * ROW and the amount of a PAYMENT are two questions that happen to share a column type, and only
+	 * one of them has a decision saying nought is an answer. So the question is split rather than
+	 * the method narrowed, and it is asked HERE because {@code payment_amount_positive} is this
+	 * table's constraint and no other caller of the price list is standing in front of it.
+	 *
+	 * <p><b>409 and not 400, which is the same line this class already draws.</b> The moderator's
+	 * form is not wrong - he typed what the statement showed - so telling him the amount is not
+	 * money would send him to correct a field that is correct, which is the fault
+	 * {@link #THE_AMOUNT_IS_NOT_MONEY} names of its own. What refuses him is the state of the price
+	 * list, exactly as {@link #THE_MEMBERSHIP_IS_ALREADY_HELD} and {@link #THE_PAYMENT_WAS_REVERSED}
+	 * are refused by the state of his membership.
+	 *
+	 * <p><b>And where he is meant to go instead is already decided.</b> PDL 19 point 5 sends „no
+	 * money is owed" to the exemption prompt and {@code POST /api/memberships} („Prazno polje i
+	 * ukucana nula vode na isti prompt, onaj o oslobodjenju od clanarine"), and a membership the
+	 * price list gives away is that same state arrived at from the other side. Nothing here decides
+	 * whether the association SHOULD give a season away through the price list; it decides only
+	 * that a payment of nothing is not how it is written down.
+	 */
+	static final String THE_MEMBERSHIP_COSTS_NOTHING = "theMembershipCostsNothing";
 
 	static final String THE_METHOD_IS_NOT_KNOWN = "theMethodIsNotKnown";
 
@@ -621,22 +683,32 @@ class PaymentApi {
 		MembershipPrice.Price price = MembershipPrice.on(rows, MonthDay.from(today),
 				competitor.birthDate().getYear(), season, his);
 
+		/* AND WHETHER THE PRICE LIST IS ASKING FOR ANYTHING AT ALL, WHICH IS THE ONE REFUSAL ON THIS
+		   ROUTE THAT IS ABOUT A FIELD NOBODY HERE TYPED. `THE_MEMBERSHIP_COSTS_NOTHING` carries the
+		   whole of why a free row is legal, why `payment_amount_positive` is right to refuse it, and
+		   why the shared question in `MembershipPrice` was split rather than narrowed.
+
+		   ASKED OF `price.amount()` AND NOT OF THE ROW THE DAY FALLS IN, because those are two
+		   different rows for a junior: `MembershipPrice.on` replaces the period with the junior row
+		   for anybody young enough, so a guard reading the period would let a free JUNIOR price
+		   through and meet the constraint anyway. What is asked is the amount that is about to be
+		   written, read from the same expression that writes it.
+
+		   `signum() <= 0` AND NOT `signum() == 0`, which is the constraint's own sentence `amount >
+		   0` turned round. A negative price is refused by `price_row_eur_not_negative` (V4) so the
+		   lower half is unreachable today, and writing the constraint's whole condition rather than
+		   the half that can happen is what keeps this sentence and that constraint saying one thing
+		   the day either moves. */
+		if (price.amount().signum() <= 0) {
+			return no(HttpStatus.CONFLICT, THE_MEMBERSHIP_COSTS_NOTHING);
+		}
+
 		long priceRowId = db.sql("select id from price_row where key = ?")
 				.param(price.key()).query(Long.class).single();
 
 		String recordedByName = memberOfAccount.nameOf(asking.account());
 
 		Timestamp now = Timestamp.from(clock.instant());
-
-		String memberNumber = numbering ? numbers.draw().written() : competitor.memberNumber();
-
-		if (numbering) {
-			db.sql("update competitor set member_number = ?, active = true where id = ?")
-					.params(memberNumber, competitor.id()).update();
-		} else {
-			db.sql("update competitor set active = true where id = ?")
-					.param(competitor.id()).update();
-		}
 
 		/* `amount` IS WHAT THE PRICE LIST CHARGED AND `received` IS WHAT ARRIVED, and they are two
 		   facts rather than one said twice. V16 writes „What was ASKED and in what money" beside the
@@ -737,6 +809,51 @@ class PaymentApi {
 		   registracije". Once per member brought in however many seasons he goes on to pay for, and
 		   what holds that is `balance_entry_one_a_referral` (V38) rather than a question asked here. */
 		book.aReferralWasActivated(competitor.id(), asking.account(), recordedByName);
+
+		/* AND ONLY NOW IS A NUMBER DRAWN, WHICH IS THE LAST THING THIS METHOD DOES AND IS A POSITION
+		   RATHER THAN AN ORDER OF CONVENIENCE.
+
+		   WHY IT MOVED. `member_number_seq` IS NOT TRANSACTIONAL - that is the whole of why V16 made
+		   it a sequence rather than `max(...) + 1`, and it is also the price - so a number drawn
+		   inside a transaction that then goes back is spent FOR GOOD. Drawn where it used to be,
+		   before the two inserts, every refusal the DATABASE makes of this booking ate one, and the
+		   owner's rule is „Clanski broj se nikad ne dodeljuje dvaput" (PDL 31.07.2026). Measured on
+		   this route: a free price row answered 500 off `payment_amount_positive` and left the
+		   sequence one higher with nothing to show for it.
+
+		   WHAT THAT CLOSES, AND ALL FOUR ARE NAMED SOMEWHERE ALREADY. `payment_amount_positive` (the
+		   sentence above now refuses it first, so this is the second lock on the same door);
+		   `payment_one_a_season` against a row left `awaited`, which the paragraph at the head of
+		   this class names as reached „exactly like no row at all"; and the two true races the same
+		   paragraph names, on `payment_one_a_season` and on `membership_pk`, where two moderators
+		   confirm the same instant. The loser of a race now draws NOTHING rather than drawing and
+		   losing.
+
+		   THE PRECEDENT IS IN THE PORTAL AND THIS IS THE ROUTE THAT WAS OUT OF STEP WITH IT.
+		   `MyMembershipWriteApi.letHimIn` already draws after its `insert into membership`, for a
+		   membership held on a balance. Two doors to one fact, and only one of them was paying for
+		   a failure with a number.
+
+		   WHAT IS STILL TRUE AFTERWARDS, so the move is not read as more than it is: a booking that
+		   SUCCEEDS still spends a number and there is no way back from that (PDL section 19,
+		   „Aktivacija trosi clanski broj nepovratno"). What has changed is only that one that FAILS
+		   no longer does.
+
+		   AND NOTHING BETWEEN THE INSERTS AND HERE READS WHAT THIS WRITES, which is why the move is
+		   behaviour preserving rather than merely later: `spentOnAMembership`,
+		   `creditedAnOverpayment` and `aReferralWasActivated` are three statements against
+		   `balance_entry`, and the only column of `competitor` any of them touches is
+		   `referred_by`. */
+		String memberNumber = numbering ? numbers.draw().written() : competitor.memberNumber();
+
+		if (numbering) {
+			db.sql("update competitor set member_number = ?, active = true where id = ?")
+					.params(memberNumber, competitor.id()).update();
+		}
+		else {
+			db.sql("update competitor set active = true where id = ?")
+					.param(competitor.id()).update();
+		}
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Confirmed(paymentId, memberNumber,
 				price.amount(), price.fee(), his.name(), written.received(), fromTheBalance, credited));
