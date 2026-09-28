@@ -372,13 +372,11 @@
     "title": "Registracija",
     "submit": "Pošalji prijavu",
     "group": {
-      "whoYouAre": "Ko ste",
+      "basics": "Osnovni podaci",
       "theWayIn": "Pristup nalogu",
-      "contact": "Kontakt i adresa",
-      "forTheRegister": "Za evidenciju članova",
+      "contact": "Kontakt i dostava",
       "competing": "Takmičenje",
-      "profile": "Profil",
-      "consents": "Saglasnosti"
+      "profile": "Profil"
     },
     "firstName": "Ime",
     "lastName": "Prezime",

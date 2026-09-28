@@ -212,6 +212,31 @@ export type FormDef = {
   id: string
   titleKey: string
   submitKey: string
+  /**
+   * How many columns every row of this form has, whatever its fields fill.
+   *
+   * Without it a row is as wide as the fields standing on it, which is right for
+   * eleven of the twelve forms: they have no shape of their own and a row of two
+   * is two halves. The registration has one. Owner, 12.08.2026: „Podeli je
+   * racionalno na trećine horizontalno", and on 28.09.2026 he said what happens
+   * where a row does not fill them, three times over: „Prvi red je Adresa i
+   * telefon (Treća kolona je prazna)", „Drugi red su jednake trećine za Mesto i
+   * Državu (Treća kolona je prazna)", „Takmičenje ima Kategoriju i Veličinu
+   * majice po trećinama, treća trećina je prazna".
+   *
+   * So the empty third is a decision and not what is left over: a field on a row
+   * of two is HALF the form wide, and he asked for it to be a third and for the
+   * rest to stay empty. Counted per row, „Adresa, Telefon" cannot say that;
+   * declared once on the form, every row says it and there is one number to
+   * move.
+   *
+   * A row that needs MORE than this keeps what it needs (`FormRenderer.tsx`), so
+   * this is a floor and never a ceiling: it cannot push a field off a row into a
+   * second line, which is the one way a number written here could break a form
+   * silently. `drawsEveryRowOfTheRegistrationInThirds` in `fieldHint.test.tsx`
+   * measures that no row of the registration reaches for it.
+   */
+  columns?: number
   fields: FieldDef[]
 }
 

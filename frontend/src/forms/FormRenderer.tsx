@@ -189,9 +189,22 @@ type Drawn = { field: FieldDef; value: string | boolean }
  *
  * A town counts as two, because it carries the country beside it and the two are
  * two controls: „Adresa, Mesto, Država" is three columns and two fields.
+ *
+ * <p><b>And never narrower than the form itself asks for.</b> A form may declare
+ * a width every one of its rows has (`types.ts`, `FormDef.columns`), which is
+ * how a row of two fields leaves a third of the line empty rather than becoming
+ * two halves. Owner, 28.09.2026, three times over: „Treća kolona je prazna".
+ *
+ * <p>The larger of the two rather than the declared one, so the number on the
+ * form is a FLOOR. A row that outgrows it keeps the width it needs, instead of
+ * having its last field pushed onto a second line by a number written elsewhere
+ * and for another row.
  */
-function columnsOf(fields: Drawn[]): number {
-  return fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0)
+function columnsOf(fields: Drawn[], declared: number | undefined): number {
+  return Math.max(
+    declared ?? 0,
+    fields.reduce((so, one) => so + (one.field.type === 'place' ? 2 : 1), 0),
+  )
 }
 
 /**
@@ -1198,7 +1211,7 @@ export function FormRenderer({
                  variable on it makes (components/ColumnChart.tsx): TypeScript's
                  `CSSProperties` has no room for a custom property, and there is no
                  other way to hand a number to a stylesheet. */
-              style={{ '--columns': columnsOf(fields) }}
+              style={{ '--columns': columnsOf(fields, form.columns) }}
             >
               {drawnRow}
             </div>

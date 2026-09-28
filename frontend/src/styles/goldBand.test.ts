@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { at, must } from '../test/at'
+import { contrast } from '../test/contrast'
 import { bodyOf, closes, ruleAt, ruleFor, unremarked } from '../test/stylesheet'
 import sr from '../i18n/sr.json'
 
@@ -169,18 +170,9 @@ describe('reading a rule out of a stylesheet', () => {
   })
 })
 
-/** WCAG relative luminance of an `#rrggbb` colour. */
-function luminance(hex: string): number {
-  const linear = [1, 3, 5]
-    .map((start) => parseInt(hex.slice(start, start + 2), 16) / 255)
-    .map((channel) => (channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4))
-  return 0.2126 * at(linear, 0) + 0.7152 * at(linear, 1) + 0.0722 * at(linear, 2)
-}
-
-function contrast(one: string, other: string): number {
-  const sorted = [luminance(one), luminance(other)].sort((left, right) => right - left)
-  return (at(sorted, 0) + 0.05) / (at(sorted, 1) + 0.05)
-}
+/* `luminance` and `contrast` moved to `src/test/contrast.ts` on 28.09.2026, when a
+   second guard came to need them (`forms/choiceControl.test.ts`). The four known
+   ratios below stayed here, beside the band they were written for. */
 
 describe('the ink on the gold band', () => {
   const tokens = read('src/styles/tokens.css')
