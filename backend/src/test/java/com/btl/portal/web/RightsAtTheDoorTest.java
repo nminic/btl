@@ -150,11 +150,14 @@ class RightsAtTheDoorTest {
 	 * behind {@link RightIsNeeded}. {@code InboxApiTest} holds both halves: a visitor is
 	 * refused, and so is a signed in account with no member behind it.
 	 *
-	 * <p><b>AND {@code /api/me/notifications} IS THE NINTH, CLOSED THE IDENTICAL WAY AND
-	 * FOR THE IDENTICAL REASON.</b> A member's own six switches over the bell's mail (PDL
-	 * P22) are exactly as personal as his inbox, and an account with no member behind it is
-	 * refused the same 404, off the same {@code MemberOfAccount} lookup. {@code NotificationApiTest}
-	 * holds both halves for this route the way {@code InboxApiTest} does for the other.
+	 * <p><b>{@code /api/me/notifications} WAS THE NINTH UNTIL 29.09.2026, AND IT IS GONE
+	 * RATHER THAN MOVED.</b> It answered a member his own six switches over the bell's mail,
+	 * and the owner decided that day that the six social notices travel the portal inbox and
+	 * nothing else („da funkcionise samo kao poruke u inbox portala"), so there is no mail to
+	 * switch on. V47 drops the table and both routes left with it. Named here rather than
+	 * quietly deleted, because the shape it stood for - personal to a member, closed by
+	 * {@code MemberOfAccount} rather than by a right - is still the shape {@code /api/inbox}
+	 * has, and a reader who finds it missing should find out why here.
 	 *
 	 * <p><b>This list is not about {@code /api}, and that is the correction of 13.09.2026.</b>
 	 * It said {@code /api/} once, and a review measured what that was worth: a
@@ -312,8 +315,10 @@ class RightsAtTheDoorTest {
 	 * refused, before a byte of the body is read. It also arrives by the address that would
 	 * have hidden it under the old, bare-path floor: {@code GET /api/comments} was already
 	 * named here, so a {@code POST} added to that same path would have been excused by a
-	 * line written about a read, exactly the fault {@code PUT /api/me/notifications} below
-	 * was the first correction to pay for.
+	 * line written about a read, exactly the fault {@code PUT /api/me/notifications} was the
+	 * first correction to pay for. That route is gone with V47, but the correction it bought
+	 * is not: keying by verb and path is why {@code PUT /api/me} below arrives as its own
+	 * name instead of hiding behind the {@code GET}.
 	 *
 	 * <p><b>AND {@code PUT /api/me} IS THE FIRST LINE THE PAIRS BOUGHT, which is the
 	 * correction above paying for itself within the day.</b> {@code /api/me} was already
@@ -330,16 +335,6 @@ class RightsAtTheDoorTest {
 	 * reads a privilege - so there is nothing here for a door to decide. An account with no
 	 * member behind it is refused by the route, before it reads a byte of the body, and is
 	 * answered exactly what an address that is not there answers.
-	 *
-	 * <p><b>AND {@code PUT /api/me/notifications} IS B84'S WRITE OF THAT SAME RESOURCE, AND
-	 * NEEDS NO NEW REASON - ONLY A NEW NAME.</b> It is done by a MEMBER, changing his OWN
-	 * settings, which is the identical sentence the paragraph above already gives for the
-	 * {@code GET}: no privilege protects choosing your own mail, the same way none protects
-	 * reading your own comments or your own applications. What is new is only that this verb
-	 * now has to be named on its own: until B80's correction the path stood BARE here, which
-	 * excused every verb it mapped, so this write was invisible under the very entry that
-	 * already carried its {@code GET}. It arrives here the way B80's own note says a verb
-	 * added to an already-named address would.
 	 *
 	 * <p><b>AND THE THREE WRITES UNDER {@code /api/verification/{id}} ARE HERE FOR
 	 * {@code /api/verification}'s REASON AND FOR NO NEW ONE: THE PRIVILEGE IS DECIDED BY THE
@@ -392,7 +387,6 @@ class RightsAtTheDoorTest {
 					   consequence of being a member like the two verbs beside it. See
 					   InboxReadApi. */
 					"POST /api/inbox/{id}/read",
-					"GET /api/me/notifications",
 					/* HIS OWN MEMBERSHIP, READ AND BOUGHT. Neither is a moderator's action and there
 					   is no box anybody could tick for either: paying your own fee is what every
 					   member does, and spending one member's balance on another's membership is not a
@@ -402,7 +396,7 @@ class RightsAtTheDoorTest {
 					   can express rather than a check that could be forgotten. A visitor is refused
 					   401 by the chain, because neither is on `READ_BY_ANYBODY`, and an account with
 					   no member behind it is refused 404 by the controllers themselves, the identical
-					   shape `/api/inbox` and `/api/me/notifications` have.
+					   shape `/api/inbox` has.
 					   `MyMembershipApiTest` and `MyMembershipWriteApiTest` hold both halves. */
 					"GET /api/me/membership", "POST /api/me/membership",
 					"GET /api/me/applications", "POST /api/email-confirmation",
@@ -418,7 +412,7 @@ class RightsAtTheDoorTest {
 					   GET, HEAD and OPTIONS alone, so these three never reach `permitAll`. */
 					"POST /api/results", "PUT /api/results/{id}", "DELETE /api/results/{id}",
 					"POST /api/pairs", "PUT /api/pairs/{id}", "DELETE /api/pairs/{id}",
-					"DELETE /api/teams/{id}/membership", "PUT /api/me/notifications",
+					"DELETE /api/teams/{id}/membership",
 					/* GETTING INTO A TEAM THAT ALREADY EXISTS, ALL FIVE ROUTES, ADDED WITH
 					   B115. None of them is a box the superadmin could tick: PDL gives every
 					   one of these acts to somebody the TEAM decides rather than the league -
@@ -504,7 +498,7 @@ class RightsAtTheDoorTest {
 					   genuinely holds a right that is not this one. */
 					"DELETE /api/teams/{id}",
 					/* A MEMBER'S OWN CHOICE OF CATEGORY, ADDED 27.09.2026. Here for the reason
-					   `PUT /api/me/notifications` is: no box the superadmin ticks decides it,
+					   `PUT /api/me` is: no box the superadmin ticks decides it,
 					   because choosing which category one runs in is not a privilege anybody
 					   grants but a consequence of being a member (PDL P7, owner 26.09.2026:
 					   „Clan je nov, uplatio je clanarinu (ili nije), ali moze da bira u koju ce

@@ -419,7 +419,7 @@ class PairWriteApi {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 calls the ordinary case for a moderator
 		   who does not race. A pair is two members, and there is nobody here to be one of
-		   them; the answer is the one InboxApi and NotificationApi already give him. */
+		   them; the answer is the one InboxApi and InboxWriteApi already give him. */
 		if (me == null) {
 			return away();
 		}

@@ -52,7 +52,7 @@ import java.util.List;
  * applies here for the same reason: „the administration draws no screen he may not open,
  * so the server must not be the one place that says the address is there." An account is
  * resolved to its member through {@link MemberOfAccount} rather than here, because
- * {@link NotificationApi} needs the identical fact.
+ * {@link InboxWriteApi} and a dozen others need the identical fact.
  *
  * <p><b>NEWEST FIRST, WRITTEN DOWN ALREADY.</b> {@code session/SessionProvider.tsx}, the
  * one place the prototype ever added to the inbox: „Newest first, so what just arrived is

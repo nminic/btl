@@ -191,12 +191,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"one open question between two people in that direction, looked up as it is written"),
 
 			/* V13. Two surrogates and one key that IS the fact: who has read what is the pair
-			   itself, and the member's own id is his settings. */
+			   itself. The third key V13 wrote here, `notification_setting_pk`, is gone with its
+			   table in V47: the six social notices travel the portal inbox and nothing else, so
+			   there is no mail to switch on and no set of switches to key by the member. */
 			new Key("message_pk", false, "a surrogate key nothing outside the portal sees"),
 			new Key("message_read_pk", false,
 					"the message and the member together, which is what says reading twice is one fact"),
-			new Key("notification_setting_pk", false,
-					"the member's own id, which is what says he has one set of settings and not a list"),
 
 			/* V14. A surrogate and the address a league is looked up by. The key that WAS the
 			   fact here, `league_event_pk`, is gone with its table in V20: what a league counts

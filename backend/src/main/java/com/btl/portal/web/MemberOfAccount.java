@@ -11,10 +11,11 @@ import org.springframework.stereotype.Component;
  * 14.09.2026). Until this class nothing asked for it: {@link MeApi} says so in as many
  * words, „What keeps the number out of here is therefore no longer that it cannot be
  * found but that nothing has asked for it." This is the first thing that asks, because
- * the inbox and the notification switches are not facts about an account, they are facts
- * about the member the account happens to belong to, and {@code message.to_id} and
- * {@code notification_setting.competitor_id} both point at {@code competitor} and never at
- * {@code account}.
+ * the inbox is not a fact about an account, it is a fact about the member the account
+ * happens to belong to, and {@code message.to_id} points at {@code competitor} and never at
+ * {@code account}. The notification switches were the second such fact until V47 removed
+ * them; the sentence is unchanged by their going, because it was never about how many
+ * callers there were.
  *
  * <p><b>Why this does not live on {@link WhoIsAsking.Member}.</b> That record is handed
  * to every controller on every request whether the route wants it or not, and its own
@@ -28,11 +29,12 @@ import org.springframework.stereotype.Component;
  * read from this layer alone. This is a lookup and not a rule, so there is nothing for
  * {@code domain} to hold.
  *
- * <p><b>A shared home rather than one query written twice.</b> {@link InboxApi} and
- * {@link NotificationApi} both need exactly this fact and nothing more, so it is asked
- * once here (ADL A8's own reasoning about „Odgovara jedno mesto", applied to a lookup
- * instead of a right) rather than as the same one-column {@code select} sitting in two
- * controllers, free to drift apart the day one of them is edited and the other is not.
+ * <p><b>A shared home rather than one query written many times.</b> {@link InboxApi},
+ * {@link InboxWriteApi}, {@link MeApi}, {@link MyMembershipApi} and a dozen others need
+ * exactly this fact and nothing more, so it is asked once here (ADL A8's own reasoning
+ * about „Odgovara jedno mesto", applied to a lookup instead of a right) rather than as the
+ * same one-column {@code select} sitting in every one of them, free to drift apart the day
+ * one is edited and the rest are not.
  */
 @Component
 class MemberOfAccount {

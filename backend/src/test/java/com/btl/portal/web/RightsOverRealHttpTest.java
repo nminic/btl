@@ -409,9 +409,9 @@ class RightsOverRealHttpTest {
 	 * of the path alone.
 	 *
 	 * <p><b>Found on review, and {@code mapped()} above cannot answer it.</b> Since the merge
-	 * that gave three of the portal's addresses a second class - a read beside a write,
-	 * {@code MeApi} beside {@code MeWriteApi}, {@code InboxApi} beside {@code InboxWriteApi},
-	 * {@code NotificationApi} beside {@code NotificationWriteApi} - a path stays mapped
+	 * that gave several of the portal's addresses a second class - a read beside a write,
+	 * {@code MeApi} beside {@code MeWriteApi}, {@code InboxApi} beside {@code InboxWriteApi} -
+	 * a path stays mapped
 	 * whether or not the ONE VERB a case is about is the one answering it. {@code mapped()}
 	 * would say {@code /api/me} exists even the day its {@code PUT} does not, because the
 	 * {@code GET} still would.
@@ -829,8 +829,8 @@ class RightsOverRealHttpTest {
 	 * assertion every other pair here is caught by.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "GET /api/me/notifications",
-			"PUT /api/me/notifications", "PUT /api/me", "POST /api/inbox/{id}/read"})
+	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "PUT /api/me",
+			"POST /api/inbox/{id}/read"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way
@@ -866,10 +866,11 @@ class RightsOverRealHttpTest {
 		   DISPATCHER whether it maps the address at all, which is a question about the
 		   route rather than about any one answer.
 
-		   AND ASKED AS THE PAIR, NOT THE PATH ALONE, since the merge that gave /api/me,
-		   /api/inbox and /api/me/notifications a second class apiece (found on review): a
-		   path stays mapped on the strength of its GET whether or not the verb this case
-		   is actually about still answers there. */
+		   AND ASKED AS THE PAIR, NOT THE PATH ALONE, since the merge that gave /api/me and
+		   /api/inbox a second class apiece (found on review): a path stays mapped on the
+		   strength of its GET whether or not the verb this case is actually about still
+		   answers there. /api/me/notifications was the third such pair until V47 removed
+		   it, and the construction it forced is kept for the two that remain. */
 		RequestMappingInfo mapping = mappingFor(method, path);
 
 		assertThat(mapping)

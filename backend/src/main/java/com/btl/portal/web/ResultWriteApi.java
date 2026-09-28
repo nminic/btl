@@ -49,10 +49,14 @@ import java.util.Optional;
  * obaveznih mejlova u prvoj verziji: kreiranje naloga i potvrda mejla, promena lozinke,
  * UNET REZULTAT, PROMENJEN REZULTAT, dodatni zahtev za verifikaciju, krupna izmena na
  * portalu", and „Sest mejlova iz spiska su obavezni i clan ih ne moze iskljuciti." There
- * is no switch consulted anywhere below, and there is no column to consult: V13 gives
- * {@code notification_setting} six columns for the six OPTIONAL messages and says in its
- * own words why the mandatory six have none - „a column for them would be a promise the
- * portal must refuse to keep."
+ * is no switch consulted anywhere below, and since V47 there is no switch anywhere at all.
+ * V13 once gave {@code notification_setting} six columns for the six OPTIONAL messages, and
+ * said in its own words why the mandatory six had none - „a column for them would be a
+ * promise the portal must refuse to keep." The owner then removed the optional six outright
+ * on 29.09.2026 („da funkcionise samo kao poruke u inbox portala"), so the table went with
+ * them. <b>The mandatory six are untouched by that and are still six</b>, these two among
+ * them: they never had a column, which is exactly why dropping the table could not reach
+ * them.
  *
  * <p><b>AND THE THIRD MESSAGE, THE ONE FOR A DELETION, IS NOT AN EXTRA.</b> Same
  * decision: „Isto obavestenje ide i kad se obrise verifikovan rezultat i kad masovni uvoz
