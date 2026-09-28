@@ -129,10 +129,24 @@ export function ServedPairInvite({ invite }: { invite: number }) {
   return (
     <>
       <p className="messages__answer">
+        {/* **`aria-disabled` AND NEVER `disabled`, WHICH IS THE PORTAL'S OWN ANSWER GIVEN
+            TWICE WITH ITS REASON.** `member/ProfilePicture.tsx` states it - „`disabled` takes
+            the button out of the tab order and ... the press is refused in the handler as
+            well, off a ref" - `event/RateEvent.tsx` says the same („Not switched off, told
+            off"), and `pages/Home.css` carries the rule written for exactly this, in colours
+            rather than `opacity`, so that the focus ring keeps its full strength (WCAG 2.2 SC
+            1.4.11).
+
+            **What `disabled` would really cost here, and it is not cosmetic.** A member
+            answering by keyboard has focus ON this button when he presses it. Switched off in
+            that instant, the element leaves the tab order under his feet and the browser drops
+            focus to the top of the document, so the one person who cannot see where he landed
+            is the one it happens to. Told off instead, he stays where he is and the press is
+            refused by `answer` above. */}
         <button
           type="button"
           className="button"
-          disabled={sending}
+          aria-disabled={sending}
           onClick={() => {
             void answer(true)
           }}
@@ -142,7 +156,7 @@ export function ServedPairInvite({ invite }: { invite: number }) {
         <button
           type="button"
           className="button button--secondary"
-          disabled={sending}
+          aria-disabled={sending}
           onClick={() => {
             void answer(false)
           }}

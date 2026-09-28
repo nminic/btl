@@ -158,7 +158,10 @@ let server: { asked: Asked[]; stop: () => void } | null = null
  */
 function aServerWhere(
   rows: unknown[],
-  answering: (path: string, init: RequestInit | undefined) => Response | null = () => did(),
+  answering: (
+    path: string,
+    init: RequestInit | undefined,
+  ) => Response | Promise<Response> | null = () => did(),
 ): void {
   answered = new Set()
 
@@ -192,7 +195,9 @@ function aServerWhere(
     if (/^\/api\/pairs\/\d+$/.test(path)) {
       const said = answering(path, init)
 
-      if (said !== null && said.status < 400) {
+      /* A pending answer is one the case is holding open on purpose, so nothing is closed on
+         the server's side while it hangs - which is exactly the state that case looks at. */
+      if (said !== null && said instanceof Response && said.status < 400) {
         /* The question is gone from the server's side once it is answered, which is what makes
            „the buttons went because the inbox was read again" different from „the buttons went
            because the screen hid them". */
@@ -486,6 +491,52 @@ describe('answering a served invitation into a racing pair', () => {
       await waitFor(() => {
         expect(sentTo(THE_ADDRESS)).toEqual([{ accepted: true }])
       })
+    },
+    SLOW,
+  )
+
+  it(
+    'tells the button off while it waits rather than switching it off, so keyboard focus stays on it',
+    async () => {
+      const user = setupUser()
+      /* A request that never comes back, which is the only way to look at the screen WHILE it
+         is waiting. `serverThat` takes a promise for exactly this. */
+      let release = (): void => {}
+
+      aServerWhere(
+        ALL_FOUR,
+        () =>
+          new Promise<Response>((settle) => {
+            release = () => {
+              settle(did())
+            }
+          }),
+      )
+
+      await openTheQuestion()
+      await user.click(theAcceptButton())
+
+      /* **THE DECISION THIS HOLDS IS THE PORTAL'S AND IT IS WRITTEN DOWN TWICE**
+         (`member/ProfilePicture.tsx`, `event/RateEvent.tsx`, and the rule in
+         `pages/Home.css` written for it): a control that cannot act right now is TOLD OFF and
+         not SWITCHED OFF, because `disabled` takes it out of the tab order. A member answering
+         by keyboard has focus on this button at the moment he presses it, so switching it off
+         drops his focus to the top of the document - and he is the one reader who cannot see
+         where it went.
+
+         Asked as two things, because they are two: it still answers to the role of a button
+         that can be focused (`disabled` would make `toHaveFocus` impossible to keep), and it
+         says out loud that it will not act. */
+      await waitFor(() => {
+        expect(theAcceptButton()).toHaveAttribute('aria-disabled', 'true')
+      })
+
+      expect(theAcceptButton()).not.toHaveAttribute('disabled')
+
+      theAcceptButton().focus()
+      expect(theAcceptButton()).toHaveFocus()
+
+      release()
     },
     SLOW,
   )
