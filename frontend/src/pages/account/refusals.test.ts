@@ -135,17 +135,24 @@ const NOT_A_REASON: Record<string, string[]> = {
      set, and `MembershipConstraintsTest` reads it out of `pg_constraint` rather than believing a
      copy. Same kind of constant as `PricingWriteApi`'s two above. */
   'MembershipWriteApi.java': ['feeExempt', 'balance'],
-  /* `PairWriteApi` declares three that are not refusals, and none of them is a new KIND: a
-     subject line, a sender's name and a letter, the same three shapes `CompetitorWriteApi` and
+  /* `PairWriteApi` declares four that are not refusals, and none of them is a new KIND: two
+     subject lines, a sender's name and a letter, the same shapes `CompetitorWriteApi` and
      `MePhotoApi` already hold above. `THE_PAIR_IS_BROKEN` is what the other half reads in his
-     inbox when a pair ends (`pair.brokenSubject` in `i18n/sr.json`); `THE_LEAGUE` is who the
-     portal says it is when it writes to a member itself, the owner's choice of 19.09.2026
-     between three offered answers; `MAN` is the letter `competitor.gender` carries for a man,
-     the same value `CompetitorWriteApi`'s own `M` already excuses above, read here off a
-     different class for a different reason. None of the three is answered by asking a
-     question and none is refused by anybody: the class writes them rather than replies with
-     them. */
-  'PairWriteApi.java': ['Trkački par je raskinut', 'Balkanska trkačka liga', 'M'],
+     inbox when a pair ends (`pair.brokenSubject` in `i18n/sr.json`); `THE_PAIR_INVITATION`,
+     added 28.09.2026 the same day `ask` began writing the invitation itself into the
+     recipient's inbox, is the same shape one act earlier - what he reads when he is ASKED
+     (`pair.inviteSubject`), never a reason anybody is refused. `THE_LEAGUE` is who the portal
+     says it is when it writes to a member itself, the owner's choice of 19.09.2026 between
+     three offered answers; `MAN` is the letter `competitor.gender` carries for a man, the same
+     value `CompetitorWriteApi`'s own `M` already excuses above, read here off a different class
+     for a different reason. None of the four is answered by asking a question and none is
+     refused by anybody: the class writes them rather than replies with them. */
+  'PairWriteApi.java': [
+    'Trkački par je raskinut',
+    'Poziv u trkački par',
+    'Balkanska trkačka liga',
+    'M',
+  ],
   /* `TeamJoiningWriteApi` declares one that is not a refusal, and it is a shape this table
      already holds twice: a SUBJECT LINE, the one a team's administrator reads when the man
      he asked has joined somewhere else (`teams.inviteMissedSubject` in `i18n/sr.json`). It
@@ -383,8 +390,17 @@ describe('the reasons the server can name', () => {
        `PairWriteApi.answer` and `settle`; `A_QUESTION_ALREADY_STANDS` and `A_PAIR_ALREADY_HOLDS`
        are `ask`'s, eleven lines above `settle` in the same file, and this route never reaches
        them. `member/pairWrites.ts`'s own comment on `WHEN_ANSWERING_A_PAIR_INVITE` names this
-       same split and says why the other five are not here; this entry is that decision taken. */
-    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE], 7],
+       same split and says why the other five are not here; this entry is that decision taken.
+
+       EIGHT CONSTANTS SINCE 28.09.2026, THE SAME DAY AND THE SAME INCREMENT AS THE SCREEN ON
+       THIS LINE. `ask` now writes the invitation itself into the recipient's inbox
+       (`pair_invite_id`, the shape `TeamJoiningWriteApi.inviting` already holds for a team),
+       and the sentence it writes needs a subject: `THE_PAIR_INVITATION`, the same shape as
+       `THE_PAIR_IS_BROKEN` and filed beside it in `NOT_A_REASON` above for the same reason - a
+       message the class WRITES, never one it REFUSES with. This route is still `answer` and
+       `settle`, exactly as before; the new constant belongs to `ask`, and neither of the two
+       doors this route actually opens gained or lost a reason. */
+    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE], 8],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
        is this list's twin of the line above it in every way but one. Six constants splitting
        three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real
