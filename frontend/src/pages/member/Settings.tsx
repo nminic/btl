@@ -3,7 +3,7 @@ import { useCompetitors } from '../../data/useResource'
 import { useTheme } from '../../app/useTheme'
 import type { Theme } from '../../app/themeContext'
 import { useI18n } from '../../i18n/useI18n'
-import { NOTIFICATION_KEYS, recordKey } from '../../session/context'
+import { NOTIFICATION_KEYS } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
@@ -11,6 +11,7 @@ import { ChangePassword } from './ChangePassword'
 import { PersonalData } from './PersonalData'
 import { ProfileBio } from './ProfileBio'
 import { ProfilePicture } from './ProfilePicture'
+import { ProfileVisibility } from './ProfileVisibility'
 import { useMemberScreen } from './memberScreen'
 import './Member.css'
 
@@ -22,7 +23,7 @@ const THEMES: Theme[] = ['dark', 'light']
  * press every visit (PDL P28a). */
 export function Settings() {
   const { t } = useI18n()
-  const { notifications, setNotification, editRecord } = useSession()
+  const { notifications, setNotification } = useSession()
   const who = useMemberScreen()
   const overlay = useOverlay()
   const { theme, choose } = useTheme()
@@ -65,7 +66,21 @@ export function Settings() {
             <>
               <PersonalData me={me} />
               <ProfilePicture me={me} />
-              <ProfileBio me={me} />
+              {/* KEYED BY THE MEMBER, BECAUSE EVERYTHING THAT PANEL HOLDS BELONGS TO ONE
+                  PERSON: what he typed, what stands on his profile, what of his is waiting,
+                  and what the server last said. `SessionProvider` sits above the router so
+                  it never comes down and the sign in screen is walkable while somebody is
+                  signed in, so one visit can hold two people - a shared laptop at a race -
+                  and without this the second reads the first man's words out of the box.
+                  The identical fault cost `ProfilePicture.tsx` a round of review, and it
+                  mends its own with a member carried beside the row because its state lives
+                  in the session and survives a remount; this panel's does not, so the
+                  cheaper and more complete answer is to say whose panel it is.
+
+                  **The reach of this `key` is this screen and no other**, which is the
+                  question the rule of 28.09.2026 asks of every one: `ProfileBio` is drawn
+                  here and nowhere else in `src`. */}
+              <ProfileBio key={me.memberNumber} me={me} />
             </>
           )
         }}
@@ -112,44 +127,21 @@ export function Settings() {
           chose the control rather than striking the sentence.
 
           Read through the overlay rather than off the file, so the box shows what was chosen
-          in this visit and not what the data shipped with. */}
+          in this visit and not what the data shipped with. **Since 28.09.2026 what puts a
+          choice into that overlay is the server's own answer** - the panel sends
+          `PUT /api/me` and writes the overlay only inside the arm the answer authorised
+          (`ProfileVisibility.tsx`), so a choice made here survives a reload instead of dying
+          with the tab. */}
       <Resource state={competitors} inline>
         {(everybody) => {
           const me = recordsOf(MEMBERS, everybody, overlay).find(
             (one) => one.memberNumber === memberNumber,
           )
 
-          return me === undefined ? null : (
-            <section className="member__panel" aria-labelledby="settings-privacy">
-              <h2 className="profile__section" id="settings-privacy">
-                {t('settings.privacy')}
-              </h2>
-              <p className="member__note">{t('settings.hideProfileNote')}</p>
-
-              <div className="field field--checkbox">
-                <div className="field__confirm">
-                  <input
-                    className="field__control"
-                    type="checkbox"
-                    id="hide-profile"
-                    checked={me.profileHidden}
-                    onChange={(event) => {
-                      /* „true" and „false" as words, because the overlay keeps every value as
-                         text and `forms/records.ts` turns them back into the shape the record
-                         holds (`like`). */
-                      editRecord(recordKey(MEMBERS.id, memberNumber), {
-                        profileHidden: String(event.target.checked),
-                      })
-                    }}
-                  />
-                  <label className="field__label" htmlFor="hide-profile">
-                    {t('settings.hideProfile')}
-                  </label>
-                </div>
-              </div>
-
-            </section>
-          )
+          /* Keyed by the member for the reason the biography panel above it is: „Sačuvano."
+             and a refusal both belong to whoever pressed, and one visit can hold two
+             people. */
+          return me === undefined ? null : <ProfileVisibility key={me.memberNumber} me={me} />
         }}
       </Resource>
 
