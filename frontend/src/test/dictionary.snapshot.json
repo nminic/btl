@@ -1434,6 +1434,8 @@
     "grantReducedFromBalance": "Odobri umanjen iznos iz balansa",
     "askExemption": "Odobri oslobođenje od članarine?",
     "askExemptionWhose": "{whose}, sezona {season}.",
+    "askShortfall": "Prihvatam umanjen ukupan iznos?",
+    "askShortfallShort": "Nedostaje: {amount}",
     "activationRefused": {
       "theFormIsNotComplete": "Aktivacija nije poslata do kraja, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
       "theGroundIsNotKnown": "Osnov aktivacije nije prepoznat, pa članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
@@ -1441,7 +1443,12 @@
       "theMembershipIsAlreadyHeld": "Ovaj član već ima članstvo za ovu sezonu, pa nije upisano ponovo.",
       "theCompetitorDoesNotExist": "Ovog člana više nema, pa članstvo nije upisano. Osveži stranicu.",
       "theFeeIsAlreadyRecorded": "Članarina ovog člana je već proknjižena, pa oslobođenje nije upisano.",
-      "thePaymentWasReversed": "Uplata za ovu sezonu je stornirana, pa se članstvo ne upisuje odavde. Storno vraća čovek, van ovog ekrana."
+      "thePaymentWasReversed": "Uplata za ovu sezonu je stornirana, pa se članstvo ne upisuje odavde. Storno vraća čovek, van ovog ekrana.",
+      "theAmountIsNotMoney": "Iznos uplate mora da bude veći od nule, pa uplata nije proknjižena i članstvo nije upisano.",
+      "theAmountIsNotKeptExactly": "Iznos je veći nego što portal može da zapiše, pa uplata nije proknjižena i članstvo nije upisano. Proveri iznos i unesi ga ponovo.",
+      "theMethodIsNotKnown": "Način plaćanja nije prepoznat, pa uplata nije proknjižena i članstvo nije upisano. Osveži stranicu i pokušaj ponovo.",
+      "theReferenceIsNotShaped": "Poziv na broj nije ispravnog oblika, pa uplata nije proknjižena i članstvo nije upisano.",
+      "theReferenceIsTaken": "Ovaj poziv na broj je već zapisan na drugoj uplati, pa uplata nije proknjižena i članstvo nije upisano."
     },
     "body": {
       "leagues": "Opis lige",

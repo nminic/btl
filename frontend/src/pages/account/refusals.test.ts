@@ -16,7 +16,7 @@ import {
 import { WHEN_WRITING_A_PRICE } from '../admin/priceWrites'
 import { must } from '../../test/at'
 import { WHEN_WRITING_A_MODERATOR } from '../admin/moderatorWrites'
-import { WHEN_ACTIVATING } from '../admin/activation'
+import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
@@ -298,6 +298,29 @@ describe('the reasons the server can name', () => {
        `nothingWouldComeOffTheBalance`, which the server settles on the PAIR of currencies while
        the screen is served one - and that is set out on `admin/activation.ts`. */
     ['MembershipWriteApi.java', [WHEN_ACTIVATING], 9],
+    /* THE ELEVENTH, ADDED 28.09.2026, AND IT IS HERE BECAUSE OF WHAT HAPPENED WITHOUT IT.
+       `admin/activation.ts` carried two sentences saying `POST /api/payments` takes no amount and
+       spends the balance by what a QR code promised. Both were true when written and both were
+       overturned by `V42`; the contradiction arrived by a MERGE, so neither parent disagreed with
+       itself and no round of review on either could see it. It was found by reading, which is the
+       one thing that does not scale.
+
+       WHAT THIS WOULD HAVE DONE INSTEAD: `theAmountIsNotMoney`, `theAmountIsNotKeptExactly`,
+       `theMethodIsNotKnown`, `theReferenceIsNotShaped` and `theReferenceIsTaken` are five reasons
+       this class declares that no screen answered, so the merge that brought them in would have
+       gone red with the number in the message on the day it happened.
+
+       NINE CONSTANTS AND NINE REASONS, which is the first file on this list where those two
+       numbers agree, so it needs no entry in either table above. `METHODS` is a `Set<String>` and
+       `A_REFERENCE` a `Pattern`, so neither is a `static final String` and neither has to be
+       excused - the count is the floor that says so, and it moves if either ever becomes one.
+
+       AND FOUR OF THE NINE POINT AT THE SENTENCES `WHEN_ACTIVATING` ALREADY USES, which this gate
+       is indifferent to and `activation.ts` gives the reason for: a refusal means the same thing
+       whichever door refused it, and a second Serbian sentence for it would be a second place to
+       change. What this gate asks is that every name be answered, not that every name have a
+       sentence of its own. */
+    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 9],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every
