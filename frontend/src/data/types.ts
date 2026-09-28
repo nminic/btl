@@ -1364,6 +1364,32 @@ export type InboxLine = {
    *  answers apart. */
   pairInvite?: string
   /**
+   * `pair_invite.id`, THE KEY THE SERVER ANSWERS A PAIR INVITE BY, and the one thing on
+   * this type that goes back to a route rather than onto the screen.
+   *
+   * **A NUMBER AND NOT TEXT, WHICH IS THE ONLY REASON IT IS A SEPARATE FIELD AT ALL.** The
+   * field above is the text identity of a record the browser made itself, and this is a key
+   * in `pair_invite` on the server. Sharing one field between the two, or spelling this one
+   * as text as well, would leave the difference to whoever read it: both are answered by
+   * buttons that say „Prihvati" and „Odbij", and one of the two must reach
+   * `PUT /api/pairs/{id}` while the other must never. Spelt as a number, that mistake does
+   * not compile, which is the floor `CLAUDE.md` asks for - a guard asks the tool that
+   * already knows the answer, and for „are these two the same sort of thing" the tool is the
+   * compiler.
+   *
+   * **What the compiler still cannot keep apart, said out loud because it is where the
+   * fault would live.** `ServedMessage` carries `teamInvitationId` and `pairInviteId` and
+   * both are `number | null`, so the one place that could put one where the other belongs is
+   * `data/useResource.ts#asServed`, and nothing in the language separates them there. Only
+   * an assertion can, and `member/pairInviteAnswered.test.tsx` holds exactly that: it serves
+   * a message whose two keys are DIFFERENT numbers and reads which of the two the address
+   * carried.
+   *
+   * **Absent on every line the browser holds**, whether it asks or not: those records live
+   * in a `useState` and no route knows their keys.
+   */
+  pairInviteOnTheServer?: number
+  /**
    * WHICH OF THE TWO STORES HOLDS THIS LINE'S READ MARK, and it is the server for every
    * line that came off the server.
    *

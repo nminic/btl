@@ -652,34 +652,40 @@ function asALine(one: Message): InboxLine {
  * is text and a number put through `Number(id)` would answer `NaN` for every key the
  * browser's own half holds.
  *
- * **AND THE TWO QUESTION KEYS DO NOT COME ACROSS, which is a refusal and not an oversight.**
- * `GET /api/inbox` answers `teamInvitationId` and `pairInviteId`, and the routes that answer
- * such a question exist too - `PUT /api/teams/{id}/invitations/{invitation}` and
- * `PUT /api/pairs/{id}`. What does not exist is any screen that calls either: measured
- * 27.09.2026, the only write the frontend sends anywhere near them is `POST /api/teams` from
- * `member/ProposeTeam.tsx`, and `InvitationAnswer` answers by looking the invitation up in the
- * session's own `invitations` and writing the member's record there.
+ * **ONE OF THE TWO QUESTION KEYS COMES ACROSS AND THE OTHER STILL DOES NOT, and the difference
+ * is measured rather than chosen.** `GET /api/inbox` answers `teamInvitationId` and
+ * `pairInviteId`, and the routes that answer such a question exist too -
+ * `PUT /api/teams/{id}/invitations/{invitation}` and `PUT /api/pairs/{id}`. PDL 27b has the
+ * owner asking „Pod 1 ako to podrazumeva da clan moze klikom na dugme da prihvati ili odbije
+ * poziv?" and the answer being yes, so both are owed a screen. The pair half is that screen
+ * (`member/ServedPairInvite.tsx`); the team half is not, and this is why.
  *
- * So handing a served key to that screen would not leave it short of a button - it would make
- * it say something false. `InvitationAnswer` treats an invitation it cannot find as one that is
- * OVER („teams.inviteClosed", and the file says why in its own words), so a member would be told
- * a question was closed while `team_invitation` on the server still held it open. Absent, the
- * message is drawn as what it is - a subject, a sender and a body - and nothing is claimed about
- * an answer. **That leaves a served invitation unanswerable on this portal, which is the boundary
- * this increment ends on and not something it hides.**
+ * **THE PAIR KEY IS ALL ITS ROUTE ASKS FOR.** `PUT /api/pairs/{id}` takes a `pair_invite.id`,
+ * which is exactly what `pairInviteId` is, so it travels as `pairInviteOnTheServer` and a
+ * screen of its own sends it. **It is NOT handed to `member/PairInviteAnswer.tsx`**, and that
+ * is the whole point of carrying it under a second name: that screen looks a pair invite up in
+ * the session's own `pairInvites` and treats one it cannot find as one that is OVER
+ * („pair.inviteClosed"), so a served key given to it would tell a member his question was
+ * closed while `pair_invite` on the server still held it open. The two screens answer the two
+ * stores and neither can be given the other's key by accident, because one key is text and the
+ * other is a number (`data/types.ts`, `pairInviteOnTheServer`).
  *
- * **AND IT IS A BOUNDARY WITH A DECISION AGAINST IT RATHER THAN AN OPEN QUESTION, which is the
- * one thing that changed on 27.09.2026 without this function changing.** PDL 27b has the owner
- * asking „Pod 1 ako to podrazumeva da clan moze klikom na dugme da prihvati ili odbije poziv?"
- * and the answer being yes, so the two keys above are owed a screen. What that screen needs and
- * this branch does not build is measured and worth writing down here rather than rediscovering:
- * `PUT /api/pairs/{id}` takes a `pair_invite.id`, which is exactly `pairInviteId`, so the pair
- * half wants nothing further; but `PUT /api/teams/{id}/invitations/{invitation}` needs the TEAM
- * as well, and no field here carries it. The one route that hands the invited member both
- * halves is `GET /api/me/applications`, whose `TeamInvitation(id, teamId, date)`
- * (`MyApplicationsApi`) nothing in `frontend/src` reads yet - and being absent from that list
- * is also how the server says a question is CLOSED, which is the honest answer to the trap
- * named above rather than a second guess at it.
+ * **THE TEAM KEY STILL CANNOT TRAVEL, because its route needs something no field here
+ * carries.** `PUT /api/teams/{id}/invitations/{invitation}` needs the TEAM as well, and the
+ * one route that hands the invited member both halves is `GET /api/me/applications`, whose
+ * `TeamInvitation(id, teamId, date)` (`MyApplicationsApi`) nothing in `frontend/src` reads
+ * yet - and being absent from that list is also how the server says a question is CLOSED,
+ * which is the honest answer to the trap above rather than a second guess at it. So a served
+ * team invitation is drawn as what it is, a subject, a sender and a body, and nothing is
+ * claimed about an answer. **That is the boundary this half ends on and not something it
+ * hides**, and it is a boundary with a decision against it: the screen it is owed is the
+ * increment that reads `/api/me/applications`.
+ *
+ * **AND `teamInvitationId` IS NOT READ HERE AT ALL, which is what keeps the two apart where
+ * the compiler cannot.** Both keys are `number | null` on the wire, so this function is the
+ * one place on the portal where one could be put where the other belongs and nothing would
+ * fail to compile. `member/pairInviteAnswered.test.tsx` serves a message whose two keys are
+ * different numbers and reads which of them the address carried.
  */
 function asServed(one: ServedMessage): InboxLine {
   return {
@@ -689,6 +695,10 @@ function asServed(one: ServedMessage): InboxLine {
     body: one.body,
     date: one.date,
     read: one.read,
+    /* `?? undefined`, because the wire says `null` for a message that only tells and this type
+       says absent - which is what lets the screen ask about a VALUE rather than about a
+       property (`member/MessageDetail.tsx` gives that reason for its own two reads). */
+    pairInviteOnTheServer: one.pairInviteId ?? undefined,
     /* AND THE MARK ON IT IS THE SERVER'S TO WRITE, since `POST /api/inbox/{id}/read`
        (`InboxReadApi`, PDL 27a). This key names a row in `message`, so opening it writes
        `message_read` there and the answer survives signing out - which is the whole of what

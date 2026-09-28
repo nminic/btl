@@ -1,0 +1,500 @@
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { renderAt } from '../../test/render'
+import {
+  answeredWith,
+  did,
+  forgetEveryCookie,
+  refused,
+  serverThat,
+  type Asked,
+} from '../../test/serverAnswers'
+import { setupUser } from '../../test/user'
+import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
+import { SLOW } from '../../test/slow'
+import sr from '../../i18n/sr.json'
+import { theAnswerGoesTo, theServerWasAnswered } from './pairWrites'
+
+/**
+ * ANSWERING A SERVED INVITATION INTO A RACING PAIR, BY PRESSING A BUTTON.
+ *
+ * <p><b>Owner, PDL 27b, 27.09.2026, defining the outcome he chose by the question he asked it
+ * with:</b> „Pod 1 ako to podrazumeva da clan moze klikom na dugme da prihvati ili odbije
+ * poziv?" The answer is yes. Both routes it names existed already; what did not exist was any
+ * screen calling either, so a served invitation drew a subject, a sender and a body.
+ *
+ * <p><b>THE HALF THIS FILE DOES NOT MEASURE, said here so the absence is a decision.</b> Only
+ * the PAIR is answered. `PUT /api/teams/{id}/invitations/{invitation}` needs the team as well
+ * and no field of `GET /api/inbox` carries one; the only route that hands the invited member
+ * both halves is `GET /api/me/applications`, which nothing in `frontend/src` reads.
+ * `member/inboxFromTheServer.test.tsx` still holds that boundary as its own case, untouched.
+ *
+ * <p><b>WHY THE FIXTURE IS FOUR MESSAGES AND NOT ONE.</b> Every value an assertion here reads
+ * could arrive from somewhere else if the code were wrong, so each has to have somewhere else
+ * to arrive from:
+ *
+ * <ul>
+ * <li><b>the message opened is NOT the newest</b>, so „this message" and „the first line of the
+ * inbox" are different values. Newest first, the order is 611, 614, 613, 612, and 612 is the
+ * one opened - last of the four;
+ * <li><b>its invitation is NOT the only one of its kind and NOT the first</b>: 611 carries pair
+ * invite 44 and stands above it, so a screen sending the first pair invite it can find sends 44
+ * where 31 belongs;
+ * <li><b>no key equals any other</b>. The invitations are 31, 44 and 77, the messages 611 to
+ * 614, so sending a message key where an invitation key belongs cannot land on the right number
+ * by luck;
+ * <li><b>a message that only tells and one that asks about a TEAM stand beside them</b>, which
+ * are the two states in which these buttons must not appear at all.
+ * </ul>
+ *
+ * <p><b>AND WHAT IS DELIBERATELY NOT HERE: a message carrying BOTH keys.</b> It would be the
+ * shortest way to measure „which of the two travels", and it is a row the database refuses:
+ * V13 holds `check (team_invitation_id is null or pair_invite_id is null)`. So the swap is
+ * measured the way it really shows - the opened message's `teamInvitationId` is `null`, and a
+ * screen reading that field instead finds nothing and draws no buttons at all.
+ */
+
+const HIS_ADDRESS = 'ja@primer.rs'
+
+const HIM = { role: 'competitor', account: 1, member: { memberNumber: '000007' } }
+
+/** The key of the invitation this message asks about, which is the one thing that must reach
+ *  the route. Not 612, not 44, not 77. */
+const HIS_INVITE = 31
+
+/** THE ONE HE OPENS, and it is the OLDEST of the four rather than the newest. */
+const OPENED = {
+  id: 612,
+  from: 'Milica Anđelković',
+  subject: 'Poziv u trkački par',
+  body: 'Milica te poziva u trkački par.',
+  date: '2026-09-20',
+  read: false,
+  teamInvitationId: null,
+  pairInviteId: HIS_INVITE,
+}
+
+/** ANOTHER PAIR INVITATION, newer, so that „the invitation this message asks about" and „the
+ *  first pair invitation in the inbox" are two different numbers. */
+const ANOTHER_PAIR_QUESTION = {
+  ...OPENED,
+  id: 611,
+  subject: 'Poziv u trkački par od Jovane',
+  date: '2026-09-26',
+  pairInviteId: 44,
+}
+
+/** A QUESTION ABOUT A TEAM, which these buttons must not answer and must not appear under. */
+const A_TEAM_QUESTION = {
+  ...OPENED,
+  id: 613,
+  subject: 'Tim te poziva',
+  body: 'Dunavski trkači te pozivaju u tim.',
+  date: '2026-09-22',
+  teamInvitationId: 77,
+  pairInviteId: null,
+}
+
+/** AND ONE THAT ONLY TELLS, the other state of „does this message ask". */
+const ONLY_TELLS = {
+  ...OPENED,
+  id: 614,
+  subject: 'Članarina je evidentirana',
+  body: 'Uplata je proknjižena.',
+  date: '2026-09-24',
+  pairInviteId: null,
+}
+
+const ALL_FOUR = [ANOTHER_PAIR_QUESTION, ONLY_TELLS, A_TEAM_QUESTION, OPENED]
+
+let server: { asked: Asked[]; stop: () => void } | null = null
+
+/**
+ * A server that answers `GET /api/me`, the inbox, the read receipt and the one write, and lets
+ * every other address fall through to the mock on the disc.
+ *
+ * <p><b>The inbox is rebuilt on every ask rather than handed back as a fixture</b>, because an
+ * answered invitation stops being served as a question - `PairWriteApi.settle` deletes the
+ * `pair_invite` row either way - and a fake server that answered the same body forever could
+ * not tell „the portal read the server again" from „the portal left the buttons where they
+ * were".
+ *
+ * @param answering what `PUT /api/pairs/{id}` answers, or null to leave the question standing
+ */
+function aServerWhere(
+  rows: unknown[],
+  answering: (path: string, init: RequestInit | undefined) => Response | null = () => did(),
+): void {
+  answered = new Set()
+
+  server = serverThat((path, init) => {
+    if (path === '/api/me') {
+      return new Response(JSON.stringify(HIM), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    if (path === '/api/inbox') {
+      return new Response(
+        JSON.stringify(
+          rows
+            .filter((row) => !answered.has(keyOf(row)))
+            .map((row) =>
+              typeof row === 'object' && row !== null && answered.has(inviteOf(row))
+                ? { ...row, pairInviteId: null }
+                : row,
+            ),
+        ),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      )
+    }
+
+    if (/^\/api\/inbox\/\d+\/read$/.test(path)) {
+      return did()
+    }
+
+    if (/^\/api\/pairs\/\d+$/.test(path)) {
+      const said = answering(path, init)
+
+      if (said !== null && said.status < 400) {
+        /* The question is gone from the server's side once it is answered, which is what makes
+           „the buttons went because the inbox was read again" different from „the buttons went
+           because the screen hid them". */
+        answered.add(`invite:${path.slice('/api/pairs/'.length)}`)
+      }
+
+      return said
+    }
+
+    return null
+  })
+}
+
+/** Which invitations the fake server has closed. */
+let answered = new Set<string>()
+
+function keyOf(row: unknown): string {
+  return `message:${String(typeof row === 'object' && row !== null ? Reflect.get(row, 'id') : '')}`
+}
+
+function inviteOf(row: unknown): string {
+  return `invite:${String(Reflect.get(row as object, 'pairInviteId'))}`
+}
+
+/** Every address the portal asked for, in order. */
+function asked(): string[] {
+  return (server?.asked ?? []).map((one) => one.path)
+}
+
+/** What was sent to one address, as the route would parse it. */
+function sentTo(path: string): unknown[] {
+  return (server?.asked ?? [])
+    .filter((one) => one.path === path)
+    .map((one) => JSON.parse(String(one.init?.body ?? 'null')))
+}
+
+function theAcceptButton(): HTMLElement {
+  return screen.getByRole('button', { name: sr.pair.accept })
+}
+
+function theRefuseButton(): HTMLElement {
+  return screen.getByRole('button', { name: sr.pair.refuse })
+}
+
+/** The screen, opened on the message that asks, once its buttons are there. */
+async function openTheQuestion(): Promise<void> {
+  renderAt(`/sr/poruke/${String(OPENED.id)}`, 'competitor', '000007')
+
+  await screen.findByRole('heading', { level: 1, name: OPENED.subject })
+  await screen.findByRole('button', { name: sr.pair.accept })
+}
+
+beforeEach(() => {
+  forgetEveryCookie()
+  document.cookie = 'XSRF-TOKEN=imam'
+  clearResourceCache()
+})
+
+afterEach(() => {
+  server?.stop()
+  server = null
+  clearResourceCache()
+})
+
+describe('answering a served invitation into a racing pair', () => {
+  it(
+    'accepts it, and sends the key of the invitation this message asks about',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(ALL_FOUR)
+      await openTheQuestion()
+
+      await user.click(theAcceptButton())
+
+      /* **THE ADDRESS IS THE WHOLE OF THIS ASSERTION, AND IT IS THE JOIN.** Three other numbers
+         in this fixture could stand here if the code were wrong and each is a real mistake
+         somebody makes: the MESSAGE's key (612), the FIRST pair invitation in the list (44), and
+         the team invitation of the message beside it (77). Asked as „some pair was answered",
+         all four pass; asked as this address, only the right one does. */
+      await waitFor(() => {
+        expect(asked()).toContain(theAnswerGoesTo(HIS_INVITE))
+      })
+
+      expect(asked()).not.toContain(theAnswerGoesTo(44))
+      expect(asked()).not.toContain(theAnswerGoesTo(77))
+      expect(asked()).not.toContain(theAnswerGoesTo(OPENED.id))
+
+      /* **AND WHAT WAS SENT SAYS „PRIHVATI".** `PairWriteApi.Answered` boxes this field on
+         purpose - „a primitive would read it as „Odbij" and close somebody's question for him" -
+         so a screen that sent nothing, or sent the wrong one of the two, is a screen that
+         answers for the member. */
+      expect(sentTo(theAnswerGoesTo(HIS_INVITE))).toEqual([{ accepted: true }])
+    },
+    SLOW,
+  )
+
+  it(
+    'refuses it, and that is a different body to the same address',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(ALL_FOUR)
+      await openTheQuestion()
+
+      await user.click(theRefuseButton())
+
+      await waitFor(() => {
+        expect(asked()).toContain(theAnswerGoesTo(HIS_INVITE))
+      })
+
+      /* **THE SECOND HALF OF THE OWNER'S SENTENCE, and it is the half that goes missing.** „da
+         prihvati ili odbije" is two things; a screen that sent `true` from both buttons would
+         pass every case about accepting and would put the member in a pair he refused. */
+      expect(sentTo(theAnswerGoesTo(HIS_INVITE))).toEqual([{ accepted: false }])
+    },
+    SLOW,
+  )
+
+  it(
+    'takes the buttons away once the server has the answer, by reading the inbox again',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(ALL_FOUR)
+      await openTheQuestion()
+
+      await user.click(theAcceptButton())
+
+      /* **The question is closed on the SERVER and the screen learns it by asking**, which is
+         why the fake server above stops serving `pairInviteId` for an invitation it has
+         answered. A screen that hid its own buttons would pass a case that only looked for them
+         going; this one is green only if `/api/inbox` was asked a second time. */
+      await waitFor(() => {
+        expect(screen.queryByRole('button', { name: sr.pair.accept })).toBeNull()
+      })
+
+      expect(asked().filter((one) => one === '/api/inbox').length).toBeGreaterThan(1)
+    },
+    SLOW,
+  )
+
+  it(
+    'says the question is no longer open when the route does not find it, and offers no second press',
+    async () => {
+      const user = setupUser()
+
+      /* **404 IS THE ANSWER TO THREE QUESTIONS AT ONCE AND `PairWriteApi` MEANS IT TO BE.** The
+         row is gone, or it is somebody else's, or one of the two has stopped paying: „„refused"
+         and „not there" are one number and one empty body, so a caller walking the keys learns
+         nothing about anybody." The member's truth is the same in all three. */
+      aServerWhere(ALL_FOUR, () => answeredWith(404))
+      await openTheQuestion()
+
+      await user.click(theAcceptButton())
+
+      expect(await screen.findByText(sr.pair.inviteClosed)).toBeVisible()
+
+      /* Instead of the buttons and not beside them: a question the server says is not there
+         cannot be answered by pressing again. */
+      expect(screen.queryByRole('button', { name: sr.pair.accept })).toBeNull()
+      expect(screen.queryByRole('button', { name: sr.pair.refuse })).toBeNull()
+
+      /* **AND NOTHING WAS RE-READ**, which is `member/inboxRead.ts`'s own rule about a write the
+         server did not agree to. Re-read, the line would come back without a key, this
+         component would go, and the member would be left with the buttons gone and no word
+         about why. */
+      expect(asked().filter((one) => one === '/api/inbox').length).toBe(1)
+    },
+    SLOW,
+  )
+
+  it(
+    'reads a number that is not 404 as a fault and not as a closed question',
+    async () => {
+      const user = setupUser()
+
+      aServerWhere(ALL_FOUR, () => answeredWith(500))
+      await openTheQuestion()
+
+      await user.click(theAcceptButton())
+
+      /* **The axis that makes the case above mean anything.** Read as „closed", a server that
+         was down for a moment would tell a member his invitation had expired, and he would
+         never press again. `ServerSaid` names the number instead and says to try again. */
+      expect(
+        await screen.findByText(sr.server.wrong.replace('{status}', '500')),
+      ).toBeVisible()
+      expect(screen.queryByText(sr.pair.inviteClosed)).toBeNull()
+      expect(theAcceptButton()).toBeVisible()
+    },
+    SLOW,
+  )
+
+  it.each([
+    ['theFormIsNotComplete', 400, sr.pair.answerRefused.theFormIsNotComplete],
+    ['thePairWouldNotBeMixed', 409, sr.pair.answerRefused.thePairWouldNotBeMixed],
+  ])(
+    'draws the sentence for %s, which the route names and the screen answers',
+    async (reason, status, said) => {
+      const user = setupUser()
+
+      aServerWhere(ALL_FOUR, () => refused(reason, status))
+      await openTheQuestion()
+
+      await user.click(theAcceptButton())
+
+      /* **BOTH REASONS THE ANSWERING ROUTE CAN NAME, and the sentence is read out of the
+         dictionary rather than typed here** - typed, this case would go on passing over a
+         sentence somebody changed by accident. `member/pairWrites.ts` says why this pair of
+         names has no derived floor under it yet and what putting one there would cost. */
+      expect(await screen.findByText(said)).toBeVisible()
+
+      /* The buttons stay: the route refused, the question still stands, and pressing again is
+         the right thing for a member whose counterpart has since put his sex right. */
+      expect(theAcceptButton()).toBeVisible()
+    },
+    SLOW,
+  )
+
+  it(
+    'sends one request for two presses inside one task, which no awaited click can produce',
+    async () => {
+      aServerWhere(ALL_FOUR)
+      await openTheQuestion()
+
+      const accept = theAcceptButton()
+
+      /* **THE GUARD IS A REF AND THIS IS THE ONLY SHAPE THAT SAYS SO.** `user.click` awaits
+         between presses, so React renders, `sending` turns true and `disabled` alone would
+         turn the second press away - a screen guarded only by state would pass and be
+         unguarded. Both events are dispatched inside one `act` here, so the second handler runs
+         before any render, reading whatever the first handler wrote synchronously. */
+      await act(async () => {
+        fireEvent.click(accept)
+        fireEvent.click(accept)
+      })
+
+      await waitFor(() => {
+        expect(sentTo(theAnswerGoesTo(HIS_INVITE))).toEqual([{ accepted: true }])
+      })
+    },
+    SLOW,
+  )
+
+  it(
+    'puts no such buttons under a message that only tells, nor under one that asks about a team',
+    async () => {
+      aServerWhere(ALL_FOUR)
+
+      renderAt(`/sr/poruke/${String(ONLY_TELLS.id)}`, 'competitor', '000007')
+
+      await screen.findByRole('heading', { level: 1, name: ONLY_TELLS.subject })
+
+      expect(screen.queryByRole('button', { name: sr.pair.accept })).toBeNull()
+      expect(screen.queryByRole('button', { name: sr.pair.refuse })).toBeNull()
+    },
+    SLOW,
+  )
+
+  it(
+    'puts no pair buttons under a question about a team, whose own route needs a team',
+    async () => {
+      aServerWhere(ALL_FOUR)
+
+      renderAt(`/sr/poruke/${String(A_TEAM_QUESTION.id)}`, 'competitor', '000007')
+
+      await screen.findByRole('heading', { level: 1, name: A_TEAM_QUESTION.subject })
+
+      /* **The third state of „what sort of question is this", and it is its own case.** Both
+         keys are `number | null` on the wire and `data/useResource.ts#asServed` is the one
+         place either could be put where the other belongs; read from `teamInvitationId`, this
+         message would grow two buttons that answer `PUT /api/pairs/77` - an address about
+         somebody's team invitation. */
+      expect(screen.queryByRole('button', { name: sr.pair.accept })).toBeNull()
+      expect(screen.queryByRole('button', { name: sr.pair.refuse })).toBeNull()
+      /* And the team half is still unanswerable, which is the boundary this increment keeps. */
+      expect(asked().filter((one) => one.startsWith('/api/teams/'))).toEqual([])
+    },
+    SLOW,
+  )
+})
+
+describe('what an answered invitation makes stale', () => {
+  /**
+   * WHICH CACHE IS DROPPED IS DECIDED BY WHICH ANSWER WAS GIVEN, and that is measured here
+   * rather than on the screen because the screen cannot show it.
+   *
+   * <p>`clearResourceCache` drops a promise and says nothing to anybody, which is the portal's
+   * own words for it: „dropped without the bump, nothing re-reads". So the effect of dropping
+   * `pairs` is on the NEXT screen that reads pairs, and `arrivedResource` is where it can be
+   * seen at all.
+   */
+  async function withPairsInHand(): Promise<void> {
+    clearResourceCache()
+    await loadResource('pairs')
+
+    expect(arrivedResource('pairs')).not.toBeUndefined()
+  }
+
+  it('drops the pairs the portal is holding when the answer was „Prihvati"', async () => {
+    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? did() : null))
+
+    await withPairsInHand()
+    await theServerWasAnswered(HIS_INVITE, true)
+
+    /* **Accepting is the one answer that writes `racing_pair`.** `PairWriteApi.settle` deletes
+       whatever pair either half held for the season being formed and inserts the new one, so a
+       member walking from this message to his own profile would otherwise be shown no pair a
+       moment after making one. */
+    expect(arrivedResource('pairs')).toBeUndefined()
+  })
+
+  it('leaves them alone when the answer was „Odbij", because no pair changed', async () => {
+    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? did() : null))
+
+    await withPairsInHand()
+    await theServerWasAnswered(HIS_INVITE, false)
+
+    /* **The other state of the same axis, and without it the case above is satisfied by a
+       function that drops everything always.** Refusing closes the question and touches no
+       pair, so a portal that re-read `pairs` here would be asking for an answer it already had.
+    */
+    expect(arrivedResource('pairs')).not.toBeUndefined()
+  })
+
+  it('leaves them alone when the route refused, whichever answer was pressed', async () => {
+    server = serverThat((path) =>
+      /^\/api\/pairs\/\d+$/.test(path) ? refused('thePairWouldNotBeMixed', 409) : null,
+    )
+
+    await withPairsInHand()
+    await theServerWasAnswered(HIS_INVITE, true)
+
+    /* **The axis this function cannot get wrong**, and `member/inboxRead.ts` states it for its
+       own write: a cache dropped on the asking rather than on the answering is the portal
+       drawing a pair the server refused to make. */
+    expect(arrivedResource('pairs')).not.toBeUndefined()
+  })
+})
