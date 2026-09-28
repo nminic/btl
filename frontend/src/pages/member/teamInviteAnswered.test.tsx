@@ -58,9 +58,17 @@ import sr from '../../i18n/sr.json'
  * that field instead finds nothing and draws no buttons at all.
  */
 
-/* One reader and one inbox: whose mail is served is `member/inboxFromTheServer.test.tsx`'s
-   question, and every case here is about what one member does with one question already his. */
+/* One reader for all but one case: whose MAIL is served is `member/inboxFromTheServer.test.tsx`'s
+   question. What is this file's is whose WAITING LIST is served, because that answer is the one
+   that carries a team and a team is half an address; the last case below is about exactly that. */
 const HIM = { role: 'competitor', account: 1, member: { memberNumber: '000007' } }
+
+/** And somebody else on the same laptop, who has an invitation of his own under the very same
+ *  key. Signing out and back in happens IN PLACE on this portal, so a visit is not one person. */
+const HER = { role: 'competitor', account: 2, member: { memberNumber: '000009' } }
+
+/** Whom the fake server is answering as, which only a case that switches ever moves. */
+let asking = HIM
 
 /** The key of the invitation this message asks about. Not 612, not 44. */
 const HIS_INVITE = 31
@@ -196,12 +204,16 @@ let closed = new Set<number>()
 function aServerWhere(
   waiting: unknown,
   answering: () => Response = () => did(),
+  /** What the OTHER member is waiting on, for the one case that switches in place. Answered by
+   *  who `GET /api/me` says is asking, which is the only thing that really decides it. */
+  hers: unknown = waiting,
 ): void {
   closed = new Set()
+  asking = HIM
 
   server = serverThat((path, init) => {
     if (path === '/api/me') {
-      return new Response(JSON.stringify(HIM), {
+      return new Response(JSON.stringify(asking), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       })
@@ -218,7 +230,7 @@ function aServerWhere(
     }
 
     if (path === '/api/me/applications') {
-      return asJson(withoutTheClosed(waiting))
+      return asJson(withoutTheClosed(asking === HIM ? waiting : hers))
     }
 
     if (/^\/api\/teams\/\d+\/invitations\/\d+$/.test(path)) {
@@ -742,6 +754,61 @@ describe('answering a served invitation into a team', () => {
       })
 
       expect(asked().filter((one) => one.startsWith('/api/teams/'))).toEqual([])
+    },
+    SLOW,
+  )
+
+  it(
+    'answers the second member off his own waiting list and never off the first one',
+    async () => {
+      const user = setupUser()
+
+      /* THE SAME INVITATION KEY FOR BOTH OF THEM, under DIFFERENT teams. That is what makes this
+         case measure a leak rather than a re-read: asked as „was it fetched again", a portal that
+         fetched again and drew the first answer would pass. Asked as „which team did the address
+         carry", only a portal that really answered the second member does. */
+      aServerWhere(waitingWhere(), () => did(), {
+        teamApplications: [],
+        teamInvitations: [{ id: HIS_INVITE, teamId: 5, date: '2026-10-06' }],
+        teamProposals: [],
+        pairInvites: [],
+        alreadyInATeam: false,
+      })
+
+      const { unmount } = renderAt(
+        `/sr/poruke/${String(OPENED.id)}`,
+        'competitor',
+        '000007',
+        undefined,
+        IN_THE_WINDOW,
+      )
+
+      await screen.findByRole('button', { name: sr.teams.inviteRefuse })
+
+      unmount()
+
+      /* **SIGNING OUT AND BACK IN HAPPENS IN PLACE ON THIS PORTAL**, which is the measurement
+         `data/client.ts` records about the inbox: `AccountMenu` and `SignIn` between them reload
+         nothing. So the cache above, keyed by name with nobody in the key, would hand the next
+         reader what the last one was answered - and for THIS name that is not a stale count but
+         somebody else's team in an address he is about to write to. */
+      asking = HER
+
+      renderAt(
+        `/sr/poruke/${String(OPENED.id)}`,
+        'competitor',
+        '000009',
+        undefined,
+        IN_THE_WINDOW,
+      )
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.inviteRefuse }))
+
+      await waitFor(() => {
+        expect(asked()).toContain('/api/teams/5/invitations/31')
+      })
+
+      expect(asked()).not.toContain(THE_ADDRESS)
     },
     SLOW,
   )
