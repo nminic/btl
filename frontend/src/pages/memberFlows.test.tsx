@@ -1802,15 +1802,31 @@ describe('settings', () => {
 })
 
 describe('messages', () => {
-  it('lists the inbox and marks one read', async () => {
-    const user = setupUser()
+  it('lists the inbox, says how many are unread, and offers no way to change that', async () => {
     renderAt('/sr/poruke', 'competitor', '000007')
 
     expect(await screen.findByText('1 nepročitana')).toBeVisible()
 
-    await user.click(first(screen.getAllByRole('button', { name: 'Označi kao pročitano' })))
+    /* **THIS CASE PRESSED A BUTTON UNTIL PDL 27a (27.09.2026), AND THE BUTTON IS GONE.** It
+       clicked „Označi kao pročitano" and watched the count fall to nought. The owner refused the
+       control in his own words - „Ne treba mi dugme da se nesto oznaci kao procitano ili
+       neprocitano" - so what is left to say about this LIST is that it reports the number and
+       offers nothing that alters it. The trigger that replaced the button is opening the message,
+       which the two cases below this one already walk, and
+       `member/openingMarksItRead.test.tsx` measures on both halves of the inbox.
 
-    expect(screen.getByText('0 nepročitanih')).toBeVisible()
+       Asked as „no buttons in the rows" rather than „no button called X": the name has left the
+       dictionary in the same commit, so a query for the old words could never fail again. The
+       rows are found through the subjects they draw, because the header of the portal is full of
+       buttons and one of them carries this very count in its accessible name. */
+    for (const subject of ['Dobro došao u pripremu sezone 2027', 'Rezultat je odobren']) {
+      const row = must(
+        screen.getByRole('link', { name: subject }).closest('li'),
+        `a row around "${subject}"`,
+      )
+
+      expect(within(row).queryAllByRole('button')).toEqual([])
+    }
   })
 
   it('opens one message on its own address, and reading it is what marks it read', async () => {
