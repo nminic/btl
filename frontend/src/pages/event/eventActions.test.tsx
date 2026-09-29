@@ -1234,7 +1234,9 @@ describe('changing an event', () => {
     await user.click(await screen.findByRole('button', { name: 'Izmena' }))
 
     expect(router.state.location.pathname).toBe('/sr/administracija/dogadjaji')
+    /* Through the door and onto THIS event, which takes the name and the day together. */
     expect(await screen.findByLabelText('Datum')).toHaveValue(fieldDate(mine.date))
+    expect(first(screen.getAllByLabelText(/^Naziv događaja/))).toHaveValue(mine.name)
   }, SEVERAL_SCREENS)
 
   it('sends whoever lacks the events to the front page, and the form goes with them', async () => {
@@ -1339,7 +1341,7 @@ describe('changing an event', () => {
   it('goes to the address of the language it is read in', async () => {
     const user = setupUser()
     const mine = await eventAt(EVENT)
-    const { router } = renderAt('/en/kalendar/maraton-maratona-2015', 'superadmin')
+    const { router } = renderAt(EVENT.replace('/sr/', '/en/'), 'superadmin')
 
     await user.click(await screen.findByRole('button', { name: 'Change' }))
 
