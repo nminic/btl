@@ -80,7 +80,7 @@ export function SessionProvider({
      database may be in the shipped bundle; and a case that needs a message writes one
      itself. An empty inbox is an empty inbox, and drawing it is the true picture.
 
-     What this list still holds is everything `notify` puts in it during a visit - nine
+     What this list still holds is everything `notify` puts in it during a visit - eight
      screens write here - and `data/useResource.ts` merges that half with the served one. So
      nothing about the two halves changed; what went is the pretence that the browser starts
      holding two rows it was never given. */

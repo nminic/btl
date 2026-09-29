@@ -8,6 +8,7 @@ import {
   WHEN_RATING_AN_EVENT,
   WHEN_REGISTERING,
   WHEN_SETTING_A_PASSWORD,
+  WHEN_WRITING_TO_A_MEMBER,
 } from './refusals'
 import {
   WHEN_MODERATING_LEAGUE_RACES,
@@ -423,6 +424,20 @@ describe('the reasons the server can name', () => {
        `WHEN_BOOKING_A_PAYMENT` already share four sentences by. What is asked here is that
        every name be answered, not that every name have a sentence of its own. */
     ['TeamJoiningWriteApi.java', [WHEN_ANSWERING_A_TEAM_INVITE], 6],
+    /* ADDED 28.09.2026 WITH THE SCREEN THAT WRITES ONE MEMBER'S NOTE TO ANOTHER,
+       `event/GoingToEvent.tsx`. Two constants, both real refusals of
+       `POST /api/inbox`, and neither exempt: there is nothing in this class that is
+       not a reason.
+
+       AND IT IS THE FIRST ENTRY HERE WHOSE TWO NAMES BOTH GET A SENTENCE OF THEIR
+       OWN, which the four lines above it deliberately do not. `WHEN_WRITING_TO_A_MEMBER`
+       carries the measurement: the route's `theFormIsNotComplete` answers a blank
+       ADDRESSEE or a blank TITLE and never a blank text, so the sentence the screen
+       already draws for an empty box („Napiši poruku...") would be the nearest one
+       rather than the true one. What this gate asks is unchanged either way - that
+       every name be answered - and the choice between borrowing a sentence and
+       writing one is the screen's, not this file's. */
+    ['InboxWriteApi.java', [WHEN_WRITING_TO_A_MEMBER], 2],
     /* The two the calendar writes through, added 28.09.2026 when `admin/AdminEvents.tsx`
        and `event/EventActions.tsx` stopped writing into the session and began to send.
        Eleven and twelve, and four names appear in both under two different keys: the

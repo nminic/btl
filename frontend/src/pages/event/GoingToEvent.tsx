@@ -10,6 +10,9 @@ import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
 import { useReadsComments } from './readsComments'
 import { useSession } from '../../session/useSession'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { WHEN_WRITING_TO_A_MEMBER } from '../account/refusals'
+import { ServerSaid } from '../account/ServerSaid'
 import './GoingToEvent.css'
 
 /**
@@ -196,6 +199,22 @@ function Going({
         </ul>
       )}
 
+      {/* AND NOTHING HERE ASKS AGAIN WHO IS WRITING, since 28.09.2026. The note used
+          to carry a name this screen worked out, so `WriteTo` was handed `me` and the
+          whole competitor list to look it up in; the server reads the sender off his
+          own row now (`InboxWriteApi.nameTheLeagueKnowsHimBy`), so both are gone.
+
+          **`me !== null` STAYS ON THIS LINE, though.** Dropping it here was a HIGH
+          finding (review, 28.09.2026), and the claim that carried it - „a branch
+          nothing reaches" - was measured and was wrong: `writingTo` is state that
+          belongs to `Going`, and signing out does not take `Going` down with it.
+          Signing out and back in both happen IN PLACE, no navigation and no reload
+          (`data/client.ts`, `AccountMenu.tsx`), so `Going` keeps running with the same
+          `writingTo` it already had and only `me` drops to null. Without the guard the
+          form a member opened stayed on screen after they signed out of that same
+          visit, under the full name of whoever's envelope they had pressed - to
+          somebody no longer signed in at all. Proven by a case that opens the form and
+          then signs out from a live session. */}
       {writingTo !== null && me !== null && (
         <WriteTo
           /* Keyed by whoever is being written to, so pressing another envelope
@@ -203,8 +222,6 @@ function Going({
           key={writingTo.memberNumber}
           event={event}
           them={writingTo}
-          competitors={competitors}
-          me={me}
           onDone={() => setWritingTo(null)}
         />
       )}
@@ -238,28 +255,57 @@ const WRITE_TO: FormDef = {
  * It goes to the portal's own inbox and not to their email (owner, 11.08.2026).
  * The bell always, the mail only where the member switched it on, which is what
  * PDL P22 asks of everything sideways.
+ *
+ * **AND SINCE 28.09.2026 IT GOES TO THE SERVER, which is the whole of this
+ * increment.** Until that day it called `notify`, which writes into
+ * `session/SessionProvider.tsx` and nowhere else, and the screen then said „Poruka je
+ * poslata". Measured rather than assumed: `POST /api/inbox` had been standing since PR
+ * 307 with NO caller anywhere in `frontend/src`, so the note reached nobody and went
+ * with the next refresh.
+ *
+ * **What was NOT true about it, and is worth writing down because it decides what a
+ * case can measure.** It did not land in the writer's own inbox either:
+ * `SessionProvider`'s `inbox` keeps only `to === '' || to === memberNumber`, and this
+ * screen always addressed somebody else. So „the writer's inbox holds nothing of it"
+ * was green before this change and is green after it, FOR TWO DIFFERENT REASONS - the
+ * filter hid it, and now there is nothing to hide. A case resting on that alone would
+ * measure neither, which is why the case that holds this reads WHAT WAS SENT.
+ *
+ * **And nothing is cleared afterwards, which is a measurement rather than an
+ * oversight.** `InboxApi.messagesFor` serves `where m.to_id = :me or m.to_id is null`,
+ * so a member's own inbox never carries what he wrote to somebody else: the one
+ * resource this write could make stale is the ADDRESSEE'S, and that is not this
+ * visit's to re-read. Dropping `inbox` here would be a fetch that asks for the same
+ * answer twice, which is the shape `RateEvent.tsx` avoids for the same reason.
  */
 function WriteTo({
   event,
   them,
-  competitors,
-  me,
   onDone,
 }: {
   event: BtlEvent
   them: Competitor
-  competitors: Competitor[]
-  me: string
   onDone: () => void
 }) {
   const { t } = useI18n()
-  const today = useToday()
-  const { notify } = useSession()
   const [words, setWords] = useState('')
   /** Nothing to send: worked out once, since the button, the reason beside it
    *  and the refusal on submit all have to agree about it. */
   const empty = words.trim() === ''
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  /** What the server answered, where it answered anything that is not „done". A note
+   *  that went leaves this form for the confirmation below, so the only answer this
+   *  ever holds is one the reader is owed a sentence about - `RateEvent.tsx`'s own
+   *  shape, on the same screen, for the identical reason. */
+  const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  /** A second press while the first is still out would write the same note twice, and
+   *  a message cannot be taken back (PDL, 06.09.2026: „brisanje poruke iz tudjeg
+   *  sanduceta je brisanje istorije"). Held in a ref and not in the state beside it,
+   *  because a ref is read and written in the same tick and a redraw cannot land
+   *  between two presses that arrive before one answer does - which is how
+   *  `RateEvent.tsx` and `Registration.tsx` both guard the identical race. */
+  const outstanding = useRef(false)
   const said = useRef<HTMLParagraphElement>(null)
   const box = useRef<HTMLTextAreaElement>(null)
 
@@ -282,9 +328,51 @@ function WriteTo({
       said.current?.focus()
     }
   }, [sent])
-  /* Out of everybody rather than out of the list: a member who has not said they
-     are going may still write to somebody who has. */
-  const mine = competitors.find((one) => one.memberNumber === me)
+
+  /**
+   * Sends the note, and decides what the reader sees by what came back.
+   *
+   * <p><b>THE CONFIRMATION IS DRAWN ONLY AFTER 201</b>, which is `RateEvent.tsx`'s own
+   * shape: until the server has said the row is standing there is nothing sent to be
+   * confirmed, and the sentence this screen draws names the member it reached.
+   *
+   * <p><b>Refused, nothing moves.</b> The box keeps every word of it and the sentence
+   * appears beneath the button, so a note refused is a note that can be sent again
+   * rather than one that has to be written again.
+   *
+   * <p><b>WHAT IS SENT IS THREE FIELDS AND THE SERVER OWNS THE REST.</b>
+   * `InboxWriteApi.Written` takes `to`, `subject` and `body` and says why there is no
+   * more: „There is no `from`, no `date` and no `read`: each of the three is the
+   * server's or the database's, and a field for one of them would be a value the
+   * caller gets to choose." The name the addressee reads is
+   * `competitor.first_name || ' ' || last_name` read off the sender's own row, and the
+   * moment is V13's `now()`. So this screen no longer works out who is writing at all.
+   */
+  async function submit(): Promise<void> {
+    outstanding.current = true
+    setSending(true)
+    /* And the last refusal goes while this one is out, the reason `Registration.tsx`
+       gives it: a reader who presses again should not be reading the old sentence over
+       a request that is still in flight. */
+    setRefusal(null)
+
+    const answer = await askTheServer('/api/inbox', {
+      to: them.memberNumber,
+      subject: t('event.writeSubject', { event: event.name }),
+      body: words,
+    })
+
+    outstanding.current = false
+    setSending(false)
+
+    if (answer.got === 'done') {
+      setSent(true)
+
+      return
+    }
+
+    setRefusal(answer)
+  }
 
   if (sent) {
     return (
@@ -317,24 +405,18 @@ function WriteTo({
            means written, spaces taken off, exactly as the box for a reason on
            the verification queues decides it (admin/SendBack.tsx) and as the
            forms do (forms/validate.ts): three spaces are not a message. */
-        if (empty) {
+        /* A second press while the first is still out is refused the same silent
+           way, and for a heavier reason than an empty box: the row it would write
+           cannot be taken back. */
+        if (empty || outstanding.current) {
           return
         }
 
-        notify({
-          /* Who it is from, in words, because that is what an inbox shows. A
-             member whose own record is gone writes as the league would: there is
-             nothing else true to put there. */
-          from: mine === undefined ? t('event.someMember') : `${mine.firstName} ${mine.lastName}`,
-          to: them.memberNumber,
-          subject: t('event.writeSubject', { event: event.name }),
-          body: words,
-          date: today,
-        })
-        /* And the box stays where it was, saying so. Closing it here took the
-           confirmation down with it in the same breath, so the message went and
-           nothing on the screen said it had. */
-        setSent(true)
+        /* And the box stays where it was until the server answers. Closing it here
+           took the confirmation down with it in the same breath, so the message went
+           and nothing on the screen said it had; `submit` is what decides between the
+           confirmation and a sentence saying why not. */
+        void submit()
       }}
     >
       {/* Obligatory, and it says so the way every field on the portal says it
@@ -396,6 +478,21 @@ function WriteTo({
           {t('event.writeNeedsWords')}
         </p>
       )}
+
+      {/* Said out loud rather than left to a button that looks unpressed, the same
+          reasoning `Registration.tsx` and `RateEvent.tsx` keep beside their own
+          `role="status"` (WCAG 2.2, 4.1.3).
+
+          THE WORDS ARE THE RATING CARD'S OWN AND THAT IS DELIBERATE: „Šalje se" is one
+          sentence about one thing, and a second key holding the same three letters
+          would be a second place to change it. The portal already shares a sentence
+          across two acts where the acts agree about what it says
+          (`WHEN_LEAVING_A_TEAM`, `account/refusals.ts`). */}
+      {sending && <p role="status">{t('event.commentSending')}</p>}
+
+      {/* And what the server said, where it said anything but yes. Beneath the button
+          and never in place of the box: the words the reader typed are still his. */}
+      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_WRITING_TO_A_MEMBER} />}
     </form>
   )
 }
