@@ -23,6 +23,7 @@ import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE } from '../member/pairWrites'
 import { WHEN_ANSWERING_A_TEAM_INVITE } from '../member/teamWrites'
+import { WHEN_DECIDING_AN_APPLICATION } from '../joiningThisTeam'
 import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites'
 
 /**
@@ -215,12 +216,21 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
      class rather than to the PUT the screen sends. `aQuestionAlreadyStands` is
      `POST /api/teams/{id}/applications`'s („Prijava ne može da se umnoži", PDL 06.09.2026)
      and `heHasAlreadyBeenAsked` is `POST /api/teams/{id}/invitations`'s („Isti tim ne poziva
-     istog čoveka dvaput"). Measured rather than assumed: `grep -rn "api/teams" frontend/src`
-     answers 65 times and not one of them sends either address - the only two places those
-     paths are written at all are prose, in `data/useResource.ts` and in
-     `member/inboxFromTheServer.test.tsx`, and both name the PUT. The day a screen asks to
-     join a team or sends an invitation, these two move into a dictionary and this entry
-     shrinks, the same way `CompetitorWriteApi`'s six above are waiting to. */
+     istog čoveka dvaput").
+
+     RE-MEASURED 29.09.2026, because the sentence that stood here had gone out of date and a
+     stale measurement reads exactly like a live one. It used to say that the two collection
+     addresses appear only in prose; since `pages/joiningThisTeam.ts` they are built for real, and
+     `grep -rn "api/teams" frontend/src` now answers 125 times rather than 65. What has NOT
+     changed is the one thing this exemption rests on: the verbs sent are `GET` on the two
+     collections, `PUT` on one application and `DELETE` on one invitation. `POST` to either
+     collection is still sent by nothing - the member's own „Prijavi se u tim" writes into the
+     session (`pages/TeamDetail.tsx`, which says so in as many words) and „Pozovi u tim"
+     likewise (`profile/InviteToTeam.tsx`).
+
+     The day a screen asks to join a team or sends an invitation for real, these two move into
+     a dictionary and this entry shrinks, the same way `CompetitorWriteApi`'s six above are
+     waiting to. */
   'TeamJoiningWriteApi.java': ['aQuestionAlreadyStands', 'heHasAlreadyBeenAsked'],
 }
 
@@ -422,8 +432,27 @@ describe('the reasons the server can name', () => {
        `member/teamWrites.ts` gives the reason it is right: a refusal means the same thing
        whichever door refused it, which is the arrangement `WHEN_ACTIVATING` and
        `WHEN_BOOKING_A_PAYMENT` already share four sentences by. What is asked here is that
-       every name be answered, not that every name have a sentence of its own. */
-    ['TeamJoiningWriteApi.java', [WHEN_ANSWERING_A_TEAM_INVITE], 6],
+       every name be answered, not that every name have a sentence of its own.
+
+       A SECOND DICTIONARY ON THIS FILE SINCE 29.09.2026, when the team's own queue went to
+       the server (`pages/joiningThisTeam.ts`). It is the second act of this class to get a screen,
+       and the split is `TeamWriteApi`'s above: `PUT .../invitations/{invitation}` is answered
+       by the member who was invited, `PUT .../applications/{application}` by the team that
+       was asked, and the two are two screens. Folded into one dictionary they would still
+       have passed this gate, and a reader of it would have had to work out which of its names
+       can reach which screen.
+
+       BOTH OF THE SECOND ONE'S NAMES ARE ALREADY ANSWERED BY THE FIRST, so the union does not
+       widen and this line's six does not move - and that is exactly why it is added rather
+       than left out. Without it the new map is held by nothing, and a key invented in it, or
+       left behind after the server dropped a reason, would fail no case at all: the second
+       case below reads the keys of every dictionary on this table and of no other.
+
+       THE OTHER VERB THAT SCREEN SENDS CARRIES NO DICTIONARY AT ALL, and that is not an
+       omission. `DELETE .../invitations/{invitation}` answers 204 or an empty 404 and names
+       nothing, so an entry for it would claim a refusal this route cannot make; the screen
+       hands `ServerSaid` an empty table there, which draws the number out loud. */
+    ['TeamJoiningWriteApi.java', [WHEN_ANSWERING_A_TEAM_INVITE, WHEN_DECIDING_AN_APPLICATION], 6],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT WRITES ONE MEMBER'S NOTE TO ANOTHER,
        `event/GoingToEvent.tsx`. Two constants, both real refusals of
        `POST /api/inbox`, and neither exempt: there is nothing in this class that is

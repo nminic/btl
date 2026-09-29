@@ -24,12 +24,11 @@ import type { Competitor, Team } from '../data/types'
 import { askTheServer, type Answer } from './account/askTheServer'
 import { ServerSaid } from './account/ServerSaid'
 import { standsOnTheServer, WHEN_DELETING_A_TEAM } from './admin/teamWrites'
-import { formatNumber, formatPoints, formatShortDate } from '../i18n/format'
+import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
-import { afterJoining } from '../data/afterJoining'
 import { teamOf } from '../data/derive'
-import { inYearlyWindow, transfersTakeEffect } from '../data/season'
+import { inYearlyWindow } from '../data/season'
 import { readerAdministers, teamAdminOf } from '../data/teamAdmin'
 import { useSession } from '../session/useSession'
 import { DeleteRecord } from './admin/EntityEditor'
@@ -38,6 +37,7 @@ import { recordKey } from '../session/context'
 import { useOverlay } from './admin/overlay'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
+import { TeamQueue } from './TeamQueue'
 
 /* A team is the only entity besides a competitor that carries a standing, so
  * its page is built the same way. Three of one width across the top (owner,
@@ -55,18 +55,18 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  const {
-    memberNumber,
-    remove,
-    editRecord,
-    notify,
-    applications,
-    apply,
-    answer,
-    invitations,
-    close,
-  } =
-    useSession()
+  /* **`applications` and `answer` are the member's OWN half and are still the session's**,
+     which is a boundary rather than a leftover. „Prijavi se u tim" and „Povuci prijavu" write
+     into the browser, because `POST /api/teams/{id}/applications` is sent by no screen on this
+     portal (`pages/account/refusals.test.ts` keeps that as an exemption with its own reason).
+     The list of applications this team must ANSWER comes off the server, through `TeamQueue`.
+
+     **So one screen now holds two mechanisms for one kind of row, and the server is the
+     truth.** A member who applied through the session sees his own „Povuci prijavu" here and
+     the team does not see him waiting, because he is not waiting on the server at all. That is
+     visible and is written down rather than left to be found; it closes when applying goes to
+     the route, which is its own increment. */
+  const { memberNumber, remove, editRecord, applications, apply, answer } = useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
@@ -210,43 +210,6 @@ export function TeamDetail() {
           (one) =>
             one.memberNumber === memberNumber &&
             listedTeams.some((each) => each.id === one.teamId),
-        )
-        /* The ones this team can still answer about, worked out before the section is drawn
-           rather than inside it: a heading over an empty list announced applications that
-           were not there (review, 06.09.2026).
-
-           A member administration has deleted has nothing left to let in, and one who has
-           come by a team meanwhile is already somewhere, so taking them would move them out
-           of that team without it being asked, which P13 forbids everywhere else. Both stay
-           theirs to take back. */
-        const waiting = applications.flatMap((ask) => {
-          if (ask.teamId !== team.id) {
-            return []
-          }
-
-          const asked = listedMembers.find((each) => each.memberNumber === ask.memberNumber)
-
-          return asked === undefined || teamOf(asked) !== null ? [] : [{ ask, asked }]
-        })
-        /* The invitations this team has sent that are still open, with the person each
-           one names. One that names somebody the portal no longer has is dropped rather
-           than drawn as a blank row, the same way an application is above. */
-        const invited = invitations.flatMap((sent) =>
-          sent.teamId !== team.id
-            ? []
-            : /* Walked rather than found, so „the portal no longer has this member" needs
-                 no question of its own: nothing matches and no row is drawn.
-
-                 Somebody who now has a team is not an open question either, whichever road
-                 they took to it, which is the same test the applications above are filtered
-                 by. It is also what keeps an accepted invitation out of this list, since
-                 that record stays so the member's own message can name the team that
-                 asked. */
-              listedMembers
-                .filter(
-                  (each) => each.memberNumber === sent.memberNumber && teamOf(each) === null,
-                )
-                .map((asked) => ({ sent, asked })),
         )
         const everMembers = listedMembers.filter((one) => one.teamId === team.id)
         const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
@@ -429,162 +392,22 @@ export function TeamDetail() {
                 <Counters totals={totals} races={false} />
               </div>
 
-              {/* **What is waiting on this team, for whoever runs it now.** Drawn here and
-                  not sent anywhere, so the question follows the team: hand the team to
-                  somebody else and the applications go with it, because who may answer is
-                  read off the roster every time this page is drawn (owner, 05.09.2026: the
-                  application is decided by the administrator of that team).
+              {/* **WHAT IS WAITING ON THIS TEAM, AND SINCE 29.09.2026 OFF THE SERVER RATHER
+                  THAN OUT OF THE SESSION.** Both lists and both answers were held in
+                  `session/SessionProvider.tsx` until today - a copy that dies with the tab -
+                  while `GET /api/teams/{id}/applications` and its three write verbs had been
+                  answered and called by nobody. `pages/TeamQueue.tsx` is the whole of it now.
 
-                  Only inside the window, because answering writes the squad a member runs
-                  for and a squad is joined at the start of a season, never inside one (PDL
-                  P13); outside it the application waits, which is what the window is for.
-                  Which season that is, is not this screen's to work out
-                  (`transfersTakeEffect`). */}
-              {mineToRun &&
-                inYearlyWindow(today) &&
-                waiting.length > 0 && (
-                  <>
-                    {/* Named by its own heading, because a list of questions about people
-                        is a thing a reader arrives at and must be able to leave again
-                        (WCAG 2.2, 1.3.1). It also lets a case say „these three and no
-                        others" instead of counting every `li` on the page. */}
-                    <h2 className="profile__section" id="team-waiting">
-                      {t('teams.joinWaiting')}
-                    </h2>
-                    <ul className="submissions" aria-labelledby="team-waiting">
-                      {waiting.map(({ ask, asked }) => (
-                        <li key={ask.id} className="submissions__item">
-                          <p className="submissions__meta">
-                            {asked.firstName} {asked.lastName}
-                          </p>
-                          {/* And the day they asked, which is the same shape the
-                              moderator's queue gives a card (`admin/PendingQueue.tsx`).
-                              Until 06.09.2026 the day was written and never read, and a
-                              field nobody reads is a field nobody can be wrong about;
-                              owner, 06.09.2026, chose to draw it rather than drop it. */}
-                          <p className="submissions__meta">
-                            {formatShortDate(ask.date, locale)}
-                          </p>
-                          <p className="member__actions">
-                            {/* Both controls carry the name of whoever is being answered
-                                about. Two members waiting on one team put two controls
-                                with one name on the screen, and a reader who arrives at
-                                „Primi u tim" is answered „about whom" by nothing (WCAG 2.2
-                                AA, SC 2.4.6; review, 06.09.2026). The same shape
-                                `DeleteRecord` keeps a few rows above this one, and for the
-                                same reason (`admin.form.deleteNamed`). */}
-                            <button
-                              type="button"
-                              className="button button--secondary"
-                              aria-label={t('teams.joinTakenNamed', {
-                                name: `${asked.firstName} ${asked.lastName}`,
-                              })}
-                              onClick={() => {
-                                /* What an approval in the moderator's queue writes, because
-                                   it is the same fact by another road: the team on the
-                                   member's record, and the season they run for it from,
-                                   which is the next one (PDL, 05.09.2026). */
-                                editRecord(recordKey(MEMBERS.id, ask.memberNumber), {
-                                  teamId: String(team.id),
-                                  teamSince: String(transfersTakeEffect(today)),
-                                })
-                                answer(ask.id)
-                                notify({
-                                  from: t('app.name'),
-                                  to: ask.memberNumber,
-                                  subject: t('teams.joinDoneSubject', { team: team.name }),
-                                  body: t('teams.joinDoneBody', { team: team.name }),
-                                  date: today,
-                                })
+                  **Only for whoever leads the team**, which is the permission
+                  `data/teamAdmin.ts` answers definitely, and the route answers 404 to
+                  everybody else. The sent invitations used to be shown to every member of the
+                  team; that narrowing follows the owner's decision of 27.09.2026 that only the
+                  administrator sends and takes back a team's invitation.
 
-                                /* And every team that had invited them stops waiting on a
-                                   question that can no longer be answered, and is told so.
-                                   The owner's sentence names the road as „ko god da je
-                                   poslao poziv", so this door owes the same as the one in
-                                   the member's own inbox (PDL, 06.09.2026). Nothing is
-                                   kept, because nobody accepted an invitation here. */
-                                const after = afterJoining({
-                                  member: ask.memberNumber,
-                                  joined: team.id,
-                                  keep: undefined,
-                                  invitations,
-                                  teams: listedTeams,
-                                  competitors: listedMembers,
-                                })
-
-                                for (const id of after.close) {
-                                  close(id)
-                                }
-
-                                for (const to of after.tell) {
-                                  notify({
-                                    from: t('app.name'),
-                                    to,
-                                    subject: t('teams.inviteMissedSubject'),
-                                    body: t('teams.inviteMissedBody', {
-                                      name: `${asked.firstName} ${asked.lastName}`,
-                                      team: team.name,
-                                    }),
-                                    date: today,
-                                  })
-                                }
-                              }}
-                            >
-                              {t('teams.joinTaken')}
-                            </button>{' '}
-                            <button
-                              type="button"
-                              className="button button--secondary"
-                              aria-label={t('teams.joinRefusedNamed', {
-                                name: `${asked.firstName} ${asked.lastName}`,
-                              })}
-                              onClick={() => {
-                                answer(ask.id)
-                                notify({
-                                  from: t('app.name'),
-                                  to: ask.memberNumber,
-                                  subject: t('teams.joinNoSubject', { team: team.name }),
-                                  body: t('teams.joinNoBody', { team: team.name }),
-                                  date: today,
-                                })
-                              }}
-                            >
-                              {t('teams.joinRefused')}
-                            </button>
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-
-              {/* **What this team has asked, so the team does not depend on somebody
-                  else's inbox.** The invitation itself lives in the invited member's mail,
-                  because that is the one person who decides it and the one place the portal
-                  can reach them (PDL, „Gde stoji odluka"). But a team that can see its
-                  questions only by asking the person it asked cannot tell a question nobody
-                  answered from one never sent, so what is still open is drawn here too.
-
-                  Read rather than answerable: nothing here presses anything, because the
-                  answer is not the team's to give. Shown to every member of the team, the
-                  same people who may send one. */}
-              {memberNumber !== null && everNumbers.has(memberNumber) && invited.length > 0 && (
-                <>
-                  <h2 className="profile__section" id="team-invited">
-                    {t('teams.inviteSent')}
-                  </h2>
-                  <ul className="submissions" aria-labelledby="team-invited">
-                    {invited.map(({ sent, asked }) => (
-                      <li key={sent.id} className="submissions__item">
-                        <p className="submissions__meta">
-                          {asked.firstName} {asked.lastName}
-                        </p>
-                        <p className="submissions__meta">{formatShortDate(sent.date, locale)}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
+                  **And no window on either section**, which is where the prototype was wrong
+                  against the journal: „Prihvati" traži prelazni rok, „Odbij" ne (PDL,
+                  06.09.2026), so the window takes „Primi u tim" away and nothing else. */}
+              {mineToRun && <TeamQueue team={team.id} members={listedMembers} today={today} />}
 
               <h2 className="profile__section">{t('teams.members')}</h2>
 

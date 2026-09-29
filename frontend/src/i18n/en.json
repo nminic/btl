@@ -835,6 +835,10 @@
     "joinNoBody": "The team „{team}\" did not accept your application.",
     "joinWithdraw": "Withdraw the application",
     "joinWaiting": "Applications waiting",
+    "decideRefused": {
+      "theFormIsNotComplete": "The answer did not reach the server in full, so the application has not been answered. Refresh the page and try again.",
+      "theWindowIsShut": "The transfer window has closed in the meantime, so he has not been taken into the team. The application still waits: the window opens on 1 October and runs to 31 December."
+    },
     "invite": "Invite into the team",
     "invited": "The invitation into the team „{team}\" has been sent.",
     "inviteSubject": "An invitation into the team „{team}\"",
@@ -842,6 +846,9 @@
     "inviteAccept": "Accept",
     "inviteRefuse": "Decline",
     "inviteSent": "Invitations sent",
+    "inviteWithdraw": "Withdraw the invitation",
+    "inviteWithdrawNamed": "Withdraw the invitation: {name}",
+    "inviteLapsed": "A member whose fee has lapsed",
     "inviteAccepted": "You have accepted this invitation and from the next season you run for the team „{team}\".",
     "inviteOvertaken": "You have joined the team „{team}\" in the meantime, so this invitation no longer stands.",
     "inviteOvertakenUnnamed": "You have joined a team in the meantime, so you can no longer accept this invitation.",

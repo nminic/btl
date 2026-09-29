@@ -436,16 +436,28 @@ describe('a sentence with a value put into it', () => {
       'teams.inviteMissedBody',
       'teams.inviteOvertaken',
       'teams.inviteSubject',
+      /* The third control of the same kind, added 29.09.2026 with the team's own queue going
+         to the server: „Povuci poziv: {name}", a person's name after a colon, which is the
+         nominative for the same reason `teams.joinRefusedNamed` is. The two sentences beside
+         it (`teams.decideRefused.*`) take no value at all and are not here. */
+      'teams.inviteWithdrawNamed',
       'teams.invited',
       /* The four an answer to an application is written with, and the two that name the
          member each control is about. One answer covers all six: every value is either the
          team's name inside quotation marks, which is how this portal has written it since
          `teams.proposeDone`, or a person's name after a colon, which is the nominative for
          the same reason `admin.form.deleteNamed` is. */
-      'teams.joinDoneBody',
-      'teams.joinDoneSubject',
-      'teams.joinNoBody',
-      'teams.joinNoSubject',
+      /* FOUR WENT FROM THIS LIST ON 29.09.2026 AND THEIR KEYS DID NOT: `teams.joinDoneBody`,
+         `joinDoneSubject`, `joinNoBody` and `joinNoSubject`. They were the messages the team's
+         own page posted into the applicant's inbox out of the session; the server writes them
+         now (`TeamJoiningWriteApi.heIsInTheTeamReads` and its three neighbours), so no screen
+         makes those sentences and this list is derived from the calls that do.
+
+         THE KEYS THEMSELVES ARE STILL LOAD-BEARING AND MUST NOT BE DELETED, which is measured
+         rather than assumed: `TeamJoiningWriteApiTest.theSentencesAreThePortalsOwnWords` reads
+         `frontend/src/i18n/sr.json` and holds all four against the Java that writes them, so
+         the dictionary is where that Serbian sentence is decided even though nothing on this
+         side draws it. */
       'teams.joinRefusedNamed',
       'teams.joinTakenNamed',
       'teams.proposeBody',

@@ -31,6 +31,35 @@ afterEach(() => {
   queue = null
 })
 
+/* SEVEN CASES WENT OUT OF THIS FILE ON 29.09.2026, AND WHERE THEY WENT IS NOT nowhere.
+ *
+ * All seven drove the team's page through the SESSION: either the sent-invitations list that
+ * `session/SessionProvider.tsx` used to fill, or the button that takes a member in, pressed
+ * there as one of the three roads into a club. Both are the server's now -
+ * `GET /api/teams/{id}/invitations` and `PUT /api/teams/{id}/applications/{application}`,
+ * through `pages/joiningThisTeam.ts` - so neither the list nor the button exists on this side
+ * to be driven.
+ *
+ * WHERE EACH CLAIM IS MEASURED NOW:
+ *
+ * - the list itself, its three rows, the day each carries and who is shown it:
+ *   `pages/teamQueueOnTheServer.test.tsx`;
+ * - what an answer WRITES - the season, the notice to the team left waiting, the other clubs
+ *   questions ended: `TeamJoiningWriteApiTest` on the server, which is where it is written.
+ *
+ * AND ONE OF THE SEVEN HAD BECOME A CASE FOR AN OVERTURNED RULE. The one titled `lists the
+ * invitations it has open, to its own members` required that list to be drawn to a member who
+ * merely STANDS in the team. The owner overturned that on 27.09.2026 (PDL: an invitation into a
+ * team is sent by the administrator of that team alone, and with it the derived sentence that
+ * taking one back is his alone too), and `TeamJoiningApi` answers such a reader 404. It went
+ * with the rest rather than being narrowed, because what is left of it after the narrowing is a
+ * case the new file already carries.
+ *
+ * THE TWO ROADS THAT ARE STILL THIS SIDE-S ARE UNTOUCHED: the invited member answering in his
+ * inbox (`member/InvitationAnswer.tsx`) and the moderator approving a proposed team
+ * (`admin/PendingQueue.tsx`). Every case about those two is still here and still green, which
+ * is why the heading about whichever road the member took in still has roads to be about. */
+
 /* „Pozovi u tim", from the press to the answer.
  *
  * The other half of „Prijavi se u tim", and deliberately not its mirror. An application waits
@@ -512,55 +541,6 @@ describe('a member who is asked by more than one team', () => {
   }, SEVERAL_SCREENS)
 })
 
-describe('what the team sees of what it sent', () => {
-  it('lists the invitations it has open, to its own members', async () => {
-    const user = setupUser()
-    const { router } = renderAt(
-      FREE,
-      'competitor',
-      '000007',
-      undefined,
-      IN_WINDOW,
-      <>
-        <Become who="000003" />
-        <Become who="000007" />
-      </>,
-    )
-
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-
-    /* And a second question, from another team and about another person, so „this list has a
-       row" cannot be answered by whatever invitation the portal happens to hold. Anđelija
-       leads Vardar and asks Časlav, who like Relja has no team of his own. */
-    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
-    await router.navigate(OTHER_FREE)
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-
-    /* Read back as somebody in Dunavski trkači, because the list is drawn to the team's own
-       members and to nobody else. */
-    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-
-    expect(await screen.findByRole('heading', { level: 1, name: /Dunavski trkači/ })).toBeVisible()
-
-    /* **The team does not depend on somebody else's inbox.** The invitation is decided in the
-       invited member's mail, but a team that can see its questions only by asking the person it
-       asked cannot tell a question nobody answered from one never sent (PDL, 06.09.2026). */
-    const sent = await screen.findByRole('list', { name: 'Poslati pozivi' })
-
-    expect(within(sent).getByText(/Relja Momčilović/)).toBeVisible()
-    expect(within(sent).queryByText(/Časlav Radenković/)).toBeNull()
-
-    /* Anđelija leads Vardar and is in no way part of Dunavski trkači, so what one team asked is
-       not something every member of every team reads. */
-    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-
-    expect(await screen.findByRole('heading', { level: 1, name: /Dunavski trkači/ })).toBeVisible()
-    expect(screen.queryByRole('list', { name: 'Poslati pozivi' })).toBeNull()
-  }, SEVERAL_SCREENS)
-})
-
 describe('what is left when a team goes away', () => {
   it('stops offering „Pozovi u tim" to somebody whose team has just been emptied', async () => {
     const user = setupUser()
@@ -826,96 +806,9 @@ describe('which day the answer is read off', () => {
     expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('15. 10. 2027.')
   }, SEVERAL_SCREENS)
 
-  it('dates a sent invitation by the day it was sent, not by the day the page is read', async () => {
-    const user = setupUser()
-    const { router } = renderAt(
-      FREE,
-      'competitor',
-      '000007',
-      undefined,
-      IN_WINDOW,
-      <Day on="2026-12-20" />,
-    )
-
-    /* The club reads its own open questions, and each carries the day it asked. Read off the
-       clock instead, a club opening the page in December is told it asked somebody today,
-       whom it asked in October: the right answer and the wrong one are the same string on
-       every case that reads the page on the day it sent (review, 06.09.2026). The row for an
-       application a few lines above has this case written for the same reason
-       (`teamJoin.test.tsx`). */
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-    await user.click(screen.getByRole('button', { name: 'danas je 2026-12-20' }))
-
-    /* A second question, two months later and about somebody else. */
-    await router.navigate(OTHER_FREE)
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-
-    await router.navigate('/sr/tim/dunavski-trkaci')
-
-    /* **Two rows, and each has to carry its own two facts.** With one open question „the day of
-       this row" and „the day of the first row" are the same string, so both fields could be read
-       off the first record and the page would still pass: measured 06.09.2026, both mutations
-       left the whole package green. Relja was asked in October and Časlav in December, so the
-       two rows differ in the name and in the day at once. */
-    const rows = within(await screen.findByRole('list', { name: 'Poslati pozivi' })).getAllByRole(
-      'listitem',
-    )
-
-    expect(rows).toHaveLength(2)
-
-    const said = rows.map((row) => row.textContent ?? '')
-
-    expect(said.filter((one) => /Relja Momčilović/.test(one) && /15\. 10\. 2026\./.test(one))).toHaveLength(1)
-    expect(said.filter((one) => /Časlav Radenković/.test(one) && /20\. 12\. 2026\./.test(one))).toHaveLength(1)
-  }, SEVERAL_SCREENS)
 })
 
 describe('the day the notice carries, on the other two doors', () => {
-  it('dates it by the day the club took the member in, not by the day they applied', async () => {
-    const user = setupUser()
-    const { router } = renderAt(
-      FREE,
-      'competitor',
-      '000003',
-      undefined,
-      IN_WINDOW,
-      <>
-        <Become who="000002" />
-        <Become who="000001" />
-        <Become who="000003" />
-        <Day on="2027-10-15" />
-        <Day on="2027-11-20" />
-      </>,
-    )
-
-    /* **The same axis as on the door through the inbox, and `afterJoining` is why it has to be
-       written three times rather than once.** The rule that decides who is told lives in one
-       module; the day each door writes does not, and each writes it from something of its own.
-       Measured 06.09.2026: the notice on this door dated by the application it answers rather
-       than by the clock left the whole package green.
-
-       Vardar asks Relja in the 2026 window. Relja applies to Dunavski trkači the same day, the
-       window shuts with nothing agreed, and they take him in a year later. The notice Vardar
-       gets is about something that happened in October 2027. */
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-10-15' }))
-    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
-
-    await user.click(screen.getByRole('button', { name: 'danas je 2027-11-20' }))
-    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
-
-    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
-
-    expect(must(told[0], 'the notice Vardar was sent').textContent).toContain('15. 10. 2027.')
-  }, SEVERAL_SCREENS)
-
   it('dates it by the day the proposal was approved, not by the day it was sent', async () => {
     const user = setupUser()
     const { router } = renderAt(
@@ -970,102 +863,6 @@ describe('the day the notice carries, on the other two doors', () => {
     expect(must(told[0], 'the notice Dunavski trkači were sent').textContent).toMatch(
       /(?<!\d)5\. 1\. 2027\./,
     )
-  }, SEVERAL_SCREENS)
-})
-
-describe('a team is told whichever road the member took in', () => {
-  it('tells the team that was waiting when the member is taken in on their own application', async () => {
-    const user = setupUser()
-    const { router } = renderAt(
-      FREE,
-      'competitor',
-      '000003',
-      undefined,
-      IN_WINDOW,
-      <>
-        <Become who="000002" />
-        <Become who="000001" />
-        <Become who="000003" />
-        <Become who="000009" />
-      </>,
-    )
-
-    /* Vardar asks Relja, and Relja meanwhile applies to Dunavski trkači and is taken in there.
-       The owner's sentence is „kad član uđe u tim (ko god da je poslao poziv)", so this road
-       owes exactly what accepting an invitation owes: Vardar's question ends and Vardar is
-       told (PDL, 06.09.2026). Until then the notice was written at one of the three doors and
-       the other two were silent. */
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
-
-    /* **Nobody who was not meant to be told, first.** An empty address is the league talking
-       to everybody (`Message.to`), so a notice addressed to nobody lands in every signed-in
-       member's inbox and „the club that was waiting was told" is satisfied by that same
-       message: measured 06.09.2026, `to: ''` on this door left the whole package green while
-       the same mutation fell on the other two. Milica is in Vardar and does not lead it, so
-       she separates two axes at once — the whole league, and any member of the club rather
-       than the one who leads it. */
-    await user.click(screen.getByRole('button', { name: 'postani 000009' }))
-
-    expect(
-      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
-    ).toEqual([])
-
-    await user.click(screen.getByRole('button', { name: 'postani 000003' }))
-
-    const told = (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? ''))
-
-    expect(told).toHaveLength(1)
-
-    /* And the notice says who left and where they went, which is the whole of what it carries.
-       Read on the message itself, because the panel shows only the subject and the subject has
-       no value in it at all. */
-    await user.click(must(told[0], 'the notice Vardar was sent'))
-
-    expect(
-      await screen.findByText(/Relja Momčilović je u međuvremenu ušao\/la u tim „Dunavski trkači"/),
-    ).toBeVisible()
-  }, SEVERAL_SCREENS)
-
-  it('leaves nothing open on the team page after the member is taken in elsewhere', async () => {
-    const user = setupUser()
-    const { router } = renderAt(
-      FREE,
-      'competitor',
-      '000003',
-      undefined,
-      IN_WINDOW,
-      <>
-        <Become who="000002" />
-        <Become who="000001" />
-        <Become who="000009" />
-      </>,
-    )
-
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
-
-    /* 000009 is in Vardar and does not lead it, which is the point: the list is drawn to every
-       member of the team, so a question that has ended must be gone for all of them and not
-       only for whoever was told. */
-    await user.click(screen.getByRole('button', { name: 'postani 000009' }))
-    await router.navigate('/sr/tim/vardarski-krug')
-
-    expect(await screen.findByRole('heading', { level: 1, name: /Vardar/ })).toBeVisible()
-    expect(screen.queryByRole('list', { name: 'Poslati pozivi' })).toBeNull()
   }, SEVERAL_SCREENS)
 })
 
@@ -1192,39 +989,6 @@ describe('the third door, and the team that was joined', () => {
     ).toBeVisible()
   }, SEVERAL_SCREENS)
 
-  it('does not tell the team the member has just joined about its own invitation', async () => {
-    const user = setupUser()
-    const { router } = renderAt(
-      FREE,
-      'competitor',
-      '000007',
-      undefined,
-      IN_WINDOW,
-      <>
-        <Become who="000002" />
-        <Become who="000001" />
-      </>,
-    )
-
-    /* Dunavski trkači ask Relja **and** Relja applies to Dunavski trkači, and then they take
-       him in on the application. Their own question ended by being answered, so a notice saying
-       „he went somewhere else" would be the club told about itself. Every other case has the
-       inviting team and the joined team be different clubs, so this axis is measured nowhere
-       else (measured 06.09.2026: without it, removing that one condition changes nothing). */
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: 'Prijavi se u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-    await user.click(await screen.findByRole('button', { name: /^Primi u tim: Relja/ }))
-
-    expect(
-      (await inbox(user)).filter((one) => /ostao bez odgovora/.test(one.textContent ?? '')),
-    ).toEqual([])
-  }, SEVERAL_SCREENS)
 })
 
 describe('the way to the answer', () => {
@@ -1405,38 +1169,4 @@ describe('what the invitation must not be confused with', () => {
     expect(screen.queryByRole('button', { name: 'Prihvati' })).toBeNull()
   }, SEVERAL_SCREENS)
 
-  it('ends only the invitations of the member who joined', async () => {
-    const user = setupUser()
-    const { router } = renderAt(
-      FREE,
-      'competitor',
-      '000007',
-      undefined,
-      IN_WINDOW,
-      <>
-        <Become who="000002" />
-        <Become who="000007" />
-      </>,
-    )
-
-    /* Dunavski trkači ask two people. Relja accepts; Časlav's question is nobody's business but
-       his own and must still be waiting. Every other case has all the invitations in the visit
-       belong to one person, so „this member's" and „any" give the same list and the axis is
-       measured nowhere (review, 06.09.2026). */
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-    await router.navigate(OTHER_FREE)
-    await user.click(await screen.findByRole('button', { name: 'Pozovi u tim' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
-    await openTheInvitation(user)
-    await user.click(await screen.findByRole('button', { name: 'Prihvati' }))
-
-    await user.click(screen.getByRole('button', { name: 'postani 000007' }))
-    await router.navigate('/sr/tim/dunavski-trkaci')
-
-    const sent = await screen.findByRole('list', { name: 'Poslati pozivi' })
-
-    expect(within(sent).getByText(/Časlav Radenković/)).toBeVisible()
-    expect(within(sent).queryByText(/Relja Momčilović/)).toBeNull()
-  }, SEVERAL_SCREENS)
 })
