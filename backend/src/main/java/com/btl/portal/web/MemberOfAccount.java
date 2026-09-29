@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
  * found but that nothing has asked for it." This is the first thing that asks, because
  * the inbox is not a fact about an account, it is a fact about the member the account
  * happens to belong to, and {@code message.to_id} points at {@code competitor} and never at
- * {@code account}. The notification switches were the second such fact until V47 removed
+ * {@code account}. The notification switches were the second such fact until V48 removed
  * them; the sentence is unchanged by their going, because it was never about how many
  * callers there were.
  *

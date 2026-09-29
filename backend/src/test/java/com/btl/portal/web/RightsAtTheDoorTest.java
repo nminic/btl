@@ -154,7 +154,7 @@ class RightsAtTheDoorTest {
 	 * RATHER THAN MOVED.</b> It answered a member his own six switches over the bell's mail,
 	 * and the owner decided that day that the six social notices travel the portal inbox and
 	 * nothing else („da funkcionise samo kao poruke u inbox portala"), so there is no mail to
-	 * switch on. V47 drops the table and both routes left with it. Named here rather than
+	 * switch on. V48 drops the table and both routes left with it. Named here rather than
 	 * quietly deleted, because the shape it stood for - personal to a member, closed by
 	 * {@code MemberOfAccount} rather than by a right - is still the shape {@code /api/inbox}
 	 * has, and a reader who finds it missing should find out why here.
@@ -316,7 +316,7 @@ class RightsAtTheDoorTest {
 	 * have hidden it under the old, bare-path floor: {@code GET /api/comments} was already
 	 * named here, so a {@code POST} added to that same path would have been excused by a
 	 * line written about a read, exactly the fault {@code PUT /api/me/notifications} was the
-	 * first correction to pay for. That route is gone with V47, but the correction it bought
+	 * first correction to pay for. That route is gone with V48, but the correction it bought
 	 * is not: keying by verb and path is why {@code PUT /api/me} below arrives as its own
 	 * name instead of hiding behind the {@code GET}.
 	 *

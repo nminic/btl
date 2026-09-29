@@ -171,7 +171,7 @@ import java.util.Optional;
  * ovo prekidaci, ja bih da se u potpunosti za njih izbace mailovi i da funkcionise samo kao
  * poruke u inbox portala"), so the bell is not the default any more - it is the whole of it.
  * {@code notification_setting}, the six switches V13 built in this same migration, and the two
- * routes that read and wrote them are gone in V47. This class reads no switch because there is
+ * routes that read and wrote them are gone in V48. This class reads no switch because there is
  * no switch to read, and there is no state of the portal in which a message written here also
  * becomes a mail.
  * <li><b>WHICH KIND OF MESSAGE THIS IS BY A4c, ASKED BECAUSE THE ANSWER DECIDES WHEN IT
@@ -184,7 +184,7 @@ import java.util.Optional;
  * they stand in is „Kako se ostaje ispod 300 na dan" - the hard limit of the free relay. What
  * this route makes is a row, not a mail, so it spends nothing of that quota and is written
  * the moment it is asked for. There is no longer a day on which that changes: the switch is
- * gone with V47, and A4c's own point 6 - „Zvono je podrazumevano, mejl je izuzetak." - is now
+ * gone with V48, and A4c's own point 6 - „Zvono je podrazumevano, mejl je izuzetak." - is now
  * met by there being no exception at all on this side.
  * <li><b>THE PORTAL'S OWN NOTICES, WHICH SHARE THIS TABLE AND NOTHING ELSE.</b> PDL P9
  * decides that a member „UVEK dobija obavestenje o izmeni, bez izuzetka i bez kvacice koju

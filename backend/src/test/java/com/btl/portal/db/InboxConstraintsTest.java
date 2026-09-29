@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Every constraint the two surviving tables of V13 carry, with the row that breaks it.
  *
- * <p>V13's third table, {@code notification_setting}, is gone in V47: the owner decided
+ * <p>V13's third table, {@code notification_setting}, is gone in V48: the owner decided
  * on 29.09.2026 that the six social notices travel the portal inbox and nothing else
  * („da funkcionise samo kao poruke u inbox portala"), so there is no mail to switch on
  * and no table of switches to constrain.
@@ -50,7 +50,7 @@ class InboxConstraintsTest extends DatabaseTest {
 		}
 	}
 
-	/** The tables V13 adds that still stand; its third left with V47. */
+	/** The tables V13 adds that still stand; its third left with V48. */
 	static final List<String> TABLES = List.of("message", "message_read");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";

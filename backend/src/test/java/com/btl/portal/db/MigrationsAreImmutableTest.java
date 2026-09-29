@@ -181,21 +181,32 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   Article 56 and the explanatory paragraph I had opened it with came out. */
 			new Applied("46", "V46__the_rulebook_stops_claiming_a_penalty_that_is_gone.sql", 426098328),
 
-			/* V47. The six social notices lose their mail, so the six switches and the table
+			/* V48. The six social notices lose their mail, so the six switches and the table
 			   holding them go with it (owner, 29.09.2026: „da funkcionise samo kao poruke u
 			   inbox portala").
 
-			   The number is not 45 or 46, and that was measured rather than taken: when this
-			   file was written V45 stood on branch b177 and V46 on b178, both open, checked
-			   with `git ls-tree` over origin/main and over every ref rather than by asking for
-			   the first free number - which is how two branches collided on one the day before.
-			   V46 has since merged, which is why it sits directly above; that this entry and
-			   that one arrived as an add/add conflict at the tail of this very list is the
-			   `.properties` intersection in another costume, and it was resolved by keeping
-			   both in version order rather than by either side winning. The full gate was run
-			   again afterwards, because a list that merges cleanly is not a list that is
+			   RENUMBERED 47 -> 48 on 29.09.2026, before this migration merged, and the CHECKSUM
+			   IS UNCHANGED BY THAT because Flyway computes it over the CONTENT and not the name.
+			   It took 47 in the first place by measurement rather than by asking for the first
+			   free number: V45 stood on branch b177 and V46 on b178, both open, checked with
+			   `git ls-tree` over origin/main and over every ref - which is how two branches
+			   collided on one the day before. Then V45 merged AFTER V46 (02:26 against 01:55 on
+			   29.09.2026, read off `git log` on main), and the results migration was moved up to
+			   47 by branch b182-v45-na-v47; the note on its row says why. This one has to run
+			   after it, and 48 is what says so.
+
+			   Not a rewrite of a migration anyone has run (ADL A2: the line is the merge). The
+			   commit that added this file is not an ancestor of origin/main - `git merge-base
+			   --is-ancestor` exits 1, checked and not assumed - so no database that follows main
+			   has recorded it under 47. Renaming the file back without editing this row has to
+			   fail here, and so does editing this row without renaming the file.
+
+			   That this entry and V46's arrived as an add/add conflict at the tail of this very
+			   list was the `.properties` intersection in another costume, and it was resolved by
+			   keeping both in version order rather than by either side winning. The full gate was
+			   run again afterwards, because a list that merges cleanly is not a list that is
 			   right. */
-			new Applied("47", "V47__the_social_notices_go_only_to_the_inbox.sql", -1376320615));
+			new Applied("48", "V48__the_social_notices_go_only_to_the_inbox.sql", -1376320615));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

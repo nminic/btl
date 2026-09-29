@@ -192,7 +192,7 @@ class KeysAndIndexesTest extends DatabaseTest {
 
 			/* V13. Two surrogates and one key that IS the fact: who has read what is the pair
 			   itself. The third key V13 wrote here, `notification_setting_pk`, is gone with its
-			   table in V47: the six social notices travel the portal inbox and nothing else, so
+			   table in V48: the six social notices travel the portal inbox and nothing else, so
 			   there is no mail to switch on and no set of switches to key by the member. */
 			new Key("message_pk", false, "a surrogate key nothing outside the portal sees"),
 			new Key("message_read_pk", false,

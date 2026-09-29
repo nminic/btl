@@ -869,7 +869,7 @@ class RightsOverRealHttpTest {
 		   AND ASKED AS THE PAIR, NOT THE PATH ALONE, since the merge that gave /api/me and
 		   /api/inbox a second class apiece (found on review): a path stays mapped on the
 		   strength of its GET whether or not the verb this case is actually about still
-		   answers there. /api/me/notifications was the third such pair until V47 removed
+		   answers there. /api/me/notifications was the third such pair until V48 removed
 		   it, and the construction it forced is kept for the two that remain. */
 		RequestMappingInfo mapping = mappingFor(method, path);
 

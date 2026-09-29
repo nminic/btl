@@ -49,7 +49,7 @@ import java.util.Optional;
  * obaveznih mejlova u prvoj verziji: kreiranje naloga i potvrda mejla, promena lozinke,
  * UNET REZULTAT, PROMENJEN REZULTAT, dodatni zahtev za verifikaciju, krupna izmena na
  * portalu", and „Sest mejlova iz spiska su obavezni i clan ih ne moze iskljuciti." There
- * is no switch consulted anywhere below, and since V47 there is no switch anywhere at all.
+ * is no switch consulted anywhere below, and since V48 there is no switch anywhere at all.
  * V13 once gave {@code notification_setting} six columns for the six OPTIONAL messages, and
  * said in its own words why the mandatory six had none - „a column for them would be a
  * promise the portal must refuse to keep." The owner then removed the optional six outright

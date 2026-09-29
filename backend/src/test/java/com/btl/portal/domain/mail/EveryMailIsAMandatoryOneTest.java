@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * pair request, with the price in front of him: a member who does not sign in can let one
  * run out without being told.
  *
- * <p><b>Why a guard at all, when V47 already dropped the switches.</b> Dropping
+ * <p><b>Why a guard at all, when V48 already dropped the switches.</b> Dropping
  * {@code notification_setting} removes the SWITCH. It does not remove the possibility of a
  * mail: a mail nobody can switch off is still a mail, and the shortest road back to the
  * thing the owner refused is somebody adding one and never thinking about the switch at all.
