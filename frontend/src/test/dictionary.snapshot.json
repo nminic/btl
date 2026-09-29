@@ -657,7 +657,9 @@
     "written": "Poruka je poslata članu {name}, u Poruke na portalu.",
     "someMember": "Član lige",
     "commentsForMembers": "Komentare vide prijavljeni članovi.",
-    "writeNeedsWords": "Napiši poruku da bi mogao da je pošalješ."
+    "writeNeedsWords": "Napiši poruku da bi mogao da je pošalješ.",
+    "writeFormIncomplete": "Server nije prihvatio poruku, jer mu nije stigla cela. Osveži stranu i pokušaj ponovo.",
+    "writeMemberUnknown": "Portal ne poznaje tog člana, pa poruka nije poslata."
   },
   "category": {
     "rookieMale": "Početnici",
