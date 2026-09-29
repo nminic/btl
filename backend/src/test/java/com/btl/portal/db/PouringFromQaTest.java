@@ -85,8 +85,15 @@ class PouringFromQaTest extends DatabaseTest {
 	private Map<String, Integer> loadOrder() {
 		Map<String, Integer> levels = new HashMap<>();
 		db.sql(sqlOf("load-order.sql")).query((row, one) -> {
+			// wasNull() speaks about the LAST column read, so it is taken here and not inside
+			// the put below: reading the name first would make it answer about the NAME, which
+			// is never null, and every missing level would come back as a plain 0. Measured
+			// 29.09.2026 - written that way, the cycle case below saw level 0 where it had to
+			// see nothing, and the case asserting that no level is missing could not have
+			// failed for any schema at all.
 			int level = row.getInt(2);
-			levels.put(row.getString(1), row.wasNull() ? null : level);
+			boolean noLevel = row.wasNull();
+			levels.put(row.getString(1), noLevel ? null : level);
 			return null;
 		}).list();
 		return levels;
@@ -206,6 +213,13 @@ class PouringFromQaTest extends DatabaseTest {
 	 *
 	 * <p>Which tables these are is asked of the catalogue, so the case keeps holding on the day
 	 * a third one arrives and stops pretending on the day the last one goes.
+	 *
+	 * <p><b>What this case does NOT hold, measured rather than assumed.</b> Taking the exclusion
+	 * out of {@code load-order.sql} leaves this GREEN, and the mutation series of 29.09.2026 is
+	 * where that was found rather than guessed. Both tables are reached through their OTHER
+	 * parents, so the extra self edge is blocked by the path check and changes no level. The
+	 * line only decides anything for a table whose ONLY foreign key is its own, which this
+	 * schema does not have - so {@link #aTableWhoseOnlyKeyIsItsOwnIsStillARoot} builds one.
 	 */
 	@Test
 	void aTableThatPointsAtItselfIsStillInTheOrder() {
@@ -231,6 +245,61 @@ class PouringFromQaTest extends DatabaseTest {
 							table)
 					.isNotNull();
 		}
+	}
+
+	/**
+	 * A TABLE WHOSE ONLY KEY IS ITS OWN IS A ROOT, which is the case the schema cannot supply.
+	 *
+	 * <p>Built here rather than waited for. The probe is created inside the test's own
+	 * transaction and PostgreSQL rolls DDL back with everything else, so the schema is untouched
+	 * afterwards and nothing leaks into another case.
+	 *
+	 * <p>With the exclusion in place the probe has no incoming edge at all and comes back at
+	 * level 0. Without it, the probe is excluded from the roots by its own edge and can then be
+	 * reached only from itself, which the path check forbids - so it comes back with no level,
+	 * the tool would refuse to pour, and this fails. That is the whole of what the line buys.
+	 */
+	@Test
+	void aTableWhoseOnlyKeyIsItsOwnIsStillARoot() {
+		db.sql("create table b185_alone (id bigint primary key,"
+				+ " parent bigint references b185_alone (id))").update();
+
+		assertThat(loadOrder().get("b185_alone"))
+				.as("its only foreign key points at itself, which one COPY carries, so it is a"
+						+ " root and not a table without a place")
+				.isEqualTo(0);
+	}
+
+	/**
+	 * A REAL CYCLE COMES BACK NAMED, WITH NO LEVEL, which is the branch the tool refuses on.
+	 *
+	 * <p>Today no cycle exists, so that branch is never taken and the outer join that carries it
+	 * is indistinguishable from an inner one - measured on 29.09.2026, turning it into an inner
+	 * join left every case green. This builds the cycle the schema does not have, and then both
+	 * halves mean something: the tables are still LISTED (which the inner join would have
+	 * dropped, and the tool would then have poured the rest and skipped them silently, which is
+	 * the one thing the owner asked it never to do) and they carry NO LEVEL (which is what makes
+	 * the tool stop and name them).
+	 */
+	@Test
+	void twoTablesPointingAtEachOtherAreListedWithNoLevel() {
+		db.sql("create table b185_here (id bigint primary key, there_id bigint)").update();
+		db.sql("create table b185_there (id bigint primary key, here_id bigint)").update();
+		db.sql("alter table b185_here add constraint b185_here_fk"
+				+ " foreign key (there_id) references b185_there (id)").update();
+		db.sql("alter table b185_there add constraint b185_there_fk"
+				+ " foreign key (here_id) references b185_here (id)").update();
+
+		Map<String, Integer> levels = loadOrder();
+
+		assertThat(levels)
+				.as("a table in a cycle has to be LISTED, or the tool pours the rest and leaves"
+						+ " it out without saying so")
+				.containsKeys("b185_here", "b185_there");
+		assertThat(levels.get("b185_here"))
+				.as("and it has to carry no level, which is what makes the tool stop")
+				.isNull();
+		assertThat(levels.get("b185_there")).isNull();
 	}
 
 	/**
@@ -314,41 +383,114 @@ class PouringFromQaTest extends DatabaseTest {
 	}
 
 	/**
-	 * AND WHAT IT WRITES OUT PUTS A SEQUENCE BACK WHERE IT WAS, which asserting the text of the
-	 * statements never would.
+	 * THE STATEMENT CARRIES THE POSITION AND NOT A CONSTANT.
 	 *
-	 * <p>The statement is generated first, the sequence is then moved on three times, and the
-	 * statement is executed: if it carries the position it was generated from, the sequence
-	 * ends where it began. Generating against the same database it is applied to is what makes
-	 * that safe to do here - a sequence is not transactional and {@code @Transactional} would
-	 * not take a {@code setval} back, so the case is written to finish where it started rather
-	 * than to rely on a rollback that does not come.
+	 * <p><b>Why this is written over a table built here instead of over one the schema has, and
+	 * it was measured rather than preferred.</b> The first draft moved {@code photo_id_seq},
+	 * which on a freshly migrated database stands at 1 because nothing has used it. Replacing
+	 * the whole of {@code last_value} with the constant 1 therefore left the case GREEN: the
+	 * right answer and the wrong one were the same number. That is two sources for one value in
+	 * the FIXTURE, and no assertion over it could have told them apart. A probe advanced to a
+	 * position that is not the starting one separates them.
 	 *
-	 * <p>This is also what holds {@code is_called}, which is the difference between a sequence
-	 * whose next value is 8 and one whose next value is 7, and which {@code pg_sequences} does
-	 * not expose at all.
+	 * <p>It is also why the probe is created rather than borrowed. A sequence is not
+	 * transactional, so a {@code setval} on a real one would outlive the rollback and change
+	 * what some other case sees; a table created inside this transaction takes its sequence
+	 * with it when PostgreSQL rolls the DDL back.
 	 */
 	@Test
-	void theStatementsPutASequenceBackWhereItStood() {
-		String sequence = "photo_id_seq";
-		String statement = carriedSequences().stream()
-				.filter(one -> one.contains(sequence))
-				.findFirst()
-				.orElseThrow(() -> new AssertionError(sequence + " is not among the statements"));
+	void theStatementCarriesThePositionAndNotAConstant() {
+		db.sql("create table b185_moved (id bigserial primary key)").update();
+		for (int step = 0; step < 4; step++) {
+			db.sql("select nextval('b185_moved_id_seq')").query(Long.class).list();
+		}
 
-		long stood = db.sql("select last_value from " + sequence).query(Long.class).single();
+		long stood = lastValueOf("b185_moved_id_seq");
+		assertThat(stood).as("the probe has to stand somewhere other than the position a"
+				+ " constant would name, or this case cannot tell them apart").isEqualTo(4);
 
-		db.sql("select nextval('" + sequence + "')").query(Long.class).list();
-		db.sql("select nextval('" + sequence + "')").query(Long.class).list();
-		long moved = db.sql("select last_value from " + sequence).query(Long.class).single();
-		assertThat(moved).as("the sequence did not move, so the rest of this case measures nothing")
+		String statement = statementFor("b185_moved_id_seq");
+
+		db.sql("select nextval('b185_moved_id_seq')").query(Long.class).list();
+		assertThat(lastValueOf("b185_moved_id_seq"))
+				.as("the probe did not move, so the rest of this case measures nothing")
 				.isNotEqualTo(stood);
 
-		db.sql(statement.strip().replaceAll(";$", "")).query(Long.class).list();
+		db.sql(statement).query(Long.class).list();
 
-		assertThat(db.sql("select last_value from " + sequence).query(Long.class).single())
+		assertThat(lastValueOf("b185_moved_id_seq"))
 				.as("the statement has to carry the position it was generated from")
 				.isEqualTo(stood);
+	}
+
+	/**
+	 * AND IT CARRIES WHETHER THE SEQUENCE HAS EVER BEEN USED, which is a separate fact.
+	 *
+	 * <p>{@code is_called} is the difference between a sequence whose next value is 1 and one
+	 * whose next value is 2, and {@code pg_sequences} does not expose it at all - which is why
+	 * {@code sequences.sql} reads it out of the sequence itself. Assuming it rather than reading
+	 * it burns the first id of every table QA has never written to, and the case above cannot
+	 * see that: it moves a sequence that HAS been used, where the assumption happens to be
+	 * right. Measured 29.09.2026, that mutation survived until this case existed.
+	 */
+	@Test
+	void theStatementCarriesWhetherTheSequenceHasBeenUsed() {
+		db.sql("create table b185_untouched (id bigserial primary key)").update();
+
+		assertThat(hasBeenCalled("b185_untouched_id_seq"))
+				.as("a sequence nobody has used is the state this case is about").isFalse();
+
+		String statement = statementFor("b185_untouched_id_seq");
+
+		db.sql("select nextval('b185_untouched_id_seq')").query(Long.class).list();
+		assertThat(hasBeenCalled("b185_untouched_id_seq"))
+				.as("the probe was not used, so the rest of this case measures nothing").isTrue();
+
+		db.sql(statement).query(Long.class).list();
+
+		assertThat(hasBeenCalled("b185_untouched_id_seq"))
+				.as("production must be left with the first id still unspent, exactly as QA has it")
+				.isFalse();
+	}
+
+	/**
+	 * AN IDENTITY COLUMN'S SEQUENCE IS CARRIED TOO, and the schema cannot ask this today.
+	 *
+	 * <p>Every id in this schema is a {@code bigserial}, whose sequence PostgreSQL records with
+	 * {@code deptype} 'a'. An identity column records 'i' instead, and
+	 * {@code sequences.sql} names both. Measured 29.09.2026: narrowing it to 'a' alone left
+	 * every case green, because there is no 'i' to lose - so the day somebody writes
+	 * {@code generated by default as identity}, that table's sequence would be left behind and
+	 * the first row the portal wrote would collide with a poured one. The probe supplies the
+	 * case the schema does not.
+	 */
+	@Test
+	void anIdentityColumnsSequenceIsCarriedToo() {
+		db.sql("create table b185_identity"
+				+ " (id bigint generated by default as identity primary key)").update();
+
+		assertThat(carriedSequences())
+				.as("an identity column's sequence is owned by its column exactly as a serial's"
+						+ " is, and is just as lost if it is not carried")
+				.anyMatch(one -> one.contains("b185_identity_id_seq"));
+	}
+
+	private long lastValueOf(String sequence) {
+		return db.sql("select last_value from " + sequence).query(Long.class).single();
+	}
+
+	private boolean hasBeenCalled(String sequence) {
+		return db.sql("select is_called from " + sequence).query(Boolean.class).single();
+	}
+
+	/** The statement {@code sequences.sql} writes out for one sequence, ready to execute. */
+	private String statementFor(String sequence) {
+		return carriedSequences().stream()
+				.filter(one -> one.contains(sequence))
+				.findFirst()
+				.orElseThrow(() -> new AssertionError(sequence + " is not among the statements"))
+				.strip()
+				.replaceAll(";$", "");
 	}
 
 	private List<String> carriedSequences() {
