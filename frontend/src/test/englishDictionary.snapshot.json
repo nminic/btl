@@ -621,6 +621,7 @@
     "notRunYet": "This event has not been held yet",
     "notRunYetWhy": "A result and a rating are entered only once the race has been run.",
     "commentEventUnknown": "This event no longer exists.",
+    "edit": "Change",
     "copy": "Copying",
     "delete": "Deleting",
     "deleteAsk": {

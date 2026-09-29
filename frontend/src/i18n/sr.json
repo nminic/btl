@@ -621,6 +621,7 @@
     "notRunYet": "Ovaj događaj još nije održan",
     "notRunYetWhy": "Rezultat i ocena se unose tek kad se trka istrči.",
     "commentEventUnknown": "Ovaj događaj više ne postoji.",
+    "edit": "Izmena",
     "copy": "Kopiranje",
     "delete": "Brisanje",
     "deleteAsk": {
