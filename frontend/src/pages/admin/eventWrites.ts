@@ -1,3 +1,4 @@
+import { isoDate } from '../../forms/dateField'
 import type { RaceRow } from './raceRows'
 import { storedRow } from './raceRows'
 
@@ -59,13 +60,47 @@ export type Upsert = {
  * missing one becomes the empty string rather than `undefined`: a field dropped from the
  * JSON is a field the route reads as null, and `EventWriteApi.whatIsWrongWith` checks the
  * shape of a link before it looks at whether there is one.
+ *
+ * <p><b>AND THE DAY IN THE SHAPE THE ROUTE TAKES, WHICH IS NOT THE SHAPE THE FORM ASKS
+ * IN.</b> A form speaks `dd/mm/gggg` everywhere on the portal (PDL P8,
+ * `forms/dateField.ts`), and `forms/records.ts`'s `valuesFor` writes exactly that into the
+ * values this function is handed. `EventWriteApi.Upsert` takes a `LocalDate`, which Jackson
+ * reads as ISO-8601 and as nothing else: there is no date format configured anywhere under
+ * `backend/src/main/resources`, so `16/01/2027` is not a date the route can read at all.
+ *
+ * <p><b>What that cost, measured on the wire on 29.09.2026 rather than reasoned about.</b>
+ * Both roads sent the reader's shape - `POST /api/events` carried `"date":"08/05/2027"` and
+ * `PUT /api/events/{id}` carried `"date":"16/01/2027"` - so Jackson refused the body before
+ * this portal's route was entered at all. What comes back is then Spring's own 400 with no
+ * `reason` in it, `askTheServer` reads that as `{got:'wrong'}`, and the screen says „Server
+ * je odgovorio brojem 400 i ništa nije promenjeno" over a form that is perfectly filled in.
+ * No event could be saved, neither a new one nor one being changed, and
+ * `pages/account/refusals.test.ts` could not see any of it: that floor holds the NAMES a
+ * route can answer with, and a body the route cannot parse never reaches a name.
+ *
+ * <p><b>Through `isoDate`, which is `raceUpsertFrom`'s own answer to the same question one
+ * function down</b> (`admin/raceRows.ts`, `storedRow`, `date: isoDate(row.date)`), held by
+ * the case beside this one in `eventWrites.test.ts`. The rule was known, written down and
+ * applied to a race; it was missed for the event in the same module.
+ *
+ * <p><b>Here and NEVER in `valuesFor`</b>, which is what makes this one line rather than a
+ * move. `admin/entityForms.ts`'s `addressOfEvent` reads `values.date` to build the address
+ * an event answers at, and the record's own date is converted INTO the reader's shape to be
+ * compared with it (`eventSlug(String(was.name), fieldDate(String(was.date)))`). Turning the
+ * values ISO would quietly rewrite what an edit does to an address, which is the one thing
+ * on this form that must not move (owner, 10.08.2026).
  */
 export function upsertFrom(values: Record<string, string | boolean>): Upsert {
   const text = (name: string): string => String(values[name] ?? '')
 
   return {
     name: text('name'),
-    date: text('date'),
+    /* `isoDate` and not `storedDate`, which is the same pair of answers `raceRows.ts` weighed
+       and for the same reason: `storedDate` throws, and this function is called on a form
+       holding nothing at all (`upsertFrom({})`, the case below it). An unreadable day goes
+       over as the empty string and the route answers `theFormIsNotComplete` about it, which
+       is a sentence the screen already draws. */
+    date: isoDate(text('date')),
     placeId: null,
     city: text('city'),
     country: text('country'),
