@@ -30,7 +30,7 @@ import '../member/Member.css'
  *
  * Nothing is added here and nothing is removed (owner, 30.07.2026). The periods
  * are the year itself, four windows that tile it and repeat: the season being
- * sold changes on 1 October, and the same four open again for the year after.
+ * sold changes on 15 October, and the same four open again for the year after.
  * A fifth row would have to fall inside one of the four, and a row taken away
  * would leave a stretch of the year with no price at all.
  *
@@ -231,7 +231,7 @@ export function AdminPricing() {
 
              **This is the screen being helpful and NOT the rule being enforced**, which is
              the division ADL A8 sets and PDL P12c restated for the ceiling: the route
-             refuses a referral written after 1 October whatever this says, and the sentence
+             refuses a referral written after 15 October whatever this says, and the sentence
              a reader then sees is the route's answer (`WHEN_WRITING_A_PRICE`). */
           const maySet = referralMayBeSet(today)
           /* The season that is running today, where one is. Before the first season of the
@@ -345,7 +345,7 @@ export function AdminPricing() {
                       it.
                     *
                       The second half of that, „and the season now running had its own
-                      amount settled by its own 1 October", is said only where a season is
+                      amount settled by its own 15 October", is said only where a season is
                       actually running. Written unconditionally it was false for the whole
                       of 2026: the first season of the league is 2027 (data/season.ts), so
                       on 30 September 2026 there was no running season to disturb, and a

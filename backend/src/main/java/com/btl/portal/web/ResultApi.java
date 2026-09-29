@@ -129,7 +129,7 @@ class ResultApi {
 	 * renewal screen asks, and it differs from this one in two ways: it lifts its
 	 * answer to 2027 (right for somebody renewing in 2026, wrong here, because through
 	 * 2026 no season is running and lifting it would hide 2027 before 2027 began), and
-	 * from 1 October it answers with NEXT year, which for three months of every year
+	 * from 15 October it answers with NEXT year, which for three months of every year
 	 * would stop withholding the season that is still being run.
 	 *
 	 * <p><b>That second half was found by review on 13.09.2026 and it was found because

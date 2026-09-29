@@ -374,7 +374,7 @@ class CompetitorApi {
 	 * New Year in Belgrade, and that hour is a boundary this field moves on.
 	 *
 	 * <p><b>And it is NOT {@code SeasonClock.seasonBeingPaidFor}.</b> That one answers
-	 * from 1 October with NEXT year, which would move every member's band forward a
+	 * from 15 October with NEXT year, which would move every member's band forward a
 	 * season in the autumn without a single birthday - and the band moves once, on 1
 	 * January, which is the whole of PDL P7 („uzrast se utvrđuje jednom, na 1. januar
 	 * sezone"). {@code aBandDoesNotMoveWhenTheNextSeasonGoesOnSale} refuses it.

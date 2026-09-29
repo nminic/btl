@@ -159,7 +159,7 @@ import java.util.Optional;
  * koje član trči za njega, dakle menja sastav... Odbijanje ne upisuje ništa o sastavu nego
  * samo završava pitanje. Vezan za rok i on, član pozvan 30. decembra ne bi mogao ni da
  * prihvati ni da se oslobodi pitanja do sledećeg oktobra." So asking, inviting and accepting
- * are inside 1 October to 31 December and refusing is not. <b>Taking a question back is not
+ * are inside 15 October to 31 December and refusing is not. <b>Taking a question back is not
  * bound either, and that is read off the same sentence</b>: it writes nothing about a squad
  * and it is the asker's own end to his own question, which PDL.md
  * ("ostaje njegova da je povuče") names for the
@@ -169,7 +169,7 @@ import java.util.Optional;
  * the same tone as one copied from the journal later reads as his.
  *
  * <p><b>The window is never spelt out here.</b> {@link SeasonClock#transferWindowOpen} is
- * where 1 October lives, it reads the moment in {@link SeasonClock#ZONE} before it looks at
+ * where 15 October lives, it reads the moment in {@link SeasonClock#ZONE} before it looks at
  * a month (ADL A36 O2), and {@link TeamWriteApi} and {@link JoiningATeam} read the same
  * method. A month written in this file would be that window with a second home.
  *

@@ -40,7 +40,7 @@ import { WHEN_ANSWERING_A_PAIR_INVITE, theServerWasAnswered } from './pairWrites
  * asking. This screen could not ask it anyway: `GET /api/inbox` spends `to_id` on its own
  * `where` clause and the field never leaves the server.
  * <li><b>A transfer window, and this one is a decision rather than a division of
- * labour.</b> `member/InvitationAnswer.tsx` holds „Prihvati" back outside 1 October to 31
+ * labour.</b> `member/InvitationAnswer.tsx` holds „Prihvati" back outside 15 October to 31
  * December, and there is no such branch here on either side of the wire. PDL, 07.09.2026,
  * struck that condition out for a pair in its own words: the deadline „nije uslov: svaki dan
  * godine je pre njenog kraja, pa se ništa nikad ne bi odbilo. Rok određuje KOJU sezonu par

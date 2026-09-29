@@ -204,7 +204,7 @@ export function Registration() {
    * It read `registrationOpen(today)` off the browser's own clock and drew a page saying the
    * form was not open yet in its place. The launch plan itself has not moved (30.09/01.10,
    * owner 14.09.2026): what changed is that this screen stopped being the one enforcing it,
-   * since the site a visitor actually reaches before 1 October is still the old portal.
+   * since the site a visitor actually reaches before 15 October is still the old portal.
    */
   if (sent !== null) {
     /* What happens next, and not what was typed.

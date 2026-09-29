@@ -59,7 +59,7 @@ afterEach(() => {
  * administrator (owner, 03.08.2026).
  */
 
-/** A day inside the transfer window, 1 October to 31 December, which is when a team
+/** A day inside the transfer window, 15 October to 31 December, which is when a team
  *  may be founded at all (PDL, increment 133, 05.09.2026). Every signed-in reading in
  *  this file is on it, so what each case measures is its own subject rather than the
  *  day it happened to run on. */
@@ -153,7 +153,7 @@ describe('the way to propose a team', () => {
   })
 
   it('is not offered outside the transfer window, and the address is not a page then either', async () => {
-    /* A team is founded from 1 October to 31 December (owner, 05.09.2026), the same
+    /* A team is founded from 15 October to 31 December (owner, 05.09.2026), the same
        window every other change of team is asked in. Read on a day in September: the
        standing says when the window opens instead of offering the button, and the
        address itself sends the member to the front page, exactly as it does to a
@@ -659,7 +659,7 @@ describe('a team the moment it is approved', () => {
        standing with four races behind them; `transfersTakeEffect` answers with the season
        that has not begun on every day now, but the walk is still pinned, because what it
        measures is the founding and not the arithmetic. Both states pass these three assertions, so the
-       day has to be pinned or the walk quietly changes what it measures on 1 October
+       day has to be pinned or the walk quietly changes what it measures on 15 October
        (review, 05.09.2026). */
     const user = setupUser()
     const { router } = renderAt(

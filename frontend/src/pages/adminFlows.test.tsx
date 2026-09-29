@@ -409,7 +409,7 @@ function runningSeasonSentence(): RegExp {
 describe('the price list', () => {
   it('is a period of the year rather than a date, because the list repeats', async () => {
     /* Owner, 30.07.2026: membership for 2027 is sold until 30 September 2027,
-       and on 1 October the same four periods open again for 2028. Written as
+       and on 15 October the same four periods open again for 2028. Written as
        dates they would have expired. */
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
@@ -523,10 +523,10 @@ describe('the price list', () => {
 
   it('opens the referral amount in the same form every price is changed in', async () => {
     const user = setupUser()
-    /* On a day before 1 October, said out loud, because the form this opens is
+    /* On a day before 15 October, said out loud, because the form this opens is
        shut from that day on and the two cases below stand on either side of the
        same boundary. Without it this case took whatever day the gate was run on
-       and went red on 1 October 2026 with nothing changed but the date. */
+       and went red on 15 October 2026 with nothing changed but the date. */
     renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-09-30')
 
     await screen.findByRole('table', { name: 'Preporuka' })
@@ -575,7 +575,7 @@ describe('the price list', () => {
 
   it('sets the referral amount while the window is still shut', async () => {
     /* The other side of the same rule, and the one that says it is a deadline
-       rather than a lock: on any day before 1 October the form opens. */
+       rather than a lock: on any day before 15 October the form opens. */
     const user = setupUser()
     renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2026-09-30')
 
@@ -614,7 +614,7 @@ describe('the price list', () => {
   it('admits that setting the amount in January moves the running season too', async () => {
     /* The rule is a deadline, so on 1 January the form opens again. What it opens
        onto is one amount with no history behind it, and the season that began the
-       day before had its amount settled by its own 1 October. So the same save
+       day before had its amount settled by its own 15 October. So the same save
        that sets 2029 also moves what has been standing for 2028, and the screen
        has to say so: the rule cannot be kept by an administrator who is not told
        that keeping it is not what the button does.
@@ -634,7 +634,7 @@ describe('the price list', () => {
     )
     /* And here there is a running season to name, which is the half that makes
        this a warning rather than a note: 2028 began the day before and its amount
-       was settled by 1 October 2027. */
+       was settled by 15 October 2027. */
     expect(open).toHaveAccessibleDescription(runningSeasonSentence())
     expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
     expect(open).toHaveAccessibleDescription(/zaključan 15\. oktobra prethodne godine, a ovaj upis ga ipak menja/)
@@ -836,10 +836,10 @@ describe('the price list', () => {
    * THE REASON A REFUSAL GIVES IS THE ROUTE'S AND NOT THE SCREEN'S READING OF THE CALENDAR.
    *
    * <p><b>The clock is deliberately set to a day the screen thinks is OPEN.</b> This screen
-   * tells the button off before 1 October and would refuse to open the record at all
+   * tells the button off before 15 October and would refuse to open the record at all
    * (`OpenRecord`, `settled`), so a case run on a shut day would measure the screen's own
    * guard and never reach the route. ADL A8 puts the rule on the route - „prava se sprovode
-   * na ruti, ne po ekranu" - and PDL P16 is the rule: after 1 October the amount stands.
+   * na ruti, ne po ekranu" - and PDL P16 is the rule: after 15 October the amount stands.
    *
    * <p><b>Which makes this the source swap for that whole axis.</b> With
    * `referralMayBeSet` saying „open" and the route answering 409, the sentence a reader sees
@@ -856,7 +856,7 @@ describe('the price list', () => {
 
     try {
       /* Mid-June, which is inside the window the referral may be set in: `referralMayBeSet`
-         shuts on 1 October, so this is a day the SCREEN believes is open. */
+         shuts on 15 October, so this is a day the SCREEN believes is open. */
       renderAt('/sr/administracija/cenovnik', 'superadmin', null, undefined, '2027-06-15')
 
       await screen.findByRole('table', { name: 'Preporuka' })

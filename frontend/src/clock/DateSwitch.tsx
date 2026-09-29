@@ -9,7 +9,7 @@ import './DateSwitch.css'
 
 /* A control for development and for QA, standing beside the role switch and
  * there for the same reason (src/dev/tools.ts). It moves the day the whole
- * portal is being read as, so the owner can walk up to 1 October and watch
+ * portal is being read as, so the owner can walk up to 15 October and watch
  * registration open, or to December and watch the price change, without waiting
  * for the calendar or editing anything.
  *

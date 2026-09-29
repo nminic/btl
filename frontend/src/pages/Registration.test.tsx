@@ -176,12 +176,12 @@ describe('Registration is never shut', () => {
      used to prove the opposite: a page saying the form was not open yet, drawn while
      `registrationOpen(today)` read false off the browser's own clock. That branch is gone,
      and what replaces it is not silence but its own claim, tested on both sides of the date
-     it used to divide - a form that existed on one side of 1 October only must now be shown
+     it used to divide - a form that existed on one side of 15 October only must now be shown
      to exist on both, which is a different thing from no longer being hidden on the side it
      was hidden on. */
   it.each([
-    ['well before 1 October', '2026-09-20'],
-    ['after 1 October', OPEN],
+    ['well before 15 October', '2026-09-20'],
+    ['after 15 October', OPEN],
   ])('renders the form %s, not the page that used to say it was shut', (_when, today) => {
     renderForm(today)
 

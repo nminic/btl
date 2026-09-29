@@ -60,7 +60,7 @@ export const WINDOW_CLOSES = '12-31'
  * database (PENDING).
  *
  * **And the hour.** The decision names 00:00 CET. The portal reads whole days off
- * one clock with no notion of a zone (src/clock), so „the day 1 October has begun"
+ * one clock with no notion of a zone (src/clock), so „the day 15 October has begun"
  * is what it can answer, and that is the same instant as long as the day it reads
  * turns over in CET. Written down rather than pretended away.
  */

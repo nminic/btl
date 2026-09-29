@@ -23,7 +23,7 @@ import type { Price } from './types'
  * why the order is the answer rather than a field: „a position said twice - once by where
  * a row is and once by a number on it - is two things to keep equal, and the day they
  * disagree there is nothing to say which of them the reader should believe." The selling
- * year opens on 1 October and the last of the four periods is the one that follows the
+ * year opens on 15 October and the last of the four periods is the one that follows the
  * new year, so the order is a decision somebody took and a screen that re-sorted it would
  * be taking it again.
  */
@@ -105,7 +105,7 @@ export function ofKind<T extends Price>(rows: T[], kind: string): T[] {
  * is the one place this module does look at an order. That is not a re-sort of the list: it
  * is the same walk `priceOn` makes, over the same days of the year, and the answer's order
  * is what a reader reads the TABLE in rather than the order the year runs in. The two
- * differ today - the served list opens with 1 October and the year opens on 1 January -
+ * differ today - the served list opens with 15 October and the year opens on 1 January -
  * which is exactly why the walk cannot use it.
  */
 export function inForceOn(rows: PricedInBoth[], today: string): PricedInBoth[] {
@@ -139,7 +139,7 @@ export function inForceOn(rows: PricedInBoth[], today: string): PricedInBoth[] {
  *
  * <p><b>Both days are asked about and not only the first</b>, although V4 ties them
  * together ({@code price_row_period_has_days}, {@code (day_from is not null) = (kind =
- * 'period')} and the same for {@code day_to}): a cell reading „1.10. - undefined" is what
+ * 'period')} and the same for {@code day_to}): a cell reading „15.10. - undefined" is what
  * one of the two answers alone would draw, and the schema being right is not a reason for
  * this to be wrong if it ever is not.
  */

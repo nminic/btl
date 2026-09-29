@@ -4,7 +4,7 @@ import { beginsWith, metSaid } from '../../test/met'
 import { renderAt } from '../../test/render'
 
 /* Read as a member with no team of their own, on a day inside the transfer window.
- * Both are conditions of one of these three screens: a team is founded from 1 October
+ * Both are conditions of one of these three screens: a team is founded from 15 October
  * to 31 December and only by a member who has none (PDL, increment 133), and outside
  * either the address is not a page at all but a redirect to the front. The other two
  * screens do not care about the day; one fixed day for all three keeps this file

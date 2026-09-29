@@ -108,7 +108,7 @@ export const PUBLIC: [address: string, asVisitor: string, asMember: string, part
   ['/sr/pravilnik', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027', 'Opšti pravilnik Balkanske trkačke lige za sezonu 2027'],
   ['/sr/politika-privatnosti', 'Politika privatnosti', 'Politika privatnosti'],
   ['/sr/uslovi-koriscenja', 'Uslovi korišćenja', 'Uslovi korišćenja'],
-  /* The heading here no longer turns over on 1 October: the ban that used to close this
+  /* The heading here no longer turns over on 15 October: the ban that used to close this
      screen before that date is gone (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA",
      owner 27.09.2026), and the form is what both a visitor and a member meet on any day.
      `DAY` still holds this table to one day, for the profile row below rather than this one. */

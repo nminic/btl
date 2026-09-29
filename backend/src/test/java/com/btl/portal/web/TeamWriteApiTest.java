@@ -120,7 +120,7 @@ class TeamWriteApiTest {
 		registry.add("btl.photos.folder", PHOTOS::toString);
 	}
 
-	/** 11:00 in Belgrade on 3 October 2027, well inside the transfer window. */
+	/** 11:00 in Belgrade on 20 October 2027, well inside the transfer window. */
 	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-10-20T09:00:00Z");
 
 	/** Written first, has no team, and never asks for anything. */
@@ -861,15 +861,15 @@ class TeamWriteApiTest {
 	 *
 	 * <p><b>And the two instants that open and shut it are chosen so that reading the
 	 * server's own zone gives the wrong answer.</b> The moment the window opens is
-	 * 30 September in UTC, and the moment it shuts is 31 December in UTC - so a route that
+	 * 14 October in UTC, and the moment it shuts is 31 December in UTC - so a route that
 	 * asked the machine what month it is would refuse the first request of the window and
 	 * accept the first request after it. That is ADL A36 O2's sentence about
 	 * {@code Europe/Belgrade} written as two failures rather than as a comment.
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-09-30T21:59:00Z, 404, the last minute of September in Belgrade",
-			"2027-09-30T22:00:00Z, 201, midnight opening 1 October in Belgrade",
+			"2027-10-14T21:59:00Z, 404, the last minute of 14 October in Belgrade",
+			"2027-10-14T22:00:00Z, 201, midnight opening 15 October in Belgrade",
 			"2027-12-31T22:59:00Z, 201, the last minute of 31 December in Belgrade",
 			"2027-12-31T23:00:00Z, 404, midnight opening 1 January in Belgrade"})
 	void aTeamIsFoundedOnlyInsideTheTransferWindow(String moment, int expected, String what)
@@ -1755,11 +1755,11 @@ class TeamWriteApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-09-30T21:59:00Z, 000500, 409, a begun membership, last minute of September",
-			"2027-09-30T22:00:00Z, 000500, 204, a begun membership, 1 October opening",
+			"2027-10-14T21:59:00Z, 000500, 409, a begun membership, last minute of 14 October",
+			"2027-10-14T22:00:00Z, 000500, 204, a begun membership, 15 October opening",
 			"2027-12-31T22:59:00Z, 000500, 204, a begun membership, last minute of December",
 			"2027-12-31T23:00:00Z, 000500, 409, a begun membership, 1 January opening",
-			"2027-09-30T21:59:00Z, 000200, 409, a membership NOT begun, September",
+			"2027-10-14T21:59:00Z, 000200, 409, a membership NOT begun, September",
 			"2027-06-15T10:00:00Z, 000200, 409, a membership NOT begun, the middle of June",
 			"2027-10-20T09:00:00Z, 000200, 204, a membership NOT begun, inside the window"})
 	void aMemberLeavesHisTeamOnlyInsideTheTransferWindow(String moment, String who, int expected,
@@ -2267,7 +2267,7 @@ class TeamWriteApiTest {
 	 * {@link #aTeamIsFoundedOnlyInsideTheTransferWindow} ALREADY USES</b>, and they are the
 	 * edges rather than days near them. That is not tidiness: the window is read in Belgrade
 	 * (`SeasonClock.ZONE`) while this file's clock reports UTC, and the two zones agree on
-	 * every day of the year EXCEPT between {@code 2027-09-30T22:00:00Z} and midnight UTC -
+	 * every day of the year EXCEPT between {@code 2027-10-14T22:00:00Z} and midnight UTC -
 	 * so a case standing twenty days from the edge cannot tell the league's own time from the
 	 * server's, and the mutation that swaps one for the other passes it in silence.
 	 *
@@ -2283,8 +2283,8 @@ class TeamWriteApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-09-30T21:59:00Z, 409, the last minute of September in Belgrade",
-			"2027-09-30T22:00:00Z, 204, midnight opening 1 October in Belgrade",
+			"2027-10-14T21:59:00Z, 409, the last minute of 14 October in Belgrade",
+			"2027-10-14T22:00:00Z, 204, midnight opening 15 October in Belgrade",
 			"2027-12-31T22:59:00Z, 204, the last minute of 31 December in Belgrade",
 			"2027-12-31T23:00:00Z, 409, midnight opening 1 January in Belgrade"})
 	void aTeamIsDeletedOnlyInsideTheTransferWindow(String moment, int expected, String what)

@@ -113,15 +113,23 @@ class PricingWriteApiTest {
 	private static final Instant IN_MARCH = Instant.parse("2028-03-15T11:00:00Z");
 
 	/**
-	 * Inside the {@code regular} period, 6 October to 30 November, and past 1 October.
+	 * Inside the {@code regular} period, 1 to 30 November, and past the day the window opens.
+	 *
+	 * <p><b>It was 20 October until 29.09.2026, and it had to move with the list.</b> The
+	 * owner made {@code early} run from 15 to 31 October that day, so 20 October is now in
+	 * {@code early} and no longer in {@code regular} - and this constant exists to be inside
+	 * the row {@link #ACTED} edits. Left where it was, the case would have gone on running
+	 * and stopped being about one row before and after a change: it would have compared a
+	 * payment on {@code regular} with a payment on {@code early}, which is what it fails
+	 * with when the two part company.
 	 *
 	 * <p><b>Kept for the payment case and NOT reused for the deadline</b>, which is „nikad
 	 * jedna konstanta za dve uloge": the day a payment is PRICED on and the day the referral
-	 * window OPENS are two questions, and the two instants below are five days earlier - in
-	 * the {@code early} period rather than in {@code regular} - so one constant serving both
+	 * window OPENS are two questions, and the two instants below are in October - in the
+	 * {@code early} period rather than in {@code regular} - so one constant serving both
 	 * would have quietly renamed the row that case is about.
 	 */
-	private static final Instant IN_OCTOBER = Instant.parse("2028-10-20T10:00:00Z");
+	private static final Instant IN_THE_REGULAR_PERIOD = Instant.parse("2028-11-10T10:00:00Z");
 
 	/**
 	 * MIDNIGHT IN BELGRADE ON 1 OCTOBER, WRITTEN AS THE INSTANT IT ACTUALLY IS.
@@ -649,7 +657,7 @@ class PricingWriteApiTest {
 	 */
 	@Test
 	void changingAPriceLeavesEveryPaymentAlreadyRecordedExactlyWhereItWas() throws Exception {
-		clock.moveTo(IN_OCTOBER);
+		clock.moveTo(IN_THE_REGULAR_PERIOD);
 
 		List<String> before = keysInOrder();
 		Map<String, Object> euroWas = paymentRow(paidInEuro);
@@ -699,7 +707,7 @@ class PricingWriteApiTest {
 				.param(whoPaysLater).query(Long.class).single());
 
 		assertThat(later.get("price_row_id"))
-				.as("the payment recorded in October names a different row of the price list than"
+				.as("the payment recorded in the regular period names a different row of the price list"
 						+ " the one this case edited, so the two amounts below are two rows and"
 						+ " not one row before and after")
 				.isEqualTo(euroWas.get("price_row_id"));
