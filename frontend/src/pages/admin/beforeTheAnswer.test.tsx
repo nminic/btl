@@ -1,6 +1,8 @@
 import { act, screen } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
 import { routeObjects } from '../../app/routeObjects'
+import sr from '../../i18n/sr.json'
+import { HOW_LONG_THE_DOOR_WAITS } from '../../session/useTheServersSession'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { serverThat } from '../../test/serverAnswers'
 import { NEEDS } from './needs'
@@ -80,6 +82,23 @@ function said(role: string): Record<string, unknown> {
 }
 
 /**
+ * The announced places on the page that are saying „waiting" this instant.
+ *
+ * <p>Both halves matter. The ROLE, because an indicator a screen reader never reads out
+ * is the thing WCAG 2.2 asks for and the thing a hand-written spinner would quietly drop.
+ * The WORD, because `app/Shell.tsx` keeps a second `role="status"` over every screen for
+ * the name of the page, and a count that included it would be one whatever the door did.
+ *
+ * <p>The word is read out of the dictionary rather than spelt here, so this stays an
+ * assertion about the portal instead of a copy of `sr.json`.
+ */
+function waitingOutLoud(): HTMLElement[] {
+  return screen
+    .queryAllByRole('status')
+    .filter((one) => one.textContent === sr.data.loading)
+}
+
+/**
  * Every address under administration the ROUTER really serves, asked of the router.
  *
  * <p><b>Walked rather than written down, and asked of the dispatcher rather than of a
@@ -143,19 +162,22 @@ describe('the door on an administrative address, before the server has answered'
   })
 
   it('shows the loading indicator where the screen will be, and says so out loud', async () => {
-    /* The price the owner accepted, and it is the portal's own indicator rather than
-       one written here: `components/Loader.tsx` is announced (`role="status"`) and
-       stands still under `prefers-reduced-motion` (`Loader.css`). Asked for by role and
-       by name, so a silent indicator written by hand fails this. */
+    /* The price the owner accepted, and it is the portal's own indicator rather than one
+       written here: `components/Loader.tsx` is announced through `role="status"` and
+       stands still under `prefers-reduced-motion` (`Loader.css`). Both halves are asked
+       for - the ROLE, so a silent word on the page does not satisfy it, and the WORD, so
+       the page title's own status region does not. `Resource.test.tsx` reads it the same
+       way, and `inboxFromTheServer.test.tsx` takes the word out of the dictionary rather
+       than spelling it again, which is what keeps this from being a copy of `sr.json`. */
     server = anAnswerThatHasNotArrived()
 
     renderAt('/sr/administracija/dogadjaji', 'visitor', null)
 
-    expect(screen.getByRole('status', { name: 'Učitavanje' })).toBeVisible()
+    expect(waitingOutLoud()).toHaveLength(1)
 
     await server.arrivesAs(said('superadmin'))
 
-    expect(screen.queryByRole('status', { name: 'Učitavanje' })).not.toBeInTheDocument()
+    expect(waitingOutLoud()).toHaveLength(0)
   })
 
   it('still refuses the reader the answer turns out to be, and waiting is not a pass', async () => {
@@ -188,6 +210,54 @@ describe('the door on an administrative address, before the server has answered'
     await expectFrontPage()
   })
 
+  it('sends away the reader whose answer the portal cannot read at all', async () => {
+    /* The sixth way to be nobody, and the one furthest from a refusal: a server one
+       release ahead, a proxy answering something else, an address that is not ours.
+       `session/theServer.ts` narrows the role and never asserts it (ADL A14), so this
+       ends as `null` exactly as a 401 does - and, like a 401, it has to END the waiting.
+       Named separately from the 401 because until this branch all six were one silence,
+       and a repair that settled only the ones it recognised would leave the portal
+       standing on an indicator for the answers nobody anticipated. */
+    server = anAnswerThatHasNotArrived()
+
+    renderAt('/sr/administracija/dogadjaji', 'visitor', null)
+
+    await server.arrivesAs({ role: 'wizard', account: 'not a number' })
+
+    await expectFrontPage()
+  })
+
+  it('opens at once for a reader whose role is already in hand, and waits for nothing', async () => {
+    /* THE OTHER HALF OF THE ORDER THE DOOR DECIDES IN. A role can be held before the
+       answer in two ways - the development switch, and having just signed in, where
+       `pages/member/SignIn.tsx` calls `become` and then navigates - and neither of them
+       is a reader who should be made to wait for an answer to a question already put.
+       Measured with an answer that NEVER comes, so the screen behind the door can only
+       be drawing because the door never waited. */
+    server = anAnswerThatHasNotArrived()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin', null)
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Događaji' }),
+    ).toBeVisible()
+    expect(waitingOutLoud()).toHaveLength(0)
+  })
+
+  it('does not hold up an address that asks for nothing, which is most of the portal', async () => {
+    /* The reach of this is the SIXTEEN addresses that ask for something and not the
+       portal: `routeObjects.tsx` fits the door only where `needFor` names a need, and
+       every other screen is handed through untouched. Measured with an answer that never
+       comes, so a front page that draws itself here is one that never waited. Without
+       this the repair would put a loading indicator in front of every visitor on every
+       screen, which is a far worse fault than the one being repaired. */
+    server = anAnswerThatHasNotArrived()
+
+    renderAt('/sr', 'visitor', null)
+
+    await expectFrontPage()
+  })
+
   it('waits on every address the router serves under administration, not on one of them', async () => {
     /* The owner's own words about the reach: the door „stoji nad svakom zaštićenom
        adresom". Walked rather than named, so the sixteenth gets this on the day it is
@@ -211,5 +281,67 @@ describe('the door on an administrative address, before the server has answered'
         waiting.stop()
       }
     }
+  })
+})
+
+/**
+ * THE ONE OUTCOME A PROMISE CANNOT SETTLE: a socket accepted and never written to.
+ *
+ * <p>Every other way of failing comes back fast and by itself. This one never comes back
+ * at all, and a door that waited on it would wait for ever - which is the single state in
+ * which the repair would be worse than the fault. So it is bounded, and the bound and its
+ * reasoning live on {@link HOW_LONG_THE_DOOR_WAITS}.
+ *
+ * <p><b>The bound is imported and never spelt again here.</b> A number written twice is
+ * two numbers the day one of them is changed, and the one that would go stale is this one.
+ */
+describe('the door when the answer is never coming at all', () => {
+  let server: ReturnType<typeof anAnswerThatHasNotArrived> | null = null
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    server?.stop()
+    server = null
+  })
+
+  it('goes on waiting for as long as the bound says, and not a moment less', async () => {
+    /* The half that keeps the bound from quietly becoming zero. A bound that fired at
+       once would pass the case below and read as a repair, while putting the superadmin
+       back on the front page on every hard load - the very fault this branch exists for,
+       only now with a flicker of an indicator in front of it. */
+    expect(HOW_LONG_THE_DOOR_WAITS).toBeGreaterThan(0)
+
+    server = anAnswerThatHasNotArrived()
+
+    const { router } = renderAt('/sr/administracija/dogadjaji', 'visitor', null)
+
+    await act(async () => {
+      vi.advanceTimersByTime(HOW_LONG_THE_DOOR_WAITS - 1)
+      await Promise.resolve()
+    })
+
+    expect(router.state.location.pathname).toBe('/sr/administracija/dogadjaji')
+    expect(waitingOutLoud()).toHaveLength(1)
+  })
+
+  it('stops waiting once the bound is up, and decides with the role it has', async () => {
+    /* And it decides the way the portal decided before any of this: on the role there
+       is, which at the first paint of a visit is the visitor. So the bound can only ever
+       send somebody to the front page. There is no arrangement of a missing answer that
+       opens a door. */
+    server = anAnswerThatHasNotArrived()
+
+    const { router } = renderAt('/sr/administracija/dogadjaji', 'visitor', null)
+
+    await act(async () => {
+      vi.advanceTimersByTime(HOW_LONG_THE_DOOR_WAITS)
+      await Promise.resolve()
+    })
+
+    expect(router.state.location.pathname).toBe('/sr')
   })
 })

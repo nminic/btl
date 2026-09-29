@@ -607,6 +607,40 @@ export type SessionValue = {
     referredCount: number | null
   }) => void
   /**
+   * WHETHER `GET /api/me` HAS COME BACK YET, WHATEVER IT CAME BACK WITH.
+   *
+   * <p><b>Not „is anybody signed in", and the difference is the whole of why this
+   * exists.</b> Everything else on this context answers what the session IS; this one
+   * answers whether the question has been ASKED AND ANSWERED. Until 29.09.2026 the
+   * portal had no way to tell „nobody is signed in" from „nothing has come back yet",
+   * because `session/theServer.ts` answers `null` to both - and to four more things
+   * besides, among them a server that is not running and a body it does not understand.
+   * The door read that silence as „a visitor", threw the superadmin off his own
+   * administration on every hard load, and was right again a moment later when the
+   * answer landed and he was already gone.
+   *
+   * <p><b>True for every outcome and not only for the ones that sign somebody in.</b> A
+   * role, a 401, a dead server, a body of the wrong shape: all of them END the waiting,
+   * because the thing being waited for is the ANSWER and not the admission. Anything
+   * narrower leaves the portal standing on a loading indicator for the one reader who
+   * really is nobody. What each outcome does to the ROLE is a separate question and is
+   * unchanged (`session/useTheServersSession.ts`).
+   *
+   * <p><b>And true when no answer is ever coming</b>, which is a socket that is accepted
+   * and never written to - the one case a promise cannot settle by itself. That is
+   * bounded rather than waited on, and the bound and its reason live where the question
+   * is asked.
+   *
+   * <p><b>Who reads it, and it is deliberately one.</b> `pages/admin/Guard.tsx`, and it
+   * reads it only on the arm where it would REFUSE. So waiting can delay a refusal and
+   * can never turn one into an admission - a property of the order the door decides in,
+   * not a promise made about it.
+   */
+  theServerHasAnswered: boolean
+  /** That the answer came back. Called once a visit from the one place that asks
+   *  (`session/useTheServersSession.ts`), on every outcome alike. */
+  theServerAnswered: () => void
+  /**
    * HOW THE CALLER'S OWN MEMBERSHIP IS HELD, as the server answered it, or null where
    * it did not say.
    *
