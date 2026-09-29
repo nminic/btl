@@ -79,16 +79,52 @@ class TotalsTest {
 		assertThat(huge.vertical()).isEqualTo(4_000_000_000L);
 	}
 
+	/**
+	 * A NUMBER WIDER THAN ITS OWN COLUMN DID NOT COME FROM A RACE AND IS REFUSED,
+	 * AND THE TWO COLUMNS ARE NOT THE SAME WIDTH.
+	 *
+	 * <p>Both halves are asserted at the width that is right for that column and
+	 * at one digit past it, because a guard that refused both at the same width
+	 * would pass whichever number the other one's rule happened to cover. Points
+	 * are refused at three and distance at five: V45 widened
+	 * {@code result.distance_km} to {@code numeric(8,4)} while
+	 * {@code result.points} stayed {@code numeric(8,2)}.
+	 */
 	@Test
-	void aNumberWithAThirdDecimalDidNotComeFromARaceAndIsRefused() {
-		assertThatThrownBy(() -> new Totals(1, new BigDecimal("21.105"), 0, 0, 1L, BigDecimal.ZERO))
+	void aNumberWiderThanItsOwnColumnDidNotComeFromARaceAndIsRefused() {
+		assertThatThrownBy(() -> new Totals(1, new BigDecimal("21.10555"), 0, 0, 1L, BigDecimal.ZERO))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining("kilometers")
-				.hasMessageContaining("more than 2 decimals");
+				.hasMessageContaining("more than 4 decimals");
 
 		assertThatThrownBy(() -> new Totals(1, BigDecimal.ONE, 0, 0, 1L, new BigDecimal("35.401")))
 				.isInstanceOf(IllegalArgumentException.class)
-				.hasMessageContaining("points");
+				.hasMessageContaining("points")
+				.hasMessageContaining("more than 2 decimals");
+	}
+
+	/**
+	 * AND THE EXACT LENGTH OF A REAL RACE SURVIVES, which is the whole reason the
+	 * two widths differ.
+	 *
+	 * <p>42,195 km is the marathon the owner had in mind on 19.09.2026 („Hocu da
+	 * mogu da unosim tacnu duzinu, ali se prikazuje zaokruzeno"), and it is the
+	 * number V25 and V32 both use to say what a narrow column costs. Asserted on
+	 * the value and not only on the scale: {@code setScale} with
+	 * {@code UNNECESSARY} would throw rather than round, so a version that still
+	 * demanded two decimals fails this on the exception rather than on the digits,
+	 * and either way it fails.
+	 *
+	 * <p>The points beside it carry two, so this case also states that widening
+	 * the one did not widen the other.
+	 */
+	@Test
+	void theExactLengthOfAMarathonIsKeptAndItsPointsAreStillTwoDecimals() {
+		Totals marathon = new Totals(1, new BigDecimal("42.195"), 0, 0, 1L, new BigDecimal("79.03"));
+
+		assertThat(marathon.kilometers()).isEqualByComparingTo("42.195");
+		assertThat(marathon.kilometers().scale()).as("distance keeps the schema's four").isEqualTo(4);
+		assertThat(marathon.points().scale()).as("points did not widen with it").isEqualTo(2);
 	}
 
 	/**
@@ -103,7 +139,8 @@ class TotalsTest {
 	void aNumberWrittenWithFewerDecimalsIsTheSameNumber(String written) {
 		Totals totals = new Totals(1, new BigDecimal(written), 0, 0, 1L, new BigDecimal(written));
 
-		assertThat(totals.kilometers().scale()).as("the stored scale is not the schema's").isEqualTo(2);
+		assertThat(totals.kilometers().scale()).as("the stored scale is not the schema's").isEqualTo(4);
+		assertThat(totals.points().scale()).as("the stored scale is not the schema's").isEqualTo(2);
 		assertThat(totals.kilometers()).isEqualByComparingTo(written);
 	}
 

@@ -354,7 +354,7 @@ function saysUnread(unread: number): string {
  * browser's half of the inbox.
  *
  * <p>Both cases about that half read a seeded record until then. What replaces it is the road
- * nine screens really use, `notify`, so what those cases measure is now reachable in production
+ * eight screens really use, `notify`, so what those cases measure is now reachable in production
  * for the same reason it is reachable here.
  *
  * <p><b>Dated BEFORE the served row every one of those cases also serves</b> (`ALREADY_READ`,

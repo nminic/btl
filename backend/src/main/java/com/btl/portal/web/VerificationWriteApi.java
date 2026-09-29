@@ -1,14 +1,24 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.event.EventAddress;
+import com.btl.portal.domain.mail.WhatAResultChangeSays;
+import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
+import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
+import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.verification.DecidingOnASubmission;
 import com.btl.portal.domain.verification.HoldingAnItem;
+import com.btl.portal.mail.Postman;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mail.MailException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,9 +28,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
 
@@ -68,28 +80,29 @@ import java.util.Set;
  * „the address is there and the thing you asked for cannot happen now", which is what 409
  * says. {@link PaymentApi} already answers 409 to the same shape of thing.
  *
- * <p><b>THIS ROUTE CARRIES OUT THREE QUEUES OF THE FIVE NOW, WHERE UNTIL 22.09.2026 IT
- * CARRIED OUT TWO, AND THE REMAINING TWO ARE STILL REFUSED RATHER THAN RECORDED.</b>
- * {@code profiles} and {@code teams} were the only two anything on this server could put a
- * row into; V30 gave {@code comments} a row of its own too ({@code comment_submission}), and
- * ADL A64's A3 is the owner saying this file should carry it out rather than go on only
- * serving its fields. V30 gave {@code schedule} the identical shape
- * ({@code schedule_proposal}) and this file carried that tab out too, from the same day
- * until PDL P10a, 22.09.2026 took the tab away: „Redova je pet, ne šest." Nothing writes a
- * {@code result_submission} still - measured, not assumed: {@code insert into verification}
- * exists today in exactly two places under {@code backend/src/main} ({@link MeWriteApi},
- * {@link TeamWriteApi} - a third grep hit is {@code insert into verification_lock}, a
- * different table), the same count V30's own header measures before this file carried out a
- * third queue. And {@code payments} still waits on the increment that lets a member reach it
- * at all - so {@code payments} and {@code results} are refused for the same reason they
- * always were: recording the decision and doing nothing else would be worse than refusing,
- * since an approved result that never enters the rankings (PDL P9, „Rezultat ulazi u rang
- * liste tek posle odobrenja") has left the queue for ever and reached nothing, the one
- * outcome a screen cannot undo. <b>And {@code results} is not merely unbuilt but
- * UNDECIDED</b>: ADL A36, „Transakcione granice", says in as many words that the „trece
- * mesto, verifikacija rezultata, i dalje NIJE odluceno i ostaje otvoreno", so what is inside
- * the transaction and what is after it has no answer yet and this increment must not invent
- * one.
+ * <p><b>THIS ROUTE CARRIES OUT FOUR QUEUES OF THE FIVE NOW, AND THE ONE LEFT IS REFUSED
+ * RATHER THAN RECORDED.</b> {@code profiles} and {@code teams} were the only two anything on
+ * this server could put a row into; V30 gave {@code comments} a row of its own too
+ * ({@code comment_submission}), and ADL A64's A3 is the owner saying this file should carry
+ * it out rather than go on only serving its fields. V30 gave {@code schedule} the identical
+ * shape ({@code schedule_proposal}) and this file carried that tab out too, from the same day
+ * until PDL P10a, 22.09.2026 took the tab away: „Redova je pet, ne šest."
+ *
+ * <p><b>{@code results} was refused until this increment for a reason that has since been
+ * answered, and it is worth saying which reason, because it was never „nobody has written
+ * it".</b> It was ADL A36: „sta je unutar transakcije a sta posle nje nije odluceno", and
+ * recording a decision while doing nothing else would have been worse than refusing - an
+ * approved result that never enters the rankings (PDL P9, „Rezultat ulazi u rang liste tek
+ * posle odobrenja") has left the queue for ever and reached nothing, the one outcome a screen
+ * cannot undo. The owner answered it on 21.09.2026: „Rezultat i rang liste su UNUTAR
+ * transakcije; dukati i posta idu POSLE nje", by the measure he set the same day - which half
+ * outcome can repair itself. So the result is written inside the transaction and the letter
+ * goes after it, and the two things V25 and V32 said this increment must carry with it are
+ * carried: V45 widens {@code result.distance_km} and {@link
+ * com.btl.portal.domain.ranking.Totals} was taught the same width.
+ *
+ * <p><b>{@code payments} is the one still refused</b>, and for the reason it always was: it
+ * waits on the increment that lets a member reach that tab at all.
  *
  * <p><b>THE CONTRADICTION BESIDE {@code comments} IS SETTLED, NOT STILL OPEN.</b> PDL („ne
  * odbija nego brise, a napomena je neobavezna") and V9's {@code verification_refusal_says_why}
@@ -157,6 +170,8 @@ import java.util.Set;
 @RestController
 class VerificationWriteApi {
 
+	private static final Logger LOG = LoggerFactory.getLogger(VerificationWriteApi.class);
+
 	/** {@code verification.queue} for the three tabs this route can carry out. */
 	private static final String PROFILES = "profiles";
 
@@ -165,6 +180,10 @@ class VerificationWriteApi {
 	/** ADL A64, 22.09.2026: the row whose refusal needs no reason (A4) and whose approval
 	 *  publishes a row into {@code event_comment} rather than refusing 409 (A3). */
 	private static final String COMMENTS = "comments";
+
+	/** V10's own tab, and the one whose approval writes the first {@code result} row this
+	 *  server has ever written. */
+	private static final String RESULTS = "results";
 
 	/**
 	 * THE TABS AN APPROVAL HERE KNOWS WHAT TO DO WITH.
@@ -179,8 +198,19 @@ class VerificationWriteApi {
 	 * row whose approval moved an event and its races (ADL A64 A3). The tab left „Redova je
 	 * pet, ne šest", and {@code moveTheEvent}, {@code scheduleMoveBehind} and
 	 * {@code ScheduleMove} left with it rather than standing here unreachable.
+	 *
+	 * <p><b>{@code RESULTS} joined it on the day ADL A36's boundary stopped being open.</b>
+	 * The reason this tab was refused was never that nobody had written the code: it was that
+	 * „sta je unutar transakcije a sta posle nje nije odluceno", and an approved result that
+	 * never entered the rankings would have left the queue for ever and reached nothing. The
+	 * owner answered it on 21.09.2026 - „Rezultat i rang liste su UNUTAR transakcije; dukati i
+	 * posta idu POSLE nje" - by the measure he set the same day, which of the half outcomes
+	 * can repair itself: a result without its post is repaired by sending it again, a ducat
+	 * without its result is not. So this class now writes the result inside and posts outside,
+	 * and {@code payments} is the one name left out, still waiting on the increment that lets
+	 * a member reach that tab at all.
 	 */
-	private static final Set<String> CARRIED_OUT_HERE = Set.of(PROFILES, TEAMS, COMMENTS);
+	private static final Set<String> CARRIED_OUT_HERE = Set.of(PROFILES, TEAMS, COMMENTS, RESULTS);
 
 	private static final String NOT_DECIDED_ON_THIS_PORTAL_YET =
 			"Odluka o ovom redu još nije uvedena.";
@@ -197,6 +227,42 @@ class VerificationWriteApi {
 	private static final String THE_NAME_IS_TAKEN = "Tim sa tim nazivom već postoji.";
 
 	private static final String HE_IS_ALREADY_IN_A_TEAM = "Osnivač je već u nekom timu.";
+
+	/**
+	 * A RESULT ON A RACE THE CALENDAR DOES NOT HOLD CANNOT BE APPROVED HERE, AND IT IS SAID
+	 * OUT LOUD RATHER THAN LEFT TO BE DISCOVERED.
+	 *
+	 * <p>PDL, „Član sme da unese trku koje nema u kalendaru. Tada administrator kreira događaj
+	 * i trku uz rezultat, i sve troje nastaje istovremeno." That is three writes into two
+	 * tables this route does not touch, with their own decisions about which event a new race
+	 * joins and what it is called, and it is a road of its own rather than a branch of this
+	 * one.
+	 *
+	 * <p><b>It is refused rather than passed over, and that is the point of naming it.</b>
+	 * {@code result_submission} takes a described race today - {@code ResultWriteApi} routes
+	 * {@code raceId == null} to its own {@code described} path - so such a row really can be
+	 * standing in this queue, and {@code result.race_id} is {@code not null}. Left unsaid, an
+	 * approval would either fall over as a server fault or, worse, be recorded while writing
+	 * nothing. A refusal the moderator can read keeps the boundary visible until the road
+	 * exists, and it is 409 for the reason the head of this class gives: he can see the row,
+	 * and what he asked for cannot happen now.
+	 */
+	private static final String THE_RACE_IS_NOT_IN_THE_CALENDAR =
+			"Trka nije u kalendaru, pa rezultat ne može odavde da se odobri.";
+
+	/**
+	 * AND A ROW IN THE RESULTS TAB THAT NAMES NO SUBMISSION AT ALL, which the schema permits
+	 * on purpose and this route therefore may not fall over.
+	 *
+	 * <p>V10 says so in as many words beside the constraint, and says it is one-directional
+	 * deliberately: „A results row without a submission is a real thing... so the other
+	 * direction would be false." Nothing on this server writes such a row today -
+	 * {@link ResultWriteApi#queue} always names the submission it just made - but a route that
+	 * read the pointer without asking would answer a state the schema allows with a server
+	 * fault, and a 500 tells the moderator nothing he can act on.
+	 */
+	private static final String THE_ITEM_CARRIES_NO_RUN =
+			"Stavka ne nosi prijavljen rezultat.";
 
 	/* PDL P10b, owner 22.09.2026: an event with a result already written may not be moved
 	   across 1 January on the race that result was run at. This route asked that question
@@ -235,13 +301,35 @@ class VerificationWriteApi {
 	 */
 	private final MemberOfAccount memberOfAccount;
 
+	/**
+	 * THE ONE PLACE THAT ANSWERS „HAS HE FINISHED AN OFFICIAL SEASON OVER THE THRESHOLD",
+	 * asked here rather than written again.
+	 *
+	 * <p>Its own note says why an approval needs nothing else: „Nothing here is triggered BY a
+	 * verification - the answer simply changes the moment the row it approved exists, which is
+	 * why the right is never stored". So this class does not write a category anywhere and
+	 * there is no column for it to get wrong. What it asks this for is the one thing that does
+	 * NOT follow by itself: whether the answer moved, so the member can be told (PDL,
+	 * 27.09.2026).
+	 */
+	private final BestOfficialSeason bestOfficialSeason;
+
+	private final Postman postman;
+
+	/** The address the league is blind-copied at, exactly as {@link ResultWriteApi} takes it. */
+	private final String theLeague;
+
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
-			Clock clock, MemberOfAccount memberOfAccount) {
+			Clock clock, MemberOfAccount memberOfAccount, BestOfficialSeason bestOfficialSeason,
+			Postman postman, @Value("${btl.mail.league}") String theLeague) {
 		this.db = db;
 		this.mayHe = mayHe;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
 		this.memberOfAccount = memberOfAccount;
+		this.bestOfficialSeason = bestOfficialSeason;
+		this.postman = postman;
+		this.theLeague = theLeague;
 	}
 
 	/** Why something was refused, the shape every writing route on this server answers with. */
@@ -482,8 +570,21 @@ class VerificationWriteApi {
 				item.state(), COMMENTS.equals(item.queue())), answer)) {
 			case ALREADY_DECIDED -> no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY);
 			case A_REFUSAL_NEEDS_A_REASON -> no(HttpStatus.BAD_REQUEST, A_REFUSAL_NEEDS_A_REASON);
-			case APPROVE_IT, REJECT_IT ->
-					inOneTransaction.execute(committing -> write(item, answer, asking));
+			case APPROVE_IT, REJECT_IT -> {
+				Carried carried = inOneTransaction.execute(committing -> write(item, answer, asking));
+
+				/* AND THE POST GOES AFTER THE TRANSACTION HAS COMMITTED, never inside it.
+				   ADL A36, the owner on 21.09.2026 for this very tab: „Rezultat i rang liste
+				   su UNUTAR transakcije; dukati i posta idu POSLE nje." The cost of the other
+				   order is measured rather than supposed - B58, 14.09.2026: with sending
+				   inside, one request held a pool connection 5,15 s when the relay hung, ten
+				   at once took the whole pool, and a member's legitimate sign-in failed after
+				   thirty seconds. The line in his inbox is a ROW and stays inside with
+				   everything else the answer writes; only what leaves the building waits. */
+				postAfterwards(carried);
+
+				yield carried.answer();
+			}
 		};
 	}
 
@@ -498,7 +599,7 @@ class VerificationWriteApi {
 	 * team while he is in one, and {@link TeamWriteApi} names both as the decider's to
 	 * enforce, „koja je gde napisana i merena" on the portal's own side.
 	 */
-	private ResponseEntity<?> write(Item item, DecidingOnASubmission.Answer answer,
+	private Carried write(Item item, DecidingOnASubmission.Answer answer,
 			WhoIsAsking.Member asking) {
 
 		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. It has to be
@@ -512,6 +613,14 @@ class VerificationWriteApi {
 		   just no longer asked a second time from this route. */
 		Proposal proposal = TEAMS.equals(item.queue()) ? proposalBehind(item) : null;
 
+		/* AND WHAT A RESULT ROW IS ABOUT, read the same way and for the same reason. It is
+		   read for a REFUSAL too and not only for an approval, because {@link #tell} on a
+		   refused result says nothing about the run - the reason the moderator typed is the
+		   whole of that message - so nothing here depends on the answer. */
+		Submission sent = RESULTS.equals(item.queue()) && item.resultSubmissionId() != null
+				? submissionBehind(item)
+				: null;
+
 		/* THE SEASON, READ ONCE AND USED BY BOTH HALVES. See the head of this class for why
 		   it is this function and not the one beside it, and for the day the portal got it
 		   wrong. Read twice - once to refuse and once to write - it would be the same fact
@@ -522,7 +631,20 @@ class VerificationWriteApi {
 			Optional<ResponseEntity<?>> refused = whyTheTeamCannotBeMade(proposal, season);
 
 			if (refused.isPresent()) {
-				return refused.get();
+				return new Carried(refused.get(), null, null);
+			}
+		}
+
+		/* AND THE SAME FOR A RESULT: asked before the row is claimed, writing nothing, so a
+		   run this route cannot count leaves the item standing in the queue rather than
+		   answered and unfulfilled. Asked of the QUEUE and not of `sent`, because `sent` is
+		   empty for two different reasons - a row in another tab, and a results row naming no
+		   submission - and only the second is a refusal. */
+		if (answer.yes() && RESULTS.equals(item.queue())) {
+			Optional<ResponseEntity<?>> refused = whyTheRunCannotBeCounted(sent);
+
+			if (refused.isPresent()) {
+				return new Carried(refused.get(), null, null);
 			}
 		}
 
@@ -574,7 +696,7 @@ class VerificationWriteApi {
 				.update();
 
 		if (claimed == 0) {
-			return no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY);
+			return new Carried(no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY), null, null);
 		}
 
 		/* AND THE HOLD GOES WITH THE ANSWER. Nothing is being read any more, and a decided
@@ -591,11 +713,15 @@ class VerificationWriteApi {
 		   with no proposal of its own to fetch. A fourth branch stood here for SCHEDULE,
 		   calling {@code moveTheEvent}, from V30 until PDL P10a, 22.09.2026 took the queue
 		   away the same day: „Redova je pet, ne šest." */
+		Said said = null;
+
 		if (answer.yes()) {
 			if (TEAMS.equals(item.queue())) {
 				makeTheTeam(proposal, season);
 			} else if (COMMENTS.equals(item.queue())) {
 				publishTheComment(item);
+			} else if (RESULTS.equals(item.queue())) {
+				said = countTheResult(item, sent);
 			} else {
 				publishTheProfile(item);
 			}
@@ -610,7 +736,8 @@ class VerificationWriteApi {
 					DecidingOnASubmission.reasonAsItGoesIn(answer));
 		}
 
-		return ResponseEntity.ok(new Decided(item.id(), state));
+		return new Carried(ResponseEntity.ok(new Decided(item.id(), state)), item.competitorId(),
+				said);
 	}
 
 	/**
@@ -706,6 +833,250 @@ class VerificationWriteApi {
 				.update();
 	}
 
+	/**
+	 * WHAT THE MEMBER SENT IN, AND THE NAME OF THE RACE HE SENT IT FOR.
+	 *
+	 * <p><b>The race is joined OUTER and the name may be absent, and that is a described race
+	 * rather than a missing row.</b> {@code result_submission_race_is_from_the_calendar_or
+	 * _described} (V10) makes {@code race_id} and {@code race_name} exclusive, so a row that
+	 * names no race in the calendar carries its own name instead and has no {@code race} to
+	 * join to. An inner join would simply not return such a row and {@code single()} would
+	 * throw, which would turn a refusal the moderator is entitled to make into a server
+	 * fault.
+	 *
+	 * <p><b>What is NOT done here is to fall back to {@code race_name} when the join finds
+	 * nothing.</b> That would be a name arriving from two places, and this portal has paid
+	 * for that shape before. The name is read only after {@link #write} has refused a
+	 * described race, so on every road that reads it the join found its row.
+	 *
+	 * <p>{@code race_date} is taken off the SUBMISSION and not off the race, because V10's
+	 * composite key {@code (race_id, race_date)} with {@code on update cascade} is what makes
+	 * the two the same fact: the database refuses a day that is not that race's and rewrites
+	 * the submission the moment a race moves.
+	 */
+	private Submission submissionBehind(Item item) {
+		return db.sql("select rs.race_id, rs.race_date, ra.name, rs.distance_km, rs.ascent_m,"
+						+ " rs.descent_m, rs.seconds, rs.amends_result_id"
+						+ " from result_submission rs"
+						+ " left join race ra on ra.id = rs.race_id"
+						+ " where rs.id = ?")
+				.param(item.resultSubmissionId())
+				.query((row, one) -> new Submission(row.getObject(1, Long.class),
+						row.getDate(2).toLocalDate(), row.getString(3), row.getBigDecimal(4),
+						row.getInt(5), row.getInt(6), row.getInt(7), row.getObject(8, Long.class)))
+				.single();
+	}
+
+	/**
+	 * THE TWO THINGS THAT REFUSE AN APPROVED RESULT, ASKED WITHOUT WRITING ANYTHING.
+	 *
+	 * <p>Both are states the schema permits and this route cannot carry out, and both are
+	 * settled before the queue row is claimed for the reason {@link #whyTheTeamCannotBeMade}
+	 * gives from its own side: asked afterwards they would need the transaction rolled back,
+	 * and a rollback inside a test-managed transaction poisons the outer one instead.
+	 *
+	 * @param sent what the row names, or empty where it names nothing
+	 * @return the refusal, or nothing where there is none
+	 */
+	private static Optional<ResponseEntity<?>> whyTheRunCannotBeCounted(Submission sent) {
+		if (sent == null) {
+			return Optional.of(no(HttpStatus.CONFLICT, THE_ITEM_CARRIES_NO_RUN));
+		}
+
+		if (sent.raceId() == null) {
+			return Optional.of(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_IN_THE_CALENDAR));
+		}
+
+		return Optional.empty();
+	}
+
+	/**
+	 * THE SUBMISSION BECOMES A RESULT, AND FROM THIS MOMENT IT COUNTS.
+	 *
+	 * <p>PDL P9: „Rezultat ulazi u rang liste tek posle odobrenja. Ne prikazuje se pre
+	 * verifikacije, pa ne postoji ni oznaka „nepotvrđen" u tabelama." This statement is that
+	 * sentence: nothing anywhere reads a submission for a standing, and the row this writes is
+	 * the only thing that does.
+	 *
+	 * <p><b>THE POINTS ARE COMPUTED HERE AND NEVER COPIED, and there is nowhere to copy them
+	 * from.</b> {@code result_submission} has no points column at all - V10 gave it the four
+	 * figures the formula is fed and nothing else - which is the schema saying the same thing
+	 * ADL A12a says in words: „Bodovi i mere trke se preračunavaju na serveru."
+	 * {@link BtlScoreCalculator} is the one home for the formula and its golden set is
+	 * untouchable, so this hands it the four numbers and stores what it answers.
+	 *
+	 * <p><b>A CORRECTION UPDATES THE OLD ROW AND DOES NOT REPLACE IT, and that is forced
+	 * rather than chosen.</b> {@code result_submission_amends_fk} is {@code on delete
+	 * cascade} (V32), so deleting the result being corrected would take THIS VERY SUBMISSION
+	 * away with it inside this transaction, and the {@code verification} row after it through
+	 * {@code verification_result_submission_fk} - the row this method was reached by. Writing
+	 * over it keeps the one fact the owner asked for: „Odobrenje ispravke zamenjuje rezultat,
+	 * dakle stari izlazi i novi ulazi u istom trenutku" (28.08.2026), with no moment in
+	 * between in which the member has no result.
+	 *
+	 * <p><b>The race is not written again on a correction, and the owner is why.</b> „Menja se
+	 * sve osim trke. Ko je pogrešio trku, briše rezultat i unosi nov" (27.08.2026), and V32's
+	 * own check says the same from the schema's side. So the statement names the four figures
+	 * and the points and nothing else.
+	 *
+	 * <p><b>Nothing is said here about the OLD figures, because there are none to say.</b> The
+	 * owner corrected himself on 04.09.2026: „Nakon odobrene ispravke, nigde ne stoji stara
+	 * vrednost, niti se prikazuje", which struck out both the sentence of 01.09.2026 that the
+	 * old value is kept and the history table it would have needed.
+	 *
+	 * <p>{@code item.competitorId()} is read without a check and cannot be null on this road:
+	 * V9 allows the column to be empty for a payment about somebody who is not a member yet,
+	 * but the only thing that ever writes a {@code results} row is
+	 * {@link ResultWriteApi#queue}, which writes the member it is acting for. If that ever
+	 * stopped being true, {@code result.competitor_id not null} refuses the insert loudly
+	 * rather than writing a result belonging to nobody.
+	 *
+	 * @return what the member is told by post once this has committed
+	 */
+	private Said countTheResult(Item item, Submission sent) {
+
+		/* WAS THE BEGINNERS' CATEGORY STILL OPEN TO HIM, ASKED BEFORE THE ROW EXISTS.
+		 *
+		 * THE SEASON IS THE ONE AFTER THE RUN'S, NEVER THE RUN'S OWN, and that distinction is
+		 * the whole of the owner's sentence of 26.09.2026: „ako odobrenje prevede clanov zbir
+		 * TEKUCE sezone na 12 ili vise, pocetnicka mu se za NAREDNU sezonu zatvara istog
+		 * trenutka." A season's category was decided off the seasons before it, and a season
+		 * is never before itself - `BestOfficialSeason` carries the day the portal got exactly
+		 * this wrong, when a season's own growing total closed it on him from the inside.
+		 *
+		 * Asked twice around the write rather than computed from the points, because the rule
+		 * is „the best SINGLE official season" and not „this result's points": a member three
+		 * points short whose best season is another one entirely is not moved by this run at
+		 * all. Both readings go through the one home that owns the question. */
+		int theSeasonAfterTheRun = sent.raceDate().getYear() + 1;
+		boolean wasOpen = beginnersCategoryIsOpenFor(item.competitorId(), theSeasonAfterTheRun);
+
+		BigDecimal points = BtlScoreCalculator.calculate(sent.distanceKm().doubleValue(),
+				sent.ascentM(), sent.descentM(), sent.seconds());
+
+		if (sent.amendsResultId() == null) {
+			db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
+							+ " ascent_m, descent_m, seconds, points)"
+							+ " values (?, ?, ?, ?, ?, ?, ?, ?)")
+					.params(item.competitorId(), sent.raceId(), sent.raceDate(), sent.distanceKm(),
+							sent.ascentM(), sent.descentM(), sent.seconds(), points)
+					.update();
+		} else {
+			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?,"
+							+ " points = ? where id = ?")
+					.params(sent.distanceKm(), sent.ascentM(), sent.descentM(), sent.seconds(),
+							points, sent.amendsResultId())
+					.update();
+		}
+
+		if (wasOpen && !beginnersCategoryIsOpenFor(item.competitorId(), theSeasonAfterTheRun)) {
+			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, points);
+		}
+
+		return WhatAResultChangeSays.approved(new Run(sent.raceName(), sent.raceDate(),
+				sent.distanceKm(), sent.ascentM(), sent.descentM(), sent.seconds(), points));
+	}
+
+	/**
+	 * WHETHER THE BEGINNERS' CATEGORY IS STILL OPEN TO HIM FOR A GIVEN SEASON, asked of the
+	 * two places that already own the halves of that question and answered here by neither.
+	 *
+	 * <p>{@link BestOfficialSeason} is the half the database answers and
+	 * {@link Category#firstSeasonAllowed} is the half that owns the threshold. Twelve is not
+	 * written here and must never be: it is one number in one place, and the same number is
+	 * what a participation medal is worth.
+	 */
+	private boolean beginnersCategoryIsOpenFor(long member, int season) {
+		return Category.firstSeasonAllowed(bestOfficialSeason.pointsFor(member, season));
+	}
+
+	/**
+	 * AND HE IS TOLD WHEN AN APPROVAL TAKES IT AWAY FROM HIM.
+	 *
+	 * <p>Owner, 27.09.2026, choosing the first of three outcomes: the member is told when a
+	 * verification undoes his choice of the beginners' category, and „Poruka nosi razlog: koji
+	 * rezultat je odobren, koliko bodova nosi, i da mu je time pocetnicka zatvorena za narednu
+	 * sezonu." The two he refused were silence and an explanation on the membership page,
+	 * which he would have no reason to open.
+	 *
+	 * <p><b>Why a message is owed at all, in his own words:</b> what the portal keeps is the
+	 * WISH and not the category („racunaj da clan bira ono sto ZELI", 26.09.2026), so his tick
+	 * stays where it was while the category under it changes. Without a line in his inbox that
+	 * reads as the portal losing his choice.
+	 *
+	 * <p><b>It is sent whether or not he ever ticked the box, and that is deliberate.</b>
+	 * Asking {@code competitor.first_season_2027} would be a second condition over a field
+	 * whose name carries a season (V7) and which
+	 * {@code TheChoiceAsItStands} already records as a debt to be paid when a second season
+	 * exists. What this message reports is true either way - a right he had is gone - and the
+	 * portal telling somebody about a category he was not asking for is a smaller fault than
+	 * staying silent towards somebody who was.
+	 */
+	private void tellHimHisCategoryMoved(long member, int season, BigDecimal points) {
+		tell(member, "Početnička kategorija vam je zatvorena",
+				"Odobren vam je rezultat koji nosi " + points.toPlainString() + " bodova."
+						+ " Time ste u zvaničnoj sezoni prešli prag od "
+						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička"
+						+ " kategorija zatvorena za sezonu " + season + ".");
+	}
+
+	/**
+	 * WHAT LEAVES THE BUILDING, AND ONLY AFTER THE TRANSACTION HAS COMMITTED.
+	 *
+	 * <p>Nothing to post is the ordinary case and not an absence: only an approved result is
+	 * posted. A refusal reaches the member's inbox with the moderator's reason instead (PDL
+	 * P22, „razlog stize u sanduce onome ko je stavku poslao"), and an approved profile or
+	 * team is not posted at all - nothing decided that it should, and this class leaves out
+	 * rather than serves „za svaki slucaj".
+	 */
+	private void postAfterwards(Carried carried) {
+		if (carried.said() == null) {
+			return;
+		}
+
+		post(carried.member(), carried.said());
+	}
+
+	/**
+	 * A LETTER, OR NOTHING WHERE THERE IS NO ADDRESS TO SEND IT TO.
+	 *
+	 * <p><b>A member with no account is an ordinary state rather than a fault.</b>
+	 * {@code account.competitor_id} is unique but optional in the other direction too: an
+	 * account may be deleted while the member it belonged to stays (V23's {@code on delete
+	 * restrict} guards the member, not the account), and the imported history of the league is
+	 * members who never had one - „NIKO SE NE DOVODI U PORTAL DOK SE SAM NE PRIJAVI" (owner,
+	 * 27.09.2026). So this asks {@code optional()} and writes nothing when there is nobody to
+	 * write to, the same shape {@link #tell} has for the inbox.
+	 *
+	 * <p><b>The league is blind-copied, which is what every other message about a member's
+	 * result already does</b> ({@link ResultWriteApi}), and doing otherwise would make the
+	 * approval the one message about a result the league cannot see. That reading is derived
+	 * from the shape already in the portal rather than from a decision naming this message.
+	 *
+	 * <p><b>A relay that will not take it is logged and nothing else</b>, exactly as
+	 * {@link ResultWriteApi} decided: the result is written and the answer is already the
+	 * moderator's, so failing his request over the post office would undo a decision that was
+	 * correctly made.
+	 */
+	private void post(long member, Said said) {
+		Optional<String> to = db.sql("select email from account where competitor_id = ?")
+				.param(member)
+				.query(String.class)
+				.optional();
+
+		if (to.isEmpty()) {
+			return;
+		}
+
+		try {
+			postman.send(said, to.get(), theLeague);
+		} catch (MailException theRelayDidNotTakeIt) {
+			LOG.warn("the message about the approved result of member {} did not go out; the"
+					+ " result is written and the decision stands either way", member,
+					theRelayDidNotTakeIt);
+		}
+	}
+
 	/*
 	 * WHAT A SCHEDULE PROPOSAL ASKED FOR, AND HOW THE EVENT MOVED, stood here from V30
 	 * until PDL P10a, 22.09.2026 - `scheduleMoveBehind`, `moveTheEvent` and the
@@ -788,7 +1159,7 @@ class VerificationWriteApi {
 	private Optional<Item> itemHeMayModerate(long id, WhoIsAsking.Member asking) {
 		Optional<Item> item = db.sql("select v.id, v.queue, v.right_code, v.state, v.competitor_id,"
 						+ " v.photo_id, v.team_proposal_id, v.comment_submission_id,"
-						+ " v.body, l.held_by, l.held_until"
+						+ " v.result_submission_id, v.body, l.held_by, l.held_until"
 						+ " from verification v"
 						+ " left join verification_lock l on l.verification_id = v.id"
 						+ " where v.id = ?")
@@ -796,10 +1167,10 @@ class VerificationWriteApi {
 				.query((row, one) -> new Item(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getObject(5, Long.class), row.getObject(6, Long.class),
 						row.getObject(7, Long.class), row.getObject(8, Long.class),
-						row.getString(9),
-						row.getObject(10, Long.class) == null ? null
-								: new HoldingAnItem.Hold(row.getLong(10),
-										row.getTimestamp(11).toInstant())))
+						row.getObject(9, Long.class), row.getString(10),
+						row.getObject(11, Long.class) == null ? null
+								: new HoldingAnItem.Hold(row.getLong(11),
+										row.getTimestamp(12).toInstant())))
 				.optional();
 
 		/* MAY HE, ASKED OF THE ONE PLACE THAT ANSWERS IT (ADL A8, „Odgovara jedno mesto"),
@@ -844,12 +1215,42 @@ class VerificationWriteApi {
 
 	/** One queue row with whatever holds it, as one reading of one moment. */
 	private record Item(long id, String queue, String rightCode, String state, Long competitorId,
-			Long photoId, Long teamProposalId, Long commentSubmissionId, String body,
-			HoldingAnItem.Hold hold) {
+			Long photoId, Long teamProposalId, Long commentSubmissionId, Long resultSubmissionId,
+			String body, HoldingAnItem.Hold hold) {
 	}
 
 	/** What a member asked for, in the shape an approval copies across. */
 	private record Proposal(long competitorId, String name, String bio, String link,
 			Long placeId, String city, Long countryId) {
+	}
+
+	/**
+	 * A RUN WAITING TO BE JUDGED, AND WHAT IT IS A CORRECTION OF.
+	 *
+	 * @param raceId        the calendar's race, or empty where the member described one
+	 *                      instead; an approval of the second is refused
+	 * @param raceName      the race's own name, and empty for exactly the rows that are
+	 *                      refused, so every road that reads it found its row
+	 * @param amendsResultId the result this replaces, or empty where it is a first report.
+	 *                       V32 chose a nullable pointer over a flag beside one, „there or
+	 *                       not, rather than a flag and a pointer that have to agree"
+	 */
+	private record Submission(Long raceId, LocalDate raceDate, String raceName,
+			BigDecimal distanceKm, int ascentM, int descentM, int seconds, Long amendsResultId) {
+	}
+
+	/**
+	 * WHAT THE ANSWER IS, AND WHAT STILL HAS TO GO OUT ONCE IT HAS COMMITTED.
+	 *
+	 * <p>It exists because ADL A36 puts the boundary between those two things: „Rezultat i
+	 * rang liste su UNUTAR transakcije; dukati i posta idu POSLE nje." Carried back rather
+	 * than posted where it is decided, so nothing holds a pool connection open across a relay
+	 * that may hang, and so a letter is never sent about a transaction that then rolled back.
+	 *
+	 * @param said   what to post, or empty where there is nothing to post - which is every
+	 *               answer but an approved result
+	 * @param member whose address, read only when there is something to send
+	 */
+	private record Carried(ResponseEntity<?> answer, Long member, Said said) {
 	}
 }

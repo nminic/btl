@@ -129,3 +129,46 @@ export const WHEN_RATING_AN_EVENT: Record<string, string> = {
   theEventIsNotKnown: 'event.commentEventUnknown',
   theEventHasNotBeenRun: 'event.notRunYetWhy',
 }
+
+/**
+ * `InboxWriteApi`, which names two, and answers one member writing to another about a
+ * race they are both going to (`event/GoingToEvent.tsx`, PDL P10).
+ *
+ * <p><b>BOTH GET A SENTENCE OF THEIR OWN, AND THAT IS THE ONE PLACE THIS DICTIONARY
+ * DIFFERS FROM THE ONE ABOVE IT.</b> `WHEN_RATING_AN_EVENT` points two of its three at
+ * sentences the screen already draws, and gives the reason: there the two doors refuse
+ * the same fact, so one sentence answers for both. Here they do not, and it was
+ * measured rather than assumed:
+ *
+ * <ul>
+ * <li>`theFormIsNotComplete` is the route's answer to a BLANK ADDRESSEE OR A BLANK
+ * TITLE, or a body it could not read at all. It is emphatically NOT its answer to an
+ * empty text - V13 writes `message_subject_not_blank` and deliberately writes no such
+ * check over `body`, and the class says so in as many words: „AN EMPTY TEXT IS ALLOWED
+ * AND AN EMPTY TITLE IS NOT". So `event.writeNeedsWords`, which is what the screen
+ * says while the box is empty, would be the nearest sentence rather than the true one,
+ * and `ServerSaid`'s own note says why that is the worse answer of the two: it „tells
+ * the reader to fix something that is not wrong". Nothing the reader can type produces
+ * this refusal; the screen fills both fields itself, so it says so.
+ * <li>`theMemberIsNotKnown` has no sentence anywhere on the portal to borrow. The
+ * nearest are `theRaceIsNotKnown` and `theEventIsNotKnown`, which are about other
+ * things on other screens, so this one is written in their family and in their words.
+ * </ul>
+ *
+ * <p><b>IT IS ONE SENTENCE FOR TWO STATES AND THAT IS THE SERVER'S DECISION, NOT A
+ * CHOICE OF WORDS HERE.</b> `THE_MEMBER_IS_NOT_KNOWN` covers both a number nobody
+ * holds and a member whose membership has lapsed, and says why: „PDL P11 says the two
+ * get the same outcome, and a caller who could tell them apart would be reading which
+ * numbers belong to hidden members off the difference." A sentence naming either state
+ * would hand back exactly that difference, so this one names neither.
+ *
+ * <p><b>AND IT IS REACHABLE, which is why it is answered at all.</b> The envelope is
+ * only drawn beside a member the served list carries, but `memberShown` asks `active`
+ * at the moment the row is written - so a membership that lapses between the drawing
+ * and the press is this refusal. That is the same race `WHEN_PROPOSING_A_TEAM` names
+ * for a name taken a moment before the request lands.
+ */
+export const WHEN_WRITING_TO_A_MEMBER: Record<string, string> = {
+  theFormIsNotComplete: 'event.writeFormIncomplete',
+  theMemberIsNotKnown: 'event.writeMemberUnknown',
+}

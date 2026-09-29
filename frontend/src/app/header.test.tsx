@@ -243,7 +243,7 @@ describe('the account menu', () => {
  * nobody had sent. The owner found them on QA - „Zasto su ove testne poruke i dalje tu??????
  * NECU MOCK PODATKE NIGDE" - and PDL 34 took them out of the shipped bundle.
  *
- * <p>What replaces them is the real road: `notify`, which nine screens call and which is the
+ * <p>What replaces them is the real road: `notify`, which eight screens call and which is the
  * only way a line lands in the browser's half now. Dated between the two rows the served
  * fixture holds, on purpose - see the case that reads the order.
  */
