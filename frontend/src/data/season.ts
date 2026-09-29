@@ -23,8 +23,22 @@
  */
 export const FIRST_SEASON = 2027
 
-/** Renewal and the transfer window both open on this day. */
-export const WINDOW_OPENS = '10-01'
+/** Renewal and the transfer window both open on this day.
+ *
+ * **It was `10-01` until 29.09.2026**, when the owner moved it: „Zelim da prvi
+ * period postane 15-31. oktobar, drugi 1-30. novembar a ostalo ostaje isto. S tim
+ * na umu zelim i da se prelazni rok i sve ostalo otvara 15.10. ubuduce, a ne
+ * 1.10." Asked whether only the OPENING moves, he answered „Tacno", so
+ * `WINDOW_CLOSES` stays where it is and the window is fourteen days shorter rather
+ * than shifted.
+ *
+ * **The same day `PRICES` starts selling next season, and nothing here says so.**
+ * The two are one fact in the owner's sentence and two constants in this
+ * repository, so `data/theWindowAndThePriceList.test.ts` holds them to each other
+ * by asking this file for the behaviour and `data/pricing.ts` for the day. The
+ * backend carries the identical pair and the identical floor
+ * (`SeasonClock.transferWindowOpen`, `TheSellingYearAndTheTransferWindowOpenOnOneDayTest`). */
+export const WINDOW_OPENS = '10-15'
 
 /** And both shut at the end of this day. Nothing is decided in January. */
 export const WINDOW_CLOSES = '12-31'

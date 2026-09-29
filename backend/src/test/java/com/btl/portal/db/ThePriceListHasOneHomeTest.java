@@ -94,7 +94,33 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 	private static final Pattern THE_FEE_IN_EURO =
 			Pattern.compile("PROCESSING_FEE_EUR\\s*=\\s*([0-9.]+)");
 
+	/**
+	 * THE SAME ROW, READ FOR ITS DAYS INSTEAD OF ITS AMOUNTS (29.09.2026).
+	 *
+	 * <p><b>Why this was added, and it is the hole this file had rather than a new idea.</b>
+	 * Everything above holds the two homes to each other on the KEY and the two AMOUNTS, and
+	 * on nothing else - so when the owner moved the selling year from 1 to 15 October, the one
+	 * thing that had to move in both places was the one thing nothing compared. The branch
+	 * that moved it found this file already here and pointing at the right pair; it was
+	 * measuring the wrong column of it.
+	 *
+	 * <p><b>It stops at a closing brace like {@link #A_ROW} does</b>, which is what keeps a
+	 * row's days from being read out of the row after it. The middle of the match is taken
+	 * whole and the two days are picked out of it below, because {@code from} and {@code to}
+	 * are written before {@code eur} in every row that has them and absent altogether in the
+	 * three that do not - which is exactly what the table says with a null.
+	 */
+	private static final Pattern A_ROW_AND_WHAT_PRECEDES_ITS_PRICE = Pattern.compile(
+			"key:\\s*'([a-z]+)'([^}]*?)eur:\\s*[0-9.]+", Pattern.DOTALL);
+
+	private static final Pattern A_DAY_OF_THE_YEAR =
+			Pattern.compile("%s:\\s*'([0-9]{2}-[0-9]{2})'");
+
 	private record Amounts(BigDecimal eur, BigDecimal rsd) {
+	}
+
+	/** The two days of the year a period runs between, or two nulls where it has no period. */
+	private record Days(String from, String to) {
 	}
 
 	private static String portalsFile() {
@@ -132,6 +158,51 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 	/** {@code numeric(10,2)}, so that 35 in the portal and 35.00 in the table are one number. */
 	private static BigDecimal scaled(String written) {
 		return new BigDecimal(written).setScale(2, java.math.RoundingMode.UNNECESSARY);
+	}
+
+	/**
+	 * What days the portal ships for each row, keyed the way the table keys it.
+	 *
+	 * <p>The fee is added with no days at all, exactly as the three rows without a period
+	 * carry none: it is written as a bare number rather than a row literal, so the sweep above
+	 * cannot reach it, and leaving it out would make the comparison a row short of what it
+	 * claims - which is the failure {@link #whatThePortalShips} already guards against on the
+	 * amounts side.
+	 */
+	private static Map<String, Days> whatDaysThePortalShips() {
+		String source = portalsFile();
+		Map<String, Days> rows = new LinkedHashMap<>();
+
+		Matcher row = A_ROW_AND_WHAT_PRECEDES_ITS_PRICE.matcher(source);
+		while (row.find()) {
+			String beforeThePrice = row.group(2);
+
+			rows.put(row.group(1), new Days(dayOfTheYear(beforeThePrice, "from"),
+					dayOfTheYear(beforeThePrice, "to")));
+		}
+
+		rows.put(THE_FEE, new Days(null, null));
+
+		return rows;
+	}
+
+	/** One end of a period as the portal writes it, or null where the row has no period. */
+	private static String dayOfTheYear(String written, String end) {
+		Matcher day = Pattern.compile(A_DAY_OF_THE_YEAR.pattern().formatted(end)).matcher(written);
+
+		return day.find() ? day.group(1) : null;
+	}
+
+	private Map<String, Days> whatDaysTheTableHolds() {
+		Map<String, Days> rows = new LinkedHashMap<>();
+
+		db.sql("select key, day_from, day_to from price_row order by sort_order")
+				.query((row, one) -> Map.entry(row.getString(1),
+						new Days(row.getString(2), row.getString(3))))
+				.list()
+				.forEach(one -> rows.put(one.getKey(), one.getValue()));
+
+		return rows;
 	}
 
 	private Map<String, Amounts> whatTheTableHolds() {
@@ -212,5 +283,51 @@ class ThePriceListHasOneHomeTest extends DatabaseTest {
 						+ " all and half the list is unguarded")
 				.contains("season", "junior", "referral")
 				.containsAll(insideTheArray);
+	}
+
+	/**
+	 * AND EVERY DAY OF THE YEAR IS THE SAME DAY ON BOTH SIDES (29.09.2026).
+	 *
+	 * <p><b>In both directions, which is the half that is easy to leave out.</b> A row the
+	 * table gives days must carry the same two in the portal, AND a row the table gives none
+	 * must carry none there either: the three rows without a period say so with a null on one
+	 * side and by having no {@code from} at all on the other, and those are two spellings of
+	 * the same absence. Compared one way only, a {@code from} added to the junior level
+	 * tomorrow would pass.
+	 *
+	 * <p><b>Why this matters as much as the amounts do, and it is measured rather than
+	 * argued.</b> The days decide WHAT a member is charged - {@code priceOn} walks them - so
+	 * two homes disagreeing about a boundary charge two different prices on the days between
+	 * them. When the owner moved the selling year on 29.09.2026 the fortnight in dispute would
+	 * have been 1 to 14 October, at 35 euro on one side and 40 on the other, with the right to
+	 * be ranked differing too.
+	 */
+	@Test
+	void everyDayThePortalPrintsIsTheDayTheTableSells() {
+		assertThat(whatDaysThePortalShips())
+				.as("the days frontend/src/data/pricing.ts ships - which is what priceOn walks to"
+						+ " decide what a member is charged today - are not the days price_row"
+						+ " sells between")
+				.containsExactlyInAnyOrderEntriesOf(whatDaysTheTableHolds());
+	}
+
+	/**
+	 * AND THE SWEEP FOR DAYS REACHES THE SAME ROWS THE ONE FOR AMOUNTS DOES.
+	 *
+	 * <p>Its own case for the reason the amounts side has one: the comparison above is two
+	 * readings, and a pattern that had stopped matching would make both sides shrink together.
+	 * The floor is the same and it is the TABLE'S count, never a number written here.
+	 *
+	 * <p><b>And it is asked of the second sweep separately rather than trusted to the
+	 * first</b>, although the two patterns begin alike: they are two patterns, and the day one
+	 * of them is narrowed the other would go on finding everything and say so.
+	 */
+	@Test
+	void everyRowTheTableHoldsWasFoundByTheSweepForDaysToo() {
+		assertThat(whatDaysThePortalShips().keySet())
+				.as("the rows read out of frontend/src/data/pricing.ts for their days are not the"
+						+ " rows the price list has, so the comparison above is measuring less"
+						+ " than the whole list")
+				.containsExactlyInAnyOrderElementsOf(whatDaysTheTableHolds().keySet());
 	}
 }

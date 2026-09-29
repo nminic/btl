@@ -1,6 +1,7 @@
 package com.btl.portal.domain.season;
 
 import java.time.LocalDate;
+import java.time.MonthDay;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
@@ -125,7 +126,30 @@ public final class SeasonClock {
 	}
 
 	/**
-	 * The transfer window: 1 October to 31 December, the same window membership is
+	 * The day the transfer window opens, which is the day the price list starts selling a
+	 * season that has not begun.
+	 *
+	 * <p><b>It was 1 October until 29.09.2026, when the owner moved it:</b> „Zelim da prvi
+	 * period postane 15-31. oktobar, drugi 1-30. novembar a ostalo ostaje isto. S tim na umu
+	 * zelim i da se prelazni rok i sve ostalo otvara 15.10. ubuduce, a ne 1.10." Asked
+	 * whether only the OPENING moves, he answered „Tacno", so the window still shuts at the
+	 * end of 31 December and is fourteen days shorter rather than shifted.
+	 *
+	 * <p><b>A day of the year and not a date, because it repeats.</b> Written as a date it
+	 * would be one autumn's window and the portal would quietly stop opening it on a morning
+	 * nobody was watching, which is the same reason the price list's own days are
+	 * {@code mm-dd} (owner, 30.07.2026).
+	 *
+	 * <p><b>NOT public, and that is the point of it.</b> The one other place this number
+	 * lives is {@code price_row}, where it is the first day of the selling year, and
+	 * {@code TheSellingYearAndTheTransferWindowOpenOnOneDayTest} holds the two to each other
+	 * by asking the TABLE for the day and this class for the behaviour. A second reader here
+	 * would be a third home for one boundary with nothing holding it to either.
+	 */
+	private static final MonthDay WINDOW_OPENS = MonthDay.of(10, 15);
+
+	/**
+	 * The transfer window: 15 October to 31 December, the same window membership is
 	 * renewed in.
 	 *
 	 * <p>Owner, 05.09.2026: a team is founded only inside it, and a change of team
@@ -133,11 +157,22 @@ public final class SeasonClock {
 	 * happens in one window rather than under two rules. Outside it the portal does
 	 * not draw the button at all; it says when the window opens.
 	 *
+	 * <p><b>The far end is the end of the year and is not written down here</b>, exactly as
+	 * it was not when this read {@code month >= 10}: a day of the year is never after 31
+	 * December, so „and it shuts then" is a property of the calendar rather than a second
+	 * boundary to keep right. {@code SeasonClockTest} measures both ends anyway, because the
+	 * end staying put is itself what the owner decided on 29.09.2026.
+	 *
+	 * <p><b>Read as a day and no longer as a month, and the day is why.</b> This was
+	 * {@code getMonthValue() >= 10} while the window began with October; from 15 October the
+	 * month is no longer the question, and the first fourteen days of October are now OUTSIDE
+	 * a window they used to open. That stretch is the only thing that tells the two shapes
+	 * apart, which is why the cases about it carry every file that measures this one.
+	 *
 	 * @param at the moment being asked about, in any zone: it is read in the league's
 	 */
 	public static boolean transferWindowOpen(ZonedDateTime at) {
-		int month = at.withZoneSameInstant(ZONE).getMonthValue();
-		return month >= 10;
+		return !MonthDay.from(at.withZoneSameInstant(ZONE)).isBefore(WINDOW_OPENS);
 	}
 
 	/**
@@ -155,8 +190,22 @@ public final class SeasonClock {
 	 * can begin earning it. The portal's own front end reads it exactly this way:
 	 * {@code data/season.ts} has {@code referralMayBeSet(today) = !inYearlyWindow(today)}
 	 * and builds the transfer window out of that same predicate, off one pair of constants.
-	 * A second {@code getMonthValue() >= 10} written here would be a second home for a
-	 * boundary, and the day one of them moved nothing would say which was right.
+	 * A second day of the year written here would be a second home for a boundary, and the
+	 * day one of them moved nothing would say which was right.
+	 *
+	 * <p><b>AND THAT IS NOT A CLAIM ANY MORE, IT IS A MEASUREMENT: the day moved and this
+	 * sentence did not have to.</b> The owner moved the renewal window from 1 to 15 October
+	 * on 29.09.2026. His quotation above still names 1 October and is left exactly as he said
+	 * it, because the rule in it was never „on the first" but „until renewals open" - so
+	 * delegating carried it across without anybody editing a word. Had this spelled a day of
+	 * its own, the amount would now settle a fortnight before renewals opened and the two
+	 * sentences would each look right.
+	 *
+	 * <p><b>The one thing the move DOES change here is the length, and it grows.</b> This is
+	 * the complement of the window, so a window that opens fourteen days later leaves fourteen
+	 * days MORE in which the amount may be set: 1 January to 30 September became 1 January to
+	 * 14 October. Written down because it reads like the opposite, and the journal itself
+	 * stated the direction backwards on the day of the decision.
 	 *
 	 * <p><b>Which also names what would break it, before anybody has to find it.</b> If the
 	 * two windows are ever parted - renewals opening on a day transfers do not - this stops
@@ -177,17 +226,19 @@ public final class SeasonClock {
 	 * sentence.
 	 *
 	 * <p><b>Measured on Java 21, for the only day the rule is about.</b> Belgrade is still
-	 * on summer time on 1 October - it does not leave it until the last Sunday of the month
+	 * on summer time on 15 October - it does not leave it until the last Sunday of the month
 	 * - so midnight there is at {@code +02:00}:
 	 *
 	 * <pre>
-	 * 1 Oct 2027  midnight in Belgrade = 2027-09-30T22:00:00Z   (offset +02:00, CEST)
-	 *             midnight at CET, +01:00 = 2027-09-30T23:00:00Z
+	 * 15 Oct 2027  midnight in Belgrade = 2027-10-14T22:00:00Z   (offset +02:00, CEST)
+	 *              midnight at CET, +01:00 = 2027-10-14T23:00:00Z
 	 * </pre>
 	 *
-	 * <b>One hour apart, and the same hour in 2028, 2029 and 2030.</b> It is not a rounding
-	 * difference either: in the hour between them the two answers to „may the amount still
-	 * be set" are opposite.
+	 * <b>One hour apart, and the same hour in 2028, 2029 and 2030.</b> Re-measured on the
+	 * same runtime when the day moved on 29.09.2026, rather than assumed to carry over: the
+	 * last Sunday of October falls after the fifteenth in every one of those years, so the
+	 * offset is the one above in all four. It is not a rounding difference either: in the
+	 * hour between them the two answers to „may the amount still be set" are opposite.
 	 *
 	 * <p><b>What the owner decided, once the hour was shown to him (25.09.2026, PDL P16a):
 	 * midnight in BELGRADE, as the clock on the wall there reads it, summer or winter.</b>
@@ -281,6 +332,12 @@ public final class SeasonClock {
 	 * from the next, and {@code team_membership.season_to} is „the last season he is in it"
 	 * (V11), so this is the number that goes in that column.
 	 *
+	 * <p><b>The days in that quotation are the ones he said and the window has since moved:
+	 * it is 15.10 to 31.12 from 29.09.2026.</b> His sentence is kept word for word because it
+	 * is a quotation, and what it decides - that leaving happens in the SAME window as
+	 * joining - is what carried across; the dates in it were how the window read that day.
+	 * {@link #transferWindowOpen} is the only place the days are, here as everywhere.
+	 *
 	 * <p><b>Written as {@link #transfersTakeEffect} minus one and not as the calendar year,
 	 * and that is the whole point of it.</b> Leaving and joining are two ends of one
 	 * sentence - the season a change takes effect IN, and the season it is the end OF - so
@@ -329,10 +386,10 @@ public final class SeasonClock {
 	 * shape and not of the other.
 	 *
 	 * <p><b>THIS IS NOT {@link #seasonBeingPaidFor} AND MUST NOT BE WRITTEN AS IT.</b>
-	 * That one answers what is on SALE and steps into next year on 1 October, so from
-	 * October to December it would refuse a league for the year that is still running -
-	 * and PDL P15a's fourth decision says races enter a league "i tokom godine te lige",
-	 * which is that very stretch of it. Two questions about a season are two methods
+	 * That one answers what is on SALE and steps into next year on 15 October, so from the
+	 * middle of October to December it would refuse a league for the year that is still
+	 * running - and PDL P15a's fourth decision says races enter a league "i tokom godine te
+	 * lige", which is that very stretch of it. Two questions about a season are two methods
 	 * here, which is the split {@link #transfersTakeEffect} was already made for.
 	 *
 	 * <p><b>Nothing here asks whether the season is frozen, and it does not have to.</b>

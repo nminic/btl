@@ -11,9 +11,13 @@ import {
 } from './season'
 
 describe('the yearly window', () => {
-  it('opens on the first of October and shuts with the year', () => {
+  it('opens on the fifteenth of October and shuts with the year', () => {
     expect(inYearlyWindow('2026-09-30')).toBe(false)
-    expect(inYearlyWindow('2026-10-01')).toBe(true)
+    /* THE DAY THAT CHANGED SIDES when the owner moved the window on 29.09.2026, and
+       the only assertion here a rule reading the month alone cannot pass. */
+    expect(inYearlyWindow('2026-10-01')).toBe(false)
+    expect(inYearlyWindow('2026-10-14')).toBe(false)
+    expect(inYearlyWindow('2026-10-15')).toBe(true)
     expect(inYearlyWindow('2026-12-31')).toBe(true)
     expect(inYearlyWindow('2027-01-01')).toBe(false)
   })
@@ -116,12 +120,16 @@ describe('the yearly window', () => {
        not a second date to keep right.
      *
        Written here because the rule had no test of its own: the screen that
-       obeys it was measured on 30 September and on 1 November, so the boundary
+       obeys it was measured on 30 September and on 1 November, so the boundary,
        itself, the one day the sentence is about, was never touched. And because
        the negation is what makes 1 January true again, which is a fact about the
        running season the screen has to admit to (pages/admin/AdminPricing.tsx). */
     expect(referralMayBeSet('2026-09-30')).toBe(true)
-    expect(referralMayBeSet('2026-10-01')).toBe(false)
+    /* The fortnight the period GAINED: this is the complement of the window, so a
+       window that opens later leaves more room, not less. */
+    expect(referralMayBeSet('2026-10-01')).toBe(true)
+    expect(referralMayBeSet('2026-10-14')).toBe(true)
+    expect(referralMayBeSet('2026-10-15')).toBe(false)
     expect(referralMayBeSet('2026-12-31')).toBe(false)
     expect(referralMayBeSet('2027-01-01')).toBe(true)
   })

@@ -63,12 +63,12 @@ class PriceListRowsTest extends DatabaseTest {
 	@Test
 	void thePriceListIsTheSevenRowsTheOwnerDecided() {
 		assertThat(rows()).containsExactly(
-				new Row("early", "period", "10-01", "10-05", money(35), money(4200), true),
-				new Row("regular", "period", "10-06", "11-30", money(40), money(4800), true),
+				new Row("early", "period", "10-15", "10-31", money(35), money(4200), true),
+				new Row("regular", "period", "11-01", "11-30", money(40), money(4800), true),
 				new Row("late", "period", "12-01", "12-31", money(50), money(6000), true),
 				/* The season already running buys a profile but no place in the
 				   standing, which is the one period that answers Ne. */
-				new Row("season", "period", "01-01", "09-30", money(40), money(4800), false),
+				new Row("season", "period", "01-01", "10-14", money(40), money(4800), false),
 				new Row("junior", "level", null, null, money(20), money(2400), null),
 				new Row("processing", "fee", null, null, money(3), null, null),
 				/* Two figures and not one with a conversion, as everywhere else on

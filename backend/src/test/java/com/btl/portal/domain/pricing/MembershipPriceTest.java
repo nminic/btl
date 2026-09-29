@@ -26,10 +26,10 @@ public class MembershipPriceTest {
 	   ne mogu raziti. Bez toga bi se sedam iznosa prepisivalo, a A12 to zabranjuje. */
 
 	public static final List<MembershipPrice.Row> ROWS = List.of(
-			row("early", "period", "10-01", "10-05", 35, 4200, true),
-			row("regular", "period", "10-06", "11-30", 40, 4800, true),
+			row("early", "period", "10-15", "10-31", 35, 4200, true),
+			row("regular", "period", "11-01", "11-30", 40, 4800, true),
 			row("late", "period", "12-01", "12-31", 50, 6000, true),
-			row("season", "period", "01-01", "09-30", 40, 4800, false),
+			row("season", "period", "01-01", "10-14", 40, 4800, false),
 			row("junior", "level", null, null, 20, 2400, null),
 			row("processing", "fee", null, null, 3, null, null),
 			row("referral", "referral", null, null, 5, 600, null));
