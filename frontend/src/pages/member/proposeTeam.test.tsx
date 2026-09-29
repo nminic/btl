@@ -164,7 +164,7 @@ describe('the way to propose a team', () => {
     await screen.findByRole('table', { name: 'Timovi' })
 
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
-    expect(screen.getByText(/od 1. oktobra do 31. decembra/)).toBeVisible()
+    expect(screen.getByText(/od 15. oktobra do 31. decembra/)).toBeVisible()
 
     await router.navigate('/sr/novi-tim')
 
@@ -184,7 +184,7 @@ describe('the way to propose a team', () => {
 
     await screen.findByRole('table', { name: 'Timovi' })
 
-    expect(screen.queryByText(/od 1. oktobra do 31. decembra/)).toBeNull()
+    expect(screen.queryByText(/od 15. oktobra do 31. decembra/)).toBeNull()
     expect(screen.queryByRole('link', { name: 'Predloži tim' })).toBeNull()
   })
 

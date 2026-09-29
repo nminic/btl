@@ -415,8 +415,8 @@ describe('the price list', () => {
 
     const table = await screen.findByRole('table', { name: 'Cenovnik' })
 
-    expect(within(table).getByText('1.10. - 5.10.')).toBeVisible()
-    expect(within(table).getByText('1.1. - 30.9.')).toBeVisible()
+    expect(within(table).getByText('15.10. - 31.10.')).toBeVisible()
+    expect(within(table).getByText('1.1. - 14.10.')).toBeVisible()
     // The junior price is the one row with no period at all.
     expect(within(table).getByText('Svaka uplata')).toBeVisible()
     // The in-season price buys a profile but no place in the standing.
@@ -564,7 +564,7 @@ describe('the price list', () => {
     /* Said in full, so the second half of the sentence is held too: read from the
        dictionary on both sides, a test tells you the same string equals itself
        and a wrong date inside it passes. */
-    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 1\. oktobra/)
+    expect(open).toHaveAccessibleDescription(/Obnova te sezone je otvorena od 15\. oktobra/)
 
     await user.click(open)
 
@@ -637,7 +637,7 @@ describe('the price list', () => {
        was settled by 1 October 2027. */
     expect(open).toHaveAccessibleDescription(runningSeasonSentence())
     expect(open).toHaveAccessibleDescription(/Sezona 2028 je već u toku/)
-    expect(open).toHaveAccessibleDescription(/zaključan 1\. oktobra prethodne godine, a ovaj upis ga ipak menja/)
+    expect(open).toHaveAccessibleDescription(/zaključan 15\. oktobra prethodne godine, a ovaj upis ga ipak menja/)
   })
 
   it('has one live region on the price list, not two', async () => {
@@ -753,9 +753,9 @@ describe('the price list', () => {
       expect(sent.path).toBe('/api/pricing/early')
       /* THE NAME TRAVELS TOO, SINCE V34, read back off the form exactly as `EntityEditor`
          pre-filled it from the row being changed: this case only clears and retypes the
-         euro field, so the name on the wire is the row's own, „1. do 5. oktobra". */
+         euro field, so the name on the wire is the row's own, „15. do 31. oktobra". */
       expect(JSON.parse(String(sent.init?.body))).toEqual({
-        label: '1. do 5. oktobra',
+        label: '15. do 31. oktobra',
         eur: 33,
         rsd: 4200,
       })
@@ -777,7 +777,7 @@ describe('the price list', () => {
     renderAt('/sr/administracija/cenovnik', 'superadmin')
 
     await screen.findByRole('table', { name: 'Cenovnik' })
-    await user.click(screen.getByRole('button', { name: 'Otvori: 1. do 5. oktobra' }))
+    await user.click(screen.getByRole('button', { name: 'Otvori: 15. do 31. oktobra' }))
 
     const eur = screen.getByLabelText(/Iznos u evrima/)
 
@@ -801,7 +801,7 @@ describe('the price list', () => {
       renderAt('/sr/administracija/cenovnik', 'superadmin')
 
       await screen.findByRole('table', { name: 'Cenovnik' })
-      await user.click(screen.getByRole('button', { name: 'Otvori: 1. do 5. oktobra' }))
+      await user.click(screen.getByRole('button', { name: 'Otvori: 15. do 31. oktobra' }))
 
     /* Three fields and no more. The window is the year itself and is not
        something an administrator types (owner, 30.07.2026); it used to ask for a
@@ -826,7 +826,7 @@ describe('the price list', () => {
       const table = within(await screen.findByRole('table', { name: 'Cenovnik' }))
       expect(table.getByText('33')).toBeVisible()
       // And the period it belongs to is where it was.
-      expect(table.getByText('1.10. - 5.10.')).toBeVisible()
+      expect(table.getByText('15.10. - 31.10.')).toBeVisible()
     } finally {
       stop()
     }
@@ -877,7 +877,7 @@ describe('the price list', () => {
       await user.type(eur, '7')
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(/od 1. oktobra utvrđen/)
+      expect(await screen.findByRole('alert')).toHaveTextContent(/od 15. oktobra utvrđen/)
     } finally {
       stop()
     }

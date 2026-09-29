@@ -475,7 +475,7 @@ describe('a team its administrator takes down', () => {
         const said = await screen.findByRole('alert')
 
         expect(said).toHaveTextContent(
-          'Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. '
+          'Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. '
             + 'Tim se do tada ne briše, ni iz administracije.',
         )
 

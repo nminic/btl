@@ -258,7 +258,7 @@ describe('a team taken away from the administration', () => {
       const said = await within(row).findByRole('alert')
 
       expect(said).toHaveTextContent(
-        'Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. '
+        'Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. '
           + 'Tim se do tada ne briše, ni iz administracije.',
       )
 

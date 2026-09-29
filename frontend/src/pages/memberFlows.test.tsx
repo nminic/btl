@@ -606,13 +606,17 @@ describe('membership', () => {
   })
 
   it('quotes a different PayPal amount as the selling period changes, fee included', async () => {
-    /* THE OTHER AXIS OF THE SAME AMOUNT: the period, not the country. Read on 1
-       October rather than 1 November, this is the early period (1-5 October, 35
+    /* THE OTHER AXIS OF THE SAME AMOUNT: the period, not the country. Read on 20
+       October rather than 1 November, this is the early period (15-31 October, 35
        EUR) and not the regular one (40 EUR), so the fee-inclusive total is 38 - the
        owner's own example for this exact decision ("prva cena recimo 38 eur 1.
        oktobra"). Held beside the 43 on 1 November (the case above), a screen that
-       had hard-coded either figure would fail one of the two. */
-    renderMembershipOn('2026-10-01', '000010')
+       had hard-coded either figure would fail one of the two.
+
+       The day was 1 October until 29.09.2026, when the owner moved the early period
+       to the fifteenth; his example above still names the first, because what it is
+       an example of is the AMOUNT and not the day. */
+    renderMembershipOn('2026-10-20', '000010')
 
     expect(await screen.findByRole('heading', { level: 4, name: 'PayPal' })).toBeVisible()
     expect(screen.getByText('38,00')).toBeVisible()
@@ -942,7 +946,7 @@ describe('membership', () => {
     /* It used to run out at the end of 2027, and this screen carried a line
        saying membership was not on sale yet for the day it did. The four
        periods repeat now (owner, 30.07.2026), so that day never comes. */
-    renderMembershipOn('2031-10-01')
+    renderMembershipOn('2031-10-20')
 
     expect(await screen.findByRole('heading', { name: 'Uplatnica' })).toBeVisible()
     expect(screen.getAllByText(/35 EUR, a iz Srbije 4\.200 RSD/).length).toBeGreaterThan(0)
@@ -1209,10 +1213,10 @@ describe('membership', () => {
 
       expect(early.rsd, 'the bundled figure has to differ, or this measures nothing').not.toBe(5280)
 
-      /* Early October, inside the first band, so `early` is the period in force and the
-         renewal window is open. 000032 pays and lives in Serbia, which is what it takes to
-         be shown a slip at all. */
-      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-10-03')
+      /* The second half of October, inside the first band, so `early` is the period in
+         force and the renewal window is open (both moved to the fifteenth on 29.09.2026).
+         000032 pays and lives in Serbia, which is what it takes to be shown a slip at all. */
+      renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2027-10-20')
 
       const code = await screen.findByRole('img', { name: /QR/ })
       const payload = readQr(code)
@@ -1498,7 +1502,7 @@ describe('membership', () => {
 
         /* The renewal's own sentence for a shut window, asserted first: without it the case
            could pass on a day the window is in fact open and say nothing at all. */
-        expect(await screen.findByText(/Obnova se otvara 1. oktobra/)).toBeVisible()
+        expect(await screen.findByText(/Obnova se otvara 15. oktobra/)).toBeVisible()
 
         expect(
           await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' }),
@@ -2441,7 +2445,7 @@ describe('the transfer window and renewal', () => {
   it('shuts both outside the window, and says when they open', async () => {
     renderMembership('2026-07-29')
 
-    expect(await screen.findByText(/Obnova se otvara 1. oktobra/)).toBeVisible()
+    expect(await screen.findByText(/Obnova se otvara 15. oktobra/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je zatvoren/)).toBeVisible()
     expect(
       screen.queryByText(/Prelazak u drugi tim se dogovara van portala/),
@@ -2493,7 +2497,7 @@ describe('screens that depend on the date', () => {
        The dinar amount is written the way every amount on the portal is
        written, with the thousands separated: it was the one number on the
        screen printed as a bare 4200. */
-    renderMembershipOn('2026-10-02', '000032')
+    renderMembershipOn('2026-10-20', '000032')
 
     expect(await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.')).toBeVisible()
     /* And the junior price the same way. It was quoted in euro alone, one line
@@ -2522,20 +2526,20 @@ describe('screens that depend on the date', () => {
     renderAt('/sr/moja-clanarina', 'competitor', '000032', undefined, '2026-09-20')
 
     expect(
-      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 1. oktobra.'),
+      await screen.findByText('Članarina se još ne prodaje. Naplata kreće 15. oktobra.'),
     ).toBeVisible()
 
     /* Day first, because the switch is the portal's own date control since
        11.08.2026 and not the browser's. */
     fireEvent.change(screen.getByLabelText('Današnji datum'), {
-      target: { value: '02/10/2026' },
+      target: { value: '20/10/2026' },
     })
 
     expect(
       await screen.findByText('Danas članarina košta 35 EUR, a iz Srbije 4.200 RSD.'),
     ).toBeVisible()
     expect(
-      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 1. oktobra.'),
+      screen.queryByText('Članarina se još ne prodaje. Naplata kreće 15. oktobra.'),
     ).not.toBeInTheDocument()
   }, SEVERAL_SCREENS)
 })

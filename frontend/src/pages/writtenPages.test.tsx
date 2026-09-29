@@ -267,7 +267,7 @@ describe('the written pages', () => {
 describe('the fee schedule in the rulebook', () => {
   /* Each claim is pinned to the paragraph that has to carry it. Pinning them to
    * the section instead lets one paragraph satisfy an assertion about another:
-   * the row "1. do 5. oktobra" alone was enough to hide a deleted reminder. */
+   * the row "15. do 31. oktobra" alone was enough to hide a deleted reminder. */
   /** The price table, one string per row of cells. The rulebook draws it through
    *  `src/components/PriceTable.tsx` rather than writing it as Markdown, so this reads
    *  the rows a screen reader would. The header row has no cells, only column headers, so
