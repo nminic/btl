@@ -116,7 +116,7 @@ class RaceDoneTest {
 	 * is far from nought, so a version refusing anything below one kilometre, or
 	 * under a second, passed them all. A hundredth of a kilometre is a length
 	 * `result.distance_km` can hold and a second is the smallest `result.seconds`
-	 * can hold at all. <b>It is no longer the SMALLEST length:</b> V45 widened that
+	 * can hold at all. <b>It is no longer the SMALLEST length:</b> V47 widened that
 	 * column to numeric(8,4) in the commit that first lets an approval write a
 	 * result, so a ten-thousandth now fits. The value here is left where it is - what
 	 * this case is about is that a race far below anything the other cases use is

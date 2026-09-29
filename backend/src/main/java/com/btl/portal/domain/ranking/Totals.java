@@ -29,13 +29,13 @@ import java.util.Objects;
  * are both fine on either.
  *
  * <p><b>Distance carries FOUR decimals and points carry TWO, and that split is
- * the schema's rather than this class's.</b> Until V45 both were two, and the
+ * the schema's rather than this class's.</b> Until V47 both were two, and the
  * reason written here was {@code result.distance_km numeric(6,2)}. The owner
  * decided on 19.09.2026 that a race is measured exactly - „Hocu da mogu da
  * unosim tacnu duzinu, ali se prikazuje zaokruzeno" - and the schema moved under
  * that decision in three steps: V25 widened {@code race.distance_km} to
  * {@code numeric(8,4)}, V32 widened {@code result_submission.distance_km} to
- * match, and V45 widened {@code result.distance_km} in the commit that first
+ * match, and V47 widened {@code result.distance_km} in the commit that first
  * lets an approval write one. So a season that adds up the kilometres of a
  * 42,195 km race reaches this class with four decimals, and a guard still
  * demanding two would refuse the one number the portal now takes trouble to keep
@@ -54,7 +54,7 @@ import java.util.Objects;
  */
 public record Totals(int races, BigDecimal kilometers, int ascent, int descent, long seconds, BigDecimal points) {
 
-	/** What {@code result.distance_km} stores, since V45 and V25 before it. */
+	/** What {@code result.distance_km} stores, since V47 and V25 before it. */
 	static final int DISTANCE_DECIMALS = 4;
 
 	/** What {@code result.points} stores and what the calculator hands back. */
