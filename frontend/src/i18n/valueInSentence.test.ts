@@ -356,7 +356,9 @@ describe('a sentence with a value put into it', () => {
       'myResults.changeNamed',
       'myResults.sendAgainNamed',
       'newResult.again',
-      'newResult.donePoints <- formatPoints',
+      /* `newResult.donePoints` stood here until 28.09.2026, when the confirmation of a
+         result stopped printing what the run was worth (owner: „Ne vidim razlog da se
+         ispisuju bilo kome prilikom unosa parametara prijave rezultata"). */
       'pager.page <- formatNumber',
       'pager.showing <- formatNumber',
       /* The racing pair, which the owner asked for on 07.09.2026: who is asking and for which

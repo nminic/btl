@@ -197,10 +197,15 @@ export type ACorrection = Figures & Proof
  * A BOUNDARY, WRITTEN DOWN RATHER THAN LEFT TO BE FOUND: THE POINTS ARE WORKED OUT TWICE,
  * AND ON ONE ROAD THE TWO ANSWERS CAN DIFFER.
  *
- * <p>The screen works them out to say what the run earned the moment it is sent, which PDL
- * P9 asks for („Član odmah po unosu vidi koliko je bodova dobio"), and the server works them
- * out again because they are never accepted from a request. The two agree everywhere but one
- * place.
+ * <p>The screen works them out for the row it goes on drawing until a moderator decides, and
+ * the server works them out again because they are never accepted from a request. The two
+ * agree everywhere but one place.
+ *
+ * <p><b>Nothing announces them to the member any more.</b> PDL P9 asked the screen to say
+ * what the run earned the moment it was sent („Član odmah po unosu vidi koliko je bodova
+ * dobio", narrowed 18.09.2026 to the points alone); the owner ended it on 28.09.2026:
+ * „bodovi ni na dužinskoj ni na vremenskoj trci ne ulaze u obračun pre verifikacije. Ne
+ * vidim razlog da se ispisuju bilo kome prilikom unosa parametara prijave rezultata."
  *
  * <p><b>Where they can differ.</b> `ResultWriteApi.figuresOf` takes the time off the RACE for
  * a race run to a limit („jer je zadato trkom", owner 29.08.2026), and the length, climb and
@@ -212,10 +217,11 @@ export type ACorrection = Figures & Proof
  * race may type a time the server will then ignore.
  *
  * <p><b>What that costs, as arithmetic rather than a worry.</b> On a six hour limit over 50 km
- * with 1000 up and 1000 down, a member who types five hours is shown 41,19 while the server
- * stores 27,90: the screen is 48 per cent high. What keeps it from being worse is that the
- * screen already says the number is not the last word on every one of these roads
- * (`newResult.pointsNotFinal`, PDL 30.08.2026 point 8), so nobody is shown a settled figure.
+ * with 1000 up and 1000 down, a member who types five hours works out to 41,19 while the
+ * server stores 27,90: the browser is 48 per cent high. <b>That arithmetic is the reason the
+ * number left the screen</b> - it is the measurement the owner was shown on 28.09.2026 before
+ * he answered - so the difference now lives only in the row the browser draws for itself and
+ * in the moderator's queue, never in a sentence a member is told.
  *
  * <p><b>Why this increment does not close it.</b> Which of the two answers a member should be
  * shown BEFORE verification is a decision nobody has made, and this increment carries none.

@@ -31,7 +31,6 @@ function Sent() {
 
 import { loadResource } from '../../data/client'
 import { btlPoints } from '../../data/scoring'
-import { formatPoints } from '../../i18n/format'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, must } from '../../test/at'
 import { formatDistance, formatNumber, formatShortDate, formatYear } from '../../i18n/format'
@@ -237,7 +236,7 @@ describe('a result reported this way', () => {
   /** What `fillIn` types, in seconds. */
   const TYPED_SECONDS = 3 * 3600 + 41 * 60 + 12
 
-  it('says how many points it earned, and sends the moderator the same figures', async () => {
+  it('feeds the formula the race’s own figures, and sends the moderator all six', async () => {
     /* Not the event the rest of this file uses: its races carry no climb and no
        fall, so a screen that read one of them for the other, or read neither and
        wrote nought, would have been measured as right. 195 of the file's 1612 races
@@ -257,20 +256,23 @@ describe('a result reported this way', () => {
     await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    /* The one thing the member came to find out (PDL P9), and the number and not
-       only the words. A race of a length answers for how far it is, so the formula
-       is fed the race's own figures and the time the member typed; measured here
-       because that is the half no case held, and every race in the file is one of
-       these. A round on 30.08.2026 measured it: with the length taken off the
-       member's own boxes instead, which a race of a length does not draw, the
-       formula was handed nothing at all and the member was told nought points,
-       on 1612 races out of 1612, and the whole package stayed green. */
+    /* A race of a length answers for how far it is, so the formula is fed the race's
+       own figures and the time the member typed. A round on 30.08.2026 measured what
+       the other reading costs: with the length taken off the member's own boxes
+       instead, which a race of a length does not draw, the formula was handed nothing
+       at all and the run was worth nought, on 1612 races out of 1612, and the whole
+       package stayed green.
+
+       **Read off what was sent and not off the screen, since 28.09.2026.** The
+       confirmation said the number until that day and this case read it there; the
+       owner took it off („Ne vidim razlog da se ispisuju bilo kome prilikom unosa
+       parametara prijave rezultata"), and the row the browser goes on drawing is the
+       only place the figure survives. So the whole of the measurement moved into the
+       record below, and the screen is asked the opposite question. */
     const earned = btlPoints(mine.distanceKm, mine.ascentM, mine.descentM, TYPED_SECONDS)
 
     expect(earned, 'the formula gave nothing, so the case would pass on anything').not.toBeNull()
-    expect(screen.getByText(/BTL poena/).textContent).toContain(
-      formatPoints(earned ?? 0, 'sr-Latn'),
-    )
+    expect(screen.queryByText(/BTL poena/)).toBeNull()
     expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
 
     /* And the record that was sent, which is the half the member never sees: what
@@ -963,11 +965,21 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     expect(stored[0]?.textContent).not.toContain(event.date)
   })
 
-  it('says the count is not final, where it says the count', async () => {
-    /* Both roads that announce a number say it, and only one of them was held: the
-       line was removed from this screen and the whole suite stayed green (review,
-       31.08.2026). Verification settles the kind and the time, so what is
-       announced here may be counted as something else (PDL, 30.08.2026, point 8). */
+  it('says what happens next and never what the run is worth', async () => {
+    /* Owner, 28.09.2026, asked about the timed race alone and answering over both
+       kinds: „bodovi ni na dužinskoj ni na vremenskoj trci ne ulaze u obračun pre
+       verifikacije. Ne vidim razlog da se ispisuju bilo kome prilikom unosa parametara
+       prijave rezultata. Ako ga zanima koliko će bodova dobiti, neka se igra
+       kalkulatorom na naslovnoj strani portala."
+
+       Until then this screen said the number and then took it back in the next breath,
+       „Račun nije konačan". Both halves are asked for here, because removing only the
+       first would leave a caveat about a number nobody is shown, and removing only the
+       second would leave the number the owner objected to.
+
+       Named sentences and not a sweep: the sweep over both roads is
+       `member/pointsWhileEntering.test.ts`, which asks the dictionary which sentences
+       carry the figure at all rather than taking two of them on trust. */
     const { races } = await racesOf(EVENT)
     const user = setupUser()
 
@@ -979,8 +991,13 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(await screen.findByText(/BTL poena/)).toBeVisible()
-    expect(screen.getByText(/Račun nije konačan/)).toBeVisible()
+    /* The confirmation really is on screen, so what follows is asked of a screen that
+       has something on it: without this the two lines below pass over a form that has
+       not moved at all. */
+    expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+    expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+    expect(screen.queryByText(/BTL poena/)).toBeNull()
+    expect(screen.queryByText(/Račun nije konačan/)).toBeNull()
   })
 
   it('refuses a result run in no time at all', async () => {
