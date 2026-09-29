@@ -61,6 +61,45 @@ works and still touches nothing else:
 docker compose -f compose.prod.yml up -d --build frontend
 ```
 
+### The first raise is not like the ones after it
+
+**The database starts empty, and every migration applied is still an empty
+portal.** Flyway builds the schema at backend startup and the seed migrations
+fill the place and the price tables, but **nothing seeds events, races or
+results**. Measured on the QA database on 29.09.2026, which is where the rows
+actually are: `btl_event` 321 rows (49 of them in 2027), `race` 467, `result`
+274, `competitor` 1, `league` 1, `league_race` 4, and `team`,
+`season_competitor`, `result_submission` and `event_comment` empty. A production
+database that has had all of the migrations and nothing else carries **none of
+that**.
+
+**Where the rows come from is an owner decision of 29.09.2026** (PDL, "Podaci sa
+QA se prenose na produkciju"): the data is taken from QA. There are no test rows
+there to leave behind - the owner's words were "Nema, sve je pravo" - so the
+whole dump goes, with no exclusions.
+
+**The shape of it, from that same decision:** a dump of the **data only**,
+**without `flyway_schema_history`**, poured into the production database
+**after** its own migrations have run. Production keeps its own migration
+history; QA's rows in that table would hand production checksums for files it
+never applied itself.
+
+**And the moment is half the decision** (PDL, 29.09.2026, "Otisak podataka se
+uzima NA KRAJU, ne unapred"). The owner's words: "Ne zaboravi da cu dodati jos
+pravih podataka u QA bazu koji ce trebati da se prebace i u produkciju." So this
+is **not** a step prepared in advance and executed when its turn comes. The dump
+is taken at the **last moment**, after the owner's testing and after everything
+he adds during it.
+
+**Still open, and written down rather than assumed:** whether the transfer is
+one-off or has to be repeatable. If the owner keeps adding to QA after the first
+raise, the tool has to be safe to run again **without doubling rows**, which is a
+materially different job from a single pour. Nothing here decides it.
+
+The transfer runs **database to database**. It is not a migration and it never
+passes through this repository: those rows carry personal data, and the repo is
+public. Writing the tool is a separate piece of work and is not in this file.
+
 ### Never run `docker compose down` on this project
 
 It was already the rule before there was a database. The database adds a second
