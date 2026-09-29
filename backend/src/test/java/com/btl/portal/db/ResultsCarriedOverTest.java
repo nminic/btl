@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * WHAT V45 DOES TO THE RESULTS THAT ARE ALREADY THERE, run against a real database.
+ * WHAT V47 DOES TO THE RESULTS THAT ARE ALREADY THERE, run against a real database.
  *
  * <p><b>Why this exists, and it is a rule paid for on a live server.</b> Every test in this
  * suite starts from an EMPTY database and writes its own rows, and it writes them after the
@@ -102,7 +102,7 @@ class ResultsCarriedOverTest extends DatabaseTest {
 	 * WITH ITS CATEGORY INTACT.
 	 *
 	 * <p>That the rows are still there at all is the floor under the fixture and not a
-	 * formality: if narrowing the column back had left something of V45 standing, the rows
+	 * formality: if narrowing the column back had left something of V47 standing, the rows
 	 * written against the old shape would not have gone in, and this case would fail in
 	 * {@code @BeforeEach} rather than here.
 	 *
@@ -117,7 +117,7 @@ class ResultsCarriedOverTest extends DatabaseTest {
 		assertThat(howManyResults()).as("the fixture wrote nothing, so this measures nothing")
 				.isEqualTo(3);
 
-		jdbc.execute(migrationSql("45"));
+		jdbc.execute(migrationSql("47"));
 
 		assertThat(howManyResults()).isEqualTo(3);
 
@@ -141,7 +141,7 @@ class ResultsCarriedOverTest extends DatabaseTest {
 	 */
 	@Test
 	void andAfterwardsTheColumnKeepsAnExactMarathon() {
-		jdbc.execute(migrationSql("45"));
+		jdbc.execute(migrationSql("47"));
 
 		oldRace("Tacan maraton", "42.1950");
 		oldResult("Tacan maraton", "42.1950", 14400, "26.50");
@@ -166,7 +166,7 @@ class ResultsCarriedOverTest extends DatabaseTest {
 	 * <p>The expression is asked of the catalogue and handed straight back, so this fixture
 	 * carries no copy of PDL P5's literals. The order is forced by PostgreSQL rather than
 	 * chosen: a stored generated column cannot stand over a column whose type is being
-	 * altered, which is the same refusal V25 recorded for {@code race} and V45 for this table.
+	 * altered, which is the same refusal V25 recorded for {@code race} and V47 for this table.
 	 */
 	private void theColumnAsV7ShippedIt() {
 		String asItIsNow = db.sql("select generation_expression from information_schema.columns"

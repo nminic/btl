@@ -169,21 +169,6 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   neither repin is a rewrite of a migration anyone has run, the same condition V41's
 			   and V43's repin notes above check. */
 			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", 373307075),
-			/* PINNED LAST, when the file was final. V45's header quotes V25 and V32 at length
-			   and both quotations were settled before this number was taken: a commit that
-			   afterwards corrects one sentence of that prose changes the bytes, and the gate
-			   then fails on a checksum that was right when it was written.
-
-			   RENUMBERED 44 -> 45 on 29.09.2026, before this migration merged: main took 44 for
-			   V44__the_picture_leaves_what_you_enter_at_joining.sql (PR 434) while this branch
-			   was in review, and two files at one version is a refusal to start. The checksum is
-			   unchanged by that - the file is byte-identical (git reports a 100% rename) and
-			   Flyway computes the checksum over the content and not the name - so what a
-			   renumbering moves, and what this row therefore pins, is the version and the
-			   script name. The migration had not merged at either point (checked with
-			   `git merge-base --is-ancestor`, not assumed), so this is not a rewrite of a
-			   migration anyone has run (ADL A2). */
-			new Applied("45", "V45__a_moderator_decides_a_result.sql", 1500230178),
 			/* V46, not V45: V44 is taken on main by the migration above, and V45 by the results
 			   queue on branch b177, which renumbered onto it from V44 for the same reason. Checked
 			   with `git ls-tree origin/main` and across every ref rather than taking "the first
@@ -193,8 +178,44 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   happened twice before this number settled, both times before merge and neither a
 			   rewrite of anything anyone has run: first when Article 9 was added to this same
 			   migration (owner, 29.09.2026), and then when the owner sent his final wording of
-			   Article 56 and the explanatory paragraph I had opened it with came out. */
-			new Applied("46", "V46__the_rulebook_stops_claiming_a_penalty_that_is_gone.sql", 426098328));
+			   Article 56 and the explanatory paragraph I had opened it with came out.
+
+			   [THE SENTENCE ABOUT V45 ABOVE STOPPED BEING TRUE ON 29.09.2026, and it is corrected
+			   here rather than deleted because the reasoning it records is still why this file is
+			   46.] 45 is now a number nothing uses: the results queue moved off it to 47, because
+			   THIS migration reached the QA database first and Flyway does not take a lower
+			   version afterwards. What has not changed is that 46 was the right number to take
+			   when it was taken, and 46 is applied now, so it is the one number here that may
+			   not move. */
+			new Applied("46", "V46__the_rulebook_stops_claiming_a_penalty_that_is_gone.sql", 426098328),
+			/* PINNED LAST, when the file was final. This migration's header quotes V25 and V32 at
+			   length and both quotations were settled before this number was taken: a commit that
+			   afterwards corrects one sentence of that prose changes the bytes, and the gate then
+			   fails on a checksum that was right when it was written.
+
+			   RENUMBERED TWICE, and the second time is the one that explains why this row sits
+			   BELOW 46 in a list that has to stay in version order:
+
+			   44 -> 45, on 29.09.2026, before this migration merged: main took 44 for
+			   V44__the_picture_leaves_what_you_enter_at_joining.sql (PR 434) while this branch was
+			   in review, and two files at one version is a refusal to start.
+
+			   45 -> 47, on 29.09.2026, AFTER this migration had merged to main. V46 merged after
+			   it and reached the QA database BEFORE it, so Flyway - which does not allow an
+			   out-of-order arrival by default - refused to start with 46 recorded and 45 only
+			   resolved on disk: "Detected resolved migration not applied to database: 45". The
+			   backend sat in a restart loop. The condition that makes this legal is not that the
+			   file had not merged, because it had; it is that the file was applied NOWHERE. That
+			   was measured, not assumed: QA's history runs 43, 44, 46 with no 45, and production
+			   has no backend yet. So this is not a rewrite of a migration anyone has run (ADL A2),
+			   and a later migration could not have repaired it either - Flyway fails validation
+			   before it runs anything, so it never reaches one.
+
+			   Renumbering on its own moves no content, so it would have left this number alone.
+			   What moved it is the paragraph recording all of the above, which this commit wrote
+			   into the migration's header; the number below was read from the gate afterwards
+			   rather than carried over. */
+			new Applied("47", "V47__a_moderator_decides_a_result.sql", 1500230178));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
