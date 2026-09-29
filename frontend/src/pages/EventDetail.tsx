@@ -419,13 +419,16 @@ export function EventDetail() {
                   owner's word: the way back to the calendar, because the browser
                   already has one; the line reading the date, the city and the
                   status; and the organiser. What is left is the name of the
-                  event and the two things a reader can do about it.
+                  event and what a reader can do about it (event/EventActions.tsx).
 
                   The buttons wait for the races and the results, and this is not
                   impatience: they act on both. Deleting takes them with it and
                   copying carries them across, and drawn against what had not
                   loaded yet the question said "and 0 of its races", the deletion
-                  left every race behind and the copy came across empty. */}
+                  left every race behind and the copy came across empty. The way
+                  to the form that changes the event acts on neither and waits with
+                  them all the same, so the row is drawn once and not grown by a
+                  control that arrives after the others. */}
               <header className="profile__head rankings--tooled">
                 <h1>{event.name}</h1>
                 {/* What everybody thought of this race, in one place and only

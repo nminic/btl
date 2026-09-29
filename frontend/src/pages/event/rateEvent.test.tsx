@@ -1332,7 +1332,7 @@ describe('what an event nobody has run yet offers', () => {
   it('offers neither to an administrator who is not a member', async () => {
     renderAt(`/sr/kalendar/${EVENT}`, 'superadmin')
 
-    /* The row is there: an administrator has the two buttons that edit an
+    /* The row is there: an administrator has the three buttons that change an
        event, so this is not the empty row a visitor gets. */
     expect(await screen.findByRole('button', { name: 'Kopiranje' })).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Dodaj komentar' })).toBeNull()
