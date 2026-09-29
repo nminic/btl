@@ -62,7 +62,7 @@ class MyMembershipWriteApiTest {
 
 	private static final String NOTHING_IS_THERE = "/api/zzzzzzzzzz";
 
-	private static final Instant NOW = Instant.parse("2027-10-03T09:00:00Z");
+	private static final Instant NOW = Instant.parse("2027-10-20T09:00:00Z");
 
 	private static final int THE_SEASON_ON_SALE = 2028;
 

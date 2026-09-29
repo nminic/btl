@@ -219,7 +219,14 @@ class RulebookPenaltyIsGoneTest extends DatabaseTest {
 
 		assertThat(body)
 				.as("Article 56 no longer says leaving happens in the same window joining does")
-				.contains("Iz tima se izlazi u istom prozoru u kom se i ulazi, od 1. oktobra do 31. decembra.");
+				/* THE DAY IS DELIBERATELY NOT IN THIS PHRASE ANY MORE (29.09.2026). What this case
+				   is about is that leaving happens in the SAME window joining does, which is what
+				   replaced the abolished penalty; WHICH day that window opens on is a different
+				   fact, it moved from the first of October to the fifteenth, and it has a guard of
+				   its own with a floor under it (TheWrittenPagesOpenOnTheFifteenthTest, which reads
+				   the day out of price_row rather than naming it). Left in, this would have been a
+				   second home for that day inside a case about something else. */
+				.contains("Iz tima se izlazi u istom prozoru u kom se i ulazi");
 		assertThat(body)
 				.as("Article 56 no longer says that leaving costs nothing")
 				.contains("Izlazak je jedan i ne nosi nikakvu kaznu");

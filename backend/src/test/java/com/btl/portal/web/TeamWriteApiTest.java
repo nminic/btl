@@ -121,7 +121,7 @@ class TeamWriteApiTest {
 	}
 
 	/** 11:00 in Belgrade on 3 October 2027, well inside the transfer window. */
-	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-10-03T09:00:00Z");
+	private static final Instant INSIDE_THE_WINDOW = Instant.parse("2027-10-20T09:00:00Z");
 
 	/** Written first, has no team, and never asks for anything. */
 	private static final String FIRST_WRITTEN = "000100";
@@ -1313,8 +1313,8 @@ class TeamWriteApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-10-03T09:00:00Z, 2027, the season the membership also began in",
-			"2028-10-03T09:00:00Z, 2028, a season that is not the one it began in"})
+			"2027-10-20T09:00:00Z, 2027, the season the membership also began in",
+			"2028-10-20T09:00:00Z, 2028, a season that is not the one it began in"})
 	void aMembershipThatHasBegunIsEndedWithThisSeasonAndNotRemoved(String moment, int seasonTo,
 			String what) throws Exception {
 
@@ -1761,7 +1761,7 @@ class TeamWriteApiTest {
 			"2027-12-31T23:00:00Z, 000500, 409, a begun membership, 1 January opening",
 			"2027-09-30T21:59:00Z, 000200, 409, a membership NOT begun, September",
 			"2027-06-15T10:00:00Z, 000200, 409, a membership NOT begun, the middle of June",
-			"2027-10-03T09:00:00Z, 000200, 204, a membership NOT begun, inside the window"})
+			"2027-10-20T09:00:00Z, 000200, 204, a membership NOT begun, inside the window"})
 	void aMemberLeavesHisTeamOnlyInsideTheTransferWindow(String moment, String who, int expected,
 			String what) throws Exception {
 
@@ -1822,7 +1822,7 @@ class TeamWriteApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({
-			"2027-10-03T09:00:00Z, inside the transfer window",
+			"2027-10-20T09:00:00Z, inside the transfer window",
 			"2027-06-15T10:00:00Z, the middle of June, with the window shut"})
 	void aTeamHeIsNotInAnswersWhatAnAddressThatIsNotThereAnswers(String moment, String what)
 			throws Exception {

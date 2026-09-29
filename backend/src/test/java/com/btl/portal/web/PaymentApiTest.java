@@ -55,7 +55,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class PaymentApiTest {
 
 	/** 11:00 in Belgrade on 3 October, inside V4's `early` period (01 to 05 October). */
-	private static final Instant NOW = Instant.parse("2027-10-03T09:00:00Z");
+	private static final Instant NOW = Instant.parse("2027-10-20T09:00:00Z");
 
 	private static final String MODERATOR = "blagajnik@primer.rs";
 

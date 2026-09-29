@@ -44,17 +44,27 @@ public class MembershipPriceTest {
 	 * Every boundary of every period, from both sides.
 	 *
 	 * <p>Four periods make four boundaries once the year wraps, and each is given the
-	 * last day that belongs to one period and the first that belongs to the next. The
-	 * five-day early window is the one worth looking at twice: it is the owner's own
-	 * decision to bring the thirty-five euro price back, and it is five days wide.
+	 * last day that belongs to one period and the first that belongs to the next.
+	 *
+	 * <p><b>The early window is the one worth looking at twice.</b> It is the owner's own
+	 * decision to bring the thirty-five euro price back, and since 29.09.2026 it runs from
+	 * 15 to 31 October rather than for the first five days of the month - seventeen days
+	 * instead of five, which he was asked about before anything moved: „Jeste, OK je".
+	 *
+	 * <p><b>1 October is here although it is no boundary at all, and that is why.</b> It was
+	 * the first day of the early window and is now an ordinary day in the middle of the
+	 * running season's period, so it is the one day that tells the new list from the old -
+	 * every other row below reads the same under either.
 	 */
 	@ParameterizedTest
 	@CsvSource({
 			"01-01, season",   // the year opens in the late window's aftermath
-			"09-30, season",   // and that period runs to the last day of September
-			"10-01, early",    // the five days open
-			"10-05, early",    // and close
-			"10-06, regular",
+			"09-30, season",
+			"10-01, season",   // no longer the early window, and nothing else says so
+			"10-14, season",   // and that period now runs to the middle of October
+			"10-15, early",    // the seventeen days open
+			"10-31, early",    // and close with the month
+			"11-01, regular",
 			"11-30, regular",
 			"12-01, late",
 			"12-31, late"      // the year ends here
@@ -66,9 +76,9 @@ public class MembershipPriceTest {
 	/** What a member pays in each period, in both currencies. */
 	@Test
 	void thePriceIsThePriceOfTheDay() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("35");
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.RSD).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.RSD).amount())
 				.isEqualByComparingTo("4200");
 		assertThat(MembershipPrice.on(ROWS, monthDay("12-15"), 1990, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("50");
@@ -84,13 +94,13 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theFeeIsOnEuroPaymentsAndNeverOnDinarOnes() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.EUR).fee())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.EUR).fee())
 				.isEqualByComparingTo("3");
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.RSD).fee())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.RSD).fee())
 				.as("a dinar payment was charged a fee that covers an intermediary it does not use")
 				.isEqualByComparingTo("0");
 
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 1990, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 1990, 2027, Currency.EUR).amount())
 				.as("the fee was added into the membership instead of standing beside it")
 				.isEqualByComparingTo("35");
 	}
@@ -104,7 +114,7 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void theJuniorPriceIsTheSameWheneverItIsPaid() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 2015, 2027, Currency.EUR).amount())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
 		assertThat(MembershipPrice.on(ROWS, monthDay("12-31"), 2015, 2027, Currency.EUR).amount())
 				.isEqualByComparingTo("20");
@@ -123,7 +133,7 @@ public class MembershipPriceTest {
 	 */
 	@Test
 	void aJuniorWhoPaysInMarchIsNoMoreRankedThanAnybodyElseWhoDoes() {
-		assertThat(MembershipPrice.on(ROWS, monthDay("10-03"), 2015, 2027, Currency.EUR).ranking())
+		assertThat(MembershipPrice.on(ROWS, monthDay("10-20"), 2015, 2027, Currency.EUR).ranking())
 				.as("a junior who paid in the window was refused a place")
 				.isTrue();
 
@@ -175,7 +185,7 @@ public class MembershipPriceTest {
 				.filter(row -> !MembershipPrice.PROCESSING.equals(row.key()))
 				.toList();
 
-		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, monthDay("10-03"), 1990, 2027, Currency.EUR))
+		assertThatThrownBy(() -> MembershipPrice.on(withoutTheFee, monthDay("10-20"), 1990, 2027, Currency.EUR))
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining(MembershipPrice.PROCESSING);
 	}

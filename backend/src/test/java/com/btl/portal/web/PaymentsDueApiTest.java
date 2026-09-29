@@ -206,13 +206,13 @@ class PaymentsDueApiTest {
 	 * because 2026 is a season the schema refuses to hold a membership in - so every account in
 	 * the portal would surface at once on the day this shipped.
 	 */
-	private static final Instant IN_OCTOBER_2026 = Instant.parse("2026-10-01T07:00:00Z");
+	private static final Instant IN_OCTOBER_2026 = Instant.parse("2026-10-20T07:00:00Z");
 
 	/** Where {@code transfersTakeEffect} has moved on and the season on sale has not. */
 	private static final Instant IN_JUNE_2027 = Instant.parse("2027-06-01T07:00:00Z");
 
 	/** Where the season on sale has moved on and {@code seasonBeingRun} has not. */
-	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-10-01T07:00:00Z");
+	private static final Instant IN_OCTOBER_2027 = Instant.parse("2027-10-20T07:00:00Z");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 

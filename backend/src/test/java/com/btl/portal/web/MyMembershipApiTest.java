@@ -60,7 +60,7 @@ class MyMembershipApiTest {
 	private static final String NOTHING_IS_THERE = "/api/zzzzzzzzzz";
 
 	/** 11:00 in Belgrade on 3 October 2027: V4's `early` period, and the season on sale is 2028. */
-	private static final Instant NOW = Instant.parse("2027-10-03T09:00:00Z");
+	private static final Instant NOW = Instant.parse("2027-10-20T09:00:00Z");
 
 	private static final int THE_SEASON_ON_SALE = 2028;
 

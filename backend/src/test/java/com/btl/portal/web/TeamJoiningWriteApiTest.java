@@ -176,12 +176,17 @@ class TeamJoiningWriteApiTest {
 	 * THE INSTANT THE TWO ZONES DISAGREE ABOUT, which is the only thing that measures where
 	 * the window is read.
 	 *
-	 * <p>Half past eleven at night on 30 September in UTC is half past one on the morning of 1
+	 * <p>Half past eleven at night on 14 October in UTC is half past one on the morning of 15
 	 * October in Belgrade, so the window is OPEN here and shut for anybody who reads the
-	 * month off the machine. {@link SeasonClock#transferWindowOpen} reads it in
+	 * day off the machine. {@link SeasonClock#transferWindowOpen} reads it in
 	 * {@link SeasonClock#ZONE}, which is ADL A36 O2.
+	 *
+	 * <p><b>It straddled 30 September and 1 October until 29.09.2026</b>, when the owner moved
+	 * the window to the fifteenth. The instant had to move with it or it would have measured
+	 * nothing: both sides of the old midnight are now a fortnight inside the shut half of the
+	 * year, where the two zones agree and the case would have passed whatever zone was read.
 	 */
-	private static final Instant THE_NIGHT_THE_WINDOW_OPENS = Instant.parse("2027-09-30T23:30:00Z");
+	private static final Instant THE_NIGHT_THE_WINDOW_OPENS = Instant.parse("2027-10-14T23:30:00Z");
 
 	/** What the standing members of this fixture joined in: a season already being run. */
 	private static final int A_SEASON_ALREADY_RUNNING = 2027;
@@ -573,8 +578,8 @@ class TeamJoiningWriteApiTest {
 	/**
 	 * THE WINDOW IS READ IN BELGRADE AND NOWHERE ELSE, which only this instant measures.
 	 *
-	 * <p>Half past eleven at night in UTC on 30 September is already 1 October in Belgrade.
-	 * Read off the machine's own month this is refused; read in {@link SeasonClock#ZONE} it is
+	 * <p>Half past eleven at night in UTC on 14 October is already the fifteenth in Belgrade.
+	 * Read off the machine's own day this is refused; read in {@link SeasonClock#ZONE} it is
 	 * the first hour the door is open. The mutation this case exists for is a replacement of
 	 * the zone, not a deleted assertion.
 	 */
