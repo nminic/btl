@@ -423,7 +423,17 @@ describe('a race that fixes no length', () => {
       expect(earned, 'the formula gave nothing, so the case would pass on anything').toBeGreaterThan(
         0,
       )
-      expect(await screen.findByText(new RegExp(formatPoints(earned, 'sr-Latn')))).toBeVisible()
+      /* **Read off what was sent and never off the screen, since 28.09.2026.** The
+         confirmation announced the figure until that day and this case waited for it
+         there; the owner took it off both entry forms („Ne vidim razlog da se ispisuju
+         bilo kome prilikom unosa parametara prijave rezultata"), so the record below is
+         the only place the figure survives. It was always the stronger half anyway,
+         since what this screen said and what it sent were worked out separately.
+
+         The confirmation is still waited for, because everything below it has to be
+         asked of a screen that really moved on. */
+      expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+      expect(screen.queryByText(new RegExp(formatPoints(earned, 'sr-Latn')))).toBeNull()
 
       /* And what is sent, which is the half the screen never shows the member.
          `reportedResult` is measured on its own, but nothing said that this screen

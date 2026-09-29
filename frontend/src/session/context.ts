@@ -489,8 +489,6 @@ export type Deletions = Record<string, string[]>
  */
 export type PictureSent = { row: string; picture: string; crop: Crop; member: string }
 
-export type NotificationKey = 'resultApproved' | 'resultChanged' | 'newsletter'
-
 /**
  * WHOEVER IS SIGNED IN, AND WHICH OF THE TWO WAYS IN HE CAME BY.
  *
@@ -852,8 +850,20 @@ export type SessionValue = {
    *  switched it on (PDL P22). */
   notify: (message: Omit<Message, 'id' | 'read'>) => void
 
-  notifications: Record<NotificationKey, boolean>
-  setNotification: (key: NotificationKey, on: boolean) => void
+  /* THE SESSION CARRIES NO MAIL SWITCHES, SINCE 28.09.2026, and a reader who comes looking
+     for them should find this rather than silence. `notifications` and `setNotification`
+     stood here until that day and held the three `NOTIFICATION_KEYS` the Settings screen
+     drew; the owner took the panel („Ekran za podesavanja obavestenja se sklanja u
+     celini") because two of the three were mails P22 forbids switching off and the third
+     was an abolished newsletter, so nothing was left to remember.
+
+     <p><b>The switches P22 does give a member are not these and never lived here.</b>
+     They are six over the bell's mail, and which six is `notification_setting`'s own six
+     columns (V13) rather than a list repeated here, because the one repeated list this file
+     used to carry is what went stale. They live on the server, behind `GET`/`PUT
+     /api/me/notifications`, on `main` since 18.09.2026, and nothing in `frontend/src` reads
+     that route yet. Whoever wires it reads it off the server rather than putting a second
+     home for it back into the session, which is the fault the removed pair was. */
 
   edits: Edits
   edit: (id: string, field: string, value: string) => void
@@ -965,12 +975,5 @@ export type SessionValue = {
    *  one (`SessionProvider`, `publish`). */
   publish: (from: string, comment: Omit<EventComment, 'id'>) => void
 }
-
-/** The six obligatory emails cannot be switched off (PDL P22); these can. */
-export const NOTIFICATION_KEYS: NotificationKey[] = [
-  'resultApproved',
-  'resultChanged',
-  'newsletter',
-]
 
 export const SessionContext = createContext<SessionValue | null>(null)

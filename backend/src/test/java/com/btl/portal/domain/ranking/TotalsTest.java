@@ -86,7 +86,7 @@ class TotalsTest {
 	 * <p>Both halves are asserted at the width that is right for that column and
 	 * at one digit past it, because a guard that refused both at the same width
 	 * would pass whichever number the other one's rule happened to cover. Points
-	 * are refused at three and distance at five: V45 widened
+	 * are refused at three and distance at five: V47 widened
 	 * {@code result.distance_km} to {@code numeric(8,4)} while
 	 * {@code result.points} stayed {@code numeric(8,2)}.
 	 */

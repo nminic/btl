@@ -956,14 +956,7 @@
     "named": "from the server"
   },
   "myProfile": {
-    "signOut": "Sign out",
-    "notifications": "Notices",
-    "notificationsNote": "Six obligatory emails cannot be switched off: the account confirmation, a password change, a result entered and a result changed, a further request to check something, and a major change on the portal. Everything else is below.",
-    "notify": {
-      "resultApproved": "When a result of mine is approved",
-      "resultChanged": "When somebody changes a result of mine",
-      "newsletter": "Occasional news from the League"
-    }
+    "signOut": "Sign out"
   },
   "myResults": {
     "title": "My results",
@@ -1003,7 +996,6 @@
     "linkHint": "Required, unless you attach pictures of the results or of an app as proof.",
     "photo": "A picture as proof",
     "doneTitle": "The result has been sent",
-    "donePoints": "This race brings you {points} BTL points.",
     "doneWaiting": "A moderator is checking it. Once it is confirmed, it enters the boards and your profile.",
     "toMine": "My results",
     "another": "Enter another one",
@@ -1421,9 +1413,7 @@
     "hideProfileNote": "The name stays in the tables and on the boards, because without it ranking everybody together would lose its point. What is hidden is only your profile page, and only from those who are not signed in.",
     "themeLabel": "Theme",
     "themeDark": "Dark",
-    "themeLight": "Light",
-    "notifications": "Notices"
-  },
+    "themeLight": "Light"  },
   "rights": {
     "title": "Moderators' rights",
     "intro": "A row is a moderator, a column is a right. A box is remembered the moment it is pressed, there is no button to save. The rights are in two groups because they are two different actions: editing changes a record, while deciding lets somebody else's work through or sends it back.",

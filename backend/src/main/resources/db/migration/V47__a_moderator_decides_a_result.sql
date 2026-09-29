@@ -96,6 +96,41 @@
  * NOT a constraint saying an approved submission has a result. It cannot be expressed: which
  * `result` row an approval wrote is not a fact `result_submission` carries, and inventing a
  * column to carry it would be a pointer this increment has no reader for.
+ *
+ *
+ * RENUMBERED 45 -> 47 ON 29.09.2026, AFTER THIS FILE HAD ALREADY MERGED TO MAIN. Migrations
+ * are immutable once applied (ADL A2) and this is the narrow case where that does not yet
+ * bite, so the condition is written down rather than left to be trusted.
+ * ----------------------------------------------------------------------------------------
+ * WHAT WENT WRONG: nothing in this file. It merged as 45, and then
+ * V46__the_rulebook_stops_claiming_a_penalty_that_is_gone.sql merged AFTER it but reached the
+ * QA database FIRST. Flyway does not allow a migration to arrive out of order by default, so
+ * with 46 recorded in `flyway_schema_history` and 45 only resolved on disk, startup refused:
+ *
+ *     Detected resolved migration not applied to database: 45.
+ *     Validate failed: Migrations have failed validation
+ *
+ * The backend went into a restart loop behind a static page that still answered 200. The
+ * cause is the order two branches merged in, not anything either migration says.
+ *
+ * WHY RENUMBERING IS ALLOWED HERE AND IS NOT A REWRITE OF HISTORY: ADL A2 protects APPLIED
+ * migrations, because their checksum is recorded in `flyway_schema_history` and changing them
+ * stops Flyway against every database that ran the old one. This file is applied NOWHERE -
+ * QA's history goes 43, 44, 46 and has no 45, and production has no backend yet. That was
+ * measured against the server, not assumed. A later migration could not have repaired this
+ * either: Flyway fails validation before it runs anything, so it never reaches one.
+ *
+ * WHY 47 AND NOT 45 AGAIN: 46 is applied, so this file has to sort ABOVE it, and the next
+ * number after that is 47. It takes 47 rather than waiting because it is already on main and
+ * therefore has to be applied first; the unmerged branch that had claimed 47 moves off it.
+ *
+ * WHAT THE RENAME ITSELF CHANGES, AND WHAT THIS COMMIT CHANGES ON TOP OF IT: the rename moves
+ * no content at all - git reports it as a pure rename of 0 changed lines, and Flyway computes
+ * a checksum over what a migration SAYS and not what it is called, so the rename alone would
+ * have left the pinned checksum untouched. THIS PARAGRAPH IS ITSELF THE EXCEPTION: writing
+ * the note down changes the bytes, so the checksum DOES move, and it is repinned in
+ * {MigrationsAreImmutableTest} last, with the file final. Anyone correcting one sentence of
+ * this header afterwards moves it again and the gate will say so.
  */
 
 alter table result

@@ -19,7 +19,6 @@ import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL } from '../data/pricing'
 import servedPrices from '../test/mock/pricing.json'
 import { formatShortDate } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { useSession } from '../session/useSession'
@@ -1776,29 +1775,13 @@ describe('settings', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Podešavanja' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Izgled' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Obaveštenja' })).toBeVisible()
   })
 
-  it('switches an optional notification off and on', async () => {
-    const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', '000007')
-
-    const box = await screen.findByRole('checkbox', { name: 'Kad mi rezultat bude odobren' })
-    expect(box).toBeChecked()
-
-    await user.click(box)
-    expect(box).not.toBeChecked()
-
-    await user.click(box)
-    expect(box).toBeChecked()
-  })
-
-  it('offers every optional notification and no obligatory one', async () => {
-    renderAt('/sr/podesavanja', 'competitor', '000007')
-
-    expect(await screen.findAllByRole('checkbox')).toHaveLength(NOTIFICATION_KEYS.length)
-    expect(screen.getByRole('checkbox', { name: 'Povremene vesti iz lige' })).not.toBeChecked()
-  })
+  /* TWO CASES ABOUT NOTIFICATIONS STOOD HERE UNTIL 28.09.2026 - one pressed „Kad mi rezultat
+     bude odobren" off and on, the other counted the boxes against `NOTIFICATION_KEYS` - and
+     both went with the panel the owner removed („Ekran za podesavanja obavestenja se sklanja
+     u celini"). They are not replaced here: what they measured was a panel, and what stands
+     in its place is a rule about the screen, which lives in `member/settings.test.tsx`. */
 })
 
 /**
@@ -2009,15 +1992,16 @@ describe('a result from entry to decision', () => {
 
     await enterResult(user)
 
-    /* The entry stays on a confirmation that says what the race earned (PDL P9),
-       instead of jumping to the list without a word.
+    /* The entry stays on a confirmation that says what happens next, instead of
+       jumping to the list without a word.
 
-       The number, not the unit beside it. Matching on "BTL poena" also matched
-       "0,00 BTL poena", so the one thing the member came to find out was the one
-       thing the test never looked at: 21,1 km with 540 up and 540 down in
-       1:52:10 is 23,55 by the formula in the rulebook. */
+       It said what the race earned until 28.09.2026 („Ova trka ti donosi 23,55 BTL
+       poena.", 21,1 km with 540 up and 540 down in 1:52:10 by the formula in the
+       rulebook), and the owner took that off every entry form that day. The figure
+       itself is measured where it still lives, in the record this browser keeps and in
+       the moderator's queue. */
     expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    expect(screen.getByText('Ova trka ti donosi 23,55 BTL poena.')).toBeVisible()
+    expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
@@ -2078,13 +2062,15 @@ describe('a result from entry to decision', () => {
     expect(await screen.findByText('Sat mi je stao na petom kilometru.')).toBeVisible()
   }, SEVERAL_SCREENS)
 
-  it('says the count is not final, where it says the count', async () => {
-    /* PDL, 30.08.2026, point 8: the form shows what the result is worth **and
-       says the number is not final**, because verification settles the kind and
-       the time. On a timed race the time is the race's own limit, so a result sent
-       as 1:52:10 may be counted as 3:00:00 and be worth a third of what the screen
-       said. Until 31.08.2026 nothing on the way said so, and the member met the
-       smaller number for the first time in their own list (measured in review). */
+  it('says what happens next and never what the run is worth', async () => {
+    /* The road away from the calendar, and the same question its twin on the event is
+       asked (`event/reportResult.test.tsx`). Owner, 28.09.2026: „bodovi ni na dužinskoj
+       ni na vremenskoj trci ne ulaze u obračun pre verifikacije. Ne vidim razlog da se
+       ispisuju bilo kome prilikom unosa parametara prijave rezultata."
+
+       Both halves, because each covers for the other's absence: with only the number
+       gone a caveat would stand beside nothing, and with only the caveat gone the
+       number the owner objected to would stay. */
     const user = setupUser()
     renderAt('/sr/rezultat/novi', 'competitor', '000007')
 
@@ -2101,8 +2087,12 @@ describe('a result from entry to decision', () => {
     await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    expect(await screen.findByText(/BTL poena/)).toBeVisible()
-    expect(screen.getByText(/Račun nije konačan/)).toBeVisible()
+    /* The confirmation really is on screen, so the two refusals below are asked of a
+       screen that has something on it rather than of a form that never moved. */
+    expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+    expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+    expect(screen.queryByText(/BTL poena/)).toBeNull()
+    expect(screen.queryByText(/Račun nije konačan/)).toBeNull()
   }, SEVERAL_SCREENS)
 
   it('refuses a result run in no time at all', async () => {
@@ -2131,14 +2121,19 @@ describe('a result from entry to decision', () => {
 
        Told what is wrong, not merely stopped: the sentence names the three boxes,
        because a member looking at a form where every field is filled in has no
-       other way to know which one the portal means. */
+       other way to know which one the portal means.
+
+       **Whether it went is read off the confirmation, not off a number.** It was read
+       off „BTL poena" until 28.09.2026, when the confirmation stopped carrying one; left
+       that way, both lines below would have gone on passing over a form that never
+       moved, which is the reading that measures nothing. */
     expect(await screen.findByText(/Sati, minuti i sekunde ne mogu svi biti nula/)).toBeVisible()
-    expect(screen.queryByText(/BTL poena/)).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Rezultat je poslat' })).toBeNull()
 
     /* And one of the three above nought is enough to send it. */
     await user.type(screen.getByLabelText('Minuta'), '45')
     await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
-    expect(await screen.findByText(/BTL poena/)).toBeVisible()
+    expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
   }, SEVERAL_SCREENS)
 
   /* Its own limit, because it really does walk the whole way: a member enters a
