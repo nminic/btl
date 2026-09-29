@@ -22,6 +22,10 @@ import { setupUser } from '../test/user'
  * the SECOND of three; the invitation taken back is the SECOND of three; the member answered is
  * neither the first in the roster nor the reader; and no row's day is the day it is read on. A
  * fixture with one of anything is satisfied by a screen that reached for whatever came first.
+ *
+ * <p><b>AND THE TWO MIDDLE ROWS ARE ONE NUMBER.</b> The application pressed and the invitation
+ * taken back both carry `SHARED_NUMBER`, for the reason given where it is declared. The last
+ * `describe` in this file is where that is measured.
  */
 
 /* Read rather than restated: which team is which and who is in it are facts about the seed, and
@@ -79,12 +83,29 @@ const DAY_IN = '2026-10-15'
 
 const DAY_OUT = '2026-06-15'
 
+/**
+ * THE ONE NUMBER THAT STANDS ON BOTH LISTS, on the middle row of each.
+ *
+ * <p>`team_application.id` and `team_invitation.id` are two `bigserial` columns, each with a
+ * sequence of its own (`V12__joining_a_team_and_a_pair.sql`), so an application and an
+ * invitation with the same number is an ordinary state of the portal and not a coincidence a
+ * fixture may leave out. `QueueRow` says so in its own type: „application 7 and invitation 7
+ * are two different rows."
+ *
+ * <p><b>Until 29.09.2026 the two lists stood on disjoint numbers</b> (41, 57 and 63 against 88,
+ * 94 and 99), and that is why the kind, which is half of a row's name, had no guard: nothing in
+ * this file could tell a screen that names a row by its kind and its number from one that names
+ * it by its number alone (review of PR 448). Only these two rows repeat a number, so every other
+ * row is still one whose number belongs to nobody else.
+ */
+const SHARED_NUMBER = 57
+
 /** Three applications, and the one every write case presses is the MIDDLE one. No day is
  *  `DAY_IN` or `DAY_OUT`, so a screen drawing today where it means the day of the asking would
  *  be drawing a different string. */
 const ASKING = [
   { id: 41, memberNumber: '000004', date: '2026-05-02' },
-  { id: 57, memberNumber: '000006', date: '2026-05-04' },
+  { id: SHARED_NUMBER, memberNumber: '000006', date: '2026-05-04' },
   { id: 63, memberNumber: '000008', date: '2026-05-06' },
 ]
 
@@ -98,10 +119,14 @@ const PRESSED = must(ASKING[1], 'the middle application')
  * has since lapsed", `TeamJoiningApi.Invitation`), while an application from such a member is
  * not listed at all. The third names a number the roster has not got, which is the other way a
  * name can be missing and is a different sentence.
+ *
+ * <p>The middle one is also the row that shares its number with the middle application
+ * (`SHARED_NUMBER`). The other two are numbered in ascending order beside it, as the route gives
+ * them, and neither repeats a number that stands on the other list.
  */
 const ASKED = [
-  { id: 88, memberNumber: '000010', date: '2026-05-03' },
-  { id: 94, memberNumber: null, date: '2026-05-07' },
+  { id: 52, memberNumber: '000010', date: '2026-05-03' },
+  { id: SHARED_NUMBER, memberNumber: null, date: '2026-05-07' },
   { id: 99, memberNumber: '000099', date: '2026-05-09' },
 ]
 
@@ -902,4 +927,202 @@ describe('two presses on one row', () => {
       server.stop()
     }
   }, SLOW)
+})
+
+/**
+ * A ROW IS A KIND AND A NUMBER, AND THESE ARE THE CASES THAT HOLD THE KIND.
+ *
+ * <p>`useTeamQueue.theSameRow` names a row by its kind AND its number, and `TeamQueue.why` says
+ * the same thing again by hand to decide which row a refusal is drawn under: one fact in two
+ * homes. While no two rows shared a number the kind was half of a name that nothing guarded.
+ * The review of PR 448 compared by the number alone in the one and dropped `refused.row.kind ===
+ * row.kind` from the other, and every case in this file stayed green both times.
+ *
+ * <p>Here the middle application and the middle invitation are ONE NUMBER (`SHARED_NUMBER`), so
+ * they are two rows to a screen that keeps the kind and one row to a screen that has lost it.
+ * <b>Each case begins by saying that the two rows really do share a number</b>, because a
+ * fixture that stopped repeating it would leave both cases measuring nothing and still green.
+ */
+describe('one number on both lists', () => {
+  const takeHimIn = () =>
+    screen.getByRole('button', { name: `${sr.teams.joinTaken}: ${nameOf(PRESSED.memberNumber)}` })
+
+  const takeItBack = () =>
+    screen.getByRole('button', {
+      name: `${sr.teams.inviteWithdraw}: ${sr.teams.inviteLapsed}`,
+    })
+
+  /**
+   * A REFUSAL STANDS UNDER THE ROW IT WAS PRESSED ON AND NOT UNDER THE ROW THAT HAS ITS NUMBER.
+   *
+   * <p>The half of `why` that is the kind. Application 57 is refused here, and invitation 57 is
+   * drawn on the same page a few lines below it. Compared by the number alone, a sentence about a
+   * window on a squad would stand under a team's invitation to somebody else, and be drawn with
+   * the dictionary of the other verb.
+   *
+   * <p><b>The row the sentence must not stand under is measured as a row that is THERE.</b> It is
+   * found, and it is the one that names nobody, before anything is asked about the sentence: an
+   * absence read off a list that was never drawn would be satisfied by a screen that drew
+   * nothing.
+   */
+  it('draws a refusal under the application and not under the invitation that has its number', async () => {
+    const server = aServerWithAQueue(() => refused('theWindowIsShut', 409))
+    const user = setupUser()
+
+    try {
+      expect(TAKEN_BACK.id).toBe(PRESSED.id)
+
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      const application = must(
+        (await waitingList()).getAllByRole('listitem')[1],
+        'the application that has the shared number',
+      )
+      const invitation = must(
+        (await sentList()).getAllByRole('listitem')[1],
+        'the invitation that has the shared number',
+      )
+
+      await user.click(takeHimIn())
+
+      /* On the application's own row FIRST, which is what says the press was refused and drawn
+         at all: everything below is an absence, and it is measured after this. */
+      expect(
+        await within(application).findByText(sr.teams.decideRefused.theWindowIsShut, undefined, {
+          timeout: SLOW,
+        }),
+      ).toBeVisible()
+
+      /* The invitation is drawn, and it is the one that names nobody, which is the one that
+         stands at this number. Then the sentence is asked for across the whole list of
+         invitations rather than across that one row, so no other row can carry it either. */
+      expect(invitation.textContent).toContain(sr.teams.inviteLapsed)
+      expect(
+        (await sentList()).queryByText(sr.teams.decideRefused.theWindowIsShut),
+      ).not.toBeInTheDocument()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /**
+   * THE LOCK AND THE MARK ARE ON THE ROW, AND A ROW IS A KIND AND A NUMBER.
+   *
+   * <p>Application 57's answer is held on the wire. While it is out, invitation 57 is taken back
+   * and the route REFUSES, and four things must be true after that. They are the four places
+   * `theSameRow` is asked, each measured on its own, so that `one.id === two.id` in any ONE of
+   * them fails here and not only the mutation that changes all four at once:
+   *
+   * <ul>
+   * <li>invitation 57's control is not told off by application 57's request (`busy`);
+   * <li>its own request goes out at all, which is what the sentence under its row says (the
+   * guard in `send`);
+   * <li>once that request is over, application 57's control is STILL told off (the release in
+   * `finally`, for the list a render reads);
+   * <li>and a second press on application 57 is STILL swallowed (the release in `finally`, for
+   * the list a handler reads).
+   * </ul>
+   *
+   * <p><b>The withdrawal is refused rather than answered 204, and that is the whole design of the
+   * last step.</b> A press that got past the guard would clear that sentence at once
+   * (`setRefused(null)`), where a second request in flight only shows up in the record some time
+   * later, and a case that waits for something NOT to happen cannot say how long is enough.
+   *
+   * <p>The same sentence is also the answer to `why`'s kind in the other direction: it is the
+   * refusal of an invitation, and it must not be drawn under the application that has its number.
+   *
+   * <p><b>Its own clock is twice `SLOW`</b>, for the reason `event/eventActions.test.tsx` gives: a
+   * wait that never resolves would otherwise die on the case's clock at the same instant as its
+   * own, and print `Test timed out` where it could have named the step.
+   */
+  it('keeps an application locked while the invitation with its number is taken back and refused', async () => {
+    let letItAnswer = () => {}
+    const held = new Promise<void>((go) => {
+      letItAnswer = go
+    })
+    let refuseIt = true
+
+    const server = aServerWithAQueue(() => (refuseIt ? new Response(null, { status: 404 }) : did()))
+    const answering = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith(`/applications/${String(PRESSED.id)}`) && init?.method === 'PUT') {
+        await held
+      }
+
+      return answering(input, init)
+    }
+
+    const user = setupUser()
+
+    try {
+      expect(TAKEN_BACK.id).toBe(PRESSED.id)
+
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      await waitingList()
+      await sentList()
+      await user.click(takeHimIn())
+
+      await waitFor(
+        () => {
+          expect(takeHimIn()).toHaveAttribute('aria-disabled', 'true')
+        },
+        { timeout: SLOW },
+      )
+
+      /* `busy`: the application's request is out, and the invitation is another row. */
+      expect(takeItBack()).not.toHaveAttribute('aria-disabled')
+
+      await user.click(takeItBack())
+
+      /* The guard in `send`: the withdrawal went while the application's request was still out,
+         and the route's refusal is drawn under ITS row. */
+      const invitation = must(
+        (await sentList()).getAllByRole('listitem')[1],
+        'the invitation that has the shared number',
+      )
+
+      expect(await within(invitation).findByText(/404/, undefined, { timeout: SLOW })).toBeVisible()
+
+      /* And under the application that has its number it is NOT drawn: that is `why`'s kind, from
+         the other side. The application is a row that is there and names its own man. */
+      const application = must(
+        (await waitingList()).getAllByRole('listitem')[1],
+        'the application that has the shared number',
+      )
+
+      expect(application.textContent).toContain(nameOf(PRESSED.memberNumber))
+      expect(within(application).queryByText(/404/)).not.toBeInTheDocument()
+
+      /* The release in `finally`, for what a render reads: the invitation's request is over and
+         the application's is not. */
+      expect(takeHimIn()).toHaveAttribute('aria-disabled', 'true')
+
+      /* The release in `finally`, for what a handler reads: a second press on the application
+         is swallowed, so it leaves the sentence where it is. */
+      await user.click(takeHimIn())
+
+      expect(within(invitation).getByText(/404/)).toBeVisible()
+
+      refuseIt = false
+      letItAnswer()
+
+      await waitFor(
+        async () => {
+          expect((await waitingList()).getAllByRole('listitem')).toHaveLength(2)
+        },
+        { timeout: SLOW },
+      )
+
+      /* One request each, and the withdrawal came first because the other was held. */
+      expect(writes(server.asked).map((one) => `${one.how} ${one.path}`)).toEqual([
+        `DELETE /api/teams/${String(MINE.id)}/invitations/${String(TAKEN_BACK.id)}`,
+        `PUT /api/teams/${String(MINE.id)}/applications/${String(PRESSED.id)}`,
+      ])
+    } finally {
+      globalThis.fetch = answering
+      server.stop()
+    }
+  }, SLOW * 2)
 })
