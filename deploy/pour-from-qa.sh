@@ -267,15 +267,17 @@ fi
 TABLES=$(cut -d'|' -f1 "$WORK/order" | tr '\n' ' ' | sed 's/ *$//')
 say "$(printf '%s' "$TABLES" | wc -w) tables, deepest level $(cut -d'|' -f2 "$WORK/order" | sort -n | tail -1)"
 
-if [ "$CHECK_ONLY" = yes ]; then
-  say ''
-  say 'CHECK ONLY: everything above passed and nothing was poured.'
-  exit 0
-fi
-
 say ''
-say '--- 7. the photographs, which are not in the database ---'
+say '--- 7. where the photographs are, and where they will go ---'
 
+# Resolved BEFORE the --check exit below, deliberately. A --check that stopped at step 6 would
+# answer "ready" for a stack whose photograph volume is missing or shared, and the real run
+# would then copy the rows and fail here - which is the one moment the two halves must not be
+# allowed to disagree, since the files move before the transaction does.
+#
+# Asked of each backend rather than written out: the container says where it keeps pictures,
+# and Docker says which volume is mounted there. WhatEachStackRequiresTest holds the other end
+# of that, comparing the setting against the mount for every deployed stack.
 photos_of() {
   folder=$(docker exec "$1" printenv BTL_PHOTOS_FOLDER)
   [ -n "$folder" ] || fail "$2 does not say where it keeps photographs"
@@ -289,6 +291,16 @@ PROD_VOLUME=$(photos_of "$PROD_BACKEND" 'the production backend')
 photographs, so anything copied would go into a container layer and vanish on the next build'
 [ "$QA_VOLUME" != "$PROD_VOLUME" ] || fail "both stacks name the same volume '$QA_VOLUME',
 which would mean production and QA share their members' photographs"
+say "from $QA_VOLUME to $PROD_VOLUME"
+
+if [ "$CHECK_ONLY" = yes ]; then
+  say ''
+  say 'CHECK ONLY: everything above passed and nothing was poured.'
+  exit 0
+fi
+
+say ''
+say '--- 8. copying the photographs, which are not in the database ---'
 
 docker run --rm --entrypoint sh -v "$QA_VOLUME":/from:ro -v "$PROD_VOLUME":/to "$IMAGE" \
   -c 'cp -a /from/. /to/' || fail 'copying the photographs did not pass'
@@ -300,7 +312,7 @@ to_count=$(docker run --rm --entrypoint sh -v "$PROD_VOLUME":/to:ro "$IMAGE" -c 
 say "$to_count photographs copied from $QA_VOLUME to $PROD_VOLUME"
 
 say ''
-say '--- 8. the pour, as one transaction ---'
+say '--- 9. the pour, as one transaction ---'
 
 STREAM="$WORK/pour.sql"
 : > "$STREAM"
@@ -333,12 +345,12 @@ if ! docker exec -i "$PROD_DB" psql -v ON_ERROR_STOP=1 -U "$PROD_ROLE" -d "$PROD
   say 'the last lines of what production said:'
   tail -20 "$WORK/pour.log" | sed 's/^/  /'
   fail 'the pour did not pass. It was one transaction, so production is exactly as it was before
-this ran, and the photographs copied in step 7 point at nothing until it is run again.'
+this ran, and the photographs copied in step 8 point at nothing until it is run again.'
 fi
 say 'poured'
 
 say ''
-say '--- 9. production now holds what QA holds ---'
+say '--- 10. production now holds what QA holds ---'
 
 prod_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/prod.after"
 qa_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/qa.after"
