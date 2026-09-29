@@ -227,8 +227,8 @@ async function timesAskedFor(name: 'teams' | 'competitors', act: () => Promise<u
 
 describe('the team answering one application', () => {
   it('sends the answer to that row of that team, and says which answer it is', async () => {
-    const server = serverThat((path, init) =>
-      init?.method === 'PUT' && path === '/api/teams/2/applications/71' ? did() : null,
+    const server = serverThat((_path, init) =>
+      init?.method === 'PUT' && _path === '/api/teams/2/applications/71' ? did() : null,
     )
 
     try {
@@ -254,7 +254,7 @@ describe('the team answering one application', () => {
   })
 
   it('hands back the reason the route named, unchanged', async () => {
-    const server = serverThat((path, init) =>
+    const server = serverThat((_path, init) =>
       init?.method === 'PUT' ? refused('theWindowIsShut', 409) : null,
     )
 
@@ -277,7 +277,7 @@ describe('the team answering one application', () => {
     ['competitors'] as const,
   ])('drops %s when the server agreed to take him in', async (name) => {
     const again = await timesAskedFor(name, async () => {
-      const server = serverThat((path, init) => (init?.method === 'PUT' ? did() : null))
+      const server = serverThat((_path, init) => (init?.method === 'PUT' ? did() : null))
 
       try {
         await theApplicationWasAnswered(TEAM, APPLICATION, true)
@@ -294,7 +294,7 @@ describe('the team answering one application', () => {
     ['competitors'] as const,
   ])('leaves %s alone when the answer was „Odbij"', async (name) => {
     const again = await timesAskedFor(name, async () => {
-      const server = serverThat((path, init) => (init?.method === 'PUT' ? did() : null))
+      const server = serverThat((_path, init) => (init?.method === 'PUT' ? did() : null))
 
       try {
         await theApplicationWasAnswered(TEAM, APPLICATION, false)
@@ -311,7 +311,7 @@ describe('the team answering one application', () => {
     ['competitors'] as const,
   ])('leaves %s alone when the route refused', async (name) => {
     const again = await timesAskedFor(name, async () => {
-      const server = serverThat((path, init) =>
+      const server = serverThat((_path, init) =>
         init?.method === 'PUT' ? refused('theWindowIsShut', 409) : null,
       )
 
@@ -328,8 +328,8 @@ describe('the team answering one application', () => {
 
 describe('the team taking one invitation back', () => {
   it('sends the withdrawal to that row of that team and spends nothing else', async () => {
-    const server = serverThat((path, init) =>
-      init?.method === 'DELETE' && path === '/api/teams/2/invitations/94' ? did() : null,
+    const server = serverThat((_path, init) =>
+      init?.method === 'DELETE' && _path === '/api/teams/2/invitations/94' ? did() : null,
     )
 
     try {
@@ -354,7 +354,7 @@ describe('the team taking one invitation back', () => {
     ['competitors'] as const,
   ])('leaves %s alone, because no resource is answered out of that table', async (name) => {
     const again = await timesAskedFor(name, async () => {
-      const server = serverThat((path, init) => (init?.method === 'DELETE' ? did() : null))
+      const server = serverThat((_path, init) => (init?.method === 'DELETE' ? did() : null))
 
       try {
         await theInvitationWasTakenBack(TEAM, INVITATION)
@@ -367,7 +367,7 @@ describe('the team taking one invitation back', () => {
   })
 
   it('hands back the number when the route answered one, since it names no reason', async () => {
-    const server = serverThat((path, init) =>
+    const server = serverThat((_path, init) =>
       init?.method === 'DELETE' ? new Response(null, { status: 404 }) : null,
     )
 
