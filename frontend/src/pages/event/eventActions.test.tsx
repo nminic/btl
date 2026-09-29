@@ -1031,3 +1031,340 @@ describe('copying an event', () => {
     }
   }, SEVERAL_SCREENS)
 })
+
+/**
+ * THE EVENT PRESSED ON, AND WHY IT IS THIS ONE (owner, 29.09.2026, „I DALJE NEMAM DUGME ZA
+ * IZMENU NA NIVOU DOGADJAJA").
+ *
+ * <p>`maraton-maratona-2015` is the event every case below is about, and it is chosen for
+ * what it cannot be confused with. Its identity is not its place: it stands at position 85
+ * of the file and carries the number 86. It is not on the list the administration opens on,
+ * because it ran in 2015 and that list is what is still ahead, so an address that opens the
+ * first row, or that looks for it among the rows drawn, opens another event or none. Its
+ * NAME is carried by eight editions and its DAY by the event after it in the file, so
+ * neither alone says which event a form is open on, and the two together do. Every case that
+ * asks which event is open asks both.
+ *
+ * <p><b>Compared whole and never searched.</b> An address is compared as the whole string and
+ * the writes of a save as the whole set, in both directions: a search over either says „it
+ * contains" of an address that names the wrong event.
+ */
+describe('changing an event', () => {
+  /** The day the screens are read as where the list the administration opens on matters: the
+   *  event ran before it, and everything on the list is on or after it. */
+  const TODAY = '2026-08-04'
+  /** The name a control says, which for these is also what a reader is told it is called. */
+  const textOf = (one: Element) => one.textContent ?? ''
+
+  /** The event at an address, found by the address and never by its place in the file. */
+  async function eventAt(address: string): Promise<BtlEvent> {
+    const events = await loadResource<BtlEvent[]>('events')
+
+    return must(
+      events.find((one) => one.slug === address.slice(address.lastIndexOf('/') + 1)),
+      `the event at ${address}`,
+    )
+  }
+
+  /**
+   * Waits until the row beside the name has been drawn or has been decided not to be, which
+   * is the moment both files it waits for are here (`EventDetail.tsx`).
+   *
+   * A case that asks for the ABSENCE of a control has to ask after this and not after the
+   * heading: the name arrives before the races and the results do, so a question put at the
+   * heading is answered „nothing" by a row that simply has not come yet. The two tables are
+   * what says so: the races are drawn once the races are here, and the results, of an event
+   * that has some, once the results are here and the competitors beside them.
+   */
+  async function untilTheRowIsSettled(): Promise<HTMLElement> {
+    await screen.findByRole('table', { name: 'Trke' })
+    await screen.findByRole('table', { name: 'Rezultati članova' })
+
+    return must(screen.getByRole('heading', { level: 1 }).parentElement, 'the head of the event')
+  }
+
+  it('is measured on an event that no other source of an event can pass for', async () => {
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = await eventAt(EVENT)
+
+    expect(
+      mine.date < TODAY,
+      'the event is still ahead, so the list has it and a lookup there would find it',
+    ).toBe(true)
+    expect(
+      events.filter((one) => one.name === mine.name && one.id !== mine.id).length,
+      'no other edition carries the name, so the name alone would say which event is open',
+    ).toBeGreaterThan(0)
+    expect(
+      events.filter((one) => one.date === mine.date && one.id !== mine.id).length,
+      'no other event runs on the day, so the day alone would say which event is open',
+    ).toBeGreaterThan(0)
+    expect(events.indexOf(mine), 'its place in the file is its number').not.toBe(mine.id)
+  })
+
+  it('opens the form of THIS event with its own races, and leaves a clean address', async () => {
+    const user = setupUser()
+    const mine = await eventAt(EVENT)
+    const its = (await loadResource<Race[]>('races')).filter((one) => one.eventId === mine.id)
+
+    /* More than one, so „its own races" is a claim with something to be wrong about. */
+    expect(its.length, 'the event has one race or none, so this measures nothing').toBeGreaterThan(
+      1,
+    )
+
+    const { router } = renderAt(EVENT, 'superadmin', null, undefined, TODAY)
+
+    await user.click(await screen.findByRole('button', { name: 'Izmena' }))
+
+    expect(router.state.location.pathname).toBe('/sr/administracija/dogadjaji')
+    /* Exactly the identity of this event and nothing else, compared whole. */
+    expect(router.state.location.search).toBe(`?izmena=${String(mine.id)}`)
+
+    /* The form the administration already has, open on a record that is already there: a
+       change and not a copy, and the whole form and not the narrowed one a copy is asked. */
+    expect(await screen.findByRole('heading', { name: 'Izmena događaja' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Kopiranje događaja' })).toBeNull()
+    expect(screen.getByLabelText(/^Vrsta događaja/)).toBeVisible()
+
+    /* THIS event, which takes the name and the day together (see the note over this block). */
+    expect(first(screen.getAllByLabelText(/^Naziv događaja/))).toHaveValue(mine.name)
+    expect(screen.getByLabelText('Datum')).toHaveValue(fieldDate(mine.date))
+
+    /* And its own races beneath it, counted off the file. */
+    const under = within(await screen.findByRole('table', { name: /^Trke na događaju/ }))
+
+    expect(under.getAllByRole('row').slice(1)).toHaveLength(its.length)
+
+    /* Leaving the form leaves nothing behind in the address. Left in it, the address would
+       name the event again the moment the form closed, and it would never close. */
+    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+    expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
+    expect(router.state.location.search).toBe('')
+    expect(screen.queryByLabelText('Datum')).toBeNull()
+  }, SEVERAL_SCREENS)
+
+  it('offers all three, in this order, to whoever has the events', async () => {
+    /* The order is the implementation's choice and not the owner's: his decision says the
+       button stands beside the other two, and the three are pinned here so that moving one
+       is a decision somebody takes and not a thing that happens. Whatever else the row holds
+       comes after them, and what it holds is compared whole. */
+    for (const [who, role, member, moderator, links] of [
+      ['a superadmin', 'superadmin', null, undefined, []],
+      ['a superadmin who ran it', 'superadmin', '000007', undefined, ['Dodaj komentar']],
+      [
+        'a moderator who has the events',
+        'moderator',
+        '000007',
+        moderatorWith(['entity:events']),
+        ['Dodaj komentar'],
+      ],
+    ] as const) {
+      await openEvent(role, member, moderator)
+
+      const head = await untilTheRowIsSettled()
+      const buttons = ['Izmena', 'Kopiranje', 'Brisanje']
+
+      expect(
+        within(head).queryAllByRole('button').map(textOf),
+        `the buttons ${who} is offered`,
+      ).toEqual(buttons)
+      expect(
+        within(head).queryAllByRole('link').map(textOf),
+        `the links ${who} is offered`,
+      ).toEqual([...links])
+
+      const row = must(
+        within(head).getByRole('button', { name: 'Izmena' }).parentElement,
+        'the row of controls',
+      )
+
+      expect([...row.children].map(textOf), `the row ${who} is offered, in order`).toEqual([
+        ...buttons,
+        ...links,
+      ])
+      cleanup()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('offers it to nobody else, whatever else they are', async () => {
+    /* Four kinds of somebody who is not offered it, each holding something that could be
+       mistaken for the right: a right over ANOTHER entity, a right over a queue, a member
+       who ran this very event, and nobody at all. Three of them are members of this event, so
+       the row is drawn for them and its absence is about the right and not about the row. */
+    for (const [who, role, member, moderator, links] of [
+      [
+        'a moderator who has another entity',
+        'moderator',
+        '000007',
+        moderatorWith(['entity:leagues']),
+        ['Dodaj komentar'],
+      ],
+      [
+        'a moderator who has a queue',
+        'moderator',
+        '000007',
+        moderatorWith(['queue:results']),
+        ['Dodaj komentar'],
+      ],
+      ['a competitor who ran it', 'competitor', '000007', undefined, ['Dodaj komentar']],
+      ['a visitor', 'visitor', null, undefined, []],
+    ] as const) {
+      await openEvent(role, member, moderator)
+
+      const head = await untilTheRowIsSettled()
+
+      expect(
+        within(head).queryAllByRole('button').map(textOf),
+        `the buttons ${who} is offered`,
+      ).toEqual([])
+      expect(
+        within(head).queryAllByRole('link').map(textOf),
+        `the links ${who} is offered`,
+      ).toEqual([...links])
+      cleanup()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('lets through whoever is offered it: the door asks what the button asked', async () => {
+    const user = setupUser()
+    const mine = await eventAt(EVENT)
+    const { router } = await openEvent('moderator', null, moderatorWith(['entity:events']))
+
+    await user.click(await screen.findByRole('button', { name: 'Izmena' }))
+
+    expect(router.state.location.pathname).toBe('/sr/administracija/dogadjaji')
+    expect(await screen.findByLabelText('Datum')).toHaveValue(fieldDate(mine.date))
+  }, SEVERAL_SCREENS)
+
+  it('sends whoever lacks the events to the front page, and the form goes with them', async () => {
+    /* The door is the route table's and not this screen's (`routeObjects.tsx`), so the new
+       address needs no door of its own and this only asks that the old one covers it. Three
+       kinds of somebody, because the door asks two things: whether they are staff at all, and
+       whether they hold this entity. */
+    const mine = await eventAt(EVENT)
+
+    for (const [role, member, moderator] of [
+      ['moderator', null, moderatorWith(['entity:leagues'])],
+      ['competitor', '000007', undefined],
+      ['visitor', null, undefined],
+    ] as const) {
+      const { router } = renderAt(
+        `/sr/administracija/dogadjaji?izmena=${String(mine.id)}`,
+        role,
+        member,
+        moderator,
+      )
+
+      await waitFor(() => {
+        expect(router.state.location.pathname, `where the ${role} ended`).toBe('/sr')
+      })
+      expect(router.state.location.search, `what the ${role} left in the address`).toBe('')
+      expect(screen.queryByLabelText('Datum'), `a form drawn for the ${role}`).toBeNull()
+      cleanup()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('draws the list, not a form, where the address names no event', async () => {
+    /* Four values, each a different way of being wrong: an event that is not there, nothing
+       at all, and two that a lookup by number would accept. `086` and `86abc` are the number
+       of an event that IS there, which is what makes them worth asking about: the address of
+       an event is its identity written the way it is written, and only that. */
+    const server = serverThat(() => null)
+
+    try {
+      for (const named of ['999999', '', '086', '86abc']) {
+        renderAt(`/sr/administracija/dogadjaji?izmena=${named}`, 'superadmin')
+
+        expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
+        expect(screen.queryByLabelText('Datum'), `a form opened for izmena=${named}`).toBeNull()
+        cleanup()
+      }
+
+      expect(
+        server.asked
+          .filter((one) => (one.init?.method ?? 'GET') !== 'GET')
+          .map((one) => `${one.init?.method ?? 'GET'} ${one.path}`),
+      ).toEqual([])
+    } finally {
+      server.stop()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('saves as a change of that event: one write for it, one for each of its races', async () => {
+    /* The form is open on a record that is already there, so saving writes over it and
+       makes no other. Opened as a NEW event holding the same values it looks identical, and
+       differs only in this: it would make a second event, at the address of the first. */
+    const user = setupUser()
+    const mine = await eventAt(EVENT)
+    const its = (await loadResource<Race[]>('races')).filter((one) => one.eventId === mine.id)
+    const server = serverThat(() => null)
+
+    try {
+      renderAt(
+        `/sr/administracija/dogadjaji?izmena=${String(mine.id)}`,
+        'superadmin',
+        null,
+        undefined,
+        TODAY,
+      )
+
+      await user.click(await screen.findByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      const wrote = server.asked.filter((one) => (one.init?.method ?? 'GET') !== 'GET')
+
+      expect(
+        wrote.map((one) => `${one.init?.method ?? 'GET'} ${one.path}`).sort(),
+        'the writes of the save, as a whole set',
+      ).toEqual(
+        [
+          `PUT /api/events/${String(mine.id)}`,
+          ...its.map((one) => `PUT /api/races/${String(one.id)}`),
+        ].sort(),
+      )
+
+      /* And it wrote the day of THIS event, as the route reads it. */
+      const ofTheEvent = must(
+        wrote.find((one) => one.path === `/api/events/${String(mine.id)}`),
+        'the write of the event',
+      )
+
+      expect(JSON.parse(String(ofTheEvent.init?.body ?? '{}')).date).toBe(mine.date)
+    } finally {
+      server.stop()
+    }
+  }, SEVERAL_SCREENS)
+
+  it('goes to the address of the language it is read in', async () => {
+    const user = setupUser()
+    const mine = await eventAt(EVENT)
+    const { router } = renderAt('/en/kalendar/maraton-maratona-2015', 'superadmin')
+
+    await user.click(await screen.findByRole('button', { name: 'Change' }))
+
+    expect(router.state.location.pathname).toBe('/en/administracija/dogadjaji')
+    expect(router.state.location.search).toBe(`?izmena=${String(mine.id)}`)
+  }, SEVERAL_SCREENS)
+
+  it('opens the copy where the address asks for a copy and a change at once', async () => {
+    /* An address that meant something before `?izmena=` existed goes on meaning it. The
+       event named for the change is another one, so the two cannot be told apart by which
+       event is open, only by which form. */
+    const events = await loadResource<BtlEvent[]>('events')
+    const mine = await eventAt(EVENT)
+    const other = at(events, events.indexOf(mine) + 1)
+
+    expect(other.id, 'the same event named twice says nothing about which one won').not.toBe(
+      mine.id,
+    )
+
+    renderAt(
+      `/sr/administracija/dogadjaji?kopija=${String(mine.id)}&izmena=${String(other.id)}`,
+      'superadmin',
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Kopiranje događaja' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Izmena događaja' })).toBeNull()
+  }, SEVERAL_SCREENS)
+})
