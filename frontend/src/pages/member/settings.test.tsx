@@ -29,15 +29,16 @@ import { renderAt } from '../../test/render'
  * to" are both read off the thing itself and cannot be incomplete in any direction. What each
  * case may therefore NOT see is written on it.
  *
- * <p><b>WHAT THIS FILE DOES NOT SAY, AND IT MATTERS.</b> P22 does give a member switches -
- * six of them, over the BELL's mail: „Zvono uvek, mejl podrazumevano ISKLJUCEN, clan ga sam
- * pali: sve drustveno i sporedno." Which six is left to V13's own columns rather than copied
- * out here, because P22's parenthesis names one of them by a word the portal has since
- * renamed, and a list repeated in prose is a list that goes stale in exactly that way. They
- * are not the three that were here: they live on the server (`notification_setting`, V13, and
- * `GET`/`PUT /api/me/notifications`, on `main` since 18.09.2026), and no screen in
- * `frontend/src` reads that route. Nothing below claims the member has no switches anywhere;
- * it claims this screen offers none, which is what the owner decided.
+ * <p><b>WHAT THIS FILE DOES NOT SAY, AND IT MATTERS.</b> P22 of 11.08.2026 gave a member six
+ * switches over the BELL's mail: „Zvono uvek, mejl podrazumevano ISKLJUCEN, clan ga sam pali:
+ * sve drustveno i sporedno." They were not the three that were here, and they lived on the
+ * server (`notification_setting`, V13, and `GET`/`PUT /api/me/notifications`) until V48
+ * removed them, on the owner's decision of 29.09.2026: „Ako su ovo prekidaci, ja bih da se u
+ * potpunosti za njih izbace mailovi i da funkcionise samo kao poruke u inbox portala." PDL
+ * records that the second half of that P22 sentence stopped holding that day, „Mejla nema
+ * uopste, pa nema ni prekidaca", so nothing on the server offers a switch any more either.
+ * This file does not test that. It claims this screen and this session offer none, which is
+ * what the owner decided on 28.09.2026.
  *
  * <p><b>TWO THINGS THIS CANNOT SEE, MEASURED RATHER THAN GUESSED, so that the next reader
  * does not take the file for wider than it is.</b> Both were written as mutations and both
@@ -122,10 +123,10 @@ describe('the settings screen', () => {
          it wrong in both directions at once; a key name is ours, is English, and is read off
          the book itself.
 
-         <p><b>Yes, this fails the day somebody builds the six bell switches, and that is
-         the point.</b> The decision names that day („ako sutra nastane mejl koji sme da se
-         iskljuci, ekran se pravi ponovo"), so it should cost a deliberate look at this file
-         rather than passing quietly. */
+         <p><b>Yes, this fails the day somebody builds a switch, and that is the point.</b>
+         The decision names that day („ako sutra nastane mejl koji sme da se iskljuci, ekran
+         se pravi ponovo"), so it should cost a deliberate look at this file rather than
+         passing quietly. */
       const said = named.filter((name) =>
         name.split('.').some((part) => part.toLowerCase().startsWith('notif')),
       )
@@ -149,9 +150,10 @@ describe('the settings screen', () => {
     expect(held.length, 'the session was not read').toBeGreaterThan(20)
     expect(held, 'the session was not read').toContain('notify')
 
-    /* The pair the panel kept its state in. A third home for a preference the server already
-       owns is the fault the removed pair was, so whoever wires the six bell switches reads
-       `GET /api/me/notifications` rather than putting these back. */
+    /* The pair the panel kept its state in. It went with the panel, and there is no server
+       preference left to keep in step with: V48 drops the six bell switches and their route
+       (PDL, 29.09.2026: „Mejla nema uopste, pa nema ni prekidaca"), so a pair like this one
+       coming back would be a switch over nothing. */
     expect(held).not.toContain('notifications')
     expect(held).not.toContain('setNotification')
   })
