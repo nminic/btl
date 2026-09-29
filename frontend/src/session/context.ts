@@ -207,7 +207,7 @@ export type Message = {
    * **Named the two messages the prototype started with until 28.09.2026, and
    * names nothing now.** PDL 34 („NECU MOCK PODATKE NIGDE", owner) took those
    * out of the bundle. Measured the same day: `to: ''` is written nowhere in
-   * `frontend/src` outside the tests, and every one of the fourteen `notify`
+   * `frontend/src` outside the tests, and every one of the thirteen `notify`
    * calls names somebody. So a broadcast a member reads today reaches him off
    * the server, and what is kept here is the agreement between the two readers
    * above rather than a shape any screen produces.
@@ -832,9 +832,19 @@ export type SessionValue = {
    * else. Until that day `data/seedMessages.ts` put two into every visit before anything
    * happened, and this doc named them as the proof that the road was walked; the owner took
    * that file out of the bundle („NECU MOCK PODATKE NIGDE"), so a visit now begins holding
-   * nothing and the first held line is one some screen wrote. Nine screens call `notify`, an
+   * nothing and the first held line is one some screen wrote. Eight screens call `notify`, an
    * invitation to a team and to a racing pair among them, and every one of those lines is
    * numbered `msg-N` and names no row anywhere - so this is still the only road for them.
+   *
+   * <p><b>EIGHT AND NOT NINE SINCE 28.09.2026, and the number is a measurement rather than
+   * a memory: `grep -rln "notify({" frontend/src` answers eight files and thirteen calls.</b>
+   * The one that went is `event/GoingToEvent.tsx`, whose note to another member now goes to
+   * `POST /api/inbox` - a real row in `message`, which the addressee reads and this store
+   * never sees. The seven sentences elsewhere that repeat this count were all moved in the
+   * same commit; there is deliberately NO guard holding it, because a guard would have to
+   * recognise how the call is SPELT (`const { notify: tell } = useSession()` is the same
+   * call) and `CLAUDE.md` says what a guard that reads a spelling is worth. So the number is
+   * prose with its command beside it, and the command is the floor.
    */
   markRead: (id: string) => void
   /** Writes to one member's inbox. The portal already has one and it is where

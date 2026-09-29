@@ -151,7 +151,21 @@ public final class WhatAResultChangeSays {
 
 		/** Not on the list of six by that name, and required by the same decision all the
 		 *  same: „Isto obavestenje ide i kad se obrise verifikovan rezultat." */
-		A_RESULT_WAS_DELETED("resultDeleted", 1);
+		A_RESULT_WAS_DELETED("resultDeleted", 1),
+
+		/**
+		 * PDL P22, owner: „Član dobija mejl kad mu je rezultat odobren." It is the one
+		 * occasion of the four the member did not set off himself, which is why it exists
+		 * separately from {@link #A_RESULT_WAS_ENTERED} rather than being the same words
+		 * sent twice: what he is being told is not that the portal received something, but
+		 * that it now COUNTS.
+		 *
+		 * <p>One fact, and it is the run as it was approved. A refusal is not here and has
+		 * no occasion of its own: PDL P22 puts that in the inbox with the moderator's reason
+		 * („razlog stize u sanduce onome ko je stavku poslao"), and no decision asks for it
+		 * by post.
+		 */
+		A_RESULT_WAS_APPROVED("resultApproved", 1);
 
 		private final String key;
 
@@ -207,6 +221,23 @@ public final class WhatAResultChangeSays {
 		Objects.requireNonNull(before, "before");
 
 		return said(Told.A_RESULT_WAS_DELETED, inWords(before));
+	}
+
+	/**
+	 * A MODERATOR HAS APPROVED A RESULT, and from this moment it counts.
+	 *
+	 * <p>The run is given as it was APPROVED and not as it was sent, and on a correction
+	 * those are two different things: what now stands in the standings is the new figures,
+	 * and the old ones are not in this message because they are nowhere at all. Owner,
+	 * 04.09.2026, correcting his own decision of 01.09.2026: „Nakon odobrene ispravke, nigde
+	 * ne stoji stara vrednost, niti se prikazuje." So this carries one value where
+	 * {@link #changed} carries two, and that difference is a decision rather than a
+	 * shortcut.
+	 */
+	public static Said approved(Run counted) {
+		Objects.requireNonNull(counted, "counted");
+
+		return said(Told.A_RESULT_WAS_APPROVED, inWords(counted));
 	}
 
 	/** The words of one occasion, filled in. Package visible so the floor over the

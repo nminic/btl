@@ -387,7 +387,7 @@ function theEnvelope(): Promise<HTMLElement> {
  * says why: every other case is written so that it cannot be satisfied by the browser's half,
  * and that half is now empty unless the case in front of you filled it.
  *
- * <p>What fills it is `notify`, the road nine screens really use. Addressed to this member and
+ * <p>What fills it is `notify`, the road eight screens really use. Addressed to this member and
  * never to the league, so nothing below can be satisfied by a message everybody would have been
  * sent.
  */
