@@ -69,7 +69,7 @@ class PouringFromQaTest extends DatabaseTest {
 	 * unmeasured.
 	 */
 	private static final Set<String> EXERCISED =
-			Set.of("load-order.sql", "row-counts.sql", "sequences.sql");
+			Set.of("load-order.sql", "row-counts.sql", "sequences.sql", "lets-somebody-in.sql");
 
 	private static String sqlOf(String name) {
 		try {
@@ -473,6 +473,63 @@ class PouringFromQaTest extends DatabaseTest {
 				.as("an identity column's sequence is owned by its column exactly as a serial's"
 						+ " is, and is just as lost if it is not carried")
 				.anyMatch(one -> one.contains("b185_identity_id_seq"));
+	}
+
+	/**
+	 * EVERY TABLE A VISITOR IS CHECKED AGAINST IS NAMED, PASSWORDS INCLUDED.
+	 *
+	 * <p>The tool pours every table and then says which of the poured rows let somebody in. The
+	 * first version of that query asked for {@code token_hash} alone and so listed three tables,
+	 * leaving out the one that matters most: {@code account}, whose {@code password_hash} is
+	 * literally what {@code SignInApi} checks a visitor against -
+	 * {@code select id, password_hash, ... from account where lower(email) = lower(?)}. A
+	 * security round found it, and what made it worse than a short list was the sentence beside
+	 * it, which said emptying the token tables ends every one of them. It does not: a password
+	 * is in none of those three tables, so every QA password goes on working on production and
+	 * only a password change ends it.
+	 *
+	 * <p><b>The floor is deliberately WIDER than the query it holds.</b> The query names two
+	 * column names; this asks the catalogue for every column whose name ends in "hash" at all.
+	 * So it fails in two different directions, and both are wanted: narrowing the query back to
+	 * {@code token_hash} drops {@code account} and fails, and a third kind of authenticator
+	 * arriving one day - {@code otp_hash}, say - fails too, which forces somebody to decide
+	 * whether it lets a visitor in rather than letting it go unlisted.
+	 *
+	 * <p>{@code account} is then named outright beside the derived comparison. That is a fact
+	 * written by hand, on purpose and with a floor beside it, in the shape
+	 * {@code publicData.test.tsx} already uses: it is the one thing the derived half would also
+	 * lose if both homes were changed together, and it is the whole reason this case exists.
+	 */
+	@Test
+	void everyTableAVisitorIsCheckedAgainstIsNamedIncludingPasswords() {
+		Set<String> named = new TreeSet<>(
+				db.sql(sqlOf("lets-somebody-in.sql")).query(String.class).list());
+
+		Set<String> carryingAHash = new TreeSet<>(db.sql("select distinct c.relname"
+						+ " from pg_class c"
+						+ " join pg_namespace n on n.oid = c.relnamespace"
+						+ " join pg_attribute a on a.attrelid = c.oid"
+						+ " and a.attnum > 0 and not a.attisdropped"
+						+ " where n.nspname = 'public' and c.relkind = 'r'"
+						+ " and a.attname like '%hash'")
+				.query(String.class)
+				.list());
+
+		assertThat(carryingAHash)
+				.as("no table carries a hash column at all, so this case measures nothing")
+				.isNotEmpty();
+
+		assertThat(named)
+				.as("the report has to name every table the portal checks a visitor against;"
+						+ " a column ending in 'hash' that is NOT one of those is a decision"
+						+ " somebody has to make out loud rather than leave to this query")
+				.isEqualTo(carryingAHash);
+
+		assertThat(named)
+				.as("account.password_hash is what SignInApi checks a visitor against, and unlike"
+						+ " the token tables it cannot be emptied - it comes over with the rest of"
+						+ " the row and only a password change ends it")
+				.contains("account");
 	}
 
 	private long lastValueOf(String sequence) {

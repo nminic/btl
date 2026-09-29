@@ -105,10 +105,11 @@ QA_NAME=${QA_POSTGRES_DB:-btl_qa}
 ORDER_SQL="$SQL/load-order.sql"
 COUNTS_SQL="$SQL/row-counts.sql"
 SEQUENCES_SQL="$SQL/sequences.sql"
+LETS_IN_SQL="$SQL/lets-somebody-in.sql"
 
 [ -f "$PROD_COMPOSE" ] || fail "no $PROD_COMPOSE here; this is run from /opt/btl/deploy"
 [ -d "$MIGRATIONS" ] || fail "no $MIGRATIONS; the checkout beside this deploy is not complete"
-for f in "$ORDER_SQL" "$COUNTS_SQL" "$SEQUENCES_SQL"; do
+for f in "$ORDER_SQL" "$COUNTS_SQL" "$SEQUENCES_SQL" "$LETS_IN_SQL"; do
   [ -f "$f" ] || fail "no $f; this tool is a shell script AND its SQL, and half is missing"
 done
 
@@ -366,25 +367,36 @@ say 'WHAT CAME OVER'
 awk -F'|' '$2 > 0 { printf "  %-40s %s\n", $1, $2 }' "$WORK/prod.after"
 say "  $(awk -F'|' '$2 == 0' "$WORK/prod.after" | wc -l) further tables are empty on both sides"
 
-# WHICH OF THOSE ROWS LET SOMEBODY IN, asked of the catalogue rather than listed here. Every
-# table carrying a `token_hash` holds what the portal checks a visitor's token against: it keeps
-# the SHA-256 of a secret the holder was given, and signs in whoever presents a secret that
-# hashes to a stored row. That digest is UNKEYED - measured 29.09.2026, SecretToken.hashOf is a
-# plain MessageDigest over the secret with nothing from the environment in it - so a row poured
-# here answers on production exactly as it did on QA. Said out loud rather than quietly left
-# behind, because leaving it out would be this tool deciding something nobody asked it to.
+# WHICH OF THOSE ROWS LET SOMEBODY IN, asked of the catalogue rather than listed here. The
+# reasoning, and why it covers passwords as well as tokens, is in lets-somebody-in.sql.
+#
+# The digest on both sides is UNKEYED - measured 29.09.2026, SecretToken.hashOf is a plain
+# MessageDigest over the secret with nothing from the environment in it - so a poured row
+# answers on production exactly as it did on QA. Said out loud rather than quietly left behind,
+# because leaving it out would be this tool deciding something nobody asked it to.
 say ''
-LETS_IN=$(prod_sql -F'|' -c "select c.relname from pg_class c
-  join pg_namespace n on n.oid = c.relnamespace
-  join pg_attribute a on a.attrelid = c.oid and a.attname = 'token_hash' and a.attnum > 0
- where n.nspname = 'public' and c.relkind = 'r' order by c.relname collate \"C\"")
-say 'AND WHAT OF IT LETS SOMEBODY IN. These tables hold what the portal checks a visitor against,'
-say 'and their rows now answer on production exactly as they did on QA:'
+LETS_IN=$(prod_sql -F'|' -f - < "$LETS_IN_SQL")
+say 'AND WHAT OF IT LETS SOMEBODY IN. These tables hold what the portal checks a visitor'
+say 'against, and their rows now answer on production exactly as they did on QA:'
 for t in $LETS_IN; do
   say "  $t: $(awk -F'|' -v t="$t" '$1 == t { print $2 }' "$WORK/prod.after")"
 done
-say 'So a browser still holding a QA session is signed in here, and a link mailed from QA works here.'
-say 'Emptying those tables ends every one of them, and costs nothing but a fresh sign-in.'
+say ''
+say 'TWO OF THESE END DIFFERENTLY, and the difference decides what you have to do next.'
+say ''
+say '  THE TOKENS can be ended. A browser still holding a QA session is signed in here, and a'
+say '  reset link mailed from QA works here. Emptying account_session, password_reset_token and'
+say '  email_verification_token ends every one of them and costs nothing but a fresh sign-in.'
+say ''
+say '  THE PASSWORDS CANNOT. account.password_hash came over with every other column, it is what'
+say '  signing in is checked against, and no amount of emptying touches it: a password is not in'
+say '  any of those three tables. EVERY PASSWORD THAT WORKED ON QA WORKS HERE, from the first'
+say '  minute. Any that was chosen as a throwaway for testing has to be CHANGED before this'
+say '  portal is open to anybody.'
+say ''
+say '  AND THE SUPERADMIN IS THE ONE TO DO FIRST. compose.qa.yml says BTL_SUPERADMIN_EMAIL is'
+say '  deliberately not separated between the two stacks, so the same address holds the role on'
+say '  both, and its password here is whatever it was on QA.'
 
 say ''
 say 'DONE. This tool must not be run again against this database, and it will refuse to be.'
