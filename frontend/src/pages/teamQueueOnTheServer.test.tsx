@@ -686,11 +686,77 @@ describe('what the team presses', () => {
         { timeout: SLOW },
       )
 
-      /* And the sentence about the refusal is gone, because it was about a press two presses
-         ago. */
+      /* The sentence is gone, but this case says NOTHING about why: the row it stood under
+         went out of the list when the second press succeeded, so it would be gone whether
+         the sentence was cleared or not. The case below is the one that tells the two
+         apart, and it was written because a mutation deleting `setRefused(null)` walked
+         straight through this one. */
       expect(screen.queryByText(sr.teams.decideRefused.theWindowIsShut)).not.toBeInTheDocument()
 
       expect(writes(server.asked)).toHaveLength(2)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /**
+   * A PRESS ON ANOTHER ROW CLEARS THE SENTENCE, AND THE ROW IT STOOD UNDER IS STILL THERE.
+   *
+   * <p><b>Written because a mutation survived</b> (series of 29.09.2026, the one that deletes
+   * `setRefused(null)`). The case above walks the same code and cannot see it: there, the row
+   * that was refused is the row that then succeeds, so it leaves the list and takes its
+   * sentence with it whether anything cleared the sentence or not. Two sources for one absence.
+   *
+   * <p>So here the two presses are on TWO rows. The middle row is refused, the first row is then
+   * answered and goes; the middle row is still drawn, and what has to be gone from under it is
+   * the sentence and nothing else.
+   */
+  it('clears the sentence when another row is pressed, and leaves that row standing', async () => {
+    let refuseIt = true
+    const server = aServerWithAQueue(() => (refuseIt ? refused('theWindowIsShut', 409) : did()))
+    const user = setupUser()
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      await waitingList()
+      await user.click(takeHimIn())
+
+      expect(
+        await screen.findByText(sr.teams.decideRefused.theWindowIsShut, undefined, {
+          timeout: SLOW,
+        }),
+      ).toBeVisible()
+
+      refuseIt = false
+
+      const other = must(ASKING[0], 'the first application')
+
+      await user.click(
+        screen.getByRole('button', {
+          name: `${sr.teams.joinRefused}: ${nameOf(other.memberNumber)}`,
+        }),
+      )
+
+      await waitFor(
+        async () => {
+          expect((await waitingList()).getAllByRole('listitem')).toHaveLength(2)
+        },
+        { timeout: SLOW },
+      )
+
+      /* The refused row is STILL THERE, which is what makes the absence below about the
+         sentence rather than about the row. */
+      const rows = (await waitingList()).getAllByRole('listitem')
+
+      expect(rows.map((one) => one.textContent)).toEqual([
+        expect.stringContaining(nameOf(PRESSED.memberNumber)),
+        expect.stringContaining(nameOf('000008')),
+      ])
+      expect(must(rows[0], 'the row that was refused').textContent).not.toContain(
+        sr.teams.decideRefused.theWindowIsShut,
+      )
+      expect(screen.queryByText(sr.teams.decideRefused.theWindowIsShut)).not.toBeInTheDocument()
     } finally {
       server.stop()
     }
