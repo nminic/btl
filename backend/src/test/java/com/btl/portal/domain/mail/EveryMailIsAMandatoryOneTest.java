@@ -89,6 +89,13 @@ class EveryMailIsAMandatoryOneTest {
 			"setANewPassword", "changing the password, from the screen that says it is forgotten",
 			"thePasswordHasChanged", "changing the password, telling him it happened",
 			"resultEntered", "a result entered",
+			/* Not one of the six by name, and named by the owner all the same. PDL P22, an [ODLUKA]
+			   in the section that lists the six: „Član dobija mejl kad mu je rezultat odobren." And
+			   the decision of 28.09.2026 that took the notification screen away whole records the key
+			   `resultApproved`, „Kad mi rezultat bude odobren", as „obavezan mejl", one of the two
+			   switches that screen offered over „dva od šest obaveznih". Which of the six it is
+			   PDL does not say, so no number is claimed here. */
+			"resultApproved", "a result approved: named a mandatory mail by PDL P22 and by the decision of 28.09.2026",
 			"resultChanged", "a result changed",
 			"resultDeleted", "a result changed: deleting is the cheapest way to change one without a trace");
 
