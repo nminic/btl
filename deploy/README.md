@@ -63,10 +63,20 @@ docker compose -f compose.prod.yml up -d --build frontend
 
 ### The first raise is not like the ones after it
 
-**The database starts empty, and every migration applied is still an empty
-portal.** Flyway builds the schema at backend startup and the seed migrations
-fill the place and the price tables, but **nothing seeds events, races or
-results**. Measured on the QA database on 29.09.2026, which is where the rows
+**The database starts empty, and the migrations then fill more of it than the
+word "empty" suggests.** Flyway builds the schema at backend startup, and the
+seed migrations put rows into **eleven tables**, counted over all 46 of them on
+29.09.2026: `country` 246, `place` 47016, `price_row` 7, `role` 4,
+`admin_right`, `ducat_kind` 11, `ducat` 15, `static_page` 4,
+`static_page_section` 39, and both translation tables. So a freshly migrated
+production already serves the whole rulebook, the terms of use, the privacy
+policy and the president's word, in both languages, beside the price list and
+the ducat catalogue. It is not an empty portal; it is a portal with no league in
+it.
+
+**What no migration seeds is the league**: there is not one
+`insert into btl_event`, `race`, `result` or `competitor` anywhere in the 46.
+Measured on the QA database on 29.09.2026, which is where the rows
 actually are: `btl_event` 321 rows (49 of them in 2027), `race` 467, `result`
 274, `competitor` 1, `league` 1, `league_race` 4, and `team`,
 `season_competitor`, `result_submission` and `event_comment` empty. A production
@@ -91,10 +101,18 @@ is **not** a step prepared in advance and executed when its turn comes. The dump
 is taken at the **last moment**, after the owner's testing and after everything
 he adds during it.
 
-**Still open, and written down rather than assumed:** whether the transfer is
-one-off or has to be repeatable. If the owner keeps adding to QA after the first
-raise, the tool has to be safe to run again **without doubling rows**, which is a
-materially different job from a single pour. Nothing here decides it.
+**And it is one-off.** The owner decided that on 29.09.2026 (PDL, "Prenos
+podataka je JEDNOKRATAN"), choosing between three offered outcomes and taking
+the simpler one over a tool that could be run again. Three things follow, and
+the price of each was put to him before he chose:
+
+- **The tool may only ever run over an empty production database, and it has to
+  refuse by itself when the database is not empty.** That refusal is the only
+  defence a one-off shape can have.
+- **Everything that belongs on production has to be in the QA database before
+  the first raise.**
+- **Everything added after that is typed in by hand, through the screens**,
+  because the pour cannot be repeated.
 
 The transfer runs **database to database**. It is not a migration and it never
 passes through this repository: those rows carry personal data, and the repo is
