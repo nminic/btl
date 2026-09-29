@@ -33,9 +33,14 @@ describe('the four periods', () => {
 
 describe('priceOn', () => {
   it('finds the price in force', () => {
-    expect(priceOn('2026-10-01').eur).toBe(35)
-    expect(priceOn('2026-10-05').eur).toBe(35)
-    expect(priceOn('2026-10-06').eur).toBe(40)
+    expect(priceOn('2026-10-14').eur).toBe(40)
+    expect(priceOn('2026-10-15').eur).toBe(35)
+    expect(priceOn('2026-10-31').eur).toBe(35)
+    /* THE DAY THAT CHANGED SIDES on 29.09.2026, and the only one that tells the new
+       list from the old: it was the early price and is now the running season's. */
+    expect(priceOn('2026-10-01').eur).toBe(40)
+    expect(priceOn('2026-11-01').eur).toBe(40)
+    expect(priceOn('2026-11-29').eur).toBe(40)
     expect(priceOn('2026-11-30').eur).toBe(40)
     expect(priceOn('2026-12-01').eur).toBe(50)
     expect(priceOn('2026-12-31').eur).toBe(50)
@@ -43,10 +48,10 @@ describe('priceOn', () => {
 
   it('answers on any day of any year, because the periods repeat', () => {
     /* Owner, 30.07.2026: membership for 2027 is sold until 30 September 2027,
-       and on 1 October the same four open again for 2028. Written as dates the
+       and on 15 October the same four open again for 2028. Written as dates the
        list would have run out and the portal would have stopped having a price
        on a morning nobody was watching. */
-    expect(priceOn('2031-10-02').eur).toBe(35)
+    expect(priceOn('2031-10-20').eur).toBe(35)
     expect(priceOn('2031-05-05').eur).toBe(40)
     expect(priceOn('2026-09-20').eur).toBe(40)
     expect(priceOn('2026-01-01').eur).toBe(40)
@@ -55,16 +60,23 @@ describe('priceOn', () => {
   it('gives the in-season price no place in the standing', () => {
     expect(priceOn('2027-03-01').ranking).toBe(false)
     expect(priceOn('2027-09-30').ranking).toBe(false)
-    expect(priceOn('2026-10-01').ranking).toBe(true)
+    expect(priceOn('2027-10-14').ranking).toBe(false)
+    expect(priceOn('2026-10-15').ranking).toBe(true)
+    /* And the fortnight the running season gained: ranked before 29.09.2026, not now. */
+    expect(priceOn('2026-10-01').ranking).toBe(false)
   })
 })
 
 describe('registrationOpen', () => {
   it('is shut during the period of looking around', () => {
     /* The launch happens once, so this is a real date and not a day of the
-       year: the portal is open for looking only until 1 October 2026. */
+       year: the portal is open for looking only until 15 October 2026, which the
+       owner moved there from 1 October on 29.09.2026 („Da, za sezonu 2027, dakle
+       odmah"). */
     expect(registrationOpen('2026-09-29')).toBe(false)
-    expect(registrationOpen('2026-10-01')).toBe(true)
+    expect(registrationOpen('2026-10-01')).toBe(false)
+    expect(registrationOpen('2026-10-14')).toBe(false)
+    expect(registrationOpen('2026-10-15')).toBe(true)
   })
 })
 

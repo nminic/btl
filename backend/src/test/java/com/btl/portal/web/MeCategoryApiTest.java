@@ -543,18 +543,20 @@ class MeCategoryApiTest {
 	 * that moving it touches 172 places in 95 files.
 	 *
 	 * <p><b>What is asserted is the instant the two part company</b>, against a fixed moment and
-	 * never against the machine's clock: from 1 October 2027 the season being chosen is 2028 and
+	 * never against the machine's clock: from 15 October 2027 the season being chosen is 2028 and
 	 * the column is still named for 2027, so from then a wish written for one season overwrites
 	 * the other. The fixture above already stands past that date, which is why the route it
 	 * tests is honest about what it does and not about what the column is called.
 	 */
 	@Test
 	void theColumnAndTheSeasonAgreeOnlyWhileTheSeasonIsTheFirstOne() {
-		Instant beforeTheDebtIsLive = Instant.parse("2027-09-30T21:00:00Z");
-		Instant afterTheDebtIsLive = Instant.parse("2027-09-30T23:00:00Z");
+		/* Either side of midnight in Belgrade on 15 October, which is where the window opens
+		   since 29.09.2026; it was 1 October until then and the pair moved with it. */
+		Instant beforeTheDebtIsLive = Instant.parse("2027-10-14T21:00:00Z");
+		Instant afterTheDebtIsLive = Instant.parse("2027-10-14T23:00:00Z");
 
 		assertThat(SeasonClock.seasonBeingPaidFor(beforeTheDebtIsLive.atZone(SeasonClock.ZONE)))
-				.as("the column and the season agreed until 1 October 2027 and no longer do, "
+				.as("the column and the season agreed until 15 October 2027 and no longer do, "
 						+ "so the debt this case names has moved")
 				.isEqualTo(SeasonClock.FIRST_SEASON);
 

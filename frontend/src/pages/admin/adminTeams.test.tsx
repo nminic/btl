@@ -241,7 +241,7 @@ describe('a team taken away from the administration', () => {
    *
    * <p><b>Both halves are a SWAP OF THE SOURCE and not a removal of behaviour.</b> The day the
    * screen is read as and the answer the route gives are set to DISAGREE, once each way. A
-   * screen carrying its own copy of 1 October fails one of the two: reading its clock to
+   * screen carrying its own copy of 15 October fails one of the two: reading its clock to
    * suppress the sentence fails the first, and reading it to refuse before asking fails the
    * second.
    */
@@ -258,7 +258,7 @@ describe('a team taken away from the administration', () => {
       const said = await within(row).findByRole('alert')
 
       expect(said).toHaveTextContent(
-        'Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. '
+        'Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. '
           + 'Tim se do tada ne briše, ni iz administracije.',
       )
 

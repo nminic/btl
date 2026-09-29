@@ -49,8 +49,8 @@ export type PriceRow = {
    * The day of the year the period opens and the day it closes, both mm-dd.
    *
    * A day of the year rather than a date, because the list repeats (owner,
-   * 30.07.2026): membership for 2027 is sold until 30 September 2027, and on 1
-   * October the same four periods open again for 2028, and so on every year.
+   * 30.07.2026): membership for 2027 is sold until 14 October 2027, and on the
+   * fifteenth the same four periods open again for 2028, and so on every year.
    * Written as dates the list would have been four rows that expire, and the
    * portal would quietly stop having a price on a morning nobody was watching.
    */
@@ -80,32 +80,46 @@ export const SEASON = FIRST_SEASON
  *  27.09.2026 the registration screen also refused to draw a form before this day; that
  *  refusal is gone (PDL, „Zabrana registracije pre 01.10.2026 se SKIDA", owner 27.09.2026),
  *  so what is left here is the price list's own date, nothing that stops anybody reaching
- *  the form early. A launch happens once, so this is a real date and not a day of the year. */
-export const REGISTRATION_OPENS = '2026-10-01'
+ *  the form early. A launch happens once, so this is a real date and not a day of the year.
+ *
+ *  **It was 2026-10-01 until 29.09.2026**, when the owner moved the selling year to the
+ *  fifteenth and was asked whether that holds for season 2027 already: „Da, za sezonu 2027,
+ *  dakle odmah". So registration opens a fortnight later than the launch had planned, and the
+ *  quoted decision above still names the first because that is the ban he lifted, not the day
+ *  anything opens on. */
+export const REGISTRATION_OPENS = '2026-10-15'
 
 /**
- * From the new year to the end of September: the season already running.
+ * From the new year to the middle of October: the season already running.
  *
- * Named, because it is where the year wraps round to. It closes on 30 September
- * rather than on 31 December (owner, 30.07.2026): from 1 October what is on sale
- * is the next season, so a member paying in October is not paying late for this
- * year, they are paying early for the next.
+ * Named, because it is where the year wraps round to. It closes before the end of
+ * the year rather than on 31 December (owner, 30.07.2026): once the selling year
+ * opens, what is on sale is the next season, so a member paying then is not paying
+ * late for this year, they are paying early for the next.
+ *
+ * **It ran to 30 September until 29.09.2026.** The owner moved the selling year to
+ * 15 October and was asked what happens to the fortnight that left behind: „Ovo bi
+ * bilo pokriveno od 1. januara do 14. oktobra." So this row was EXTENDED rather
+ * than a fifth one being added, and that was not a matter of taste - the four
+ * periods have to tile the year with no gap, and `PriceListRowsTest` holds them to
+ * it, so a row left at 30 September would have meant a fortnight on which the
+ * portal has no price at all.
  */
 const IN_SEASON: PriceRow = {
   key: 'season',
   from: '01-01',
-  to: '09-30',
+  to: '10-14',
   eur: 40,
   rsd: 4800,
   ranking: false,
 }
 
 /* In the order a member reads them, which is the order the selling year runs
- * in: it opens on 1 October and the last of the four is the one that follows
+ * in: it opens on 15 October and the last of the four is the one that follows
  * the new year. */
 export const PRICES: PriceRow[] = [
-  { key: 'early', from: '10-01', to: '10-05', eur: 35, rsd: 4200, ranking: true },
-  { key: 'regular', from: '10-06', to: '11-30', eur: 40, rsd: 4800, ranking: true },
+  { key: 'early', from: '10-15', to: '10-31', eur: 35, rsd: 4200, ranking: true },
+  { key: 'regular', from: '11-01', to: '11-30', eur: 40, rsd: 4800, ranking: true },
   { key: 'late', from: '12-01', to: '12-31', eur: 50, rsd: 6000, ranking: true },
   IN_SEASON,
 ]
@@ -255,8 +269,8 @@ export function registrationOpen(today: string): boolean {
  * Always one that has not begun. The season on offer and the season being
  * renewed are the same thing from October to December and different for the nine
  * months before it: in August 2027 somebody joining is joining 2027, but the
- * renewal that opens in October is for 2028, and the screen read "Obnova
- * članarine za 2027" directly above "renewal opens on 1 October".
+ * renewal that opens in mid October is for 2028, and the screen read "Obnova
+ * članarine za 2027" directly above "renewal opens on 15 October".
  *
  * A transfer is the same question with the same answer: asked for now, it takes
  * effect at the start of the next season and never during a running one

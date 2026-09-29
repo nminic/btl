@@ -43,7 +43,7 @@ import java.util.List;
  *
  * <p><b>IN THE ORDER THE LIST WAS GIVEN, AND THE ORDER IS THE ANSWER.</b> The
  * price list is a table somebody reads from the top down: the selling year opens
- * on 1 October and the last of the four periods is the one that follows the new
+ * on 15 October and the last of the four periods is the one that follows the new
  * year, so the order is a decision and not the alphabet. That is why
  * {@code sort_order} is a unique, deferrable column of V4 and not something
  * worked out here.
@@ -92,7 +92,7 @@ class PricingApi {
 	 *
 	 * <p><b>They are a day of the YEAR, {@code MM-DD}, and never a date.</b> The list
 	 * repeats (owner, 30.07.2026): membership for 2027 is sold until 30 September
-	 * 2027, and on 1 October the same four periods open again for 2028. Written as
+	 * 2027, and on 15 October the same four periods open again for 2028. Written as
 	 * dates it would be four rows that expire, and the portal would quietly stop
 	 * having a price on a morning nobody was watching.
 	 *

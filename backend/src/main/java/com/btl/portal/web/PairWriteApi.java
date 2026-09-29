@@ -182,7 +182,7 @@ import java.util.Optional;
  * more than the rule it replaced.</b> It argued that the fee must not be asked here because
  * „a condition over either column would refuse EVERY pair agreed between January and
  * September". That is true of {@code membership (competitor_id, season, basis)}, which carries
- * a season and has no row for the one being formed until it goes on sale on 1 October. <b>It
+ * a season and has no row for the one being formed until it goes on sale on 15 October. <b>It
  * is false of {@code competitor.active}</b>, and V22 says so in as many words: „`competitor.
  * active` (V7) is one boolean with no season in it. It answers „is he a member NOW"." Two
  * columns were read as one fact, the wrong half of the sentence was carried over to the other,
@@ -203,7 +203,7 @@ import java.util.Optional;
  *
  * <p><b>What is still NOT asked, and this half of the old paragraph stands.</b> Nothing here
  * reads {@code membership}, so nobody is refused for not having paid the season the pair is
- * being made FOR - which nobody can have done before 1 October. The day forming really depends
+ * being made FOR - which nobody can have done before 15 October. The day forming really depends
  * on the season's own membership rather than on „is he a member now", it is one decision in one
  * place and this paragraph is where it lands.
  *

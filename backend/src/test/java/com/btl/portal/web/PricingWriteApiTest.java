@@ -113,25 +113,38 @@ class PricingWriteApiTest {
 	private static final Instant IN_MARCH = Instant.parse("2028-03-15T11:00:00Z");
 
 	/**
-	 * Inside the {@code regular} period, 6 October to 30 November, and past 1 October.
+	 * Inside the {@code regular} period, 1 to 30 November, and past the day the window opens.
+	 *
+	 * <p><b>It was 20 October until 29.09.2026, and it had to move with the list.</b> The
+	 * owner made {@code early} run from 15 to 31 October that day, so 20 October is now in
+	 * {@code early} and no longer in {@code regular} - and this constant exists to be inside
+	 * the row {@link #ACTED} edits. Left where it was, the case would have gone on running
+	 * and stopped being about one row before and after a change: it would have compared a
+	 * payment on {@code regular} with a payment on {@code early}, which is what it fails
+	 * with when the two part company.
 	 *
 	 * <p><b>Kept for the payment case and NOT reused for the deadline</b>, which is „nikad
 	 * jedna konstanta za dve uloge": the day a payment is PRICED on and the day the referral
-	 * window OPENS are two questions, and the two instants below are five days earlier - in
-	 * the {@code early} period rather than in {@code regular} - so one constant serving both
+	 * window OPENS are two questions, and the two instants below are in October - in the
+	 * {@code early} period rather than in {@code regular} - so one constant serving both
 	 * would have quietly renamed the row that case is about.
 	 */
-	private static final Instant IN_OCTOBER = Instant.parse("2028-10-20T10:00:00Z");
+	private static final Instant IN_THE_REGULAR_PERIOD = Instant.parse("2028-11-10T10:00:00Z");
 
 	/**
 	 * MIDNIGHT IN BELGRADE ON 1 OCTOBER, WRITTEN AS THE INSTANT IT ACTUALLY IS.
 	 *
 	 * <p><b>This is the whole of PDL P16a in one number and it is measured, not read.</b>
-	 * Belgrade is still on summer time on 1 October ({@code +02:00}; it leaves on the last
+	 * Belgrade is still on summer time on 15 October ({@code +02:00}; it leaves on the last
 	 * Sunday of the month), so midnight there is 22:00 UTC of the day before. Read in UTC
-	 * this instant is <b>30 September</b>, and read at a literal CET of {@code +01:00} it is
-	 * <b>23:00 on 30 September</b> - in both of them the window has not opened and the
+	 * this instant is <b>14 October</b>, and read at a literal CET of {@code +01:00} it is
+	 * <b>23:00 on 14 October</b> - in both of them the window has not opened and the
 	 * referral could still be set.
+	 *
+	 * <p><b>It straddled 1 October until 29.09.2026</b>, when the owner moved the window to
+	 * the fifteenth. The instant moved with it for the same reason it was put on an edge in
+	 * the first place: a fortnight either side of the old midnight the three zones agree
+	 * again, and the case would have gone back to measuring nothing.
 	 *
 	 * <p><b>Which is exactly why the old moment measured nothing.</b> Until 25.09.2026 this
 	 * case stood on 20 October, where all three zones agree, and a series of mutations
@@ -140,17 +153,17 @@ class PricingWriteApiTest {
 	 * {@code SeasonClockTest} failed twice each time. The route's own claim about the zone
 	 * was carried by nothing.
 	 */
-	private static final Instant AS_THE_WINDOW_OPENS = Instant.parse("2028-09-30T22:00:00Z");
+	private static final Instant AS_THE_WINDOW_OPENS = Instant.parse("2028-10-14T22:00:00Z");
 
 	/**
-	 * One second earlier, when it is still 30 September in Belgrade.
+	 * One second earlier, when it is still 14 October in Belgrade.
 	 *
-	 * <p>The other half of the edge, and without it the case says „October" rather than
-	 * „from this instant". A guard moved a month early - {@code getMonthValue() >= 9} - would
-	 * satisfy every assertion about October and fail only here.
+	 * <p>The other half of the edge, and without it the case says „the second half of October"
+	 * rather than „from this instant". A guard moved a day early would satisfy every
+	 * assertion about the window being open and fail only here.
 	 */
 	private static final Instant A_SECOND_BEFORE_THE_WINDOW_OPENS =
-			Instant.parse("2028-09-30T21:59:59Z");
+			Instant.parse("2028-10-14T21:59:59Z");
 
 	/** The row every case writes. See the head of this class for why it is this one. */
 	private static final String ACTED = "regular";
@@ -644,7 +657,7 @@ class PricingWriteApiTest {
 	 */
 	@Test
 	void changingAPriceLeavesEveryPaymentAlreadyRecordedExactlyWhereItWas() throws Exception {
-		clock.moveTo(IN_OCTOBER);
+		clock.moveTo(IN_THE_REGULAR_PERIOD);
 
 		List<String> before = keysInOrder();
 		Map<String, Object> euroWas = paymentRow(paidInEuro);
@@ -694,7 +707,7 @@ class PricingWriteApiTest {
 				.param(whoPaysLater).query(Long.class).single());
 
 		assertThat(later.get("price_row_id"))
-				.as("the payment recorded in October names a different row of the price list than"
+				.as("the payment recorded in the regular period names a different row of the price list"
 						+ " the one this case edited, so the two amounts below are two rows and"
 						+ " not one row before and after")
 				.isEqualTo(euroWas.get("price_row_id"));

@@ -30,13 +30,31 @@
 /**
  * The day by default, and the day this portal is written against.
  *
- * 30 September 2026 is the last day before every window of the year opens
- * (`data/season.ts`, `WINDOW_OPENS`): renewal shut, transfers shut, the referral
+ * 30 September 2026 is before every window of the year opens
+ * (`data/season.ts`, `WINDOW_OPENS`, which moved from 1 to 15 October on 29.09.2026,
+ * so this is no longer the LAST such day but is still comfortably on the shut side):
+ * renewal shut, transfers shut, the referral
  * amount still settable, no season of the league running yet, and the base price
  * period still the one in force. It is the day the tests that DO pin already name
  * on the open side of that boundary (`pages/adminFlows.test.tsx`,
  * `data/season.test.ts`), so the suite goes on being read as the day it was
  * written for rather than as the day it is run on.
+ *
+ * **AND WHAT THAT MEANS THIS SUITE CANNOT SEE, said out loud because it is easy
+ * to mistake for coverage.** Both pinned days sit on the SAME side of every
+ * boundary that moved on 29.09.2026: 30 September 2026 was outside the window
+ * before and is outside it now, and 1 November 2027 was inside before and is
+ * inside now. So when the owner moved the selling year from 1 to 15 October,
+ * not one of the three thousand cases that say nothing about the day changed
+ * its answer - the whole suite stayed green over a fortnight of the year whose
+ * meaning had been reversed. Everything that measures that fortnight names its
+ * own day, and it has to; the two days here are not evidence about it.
+ *
+ * **Why the default was not simply moved to 14 October instead.** That is the
+ * day the sentence above would like it to be, and moving it would have changed
+ * what every unpinned case in the portal is read as - the blast radius is the
+ * whole suite, to make one sentence in this comment tidier. The sentence moved
+ * instead.
  */
 export const THE_DAY_THE_SUITE_IS_READ_AS = '2026-09-30'
 

@@ -112,7 +112,7 @@ export function InvitationAnswer({
      squad through that one door.
 
      The invitation waits rather than lapsing, which is what the window is for: it
-     is open again on 1 October, and until then this says so instead of offering the
+     is open again on 15 October, and until then this says so instead of offering the
      button.
 
      **„Odbij" is not held by the window and stays.** Refusing writes nothing about

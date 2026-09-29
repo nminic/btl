@@ -163,8 +163,8 @@ export function AdminTeams() {
    *
    * <p><b>THIS SCREEN DRAWS NO CONDITION OF ITS OWN ABOUT THE WINDOW, and that is the point
    * of the refusal below rather than an omission.</b> The route asks
-   * `SeasonClock.transferWindowOpen` and answers 409 `theWindowIsShut` outside 1.10-31.12. A
-   * screen that refused first would be a second home for 1 October, and the two would be
+   * `SeasonClock.transferWindowOpen` and answers 409 `theWindowIsShut` outside 15.10-31.12. A
+   * screen that refused first would be a second home for 15 October, and the two would be
    * free to disagree on the day either was edited. So the reason the reader is given comes
    * off the ANSWER, and `adminTeams.test.tsx` holds that from both sides: the sentence
    * appears on a 409 received on a day this screen would have called open, and the row goes

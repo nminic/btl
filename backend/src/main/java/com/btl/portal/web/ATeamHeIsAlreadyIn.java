@@ -15,7 +15,7 @@ import java.util.List;
  * <p><b>Why this exists beside {@link com.btl.portal.domain.team.JoiningATeam#mayJoin},
  * which already answers something very like it.</b> That method answers the COMPOSITE
  * question - the window and the team together - and answers the window FIRST, so on any
- * day outside 1 October to 31 December it says {@code THE_WINDOW_IS_SHUT} and never looks
+ * day outside 15 October to 31 December it says {@code THE_WINDOW_IS_SHUT} and never looks
  * at a membership at all. That is exactly right where it is asked: a member pressing
  * „Prijavi se u tim" or „Predloži tim" is refused by either half and told neither
  * ({@link TeamWriteApi}).

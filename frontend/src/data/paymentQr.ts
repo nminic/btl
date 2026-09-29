@@ -27,7 +27,7 @@ import { CONTACT_ADDRESS } from '../app/routes'
  * until the extract from the register says which of two addresses is current
  * (PENDING, 04.08.2026). Here it stays, because a payment slip without an
  * address of the payee is not a payment slip, and a member has to be able to
- * pay from 1 October. It is the first thing to correct when the extract
+ * pay from 15 October. It is the first thing to correct when the extract
  * arrives, and it is written down as such. */
 export const RECIPIENT_NAME = 'Sportsko udruženje BTL'
 export const RECIPIENT_ADDRESS = 'Bulevar Arsenija Čarnojevića 77, 11070 Novi Beograd'

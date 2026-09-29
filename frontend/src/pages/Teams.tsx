@@ -112,7 +112,7 @@ export function Teams() {
                     </Link>
                   ) : (
                     /* Outside the window there is nothing to press and a sentence
-                       saying when there will be. A team is founded from 1 October to
+                       saying when there will be. A team is founded from 15 October to
                        31 December (owner, 05.09.2026), the same window every other
                        change of team is asked in, and the membership screen already
                        speaks of it in those words. */

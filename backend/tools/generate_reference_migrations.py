@@ -644,7 +644,19 @@ create table price_row (
 );
 """
 
-# The seven rows of the price list.
+# The seven rows of the price list, AS V4 SHIPPED THEM AND NOT AS THE TABLE STANDS TODAY.
+#
+# The days below are the ones V4 inserted, and three of them have since moved: V49 made the
+# early period run 15-31 October, the regular one 1-30 November and the running season's
+# 1 January to 14 October (owner, 29.09.2026). THIS LIST IS DELIBERATELY NOT UPDATED. It is
+# the input to a migration that has been applied, so it has to keep saying what that file
+# says or the two would disagree about a checksum nobody can change (ADL A2); what the table
+# holds now is V4 plus every migration after it, which is what PriceListRowsTest asserts and
+# what ThePriceListHasOneHomeTest holds the portal's own copy to.
+#
+# Said here because the shape invites the opposite reading: a list of current-looking rows in
+# a generator reads as the price list, and editing it to 'correct' it would change nothing
+# about the database and everything about whether V4 can still be regenerated.
 #
 # Their source is `frontend/src/data/pricing.ts`, which is TypeScript and not
 # data: there is no `pricing.json` under `frontend/src/test/mock`, so unlike the

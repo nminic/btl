@@ -243,7 +243,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   keeping both in version order rather than by either side winning. The full gate was
 			   run again afterwards, because a list that merges cleanly is not a list that is
 			   right. */
-			new Applied("48", "V48__the_social_notices_go_only_to_the_inbox.sql", -1376320615));
+			new Applied("48", "V48__the_social_notices_go_only_to_the_inbox.sql", -1376320615),
+
+			/* V49. The selling year opens on 15 October and no longer on the first (owner,
+			   29.09.2026). Three price rows, their names, and five sentences in three sections of
+			   the rulebook and the terms of use, in both languages.
+
+			   Pinned LAST, when the file was final, which is the rule this list teaches: the
+			   number is read off the gate after the migration has stopped changing, because a
+			   commit that afterwards corrects one sentence in its header moves the bytes and
+			   fails here on a checksum that was right when it was written.
+
+			   49 and not 45, which is the free number: V45 does not exist and V46, V47 and V48 do,
+			   so a migration numbered into the gap would run BEFORE the three that are already on
+			   main - and this one has to run after V34, which wrote the names it rewrites, and
+			   after V46, which last rewrote the article it edits. */
+			new Applied("49", "V49__the_selling_year_opens_on_the_fifteenth_of_october.sql", 618253647));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

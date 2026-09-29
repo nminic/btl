@@ -739,7 +739,7 @@ describe('what the portal may not claim about a message the server keeps', () =>
 
        **„Odbij" and never „Prihvati", and that is this file's own clock rather than caution.**
        The gate reads this suite twice, as two days a season and a year apart
-       (`test/theDay.ts`), and this case names no day; „Prihvati" is held back outside 1 October
+       (`test/theDay.ts`), and this case names no day; „Prihvati" is held back outside 15 October
        to 31 December (PDL, 06.09.2026), so a case asserting it would agree with itself in one
        pass and not the other. „Odbij" is bound by nothing, which is the other half of that same
        decision, so it is the one button true on every day of the year. */

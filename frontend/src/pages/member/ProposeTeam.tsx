@@ -132,7 +132,7 @@ export function ProposeTeam() {
              forbids, and the reading is off the record rather than off the season,
              because a member who joined a team for next season is not in one today
              but would be in two on 1 January. **Outside the transfer window**: a
-             team is founded from 1 October to 31 December (owner, 05.09.2026), the
+             team is founded from 15 October to 31 December (owner, 05.09.2026), the
              same window in which every other change of team is asked for and the
              same one the membership screen already speaks of. */
           if (teamOf(me) !== null || !inYearlyWindow(today)) {

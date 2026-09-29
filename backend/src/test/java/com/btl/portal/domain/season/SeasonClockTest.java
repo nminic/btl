@@ -182,18 +182,31 @@ class SeasonClockTest {
 	}
 
 	/**
-	 * The transfer window is October to December, read in the league's zone.
+	 * The transfer window is 15 October to 31 December, read in the league's zone.
 	 *
-	 * <p>The Tokyo case is the one that matters: the last hours of 30 September in
-	 * Belgrade are already 1 October in Tokyo, and a member there must not be able to
-	 * found a team before the window opens for everybody else.
+	 * <p><b>It opened on 1 October until 29.09.2026, and the owner moved it that day:</b>
+	 * „Zelim da prvi period postane 15-31. oktobar, drugi 1-30. novembar a ostalo ostaje
+	 * isto. S tim na umu zelim i da se prelazni rok i sve ostalo otvara 15.10. ubuduce, a ne
+	 * 1.10." Asked whether only the opening day moves, he answered „Tacno": the window still
+	 * shuts at the end of 31 December, so it is FOURTEEN DAYS SHORTER and not shifted.
+	 *
+	 * <p><b>THE ASSERTION THAT CARRIES THIS CASE IS THE ONE ABOUT 1 OCTOBER, and it is the
+	 * only one that does.</b> This method read {@code month >= 10} for as long as the window
+	 * began with the month, so a day in October was the whole of the question. Every other
+	 * assertion here passes under that old shape as well: 15 October is in month 10, 31
+	 * December is in month 12, 1 January is in month 1. Only a day that is IN October and
+	 * OUTSIDE the window tells the two apart, and 1 October is the day the owner moved.
+	 *
+	 * <p>The Tokyo case is the one that matters for the zone: the last hours of 14 October in
+	 * Belgrade are already 15 October in Tokyo, and a member there must not be able to found
+	 * a team before the window opens for everybody else.
 	 */
 	@Test
-	void theTransferWindowIsOctoberToDecemberInTheLeaguesZone() {
-		assertThat(SeasonClock.transferWindowOpen(ZonedDateTime.of(2027, 9, 30, 23, 59, 0, 0, SeasonClock.ZONE)))
-				.as("the window opened before October")
+	void theTransferWindowIsFromTheFifteenthOfOctoberToDecemberInTheLeaguesZone() {
+		assertThat(SeasonClock.transferWindowOpen(ZonedDateTime.of(2027, 10, 14, 23, 59, 0, 0, SeasonClock.ZONE)))
+				.as("the window opened before the fifteenth")
 				.isFalse();
-		assertThat(SeasonClock.transferWindowOpen(ZonedDateTime.of(2027, 10, 1, 0, 0, 0, 0, SeasonClock.ZONE)))
+		assertThat(SeasonClock.transferWindowOpen(ZonedDateTime.of(2027, 10, 15, 0, 0, 0, 0, SeasonClock.ZONE)))
 				.isTrue();
 		assertThat(SeasonClock.transferWindowOpen(ZonedDateTime.of(2027, 12, 31, 23, 59, 0, 0, SeasonClock.ZONE)))
 				.isTrue();
@@ -201,24 +214,44 @@ class SeasonClockTest {
 				.as("the window stayed open into January")
 				.isFalse();
 
-		/* Midday on 1 October in Tokyo is five in the morning in Belgrade - the window is
-		   open for both. An hour earlier in Belgrade it is still September, and this is
-		   the shape that catches a version reading the month off the caller's zone. */
-		ZonedDateTime lateSeptemberInBelgrade = ZonedDateTime.of(2027, 9, 30, 23, 0, 0, 0, SeasonClock.ZONE);
+		/* THE DAY THAT CHANGED SIDES, and the one assertion here a rule reading the month
+		   alone cannot pass. It is asked in the middle of the day rather than at midnight so
+		   that it is nowhere near either boundary: the answer is about the DAY. */
+		assertThat(SeasonClock.transferWindowOpen(ZonedDateTime.of(2027, 10, 1, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the window opened on the first of October, which is the month-only rule the"
+						+ " owner moved on 29.09.2026")
+				.isFalse();
 
-		assertThat(lateSeptemberInBelgrade.withZoneSameInstant(TOKYO).getMonthValue())
-				.as("it is no longer already October in Tokyo, so the case measures nothing")
-				.isEqualTo(10);
-		assertThat(SeasonClock.transferWindowOpen(lateSeptemberInBelgrade.withZoneSameInstant(TOKYO)))
+		/* Eleven at night on 14 October in Belgrade is six in the morning of the fifteenth in
+		   Tokyo. This is the shape that catches a version reading the day off the caller's
+		   zone rather than the league's. */
+		ZonedDateTime theEveOfTheWindowHere = ZonedDateTime.of(2027, 10, 14, 23, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(theEveOfTheWindowHere.withZoneSameInstant(TOKYO).getDayOfMonth())
+				.as("it is no longer already the fifteenth in Tokyo, so the case measures nothing")
+				.isEqualTo(15);
+		assertThat(SeasonClock.transferWindowOpen(theEveOfTheWindowHere.withZoneSameInstant(TOKYO)))
 				.as("somebody in Tokyo could found a team before the window opened for anybody else")
 				.isFalse();
 	}
 
 	/**
-	 * THE AMOUNT ONE REFERRAL BRINGS IS SET UNTIL 1 OCTOBER AND SETTLED FROM IT.
+	 * THE AMOUNT ONE REFERRAL BRINGS IS SET UNTIL 15 OCTOBER AND SETTLED FROM IT.
 	 *
 	 * <p>Owner, 16.08.2026 (PDL P16): „administrator podesava <b>do 1.10. u 00 po CET</b> za
 	 * predstojecu godinu", and „posle 1. oktobra u 00:00 CET iznos za tu godinu stoji".
+	 * <b>That quotation is left exactly as he said it and the day in it is no longer the
+	 * day</b>: on 29.09.2026 he moved the renewal window to 15 October, and the rule he
+	 * stated was never about a date of its own - it is „until renewals open", which is why
+	 * this delegates instead of spelling a day. The sentence moved with the window without
+	 * anybody editing it, and that is the whole reason it delegates.
+	 *
+	 * <p><b>AND THE PERIOD GREW, WHICH IS THE OPPOSITE OF WHAT IT LOOKS LIKE.</b> This is the
+	 * COMPLEMENT of the window, so a window that opens fourteen days later leaves fourteen
+	 * days MORE in which the amount may still be set: 1 January to 30 September became 1
+	 * January to 14 October. Written down because the axis is easy to state backwards, and
+	 * stating it backwards would put the assertions the wrong way round while every one of
+	 * them still passed.
 	 *
 	 * <p><b>Both sides of the boundary, and the boundary is the instant and not the day.</b>
 	 * A rule written as „not in October" would pass the first two assertions and fail the
@@ -226,16 +259,16 @@ class SeasonClockTest {
 	 * new year.
 	 *
 	 * <p><b>And it is asked in a zone that is not the league's, like every case in this
-	 * file.</b> Midnight on 1 October in Tokyo is five in the evening of 30 September in
-	 * Belgrade, where the amount may still be set - so a version reading the month off the
+	 * file.</b> Midnight on 15 October in Tokyo is five in the evening of the fourteenth in
+	 * Belgrade, where the amount may still be set - so a version reading the day off the
 	 * caller's clock would settle the amount for somebody in Tokyo seven hours early.
 	 */
 	@Test
-	void theReferralAmountIsSetUntilOctoberAndSettledFromIt() {
-		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 9, 30, 23, 59, 0, 0, SeasonClock.ZONE)))
-				.as("the amount was already settled before October")
+	void theReferralAmountIsSetUntilTheFifteenthOfOctoberAndSettledFromIt() {
+		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 10, 14, 23, 59, 0, 0, SeasonClock.ZONE)))
+				.as("the amount was already settled before renewals opened")
 				.isTrue();
-		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 10, 1, 0, 0, 0, 0, SeasonClock.ZONE)))
+		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 10, 15, 0, 0, 0, 0, SeasonClock.ZONE)))
 				.as("the amount could still be set at the instant the renewal window opened")
 				.isFalse();
 		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 12, 31, 23, 59, 0, 0, SeasonClock.ZONE)))
@@ -244,14 +277,21 @@ class SeasonClockTest {
 				.as("the amount stayed settled into January, where the next season's is set")
 				.isTrue();
 
-		ZonedDateTime septemberInBelgrade = ZonedDateTime.of(2027, 9, 30, 17, 0, 0, 0, SeasonClock.ZONE);
+		/* THE FOURTEEN DAYS THE PERIOD GAINED, and the one assertion here that a rule reading
+		   the month alone cannot pass. */
+		assertThat(SeasonClock.referralMayBeSet(ZonedDateTime.of(2027, 10, 1, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the amount was settled on the first of October, fourteen days before"
+						+ " renewals open")
+				.isTrue();
 
-		assertThat(septemberInBelgrade.withZoneSameInstant(TOKYO).getMonthValue())
-				.as("it is no longer already October in Tokyo, so the case measures nothing")
-				.isEqualTo(10);
-		assertThat(SeasonClock.referralMayBeSet(septemberInBelgrade.withZoneSameInstant(TOKYO)))
+		ZonedDateTime theEveOfTheWindowHere = ZonedDateTime.of(2027, 10, 14, 17, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(theEveOfTheWindowHere.withZoneSameInstant(TOKYO).getDayOfMonth())
+				.as("it is no longer already the fifteenth in Tokyo, so the case measures nothing")
+				.isEqualTo(15);
+		assertThat(SeasonClock.referralMayBeSet(theEveOfTheWindowHere.withZoneSameInstant(TOKYO)))
 				.as("somebody in Tokyo was told the amount was settled while it was still"
-						+ " September for everybody else")
+						+ " the fourteenth for everybody else")
 				.isTrue();
 	}
 
@@ -272,9 +312,33 @@ class SeasonClockTest {
 		assertThat(SeasonClock.seasonBeingPaidFor(
 				ZonedDateTime.of(2027, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE))).isEqualTo(2027);
 
+		/* THE BOUNDARY THE OWNER MOVED ON 29.09.2026, on both sides and on the day that
+		   changed sides with it. This is the largest consequence of that decision: until the
+		   fourteenth a payment buys the season that is RUNNING, and from the fifteenth it
+		   buys the NEXT one. No screen decides it; they all read this.
+
+		   THE YEAR IS 2027 AND NOT 2026 ON PURPOSE, and a case written in 2026 would measure
+		   nothing at all: `Math.max(calendar, FIRST_SEASON)` answers 2027 on BOTH sides of
+		   the boundary through the whole of 2026, so the right answer and the wrong one are
+		   the same number and the assertion is satisfied by the clamp rather than by the
+		   window. */
 		assertThat(SeasonClock.seasonBeingPaidFor(
-				ZonedDateTime.of(2027, 9, 30, 23, 0, 0, 0, SeasonClock.ZONE).withZoneSameInstant(TOKYO)))
-				.as("a member in Tokyo was sold next season while it was still September here")
+				ZonedDateTime.of(2027, 10, 14, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("on the eve of the window a member was sold the season that has not begun")
+				.isEqualTo(2027);
+		assertThat(SeasonClock.seasonBeingPaidFor(
+				ZonedDateTime.of(2027, 10, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("on the day the window opens a member was still sold the running season")
+				.isEqualTo(2028);
+		assertThat(SeasonClock.seasonBeingPaidFor(
+				ZonedDateTime.of(2027, 10, 1, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the first of October still sold next season, which is the month-only rule"
+						+ " the owner moved on 29.09.2026")
+				.isEqualTo(2027);
+
+		assertThat(SeasonClock.seasonBeingPaidFor(
+				ZonedDateTime.of(2027, 10, 14, 23, 0, 0, 0, SeasonClock.ZONE).withZoneSameInstant(TOKYO)))
+				.as("a member in Tokyo was sold next season while it was still the fourteenth here")
 				.isEqualTo(2027);
 	}
 
@@ -445,7 +509,10 @@ class SeasonClockTest {
 	 */
 	@Test
 	void theSeasonBeingRunIsTheOneAChangeAgreedNowIsTheEndOf() {
-		ZonedDateTime october = ZonedDateTime.of(2027, 10, 3, 11, 0, 0, 0, SeasonClock.ZONE);
+		/* The twentieth and not the third: the window opens on 15 October since 29.09.2026,
+		   so a day earlier in the month is OUTSIDE it, and there the two answers below are
+		   the same number - which is exactly the accident this case exists to rule out. */
+		ZonedDateTime october = ZonedDateTime.of(2027, 10, 20, 11, 0, 0, 0, SeasonClock.ZONE);
 
 		assertThat(SeasonClock.seasonBeingRun(october))
 				.as("a member leaving in October was written out of the season that is being run")

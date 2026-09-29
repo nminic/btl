@@ -15,7 +15,7 @@
  * carries it in full so there is one home for it.
  *
  * The second half is untouched. Half of what the portal does depends on the date:
- * registration opens on 1 October, the price changes three times, renewal only
+ * registration opens on 15 October, the price changes three times, renewal only
  * opens inside its window, the calendar opens on the first month still ahead. None
  * of that can be looked at on the day it is being built without moving the clock.
  *
