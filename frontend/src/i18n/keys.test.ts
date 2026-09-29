@@ -11,7 +11,7 @@ import {
   RACE_KINDS,
   RATING_MARKS,
 } from '../data/types'
-import { NOTIFICATION_KEYS, SUBMISSION_STATUSES } from '../session/context'
+import { SUBMISSION_STATUSES } from '../session/context'
 import { LOCALES } from './config'
 import { ROLES } from '../roles/context'
 import { DUCAT_KINDS } from '../data/ducatRule'
@@ -189,7 +189,10 @@ describe('the names the portal composes out of a list', () => {
     { of: 'category', each: DOTS },
     { of: 'home.mostOf', each: CATEGORIES },
     { of: 'calendar.weekdays', each: ['1', '2', '3', '4', '5', '6', '7'] },
-    { of: 'myProfile.notify', each: NOTIFICATION_KEYS },
+    /* `myProfile.notify` stood here with `NOTIFICATION_KEYS` beside it until 28.09.2026,
+       when the owner took the notification panel off Settings („Ekran za podesavanja
+       obavestenja se sklanja u celini"). Both the family and the list it was built from
+       are gone; `settings.test.tsx` is what keeps them from coming back by accident. */
     /* The role switch, which is a thing of the workshop rather than of the
        portal, and still a select somebody reads. */
     { of: 'role', each: ROLES },

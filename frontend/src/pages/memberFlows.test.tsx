@@ -19,7 +19,6 @@ import { JUNIOR, PRICES, PROCESSING_FEE_EUR, REFERRAL } from '../data/pricing'
 import servedPrices from '../test/mock/pricing.json'
 import { formatShortDate } from '../i18n/format'
 import { I18nProvider } from '../i18n/I18nProvider'
-import { NOTIFICATION_KEYS } from '../session/context'
 import { SessionProvider } from '../session/SessionProvider'
 import { RoleProvider } from '../roles/RoleProvider'
 import { useSession } from '../session/useSession'
@@ -1776,29 +1775,13 @@ describe('settings', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Podešavanja' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Izgled' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Obaveštenja' })).toBeVisible()
   })
 
-  it('switches an optional notification off and on', async () => {
-    const user = setupUser()
-    renderAt('/sr/podesavanja', 'competitor', '000007')
-
-    const box = await screen.findByRole('checkbox', { name: 'Kad mi rezultat bude odobren' })
-    expect(box).toBeChecked()
-
-    await user.click(box)
-    expect(box).not.toBeChecked()
-
-    await user.click(box)
-    expect(box).toBeChecked()
-  })
-
-  it('offers every optional notification and no obligatory one', async () => {
-    renderAt('/sr/podesavanja', 'competitor', '000007')
-
-    expect(await screen.findAllByRole('checkbox')).toHaveLength(NOTIFICATION_KEYS.length)
-    expect(screen.getByRole('checkbox', { name: 'Povremene vesti iz lige' })).not.toBeChecked()
-  })
+  /* TWO CASES ABOUT NOTIFICATIONS STOOD HERE UNTIL 28.09.2026 - one pressed „Kad mi rezultat
+     bude odobren" off and on, the other counted the boxes against `NOTIFICATION_KEYS` - and
+     both went with the panel the owner removed („Ekran za podesavanja obavestenja se sklanja
+     u celini"). They are not replaced here: what they measured was a panel, and what stands
+     in its place is a rule about the screen, which lives in `member/settings.test.tsx`. */
 })
 
 /**

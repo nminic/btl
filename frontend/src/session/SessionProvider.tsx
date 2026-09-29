@@ -19,7 +19,6 @@ import {
   type Deletions,
   type Edits,
   type Message,
-  type NotificationKey,
   type PictureSent,
   type Rights,
   type SessionValue,
@@ -97,11 +96,6 @@ export function SessionProvider({
   const [pictureSent, setPictureSent] = useState<PictureSent | null>(null)
   const [going, setGoingAll] = useState<Record<string, boolean>>({})
   const [published, setPublished] = useState<{ from: string; comment: EventComment }[]>([])
-  const [notifications, setNotifications] = useState<Record<NotificationKey, boolean>>({
-    resultApproved: true,
-    resultChanged: true,
-    newsletter: false,
-  })
 
   const submit = useCallback(
     (submission: Omit<Submission, 'id' | 'status' | 'note' | 'corrected'>) => {
@@ -504,10 +498,6 @@ export function SessionProvider({
     }))
   }, [])
 
-  const setNotification = useCallback((key: NotificationKey, on: boolean) => {
-    setNotifications((current) => ({ ...current, [key]: on }))
-  }, [])
-
   const settle = useCallback((id: string, decision: Decision) => {
     setDecisions((current) => ({ ...current, [id]: decision }))
   }, [])
@@ -664,8 +654,6 @@ export function SessionProvider({
       setGoing,
       markRead,
       notify,
-      notifications,
-      setNotification,
       edits,
       edit,
       editRecord,
@@ -731,8 +719,6 @@ export function SessionProvider({
       breakPair,
       markRead,
       notify,
-      notifications,
-      setNotification,
       edits,
       edit,
       editRecord,
