@@ -457,6 +457,12 @@ function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNum
     signIn: vi.fn(),
     account: null,
     theServerSignedMeIn: vi.fn(),
+    /* True, because this session is handed to a panel that is already on screen, and the
+       moment this field exists for is the one BEFORE anything is drawn at all
+       (`pages/admin/Guard.tsx`, `pages/admin/beforeTheAnswer.test.tsx`). A case built here
+       is not about that moment, and saying so is not the same as leaving it out. */
+    theServerHasAnswered: true,
+    theServerAnswered: vi.fn(),
     myMembershipBasis: null,
     /* Null all three, because this session is built for a screen that reads none of
        them: what „Moja članarina" gets off `GET /api/me` since 25.09.2026 has no
