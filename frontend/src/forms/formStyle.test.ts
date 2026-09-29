@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { ruleFor, ruleInMedia } from '../test/stylesheet'
+import { everyRule, ruleFor, ruleInMedia } from '../test/stylesheet'
 
 /**
  * Three things about a form that no rendered test can see, because jsdom lays
@@ -192,37 +192,187 @@ describe('the calendar button that will not answer', () => {
  * nothing out: at 1280 the town is 309,33px at x=98,33 and the country 309,33px
  * at x=423,67, which is where the telephone above it begins, to the pixel.
  */
-describe('a town standing on a row of columns', () => {
-  const QUERY = '(min-width: 51.25em)'
+/**
+ * THE TOWN AND THE COUNTRY ARE TWO HALVES OF ONE ANSWER, SO THEY ARE ONE FIELD WITH
+ * TWO NAMES AND TWO CONTROLS, AND THE NAMES ARE ON ONE LINE.
+ *
+ * <p>Owner, 29.09.2026, over a picture of this field: „I ovde se raspada red zbog
+ * Drzave." Two things were wrong and neither can be seen by a rendered test, because
+ * jsdom lays nothing out (ADL A18): the two names were dressed by two different rules,
+ * and they stood on two different lines because one is drawn above the pair and the
+ * other inside it.
+ *
+ * <p><b>Both are held as questions about the FIELD rather than as a list of
+ * declarations.</b> „Which areas does this sheet place things into" is read off every
+ * rule it has, so a fifth area, or one of the four dropped, fails without anybody
+ * remembering to add a line here.
+ */
+describe('the field that asks for a town', () => {
+  const place = readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8')
 
-  it('is two of those columns, and its halves are one each', () => {
-    const halves = ruleInMedia(
-      fields,
-      QUERY,
-      '.form__row .field--place .place__town, .form__row .field--place .place__country-pick',
-      'FormRenderer.css',
+  it('is one grid, and the four things in it land on four different areas', () => {
+    /* THE JOIN, and it is the whole reason this is one case rather than two. The
+       field NAMES four areas and four rules PLACE something into one each; either
+       half alone reads as though it works, and an area named but never placed into,
+       or a rule placing into an area the field does not name, is exactly the shape
+       that would put a name back on top of a control. Read off every rule the sheet
+       has rather than off a list, so a fifth area cannot arrive unnoticed. */
+    const placed = everyRule(place, 'PlaceField.css')
+      .map((rule) => rule.style.getPropertyValue('grid-area'))
+      .filter((area) => area !== '')
+    const named = ruleFor(place, '.field.field--place', 'PlaceField.css').getPropertyValue(
+      'grid-template-areas',
     )
 
-    /* A basis of zero, written `0%` so every parser reads the shorthand, and not `auto`: `auto` starts from the width of the
-       content, and the content of one half is an empty box while the other is a
-       list of two hundred and forty six countries. */
-    expect(halves.getPropertyValue('flex')).toBe('1 1 0%')
-    expect(halves.getPropertyValue('min-inline-size')).toBe('0px')
-    /* And the fixed width `PlaceField.css` gives the country undone, or the
-       half is a half of nothing. */
-    expect(halves.getPropertyValue('inline-size')).toBe('auto')
-    expect(halves.getPropertyValue('max-inline-size')).toBe('none')
+    expect([...placed].sort((left, right) => left.localeCompare(right))).toEqual([
+      'country',
+      'countryName',
+      'town',
+      'townName',
+    ])
+
+    for (const area of placed) {
+      expect(named, `${area} is placed into but the field names no such area`).toContain(area)
+    }
+  })
+
+  it('stacks the two halves on a telephone and puts them side by side above 560', () => {
+    /* Mobile first: one column is what the field opens as, and the DOM order is
+       already name, town, name, country, so nothing has to be said about the order.
+       The second column arrives at the width the portal already parts them at. */
+    expect(
+      ruleFor(place, '.field.field--place', 'PlaceField.css').getPropertyValue(
+        'grid-template-columns',
+      ),
+    ).toBe('minmax(0, 1fr)')
+    expect(
+      ruleInMedia(place, '(min-width: 35em)', '.field.field--place', 'PlaceField.css')
+        .getPropertyValue('grid-template-columns'),
+    ).toBe('minmax(0, 1fr) minmax(0, 12rem)')
+  })
+
+  /**
+   * AND NEITHER HALF IS DRESSED DIFFERENTLY FROM THE OTHER.
+   *
+   * <p>What the owner saw was „Mesto" in the ordinary weight and „DRŽAVA" in small
+   * capitals in another colour. The dress came off the WRAPPER and the label inherited
+   * it, so a guard naming the label would have missed it entirely.
+   *
+   * <p><b>Asked of every rule the sheet has, in both directions.</b> Nothing in this
+   * field may set `text-transform` at all, and the one thing that may be quieter than
+   * its neighbours is the country written beside a town in the list of suggestions,
+   * which is the answer to „which Boston" and says so where it is written.
+   */
+  it('dresses neither of its two names differently from the other', () => {
+    const rules = everyRule(place, 'PlaceField.css')
+
+    expect(
+      rules
+        .filter((rule) => rule.style.getPropertyValue('text-transform') !== '')
+        .map((rule) => rule.selectorText),
+    ).toEqual([])
+    expect(
+      rules
+        .filter((rule) => rule.style.getPropertyValue('color') !== '')
+        .map((rule) => rule.selectorText),
+    ).toEqual(['.place__country'])
+  })
+})
+
+describe('a town standing on a row of columns', () => {
+  const QUERY = '(min-width: 51.25em)'
+  /** Where the two halves stand side by side at all, which is a width of its own
+   *  and on the portal's closed list (`styles/scale.test.ts`). */
+  const BESIDE = '(min-width: 35em)'
+  const place = readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8')
+
+  it('is two of those columns, and its halves are one each', () => {
+    const wide = ruleInMedia(fields, QUERY, '.form__row .field.field--place', 'FormRenderer.css')
+
+    expect(wide.getPropertyValue('grid-column')).toBe('span 2')
+    /* And the two halves ARE those two columns rather than merely sitting inside
+       them. `minmax(0, …)` on both and not a bare `1fr`: a track's floor is the
+       width of its content, and the content of one half is an empty box while the
+       other is a list of two hundred and forty six countries. */
+    expect(wide.getPropertyValue('grid-template-columns')).toBe('minmax(0, 1fr) minmax(0, 1fr)')
   })
 
   it('splits them by the gap between the columns, so each half IS a column', () => {
     /* The third thing, and the one that a guard about the halves alone would
        miss entirely: two equal halves of a field two columns wide are only two
        columns if what parts them is what parts the columns. */
-    const inside = ruleInMedia(fields, QUERY, '.form__row .field--place .place', 'FormRenderer.css')
+    const wide = ruleInMedia(fields, QUERY, '.form__row .field.field--place', 'FormRenderer.css')
     const row = ruleFor(fields, '.form__row', 'FormRenderer.css')
 
-    expect(inside.getPropertyValue('gap')).toBe(row.getPropertyValue('gap'))
-    expect(inside.getPropertyValue('gap'), 'the row no longer names a gap at all').not.toBe('')
+    expect(wide.getPropertyValue('column-gap')).toBe(row.getPropertyValue('gap'))
+    expect(wide.getPropertyValue('column-gap'), 'the row no longer names a gap at all').not.toBe('')
+  })
+
+  /**
+   * AND THE RULE ABOVE ONLY MEANS ANYTHING BECAUSE THE FIELD IS A GRID, WHICH
+   * ANOTHER SHEET SAYS.
+   *
+   * <p>The join between the two halves of this guard, and the one thing neither
+   * case above can see. `FormRenderer.css` hands `.form__row .field--place` a
+   * track list and a column gap; a track list on a flex box is two declarations
+   * nothing reads. What makes them mean what they say is `PlaceField.css` giving
+   * that same class `display: grid`, and the two sheets meet on nothing but the
+   * NAME of the class.
+   *
+   * <p>Asserted here rather than assumed, because the mutation that breaks it is
+   * one token in a file this one does not otherwise read.
+   */
+  it('means what it says only because the field is a grid, which the other sheet gives it', () => {
+    const own = ruleFor(place, '.field.field--place', 'PlaceField.css')
+
+    expect(own.getPropertyValue('display')).toBe('grid')
+  })
+
+  /**
+   * AND IT CAN WIN, WHICH IS A DIFFERENT QUESTION FROM WHAT IT SAYS.
+   *
+   * <p><b>Measured in Chrome on 29.09.2026, with every other case in this file
+   * green.</b> The rule above was first written `.form__row .field--place`, which is
+   * (0,2,0) - exactly what `PlaceField.css`'s own `.field.field--place` weighs. Equal
+   * weight is settled by whichever sheet the bundle emits last, and the one that won
+   * was the other one: at 1280 the country came out 192px against the 309,33px of a
+   * third, the town 434,67px, and „Država" began at 541 where „Telefon" on the row
+   * above begins at 423,67. The owner's „jednake trećine" was undone and nothing in
+   * this file could say so, because a guard that reads a sheet reads what a rule SAYS
+   * and never which rule wins.
+   *
+   * <p><b>`styles/cellSpecificity.test.ts` is the portal's precedent and names this
+   * exact shape</b>: „a rule written at the same weight is one its author had to think
+   * about". This is that thought, written down.
+   *
+   * <p><b>What is asked, and its boundary.</b> Not specificity in general, which is
+   * arithmetic over a grammar; the narrower question that is complete for this pair:
+   * the rule that has to win must be the other one written as a DESCENDANT of
+   * something. A selector ending in the whole of another and carrying a step in front
+   * of it is strictly heavier by construction, whatever the rest of the grammar does,
+   * and either rule renamed on either side fails this.
+   */
+  it('is written so that it beats the rule it argues with, rather than tying with it', () => {
+    const inColumns = '.form__row .field.field--place'
+    const onItsOwn = '.field.field--place'
+
+    /* Both really are the two rules that argue: each is the one rule of its sheet
+       that hands this field a track list, which `ruleInMedia` and `ruleFor` above
+       already fail on if either is written twice or not at all. */
+    expect(
+      ruleInMedia(fields, QUERY, inColumns, 'FormRenderer.css').getPropertyValue(
+        'grid-template-columns',
+      ),
+    ).not.toBe('')
+    expect(
+      ruleInMedia(place, BESIDE, onItsOwn, 'PlaceField.css').getPropertyValue(
+        'grid-template-columns',
+      ),
+    ).not.toBe('')
+
+    expect(inColumns.endsWith(` ${onItsOwn}`), `${inColumns} does not outweigh ${onItsOwn}`).toBe(
+      true,
+    )
   })
 
   it('leaves the rule for a town standing on its own alone', () => {
@@ -232,12 +382,13 @@ describe('a town standing on a row of columns', () => {
        gives for the fixed width still holds there, that the town is typed and
        the country is chosen. Written without the `.form__row` in front of it,
        the rules above would have widened a control on two administrative
-       screens nobody asked about. */
-    const sheet = readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8')
-    const own = ruleFor(sheet, '.place__country-pick', 'PlaceField.css')
+       screens nobody asked about.
+     *
+       The fixed width is a TRACK now rather than an `inline-size` on the half,
+       because the half is no longer a box of its own; what it says is unchanged,
+       and it says it in the query where the two stand side by side at all. */
+    const own = ruleInMedia(place, BESIDE, '.field.field--place', 'PlaceField.css')
 
-    expect(own.getPropertyValue('inline-size')).toBe('12rem')
-    expect(own.getPropertyValue('max-inline-size')).toBe('45%')
-    expect(own.getPropertyValue('flex')).toBe('0 0 auto')
+    expect(own.getPropertyValue('grid-template-columns')).toBe('minmax(0, 1fr) minmax(0, 12rem)')
   })
 })
