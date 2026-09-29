@@ -96,8 +96,14 @@ export function theDecisionGoesTo(team: number, application: number): string {
   return `${theApplicationsOf(team)}/${String(application)}`
 }
 
-/** Where a team takes one of its own invitations back. Owner, 27.09.2026: „Hoću da može da
- *  povuče poziv." */
+/**
+ * Where a team takes one of its own invitations back.
+ *
+ * <p><b>Taking an invitation back is DERIVED, and was NOT ASKED.</b> PDL records it as a
+ * consequence of the owner's decision of 27.09.2026 that only the administrator of a team sends
+ * an invitation, and marks it so: „[IZVEDENO, ne pitano] Povlacenje poziva takodje sme samo
+ * administrator."
+ */
 export function theWithdrawalGoesTo(team: number, invitation: number): string {
   return `${theInvitationsOf(team)}/${String(invitation)}`
 }

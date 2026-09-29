@@ -194,10 +194,13 @@ export function TeamQueue({
                   <p className="submissions__meta">{formatShortDate(one.date, locale)}</p>
                   <p className="member__actions">
                     {/* <b>No window on this one, for the reason „Odbij" has none:</b> it writes
-                        nothing about a squad. „A team that asked the wrong man must not wait
-                        until October to undo it, which is the whole of what the owner asked
-                        for" (`TeamJoiningWriteApi.takeBack`, owner 27.09.2026: „Hoću da može da
-                        povuče poziv."). */}
+                        nothing about a squad, so a team that asked the wrong man need not wait
+                        until October to undo it. <b>Taking an invitation back is DERIVED, and was
+                        NOT ASKED:</b> PDL records it as following from the owner's decision of
+                        27.09.2026 that only the administrator of a team sends an invitation
+                        („[IZVEDENO, ne pitano] Povlacenje poziva takodje sme samo
+                        administrator."). The missing window is reasoning by analogy with
+                        „Odbij", and is written down as such. */}
                     <button
                       type="button"
                       className="button button--secondary"
