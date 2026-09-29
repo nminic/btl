@@ -41,6 +41,25 @@ export function SessionProvider({
      in. `Shell` asks the server on every visit (session/useTheServersSession.ts) and
      writes it here. */
   const [account, setAccount] = useState<number | null>(null)
+  /* WHETHER THE QUESTION HAS BEEN ANSWERED, WHICH IS NOT THE SAME AS WHO IT ANSWERED
+     (29.09.2026). It begins false because at the first paint of a visit nothing has been
+     asked yet, and no prop may set it for the same reason the account has none: a case
+     that could start it true would be measuring a portal that had already been told, and
+     the moment before it is told is the one this field exists for.
+
+     NOT DERIVED FROM THE ACCOUNT, and that is the point rather than an oversight. „The
+     server answered" and „the server answered with somebody" are different facts, and the
+     four ways to be nobody - a 401, a server that is not running, a body of the wrong
+     shape, a role the portal does not know - all end the first and none of them end the
+     second. Derived, the portal would wait for ever on exactly the reader it should send
+     away fastest. */
+  const [theServerHasAnswered, setTheServerHasAnswered] = useState(false)
+  /* Written as a `useCallback` over nothing so it is stable for the life of the provider,
+     which is what lets the one question be asked once a visit rather than once a render
+     (session/useTheServersSession.ts reads it in a dependency list). */
+  const theServerAnswered = useCallback(() => {
+    setTheServerHasAnswered(true)
+  }, [])
   /* Beside the account and never apart from it, which is the rule this provider
      already keeps for the account and its role: the two arrive in one answer
      (`GET /api/me`) and a screen that had one without the other would be reading half
@@ -603,6 +622,8 @@ export function SessionProvider({
       myReferralCode,
       myReferredCount,
       theServerSignedMeIn,
+      theServerHasAnswered,
+      theServerAnswered,
       /* One question, one answer, worked out here from the only two facts there are.
          The member number wins where both are set, because every screen that draws a
          member reads THROUGH it: the account number names a row of `account` and the
@@ -694,6 +715,8 @@ export function SessionProvider({
       myReferralCode,
       myReferredCount,
       theServerSignedMeIn,
+      theServerHasAnswered,
+      theServerAnswered,
       going,
       setGoing,
       submissions,

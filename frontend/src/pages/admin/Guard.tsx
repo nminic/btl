@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react'
 import { Navigate } from 'react-router'
+import { Loader } from '../../components/Loader'
 import { useI18n } from '../../i18n/useI18n'
 import { useRole } from '../../roles/useRole'
+import { useSession } from '../../session/useSession'
 import { mayOpen, type Need } from './needs'
 import { useMay } from './rights'
 
@@ -42,11 +44,53 @@ import { useMay } from './rights'
  *
  * Replaced rather than pushed, so the back button goes where the reader came
  * from instead of back onto the door.
+ *
+ * AND IT DOES NOT REFUSE ANYBODY BEFORE THE SERVER HAS SAID WHO IS READING (owner,
+ * 29.09.2026, chosen between three offered outcomes). Until that day this file read the
+ * role at its first paint and acted on it, and at the first paint of a visit the role is
+ * the visitor - `app/App.tsx` mounts `RoleProvider` with no prop at all. So loading any
+ * administrative address from cold - a new tab, `F5`, a bookmark - threw out the
+ * SUPERADMIN, against a server that answered, measured at 0,4 s, 1,2 s and 3 s. The
+ * answer landed a moment later and the role was right again, by which time he was on the
+ * front page. The price the owner accepted for the repair is the short moment below,
+ * with a loading indicator where the screen will be; he refused „remember the last role
+ * in the browser", because what the browser says and what the server says can come
+ * apart.
+ *
+ * THE ORDER THESE THREE ARE ASKED IN IS THE SAFETY, AND IT IS A PROPERTY RATHER THAN A
+ * PROMISE. Waiting is reachable only on the arm that would REFUSE. So waiting can delay
+ * a refusal and can never turn one into an admission - there is no arrangement of the
+ * answer that reaches `children` through the middle line. Anyone reading this as a
+ * weakened door has it backwards: the door that shipped before this was the weak one, in
+ * the other direction, and it was refusing the one man who may open everything.
+ *
+ * AND OPENING WITHOUT WAITING COSTS NOTHING IN PRODUCTION, which is why the first line
+ * is first. The only ways to hold a role before the answer are the development switch,
+ * which is never built into production (`dev/tools.ts`), and having just signed in
+ * (`pages/member/SignIn.tsx` calls `become` and then navigates) - and that second one is
+ * a reader who must not be made to wait for an answer to a question he has just been
+ * given. Every other visit arrives here as the visitor and waits.
  */
 export function Guard({ need, children }: { need: Need; children: ReactElement }) {
   const { locale } = useI18n()
   const { role } = useRole()
   const may = useMay()
+  const { theServerHasAnswered } = useSession()
 
-  return mayOpen(need, role, may) ? children : <Navigate to={`/${locale}`} replace />
+  if (mayOpen(need, role, may)) {
+    return children
+  }
+
+  if (!theServerHasAnswered) {
+    /* The portal's own indicator and never one written here, which is what keeps it
+       announced to a screen reader and still under `prefers-reduced-motion`
+       (`components/Loader.tsx`). The full sheet rather than the inline form, because
+       what is waiting is the whole screen and there is nothing beside it yet that would
+       be worth keeping readable (`components/Resource.tsx` draws the same distinction
+       for data). No word of its own: „Učitavanje" is what the portal says everywhere
+       else it waits, and a sentence here would be a second way of saying one thing. */
+    return <Loader inline={false} />
+  }
+
+  return <Navigate to={`/${locale}`} replace />
 }
