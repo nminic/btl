@@ -656,7 +656,7 @@ function theInboxRevisionNow(): number {
  * what has been said during this visit" - and it is here rather than there because three
  * screens read it.** The server is the source: seven places in six classes under
  * `backend/src/main` write into `message`, and until today not one of their rows was ever
- * drawn. The nine screens that call `notify` still write nowhere but the browser, so leaving
+ * drawn. The eight screens that call `notify` still write nowhere but the browser, so leaving
  * them out would take a team's invitation, a pair's invitation and a moderator's reason off
  * the one screen a member can answer them on - and no screen sends any of the three.
  *
@@ -765,7 +765,7 @@ export function useInbox(
  * WHAT THE ONE ASKING IS WAITING TO HEAR BACK ABOUT, straight off the route.
  *
  * <p><b>No second half to fold in, which is the whole difference from {@link useInbox}.</b>
- * That hook has two sources because nine screens still `notify` into the browser's own state
+ * That hook has two sources because eight screens still `notify` into the browser's own state
  * and the server knows nothing of those; this question has never had a browser-side half at
  * all. `session/context.ts` carries `invitations` for the prototype, and those are the
  * PROTOTYPE'S invitations answered by `member/InvitationAnswer.tsx` - a different store, a

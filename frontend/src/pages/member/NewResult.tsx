@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useSend, useSent } from '../sent'
 import { useFilterParams } from '../../app/useFilterParams'
 import { Link } from 'react-router'
@@ -15,11 +15,13 @@ import { useToday } from '../../clock/useClock'
 import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
 import { racesToOffer } from './racesToOffer'
 import { pointsOf } from '../../data/scoring'
-import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { Submission } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
+import type { Answer } from '../account/askTheServer'
+import { ServerSaid } from '../account/ServerSaid'
+import { theCorrectionWasSentIn, theRunWasSentIn, WHEN_A_RESULT_IS_WRITTEN } from './resultWrites'
 import './Member.css'
 
 /* The same form without the two questions a counted result does not ask.
@@ -107,13 +109,18 @@ export function NewResult() {
   const { submissions, submit, resubmit } = useSession()
   const who = useMemberScreen()
   /**
-   * What the last entry earned and whether it was a correction, once there has
+   * THAT there has been an entry, and whether it was a correction, once there has
    * been one.
    *
-   * Both together, because the second cannot be worked out afterwards: sending a
-   * correction puts the result back to waiting, so the refused result the
-   * address named is no longer refused and the screen would say the ordinary
-   * thing about it.
+   * The second cannot be worked out afterwards: sending a correction puts the
+   * result back to waiting, so the refused result the address named is no longer
+   * refused and the screen would say the ordinary thing about it. So it travels.
+   *
+   * **What no longer travels is the number of points.** It did until 28.09.2026,
+   * and only because the confirmation printed it; the owner ended that („Ne vidim
+   * razlog da se ispisuju bilo kome prilikom unosa parametara prijave rezultata"),
+   * so what is left is the presence of an entry, read the way `RateEvent.tsx` and
+   * `ReportResult.tsx` read theirs.
    */
   /* **Held by the address, not by the screen.** Drawn in place, the entry under the
      confirmation was this form, filled in and already sent, so the browser's own way back
@@ -121,16 +128,22 @@ export function NewResult() {
      the case the owner named on 05.09.2026: „Nazad sa potvrde poslatog rezultata treba da
      vodi na formu Moji rezultati, a ne na formu za slanje rezultata."
 
-     Both figures travel, because the second is the one the comment above says cannot be
-     worked out afterwards. Read without asserting a type over a value this screen did not
-     make (ADL A14), the same way `pages/sent.ts` reads it. */
+     Read without asserting a type over a value this screen did not make (ADL A14), the
+     same way `pages/sent.ts` reads it. */
   const confirmed = useSent()
-  const shown = Reflect.get(Object(confirmed), 'points')
   const done =
-    typeof shown === 'number'
-      ? { points: shown, again: Reflect.get(Object(confirmed), 'again') === true }
-      : null
+    confirmed === undefined ? null : { again: Reflect.get(Object(confirmed), 'again') === true }
   const confirm = useSend()
+  /* What the server answered, where it answered anything but „done". A result that went
+     through leaves this screen for the confirmation, so the only answer this ever holds is
+     one the reader is owed a sentence about (`RateEvent.tsx`'s own shape). */
+  const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  const [sending, setSending] = useState(false)
+  /* A second press while the first is still out would file the same run twice, and a member
+     may have only one result on one race (PDL, 09.09.2026). A ref rather than the state
+     beside it: a ref is read and written in the same tick, so a redraw cannot land between
+     two presses that arrive before one answer does. */
+  const outstanding = useRef(false)
   /**
    * The refused result this is a correction of, where the address names one.
    *
@@ -365,62 +378,163 @@ export function NewResult() {
             category: sent.category,
           }
 
+    /* Where the member is taken once it has really gone, and it carries the one thing the
+       comment on `done` above says cannot be worked out afterwards. Not what the run is
+       worth: nothing prints that any more (owner, 28.09.2026). */
+    function confirmIt() {
+      confirm(`/${locale}/moji-rezultati`, {
+        again: correcting !== undefined || fixingOne !== undefined,
+      })
+    }
+
+    /**
+     * SENDS IT, AND DECIDES WHAT THE READER SEES BY WHAT CAME BACK.
+     *
+     * <p><b>THE CONFIRMATION IS DRAWN ONLY AFTER THE SERVER AGREED.</b> Until 28.09.2026
+     * this screen wrote into the browser's own overlay and confirmed on the spot, so a
+     * member was told his result was in the queue when nothing had left the machine.
+     *
+     * <p><b>Refused, nothing moves.</b> Every box keeps what was typed into it, so somebody
+     * whose link was turned away corrects that one field rather than entering the whole
+     * race again. The overlay is written only after 201 or 200, never on the asking, which
+     * is `member/teamWrites.ts`'s rule and the one axis this cannot get wrong.
+     *
+     * <p><b>WHAT IS NOT SENT, and it is written down rather than left to be found:</b> the
+     * picture. The form carries a `photo` field and the record carries it on to the
+     * moderator, and `ResultWriteApi.Ran` has no field for one - measured 28.09.2026, the
+     * route builds its proof as `new Report(link, false, comment)`, so no picture can reach
+     * it whatever this screen sends. `FormRenderer` only ever holds the file's NAME
+     * (`e.target.files?.[0]?.name`), so no bytes have ever existed for a result either.
+     * Owner, 28.09.2026: the upload is to be built, in October, and is carried as technical
+     * debt until then (`PDL.md`, „Slika kao dokaz uz rezultat: upload se gradi, ali u
+     * oktobru"). The decision of 22.08.2026 that a picture replaces a link is NOT overturned
+     * by this; it is waiting for the upload, and no result can be entered before 2027 in any
+     * case.
+     */
+    async function tellTheServer(): Promise<void> {
+      outstanding.current = true
+      setSending(true)
+      /* And the last refusal goes while this one is out, so a reader who presses again is
+         not left reading the old sentence over a request still in flight. */
+      setRefusal(null)
+
+      const proof = { link: sent.link, comment: sent.comment }
+      const figures = { distanceKm, ascentM, descentM, seconds: total }
+
+      const answer =
+        fixingOne === undefined
+          ? await theRunWasSentIn(
+              /* WHICH OF THE TWO BODIES, DECIDED BY THE SAME THING THAT DECIDES `said`
+                 ABOVE: whether the member picked a race out of the list, which is the one
+                 thing that puts an id in the values (`racesToOffer.ts`).
+               *
+                 Built here rather than by sending `sent` itself, and that is the whole of a
+                 refusal measured on 28.09.2026: `sent` carries `raceKind`, `city` and
+                 `country` on EVERY road, and `ResultWriteApi.fromTheCalendar` answers
+                 `theRaceIsNamedTwice` when any of those arrives beside a `raceId`. Sent as
+                 it stands, every race chosen out of the calendar would have been turned
+                 away. */
+              values.raceId === undefined || values.raceId === ''
+                ? {
+                    raceName: sent.raceName,
+                    /* `day` and not `date`, which is what the record on the server calls it. */
+                    day: sent.date,
+                    raceKind: String(values.raceKind),
+                    /* The town by name and country, never a `placeId`: `PlaceField` writes
+                       those two and has no GeoNames mark to give, which is
+                       `Registration.tsx`'s own decision against the same rule. */
+                    city: String(values.city),
+                    country: String(values.country),
+                    ...figures,
+                    ...proof,
+                  }
+                : { raceId: Number(values.raceId), ...figures, ...proof },
+            )
+          : /* A correction of a counted result, which is the numbers and the proof and
+               nothing else: „Menja se sve osim trke" (owner, 27.08.2026). It goes to the
+               address of the RESULT, which is what `?ispravka=` carries and what
+               `ResultWriteApi.his` reads `result` by. */
+            await theCorrectionWasSentIn(fixingOne.id, { ...figures, ...proof })
+
+      outstanding.current = false
+      setSending(false)
+
+      if (answer.got !== 'done') {
+        setRefusal(answer)
+
+        return
+      }
+
+      /* And the browser goes on drawing it until a moderator decides, because nothing
+         serves a member his own submissions.
+       *
+         **A counted result being changed goes back into the queue as something waiting on
+         somebody, and STAYS IN THE STANDING until somebody agrees.** Owner, 28.08.2026,
+         choosing between four outcomes: the old result stays where it is while the
+         correction waits, and changes when a moderator approves it. The portal once took it
+         out of the standing at once, so a refusal lost the points for good - measured that
+         day, a profile fell from 180 races and 1.752,86 points to 179 and 1.744,60 with no
+         way back. `ResultWriteApi.change` keeps to that on the server too: it writes a
+         submission and leaves `result` exactly as it found it, which is why
+         `resultWrites.ts` does not drop the `results` cache for either of these two.
+       *
+         What travels is the whole corrected record under the identity of the one it
+         replaces: a `Submission` does not know the event's name or address and a `Result`
+         needs both, and this is the one place where both are in hand. */
+      submit(
+        fixingOne === undefined
+          ? { memberNumber: me, ...sent }
+          : { memberNumber: me, ...sent, corrects },
+      )
+      confirmIt()
+    }
+
     /* The same result again where one is being corrected, and a new one
        otherwise. Sending the correction as a new result would leave the refused
        one standing beside it: two rows for one race, and the moderator reading
-       the same morning twice (owner, 06.08.2026). */
+       the same morning twice (owner, 06.08.2026).
+     *
+       **AND THIS ROAD ALONE STAYS IN THE BROWSER, WHICH IS A BOUNDARY AND NOT AN
+       OVERSIGHT.** `correcting` is a `Submission` - a question the member asked, whose key
+       is a string this browser minted - and no route on the server takes one. Measured
+       28.09.2026: `ResultWriteApi` writes that exclusion out as deliberate („a result is
+       njegov podatak and a submission is a question he asked"), and nothing serves a member
+       his own submissions at all, so there is nothing to send this to and nothing to read it
+       back from. The two roads below are about a `result`, which does have an address. */
     if (correcting !== undefined) {
       resubmit(correcting.id, { ...sent, corrects })
-    } else if (fixingOne !== undefined) {
-      /* A counted result being changed goes back into the queue as something
-         waiting on somebody, and **stays in the standing until somebody agrees**.
-       *
-         Owner, 28.08.2026, choosing between four outcomes: the old result stays
-         where it is while the correction waits, and changes when a moderator
-         approves it. Until then this took the result out of the standing at once,
-         so a refusal lost the points for good: measured that day, a profile fell
-         from 180 races and 1.752,86 points to 179 and 1.744,60 with no way back,
-         because an approved submission produced no result. That contradicted the
-         portal's own rule that the standing is brought up to date **after**
-         verification (owner, 27.08.2026: „odmah se ažurira poredak nakon
-         verifikacije").
-       *
-         The cost the owner accepted, written down rather than left to be
-         discovered: while the correction waits, the standing holds numbers the
-         member has themselves said are wrong. That lasts as long as the queue
-         does.
-       *
-         What travels with the submission is the whole corrected record, under the
-         identity of the one it replaces: a `Submission` does not know the event's
-         name or address and a `Result` needs both, and this is the one place where
-         both are in hand. Approving it swaps that record (`SessionProvider`). */
-      submit({ memberNumber: me, ...sent, corrects })
-    } else {
-      submit({ memberNumber: me, ...sent })
+      confirmIt()
+
+      return
     }
 
-    /* Stays on a confirmation rather than jumping to the list (PDL P9: "Član
-       odmah po unosu vidi koliko je bodova dobio"). The points were already
-       being worked out here and then thrown away, so the one thing the member
-       came to find out was the one thing the screen did not say. */
-    confirm(`/${locale}/moji-rezultati`, {
-      points: earned,
-      again: correcting !== undefined || fixingOne !== undefined,
-    })
+    /* Silently, the same way the rating next door refuses a second press: the first is
+       still out and the reader has already been told so. */
+    if (outstanding.current) {
+      return
+    }
+
+    void tellTheServer()
   }
 
   if (done !== null) {
     return (
       <div className="member" role="status">
         <h1>{t('newResult.doneTitle')}</h1>
-        <p>{t('newResult.donePoints', { points: formatPoints(done.points, locale) })}</p>
-        {/* And that the number is not the last word (PDL, 30.08.2026, point 8).
-            The administration settles the kind and the time at verification, and
-            on a timed race the time is the race's own limit, so a result sent as
-            1:52:10 may be counted as 3:00:00 and be worth a third of what this
-            line said. Until 31.08.2026 nothing on the way said so, and the member
-            met the smaller number for the first time in their own list. */}
-        <p>{t('newResult.pointsNotFinal')}</p>
+        {/* What happens next, and not what the run is worth. This said the number
+            the browser had worked out, and then took it back in the next breath,
+            „Račun nije konačan" - because the administration settles the kind and
+            the time at verification, and on a timed race the time is the race's own
+            limit, so a result sent as 1:52:10 could be counted as 3:00:00 and be
+            worth a third of what the line said.
+
+            Owner, 28.09.2026, asked about the timed race alone and answering over
+            both kinds: „bodovi ni na dužinskoj ni na vremenskoj trci ne ulaze u
+            obračun pre verifikacije. Ne vidim razlog da se ispisuju bilo kome
+            prilikom unosa parametara prijave rezultata. Ako ga zanima koliko će
+            bodova dobiti, neka se igra kalkulatorom na naslovnoj strani portala."
+            The caveat went with the number, there being nothing left for it to
+            stand beside. */}
         <p>{done.again ? t('newResult.againDone') : t('newResult.doneWaiting')}</p>
         <p className="member__actions">
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>
@@ -532,6 +646,13 @@ export function NewResult() {
         suggests={{ raceName: offered }}
         onSubmit={onSubmit}
       />
+
+      {/* Said out loud rather than left to a button that looks unpressed, the same
+          reasoning `RateEvent.tsx` keeps beside its own `role="status"`
+          (WCAG 2.2, 4.1.3). */}
+      {sending && <p role="status">{t('results.sending')}</p>}
+
+      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />}
     </div>
   )
 }

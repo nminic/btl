@@ -6,6 +6,7 @@ import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
+import { refused, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
 import { useSession } from '../../session/useSession'
@@ -982,4 +983,55 @@ describe('a refused result somebody else is correcting', () => {
     expect(screen.queryByText(/Link ne otvara rezultate/), 'the reason was shown').toBeNull()
     expect(screen.queryByText(/Tuđa trka/), 'the race was shown').toBeNull()
   })
+})
+
+describe('what the store holds while the server is asked', () => {
+  it(
+    'is written to only after the server agreed, and nothing where it refused',
+    async () => {
+      /* Until 28.09.2026 this screen wrote the overlay and confirmed on the spot, so a
+         member was told his run was in the queue when nothing had left the machine.
+         `submit(...)` in `tellTheServer` runs only after `theRunWasSentIn` answers, and
+         only past the check that returns early where the answer was not „done"; a version
+         that ran it first would draw this exact row on a refusal too
+         (`resultToTheServer.test.tsx` measures the same axis on the wire, this measures
+         what is drawn from it). */
+      const user = setupUser()
+      const server = serverThat((path, init) =>
+        path.startsWith('/api/results') && init?.method !== undefined
+          ? refused('theRaceHasNotBeenRun')
+          : null,
+      )
+
+      try {
+        renderAt(NEW, 'competitor', ME, undefined, TODAY, <Sent />)
+
+        await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka kroz šumu')
+        await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+        await user.type(screen.getByLabelText('Mesto'), 'Niš')
+        await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+        await user.type(screen.getByLabelText(/^Dužina/), '21.1')
+        await user.type(screen.getByLabelText(/Uspon/), '540')
+        await user.type(screen.getByLabelText(/Spust/), '540')
+        await user.type(screen.getByLabelText('Sati'), '1')
+        await user.type(screen.getByLabelText('Minuta'), '52')
+        await user.type(screen.getByLabelText('Sekundi'), '10')
+        await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
+        await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+
+        /* The route's own word, so the wait is really over the answer and not over a
+           redraw that happened to land first. */
+        await screen.findByText('Rezultat ne može da se pošalje pre dana same trke.')
+
+        /* NOTHING IN THE STORE. `resultWrites.ts` names this the one axis it cannot get
+           wrong: the overlay is written only where the server agreed, never on the asking. */
+        expect(
+          within(screen.getByRole('list', { name: 'store' })).queryAllByRole('listitem'),
+        ).toHaveLength(0)
+      } finally {
+        server.stop()
+      }
+    },
+    SLOW,
+  )
 })

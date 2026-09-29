@@ -9,6 +9,7 @@ import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
+import { did, serverThat } from '../../test/serverAnswers'
 
 /**
  * What a member may do with a result of their own after sending it.
@@ -652,6 +653,31 @@ describe('a result that has been counted', () => {
   /** A member with results in the file, and the one row this is about. */
   const COUNTED = '/sr/moji-rezultati'
 
+  /**
+   * A SERVER THAT AGREES, BECAUSE SINCE 28.09.2026 BOTH OF THESE ROADS REALLY ASK ONE.
+   *
+   * <p>Taking a counted result back is `DELETE /api/results/{id}` and correcting one is
+   * `PUT`, and the screen writes its own overlay only once the route has answered
+   * (`member/resultWrites.ts`). Until then this screen wrote the overlay on the press and
+   * confirmed on the spot, so every case below passed with nothing leaving the machine.
+   *
+   * <p><b>This stub is therefore load-bearing rather than scenery</b>, and the two cases at
+   * the end of this block are what prove it: with a server that refuses, the row stays and
+   * the standing does not move.
+   */
+  let server: { stop: () => void } | null = null
+
+  beforeEach(() => {
+    server = serverThat((path, init) =>
+      path.startsWith('/api/results/') && init?.method !== undefined ? did() : null,
+    )
+  })
+
+  afterEach(() => {
+    server?.stop()
+    server = null
+  })
+
   /** The first counted result, whichever race it happens to be: this member has
    *  run some of them in more than one season, so a name does not name a row. */
   const firstCounted = async () => {
@@ -1113,10 +1139,12 @@ describe('a result that has been counted', () => {
   }, SLOW)
 
   it('carries the caveat about the count while the result is still waiting, and not after', async () => {
-    /* The one screen a member meets the number on more than once. The form said
-       the count was not final when they sent it; here they see it again, and after
-       verification they may see a different one, since the administration settles
-       the kind and the time (PDL, 30.08.2026, point 8).
+    /* **The one screen that still announces a number before anybody has decided**, and
+       so the one that still carries the caveat. The two forms that send a result carried
+       it too until 28.09.2026, each beside a number of its own; the owner took the number
+       off those and the caveat went with it there, having nothing left to qualify. Here
+       the number stays, and after verification it may be a different one, since the
+       administration settles the kind and the time (PDL, 30.08.2026, point 8).
 
        And not on a decided result: the number is then the decided one and there is
        nothing left to warn about. The store starts with nothing waiting, so one is
