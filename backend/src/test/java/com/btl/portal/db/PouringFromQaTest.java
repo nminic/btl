@@ -116,12 +116,17 @@ class PouringFromQaTest extends DatabaseTest {
 						+ " and this class may not name one that is not there")
 				.isEqualTo(new TreeSet<>(EXERCISED));
 
+		// The BINDING and not the bare name. The script's header also points at these files in
+		// prose, so a bare `contains` would go on passing after the line that actually opens the
+		// file was renamed - the prose would still carry the old word. What is asserted is the
+		// one form the script binds them in, `NAME="$SQL/<file>"`, which appears exactly once
+		// per file and is what a rename has to touch.
 		String script = Files.readString(SCRIPT, StandardCharsets.UTF_8);
 		for (String file : onDisk) {
 			assertThat(script)
-					.as("deploy/pour-from-qa.sh never names %s, so this class is measuring a file"
-							+ " the tool does not run", file)
-					.contains(file);
+					.as("deploy/pour-from-qa.sh binds no variable to %s, so either it runs a file"
+							+ " that is not there or this class measures one it never opens", file)
+					.contains("=\"$SQL/" + file + "\"");
 		}
 	}
 

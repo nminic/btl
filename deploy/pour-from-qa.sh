@@ -97,10 +97,19 @@ PROD_NAME=${PROD_POSTGRES_DB:-btl}
 QA_ROLE=${QA_POSTGRES_USER:-btl_qa}
 QA_NAME=${QA_POSTGRES_DB:-btl_qa}
 
+# Each of the three named ONCE, here, and used through these names below. Naming a file twice -
+# once to check it is there and again to run it - is a second home for the same fact, and the
+# half that PouringFromQaTest holds is exactly that the script and the folder agree about which
+# files exist. With one mention each, renaming one here and leaving the file alone fails that
+# case; with two, it would take two edits to be caught and one edit to slip through.
+ORDER_SQL="$SQL/load-order.sql"
+COUNTS_SQL="$SQL/row-counts.sql"
+SEQUENCES_SQL="$SQL/sequences.sql"
+
 [ -f "$PROD_COMPOSE" ] || fail "no $PROD_COMPOSE here; this is run from /opt/btl/deploy"
 [ -d "$MIGRATIONS" ] || fail "no $MIGRATIONS; the checkout beside this deploy is not complete"
-for f in load-order.sql row-counts.sql sequences.sql; do
-  [ -f "$SQL/$f" ] || fail "no $SQL/$f; this tool is a shell script AND its SQL, and half is missing"
+for f in "$ORDER_SQL" "$COUNTS_SQL" "$SEQUENCES_SQL"; do
+  [ -f "$f" ] || fail "no $f; this tool is a shell script AND its SQL, and half is missing"
 done
 
 WORK=$(mktemp -d)
@@ -229,8 +238,8 @@ say "both match the reference, $(wc -l < "$WORK/ref.sql") lines each"
 say ''
 say '--- 5. production carries nothing its own migrations did not put there ---'
 
-prod_sql -F'|' -f - < "$SQL/row-counts.sql" > "$WORK/prod.counts"
-ref_sql -F'|' -f - < "$SQL/row-counts.sql" > "$WORK/ref.counts"
+prod_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/prod.counts"
+ref_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/ref.counts"
 
 if ! diff -u "$WORK/ref.counts" "$WORK/prod.counts" > "$WORK/counts.diff"; then
   say 'difference (- what a fresh migration leaves, + what production holds):'
@@ -245,7 +254,7 @@ say "empty, against $(wc -l < "$WORK/ref.counts") tables that a fresh migration 
 say ''
 say '--- 6. the order the tables may be filled in, asked of the foreign keys ---'
 
-qa_sql -F'|' -f - < "$SQL/load-order.sql" > "$WORK/order"
+qa_sql -F'|' -f - < "$ORDER_SQL" > "$WORK/order"
 [ -s "$WORK/order" ] || fail 'the load order came back empty'
 
 # A table in a cycle comes back with no level. Named rather than skipped.
@@ -312,7 +321,7 @@ for table in $TABLES; do
 done
 
 # Where every sequence stands on QA, written out as the statements that put production there.
-qa_sql -f - < "$SQL/sequences.sql" >> "$STREAM" \
+qa_sql -f - < "$SEQUENCES_SQL" >> "$STREAM" \
   || fail 'reading the sequence positions out of QA did not pass; nothing has been written to production'
 
 printf 'commit;\n' >> "$STREAM"
@@ -331,8 +340,8 @@ say 'poured'
 say ''
 say '--- 9. production now holds what QA holds ---'
 
-prod_sql -F'|' -f - < "$SQL/row-counts.sql" > "$WORK/prod.after"
-qa_sql -F'|' -f - < "$SQL/row-counts.sql" > "$WORK/qa.after"
+prod_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/prod.after"
+qa_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/qa.after"
 
 if ! diff -u "$WORK/qa.after" "$WORK/prod.after" > "$WORK/after.diff"; then
   say 'difference (- QA, + production):'
