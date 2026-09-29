@@ -33,12 +33,21 @@ const SEASONS = [2027, 2028]
 
 const ranked = PRICES.filter((row) => row.ranking)
 
+/* Reduced rather than sorted and indexed, and the reason is a type rather than taste:
+   `sort()[0]` is `string | undefined` because an array may be empty, and this repository
+   forbids `as` (ADL A14) - so the choice is a cast, a helper, or an expression that is
+   definite by construction. `reduce` with no initial value is the third. What happens on
+   an empty list is an exception rather than a wrong answer, and the case above asserts
+   the list is not empty before any of this is read.
+
+   Found by `npm run build` and by nothing else: vitest strips types rather than checking
+   them, so this file was green while it would not compile. */
 function sellingYearOpens(): string {
-  return ranked.map((row) => row.from).sort()[0]
+  return ranked.map((row) => row.from).reduce((first, day) => (day < first ? day : first))
 }
 
 function sellingYearCloses(): string {
-  return ranked.map((row) => row.to).sort()[ranked.length - 1]
+  return ranked.map((row) => row.to).reduce((last, day) => (day > last ? day : last))
 }
 
 /** `YYYY-MM-DD`, moved by whole days through the one calendar the platform has. */
