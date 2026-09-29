@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import type { Place } from '../data/places'
@@ -314,6 +316,39 @@ describe('the town on a form', () => {
     await waitFor(() => {
       expect(screen.queryByRole('listbox')).toBeNull()
     })
+  })
+
+  /**
+   * THE COUNTRY'S NAME IS DRESSED LIKE THE NAME OF A FIELD, BECAUSE THAT IS WHAT IT IS.
+   *
+   * <p>Owner, 29.09.2026, over a picture of this row: „I ovde se raspada red zbog
+   * Drzave", with „Mesto" in the ordinary weight and „DRŽAVA" in small capitals in
+   * another colour. The two names of the two halves of one answer were drawn by two
+   * different rules: the town's by the renderer's `.field__label`, and this one by
+   * nothing at all, so it inherited the small uppercase its wrapper used to be set in.
+   *
+   * <p><b>THE NAME OF THE CLASS IS THE JOIN AND IT IS ASSERTED IN BOTH DIRECTIONS.</b>
+   * `forms/formStyle.test.ts` holds what that class is worth and that nothing in this
+   * field dresses one name differently from the other; neither of those says the label
+   * WEARS it, and a sheet that styles a class no element carries reads exactly as though
+   * it works. So this case reads the class off the element and then requires the sheet
+   * to be about it, which is the one mutation - a single token removed from the markup -
+   * that both halves would otherwise let through.
+   */
+  it('dresses the name of the country like every other name on the portal', () => {
+    renderField()
+
+    const named = must(
+      document.querySelector(String.raw`label[for="mesto-country"]`),
+      'the name of the country control',
+    )
+
+    expect(named.className).toBe('field__label')
+    /* And the other end of the join: the class it wears is one the renderer's own sheet
+       gives a weight to, rather than a word that happens to be spelt the same. */
+    expect(
+      readFileSync(join(process.cwd(), 'src/forms/FormRenderer.css'), 'utf-8'),
+    ).toContain(`.${named.className} {`)
   })
 
   it('keeps the name of the country control the same, held or not', async () => {
