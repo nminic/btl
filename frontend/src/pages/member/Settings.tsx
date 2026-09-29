@@ -3,8 +3,6 @@ import { useCompetitors } from '../../data/useResource'
 import { useTheme } from '../../app/useTheme'
 import type { Theme } from '../../app/themeContext'
 import { useI18n } from '../../i18n/useI18n'
-import { NOTIFICATION_KEYS } from '../../session/context'
-import { useSession } from '../../session/useSession'
 import { MEMBERS, recordsOf } from '../admin/entityForms'
 import { useOverlay } from '../admin/overlay'
 import { ChangePassword } from './ChangePassword'
@@ -20,10 +18,24 @@ const THEMES: Theme[] = ['dark', 'light']
 /* Where the cog in the header leads. The theme switch used to sit in the
  * header; it moved here because the header is for getting around the portal,
  * and a control you press once a year does not belong next to the ones you
- * press every visit (PDL P28a). */
+ * press every visit (PDL P28a).
+ *
+ * **THERE IS NO NOTIFICATION PANEL HERE, AND THAT IS A DECISION RATHER THAN AN
+ * OVERSIGHT** (PDL, owner, 28.09.2026: „Ekran za podesavanja obavestenja se sklanja u
+ * celini"). Until that day this screen ended in a panel of three checkboxes bound to
+ * `NOTIFICATION_KEYS` in the session, and all three were a promise the portal cannot
+ * keep: „Kad mi rezultat bude odobren" and „Kad mi neko izmeni rezultat" are two of the
+ * mails P22 (11.08.2026) makes obligatory - „Sest mejlova iz spiska su obavezni i clan
+ * ih ne moze iskljuciti" - and „Povremene vesti iz lige" was a newsletter the same
+ * decision abolished. With all three gone the panel held no switch at all, and the owner
+ * chose to take the panel rather than leave an empty one: „Ekran koji ne radi nista je
+ * obecanje da negde postoji izbor."
+ *
+ * <p><b>What brings it back, named in the same decision:</b> „ako sutra nastane mejl koji
+ * sme da se iskljuci, ekran se pravi ponovo." `settings.test.tsx` is the floor that makes
+ * a return deliberate rather than accidental. */
 export function Settings() {
   const { t } = useI18n()
-  const { notifications, setNotification } = useSession()
   const who = useMemberScreen()
   const overlay = useOverlay()
   const { theme, choose } = useTheme()
@@ -144,30 +156,6 @@ export function Settings() {
           return me === undefined ? null : <ProfileVisibility key={me.memberNumber} me={me} />
         }}
       </Resource>
-
-      <section className="member__panel" aria-labelledby="settings-notifications">
-        <h2 className="profile__section" id="settings-notifications">
-          {t('settings.notifications')}
-        </h2>
-        <p className="member__note">{t('myProfile.notificationsNote')}</p>
-
-        {NOTIFICATION_KEYS.map((key) => (
-          <div key={key} className="field field--checkbox">
-            <div className="field__confirm">
-              <input
-                className="field__control"
-                type="checkbox"
-                id={`notify-${key}`}
-                checked={notifications[key]}
-                onChange={(event) => setNotification(key, event.target.checked)}
-              />
-              <label className="field__label" htmlFor={`notify-${key}`}>
-                {t(`myProfile.notify.${key}`)}
-              </label>
-            </div>
-          </div>
-        ))}
-      </section>
     </div>
   )
 }
