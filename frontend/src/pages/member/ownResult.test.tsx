@@ -1139,10 +1139,12 @@ describe('a result that has been counted', () => {
   }, SLOW)
 
   it('carries the caveat about the count while the result is still waiting, and not after', async () => {
-    /* The one screen a member meets the number on more than once. The form said
-       the count was not final when they sent it; here they see it again, and after
-       verification they may see a different one, since the administration settles
-       the kind and the time (PDL, 30.08.2026, point 8).
+    /* **The one screen that still announces a number before anybody has decided**, and
+       so the one that still carries the caveat. The two forms that send a result carried
+       it too until 28.09.2026, each beside a number of its own; the owner took the number
+       off those and the caveat went with it there, having nothing left to qualify. Here
+       the number stays, and after verification it may be a different one, since the
+       administration settles the kind and the time (PDL, 30.08.2026, point 8).
 
        And not on a decided result: the number is then the decided one and there is
        nothing left to warn about. The store starts with nothing waiting, so one is

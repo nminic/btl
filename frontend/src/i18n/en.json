@@ -996,7 +996,6 @@
     "linkHint": "Required, unless you attach pictures of the results or of an app as proof.",
     "photo": "A picture as proof",
     "doneTitle": "The result has been sent",
-    "donePoints": "This race brings you {points} BTL points.",
     "doneWaiting": "A moderator is checking it. Once it is confirmed, it enters the boards and your profile.",
     "toMine": "My results",
     "another": "Enter another one",

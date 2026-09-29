@@ -15,7 +15,6 @@ import { useToday } from '../../clock/useClock'
 import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
 import { racesToOffer } from './racesToOffer'
 import { pointsOf } from '../../data/scoring'
-import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import type { Submission } from '../../session/context'
 import { useSession } from '../../session/useSession'
@@ -110,13 +109,18 @@ export function NewResult() {
   const { submissions, submit, resubmit } = useSession()
   const who = useMemberScreen()
   /**
-   * What the last entry earned and whether it was a correction, once there has
+   * THAT there has been an entry, and whether it was a correction, once there has
    * been one.
    *
-   * Both together, because the second cannot be worked out afterwards: sending a
-   * correction puts the result back to waiting, so the refused result the
-   * address named is no longer refused and the screen would say the ordinary
-   * thing about it.
+   * The second cannot be worked out afterwards: sending a correction puts the
+   * result back to waiting, so the refused result the address named is no longer
+   * refused and the screen would say the ordinary thing about it. So it travels.
+   *
+   * **What no longer travels is the number of points.** It did until 28.09.2026,
+   * and only because the confirmation printed it; the owner ended that („Ne vidim
+   * razlog da se ispisuju bilo kome prilikom unosa parametara prijave rezultata"),
+   * so what is left is the presence of an entry, read the way `RateEvent.tsx` and
+   * `ReportResult.tsx` read theirs.
    */
   /* **Held by the address, not by the screen.** Drawn in place, the entry under the
      confirmation was this form, filled in and already sent, so the browser's own way back
@@ -124,15 +128,11 @@ export function NewResult() {
      the case the owner named on 05.09.2026: „Nazad sa potvrde poslatog rezultata treba da
      vodi na formu Moji rezultati, a ne na formu za slanje rezultata."
 
-     Both figures travel, because the second is the one the comment above says cannot be
-     worked out afterwards. Read without asserting a type over a value this screen did not
-     make (ADL A14), the same way `pages/sent.ts` reads it. */
+     Read without asserting a type over a value this screen did not make (ADL A14), the
+     same way `pages/sent.ts` reads it. */
   const confirmed = useSent()
-  const shown = Reflect.get(Object(confirmed), 'points')
   const done =
-    typeof shown === 'number'
-      ? { points: shown, again: Reflect.get(Object(confirmed), 'again') === true }
-      : null
+    confirmed === undefined ? null : { again: Reflect.get(Object(confirmed), 'again') === true }
   const confirm = useSend()
   /* What the server answered, where it answered anything but „done". A result that went
      through leaves this screen for the confirmation, so the only answer this ever holds is
@@ -378,12 +378,11 @@ export function NewResult() {
             category: sent.category,
           }
 
-    /* Where the member is taken once it has really gone, and it carries both figures for
-       the reason the comment on `done` above gives: the second cannot be worked out
-       afterwards. */
+    /* Where the member is taken once it has really gone, and it carries the one thing the
+       comment on `done` above says cannot be worked out afterwards. Not what the run is
+       worth: nothing prints that any more (owner, 28.09.2026). */
     function confirmIt() {
       confirm(`/${locale}/moji-rezultati`, {
-        points: earned,
         again: correcting !== undefined || fixingOne !== undefined,
       })
     }
@@ -522,14 +521,20 @@ export function NewResult() {
     return (
       <div className="member" role="status">
         <h1>{t('newResult.doneTitle')}</h1>
-        <p>{t('newResult.donePoints', { points: formatPoints(done.points, locale) })}</p>
-        {/* And that the number is not the last word (PDL, 30.08.2026, point 8).
-            The administration settles the kind and the time at verification, and
-            on a timed race the time is the race's own limit, so a result sent as
-            1:52:10 may be counted as 3:00:00 and be worth a third of what this
-            line said. Until 31.08.2026 nothing on the way said so, and the member
-            met the smaller number for the first time in their own list. */}
-        <p>{t('newResult.pointsNotFinal')}</p>
+        {/* What happens next, and not what the run is worth. This said the number
+            the browser had worked out, and then took it back in the next breath,
+            „Račun nije konačan" - because the administration settles the kind and
+            the time at verification, and on a timed race the time is the race's own
+            limit, so a result sent as 1:52:10 could be counted as 3:00:00 and be
+            worth a third of what the line said.
+
+            Owner, 28.09.2026, asked about the timed race alone and answering over
+            both kinds: „bodovi ni na dužinskoj ni na vremenskoj trci ne ulaze u
+            obračun pre verifikacije. Ne vidim razlog da se ispisuju bilo kome
+            prilikom unosa parametara prijave rezultata. Ako ga zanima koliko će
+            bodova dobiti, neka se igra kalkulatorom na naslovnoj strani portala."
+            The caveat went with the number, there being nothing left for it to
+            stand beside. */}
         <p>{done.again ? t('newResult.againDone') : t('newResult.doneWaiting')}</p>
         <p className="member__actions">
           <Link className="button button--primary" to={`/${locale}/moji-rezultati`}>

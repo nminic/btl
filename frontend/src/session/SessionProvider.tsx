@@ -308,10 +308,12 @@ export function SessionProvider({
            queue draws 3:00:00 beside the 23,55 points of 1:52:10 until „Odobri" is
            pressed, when both become the 8,57 of 3:00:00. The climb is named
            because the formula reads it: flat, the same two times are worth 11,21
-           and 4,08. That is the owner's rule and not a fault, and the
-           screens say so where they announce a number: the form that sends a
-           result tells the member the count is not final and is settled at
-           verification. An earlier note here claimed this shape prevented the two
+           and 4,08. That is the owner's rule and not a fault, and the one screen
+           that still announces a number before a decision says so: the member's own
+           list carries the caveat beside a result that waits (`MyResults.tsx`,
+           `newResult.pointsNotFinal`). The two forms that send a result stopped
+           announcing one at all on 28.09.2026, so there is nothing for them to
+           qualify. An earlier note here claimed this shape prevented the two
            halves from disagreeing; it does not, it moves the moment they agree to
            the decision, which is where he put it. */
         return { ...one, ...changes }
