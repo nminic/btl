@@ -138,11 +138,7 @@
     grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
   }
 
-  .form__row .field--place {
-    grid-column: span 2;
-  }
-
-  /* And the two halves of it are those two columns, one each.
+  /* TWO OF THOSE COLUMNS, AND ITS TWO HALVES ARE ONE EACH.
    *
      Owner, 28.09.2026: „Drugi red su jednake trećine za Mesto i Državu (Treća
      kolona je prazna)." Measured at 1280 before this rule: the town was 434,67px
@@ -158,29 +154,39 @@
      list, so the one that is typed is given the room. Left global, this would
      have widened a control on two administrative screens nobody asked about.
    *
-     `flex: 1 1 0%` and not `1 1 auto`: a basis of `auto` starts from the width of
-     the content, and the content of one is a box and of the other a list of two
-     hundred and forty six countries. */
-  /* Both halves on one line, because a selector list broken over two carries the
-     newline into `selectorText` and the guard that reads it by name then has to
-     know how this file is laid out (`forms/formStyle.test.ts`). */
-  .form__row .field--place .place__town, .form__row .field--place .place__country-pick {
-    flex: 1 1 0%;
-    min-inline-size: 0;
-    inline-size: auto;
-    max-inline-size: none;
-  }
-
-  /* And the gap between them is the gap between the columns, so that the two
-     halves land ON the two columns rather than merely beside each other.
-   *
-     `PlaceField.css` sets 8px, which is right for a pair standing on its own.
-     Inside a row of thirds it is wrong by exactly the difference: measured, the
+     AND THE GAP BETWEEN THE HALVES IS THE GAP BETWEEN THE COLUMNS, so that the
+     two halves land ON the columns rather than merely beside each other.
+     `PlaceField.css` sets 8px, which is right for a pair standing on its own;
+     inside a row of thirds it is wrong by exactly the difference: measured, the
      halves came out 313,33px against the 309,33px of a third, and the left edge
-     of „Država" stood four pixels left of „Telefon" on the row above it. Equal
-     to each other and on neither column. */
-  .form__row .field--place .place {
-    gap: var(--space-16);
+     of „Država" stood four pixels left of „Telefon" on the row above it.
+   *
+     ALL THREE OF THOSE FACTS USED TO BE THREE RULES OVER `flex`, AND SINCE
+     29.09.2026 THEY ARE THREE DECLARATIONS OVER ONE GRID. The field is a grid of
+     named areas now (`forms/PlaceField.css` says why), so „each half is a column"
+     is the track list itself rather than a basis of `0%` on each half plus the
+     fixed width undone on one of them, and the gap is the grid's own. Nothing the
+     owner asked for moves: `forms/formStyle.test.ts` was rewritten against this
+     shape and its mutations were run against the NEW rule before the old one went,
+     because a guard replaced without that is a guard whose live half is thrown out
+     with its dead one. */
+  /* TWO CLASS NAMES ON THE FIELD AND NOT ONE, AND THIS IS THE WHOLE OF WHY.
+   *
+     The rule it has to beat is `PlaceField.css`'s `.field.field--place`, which is
+     (0,2,0). Written here as `.form__row .field--place` this is (0,2,0) as well,
+     and equal weight is settled by whichever sheet the bundle happens to emit
+     last - which is the fault `styles/cellSpecificity.test.ts` exists over, in its
+     own words: „a rule written at the same weight is one its author had to think
+     about". Measured in Chrome at 1280 while it was a tie: the country came out
+     192px against the 309,33px of a third, the town 434,67px, and „Država" began
+     at 541 where „Telefon" on the row above begins at 423,67. Every case in
+     `forms/formStyle.test.ts` was green while that was on the screen, because a
+     guard that reads a sheet reads what a rule SAYS and never which rule wins.
+     `.field.field--place` here is (0,3,0) and cannot lose. */
+  .form__row .field.field--place {
+    grid-column: span 2;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: var(--space-16);
   }
 
   /* And a field standing on its own inside such a form keeps the width one

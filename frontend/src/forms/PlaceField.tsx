@@ -432,7 +432,17 @@ export function PlaceField({
           what it leaves behind is the more important half anyway, since the error
           is what the cursor is found by. Outside the label, as everywhere. */}
       <span className="place__country-pick">
-        <AskedLabel id={`${id}-country`} asked={required === true}>
+        {/* And it is dressed like the name of a field, because that is what it is.
+            Owner, 29.09.2026, over a picture of this very row: „I ovde se raspada
+            red zbog Drzave", with „Mesto" in the ordinary weight and „DRŽAVA" in
+            small capitals in another colour beside it. The two were drawn by two
+            different rules: the town's name wears `.field__label` from the
+            renderer, and this one wore nothing at all and inherited the small
+            uppercase `.place__country-pick` used to be set in. The same prop, for
+            the same reason, as `pages/event/GoingToEvent.tsx`, whose own note says
+            that without it „the name of that one field was drawn lighter than
+            every other name on the portal". */}
+        <AskedLabel className="field__label" id={`${id}-country`} asked={required === true}>
           {t('form.country')}
         </AskedLabel>
         <select
