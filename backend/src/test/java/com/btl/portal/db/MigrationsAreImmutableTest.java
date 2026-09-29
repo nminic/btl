@@ -169,13 +169,32 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   neither repin is a rewrite of a migration anyone has run, the same condition V41's
 			   and V43's repin notes above check. */
 			new Applied("44", "V44__the_picture_leaves_what_you_enter_at_joining.sql", 373307075),
+			/* V46, not V45: V44 is taken on main by the migration above, and V45 by the results
+			   queue on branch b177, which renumbered onto it from V44 for the same reason. Checked
+			   with `git ls-tree origin/main` and across every ref rather than taking "the first
+			   free number", which is what produced the V44 collision in the first place. Pinned
+			   LAST, with the file final, because a later commit correcting even one sentence of
+			   its header changes the bytes and this number with them - which is exactly what
+			   happened twice before this number settled, both times before merge and neither a
+			   rewrite of anything anyone has run: first when Article 9 was added to this same
+			   migration (owner, 29.09.2026), and then when the owner sent his final wording of
+			   Article 56 and the explanatory paragraph I had opened it with came out. */
+			new Applied("46", "V46__the_rulebook_stops_claiming_a_penalty_that_is_gone.sql", 426098328),
 
 			/* V47. The six social notices lose their mail, so the six switches and the table
 			   holding them go with it (owner, 29.09.2026: „da funkcionise samo kao poruke u
-			   inbox portala"). The number is not 45 or 46 on purpose: both were taken by
-			   branches open at the same time, checked with `git ls-tree` over origin/main and
-			   over each of them rather than by taking the first free one, which is how two
-			   branches collided on one number the day before. */
+			   inbox portala").
+
+			   The number is not 45 or 46, and that was measured rather than taken: when this
+			   file was written V45 stood on branch b177 and V46 on b178, both open, checked
+			   with `git ls-tree` over origin/main and over every ref rather than by asking for
+			   the first free number - which is how two branches collided on one the day before.
+			   V46 has since merged, which is why it sits directly above; that this entry and
+			   that one arrived as an add/add conflict at the tail of this very list is the
+			   `.properties` intersection in another costume, and it was resolved by keeping
+			   both in version order rather than by either side winning. The full gate was run
+			   again afterwards, because a list that merges cleanly is not a list that is
+			   right. */
 			new Applied("47", "V47__the_social_notices_go_only_to_the_inbox.sql", -1376320615));
 
 	@Test
