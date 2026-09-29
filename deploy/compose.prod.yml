@@ -41,6 +41,40 @@
 # Never run "docker compose down" here: it deletes the shared network the edge
 # proxy is attached to. To restart one service, use "restart <service>".
 #
+# THE FIRST RAISE IS NOT LIKE THE ONES AFTER IT, and this is the only place that
+# says so beside the file it applies to. The volume below starts empty, so the
+# database this stack creates has no rows at all until Flyway runs. It then fills
+# more of it than "empty" suggests: the seed migrations put rows into ELEVEN
+# tables, among them the whole rulebook, the terms of use, the privacy policy and
+# the president's word in both languages, beside countries, places, the price
+# list and the ducat catalogue. What NOTHING seeds is the league: not one insert
+# into btl_event, race, result or competitor in any of the 46. So a production
+# database that has had every migration applied and nothing else is not an empty
+# portal; it is a portal with no league in it.
+#
+# Where those rows come from is an owner decision of 29.09.2026, recorded in PDL
+# under "Podaci sa QA se prenose na produkciju": a data-only dump of the QA
+# database, WITHOUT flyway_schema_history, poured in AFTER this stack's own
+# migrations have run. Production keeps its own migration history, and letting
+# QA's rows into that table would hand production checksums for files it never
+# applied itself.
+#
+# AND THE MOMENT IS HALF THE DECISION, which is the half most easily dropped
+# when it is summarised (PDL, 29.09.2026, "Otisak podataka se uzima NA KRAJU, ne
+# unapred"): the owner goes on adding real data to QA while he tests, so the
+# dump is taken at the last moment rather than prepared in advance and replayed
+# when its turn comes.
+#
+# AND THE TRANSFER IS ONE-OFF (PDL, 29.09.2026, "Prenos podataka je JEDNOKRATAN",
+# chosen between three offered outcomes). The tool may only ever run over an
+# EMPTY production database and has to refuse by itself when it is not empty,
+# which is the only defence a one-off shape can have. Everything that belongs on
+# production therefore has to be in QA BEFORE the first raise, and everything
+# added after that is typed in by hand through the screens.
+#
+# The transfer runs database to database. It is not a migration and it never
+# passes through this repository, because those rows carry personal data.
+#
 # Memory: the host has 3.7 GB in total and also carries the edge proxy and the
 # whole QA stack. The two services added here therefore carry an explicit
 # mem_limit, the same numbers QA measured, so a runaway JVM heap cannot take the
