@@ -207,8 +207,30 @@ describe('the calendar button that will not answer', () => {
  * rule it has, so a fifth area, or one of the four dropped, fails without anybody
  * remembering to add a line here.
  */
+/**
+ * The names a `grid-template-areas` really lays out, as words rather than as one string.
+ *
+ * <p><b>Written because the first draft of the case below searched the string.</b>
+ * `'townName'` CONTAINS `'town'` and `'countryName'` contains `'country'`, so two of the
+ * four areas could be deleted from the template and a `toContain` over the whole value
+ * went on passing. Measured by an independent round on 29.09.2026: with the second row
+ * turned into `'townName'` the town's box came out at `x=137` and 207 wide on a 360px
+ * screen, indented and UNDER the country's list, and nothing said so.
+ */
+function areasIn(template: string): string[] {
+  return [...template.matchAll(/"([^"]*)"|'([^']*)'/g)]
+    .flatMap((row) => (row[1] ?? row[2] ?? '').trim().split(/\s+/))
+    .filter((area) => area !== '' && area !== '.')
+}
+
+/** The same set, with each name said once and in a settled order. */
+function asASet(areas: string[]): string[] {
+  return [...new Set(areas)].sort((left, right) => left.localeCompare(right))
+}
+
 describe('the field that asks for a town', () => {
   const place = readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8')
+  const BESIDE = '(min-width: 35em)'
 
   it('is one grid, and the four things in it land on four different areas', () => {
     /* THE JOIN, and it is the whole reason this is one case rather than two. The
@@ -217,22 +239,36 @@ describe('the field that asks for a town', () => {
        or a rule placing into an area the field does not name, is exactly the shape
        that would put a name back on top of a control. Read off every rule the sheet
        has rather than off a list, so a fifth area cannot arrive unnoticed. */
-    const placed = everyRule(place, 'PlaceField.css')
-      .map((rule) => rule.style.getPropertyValue('grid-area'))
-      .filter((area) => area !== '')
-    const named = ruleFor(place, '.field.field--place', 'PlaceField.css').getPropertyValue(
-      'grid-template-areas',
+    const placed = asASet(
+      everyRule(place, 'PlaceField.css')
+        .map((rule) => rule.style.getPropertyValue('grid-area'))
+        .filter((area) => area !== ''),
     )
 
-    expect([...placed].sort((left, right) => left.localeCompare(right))).toEqual([
-      'country',
-      'countryName',
-      'town',
-      'townName',
-    ])
+    expect(placed).toEqual(['country', 'countryName', 'town', 'townName'])
 
-    for (const area of placed) {
-      expect(named, `${area} is placed into but the field names no such area`).toContain(area)
+    /* BOTH TEMPLATES AND NOT ONLY THE ONE THE FIELD OPENS WITH. The second is the
+       whole of what this change is for - it is what puts the two names on ONE LINE -
+       and until 29.09.2026 nothing read it at all. Measured by an independent round
+       with `'town     country'` turned into `'town     town'`, a single token: at 1280
+       the grid took two implicit columns, „Država" moved to `x=232,83`, which is 191
+       pixels left of „Telefon" above it, its list fell into a row of its own and the
+       field grew from 76,8 to 132,8 tall. Every case in this file stayed green.
+
+       AND AS SETS IN BOTH DIRECTIONS, which is the other half: an area placed into but
+       never named, and an area named but never placed into, are two different faults
+       and `toEqual` over the two sets is what refuses each of them. */
+    for (const [when, rule] of [
+      ['as the field opens', ruleFor(place, '.field.field--place', 'PlaceField.css')],
+      [
+        'where the two stand side by side',
+        ruleInMedia(place, BESIDE, '.field.field--place', 'PlaceField.css'),
+      ],
+    ] as const) {
+      const named = rule.getPropertyValue('grid-template-areas')
+
+      expect(named, `${when}: the field names no areas at all`).not.toBe('')
+      expect(asASet(areasIn(named)), `${when}: named and placed do not agree`).toEqual(placed)
     }
   })
 
