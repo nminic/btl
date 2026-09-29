@@ -16,7 +16,7 @@ import java.io.IOException;
  * <p><b>Its own class and its own route, not a field on {@link MeApi}</b>, for
  * {@link MyApplicationsApi}'s reason: one screen asks this and every other caller of
  * {@code /api/me} would pay for it. The pair of classes on one path is
- * {@link NotificationApi} and {@link NotificationWriteApi}, and this follows it verb for
+ * {@link MyMembershipApi} and {@link MyMembershipWriteApi}, and this follows it verb for
  * verb, including how an account with no member behind it is answered.
  *
  * <p><b>WHAT IS STORED IS THE WISH AND WHAT IS ANSWERED IS BOTH.</b> Owner, 26.09.2026 (PDL
@@ -73,7 +73,7 @@ class MeCategoryApi {
 	 * THE WHOLE STATE OF THE CHOICE, WITH THE WISH AND THE CATEGORY AS SEPARATE FIELDS.
 	 *
 	 * <p>It lives on the reading class and is answered by the writing one too, which is how
-	 * {@link NotificationWriteApi} answers with {@link NotificationApi.Settings}: one shape
+	 * {@link MeCategoryWriteApi} answers with this same record: one shape
 	 * for one resource, whichever verb asked for it.
 	 *
 	 * @param season             the season being chosen FOR, which is the one the heading
@@ -102,7 +102,7 @@ class MeCategoryApi {
 
 	/**
 	 * <p><b>404 for an account with no member</b>, exactly as the {@code GET} beside it on
-	 * {@code /api/me/notifications} does, and through {@code sendError} for the same reason: a
+	 * {@code /api/me/membership} does, and through {@code sendError} for the same reason: a
 	 * signed-in account that does not race has nothing here, and it must not learn that the
 	 * address exists (ADL A8, owner 13.09.2026 - the numbers are 401 and 404, never 403).
 	 * Somebody who is not signed in at all never reaches this method: the chain answers 401 at

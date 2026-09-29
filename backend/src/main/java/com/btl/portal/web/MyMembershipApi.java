@@ -31,10 +31,10 @@ import java.math.BigDecimal;
  * absent from {@link ApiSecurity#READ_BY_ANYBODY}, so the chain answers 401 before this class runs.
  * And it carries no {@link RightIsNeeded}, because buying your own membership is not a moderator's
  * action and there is no box anybody could tick for it - the sentence
- * {@code /api/me/applications} and {@code /api/me/notifications} are already on that list with.
+ * {@code /api/me/applications} and {@code /api/inbox} are already on that list with.
  *
  * <p><b>An account that names no member is answered 404</b>, the identical shape
- * {@link NotificationApi} and {@link InboxApi} have for the identical case: a moderator who does
+ * {@link InboxWriteApi} and {@link InboxApi} have for the identical case: a moderator who does
  * not race has no membership to buy, and 404 rather than an empty answer because there is no
  * resource here to describe.
  *

@@ -836,7 +836,7 @@ class TeamWriteApiTest {
 	 * <p>V23 lets {@code account.competitor_id} be null for „a moderator who does not race,
 	 * which is the ordinary case and not a fault", and {@code team_proposal.competitor_id} is
 	 * NOT NULL because only a member may propose a team (V11). There is nobody to file it
-	 * under, and the answer is the one {@code InboxApi} and {@code NotificationApi} already
+	 * under, and the answer is the one {@code InboxApi} and {@code InboxWriteApi} already
 	 * give him.
 	 */
 	@Test

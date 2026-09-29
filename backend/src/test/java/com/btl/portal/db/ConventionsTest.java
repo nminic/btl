@@ -128,7 +128,7 @@ class ConventionsTest extends DatabaseTest {
 				"admin_right", "attending", "balance_entry", "balance_promise", "btl_event",
 				"comment_submission",
 				"competitor", "competitor_document", "country", "ducat", "ducat_award", "ducat_kind", "email_verification_token", "event_comment", "league", "league_race", "membership", "message",
-				"message_read", "notification_setting", "pair_invite", "parental_consent", "password_reset_token", "payment",
+				"message_read", "pair_invite", "parental_consent", "password_reset_token", "payment",
 				"photo", "place", "price_row",
 				"race", "racing_pair", "result", "result_submission", "role", "season_competitor", "season_league_standing",
 				"season_team", "static_page", "static_page_include", "static_page_section",

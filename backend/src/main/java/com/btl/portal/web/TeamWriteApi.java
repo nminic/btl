@@ -85,7 +85,7 @@ import java.util.Set;
  * window, in one condition, with its own note saying they „are the same rule read twice".
  * A server that told them apart would be a third opinion about one thing.
  * <li><b>And an account with no member is the shape {@link InboxApi} and
- * {@link NotificationApi} already answer.</b> V23 lets {@code account.competitor_id} be
+ * {@link InboxWriteApi} already answer.</b> V23 lets {@code account.competitor_id} be
  * null for „a moderator who does not race, which is the ordinary case and not a fault",
  * and {@code team_proposal.competitor_id} is NOT NULL because „only a member can propose a
  * team" (V11). There is nobody to file the proposal under.
@@ -489,7 +489,7 @@ class TeamWriteApi {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race. There is nobody to file a proposal under, and the
-		   answer is the one InboxApi and NotificationApi already give him. */
+		   answer is the one InboxApi and InboxWriteApi already give him. */
 		if (me == null) {
 			return away();
 		}

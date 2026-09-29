@@ -265,7 +265,7 @@ class MyMembershipApiTest {
 	/**
 	 * AN ACCOUNT WITH NO MEMBER BEHIND IT HAS NO MEMBERSHIP TO BUY.
 	 *
-	 * <p>The identical shape {@code /api/inbox} and {@code /api/me/notifications} have for the
+	 * <p>The identical shape {@code /api/inbox} and {@code /api/me/category} have for the
 	 * identical case: a moderator who does not race (V23, owner 14.09.2026, „Empty for a moderator
 	 * who does not race, which is the ordinary case and not a fault").
 	 */

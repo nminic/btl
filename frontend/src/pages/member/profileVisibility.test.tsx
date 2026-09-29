@@ -136,8 +136,8 @@ describe('the choice to hide a profile from visitors', () => {
 
   it('sends the other state too, for a member whose profile is already hidden', async () => {
     /* THE OTHER END OF THE AXIS, and the seed cannot produce it: nobody on disc is hidden. The
-       route takes „pali" and „gasi" as one sentence (`NotificationWriteApi` writes that out
-       for its own switches, and `MeWriteApi` boxes this field so a member can send `false` at
+       route takes „pali" and „gasi" as one sentence (`MeCategoryWriteApi` writes that out
+       for its own choice, and `MeWriteApi` boxes this field so a member can send `false` at
        all), so a panel that could only ever hide would make the portal's own default a state a
        member could leave and never return to. */
     const user = setupUser()
