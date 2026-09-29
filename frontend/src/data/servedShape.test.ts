@@ -599,7 +599,7 @@ describe('the answer the backend gives', () => {
        directions and `PricingApi`'s own words. Read through a `string` instead of a
        `string | null`, that first null is what draws „undefined - undefined" in a cell of
        the public price table. */
-    expect(readAsPrice.from).toBe('10-01')
+    expect(readAsPrice.from).toBe('10-15')
     expect(readAsPrice.rsd).toBe(4200)
     expect(readAsPrice.ranking).toBe(true)
     expect(readAsFee.from).toBeNull()

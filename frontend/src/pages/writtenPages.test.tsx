@@ -1154,7 +1154,17 @@ describe('the privacy policy', () => {
        on. Taken modulo twelve instead, a season still on sale in the opening month reads
        as one month rather than thirteen: measured, and the first version of this said the
        longer year was fine. */
-    const sellingYear = monthOf(last) + 12 - monthOf(first) + 1
+    const dayOf = (dayOfYear: string): number => Number(dayOfYear.slice(3))
+    /* AND THE DAY, NOT ONLY THE MONTH. This counted whole months between the two month
+       numbers and added one for an inclusive count, which was right only while the two
+       ends fell in DIFFERENT months: 1 October to 30 September is ten to nine, so 12.
+       When the owner moved the selling year to 15 October on 29.09.2026 both ends landed
+       in October - 15 October to 14 October - and the same arithmetic read 13 for a span
+       that had not changed at all. Measured, both shapes: 365 days before and 365 days
+       after. So the extra month is owed only when the closing DAY has reached the opening
+       one, and the policy's own figure never had to move. */
+    const sellingYear =
+      monthOf(last) + 12 - monthOf(first) + (dayOf(last) >= dayOf(first) ? 1 : 0)
     /* Through the table rather than through a pattern that steps over a fixed number of
        cells: a column added to that table broke this while the document was right, and
        the guard below it, written the same week, already reads the column by its name. */

@@ -813,7 +813,7 @@
     "proposeBody": "{city}, {country}. {note}",
     "proposeDoneTitle": "Predlog je poslat",
     "proposeDone": "Tim „{name}\" čeka odluku moderatora. Dok čeka, nije vidljiv nigde na portalu.",
-    "proposeShut": "Tim se osniva u prelaznom roku, od 1. oktobra do 31. decembra.",
+    "proposeShut": "Tim se osniva u prelaznom roku, od 15. oktobra do 31. decembra.",
     "edit": "Izmeni",
     "editTitle": "Izmena tima",
     "editSubmit": "Pošalji izmenu",
@@ -838,7 +838,7 @@
     "joinWaiting": "Prijave koje čekaju",
     "decideRefused": {
       "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa prijava nije odgovorena. Osveži stranicu i pokušaj ponovo.",
-      "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa član nije primljen u tim. Prijava i dalje čeka: rok se otvara 1. oktobra i traje do 31. decembra."
+      "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa član nije primljen u tim. Prijava i dalje čeka: rok se otvara 15. oktobra i traje do 31. decembra."
     },
     "invite": "Pozovi u tim",
     "invited": "Poziv u tim „{team}\" je poslat.",
@@ -855,7 +855,7 @@
     "inviteOvertakenUnnamed": "U međuvremenu si ušao/la u tim, pa ovaj poziv više ne možeš da prihvatiš.",
     "inviteClosed": "Ovaj poziv više ne stoji.",
     "inviteGone": "Tim koji te je pozvao više ne postoji.",
-    "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 1. oktobra do 31. decembra.",
+    "inviteWaits": "Poziv čeka: u tim se ulazi samo u prelaznom roku, od 15. oktobra do 31. decembra.",
     "inviteMissedSubject": "Poziv u tim je ostao bez odgovora",
     "inviteMissedBody": "{name} je u međuvremenu ušao/la u tim „{team}\", pa vaš poziv više ne stoji.",
     "answerRefused": {
@@ -883,10 +883,10 @@
   },
   "pricing": {
     "rows": {
-      "early": "1. do 5. oktobra",
-      "regular": "6. oktobra do 30. novembra",
+      "early": "15. do 31. oktobra",
+      "regular": "1. do 30. novembra",
       "late": "1. do 31. decembra",
-      "season": "1. januara do 30. septembra",
+      "season": "1. januara do 14. oktobra",
       "junior": "Uzrast do 14 godina",
       "referral": "Preporuka novog člana"
     },
@@ -1042,7 +1042,7 @@
     "status": "Stanje",
     "active": "Član od {season}. sezone.",
     "feeExempt": "Oslobođen si plaćanja članarine za sezonu {season}, odlukom Upravnog odbora.",
-    "notYetSold": "Članarina se još ne prodaje. Naplata kreće 1. oktobra.",
+    "notYetSold": "Članarina se još ne prodaje. Naplata kreće 15. oktobra.",
     "junior": "Ko u sezoni ima bar jedan dan 14 godina ili manje plaća {eur} EUR, a iz Srbije {rsd} RSD, bez obzira na datum uplate.",
     "ips": "Uplatnica sa QR kodom",
     "ipsNote": "Skeniraj kod u aplikaciji svoje banke. Iznos, primalac i poziv na broj su već upisani.",
@@ -1063,7 +1063,7 @@
     "ipsQrLabel": "IPS QR kod za uplatnicu",
     "renewal": "Obnova članarine za {season}.",
     "renewalOpen": "Obnova je otvorena. Ne registruješ se ponovo: članski broj, profil i istorija ostaju tvoji.",
-    "renewalShut": "Obnova se otvara 1. oktobra i traje do 31. decembra.",
+    "renewalShut": "Obnova se otvara 15. oktobra i traje do 31. decembra.",
     "chooseCategory": "U kojoj kategoriji se takmičiš {season}.",
     "ageBand": "U svojoj starosnoj kategoriji",
     "firstSeasonBand": "U početničkoj kategoriji",
@@ -1075,7 +1075,7 @@
     "noTeam": "Trenutno nisi ni u jednom timu.",
     "inTeam": "Trenutno si u timu {team}.",
     "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
-    "transferShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
+    "transferShut": "Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
     "askToJoin": "Prelazak u drugi tim se dogovara van portala. Kad se dogovorite, administracija te upisuje u tim.",
     "leaveTeam": "Izađi iz tima",
     "leaveTeamAsk": "Sigurno izlaziš iz tima {team}? U tim se ne vraćaš sam: ponovo te upisuje administracija.",
@@ -1268,10 +1268,10 @@
     "raceTaken": "Ovaj događaj već ima trku te dužine tog dana. Dve trke koje se ni po čemu ne razlikuju niko ne može da razazna.",
     "referral": "Preporuka",
     "corrected": "Ispravljeno",
-    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu. Podešava se do 1. oktobra, za sezonu koja tada počinje da se obnavlja; od tog dana stoji.",
-    "referralSettled": "Iznos preporuke za sezonu {season} se više ne menja. Obnova te sezone je otvorena od 1. oktobra, a iznos se podešava do tog dana.",
-    "referralOpen": "Iznos koji sada upišeš važi za sezonu {season}, jer se podešava do 1. oktobra. Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i iznos koji od tog trenutka stoji. Iznos po sezonama dolazi sa bazom.",
-    "referralRunning": "Sezona {season} je već u toku. Njen iznos je zaključan 1. oktobra prethodne godine, a ovaj upis ga ipak menja, jer portal drži jedan iznos.",
+    "referralNote": "Iznos koji leže na balans preporučiocu kad se novom članu aktivira članarina. Cenovnik je izvor tog iznosa: članska strana i uslovi korišćenja govore o njemu. Podešava se do 15. oktobra, za sezonu koja tada počinje da se obnavlja; od tog dana stoji.",
+    "referralSettled": "Iznos preporuke za sezonu {season} se više ne menja. Obnova te sezone je otvorena od 15. oktobra, a iznos se podešava do tog dana.",
+    "referralOpen": "Iznos koji sada upišeš važi za sezonu {season}, jer se podešava do 15. oktobra. Portal pamti jedan iznos i ne pamti prethodne, pa isti upis menja i iznos koji od tog trenutka stoji. Iznos po sezonama dolazi sa bazom.",
+    "referralRunning": "Sezona {season} je već u toku. Njen iznos je zaključan 15. oktobra prethodne godine, a ovaj upis ga ipak menja, jer portal drži jedan iznos.",
     "leagueRaces": "Trke u ligi",
     "leagueRacesOf": "Trke u ligi {name}",
     "chooseEvent": "Događaj",
@@ -1348,7 +1348,7 @@
       "theAmountIsMoreThanARowMayCost": "Cena je veća od najveće dozvoljene: 1.000 EUR i 200.000 RSD.",
       "theFeeHasNoDinarPrice": "Taksa za obradu plaćanja nema dinarsku cenu, jer se u dinarima ne plaća posredniku.",
       "theRowIsFreeInOneCurrencyOnly": "Red cenovnika je ili besplatan u obe valute, ili ima iznos u obe. Nula samo u jednoj se ne prihvata.",
-      "theReferralIsSettled": "Iznos za preporuku je od 1. oktobra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
+      "theReferralIsSettled": "Iznos za preporuku je od 15. oktobra utvrđen za sezonu koja se obnavlja i menja se samo za narednu."
     },
     "moderatorSaveRefused": {
       "theFormIsNotComplete": "Nedostaje ime, prezime ili adresa elektronske pošte.",
@@ -1360,7 +1360,7 @@
     "moderatorSavedUnseen": "Moderator je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "moderatorRightsSavedUnseen": "Pravo je sačuvano, ali portal ne može da prikaže novo stanje. Osveži stranu.",
     "teamDeleteRefused": {
-      "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 1. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
+      "theWindowIsShut": "Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. Tim se do tada ne briše, ni iz administracije."
     },
     "teamGone": "Tim je obrisan.",
     "memberDeleteRefused": {
