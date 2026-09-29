@@ -1053,6 +1053,9 @@ describe('changing an event', () => {
   /** The day the screens are read as where the list the administration opens on matters: the
    *  event ran before it, and everything on the list is on or after it. */
   const TODAY = '2026-08-04'
+  /** An event that has not been run on that day, and is not the first row of the list either:
+   *  it is only ever asked what its row offers, never which form it opens. */
+  const AHEAD = '/sr/kalendar/podgoricka-desetka-2027'
   /** The name a control says, which for these is also what a reader is told it is called. */
   const textOf = (one: Element) => one.textContent ?? ''
 
@@ -1100,6 +1103,10 @@ describe('changing an event', () => {
       'no other event runs on the day, so the day alone would say which event is open',
     ).toBeGreaterThan(0)
     expect(events.indexOf(mine), 'its place in the file is its number').not.toBe(mine.id)
+    expect(
+      (await eventAt(AHEAD)).date > TODAY,
+      'the event asked about below has been run, so the two sides of the day are not both drawn',
+    ).toBe(true)
   })
 
   it('opens the form of THIS event with its own races, and leaves a clean address', async () => {
@@ -1224,6 +1231,28 @@ describe('changing an event', () => {
       ).toEqual([...links])
       cleanup()
     }
+  }, SEVERAL_SCREENS)
+
+  it('offers it on an event still ahead too, where the rating is not offered', async () => {
+    /* The way in depends on the right and on nothing else: an event still ahead is changed like
+       one that ran (the calendar is changed forwards far more often than back), so the row holds
+       it on either side of today. What does depend on the day is the rating, and that is what
+       makes the count of controls differ between the sides: three here for a member who would
+       be offered four on the event that ran. Asked of a member and not of an administrator
+       alone, so the rating is the thing whose absence proves the day was read. */
+    renderAt(AHEAD, 'superadmin', '000007', undefined, TODAY)
+
+    await screen.findByRole('button', { name: 'Izmena' })
+
+    /* The row is drawn whole or not at all, so it has settled the moment its first control is. */
+    const head = must(screen.getByRole('heading', { level: 1 }).parentElement, 'the head')
+
+    expect(within(head).queryAllByRole('button').map(textOf)).toEqual([
+      'Izmena',
+      'Kopiranje',
+      'Brisanje',
+    ])
+    expect(within(head).queryAllByRole('link').map(textOf)).toEqual([])
   }, SEVERAL_SCREENS)
 
   it('lets through whoever is offered it: the door asks what the button asked', async () => {
