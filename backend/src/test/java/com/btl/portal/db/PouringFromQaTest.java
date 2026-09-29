@@ -259,8 +259,14 @@ class PouringFromQaTest extends DatabaseTest {
 	void oneRowIsEnoughToStopBeingEmpty() {
 		long before = rowCounts().get("photo");
 
-		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_side)"
-						+ " values ('image/jpeg', 1, repeat('a', 64), 0, 0, 1)")
+		// The crop is three fractions of the picture rather than three pixel counts, and the
+		// column is `crop_diameter`: V8 created it as `crop_side` in pixels and V21 both
+		// retyped and renamed it. Written against what the SCHEMA carries, which is not what
+		// the migration that creates the table says - reading only that one is what put
+		// `crop_side` here first, and the insert failed on a column that has not existed
+		// since V21.
+		db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y, crop_diameter)"
+						+ " values ('image/jpeg', 1, repeat('a', 64), 0.5, 0.5, 0.5)")
 				.update();
 
 		assertThat(rowCounts().get("photo"))
