@@ -1,10 +1,11 @@
-import { screen, within } from '@testing-library/react'
-import { loadResource } from '../../data/client'
-import { membersAsServed } from '../../test/serverAnswers'
+import { cleanup, screen, within } from '@testing-library/react'
+import { clearResourceCache, loadResource } from '../../data/client'
+import { answeredWith, membersAsServed, refused, serverThat } from '../../test/serverAnswers'
 import type { Attending, BtlEvent, Competitor } from '../../data/types'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
+import { useSession } from '../../session/useSession'
 
 /**
  * Saying you are going to a race, and writing to somebody else who is.
@@ -17,6 +18,21 @@ import { setupUser } from '../../test/user'
 
 /** Somebody signed in. */
 const ME = '000007'
+
+/** The reader stops being signed in without leaving the visit, the way `AccountMenu`
+ *  really does it: in place, no navigation and no reload (`data/client.ts`). The same
+ *  shape as `pages/profilePrivacy.test.tsx`'s own `SignOut`, for the same reason - a
+ *  case about what a signed-out visit still shows has to sign out without walking the
+ *  menu that offers it. */
+function SignOut() {
+  const { signOut } = useSession()
+
+  return (
+    <button type="button" onClick={() => { signOut() }}>
+      odjavi se
+    </button>
+  )
+}
 
 /** An event ahead of us that somebody has already said they are going to, and
  *  the day it is read on. Read off the record, so the fixture may change under
@@ -46,6 +62,139 @@ async function upcoming(): Promise<{ event: BtlEvent; going: Attending[]; day: s
     day: '2026-08-01',
   }
 }
+
+/**
+ * EVERY CASE IN THIS FILE HAS A SERVER IN FRONT OF IT FOR `/api/inbox`, AND THAT IS A
+ * MEASUREMENT RATHER THAN TIDINESS.
+ *
+ * <p><b>What happens without one.</b> `test/setup.ts` answers a `POST` off the disc for
+ * any address its `fileFor` maps to a generated file, and it maps `/api/inbox` to
+ * `src/test/mock/inbox.json`, WHICH EXISTS. So a `POST` there comes back <b>200 with an
+ * array</b>, `askTheServer` reads 200 as „done", and the confirmation „Poruka je poslata
+ * članu…" appears over a write nothing recognised as one. That is two sources for one
+ * screen state - the route said yes, or a `GET` fixture was served under a `POST` - and a
+ * case resting on it measures neither.
+ *
+ * <p><b>The floor in `test/setup.ts` is deliberately NOT widened to cover it.</b> That file
+ * is one for every branch in flight, and this increment does not need it moved; the hole is
+ * reported as its own item rather than patched from here. The mutation that proves this
+ * stand-in is load-bearing is therefore „take it away and let the fixture answer", and the
+ * cases that read what was sent are what fail.
+ *
+ * <p><b>And it serves the addressee's mail keyed on the MEMBER NUMBER</b>, which is the join
+ * between the two halves of the axis about who gets it: this suite cannot open somebody
+ * else's inbox without becoming them, and becoming them is a second render. A note posted to
+ * one number is served to that number and to no other, so addressing it to the league, to
+ * the sender or to a third member empties the screen the note is looked for on.
+ */
+const posted: Record<string, unknown>[] = []
+
+/** The sender's name AS THE SERVER CHOSE IT, never as the screen sent it.
+ *  `InboxWriteApi.nameTheLeagueKnowsHimBy` reads `competitor.first_name` and `last_name`
+ *  off the sender's own row, so this name is one no request could carry: the request has
+ *  no `from` at all. A case that finds it on the addressee's screen has found the
+ *  server's answer and not an echo of what was typed. */
+const THE_SERVER_NAMES_THE_SENDER = 'Pošiljalac Sa Servera'
+
+/** WHAT THE ADDRESSEE'S MAIL ALREADY HOLDS, so no case is ever about the only message of
+ *  its kind, and dated AFTER the note so that the note is never the first row either. */
+const ALREADY_IN_HIS_MAIL = {
+  id: 9001,
+  from: 'Balkanska trkačka liga',
+  subject: 'Članarina je evidentirana',
+  body: 'Tvoja članarina za sezonu 2027 je evidentirana.',
+  date: '2026-09-30',
+  read: true,
+  teamInvitationId: null,
+  pairInviteId: null,
+}
+
+let inboxServer: { stop: () => void } | null = null
+
+/**
+ * What a request body carried, key by key, WITHOUT CLAIMING ANY SHAPE FOR IT.
+ *
+ * <p>Read the way `account/askTheServer.ts` reads an answer and for the same reason
+ * (ADL A14, and this repo's ban on `as`): what comes off the wire is `unknown` and is
+ * narrowed by looking at it. Every key is kept, including one no route would read, which
+ * is exactly what the case about „three fields and no more" needs to be able to see.
+ */
+function everyFieldIn(sent: unknown): Record<string, unknown> {
+  const fields: Record<string, unknown> = {}
+
+  if (typeof sent !== 'object' || sent === null) {
+    return fields
+  }
+
+  for (const name of Object.keys(sent)) {
+    const value: unknown = Reflect.get(sent, name)
+
+    fields[name] = value
+  }
+
+  return fields
+}
+
+/**
+ * Puts the route in front of the disc reader, serving `GET /api/inbox` as `mine` would see
+ * it.
+ *
+ * @param mine whose mail the `GET` answers, or nothing where no case is going to read one
+ */
+function anInboxOnTheServer(mine: string | null): void {
+  /* Stopped before it is replaced, always: `serverThat` remembers whatever `fetch` was
+     when it was installed, so installing twice over would leave the first wrapper behind
+     as the thing the last `stop` restores. */
+  inboxServer?.stop()
+  inboxServer = serverThat((path, init) => {
+    if (path !== '/api/inbox') {
+      return null
+    }
+
+    if (init?.method === 'POST') {
+      const said: unknown = JSON.parse(String(init.body))
+      const fields = everyFieldIn(said)
+
+      posted.push(fields)
+
+      /* What the route really answers: 201, and the row as it now stands, with the title
+         read back off it (`InboxWriteApi.Sent`). */
+      return new Response(JSON.stringify({ id: 4242, subject: String(fields['subject'] ?? '') }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    return new Response(
+      JSON.stringify([
+        ALREADY_IN_HIS_MAIL,
+        ...posted
+          .filter((one) => one['to'] === mine)
+          .map((one, index) => ({
+            id: 5000 + index,
+            from: THE_SERVER_NAMES_THE_SENDER,
+            subject: String(one['subject'] ?? ''),
+            body: String(one['body'] ?? ''),
+            date: '2026-09-28',
+            read: false,
+            teamInvitationId: null,
+            pairInviteId: null,
+          })),
+      ]),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    )
+  })
+}
+
+beforeEach(() => {
+  posted.length = 0
+  anInboxOnTheServer(null)
+})
+
+afterEach(() => {
+  inboxServer?.stop()
+  inboxServer = null
+})
 
 describe('who is going to a race', () => {
   it('is not shown to a visitor at all', async () => {
@@ -388,11 +537,57 @@ describe('writing to somebody else who is going', () => {
     ).toBeNull()
   })
 
-  it('writes as a member of the league where the writer has no record yet', async () => {
+  it('closes on its own when the visit signs out from under it, naming nobody afterwards', async () => {
+    /* HIGH finding, review 28.09.2026. `writingTo` belongs to `Going`, and signing out
+       happens IN PLACE - no navigation, no reload (`data/client.ts`, `AccountMenu.tsx`)
+       - so `Going` is never unmounted by it and keeps the note open with only `me`
+       gone to null. A member who opened this form and then signed out of the same
+       visit kept seeing it, under the full name of whoever's envelope they had
+       pressed, after they were nobody any more. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day, <SignOut />)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+
+    expect(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+    ).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+
+    expect(
+      screen.queryByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+    ).toBeNull()
+  })
+
+  it('sends it where the writer is not on the list of members the portal serves', async () => {
     /* The number is handed out when the fee is recorded (PDL P8) and the list of
        members is read separately, so for a moment there is a signed-in number
-       with nothing behind it. The note still goes; what it cannot carry is a
-       name nobody has. */
+       with nothing behind it.
+     *
+       WHAT THAT CASE IS ABOUT CHANGED ON 28.09.2026 AND IS WORTH SAYING. Until then
+       the screen worked the sender's name out of that list and put it in the note, so
+       this measured the branch that wrote „Član lige" when the lookup found nothing.
+       The server reads the sender off his own row now, so the screen never looks him
+       up and there is no branch left: what this holds instead is that the request is
+       THE SAME ONE either way, which is the only way to tell „the name moved to the
+       server" from „the name is quietly gone". */
     const user = setupUser()
     const { event, going, day } = await upcoming()
     const competitors = await loadResource<Competitor[]>('competitors')
@@ -421,27 +616,205 @@ describe('writing to somebody else who is going', () => {
         `Poruka je poslata članu ${them.firstName} ${them.lastName}, u Poruke na portalu.`,
       ),
     ).toBeVisible()
+
+    expect(posted).toEqual([
+      {
+        to: them.memberNumber,
+        subject: `Dogovor za ${event.name}`,
+        body: 'Idem i ja, javi se.',
+      },
+    ])
   })
 
-  it('writes to their inbox on the portal, and not to their email', async () => {
-    /* Owner, 11.08.2026: „To ne stiže na mail nego njemu u portalski inbox." */
+  it('names the member whose envelope was pressed, and never the league, the writer or a bystander', async () => {
+    /* THE AXIS THIS FILE EXISTS FOR SINCE 28.09.2026, and the three wrong answers are
+       named rather than left to be imagined, because each of them is a value this very
+       screen holds and could put there by one slip:
+     *
+       - the LEAGUE, which is `to: ''`. `session/context.ts` reads an empty addressee as
+         „everybody", and `InboxWriteApi` reads it as a field nobody filled in („Empty is
+         not the league here"), so either way a note meant for one person addressed that
+         way is a note every member of the portal can read.
+       - the WRITER, which is what the screen used to hold as `me` and no longer does.
+       - a BYSTANDER, somebody the portal knows who is not going to this race at all.
+     *
+       Written as three separate refusals rather than as one equality, so that a failure
+       says WHICH of the four the note was addressed to. */
     const user = setupUser()
     const { event, going, day } = await upcoming()
-    const already = must(going[0], 'somebody the file has going')
     const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
     const them = must(
       competitors.find(
-        (one) => one.memberNumber !== already.memberNumber && going.some(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+    const bystander = must(
+      competitors.find(
+        (one) => !going.some((each) => each.memberNumber === one.memberNumber),
+      ),
+      'a member who is not going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      'Imam mesta u kolima, javi se.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    await screen.findByText(new RegExp(`^Poruka je poslata članu ${them.firstName}`))
+
+    const wrote = must(posted[0], 'the note that was sent')
+
+    expect(wrote['to']).toBe(them.memberNumber)
+    expect(wrote['to']).not.toBe('')
+    expect(wrote['to']).not.toBe(mine)
+    expect(wrote['to']).not.toBe(bystander.memberNumber)
+  })
+
+  it('sends three fields, and lets the server name the writer and the moment', async () => {
+    /* `InboxWriteApi.Written` takes `to`, `subject` and `body` and says why there is no
+       fourth: „There is no `from`, no `date` and no `read`: each of the three is the
+       server's or the database's, and a field for one of them would be a value the
+       caller gets to choose." Taken off the request the sender's name would be a name
+       ANYBODY COULD PICK, which is the whole reason `from_name` is read off
+       `competitor` and `sent_at` is the database's `now()`.
+     *
+       Asked over the WHOLE object rather than over the three names, so that a fourth
+       field added here fails this rather than going unnoticed: unknown fields are
+       dropped on the way in, so the server would never say a word about it. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
           (each) => each.memberNumber === one.memberNumber,
         ),
       ),
       'somebody else going to it',
     )
 
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      'Krećem u šest ujutru.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    await screen.findByText(new RegExp(`^Poruka je poslata članu ${them.firstName}`))
+
+    const wrote = must(posted[0], 'the note that was sent')
+
+    expect(Object.keys(wrote).sort()).toEqual(['body', 'subject', 'to'])
+    expect(wrote).not.toHaveProperty('from')
+    expect(wrote).not.toHaveProperty('date')
+  })
+
+  it('reaches the member it was addressed to, under the name the server put on it', async () => {
+    /* Owner, 11.08.2026: „To ne stiže na mail nego njemu u portalski inbox."
+     *
+       READ IN TWO RENDERS BECAUSE A SESSION BELONGS TO ONE MEMBER: the addressee's mail
+       cannot be opened without becoming him. The join between the two halves is the
+       MEMBER NUMBER and nothing else - the stand-in serves a posted note to the number
+       it was addressed to and to no other - so this is the one case the three wrong
+       addressees above all empty out.
+     *
+       AND THE NAME ON IT IS ONE NO REQUEST COULD HAVE CARRIED. The stand-in puts the
+       server's own name on the served row, the way `nameTheLeagueKnowsHimBy` does; the
+       case above has already held that the request carries no `from` at all. So finding
+       that name here is finding the server's answer rather than an echo. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      'Imam mesta u kolima, javi se.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    await screen.findByText(new RegExp(`^Poruka je poslata članu ${them.firstName}`))
+
+    /* HIS MAIL, and the walk to it is a second visit: a fresh render is a fresh session,
+       and the cache of the last one is dropped the way a reload drops it. */
+    cleanup()
+    clearResourceCache()
+    anInboxOnTheServer(them.memberNumber)
+    renderAt('/sr/poruke', 'competitor', them.memberNumber, undefined, day)
+
+    await screen.findByRole('heading', { level: 1, name: 'Poruke' })
+
+    expect(await screen.findByText('Imam mesta u kolima, javi se.')).toBeVisible()
+    expect(screen.getByText(new RegExp(THE_SERVER_NAMES_THE_SENDER))).toBeVisible()
+
+    /* And it is not the only thing on that screen, nor the first thing on it: his mail
+       already held a later row, so „the note is there" cannot be satisfied by a screen
+       that draws whatever it is handed first. */
+    expect(screen.getByText(ALREADY_IN_HIS_MAIL.body)).toBeVisible()
+  })
+
+  it('leaves nothing in the writer’s own mail, because his own mail is not where it went', async () => {
+    /* GREEN BEFORE THIS INCREMENT TOO, AND THAT IS WHY IT IS NOT LEFT TO STAND ALONE.
+       Until 28.09.2026 the note was written into the browser and `SessionProvider`'s
+       `inbox` filter (`to === '' || to === memberNumber`) is what kept it out of the
+       writer's own list; today there is nothing written into the browser at all, and
+       `InboxApi` serves `where m.to_id = :me or m.to_id is null`, so the server has
+       nothing of his to give back either. One screen state, two reasons, so this case
+       says what it can honestly say - his mail is UNCHANGED - and the cases above are
+       what say where the note really went. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    anInboxOnTheServer(mine)
+
     const { router } = renderAt(
       `/sr/kalendar/${event.slug}`,
       'competitor',
-      already.memberNumber,
+      mine,
       undefined,
       day,
     )
@@ -457,27 +830,273 @@ describe('writing to somebody else who is going', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
 
-    /* And it went to them and not to the league: the same visit walks to the
-       inbox, which is where the portal keeps it (owner, 11.08.2026). A fresh
-       render would be a fresh session and an empty inbox. */
-    /* By its words, because the page carries other live regions: the list that
-       grows as it is read keeps one open from its first render (LoadMore). */
-    expect(
-      await screen.findByText(
-        `Poruka je poslata članu ${them.firstName} ${them.lastName}, u Poruke na portalu.`,
+    await screen.findByText(new RegExp(`^Poruka je poslata članu ${them.firstName}`))
+
+    await router.navigate('/sr/poruke')
+    await screen.findByRole('heading', { level: 1, name: 'Poruke' })
+
+    /* His mail is what it was: the one row the server holds for him, and not the note. */
+    expect(await screen.findByText(ALREADY_IN_HIS_MAIL.body)).toBeVisible()
+    expect(screen.queryByText('Imam mesta u kolima, javi se.')).toBeNull()
+  })
+
+  it('says why the server refused, and keeps every word of the note in the box', async () => {
+    /* The envelope is only drawn beside a member the served list carries, but the route
+       asks `active` at the moment it writes: a membership that lapses in between is this
+       refusal, and it is the same race `WHEN_PROPOSING_A_TEAM` names for a team name
+       taken a moment before the request lands.
+     *
+       AND THE WORDS STAY. A note refused is a note that can be sent again, not one that
+       has to be written again. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
       ),
+      'somebody else going to it',
+    )
+
+    inboxServer?.stop()
+    inboxServer = serverThat((path, init) =>
+      path === '/api/inbox' && init?.method === 'POST'
+        ? refused('theMemberIsNotKnown')
+        : null,
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+
+    const box = screen.getByRole('textbox', {
+      name: `Piši članu ${them.firstName} ${them.lastName}`,
+    })
+
+    await user.type(box, 'Imam mesta u kolima, javi se.')
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    expect(
+      await screen.findByText('Portal ne poznaje tog člana, pa poruka nije poslata.'),
     ).toBeVisible()
 
-    /* And it went to them rather than to the sender: the inbox shows what was
-       written to whoever is signed in (session/context.ts, `Message.to`), so a
-       note that lands in the writer's own inbox is a note addressed to the
-       wrong person. Read this way because a session belongs to one member: the
-       recipient's inbox cannot be opened without becoming them, and becoming
-       them is a fresh session with nothing in it. */
-    await router.navigate('/sr/poruke')
+    /* Nothing was confirmed, and nothing was lost. */
+    expect(screen.queryByText(new RegExp('^Poruka je poslata članu'))).toBeNull()
+    expect(box).toHaveValue('Imam mesta u kolima, javi se.')
+    expect(screen.getByRole('button', { name: 'Pošalji poruku' })).toBeVisible()
 
-    await screen.findByRole('heading', { level: 1, name: 'Poruke' })
-    expect(screen.queryByText('Imam mesta u kolima, javi se.')).toBeNull()
+    /* AND THE FORM HAS STOPPED SAYING IT IS SENDING, asked HERE and not only on the case
+       about waiting: a note that was refused leaves the form standing, so this is the one
+       place where „that line is gone" is a fact about the line rather than about the form
+       having been replaced by the confirmation. */
+    expect(screen.queryByText('Šalje se')).toBeNull()
+  })
+
+  it('does not invent a sentence for a refusal it has no name for', async () => {
+    /* 403 is the token, not the note: `askTheServer` reads it as „rejected" and the
+       portal says so in its own words. The nearest sentence this screen has would send
+       the reader to change the text, which is the one thing that is not wrong
+       (`account/ServerSaid.tsx` gives that reasoning in full). */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    inboxServer?.stop()
+    inboxServer = serverThat((path, init) =>
+      path === '/api/inbox' && init?.method === 'POST' ? answeredWith(403) : null,
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      'Imam mesta u kolima, javi se.',
+    )
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    expect(
+      await screen.findByText(
+        'Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.',
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(new RegExp('^Poruka je poslata članu'))).toBeNull()
+  })
+
+  it('confirms nothing while the answer is still out, and says it is sending', async () => {
+    /* THE CONFIRMATION IS DRAWN ONLY AFTER THE SERVER HAS SAID SO, which is the half a
+       green answer cannot measure: with the route answering at once, „drawn after 201"
+       and „drawn on the press" look the same. Held open on purpose, which is what
+       `serverThat` takes a promise for. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    let letItAnswer = (): void => {}
+    const held = new Promise<Response>((resolve) => {
+      letItAnswer = () => resolve(new Response(null, { status: 201 }))
+    })
+
+    inboxServer?.stop()
+    inboxServer = serverThat((path, init) =>
+      path === '/api/inbox' && init?.method === 'POST' ? held : null,
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      'Imam mesta u kolima, javi se.',
+    )
+    /* NOTHING IS IN FLIGHT YET, SO NOTHING SAYS IT IS, and this half is what makes the
+       other half a claim at all. Without it „it says so while it waits" is satisfied by
+       a line that is simply always there: measured, and a line drawn unconditionally
+       passed every other assertion in this case. */
+    expect(screen.queryByText('Šalje se')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    expect(await screen.findByText('Šalje se')).toBeVisible()
+    expect(screen.queryByText(new RegExp('^Poruka je poslata članu'))).toBeNull()
+
+    letItAnswer()
+
+    expect(
+      await screen.findByText(new RegExp(`^Poruka je poslata članu ${them.firstName}`)),
+    ).toBeVisible()
+    expect(screen.queryByText('Šalje se')).toBeNull()
+  })
+
+  it('writes one row and not two when the button is pressed twice before an answer', async () => {
+    /* A message cannot be taken back (PDL, 06.09.2026: „Ne briše se: brisanje poruke iz
+       tuđeg sandučeta je brisanje istorije"), so a doubled press is a second row in
+       somebody's mail for ever. Guarded in a ref rather than in the state beside it,
+       because a redraw cannot land between two presses that arrive before one answer. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    let letItAnswer = (): void => {}
+    const held = new Promise<Response>((resolve) => {
+      letItAnswer = () => resolve(new Response(null, { status: 201 }))
+    })
+
+    inboxServer?.stop()
+    inboxServer = serverThat((path, init) => {
+      if (path !== '/api/inbox' || init?.method !== 'POST') {
+        return null
+      }
+
+      const said: unknown = JSON.parse(String(init.body))
+
+      posted.push(everyFieldIn(said))
+
+      return held
+    })
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      'Imam mesta u kolima, javi se.',
+    )
+
+    const send = screen.getByRole('button', { name: 'Pošalji poruku' })
+
+    await user.click(send)
+    await user.click(send)
+
+    letItAnswer()
+
+    await screen.findByText(new RegExp(`^Poruka je poslata članu ${them.firstName}`))
+
+    expect(posted).toHaveLength(1)
+  })
+
+  it('sends nothing at all while the box is empty', async () => {
+    /* Told off rather than switched off, so the button is reachable and can be pressed:
+       the refusal therefore has to live in the submit as well as in the attribute, and
+       what it is worth is measured here as „the server was never spoken to" rather than
+       as „no confirmation appeared". */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const competitors = await loadResource<Competitor[]>('competitors')
+    const mine = must(going[0], 'somebody the file has going').memberNumber
+    const them = must(
+      competitors.find(
+        (one) => one.memberNumber !== mine && going.some(
+          (each) => each.memberNumber === one.memberNumber,
+        ),
+      ),
+      'somebody else going to it',
+    )
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', mine, undefined, day)
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: `Piši članu ${them.firstName} ${them.lastName}`,
+      }),
+    )
+
+    /* Three spaces are not a message (forms/validate.ts, admin/SendBack.tsx). */
+    await user.type(
+      screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
+      '   ',
+    )
+    await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
+
+    expect(screen.getByText('Napiši poruku da bi mogao da je pošalješ.')).toBeVisible()
+    expect(screen.queryByText(new RegExp('^Poruka je poslata članu'))).toBeNull()
+    expect(posted).toEqual([])
   })
 })
 
