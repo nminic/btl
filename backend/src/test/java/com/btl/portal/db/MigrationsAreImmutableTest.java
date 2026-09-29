@@ -211,11 +211,12 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   and a later migration could not have repaired it either - Flyway fails validation
 			   before it runs anything, so it never reaches one.
 
-			   Renumbering on its own moves no content, so it would have left this number alone.
-			   What moved it is the paragraph recording all of the above, which this commit wrote
-			   into the migration's header; the number below was read from the gate afterwards
-			   rather than carried over. */
-			new Applied("47", "V47__a_moderator_decides_a_result.sql", 1500230178));
+			   Renumbering on its own moves no content, so it would have left this number alone -
+			   git reports the rename as 0 changed lines and Flyway checksums what a migration
+			   SAYS, not what it is called. What moved it is the paragraph recording all of the
+			   above, which this commit wrote into the migration's header: 1500230178 -> the
+			   number below, read from the gate afterwards rather than carried over. */
+			new Applied("47", "V47__a_moderator_decides_a_result.sql", 1296295678));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
