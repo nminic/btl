@@ -253,8 +253,8 @@ const WRITE_TO: FormDef = {
  * A note to one member about one race.
  *
  * It goes to the portal's own inbox and not to their email (owner, 11.08.2026).
- * The bell always, the mail only where the member switched it on, which is what
- * PDL P22 asks of everything sideways.
+ * The bell always and no mail at all, which is what PDL P22 asks of everything
+ * sideways since 29.09.2026 („Mejla nema uopste, pa nema ni prekidaca").
  *
  * **AND SINCE 28.09.2026 IT GOES TO THE SERVER, which is the whole of this
  * increment.** Until that day it called `notify`, which writes into

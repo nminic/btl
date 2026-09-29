@@ -57,7 +57,7 @@ import java.util.Optional;
  * <p><b>WHO MAY WRITE.</b> Whoever is signed in AND has a member behind the account. An
  * account naming no member - „a moderator who does not race, which is the ordinary case
  * and not a fault" (V23) - is told the address is not there, the same nothing
- * {@link InboxApi} and {@link NotificationApi} answer him, off the same
+ * {@link InboxApi} and {@link InboxReadApi} answer him, off the same
  * {@link MemberOfAccount} lookup. There is nobody to file the message under:
  * {@code message.from_id} points at {@code competitor} and never at {@code account}.
  *
@@ -161,19 +161,19 @@ import java.util.Optional;
  * <h2>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED</h2>
  *
  * <ul>
- * <li><b>THE MAIL. NOTHING IS SENT, AND THAT IS A BOUNDARY AND NOT A DEFAULT SOMEBODY
- * CHOSE.</b> PDL P10 says the inbox comes „sa mejl notifikacijom i prosledjivanjem poruke na
- * mejl AKO KORISNIK TO IZABERE", and PDL P22 says what the choice is worth before it is
- * made: „Zvono uvek, mejl podrazumevano ISKLJUCEN, clan ga sam pali: sve drustveno i
+ * <li><b>THE MAIL. NOTHING IS SENT, AND SINCE 29.09.2026 THAT IS SETTLED RATHER THAN
+ * PENDING.</b> PDL P10 once said the inbox comes „sa mejl notifikacijom i prosledjivanjem
+ * poruke na mejl AKO KORISNIK TO IZABERE", and P22 said what that choice was worth before it
+ * was made: „Zvono uvek, mejl podrazumevano ISKLJUCEN, clan ga sam pali: sve drustveno i
  * sporedno (komentar, poziv u tim, zahtev za par, ponuda prevoza, osvojena znacka, PORUKA U
  * INBOKSU)", with the reason beside it - „mejl zamor ubija dostavljivost... Tisina na
- * sporednom je ono sto stiti vazno." The switch itself is {@code notification_setting}, which
- * V13 built in this same migration with {@code inbox_mail boolean not null default false},
- * and the increment that writes it is <b>item 5 of the September block, which since 19.09.2026
- * exists: {@code PUT /api/me/notifications} (B84)</b>. Until it is merged and a member has
- * actually turned {@code inbox_mail} on, no member on this portal has chosen mail. So there is no
- * member on this portal who has chosen mail, this class reads no switch, and it invents no
- * default: the default is already written down, in the schema, by whoever decided it.
+ * sporednom je ono sto stiti vazno." <b>The owner then removed the choice itself</b> („Ako su
+ * ovo prekidaci, ja bih da se u potpunosti za njih izbace mailovi i da funkcionise samo kao
+ * poruke u inbox portala"), so the bell is not the default any more - it is the whole of it.
+ * {@code notification_setting}, the six switches V13 built in this same migration, and the two
+ * routes that read and wrote them are gone in V48. This class reads no switch because there is
+ * no switch to read, and there is no state of the portal in which a message written here also
+ * becomes a mail.
  * <li><b>WHICH KIND OF MESSAGE THIS IS BY A4c, ASKED BECAUSE THE ANSWER DECIDES WHEN IT
  * GOES.</b> ADL A4c divides what the portal SENDS into three - tied to an action (confirming
  * an address, a payment, a member number, a new password: „odmah, i nikad se ne odlaze"),
@@ -183,9 +183,9 @@ import java.util.Optional;
  * three, and that is not a gap in the table: all three are about MAIL, and the whole section
  * they stand in is „Kako se ostaje ispod 300 na dan" - the hard limit of the free relay. What
  * this route makes is a row, not a mail, so it spends nothing of that quota and is written
- * the moment it is asked for. The day the switch above exists and somebody turns it on, the
- * mail it produces is „drustveno i sporedno" by P22, which is the side A4c's own point 6
- * protects the quota from: „Zvono je podrazumevano, mejl je izuzetak."
+ * the moment it is asked for. There is no longer a day on which that changes: the switch is
+ * gone with V48, and A4c's own point 6 - „Zvono je podrazumevano, mejl je izuzetak." - is now
+ * met by there being no exception at all on this side.
  * <li><b>THE PORTAL'S OWN NOTICES, WHICH SHARE THIS TABLE AND NOTHING ELSE.</b> PDL P9
  * decides that a member „UVEK dobija obavestenje o izmeni, bez izuzetka i bez kvacice koju
  * administrator moze da iskljuci", that such a notice „mora da sadrzi staru vrednost"

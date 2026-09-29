@@ -100,7 +100,7 @@ import java.util.function.Function;
  * {@code account.competitor_id} be null for „a moderator who does not race, which is the
  * ordinary case and not a fault", and such an account has no biography to change and no
  * profile page to hide. ADL A8, 13.09.2026: „Server odbija bez privilegije sa 404, ne sa
- * 403." It is the same answer {@link InboxApi}, {@link NotificationApi},
+ * 403." It is the same answer {@link InboxApi}, {@link InboxWriteApi},
  * {@link TeamWriteApi} and {@link PairWriteApi} already give him.
  *
  * <p><b>WHAT THAT 404 HIDES IS NOT THE ADDRESS BUT THE WRITE AT IT, AND THAT SENTENCE IS
@@ -749,7 +749,7 @@ class MeWriteApi {
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race. There is no biography to change and no profile page
-		   to hide, and the answer is the one InboxApi and NotificationApi already give him.
+		   to hide, and the answer is the one InboxApi and InboxWriteApi already give him.
 		   ASKED FIRST, before a byte of what he sent is looked at, for the reason above. */
 		if (me == null) {
 			return away(response);

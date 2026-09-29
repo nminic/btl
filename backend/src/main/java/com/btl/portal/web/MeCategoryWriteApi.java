@@ -20,7 +20,7 @@ import java.util.List;
  *
  * <p>The writing half of {@link MeCategoryApi}, which carries what the resource is and what
  * this increment deliberately leaves out. The pair of classes on one path is
- * {@link NotificationApi} and {@link NotificationWriteApi}, and everything below that is not
+ * {@link MyMembershipApi} and {@link MyMembershipWriteApi}, and everything below that is not
  * about categories is theirs: the member off the session, the body read only after „has he a
  * member" is answered, the 404 through {@code sendError}, and the answer read back off the
  * database rather than echoed from the request.
@@ -53,7 +53,7 @@ import java.util.List;
  * request to do nothing, answered 200 - and A54's own sentence (owner, 19.09.2026) is that an
  * omitted field must never quietly change a value; a route whose only field may be left out
  * cannot honour that by doing nothing, because doing nothing IS what a caller who meant
- * {@code false} would get. {@link RaceWriteApi} and {@link NotificationWriteApi} pick refusal
+ * {@code false} would get. {@link RaceWriteApi} and {@link MeWriteApi} pick refusal
  * for the same reason.
  */
 @RestController
@@ -62,7 +62,7 @@ class MeCategoryWriteApi {
 	/**
 	 * The one field, not sent.
 	 *
-	 * <p>Spelt the word {@link RaceWriteApi} and {@link NotificationWriteApi} spell it, because
+	 * <p>Spelt the word {@link RaceWriteApi} and {@link MeWriteApi} spell it, because
 	 * it is one sentence about a different form.
 	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
@@ -136,7 +136,7 @@ class MeCategoryWriteApi {
 	/**
 	 * <p><b>The body is read as BYTES and only after „has he a member" is answered</b>, and
 	 * that order is the whole reason this signature is not {@code @RequestBody Wish}.
-	 * {@link NotificationWriteApi} carries the measurement: written the ordinary way, a
+	 * {@link MeWriteApi} carries the measurement: written the ordinary way, a
 	 * signed-in account with no member behind it sends a body Jackson refuses and is answered
 	 * 400, while the identical request to an address that maps nothing answers 404 - and one
 	 * request that tells the two apart says „a PUT with a body lives here", which is precisely
@@ -150,7 +150,7 @@ class MeCategoryWriteApi {
 	 * <p><b>The order of the two refusals, which is a choice.</b> An incomplete form is refused
 	 * BEFORE the deadline is asked about, so a caller who sends nothing at all after the
 	 * deadline is told his form was empty rather than that he is late. Both are true; the form
-	 * is the one he can do something about, and it is the same order {@link NotificationWriteApi}
+	 * is the one he can do something about, and it is the same order {@link MeWriteApi}
 	 * uses between „not complete" and anything else.
 	 *
 	 * @param request  the request, whose body is not touched until „has he a member" is answered
@@ -198,7 +198,7 @@ class MeCategoryWriteApi {
 	 * WHAT ARRIVED, TURNED INTO THE FORM, OR NOTHING AT ALL.
 	 *
 	 * <p>Absent, empty and unreadable are one answer and not three, the same principle already
-	 * kept on {@code POST /api/inbox} and {@code PUT /api/me/notifications}: none of them
+	 * kept on {@code POST /api/inbox} and {@code PUT /api/me}: none of them
 	 * carries a wish this route could act on, so all three are refused in the words an empty
 	 * JSON object already is.
 	 *
@@ -224,7 +224,7 @@ class MeCategoryWriteApi {
 	 * {@code /api/competitors/{number}/category}.
 	 *
 	 * <p><b>No {@code insert} and no {@code on conflict}</b>, unlike
-	 * {@link NotificationWriteApi}'s own write: the column is on {@code competitor} and is
+	 * {@link MeWriteApi}'s own write: the column is on {@code competitor} and is
 	 * {@code not null}, so every member has a value from the moment he registers. There is no
 	 * „he has no row" case here, and the season the column is named for is not written because
 	 * there is nowhere to write it - see {@link TheChoiceAsItStands} for the debt that is.

@@ -14,7 +14,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Every constraint the three tables of V13 carry, with the row that breaks it.
+ * Every constraint the two surviving tables of V13 carry, with the row that breaks it.
+ *
+ * <p>V13's third table, {@code notification_setting}, is gone in V48: the owner decided
+ * on 29.09.2026 that the six social notices travel the portal inbox and nothing else
+ * („da funkcionise samo kao poruke u inbox portala"), so there is no mail to switch on
+ * and no table of switches to constrain.
  *
  * <p>The inbox is kept and the six mandatory mails are not, and that line is P22's:
  * six messages are email and cannot be switched off, everything else is the bell.
@@ -45,8 +50,8 @@ class InboxConstraintsTest extends DatabaseTest {
 		}
 	}
 
-	/** The three tables V13 adds. */
-	static final List<String> TABLES = List.of("message", "message_read", "notification_setting");
+	/** The tables V13 adds that still stand; its third left with V48. */
+	static final List<String> TABLES = List.of("message", "message_read");
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
@@ -105,7 +110,6 @@ class InboxConstraintsTest extends DatabaseTest {
 				+ ", 'Druga Clanica', 'Zatecena poruka', 'Tekst.', null, null")).update();
 		db.sql("insert into message_read (message_id, competitor_id) values (" + A_MESSAGE + ", "
 				+ A_MEMBER + ")").update();
-		db.sql("insert into notification_setting (competitor_id) values (" + A_MEMBER + ")").update();
 	}
 
 	static List<Violation> violations() {
@@ -166,34 +170,7 @@ class InboxConstraintsTest extends DatabaseTest {
 						"insert into message_read (message_id, competitor_id) values (" + A_MESSAGE + ", 999999)"),
 				Violation.notNull("message_read_read_at_not_null", "read_at",
 						"insert into message_read (message_id, competitor_id, read_at) values (" + A_MESSAGE
-								+ ", " + ANOTHER_MEMBER + ", null)"),
-
-				/* THE SIX SWITCHES. The member's own id is the key, which is what says he has
-				   one set of settings and not a list. */
-				Violation.notNull("notification_setting_competitor_id_not_null", "competitor_id",
-						"insert into notification_setting (competitor_id) values (null)"),
-				Violation.of("notification_setting_pk",
-						"insert into notification_setting (competitor_id) values (" + A_MEMBER + ")"),
-				Violation.of("notification_setting_competitor_fk",
-						"insert into notification_setting (competitor_id) values (999999)"),
-				Violation.notNull("notification_setting_comment_mail_not_null", "comment_mail",
-						"insert into notification_setting (competitor_id, comment_mail) values ("
-								+ ANOTHER_MEMBER + ", null)"),
-				Violation.notNull("notification_setting_team_mail_not_null", "team_mail",
-						"insert into notification_setting (competitor_id, team_mail) values ("
-								+ ANOTHER_MEMBER + ", null)"),
-				Violation.notNull("notification_setting_pair_mail_not_null", "pair_mail",
-						"insert into notification_setting (competitor_id, pair_mail) values ("
-								+ ANOTHER_MEMBER + ", null)"),
-				Violation.notNull("notification_setting_lift_mail_not_null", "lift_mail",
-						"insert into notification_setting (competitor_id, lift_mail) values ("
-								+ ANOTHER_MEMBER + ", null)"),
-				Violation.notNull("notification_setting_badge_mail_not_null", "badge_mail",
-						"insert into notification_setting (competitor_id, badge_mail) values ("
-								+ ANOTHER_MEMBER + ", null)"),
-				Violation.notNull("notification_setting_inbox_mail_not_null", "inbox_mail",
-						"insert into notification_setting (competitor_id, inbox_mail) values ("
-								+ ANOTHER_MEMBER + ", null)"));
+								+ ", " + ANOTHER_MEMBER + ", null)"));
 	}
 
 	@ParameterizedTest
@@ -206,7 +183,7 @@ class InboxConstraintsTest extends DatabaseTest {
 
 	/** The floor under the list above, read out of the database. */
 	@Test
-	void everyConstraintOnTheThreeTablesHasARowThatBreaksIt() {
+	void everyConstraintOnTheseTablesHasARowThatBreaksIt() {
 		String tables = TABLES.stream().map(name -> "'" + name + "'").collect(Collectors.joining(", "));
 		String relations = " = any (array[" + tables + "]::regclass[])";
 
@@ -234,24 +211,6 @@ class InboxConstraintsTest extends DatabaseTest {
 	@MethodSource("legitimateRows")
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isOne();
-	}
-
-	/**
-	 * The six switches are off until the member turns them on.
-	 *
-	 * <p>P22 decides this and gives the reason: "mejl zamor ubija dostavljivost",
-	 * and a member who marks the league as junk stops receiving the six that
-	 * matter. A default of true would be that, one row at a time.
-	 */
-	@Test
-	void everySwitchIsOffWhenNobodyHasTouchedIt() {
-		assertThat(db
-				.sql("select comment_mail or team_mail or pair_mail or lift_mail or badge_mail or inbox_mail"
-						+ " from notification_setting where competitor_id = " + A_MEMBER)
-				.query(Boolean.class)
-				.single())
-				.as("a switch was on for somebody who never asked for it")
-				.isFalse();
 	}
 
 	/**

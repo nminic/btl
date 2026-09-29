@@ -846,8 +846,8 @@ export type SessionValue = {
    */
   markRead: (id: string) => void
   /** Writes to one member's inbox. The portal already has one and it is where
-   *  the sideways messages belong: the bell always, the mail only if the member
-   *  switched it on (PDL P22). */
+   *  the sideways messages belong: the bell always, and no mail at all (PDL P22,
+   *  the half about switching one on was replaced on 29.09.2026). */
   notify: (message: Omit<Message, 'id' | 'read'>) => void
 
   /* THE SESSION CARRIES NO MAIL SWITCHES, SINCE 28.09.2026, and a reader who comes looking
@@ -857,13 +857,14 @@ export type SessionValue = {
      celini") because two of the three were mails P22 forbids switching off and the third
      was an abolished newsletter, so nothing was left to remember.
 
-     <p><b>The switches P22 does give a member are not these and never lived here.</b>
-     They are six over the bell's mail, and which six is `notification_setting`'s own six
-     columns (V13) rather than a list repeated here, because the one repeated list this file
-     used to carry is what went stale. They live on the server, behind `GET`/`PUT
-     /api/me/notifications`, on `main` since 18.09.2026, and nothing in `frontend/src` reads
-     that route yet. Whoever wires it reads it off the server rather than putting a second
-     home for it back into the session, which is the fault the removed pair was. */
+     <p><b>The switches P22 gave a member were not these and never lived here, and they are
+     gone too.</b> They were six over the bell's mail, held on the server by
+     `notification_setting` (V13) behind `GET`/`PUT /api/me/notifications`, and nothing in
+     `frontend/src` read that route. The owner took them away on 29.09.2026 („Ako su ovo
+     prekidaci, ja bih da se u potpunosti za njih izbace mailovi i da funkcionise samo kao
+     poruke u inbox portala"): PDL records „Mejla nema uopste, pa nema ni prekidaca", and V48
+     drops the table while both routes go. There is nothing to read a switch off, so there is
+     nothing for the session to hold one for. */
 
   edits: Edits
   edit: (id: string, field: string, value: string) => void

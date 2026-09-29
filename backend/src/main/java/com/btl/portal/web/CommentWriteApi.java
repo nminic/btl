@@ -46,7 +46,7 @@ import java.util.Optional;
  *
  * <p><b>AN ACCOUNT NAMING NO MEMBER IS ANSWERED THE SAME EMPTY 404 {@link TeamWriteApi}
  * ANSWERS IT WITH</b>, for the same reason: V23 calls it the ordinary case for a
- * moderator who does not race, and {@link InboxApi} and {@link NotificationApi} already
+ * moderator who does not race, and {@link InboxApi} and {@link InboxWriteApi} already
  * answer it that way. There is nobody to file a submission under.
  *
  * <p><b>ALL THREE MARKS OR NONE, NEVER A SUBSET, AND THAT IS PDL P6'S OWN ARITHMETIC

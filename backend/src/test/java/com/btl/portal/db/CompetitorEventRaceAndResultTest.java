@@ -550,7 +550,6 @@ class CompetitorEventRaceAndResultTest extends DatabaseTest {
 				"message.message_to_fk cascade",
 				"message_read.message_read_competitor_fk cascade",
 				"message_read.message_read_message_fk cascade",
-				"notification_setting.notification_setting_competitor_fk cascade",
 				/* V12. Pitanje ide sa onim ko pita i sa onim koga pita. */
 				"pair_invite.pair_invite_from_fk cascade",
 				"pair_invite.pair_invite_to_fk cascade",

@@ -197,7 +197,7 @@ class MeCategoryWriteApiTest {
 	 *
 	 * <p>ADL A54 (owner, 19.09.2026): „`PUT` koji ne posalje neko polje odbija se sa 400, i kaze
 	 * se sta fali." Four shapes of nothing and one answer, the same principle {@code POST
-	 * /api/inbox} and {@code PUT /api/me/notifications} already keep: a key left out, a key sent
+	 * /api/inbox} and {@code PUT /api/me} already keep: a key left out, a key sent
 	 * as an explicit null, an empty object, and bytes nobody can parse. None of them carries a
 	 * wish, so telling them apart would be a difference with no reader.
 	 *
@@ -236,8 +236,8 @@ class MeCategoryWriteApiTest {
 	 * field arriving tomorrow fails here on the day it is added rather than being a field the
 	 * refusal quietly does not mention.
 	 *
-	 * <p>{@code NotificationWriteApiTest} holds its own six the same way, off the columns of
-	 * the table its form is made of. This form has no table behind it - the column it writes
+	 * <p>{@code MeWriteApiTest} holds its own fields the same way, off the shape of
+	 * the record its form is made of. This form has no table behind it - the column it writes
 	 * is one boolean on {@code competitor} - so the record is the nearest thing the language
 	 * itself says, which is what a floor has to be tied to.
 	 */
@@ -264,9 +264,9 @@ class MeCategoryWriteApiTest {
 	 * address that is not there rather than as a form that is wrong. The literal is the
 	 * measurement and not the comparison beside it: 404 is what an unmapped address answers and
 	 * 415 is what a mapping WITHOUT {@code consumes} would answer here, so a version that
-	 * dropped {@code consumes} fails on the number. {@code NotificationWriteApiTest} carries the
-	 * correction this phrasing comes from - written as „typeless equals nowhere" alone, a
-	 * mutation pointing both sides at the real address left the case green.
+	 * dropped {@code consumes} fails on the number. {@code MeWriteApiTest} keeps the same pair, and
+	 * the correction this phrasing comes from was measured on the route this branch removed -
+	 * written as „typeless equals nowhere" alone, a mutation pointing both sides at the real address left the case green.
 	 */
 	@Test
 	void aWriteWithNoContentTypeIsAnsweredAsAnAddressThatIsNotThere() throws Exception {
