@@ -1,15 +1,54 @@
 /* The town and the country it is in, side by side (owner, 11.08.2026): they are
    one answer, so they stand on one line. The town takes what is left, because it
-   is typed and the country is chosen. */
-.place {
-  display: flex;
-  align-items: end;
-  gap: var(--space-8);
+   is typed and the country is chosen.
+ *
+   TWO ROWS AND NOT ONE, SINCE 29.09.2026, AND THE OWNER SAID WHY IN FOUR WORDS:
+   „I ovde se raspada red zbog Drzave", over a picture of this very field.
+ *
+   What was wrong was not the dress alone. A field is its name and then its
+   control, and this field has TWO of each: the town's name is drawn by the
+   renderer ABOVE the whole pair (`.field__head`), while the country's name is
+   drawn INSIDE it, over its own box. Aligned at the feet, the two boxes met, and
+   the country's name then floated beside the upper third of the town's box with
+   „Mesto" a line above it again. Three levels of writing where a reader expects
+   two, which is what reads as two fields drawn by two different hands.
+ *
+   So the whole field is one grid of named areas: the two names on the first row,
+   the two controls on the second. `.place` and `.place__country-pick` are
+   `display: contents` for it, which costs nothing and asks nothing of the markup -
+   the DOM order is already name, town, name, country, so a single column on a
+   telephone stacks them in exactly that order with no rule of its own.
+ *
+   WRITTEN AS `.field.field--place` AND NOT AS `.place`, deliberately. `.field`
+   itself is `display: flex` (`forms/FormRenderer.css`), and a rule of the SAME
+   weight that overrides another is only ever as reliable as the order the sheets
+   happen to load in - the argument `.field__control--held` was moved for on
+   29.08.2026. Two class names beat one, whichever sheet the bundle puts last. */
+.field.field--place {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'townName'
+    'town'
+    'countryName'
+    'country';
+  column-gap: var(--space-8);
+}
+
+/* Both of them are only there to hold the two halves together in the markup, and
+   the grid above is what places them, so neither is a box of its own any more. */
+.place,
+.place__country-pick {
+  display: contents;
+}
+
+.field--place > .field__head {
+  grid-area: townName;
 }
 
 .place__town {
   position: relative;
-  flex: 1 1 auto;
+  grid-area: town;
   min-inline-size: 0;
 }
 
@@ -24,23 +63,44 @@
   min-inline-size: 0;
 }
 
-/* Its own small name over it, since the field's own label names the town. */
-.place__country-pick {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  flex: 0 0 auto;
-  inline-size: 12rem;
-  max-inline-size: 45%;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 700;
+/* ITS NAME IS A NAME LIKE ANY OTHER, and until 29.09.2026 it was not.
+ *
+   What stood here set the whole wrapper in `0.75rem`, `--text-muted`, uppercase,
+   letter-spaced and at weight 700, and the label inside it inherited every word of
+   that. „Mesto" beside it wears `.field__label`, which is weight 600 in `--text` at
+   the field's own size. Two names of two halves of ONE answer, drawn by two
+   different rules, which is what the owner saw.
+ *
+   The dress is gone from here and the label wears `.field__label` like every other
+   name on the portal (`forms/PlaceField.tsx` hands it in, the same way
+   `pages/event/GoingToEvent.tsx` does for the one hand written field of the
+   ordinary kind). Nothing is lost by it: the small capitals were never a decision
+   anybody wrote down, and the contrast they had was never the problem - measured
+   the same day, `--text-muted` on the field's ground is 7,74:1 in the light theme
+   and 7,91:1 in the dark, so this is about two names agreeing rather than about
+   anybody being able to read one.
+ *
+   AND THE WORDS THAT MADE THE SELECT UNDO IT WENT WITH IT. A rule set the select
+   back to `0.95rem`, no transform, no letter spacing and weight 400, for one reason
+   only: „the wrapper is set in the small uppercase of its own label, so the select
+   has to name a size or it inherits that one." The wrapper names none of it any
+   more, so the select inherits the field, which is what every other control does. */
+.place__country-pick > .asked {
+  grid-area: countryName;
+  /* The gap between two fields stacked on a telephone, which a row gap cannot give:
+     the same grid parts name from control and control from name, and those two want
+     different numbers. Taken away again where the two stand side by side, because
+     there the name is on the first row and has nothing above it. */
+  margin-block-start: var(--space-8);
 }
 
-/* The wrapper is set in the small uppercase of its own label, so the select has
-   to name a size or it inherits that one.
+.place__country-pick > select {
+  grid-area: country;
+}
+
+/* ~~The wrapper is set in the small uppercase of its own label, so the select has
+ * to name a size or it inherits that one.~~ Both the rule and the reason for it
+ * went on 29.09.2026 with the dress above; what it undid is no longer done.
  *
  * ~~The two boxes are aligned along their feet and not their heads, and that is
  * deliberate. A select is two pixels shorter than a text box of the same font in
@@ -54,28 +114,35 @@
  * identicna." So the number is named, once, for every control in a field
  * (`--control-height`, `forms/FormRenderer.css`).
  *
- * The feet stay, and now they cost nothing: with the town and the country the
- * same height, aligning at the bottom puts their tops on the same line as well.
- * Measured after: both 48px tall and both starting 22,59px into the row, where
- * before they were 46,13 and 43,33 starting 19,8 and 22,59. */
-.place__country-pick select {
-  font-size: 0.95rem;
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 400;
-}
+ * ~~The feet stay~~, and the reason they cost nothing is the reason they are no
+ * longer needed at all: with the town and the country the same height AND on one
+ * row of a grid, a grid stretches both to that row and their tops meet by
+ * construction. Nothing aligns anything by hand any more. */
 
-/* On a telephone the two do not fit beside each other: the country falls under
-   the town rather than squeezing it to nothing. */
-@media (max-width: 34.99875em) {
-  .place {
-    display: block;
+/* Side by side once there is room for both, which is where the second column
+   arrives and the two names move onto one line with them.
+ *
+   560 and not a number of this rule's own: it is on the portal's closed list of
+   widths at which anything changes shape (`styles/scale.test.ts`), and it is the
+   very width this field already parted company at, written the other way round.
+   In `em` for the reason that list gives, that a breakpoint in `rem` travels the
+   day somebody moves the root. */
+@media (min-width: 35em) {
+  .field.field--place {
+    /* The town takes what is left, because it is typed and the country is chosen
+       from a list. `minmax(0, …)` on both, so neither can refuse to shrink: a
+       column's floor is the width of its content, and the content of one of them
+       is a list of two hundred and forty six countries. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 12rem);
+    grid-template-areas:
+      'townName countryName'
+      'town     country';
   }
 
-  .place__country-pick {
-    inline-size: 100%;
-    max-inline-size: none;
-    margin-block-start: var(--space-8);
+  /* Nothing above it any more: on one line it is a name at the top of its column,
+     exactly like the town's. */
+  .place__country-pick > .asked {
+    margin-block-start: 0;
   }
 }
 
