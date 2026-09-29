@@ -1348,15 +1348,31 @@ describe('changing an event', () => {
   }, SEVERAL_SCREENS)
 
   it('opens the copy where the address asks for a copy and a change at once', async () => {
-    /* An address that meant something before `?izmena=` existed goes on meaning it. The
-       event named for the change is another one, so the two cannot be told apart by which
-       event is open, only by which form. */
+    /* An address that meant something before `?izmena=` existed goes on meaning it.
+
+       Measured on the record and not on the title alone, and that is the whole of this case:
+       the heading is drawn from whether a copy is asked for, and the form under it from
+       which of the two won, so the two can disagree, and a form that says „Kopiranje" over
+       the OTHER event goes through a question put to the heading alone. That was measured:
+       the first version of this case asked only that, and a mutation giving the change the
+       win survived it. The copy of this event carries this event's name and the day a
+       season on; the event named for the change has another name and runs on the very day
+       this one did. So the name says which event and the day says which form, and neither
+       says both. */
     const events = await loadResource<BtlEvent[]>('events')
     const mine = await eventAt(EVENT)
     const other = at(events, events.indexOf(mine) + 1)
+    const copiedDay = fieldDate(nextSeason(mine.date))
 
-    expect(other.id, 'the same event named twice says nothing about which one won').not.toBe(
-      mine.id,
+    expect(other.name, 'one name for both, so the name says nothing about which won').not.toBe(
+      mine.name,
+    )
+    expect(
+      other.date,
+      'the two run on different days, so the day alone would say which event is open',
+    ).toBe(mine.date)
+    expect(copiedDay, 'a copy keeps the day, so the day says nothing about the form').not.toBe(
+      fieldDate(mine.date),
     )
 
     renderAt(
@@ -1366,5 +1382,7 @@ describe('changing an event', () => {
 
     expect(await screen.findByRole('heading', { name: 'Kopiranje događaja' })).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Izmena događaja' })).toBeNull()
+    expect(first(screen.getAllByLabelText(/^Naziv događaja/))).toHaveValue(mine.name)
+    expect(screen.getByLabelText('Datum')).toHaveValue(copiedDay)
   }, SEVERAL_SCREENS)
 })
