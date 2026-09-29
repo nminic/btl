@@ -244,6 +244,23 @@ export function AdminEvents() {
    */
   const copiedFrom = params.get('kopija')
   /**
+   * WHICH EVENT IS BEING CHANGED, NAMED BY ITS OWN IDENTITY THE WAY `?kopija=` NAMES THE ONE
+   * BEING COPIED.
+   *
+   * <p><b>The event's own page sends the reader here with it</b> (`event/EventActions.tsx`,
+   * `change`; owner, 29.09.2026: the form the administration already has is the one that
+   * opens, and not a second one drawn on that page). Nothing is written by the press and
+   * nothing is copied: the form opens on the event as it stands, in the mode a row of the
+   * list opens it in, with the event's own races beneath it.
+   *
+   * <p>Read on every render, like `copiedFrom` and for the same reason: the list is not
+   * here when the address is, so the event can only be looked for inside the `Resource`
+   * below. What somebody pressed wins over it (`chosen`), a copy asked for in the same
+   * address wins over it (an address that meant something before this one existed goes on
+   * meaning it), and leaving the form empties the address (`onDone`).
+   */
+  const changedId = params.get('izmena')
+  /**
    * THE EVENT THIS EDITOR HAS ALREADY MADE ON THE SERVER, so a second press changes it
    * rather than making another one.
    *
@@ -365,6 +382,18 @@ export function AdminEvents() {
           const copySource =
             copiedFrom === null ? undefined : all.find((one) => String(one.id) === copiedFrom)
           const copying = copySource !== undefined
+          /* The event a change is asked for, found in the WHOLE list and not in the sixty
+             rows drawn below it: an event of last season is in none of them, and it is the
+             very event an administrator is looking at when he presses the button on its
+             own page. Found by its identity, compared as text exactly as `copySource` is:
+             `86` is the address of an event, and `086` and `86abc` are not.
+
+             Undefined where the address names none this list has, and that draws the list
+             and not a form (measured 29.09.2026, and the same for `?kopija=`): a stale link
+             is not worth a blank form, and a blank form is a way to make an event nobody
+             meant to make. */
+          const changeSource =
+            changedId === null ? undefined : all.find((one) => String(one.id) === changedId)
           /**
            * WHAT THE COPY'S FORM OPENS HOLDING.
            *
@@ -387,8 +416,18 @@ export function AdminEvents() {
 
             return { ...held, date: fieldDate(held.date) }
           }
+          /* Whatever somebody pressed, then a copy the address asks for, then a change it
+             asks for. The copy is asked before the change so that an address which meant
+             something before `?izmena=` existed goes on meaning it, and a change is the
+             one mode in which the form opens on a record that is already on the server:
+             saving it writes over that record and makes no other. */
           const editing: Editing | null =
-            chosen ?? (copySource === undefined ? null : { mode: 'new', start: asCopied(copySource) })
+            chosen ??
+            (copySource !== undefined
+              ? { mode: 'new', start: asCopied(copySource) }
+              : changeSource === undefined
+                ? null
+                : { mode: 'one', record: changeSource })
 
           /* The record the form is open on, as the event it is, so its races
              can be looked up. Found in the list rather than taken off the form's

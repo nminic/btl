@@ -16,11 +16,22 @@ import { useMay } from '../admin/rights'
 /**
  * What can be done with an event, from the event's own page.
  *
- * Three things by two kinds of person, and they are here rather than in the
- * administration because this is the screen anybody is already looking at when
- * they want them (owner, 03.08.2026). An administrator building next season's
- * calendar is reading last season's events; a competitor who has just run is
- * reading the event they ran.
+ * Four things by two kinds of person: whoever has the events changes, copies and
+ * deletes, and a competitor who has run the event rates it. They are here rather
+ * than in the administration because this is the screen anybody is already looking
+ * at when they want them (owner, 03.08.2026). An administrator building next
+ * season's calendar is reading last season's events; a competitor who has just run
+ * is reading the event they ran.
+ *
+ * <p><b>Changing is the one of the four that is not done here</b>, and that is
+ * written down rather than left to be found. The form lives in the administration
+ * and nowhere else, and what this row holds is the way to it (`change`). Owner,
+ * 29.09.2026, after „I DALJE NEMAM DUGME ZA IZMENU NA NIVOU DOGADJAJA": he chose,
+ * out of three outcomes he was offered, that the form the administration already
+ * has is the one that opens, and not a second one drawn on this page. The outcome
+ * with a form on this page was put off and not refused, and by the decision of
+ * 06.08.2026 (the name and the buttons on one row) it has to stay on the row with
+ * the name if it is ever built.
  *
  * Who sees what follows the same rights as everything else (rights.ts): the
  * superadmin always, a moderator if they have been given the events, and a
@@ -45,6 +56,35 @@ export function EventActions({
 
   const mayEdit = may(`entity:${EVENTS.id}`)
   const mine = races.filter((race) => race.eventId === event.id)
+
+  /**
+   * THE WAY TO THE FORM THAT CHANGES THIS EVENT, WHICH IS THE ADMINISTRATION'S OWN.
+   *
+   * <p>Nothing is written here and nothing is copied. The address names the event by its
+   * identity, as `copy` below names the one being copied, and `admin/AdminEvents.tsx`
+   * finds it in the WHOLE list and opens it for change with its own races beneath it,
+   * exactly as if its row had been opened there (`?izmena=`). That is the whole of the
+   * decision of 29.09.2026: the form is not drawn a second time.
+   *
+   * <p><b>A button that navigates and not a link, and that was measured rather than
+   * preferred.</b> The two beside it are buttons, and `.button` (`pages/Home.css`) does
+   * not reset the font of a `<button>`, so an `a.button` in this row is drawn about ten
+   * pixels taller and in type of 16 pixels against 13,3 (Chrome, 29.09.2026). A link is
+   * the better element for going somewhere; here it made the three controls uneven, on
+   * every event, for everybody who has the events. `copy` below goes to the same screen
+   * the same way.
+   *
+   * <p><b>Two things about it are the implementation's and not the owner's words.</b> The
+   * label reads „Izmena", in step with „Kopiranje" and „Brisanje" beside it, which the
+   * decision log keeps in step on purpose (its note on the name of the copy button: the
+   * name does not change „da bi ostalo u paru sa „Brisanje" pored njega"); the label is
+   * derived from that. And it stands first, where the team's page puts Izmeni before
+   * Obriši. The decision says the button stands beside the other two and says nothing
+   * about its name or its place.
+   */
+  function change() {
+    void navigate(`/${locale}/${EVENTS.path}?izmena=${String(event.id)}`)
+  }
 
   /**
    * The same event again, with its races, and the form open at the date.
@@ -164,6 +204,9 @@ export function EventActions({
     <div className="rankings__head-tool">
       {mayEdit && (
         <>
+          <button type="button" className="button button--secondary" onClick={change}>
+            {t('event.edit')}
+          </button>
           <button type="button" className="button button--secondary" onClick={copy}>
             {t('event.copy')}
           </button>

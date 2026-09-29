@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import sr from '../i18n/sr.json'
 import { translate } from '../i18n/translate'
@@ -5,6 +7,7 @@ import { must } from '../test/at'
 import { useState, type ReactNode } from 'react'
 import { fireEvent, screen, within } from '@testing-library/react'
 import { renderWithI18n } from '../test/render'
+import { everyRule } from '../test/stylesheet'
 import { setupUser } from '../test/user'
 import { FORMS, registracija } from './definitions'
 import { FormRenderer } from './FormRenderer'
@@ -265,6 +268,57 @@ describe('the star of an obligatory field', () => {
     expect(screen.getByRole('radiogroup', { name: /^proba\.pol/ })).not.toHaveAttribute(
       'aria-required',
     )
+  })
+
+  /**
+   * EVERY CLASS `PlaceField.css` LAYS THE FIELD OUT WITH IS A CLASS THE FIELD REALLY
+   * WEARS.
+   *
+   * <p><b>The join between the sheet and the markup, and it was missing.</b> Measured
+   * by an independent round on 29.09.2026: the renderer's own
+   * `field.type === 'place' ? 'field field--place' : 'field'` replaced by a bare
+   * `'field'` left 51 cases green narrowly and 298 over the whole of `src/forms`. On
+   * the screen at 1280 the field came out 309,33px instead of 634,66 and the two names
+   * fell onto two different lines - „Mesto" at `y=792,58` and „Država" at `y=873,38`,
+   * which is literally what the owner complained about. Dropping `place` from the
+   * wrapper survived the same way, and with it went the `display: contents` the grid
+   * needs to place anything inside it at all.
+   *
+   * <p><b>Derived rather than listed.</b> The classes are read out of the rules that
+   * carry the layout - anything setting a `grid-area`, a track list or `display` - so a
+   * new one arrives here on the day it is written rather than on the day somebody
+   * remembers. `styles/cellSpecificity.test.ts` reads a sheet the same way.
+   *
+   * <p><b>What this deliberately does NOT ask.</b> Whether the class does what the sheet
+   * says, which is jsdom's blind spot (ADL A18) and what `forms/formStyle.test.ts`
+   * covers by reading the rules, and what a browser measured for this branch at three
+   * widths. This is the other half: that there is something for those rules to be about.
+   */
+  it('wears every class the sheet lays it out with', () => {
+    const sheet = readFileSync(join(process.cwd(), 'src/forms/PlaceField.css'), 'utf-8')
+    const laidOutBy = everyRule(sheet, 'PlaceField.css').filter((rule) =>
+      ['grid-area', 'grid-template-areas', 'grid-template-columns', 'display'].some(
+        (property) => rule.style.getPropertyValue(property) !== '',
+      ),
+    )
+    const wanted = [
+      ...new Set(
+        laidOutBy.flatMap((rule) =>
+          [...rule.selectorText.matchAll(/\.([\w-]+)/g)].map((found) => found[1] ?? ''),
+        ),
+      ),
+    ].sort((left, right) => left.localeCompare(right))
+
+    renderWithI18n(<FormRenderer form={bothWays} onSubmit={vi.fn()} />)
+
+    /* That the walk walked something, and over the shape this branch is about: fewer
+       than the six the sheet has today would mean the reading above stopped matching
+       and the loop below asks nothing. */
+    expect(wanted.length, 'no class carries the layout, so this measures nothing').toBeGreaterThan(5)
+    expect(
+      wanted.filter((named) => document.querySelector(`.${named}`) === null),
+      'the sheet lays the field out through classes nothing on the screen wears',
+    ).toEqual([])
   })
 
   it('marks the country beside a town, which is a field of its own', () => {
