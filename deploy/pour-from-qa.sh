@@ -371,7 +371,7 @@ EOF
 # -q so that the transaction's own BEGIN and COMMIT are not printed into what is poured. What psql
 # complains of goes to a file and is shown by report_failure, which leaves out the lines that can
 # carry a member's row.
-docker exec -i "$QA_POSTGRES" psql -q -X -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" -tA -f - \
+docker exec -i "$QA_POSTGRES" psql -q -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" -tA -f - \
   < "$QA_SESSION" >> "$STREAM" 2> "$WORK/qa.err" \
   || { report_failure "$WORK/qa.err" 'QA'; fail 'reading QA did not pass; nothing has been written to production'; }
 
