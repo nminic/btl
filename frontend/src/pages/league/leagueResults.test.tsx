@@ -49,17 +49,15 @@ const REAL_FETCH = globalThis.fetch
  */
 async function withCompetitors(count: number, mixed = false) {
   const real = globalThis.fetch
-  /* The races this competition is made of, read once, so the results put in its
-     place belong to it. */
-  const races: Race[] = await (await real('/mock/races.json')).json()
-  const events: BtlEvent[] = await (await real('/mock/events.json')).json()
+  /* The races this competition counts, read once off its record, so the results put in their
+     place belong to it. The record names them (`League.raceIds`), and working them out of the
+     days it runs on would be a second answer to the question the screen asks the record. */
   const leagues: League[] = await (await real('/mock/leagues.json')).json()
   const league = must(
     leagues.find((one) => one.slug === 'brdska-2019'),
     'takmičenje brdska-2019',
   )
-  const held = new Set(events.filter((one) => league.eventIds.includes(one.id)).map((one) => one.id))
-  const mine = new Set(races.filter((race) => held.has(race.eventId)).map((race) => race.id))
+  const mine = new Set(league.raceIds)
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const name = String(input)
@@ -332,7 +330,8 @@ describe('the head of a race column', () => {
      and so is the guard that held the two halves against the sheet. */
 
   /** The events this competition is really made of, read off the same files the screen reads, so
-   *  the numbers below are not a second copy of the data. An event with no race is not a column. */
+   *  the numbers below are not a second copy of the data: the days of the races it counts, and an
+   *  event none of whose races count is not a column. */
   async function eventsOfIt(): Promise<BtlEvent[]> {
     const real = globalThis.fetch
     const events: BtlEvent[] = await (await real('/mock/events.json')).json()
@@ -342,9 +341,10 @@ describe('the head of a race column', () => {
       leagues.find((one) => one.slug === 'brdska-2019'),
       'takmičenje brdska-2019',
     )
-    const raced = new Set(races.map((race) => race.eventId))
+    const counted = new Set(league.raceIds)
+    const raced = new Set(races.filter((race) => counted.has(race.id)).map((race) => race.eventId))
 
-    return events.filter((one) => league.eventIds.includes(one.id) && raced.has(one.id))
+    return events.filter((one) => raced.has(one.id))
   }
 
   it('is one column per event, and the day it was held', async () => {

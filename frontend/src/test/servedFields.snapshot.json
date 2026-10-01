@@ -86,6 +86,7 @@
     "id",
     "name",
     "prizes",
+    "raceIds",
     "rules",
     "season",
     "slug"

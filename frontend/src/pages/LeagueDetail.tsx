@@ -45,8 +45,9 @@ import './Profile.css'
  * Drawn here rather than inside the standing, because it belongs to the row the
  * heading is on, and that row is this page's.
  *
- * A league is a subset of events, never a different scoring formula and, since
- * 31.08.2026, never its own way of grouping the field either.
+ * A league is a subset of races (owner, 12.09.2026; it was a subset of events until then),
+ * never a different scoring formula and, since 31.08.2026, never its own way of grouping the
+ * field either.
  */
 export function LeagueDetail() {
   const { t } = useI18n()

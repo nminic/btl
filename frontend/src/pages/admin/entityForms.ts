@@ -436,8 +436,13 @@ export const LEAGUES: EntityDef = {
   form: liga,
   idField: 'id',
   /* No address here: the form asks for one, and an empty default is exactly what
-     left a league answering at /liga/ (PENDING, 10.08.2026). */
-  blank: { eventIds: [] },
+     left a league answering at /liga/ (PENDING, 10.08.2026).
+
+     **Both lists, because a record made during a visit has to be a `League` and the type says it
+     carries both** (`data/types.ts`, since 01.10.2026): a competition that has just been made
+     counts no race, and so names no day. The races are what is counted; the days are the empty list
+     the server would derive from them. */
+  blank: { raceIds: [], eventIds: [] },
 }
 
 /* The one entity whose rows are the year itself: four windows that tile it and

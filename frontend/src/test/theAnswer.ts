@@ -174,9 +174,9 @@ export const aPair = {
   memberNumbers: twoMembers,
 }
 
-/** A league. `raceIds` is on the answer and not on the type, which is the one direction
- *  the guard deliberately lets through: what the backend has and the portal has not is
- *  the owner's half. */
+/** A league, as `/api/leagues` answers it. `raceIds` is the races the competition counts and
+ *  `eventIds` the days those fall on, which the server derives from them; both are on the type
+ *  since 01.10.2026, when the standing and the list began counting by the first. */
 export const aLeague = {
   id: 1,
   slug: 'btl-liga-2019',

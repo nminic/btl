@@ -1,19 +1,17 @@
 /**
  * WHICH RACES A COMPETITION COUNTS, READ OFF THE ANSWER ITSELF.
  *
- * **Why this is not `League.raceIds` in `data/types.ts`, where it belongs.**
- * `/api/leagues` has answered with `raceIds` since B40 and the portal's own type does not
- * carry it (`data/servedShape.test.ts` names that in as many words: „`/api/leagues` answers
- * with `raceIds` and the portal does not read it yet"). The moderation of a competition is
- * the first screen that has to, because from B40 on a day of four distances may count one of
- * them - so `eventIds` answers „which days" and cannot answer „which races".
- *
- * Adding the field to the shared type is one line and is the right home for it. It is not
- * done here because `data/types.ts` is being changed by two other flows in this same window,
- * and the rule this project keeps is that independence is counted rather than felt: two
- * branches touching one file are not independent, whatever the change looks like. So this
- * reads the field off the served answer, the boundary is written down rather than left to be
- * found, and the field moves to the type in the increment that can have that file.
+ * **Why this reads the field off the answer and not off `League.raceIds`, and it is a leftover
+ * named as one.** `/api/leagues` has answered with `raceIds` since B40, and the moderation of a
+ * competition was the first screen that had to ask for it: from B40 on a day of four distances
+ * may count one of them, so `eventIds` answers „which days" and cannot answer „which races".
+ * The portal's own type did not carry the field then, which is what this module was written
+ * around. **It does since 01.10.2026**, because the standing and the list of competitions count
+ * by it now (`pages/league/leagueCounting.ts`, `data/types.ts`), and this module was not moved
+ * with them: moving it is a change to the screens of the administration, and the increment that
+ * moved the public ones touches nothing under `admin/`. The answer read here is the same one,
+ * so nothing disagrees; the day somebody does move it, it is `league.raceIds` and this reading
+ * of an `unknown` goes.
  *
  * **Read without an assertion (ADL A14).** What comes off the wire is `unknown` and is
  * narrowed by looking at it, so an answer of some other shape yields an empty list rather

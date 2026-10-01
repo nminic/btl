@@ -4,35 +4,43 @@ import type { BtlEvent, League, Race } from '../../data/types'
 export type EventRaces = { event: BtlEvent; races: Race[] }
 
 /**
- * The races a competition counts.
+ * The races a competition counts, which are the ones its record names and no others.
  *
- * **This is the one place a competition is asked which races are in it, and the one place
- * `raceIds` will narrow when the record carries it.** Today the record names events
- * (`League.eventIds`, `data/types.ts`), so every race of an event the competition holds is in
- * it; the backend that names races is on a branch of its own and is not merged. When it lands,
- * the line below is what changes, and nothing above it: what reads this gets a list of races
- * either way.
+ * **This is the one place a competition is asked which races are in it, and since 01.10.2026 it
+ * answers out of `League.raceIds`** (`data/types.ts`). It answered out of the events until then,
+ * so every race of a day the competition held was in it, whether or not anybody had chosen it:
+ * a day with four distances of which the competition counts one drew all four, in the box that
+ * lists them and in the standing that adds them up. The owner had decided the other way on
+ * 12.09.2026 (`PDL.md`): „izbor događaja bira sve njegove trke odjednom, a sme se izabrati i samo
+ * neka trka", and „Trka koja se doda posle sklapanja čeka da je neko izabere" - a race entered
+ * into a day after the competition was put together is not in it until somebody puts it there,
+ * which a reading by days could never say.
  *
- * **What cannot be measured until that day, written down rather than left to be found.** With
- * only `eventIds` there is no arrangement of the real data in which some races of an event count
- * and others do not, so no screen can tell „the list is built from the races" from „the list is
- * built from the events and their races". What can be told apart, and is, is an event the
- * competition holds that has no race at all: it is absent from the list, and that is what
- * `racesByEvent` below is measured on. The other half is measured on the function itself
- * (`leagueCounting.test.ts`), where two races of an event can be handed in and the third left
- * out.
+ * **What reads this, and so reads nothing else.** The standing (`leagueTable.ts`), the box that
+ * lists the days and the races under them (`LeagueEvents.tsx`), and the count of days on the row
+ * of a competition (`Leagues.tsx`) all take their races from here, and the number of people in a
+ * competition is counted off the standing. A reading of `eventIds` anywhere beside this one is
+ * the same fault in another place.
+ *
+ * **The Balkan league does not come through here.** It is not a record, and it counts every race
+ * of every event of the kind „trka" in the calendar, by the owner's decision of the same day.
+ *
+ * **Which races, and in what order.** Those of the list handed in, in the order they were handed
+ * in; the order of `raceIds` itself is the server's and decides nothing here. A name in `raceIds`
+ * that is not among the races handed in is simply not found, and an empty `raceIds` is an empty
+ * list whatever days the record still names: the races are what is counted.
  */
 export function leagueRaces(league: League, races: Race[]): Race[] {
-  const held = new Set(league.eventIds)
+  const counted = new Set(league.raceIds)
 
-  return races.filter((race) => held.has(race.eventId))
+  return races.filter((race) => counted.has(race.id))
 }
 
 /**
  * Those races under the event each of them belongs to, oldest event first.
  *
  * **Built out of the races and grouped by the event, never the other way round** (owner,
- * 12.09.2026). An event the competition holds that has no race in it is not a heading with
+ * 12.09.2026). An event none of whose races the competition counts is not a heading with
  * nothing under it; it is not there at all. That is the same answer the standing already gives
  * its columns, and for the same reason (`leagueTable.ts`): an event entered a fortnight before
  * its distances are known (owner, 23.08.2026) is such an event, and it appears here the day its

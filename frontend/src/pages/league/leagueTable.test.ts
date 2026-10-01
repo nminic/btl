@@ -76,12 +76,17 @@ const result = (memberNumber: string, raceId: number, points: number): Result =>
   category: 'short',
 })
 
+/* **Counts every race of the two events it holds**, which is the ordinary arrangement and the one
+   the first block below is about: it measures how a grid is laid out, and a competition that
+   counts the whole of its days cannot tell the races it counts from the days they fall on. That
+   is what the second block is for (`partialLeague`), and nothing in this one stands in for it. */
 const league: League = {
   id: 1,
   slug: 'l1',
   name: 'Proba',
   season: 2019,
-  eventIds: [4, 5],
+  raceIds: [9, 10, 12],
+  eventIds: [5, 4],
   rules: '',
   prizes: '',
 }
@@ -141,7 +146,7 @@ describe('the grid of a competition', () => {
        with the later name given first, so that a sort that does nothing is caught. */
     const sameDay = [event(7, '2019-03-01', 'Z drugi'), event(8, '2019-03-01', 'A prvi')]
     const table = leagueTable(
-      { ...league, eventIds: [7, 8] },
+      { ...league, raceIds: [13, 14], eventIds: [7, 8] },
       sameDay,
       [race(13, 7, 10, '2019-03-01'), race(14, 8, 10, '2019-03-01')],
       [],
@@ -250,6 +255,185 @@ describe('the grid of a competition', () => {
 
     expect(first(table.rows).points.get(4)).toBe(17)
     expect(first(table.rows).total).toBe(17)
+  })
+})
+
+/**
+ * A competition that counts some of the races of a day, which is what the record has said since
+ * B40 and what nothing above could measure, because everything above counts a day whole.
+ *
+ * **What the owner decided, and the cases below are its sentences taken one at a time** (`PDL.md`,
+ * 12.09.2026): „Moderacija lige: uređuje. Neograničen broj događaja i trka; izbor događaja bira
+ * sve njegove trke odjednom, a sme se izabrati i samo neka trka." And on what taking one out does:
+ * „Izbacivanje trke iz lige preuračunava tabelu. Bodovi te trke nestaju iz te lige, a rezultat
+ * ostaje na profilu člana i u BTL bodovima. Tabela lige se uvek računa iz trenutnog spiska, pa
+ * zaostalog stanja nema." And that one race may stand in several competitions at once.
+ *
+ * **Two sources of one fact, and every arrangement here is made so that they part.** A competition
+ * names races (`raceIds`) and the days those fall on (`eventIds`), and a reading by days gives the
+ * right answer whenever a competition counts a day whole. So no event below has all its races
+ * counted except `B`, which is there to say that a reading that counts too little is caught too;
+ * no member has results only on races the competition counts except `000003`, who is there for the
+ * same reason; and no race id is the id of an event, so a number cannot be right by being the
+ * other kind of id.
+ */
+describe('a competition that counts only some of the races of a day', () => {
+  /* The days, and how much of each the competition counts:
+       A (20)  three races on one morning, and the competition counts the middle one;
+       B (21)  two races, and the competition counts both: the control;
+       C (22)  one race, and the competition counts no race of the day;
+       D (23)  one race on the same morning as A, which the competition does not count either. */
+  const partialEvents = [
+    event(20, '2019-06-01', 'Avala'),
+    event(21, '2019-06-08', 'Beljanica'),
+    event(22, '2019-06-15', 'Cer'),
+    event(23, '2019-06-01', 'Deli Jovan'),
+  ]
+  const partialRaces = [
+    race(31, 20, 10, '2019-06-01'),
+    race(32, 20, 21, '2019-06-01'),
+    race(33, 20, 42, '2019-06-01'),
+    race(34, 21, 10, '2019-06-08'),
+    race(35, 21, 21, '2019-06-08'),
+    race(36, 22, 10, '2019-06-15'),
+    race(37, 23, 10, '2019-06-01'),
+  ]
+  /* What the server answers for it: three races, and the two days they fall on in calendar order. */
+  const partialLeague: League = {
+    id: 2,
+    slug: 'l2',
+    name: 'Podskup',
+    season: 2019,
+    raceIds: [32, 34, 35],
+    eventIds: [20, 21],
+    rules: '',
+    prizes: '',
+  }
+
+  /* **One member on a counted race and on two it does not count, all of one day.** 10 + 7 is 17,
+     10 + 3 is 13 and 10 + 7 + 3 is 20, and none of the three is the 10 that is the answer, so the
+     cell cannot be right by holding a sum of the wrong races. */
+  const ran = [
+    result('000001', 32, 10),
+    result('000001', 31, 7),
+    result('000001', 33, 3),
+    result('000001', 34, 4),
+    result('000001', 35, 1),
+    /* Ran three days of it and not one race it counts. */
+    result('000002', 31, 50),
+    result('000002', 36, 60),
+    result('000002', 37, 70),
+    /* Ran one race it counts and nothing else: the member no reading can get wrong. */
+    result('000003', 34, 8),
+  ]
+  const entrants = [person('000001'), person('000002'), person('000003')]
+
+  const cellOf = (table: ReturnType<typeof leagueTable>, memberNumber: string, eventId: number) =>
+    table.rows.find((row) => row.competitor.memberNumber === memberNumber)?.points.get(eventId)
+
+  it('counts, of a day that holds more races than the competition counts, only the races it counts', () => {
+    const table = leagueTable(partialLeague, partialEvents, partialRaces, ran, entrants)
+    const top = first(table.rows)
+
+    expect(top.competitor.memberNumber).toBe('000001')
+    expect(top.points.get(20)).toBe(10)
+    expect(top.points.get(21)).toBe(5)
+    expect(top.total).toBe(15)
+  })
+
+  it('has no row for somebody who ran only races it does not count, though they ran its days', () => {
+    const table = leagueTable(partialLeague, partialEvents, partialRaces, ran, entrants)
+
+    expect(table.rows.map((one) => one.competitor.memberNumber)).toEqual(['000001', '000003'])
+    expect(at(table.rows, 1).total).toBe(8)
+  })
+
+  it('gives a column to a day with one counted race, and none to a day with none, a shared one too', () => {
+    const table = leagueTable(partialLeague, partialEvents, partialRaces, ran, entrants)
+
+    /* `D` falls on the morning `A` does and has a race of its own, and it is not a column: what the
+       pointer is told over a column is the events whose races of that day are in the competition,
+       and none of `D`'s is. `C` is a day of its own with a race and is not a column either. */
+    expect(table.columns.map((one) => one.eventId)).toEqual([20, 21])
+    expect(table.columns.map((one) => one.date)).toEqual(['2019-06-01', '2019-06-08'])
+    expect(table.columns.map((one) => one.name)).toEqual(['Avala', 'Beljanica'])
+  })
+
+  it('takes its columns and its cells from the races and not from the days the record names', () => {
+    /* **The two fields parting the way only a hand-written file can part them** (`LeagueApi`
+       derives the days from the races, so a server answer cannot): the days name two more that
+       have races of their own, none of them counted. Every reading by days answers differently
+       here, in the columns and in the rows and in the cells at once. */
+    const stale = { ...partialLeague, eventIds: [20, 21, 22, 23] }
+
+    expect(leagueTable(stale, partialEvents, partialRaces, ran, entrants)).toEqual(
+      leagueTable(partialLeague, partialEvents, partialRaces, ran, entrants),
+    )
+  })
+
+  it('takes the points of a race out of the table when the race is taken out, and out of nothing else', () => {
+    /* `PDL.md`, 12.09.2026: „Bodovi te trke nestaju iz te lige, a rezultat ostaje na profilu člana
+       i u BTL bodovima." The results are frozen, so anything that narrowed them in place to answer
+       is a case that fails by throwing rather than a case that has to be noticed. */
+    const given = ran.map((one) => ({ ...one }))
+
+    for (const one of given) {
+      Object.freeze(one)
+    }
+
+    Object.freeze(given)
+
+    const without = leagueTable(
+      { ...partialLeague, raceIds: [32, 35] },
+      partialEvents,
+      partialRaces,
+      given,
+      entrants,
+    )
+
+    /* `000001` keeps the ten of the middle race and loses the four of `34`, so `B` holds only the
+       one point of `35`; `000003` ran nothing else, so there is no row for them at all. */
+    expect(cellOf(without, '000001', 20)).toBe(10)
+    expect(cellOf(without, '000001', 21)).toBe(1)
+    expect(first(without.rows).total).toBe(11)
+    expect(without.rows.map((one) => one.competitor.memberNumber)).toEqual(['000001'])
+    /* And the result is where it was, for the profile and for the points of the league, which read
+       the same results and never see this table. */
+    expect(given).toHaveLength(ran.length)
+    expect(given.some((one) => one.memberNumber === '000003' && one.raceId === 34)).toBe(true)
+  })
+
+  it('lets two competitions count the same race, and neither takes it from the other', () => {
+    /* `PDL.md`, 12.09.2026: „Jedna trka sme da bude u više propratnih liga iste sezone." Both count
+       the middle race of `A`; the second counts the one race of `C` as well, which is the one
+       `000002` ran. */
+    const other: League = { ...partialLeague, id: 3, slug: 'l3', raceIds: [32, 36], eventIds: [20, 22] }
+    const one = leagueTable(partialLeague, partialEvents, partialRaces, ran, entrants)
+    const another = leagueTable(other, partialEvents, partialRaces, ran, entrants)
+
+    expect(cellOf(one, '000001', 20)).toBe(10)
+    expect(cellOf(another, '000001', 20)).toBe(10)
+    expect(cellOf(another, '000002', 22)).toBe(60)
+    expect(another.rows.map((row) => row.competitor.memberNumber)).toEqual(['000002', '000001'])
+    expect(another.columns.map((column) => column.eventId)).toEqual([20, 22])
+  })
+
+  it('totals only what has a column, so a reader can still add the row up', () => {
+    /* A race the competition counts whose event is not among the events handed in: nothing is
+       drawn for it, and the hundred points of it must not be in a total sitting beside cells that
+       do not hold them. The first line of this function is what says the total is the sum of what
+       is shown and nothing else. */
+    const orphan = race(38, 24, 10, '2019-06-22')
+    const table = leagueTable(
+      { ...partialLeague, raceIds: [32, 34, 35, 38] },
+      partialEvents,
+      [...partialRaces, orphan],
+      [...ran, result('000001', 38, 100)],
+      entrants,
+    )
+
+    expect(table.columns.map((one) => one.eventId)).toEqual([20, 21])
+    expect(first(table.rows).total).toBe(15)
   })
 })
 
