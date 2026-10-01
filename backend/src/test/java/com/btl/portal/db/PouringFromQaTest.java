@@ -12,7 +12,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,8 +26,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The tool that pours QA's data into a production database that has never been used is a
  * shell script, and the script itself cannot run in this gate: it speaks to two live stacks
  * over {@code docker exec} and neither exists here. What CAN run here is every decision it
- * makes, because none of them is written in the script. They are three SQL files under
- * {@code deploy/pour-from-qa/}, the script executes them, and so does this.
+ * makes, because none of them is written in the script. They are SQL files under
+ * {@code deploy/pour-from-qa/}, the script executes them, and so does this. What the script
+ * does around them is held from two other sides: {@code PouringFromQaScriptTest} reads its code
+ * without a database, and {@code PouringFromQaLeavesNothingBehindTest} runs the shell helper it
+ * sources in a real Linux and sends it signals.
  *
  * <p><b>That is the join, and it is the thing this class exists to hold.</b> A guard split over
  * two files states both halves and leaves what binds them stated by nobody, which reads as
@@ -54,7 +59,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PouringFromQaTest extends DatabaseTest {
 
 	/**
-	 * Where the three files live, as one path rather than three, so this class also cannot
+	 * Where the files live, as one path rather than one per file, so this class also cannot
 	 * disagree with itself about the folder. Relative to the backend module, which is what
 	 * {@code WhatEachStackRequiresTest} already does for {@code deploy/README.md}.
 	 */
@@ -63,13 +68,14 @@ class PouringFromQaTest extends DatabaseTest {
 	private static final Path SCRIPT = Path.of("..", "deploy", "pour-from-qa.sh");
 
 	/**
-	 * The files this class runs. It is a list, and the case right below is its floor: it is
-	 * compared against the directory in both directions, so a file added under
-	 * {@code deploy/pour-from-qa/} and not named here fails the build rather than going
-	 * unmeasured.
+	 * The files that make up the tool's folder: the SQL this class runs, and the shell helper
+	 * that {@code PouringFromQaLeavesNothingBehindTest} runs. It is a list, and the case right
+	 * below is its floor: it is compared against the directory in both directions, so a file
+	 * added under {@code deploy/pour-from-qa/} and not named here fails the build rather than
+	 * going unmeasured.
 	 */
-	private static final Set<String> EXERCISED =
-			Set.of("load-order.sql", "row-counts.sql", "sequences.sql", "lets-somebody-in.sql");
+	private static final Set<String> EXERCISED = Set.of("load-order.sql", "row-counts.sql",
+			"sequences.sql", "lets-somebody-in.sql", "leaves-nothing-behind.sh");
 
 	private static String sqlOf(String name) {
 		try {
@@ -99,6 +105,20 @@ class PouringFromQaTest extends DatabaseTest {
 		return levels;
 	}
 
+	/** One row of {@code load-order.sql}: the name, the level (null for a table in a cycle), the quoted form. */
+	private record OrderRow(String name, Integer level, String quoted) {
+	}
+
+	private List<OrderRow> loadOrderRows() {
+		return db.sql(sqlOf("load-order.sql")).query((row, one) -> {
+			// wasNull() answers about the LAST column read, so it is taken right after the level
+			// and before the quoted name: see loadOrder() above for what it cost to get that wrong.
+			int level = row.getInt(2);
+			boolean noLevel = row.wasNull();
+			return new OrderRow(row.getString(1), noLevel ? null : level, row.getString(3));
+		}).list();
+	}
+
 	/**
 	 * THE JOIN BETWEEN THE SCRIPT AND THIS CLASS, held against the directory rather than
 	 * against either of them.
@@ -114,13 +134,14 @@ class PouringFromQaTest extends DatabaseTest {
 		Set<String> onDisk;
 		try (Stream<Path> files = Files.list(POUR)) {
 			onDisk = files.map(one -> one.getFileName().toString())
-					.filter(one -> one.endsWith(".sql"))
+					.filter(one -> one.endsWith(".sql") || one.endsWith(".sh"))
 					.collect(Collectors.toCollection(TreeSet::new));
 		}
 
 		assertThat(onDisk)
-				.as("every .sql file under deploy/pour-from-qa/ has to be measured by this class,"
-						+ " and this class may not name one that is not there")
+				.as("every .sql and .sh file under deploy/pour-from-qa/ has to be measured by this"
+						+ " class or by PouringFromQaLeavesNothingBehindTest, and this class may not"
+						+ " name one that is not there")
 				.isEqualTo(new TreeSet<>(EXERCISED));
 
 		// The BINDING and not the bare name. The script's header also points at these files in
@@ -300,6 +321,91 @@ class PouringFromQaTest extends DatabaseTest {
 				.as("and it has to carry no level, which is what makes the tool stop")
 				.isNull();
 		assertThat(levels.get("b185_there")).isNull();
+	}
+
+	/**
+	 * EVERY NAME COMES BACK IN THE ONE FORM THAT GOES INTO A STATEMENT, and it is usable as it
+	 * came.
+	 *
+	 * <p>The script puts a table after {@code public.} in a TRUNCATE, in the header of the rows it
+	 * pours in and in the statement that reads them out of QA. It used to put the bare name in
+	 * all three, while the two files beside this one quoted theirs, so the one way of getting a
+	 * name into SQL that nobody had quoted was the one the whole pour depended on. Asked here the
+	 * way the script uses it: each returned form is put after {@code public.} and run.
+	 */
+	@Test
+	void everyTableComesBackWithItsNameQuotedForSql() {
+		List<OrderRow> rows = loadOrderRows();
+
+		assertThat(rows).as("an empty order would make this say nothing").isNotEmpty();
+		for (OrderRow one : rows) {
+			assertThat(db.sql("select count(*) from public." + one.quoted()).query(Long.class).single())
+					.as("%s came back as %s, which has to be usable after public. as it is",
+							one.name(), one.quoted())
+					.isGreaterThanOrEqualTo(0L);
+		}
+	}
+
+	/**
+	 * A NAME THAT NEEDS QUOTES ARRIVES WITH THEM, and that is the case the schema cannot supply.
+	 *
+	 * <p>Every table the migrations create is lower case and snake case, so on the real schema the
+	 * quoted form equals the name and the case above passes for a column that quoted nothing. Three
+	 * tables are built here whose names cannot be written bare, one for each way a name needs
+	 * quotes: capitals and a space, a reserved word, and a double quote in the name. The probe
+	 * tables go away with the transaction.
+	 *
+	 * <p>The second assertion is what stops the first from being empty: a name that comes back
+	 * unchanged was not awkward, and this would then be measuring nothing.
+	 */
+	@Test
+	void aNameThatNeedsQuotesIsCarriedWithThem() {
+		db.sql("create table \"B190 Mixed Case\" (id bigint primary key)").update();
+		db.sql("create table \"order\" (id bigint primary key)").update();
+		db.sql("create table \"b190 \"\"double\"\" quoted\" (id bigint primary key)").update();
+
+		Map<String, String> quotedByName = new TreeMap<>();
+		loadOrderRows().forEach(one -> quotedByName.put(one.name(), one.quoted()));
+
+		for (String name : List.of("B190 Mixed Case", "order", "b190 \"double\" quoted")) {
+			String quoted = quotedByName.get(name);
+
+			assertThat(quoted).as("the order does not list %s at all", name).isNotNull();
+			assertThat(quoted)
+					.as("%s needs quotes, so a form that came back equal to it carries none", name)
+					.isNotEqualTo(name);
+			assertThat(db.sql("select count(*) from public." + quoted).query(Long.class).single())
+					.as("%s came back as %s and that is not a name PostgreSQL accepts", name, quoted)
+					.isZero();
+		}
+	}
+
+	/**
+	 * NO TABLE NAME HAS A CHARACTER THE POUR CANNOT CARRY, asked of the catalogue and not of a list.
+	 *
+	 * <p>The quoted form is put inside single quotes on a psql script line and read out of a file
+	 * whose fields are separated by a bar, so a single quote, a backslash, a bar or a newline in a
+	 * name would break it or, worse, bend it into something else. {@code load-order.sql} says that
+	 * is a boundary and not a defect; this is what makes it one that fails in the build, on the
+	 * day a migration writes such a name, and not on the host in the middle of the pour. Asked of
+	 * the real schema only, so it runs before any case builds a probe.
+	 */
+	@Test
+	void noTableNameHasACharacterTheHeaderLineCannotCarry() {
+		List<String> uncarriable = db.sql("select c.relname from pg_class c"
+						+ " join pg_namespace n on n.oid = c.relnamespace"
+						+ " where n.nspname = 'public' and c.relkind = 'r'"
+						+ " and (position(chr(39) in c.relname) > 0"
+						+ " or position(chr(92) in c.relname) > 0"
+						+ " or position('|' in c.relname) > 0"
+						+ " or position(chr(10) in c.relname) > 0)")
+				.query(String.class)
+				.list();
+
+		assertThat(uncarriable)
+				.as("a table name with a quote, a backslash, a bar or a newline in it cannot be"
+						+ " carried by the pour, which would bend it; see load-order.sql")
+				.isEmpty();
 	}
 
 	/**
@@ -525,34 +631,119 @@ class PouringFromQaTest extends DatabaseTest {
 	 */
 	@Test
 	void everyTableAVisitorIsCheckedAgainstIsNamedIncludingPasswords() {
-		Set<String> named = new TreeSet<>(
-				db.sql(sqlOf("lets-somebody-in.sql")).query(String.class).list());
+		Map<String, String> named = namedByTheList();
 
-		Set<String> carryingAHash = new TreeSet<>(db.sql("select distinct c.relname"
+		Map<String, String> carryingAHash = new TreeMap<>();
+		db.sql("select c.relname, string_agg(a.attname::text, ',' order by a.attname)"
 						+ " from pg_class c"
 						+ " join pg_namespace n on n.oid = c.relnamespace"
 						+ " join pg_attribute a on a.attrelid = c.oid"
 						+ " and a.attnum > 0 and not a.attisdropped"
 						+ " where n.nspname = 'public' and c.relkind = 'r'"
-						+ " and a.attname like '%hash'")
-				.query(String.class)
-				.list());
+						+ " and a.attname like '%hash'"
+						+ " group by c.relname")
+				.query((row, one) -> carryingAHash.put(row.getString(1), row.getString(2)))
+				.list();
 
 		assertThat(carryingAHash)
 				.as("no table carries a hash column at all, so this case measures nothing")
 				.isNotEmpty();
 
+		// The comparison is over table AND column, and that is wider than it was: a further hash
+		// column on a table the list already names changes no table and used to pass, and the
+		// report's sentence about which rows can be emptied is built on the column.
 		assertThat(named)
-				.as("the report has to name every table the portal checks a visitor against;"
-						+ " a column ending in 'hash' that is NOT one of those is a decision"
-						+ " somebody has to make out loud rather than leave to this query")
+				.as("the report has to name every table the portal checks a visitor against, and the"
+						+ " column it checks by; a column ending in 'hash' that is NOT one of those is"
+						+ " a decision somebody has to make out loud rather than leave to this query")
 				.isEqualTo(carryingAHash);
 
-		assertThat(named)
+		assertThat(named.keySet())
 				.as("account.password_hash is what SignInApi checks a visitor against, and unlike"
 						+ " the token tables it cannot be emptied - it comes over with the rest of"
 						+ " the row and only a password change ends it")
 				.contains("account");
+	}
+
+	/** What {@code lets-somebody-in.sql} returns: each table, with the column or columns it is checked by. */
+	private Map<String, String> namedByTheList() {
+		Map<String, String> named = new TreeMap<>();
+		db.sql(sqlOf("lets-somebody-in.sql"))
+				.query((row, one) -> named.put(row.getString(1), row.getString(2)))
+				.list();
+		return named;
+	}
+
+	/**
+	 * A FURTHER TABLE WITH A TOKEN IS LISTED, MARKED, AND THE REPORT'S SENTENCE STAYS TRUE.
+	 *
+	 * <p>The closing report says the rows checked by {@code token_hash} can be ended by emptying
+	 * their table, and it says so about "a table listed above with that column" and not about
+	 * three tables by name. That is only true if a fourth such table arrives in the list marked
+	 * with that column on the day it is created, which is what is held here with one built for the
+	 * purpose. The report used to name the three by hand, and a fourth made the sentence false
+	 * without a case failing.
+	 */
+	@Test
+	void aFurtherTableWithATokenIsListedAndMarkedWithoutAnyoneEditingAnything() {
+		db.sql("create table b190_further_token (token_hash char(64) not null primary key)").update();
+
+		assertThat(namedByTheList()).containsEntry("b190_further_token", "token_hash");
+	}
+
+	/**
+	 * THE CLOSING REPORT NAMES NO TABLE THAT CARRIES A TOKEN, asked of the catalogue.
+	 *
+	 * <p>The negative half of the case above. A sentence that lists the token tables is the one
+	 * that goes stale, so every table the catalogue says carries a {@code token_hash} is looked for
+	 * in the script's code, and none may be there. Derived, so it covers the fourth table too and
+	 * not only the three that exist today.
+	 */
+	@Test
+	void theClosingReportNamesNoTableThatCarriesAToken() throws IOException {
+		List<String> tokenTables = db.sql("select distinct c.relname from pg_class c"
+						+ " join pg_namespace n on n.oid = c.relnamespace"
+						+ " join pg_attribute a on a.attrelid = c.oid"
+						+ " and a.attnum > 0 and not a.attisdropped"
+						+ " where n.nspname = 'public' and c.relkind = 'r' and a.attname = 'token_hash'")
+				.query(String.class)
+				.list();
+		assertThat(tokenTables).as("no table carries a token, so this measures nothing").isNotEmpty();
+
+		List<String> code = Files.readAllLines(SCRIPT, StandardCharsets.UTF_8).stream()
+				.filter(line -> !line.strip().startsWith("#"))
+				.toList();
+
+		for (String table : tokenTables) {
+			Pattern named = Pattern.compile("\\b" + Pattern.quote(table) + "\\b");
+			assertThat(code.stream().filter(line -> named.matcher(line).find()))
+					.as("the closing report names %s, a table that carries a token_hash. The list it"
+							+ " prints is derived from the catalogue, and a sentence that names tables"
+							+ " is the one that goes stale", table)
+					.isEmpty();
+		}
+	}
+
+	/**
+	 * THE TABLES THE CLOSING REPORT POINTS AT FOR RIGHTS ARE REAL.
+	 *
+	 * <p>The report says which rights each account holds live in {@code account_admin_right} and
+	 * which right opens a row of the verification queues is {@code verification.right_code}. The
+	 * script is checked for naming them in {@code PouringFromQaScriptTest}; this is the other half,
+	 * that the names are in the schema, so a rename fails here and does not leave the operator
+	 * reading about a table that is not there.
+	 */
+	@Test
+	void theTablesTheClosingReportNamesForRightsExist() {
+		assertThat(tablesInTheSchema()).contains("account_admin_right");
+
+		assertThat(db.sql("select count(*) from information_schema.columns"
+						+ " where table_schema = current_schema()"
+						+ " and table_name = 'verification' and column_name = 'right_code'")
+				.query(Long.class)
+				.single())
+				.as("verification.right_code is what says which right opens a verification row")
+				.isEqualTo(1L);
 	}
 
 	private long lastValueOf(String sequence) {

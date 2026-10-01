@@ -116,7 +116,32 @@ the price of each was put to him before he chose:
 
 The transfer runs **database to database**. It is not a migration and it never
 passes through this repository: those rows carry personal data, and the repo is
-public. Writing the tool is a separate piece of work and is not in this file.
+public.
+
+**The tool is `pour-from-qa.sh`**, with the SQL it runs in `pour-from-qa/`; its
+header says what it refuses to do and why. It is run on the host, from this
+directory, after the production stack has come up for the first time, because the
+migrations run inside the backend and there is no schema to pour into before
+that:
+
+```bash
+sh pour-from-qa.sh --check   # proves everything and pours nothing
+sh pour-from-qa.sh           # pours
+```
+
+**The order is: first the pour, then the superadmin's registration described
+below.** The tool refuses a production database in which any table holds a
+different number of rows than its migrations left, and a registration through
+the portal writes rows, so registering first makes the pour impossible and not
+merely redundant. The same person administers both stacks (`compose.qa.yml`), so
+if the superadmin's address already has an account on QA, that account arrives
+with the pour, carrying its QA password. Whether a poured account counts as
+"registered and confirmed" for the rule below is the owner's to say (PDL P21);
+the order here does not decide it.
+
+**What arrives with the pour is not only data.** Sessions, reset links, passwords
+and the rights each account holds all come over, and the tool lists them when it
+finishes. Read that list before the portal is opened to anybody.
 
 ### Never run `docker compose down` on this project
 
