@@ -39,20 +39,23 @@ const RUN = '/sr/liga/brdska-2019'
 const LIST = '/sr/lige?sezona=2019'
 
 /**
- * The three days of it this file counts a single race of, and the race of each.
+ * The three days of it this file counts, and how much of each.
  *
- * - `BTL trening trek` runs three on one morning (244, 245, 246), and the competition counts the
- *   MIDDLE one by id and by length: not the first, not the last, so a reading that takes either
- *   end of a day is not satisfied by luck;
- * - `Šidski novogodišnji maraton` runs two (1088, 1089), and the competition counts the longer;
- * - `Mrazijada` runs one (758), which is the control: a day whose only race counts.
+ * - `BTL trening trek` runs three races on one morning (244, 245, 246), and the competition counts
+ *   the MIDDLE one by id and by length: not the first and not the last, so a reading that takes
+ *   either end of a day is not satisfied by luck;
+ * - `Šidski novogodišnji maraton` runs two (1088, 1089), and the competition counts BOTH: a day
+ *   counted whole, which is the control that says a reading counting too little is caught too, and
+ *   the reason there are four races counted on three days and the two numbers cannot be taken for
+ *   one another;
+ * - `Mrazijada` runs one (758), and it counts.
  *
- * In the order the server would list them, which is the calendar's.
+ * In the order the server would list them, which is the calendar's and then the id.
  */
 const THE_ONLY_ONE = 758
-const THE_LONGER_OF_TWO = 1089
+const BOTH_OF_TWO = [1088, 1089]
 const THE_MIDDLE_OF_THREE = 245
-const COUNTED = [THE_ONLY_ONE, THE_LONGER_OF_TWO, THE_MIDDLE_OF_THREE]
+const COUNTED = [THE_ONLY_ONE, ...BOTH_OF_TWO, THE_MIDDLE_OF_THREE]
 
 /** The arrangement above, read off the files, because a case that silently measured nothing the
  *  day the data is generated again is the fault this file exists to stop. The events returned are
@@ -80,8 +83,8 @@ function theArrangement(): { events: BtlEvent[]; races: Race[] } {
       .sort((left, right) => left - right)
 
   expect(raceIdsOf('BTL trening trek')).toEqual([244, 245, 246])
-  expect(raceIdsOf('Šidski novogodišnji maraton')).toEqual([1088, 1089])
-  expect(raceIdsOf('Mrazijada')).toEqual([758])
+  expect(raceIdsOf('Šidski novogodišnji maraton')).toEqual(BOTH_OF_TWO)
+  expect(raceIdsOf('Mrazijada')).toEqual([THE_ONLY_ONE])
 
   return { events, races }
 }
@@ -105,11 +108,11 @@ const ran = (id: number, memberNumber: string, raceId: number, points: number): 
 /**
  * Who ran what, and every number in it is chosen so that a wrong reading gives a different one.
  *
- * - `000001` ran the counted race of `BTL trening trek` and both the others: 10 is the answer, and
- *   10 + 7 + 3 is 20, 10 + 7 is 17, 10 + 3 is 13. At `Šidski` the counted race brought 6 and the
- *   other 4, so the cell is 6 and a sum of both would be 10, which is the other cell's answer
- *   and the reason no two cells of one row can swap quietly. The total is 16.
- * - `000002` ran only races the competition does not count, on two of the days it counts: nobody
+ * - `000001` ran the counted race of `BTL trening trek` and both of the others: 10 is the answer,
+ *   and 10 + 7 is 17, 10 + 3 is 13 and 10 + 7 + 3 is 20, none of them the 10. At `Šidski` both
+ *   races count, so the cell is the two added, 11 (owner, 07.09.2026: „onda ce dole u njegovu
+ *   celiju biti upisan zbir bodova sa obe trke"). The total is 21.
+ * - `000002` ran only races the competition does not count, both of them on a day it does: nobody
  *   who read days would leave them out of the table, and they are not in it.
  * - `000003` ran one counted race and nothing else, which is the member no reading can get wrong.
  */
@@ -117,10 +120,10 @@ const RAN: Result[] = [
   ran(1, '000001', 245, 10),
   ran(2, '000001', 244, 7),
   ran(3, '000001', 246, 3),
-  ran(4, '000001', 1088, 4),
+  ran(4, '000001', 1088, 5),
   ran(5, '000001', 1089, 6),
   ran(6, '000002', 244, 50),
-  ran(7, '000002', 1088, 60),
+  ran(7, '000002', 246, 60),
   ran(8, '000003', 245, 8),
 ]
 
@@ -129,7 +132,7 @@ const JSON_HEADERS = { 'content-type': 'application/json' }
 /** The competition, served with its races chosen and with the days named as the file wrote them. */
 let stopServing: (() => void) | null = null
 
-function servedCountingThree(): void {
+function servedCountingFour(): void {
   const leagues: League[] = JSON.parse(
     readFileSync(join(process.cwd(), 'src/test/mock/leagues.json'), 'utf-8'),
   )
@@ -197,14 +200,15 @@ const placings = (table: ReturnType<typeof within>): HTMLElement[] =>
 describe('the standing of a competition that counts some of the races of a day', () => {
   it('adds up only the races it counts, and has no row for somebody who ran none of them', async () => {
     theArrangement()
-    servedCountingThree()
+    servedCountingFour()
 
     renderAt(RUN)
 
     const table = within(await screen.findByRole('table', { name: 'Poredak takmičenja' }))
     const rows = placings(table)
 
-    /* Two people: `000002` ran two days of it and no race it counts, and is not here. */
+    /* Two people: `000002` ran two races of a day it counts and not one race it counts, and is not
+       here. */
     expect(rows).toHaveLength(2)
     expect(within(first(rows)).getByRole('rowheader')).toHaveTextContent('Prvić')
     expect(within(at(rows, 1)).getByRole('rowheader')).toHaveTextContent('Trećić')
@@ -213,9 +217,9 @@ describe('the standing of a competition that counts some of the races of a day',
     /* The total and then one cell per day, in the order the columns stand: an empty cell for the
        day somebody did not run, and the sum of the races counted for the day somebody did. */
     expect(within(first(rows)).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
-      formatPoints(16, 'sr'),
+      formatPoints(21, 'sr'),
       '',
-      formatPoints(6, 'sr'),
+      formatPoints(11, 'sr'),
       formatPoints(10, 'sr'),
     ])
     expect(within(at(rows, 1)).getAllByRole('cell').map((cell) => cell.textContent)).toEqual([
@@ -235,7 +239,7 @@ describe('the standing of a competition that counts some of the races of a day',
       ),
     )
 
-    servedCountingThree()
+    servedCountingFour()
 
     renderAt(RUN)
 
@@ -263,7 +267,7 @@ describe('the list of competitions, for a competition that counts some of the ra
     const { races } = theArrangement()
     const raceOf = (id: number) => must(races.find((one) => one.id === id), `trka ${String(id)}`)
 
-    servedCountingThree()
+    servedCountingFour()
 
     const user = setupUser()
 
@@ -285,9 +289,10 @@ describe('the list of competitions, for a competition that counts some of the ra
       'BTL trening trek',
     ])
 
-    /* **Under each of them the one race the competition counts, named exactly.** Each day is asked
-       the same question and gets a list of one: the middle race of three, the longer of two, and
-       the only race there is. A list of all the races of each day is the box this replaced. */
+    /* **Under each of them exactly the races the competition counts, named exactly.** One race
+       under the day of three, both under the day of two, and the only one under the third: a list
+       of all the races of each day is the box this replaced, and a list of one race per day is
+       its opposite. */
     const underEach = (name: string) => {
       const item = must(
         within(box).getByRole('heading', { level: 4, name }).closest('li'),
@@ -298,23 +303,25 @@ describe('the list of competitions, for a competition that counts some of the ra
         .getAllByRole('listitem')
         .map((one) => one.textContent)
     }
+    const named = (ids: number[]) =>
+      ids.map(raceOf).map((one, _index, among) => raceLabel(one, among, 'sr'))
 
-    expect(underEach('BTL trening trek')).toEqual([
-      raceLabel(raceOf(THE_MIDDLE_OF_THREE), [raceOf(THE_MIDDLE_OF_THREE)], 'sr'),
-    ])
-    expect(underEach('Šidski novogodišnji maraton')).toEqual([
-      raceLabel(raceOf(THE_LONGER_OF_TWO), [raceOf(THE_LONGER_OF_TWO)], 'sr'),
-    ])
-    expect(underEach('Mrazijada')).toEqual([
-      raceLabel(raceOf(THE_ONLY_ONE), [raceOf(THE_ONLY_ONE)], 'sr'),
-    ])
+    expect(underEach('BTL trening trek')).toEqual(named([THE_MIDDLE_OF_THREE]))
+    expect(underEach('Šidski novogodišnji maraton')).toEqual(named(BOTH_OF_TWO))
+    expect(underEach('Mrazijada')).toEqual(named([THE_ONLY_ONE]))
 
     /* **The two numbers on the row, from the same races.** Three days and not the eleven the record
-       names nor the ten with races, and two people and not three: `000002` is the one a reading by
-       days would count and the one the table does not have. */
+       names, the ten of them with races, nor the four races; and two people and not three:
+       `000002` is the one a reading by days would count and the one the table does not have.
+       Waited on a shorter clock than the case, because the case's own clock is the same twenty
+       seconds `waitFor` is given and a real difference would then report as a bare timeout
+       (`pages/publicScreens.test.tsx` measured that). */
     expect(box.textContent).toContain('Događaja: 3')
-    await waitFor(() => {
-      expect(box.textContent).toContain('Učesnika: 2')
-    })
+    await waitFor(
+      () => {
+        expect(box.textContent).toContain('Učesnika: 2')
+      },
+      { timeout: SLOW / 4 },
+    )
   }, SLOW)
 })
