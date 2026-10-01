@@ -61,6 +61,13 @@
 # cannot be read as its column's type is quoted in it. Both databases have the type of every
 # column checked against the migrations before any of this runs, so that cannot happen to rows
 # that came out of QA, and the whole log is where it would be read if it did.
+#
+# AND THE FILTER GOES BY THE SHAPE OF A LINE, which is the same boundary from the other side: a
+# value that itself holds a line beginning with ERROR: would pass it wherever PostgreSQL prints a
+# value on lines of its own, as it does in the DETAIL of a check violation. That takes a member
+# having typed such a line into a free text field AND the pour failing on that very row. It is
+# written here and not closed, because closing it would mean parsing PostgreSQL's messages, and
+# the whole log, kept in memory, is where it would be read.
 
 umask 077
 

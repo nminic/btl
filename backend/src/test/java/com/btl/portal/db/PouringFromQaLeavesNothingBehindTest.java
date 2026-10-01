@@ -99,12 +99,18 @@ class PouringFromQaLeavesNothingBehindTest extends DatabaseTest {
 	 * {@code psql -f -}, with the row inline. The row carries a name that is not a real person's,
 	 * and is what the case looks for on the terminal. A TEMP table, so it is gone when the session
 	 * ends and the schema every other case reads is never touched.
+	 *
+	 * <p><b>The row says {@code ERROR:} in the middle of its text, on purpose.</b> That is what a
+	 * member's own free text can do, and it separates a filter that keeps the lines that BEGIN with
+	 * the server's {@code ERROR:} from one that keeps every line that contains the word: the second
+	 * prints the CONTEXT and the DETAIL, which carry the row. A probe without it passed both, found
+	 * by replacing the anchored pattern with an unanchored one and watching this class stay green.
 	 */
 	private static final String PROBE = """
 			create temp table b190_probe (id integer primary key, who text not null,
 			  verdict text not null check (verdict <> 'no'));
 			copy b190_probe from stdin;
-			1\tMarker Memberson\tno
+			1\tMarker Memberson says ERROR: not an error line\tno
 			\\.
 			""";
 

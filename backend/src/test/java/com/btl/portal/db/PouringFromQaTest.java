@@ -692,6 +692,27 @@ class PouringFromQaTest extends DatabaseTest {
 	}
 
 	/**
+	 * A TABLE CHECKED BY TWO COLUMNS IS LISTED WITH BOTH, and the one that cannot be emptied is
+	 * not hidden behind the one that can.
+	 *
+	 * <p>No table of the real schema carries both a {@code token_hash} and a {@code password_hash},
+	 * so a list that showed only ONE of the columns that matched, whichever one, passed every case
+	 * above: on this schema one is all there is. Found by replacing the aggregate with a
+	 * {@code max()} and watching the whole class stay green. The table is built here, because it
+	 * is the one the report's sentence about emptying could mislead about. Listed with only its
+	 * token column it would read as a table that can be emptied, and the password column in it
+	 * would never be shown. Columns come back in alphabetical order, so both the {@code min} and
+	 * the {@code max} of the two are different from the pair.
+	 */
+	@Test
+	void aTableCheckedByTwoColumnsIsListedWithBothOfThem() {
+		db.sql("create table b190_both (token_hash char(64) not null primary key,"
+				+ " password_hash text not null)").update();
+
+		assertThat(namedByTheList()).containsEntry("b190_both", "password_hash,token_hash");
+	}
+
+	/**
 	 * THE CLOSING REPORT NAMES NO TABLE THAT CARRIES A TOKEN, asked of the catalogue.
 	 *
 	 * <p>The negative half of the case above. A sentence that lists the token tables is the one
