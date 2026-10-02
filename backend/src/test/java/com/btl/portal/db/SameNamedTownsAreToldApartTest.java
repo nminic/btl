@@ -37,7 +37,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>What the owner's sentence is split into, and the check for each part.</b>
  *
  * <ul>
- * <li>"Istoimena mesta u istoj drzavi": only towns of a pair that V3 held more than once are renamed;
+ * <li>"Istoimena mesta u istoj drzavi": only towns of a pair that V3 held more than once are renamed, and
+ * the owner said so himself when asked (02.10.2026): „Isključivo DUPLIRANI nazivi dobijaju u zagradi veći
+ * mesto. Svi ostali nemaju." A city and a village alike, and a town that is the only one of its name
+ * never;
  * <li>"dobijaju u zagradi": the new name is the old one with a bracketed label and nothing else changed,
  * not the rank, not the country, not the English name;
  * <li>"najblize vece mesto": the label is the name of another town of the same country that stands higher

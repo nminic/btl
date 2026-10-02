@@ -77,7 +77,7 @@ export function PlaceField({
   locked?: boolean
 }) {
   const { locale, t } = useI18n()
-  /* Asked for on the second letter and not before: the codebook is 1200 KB, and
+  /* Asked for on the second letter and not before: the codebook is 1300 KB, and
      somebody who opened a form has not asked for it yet. */
   const places = usePlaces(value.trim().length >= TYPED_BEFORE_GUESSING)
   const [open, setOpen] = useState(false)
@@ -102,7 +102,7 @@ export function PlaceField({
    * a control that lets it be contradicted is a control that files a race in the
    * wrong country. Only a town entered by hand leaves the choice open.
    *
-   * Recognised means the codebook holds this name **and holds it once**. 862
+   * Recognised means the codebook holds this name **and holds it once**. 752
    * names in it stand in more than one country, counted the way this counts
    * them, which is folded (`plainly`) rather than letter for letter: London is
    * British and American, Lagos is Nigerian and Portuguese.
@@ -391,7 +391,7 @@ export function PlaceField({
           {offered.map((place, index) => (
             <li
               /* The town's own mark, which is what it is for: the name and the
-                 country are not a key, since 744 names in the codebook stand in
+                 country are not a key, since 644 names in the codebook stand in
                  more than one country and a country can hold two towns of one
                  name. Before the codebook carried a mark this was name, country
                  and the row number together, and the row number was doing the

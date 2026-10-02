@@ -359,6 +359,13 @@ def country_migration(rows):
 # Places
 # --------------------------------------------------------------------------
 
+# The text below is what V3 was written with, and V3 is on main, so this script never writes it again:
+# it refuses to rewrite a migration main carries. One sentence in it stopped being true on 02.10.2026,
+# "There is deliberately no unique key over (name, country)". V52 adds that key, after the delta that
+# gives towns that were called alike the nearest bigger town in brackets (owner, PDL "Odluke iz ciscenja
+# nalaza (02.10.2026, vlasnik)"), and says so in its own header. The sentence stays as it is, for the
+# reason V3 stays: this template is what produced that file.
+
 PLACE_DDL = """
 /* The town codebook: forty seven thousand towns out of the GeoNames export
    under CC BY 4.0, cut down to the size a form may send (ADL A16). The credit

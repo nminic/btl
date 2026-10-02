@@ -26,7 +26,7 @@ describe('the list of resources', () => {
 
        Eleven until 10.08.2026, when the codebook of the world's towns arrived:
        the event form offers a town from the second letter typed, and the
-       codebook is 1200 KB that no screen but that one asks for (owner,
+       codebook is 1300 KB that no screen but that one asks for (owner,
        10.08.2026).
 
        Thirteen since 11.08.2026, when a member could say they are going to a
