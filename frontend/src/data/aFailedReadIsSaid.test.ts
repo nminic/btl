@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest'
 import { sources, WHOLE_PORTAL } from '../test/sources'
 
 /**
- * A READ THAT FAILED IS NEVER TURNED INTO AN EMPTY LIST WITHOUT SOMETHING SAYING SO (owner,
- * 02.10.2026, PENDING stavka 368: „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda
- * prazan, uz dugme „Pokusaj ponovo". Vazi za sve ekrane sa spiskom.").
+ * A READ THAT FAILED IS NEVER TURNED INTO AN EMPTY LIST WITHOUT SOMETHING SAYING SO (decision of
+ * 02.10.2026, PENDING stavka 368, in the words of the PDL's record of it and not the owner's:
+ * „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo".
+ * Vazi za sve ekrane sa spiskom.").
  *
  * <p><b>Found by the compiler and kept by the compiler.</b> The two screens that drew a failed
  * read as an empty list were found by walking the syntax tree of every production file and asking

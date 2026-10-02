@@ -4,9 +4,10 @@ import './Unreadable.css'
 /**
  * A LIST THAT COULD NOT BE READ, SAID AS THAT, WITH THE WAY TO ASK AGAIN.
  *
- * <p>Owner, 02.10.2026 (`btl-produkt/PDL.md`, „Odluke iz ciscenja nalaza", PENDING stavka 368):
- * „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo".
- * Vazi za sve ekrane sa spiskom." What prompted it was measured on the team's page: after a press
+ * <p>Decision of 02.10.2026 (`btl-produkt/PDL.md`, „Odluke iz ciscenja nalaza", PENDING stavka
+ * 368), in the words of the PDL's record of it and not the owner's: „Spisak koji ne moze da se
+ * ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo". Vazi za sve ekrane sa
+ * spiskom." What prompted it was measured on the team's page: after a press
  * that worked, both reads of the queue failed, both headings went and the two applications the
  * team had never answered went with them, so a portal that could not be reached read as a team
  * with nothing waiting.

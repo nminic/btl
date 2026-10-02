@@ -155,9 +155,10 @@ export const WHEN_DECIDING_AN_APPLICATION = {
  *
  * <p>A list that holds nothing and a list that was never read are different facts, and until
  * 02.10.2026 this module had no way to say so: every failure came back as an empty array, which
- * the screen drew as no section at all. Owner, 02.10.2026 (PENDING stavka 368): „Spisak koji ne
- * moze da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"." So the two are
- * told apart here, at the one place that knows, and the screen is handed the difference.
+ * the screen drew as no section at all. Decision of 02.10.2026 (PENDING stavka 368), in the words
+ * of the PDL's record of it and not the owner's: „Spisak koji ne moze da se ucita KAZE to, umesto
+ * da izgleda prazan, uz dugme „Pokusaj ponovo"." So the two are told apart here, at the one place
+ * that knows, and the screen is handed the difference.
  *
  * <p>`unreadable` carries nothing, and that is the point: there are six ways a read can fail and
  * the screen has one sentence for all of them (`theRowsAt` says why it has one).

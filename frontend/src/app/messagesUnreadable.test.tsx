@@ -8,9 +8,10 @@ import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
 /**
- * THE INBOX IN THE HEADER, WHEN THE SERVER CANNOT BE ASKED FOR IT (owner, 02.10.2026, PENDING
- * stavka 368: „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda prazan, uz dugme
- * „Pokusaj ponovo". Vazi za sve ekrane sa spiskom.").
+ * THE INBOX IN THE HEADER, WHEN THE SERVER CANNOT BE ASKED FOR IT (decision of 02.10.2026, PENDING
+ * stavka 368, in the words of the PDL's record of it and not the owner's: „Spisak koji ne moze da
+ * se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo". Vazi za sve ekrane sa
+ * spiskom.").
  *
  * <p><b>The one screen the compiler found besides the team's page</b>
  * (`data/aFailedReadIsSaid.test.ts` is the same question asked of the whole portal): the panel

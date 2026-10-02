@@ -1162,8 +1162,9 @@ describe('one number on both lists', () => {
  * <p>Measured with a probe on the screen before this existed: the server answered an error to
  * both reads only AFTER a press that succeeded, and what the team saw was both headings gone and
  * the two applications it had never answered gone with them, with nothing saying that the server
- * had not been reached. The owner's decision, after being shown that moment: „Spisak koji ne moze
- * da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"."
+ * had not been reached. The decision he took after being shown that moment, in the words of the
+ * PDL's record of it and not his: „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda
+ * prazan, uz dugme „Pokusaj ponovo"."
  *
  * <p><b>The axes are the list, the way it fails, and the moment.</b> The two lists fail on their
  * own (one read can come back while the other does not), by four different routes that are one

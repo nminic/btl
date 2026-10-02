@@ -8,8 +8,9 @@ import { setupUser } from '../test/user'
 import { Unreadable } from './Unreadable'
 
 /**
- * A LIST THAT COULD NOT BE READ, SAID AS THAT (owner, 02.10.2026, PENDING stavka 368: „Spisak koji
- * ne moze da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"").
+ * A LIST THAT COULD NOT BE READ, SAID AS THAT (decision of 02.10.2026, PENDING stavka 368, in the
+ * words of the PDL's record of it and not the owner's: „Spisak koji ne moze da se ucita KAZE to,
+ * umesto da izgleda prazan, uz dugme „Pokusaj ponovo"").
  *
  * <p>The component is the one place the sentence and the button come together, so every screen
  * that used to draw a failed read as an empty list says it the same way. What differs between

@@ -284,7 +284,8 @@ export function Registration() {
             route is no oracle for which addresses are members). A 204 therefore says „received"
             and not „sent", and the sentence says what that is worth: IF this address is still
             waiting, a message went out. It is `forgottenPassword.done`'s shape for the same
-            reason, and its words are the coordinator's proposal, not the owner's.
+            reason, and its words are a proposal of the author of this change (approved by the
+            coordinator), not the owner's.
 
             Asked once: the sentence replaces the button, which is what keeps one member from
             asking a mail relay for a letter per press. A refusal does not replace it, because

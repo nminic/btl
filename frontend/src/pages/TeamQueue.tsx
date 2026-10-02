@@ -121,8 +121,9 @@ export function TeamQueue({
   return (
     <>
       {/* A LIST THAT COULD NOT BE READ KEEPS ITS NAME AND SAYS SO, and is not drawn as a list that
-          holds nothing (owner, 02.10.2026, PENDING stavka 368: „Spisak koji ne moze da se ucita
-          KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"").
+          holds nothing (decision of 02.10.2026, PENDING stavka 368, in the words of the PDL's
+          record of it and not the owner's: „Spisak koji ne moze da se ucita KAZE to, umesto da
+          izgleda prazan, uz dugme „Pokusaj ponovo"").
 
           The heading stays because it is what the sentence and the button are about, and a reader
           who arrives by headings must be able to arrive at this one. It is NOT the heading over an

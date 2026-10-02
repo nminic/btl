@@ -56,8 +56,9 @@ function HisOwnInbox({ mine }: { mine: string }) {
      Until the answer lands the panel says there is nothing, and then it says what arrived.
 
      **AND WHEN THE ANSWER NEVER COMES IT SAYS THAT, INSIDE THE PANEL, and no longer „there is
-     nothing"** (owner, 02.10.2026, PENDING stavka 368: „Spisak koji ne moze da se ucita KAZE to,
-     umesto da izgleda prazan, uz dugme „Pokusaj ponovo". Vazi za sve ekrane sa spiskom."). The
+     nothing"** (decision of 02.10.2026, PENDING stavka 368, in the words of the PDL's record of it
+     and not the owner's: „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda prazan, uz
+     dugme „Pokusaj ponovo". Vazi za sve ekrane sa spiskom."). The
      paragraph above is what this was written against and what it said is still true of the
      loading sheet and of an error drawn over the page: neither is drawn. What is drawn is a
      sentence in a panel that is shut until somebody opens it, with the button that asks again,

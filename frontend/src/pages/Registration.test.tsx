@@ -625,7 +625,8 @@ describe('Registration once it is open', () => {
  * on exactly this message, so that the route is no oracle for which addresses are members). A 204
  * therefore says „received", not „sent", and the sentence under the button says what that is worth:
  * <b>if</b> the address is still waiting, a message went out. The shape is `forgottenPassword.done`'s
- * for the same reason, and the words are the coordinator's proposal and not the owner's.
+ * for the same reason, and the words are a proposal of the author of this change (approved by the
+ * coordinator) and not the owner's.
  *
  * <p><b>The address sent is the one the letter went to</b>, which is the only address this screen
  * holds: the form that took it is gone, replaced in the history by this confirmation
