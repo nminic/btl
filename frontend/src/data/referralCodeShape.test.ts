@@ -66,7 +66,12 @@ const SCHEMA = MIGRATION_FILES.map((name) => ({
   text: readFileSync(join(MIGRATIONS, name), 'utf-8'),
 }))
 
-const MENTIONED_IN = SCHEMA.filter(({ text }) => text.includes(CONSTRAINT)).map(({ name }) => name)
+/** Every place the name stands, ONE ENTRY PER OCCURRENCE and not one per file: a second mention in the
+ *  very file that defines the constraint is as much a reason to read it as one in a later migration
+ *  (measured: counted per file, a mention added to V7 beside its own definition went unseen). */
+const MENTIONS = SCHEMA.flatMap(({ name, text }) =>
+  Array.from({ length: text.split(CONSTRAINT).length - 1 }, () => name),
+)
 const DEFINED = SCHEMA.flatMap(({ name, text }) =>
   [...text.matchAll(DEFINITION)].map((one) => ({ name, pattern: one[1] ?? '' })),
 )
@@ -79,9 +84,9 @@ describe('what a referral code looks like, in the schema and in the portal', () 
   })
 
   it('is named in exactly one place across all of them, and that place defines it', () => {
-    expect(MENTIONED_IN, 'the migrations that name the constraint').toHaveLength(1)
+    expect(MENTIONS, 'the places that name the constraint, one per occurrence').toHaveLength(1)
     expect(DEFINED, 'the places that define it').toHaveLength(1)
-    expect(DEFINED[0]?.name, 'the file that defines it is the file that names it').toBe(MENTIONED_IN[0])
+    expect(DEFINED[0]?.name, 'the file that defines it is the file that names it').toBe(MENTIONS[0])
   })
 
   it('is a character class, a count and the two anchors, which both engines read alike', () => {
