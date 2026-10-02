@@ -50,11 +50,12 @@ import java.util.Set;
  * 13.09.2026), and it is not written here - it goes down the one road
  * {@link RightsAtTheDoor} takes.
  *
- * <p><b>THE ROW EITHER ROUTE THAT NAMES A KEY ACTS ON IS A MODERATOR, AND THAT ONE
- * CONDITION IS ALSO THE WHOLE OF PDL P28a's TWO PROHIBITIONS.</b> Both statements that
- * take an id join {@code role} and ask for {@code moderator}, which is the same condition
+ * <p><b>THE ROW ANY ROUTE THAT NAMES A KEY ACTS ON IS A MODERATOR, AND THAT ONE
+ * CONDITION IS ALSO THE WHOLE OF PDL P28a's TWO PROHIBITIONS.</b> Each of the three that
+ * take an id ({@link #change}, {@link #rename}, {@link #remove}) asks for {@code moderator}
+ * in a statement that joins {@code role}, which is the same condition
  * {@link ModeratorApi} serves the list by, so what may be written is exactly what may be
- * read - and the third route, which takes no key, WRITES that same word rather than
+ * read - and the route that takes no key, {@link #add}, WRITES that same word rather than
  * reading it, so it cannot make anything else either. The owner's sentence of
  * 11.08.2026 - „Superadmin ne sme da oduzme prava sebi ni poslednjem preostalom
  * Superadminu" - has two halves and they are not the same claim, so each is taken on its
@@ -62,7 +63,7 @@ import java.util.Set;
  *
  * <ul>
  * <li><b>„sebi".</b> A superadmin is not a moderator, so his own key finds no row here and
- * both routes answer 404 to it. He cannot be stripped because he holds nothing that is
+ * every route that takes a key answers 404 to it. He cannot be stripped because he holds nothing that is
  * kept in a table: „Superadmin nema kućice. On sme sve, uvek, i ne pojavljuje se u ovoj
  * tabeli kao neko kome se prava dodeljuju" (PDL P28a, 30.07.2026), and
  * {@link com.btl.portal.domain.rights.AdminRights} answers him yes off
@@ -83,37 +84,72 @@ import java.util.Set;
  * </ul>
  *
  * <p><b>The boundary in the other direction, said out loud because a route that refused
- * everybody would satisfy both bullets above.</b> A moderator IS made, IS re-ticked and IS
- * stripped, and that is the ordinary use of this screen; what is refused is an account
- * that is not one.
+ * everybody would satisfy both bullets above.</b> A moderator IS made, IS re-ticked, IS
+ * renamed and IS stripped, and that is the ordinary use of this screen; what is refused is
+ * an account that is not one.
  *
- * <p><b>HIS NAME MAY BE CHANGED HERE, SINCE 26.09.2026, AND HIS ADDRESS MAY NOT.</b> The
- * owner, on three offered outcomes: „Izabrao ime da, adresa ne ... Greška u imenu se
- * ispravlja kroz portal; adresa se ne menja jer je to prijava." The boundary is measured
- * rather than stylistic: {@link #add} mints a {@code password_reset_token} at the address a
- * moderator is made with, so a superadmin who could move that address afterwards could read
- * the next password reset link meant for the man who used to hold it - „administracija bi
- * izmenom adrese preuzela moderatorov nalog" (owner, 26.09.2026). So {@link #change} now
- * carries both fields of the row this screen edits - the name that identifies it and the
- * boxes that are its point - in the one {@code PUT} the paragraph below used to say an edit
- * would belong in rather than in a third method; and it REFUSES, rather than quietly drops,
- * a request that also names an address, which is what {@link Ticks#email} is for. Measured
- * rather than assumed: before that field existed, an address sent alongside a row of boxes
- * was silently ignored and answered 200, not refused - the sentence that used to stand where
- * this one does claimed the opposite, and this change is what makes it true.
+ * <p><b>HIS NAME MAY BE CHANGED HERE AND HIS ADDRESS MAY NOT.</b> PDL, 26.09.2026 („Moderatoru
+ * se menja IME, ne i adresa"): the owner chose, on three offered outcomes, that a mistake in the
+ * name is corrected through the portal and that the address is not, because the address is
+ * what he signs in with. The boundary is measured rather than stylistic: {@link #add} mints a
+ * {@code password_reset_token} at the address a moderator is made with, so a superadmin who
+ * could move that address afterwards could read the next password reset link meant for the
+ * man who used to hold it, which is the cost that was put to him before he chose. So
+ * {@link #change} and {@link #rename} both REFUSE, rather than quietly drop, a request that
+ * also names an address, which is what {@link Ticks#email} and {@link Renamed#email} are for.
+ * Measured rather than assumed: with no field for one on the shape, an address sent alongside
+ * a row of boxes was silently ignored and answered 200, not refused.
+ *
+ * <p><b>HIS NAME AND HIS BOXES ARE TWO REQUESTS, SINCE 02.10.2026, AND THAT IS WHAT KEEPS ONE
+ * FROM UNDOING THE OTHER.</b> PDL, 02.10.2026 („Odluke iz ciscenja nalaza"): the owner chose,
+ * against the recommendation put to him, that the correction of a moderator's name sends only
+ * the name and the rights are sent separately, so that correcting a name does not undo another
+ * superadmin's change of rights. From 26.09.2026 until then {@link #change} took both in one
+ * {@code PUT}, so correcting a name sent the boxes the screen had last read and the route
+ * replaced the table's set with them: whatever a second superadmin had ticked since was
+ * undone, answered 200 and not mentioned. A box pressed on such a screen wrote the name back
+ * the same way, which is the same fault the other way round and is closed by the same split.
+ *
+ * <p><b>THE SHAPE OF THE ROUTES IS DERIVED, NOT THE OWNER'S WORD.</b> The decision says what a
+ * request carries, not how many routes there are. Two were written, {@code PUT
+ * /api/moderators/{id}} for the boxes, as it was until 26.09.2026, and {@code PUT
+ * /api/moderators/{id}/name} for the name, because then the guarantee is by construction and
+ * not by a branch: {@link #rename} has no statement that writes a box and {@link #change} has
+ * none that writes a name, so no request, whatever it carries, can make one undo the other.
+ * And every {@code PUT} stays whole for what it replaces - the whole name, the whole set of
+ * boxes - which is the cost ADL A54 priced and the owner accepted: the administrator always
+ * sends the whole row. A single route taking either half would have had to say that a field
+ * left out means „leave it", which this class chose against. The precedents are
+ * {@code /api/me/category} and {@code /api/me/password}, one fact on one route, and
+ * {@link LeagueWriteApi}, which writes a league's own columns on {@code PUT /api/leagues/{id}}
+ * and what it counts on routes beside it.
+ *
+ * <p><b>WHAT A FIELD OF THE OTHER ROUTE'S SHAPE DOES, NAMED RATHER THAN DISCOVERED.</b> A name
+ * sent to {@link #change}, or boxes sent to {@link #rename}, are fields that shape has no
+ * component for, and Jackson drops a field a record does not declare, as it does everywhere on
+ * this portal. So a request in the old shape, a name beside the boxes, is answered as the half
+ * the route takes and the other half is not written. That is the guarantee, and it is also
+ * silent: a screen that sent both would believe it had saved both. Nothing this portal serves
+ * sends both once the split is deployed, and what each order of deploying does to a screen
+ * that still does is in the description of the pull request that made it.
  *
  * <p><b>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED.</b>
  *
  * <ul>
- * <li><b>CHANGING his address.</b> Explained above: {@link #change} refuses a request
- * naming one rather than silently keeping the row's own, and the reason is a stolen
- * account rather than a missing route.
+ * <li><b>CHANGING his address.</b> Explained above: {@link #change} and {@link #rename} each
+ * refuse a request naming one rather than silently keeping the row's own, and the reason is a
+ * stolen account rather than a missing route.
  * <li><b>The count of superadmins.</b> Named above: the owner closed it by construction on
  * 14.09.2026, and the place it would have lived is a resource over ACCOUNTS AND ROLES,
  * which this is not.
  * <li><b>Any say over who may read this.</b> {@link ModeratorApi} is where the list is
- * served and this file adds no condition of its own about who is asking; both routes ask
- * the door and the door answers for both.
+ * served and this file adds no condition of its own about who is asking; every route here
+ * asks the door and the door answers for all of them.
+ * <li><b>Two superadmins pressing different boxes of the same row, or correcting the same
+ * name.</b> Not closed by the split and not claimed to be: the later {@code PUT} carries the
+ * whole of what its screen saw, so the earlier box or the earlier name is replaced. For the
+ * boxes that is the semantics {@link Ticks} chose on purpose, and for the name it is one row
+ * written whole by whoever writes last.
  * </ul>
  *
  * <p><b>„OBRISI MODERATORA" NO LONGER DELETES AN ACCOUNT, AND THE ROW OF THIS FILE THAT
@@ -248,7 +284,8 @@ class ModeratorWriteApi {
 	 *
 	 * <p>The same is true of both routes added since: an account written without its
 	 * invitation is a moderator nobody can reach, and a moderatorship taken away without
-	 * the ticks going with it is a set of rights waiting to come back.
+	 * the ticks going with it is a set of rights waiting to come back. {@link #rename} is
+	 * one statement and is atomic without it.
 	 */
 	private final TransactionTemplate inOneTransaction;
 
@@ -581,7 +618,28 @@ class ModeratorWriteApi {
 	}
 
 	/**
-	 * ONE ROW OF THE MATRIX, WHOLE, AND SINCE 26.09.2026 HIS NAME BESIDE IT.
+	 * Which of the two parts of a name the superadmin did not fill in, by the names the JSON
+	 * uses and in the order of the form.
+	 *
+	 * <p>The same rule {@link #whatTheFormLeftOut} applies to the three fields of an
+	 * invitation, for the two of them: blank, empty and absent are one answer
+	 * ({@link #isNothing}).
+	 */
+	private static List<String> whatTheNameLeftOut(Renamed typed) {
+		List<String> missing = new ArrayList<>();
+
+		if (isNothing(typed.firstName())) {
+			missing.add("firstName");
+		}
+		if (isNothing(typed.lastName())) {
+			missing.add("lastName");
+		}
+
+		return missing;
+	}
+
+	/**
+	 * ONE ROW OF THE MATRIX, WHOLE, AND NOTHING BESIDE IT.
 	 *
 	 * <p>„Prava se zadaju kućicama u tabeli: red je moderator, kolone su prava" (PDL P28a,
 	 * 30.07.2026), and what a row of boxes sends when it is saved is the boxes that are
@@ -589,32 +647,48 @@ class ModeratorWriteApi {
 	 * twice it says the same thing, and two superadmins saving the same row cannot leave it
 	 * holding the union of what each of them saw.
 	 *
-	 * <p><b>{@code firstName} and {@code lastName} are required for the same reason
-	 * {@code rights} already was, not a lesser one.</b> {@link #change} refuses a request
-	 * whose {@code rights} is missing rather than reading the gap as „leave it", because a
-	 * request that lost that field on the way must not quietly strip a moderator of
-	 * everything. Reading a missing name the other way - „leave it" - would give the two
-	 * fields of one message two different rules for the same kind of gap, one row apart from
-	 * each other. So both travel together, always, exactly like {@link Invited}'s own two
-	 * name fields do at {@link #add}.
+	 * <p><b>His name is NOT on this shape, and that absence is what the decision of
+	 * 02.10.2026 is made of.</b> It stood here from 26.09.2026, required for the same reason
+	 * {@code rights} is, so a screen that corrected a name had to send boxes too - the ones it
+	 * had last read. It travels on {@link Renamed} to a route of its own now; the class
+	 * comment says what a field of the other shape does when a request still sends it.
 	 *
 	 * <p><b>{@code email} is on this shape for exactly one reason, and it is not to be
-	 * written.</b> „adresa se ne menja jer je to prijava" (owner, 26.09.2026): the field
-	 * exists so {@link #change} can tell a request that names an address apart from one that
-	 * does not, and refuse it - see the class comment for why moving it would matter. A
-	 * shape with no field for an address cannot refuse one BY NAME; it can only fail to bind
-	 * it, which is silence, not a refusal.
+	 * written.</b> PDL, 26.09.2026: the address is not changed, because it is what he signs in
+	 * with. The field exists so {@link #change} can tell a request that names an address apart
+	 * from one that does not, and refuse it - see the class comment for why moving it would
+	 * matter. A shape with no field for an address cannot refuse one BY NAME; it can only fail
+	 * to bind it, which is silence, not a refusal.
+	 *
+	 * @param email  never written to the row; present only so a request naming one can be
+	 *               told apart from one that does not, and refused rather than ignored
+	 * @param rights codes as {@code admin_right.code} generates them, {@code entity:events}
+	 *               or {@code queue:payments}; an empty list is a moderator who may do
+	 *               nothing, which is a real state and the one this screen exists to end
+	 */
+	record Ticks(String email, List<String> rights) {
+	}
+
+	/**
+	 * THE NAME OF ONE MODERATOR, WHOLE, AND NOTHING BESIDE IT.
+	 *
+	 * <p>Both parts are required for the same reason {@link Invited}'s two name fields are
+	 * at {@link #add}: the name is the two of them together, so a first name with no surname
+	 * is not half a rename, it is a request that lost a field on the way. A refusal says which
+	 * of the two is missing ({@link NotComplete}).
+	 *
+	 * <p><b>The boxes are NOT on this shape</b>, which is the other half of the decision of
+	 * 02.10.2026 and the whole of why this is a shape of its own: a request that carries no
+	 * box cannot write one. {@link Ticks} says the same sentence the other way round.
 	 *
 	 * @param firstName the name to write onto the account, stripped before it is stored,
 	 *                  exactly as {@link #add} already strips {@link Invited#firstName}
 	 * @param lastName  the surname beside it, same rule
 	 * @param email     never written to the row; present only so a request naming one can be
-	 *                  told apart from one that does not, and refused rather than ignored
-	 * @param rights    codes as {@code admin_right.code} generates them, {@code entity:events}
-	 *               or {@code queue:payments}; an empty list is a moderator who may do
-	 *               nothing, which is a real state and the one this screen exists to end
+	 *                  told apart from one that does not, and refused rather than ignored,
+	 *                  which is the reason {@link Ticks#email} exists too
 	 */
-	record Ticks(String firstName, String lastName, String email, List<String> rights) {
+	record Renamed(String firstName, String lastName, String email) {
 	}
 
 	/** Why a row of boxes could not be written. */
@@ -628,12 +702,13 @@ class ModeratorWriteApi {
 	 * <p>{@code reason} stands first and carries the same word a {@link Refused} would, so
 	 * a caller that reads a refusal by its reason reads this one unchanged: the list is
 	 * what is added and not what is swapped. This is {@link RaceWriteApi}'s shape, named
-	 * rather than reinvented, and {@code missing} carries the components of {@link Invited}
-	 * so the names that come back are the names the JSON uses.
+	 * rather than reinvented, and {@code missing} carries components of {@link Invited} or
+	 * of {@link Renamed} so the names that come back are the names the JSON uses.
 	 *
-	 * <p><b>Only {@link #add} sends it, and {@link #change} still answers a bare reason.</b>
-	 * That is the outstanding half of A54 over routes written BEFORE the decision, carried
-	 * as separate work; this one was written after it and is born with it.
+	 * <p><b>{@link #add} and {@link #rename} send it, and {@link #change} still answers a
+	 * bare reason.</b> That is the outstanding half of A54 over routes written BEFORE the
+	 * decision, carried as separate work; those two were written after it and are born with
+	 * it.
 	 */
 	record NotComplete(String reason, List<String> missing) {
 	}
@@ -646,23 +721,29 @@ class ModeratorWriteApi {
 	}
 
 	/**
-	 * CHANGING WHAT ONE MODERATOR MAY DO, AND SINCE 26.09.2026 WHAT HE IS CALLED.
+	 * CHANGING WHAT ONE MODERATOR MAY DO, AND NOTHING ELSE ABOUT HIM.
 	 *
-	 * <p><b>The name travels with the boxes in the same request, and both are required for
-	 * the same reason.</b> „Izabrao ime da, adresa ne" (owner, 26.09.2026, on three offered
-	 * outcomes). A missing name is refused exactly as a missing {@code rights} already was -
-	 * see the check below - rather than read as „leave the name as it is", so the one field
-	 * this class already refused when absent does not gain a second, quieter meaning the
-	 * moment two more fields join it.
+	 * <p><b>The boxes travel alone since 02.10.2026.</b> His name is {@link #rename}'s, and
+	 * this route has no statement that writes it: a request that carries one, as the old
+	 * shape of this body did, is answered as the boxes it also carries and the name is not
+	 * written (the class comment says why that is the guarantee and what it costs).
+	 *
+	 * <p><b>Which meaning a field left out has here, which ADL A54 asks every route to say:
+	 * refusal.</b> {@code rights} left out is refused rather than read as „leave it", because
+	 * a request that lost that field on the way must not quietly strip a moderator of
+	 * everything - and it is not read as an empty list either, which is a real state and the
+	 * opposite instruction. The refusal names the reason and not the field; A54's second half
+	 * over this route is carried as separate work, and {@link NotComplete} says which routes
+	 * already have it.
 	 *
 	 * <p><b>An address named in the request is refused, without a reason a caller could act
-	 * on.</b> No screen this portal serves ever sends one - the form behind this route asks
-	 * for a name and nothing else ({@code frontend/src/pages/admin/AdminModerators.tsx}) - so
-	 * a request naming one reaches here only through a bypass of that form or a mistake, and
-	 * neither has a reader this file owes a sentence to. The refusal is 400 with an empty
-	 * body, the same shape a moderator who is not there gets below, for the same kind of
-	 * reason: nobody on the other end is both allowed to be asking and entitled to be told
-	 * why.
+	 * on.</b> No screen this portal serves ever sends one - the screen behind this route asks
+	 * for boxes and for a name, never an address
+	 * ({@code frontend/src/pages/admin/AdminModerators.tsx}) - so a request naming one reaches
+	 * here only through a bypass of that screen or a mistake, and neither has a reader this
+	 * file owes a sentence to. The refusal is 400 with an empty body, the same shape a
+	 * moderator who is not there gets below, for the same kind of reason: nobody on the other
+	 * end is both allowed to be asking and entitled to be told why.
 	 *
 	 * <p><b>A box already ticked is not ticked again, and that is the schema's sentence
 	 * rather than an optimisation.</b> V18: „THE PAIR IS THE KEY, so a right is granted
@@ -686,10 +767,9 @@ class ModeratorWriteApi {
 	 * „the twelve I knew about", and the thirteenth right added tomorrow would be refused
 	 * by a file nobody thought to open.
 	 *
-	 * <p><b>The name is written only once every refusal above has had its say</b>, so a
-	 * request this method rejects for any reason - a missing field, an address that should
-	 * not be there, a code the matrix does not hold - leaves the row exactly as it was,
-	 * name included and not only the boxes.
+	 * <p><b>The boxes are written only once every refusal above has had its say</b>, so a
+	 * request this method rejects for any reason - a missing list, an address that should
+	 * not be there, a code the matrix does not hold - leaves the row exactly as it was.
 	 */
 	@PutMapping("/api/moderators/{id}")
 	@OnlyTheSuperadmin
@@ -704,23 +784,13 @@ class ModeratorWriteApi {
 
 		/* NEVER WRITTEN, ONLY NAMED, so this is refused before anything about the target row
 		   is even read - see Ticks#email and the class comment for why moving an address here
-		   would matter at all. No reason accompanies the refusal: the form behind this route
+		   would matter at all. No reason accompanies the refusal: the screen behind this route
 		   never sends this field (AdminModerators.tsx), so a request naming one reaches here
-		   only through a bypass of that form or a mistake, and neither has a reader owed a
+		   only through a bypass of that screen or a mistake, and neither has a reader owed a
 		   sentence - the same reasoning ModeratorApi keeps for a door that answers nothing to
 		   somebody who may not be asking at all. */
 		if (typed.email() != null) {
 			return no(HttpStatus.BAD_REQUEST, null);
-		}
-
-		/* BLANK, EMPTY OR ABSENT ARE ONE ANSWER, add()'s own isNothing() and for the same
-		   reason: account_first_name_not_blank (V23) refuses a blank one at the table exactly
-		   as it refuses a null one, so judging it here answers with a sentence instead of a
-		   500. EITHER FIELD ALONE IS REFUSED WITH BOTH, because the name is the two of them
-		   together - a first name with no surname is not half a rename, it is a request that
-		   lost a field on the way, the same shape rights() == null already refuses above. */
-		if (isNothing(typed.firstName()) || isNothing(typed.lastName())) {
-			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
 		Set<String> asked = new HashSet<>(typed.rights());
@@ -742,17 +812,6 @@ class ModeratorWriteApi {
 				return no(HttpStatus.BAD_REQUEST, A_RIGHT_THE_MATRIX_DOES_NOT_HOLD);
 			}
 
-			/* WRITTEN ONLY NOW, after every refusal above has had its say, so a request this
-			   method rejects for any reason leaves the name exactly as it was. Stripped
-			   before it is stored, the same choice add()'s own write() makes for Invited's
-			   two name fields, so a trailing space typed here does not become a second name
-			   in the row. account.first_name/last_name ONLY - never competitor.first_name/
-			   last_name, which is a different fact about a different row (PDL, 14.09.2026,
-			   „Ime i prezime nosi sam nalog") and this statement does not name that table. */
-			db.sql("update account set first_name = ?, last_name = ? where id = ?")
-					.params(typed.firstName().strip(), typed.lastName().strip(), moderator.get())
-					.update();
-
 			Set<String> held = new HashSet<>(ticksOf(moderator.get()));
 
 			for (String gone : minus(held, asked)) {
@@ -771,6 +830,80 @@ class ModeratorWriteApi {
 			   a row of boxes nobody had written. */
 			return ResponseEntity.ok(new Ticked(moderator.get(), ticksOf(moderator.get())));
 		});
+	}
+
+	/**
+	 * CORRECTING WHAT ONE MODERATOR IS CALLED, AND NOTHING ELSE ABOUT HIM.
+	 *
+	 * <p><b>The decision of 02.10.2026 is what this route is for</b> (PDL, „Odluke iz ciscenja
+	 * nalaza", chosen against the recommendation put to him): correcting a name sends only the
+	 * name, so that it cannot undo what another superadmin ticked since the screen last read the
+	 * row. The route has no statement that touches {@code account_admin_right}, so a request
+	 * that also carries boxes, as the old shape of {@link Ticks} did, is answered as the name it
+	 * also carries and the boxes are not written. The class comment says why this is a route of
+	 * its own and why that shape is derived and not the owner's word.
+	 *
+	 * <p><b>Which meaning a field left out has here, which ADL A54 asks every route to say:
+	 * refusal, and it says which.</b> A name is the two of them together, so either part left
+	 * out, blank or empty is refused with {@link #THE_FORM_IS_NOT_COMPLETE} and the list of
+	 * what is missing ({@link NotComplete}), in the order of the form. This route is written
+	 * after A54's second half and is born with it. Blank, empty and absent are one answer, as
+	 * at {@link #add}: {@code account_first_name_not_blank} (V23) refuses a blank one at the
+	 * table exactly as it refuses a null one, so judging it here answers with a sentence
+	 * instead of a 500.
+	 *
+	 * <p><b>An address named in the request is refused, with no body</b>, exactly as
+	 * {@link #change} refuses it and for the same reason, and before anything about the target
+	 * row is read.
+	 *
+	 * <p><b>THE ROLE IS IN THE STATEMENT AND NOT IN A READING BEFORE IT</b>, which is what
+	 * {@link #remove} says of its own: asked as a {@code select} and then a write, the two
+	 * would be two moments, and the condition that keeps everybody who is not a moderator out
+	 * of this would be standing in the first of them. A key that names no moderator - a
+	 * competitor, either superadmin, a key nobody holds - writes no row and is answered 404
+	 * with no body, which is ADL A8 applied to a row, as it is at {@link #change}.
+	 *
+	 * <p><b>{@code account.first_name} and {@code last_name} ONLY</b> - never
+	 * {@code competitor.first_name} and {@code last_name}, which are a different fact about a
+	 * different row (PDL, 14.09.2026, „Ime i prezime nosi sam nalog"): a moderator who also
+	 * races has a name on his account and a name in the register of members, and correcting
+	 * the first does not touch the second. Stripped before it is stored, the same choice
+	 * {@link #add} makes for {@link Invited}'s two name fields, so a space typed at either end
+	 * does not become a second name in the row.
+	 *
+	 * <p><b>Answered 204 with nothing in it, which is this class's own reasoning and not a
+	 * decision.</b> The screen draws what was typed, as {@code AdminLeagues} does after its own
+	 * {@code PUT}, so a body would be one nothing reads, and the owner removed a column nobody
+	 * read on the same 02.10.2026. One statement, so no transaction of its own: it is atomic
+	 * as it stands.
+	 */
+	@PutMapping("/api/moderators/{id}/name")
+	@OnlyTheSuperadmin
+	ResponseEntity<?> rename(@PathVariable long id, @RequestBody Renamed typed) {
+		/* NEVER WRITTEN, ONLY NAMED, and refused before anything else, as change() does and
+		   for the reason Ticks#email gives. No reason accompanies it: the screen behind this
+		   route never sends this field (AdminModerators.tsx), so a request naming one reaches
+		   here only through a bypass of that screen or a mistake. */
+		if (typed.email() != null) {
+			return no(HttpStatus.BAD_REQUEST, null);
+		}
+
+		List<String> missing = whatTheNameLeftOut(typed);
+
+		if (!missing.isEmpty()) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(new NotComplete(THE_FORM_IS_NOT_COMPLETE, missing));
+		}
+
+		int renamed = db.sql("update account a set first_name = ?, last_name = ?"
+						+ " from role r where r.id = a.role_id and a.id = ? and r.code = 'moderator'")
+				.params(typed.firstName().strip(), typed.lastName().strip(), id).update();
+
+		if (renamed == 0) {
+			return no(HttpStatus.NOT_FOUND, null);
+		}
+
+		return ResponseEntity.noContent().build();
 	}
 
 	/**
