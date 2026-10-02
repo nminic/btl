@@ -35,6 +35,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * A MODERATOR ANSWERING SOMETHING IN THE QUEUE, AND HOLDING IT WHILE HE READS IT.
@@ -62,8 +63,9 @@ import java.util.Set;
  * queue:comments} and is answered about a {@code profiles} row, because that is the only
  * shape in which the two sentences disagree.
  *
- * <p><b>THE REFUSAL IS 404 AND IT GOES DOWN {@code sendError}.</b> ADL A8, the owner on
- * 13.09.2026: „Server odbija moderatora bez privilegije sa 404, ne sa 403", because the
+ * <p><b>THE REFUSAL IS 404 AND IT GOES DOWN {@code sendError}.</b> ADL A8, 13.09.2026: the
+ * owner decided that a moderator without the privilege is refused with 404 and not 403 - the
+ * journal words the entry that way, and it is not a sentence of his - because the
  * administration draws no screen a moderator may not open and the server must not be the
  * one place that says the address is there. {@link VerificationApi} measured what an
  * imitation costs - a status written onto the response came back 262 bytes with {@code
@@ -94,8 +96,10 @@ import java.util.Set;
  * recording a decision while doing nothing else would have been worse than refusing - an
  * approved result that never enters the rankings (PDL P9, „Rezultat ulazi u rang liste tek
  * posle odobrenja") has left the queue for ever and reached nothing, the one outcome a screen
- * cannot undo. The owner answered it on 21.09.2026: „Rezultat i rang liste su UNUTAR
- * transakcije; dukati i posta idu POSLE nje", by the measure he set the same day - which half
+ * cannot undo. The owner answered it on 21.09.2026, choosing among three outcomes offered:
+ * the result and the rankings are written inside the transaction and the ducats and the post
+ * go after it (that is the journal's wording of the choice, not a sentence of his), by the
+ * measure he set the same day - which half
  * outcome can repair itself. So the result is written inside the transaction and the letter
  * goes after it, and the two things V25 and V32 said this increment must carry with it are
  * carried: V47 widens {@code result.distance_km} and {@link
@@ -149,7 +153,8 @@ import java.util.Set;
  * a quotation that exists nowhere, which is what the citation floor caught.
  * An approved team reaches him too, which
  * is the owner's own sentence of 03.08.2026: „clanu odmah treba da stigne obavestenje u
- * portal inboks da je njihov tim prihvacen." An approved PROFILE does not, and that is
+ * portal inboks da je njihov tim prihvacen i od tog trenutka imaju Admin prava za svoj tim".
+ * An approved PROFILE does not, and that is
  * absence rather than omission - nothing decided that it should, and ADL P-javno's rule is
  * to leave out rather than to serve „za svaki slucaj".
  *
@@ -203,8 +208,10 @@ class VerificationWriteApi {
 	 * The reason this tab was refused was never that nobody had written the code: it was that
 	 * „sta je unutar transakcije a sta posle nje nije odluceno", and an approved result that
 	 * never entered the rankings would have left the queue for ever and reached nothing. The
-	 * owner answered it on 21.09.2026 - „Rezultat i rang liste su UNUTAR transakcije; dukati i
-	 * posta idu POSLE nje" - by the measure he set the same day, which of the half outcomes
+	 * owner answered it on 21.09.2026, choosing among three outcomes offered: the result and
+	 * the rankings inside the transaction, the ducats and the post after it (the journal's
+	 * wording of the choice, not a sentence of his) - by the measure he set the same day,
+	 * which of the half outcomes
 	 * can repair itself: a result without its post is repaired by sending it again, a ducat
 	 * without its result is not. So this class now writes the result inside and posts outside,
 	 * and {@code payments} is the one name left out, still waiting on the increment that lets
@@ -276,6 +283,23 @@ class VerificationWriteApi {
 	/** Who the member hears from, which is the league and never the moderator by name. */
 	private static final String THE_PORTAL = "Verifikacija";
 
+	/**
+	 * WHAT A KEY LOOKS LIKE, which is the only question asked of the text a path carries in its
+	 * place before the door is asked.
+	 *
+	 * <p>Digits, and at most eighteen of them: eighteen nines is smaller than the largest
+	 * {@code long}, so everything this accepts can be parsed and nothing that fits a {@code long}
+	 * and is longer names a row any sequence has reached. Asked about the SHAPE and not by trying
+	 * to parse, so there is no exception to turn into an answer - the same choice
+	 * {@code PageApi} makes for a language tag, for the same reason: it is complete by
+	 * construction, where „is this a number" answered by catching a failure has to be kept equal to
+	 * what the parser accepts. What Spring's own conversion also accepted - a leading plus, a
+	 * hexadecimal number - now answers as an item that is not there; measured on 02.10.2026, both
+	 * already answered 404 to a competitor holding nothing, so nothing he could tell apart moves,
+	 * and for a moderator who may moderate the tab a key spelt that way no longer finds its row.
+	 */
+	private static final Pattern A_KEY = Pattern.compile("[0-9]{1,18}");
+
 	private final JdbcClient db;
 
 	private final WhatHeMayDo mayHe;
@@ -338,9 +362,10 @@ class VerificationWriteApi {
 
 	/**
 	 * @param id         the item he now holds
-	 * @param secondsLeft how long he has, which the owner made an obligation rather than a
-	 *                    nicety: „portal mora moderatoru da kaze koliko mu je ostalo, pre
-	 *                    nego sto odluci"
+	 * @param secondsLeft how long he has, which follows from the quarter of an hour the owner
+	 *                    chose (PDL, 18.09.2026) and which the journal derives as an obligation
+	 *                    rather than a nicety: the portal must tell the moderator how much is
+	 *                    left before he decides - the journal's derivation, not his sentence
 	 */
 	record Held(long id, long secondsLeft) {
 	}
@@ -372,7 +397,7 @@ class VerificationWriteApi {
 	 *                 not there takes, exactly as {@link VerificationApi#verification} does
 	 */
 	@PostMapping("/api/verification/{id}/hold")
-	ResponseEntity<?> hold(@PathVariable long id,
+	ResponseEntity<?> hold(@PathVariable String id,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -432,25 +457,27 @@ class VerificationWriteApi {
 						+ " set held_by = excluded.held_by, held_until = excluded.held_until"
 						+ " where verification_lock.held_by = excluded.held_by"
 						+ "    or verification_lock.held_until <= ?")
-				.params(id, asking.account(), Timestamp.from(until), Timestamp.from(now))
+				.params(item.get().id(), asking.account(), Timestamp.from(until),
+						Timestamp.from(now))
 				.update();
 
 		if (taken == 0) {
 			return no(HttpStatus.CONFLICT, SOMEBODY_ELSE_IS_READING_IT);
 		}
 
-		return ResponseEntity.ok(new Held(id, HoldingAnItem.leftOf(
+		return ResponseEntity.ok(new Held(item.get().id(), HoldingAnItem.leftOf(
 				new HoldingAnItem.Hold(asking.account(), until), now).toSeconds()));
 	}
 
 	/**
 	 * HE IS DONE WITH IT, OR THE SUPERADMIN TAKES IT OFF SOMEBODY WHO IS NOT.
 	 *
-	 * <p><b>The second half is the owner's, with its cost priced and accepted:</b>
-	 * „Superadmin SME da otme tudje zakljucavanje, i onaj kome je oteto to sazna. Time
-	 * zaglavljena stavka uvek ima resenje koje ne trazi bazu. Cena koju je prihvatio: jedna
-	 * ruta vise i jedna poruka u sanduce, da moderator ne otkrije tek kad mu odluka ne
-	 * prodje." This is that one route, and the message is written below.
+	 * <p><b>The second half is the owner's choice, with its cost priced and accepted</b>
+	 * (PDL, 18.09.2026, among the outcomes offered): the superadmin may take another's hold
+	 * away and the one it is taken from is told, so that a stuck item always has a way out that
+	 * does not need the database. The cost he accepted, as the journal records it: one route
+	 * more and one message in the inbox, so that a moderator does not find out only when his
+	 * decision is refused. This is that one route, and the message is written below.
 	 *
 	 * <p><b>It is the SUPERADMIN and not „a moderator holding everything".</b>
 	 * {@link WhatHeMayDo#holdsEveryRightThereIs} reads V5's {@code rights_mode = 'all'} off
@@ -462,7 +489,7 @@ class VerificationWriteApi {
 	 * leave the item free and a moderator closing a screen twice has done nothing wrong.
 	 */
 	@DeleteMapping("/api/verification/{id}/hold")
-	ResponseEntity<?> letGo(@PathVariable long id,
+	ResponseEntity<?> letGo(@PathVariable String id,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -486,7 +513,8 @@ class VerificationWriteApi {
 		}
 
 		return inOneTransaction.execute(committing -> {
-			db.sql("delete from verification_lock where verification_id = ?").param(id).update();
+			db.sql("delete from verification_lock where verification_id = ?")
+					.param(item.get().id()).update();
 
 			/* AND HE LEARNS IT, which is the half of the owner's answer that costs the
 			   message. Only when it was somebody else's and only when there is an inbox to
@@ -514,7 +542,7 @@ class VerificationWriteApi {
 	 *                 not there takes
 	 */
 	@PostMapping(path = "/api/verification/{id}/decision", consumes = MediaType.APPLICATION_JSON_VALUE)
-	ResponseEntity<?> decide(@PathVariable long id, @RequestBody Answered typed,
+	ResponseEntity<?> decide(@PathVariable String id, @RequestBody Answered typed,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -522,10 +550,20 @@ class VerificationWriteApi {
 		   on 21.09.2026: asked the other way round, a plain competitor holding nothing sent
 		   `{}` and got 400 in 348 bytes, while the same body on a sibling address that maps
 		   nothing got 404 in 425. One request, and he has learnt that an administrative
-		   action lives at that address - which is the whole of what ADL A8 forbids, „ne sme
-		   ni da sazna da radnja postoji". It did not leak WHICH items exist; it leaked that
+		   action lives at that address - which is the whole of what ADL A8 forbids (the owner's
+		   own words in that section, of 30.07.2026: „Ne treba ni da budu svesni moderatori da
+		   postoje akcije koje im nisu dodeljene."). It did not leak WHICH items exist; it leaked that
 		   the route does, which is the same oracle one level up. A refusal about the form is
-		   a refusal only somebody who may decide is entitled to hear. */
+		   a refusal only somebody who may decide is entitled to hear.
+
+		   AND NOTHING ABOUT THE KEY EITHER, which is why it arrives as text. Measured over a
+		   socket on 02.10.2026, before this: asked for as a `long`, a word in the key's place
+		   was answered 400 by Spring before this method ran, to EVERY signed-in asker - a
+		   competitor holding nothing included - while a number was 404 for him. The same oracle,
+		   one step before the door. A key that is not a number names no item, so it is answered
+		   as an item that is not there, by the one line that answers that
+		   (`itemHeMayModerate`); `hold` and `letGo` take it the same way, since they bound it the
+		   same way. */
 		Optional<Item> found = itemHeMayModerate(id, asking);
 
 		if (found.isEmpty()) {
@@ -538,7 +576,14 @@ class VerificationWriteApi {
 		   is missing or unreadable never does: the route declares it consumes JSON and
 		   {@code @RequestBody} is required, so the chain answers 400 before this method
 		   runs. A null check over {@code typed} would be a branch no request can reach,
-		   and a branch nothing can measure is one nobody can be sure of. */
+		   and a branch nothing can measure is one nobody can be sure of.
+
+		   AND THAT SAME 400 IS STILL AN ORACLE, and it is written down here rather than left to be
+		   found: measured over a socket on 02.10.2026, a body that is not JSON, or no body at all,
+		   is answered 400 in 427 bytes to a competitor holding nothing, where the address that maps
+		   nothing answers 404 in 425. The key is closed above; this is the body, and closing it
+		   means reading the body only after the door, as bytes parsed by hand, which is a change
+		   of its own and not part of the one this note sits in. */
 		if (typed.approved() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
@@ -574,8 +619,9 @@ class VerificationWriteApi {
 				Carried carried = inOneTransaction.execute(committing -> write(item, answer, asking));
 
 				/* AND THE POST GOES AFTER THE TRANSACTION HAS COMMITTED, never inside it.
-				   ADL A36, the owner on 21.09.2026 for this very tab: „Rezultat i rang liste
-				   su UNUTAR transakcije; dukati i posta idu POSLE nje." The cost of the other
+				   ADL A36, the owner's choice of 21.09.2026 for this very tab, among three outcomes
+				   offered: the result and the rankings inside the transaction, the ducats and the post
+				   after it (the journal's wording, not a sentence of his). The cost of the other
 				   order is measured rather than supposed - B58, 14.09.2026: with sending
 				   inside, one request held a pool connection 5,15 s when the relay hung, ten
 				   at once took the whole pool, and a member's legitimate sign-in failed after
@@ -675,15 +721,17 @@ class VerificationWriteApi {
 		 * inbox contradicting each other, and no fault anywhere.
 		 *
 		 * `DecidingOnASubmission.decide` had already been asked and had answered - it read
-		 * the state OUTSIDE this transaction, which is a check-then-act, and the owner's own
-		 * precedent says what that is worth: `PaymentNumberConcurrencyTest` exists because
-		 * „Java provera-pa-upis prolazi svaki sekvencijalni slucaj i pada samo ovde".
+		 * the state OUTSIDE this transaction, which is a check-then-act, and the portal's own
+		 * precedent says what that is worth: `PaymentNumberConcurrencyTest` exists because a
+		 * check-then-act written in Java passes every sequential case and fails only under
+		 * concurrency (a paraphrase of that class's own note, not a sentence of the owner's).
 		 *
 		 * So the claim is the UPDATE and the answer is the COUNT. `where state = 'waiting'`
 		 * makes the statement take the row's lock and re-read it after the other transaction
-		 * commits; the loser matches nothing, writes nothing, and is told 409, which is the
-		 * owner's own requirement that „drugi moderator na zauzetu stavku dobija odbijenicu,
-		 * ne tihi neuspeh" (PDL P9, 18.09.2026). It is also why every consequence below
+		 * commits; the loser matches nothing, writes nothing, and is told 409, which is what
+		 * follows from the owner's answer about the shared queue (PDL P9, 18.09.2026, as the journal
+		 * derives it: a second moderator who meets an item that is held gets a refusal, not a
+		 * silent failure). It is also why every consequence below
 		 * happens AFTER this line and not before it. */
 		int claimed = db.sql("update verification set state = ?, decided_at = now(),"
 						+ " decided_by = a.id,"
@@ -767,9 +815,10 @@ class VerificationWriteApi {
 	 *
 	 * <p>Owner, 03.08.2026 (PDL P13): „ako ga prihvate, clanu odmah treba da stigne
 	 * obavestenje u portal inboks da je njihov tim prihvacen i od tog trenutka imaju Admin
-	 * prava za svoj tim", and 05.09.2026: „Odobrenje novog tima upisuje osnivaca u taj tim",
-	 * which was found by a review of PR 186 when approval wrote only the team and the
-	 * founder could go on to found another.
+	 * prava za svoj tim", and the entry of 05.09.2026 (PDL), which is not his sentence: it was
+	 * written after a review of PR 186 found that approval wrote only the team and the
+	 * founder could go on to found another, and it says that approval writes the founder into
+	 * the team.
 	 *
 	 * <p><b>The address is made HERE and nowhere earlier</b>, which is why
 	 * {@code team_proposal} has no {@code slug}: „a proposal standing in the queue is not a
@@ -910,12 +959,15 @@ class VerificationWriteApi {
 	 * cascade} (V32), so deleting the result being corrected would take THIS VERY SUBMISSION
 	 * away with it inside this transaction, and the {@code verification} row after it through
 	 * {@code verification_result_submission_fk} - the row this method was reached by. Writing
-	 * over it keeps the one fact the owner asked for: „Odobrenje ispravke zamenjuje rezultat,
-	 * dakle stari izlazi i novi ulazi u istom trenutku" (28.08.2026), with no moment in
+	 * over it keeps the one fact that follows from the outcome the owner chose on 28.08.2026
+	 * (the journal's wording of what follows, not his sentence): the approval replaces the
+	 * result, so the old one leaves and the new one enters in the same moment, with no moment in
 	 * between in which the member has no result.
 	 *
-	 * <p><b>The race is not written again on a correction, and the owner is why.</b> „Menja se
-	 * sve osim trke. Ko je pogrešio trku, briše rezultat i unosi nov" (27.08.2026), and V32's
+	 * <p><b>The race is not written again on a correction, and the owner is why.</b> On
+	 * 27.08.2026 he answered the questions about correcting one's own result (the journal words
+	 * the answer, it does not quote him): everything is changed except the race, and whoever
+	 * got the race wrong deletes the result and enters a new one. V32's
 	 * own check says the same from the schema's side. So the statement names the four figures
 	 * and the points and nothing else.
 	 *
@@ -938,9 +990,10 @@ class VerificationWriteApi {
 		/* WAS THE BEGINNERS' CATEGORY STILL OPEN TO HIM, ASKED BEFORE THE ROW EXISTS.
 		 *
 		 * THE SEASON IS THE ONE AFTER THE RUN'S, NEVER THE RUN'S OWN, and that distinction is
-		 * the whole of the owner's sentence of 26.09.2026: „ako odobrenje prevede clanov zbir
-		 * TEKUCE sezone na 12 ili vise, pocetnicka mu se za NAREDNU sezonu zatvara istog
-		 * trenutka." A season's category was decided off the seasons before it, and a season
+		 * the whole of the owner's decision of 26.09.2026, in the journal's wording and not in a
+		 * sentence of his: if the approval takes the member's total for the current season to
+		 * twelve or more, the beginners' category is closed for the NEXT season at once. A season's
+		 * category was decided off the seasons before it, and a season
 		 * is never before itself - `BestOfficialSeason` carries the day the portal got exactly
 		 * this wrong, when a season's own growing total closed it on him from the inside.
 		 *
@@ -953,6 +1006,12 @@ class VerificationWriteApi {
 
 		BigDecimal points = BtlScoreCalculator.calculate(sent.distanceKm().doubleValue(),
 				sent.ascentM(), sent.descentM(), sent.seconds());
+
+		/* THE RUN AS IT IS APPROVED, BUILT ONCE. The letter about this approval and the line in his
+		   inbox about what it did to his category are two messages about one run, and they cannot
+		   name two different runs if both are written from this one value. */
+		Run counted = new Run(sent.raceName(), sent.raceDate(), sent.distanceKm(), sent.ascentM(),
+				sent.descentM(), sent.seconds(), points);
 
 		if (sent.amendsResultId() == null) {
 			db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
@@ -970,11 +1029,10 @@ class VerificationWriteApi {
 		}
 
 		if (wasOpen && !beginnersCategoryIsOpenFor(item.competitorId(), theSeasonAfterTheRun)) {
-			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, points);
+			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, counted);
 		}
 
-		return WhatAResultChangeSays.approved(new Run(sent.raceName(), sent.raceDate(),
-				sent.distanceKm(), sent.ascentM(), sent.descentM(), sent.seconds(), points));
+		return WhatAResultChangeSays.approved(counted);
 	}
 
 	/**
@@ -993,11 +1051,22 @@ class VerificationWriteApi {
 	/**
 	 * AND HE IS TOLD WHEN AN APPROVAL TAKES IT AWAY FROM HIM.
 	 *
-	 * <p>Owner, 27.09.2026, choosing the first of three outcomes: the member is told when a
-	 * verification undoes his choice of the beginners' category, and „Poruka nosi razlog: koji
-	 * rezultat je odobren, koliko bodova nosi, i da mu je time pocetnicka zatvorena za narednu
-	 * sezonu." The two he refused were silence and an explanation on the membership page,
-	 * which he would have no reason to open.
+	 * <p>PDL, the entry titled Ponisten izbor kategorije se javlja clanu, sa razlogom
+	 * (27.09.2026): the owner chose the first of three outcomes offered, with my recommendation
+	 * beside it, and the outcome is that the member is told when a verification undoes his choice
+	 * of the beginners' category. The two he refused were silence and an explanation on the
+	 * membership page, which he would have no reason to open.
+	 *
+	 * <p><b>WHAT THE MESSAGE CARRIES IS HOW THAT ENTRY WRITES THE OUTCOME DOWN, AND IT IS NOT A
+	 * SENTENCE HE SAID.</b> The entry says the message carries the reason: which result was
+	 * approved, how many points it is worth, and that the beginners' category is closed for the
+	 * next season. That wording is not in quotation marks there, and its first form, in the entry
+	 * of 26.09.2026, named the result and its points only and is marked there as my reasoning
+	 * awaiting his confirmation or objection. So the three parts are read as what the chosen
+	 * outcome meant, and each is held by its own case in {@code VerificationWriteApiTest}. <b>A
+	 * result is named the way the letter about the same approval names it</b> - its race, which is
+	 * the race's own name and never the event's, and the day it was run - because both are
+	 * written from the one {@link Run}, so the two messages cannot name two runs.
 	 *
 	 * <p><b>Why a message is owed at all, in his own words:</b> what the portal keeps is the
 	 * WISH and not the category („racunaj da clan bira ono sto ZELI", 26.09.2026), so his tick
@@ -1012,9 +1081,11 @@ class VerificationWriteApi {
 	 * portal telling somebody about a category he was not asking for is a smaller fault than
 	 * staying silent towards somebody who was.
 	 */
-	private void tellHimHisCategoryMoved(long member, int season, BigDecimal points) {
+	private void tellHimHisCategoryMoved(long member, int season, Run counted) {
 		tell(member, "Početnička kategorija vam je zatvorena",
-				"Odobren vam je rezultat koji nosi " + points.toPlainString() + " bodova."
+				"Odobren vam je rezultat sa trke " + counted.raceName() + " od "
+						+ WhatAResultChangeSays.asADay(counted.day()) + ", koji nosi "
+						+ counted.points().toPlainString() + " bodova."
 						+ " Time ste u zvaničnoj sezoni prešli prag od "
 						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička"
 						+ " kategorija zatvorena za sezonu " + season + ".");
@@ -1082,7 +1153,8 @@ class VerificationWriteApi {
 	 * until PDL P10a, 22.09.2026 - `scheduleMoveBehind`, `moveTheEvent` and the
 	 * `ScheduleMove` record that carried one read of "what day is this, right now"
 	 * between the P10b guard in `write` and the write itself. The owner's decision the
-	 * same day, in as many words: „Redova je pet, ne šest." What the two methods did -
+	 * same day (PDL P10a), which the journal words as five queues and not six. What the two
+	 * methods did -
 	 * move an event and its races together, by the same number of days - is still done,
 	 * from the one place P10a leaves it: `EventWriteApi.change`, the shape both copies
 	 * answered to rather than to each other, on the administrator's own screen.
@@ -1150,20 +1222,29 @@ class VerificationWriteApi {
 	 *
 	 * <p>One method for both halves, because they answer the same way and must go on
 	 * answering the same way: an item that is not there and an item he may not see are one
-	 * refusal, and told apart the key would be an oracle for what is in the queue.
+	 * refusal, and told apart the key would be an oracle for what is in the queue. <b>A key
+	 * that is not a number is the third way to be one of them</b>: it arrives as text for that
+	 * reason, and is refused here as no item before any row is read.
 	 *
 	 * <p><b>The hold is read in the SAME statement</b>, so „who holds it" and „what state it
 	 * is in" are one reading of one moment. Read separately, a hold taken between the two
 	 * queries would be a decision made against a row somebody had just opened.
 	 */
-	private Optional<Item> itemHeMayModerate(long id, WhoIsAsking.Member asking) {
+	private Optional<Item> itemHeMayModerate(String key, WhoIsAsking.Member asking) {
+		/* A KEY THAT IS NOT ONE NAMES NO ROW, and is answered as a row that is not there - by this
+		   very return, which is also what a row he may not moderate becomes below, so the three
+		   are one answer. */
+		if (!A_KEY.matcher(key).matches()) {
+			return Optional.empty();
+		}
+
 		Optional<Item> item = db.sql("select v.id, v.queue, v.right_code, v.state, v.competitor_id,"
 						+ " v.photo_id, v.team_proposal_id, v.comment_submission_id,"
 						+ " v.result_submission_id, v.body, l.held_by, l.held_until"
 						+ " from verification v"
 						+ " left join verification_lock l on l.verification_id = v.id"
 						+ " where v.id = ?")
-				.param(id)
+				.param(Long.parseLong(key))
 				.query((row, one) -> new Item(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getObject(5, Long.class), row.getObject(6, Long.class),
 						row.getObject(7, Long.class), row.getObject(8, Long.class),
