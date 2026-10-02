@@ -50,7 +50,6 @@ export function EntityEditor({
   options = {},
   taken = [],
   also,
-  alsoSave,
   alsoFolds,
   openAt,
   onDone,
@@ -87,25 +86,16 @@ export function EntityEditor({
    */
   save?: (values: FormValues, text: Record<string, string>) => Promise<Saving>
   /**
-   * What else a save changes, run with the values it is being saved with.
-   *
-   * The races of an event: moving an event moves them with it, by the same
-   * number of days (owner, 10.08.2026). Handed in rather than worked out here,
-   * because what belongs to what is a fact about the screen and not about the
-   * editor.
-   */
-  alsoSave?: (values: FormValues, written: string) => void
-  /**
    * What the press changes about the values themselves, before anything is read
    * off them.
    *
-   * `alsoSave` runs after the record is written, so anything it changes about the
-   * record is already too late for the three things the values feed: the derived
-   * text (`textFrom`), the derived fields (`entity.derived`, which is where the
-   * address comes from), and the confirmation. An event follows its earliest race
-   * (owner, 10.08.2026), and moved there afterwards the screen said „Datum
-   * 30/01/2027 … Adresa podgoricka-desetka-2027" over a record that had just been
-   * filed on 30.12.2026 under last year's address. Measured 23.08.2026.
+   * Whatever is changed about a record AFTER it has been written is too late for the
+   * three things the values feed: the derived text (`textFrom`), the derived fields
+   * (`entity.derived`, which is where the address comes from), and the confirmation.
+   * An event follows its earliest race (owner, 10.08.2026), and moved there
+   * afterwards the screen said „Datum 30/01/2027 … Adresa podgoricka-desetka-2027"
+   * over a record that had just been filed on 30.12.2026 under last year's address.
+   * Measured 23.08.2026.
    *
    * So what the press knows about the values is folded in here, once, and
    * everything downstream reads the same thing that was written.
@@ -233,8 +223,6 @@ export function EntityEditor({
       ),
     }
 
-    let written: string
-
     /* THE SCREEN'S OWN SAVE FIRST, WHERE THERE IS ONE, and nothing of the session
        happens in that branch - not the counting out of an identity, not the write.
        Both are what a portal without a database did; a route hands back the identity
@@ -260,10 +248,8 @@ export function EntityEditor({
         return
       }
 
-      written = outcome.written
-
       if (editing.mode === 'new') {
-        onCreated?.(written)
+        onCreated?.(outcome.written)
       }
     } else if (editing.mode === 'new') {
       const made = idFor(
@@ -275,17 +261,9 @@ export function EntityEditor({
 
       create(entity.id, made, text)
       onCreated?.(made)
-      written = made
     } else {
-      written = String(editing.record[entity.idField])
-      editRecord(recordKey(entity.id, written), text)
+      editRecord(recordKey(entity.id, String(editing.record[entity.idField])), text)
     }
-
-    /* On both, because what else a save changes does not depend on whether the
-       record is new. With the identity of what was written, which a new record
-       does not have until this moment: the races of an event are saved in the
-       same press and have to be filed under it (AdminEvents.tsx). */
-    alsoSave?.(values, written)
 
     setSaved(values)
   }
