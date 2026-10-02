@@ -71,10 +71,23 @@
 # ONE COPY PER TABLE IS A CONDITION OF CORRECTNESS, NOT A WAY OF GOING FASTER, and it is measured
 # rather than argued. See the paragraph on self references in pour-from-qa/load-order.sql.
 #
-# FOREIGN KEYS STAY ENFORCED THROUGHOUT. `pg_dump --data-only` would need --disable-triggers to
-# load in an order it does not control, and the header of proveri-qa.sh records what turning
-# those off means: measured, "a row naming a role that does not exist went into account". So the
-# order is computed instead, out of pg_constraint, and every key checks every row.
+# FOREIGN KEYS STAY ENFORCED THROUGHOUT, with the one exception written out right below.
+# `pg_dump --data-only` would need --disable-triggers to load in an order it does not control, and
+# the header of proveri-qa.sh records what turning those off means: measured, "a row naming a role
+# that does not exist went into account". So the order is computed instead, out of pg_constraint,
+# and every key checks every row.
+#
+# THE EXCEPTION IS A CONSTRAINT THAT IS NOT VALID. Such a constraint is enforced on every insert
+# and ignored for the rows that were already there, and QA holds a row that predates one: the
+# owner's own membership has no trail of who freed it from the fee, and the two constraints that
+# ask for one were added `not valid` for that reason. COPY is an insert, so the pour would stop on
+# that row. The owner decided on 02.10.2026, between three outcomes offered, that the tool copies
+# QA faithfully: each such constraint is lifted inside the same transaction before the first
+# write and put back after the last, again as not valid. Production ends exactly as QA is, the row
+# stays without its trail, and nothing is invented. WHICH constraints is asked of the catalogue
+# (pour-from-qa/not-valid-constraints.sql) and written nowhere here, so one that arrives later is
+# carried too, and the answer is asked again after the commit and compared. Every other
+# constraint, foreign keys included, checks every row.
 
 set -eu
 
@@ -111,11 +124,12 @@ ORDER_SQL="$SQL/load-order.sql"
 COUNTS_SQL="$SQL/row-counts.sql"
 SEQUENCES_SQL="$SQL/sequences.sql"
 LETS_IN_SQL="$SQL/lets-somebody-in.sql"
+NOT_VALID_SQL="$SQL/not-valid-constraints.sql"
 LEAVES_NOTHING_SH="$SQL/leaves-nothing-behind.sh"
 
 [ -f "$PROD_COMPOSE" ] || fail "no $PROD_COMPOSE here; this is run from /opt/btl/deploy"
 [ -d "$MIGRATIONS" ] || fail "no $MIGRATIONS; the checkout beside this deploy is not complete"
-for f in "$ORDER_SQL" "$COUNTS_SQL" "$SEQUENCES_SQL" "$LETS_IN_SQL" "$LEAVES_NOTHING_SH"; do
+for f in "$ORDER_SQL" "$COUNTS_SQL" "$SEQUENCES_SQL" "$LETS_IN_SQL" "$NOT_VALID_SQL" "$LEAVES_NOTHING_SH"; do
   [ -f "$f" ] || fail "no $f; this tool is a shell script AND the files beside it, and part is missing"
 done
 
@@ -267,7 +281,7 @@ fi
 say "the same row count as a fresh migration leaves, in all $(wc -l < "$WORK/ref.counts") tables"
 
 say ''
-say '--- 6. the order the tables may be filled in, asked of the foreign keys ---'
+say '--- 6. what the catalogue says: the order the tables may be filled in, and the constraints that are not valid ---'
 
 qa_sql -F'|' -f - < "$ORDER_SQL" > "$WORK/order"
 [ -s "$WORK/order" ] || fail 'the load order came back empty'
@@ -286,6 +300,14 @@ if grep -q '^[^|]*||' "$WORK/order"; then
 fi
 
 say "$(wc -l < "$WORK/order") tables, deepest level $(cut -d'|' -f2 "$WORK/order" | sort -n | tail -1)"
+
+# THE CONSTRAINTS THAT ARE NOT VALID, asked of production here and not at the pour, so that --check
+# proves the file runs and shows what will be lifted. Why they have to be lifted, why production
+# can be asked, and what a row of each kind is, is in not-valid-constraints.sql.
+prod_sql -F'|' -f - < "$NOT_VALID_SQL" > "$WORK/not-valid"
+lifted=$(grep -c '^drop|' "$WORK/not-valid" || true)
+say "$lifted constraints are not valid, on production as on QA. They are lifted for the pour and put back, still not valid:"
+sed -n 's/^drop|/  /p' "$WORK/not-valid"
 
 say ''
 say '--- 7. where the photographs are, and where they will go ---'
@@ -337,6 +359,10 @@ say '--- 9. the pour, as one transaction ---'
 STREAM="$WORK/pour.sql"
 {
   printf 'begin;\n'
+  # The constraints that are not valid step aside BEFORE anything is written, in this very
+  # transaction, so that a failure anywhere puts them back with everything else. The rows are
+  # `drop|<statement>`; the statement is kept whole, bars included.
+  sed -n 's/^drop|//p' "$WORK/not-valid"
   # Every table in ONE truncate: a truncate must name every table a foreign key points from, and
   # naming all of them is how that is satisfied without CASCADE, which would widen silently.
   # No RESTART IDENTITY on purpose - the sequences take QA's positions below, not 1.
@@ -375,6 +401,10 @@ docker exec -i "$QA_POSTGRES" psql -q -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_N
   < "$QA_SESSION" >> "$STREAM" 2> "$WORK/qa.err" \
   || { report_failure "$WORK/qa.err" 'QA'; fail 'reading QA did not pass; nothing has been written to production'; }
 
+# ...and they come back, still not valid, after the last row and the last sequence and before the
+# commit. A constraint that cannot come back rolls the whole pour back, which is the right answer.
+sed -n 's/^restore|//p' "$WORK/not-valid" >> "$STREAM"
+
 printf 'commit;\n' >> "$STREAM"
 
 # Into a file and then read, never through a pipe: `sh` has no pipefail, and through one the exit
@@ -399,6 +429,17 @@ if ! diff -u "$WORK/qa.after" "$WORK/prod.after" > "$WORK/after.diff"; then
   sed -n '3,$p' "$WORK/after.diff" | grep -E '^[-+]' || true
   fail 'production does not hold what QA holds, although the transaction committed'
 fi
+
+# And the constraints that were not valid are back, and not valid. The question of step 6, asked
+# again: the same answer, or the pour is reported as wrong. A restore that brought one back as
+# valid would not be in this list at all, and that is the difference this shows.
+prod_sql -F'|' -f - < "$NOT_VALID_SQL" > "$WORK/not-valid.after"
+if ! diff -u "$WORK/not-valid" "$WORK/not-valid.after" > "$WORK/not-valid.diff"; then
+  say 'difference (- before the pour, + after it):'
+  sed -n '3,$p' "$WORK/not-valid.diff" | grep -E '^[-+]' || true
+  fail 'the constraints that were not valid are not what they were before the pour, although the transaction committed'
+fi
+say "the $lifted constraints that were not valid are back, and still not valid"
 
 say ''
 say 'WHAT CAME OVER'

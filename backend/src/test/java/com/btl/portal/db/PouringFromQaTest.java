@@ -1,6 +1,7 @@
 package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessException;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * WHAT {@code deploy/pour-from-qa.sh} DECIDES, MEASURED AGAINST A REAL DATABASE.
@@ -75,7 +77,8 @@ class PouringFromQaTest extends DatabaseTest {
 	 * going unmeasured.
 	 */
 	private static final Set<String> EXERCISED = Set.of("load-order.sql", "row-counts.sql",
-			"sequences.sql", "lets-somebody-in.sql", "leaves-nothing-behind.sh");
+			"sequences.sql", "lets-somebody-in.sql", "not-valid-constraints.sql",
+			"leaves-nothing-behind.sh");
 
 	private static String sqlOf(String name) {
 		try {
@@ -765,6 +768,196 @@ class PouringFromQaTest extends DatabaseTest {
 				.single())
 				.as("verification.right_code is what says which right opens a verification row")
 				.isEqualTo(1L);
+	}
+
+	/** One row of {@code not-valid-constraints.sql}: the phase it belongs to, and the statement. */
+	private record Step(String phase, String statement) {
+	}
+
+	private List<Step> notValidSteps() {
+		return db.sql(sqlOf("not-valid-constraints.sql"))
+				.query((row, one) -> new Step(row.getString(1), row.getString(2)))
+				.list();
+	}
+
+	/**
+	 * What the catalogue says about every constraint that is not valid: which table, which name, and
+	 * what it says. Asked a DIFFERENT way from the file under test, which reads {@code convalidated}:
+	 * this reads the definition, which PostgreSQL ends with NOT VALID.
+	 */
+	private Map<String, String> notValidInTheCatalogue() {
+		Map<String, String> state = new TreeMap<>();
+		db.sql("select c.relname || '.' || con.conname, pg_get_constraintdef(con.oid)"
+						+ " from pg_constraint con"
+						+ " join pg_class c on c.oid = con.conrelid"
+						+ " join pg_namespace n on n.oid = c.relnamespace"
+						+ " where n.nspname = current_schema()"
+						+ " and pg_get_constraintdef(con.oid) like '% NOT VALID'")
+				.query((row, one) -> state.put(row.getString(1), row.getString(2)))
+				.list();
+		return state;
+	}
+
+	/** An insert the schema refuses, with the transaction kept usable by a savepoint around it. */
+	private void refused(String insert) {
+		db.sql("savepoint b190_before").update();
+		assertThatThrownBy(() -> db.sql(insert).update()).isInstanceOf(DataAccessException.class);
+		db.sql("rollback to savepoint b190_before").update();
+	}
+
+	private void run(List<Step> steps, String phase) {
+		steps.stream().filter(one -> one.phase().equals(phase))
+				.forEach(one -> db.sql(one.statement()).update());
+	}
+
+	/**
+	 * A ROW THE CONSTRAINT REFUSES IS POURED, AND THE CONSTRAINT COMES BACK NOT VALID.
+	 *
+	 * <p>This is the case QA is in: a row that predates a constraint, which the constraint was
+	 * added NOT VALID to leave alone, and which production would refuse on the way in. The state is
+	 * built with plain DDL and NOT with the file under test, so that a fault in that file cannot
+	 * also be the fault that sets the case up: a membership with no trail, a child pointing at a
+	 * parent that is not there, and a deferred constraint trigger, which is what V29 puts on
+	 * {@code race} and {@code btl_event}, so that a write leaves a pending event that
+	 * {@code ALTER TABLE} refuses until it is cleared.
+	 *
+	 * <p>Then the pour as the script writes it: everything the file says to lift, a write the
+	 * constraints would refuse, everything the file says to restore. What is held is that the write
+	 * went through, that EVERY constraint the catalogue called not valid is back with the same
+	 * definition and still not valid, and that it refuses a NEW row again, so it is not merely
+	 * present but enforced as before.
+	 *
+	 * <p>The two {@code refused} calls before the pour are what stops this from measuring nothing:
+	 * with nothing lifted the write IS refused. And a restore that dropped the NOT VALID would fail
+	 * here on the row that was left alone, because validating the constraint finds it.
+	 */
+	@Test
+	void aRowTheConstraintRefusesIsPouredAndTheConstraintComesBackNotValid() {
+		db.sql("create table b190_membership (id bigint primary key, basis text not null,"
+				+ " decided_by_name text)").update();
+		db.sql("insert into b190_membership values (1, 'feeExempt', null)").update();
+		db.sql("alter table b190_membership add constraint b190_says_who"
+				+ " check (basis <> 'feeExempt' or decided_by_name is not null) not valid").update();
+
+		db.sql("create table b190_parent (id bigint primary key)").update();
+		db.sql("create table b190_child (id bigint primary key, parent_id bigint)").update();
+		db.sql("insert into b190_child values (1, 99)").update();
+		db.sql("alter table b190_child add constraint b190_child_parent_fk"
+				+ " foreign key (parent_id) references b190_parent (id) not valid").update();
+
+		// After the rows and the constraints, so no event is pending while they are added.
+		db.sql("create function b190_noop() returns trigger language plpgsql"
+				+ " as 'begin return null; end'").update();
+		db.sql("create constraint trigger b190_deferred after insert on b190_membership"
+				+ " deferrable initially deferred for each row execute function b190_noop()").update();
+
+		Map<String, String> before = notValidInTheCatalogue();
+		assertThat(before).containsKeys("b190_membership.b190_says_who", "b190_child.b190_child_parent_fk");
+
+		refused("insert into b190_membership values (2, 'feeExempt', null)");
+		refused("insert into b190_child values (2, 98)");
+
+		List<Step> steps = notValidSteps();
+		run(steps, "drop");
+
+		db.sql("insert into b190_membership values (2, 'feeExempt', null)").update();
+		db.sql("insert into b190_child values (2, 98)").update();
+
+		run(steps, "restore");
+
+		assertThat(notValidInTheCatalogue())
+				.as("every constraint that was not valid is back with the same definition, and still"
+						+ " not valid: production ends exactly as QA is")
+				.isEqualTo(before);
+		assertThat(db.sql("select count(*) from b190_membership").query(Long.class).single())
+				.as("the row the constraint refuses, and the one that predated it").isEqualTo(2L);
+
+		refused("insert into b190_membership values (3, 'feeExempt', null)");
+		refused("insert into b190_child values (3, 97)");
+	}
+
+	/**
+	 * A THIRD CONSTRAINT THAT IS NOT VALID IS LISTED WITHOUT ANYBODY EDITING ANYTHING, and the ones
+	 * the schema has are still there.
+	 *
+	 * <p>The owner decided the list is asked of the catalogue and not written down, so that a
+	 * constraint arriving in a later migration is carried too. The schema has two today, both on
+	 * {@code membership}, which is exactly the number a list written by hand would have been
+	 * written for, and nothing in the real schema can tell the two apart. This builds the third.
+	 * A query that named the two it knows by name would pass every case about the real schema and
+	 * fail this one.
+	 */
+	@Test
+	void aThirdNotValidConstraintIsListedWithoutAnyoneEditingAnything() {
+		Set<String> theSchemasOwn = notValidInTheCatalogue().keySet();
+		assertThat(theSchemasOwn).as("the schema has constraints that are not valid, or this says nothing")
+				.isNotEmpty();
+
+		db.sql("create table b190_third (n int)").update();
+		db.sql("alter table b190_third add constraint b190_third_positive check (n > 0) not valid").update();
+
+		List<String> statements = notValidSteps().stream().map(Step::statement).toList();
+
+		assertThat(statements)
+				.contains("alter table public.b190_third drop constraint b190_third_positive;")
+				.anyMatch(one -> one.startsWith(
+						"alter table public.b190_third add constraint b190_third_positive CHECK")
+						&& one.endsWith("NOT VALID;"));
+		for (String key : theSchemasOwn) {
+			String name = key.substring(key.indexOf('.') + 1);
+			assertThat(statements)
+					.as("%s is a constraint the schema already had and it has to be lifted too", key)
+					.anyMatch(one -> one.contains(" drop constraint " + name + ";"));
+		}
+	}
+
+	/**
+	 * NOTHING A NOT VALID CONSTRAINT CARRIES CAN BE LOST BY LIFTING IT, asked of the catalogue.
+	 *
+	 * <p>Two things, and each is a boundary the file says it has and this makes fail in the build.
+	 * A COMMENT on a constraint is lost when the constraint is dropped, and the restore does not
+	 * write one. And a statement is one line, so a name or a definition with a newline in it would
+	 * be cut in two by the script that reads it. Neither exists today. A constraint that has either
+	 * is not refused, it is simply carried wrongly, which is why it has to be refused here.
+	 */
+	@Test
+	void noNotValidConstraintCarriesACommentOrANewline() {
+		assertThat(db.sql("select count(*) from pg_description d"
+						+ " join pg_constraint con on con.oid = d.objoid"
+						+ " and d.classoid = 'pg_constraint'::regclass"
+						+ " where pg_get_constraintdef(con.oid) like '% NOT VALID'")
+				.query(Long.class)
+				.single())
+				.as("a comment on a constraint that is not valid is lost when it is lifted")
+				.isZero();
+
+		assertThat(notValidSteps())
+				.as("a statement with a newline in it is cut in two by the script that reads it")
+				.allSatisfy(one -> assertThat(one.statement()).doesNotContain("\n"));
+	}
+
+	/**
+	 * THE SCRIPT NAMES NO CONSTRAINT THAT IS NOT VALID, which is the other half of "asked of the
+	 * catalogue".
+	 *
+	 * <p>The file is what is asked, and the file is exercised above. This is about the script: a
+	 * name written into it would be a list again, however it got there. Derived, so it covers the
+	 * constraints of a later migration and not only the two there are.
+	 */
+	@Test
+	void theScriptNamesNoConstraintThatIsNotValid() throws IOException {
+		List<String> code = Files.readAllLines(SCRIPT, StandardCharsets.UTF_8).stream()
+				.filter(line -> !line.strip().startsWith("#"))
+				.toList();
+
+		for (String key : notValidInTheCatalogue().keySet()) {
+			Pattern named = Pattern.compile(
+					"\\b" + Pattern.quote(key.substring(key.indexOf('.') + 1)) + "\\b");
+			assertThat(code.stream().filter(line -> named.matcher(line).find()))
+					.as("the script names %s, a constraint that is not valid. Which ones are lifted is"
+							+ " asked of the catalogue, and a name here is a list", key)
+					.isEmpty();
+		}
 	}
 
 	private long lastValueOf(String sequence) {

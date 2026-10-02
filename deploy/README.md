@@ -143,6 +143,13 @@ the order here does not decide it.
 and the rights each account holds all come over, and the tool lists them when it
 finishes. Read that list before the portal is opened to anybody.
 
+**A row that predates a `not valid` constraint is carried as it is.** The owner's own
+membership has no record of who freed it from the fee, and the constraints that ask for one
+were added `not valid` for that reason (V35). The pour lifts each such constraint inside its
+own transaction and puts it back, still not valid, so production ends exactly as QA is and
+nothing is written into that row. Which constraints is asked of the catalogue; the tool lists
+them in step 6 and checks them again at the end.
+
 ### Never run `docker compose down` on this project
 
 It was already the rule before there was a database. The database adds a second

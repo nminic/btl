@@ -218,6 +218,84 @@ class PouringFromQaScriptTest {
 	}
 
 	/**
+	 * THE CONSTRAINTS THAT ARE NOT VALID STEP ASIDE BEFORE THE FIRST WRITE AND COME BACK BEFORE THE
+	 * COMMIT, in the one transaction, and are checked again after it.
+	 *
+	 * <p>The pour is a stream written by the shell, and the order of its parts is the whole
+	 * mechanism: a constraint lifted after the truncate has already refused nothing, and one put
+	 * back after the commit is one the transaction cannot take back, and a restore that is simply
+	 * missing leaves production with a constraint QA has and no error anywhere. Held by position,
+	 * which is what an order is: {@code begin}, the lifts, the truncate, the reading of QA, the
+	 * restores, the {@code commit}.
+	 *
+	 * <p>Two more shapes are held. The list is asked of PRODUCTION, whose catalogue the schema
+	 * comparison has already proved is QA's, and it is asked AGAIN after the pour and compared: a
+	 * constraint that came back as valid is not in the second answer at all, and that absence is
+	 * the whole of what shows it.
+	 */
+	@Test
+	void theConstraintsThatAreNotValidStepAsideBeforeTheFirstWriteAndComeBackBeforeTheCommit() {
+		List<String> code = scriptCode();
+
+		String lift = "sed -n 's/^drop|//p' \"$WORK/not-valid\"";
+		String restore = "sed -n 's/^restore|//p' \"$WORK/not-valid\" >> \"$STREAM\"";
+		String commit = "printf 'commit;\\n' >> \"$STREAM\"";
+
+		int begin = code.indexOf("printf 'begin;\\n'");
+		int lifted = code.indexOf(lift);
+		int truncate = indexOfLineStarting(code, "printf 'truncate table");
+		int readQa = indexOfLineContaining(code, "< \"$QA_SESSION\"");
+		int restored = code.indexOf(restore);
+		int committed = code.indexOf(commit);
+
+		assertThat(List.of(begin, lifted, truncate, readQa, restored, committed))
+				.as("every part of the pour has to be there: begin, the lifts, the truncate, the"
+						+ " reading of QA, the restores, the commit")
+				.allSatisfy(one -> assertThat(one).isGreaterThanOrEqualTo(0));
+		assertThat(List.of(begin, lifted, truncate, readQa, restored, committed))
+				.as("the constraints step aside BEFORE the first write and come back BEFORE the commit,"
+						+ " in this order")
+				.isSorted();
+
+		assertThat(code.stream().filter(lift::equals).count())
+				.as("one line lifts them, and it is not repeated")
+				.isEqualTo(1);
+
+		List<String> asked = linesWith(code, "< \"$NOT_VALID_SQL\"");
+		assertThat(asked)
+				.as("the list is asked twice, of production both times: before the pour and after it")
+				.containsExactly(
+						"prod_sql -F'|' -f - < \"$NOT_VALID_SQL\" > \"$WORK/not-valid\"",
+						"prod_sql -F'|' -f - < \"$NOT_VALID_SQL\" > \"$WORK/not-valid.after\"");
+
+		int pour = indexOfLineContaining(code, "< \"$STREAM\"");
+		int again = code.indexOf("prod_sql -F'|' -f - < \"$NOT_VALID_SQL\" > \"$WORK/not-valid.after\"");
+		int compared = indexOfLineContaining(code, "diff -u \"$WORK/not-valid\" \"$WORK/not-valid.after\"");
+		assertThat(List.of(pour, again, compared))
+				.as("the answer is compared with the one from before the pour, and only after the pour")
+				.isSorted()
+				.allSatisfy(one -> assertThat(one).isGreaterThanOrEqualTo(0));
+	}
+
+	private static int indexOfLineStarting(List<String> code, String prefix) {
+		for (int at = 0; at < code.size(); at++) {
+			if (code.get(at).startsWith(prefix)) {
+				return at;
+			}
+		}
+		return -1;
+	}
+
+	private static int indexOfLineContaining(List<String> code, String needle) {
+		for (int at = 0; at < code.size(); at++) {
+			if (code.get(at).contains(needle)) {
+				return at;
+			}
+		}
+		return -1;
+	}
+
+	/**
 	 * WHAT A FAILED COPY SAYS NEVER REACHES THE TERMINAL EXCEPT THROUGH THE HELPER.
 	 *
 	 * <p>PostgreSQL puts the offending row in the message of a failed COPY, on lines of its own,
