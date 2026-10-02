@@ -20,28 +20,35 @@ export function invitedFrom(values: FormValues): Invited {
 }
 
 /**
- * WHAT `PUT /api/moderators/{id}` SENDS TO CHANGE A NAME, since 26.09.2026 the same route
- * that already carried `rights` (`ModeratorWriteApi.Ticks`).
+ * WHAT `PUT /api/moderators/{id}/name` SENDS TO CORRECT A NAME, which is
+ * `ModeratorWriteApi.Renamed` and nothing besides: the two parts of the name, both always.
  *
- * There is no address field here, on purpose and unlike `Invited`: „adresa se ne menja jer
- * je to prijava" (owner, 26.09.2026), and the form behind this shape does not ask for one
- * (`AdminModerators.tsx`'s own edit form, narrower than the one that makes a moderator). The
- * route refuses one by name regardless of what any form sends, so leaving the field out here
- * is not the only thing standing between a superadmin and that mistake - it is simply this
- * screen's own half of never asking.
+ * **There are no rights on this shape, and that is what the owner's decision of 02.10.2026
+ * is made of** (PDL, „Odluke iz ciscenja nalaza": correcting a name sends only the name, and
+ * the rights are sent separately, so that it does not undo another superadmin's change of
+ * rights). Until then the name went to the same route as the boxes, with the boxes this screen
+ * had last read beside it. The route has no statement that writes a box, so a field of the
+ * other shape that still arrived would be dropped, not written; sending none is this screen's
+ * half of it. The shape of the two routes is derived and is not the owner's word.
+ *
+ * There is no address field here either, on purpose and unlike `Invited`: the address is not
+ * changed, because it is what he signs in with (PDL, 26.09.2026), and the form behind this
+ * shape does not ask for one (`AdminModerators.tsx`'s own edit form, narrower than the one
+ * that makes a moderator). The route refuses one by name regardless of what any form sends,
+ * so leaving the field out here is not the only thing standing between a superadmin and that
+ * mistake - it is simply this screen's own half of never asking.
  */
-export type Changed = { firstName: string; lastName: string; rights: string[] }
+export type Renamed = { firstName: string; lastName: string }
 
 /**
- * The name off the form, read by name exactly as `invitedFrom` reads its own three fields,
- * beside the rights this screen already knows the moderator holds - `rights` is not on this
- * form (it is the matrix, `AdminModerators.tsx`'s class comment says why), so it travels in
- * from the caller rather than out of `values`.
+ * The name off the form, read by name exactly as `invitedFrom` reads its own three fields:
+ * off the values the form is holding and not off the derived text. The rights are not here
+ * and not an argument: they are the matrix, and nothing a name correction needs to say.
  */
-export function changedFrom(values: FormValues, rights: string[]): Changed {
+export function renamedFrom(values: FormValues): Renamed {
   const text = (name: string): string => String(values[name] ?? '')
 
-  return { firstName: text('firstName'), lastName: text('lastName'), rights }
+  return { firstName: text('firstName'), lastName: text('lastName') }
 }
 
 /**
@@ -114,14 +121,15 @@ export function ticksIn(body: unknown): string[] | null {
  * dictionary. `refusals.test.ts` reads the four `static final String` reasons the
  * class declares and fails when one of them is not here.
  *
- * <p><b>One table for all three writing routes</b>, the way `WHEN_WRITING_A_LEAGUE`
+ * <p><b>One table for all four writing routes</b>, the way `WHEN_WRITING_A_LEAGUE`
  * covers `add`, `change` and `remove` of one entity. `theFormIsNotComplete` is
- * declared by `add` (missing name, surname or address) and, defensively, by `change`
- * (a request with no `rights` field at all) - the sentence below speaks to the one a
- * superadmin can actually reach, which is the form; `change`'s own use of it is
- * covered because the door refuses an empty required field before either request
- * leaves the browser and this is therefore the same defensive floor
- * `admin/leagueWrites.ts` keeps for its own „nearly unreachable" reasons.
+ * declared by `add` (missing name, surname or address), by `rename` (a name with a part
+ * missing, which says which) and, defensively, by `change` (a request with no `rights`
+ * field at all) - the sentence below speaks to the one a superadmin can actually reach,
+ * which is the form; the other two uses of it are covered because the form refuses an
+ * empty required field before either request leaves the browser and this is therefore the
+ * same defensive floor `admin/leagueWrites.ts` keeps for its own „nearly unreachable"
+ * reasons.
  */
 export const WHEN_WRITING_A_MODERATOR: Record<string, string> = {
   theFormIsNotComplete: 'admin.moderatorSaveRefused.theFormIsNotComplete',

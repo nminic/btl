@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { changedFrom, emailIn, identityIn, invitedFrom, ticksIn } from './moderatorWrites'
+import { emailIn, identityIn, invitedFrom, renamedFrom, ticksIn } from './moderatorWrites'
 
 /**
  * WHAT THE SCREEN OF MODERATORS SENDS, AND WHAT IT READS BACK.
@@ -30,35 +30,44 @@ describe('what a moderator is invited with', () => {
   })
 })
 
-describe('what a moderator is changed with', () => {
-  it('carries the name off the form beside the rights the caller already knows he holds', () => {
-    expect(
-      changedFrom({ firstName: 'Ana', lastName: 'Jovanović' }, ['entity:events', 'queue:payments']),
-    ).toEqual({
+describe('what a moderator is renamed with', () => {
+  it('carries the two parts of the name off the form, and exactly those', () => {
+    /* `toStrictEqual` and not `toEqual`: the second ignores a key whose value is `undefined`,
+       and a request that named `rights: undefined` would be the shape this function exists
+       to stop sending. The route has no box to write on this request (PDL, 02.10.2026). */
+    expect(renamedFrom({ firstName: 'Ana', lastName: 'Jovanović' })).toStrictEqual({
       firstName: 'Ana',
       lastName: 'Jovanović',
-      rights: ['entity:events', 'queue:payments'],
     })
+  })
+
+  it('reads each part from its own field, so a surname is never sent as a first name', () => {
+    expect(renamedFrom({ firstName: 'Ana', lastName: 'Jovanović' }).firstName).toBe('Ana')
+    expect(renamedFrom({ firstName: 'Ana', lastName: 'Jovanović' }).lastName).toBe('Jovanović')
   })
 
   it('sends an empty string for a name field the form did not carry, and never nothing at all', () => {
-    /* `ModeratorWriteApi.change` treats a blank, an empty string and an absent field as
+    /* `ModeratorWriteApi.rename` treats a blank, an empty string and an absent field as
        one mistake with one fix - type it in - so a body that quietly dropped a field the
-       form did not populate would be answered `theFormIsNotComplete` with nothing telling
-       the superadmin which one, the same reasoning `invitedFrom`'s own case keeps. */
-    expect(changedFrom({ firstName: 'Ana' }, [])).toEqual({
-      firstName: 'Ana',
-      lastName: '',
-      rights: [],
-    })
+       form did not populate would be answered `theFormIsNotComplete`, naming the field
+       but with the form already gone, the same reasoning `invitedFrom`'s own case keeps. */
+    expect(renamedFrom({ firstName: 'Ana' })).toStrictEqual({ firstName: 'Ana', lastName: '' })
   })
 
-  it('carries no address field at all, whatever the form is asked to hold', () => {
-    /* Even a form that somehow held one - it never does; `editModerator` in
-       `AdminModerators.tsx` leaves the field out - would not reach the request: this
-       function does not read `values.email` in the first place. */
-    expect(changedFrom({ firstName: 'Ana', lastName: 'Jovanović', email: 'ana@primer.rs' }, []))
-      .not.toHaveProperty('email')
+  it('carries no address and no right, whatever the form is asked to hold', () => {
+    /* Even a form that somehow held an address or a list of rights - it never does;
+       `editModerator` in `AdminModerators.tsx` leaves the address out and the rights are
+       the matrix - would not reach the request: this function reads the two name fields
+       and nothing else. */
+    const sent = renamedFrom({
+      firstName: 'Ana',
+      lastName: 'Jovanović',
+      email: 'ana@primer.rs',
+      rights: 'entity:events',
+    })
+
+    expect(sent).not.toHaveProperty('email')
+    expect(sent).not.toHaveProperty('rights')
   })
 })
 

@@ -76,8 +76,7 @@ export function ServerSaid({
          because the number is the wire's and a table is an object). A number the route did not
          name falls to the general sentences, and WHICH OF THOSE TWO is not decided here: a 400
          that named no reason is the portal's own fault and says so, any other number keeps the
-         advice to wait (`serverWords.ts`, which also says why this is one function and what the
-         one remaining copy of it is). */
+         advice to wait (`serverWords.ts`, which also says why this is one function). */
       const own = Object.hasOwn(numbers, answer.status) ? numbers[answer.status] : undefined
 
       return own === undefined

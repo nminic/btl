@@ -13,10 +13,10 @@ import { useSession } from '../../session/useSession'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import { MODERATORS, recordsOf, type Editing, type Overlay } from './entityForms'
 import {
-  changedFrom,
   emailIn,
   identityIn,
   invitedFrom,
+  renamedFrom,
   ticksIn,
   WHEN_WRITING_A_MODERATOR,
 } from './moderatorWrites'
@@ -60,14 +60,27 @@ const NO_RIGHTS_YET: Rights = {}
  *
  * **THIS SCREEN WRITES TO THE SERVER, SINCE B106** (PDL P28c point 2, owner
  * 24.09.2026: „Svi ekrani administracije prestaju da pisu u sesijski sloj i
- * pocinju da zovu rute"). `ModeratorApi`/`ModeratorWriteApi` answer three routes
- * and this screen now uses all three: `POST /api/moderators` makes one and sends
+ * pocinju da zovu rute"). `ModeratorApi`/`ModeratorWriteApi` answer four routes
+ * and this screen now uses all four: `POST /api/moderators` makes one and sends
  * him his invitation, `PUT /api/moderators/{id}` replaces his whole row of ticks
- * and, since 26.09.2026, his name beside them, and `DELETE /api/moderators/{id}`
- * takes his moderatorship away (never his account - see that route's own
- * javadoc). Reading the list already went to the server before this:
- * `useModerators()` has been `GET /api/moderators` since ADL A50, and only the
- * writes below are what changes here.
+ * and nothing besides, `PUT /api/moderators/{id}/name` corrects his name and
+ * nothing besides, and `DELETE /api/moderators/{id}` takes his moderatorship away
+ * (never his account - see that route's own javadoc). Reading the list already
+ * went to the server before this: `useModerators()` has been
+ * `GET /api/moderators` since ADL A50, and only the writes below are what changes
+ * here.
+ *
+ * **HIS NAME AND HIS TICKS ARE TWO REQUESTS, SINCE 02.10.2026, AND NEITHER CARRIES
+ * THE OTHER.** The owner decided (PDL, „Odluke iz ciscenja nalaza") that
+ * correcting a moderator's name sends only the name and the rights are sent
+ * separately, so that a correction does not undo what another superadmin ticked
+ * since this screen last read the row. Until then both went to the one `PUT`:
+ * `saveOne` worked the rights out from the last read of the list plus this
+ * visit's ticks and sent them beside the name, and `toggleRight` sent the name
+ * beside the ticks, which is the same fault the other way round. `saveOne` now
+ * sends the name and `toggleRight` the ticks, each to its own route, and
+ * `ModeratorWriteApi` has no statement that lets one write what the other does.
+ * **The shape of the two routes is derived reasoning, not the owner's word.**
  *
  * **HIS NAME MAY BE CHANGED HERE, SINCE 26.09.2026; HIS ADDRESS NEVER, AND THAT
  * IS NOT AN OVERSIGHT.** PDL P21 says the superadmin „menja" moderators as well
@@ -75,18 +88,18 @@ const NO_RIGHTS_YET: Rights = {}
  * `EditableCell` on all three columns, and the full form behind „Otvori". Both
  * wrote into the session overlay and neither ever reached the database - the
  * change was lost on the next refresh, which is a screen showing a control that
- * does nothing. The owner then chose, on three offered outcomes: „Izabrao ime
- * da, adresa ne ... Greška u imenu se ispravlja kroz portal; adresa se ne menja
- * jer je to prijava" (26.09.2026). So an existing moderator's row still shows
- * his name as plain text - `AdminLeagues.tsx` keeps its own name the same way,
- * on the very form that changes it - and „Otvori" now opens `editModerator`,
- * the one form on this screen with no field for an address at all.
- * `ModeratorWriteApi.change` refuses a request naming one regardless of what
- * any form sends (its own javadoc carries the reason: the address is what a
- * moderator signs in with, and moving it would let whoever changed it read the
- * next password reset link meant for the man who used to hold it), so leaving
- * the field off this form is this screen's own half of never asking, not the
- * only thing standing in the way.
+ * does nothing. The owner then chose, on three offered outcomes, that a mistake in
+ * the name is corrected through the portal and the address is not, because the
+ * address is what he signs in with (PDL, 26.09.2026). So an existing
+ * moderator's row still shows his name as plain text - `AdminLeagues.tsx` keeps
+ * its own name the same way, on the very form that changes it - and „Otvori" now
+ * opens `editModerator`, the one form on this screen with no field for an
+ * address at all. Both `ModeratorWriteApi.change` and `ModeratorWriteApi.rename`
+ * refuse a request naming one regardless of what any form sends (their javadoc
+ * carries the reason: the address is what a moderator signs in with, and moving
+ * it would let whoever changed it read the next password reset link meant for the
+ * man who used to hold it), so leaving the field off this form is this screen's
+ * own half of never asking, not the only thing standing in the way.
  *
  * A moderator is entered the way the other six entities are, by the one
  * renderer reading one JSON definition - `EntityEditor` with `save` handed in,
@@ -140,9 +153,11 @@ export function AdminModerators() {
    * A14 would have this screen narrow out of `unknown` for a row that already
    * IS a `Moderator` the moment „Otvori" is pressed. Set beside `editing` in the
    * same press and read only when `editing.mode === 'one'`, so `saveOne` always
-   * has a properly typed row to compute the rights this save must resend
-   * unchanged - never `null` there in practice, but `null` while nothing is
-   * open or a new moderator is being made, where no such row exists yet.
+   * has a properly typed id to address the name `PUT` at, and a way to tell that
+   * `PUT` from the `POST` that makes a new moderator - never `null` there in
+   * practice, but `null` while nothing is open or a new moderator is being made,
+   * where no such row exists yet. Nothing else of the row is read: the rights
+   * are not this save's to send (see the class comment).
    */
   const [editingModerator, setEditingModerator] = useState<Moderator | null>(null)
   const state = useModerators()
@@ -173,16 +188,16 @@ export function AdminModerators() {
 
   /**
    * MAKING ONE, WHO SETS HIS OWN PASSWORD THROUGH A LINK THE ROUTE SENDS HIM -
-   * OR CHANGING THE NAME OF ONE WHO ALREADY EXISTS, SINCE 26.09.2026.
+   * OR CORRECTING THE NAME OF ONE WHO ALREADY EXISTS, SINCE 26.09.2026.
    *
-   * **Changing a name is a `PUT` that answers with nothing this screen reads
-   * back**, the same shape `AdminLeagues.saveOne` already uses for its own
-   * `PUT`: what goes into the row afterwards is what was typed, which this
-   * screen already holds as `text`, not a name `Ticked` was never given a
-   * field to carry. The rights sent alongside it are read off
-   * `editingModerator` through `allowed()` and `rightsOverlay` - the same two
-   * sources `toggleRight` below reads - so a name change never resends a stale
-   * row of boxes that forgot a tick confirmed earlier in this same visit.
+   * **Correcting a name is a `PUT` of the name and of nothing else, since
+   * 02.10.2026**, to `/api/moderators/{id}/name`: `renamedFrom` carries the two
+   * parts and no right, not the rights read off the last list, not this visit's
+   * ticks, and not whatever another superadmin has ticked since - so the
+   * correction cannot undo any of them. It answers 204 with nothing in it, which
+   * is the route's own reasoning and not a decision: what goes into the row
+   * afterwards is what was typed, which this screen already holds as `text`, the
+   * same shape `AdminLeagues.saveOne` uses for its own `PUT`.
    *
    * **Making one is unchanged from B106.** `POST` answers 201 with `{id,
    * email}` (`ModeratorWriteApi.Made`) and never with a row he can be drawn
@@ -196,12 +211,9 @@ export function AdminModerators() {
    */
   async function saveOne(values: FormValues, text: Record<string, string>): Promise<Saving> {
     if (editingModerator !== null) {
-      const rights = RIGHTS.map((one) => one.key).filter((key) =>
-        allowed(editingModerator, key, rightsOverlay),
-      )
       const answer = await askTheServer(
-        `/api/moderators/${editingModerator.id}`,
-        changedFrom(values, rights),
+        `/api/moderators/${editingModerator.id}/name`,
+        renamedFrom(values),
         'PUT',
       )
 
@@ -323,12 +335,12 @@ export function AdminModerators() {
    * tracked only the pressed box would satisfy „rights are kept" while quietly
    * dropping every other one on the next press.
    *
-   * <p>**The name travels with every press, unchanged, since 26.09.2026.**
-   * `ModeratorWriteApi.change` now requires it exactly as it already required
-   * `rights` - a `PUT` that lost either field on the way is refused rather than
-   * read as „leave it" - so a press on the matrix, which never asks about a
-   * name at all, resends the one this screen already has on `moderator` rather
-   * than omitting it.
+   * <p>**The name does NOT travel with a press, since 02.10.2026.** From 26.09.2026
+   * until then `ModeratorWriteApi.change` required it beside the rights, so every
+   * press resent the one this screen had on `moderator` - and a press on a screen
+   * that was a minute old wrote back a name another superadmin had corrected in the
+   * meantime. The name has its own route now (`saveOne`), `change` takes the rights
+   * and nothing besides, and a press sends exactly that.
    */
   async function toggleRight(moderator: Moderator, right: string, granted: boolean): Promise<void> {
     const nextRights = RIGHTS.map((one) => one.key).filter((key) =>
@@ -339,7 +351,7 @@ export function AdminModerators() {
 
     const answer = await askTheServer(
       `/api/moderators/${moderator.id}`,
-      { firstName: moderator.firstName, lastName: moderator.lastName, rights: nextRights },
+      { rights: nextRights },
       'PUT',
     )
 

@@ -1,5 +1,6 @@
 import { askTheServer, type Answer } from '../pages/account/askTheServer'
 import { SIGNED_IN_ROLES, type SignedInRole } from '../roles/context'
+import { REFERRAL_CODE } from '../data/pricing'
 import { MEMBERSHIP_BASES, type MembershipBasis } from '../data/types'
 
 /**
@@ -101,10 +102,10 @@ export type WhoTheServerSaysIAm = {
    * the caller, it is not a door.
    *
    * Null for a visitor, for an account that races for nobody, and for a value that is
-   * not a string. The shape is not judged beyond that, for the same reason the code
-   * below is not: which words are countries is the schema's (V7,
-   * `competitor_town_is_from_the_codebook_or_typed`), and a portal that re-judged it
-   * here could only refuse to draw a member the server really answered.
+   * not a string. The shape is not judged beyond that, and `countryIn` below says why
+   * that is a boundary of its own and not a ground shared with the referral code: the
+   * schema does hold a shape for a country (`country_code_shape`, V2), and what asking
+   * it would do to the screen is not decided.
    */
   country: string | null
   /**
@@ -175,9 +176,11 @@ export type WhoTheServerSaysIAm = {
    * fee or not.
    *
    * Null for a visitor and for an account that races for nobody, which are the same two
-   * states the basis above is null for, and for a code that is not a string. The screen
-   * draws an address with nothing after the sign in all three, which is a link that
-   * plainly does not work rather than one that looks as if it might.
+   * states the basis above is null for, and for a code that is not a code: a value that
+   * is not a string, or a string that is not sixteen lowercase hexadecimal characters
+   * (`codeIn` below says why that is asked). The screen draws an address with nothing
+   * after the sign in all of them, which is a link that plainly does not work rather
+   * than one that looks as if it might.
    */
   referralCode: string | null
   /**
@@ -355,12 +358,35 @@ function basisIn(mine: object | null): MembershipBasis | null {
 /**
  * The caller's own referral code out of the answer, or nothing.
  *
- * **Looked for and never asserted**, for the reason written above. The shape is not
- * checked beyond „it is a string": `competitor_referral_code_shape` is sixteen
- * hexadecimal characters and it is the SCHEMA's job to keep that, checked at the moment
- * the code is stored (`ReferralCode`). A portal that re-judged it here would be a second
- * opinion about a rule it does not own, and the only thing it could do with a code it
- * disliked is refuse to show a member the link the server really gave him.
+ * **Looked for and never asserted**, for the reason written above, **and asked what it
+ * looks like**: sixteen lowercase hexadecimal characters are believed, and anything else
+ * is „I was not told", exactly as a code that is not a string is (PENDING 227, part b).
+ *
+ * **This said the opposite until 02.10.2026**: that the shape was the SCHEMA's to keep,
+ * that a portal re-judging it would be a second opinion about a rule it does not own, and
+ * that the only thing it could do with a code it disliked was refuse a member the link the
+ * server really gave him. That was an argument, and the worry in it is a measurement now:
+ * every code of the generated members is believed (`session/theServer.test.ts` reads the
+ * file), and the server draws its codes with `ReferralCode.fresh()` and holds them to the
+ * same shape where they are stored (`competitor_referral_code_shape`, V7), so the only code
+ * this refuses is one no row can carry. What the argument left out is where the string goes
+ * next: this is the link a member copies and sends on (`member/Membership.tsx`), and a
+ * reader that handed ANY string to the address handed on whatever the answer carried, an
+ * ampersand or a hash included.
+ *
+ * **The question goes to the one place that already says what a code looks like**,
+ * `REFERRAL_CODE` in `data/pricing.ts`, which `pages/Registration.tsx` asks of a code that
+ * arrives in an address. So a code the registration page would refuse is a code this one
+ * does not draw: one rule asked at both ends of the link, with no second expression and no
+ * list of what is refused. `data/referralCodeShape.test.ts` holds that constant to the
+ * schema's own text.
+ *
+ * **Which is why nothing is encoded where the link is built.** Sixteen lowercase
+ * hexadecimal characters have no other spelling in an address than themselves, so
+ * `Membership.tsx` writes the code as it is, and what makes that safe is this question and
+ * not a second one asked there: a code with an ampersand and a hash in it goes in at the
+ * wire and the page draws an address with nothing after the sign
+ * (`data/theRealAnswer.test.tsx`).
  */
 function codeIn(mine: object | null): string | null {
   if (mine === null) {
@@ -369,18 +395,22 @@ function codeIn(mine: object | null): string | null {
 
   const said: unknown = Reflect.get(mine, 'referralCode')
 
-  return typeof said === 'string' ? said : null
+  return typeof said === 'string' && REFERRAL_CODE.test(said) ? said : null
 }
 
 /**
  * Where the caller lives, out of the answer, or nothing.
  *
  * **Looked for and never asserted**, and the shape is not checked beyond „it is a
- * string", which is the ground `codeIn` above stands on and the same ground: which words
- * name a country is the SCHEMA's (V7, `competitor_town_is_from_the_codebook_or_typed`),
- * checked where a town is stored. A portal re-judging it here would be a second opinion
- * about a rule it does not own, and the only thing it could do with a country it disliked
- * is refuse to draw a member the server really answered.
+ * string". **That is a boundary and it is written as one, not a ground borrowed from
+ * `codeIn` above**, which asks its code what it looks like since 02.10.2026. The schema
+ * does hold a shape for a country (`country_code_shape`, V2: two capital letters), so the
+ * question could be asked here too; what asking it would do is why it is not. A country
+ * that is any other string is a member drawn in euros (`paysInDinars` is `=== 'RS'`),
+ * while one refused here is „I was not told", and „Moja članarina" then draws the page
+ * that says the portal cannot read his record in place of his fee. Which of the two a
+ * country in no known shape should get is a question of that screen and is left as it was,
+ * and `theServer.test.ts` holds it: such a country comes back as it was sent.
  */
 function countryIn(mine: object | null): string | null {
   if (mine === null) {
