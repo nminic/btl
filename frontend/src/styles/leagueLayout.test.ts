@@ -2,7 +2,14 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, relative, sep } from 'node:path'
 import { first, must } from '../test/at'
 import { PLATE_CLASSES } from '../test/plate'
-import { ruleFor, ruleInMedia, sheetsOf, unconditionalRules, unremarked } from '../test/stylesheet'
+import {
+  ruleFor,
+  ruleInContainer,
+  ruleInMedia,
+  sheetsOf,
+  unconditionalRules,
+  unremarked,
+} from '../test/stylesheet'
 
 /**
  * The things the owner asked for on 07.09.2026 that live only in a stylesheet.
@@ -173,9 +180,10 @@ a.plate__faces {
  * Five of them dress the circle of another widget, which draws no plate: the chart on the top
  * boards, the ten faces on the front page, the head of a profile, the card of a competitor and
  * the header of a signed in member. The next is the owner's
- * own decision of 07.09.2026, „Krug se ne crta ispod 700px" (raised to 745px on 02.10.2026, in
- * the case that reads it), written against the main standing by name, and it is read as a rule
- * two cases below. The last is the sheet that DEFINES a class the
+ * own decision of 07.09.2026, „Krug se ne crta ispod 700px" (made „tek od 745px" on 02.10.2026 and
+ * asked of the table's own box and not of the window after PR 461, in the case that reads it),
+ * written against the main standing by name, and it is read as a rule two cases below. The last is
+ * the sheet that DEFINES a class the
  * plate wears rather than one reaching in to redress it, and its entry says so.
  *
  * **Three entries arrived on 27.09.2026 and each is explained where it stands.** Two of them are
@@ -386,7 +394,7 @@ describe('the name of a competitor beside their circle', () => {
     expect(rule.getPropertyValue('block-size')).toBe('1.7rem')
   })
 
-  it('is not drawn at all in the main standing below 745px, which the owner chose', () => {
+  it('is not drawn at all in the main standing where the table has no room for the names, which the owner chose', () => {
     /* **The owner's answer, with the measurement in front of him** (07.09.2026): „Krug se ne crta
        ispod 700px." The circle takes about thirty four pixels of a column that is 167 wide at 360,
        and a long name then wraps of its own accord: nine of seventeen names ran to two lines where
@@ -396,9 +404,16 @@ describe('the name of a competitor beside their circle', () => {
        **Raised from 700 to 745px on 02.10.2026** (`PDL.md`, „Odluke iz ciscenja nalaza", stavka
        260), so that the circle does not stand beside a name on two lines. Measured in a browser over
        `/sr/tabela?sezona=2019`, seventeen rows, with the circle drawn and nine columns: names on two
-       lines were 9 at 700px, 3 at 720, 1 at 744 and none at 745, 768 or 1280. Only the circle moved.
-       The nine columns go on dropping to four at 700 with every other table on the portal
-       (`styles/table.css`), which `pages/Rankings.css` says in its own words.
+       lines were 9 at 700px, 3 at 720, 1 at 744 and none at 745, 768 or 1280 of a window with no
+       scrollbar. Only the circle moved. The nine columns go on dropping to four at 700 with every
+       other table on the portal (`styles/table.css`), which `pages/Rankings.css` says in its own
+       words, and which `pages/rankingsLayout.test.tsx` holds against every rule of the portal.
+     *
+       **And asked of the table's box and not of the window after PR 461** (review, 02.10.2026): the
+       edge is 713px of table, which is a window of 745px with no scrollbar and one of 760px with a
+       scrollbar of 15, the same table. This case reads the rule where it is written; that the box it
+       asks is a real one, that it is the only rule that takes a circle away and where the edge falls
+       are asked of the rendered tree in `pages/rankingsLayout.test.tsx`.
      *
        **The answer has two halves and both are asked, but not both here.** „Below the width, and
        above it drawn" is this rule. „**And only in the main standing**" is undone from two other sides,
@@ -410,9 +425,9 @@ describe('the name of a competitor beside their circle', () => {
        seventeen names is on two lines as before, and the row is 75 pixels again; the top boards on
        the same width still draw all thirty of theirs; at 1280 the circle is back. */
     expect(
-      ruleInMedia(
+      ruleInContainer(
         readFileSync(RANKINGS, 'utf-8'),
-        '(max-width: 744.98px)',
+        'standing (max-width: 712.98px)',
         '.rankings__table .plate__faces',
         'Rankings.css',
       ).getPropertyValue('display'),
