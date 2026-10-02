@@ -81,6 +81,8 @@ export function readerOf(memberNumber: string | null, account: number | null): s
  * <p><b>A ref of the provider and not a variable of the module</b>, so that a visit is the
  * only thing that carries a reader forward: a case that ended as one member does not start the
  * next as him, and a stale reader here could only drop a cache the next case had just filled.
+ * Dropping is idempotent, so a render that React repeats or throws away costs at most one more
+ * request and never a wrong answer.
  *
  * <p><b>What it does NOT do, written here and not left to be found.</b>
  * <ul>

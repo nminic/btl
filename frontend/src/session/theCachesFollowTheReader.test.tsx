@@ -44,11 +44,20 @@ const A_MODERATOR = { ...A_MEMBER, account: 9, memberNumber: null }
    he leaves a team. The reader is the same and what the answer says about him is not. */
 const THE_SAME_MEMBER_AGAIN = { ...A_MEMBER, teamId: 41 }
 
+/* Who the header would say is signed in, beside who the caches follow: the two are worked out from
+   the same two facts and the same order in two places, and the case at the bottom ties them. */
+function WhoIsAsking() {
+  const { signedIn, memberNumber, account } = useSession()
+
+  return <output aria-label="who is signed in">{JSON.stringify({ signedIn, reader: readerOf(memberNumber, account) })}</output>
+}
+
 function Probe() {
   const { theServerAnswered, theServerSignedMeIn, signOut, setGoing } = useSession()
 
   return (
     <>
+      <WhoIsAsking />
       <button type="button" onClick={theServerAnswered}>
         server answered nobody
       </button>
@@ -258,6 +267,25 @@ describe('what is not a change of reader', () => {
     await user.click(screen.getByRole('button', { name: 'something else changes' }))
 
     expect(held()).toEqual(ALL_HELD)
+  })
+})
+
+describe('who the caches follow and who the header says is signed in', () => {
+  /* **Two places work out who is asking from the same two facts, and nothing but this holds them
+     together.** `signedIn` says it for the header and the screens behind it, `readerOf` for the caches.
+     A member number that wins in one and loses in the other is a header that says one person and a
+     cache that was dropped for another. Both ends of each state are named, so a case that reads the
+     same wrong thing from both cannot pass. */
+  it.each([
+    ['nobody', 'server answered nobody', { signedIn: null, reader: null }],
+    ['a member, whose account is set as well', 'member signs in', { signedIn: { as: 'member', memberNumber: '000101' }, reader: 'member 000101' }],
+    ['an account that races for nobody', 'moderator signs in', { signedIn: { as: 'account', account: 9 }, reader: 'account 9' }],
+  ])('name the same person for %s', async (_who, button, said) => {
+    const user = visit()
+
+    await user.click(screen.getByRole('button', { name: button }))
+
+    expect(screen.getByLabelText('who is signed in')).toHaveTextContent(JSON.stringify(said))
   })
 })
 
