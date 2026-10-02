@@ -198,9 +198,35 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 		towns.set(at + 1, moving);
 	}
 
+	/** The town in the middle of the codebook and the first one after it that is in the same country and
+	 *  is not called the same, found rather than named so that neither is a town somebody has to keep
+	 *  in this file; they swap names and nothing else. */
+	private static void twoTownsOfOneCountryExchangeNames(ArrayNode towns) {
+		ArrayNode first = (ArrayNode) towns.get(middleOf(towns));
+
+		for (int next = middleOf(towns) + 1; next < towns.size(); next++) {
+			ArrayNode other = (ArrayNode) towns.get(next);
+
+			if (other.get(2).stringValue().equals(first.get(2).stringValue())
+					&& !other.get(1).stringValue().equals(first.get(1).stringValue())) {
+				JsonNode name = first.get(1);
+
+				first.set(1, other.get(1));
+				other.set(1, name);
+
+				return;
+			}
+		}
+
+		throw new IllegalStateException("no second town of " + first.get(2).stringValue()
+				+ " after the middle of " + PLACES);
+	}
+
 	/**
-	 * The changes a delta is written for, and there are two of them because a row
-	 * of a codebook can arrive or change and that is all it can do.
+	 * The changes a delta is written for. A row of a codebook can arrive or change and that
+	 * is all it can do, and a change needs a case for each key it can press: the order of
+	 * the countries, the order of the towns, and, since 02.10.2026, the name of a town in its
+	 * country.
 	 *
 	 * <p>There were five here until 09.09.2026, and the three that are gone are
 	 * gone to {@link #refusals()} rather than deleted: each of them takes a row out
@@ -243,7 +269,21 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 				new Change("a town is renamed and changes places with its neighbour",
 						rest -> {
 						},
-						DeltaMigrationAppliesTest::renameAndMove));
+						DeltaMigrationAppliesTest::renameAndMove),
+
+				/* The same deferral for the key over a town's NAME. Two towns of one country
+				   exchange names inside one UPDATE, which is what a delta writes when GeoNames moves
+				   the town a label names from one namesake to the other (owner, 02.10.2026, PDL
+				   "Odluke iz ciscenja nalaza (02.10.2026, vlasnik)", the entry that begins
+				   „Istoimena mesta u istoj drzavi dobijaju u zagradi”). Under a plain key the first of
+				   the two rows to be written lands on a name the second has not given up, and the
+				   delta stops halfway on a live database with a key its header never named. The case
+				   exists to be refused by a plain key and to go through a deferrable one, and
+				   ConstraintsTest holds the same two halves over the key itself. */
+				new Change("two towns of one country exchange names",
+						rest -> {
+						},
+						DeltaMigrationAppliesTest::twoTownsOfOneCountryExchangeNames));
 	}
 
 	@ParameterizedTest
@@ -980,6 +1020,7 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 							+ "arrivals is one the database does not carry, and a delta never takes a town out, "
 							+ "so no mark is ever given up for another row to take"),
 			Verdict.measuredBy("place_rank_unique", "a town is renamed and changes places with its neighbour"),
+			Verdict.measuredBy("place_country_name_unique", "two towns of one country exchange names"),
 			Verdict.measuredBy("place_country_fk", "a country joins the middle of the list, with a town in it"),
 
 			Verdict.outOfReach("price_row_pk", "a delta does not touch the price list at all"),

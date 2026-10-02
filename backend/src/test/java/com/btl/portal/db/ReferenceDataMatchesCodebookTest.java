@@ -7,7 +7,9 @@ import tools.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -65,8 +67,14 @@ class ReferenceDataMatchesCodebookTest extends DatabaseTest {
 	record CountryRow(String code, String name, boolean inRegion, int sortOrder) {
 	}
 
+	/** A name in a country, which is what the owner's decision of 02.10.2026 says may be carried by one
+	 *  town only. */
+	record NameInACountry(String country, String name) {
+	}
+
 	/** A town as both sides hold it. The mark first, because it is what the town
-	 *  is: name and country repeat, and the rank is a position in the file. */
+	 *  is: a name is unique within its country since 02.10.2026, but a label in it is the nearest
+	 *  bigger town and moves when GeoNames does, and the rank is a position in the file. */
 	record PlaceRow(long geonamesId, String name, String countryCode, String englishName, int rank) {
 	}
 
@@ -124,6 +132,49 @@ class ReferenceDataMatchesCodebookTest extends DatabaseTest {
 		assertThat(expected).hasSize(47_016);
 
 		sameRows(expected, actual);
+	}
+
+	/**
+	 * No two towns of one country carry one name in the SOURCE the database is loaded from.
+	 *
+	 * <p>Owner, 02.10.2026, PDL "Odluke iz ciscenja nalaza (02.10.2026, vlasnik)", the entry that begins
+	 * „Istoimena mesta u istoj drzavi dobijaju u zagradi": towns of one country that were called alike
+	 * carry the nearest bigger town in brackets, and the database refuses a second one
+	 * ({@code place_country_name_unique}). That key is the floor under the database. This is the floor
+	 * under the file, and it asks the question a person regenerating the file needs answered.
+	 *
+	 * <p><b>Why the file needs its own.</b> {@code btl-produkt/istorijski-podaci/napravi-mesta.py} writes
+	 * the codebook out of GeoNames and knows nothing about brackets: rebuilt from a newer export it
+	 * returns every namesake bare again, and {@link #thePlaceTableIsTheTownCodebook()} would say only
+	 * that some thousands of rows differ from the database. What was forgotten is a step, the one
+	 * {@code oznaci-istoimena-mesta.py} does, and this names it. A mutation of the file that gives one
+	 * town the name of another town of its country fails here and not only in the row comparison.
+	 *
+	 * <p>The pair is the country and the name compared letter for letter, which is what the database
+	 * means by equal: the collation is deterministic (V1).
+	 */
+	@Test
+	void noTwoTownsOfOneCountryCarryOneName() {
+		JsonNode file = read("frontend/src/test/mock/places.json");
+		Map<NameInACountry, List<Long>> carried = new LinkedHashMap<>();
+
+		for (JsonNode place : file) {
+			carried.computeIfAbsent(new NameInACountry(place.get(2).stringValue(), place.get(1).stringValue()),
+					pair -> new ArrayList<>()).add(place.get(0).longValue());
+		}
+
+		List<String> repeated = carried.entrySet().stream()
+				.filter(pair -> pair.getValue().size() > 1)
+				.limit(SHOWN_ON_FAILURE)
+				.map(pair -> "%s in %s: towns %s".formatted(pair.getKey().name(), pair.getKey().country(),
+						pair.getValue()))
+				.toList();
+
+		assertThat(repeated)
+				.as("towns of one country under one name: run btl-produkt/istorijski-podaci/oznaci-istoimena-mesta.py"
+						+ " over the codebook, then --delta, before this file is committed")
+				.isEmpty();
+		assertThat(file.size()).as("a source that quietly shrank would have nothing to repeat").isGreaterThan(40_000);
 	}
 
 	/**
