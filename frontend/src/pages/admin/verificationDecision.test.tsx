@@ -1046,6 +1046,7 @@ describe('a confirming press, in every state the queue can be in', () => {
       server,
       release,
       sweep: () => fireEvent.click(screen.getByRole('button', { name: 'Odobri sve' })),
+      card: (index: number) => within(cards[index] ?? document.createElement('li')),
       open: (card: number) =>
         user.click(
           within(cards[card] ?? document.createElement('li')).getByRole('button', {
@@ -1148,6 +1149,27 @@ describe('a confirming press, in every state the queue can be in', () => {
       target: LAST.id,
       toldOff: true,
     },
+    {
+      /* THE ANSWER OF ANOTHER CARD LETS GO OF ITS OWN CARD AND OF NO OTHER: a set that was emptied
+         when any one refusal came back would leave this card's request out and its box live. */
+      name: "the refusal of this very card is out, and another card's has come back",
+      held: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        await waitFor(() => {
+          expect(screen.queryByRole('button', { name: 'Obriši komentar' })).not.toBeInTheDocument()
+        })
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: true,
+    },
   ]
 
   it.each(SCENES)('$name', async (scene) => {
@@ -1236,6 +1258,35 @@ describe('a confirming press, in every state the queue can be in', () => {
     } finally {
       page.server.stop()
       confirm.mockRestore()
+    }
+  })
+
+  it('does not stop another card from being approved while a refusal is out', async () => {
+    /* WHAT THIS GUARD DOES NOT TAKE FROM THE SCREEN, asked as a case. The first version marked the
+       whole walk (`outstanding`) while a refusal was out, so „Odobri" on any other card, and the sweep
+       with it, were told off for work that was not theirs - a prohibition `main` never had, with no
+       sentence to say why. The box is the only thing a refusal out for one card may switch off. */
+    const page = await pageWith([LAST.id])
+
+    try {
+      await page.open(LAST.index)
+      await page.press()
+      await page.sentTo(LAST.id, 1)
+
+      const approve = page.card(FIRST.index).getByRole('button', { name: 'Odobri' })
+
+      expect(approve).not.toHaveAttribute('aria-disabled', 'true')
+
+      await page.user.click(approve)
+      await page.sentTo(FIRST.id, 1)
+
+      expect(
+        bodyOf(decisionsIn(page.server.asked).find((one) => one.path === pathOf(FIRST.id))),
+      ).toEqual({ approved: true, reason: '' })
+
+      page.release()
+    } finally {
+      page.server.stop()
     }
   })
 })
