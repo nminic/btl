@@ -102,15 +102,12 @@ const send = async (user: ReturnType<typeof setupUser>, named = 'Pošalji na pro
 /**
  * OPENS THE CORRECTION THE WAY A MEMBER DOES, WHICH IS FROM HIS OWN LIST.
  *
- * <p><b>And not by typing the address, which is a different thing and is measured to be
- * broken already.</b> `FormRenderer` seeds itself with `initial` once, at mount
- * (`useState(() => ...)`), and `NewResult` can only work out WHICH counted result is being
- * corrected after `/api/results` has answered. Reached cold, the form therefore mounts
- * before the answer and stays empty: measured 28.09.2026, a press then complains about
- * „Naziv trke, Datum trke, Dužina, Uspon, Spust, Sati, Minuta, Sekundi", every one of which
- * the record it is correcting already holds. That is untouched by this branch - no code
- * here reads `initial`, mounts that form or changes when the resource lands - and it is
- * reported rather than fixed.
+ * <p><b>And not by typing the address, which is a different road with a case of its
+ * own.</b> `FormRenderer` seeds itself with `initial` once, at mount, and `NewResult` can
+ * only work out WHICH counted result is being corrected after `/api/results` has answered.
+ * Reached cold, the form used to mount before the answer and stay empty (measured
+ * 28.09.2026); since 02.10.2026 it waits for the answer, and „fills the correction from the
+ * result even when the address is opened cold" below is the case for that road.
  *
  * <p>From the list the resource is already in hand, so the form mounts knowing, which is
  * the same road `ownResult.test.tsx` takes for every one of its cases about this form.
@@ -659,6 +656,106 @@ describe('a run reported from the event it was run at', () => {
 describe('a counted result the member asks to have put right', () => {
   /** The member whose counted results the file really holds. */
   const HIS = '000001'
+
+  /**
+   * A server that holds back `GET /api/results` until the case lets it go, and takes every
+   * write. The answer is the served file itself, so what arrives is what a real visit reads.
+   */
+  function holdingTheResults(): () => void {
+    let release = () => {}
+    const held = new Promise<void>((done) => {
+      release = done
+    })
+
+    server = serverThat((path, init) => {
+      if (path.startsWith('/api/results') && init?.method !== undefined) {
+        return did()
+      }
+
+      return path.replace(/\?.*$/, '') === '/api/results'
+        ? held.then(
+            () =>
+              new Response(JSON.stringify(countedResults), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+          )
+        : null
+    })
+
+    return release
+  }
+
+  /**
+   * OPENED BY ITS ADDRESS, THE CORRECTION WAITS FOR THE RESULT IT CORRECTS.
+   *
+   * <p>`FormRenderer` takes what its fields start with once, when it is mounted, and this
+   * screen learns WHICH counted result it is correcting only when `/api/results` answers. From
+   * the list that file is already in hand; opened by the address, the form used to mount before
+   * the answer and stay empty, and a press then complained about every box the record it was
+   * correcting already held (measured 28.09.2026, PENDING stavka 332). So the form is not drawn
+   * until the answer is here, which is how `EditTeam.tsx` waits for its team.
+   *
+   * <p><b>Two sources, separated:</b> the result corrected is his LAST counted one in the file,
+   * never the first, and a new form holds none of its numbers, so boxes filled from the wrong
+   * record, or from nothing, fail here.
+   */
+  it(
+    'fills the correction from the result even when the address is opened cold',
+    async () => {
+      const user = setupUser()
+      const his = countedResults.filter((one) => one.memberNumber === HIS)
+      const target = must(his.at(-1), 'a counted result of his')
+
+      expect(his.length, 'he has more than one counted result to tell apart').toBeGreaterThan(1)
+
+      const release = holdingTheResults()
+
+      renderAt(`/sr/rezultat/novi?ispravka=${String(target.id)}`, 'competitor', HIS, undefined, '2026-08-23')
+
+      /* While the answer is on its way the page says it is waiting, and there is no form: a
+         form drawn now would be the form for a NEW result, with nothing of his in it. */
+      expect(await screen.findByText('Učitavanje', undefined, SOON)).toBeInTheDocument()
+      expect(screen.queryByLabelText(/^Naziv trke/)).toBeNull()
+
+      release()
+
+      expect(
+        await screen.findByText(/Menjaš rezultat koji je već uračunat/, undefined, SOON),
+      ).toBeVisible()
+      expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue(target.raceName)
+      expect(screen.getByLabelText(/Dužina/)).toHaveValue(String(target.distanceKm))
+
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/nov-dokaz')
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      const sent = must(writes()[0], 'the request')
+
+      expect(sent.path).toBe(`/api/results/${String(target.id)}`)
+      expect(bodyOf(sent).seconds).toBe(target.seconds)
+    },
+    SLOW,
+  )
+
+  /* AND ONLY THAT ROAD WAITS. A new result has nothing to be filled from, and the file of
+     counted results is the largest the portal serves, so a form for a new result that waited
+     for it would make every member wait for nothing. */
+  it(
+    'draws the form for a new result without waiting for the counted ones',
+    async () => {
+      holdingTheResults()
+
+      renderAt('/sr/rezultat/novi', 'competitor', HIS, undefined, '2026-08-23')
+
+      expect(await screen.findByLabelText(/^Naziv trke/, undefined, SOON)).toBeInTheDocument()
+      expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+    },
+    SLOW,
+  )
 
   it(
     'goes to the address of the RESULT, as a PUT with no race on it',
