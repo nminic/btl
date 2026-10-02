@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { must } from '../test/at'
+import { screen } from '@testing-library/react'
+import { htmlElement, must } from '../test/at'
+import { renderAt } from '../test/render'
 import { everyRule, unconditionalRules } from '../test/stylesheet'
 
 /**
@@ -48,9 +50,21 @@ const css = readFileSync(join(process.cwd(), 'src/app/Shell.css'), 'utf-8')
  *  the list of widths and says why this is on it). */
 const NARROW = '(max-width: 51.24875em)'
 
-/** The panel a button opens, and the box that button stands in. */
-const PANELS = ['.lang__menu', '.account__panel', '.inbox__panel']
-const BUTTONS_BOX = ['.lang', '.account', '.inbox']
+/**
+ * The three panels of the header: the name of the button that opens each, the box that button
+ * stands in, and the panel it opens. One table, read by the questions about the stylesheet and by
+ * the question about the markup, so that the class names the one holds are the ones the other
+ * finds on the page (a fact with two homes drifts, and a guard over a class nobody wears holds
+ * nothing).
+ */
+const HEADER_PANELS = [
+  { button: 'Jezik', box: '.lang', panel: '.lang__menu' },
+  { button: 'Otvori nalog', box: '.account', panel: '.account__panel' },
+  { button: /^Otvori poruke/, box: '.inbox', panel: '.inbox__panel' },
+]
+
+const PANELS = HEADER_PANELS.map((one) => one.panel)
+const BUTTONS_BOX = HEADER_PANELS.map((one) => one.box)
 
 /** The width of the gutter on each side of the bar, which is the bar's own
  *  `padding-inline` (`.shell__bar`), written once as a token. */
@@ -197,6 +211,40 @@ describe('the three panels of the header on a narrow screen', () => {
       .map((rule) => rule.selectorText)
 
     expect(fromTheWindow).toEqual([])
+  })
+})
+
+describe('the markup a panel hangs from', () => {
+  it('is the chain the stylesheet is written about, and carries no style of its own', async () => {
+    /* The axis the questions above cannot see, and the one that beat the last guard over a
+       cascade in this portal (`pages/admin/entityStyle.test.ts`, ADL A33): an inline `style` is
+       heavier than any rule in `Shell.css`, so `position: relative` written into the markup of
+       the box of a button puts the panel back where it began, off the screen, with every case
+       above green. It is answered where jsdom answers it exactly, as a question about an
+       attribute and not about a cascade.
+
+       And the chain itself is held, because the stylesheet names a button's box, the row of
+       tools and the bar by class: a panel that is not the next thing after its button, in a box
+       that is a child of the row of tools, which is a child of the bar, is a panel the questions
+       above are asked about and do not apply to. */
+    renderAt('/sr', 'competitor', '000007')
+
+    for (const one of HEADER_PANELS) {
+      const button = await screen.findByRole('button', { name: one.button })
+      const box = htmlElement(button.parentElement)
+      const panel = htmlElement(button.nextElementSibling)
+      const tools = htmlElement(box.parentElement)
+      const bar = htmlElement(tools.parentElement)
+
+      expect(box, `the box of ${String(one.button)}`).toHaveClass(one.box.slice(1))
+      expect(panel, `the panel of ${String(one.button)}`).toHaveClass(one.panel.slice(1))
+      expect(tools).toHaveClass('shell__tools')
+      expect(bar).toHaveClass('shell__bar')
+
+      const styled = [box, panel, tools, bar].filter((found) => found.hasAttribute('style'))
+
+      expect(styled.map((found) => found.className)).toEqual([])
+    }
   })
 })
 
