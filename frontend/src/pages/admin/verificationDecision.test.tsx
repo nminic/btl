@@ -346,13 +346,18 @@ describe('a decision on a queue served by the pending screen', () => {
     }
   })
 
-  it.each([401, 404])(
+  it.each([401, 404, 409, 500])(
     'says the number and settles nothing when the route answers %i',
     async (status) => {
       /* ADL A8, owner 13.09.2026: „neprijavljen dobija 401, a prijavljen kome pravo
          nedostaje dobija 404", and never 403. Neither carries a body, so neither
          carries a reason - `away()` in `VerificationWriteApi` is `sendError(404)` with
          nothing in it - and the sentence is the portal's own.
+
+         A 409 and a 500 with nothing in them are here for the other half of the same
+         axis: only the 400 is read differently (`pages/account/serverWords.ts`, and the
+         decision is about the one number), so every other number that names no reason
+         keeps the number and the advice to wait.
        *
          The 404 is the case that matters most on this screen and it is the one axis 8
          names: this moderator's LOCAL table of rights says he may decide this queue,
@@ -381,6 +386,52 @@ describe('a decision on a queue served by the pending screen', () => {
       }
     },
   )
+
+  it.each([
+    ['a bare 400, which the route never answers by itself', () => answeredWith(400), sr.server.malformed],
+    [
+      'a 400 that names its reason, which is the route speaking',
+      () => refused('Uz odbijanje je razlog obavezan.', 400),
+      'Uz odbijanje je razlog obavezan.',
+    ],
+  ])('says the right sentence for %s, and settles nothing', async (_what, answer, said) => {
+    /* The owner chose on 02.10.2026 (PDL, „Odluke iz čišćenja nalaza") that a 400 which names no reason
+       gets a sentence of its own instead of „pokušaj ponovo za koji minut". This screen kept its own copy
+       of the old one until that day, because its route refuses in Serbian sentences and `ServerSaid` is not
+       reused for it (`admin/verificationWrites.ts`); a number with no reason in it has no sentence of the
+       route's to be drawn, so it asks the one function every other screen asks
+       (`pages/account/serverWords.ts`).
+
+       **A bare 400 and a 400 with a reason are the two states of the one axis**, and the second is what
+       keeps the first from passing for a screen that says the portal's sentence for every 400:
+       `VerificationWriteApi` has two explicit 400s and both carry a sentence (`THE_FORM_IS_NOT_COMPLETE`,
+       `A_REFUSAL_NEEDS_A_REASON`), so one that names its reason is the route speaking and is drawn word
+       for word. The portal's own sentence is the coordinator's proposal and the PDL says so, so what is
+       held is that the screen says the dictionary's `server.malformed`, and not words typed here a second
+       time. */
+    const user = setupUser()
+    const server = serverThatRefuses(answer)
+
+    try {
+      renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const waiting = within(await cardsIn())
+      const before = waiting.getAllByRole('listitem').length
+      const first = within(waiting.getAllByRole('listitem')[0] ?? document.createElement('li'))
+
+      await user.click(first.getByRole('button', { name: 'Odobri' }))
+
+      const alert = await screen.findByRole('alert')
+
+      expect(alert).toHaveTextContent(said)
+      expect(alert).not.toHaveTextContent(/za koji minut/)
+      expect(alert).not.toHaveTextContent(/400/)
+      expect(within(await cardsIn()).getAllByRole('listitem')).toHaveLength(before)
+      expect(decidedIn().queryAllByRole('listitem')).toEqual([])
+    } finally {
+      server.stop()
+    }
+  })
 
   it('says so when the token did not match, which is its own answer', async () => {
     /* 403 is not a refusal by name and not „the address is not there": it is the one

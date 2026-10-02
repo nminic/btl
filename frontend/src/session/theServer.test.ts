@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ROLES, SIGNED_IN_ROLES } from '../roles/context'
 import { must } from '../test/at'
@@ -32,6 +34,19 @@ afterEach(() => {
 function saying(body: string, status = 200): Response {
   return new Response(body, { status, headers: { 'content-type': 'application/json' } })
 }
+
+/** The generated members, as JSON rather than as the type: what a code looks like is read off what
+ *  is really on the disc, which is also where the portal's own cases get their members. */
+const GENERATED: Record<string, unknown>[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
+)
+
+/** The referral code of every generated member, and nothing for one that carries none. */
+const GENERATED_CODES = GENERATED.flatMap((one) => {
+  const code = one.referralCode
+
+  return typeof code === 'string' ? [code] : []
+})
 
 describe('who the server says I am', () => {
   it('is the role and the account it answered with', async () => {
@@ -196,18 +211,29 @@ describe('who the server says I am', () => {
   })
 
   /* **THE CALLER'S OWN REFERRAL LINK, WHICH IS THE FIFTH THING THIS ANSWER CARRIES, SINCE
-     25.09.2026, and the axis has four states rather than two.** It is read here and
+     25.09.2026, and the axis has more states than two.** It is read here and
      nowhere else on the portal now: it was answered on the caller's own row of
      `/api/competitors` from 20.09.2026 and „Moja članarina" read it off there, and the
      owner took it off that list (PDL P26a) because the list ends `where c.active` - so
      the member whose fee has LAPSED, the one V24 section 6 promises the link to on
      exactly that page, was answered nothing at all.
 
-     **The state that is NOT here and is named rather than left out: a code of the wrong
-     SHAPE.** Sixteen hexadecimal characters is `competitor_referral_code_shape`, checked
-     where the code is stored (`ReferralCode`), and re-judging it here would be a second
-     opinion about a rule this portal does not own - whose only possible outcome is
-     refusing a member the link the server really gave him. */
+     **THE STATE THIS NOTE USED TO NAME AS NOT BEING HERE IS HERE SINCE 02.10.2026: a code of
+     the wrong SHAPE** (PENDING 227, part b). It said that sixteen hexadecimal characters is
+     `competitor_referral_code_shape`, kept where the code is stored, and that re-judging it
+     here would be a second opinion about a rule this portal does not own, whose only
+     possible outcome was refusing a member the link the server really gave him. That was an
+     argument, and the worry in it is measured by the case after the table: it hands the
+     reader every code of the generated members and wants each of them back as it was sent.
+     What the argument left out is where the string goes next. The link is there so that a
+     member copies it and sends it on (`member/Membership.tsx`), and a reader that handed ANY
+     string to the address handed on whatever the answer carried.
+
+     **It is asked of `REFERRAL_CODE` and of nothing written here**, so the wrong values after
+     the table are KINDS, one dimension each, and not a list of what the portal refuses: what
+     it believes is written once, on the constant, and `data/referralCodeShape.test.ts` holds
+     that constant to the schema. A reader that asked about less than the shape - only the
+     length, only the alphabet, only the beginning, only the end - is refused by some row. */
   it.each([
     ['a member with a link of his own', { member: { referralCode: '7f07b38ff7ee7543' } },
       '7f07b38ff7ee7543'],
@@ -228,6 +254,58 @@ describe('who the server says I am', () => {
     )
 
     expect((await whoTheServerSaysIAm())?.referralCode).toBe(expected)
+  })
+
+  /* **EVERY CODE A MEMBER REALLY HAS**, which is the worry the old note stood on asked as a
+     question with an answer. The generated members are the ones the rest of the portal's cases
+     are made of, so a code the reader refused here would be a link refused to somebody the
+     whole suite already treats as a member. Believed one after another on the same reader,
+     which is also what finds a constant that remembers where it last stopped. */
+  it('says the referral link of every generated member, as it was sent', async () => {
+    expect(GENERATED_CODES.length, 'the generated members').toBeGreaterThan(1)
+    expect(GENERATED_CODES, 'a generated member with no code in it').toHaveLength(GENERATED.length)
+
+    for (const code of GENERATED_CODES) {
+      server?.stop()
+      server = serverThat(() =>
+        saying(JSON.stringify({ role: 'competitor', account: 41, member: { referralCode: code } })),
+      )
+
+      expect((await whoTheServerSaysIAm())?.referralCode, `the code ${code}`).toBe(code)
+    }
+  })
+
+  /* **THE KINDS OF STRING NEAR THE SHAPE**, each one wrong in the one way its name says and
+     right in every other, so that a reader asking about less than the whole shape lets one of
+     them through. Written as the text the wire carries, and handed to the reader through the
+     wire. A good code with something in front of it, behind it or a line break after it is
+     what tells an anchor from no anchor; capitals and a letter past `f` are the alphabet; one
+     short and one long are the length; and the five that put a character in the place of a
+     letter are the ones an address writes differently from themselves, which is what the
+     link would have carried. */
+  it.each([
+    ['a code one character short', '7f07b38ff7ee754'],
+    ['a code one character long', '7f07b38ff7ee75430'],
+    ['a code in capitals', '7F07B38FF7EE7543'],
+    ['a code of the right length with a letter that is not hexadecimal', '7f07b38ff7ee754g'],
+    ['a good code with a space in front of it', ' 7f07b38ff7ee7543'],
+    ['a good code with a letter behind it', '7f07b38ff7ee7543x'],
+    ['a good code with a line break behind it', '7f07b38ff7ee7543\n'],
+    ['a code that is nothing at all', ''],
+    ['a code with an ampersand in it', '7f07b38&f7ee7543'],
+    ['a code with a hash in it', '7f07b38#f7ee7543'],
+    ['a code with a percent sign in it', '7f07b38%f7ee7543'],
+    ['a code with a space in it', '7f07b38 f7ee7543'],
+    ['a code with a quotation mark in it', '7f07b38"f7ee7543'],
+    ['markup where the code should be', '"><img src=x onerror=alert(1)>'],
+    ['the member number where the code should be, which no link may ever carry', '000001'],
+  ])('says no referral link for %s', async (_what, sent) => {
+    server?.stop()
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, member: { referralCode: sent } })),
+    )
+
+    expect((await whoTheServerSaysIAm())?.referralCode, JSON.stringify(sent)).toBeNull()
   })
 
   /* **AND HOW MANY HE BROUGHT IN WHOSE FEE IS STANDING, THE SIXTH, SINCE THE SAME DAY.**
@@ -280,13 +358,20 @@ describe('who the server says I am', () => {
      uplate iz Srbije"). A country guessed here is a member in North Macedonia handed a
      dinar slip.
 
-     **The state that is NOT here and is named rather than left out: a country of the
-     wrong shape.** Which words name a country is the schema's (V7,
-     `competitor_town_is_from_the_codebook_or_typed`), checked where a town is stored, and
-     the same ground `referralCode` above stands on. */
+     **A country in no shape this portal has met is believed as it was sent, and that is a
+     boundary written out and not a ground borrowed from the code above**, which is asked
+     what it looks like since 02.10.2026. The schema holds a shape for a country too
+     (`country_code_shape`, V2: two capital letters), so the question could be asked here;
+     what asking it would do is the reason it is not. Any other string is a member drawn in
+     euros (`paysInDinars` is `=== 'RS'`), while a country refused here is „I was not told",
+     and „Moja članarina" then draws the page that says the portal cannot read his record in
+     place of his fee. Which of the two he should get is a question of that screen and is left
+     as it was, so the row below holds it: it asks a reader that has begun to ask a shape
+     of the code whether it has begun to ask one of the country as well. */
   it.each([
     ['a member who lives in Serbia', { member: { country: 'RS' } }, 'RS'],
     ['a member who lives abroad', { member: { country: 'MK' } }, 'MK'],
+    ['a country in no shape this portal has met', { member: { country: 'Srbija' } }, 'Srbija'],
     /* An account that races for nobody: the record is ABSENT altogether (PDL P21). */
     ['an account that races for nobody', {}, null],
     ['a record that carries no country', { member: { memberNumber: '000012' } }, null],
