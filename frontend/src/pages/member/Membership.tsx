@@ -289,6 +289,11 @@ export function Membership() {
         theServerSignedMeIn(who)
       }
 
+      /* THE QUESTION CLOSES HERE, ON AN ANSWER, AND NOT BEFORE: with the request out „Odustani"
+         does nothing (below), so this is the one road by which the question goes once „Potvrdi
+         izlazak" has been pressed - which is the owner's „list se zatvara sam kad stigne
+         odgovor" (02.10.2026). A refusal returns above and leaves it standing, with its reason
+         beside it and the buttons live again. */
       setAsking(false)
     } finally {
       /* In a `finally`, so a route that rejects outright still lets the next press in - the
@@ -1059,7 +1064,25 @@ export function Membership() {
                         <button
                           type="button"
                           className="button"
+                          /* TOLD OFF WHILE THE LEAVING IS OUT, which is what „Potvrdi izlazak"
+                             beside it already is and for the same reason: a control that goes
+                             away takes the keyboard focus with it. Owner, 02.10.2026, choosing
+                             between three outcomes he was priced: „Ne", „Odustani" and Escape do
+                             nothing while a request is out, and the question closes itself when
+                             the answer arrives (`leaveTheTeam`, `setAsking(false)`). */
+                          aria-disabled={leaving ? true : undefined}
                           onClick={() => {
+                            /* Reachable means pressable, so the refusal lives here as well as
+                               on the attribute - and it reads the REF, as „Potvrdi izlazak"
+                               does, so a press that arrives before the render the state would
+                               cause finds the same answer. Put away with the request out, the
+                               question would say „I took it back" over a leaving that goes on:
+                               a 409 was then drawn under „Izađi iz tima" and a 204 took him out
+                               of the team without the screen having said so. */
+                            if (outstanding.current) {
+                              return
+                            }
+
                             setAsking(false)
                             /* The reason goes with the question it was an answer to. Left
                                standing, „Prelazni rok je zatvoren..." would sit under a
@@ -1077,6 +1100,17 @@ export function Membership() {
                       </button>
                     )}
                   </div>
+                  {/* SAID IN WORDS, ONLY WHILE IT IS TRUE (WCAG 2.2 AA, 4.1.3), and in the
+                      portal's own sentence for a request that is out: `results.sending` is read
+                      by the two forms that send a result and four other keys carry the same
+                      words, so nothing new was written. Under the row rather than inside it,
+                      which is where the refusal that replaces it is drawn, for the reason that
+                      note gives. */}
+                  {leaving && (
+                    <p className="member__note" role="status">
+                      {t('results.sending')}
+                    </p>
+                  )}
                 </>
               )}
               {/* WHY A LEAVING DID NOT HAPPEN, under the row it was pressed in rather than

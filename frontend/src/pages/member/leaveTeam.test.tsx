@@ -627,6 +627,169 @@ describe('leaving a team from the membership screen', () => {
   )
 
   /**
+   * „ODUSTANI" DOES NOTHING WHILE THE LEAVING IS OUT (owner, 02.10.2026, choosing between three
+   * outcomes he was priced; PDL, „Odluke iz ciscenja nalaza"; the registry's items 352 and 354).
+   *
+   * <p><b>What it did until then, measured.</b> „Potvrdi izlazak" sent the request and „Odustani"
+   * stayed live, so a member who pressed the second after the first put the question away while
+   * the request went on to the server. Two things followed and they are the two items: a 409
+   * arriving afterwards was drawn UNDER „Izađi iz tima" - a refusal about a question that was no
+   * longer there, beside a button that had not been pressed - and a 204 arriving afterwards took
+   * him out of the team after he had pressed „Odustani", with nothing on the screen having said
+   * so.
+   *
+   * <p><b>The answer is held in front of the recording server</b> rather than inside it, the way
+   * the double-press case above holds its own, so what is recorded is still exactly what the
+   * screen sent.
+   */
+  describe('while the leaving is out, the question stays', () => {
+    /** Holds the route's answer until the function that comes back is called. */
+    function holdTheLeaving(): () => void {
+      let letItAnswer = () => {}
+      const held = new Promise<void>((resolve) => {
+        letItAnswer = resolve
+      })
+      const answering = globalThis.fetch
+
+      globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith('/membership') && init?.method === 'DELETE') {
+          await held
+        }
+
+        return answering(input, init)
+      }
+
+      return letItAnswer
+    }
+
+    /** Asks the question and answers it, which is the whole of what puts a leaving out. */
+    async function leave(user: ReturnType<typeof setupUser>) {
+      await user.click(
+        await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+      )
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
+    }
+
+    it('keeps the question when „Odustani" is pressed, so a refusal stands beside it', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leave(user)
+
+      const keep = screen.getByRole('button', { name: sr.membership.leaveTeamKeep })
+
+      /* TOLD OFF AND NOT SWITCHED OFF, which is what `Potvrdi izlazak` beside it already is: a
+         control that goes away takes the keyboard focus with it. */
+      expect(keep).toHaveAttribute('aria-disabled', 'true')
+      expect(keep).not.toBeDisabled()
+
+      await user.click(keep)
+
+      /* THE QUESTION IS STILL ASKED, and the button that opens it is not what stands there. */
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeamSure })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: sr.membership.leaveTeam }),
+      ).not.toBeInTheDocument()
+
+      letItAnswer()
+
+      expect(
+        await screen.findByText(sr.membership.transferShut, undefined, { timeout: SLOW }),
+      ).toBeInTheDocument()
+
+      /* AND THE REFUSAL IS BESIDE THE QUESTION IT IS ABOUT, which can be pressed again now that
+         the answer is in. Left standing without it, the member read a refusal over a button that
+         asked him nothing. */
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeamSure })).not.toHaveAttribute(
+        'aria-disabled',
+      )
+      expect(screen.getByText(`Trenutno si u timu ${MINE.name}.`)).toBeInTheDocument()
+    })
+
+    it('closes the question itself when the leaving goes through, and he reads that he is out', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft())
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leave(user)
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamKeep }))
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeamSure })).toBeInTheDocument()
+
+      letItAnswer()
+
+      /* THE SCREEN SAYS IT, which is what he was left without: the answer he was waiting for is
+         the sentence that he is in no team. */
+      expect(
+        await screen.findByText(sr.membership.noTeam, undefined, { timeout: SLOW }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: sr.membership.leaveTeamSure }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('says that it is sending, only while it is', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft())
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      const sending = () =>
+        screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
+
+      await user.click(
+        await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+      )
+
+      expect(sending()).toHaveLength(0)
+
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
+
+      expect(sending()).toHaveLength(1)
+
+      letItAnswer()
+
+      await waitFor(
+        () => {
+          expect(sending()).toHaveLength(0)
+        },
+        { timeout: SLOW },
+      )
+    })
+
+    it('puts the question away again once the answer is in, as it always could', async () => {
+      /* THE OTHER END OF THE SAME STATE: a refusal leaves the question standing, and „Odustani" is
+         the way out of it. A flag that stayed raised after the answer would leave the member with
+         two buttons that do nothing and a sentence saying why he was refused. */
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leave(user)
+      letItAnswer()
+
+      await screen.findByText(sr.membership.transferShut, undefined, { timeout: SLOW })
+
+      const keep = screen.getByRole('button', { name: sr.membership.leaveTeamKeep })
+
+      expect(keep).not.toHaveAttribute('aria-disabled')
+
+      await user.click(keep)
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeam })).toBeInTheDocument()
+      expect(screen.queryByText(sr.membership.transferShut)).not.toBeInTheDocument()
+    })
+  })
+
+  /**
    * OUTSIDE THE WINDOW THERE IS NO BUTTON, AND THE SENTENCE IS WHAT STANDS IN ITS PLACE.
    *
    * <p>PDL, 05.09.2026, on the same window from the other direction: „Van tog roka dugmeta
