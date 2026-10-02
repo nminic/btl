@@ -216,10 +216,12 @@ export function PersonalData({ me }: { me: Competitor }) {
           {t('account.lockedTitle')}
         </h2>
 
-        {/* A bare list, which is what `admin/EntityEditor.tsx` draws for the same thing -
-            pairs of „what it is called" and „what it says" - rather than a class name of my
-            own with no rule anywhere behind it. */}
-        <dl>
+        {/* The list `admin/EntityEditor.tsx` draws for the same thing - pairs of „what it is
+            called" and „what it says" - together with what holds it in place there: the rule on
+            the value that lets a long word break (`.member__facts dd`, `Member.css`). It was a
+            bare `<dl>` until 02.10.2026, which took the shape and none of that, and a town typed
+            as one long word sent the page sideways (PENDING 217.6). */}
+        <dl className="member__facts">
           <div>
             <dt>{t('registration.gender')}</dt>
             <dd>{t(me.gender === 'M' ? 'rankings.men' : 'rankings.women')}</dd>

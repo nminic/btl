@@ -6,6 +6,7 @@ import type { Competitor } from '../../data/types'
 import { at, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
+import { ruleFor } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import sr from '../../i18n/sr.json'
 import { WHAT_THIS_SCREEN_SENDS, type Sent } from './myAccount'
@@ -277,6 +278,13 @@ describe('a member’s own data', () => {
   })
 })
 
+/** The sheet the account screen's own classes are written in, read as text because jsdom applies none. */
+const MEMBER_CSS = readFileSync(join(process.cwd(), 'src/pages/member/Member.css'), 'utf-8')
+
+/** The class the list of what a member may read and not change carries: the join between the
+ *  markup and the rule that lets a long fact break. */
+const THE_FACTS = 'member__facts'
+
 /** Where the server's own source lives, spelled the way `myAccount.test.ts` spells it. */
 const WEB = join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web')
 
@@ -488,6 +496,37 @@ describe('the things a member may not change himself', () => {
     await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
 
     expect(within(panelOf(sr.account.lockedTitle)).getByText(sr.account.birthDateNote)).toBeInTheDocument()
+  })
+
+  /**
+   * A LONG FACT BREAKS INSIDE ITS OWN BOX (PENDING 217.6).
+   *
+   * <p>The list of what a member may read and not change was a bare `<dl>`: it took the SHAPE of
+   * the list `admin/EntityEditor.tsx` draws for the same thing and none of what holds that shape
+   * in place, which is the rule on the value that lets a long word break. The town is typed text of
+   * up to 80 characters (`city.maxLength`), so it can be one word, and measured in Chrome at 360 a
+   * word of 57 letters sent the whole page 119 pixels sideways (the review measured 131 with its
+   * own word), which PDL P24 does not allow.
+   *
+   * <p>jsdom lays nothing out (ADL A18, A33), so what is held here is the TWO HALVES AND THE JOIN
+   * BETWEEN THEM: the rule is written, and the list carries the class the rule is written for.
+   * Either half alone is satisfied by the other going missing, and a class on the list with no rule
+   * behind it is exactly what the bare list was avoiding by having no class at all. That the rule
+   * wins the cascade is not asked here; it was measured in the browser, at 360, 768 and 1280.
+   */
+  it('lets a long fact break inside its own box rather than push the page sideways', async () => {
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
+
+    const facts = within(panelOf(sr.account.lockedTitle)).getAllByRole('definition')
+    const list = must(at(facts, 0).closest('dl'), 'the list the facts stand in')
+
+    expect(list).toHaveClass(THE_FACTS)
+    expect(
+      ruleFor(MEMBER_CSS, `.${THE_FACTS} dd`, 'Member.css').getPropertyValue('overflow-wrap'),
+    ).toBe('anywhere')
+    /* And every fact stands in that one list, so the rule reaches all of them. */
+    expect(facts.filter((one) => one.closest('dl') !== list)).toEqual([])
   })
 
   /**
