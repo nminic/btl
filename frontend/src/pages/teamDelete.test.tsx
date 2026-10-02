@@ -81,6 +81,15 @@ function aServerThatDeletes(toADelete: () => Response = did) {
       return listOf(roster.filter((one) => one.active))
     }
 
+    /* THE TWO LISTS THE TEAM'S PAGE READS ABOUT ITSELF (`joiningThisTeam.ts`), answered as a
+       server with nobody asking would. A server that answers neither makes the page say so
+       since 02.10.2026 (PENDING stavka 368: a list that cannot be read says that it cannot), and
+       that sentence is a second `alert` beside the one these cases are about, so a case that
+       asks for THE alert could no longer find it. The world here is a healthy one. */
+    if (how === 'GET' && /^\/api\/teams\/-?\d+\/(applications|invitations)$/.test(path)) {
+      return listOf([])
+    }
+
     const which = /^\/api\/teams\/(-?\d+)$/.exec(path)
 
     if (how === 'DELETE' && which !== null) {
