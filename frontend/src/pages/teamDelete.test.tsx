@@ -622,7 +622,8 @@ describe('a team its administrator takes down', () => {
 })
 
 /**
- * A REFUSAL IS ABOUT THE QUESTION IT ANSWERED, AND GOES WHEN THAT QUESTION DOES (registry item 311).
+ * A REFUSAL IS ABOUT THE ATTEMPT IT ANSWERED, AND STANDS BESIDE THE BUTTON UNTIL IT STOPS BEING THE
+ * PAGE'S (registry item 311; owner, 02.10.2026).
  *
  * <p><b>What stood on the page, measured.</b> `refused` was written when the route said no and
  * never cleared: pressing „Odustani od brisanja" put the question away and left „Prelazni rok je
@@ -630,10 +631,14 @@ describe('a team its administrator takes down', () => {
  * picker beside it. The sentence is drawn by `ServerSaid` as an alert, so a reader heard a refusal
  * about a thing he had just taken back.
  *
- * <p><b>Four ends of one sentence, and each is its own case</b>: the reader puts the question away;
- * a second attempt starts, when the old sentence must not stand over the new request; the season
- * changes; and the address changes to another team's page, which is the same component with another
- * team in it (`app/routeObjects.tsx` carries no `key` on this route).
+ * <p>Since 02.10.2026 the refusal also closes the question (PDL, „Odbijanje zatvara pitanje kao i
+ * uspeh"), so the sentence stands beside „Obriši" with the focus on it - which is the answer to the
+ * register's „bez ijedne kontrole pored sebe".
+ *
+ * <p><b>Four ends of one sentence, and each is its own case</b>: the reader asks again and puts that
+ * question away; a second attempt starts, when the old sentence must not stand over the new request;
+ * the season changes; and the address changes to another team's page, which is the same component
+ * with another team in it (`app/routeObjects.tsx` carries no `key` on this route).
  *
  * <p><b>Dunavski trkači is the other team in the last case</b> and Vardarski krug the one refused,
  * so „the team on the page" is a thing that can be told apart from „a team".
@@ -653,49 +658,6 @@ describe('a refusal of the deletion of a team', () => {
 
     return { server, router: view.router }
   }
-
-  it('goes when the reader puts the question away', async () => {
-    const user = setupUser()
-    const { server } = await refusedOnce(user)
-
-    await user.click(screen.getByRole('button', { name: `Odustani od brisanja: ${ITS_NAME}` }))
-
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` })).toBeInTheDocument()
-
-    server.stop()
-  }, SLOW)
-
-  it('goes when a second attempt starts, and comes back if that one is refused too', async () => {
-    const user = setupUser()
-    const { server } = await refusedOnce(user)
-
-    /* THE SECOND DELETION IS HELD, in front of the recording server, so what is read is the page
-       WHILE it is out: the old sentence must not stand over a request that has not been answered. */
-    let letItAnswer = () => {}
-    const held = new Promise<void>((resolve) => {
-      letItAnswer = resolve
-    })
-    const answering = globalThis.fetch
-
-    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (init?.method === 'DELETE') {
-        await held
-      }
-
-      return answering(input, init)
-    }
-
-    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
-
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-
-    letItAnswer()
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
-
-    server.stop()
-  }, SLOW)
 
   it('goes when the season is changed', async () => {
     const user = setupUser()
@@ -752,25 +714,11 @@ describe('a refusal of the deletion of a team', () => {
     server.stop()
   }, SLOW)
 
-  it('stays while nothing has changed, so it is read at all', async () => {
-    /* THE OTHER HALF, and the one that stops every case above from passing on a screen that never
-       drew the sentence: it is there, beside the question it is about, until one of the four. */
-    const user = setupUser()
-    const { server } = await refusedOnce(user)
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
-    expect(
-      screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }),
-    ).not.toHaveAttribute('aria-disabled')
-
-    server.stop()
-  }, SLOW)
-
   /*
-   * THE SAME CASES AGAIN, FOR THE LIFE OF THE SENTENCE AFTER 02.10.2026 (PDL, „Odbijanje zatvara
-   * pitanje kao i uspeh"): the refusal closes the question itself and the sentence stands beside the
-   * button that asked. The reader's end of it is therefore the SECOND asking's - he asks again, and
-   * puts that one away - and the start of a second attempt is an asking of its own.
+   * THE ENDS THAT ARE EVENTS, AFTER 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i uspeh"): the
+   * refusal closes the question itself and the sentence stands beside the button that asked. The
+   * reader's end of it is therefore the SECOND asking's - he asks again, and puts that one away - and
+   * the start of a second attempt is an asking of its own.
    */
   it('goes when a question asked again is put away', async () => {
     const user = setupUser()
