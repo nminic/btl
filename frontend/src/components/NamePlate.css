@@ -78,6 +78,14 @@
   font-size: 0.68rem;
 }
 
+/* The circle as a link of its own, where a screen gives it an address (`NamePlate`'s `faceTo`,
+   02.10.2026). A link underlines whatever text stands inside it, and the text inside this one is the
+   initials of a member who has sent no photograph: measured in a browser over the built bundle, every
+   monogram on the main standing was underlined until this rule. The name's own link is not touched. */
+a.plate__faces {
+  text-decoration: none;
+}
+
 .plate__words {
   /* **Not a grid**, and that was measured (review, 07.09.2026). It was one, and a grid makes every
      child its own row. At the time the boards handed over three of them, the given name, the
