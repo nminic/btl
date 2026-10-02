@@ -38,7 +38,9 @@ import { setupUser } from '../test/user'
  *
  * 1. Every rule that reaches one of the four and writes a property of that element's family
  *    (below) is a plain class or a list of plain classes, is in `app/Shell.css`, stands outside
- *    any query or in the one narrow query, and is not `!important`.
+ *    any query or in the one narrow query, and is not `!important`. The one excuse is for the
+ *    weight and for nothing else: the rule that opens the language menu (`.lang.is-open
+ *    .lang__menu`, which writes `transform: none`) is not a plain class, and is read by value.
  * 2. The names those rules write on each element, and the place each is written in (outside any
  *    query, in the narrow one), are exactly the ones pinned below. The names and the places and
  *    not the values, so a repaint of a value fails nothing, while a property nobody has written
@@ -88,6 +90,9 @@ import { setupUser } from '../test/user'
  */
 const SRC = join(process.cwd(), 'src')
 const SHEET = 'app/Shell.css'
+
+/** The one rule about a panel that is not a plain class: it opens the language menu. */
+const OPENS_THE_LANGUAGE_MENU = '.lang.is-open .lang__menu'
 
 /** The one width the portal changes this header at: the navigation unfolds above it and the
  *  button that folds it away stops being drawn (`styles/scale.test.ts` holds the list of
@@ -466,17 +471,7 @@ describe('what reaches the three panels of the header and the boxes they hang fr
     const PLAIN = /^\.[\w-]+(?: ?, ?\.[\w-]+)*$/
     const offenders = new Set<string>()
 
-    for (const { rule, role, names: written } of seen.reaches) {
-      /* The one name that is let have a heavier rule, and only on a panel: `transform` is how the
-         language menu opens, written once for the shut menu and once under `.lang.is-open`. It is
-         pinned by name below like the rest, and both of its values are read below, which is what
-         stands in for the weight of a rule that is not allowed to be a plain class. */
-      const names = role === 'panel' ? written.filter((one) => one !== 'transform') : written
-
-      if (names.length === 0) {
-        continue
-      }
-
+    for (const { rule, role, names } of seen.reaches) {
       const where = `${rule.sheet} ${rule.condition ?? 'outside any query'} ${rule.selector}`
 
       /* ONE SHEET. A rule about these elements anywhere else is a rule whose weight this cannot
@@ -493,8 +488,17 @@ describe('what reaches the three panels of the header and the boxes they hang fr
 
       /* ONE WEIGHT. A plain class, or a list of them: so no rule that reaches these is heavier
          than another, and what stands under `.lang.is-open`, `.inbox:focus-within`,
-         `.shell__tools > *` or `*` is found here by what it reaches and refused. */
-      if (!PLAIN.test(rule.selector)) {
+         `.shell__tools > *` or `*` is found here by what it reaches and refused.
+
+         The one rule that is let be heavier is the one that opens the language menu: `transform:
+         none`, which has to beat the shut menu's `translateY(-4px)`. It is excused from being a
+         plain class and from nothing else: exactly that selector, on a panel, writing exactly
+         that one name. It still has to be in the one sheet, outside any query and not important
+         like every other rule here, and its value is read below. */
+      const opensTheMenu =
+        role === 'panel' && rule.selector === OPENS_THE_LANGUAGE_MENU && names.join() === 'transform'
+
+      if (!PLAIN.test(rule.selector) && !opensTheMenu) {
         offenders.add(`${where}: not a plain class (${names.join(', ')})`)
       }
 
