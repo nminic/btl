@@ -694,4 +694,35 @@ describe('the keyboard, when what failed is read again and works', () => {
     expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
     expect(elsewhere, 'the focus was taken from where the reader had put it').toHaveFocus()
   }, SLOW)
+
+  it('is put on the title of the panel once, and not again when the panel is drawn again', async () => {
+    theServerAnswers({ [INBOX]: () => answeredWith(500) })
+    renderAt('/sr', 'competitor', MEMBER)
+
+    const user = setupUser()
+    const { panel } = await openThePanelOfTheEnvelope(user)
+    const button = await panel.findByRole('button', { name: `${sr.data.retry}: ${sr.shell.messages}` })
+
+    answers.set(INBOX, () => null)
+    button.focus()
+    await user.keyboard('{Enter}')
+
+    expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
+    expect(document.activeElement).toBe(panel.getByText(sr.shell.messages))
+
+    /* The reader goes on to the link at the foot of the panel. Then the portal says the inbox is out of
+       date, which it does after a message is read, and the panel is drawn again with what was asked
+       for again. */
+    const elsewhere = panel.getByRole('link', { name: sr.shell.allMessages })
+    const asked = timesAsked(INBOX)
+
+    elsewhere.focus()
+    act(() => {
+      theInboxHasChanged()
+    })
+    await waitFor(() => expect(timesAsked(INBOX)).toBeGreaterThan(asked))
+    expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
+
+    expect(elsewhere, 'the panel took the keyboard again, for a press that was answered long ago').toHaveFocus()
+  }, SLOW)
 })
