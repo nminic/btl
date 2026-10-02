@@ -6,6 +6,17 @@
     "season": 2027,
     "rules": "Boduju se svi rezultati sa dogadjaja koji ulaze u ligu. Plasman je zbir svih trka, ne najboljih N. Pune propozicije objavljuju se uz pravilnik za sezonu.",
     "prizes": "Medalje za prva tri mesta, po polu. Priznanja za najvise kilometara i najduze na stazi. Sve se dodeljuje na kraju sezone.",
+    "raceIds": [
+      957,
+      51,
+      125,
+      126,
+      1270,
+      1292,
+      95,
+      997,
+      1529
+    ],
     "eventIds": [
       1133,
       1121,
@@ -24,6 +35,7 @@
     "season": 2027,
     "rules": "",
     "prizes": "",
+    "raceIds": [],
     "eventIds": []
   },
   {
@@ -33,6 +45,22 @@
     "season": 2019,
     "rules": "Boduju se samo dogadjaji sa spiska ispod. Plasman je zbir BTL bodova sa svih trka lige, bez odbacivanja najlosijeg rezultata. Ko je istrcao bar jednu trku, na tabeli je.",
     "prizes": "Pehari za prva tri mesta, bez podele po kategorijama. Dodeljuju se na zavrsnoj trci sezone.",
+    "raceIds": [
+      758,
+      1088,
+      1089,
+      244,
+      245,
+      246,
+      1582,
+      1583,
+      1189,
+      46,
+      1163,
+      1181,
+      676,
+      677
+    ],
     "eventIds": [
       598,
       599,

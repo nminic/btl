@@ -14,7 +14,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -188,9 +187,10 @@ class LeagueApiTest {
 	 * portal reads and the server does not answer with is a screen that goes blank,
 	 * while a field the server answers with and the portal ignores costs nothing.
 	 * Written as an equality this would refuse to let the server ever carry
-	 * anything the mock never had - and {@code raceIds} is exactly such a field, so
-	 * this case is what says the move onto races did not cost the portal
-	 * {@code eventIds} on the way.
+	 * anything the mock never had - and {@code raceIds} was exactly such a field
+	 * until 01.10.2026, when the standing and the list of competitions began to
+	 * count by it and the mock began to carry it. This case is what says the move
+	 * onto races did not cost the portal {@code eventIds} on the way.
 	 *
 	 * <p>Neither side is typed out: one comes off the answer, the other off the
 	 * file. The shapes deliberately differ - the file's identifiers are text and
@@ -199,12 +199,14 @@ class LeagueApiTest {
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
-		/* `raceIds` is named here because no screen reads it YET: the portal still counts a
-		   league by its events, and the races are what replaced that in the database on
-		   13.09.2026 (V20). Naming it is the price of the floor added the same day, after a
-		   review measured that a name nobody reads can carry a fact nobody meant to publish. */
-		Answers.everyFieldThePortalReadsIsAnswered("/api/leagues", answer(), "leagues.json",
-				Set.of("raceIds"));
+		/* NOTHING IS NAMED AS AN EXTRA ANY MORE (01.10.2026). `raceIds` was, because no screen
+		   read it YET: the portal counted a league by its events while the races had replaced
+		   that in the database on 13.09.2026 (V20), and naming it was the price of the floor
+		   added the same day. The floor says what happens next in its own words: a name the
+		   mock already serves cannot be named as something extra, so the registration goes the
+		   day the mock gains the field, and the mock gained it when the portal began to read it
+		   (`frontend/src/test/mock/leagues.json`, `pages/league/leagueCounting.ts`). */
+		Answers.everyFieldThePortalReadsIsAnswered("/api/leagues", answer(), "leagues.json");
 	}
 
 	/**

@@ -15,6 +15,7 @@ const SERVED: League = {
   slug: 'druga-2027',
   name: 'Druga liga 2027',
   season: 2027,
+  raceIds: [125],
   eventIds: [1133],
   rules: 'Propozicije druge',
   prizes: 'Nagrade druge',

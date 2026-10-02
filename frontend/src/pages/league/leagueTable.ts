@@ -1,6 +1,7 @@
 import { genderMark } from '../../data/categories'
 import { numbered } from '../../data/derive'
 import type { BtlEvent, Competitor, League, Race, Result } from '../../data/types'
+import { leagueRaces } from './leagueCounting'
 
 /**
  * A competition as one grid: everybody who ran it down the side, every event of
@@ -63,9 +64,9 @@ export type LeagueTable = {
 /**
  * Builds the grid.
  *
- * Columns are the events of the competition that have a race, oldest first: that is the order a
- * season is run in, and the order the calendar already shows. Two on one day keep the order their
- * names sort in, so the table does not shuffle between renders.
+ * Columns are the events of which the competition counts at least one race, oldest first: that is
+ * the order a season is run in, and the order the calendar already shows. Two on one day keep the
+ * order their names sort in, so the table does not shuffle between renders.
  *
  * Rows are everyone with at least one result in it. Ordered by the total, which
  * is the second column and the only ordering the owner asked for; a tie goes to
@@ -82,33 +83,47 @@ export function leagueTable(
   results: Result[],
   competitors: Competitor[],
 ): LeagueTable {
-  const inLeague = new Map(
-    events.filter((one) => league.eventIds.includes(one.id)).map((one) => [one.id, one]),
-  )
-
-  /* The events of this competition that actually have a race, oldest first.
+  /* **The races this competition counts, and not the days they fall on** (owner, 12.09.2026,
+   * `PDL.md`: „izbor događaja bira sve njegove trke odjednom, a sme se izabrati i samo neka
+   * trka"). Asked of the one place that is asked (`leagueCounting.ts`), so this grid, the box that
+   * lists the races and the number of days on the row of a competition cannot disagree about it.
    *
-   * Held against the races and not taken off the league itself, because an event with no race is
-   * an empty column of a table whose width is its whole difficulty: forty six columns is already
-   * more than a screen holds, and a forty seventh that can never carry a number is width spent on
-   * nothing. An event entered a fortnight before its distances are known (owner, 23.08.2026) is
-   * exactly such an event, and it appears here the day its first race does.
+   * It read the days until 01.10.2026 (`League.eventIds`), and took in every race of every one:
+   * a day with four distances of which the competition counts one put all four into the cells and
+   * into the total, and a member who ran only the other three had a row. */
+  const counted = leagueRaces(league, races)
+
+  /* The events of which the competition counts at least one race, oldest first.
+   *
+   * Held against the races and not taken off the league itself, because an event with no counted
+   * race is an empty column of a table whose width is its whole difficulty: forty six columns is
+   * already more than a screen holds, and a forty seventh that can never carry a number is width
+   * spent on nothing. An event entered a fortnight before its distances are known (owner,
+   * 23.08.2026) is exactly such an event, and it appears here the day its first race does, and
+   * an event with races of which the competition counts none is the same event for this purpose.
    *
    * Two events on one day are two columns reading the same date, and that is the owner's answer
    * of 07.09.2026 taken as it was given: what tells them apart is the name on the pointer and the
    * page the press opens. Ordered by the name after the day, so the pair keeps one order between
-   * renders rather than the order the file happens to be written in. */
-  const withRaces = new Set(races.flatMap((race) => (inLeague.has(race.eventId) ? [race.eventId] : [])))
+   * renders rather than the order the file happens to be written in. An event none of whose races
+   * are counted has no column, so no pointer names it (owner, 12.09.2026: „mouseover nad njom
+   * nabraja sve DOGAĐAJE čije trke tog dana ulaze u tu ligu"); what a pointer is told over a
+   * column is `LeagueColumn.name`, which `LeagueResults.tsx` writes on it. */
+  const raced = new Set(counted.map((race) => race.eventId))
 
-  const columns: LeagueColumn[] = [...inLeague.values()]
-    .filter((event) => withRaces.has(event.id))
+  const columns: LeagueColumn[] = events
+    .filter((event) => raced.has(event.id))
     .map((event) => ({ eventId: event.id, date: event.date, name: event.name, slug: event.slug }))
     .sort((left, right) => left.date.localeCompare(right.date) || left.name.localeCompare(right.name))
 
-  /* Which event a result belongs to, for the results that belong to this competition at all.
-     Built out of the races, because a result names a race and a column names an event. */
+  /* Which column a result belongs to, for the results that belong to this competition at all.
+     Built out of the counted races, because a result names a race and a column names an event,
+     and **only of those whose event is a column**: the total is the sum of what is shown and
+     nothing else, so a counted race whose event was not handed in is not added to a row that
+     has no cell to hold it. */
+  const shown = new Set(columns.map((column) => column.eventId))
   const eventOf = new Map(
-    races.flatMap((race) => (inLeague.has(race.eventId) ? [[race.id, race.eventId] as const] : [])),
+    counted.flatMap((race) => (shown.has(race.eventId) ? [[race.id, race.eventId] as const] : [])),
   )
   const byMember = new Map<string, Map<number, number>>()
 

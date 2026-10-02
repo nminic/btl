@@ -646,11 +646,41 @@ export type Team = {
   crop: Crop | null
 }
 
+/**
+ * A competition that runs alongside the league (PDL P15a): the Balkan league itself is not one of
+ * these, because it counts every race of every event of the calendar and is not a record
+ * (owner, 12.09.2026: „Balkanska trkačka liga se ne sklapa nego broji sve").
+ */
 export type League = {
   id: number
   slug: string
   name: string
   season: number
+  /**
+   * THE RACES THIS COMPETITION COUNTS, which is what is counted and the whole of it.
+   *
+   * **Races and not events, and that is the owner's own word** (12.09.2026, `PDL.md`): „Neograničen
+   * broj događaja i trka; izbor događaja bira sve njegove trke odjednom, a sme se izabrati i samo
+   * neka trka." A day with four distances may count one of them, so a competition cannot be told
+   * which of its races count by being told which days it runs on, and nothing that works out a
+   * standing, a list or a count of days may ask `eventIds` instead
+   * (`pages/league/leagueCounting.ts` is the one place this is asked).
+   *
+   * **In the order the calendar runs them** (`LeagueApi`), and empty for a competition no race has
+   * been given yet, which is the state every one of them is in before its season. Always present on
+   * what the server answers, so there is no „the answer did not say" to fall back on.
+   */
+  raceIds: number[]
+  /**
+   * The days those races fall on, one entry however many of a day's races count, which the server
+   * DERIVES from `raceIds` (`LeagueApi`) and does not store beside them.
+   *
+   * **Nothing on the portal reads it since 01.10.2026**, on purpose. A day a competition runs on is
+   * worked out of the races it counts (`pages/league/leagueCounting.ts`), and a second reading off
+   * this list is the fault that drew every race of a day into a table that counts one of them. It
+   * stays on the type because the server answers it and `data/servedShape.test.ts` hands the
+   * answer to this very type, not because anything is meant to ask it.
+   */
   eventIds: number[]
   /** Written for this league; empty until somebody writes it, and then the
    *  section does not appear at all. */
