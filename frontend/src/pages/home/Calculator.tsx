@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { fromBoxes } from '../../forms/clock'
+import { parseNumber } from '../../forms/numberField'
 import { btlPoints } from '../../data/scoring'
 import { formatPoints } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
@@ -32,33 +33,39 @@ const EMPTY: Held = { values: NOTHING, written: false }
 
 /**
  * Whether a box has anything in it, which is not the same question as what it is
- * worth.
+ * worth: a lone minus sign, `1e` and `abc` are writing, and are not a number.
  *
- * A box of type number answers with an **empty value** for writing it refuses to
- * read as a number: a lone minus sign, `1e`, `1-2`. The characters stand in the
- * box where anybody can see them, and the value is the empty string.
- * `validity.badInput` is the browser saying so out loud, and it is the whole of
- * the difference rather than one case among several.
+ * ~~A box of type number answers with an **empty value** for writing it refuses
+ * to read as a number, and `validity.badInput` was the browser saying so out
+ * loud, so "has it a value" and "is anything written in it" were two questions
+ * (ADL, 21.08.2026).~~ **[02.10.2026]** These are text boxes now, so the two are
+ * one. The owner decided that a number box takes a comma as well as a dot
+ * (`forms/numberField.ts`), which a box of type number does not do (measured, see
+ * `boxFor` in `forms/FormRenderer.tsx`), and the empty value for writing it would
+ * not read went with the type. The question stays a function of its own because
+ * Reset and the whole of `heldBy` hang on the answer.
  */
 function anythingIn(box: HTMLInputElement): boolean {
-  return box.value !== '' || box.validity.badInput
+  return box.value !== ''
 }
 
 /**
  * Everything the widget holds, read off the boxes themselves.
  *
  * The boxes are the record and this is the copy, not the other way round. That
- * is not a preference, it is what a box of type number leaves as the only
- * arrangement that works:
+ * is not a preference, it is what keeps a listener of our own from fighting
+ * React: a listener set beside a box React writes to is worse than the fault it
+ * was fixing. Measured in Chrome on 21.08.2026: typing `62.07` left the box
+ * **empty** and the answer unwritten, because the state it set flushed between
+ * the two listeners and React redrew the box from the value it still believed,
+ * wiping the character out from under the cursor.
  *
- * - React calls `onChange` only when the value it last wrote has changed, and
- *   such a box answers with the same empty value for a lone minus sign as for
- *   nothing at all, so the widget was never told there was writing in it;
- * - and a listener of our own, set beside a box React writes to, is worse than
- *   the fault it was fixing. Measured in Chrome on 21.08.2026: typing `62.07`
- *   left the box **empty** and the answer unwritten, because the state it set
- *   flushed between the two listeners and React redrew the box from the value it
- *   still believed, wiping the character out from under the cursor.
+ * ~~The other reason was that React calls `onChange` only when the value it last
+ * wrote has changed, and a box of type number answers with the same empty value
+ * for a lone minus sign as for nothing at all.~~ **[02.10.2026]** That went with
+ * the type (`anythingIn`). The arrangement is left as it was decided: the fault
+ * above was measured on boxes of type number, and nothing has measured whether a
+ * text box has it too, so it is neither claimed here nor ruled out.
  *
  * With no `value` on the box there is nothing for React to redraw and nothing to
  * fight over: the browser keeps the writing, one listener copies it here, and
@@ -88,6 +95,26 @@ function heldBy(widget: HTMLElement): Held {
   }
 }
 
+/**
+ * What is written in one box, as a number: nought where nothing is, and no number
+ * at all where what is written is not one.
+ *
+ * The reader is `forms/numberField.ts`, which takes the comma and the dot alike
+ * (owner, 02.10.2026: "Polje za broj prima i zarez i tacku", PDL, "Odluke iz
+ * ciscenja nalaza"). Nothing here is sent anywhere, so the second half of that
+ * sentence, "a portal salje tacku", has nothing to do in this widget.
+ *
+ * **Writing that is not a number is not nought, and that is the coordinator's
+ * reading and not a decision of the owner's.** It is what `fromBoxes` already does
+ * for the three boxes of the time (PR 463), carried to the other three: a box
+ * holding `abc` leaves the widget with no answer, where reading it as nought
+ * would answer a race the member did not write. `btlPoints` refuses a number that
+ * is not one for the climb and the fall as well as for the length and the time.
+ */
+function readBox(text: string): number {
+  return text.trim() === '' ? 0 : (parseNumber(text) ?? Number.NaN)
+}
+
 /* The calculator is the same one the old portal had, and it is mostly a toy.
  * It is also the only explanation of the scoring there is: the formula is public
  * and the rulebook does not set it out, so this is where somebody sees how it
@@ -105,9 +132,9 @@ export function Calculator() {
   const first = useRef<HTMLInputElement>(null)
 
   const points = btlPoints(
-    Number(values.length || 0),
-    Number(values.ascent || 0),
-    Number(values.descent || 0),
+    readBox(values.length),
+    readBox(values.ascent),
+    readBox(values.descent),
     fromBoxes(values),
   )
 
@@ -185,6 +212,22 @@ export function Calculator() {
         {t('home.calculator')}
       </h2>
 
+      {/* TEXT BOXES WITH A KEYBOARD FOR NUMBERS, and not `type="number"`, since
+          02.10.2026. A box of type number does not take the comma Serbian writes a
+          decimal with and reports what it refuses as an empty value, so „21,1" read
+          as no length at all (`forms/FormRenderer.tsx`, `boxFor`, measured); the
+          owner decided that day that a number box takes a comma as well as a dot.
+          What each box takes is decided by `forms/numberField.ts`, read in
+          `readBox` and in `fromBoxes`, and the keyboard by `inputMode`: without it
+          the three boxes of the time would open the full keyboard on a telephone,
+          which a box of type number never did.
+
+          ~~`min`, `max` and `step`~~ went with the type. On a text box they announce
+          nothing to anybody and constrain nothing, and here they never constrained
+          anything either: a figure outside them was read all the same.
+
+          WHO HOLDS THE BOXES IS UNCHANGED (ADL, 21.08.2026): no `value`, no
+          `onChange`, one listener of the widget's own, and `autoComplete="off"`. */}
       <div className="calc calc--grid">
         <label className="calc__field">
           <span>{t('home.calcLength')}</span>
@@ -192,19 +235,17 @@ export function Calculator() {
             ref={first}
             name="length"
             autoComplete="off"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="0.01"
           />
         </label>
         <label className="calc__field">
           <span>{t('home.calcAscent')}</span>
-          <input name="ascent" autoComplete="off" type="number" inputMode="numeric" min="0" />
+          <input name="ascent" autoComplete="off" type="text" inputMode="numeric" />
         </label>
         <label className="calc__field">
           <span>{t('home.calcDescent')}</span>
-          <input name="descent" autoComplete="off" type="number" inputMode="numeric" min="0" />
+          <input name="descent" autoComplete="off" type="text" inputMode="numeric" />
         </label>
       </div>
 
@@ -212,15 +253,15 @@ export function Calculator() {
         <legend className="visually-hidden">{t('home.calcTime')}</legend>
         <label className="calc__field">
           <span>{t('home.hours')}</span>
-          <input name="hours" autoComplete="off" type="number" min="0" />
+          <input name="hours" autoComplete="off" type="text" inputMode="numeric" />
         </label>
         <label className="calc__field">
           <span>{t('home.minutes')}</span>
-          <input name="minutes" autoComplete="off" type="number" min="0" max="59" />
+          <input name="minutes" autoComplete="off" type="text" inputMode="numeric" />
         </label>
         <label className="calc__field">
           <span>{t('home.seconds')}</span>
-          <input name="seconds" autoComplete="off" type="number" min="0" max="59" />
+          <input name="seconds" autoComplete="off" type="text" inputMode="numeric" />
         </label>
       </fieldset>
 

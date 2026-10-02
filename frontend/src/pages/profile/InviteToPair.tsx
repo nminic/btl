@@ -94,7 +94,7 @@ export function InviteToPair({
       type="button"
       className="button button--secondary"
       onClick={() => {
-        const id = invitePair({ from: me.memberNumber, to: competitor.memberNumber, date: today })
+        const id = invitePair({ from: me.memberNumber, to: competitor.memberNumber })
 
         /* The invitation and the message that carries it are written together, because neither is
            any use alone: the record is what may be answered, and the inbox is the only place the

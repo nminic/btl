@@ -33,7 +33,7 @@ function AskTheLeague({ from, to }: { from: string; to: string }) {
     <button
       type="button"
       onClick={() => {
-        const id = invitePair({ from, to, date: TODAY })
+        const id = invitePair({ from, to })
 
         notify({
           from: 'Balkanska trkačka liga',
@@ -47,6 +47,21 @@ function AskTheLeague({ from, to }: { from: string; to: string }) {
     >
       pitaj celu ligu
     </button>
+  )
+}
+
+/** What the session keeps of every question about a pair, as the NAMES of what each one carries,
+ *  one line a question. Asked of the session and not of a screen on purpose: a field written into
+ *  the record and read by no screen is a field no screen can ever be seen to show. */
+function WhatTheSessionKeeps() {
+  const { pairInvites } = useSession()
+
+  return (
+    <ul aria-label="pair invites the session keeps">
+      {pairInvites.map((one) => (
+        <li key={one.id}>{Object.keys(one).sort().join(',')}</li>
+      ))}
+    </ul>
   )
 }
 
@@ -210,6 +225,32 @@ describe('who is offered „Pozovi u trkački par"', () => {
 
     expect(invite().length).toBe(0)
     expect(screen.getByText(/Poziv u trkački par je poslat/)).toBeVisible()
+  }, SLOW)
+})
+
+describe('what the session keeps of a question asked', () => {
+  /* **WHO ASKED, WHOM, AND ITS OWN KEY, AND NOTHING ELSE** (PENDING 147, owner's decision of 02.10.2026,
+     chosen among the outcomes offered and against the recommendation: the day goes). The day the question
+     was sent was written into the record and read by nothing: the day a member sees comes off the MESSAGE
+     (`Message.date`), and the answer works out which season it is for on the day it comes
+     (`PairInviteAnswer`), so a day kept here would be a second home for a fact the portal already has one
+     for.
+
+     Held on what the record CARRIES and not on what a screen draws, because by construction no screen draws
+     it: that is the whole finding. */
+  it('keeps only who asked, whom, and the key it is answered by', async () => {
+    const user = setupUser()
+
+    renderAt(HER, 'competitor', '000002', undefined, TODAY, <WhatTheSessionKeeps />)
+
+    await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+    await user.click(must(invite()[0], 'the button'))
+
+    const kept = within(screen.getByRole('list', { name: 'pair invites the session keeps' }))
+      .getAllByRole('listitem')
+      .map((one) => one.textContent)
+
+    expect(kept).toEqual(['from,id,to'])
   }, SLOW)
 })
 

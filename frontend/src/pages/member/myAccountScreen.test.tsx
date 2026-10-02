@@ -3,11 +3,13 @@ import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Competitor } from '../../data/types'
-import { must } from '../../test/at'
+import { at, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat, type Asked } from '../../test/serverAnswers'
+import { ruleFor } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import sr from '../../i18n/sr.json'
+import { WHAT_THIS_SCREEN_SENDS, type Sent } from './myAccount'
 
 /**
  * THE SCREEN A MEMBER CHANGES HIS OWN ACCOUNT FROM.
@@ -276,6 +278,188 @@ describe('a member’s own data', () => {
   })
 })
 
+/** The sheet the account screen's own classes are written in, read as text because jsdom applies none. */
+const MEMBER_CSS = readFileSync(join(process.cwd(), 'src/pages/member/Member.css'), 'utf-8')
+
+/** The class the list of what a member may read and not change carries: the join between the
+ *  markup and the rule that lets a long fact break. */
+const THE_FACTS = 'member__facts'
+
+/** Where the server's own source lives, spelled the way `myAccount.test.ts` spells it. */
+const WEB = join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web')
+
+/**
+ * THE BOXES THE SERVER WILL NOT TAKE EMPTY, read off the Java that refuses them.
+ *
+ * <p>{@code MeWriteApi.NEVER_EMPTIED}, which V7 and V8 settle: the two names and the address are
+ * refused when blank, while a blank telephone is a removal. It is read here and written nowhere
+ * in this file, so what the screen asks for is held to the server's own list from the OUTSIDE: a
+ * box added to it or taken off it moves the answer of every case below without anybody having to
+ * remember them. That is the join between two layers, and it is the one a mutation of either side
+ * alone has to break.
+ */
+function neverEmptiedByTheServer(): string[] {
+  const java = readFileSync(join(WEB, 'MeWriteApi.java'), 'utf-8')
+  const declared = must(
+    /NEVER_EMPTIED\s*=\s*List\.of\(([^)]*)\)/.exec(java),
+    'a NEVER_EMPTIED list in MeWriteApi.java',
+  )
+
+  return [...at(declared, 1).matchAll(/"([^"]+)"/g)].map((one) => at(one, 1))
+}
+
+/** The four boxes, by the name the portal sends each under, found by the words on their labels. */
+function personalBoxes(panel: HTMLElement): { name: Sent; box: HTMLInputElement }[] {
+  return WHAT_THIS_SCREEN_SENDS.map((name) => ({
+    name,
+    box: inputElement(
+      within(panel).getByRole('textbox', { name: new RegExp(`^${sr.registration[name]}`) }),
+    ),
+  }))
+}
+
+function labelOf(box: HTMLInputElement): HTMLLabelElement {
+  return at(box.labels ?? undefined, 0)
+}
+
+/** The star beside the name of a field that is asked for. It stands OUTSIDE the label
+ *  (`forms/AskedLabel.tsx`), so it is the next thing after it. */
+function hasTheStar(box: HTMLInputElement): boolean {
+  return labelOf(box).nextElementSibling?.textContent === '*'
+}
+
+/** The word beside the name of a field that may be left empty. */
+function saysOptional(box: HTMLInputElement): boolean {
+  return (labelOf(box).textContent ?? '').includes(sr.form.optional)
+}
+
+/** The boxes the screen says it cannot see what stands in, read off the sentence that says so. */
+function unseen(panel: HTMLElement, boxes: { name: Sent; box: HTMLInputElement }[]): Sent[] {
+  const notes = within(panel).queryAllByText(sr.account.notShown)
+
+  return boxes
+    .filter(({ box }) => notes.some((note) => note.id === box.getAttribute('aria-describedby')))
+    .map(({ name }) => name)
+}
+
+describe('which boxes of a member’s own data are asked for', () => {
+  let stop = (): void => {}
+
+  afterEach(() => {
+    stop()
+  })
+
+  /**
+   * A BOX IS ASKED FOR WHEN THE SERVER WILL NOT TAKE IT EMPTY AND THE PORTAL KNOWS WHAT IT HOLDS.
+   *
+   * <p>PENDING 217.5. The address carried the star and `aria-required` while the sentence beside
+   * it said „Ako ostaviš prazno, ništa se ne menja": a field marked as obligatory over a form that
+   * is sent perfectly well without it, which is what a screen reader says out loud to the member
+   * who cannot see the sentence. The star and the attribute read a hand-written list („every box
+   * but the telephone") while the sentence read a different fact, whether the portal can see what
+   * stands there; two facts, and the screen answered for one of them.
+   *
+   * <p><b>The three things a box says are asked of the DOM and held to two independent sources.</b>
+   * What the server takes empty comes off the Java (`neverEmptiedByTheServer`), and what the portal
+   * cannot see comes off the sentence on the screen. The star, `aria-required` and the word
+   * „neobavezno" are all read, because the first two are one decision and neither works alone
+   * (`forms/AskedLabel.tsx`), and the third is the label saying the opposite for the same box.
+   */
+  function expectEachBoxAsked(panel: HTMLElement): void {
+    const boxes = personalBoxes(panel)
+    const neverEmptied = neverEmptiedByTheServer()
+    const cannotSee = unseen(panel, boxes)
+
+    for (const { name, box } of boxes) {
+      const asked = neverEmptied.includes(name) && !cannotSee.includes(name)
+
+      expect(box.getAttribute('aria-required'), `aria-required on ${name}`).toBe(asked ? 'true' : null)
+      expect(hasTheStar(box), `the star beside ${name}`).toBe(asked)
+      expect(saysOptional(box), `the word „${sr.form.optional}" beside ${name}`).toBe(!asked)
+    }
+  }
+
+  it('does not ask for the address while the portal cannot see what the server holds there', async () => {
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+    const boxes = personalBoxes(panel)
+    const neverEmptied = neverEmptiedByTheServer()
+    const cannotSee = unseen(panel, boxes)
+
+    /* **THE TWO SOURCES ARE PULLED APART BEFORE ANYTHING IS ASKED OF THEM.** A box that is both
+       „never taken empty" and „cannot be seen" is the whole case: without one, „asked for" and
+       „seen" are the same fact and the loop below is satisfied by either reading. And one that
+       cannot be seen and may be emptied (the telephone) is the other half, so „unseen" cannot pass
+       for „optional". */
+    expect(neverEmptied, 'the Java list names nothing, so this measures nothing').not.toEqual([])
+    expect(cannotSee.filter((name) => neverEmptied.includes(name))).not.toEqual([])
+    expect(cannotSee.filter((name) => !neverEmptied.includes(name))).not.toEqual([])
+
+    expectEachBoxAsked(panel)
+  })
+
+  /**
+   * <p><b>Typing is not knowing.</b> Something in the address box does not tell the portal what the
+   * server holds there, so the sentence that says it cannot see stays until a save lands, and the box
+   * stays one that may be left alone. Two sources of „is there something in the box": what was typed
+   * and what the portal knows. A star that followed the first would come and go with every keystroke
+   * over a sentence that said the opposite the whole time.
+   */
+  it('does not start asking for the address because something was typed into it', async () => {
+    const user = setupUser()
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+    const address = must(
+      personalBoxes(panel).find(({ name }) => name === 'address'),
+      'the address box',
+    )
+
+    await user.type(address.box, 'Ulica 1')
+
+    /* Still unseen, and that is the fixture's own fact, asked rather than assumed. */
+    expect(unseen(panel, personalBoxes(panel))).toEqual(['address', 'phone'])
+    expectEachBoxAsked(panel)
+  })
+
+  /**
+   * <p><b>The other state of the same axis, and the one that keeps „not asked" from being
+   * hard-wired to the address.</b> Once the portal has written a box it knows what stands there,
+   * and the server takes no empty address, so the star comes back; the telephone does not take it
+   * even then, because it is known and still optional.
+   */
+  it('asks for the address once the portal has written one, and still not for the telephone', async () => {
+    const user = setupUser()
+    ;({ stop } = serverThat((path, init) =>
+      path === '/api/me' && init?.method === 'PUT' ? answeredWith(200) : null,
+    ))
+
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+
+    const panel = await personalPanel()
+    const typed: Record<Sent, string> = {
+      firstName: 'x',
+      lastName: 'x',
+      address: 'Ulica 1',
+      phone: '065 1234',
+    }
+
+    for (const { name, box } of personalBoxes(panel)) {
+      await user.type(box, typed[name])
+    }
+
+    await user.click(within(panel).getByRole('button', { name: sr.account.save }))
+    await within(panel).findByText(sr.account.saved)
+
+    /* Every box is seen now, which is the fixture's own fact and is asked rather than assumed: a
+       case that went on holding a box unseen would be measuring the state above again. */
+    expect(unseen(panel, personalBoxes(panel))).toEqual([])
+    expectEachBoxAsked(panel)
+  })
+})
+
 describe('the things a member may not change himself', () => {
   it('shows the gender and the category, and offers no box for either', async () => {
     renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
@@ -312,6 +496,37 @@ describe('the things a member may not change himself', () => {
     await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
 
     expect(within(panelOf(sr.account.lockedTitle)).getByText(sr.account.birthDateNote)).toBeInTheDocument()
+  })
+
+  /**
+   * A LONG FACT BREAKS INSIDE ITS OWN BOX (PENDING 217.6).
+   *
+   * <p>The list of what a member may read and not change was a bare `<dl>`: it took the SHAPE of
+   * the list `admin/EntityEditor.tsx` draws for the same thing and none of what holds that shape
+   * in place, which is the rule on the value that lets a long word break. The town is typed text of
+   * up to 80 characters (`city.maxLength`), so it can be one word, and measured in Chrome at 360 a
+   * word of 57 letters sent the whole page 119 pixels sideways (the review measured 131 with its
+   * own word), which PDL P24 does not allow.
+   *
+   * <p>jsdom lays nothing out (ADL A18, A33), so what is held here is the TWO HALVES AND THE JOIN
+   * BETWEEN THEM: the rule is written, and the list carries the class the rule is written for.
+   * Either half alone is satisfied by the other going missing, and a class on the list with no rule
+   * behind it is exactly what the bare list was avoiding by having no class at all. That the rule
+   * wins the cascade is not asked here; it was measured in the browser, at 360, 768 and 1280.
+   */
+  it('lets a long fact break inside its own box rather than push the page sideways', async () => {
+    renderAt('/sr/podesavanja', 'competitor', ME.memberNumber)
+    await screen.findByRole('heading', { level: 2, name: sr.account.lockedTitle })
+
+    const facts = within(panelOf(sr.account.lockedTitle)).getAllByRole('definition')
+    const list = must(at(facts, 0).closest('dl'), 'the list the facts stand in')
+
+    expect(list).toHaveClass(THE_FACTS)
+    expect(
+      ruleFor(MEMBER_CSS, `.${THE_FACTS} dd`, 'Member.css').getPropertyValue('overflow-wrap'),
+    ).toBe('anywhere')
+    /* And every fact stands in that one list, so the rule reaches all of them. */
+    expect(facts.filter((one) => one.closest('dl') !== list)).toEqual([])
   })
 
   /**

@@ -114,8 +114,9 @@ export type WhoTheServerSaysIAm = {
    *
    * **A whole number and never merely „a number"**, which is the shape `referredCount`
    * below is read with and for the same measurement: a season that arrived as a string
-   * would go into a sentence as one („Član od 2016. sezone"), and a fraction is not a
-   * season. `typeof` narrows and `Number.isInteger` then says which numbers count.
+   * would go into a sentence as one („Član od 2016. sezone"), and neither a fraction nor a
+   * number below nought is a season. Which numbers count is `wholeIn`'s to say, and it is
+   * written there once.
    */
   firstSeason: number | null
   /**
@@ -128,7 +129,8 @@ export type WhoTheServerSaysIAm = {
    * fault.
    *
    * **That is a boundary and it is written down rather than papered over**: a server
-   * answering a team that is not a number is read here as „no team", and the screen
+   * answering a team that is not a whole number of nought or more is read here as „no
+   * team", and the screen
    * then says „Trenutno nisi ni u jednom timu." rather than naming a team it cannot
    * find. Which is what it would have said anyway - a team id no team on
    * `/api/teams` carries draws the same sentence - so the two states the portal cannot
@@ -402,10 +404,25 @@ function countryIn(mine: object | null): string | null {
  * **Looked for and never asserted**, and the type is asked for as well as the presence: a
  * value that arrives as a string would go into an arithmetic, or into a sentence, and
  * come out as something nobody meant. `Number.isInteger` on top of `typeof` rather than
- * alone, because the two differ on exactly the values that are not one of these - `NaN`
- * and a fraction - and because `Number.isInteger` answers a boolean and narrows nothing,
- * so the value would still have to be asserted into a number, which is what ADL A14
- * refuses. `typeof` narrows and the other half then says which numbers count.
+ * alone, because `Number.isInteger` answers a boolean and narrows nothing, so the value
+ * would still have to be asserted into a number, which is what ADL A14 refuses.
+ * `typeof` narrows and the other two halves then say which numbers count.
+ *
+ * **THE SET IT BELIEVES IS A WHOLE NUMBER OF NOUGHT OR MORE, and it is written once and
+ * not as a list of what is refused.** This said the two halves differ on `NaN` and a
+ * fraction, which stopped one step short of the set the sentence named: `-3` is a whole
+ * number, `Number.isInteger` says so, and it reached the fee screen as a balance of
+ * „-1.800 RSD" (measured on the screen, 02.10.2026, PENDING 227). A count of members, a
+ * season and the number of a team are none of them below nought, so a whole number below
+ * nought is the server saying something this portal has no screen for, and it ends as „I
+ * was not told" exactly as a fraction does. `theServer.test.ts` asks every number the
+ * server declares for this record the same two questions rather than naming the wrong ones.
+ *
+ * **Nought is believed for all three, and for the count it is the answer that matters**:
+ * „you brought in nobody" is a statement and „I was not told" is not. For the other two it
+ * is looser than it could be - `team.id` is a `bigserial` (V11), so no team is numbered
+ * nought - and that is written here and not mended, because a floor of its own per key
+ * would be three readers where this says there is one.
  *
  * **What each null MEANS is the caller's to know and is not the same for the three**, so
  * it is written where each is declared rather than here: no balance was mentioned, no
@@ -418,5 +435,5 @@ function wholeIn(mine: object | null, name: 'firstSeason' | 'teamId' | 'referred
 
   const said: unknown = Reflect.get(mine, name)
 
-  return typeof said === 'number' && Number.isInteger(said) ? said : null
+  return typeof said === 'number' && Number.isInteger(said) && said >= 0 ? said : null
 }

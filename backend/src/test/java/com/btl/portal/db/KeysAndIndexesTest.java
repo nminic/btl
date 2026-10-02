@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -83,6 +84,13 @@ class KeysAndIndexesTest extends DatabaseTest {
 	 * unique key is <b>plain</b>: it exists to be pointed at, and price 2 says a
 	 * deferrable one cannot be. See {@link PlaceIdentityTest}, which holds the two
 	 * halves of that over the codebook itself.
+	 *
+	 * <p><b>One key breaks the rule on purpose, and says so where it is written.</b>
+	 * {@code place_country_name_unique} is over a name, which is looked up, and it is
+	 * deferrable all the same: a name is not counted from one end, but a delta moves it, and
+	 * two towns exchanging names is one statement that a plain key refuses. The prices above
+	 * are paid and cost nothing here, because nothing needs to point at a town's name: a town
+	 * is pointed at by its mark, which is plain.
 	 */
 	private static final List<Key> KEYS = List.of(
 			new Key("country_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
@@ -95,6 +103,11 @@ class KeysAndIndexesTest extends DatabaseTest {
 					"a town is looked up by its GeoNames mark, and the mark is there to be pointed at"),
 			new Key("place_rank_unique", true,
 					"the order towns are suggested in: inserting one town moves the rank of every smaller town"),
+			new Key("place_country_name_unique", true,
+					"a town is told apart from its namesakes by its name in its country, and a delta moves names:"
+							+ " two towns exchanging them is one UPDATE, which a plain key refuses on the first row"
+							+ " (measured 02.10.2026). Looked up by nobody who needs it plain: a town is pointed at"
+							+ " by its mark"),
 			new Key("price_row_pk", false, "a surrogate key nothing outside the portal sees, so nothing moves it"),
 			new Key("price_row_key_unique", false, "a price row is looked up by its key"),
 			new Key("price_row_sort_order_unique", true,
@@ -584,9 +597,22 @@ class KeysAndIndexesTest extends DatabaseTest {
 	 */
 	static List<Key> singleColumnOrderKeys() {
 		return orderKeys().stream()
-				.filter(key -> !key.constraint().equals("static_page_section_position_unique"))
+				.filter(key -> !COMPOSITE_DEFERRABLE_KEYS.contains(key.constraint()))
 				.toList();
 	}
+
+	/**
+	 * The deferrable keys that cover two columns, each measured by hand in the class that answers for
+	 * its table: a shift of one column cannot be written for a pair of them, and the two tests below
+	 * refuse to guess ({@code doesNotContain(",")}), so a composite key that is not named here fails
+	 * there and not silently.
+	 *
+	 * <p>{@code place_country_name_unique} is the second. It is not an order, and its two halves are
+	 * {@code ConstraintsTest.twoTownsOfOneCountryExchangeNamesInOneStatement} and
+	 * {@code ConstraintsTest.aStatementThatEndsWithTwoTownsOfOneCountryUnderOneNameIsStillRefused}.
+	 */
+	private static final Set<String> COMPOSITE_DEFERRABLE_KEYS =
+			Set.of("static_page_section_position_unique", "place_country_name_unique");
 
 	/** And the ones it says may not, which are the ones anything may point at. */
 	static List<Key> lookedUpKeys() {

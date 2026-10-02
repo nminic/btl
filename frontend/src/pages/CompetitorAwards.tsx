@@ -54,7 +54,7 @@ function AwardsBody({
   part: string | undefined
 }) {
   const { locale } = useI18n()
-  const { memberNumber: reader } = useSession()
+  const { signedIn } = useSession()
   const overlay = useOverlay()
   const state = combinePair(
     combineResources(useCompetitors(), useResults(), useTeams()),
@@ -68,7 +68,7 @@ function AwardsBody({
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
-        const readable = profileFor(competitors, memberNumber, reader)
+        const readable = profileFor(competitors, memberNumber, signedIn !== null)
 
         if (readable.kind === 'none') {
           /* **The home page, and the same for a profile that does not exist.** The owner's rule,

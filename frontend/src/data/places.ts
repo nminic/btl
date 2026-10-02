@@ -9,12 +9,15 @@ import { loadResource } from './client'
  * A tuple rather than an object because there are forty seven thousand of them
  * and the field names would outweigh the data. Built by
  * `btl-produkt/istorijski-podaci/napravi-mesta.py` out of the GeoNames export
- * (CC BY 4.0).
+ * (CC BY 4.0), and then labelled by `oznaci-istoimena-mesta.py` beside it, which
+ * gives towns that were called alike the nearest bigger town in brackets.
  *
  * The mark comes first because it is what the town **is** (owner, 08.09.2026,
- * ADL A16). Name and country are not: 1616 name and country pairs in the
- * codebook are carried by more than one town, and China alone has more than one
- * town called Zhongshan. It is a GeoNames identifier and the same number the
+ * ADL A16). Name and country tell towns apart in this codebook since 02.10.2026,
+ * when towns that were called alike were given the nearest bigger town in
+ * brackets (owner, PDL "Odluke iz ciscenja nalaza (02.10.2026, vlasnik)"), but
+ * a label moves when GeoNames does, and a name is what the town is called today
+ * and not what it is. The mark is a GeoNames identifier and the same number the
  * database keeps in `place.geonames_id`, so a town written down anywhere still
  * means that town after the codebook is rebuilt.
  */
@@ -60,7 +63,7 @@ const ON_THEIR_OWN: [RegExp, string][] = [
   [/ħ/g, 'h'],
   [/ə/g, 'e'],
   /* And the two a typesetter uses that no keyboard has: the curly apostrophe,
-     which 388 towns carry, and the long dash inside a name like
+     which 401 towns carry, and the long dash inside a name like
      Rosemont–La Petite-Patrie, which a person types as a hyphen. */
   [/[’‘`]/g, "'"],
   [/[–—]/g, '-'],
@@ -118,9 +121,106 @@ export function placesLike(places: Place[], typed: string): Place[] {
 }
 
 /**
+ * The name before a bracket that closes it, or nothing for a name that does not
+ * end in one: „Yantai" out of „Yantai (Dalian)", nothing out of „Rome".
+ *
+ * The label a namesake carries is the last bracket group of its name, with a
+ * space before it and no bracket inside it. A name that ends in a bracket and is
+ * not of that shape („Neustadt (Halle (Saale))" would be one) is not read, and
+ * the contract test over the shipped file says so rather than leaving it to be
+ * found (data.test.tsx).
+ */
+export function nameBeforeItsBracket(name: string): string | undefined {
+  return /^(.*\S) \([^()]*\)$/.exec(name)?.[1]
+}
+
+/**
+ * Which countries answer to each name, the names folded the way they are typed.
+ *
+ * What a field asks to know whether the codebook can mean only one place by what
+ * has been typed. A name that stands in one country recognises it, and a name
+ * that stands in two recognises nothing by itself: London is British and
+ * American. Both names of a town count, the local one and the English one,
+ * because the keyboard does not change with the language of the page.
+ *
+ * **A label is read back to the bare name it was added to.** Towns of one country
+ * that were called alike carry the nearest bigger town in brackets since
+ * 02.10.2026 (owner, PDL „Odluke iz ciscenja nalaza (02.10.2026, vlasnik)"),
+ * „Yantai (Dalian)" and „Yantai (Chengxi)", and what somebody types who never
+ * looks at the list is still „Yantai". The codebook no longer holds that name as
+ * it is written, and a lookup that asks only whether it does gives the wrong
+ * answer both ways (review of PR 464): where every town of the name is in one
+ * country the name recognises nothing, and where one country kept a bare town
+ * and another's were labelled it recognises the one that kept it. Rome is
+ * Italian, and „Rome (Marietta)" and „Rome (Utica)" are American. So the bare
+ * name is entered under the countries of the towns that carry it with a label,
+ * and the answer is the one the name gave before the labels.
+ *
+ * **Which brackets are labels.** Two or more towns of one country carrying the
+ * same bare name under a bracket. A label is what makes two namesakes two names,
+ * so it comes in twos, and the one town of a pair that keeps its bare name holds
+ * its country under that name already. A town with a bracket of its own
+ * („Frankfurt (Oder)", „Dubova (Driloni)") has no namesake to be told from and
+ * its bare name was never a name of anything: reading it back would give
+ * „Frankfurt" to Germany and take „Dubova" away from Romania. Counted country by
+ * country, because two towns under one bare name in two different countries are
+ * not namesakes of each other.
+ *
+ * Folded once per codebook, so that recognising a name is a lookup and not a walk
+ * over forty seven thousand towns on every key (`forms/PlaceField.tsx`). It is
+ * the one place the portal says which countries a name stands in, and the
+ * contract test counts the names that stand in more than one through this
+ * function rather than through a copy of it (data/contract.test.ts).
+ */
+export function countriesByName(places: Place[]): Map<string, Set<string>> {
+  const found = new Map<string, Set<string>>()
+  const underABracket = new Map<string, { folded: string; country: string; towns: number }>()
+
+  const add = (folded: string, country: string) => {
+    const already = found.get(folded)
+
+    if (already === undefined) {
+      found.set(folded, new Set([country]))
+    } else {
+      already.add(country)
+    }
+  }
+
+  for (const [, name, country, english] of places) {
+    add(plainly(name), country)
+
+    if (english !== undefined) {
+      add(plainly(english), country)
+    }
+
+    const bare = nameBeforeItsBracket(name)
+
+    if (bare !== undefined) {
+      const folded = plainly(bare)
+      const key = `${country}:${folded}`
+      const carried = underABracket.get(key)
+
+      if (carried === undefined) {
+        underABracket.set(key, { folded, country, towns: 1 })
+      } else {
+        carried.towns += 1
+      }
+    }
+  }
+
+  for (const { folded, country, towns } of underABracket.values()) {
+    if (towns >= 2) {
+      add(folded, country)
+    }
+  }
+
+  return found
+}
+
+/**
  * The codebook, once somebody has started typing.
  *
- * The codebook is 1200 KB and is not sent to anybody who merely opened a form.
+ * The codebook is 1300 KB and is not sent to anybody who merely opened a form.
  * The request goes out on the second letter, and `loadResource` holds what came
  * back, so every later field on every later screen answers from memory.
  *
