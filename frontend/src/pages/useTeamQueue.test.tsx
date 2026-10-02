@@ -126,4 +126,52 @@ describe('the team queue, in the state a screen cannot reach', () => {
       stop()
     }
   })
+
+  /**
+   * TWO PRESSES THAT ARRIVE BEFORE A REDRAW ARE ONE ASKING, AND THE NEXT ONE AFTER IT IS ANOTHER.
+   *
+   * <p>`components/Unreadable.tsx` tells the button off while an asking is out, but it does it by
+   * a render, and two presses fired before the render the first one causes both read the flag as
+   * false. The guard that holds is the ref inside the hook, and no screen can fire a second press
+   * in that gap, so this is the one place it is held: the screen's cases press once per redraw and
+   * would pass with the ref gone.
+   *
+   * <p>The third press is the other half of the same guard. A ref that is never put back would
+   * refuse every press for the rest of the page's life, and a screen that says „Pokusaj ponovo"
+   * and then does nothing is worse than one that said nothing.
+   */
+  it('makes one asking of two presses before a redraw, and lets the next one in', async () => {
+    const { asked, stop } = serverThat((path) =>
+      path === '/api/teams/2/applications' || path === '/api/teams/2/invitations'
+        ? new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
+        : null,
+    )
+    const applicationReads = () =>
+      asked.filter((one) => one.path === '/api/teams/2/applications').length
+
+    try {
+      const { result } = renderHook(() => useTeamQueue(2))
+
+      await vi.waitFor(() => {
+        expect(applicationReads(), 'the read the page makes by itself').toBe(1)
+      })
+
+      await act(async () => {
+        const first = result.current.readAgain()
+        const second = result.current.readAgain()
+
+        await Promise.all([first, second])
+      })
+
+      expect(applicationReads(), 'two presses before a redraw are one asking').toBe(2)
+
+      await act(async () => {
+        await result.current.readAgain()
+      })
+
+      expect(applicationReads(), 'the next press after it is let in').toBe(3)
+    } finally {
+      stop()
+    }
+  })
 })
