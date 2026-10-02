@@ -41,10 +41,10 @@ import type { Competitor } from '../../data/types'
  */
 function profileLinkFor(
   competitor: Competitor,
-  reader: string | null,
+  signedIn: boolean,
   locale: string,
 ): string | undefined {
-  return reachable(competitor, reader) ? profilePath(competitor, locale) : undefined
+  return reachable(competitor, signedIn) ? profilePath(competitor, locale) : undefined
 }
 
 /**
@@ -78,16 +78,21 @@ function profileLinkFor(
  * plain text.
  */
 export function useProfileLink(): (competitor: Competitor) => string | undefined {
-  const { memberNumber: reader, edits } = useSession()
+  const { signedIn: who, edits } = useSession()
   const { locale } = useI18n()
+  /* **WHETHER ANYBODY IS SIGNED IN, NOT WHICH MEMBER** (02.10.2026, `profile/visible.ts` says why),
+     and read out as a boolean here rather than handed on as the session's own object: that object
+     is a new one whenever anything in the session changes, so it would rebuild this callback, and
+     every board memoised over it, on every change of the session. */
+  const signedIn = who !== null
 
   return useCallback(
     (competitor: Competitor) =>
       profileLinkFor(
         applyChanges(competitor, edits[recordKey(MEMBERS.id, competitor.memberNumber)]),
-        reader,
+        signedIn,
         locale,
       ),
-    [edits, reader, locale],
+    [edits, signedIn, locale],
   )
 }
