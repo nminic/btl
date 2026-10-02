@@ -620,3 +620,149 @@ describe('a team its administrator takes down', () => {
       }, SLOW)
   })
 })
+
+/**
+ * A REFUSAL IS ABOUT THE QUESTION IT ANSWERED, AND GOES WHEN THAT QUESTION DOES (registry item 311).
+ *
+ * <p><b>What stood on the page, measured.</b> `refused` was written when the route said no and
+ * never cleared: pressing „Odustani od brisanja" put the question away and left „Prelazni rok je
+ * zatvoren..." standing beside a button that asked nothing, and so did a change of season in the
+ * picker beside it. The sentence is drawn by `ServerSaid` as an alert, so a reader heard a refusal
+ * about a thing he had just taken back.
+ *
+ * <p><b>Four ends of one sentence, and each is its own case</b>: the reader puts the question away;
+ * a second attempt starts, when the old sentence must not stand over the new request; the season
+ * changes; and the address changes to another team's page, which is the same component with another
+ * team in it (`app/routeObjects.tsx` carries no `key` on this route).
+ *
+ * <p><b>Dunavski trkači is the other team in the last case</b> and Vardarski krug the one refused,
+ * so „the team on the page" is a thing that can be told apart from „a team".
+ */
+describe('a refusal of the deletion of a team', () => {
+  const VARDAR = 'vardarski-krug'
+  const ITS_NAME = 'Vardarski krug'
+
+  /** The question asked and answered once, and the route's refusal on the page. */
+  async function refusedOnce(user: ReturnType<typeof setupUser>) {
+    const server = aServerThatDeletes(() => refused('theWindowIsShut', 409))
+    const view = renderAt(`/sr/tim/${VARDAR}`, 'competitor', '000003', undefined, DAY)
+
+    await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
+    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+    await screen.findByRole('alert')
+
+    return { server, router: view.router }
+  }
+
+  it('goes when the reader puts the question away', async () => {
+    const user = setupUser()
+    const { server } = await refusedOnce(user)
+
+    await user.click(screen.getByRole('button', { name: `Odustani od brisanja: ${ITS_NAME}` }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` })).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  it('goes when a second attempt starts, and comes back if that one is refused too', async () => {
+    const user = setupUser()
+    const { server } = await refusedOnce(user)
+
+    /* THE SECOND DELETION IS HELD, in front of the recording server, so what is read is the page
+       WHILE it is out: the old sentence must not stand over a request that has not been answered. */
+    let letItAnswer = () => {}
+    const held = new Promise<void>((resolve) => {
+      letItAnswer = resolve
+    })
+    const answering = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        await held
+      }
+
+      return answering(input, init)
+    }
+
+    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    letItAnswer()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+
+    server.stop()
+  }, SLOW)
+
+  it('goes when the season is changed', async () => {
+    const user = setupUser()
+    const { server } = await refusedOnce(user)
+
+    const picker = screen.getByLabelText('Sezona')
+    const options = within(picker).getAllByRole('option')
+
+    /* THE FIXTURE HAS TO OFFER A SECOND SEASON, or the case would measure nothing: a select with
+       one option cannot be changed. Measured against what the team really has, not assumed. */
+    expect(options.length, 'a team with results in more than one season').toBeGreaterThan(1)
+
+    const other = must(
+      options.find((one) => !(one instanceof HTMLOptionElement && one.selected)),
+      'a season other than the one shown',
+    )
+
+    await user.selectOptions(picker, must(other.getAttribute('value'), 'its value'))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  it('is not carried to the page of another team', async () => {
+    const user = setupUser()
+    const { server, router } = await refusedOnce(user)
+
+    await router.navigate('/sr/tim/dunavski-trkaci')
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  it('is drawn again by a refusal on a page that was left and come back to', async () => {
+    /* THE RESET MUST NOT BE A SWITCH THAT STAYS OFF: clearing it when the address changes is not
+       the same as never drawing it after the address has changed. */
+    const user = setupUser()
+    const { server, router } = await refusedOnce(user)
+
+    await router.navigate('/sr/tim/dunavski-trkaci')
+    await screen.findByRole('heading', { level: 1, name: 'Dunavski trkači' })
+    await router.navigate(`/sr/tim/${VARDAR}`)
+
+    await user.click(await screen.findByRole('button', { name: `Obriši: ${ITS_NAME}` }))
+    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+
+    server.stop()
+  }, SLOW)
+
+  it('stays while nothing has changed, so it is read at all', async () => {
+    /* THE OTHER HALF, and the one that stops every case above from passing on a screen that never
+       drew the sentence: it is there, beside the question it is about, until one of the four. */
+    const user = setupUser()
+    const { server } = await refusedOnce(user)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+    expect(
+      screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }),
+    ).not.toHaveAttribute('aria-disabled')
+
+    server.stop()
+  }, SLOW)
+})

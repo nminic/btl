@@ -73,6 +73,28 @@ export function TeamDetail() {
 
   /** Why a deletion did not happen, for the one person who pressed it. */
   const [refused, setRefused] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  /**
+   * THE PAGE THE REFUSAL ABOVE WAS DRAWN ON, which is a team and a season (registry item 311).
+   *
+   * <p><b>A refusal is about the question it answered, and it goes when that question does.</b>
+   * It used to be written when the route said no and never cleared: „Odustani" put the question
+   * away and left „Prelazni rok je zatvoren..." beside a button that asked nothing, a change of
+   * season in the picker left it too - and so did a move to ANOTHER team's page, because this is
+   * the same component with another team in it (`app/routeObjects.tsx` carries no `key` on this
+   * route), so the sentence about Vardarski krug was read on Dunavski trkači.
+   *
+   * <p><b>Held as the adjusting-state-during-render shape and not as an effect</b>: the sentence
+   * is gone in the render that the address changed in, with no frame of the old one drawn over the
+   * new page. The other two ends - the reader putting the question away, and a second attempt
+   * starting - are events and clear it where they happen (`onKeep` below, `deleteOne`).
+   */
+  const here = `${slug ?? ''}/${asked}`
+  const [drawnOn, setDrawnOn] = useState(here)
+
+  if (drawnOn !== here) {
+    setDrawnOn(here)
+    setRefused(null)
+  }
 
   /**
    * TAKING THE TEAM AWAY, AND SINCE 28.09.2026 THROUGH THE ROUTE RATHER THAN THROUGH THE
@@ -131,6 +153,11 @@ export function TeamDetail() {
 
       return
     }
+
+    /* THE OLD SENTENCE GOES WHEN A NEW ATTEMPT STARTS, and not when it is answered: with the
+       request out the page says it is sending (`DeleteRecord`), and a refusal about the one before
+       it standing over that would be read as the answer to this one. */
+    setRefused(null)
 
     const answer = await askTheServer(`/api/teams/${team.id}`, {}, 'DELETE')
 
@@ -337,6 +364,10 @@ export function TeamDetail() {
                              decided on this screen at all: `deleteOne` sends the act to the
                              route the administration already sends it to. */
                           onDelete={() => deleteOne(team, everMembers)}
+                          /* THE SENTENCE GOES WITH THE QUESTION IT ANSWERED: put away, nothing
+                             beside the button is about a deletion any more (registry item 311;
+                             the same shape `admin/AdminTeams.tsx#deleteOne` clears it in). */
+                          onKeep={() => setRefused(null)}
                         />
                       </>
                     )}
