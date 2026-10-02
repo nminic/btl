@@ -1297,6 +1297,38 @@ describe('a queue that could not be read', () => {
     }
   }, SLOW)
 
+  it('asks both lists again from the button of the invitations too, and draws what comes back', async () => {
+    /* THE OTHER OF THE TWO BUTTONS, which the case above does not press. They are two arrows in
+       one screen, so a button of the invitations that asked nothing, or asked only for itself,
+       would leave the case above green: this is the one that presses it. Only the invitations
+       fail, so the applications are drawn already and what the press must bring is the list
+       that was missing, with the other one asked for again beside it (the same one question in
+       two routes). */
+    const failing: Failing = { applications: null, invitations: 500 }
+    const server = aServerWithAQueue(did, failing)
+    const user = setupUser()
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+      await screen.findByText(sr.teams.invitationsUnreadable, undefined, { timeout: SLOW })
+
+      const before = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+
+      failing.invitations = null
+      await user.click(must(retryOf(sr.teams.inviteSent), 'the button of the invitations'))
+
+      expect((await sentList()).getAllByRole('listitem')).toHaveLength(3)
+      expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
+      expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
+
+      const after = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+
+      expect(after - before).toBe(2)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('says it is asking while the answer is out, and says the failure again when it comes back the same', async () => {
     let letGo: () => void = () => undefined
     const failing: Failing = { applications: 500, invitations: null }
