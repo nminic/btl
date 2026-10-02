@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { act, screen, waitFor } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
+import type { Role } from '../../roles/context'
 import { HOW_LONG_THE_DOOR_WAITS } from '../../session/useTheServersSession'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
@@ -181,13 +182,15 @@ describe.each([
     server = null
   })
 
-  /** The visit as a cold load is: the reader is nobody for as long as nothing has been said, and
+  /** The visit as a cold load is: the session is empty for as long as nothing has been said, and
    *  every resource the screen needs has arrived. The three things a screen that did NOT wait could
-   *  not satisfy at once are asserted here, so no case below has to remember to. */
-  async function loadedWhileItWaits(address: string) {
+   *  not satisfy at once are asserted here, so no case below has to remember to. The role is the
+   *  visitor's, which is what production's first paint really is, unless a case says what the
+   *  BROWSER holds. */
+  async function loadedWhileItWaits(address: string, role: Role = 'visitor') {
     server = aServerThatHasNotSaidWho(['000007'])
 
-    const { router } = renderAt(`${address}${suffix}`, 'visitor', null)
+    const { router } = renderAt(`${address}${suffix}`, role, null)
 
     await theDataHasArrived(server.asked, last)
 
@@ -284,37 +287,34 @@ describe.each([
     expect(router.state.location.pathname).toBe('/sr')
   }, SLOW)
 
-  it('opens at once for a reader whose session is already in hand, and waits for nothing', async () => {
-    /* THE OTHER HALF OF THE ORDER THE SCREEN DECIDES IN, and it is `Guard`'s own: a reader is held
-       before the answer in two ways, the development switch and having just signed in
-       (`pages/member/SignIn.tsx` writes the session and then navigates). Neither is a reader to be
-       made to wait for a question already put. Measured with an answer that NEVER comes, so the
-       screen can only be drawing because it never waited. */
-    server = aServerThatHasNotSaidWho(['000007'])
+  it('goes by what the server says and not by the role the browser holds', async () => {
+    /* THE SOURCE OF THE READER, SWAPPED, and it is the outcome the owner refused on 29.09.2026:
+       „pamti se poslednja uloga u pregledacu", because what the browser says and what the server
+       says can come apart. A browser holding the role of a competitor - the development switch, a
+       role left from an earlier visit - against a server that says nobody is signed in is a reader
+       to be turned away, whatever the browser holds. Neither the cases above nor the ones that sign
+       somebody in during a visit can tell this reader from the visitor, because both of those carry
+       the role and the session together; this is the one that parts them. */
+    const { router, server: held } = await loadedWhileItWaits(HIM, 'competitor')
 
-    renderAt(`${HIM}${suffix}`, 'competitor', '000002')
+    await held.arrivesAs(null, 401)
+    await expectFrontPage()
 
-    expect(await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
-    expect(waitingOutLoud()).toHaveLength(0)
-  }, SLOW)
-
-  it('does not hold up a profile that is hidden from nobody, which is most of them', async () => {
-    /* The reach of this is the hidden ones, and not the portal. Waiting before the question of
-       whether the reader may open it would put an indicator in front of every profile for every
-       visitor on a cold load, which is a far worse fault than the one being repaired. Measured with
-       an answer that never comes. */
-    server = aServerThatHasNotSaidWho(['000007'])
-
-    const { router } = renderAt(`${HER}${suffix}`, 'visitor', null)
-
-    expect(await screen.findByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
-    expect(router.state.location.pathname).toBe(`${HER}${suffix}`)
-    expect(waitingOutLoud()).toHaveLength(0)
+    expect(router.state.location.pathname).toBe('/sr')
   }, SLOW)
 })
 
 /**
- * THE ONE OUTCOME A PROMISE CANNOT SETTLE: a socket accepted and never written to.
+ * WITH THE CLOCK STOPPED, WHICH IS WHAT SEPARATES „AT ONCE" FROM „EVENTUALLY".
+ *
+ * <p>**Why these cases do not run on the real clock, and it was measured the hard way.** A server
+ * whose answer never comes is not waited on for ever: the portal gives up after
+ * {@link HOW_LONG_THE_DOOR_WAITS}, and Testing Library's own wait is longer than that
+ * (`test/setup.ts`, `SLOW`). A screen that kept a reader waiting who should have been let in at once
+ * therefore drew the profile after ten seconds, and the case that asked „is it drawn" passed with
+ * the screen wrong: the mutation that put the wait in front of the question about the reader
+ * survived all eighteen cases of the first draft of this file, at 45 s a run instead of 6. Here
+ * nothing can be drawn „after the bound", because no time goes by.
  *
  * <p>The bound and its reasoning live on {@link HOW_LONG_THE_DOOR_WAITS} and are imported and never
  * spelt again here: a number written twice is two numbers the day one of them is changed. These
@@ -325,7 +325,7 @@ describe.each([
 describe.each([
   { screen: 'the profile', suffix: '', last: '/api/pairs' },
   { screen: 'the page of awards', suffix: '/priznanja', last: '/api/ducats' },
-])('$screen of a hidden member, when the answer is never coming at all', ({ suffix, last }) => {
+])('$screen of a hidden member, with the clock stopped', ({ suffix, last }) => {
   let server: ReturnType<typeof aServerThatHasNotSaidWho> | null = null
 
   beforeEach(() => {
@@ -338,22 +338,61 @@ describe.each([
     server = null
   })
 
-  it('goes on waiting for as long as the bound says, and not a moment less, then decides as a visitor', async () => {
-    server = aServerThatHasNotSaidWho(['000007'])
-
-    const { router } = renderAt(`${HIM}${suffix}`, 'visitor', null)
-
-    /* The data arrives out of promise continuations alone, so turns of the microtask queue let it get
-       here with the clock stopped. Neither `waitFor` nor a `findBy` can be used while the clock is
-       faked: Testing Library drains the queue after each of them with a timer that vitest's fake
-       clock never fires, and the case hangs until its own timeout instead of failing. That the data
-       really did arrive is asserted by the last line of this case, which can only be true once it
-       has: the screen decides when the bound ends, on what it was given. */
+  /** Everything already on its way, got here without a moment going by. Neither `waitFor` nor a
+   *  `findBy` can be used while the clock is faked: Testing Library drains the queue after each of
+   *  them with a timer that vitest's fake clock never fires, and the case hangs until its own
+   *  timeout instead of failing. */
+  async function theDataHasArrivedWithNoTimeGoingBy(): Promise<void> {
     await act(async () => {
       for (let turn = 0; turn < 30; turn += 1) {
         await Promise.resolve()
       }
     })
+  }
+
+  it('opens at once for a reader whose session is already in hand, and waits for nothing', async () => {
+    /* THE OTHER HALF OF THE ORDER THE SCREEN DECIDES IN, and it is `Guard`'s own: a reader is held
+       before the answer in two ways, the development switch and having just signed in
+       (`pages/member/SignIn.tsx` writes the session and then navigates). Neither is a reader to be
+       made to wait for a question already put. Measured with an answer that NEVER comes and a clock
+       that does not move, so the screen can only be drawing because it never waited. */
+    server = aServerThatHasNotSaidWho(['000007'])
+
+    renderAt(`${HIM}${suffix}`, 'competitor', '000002')
+
+    await theDataHasArrivedWithNoTimeGoingBy()
+
+    expect(server.asked.map((one) => one.path)).toContain(last)
+    expect(screen.getByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
+    expect(waitingOutLoud()).toHaveLength(0)
+  }, SLOW)
+
+  it('does not hold up a profile that is hidden from nobody, which is most of them', async () => {
+    /* The reach of this is the hidden ones, and not the portal. Waiting before the question of
+       whether the reader may open it would put an indicator in front of every profile for every
+       visitor on a cold load, which is a far worse fault than the one being repaired. Measured with
+       an answer that never comes and a clock that does not move. */
+    server = aServerThatHasNotSaidWho(['000007'])
+
+    const { router } = renderAt(`${HER}${suffix}`, 'visitor', null)
+
+    await theDataHasArrivedWithNoTimeGoingBy()
+
+    expect(server.asked.map((one) => one.path)).toContain(last)
+    expect(screen.getByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
+    expect(router.state.location.pathname).toBe(`${HER}${suffix}`)
+    expect(waitingOutLoud()).toHaveLength(0)
+  }, SLOW)
+
+  it('goes on waiting for as long as the bound says, and not a moment less, then decides as a visitor', async () => {
+    server = aServerThatHasNotSaidWho(['000007'])
+
+    const { router } = renderAt(`${HIM}${suffix}`, 'visitor', null)
+
+    /* That the data really did arrive is asserted twice: by the request having been made, and by
+       the last line of this case, which can only be true once it has - the screen decides when the
+       bound ends, on what it was given. */
+    await theDataHasArrivedWithNoTimeGoingBy()
 
     expect(server.asked.map((one) => one.path)).toContain(last)
 
