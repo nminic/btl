@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -677,6 +677,249 @@ describe('a decision on a queue served by the pending screen', () => {
       /* The second answer, which only a screen that asked again can be holding. */
       expect(within(await cardsIn()).getByText('Drugo čitanje')).toBeVisible()
       expect(reads).toBe(2)
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+/**
+ * A REFUSAL THAT IS OUT WITH THE ROUTE: THE BOX CANNOT BE PUT AWAY, AND IT CANNOT BE SENT TWICE
+ * (owner, 02.10.2026, choosing between three outcomes he was priced; PDL, „Odluke iz ciscenja
+ * nalaza", first item: „Ne", „Odustani" and Escape are onemoguceni while the request travels. It
+ * holds for every screen with a confirmation, and a box that asks for the reason a refusal is
+ * written with is one).
+ *
+ * <p><b>What the box did until then, measured.</b> „Odbij uz ovaj razlog" sent the decision and
+ * `handBack` kept NO record of it being out: „Odustani" closed the box over a request that went on,
+ * so a refusal arriving afterwards was drawn above buttons with the typed reason already gone, and
+ * a second press on „Odbij uz ovaj razlog" sent a second decision for the same card - the route
+ * answered it 409 and the moderator was told his first one had failed.
+ *
+ * <p><b>The answer is HELD</b>, a promise that has not come back (`test/serverAnswers.ts` says why
+ * it is the only way to measure a screen while it waits), so every case can press and inspect the
+ * box before the route says anything.
+ */
+describe('a refusal that is out with the route', () => {
+  /** A server whose answer to the decision is held until `settle` is called. */
+  function serverThatHoldsTheDecision() {
+    let settle: (answer: Response) => void = () => {}
+    const held = new Promise<Response>((resolve) => {
+      settle = resolve
+    })
+    const server = serverThat((path, init) =>
+      init?.method === 'POST' && path.includes('/decision') ? held : null,
+    )
+
+    return { server, settle }
+  }
+
+  /** The box opened on the first card of the profiles, a reason typed, and the refusal sent. */
+  async function sendTheRefusal(user: ReturnType<typeof setupUser>) {
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+    const waiting = within(await cardsIn())
+    const first = within(waiting.getAllByRole('listitem')[0] ?? document.createElement('li'))
+
+    await user.click(first.getByRole('button', { name: 'Odbij' }))
+    await user.type(await screen.findByLabelText(/^Razlog odbijanja/), 'Tekst je prekratak.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+  }
+
+  /** The sentence that says a request is out, wherever on the page it was drawn. */
+  const sending = () =>
+    screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
+
+  const refusal = () =>
+    new Response(JSON.stringify({ reason: 'O stavci je već odlučeno.' }), {
+      status: 409,
+      headers: { 'content-type': 'application/json' },
+    })
+
+  it('tells „Odustani" off, and keeps the box with what was typed in it', async () => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      await sendTheRefusal(user)
+
+      const keep = screen.getByRole('button', { name: 'Odustani' })
+
+      /* TOLD OFF AND NOT SWITCHED OFF, which is how this box already tells off its confirming
+         button: `disabled` would take the control out of the tab order. */
+      expect(keep).toHaveAttribute('aria-disabled', 'true')
+      expect(keep).not.toBeDisabled()
+
+      await user.click(keep)
+
+      /* THE BOX IS STILL THERE, with the reason in it: put away, it took the moderator's words
+         with it and a refusal that arrived afterwards had nothing beside it to be read against. */
+      expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Tekst je prekratak.')
+
+      settle(refusal())
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+      expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Tekst je prekratak.')
+      expect(screen.getByRole('button', { name: 'Odustani' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('says that it is sending, only while it is', async () => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      await sendTheRefusal(user)
+
+      expect(sending()).toHaveLength(1)
+
+      settle(refusal())
+      await screen.findByRole('alert')
+
+      expect(sending()).toHaveLength(0)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('closes the box by itself when the decision goes through', async () => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      await sendTheRefusal(user)
+      await user.click(screen.getByRole('button', { name: 'Odustani' }))
+
+      settle(
+        new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
+      })
+      expect(decidedIn().getAllByRole('listitem')).toHaveLength(1)
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('sends one decision for two presses with nothing awaited between them', async () => {
+    /* TWO RAW CLICKS IN ONE `act`, for the reason the double-press case above gives: `user.click`
+       awaits its own click through and lets React render, so the flag beside the guard would
+       already have caught up. Nothing commits between these two. */
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const waiting = within(await cardsIn())
+      const first = within(waiting.getAllByRole('listitem')[0] ?? document.createElement('li'))
+
+      await user.click(first.getByRole('button', { name: 'Odbij' }))
+      await user.type(await screen.findByLabelText(/^Razlog odbijanja/), 'Tekst je prekratak.')
+
+      const send = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
+
+      act(() => {
+        send.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        send.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      })
+
+      /* COUNTED AFTER THE ANSWER HAS COME, because the request leaves a few turns after the press
+         (the token is read first): counted at once, a second request still on its way would read
+         as one that was never sent. */
+      settle(refusal())
+      await screen.findByRole('alert')
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('does not tell a box off for a decision that is not its own', async () => {
+    /* A SOURCE REPLACEMENT, ASKED AS A CASE: „a request is out for THIS box" against „a request is
+       out". `deciding` is true for a whole sweep as well, and a box opened on another card while the
+       sweep is held has nothing of its own out - its buttons must answer, or a moderator who opened
+       it to write a note would be told off by work that is not his. The sweep is held at its first
+       decision, which is the state this case is about. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const cards = within(await cardsIn()).getAllByRole('listitem')
+
+      expect(cards.length, 'a card for the box and others for the sweep').toBeGreaterThan(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      const last = within(cards[cards.length - 1] ?? document.createElement('li'))
+
+      await user.click(last.getByRole('button', { name: /^Obriši:/ }))
+
+      expect(screen.getByRole('button', { name: 'Odustani' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(screen.getByRole('button', { name: 'Obriši komentar' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(sending()).toHaveLength(0)
+
+      await user.click(screen.getByRole('button', { name: 'Odustani' }))
+
+      expect(screen.queryByRole('button', { name: 'Obriši komentar' })).not.toBeInTheDocument()
+
+      settle(
+        new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      await screen.findByText(/^Rešen.* \d+ stavk/)
+    } finally {
+      server.stop()
+      confirm.mockRestore()
+    }
+  })
+
+  it('lets the box be sent again, and put away, once a refusal is in', async () => {
+    /* THE OTHER END OF THE SAME STATE: a refusal leaves the box open with the reason typed, so the
+       moderator can read why and press again. A flag that stayed raised would leave him a box with
+       two buttons that do nothing. */
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      await sendTheRefusal(user)
+
+      settle(refusal())
+      await screen.findByRole('alert')
+
+      /* `aria-disabled="false"` is how this box has always said a button is live (the attribute is
+         written as a boolean), so the question is whether it is `true`, not whether it is there. */
+      expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Odustani' }))
+
+      expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
     } finally {
       server.stop()
     }

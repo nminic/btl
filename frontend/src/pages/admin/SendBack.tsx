@@ -34,6 +34,7 @@ export function SendBack({
   aboutKey = 'review.sendBackNamed',
   onConfirm,
   onCancel,
+  working = false,
 }: {
   /**
    * What the empty field asks for.
@@ -99,6 +100,19 @@ export function SendBack({
   aboutKey?: string
   onConfirm: (reason: string) => void
   onCancel: () => void
+  /**
+   * Whether the decision this box sent is still out with the route.
+   *
+   * <p><b>While it is, nothing on the box answers</b> (owner, 02.10.2026, choosing between three
+   * outcomes he was priced; PDL, „Odluke iz ciscenja nalaza", first item): not the button that
+   * sends it again, which would send a second decision for the same card, and not „Odustani",
+   * which would close the box over a request that goes on and take the typed reason with it - a
+   * refusal that arrived afterwards was then read against nothing. Both say so with
+   * `aria-disabled` and are refused in their handlers as well, and the portal's own sentence for
+   * a request that is out is said under them. The caller closes the box when the answer says the
+   * decision was taken; a refusal leaves it open with the reason in it, as it always did.
+   */
+  working?: boolean
 }) {
   const { t } = useI18n()
   const [note, setNote] = useState('')
@@ -153,11 +167,11 @@ export function SendBack({
         <button
           type="button"
           className="button button--primary"
-          aria-disabled={missing}
+          aria-disabled={missing || working}
           aria-describedby={missing ? waitsId : undefined}
           onClick={() => {
             /* Reachable means pressable, so the refusal lives here too. */
-            if (missing) {
+            if (missing || working) {
               return
             }
 
@@ -166,10 +180,32 @@ export function SendBack({
         >
           {t(confirmKey)}
         </button>
-        <button type="button" className="button button--secondary" onClick={onCancel}>
+        <button
+          type="button"
+          className="button button--secondary"
+          aria-disabled={working ? true : undefined}
+          onClick={() => {
+            /* PUT AWAY ONLY WHEN NOTHING IS OUT, for the reason `working` gives. */
+            if (working) {
+              return
+            }
+
+            onCancel()
+          }}
+        >
           {t('review.cancel')}
         </button>
       </div>
+
+      {/* SAID IN WORDS, ONLY WHILE IT IS TRUE (WCAG 2.2 AA, 4.1.3), in the portal's own sentence
+          for a request that is out (`results.sending` is read by two forms and four other keys
+          carry the same words). It never stands beside the line under it: that one is drawn only
+          while the box is empty, and a box being sent is not. */}
+      {working && (
+        <p className="rate__hint" role="status">
+          {t('results.sending')}
+        </p>
+      )}
 
       {/* Why it will not go yet, said where it can be read. Drawn only while it
           is true, the same as on the rating card: this whole box arrives on a

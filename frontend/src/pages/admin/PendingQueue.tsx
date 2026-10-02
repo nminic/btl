@@ -476,6 +476,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    */
   const [deciding, setDeciding] = useState(false)
   /**
+   * WHICH CARD'S REFUSAL IS OUT WITH THE ROUTE, for the box that sent it to say so and to tell its
+   * buttons off (`SendBack`, `working`). The card and not a flag: `deciding` above is true for a
+   * sweep too, and a box open on another card has nothing out and must not be told off for it.
+   */
+  const [handingBack, setHandingBack] = useState<string | null>(null)
+  /**
    * Which rows' pictures have failed to load, so the Approve button beside a
    * broken photograph can read the identical fact `WaitingPicture` already
    * draws a sentence about (PDL.md, "29. Slika koja ne moze da se ucita",
@@ -1012,6 +1018,39 @@ export function PendingQueue({ queue }: { queue: Queue }) {
     setOpen(null)
   }
 
+  /**
+   * `handBack`, WITH THE GUARD ITS TWO SIBLINGS CARRY, which is the third door onto the same
+   * `outstanding` and the one that had none.
+   *
+   * <p><b>What it cost, measured.</b> `approveAll` set `outstanding` and `deciding` before it awaited
+   * anything and let go of both in a `finally`; `handBack` set neither, so a second press on „Odbij
+   * uz ovaj razlog" sent a second decision for the same card - the route answered it 409 and the
+   * moderator was told his first one had failed - and „Odustani" closed the box over a request
+   * that went on (owner, 02.10.2026: „Ne", „Odustani" and Escape do nothing while a request is
+   * out). Written round `handBack` rather than into it, so the act and the guard stay two things
+   * a reader can tell apart.
+   *
+   * <p>Read at both doors, so a hand-back out blocks a sweep and a card's own „Odobri" as well:
+   * three walks over one queue at once is the fault `approveAll` was guarded against.
+   */
+  const handBackGuarded = async (one: PendingItem, reason: string): Promise<void> => {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setDeciding(true)
+    setHandingBack(one.id)
+
+    try {
+      await handBack(one, reason)
+    } finally {
+      outstanding.current = false
+      setDeciding(false)
+      setHandingBack(null)
+    }
+  }
+
   /** What the text on the card is called: the comment, the reason given, the
    *  biography, or the file name of a picture. Off the sort of thing rather than
    *  off the queue where one queue holds two sorts (queues.ts, `outcomeFor`). */
@@ -1434,7 +1473,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                uses for a press that speaks to the server
                                (`admin/AdminLeagues.tsx`,
                                `admin/LeagueRaceModeration.tsx`). */
-                            onConfirm={(reason) => void handBack(one, reason)}
+                            onConfirm={(reason) => void handBackGuarded(one, reason)}
+                            working={handingBack === one.id}
                             onCancel={() => {
                               setOpen(null)
                               setClosed(one.id)
