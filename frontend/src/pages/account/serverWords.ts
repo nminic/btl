@@ -23,12 +23,13 @@
  * the owner chose is that it says the fault is the portal's, that nothing changed, and that the
  * reader is asked to tell the league.
  *
- * <p><b>THE DECISION IS ONE FUNCTION BECAUSE TWO HOMES OF IT WOULD DRIFT, and one home still has
- * a twin.</b> `ServerSaid.tsx` is read by 53 files, so it is where nearly every screen gets its
- * sentence. `admin/PendingQueue.tsx` (`WhatTheServerSaid`) keeps its own copy because its route
- * refuses in Serbian sentences rather than in codes; that copy still says the old sentence for a
- * bare 400, and it is named as a boundary in `serverWords.test.ts`, which fails on the day that
- * file stops saying `server.wrong` so the boundary is removed rather than forgotten.
+ * <p><b>THE DECISION IS ONE FUNCTION BECAUSE TWO HOMES OF IT WOULD DRIFT.</b> `ServerSaid.tsx` is
+ * where nearly every screen gets its sentence, and `admin/PendingQueue.tsx` (`WhatTheServerSaid`)
+ * asks this same function for the one answer it words by itself: its route refuses in Serbian
+ * sentences rather than in codes, so it cannot hand `ServerSaid` a table, but a number with no
+ * reason in it is the portal's to word and not the route's. It kept a copy of the old sentence until
+ * 02.10.2026, named as a boundary in `serverWords.test.ts`, which failed on the day the copy went; the
+ * copy is gone and that test now says no module but this one writes either sentence.
  *
  * <p>Only the 400 is read differently. A 404, a 409 that names nothing and a 5xx are different
  * facts, and the owner's decision is about the one.

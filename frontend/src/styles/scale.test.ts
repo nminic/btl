@@ -107,13 +107,20 @@ const ALLOWED = new Map([
     'pages/Calendar.css | margin-inline-start | calc(-3 * var(--space-8) - 2px)',
     'not a step: how far a piece of a multi-day bar reaches back into the day before it, which is three gaps of the grid and TWO BORDERS OF ONE PIXEL. The three gaps are the token; the two pixels are `border: 1px` on `.day` and there is no token for a hairline, so they are the same kind of value as the `+ 4px` the floor of a day is measured with. Written in `rem` alone the reach is right at exactly one size of text, and wrong at every other: too short leaves a seam through the bar, too long hangs it over the day before',
   ],
-  /* Four offsets that pull a thing back over the corner it sits on. Each is one
+  /* Three offsets that pull a thing back over the corner it sits on. Each is one
      more value nobody chose, and each is invisible; they are named here rather
      than swept because moving them is a decision about how far a counter hangs
-     off an icon, which is not what this pass is. */
+     off an icon, which is not what this pass is.
+
+     There was a fourth, `app/Shell.css | right | -0.5rem`, „the same, on the wider
+     one", and it was not a counter: it was the offset of the account panel and the
+     inbox panel, pushed 0.5rem past the right edge of their own button. That
+     entry is the only thing that let a negative offset stand on a panel, and the
+     panel it let through began 163px off the left edge of a telephone (02.10.2026,
+     `app/headerPanelsStyle.test.ts`). It is gone with the declaration, so the next
+     panel that is pulled past its button is a bare value that fails here. */
   ['app/Shell.css | top | -0.35rem', 'a counter pulled up over the icon it counts'],
   ['app/Shell.css | right | -0.35rem', 'the same, sideways'],
-  ['app/Shell.css | right | -0.5rem', 'the same, on the wider one'],
   ['pages/Profile.css | right | 0.85rem', 'a mark set in from the corner of a card'],
   [
     'components/ColumnChart.css | inset-inline | -0.5rem',

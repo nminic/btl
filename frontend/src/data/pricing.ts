@@ -140,6 +140,15 @@ const BY_START = [...PRICES].sort((left, right) => left.from.localeCompare(right
  *
  * Ten characters is also forty bits, which at ten thousand members is about an
  * hour and a half of guessing. Sixteen is not.
+ *
+ * **A copy, and held to the rule it copies.** `competitor_referral_code_shape` (V7) is
+ * the rule and this is the portal's text of it, so `data/referralCodeShape.test.ts`
+ * compares the text of the migration, of `ReferralCode.java` and of this, and fails when
+ * one of them moves without the others. It is asked wherever a code arrives: of one in an
+ * address (`pages/Registration.tsx`) and of the one the server answers
+ * (`session/theServer.ts`). Written with no flag on purpose: a `g` or a `y` makes `test`
+ * remember where it stopped, and the same code would be believed once and refused the
+ * next time.
  */
 export const REFERRAL_CODE = /^[0-9a-f]{16}$/
 

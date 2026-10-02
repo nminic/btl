@@ -22,21 +22,16 @@ import { whatABareNumberSays } from './serverWords'
  * code and has no bottom.
  */
 
-/** The one module that decides it, by its place under `src`. */
-const THE_ONE_PLACE = 'pages/account/serverWords.ts'
-
 /**
- * THE ONE COPY OF THE DECISION THAT IS NOT IN THE ONE PLACE, named so that it is a boundary and not
- * a hole.
+ * The one module that decides it, by its place under `src`.
  *
- * <p>`admin/PendingQueue.tsx` (`WhatTheServerSaid`) keeps its own mapping of an answer to a sentence
- * because `VerificationWriteApi` refuses in Serbian sentences and not in codes, and it is held by
- * another branch (b194) in flight, so this branch does not edit it. Until it is moved onto
- * `whatABareNumberSays` the verification screen says the old sentence for a bare 400. <b>The case
- * below fails on the day that file stops saying `server.wrong`</b>, which is the day this entry has
- * to be deleted along with the paragraph about it in `serverWords.ts`.
+ * <p><b>There was a second one named here until 02.10.2026</b>: `admin/PendingQueue.tsx`
+ * (`WhatTheServerSaid`) kept its own copy of the old sentence for the verification queue, as a boundary
+ * this file named and failed on the day the copy went, because the branch that held that screen was in
+ * flight. The copy went in the commit that deleted its name from here, and what the cases below say now
+ * has no exception in it.
  */
-const THE_TWIN = 'pages/admin/PendingQueue.tsx'
+const THE_ONE_PLACE = 'pages/account/serverWords.ts'
 
 /**
  * Every production module that holds this string literal, read off the parser so a comment that
@@ -122,21 +117,11 @@ describe('the one place that decides it', () => {
     expect(sources().length).toBeGreaterThan(WHOLE_PORTAL)
   })
 
-  it('is the only module that says the sentence about a number, apart from the one twin it names', () => {
-    const saying = holders('server.wrong')
-
-    expect(saying.filter((one) => one !== THE_ONE_PLACE && one !== THE_TWIN)).toEqual([])
-    expect(saying).toContain(THE_ONE_PLACE)
+  it('is the only module that says the sentence about a number', () => {
+    expect(holders('server.wrong')).toEqual([THE_ONE_PLACE])
   })
 
-  it('is the only module that says the sentence about the portal’s own fault, twin and all', () => {
+  it('is the only module that says the sentence about the portal’s own fault', () => {
     expect(holders('server.malformed')).toEqual([THE_ONE_PLACE])
-  })
-
-  it('still has the twin it names, and fails on the day it has not', () => {
-    expect(
-      holders('server.wrong'),
-      `${THE_TWIN} no longer says server.wrong: delete THE_TWIN here and the paragraph about it in serverWords.ts`,
-    ).toContain(THE_TWIN)
   })
 })
