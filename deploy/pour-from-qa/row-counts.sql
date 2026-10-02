@@ -18,17 +18,26 @@
 -- price rows, 4 roles, and 4 static pages with their 39 sections and both sets of translations.
 -- A check against zero would refuse every production database there can ever be.
 --
--- So empty means: PRODUCTION HOLDS NOTHING ITS OWN MIGRATIONS DID NOT PUT THERE. The reference
+-- So empty means: EVERY TABLE HOLDS AS MANY ROWS AS ITS OWN MIGRATIONS LEFT IN IT. The reference
 -- database is what the migrations put there, built fresh on every run from the files in the
 -- checkout, so a migration that seeds a twelfth table needs nothing changed here and no number
 -- blessed anywhere. That is the floor: PostgreSQL executes the migrations, and the expected side
 -- is never a list somebody wrote and has to remember to grow.
 --
+-- WHAT COUNTING PROVES AND WHAT IT DOES NOT. It proves that nobody added a row to any table or
+-- took one away. It does not prove that nobody CHANGED one: a seeded row edited in place, or one
+-- deleted with another inserted in the same table, leaves every count where it was and passes.
+-- That is harmless for what this check is for, and only for that: the pour empties every table
+-- before it fills it, so an edited seed row is replaced by QA's copy whatever it said. It is
+-- written down because "production holds nothing its own migrations did not put there" says more
+-- than a count can show, and the next reader should not have to find that out by measuring.
+--
 -- AND IT IS THE LOCK ON A SECOND RUN, with no flag file and no state of its own. After a
 -- successful pour production holds QA's rows, which are not the reference's rows, so this stops
 -- matching and the tool refuses. The owner asked for a tool that "pours everything at once, one
--- time"; a second run over the same database is exactly what would double the data, and the
--- proof of emptiness is already the thing that prevents it.
+-- time". A second pour would NOT double the data: it empties every table and fills it from QA
+-- again, so it would DELETE whatever was entered on production since the first. The proof of
+-- emptiness is already the thing that prevents that.
 --
 -- `count(*)` is exact and `n_live_tup` would not be: that column is an estimate the statistics
 -- collector maintains, it is zero on a table that has never been analysed, and a check that

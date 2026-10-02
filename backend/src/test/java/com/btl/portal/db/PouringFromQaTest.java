@@ -1,6 +1,7 @@
 package com.btl.portal.db;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessException;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -12,11 +13,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * WHAT {@code deploy/pour-from-qa.sh} DECIDES, MEASURED AGAINST A REAL DATABASE.
@@ -24,8 +28,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>The tool that pours QA's data into a production database that has never been used is a
  * shell script, and the script itself cannot run in this gate: it speaks to two live stacks
  * over {@code docker exec} and neither exists here. What CAN run here is every decision it
- * makes, because none of them is written in the script. They are three SQL files under
- * {@code deploy/pour-from-qa/}, the script executes them, and so does this.
+ * makes, because none of them is written in the script. They are SQL files under
+ * {@code deploy/pour-from-qa/}, the script executes them, and so does this. What the script
+ * does around them is held from two other sides: {@code PouringFromQaScriptTest} reads its code
+ * without a database, and {@code PouringFromQaLeavesNothingBehindTest} runs the shell helper it
+ * sources in a real Linux and sends it signals.
  *
  * <p><b>That is the join, and it is the thing this class exists to hold.</b> A guard split over
  * two files states both halves and leaves what binds them stated by nobody, which reads as
@@ -54,7 +61,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PouringFromQaTest extends DatabaseTest {
 
 	/**
-	 * Where the three files live, as one path rather than three, so this class also cannot
+	 * Where the files live, as one path rather than one per file, so this class also cannot
 	 * disagree with itself about the folder. Relative to the backend module, which is what
 	 * {@code WhatEachStackRequiresTest} already does for {@code deploy/README.md}.
 	 */
@@ -63,13 +70,15 @@ class PouringFromQaTest extends DatabaseTest {
 	private static final Path SCRIPT = Path.of("..", "deploy", "pour-from-qa.sh");
 
 	/**
-	 * The files this class runs. It is a list, and the case right below is its floor: it is
-	 * compared against the directory in both directions, so a file added under
-	 * {@code deploy/pour-from-qa/} and not named here fails the build rather than going
-	 * unmeasured.
+	 * The files that make up the tool's folder: the SQL this class runs, and the shell helper
+	 * that {@code PouringFromQaLeavesNothingBehindTest} runs. It is a list, and the case right
+	 * below is its floor: it is compared against the directory in both directions, so a file
+	 * added under {@code deploy/pour-from-qa/} and not named here fails the build rather than
+	 * going unmeasured.
 	 */
-	private static final Set<String> EXERCISED =
-			Set.of("load-order.sql", "row-counts.sql", "sequences.sql", "lets-somebody-in.sql");
+	private static final Set<String> EXERCISED = Set.of("load-order.sql", "row-counts.sql",
+			"sequences.sql", "lets-somebody-in.sql", "not-valid-constraints.sql",
+			"leaves-nothing-behind.sh");
 
 	private static String sqlOf(String name) {
 		try {
@@ -99,6 +108,20 @@ class PouringFromQaTest extends DatabaseTest {
 		return levels;
 	}
 
+	/** One row of {@code load-order.sql}: the name, the level (null for a table in a cycle), the quoted form. */
+	private record OrderRow(String name, Integer level, String quoted) {
+	}
+
+	private List<OrderRow> loadOrderRows() {
+		return db.sql(sqlOf("load-order.sql")).query((row, one) -> {
+			// wasNull() answers about the LAST column read, so it is taken right after the level
+			// and before the quoted name: see loadOrder() above for what it cost to get that wrong.
+			int level = row.getInt(2);
+			boolean noLevel = row.wasNull();
+			return new OrderRow(row.getString(1), noLevel ? null : level, row.getString(3));
+		}).list();
+	}
+
 	/**
 	 * THE JOIN BETWEEN THE SCRIPT AND THIS CLASS, held against the directory rather than
 	 * against either of them.
@@ -114,13 +137,14 @@ class PouringFromQaTest extends DatabaseTest {
 		Set<String> onDisk;
 		try (Stream<Path> files = Files.list(POUR)) {
 			onDisk = files.map(one -> one.getFileName().toString())
-					.filter(one -> one.endsWith(".sql"))
+					.filter(one -> one.endsWith(".sql") || one.endsWith(".sh"))
 					.collect(Collectors.toCollection(TreeSet::new));
 		}
 
 		assertThat(onDisk)
-				.as("every .sql file under deploy/pour-from-qa/ has to be measured by this class,"
-						+ " and this class may not name one that is not there")
+				.as("every .sql and .sh file under deploy/pour-from-qa/ has to be measured by this"
+						+ " class or by PouringFromQaLeavesNothingBehindTest, and this class may not"
+						+ " name one that is not there")
 				.isEqualTo(new TreeSet<>(EXERCISED));
 
 		// The BINDING and not the bare name. The script's header also points at these files in
@@ -300,6 +324,91 @@ class PouringFromQaTest extends DatabaseTest {
 				.as("and it has to carry no level, which is what makes the tool stop")
 				.isNull();
 		assertThat(levels.get("b185_there")).isNull();
+	}
+
+	/**
+	 * EVERY NAME COMES BACK IN THE ONE FORM THAT GOES INTO A STATEMENT, and it is usable as it
+	 * came.
+	 *
+	 * <p>The script puts a table after {@code public.} in a TRUNCATE, in the header of the rows it
+	 * pours in and in the statement that reads them out of QA. It used to put the bare name in
+	 * all three, while the two files beside this one quoted theirs, so the one way of getting a
+	 * name into SQL that nobody had quoted was the one the whole pour depended on. Asked here the
+	 * way the script uses it: each returned form is put after {@code public.} and run.
+	 */
+	@Test
+	void everyTableComesBackWithItsNameQuotedForSql() {
+		List<OrderRow> rows = loadOrderRows();
+
+		assertThat(rows).as("an empty order would make this say nothing").isNotEmpty();
+		for (OrderRow one : rows) {
+			assertThat(db.sql("select count(*) from public." + one.quoted()).query(Long.class).single())
+					.as("%s came back as %s, which has to be usable after public. as it is",
+							one.name(), one.quoted())
+					.isGreaterThanOrEqualTo(0L);
+		}
+	}
+
+	/**
+	 * A NAME THAT NEEDS QUOTES ARRIVES WITH THEM, and that is the case the schema cannot supply.
+	 *
+	 * <p>Every table the migrations create is lower case and snake case, so on the real schema the
+	 * quoted form equals the name and the case above passes for a column that quoted nothing. Three
+	 * tables are built here whose names cannot be written bare, one for each way a name needs
+	 * quotes: capitals and a space, a reserved word, and a double quote in the name. The probe
+	 * tables go away with the transaction.
+	 *
+	 * <p>The second assertion is what stops the first from being empty: a name that comes back
+	 * unchanged was not awkward, and this would then be measuring nothing.
+	 */
+	@Test
+	void aNameThatNeedsQuotesIsCarriedWithThem() {
+		db.sql("create table \"B190 Mixed Case\" (id bigint primary key)").update();
+		db.sql("create table \"order\" (id bigint primary key)").update();
+		db.sql("create table \"b190 \"\"double\"\" quoted\" (id bigint primary key)").update();
+
+		Map<String, String> quotedByName = new TreeMap<>();
+		loadOrderRows().forEach(one -> quotedByName.put(one.name(), one.quoted()));
+
+		for (String name : List.of("B190 Mixed Case", "order", "b190 \"double\" quoted")) {
+			String quoted = quotedByName.get(name);
+
+			assertThat(quoted).as("the order does not list %s at all", name).isNotNull();
+			assertThat(quoted)
+					.as("%s needs quotes, so a form that came back equal to it carries none", name)
+					.isNotEqualTo(name);
+			assertThat(db.sql("select count(*) from public." + quoted).query(Long.class).single())
+					.as("%s came back as %s and that is not a name PostgreSQL accepts", name, quoted)
+					.isZero();
+		}
+	}
+
+	/**
+	 * NO TABLE NAME HAS A CHARACTER THE POUR CANNOT CARRY, asked of the catalogue and not of a list.
+	 *
+	 * <p>The quoted form is put inside single quotes on a psql script line and read out of a file
+	 * whose fields are separated by a bar, so a single quote, a backslash, a bar or a newline in a
+	 * name would break it or, worse, bend it into something else. {@code load-order.sql} says that
+	 * is a boundary and not a defect; this is what makes it one that fails in the build, on the
+	 * day a migration writes such a name, and not on the host in the middle of the pour. Asked of
+	 * the real schema only, so it runs before any case builds a probe.
+	 */
+	@Test
+	void noTableNameHasACharacterTheHeaderLineCannotCarry() {
+		List<String> uncarriable = db.sql("select c.relname from pg_class c"
+						+ " join pg_namespace n on n.oid = c.relnamespace"
+						+ " where n.nspname = 'public' and c.relkind = 'r'"
+						+ " and (position(chr(39) in c.relname) > 0"
+						+ " or position(chr(92) in c.relname) > 0"
+						+ " or position('|' in c.relname) > 0"
+						+ " or position(chr(10) in c.relname) > 0)")
+				.query(String.class)
+				.list();
+
+		assertThat(uncarriable)
+				.as("a table name with a quote, a backslash, a bar or a newline in it cannot be"
+						+ " carried by the pour, which would bend it; see load-order.sql")
+				.isEmpty();
 	}
 
 	/**
@@ -525,34 +634,330 @@ class PouringFromQaTest extends DatabaseTest {
 	 */
 	@Test
 	void everyTableAVisitorIsCheckedAgainstIsNamedIncludingPasswords() {
-		Set<String> named = new TreeSet<>(
-				db.sql(sqlOf("lets-somebody-in.sql")).query(String.class).list());
+		Map<String, String> named = namedByTheList();
 
-		Set<String> carryingAHash = new TreeSet<>(db.sql("select distinct c.relname"
+		Map<String, String> carryingAHash = new TreeMap<>();
+		db.sql("select c.relname, string_agg(a.attname::text, ',' order by a.attname)"
 						+ " from pg_class c"
 						+ " join pg_namespace n on n.oid = c.relnamespace"
 						+ " join pg_attribute a on a.attrelid = c.oid"
 						+ " and a.attnum > 0 and not a.attisdropped"
 						+ " where n.nspname = 'public' and c.relkind = 'r'"
-						+ " and a.attname like '%hash'")
-				.query(String.class)
-				.list());
+						+ " and a.attname like '%hash'"
+						+ " group by c.relname")
+				.query((row, one) -> carryingAHash.put(row.getString(1), row.getString(2)))
+				.list();
 
 		assertThat(carryingAHash)
 				.as("no table carries a hash column at all, so this case measures nothing")
 				.isNotEmpty();
 
+		// The comparison is over table AND column, and that is wider than it was: a further hash
+		// column on a table the list already names changes no table and used to pass, and the
+		// report's sentence about which rows can be emptied is built on the column.
 		assertThat(named)
-				.as("the report has to name every table the portal checks a visitor against;"
-						+ " a column ending in 'hash' that is NOT one of those is a decision"
-						+ " somebody has to make out loud rather than leave to this query")
+				.as("the report has to name every table the portal checks a visitor against, and the"
+						+ " column it checks by; a column ending in 'hash' that is NOT one of those is"
+						+ " a decision somebody has to make out loud rather than leave to this query")
 				.isEqualTo(carryingAHash);
 
-		assertThat(named)
+		assertThat(named.keySet())
 				.as("account.password_hash is what SignInApi checks a visitor against, and unlike"
 						+ " the token tables it cannot be emptied - it comes over with the rest of"
 						+ " the row and only a password change ends it")
 				.contains("account");
+	}
+
+	/** What {@code lets-somebody-in.sql} returns: each table, with the column or columns it is checked by. */
+	private Map<String, String> namedByTheList() {
+		Map<String, String> named = new TreeMap<>();
+		db.sql(sqlOf("lets-somebody-in.sql"))
+				.query((row, one) -> named.put(row.getString(1), row.getString(2)))
+				.list();
+		return named;
+	}
+
+	/**
+	 * A FURTHER TABLE WITH A TOKEN IS LISTED, MARKED, AND THE REPORT'S SENTENCE STAYS TRUE.
+	 *
+	 * <p>The closing report says the rows checked by {@code token_hash} can be ended by emptying
+	 * their table, and it says so about "a table listed above with that column" and not about
+	 * three tables by name. That is only true if a fourth such table arrives in the list marked
+	 * with that column on the day it is created, which is what is held here with one built for the
+	 * purpose. The report used to name the three by hand, and a fourth made the sentence false
+	 * without a case failing.
+	 */
+	@Test
+	void aFurtherTableWithATokenIsListedAndMarkedWithoutAnyoneEditingAnything() {
+		db.sql("create table b190_further_token (token_hash char(64) not null primary key)").update();
+
+		assertThat(namedByTheList()).containsEntry("b190_further_token", "token_hash");
+	}
+
+	/**
+	 * A TABLE CHECKED BY TWO COLUMNS IS LISTED WITH BOTH, and the one that cannot be emptied is
+	 * not hidden behind the one that can.
+	 *
+	 * <p>No table of the real schema carries both a {@code token_hash} and a {@code password_hash},
+	 * so a list that showed only ONE of the columns that matched, whichever one, passed every case
+	 * above: on this schema one is all there is. Found by replacing the aggregate with a
+	 * {@code max()} and watching the whole class stay green. The table is built here, because it
+	 * is the one the report's sentence about emptying could mislead about. Listed with only its
+	 * token column it would read as a table that can be emptied, and the password column in it
+	 * would never be shown. Columns come back in alphabetical order, so both the {@code min} and
+	 * the {@code max} of the two are different from the pair.
+	 */
+	@Test
+	void aTableCheckedByTwoColumnsIsListedWithBothOfThem() {
+		db.sql("create table b190_both (token_hash char(64) not null primary key,"
+				+ " password_hash text not null)").update();
+
+		assertThat(namedByTheList()).containsEntry("b190_both", "password_hash,token_hash");
+	}
+
+	/**
+	 * THE CLOSING REPORT NAMES NO TABLE THAT CARRIES A TOKEN, asked of the catalogue.
+	 *
+	 * <p>The negative half of the case above. A sentence that lists the token tables is the one
+	 * that goes stale, so every table the catalogue says carries a {@code token_hash} is looked for
+	 * in the script's code, and none may be there. Derived, so it covers the fourth table too and
+	 * not only the three that exist today.
+	 */
+	@Test
+	void theClosingReportNamesNoTableThatCarriesAToken() throws IOException {
+		List<String> tokenTables = db.sql("select distinct c.relname from pg_class c"
+						+ " join pg_namespace n on n.oid = c.relnamespace"
+						+ " join pg_attribute a on a.attrelid = c.oid"
+						+ " and a.attnum > 0 and not a.attisdropped"
+						+ " where n.nspname = 'public' and c.relkind = 'r' and a.attname = 'token_hash'")
+				.query(String.class)
+				.list();
+		assertThat(tokenTables).as("no table carries a token, so this measures nothing").isNotEmpty();
+
+		List<String> code = Files.readAllLines(SCRIPT, StandardCharsets.UTF_8).stream()
+				.filter(line -> !line.strip().startsWith("#"))
+				.toList();
+
+		for (String table : tokenTables) {
+			Pattern named = Pattern.compile("\\b" + Pattern.quote(table) + "\\b");
+			assertThat(code.stream().filter(line -> named.matcher(line).find()))
+					.as("the closing report names %s, a table that carries a token_hash. The list it"
+							+ " prints is derived from the catalogue, and a sentence that names tables"
+							+ " is the one that goes stale", table)
+					.isEmpty();
+		}
+	}
+
+	/**
+	 * THE TABLES THE CLOSING REPORT POINTS AT FOR RIGHTS ARE REAL.
+	 *
+	 * <p>The report says which rights each account holds live in {@code account_admin_right} and
+	 * which right opens a row of the verification queues is {@code verification.right_code}. The
+	 * script is checked for naming them in {@code PouringFromQaScriptTest}; this is the other half,
+	 * that the names are in the schema, so a rename fails here and does not leave the operator
+	 * reading about a table that is not there.
+	 */
+	@Test
+	void theTablesTheClosingReportNamesForRightsExist() {
+		assertThat(tablesInTheSchema()).contains("account_admin_right");
+
+		assertThat(db.sql("select count(*) from information_schema.columns"
+						+ " where table_schema = current_schema()"
+						+ " and table_name = 'verification' and column_name = 'right_code'")
+				.query(Long.class)
+				.single())
+				.as("verification.right_code is what says which right opens a verification row")
+				.isEqualTo(1L);
+	}
+
+	/** One row of {@code not-valid-constraints.sql}: the phase it belongs to, and the statement. */
+	private record Step(String phase, String statement) {
+	}
+
+	private List<Step> notValidSteps() {
+		return db.sql(sqlOf("not-valid-constraints.sql"))
+				.query((row, one) -> new Step(row.getString(1), row.getString(2)))
+				.list();
+	}
+
+	/**
+	 * What the catalogue says about every constraint that is not valid: which table, which name, and
+	 * what it says. Asked a DIFFERENT way from the file under test, which reads {@code convalidated}:
+	 * this reads the definition, which PostgreSQL ends with NOT VALID.
+	 */
+	private Map<String, String> notValidInTheCatalogue() {
+		Map<String, String> state = new TreeMap<>();
+		db.sql("select c.relname || '.' || con.conname, pg_get_constraintdef(con.oid)"
+						+ " from pg_constraint con"
+						+ " join pg_class c on c.oid = con.conrelid"
+						+ " join pg_namespace n on n.oid = c.relnamespace"
+						+ " where n.nspname = current_schema()"
+						+ " and pg_get_constraintdef(con.oid) like '% NOT VALID'")
+				.query((row, one) -> state.put(row.getString(1), row.getString(2)))
+				.list();
+		return state;
+	}
+
+	/** An insert the schema refuses, with the transaction kept usable by a savepoint around it. */
+	private void refused(String insert) {
+		db.sql("savepoint b190_before").update();
+		assertThatThrownBy(() -> db.sql(insert).update()).isInstanceOf(DataAccessException.class);
+		db.sql("rollback to savepoint b190_before").update();
+	}
+
+	private void run(List<Step> steps, String phase) {
+		steps.stream().filter(one -> one.phase().equals(phase))
+				.forEach(one -> db.sql(one.statement()).update());
+	}
+
+	/**
+	 * A ROW THE CONSTRAINT REFUSES IS POURED, AND THE CONSTRAINT COMES BACK NOT VALID.
+	 *
+	 * <p>This is the case QA is in: a row that predates a constraint, which the constraint was
+	 * added NOT VALID to leave alone, and which production would refuse on the way in. The state is
+	 * built with plain DDL and NOT with the file under test, so that a fault in that file cannot
+	 * also be the fault that sets the case up: a membership with no trail, a child pointing at a
+	 * parent that is not there, and a deferred constraint trigger, which is what V29 puts on
+	 * {@code race} and {@code btl_event}, so that a write leaves a pending event that
+	 * {@code ALTER TABLE} refuses until it is cleared.
+	 *
+	 * <p>Then the pour as the script writes it: everything the file says to lift, a write the
+	 * constraints would refuse, everything the file says to restore. What is held is that the write
+	 * went through, that EVERY constraint the catalogue called not valid is back with the same
+	 * definition and still not valid, and that it refuses a NEW row again, so it is not merely
+	 * present but enforced as before.
+	 *
+	 * <p>The two {@code refused} calls before the pour are what stops this from measuring nothing:
+	 * with nothing lifted the write IS refused. And a restore that dropped the NOT VALID would fail
+	 * here on the row that was left alone, because validating the constraint finds it.
+	 */
+	@Test
+	void aRowTheConstraintRefusesIsPouredAndTheConstraintComesBackNotValid() {
+		db.sql("create table b190_membership (id bigint primary key, basis text not null,"
+				+ " decided_by_name text)").update();
+		db.sql("insert into b190_membership values (1, 'feeExempt', null)").update();
+		db.sql("alter table b190_membership add constraint b190_says_who"
+				+ " check (basis <> 'feeExempt' or decided_by_name is not null) not valid").update();
+
+		db.sql("create table b190_parent (id bigint primary key)").update();
+		db.sql("create table b190_child (id bigint primary key, parent_id bigint)").update();
+		db.sql("insert into b190_child values (1, 99)").update();
+		db.sql("alter table b190_child add constraint b190_child_parent_fk"
+				+ " foreign key (parent_id) references b190_parent (id) not valid").update();
+
+		// After the rows and the constraints, so no event is pending while they are added.
+		db.sql("create function b190_noop() returns trigger language plpgsql"
+				+ " as 'begin return null; end'").update();
+		db.sql("create constraint trigger b190_deferred after insert on b190_membership"
+				+ " deferrable initially deferred for each row execute function b190_noop()").update();
+
+		Map<String, String> before = notValidInTheCatalogue();
+		assertThat(before).containsKeys("b190_membership.b190_says_who", "b190_child.b190_child_parent_fk");
+
+		refused("insert into b190_membership values (2, 'feeExempt', null)");
+		refused("insert into b190_child values (2, 98)");
+
+		List<Step> steps = notValidSteps();
+		run(steps, "drop");
+
+		db.sql("insert into b190_membership values (2, 'feeExempt', null)").update();
+		db.sql("insert into b190_child values (2, 98)").update();
+
+		run(steps, "restore");
+
+		assertThat(notValidInTheCatalogue())
+				.as("every constraint that was not valid is back with the same definition, and still"
+						+ " not valid: production ends exactly as QA is")
+				.isEqualTo(before);
+		assertThat(db.sql("select count(*) from b190_membership").query(Long.class).single())
+				.as("the row the constraint refuses, and the one that predated it").isEqualTo(2L);
+
+		refused("insert into b190_membership values (3, 'feeExempt', null)");
+		refused("insert into b190_child values (3, 97)");
+	}
+
+	/**
+	 * A THIRD CONSTRAINT THAT IS NOT VALID IS LISTED WITHOUT ANYBODY EDITING ANYTHING, and the ones
+	 * the schema has are still there.
+	 *
+	 * <p>The owner decided the list is asked of the catalogue and not written down, so that a
+	 * constraint arriving in a later migration is carried too. The schema has two today, both on
+	 * {@code membership}, which is exactly the number a list written by hand would have been
+	 * written for, and nothing in the real schema can tell the two apart. This builds the third.
+	 * A query that named the two it knows by name would pass every case about the real schema and
+	 * fail this one.
+	 */
+	@Test
+	void aThirdNotValidConstraintIsListedWithoutAnyoneEditingAnything() {
+		Set<String> theSchemasOwn = notValidInTheCatalogue().keySet();
+		assertThat(theSchemasOwn).as("the schema has constraints that are not valid, or this says nothing")
+				.isNotEmpty();
+
+		db.sql("create table b190_third (n int)").update();
+		db.sql("alter table b190_third add constraint b190_third_positive check (n > 0) not valid").update();
+
+		List<String> statements = notValidSteps().stream().map(Step::statement).toList();
+
+		assertThat(statements)
+				.contains("alter table public.b190_third drop constraint b190_third_positive;")
+				.anyMatch(one -> one.startsWith(
+						"alter table public.b190_third add constraint b190_third_positive CHECK")
+						&& one.endsWith("NOT VALID;"));
+		for (String key : theSchemasOwn) {
+			String name = key.substring(key.indexOf('.') + 1);
+			assertThat(statements)
+					.as("%s is a constraint the schema already had and it has to be lifted too", key)
+					.anyMatch(one -> one.contains(" drop constraint " + name + ";"));
+		}
+	}
+
+	/**
+	 * NOTHING A NOT VALID CONSTRAINT CARRIES CAN BE LOST BY LIFTING IT, asked of the catalogue.
+	 *
+	 * <p>Two things, and each is a boundary the file says it has and this makes fail in the build.
+	 * A COMMENT on a constraint is lost when the constraint is dropped, and the restore does not
+	 * write one. And a statement is one line, so a name or a definition with a newline in it would
+	 * be cut in two by the script that reads it. Neither exists today. A constraint that has either
+	 * is not refused, it is simply carried wrongly, which is why it has to be refused here.
+	 */
+	@Test
+	void noNotValidConstraintCarriesACommentOrANewline() {
+		assertThat(db.sql("select count(*) from pg_description d"
+						+ " join pg_constraint con on con.oid = d.objoid"
+						+ " and d.classoid = 'pg_constraint'::regclass"
+						+ " where pg_get_constraintdef(con.oid) like '% NOT VALID'")
+				.query(Long.class)
+				.single())
+				.as("a comment on a constraint that is not valid is lost when it is lifted")
+				.isZero();
+
+		assertThat(notValidSteps())
+				.as("a statement with a newline in it is cut in two by the script that reads it")
+				.allSatisfy(one -> assertThat(one.statement()).doesNotContain("\n"));
+	}
+
+	/**
+	 * THE SCRIPT NAMES NO CONSTRAINT THAT IS NOT VALID, which is the other half of "asked of the
+	 * catalogue".
+	 *
+	 * <p>The file is what is asked, and the file is exercised above. This is about the script: a
+	 * name written into it would be a list again, however it got there. Derived, so it covers the
+	 * constraints of a later migration and not only the two there are.
+	 */
+	@Test
+	void theScriptNamesNoConstraintThatIsNotValid() throws IOException {
+		List<String> code = Files.readAllLines(SCRIPT, StandardCharsets.UTF_8).stream()
+				.filter(line -> !line.strip().startsWith("#"))
+				.toList();
+
+		for (String key : notValidInTheCatalogue().keySet()) {
+			Pattern named = Pattern.compile(
+					"\\b" + Pattern.quote(key.substring(key.indexOf('.') + 1)) + "\\b");
+			assertThat(code.stream().filter(line -> named.matcher(line).find()))
+					.as("the script names %s, a constraint that is not valid. Which ones are lifted is"
+							+ " asked of the catalogue, and a name here is a list", key)
+					.isEmpty();
+		}
 	}
 
 	private long lastValueOf(String sequence) {

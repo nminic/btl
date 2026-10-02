@@ -94,6 +94,39 @@ describe('the races of an event while they are being entered', () => {
     expect(whatIsMissing(row({ ascentM: 'sto' }))).toBe('ascentM')
   })
 
+  /**
+   * „21,1" IS HOW A LENGTH IS WRITTEN HERE, AND THIS IS WHERE AN ADMINISTRATOR WRITES IT.
+   *
+   * <p>Owner, 02.10.2026 (`btl-produkt/PDL.md`, „Odluke iz ciscenja nalaza"): „Polje za broj
+   * prima i zarez i tacku, a portal salje tacku." The length of a race is typed into this
+   * table and not into a form, so the comma has to be read here as it is on every form: to
+   * the bounds as the number it is, a tenth of a kilometre being the floor. And the limit of a
+   * timed race is hours with decimals on purpose, so „1,5" is an hour and a half.
+   */
+  it('reads a measure written with a comma as the number it is', () => {
+    expect(whatIsMissing(row({ distanceKm: '21,1' }))).toBeUndefined()
+    expect(whatIsMissing(row({ distanceKm: '0,1' }))).toBeUndefined()
+    expect(whatIsMissing(row({ distanceKm: '0,05' }))).toBe('distanceKm')
+    expect(whatIsMissing(row({ kind: 'time', distanceKm: '', limitHours: '1,5' }))).toBeUndefined()
+  })
+
+  /**
+   * AND THE CLIMB AND THE FALL ARE WHOLE METRES, BECAUSE THE SERVER KEEPS THEM WHOLE.
+   *
+   * <p>`RaceWriteApi.Upsert` reads both as `Integer` and `race.ascent_m` is an `integer`, and the
+   * race's own definition says so (`admin-trka.form.json`, `"integer": true`, held to the route
+   * by `forms/wholeNumbers.test.ts`). „1.200" is twelve hundred metres written with a separator
+   * for the thousands as often as it is one point two, and either reading is quietly another
+   * climb; refused, the administrator types it again. The coordinator's reasoning, not the
+   * owner's words.
+   */
+  it('refuses a separator in the climb and the fall, and takes a whole number', () => {
+    expect(whatIsMissing(row({ ascentM: '1.200' }))).toBe('ascentM')
+    expect(whatIsMissing(row({ descentM: '1,200' }))).toBe('descentM')
+    expect(whatIsMissing(row({ ascentM: '1200', descentM: '1200' }))).toBeUndefined()
+    expect(isWrong(row({ ascentM: '540,5' }), 'ascentM')).toBe(true)
+  })
+
   it('holds the save back until every row is finished', () => {
     /* Owner: „validacija mi ne da da nastavim dalje dok svaki red nema sve obavezne
        podatke". One press writes the event and all of its races, so one unfinished
@@ -221,6 +254,21 @@ describe('the races of an event while they are being entered', () => {
       ascentM: '42',
       descentM: '7',
     })
+  })
+
+  /* THE ONE PLACE A ROW OF THIS TABLE IS CONVERTED, AND IT SENDS THE DOT. A race is not entered
+     through a form, so the door a form leaves by (`forms/records.ts`, `storedNumbers`) never
+     sees it; `storedRow` is this table's door, and what it writes is what `raceUpsertFrom`
+     puts on the wire. 21,1 rather than a round number, so the category read off it is the
+     half marathon and a comma read as nothing would show here as well as in the length. */
+  it('writes a length and a limit typed with a comma as numbers with a dot', () => {
+    expect(storedRow(row({ distanceKm: '21,1' }), 'evt')).toMatchObject({
+      distanceKm: '21.1',
+      category: 'half',
+    })
+    expect(
+      storedRow(row({ kind: 'time', distanceKm: '', limitHours: '1,5' }), 'evt'),
+    ).toMatchObject({ limitSeconds: '5400' })
   })
 
   it('writes the category the length says, and writes it again when the length changes', () => {

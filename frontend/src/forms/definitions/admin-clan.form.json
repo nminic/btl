@@ -76,7 +76,8 @@
       "labelKey": "admin.field.firstSeason",
       "required": true,
       "min": 2014,
-      "max": 2027
+      "max": 2027,
+      "integer": true
     },
     {
       "name": "firstSeason2027",

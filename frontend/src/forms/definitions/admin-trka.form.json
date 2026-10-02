@@ -29,7 +29,8 @@
       "labelKey": "admin.field.ascentM",
       "required": true,
       "min": 0,
-      "max": 30000
+      "max": 30000,
+      "integer": true
     },
     {
       "name": "descentM",
@@ -37,7 +38,8 @@
       "labelKey": "admin.field.descentM",
       "required": true,
       "min": 0,
-      "max": 30000
+      "max": 30000,
+      "integer": true
     }
   ]
 }

@@ -131,6 +131,41 @@ describe('validateField', () => {
     expect(afterTheDot, 'in the domain, behind the dot').toEqual(allowed)
   })
 
+  /**
+   * THE LENGTH OF A PASSWORD IS ONE FACT, AND THE FORM MEASURES IT THE WAY THE SERVER DOES.
+   *
+   * <p>Over what was TYPED, spaces included: a password is never trimmed (owner, 21.09.2026,
+   * `ADL.md` A62c), so „  lozinka123" is twelve characters on the server and was ten on the
+   * form, which refused it aloud for no reason (derived 02.10.2026 in `PDL.md`, „Odluke iz
+   * ciscenja nalaza"). And in CODE POINTS, which is how `PasswordPolicy.java` counts
+   * (`codePointCount`): counted in UTF-16 units, eleven characters with one emoji in them came
+   * to twelve, passed the form and were refused by the server.
+   *
+   * <p>A password of nothing but spaces is still an unanswered field, which A62c says is right.
+   */
+  it('measures a password over what was typed, in the units the server counts', () => {
+    const password = text({ type: 'password', required: true, minLength: 12 })
+
+    expect(validateField(password, '  lozinka123')).toBeNull()
+    expect(validateField(password, 'lozinka123  ')).toBeNull()
+    expect(validateField(password, '            ')).toEqual({ key: 'form.errors.required' })
+    /* Eleven characters, one of them an emoji that is two UTF-16 units: `.length` says twelve. */
+    expect(validateField(password, 'lozinka123🏃')).toEqual({
+      key: 'form.errors.minLength',
+      params: { min: 12 },
+    })
+    expect(validateField(password, 'lozinka1234🏃')).toBeNull()
+  })
+
+  /* And only a password: everything else is trimmed before it is sent, so it is measured
+     trimmed, which is what the server receives. */
+  it('goes on measuring every other field the way it is sent, trimmed', () => {
+    expect(validateField(text({ minLength: 3 }), '  ab  ')).toEqual({
+      key: 'form.errors.minLength',
+      params: { min: 3 },
+    })
+  })
+
   it('checks numeric bounds only for number fields', () => {
     const field = text({ type: 'number', min: 1, max: 300 })
 
@@ -146,6 +181,39 @@ describe('validateField', () => {
     expect(validateField(text({ type: 'number', min: 1, max: 300 }), 'abc')).toEqual({
       key: 'form.errors.number',
     })
+  })
+
+  /* Owner, 02.10.2026: „Polje za broj prima i zarez i tacku". The floor of `distanceKm` is a
+     tenth of a kilometre, so the comma has to reach the bounds as the number it is: „0,05" is
+     under the floor and „0,1" is on it. A comma read as nothing would refuse both as „not a
+     number", and one read as a thousands separator would let „0,05" through as five. */
+  it('takes a comma as the separator of the decimals, all the way to the bounds', () => {
+    const length = text({ type: 'number', min: 0.1, max: 1000 })
+
+    expect(validateField(length, '21,1')).toBeNull()
+    expect(validateField(length, '21.1')).toBeNull()
+    expect(validateField(length, '0,1')).toBeNull()
+    expect(validateField(length, '0,05')).toEqual({ key: 'form.errors.min', params: { min: 0.1 } })
+    /* And what a browser's number box never let through still does not get through. */
+    expect(validateField(length, '0x10')).toEqual({ key: 'form.errors.number' })
+  })
+
+  /* The coordinator's reasoning, not the owner's words: a field the server keeps whole takes
+     no separator, so „30,5" seconds and „1.200" metres stop on the form rather than becoming a
+     different number on the server. Refused as not a number first where it is not one at
+     all, so a word is told what it is rather than that it should be whole. */
+  it('refuses a separator in a field the server keeps whole', () => {
+    const seconds = text({ type: 'number', min: 0, max: 59, integer: true })
+
+    expect(validateField(seconds, '30')).toBeNull()
+    expect(validateField(seconds, '30,5')).toEqual({ key: 'form.errors.integer' })
+    expect(validateField(seconds, '30.5')).toEqual({ key: 'form.errors.integer' })
+    expect(validateField(text({ type: 'number', integer: true }), '1.200')).toEqual({
+      key: 'form.errors.integer',
+    })
+    expect(validateField(seconds, 'pola')).toEqual({ key: 'form.errors.number' })
+    /* Whole, and still held to its bounds. */
+    expect(validateField(seconds, '60')).toEqual({ key: 'form.errors.max', params: { max: 59 } })
   })
 
   it('survives a pattern that does not compile', () => {

@@ -1189,6 +1189,30 @@ describe('what the registration sends', () => {
     expect(Reflect.get(body, 'passwordRepeat')).toBe(withSpace)
   }, SLOW)
 
+  it('takes a password that is long enough only with its spaces, and sends it as typed', async () => {
+    /* THE LENGTH IS MEASURED OVER WHAT IS SENT. The case above sends a password that is long
+       enough with or without its space, so it says nothing about where the length is
+       measured. This one reaches the minimum ONLY with the two spaces in front of it: on the
+       server it is long enough (the server measures what arrives, and what arrives is what
+       was typed), and until 02.10.2026 the form measured it trimmed, came to two short and
+       refused it aloud (derived that day from `ADL.md` A62c in `PDL.md`, „Odluke iz ciscenja
+       nalaza"). */
+    const user = setupUser()
+    renderForm()
+
+    const spaced = `  ${PASSWORD.slice(2)}`
+
+    await fillEverythingExceptBirthDate(user, { password: spaced })
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+
+    await waitFor(() => {
+      expect(whatWasSent()).toHaveLength(1)
+    })
+
+    expect(Reflect.get(Object(theBodySent()), 'password')).toBe(spaced)
+  }, SLOW)
+
   it('goes on trimming everything that is not a secret', async () => {
     /* The other half, and without it the case above is satisfied by a fix that switches
        trimming off for the whole form: then „  Vladan  " would be stored with its spaces

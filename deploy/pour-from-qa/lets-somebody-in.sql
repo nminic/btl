@@ -1,8 +1,15 @@
 -- WHICH OF THE POURED ROWS LET SOMEBODY IN, ASKED OF THE CATALOGUE.
 --
--- Read by deploy/pour-from-qa.sh, which names these tables and their row counts in its closing
--- report, and by PouringFromQaTest, which runs this very file and compares what it returns
--- against the columns the catalogue holds.
+-- Read by deploy/pour-from-qa.sh, which names these tables, the column each is checked by, and
+-- their row counts in its closing report, and by PouringFromQaTest, which runs this very file and
+-- compares what it returns against the columns the catalogue holds.
+--
+-- TWO COLUMNS COME BACK, `relname` and `checked_by`, the matching column names joined by commas.
+-- The second is what lets the report tell the two kinds apart WITHOUT NAMING A TABLE: the rows
+-- checked by `token_hash` can be ended by emptying their table, and the rows checked by
+-- `password_hash` cannot. The report used to say so by listing three token tables by hand, which
+-- is a list that goes stale without any test failing the day a fourth arrives; SQL already knew
+-- which column matched, so it says so.
 --
 -- WHAT COUNTS AS LETTING SOMEBODY IN, and the second half of this was missed until a security
 -- round measured it on 29.09.2026.
@@ -37,7 +44,7 @@
 -- pretended away: the two names below are the schema's whole answer today, measured against
 -- every hash-bearing column the migrations create, and PouringFromQaTest compares this against
 -- the catalogue so a new one fails the gate instead of passing unseen.
-select c.relname
+select c.relname, string_agg(a.attname::text, ',' order by a.attname) as checked_by
   from pg_class c
   join pg_namespace n on n.oid = c.relnamespace
   join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped

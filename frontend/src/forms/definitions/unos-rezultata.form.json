@@ -58,7 +58,8 @@
       "labelKey": "newResult.ascentM",
       "required": true,
       "min": 0,
-      "max": 30000
+      "max": 30000,
+      "integer": true
     },
     {
       "name": "descentM",
@@ -66,7 +67,8 @@
       "labelKey": "newResult.descentM",
       "required": true,
       "min": 0,
-      "max": 30000
+      "max": 30000,
+      "integer": true
     },
     {
       "name": "hours",
@@ -74,7 +76,8 @@
       "labelKey": "newResult.hours",
       "required": true,
       "min": 0,
-      "max": 200
+      "max": 200,
+      "integer": true
     },
     {
       "name": "minutes",
@@ -82,7 +85,8 @@
       "labelKey": "newResult.minutes",
       "required": true,
       "min": 0,
-      "max": 59
+      "max": 59,
+      "integer": true
     },
     {
       "name": "seconds",
@@ -90,7 +94,8 @@
       "labelKey": "newResult.seconds",
       "required": true,
       "min": 0,
-      "max": 59
+      "max": 59,
+      "integer": true
     },
     {
       "name": "link",
