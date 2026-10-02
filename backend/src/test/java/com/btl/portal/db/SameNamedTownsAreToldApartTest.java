@@ -146,6 +146,24 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 		assertThat(namesOf(THE_MANUAL_LABELS.keySet())).containsExactlyInAnyOrderEntriesOf(THE_MANUAL_LABELS);
 	}
 
+	/**
+	 * A NAME IS COMPARED WITHOUT REGARD TO CASE AND WITH REGARD TO MARKS, asked of names it can be wrong about.
+	 *
+	 * <p>The shipped data cannot show that the comparison was weakened back to the exact name where a label is
+	 * concerned: no label in it is the name of its own town apart from its case, so the question "is the label
+	 * called what this town is called" gives the same answer either way. The pair is held by the data, because
+	 * the delta renames four towns that only the case-blind pair finds, but this is held by nothing else. The two
+	 * pairs are the real ones the review of PR 464 found, and the Münster is the one that must stay two names.
+	 */
+	@Test
+	void aNameIsComparedWithoutRegardToCaseAndWithRegardToMarks() {
+		assertThat(pairOf("SI", "Dolenja vas")).isEqualTo(pairOf("SI", "Dolenja Vas"));
+		assertThat(pairOf("DE", "Münster")).isNotEqualTo(pairOf("DE", "Munster"));
+		assertThat(pairOf("US", "Boston")).isNotEqualTo(pairOf("GB", "Boston"));
+		assertThat(sameWithoutCase("Dolenja vas", "Dolenja Vas")).isTrue();
+		assertThat(sameWithoutCase("Münster", "Munster")).isFalse();
+	}
+
 	/** What the database holds as the name of each of these towns. */
 	private Map<Long, String> namesOf(Set<Long> marks) {
 		String list = marks.stream().map(String::valueOf).collect(Collectors.joining(", "));
