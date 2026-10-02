@@ -212,6 +212,7 @@
       "other": "{count} unread"
     },
     "noMessages": "No messages.",
+    "messagesUnreadable": "The messages cannot be loaded.",
     "allMessages": "All messages",
     "account": "Account",
     "accountNumber": "Account {number}",
@@ -326,6 +327,7 @@
     "loading": "Loading",
     "loadingPart": "Loading: {part}",
     "error": "The data cannot be loaded.",
+    "retry": "Try again",
     "empty": "There is nothing here yet."
   },
   "form": {
@@ -849,6 +851,8 @@
     "inviteAccept": "Accept",
     "inviteRefuse": "Decline",
     "inviteSent": "Invitations sent",
+    "applicationsUnreadable": "The list of applications cannot be loaded, so it is not known whether anybody is waiting for the team's answer.",
+    "invitationsUnreadable": "The list of invitations sent cannot be loaded, so it is not known which invitations are still waiting.",
     "inviteWithdraw": "Withdraw the invitation",
     "inviteWithdrawNamed": "Withdraw the invitation: {name}",
     "inviteLapsed": "A member whose fee has lapsed",

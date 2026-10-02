@@ -212,6 +212,7 @@
       "other": "{count} nepročitanih"
     },
     "noMessages": "Nema poruka.",
+    "messagesUnreadable": "Poruke se ne mogu učitati.",
     "allMessages": "Sve poruke",
     "account": "Nalog",
     "accountNumber": "Nalog {number}",
@@ -326,6 +327,7 @@
     "loading": "Učitavanje",
     "loadingPart": "Učitavanje: {part}",
     "error": "Podaci se ne mogu učitati.",
+    "retry": "Pokušaj ponovo",
     "empty": "Ovde još nema ničega."
   },
   "form": {
@@ -849,6 +851,8 @@
     "inviteAccept": "Prihvati",
     "inviteRefuse": "Odbij",
     "inviteSent": "Poslati pozivi",
+    "applicationsUnreadable": "Spisak prijava se ne može učitati, pa se ne zna da li neko čeka odgovor tima.",
+    "invitationsUnreadable": "Spisak poslatih poziva se ne može učitati, pa se ne zna koji pozivi još čekaju.",
     "inviteWithdraw": "Povuci poziv",
     "inviteWithdrawNamed": "Povuci poziv: {name}",
     "inviteLapsed": "Član kome je članarina istekla",

@@ -31,8 +31,9 @@ import { askTheServer, type Answer } from './account/askTheServer'
  * resource address as `/api/<name>` out of a closed list, and both of these carry a team in
  * the path. So they are read the way `member/myCategory.ts` reads `/api/me/category`: a
  * plain `fetch` with no token, narrowed by looking at what came back, and every failure one
- * outcome. A read needs no token - `ApiSecurity` protects what changes something - and
- * cookies go with it because the address is our own.
+ * outcome (a list that could not be read, which is NOT an empty list: see {@link Queue}). A read
+ * needs no token - `ApiSecurity` protects what changes something - and cookies go with it
+ * because the address is our own.
  *
  * <p><b>WHO IS ANSWERED, AND MOVING THIS TO THE SERVER NARROWS IT.</b> `TeamJoiningApi`
  * answers whoever LEADS the team and the administration, and 404 to everybody else, the
@@ -150,39 +151,59 @@ export const WHEN_DECIDING_AN_APPLICATION = {
 }
 
 /**
- * The rows off one of the two lists, or none at all.
+ * ONE OF THE TWO LISTS AS A READ LEFT IT: THE ROWS, OR THE PLAIN FACT THAT THEY COULD NOT BE READ.
  *
- * <p><b>EVERY FAILURE IS ONE OUTCOME AND AN EMPTY LIST IS THAT SAME OUTCOME, which is a
- * decision with a cost rather than a shortcut.</b> `member/myCategory.ts` settles the same
- * question for the same kind of read and in the same words: no server, 401, 404 for a caller
- * this address is not for, a body that is not JSON, a row missing a field - „none of them is
- * a category, and a screen that told them apart would be offering the reader five sentences
- * about one absent box."
+ * <p>A list that holds nothing and a list that was never read are different facts, and until
+ * 02.10.2026 this module had no way to say so: every failure came back as an empty array, which
+ * the screen drew as no section at all. Owner, 02.10.2026 (PENDING stavka 368): „Spisak koji ne
+ * moze da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"." So the two are
+ * told apart here, at the one place that knows, and the screen is handed the difference.
  *
- * <p><b>What it costs, named rather than discovered:</b> a team whose administrator cannot
- * reach the server is shown no section, exactly as a team with nothing waiting is, so a
- * portal that is down reads as a portal with nothing to decide. That is the safe direction -
- * nothing is offered over a row that may not be there - and it is the only one available,
- * because „the team may not read this" and „there is nothing to read" are the SAME answer by
- * ADL A8: `TeamJoiningApi` answers 404 both to a team that does not exist and to a caller who
- * does not lead it, „so no answer here is an oracle for which teams exist".
- *
- * <p><b>One bad row drops the whole list rather than itself.</b> A list that quietly left out
- * the row it could not read would show a team fewer questions than it has, and the team would
- * answer the ones it was shown and never learn of the rest. Silence about all of them is at
- * least honest about being silence.
+ * <p>`unreadable` carries nothing, and that is the point: there are six ways a read can fail and
+ * the screen has one sentence for all of them (`theRowsAt` says why it has one).
  */
-async function theRowsAt<T>(path: string, oneOf: (row: unknown) => T | null): Promise<T[]> {
+export type Queue<T> = { got: 'rows'; rows: T[] } | { got: 'unreadable' }
+
+const UNREADABLE = { got: 'unreadable' } as const
+
+/**
+ * The rows off one of the two lists, or the fact that they could not be read.
+ *
+ * <p><b>EVERY FAILURE IS ONE OUTCOME, AND IT IS NO LONGER THE OUTCOME OF AN EMPTY LIST</b>
+ * (owner, 02.10.2026, PENDING stavka 368). It was both until that day, and the cost was named and
+ * accepted when it was written: a team whose administrator could not reach the server was shown no
+ * section, exactly as a team with nothing waiting is, so a portal that was down read as a portal
+ * with nothing to decide. Measured on the team's page, that was not the safe direction it was
+ * taken for: after a press that worked both reads failed, and the two applications the team had
+ * never answered went from the page with nothing to say the server had not been reached. The
+ * owner chose the other side of it, after the cost was shown to him.
+ *
+ * <p><b>What stays is that the failures are ONE outcome among themselves.</b>
+ * `member/myCategory.ts` settles the same question for the same kind of read and in the same
+ * words: no server, 401, 404 for a caller this address is not for, a body that is not JSON, a row
+ * missing a field - „none of them is a category, and a screen that told them apart would be
+ * offering the reader five sentences about one absent box." And the 404 in particular cannot be
+ * told apart even if it were wanted: „the team may not read this" and „there is no such team" are
+ * the SAME answer by ADL A8, `TeamJoiningApi` answering 404 to a team that does not exist and to a
+ * caller who does not lead it, „so no answer here is an oracle for which teams exist". The sentence
+ * says that the list could not be read and does not say why.
+ *
+ * <p><b>One bad row makes the whole list unreadable rather than dropping itself.</b> A list that
+ * quietly left out the row it could not read would show a team fewer questions than it has, and
+ * the team would answer the ones it was shown and never learn of the rest. It used to be silent
+ * about all of them, which was at least honest about being silence; it says so now.
+ */
+async function theRowsAt<T>(path: string, oneOf: (row: unknown) => T | null): Promise<Queue<T>> {
   let answer: Response
 
   try {
     answer = await fetch(path)
   } catch {
-    return []
+    return UNREADABLE
   }
 
   if (!answer.ok) {
-    return []
+    return UNREADABLE
   }
 
   let body: unknown
@@ -190,13 +211,13 @@ async function theRowsAt<T>(path: string, oneOf: (row: unknown) => T | null): Pr
   try {
     body = await answer.json()
   } catch {
-    return []
+    return UNREADABLE
   }
 
   const served = asRows(body)
 
   if (served === null) {
-    return []
+    return UNREADABLE
   }
 
   const rows: T[] = []
@@ -205,13 +226,13 @@ async function theRowsAt<T>(path: string, oneOf: (row: unknown) => T | null): Pr
     const one = oneOf(row)
 
     if (one === null) {
-      return []
+      return UNREADABLE
     }
 
     rows.push(one)
   }
 
-  return rows
+  return { got: 'rows', rows }
 }
 
 /**
@@ -278,13 +299,13 @@ export function invitationIn(row: unknown): TeamInvitation | null {
   return { id, memberNumber, date }
 }
 
-/** Every application addressed to this team that it can still answer. */
-export async function whatIsWaitingOn(team: number): Promise<TeamApplication[]> {
+/** Every application addressed to this team that it can still answer, or that they could not be read. */
+export async function whatIsWaitingOn(team: number): Promise<Queue<TeamApplication>> {
   return theRowsAt(theApplicationsOf(team), applicationIn)
 }
 
-/** Every invitation this team has sent that nobody has answered. */
-export async function whatThisTeamHasAsked(team: number): Promise<TeamInvitation[]> {
+/** Every invitation this team has sent that nobody has answered, or that they could not be read. */
+export async function whatThisTeamHasAsked(team: number): Promise<Queue<TeamInvitation>> {
   return theRowsAt(theInvitationsOf(team), invitationIn)
 }
 

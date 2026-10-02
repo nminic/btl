@@ -22,10 +22,12 @@ import {
  * presses. What is measured here is the two things a screen cannot show: every way an answer
  * can fail to be one, and which caches a write drops.
  *
- * <p><b>Every failure is deliberately the same outcome</b> - an empty list, which the screen
- * draws as no section - and that is exactly why each has to be measured on its own: folded into
- * one answer, six different faults look alike and a version that stopped checking one of them
- * would pass every case about the other five.
+ * <p><b>Every failure is deliberately the same outcome</b> - a list that could not be read, which
+ * the screen says out loud with a way to ask again (owner, 02.10.2026, PENDING stavka 368) - and
+ * that is exactly why each has to be measured on its own: folded into one answer, six different
+ * faults look alike and a version that stopped checking one of them would pass every case about
+ * the other five. <b>It was an EMPTY list until that day</b>, and an empty list is a list that was
+ * read and holds nothing, which a team that could not reach the server is not told by.
  */
 
 /* NOT THE FIRST TEAM AND NOT THE FIRST ROW, anywhere in this file. A team `1` and a row `1`
@@ -137,17 +139,17 @@ describe('reading the two queues off the server', () => {
     })
 
     try {
-      expect(await whatIsWaitingOn(TEAM)).toEqual(ASKING)
-      expect(await whatThisTeamHasAsked(TEAM)).toEqual(ASKED)
+      expect(await whatIsWaitingOn(TEAM)).toEqual({ got: 'rows', rows: ASKING })
+      expect(await whatThisTeamHasAsked(TEAM)).toEqual({ got: 'rows', rows: ASKED })
     } finally {
       server.stop()
     }
   })
 
-  /* THE SIX WAYS TO NOTHING, and they are one outcome on purpose (`joiningThisTeam.ts` names
-     the cost). 404 is the one worth reading twice: by ADL A8 it is BOTH „no such team" and „not
-     for you", so a screen that told an empty queue from a forbidden one would be claiming a
-     difference the server refuses to make. */
+  /* THE SIX WAYS TO NOTHING, and they are one outcome on purpose (`joiningThisTeam.ts` says why).
+     404 is the one worth reading twice: by ADL A8 it is BOTH „no such team" and „not for you", so
+     a screen that said which of the two it was would be claiming a difference the server refuses
+     to make. What it IS no longer is the same outcome as a list that was read and is empty. */
   it.each([
     ['there is no server to reach', () => Promise.reject(new Error('no socket'))],
     ['the route answers 404, whether the team is absent or not this reader\'s', () =>
@@ -156,13 +158,28 @@ describe('reading the two queues off the server', () => {
     ['the body is not JSON', () => new Response('hello', { status: 200 })],
     ['the body is not a list at all', () => listOf({ rows: [] })],
     ['one row of the list is not a row', () => listOf([ASKING[0], { id: 'seventy-two' }])],
-  ])('answers nothing when %s', async (_what, answer) => {
+  ])('says the list could not be read when %s', async (_what, answer) => {
     const server = serverThat((path) =>
       path === '/api/teams/2/applications' ? answer() : null,
     )
 
     try {
-      expect(await whatIsWaitingOn(TEAM)).toEqual([])
+      expect(await whatIsWaitingOn(TEAM)).toEqual({ got: 'unreadable' })
+    } finally {
+      server.stop()
+    }
+  })
+
+  /* AND AN EMPTY LIST IS A LIST, which is the other half of the change: the route answered, and
+     what it answered is nobody. Told apart from the six above, a team whose queue is empty is not
+     told that its queue could not be read. */
+  it('says a list that was read and holds nothing is that', async () => {
+    const server = serverThat((path) =>
+      path === '/api/teams/2/applications' ? listOf([]) : null,
+    )
+
+    try {
+      expect(await whatIsWaitingOn(TEAM)).toEqual({ got: 'rows', rows: [] })
     } finally {
       server.stop()
     }
@@ -179,7 +196,7 @@ describe('reading the two queues off the server', () => {
     )
 
     try {
-      expect(await whatThisTeamHasAsked(TEAM)).toEqual([])
+      expect(await whatThisTeamHasAsked(TEAM)).toEqual({ got: 'unreadable' })
     } finally {
       server.stop()
     }

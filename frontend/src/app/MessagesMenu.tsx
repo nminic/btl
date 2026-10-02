@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router'
+import { Unreadable } from '../components/Unreadable'
 import { formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
-import { dataOr, useInbox } from '../data/useResource'
+import { dataOr, theInboxHasChanged, useInbox } from '../data/useResource'
 import type { InboxLine } from '../data/types'
 import { Dropdown } from './Dropdown'
 import { MailIcon } from './icons'
@@ -51,11 +53,53 @@ function HisOwnInbox({ mine }: { mine: string }) {
      them, and an error state would put „Podaci se ne mogu učitati." in the header of a portal
      that is otherwise working. `Shell.tsx` answers the same question the same way for the
      count of work waiting: „A header that waited for it would hold up every screen behind it."
-     Until the answer lands the panel says there is nothing, and then it says what arrived. */
-  return <ThePanel lines={dataOr(useInbox(mine), [])} />
+     Until the answer lands the panel says there is nothing, and then it says what arrived.
+
+     **AND WHEN THE ANSWER NEVER COMES IT SAYS THAT, INSIDE THE PANEL, and no longer „there is
+     nothing"** (owner, 02.10.2026, PENDING stavka 368: „Spisak koji ne moze da se ucita KAZE to,
+     umesto da izgleda prazan, uz dugme „Pokusaj ponovo". Vazi za sve ekrane sa spiskom."). The
+     paragraph above is what this was written against and what it said is still true of the
+     loading sheet and of an error drawn over the page: neither is drawn. What is drawn is a
+     sentence in a panel that is shut until somebody opens it, with the button that asks again,
+     so a server that did not answer is no longer read as an inbox with nothing in it. */
+  const inbox = useInbox(mine)
+  /* Which state of the read the last press was made on, and never a flag of its own: the read
+     replaces its state with a new object whether it comes back or fails again, so „the press is
+     out" is exactly „the state is still the one it was pressed on", and it ends by itself the
+     moment the answer lands, without an effect to clear it. */
+  const [askedOn, setAskedOn] = useState<typeof inbox | null>(null)
+
+  return (
+    <ThePanel
+      lines={dataOr(inbox, [])}
+      unreadable={
+        inbox.status === 'error'
+          ? {
+              reading: askedOn === inbox,
+              retry: () => {
+                setAskedOn(inbox)
+                theInboxHasChanged()
+              },
+            }
+          : undefined
+      }
+    />
+  )
 }
 
-function ThePanel({ lines }: { lines: InboxLine[] }) {
+function ThePanel({
+  lines,
+  unreadable,
+}: {
+  lines: InboxLine[]
+  /**
+   * Present only where the read FAILED, which is a different fact from a read that came back
+   * empty, and carrying what asking again needs: whether it is out, and how to do it. One object
+   * and not three props, so there is no state in which the panel is told it is unreadable and not
+   * how to ask again.
+   */
+  unreadable?: { reading: boolean; retry: () => void }
+}) {
   const { locale, t } = useI18n()
   const unread = lines.filter((one) => !one.read).length
 
@@ -82,7 +126,14 @@ function ThePanel({ lines }: { lines: InboxLine[] }) {
         <>
           <p className="inbox__title">{t('shell.messages')}</p>
 
-          {lines.length === 0 ? (
+          {unreadable !== undefined ? (
+            <Unreadable
+              said={t('shell.messagesUnreadable')}
+              named={t('shell.messages')}
+              reading={unreadable.reading}
+              onRetry={unreadable.retry}
+            />
+          ) : lines.length === 0 ? (
             <p className="inbox__empty">{t('shell.noMessages')}</p>
           ) : (
             <ul className="inbox__list">

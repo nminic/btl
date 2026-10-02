@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
-import { did, refused, serverThat, type Asked } from '../test/serverAnswers'
+import { answeredWith, did, refused, serverThat, type Asked } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
 
@@ -153,10 +153,34 @@ const listOf = (what: unknown): Response =>
  * @param toAWrite what the two write routes answer, 204 where a case does not say otherwise.
  *                 Anything else leaves both lists exactly as they were, because a refusal is a
  *                 thing that did not happen.
+ * @param failing how each list is read, which a case may change while it runs: nothing for a
+ *                list that is read, a number for a route that answers that number, nought for a
+ *                server that cannot be reached at all, and a function for an answer that has to
+ *                be held (the only way to look at the screen while it is asking again).
  */
-function aServerWithAQueue(toAWrite: () => Response = did) {
+type HowAListIsRead = null | number | (() => Response | Promise<Response>)
+
+function aServerWithAQueue(
+  toAWrite: () => Response = did,
+  failing: { applications: HowAListIsRead; invitations: HowAListIsRead } = {
+    applications: null,
+    invitations: null,
+  },
+) {
   let asking = ASKING
   let asked = ASKED
+
+  const read = (how: HowAListIsRead, rows: unknown): Response | Promise<Response> => {
+    if (how === null) {
+      return listOf(rows)
+    }
+
+    if (typeof how === 'function') {
+      return how()
+    }
+
+    return how === 0 ? Promise.reject(new TypeError('Failed to fetch')) : answeredWith(how)
+  }
 
   return serverThat((path, init) => {
     const how = init?.method ?? 'GET'
@@ -170,11 +194,11 @@ function aServerWithAQueue(toAWrite: () => Response = did) {
     }
 
     if (how === 'GET' && path === `/api/teams/${String(MINE.id)}/applications`) {
-      return listOf(asking)
+      return read(failing.applications, asking)
     }
 
     if (how === 'GET' && path === `/api/teams/${String(MINE.id)}/invitations`) {
-      return listOf(asked)
+      return read(failing.invitations, asked)
     }
 
     const decided = new RegExp(`^/api/teams/${String(MINE.id)}/applications/(\\d+)$`).exec(path)
@@ -402,12 +426,14 @@ describe('the two queues on a team its reader leads', () => {
   }, SLOW)
 
   /**
-   * A QUEUE THE ROUTE REFUSES IS THE SAME AS AN EMPTY ONE, and that is ADL A8 rather than a
-   * shortcut. `TeamJoiningApi` answers 404 both to a team that does not exist and to a caller
-   * who does not lead it, „so no answer here is an oracle for which teams exist", and a screen
-   * that told the two apart would be claiming a difference the server refuses to make.
+   * A QUEUE THE ROUTE REFUSES IS A QUEUE THAT COULD NOT BE READ, and it is NOT the same as an empty
+   * one since 02.10.2026 (PENDING stavka 368; the case below says what is drawn instead).
+   * `TeamJoiningApi` answers 404 both to a team that does not exist and to a caller who does not
+   * lead it, „so no answer here is an oracle for which teams exist" (ADL A8), and a screen that
+   * said which of the two it was would be claiming a difference the server refuses to make. So the
+   * sentence says only that the list could not be read, and why is not on offer.
    */
-  it('draws nothing when the route answers 404, though this reader holds the seat', async () => {
+  it('says both queues cannot be read when the route answers 404, though this reader holds the seat', async () => {
     const server = serverThat((path, init) => {
       const how = init?.method ?? 'GET'
 
@@ -427,12 +453,14 @@ describe('the two queues on a team its reader leads', () => {
     try {
       renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      /* Waited for through something the page really draws, so the absence below is measured on
-         a page that arrived rather than on one that had not got there yet. */
+      /* Waited for through something the page really draws, so what follows is measured on a page
+         that arrived rather than on one that had not got there yet. */
       expect(await screen.findByRole('heading', { name: MINE.name }, { timeout: SLOW })).toBeVisible()
 
-      expect(screen.queryByRole('heading', { name: sr.teams.joinWaiting })).not.toBeInTheDocument()
-      expect(screen.queryByRole('heading', { name: sr.teams.inviteSent })).not.toBeInTheDocument()
+      expect(await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })).toBeVisible()
+      expect(screen.getByText(sr.teams.invitationsUnreadable)).toBeVisible()
+      expect(screen.queryByRole('list', { name: sr.teams.joinWaiting })).toBeNull()
+      expect(screen.queryByRole('list', { name: sr.teams.inviteSent })).toBeNull()
     } finally {
       server.stop()
     }
@@ -1125,4 +1153,264 @@ describe('one number on both lists', () => {
       server.stop()
     }
   }, SLOW * 2)
+})
+
+/**
+ * A LIST THAT COULD NOT BE READ SAYS SO, AND DOES NOT LOOK LIKE A LIST THAT HOLDS NOTHING (owner,
+ * 02.10.2026, PENDING stavka 368).
+ *
+ * <p>Measured with a probe on the screen before this existed: the server answered an error to
+ * both reads only AFTER a press that succeeded, and what the team saw was both headings gone and
+ * the two applications it had never answered gone with them, with nothing saying that the server
+ * had not been reached. The owner's decision, after being shown that moment: „Spisak koji ne moze
+ * da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"."
+ *
+ * <p><b>The axes are the list, the way it fails, and the moment.</b> The two lists fail on their
+ * own (one read can come back while the other does not), by four different routes that are one
+ * outcome, and at two different moments: the first read of the page, and the read that follows a
+ * press that worked.
+ *
+ * <p><b>A list that is read and holds nothing is still no section at all</b> (`draws no heading
+ * for a queue the route answers empty`, above): the decision is about a list that could not be
+ * read, and a heading over a list that was read and is empty announced applications that were not
+ * there (review, 06.09.2026).
+ */
+describe('a queue that could not be read', () => {
+  type Failing = { applications: HowAListIsRead; invitations: HowAListIsRead }
+
+  const asking = () => screen.getByRole('heading', { name: sr.teams.joinWaiting })
+  const asked = () => screen.getByRole('heading', { name: sr.teams.inviteSent })
+  const retryOf = (list: string) => screen.queryByRole('button', { name: `${sr.data.retry}: ${list}` })
+  const refuseHim = () =>
+    screen.getByRole('button', {
+      name: `${sr.teams.joinRefused}: ${nameOf(PRESSED.memberNumber)}`,
+    })
+
+  it('says the applications cannot be read, draws the invitations, and offers to ask again', async () => {
+    const server = aServerWithAQueue(did, { applications: 500, invitations: null })
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      expect(await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })).toBeVisible()
+      expect(asking(), 'a list that cannot be read keeps its name').toBeVisible()
+      expect(screen.queryByRole('list', { name: sr.teams.joinWaiting })).toBeNull()
+      expect(retryOf(sr.teams.joinWaiting)).toBeVisible()
+
+      /* AND THE OTHER LIST IS DRAWN AS IT IS: its own read came back. Saying both could not be
+         read over a list that was read would be the opposite of the fault, a screen that hides
+         what it has. */
+      expect((await sentList()).getAllByRole('listitem')).toHaveLength(3)
+      expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
+      expect(retryOf(sr.teams.inviteSent)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says the invitations cannot be read, draws the applications, and offers to ask again', async () => {
+    const server = aServerWithAQueue(did, { applications: null, invitations: 500 })
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      expect(await screen.findByText(sr.teams.invitationsUnreadable, undefined, { timeout: SLOW })).toBeVisible()
+      expect(asked()).toBeVisible()
+      expect(screen.queryByRole('list', { name: sr.teams.inviteSent })).toBeNull()
+      expect(retryOf(sr.teams.inviteSent)).toBeVisible()
+
+      expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
+      expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+      expect(retryOf(sr.teams.joinWaiting)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says both when both fail, each under its own name and with its own button', async () => {
+    const server = aServerWithAQueue(did, { applications: 500, invitations: 500 })
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      expect(await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })).toBeVisible()
+      expect(screen.getByText(sr.teams.invitationsUnreadable)).toBeVisible()
+      expect(asking()).toBeVisible()
+      expect(asked()).toBeVisible()
+      /* Two buttons with one visible word, told apart by the list each is about (WCAG 2.2 SC
+         2.5.3 keeps the visible word first in the name). */
+      expect(retryOf(sr.teams.joinWaiting)).toBeVisible()
+      expect(retryOf(sr.teams.inviteSent)).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /* FOUR WAYS TO FAIL AND ONE SENTENCE: the sentence does not say which, because the route does
+     not (a 404 is „no such team" and „not yours" at once, ADL A8) and a screen that guessed would
+     be claiming what it cannot know. */
+  it.each([
+    ['a 500', 500],
+    ['a 404', 404],
+    ['a 401', 401],
+    ['a server that cannot be reached', 0],
+  ])('says it on %s', async (_how, how) => {
+    const server = aServerWithAQueue(did, { applications: how, invitations: null })
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      expect(await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('asks both lists again when the button is pressed, and draws what comes back', async () => {
+    const failing: Failing = { applications: 500, invitations: 500 }
+    const server = aServerWithAQueue(did, failing)
+    const user = setupUser()
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+      await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
+
+      const before = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+
+      failing.applications = null
+      failing.invitations = null
+      await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
+
+      expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
+      expect((await sentList()).getAllByRole('listitem')).toHaveLength(3)
+      expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+      expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
+
+      /* BOTH addresses were asked once more: they are one question in two routes, and a screen
+         that showed a fresh queue beside a stale one would be telling two different moments. */
+      const after = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+
+      expect(after - before).toBe(2)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says it is asking while the answer is out, and says the failure again when it comes back the same', async () => {
+    let letGo: () => void = () => undefined
+    const failing: Failing = { applications: 500, invitations: null }
+    const server = aServerWithAQueue(did, failing)
+    const user = setupUser()
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+      await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
+
+      failing.applications = () =>
+        new Promise<Response>((resolve) => {
+          letGo = () => {
+            resolve(answeredWith(500))
+          }
+        })
+      await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
+
+      /* While it is out the sentence is replaced by the loader's own word, and the button is told
+         off rather than switched off, so a second press while it is out asks nothing more. */
+      expect(await screen.findByText(sr.data.loading)).toBeVisible()
+      expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+      expect(retryOf(sr.teams.joinWaiting)).toHaveAttribute('aria-disabled', 'true')
+
+      const out = reads(server.asked).filter((one) => /\/applications$/.test(one)).length
+
+      await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
+      expect(reads(server.asked).filter((one) => /\/applications$/.test(one)).length).toBe(out)
+
+      letGo()
+
+      /* And it says it AGAIN, which is what tells the reader the press was answered: the same
+         sentence coming back is a new alert and not the old one left standing. */
+      expect(await screen.findByText(sr.teams.applicationsUnreadable)).toBeVisible()
+      expect(screen.queryByText(sr.data.loading)).toBeNull()
+      expect(retryOf(sr.teams.joinWaiting)).not.toHaveAttribute('aria-disabled', 'true')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /**
+   * THE MOMENT THE OWNER WAS SHOWN: the press worked, and the read that follows it could not.
+   *
+   * <p>The row that was answered is gone from the server, and what is left on the page is rows
+   * that were true a second ago. They are NOT drawn: a list that says it could not be read and is
+   * drawn anyway is a list the team goes on answering from, and the one it just answered is among
+   * the rows it would be shown (`useResource`: „a screen showing half its data as if it were all
+   * of it is worse than a screen saying it is broken").
+   */
+  it('says both lists cannot be read after a press that worked, and draws none of what it held', async () => {
+    const failing: Failing = { applications: null, invitations: null }
+    const server = aServerWithAQueue(() => {
+      failing.applications = 500
+      failing.invitations = 500
+
+      return did()
+    }, failing)
+    const user = setupUser()
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      await waitingList()
+      await user.click(refuseHim())
+
+      expect(await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })).toBeVisible()
+      expect(screen.getByText(sr.teams.invitationsUnreadable)).toBeVisible()
+      expect(screen.queryByRole('list', { name: sr.teams.joinWaiting })).toBeNull()
+      expect(screen.queryByRole('list', { name: sr.teams.inviteSent })).toBeNull()
+
+      /* And asking again brings back what the server really holds: the application that was
+         answered is not in it. */
+      failing.applications = null
+      failing.invitations = null
+      await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
+
+      await waitFor(
+        async () => {
+          expect((await waitingList()).getAllByRole('listitem')).toHaveLength(2)
+        },
+        { timeout: SLOW },
+      )
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says nothing about a list that was read and holds nothing', async () => {
+    /* The other side of every case above: told apart from a list that could not be read, an empty
+       list stays no section, so a team with nothing waiting is not told its queue is broken. */
+    const server = serverThat((path, init) => {
+      const how = init?.method ?? 'GET'
+
+      if (how === 'GET' && path === '/api/teams') {
+        return listOf(TEAMS_ON_FILE)
+      }
+
+      if (how === 'GET' && path === '/api/competitors') {
+        return listOf(MEMBERS_ON_FILE.filter((one) => one.active))
+      }
+
+      return how === 'GET' && path.startsWith(`/api/teams/${String(MINE.id)}/`) ? listOf([]) : null
+    })
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      expect(await screen.findByRole('heading', { name: MINE.name }, { timeout: SLOW })).toBeVisible()
+      expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+      expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
+      expect(screen.queryByRole('heading', { name: sr.teams.joinWaiting })).toBeNull()
+      expect(screen.queryByRole('heading', { name: sr.teams.inviteSent })).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
 })

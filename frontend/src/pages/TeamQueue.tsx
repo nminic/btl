@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { CompetitorName } from '../components/CompetitorName'
+import { Unreadable } from '../components/Unreadable'
 import { inYearlyWindow } from '../data/season'
 import type { Competitor } from '../data/types'
 import { formatShortDate } from '../i18n/format'
@@ -46,8 +47,10 @@ import { useTeamQueue, type QueueRefusal, type QueueRow } from './useTeamQueue'
  *
  * <p><b>A section with nothing in it is not drawn at all</b>, which is a review finding of
  * 06.09.2026 rather than a preference: „a heading over an empty list announced applications
- * that were not there". `teamQueue.ts` says why an unreadable list and an empty one are the
- * same outcome here and what that costs.
+ * that were not there". **A list that could not be read is NOT a section with nothing in it**
+ * and is not drawn as one (owner, 02.10.2026, PENDING stavka 368): it keeps its heading, says it
+ * could not be read, and offers to ask again. `joiningThisTeam.ts` has the history of why the two
+ * were the same outcome until that day, and what it cost.
  */
 export function TeamQueue({
   team,
@@ -64,7 +67,8 @@ export function TeamQueue({
   today: string
 }) {
   const { locale, t } = useI18n()
-  const { applications, invitations, busy, refused, decide, takeBack } = useTeamQueue(team)
+  const { applications, invitations, reading, readAgain, busy, refused, decide, takeBack } =
+    useTeamQueue(team)
   const mayTakeHimIn = inYearlyWindow(today)
 
   /**
@@ -116,7 +120,32 @@ export function TeamQueue({
 
   return (
     <>
-      {applications.length > 0 && (
+      {/* A LIST THAT COULD NOT BE READ KEEPS ITS NAME AND SAYS SO, and is not drawn as a list that
+          holds nothing (owner, 02.10.2026, PENDING stavka 368: „Spisak koji ne moze da se ucita
+          KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"").
+
+          The heading stays because it is what the sentence and the button are about, and a reader
+          who arrives by headings must be able to arrive at this one. It is NOT the heading over an
+          empty list that a review of 06.09.2026 took away: that announced applications that were
+          not there, and this announces a list that may be. Never both at once: the two blocks are
+          the two states of one list, and the case that holds it is „says both when both fail". */}
+      {applications.got === 'unreadable' && (
+        <>
+          <h2 className="profile__section" id="team-waiting">
+            {t('teams.joinWaiting')}
+          </h2>
+          <Unreadable
+            said={t('teams.applicationsUnreadable')}
+            named={t('teams.joinWaiting')}
+            reading={reading}
+            onRetry={() => {
+              void readAgain()
+            }}
+          />
+        </>
+      )}
+
+      {applications.got === 'rows' && applications.rows.length > 0 && (
         <>
           {/* Named by its own heading, because a list of questions about people is a thing a
               reader arrives at and must be able to leave again (WCAG 2.2, 1.3.1). It also lets
@@ -126,7 +155,7 @@ export function TeamQueue({
             {t('teams.joinWaiting')}
           </h2>
           <ul className="submissions" aria-labelledby="team-waiting">
-            {applications.map((one) => {
+            {applications.rows.map((one) => {
               const row: QueueRow = { kind: 'application', id: one.id }
               const { said } = whoIs(one.memberNumber)
 
@@ -178,13 +207,29 @@ export function TeamQueue({
         </>
       )}
 
-      {invitations.length > 0 && (
+      {invitations.got === 'unreadable' && (
+        <>
+          <h2 className="profile__section" id="team-invited">
+            {t('teams.inviteSent')}
+          </h2>
+          <Unreadable
+            said={t('teams.invitationsUnreadable')}
+            named={t('teams.inviteSent')}
+            reading={reading}
+            onRetry={() => {
+              void readAgain()
+            }}
+          />
+        </>
+      )}
+
+      {invitations.got === 'rows' && invitations.rows.length > 0 && (
         <>
           <h2 className="profile__section" id="team-invited">
             {t('teams.inviteSent')}
           </h2>
           <ul className="submissions" aria-labelledby="team-invited">
-            {invitations.map((one) => {
+            {invitations.rows.map((one) => {
               const row: QueueRow = { kind: 'invitation', id: one.id }
               const { said } = whoIs(one.memberNumber)
 
