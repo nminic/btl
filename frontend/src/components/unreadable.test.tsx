@@ -87,4 +87,67 @@ describe('a list that could not be read', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('The list cannot be read.')
     expect(screen.getByRole('button', { name: `${en.data.retry}: Messages` })).toBeVisible()
   })
+
+  it('is named by its own word when nothing names the list', () => {
+    shown({ named: undefined })
+
+    /* A whole screen that failed, or a part with no name, has nothing to say which list it is about,
+       and a label that carried an empty one would be a button called „Pokušaj ponovo: ". */
+    expect(screen.getByRole('button', { name: sr.data.retry })).toBeVisible()
+    expect(screen.getByRole('button')).not.toHaveAttribute('aria-label')
+  })
+})
+
+/**
+ * THE ALERT OF A SECOND FAILURE IS A NEW ELEMENT, AND THE ONE THE FIRST WAS IS GONE (02.10.2026).
+ *
+ * <p>Measured on the version PR 469 introduced: the sentence and the loader's word were two
+ * different `<p>` elements in one place with no `key`, which React does not tell apart, so the
+ * node that said „cannot be read" was the same node, with its `role` turned over, that had said
+ * „Učitavanje" a moment before. A reader who pressed the button and was answered with the same
+ * failure got an element whose role changed and nothing inserted, and an `alert` is what a screen
+ * reader says when it is inserted. Whether a given one then says it is NOT measured here: what is
+ * held is the document, which is the part this file can see.
+ *
+ * <p>The button is the one thing that is NOT replaced, and that is held beside it: it is where the
+ * keyboard reader's focus is, and a control that is replaced takes the focus with it.
+ */
+describe('a list that could not be read, asked again', () => {
+  const stand = (reading: boolean) => (
+    <I18nProvider locale="sr">
+      <Unreadable said="Spisak se ne može učitati." named="Poruke" reading={reading} onRetry={() => undefined} />
+    </I18nProvider>
+  )
+
+  it('draws the alert of a second failure as a new element, and the first is no longer in the document', () => {
+    const { rerender } = render(stand(false))
+    const first = screen.getByRole('alert')
+
+    rerender(stand(true))
+    const asking = screen.getByRole('status')
+
+    expect(first.isConnected, 'the first alert is still in the document while the request is out').toBe(false)
+
+    rerender(stand(false))
+    const second = screen.getByRole('alert')
+
+    expect(second, 'the second failure is the first alert with its role turned back').not.toBe(first)
+    expect(asking.isConnected, 'the word for asking is still in the document').toBe(false)
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(second).toHaveTextContent('Spisak se ne može učitati.')
+  })
+
+  it('keeps the very same button through all of it, with the focus on it', () => {
+    const { rerender } = render(stand(false))
+    const button = screen.getByRole('button', { name: `${sr.data.retry}: Poruke` })
+
+    button.focus()
+    rerender(stand(true))
+    expect(screen.getByRole('button', { name: `${sr.data.retry}: Poruke` })).toBe(button)
+    expect(button).toHaveFocus()
+
+    rerender(stand(false))
+    expect(screen.getByRole('button', { name: `${sr.data.retry}: Poruke` })).toBe(button)
+    expect(button).toHaveFocus()
+  })
 })

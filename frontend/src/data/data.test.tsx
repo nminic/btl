@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { render, screen, waitFor } from '@testing-library/react'
 import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
+import { aFailedRead } from '../test/failedRead'
 import { setupUser } from '../test/user'
 import { first, must } from '../test/at'
 import { eventSlug } from '../pages/admin/entityForms'
@@ -236,7 +237,7 @@ describe('useResource', () => {
 describe('combineResources', () => {
   const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
   const loading: ResourceState<never> = { status: 'loading' }
-  const failed: ResourceState<never> = { status: 'error', error: new Error('pukla veza') }
+  const failed: ResourceState<never> = aFailedRead()
 
   it('is ready only when all three are ready', () => {
     expect(combineResources(ready(1), ready('dva'), ready(true))).toEqual({
@@ -262,7 +263,7 @@ describe('combineResources', () => {
 describe('combineFour', () => {
   const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
   const loading: ResourceState<never> = { status: 'loading' }
-  const failed: ResourceState<never> = { status: 'error', error: new Error('pukla veza') }
+  const failed: ResourceState<never> = aFailedRead()
 
   it('is ready only when all four are ready', () => {
     expect(combineFour(ready(1), ready('dva'), ready(true), ready('četiri'))).toEqual({
@@ -286,7 +287,7 @@ describe('combineFour', () => {
 describe('combinePair', () => {
   const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
   const loading: ResourceState<never> = { status: 'loading' }
-  const failed: ResourceState<never> = { status: 'error', error: new Error('pukla veza') }
+  const failed: ResourceState<never> = aFailedRead()
 
   it('is ready only when both are ready', () => {
     expect(combinePair(ready(1), ready('dva'))).toEqual({ status: 'ready', data: [1, 'dva'] })
@@ -303,11 +304,81 @@ describe('combinePair', () => {
   })
 })
 
+/**
+ * MORE THAN ONE FAILURE IS ONE FAILURE THAT ASKS FOR ALL OF THEM (decision of 02.10.2026, PENDING
+ * stavka 368, in the words of the PDL's record of it and not the owner's: „Spisak koji ne moze da
+ * se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo"").
+ *
+ * <p>A server that is down fails every file at once, and a button that asked again for only the
+ * first of them would answer one press with the second still saying it could not be read. The three
+ * combiners are held by one table because they are one rule written three times, and a copy that
+ * drifts is a screen that asks for half of what failed.
+ *
+ * <p>The axes are how many failed (one, which is handed back as it is, and several), which one asks
+ * (the first of the two and the second), and whether anything is already asking.
+ */
+describe('the combiners, when more than one read failed', () => {
+  const ready = <T,>(data: T): ResourceState<T> => ({ status: 'ready', data })
+  const loading: ResourceState<never> = { status: 'loading' }
+
+  type Combine = (first: ResourceState<number>, second: ResourceState<string>) => ResourceState<unknown>
+
+  const COMBINERS: [name: string, combine: Combine][] = [
+    ['combinePair', (first, second) => combinePair(first, second)],
+    ['combineResources', (first, second) => combineResources(first, second, ready(true))],
+    /* The fourth is still on its way, which is the state an error has to win over. */
+    ['combineFour', (first, second) => combineFour(first, second, ready(true), loading)],
+  ]
+
+  /** A state that is a failure, or a failure of the case: a combiner that hands back anything
+   *  else here is what the case is about. */
+  function aFailure(state: ResourceState<unknown>): Extract<ResourceState<unknown>, { status: 'error' }> {
+    if (state.status !== 'error') {
+      throw new Error(`expected a failure and got ${state.status}`)
+    }
+
+    return state
+  }
+
+  it.each(COMBINERS)('%s asks again for every read that failed, with one press', (_name, combine) => {
+    const asked: string[] = []
+    const failure = combine(
+      aFailedRead({ readAgain: () => asked.push('first') }),
+      aFailedRead({ readAgain: () => asked.push('second') }),
+    )
+
+    aFailure(failure).readAgain()
+
+    expect(asked.sort()).toEqual(['first', 'second'])
+  })
+
+  it.each(COMBINERS)('%s says it is asking while any of the reads is', (_name, combine) => {
+    expect(aFailure(combine(aFailedRead(), aFailedRead())).reading).toBe(false)
+    expect(aFailure(combine(aFailedRead({ reading: true }), aFailedRead())).reading).toBe(true)
+    expect(aFailure(combine(aFailedRead(), aFailedRead({ reading: true }))).reading).toBe(true)
+  })
+
+  it.each(COMBINERS)('%s carries the error of the first read that failed', (_name, combine) => {
+    const first = aFailedRead()
+    const second = aFailedRead()
+
+    expect(aFailure(combine(first, second)).error).toBe(first.error)
+    expect(aFailure(combine(ready(1), second)).error).toBe(second.error)
+  })
+
+  it.each(COMBINERS)('%s hands back the failure itself when it is the only one', (_name, combine) => {
+    const failure = aFailedRead()
+
+    expect(combine(ready(1), failure)).toBe(failure)
+    expect(combine(failure, loading)).toBe(failure)
+  })
+})
+
 describe('dataOr and failed', () => {
   /* For the two places that must not wait and must not become an error message:
      the count in the header, which sits above every screen there is, and the list
      of queues, where one file feeds two rows at most. */
-  const failure: ResourceState<number[]> = { status: 'error', error: new Error('pukla veza') }
+  const failure: ResourceState<number[]> = aFailedRead()
 
   it('hands over what a resource holds, and a stand-in until it does', () => {
     expect(dataOr({ status: 'ready', data: [1, 2] }, [])).toEqual([1, 2])

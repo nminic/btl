@@ -1,10 +1,9 @@
-import { useState } from 'react'
 import { Link } from 'react-router'
 import { Unreadable } from '../components/Unreadable'
 import { formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
-import { dataOr, theInboxHasChanged, useInbox } from '../data/useResource'
+import { dataOr, useInbox } from '../data/useResource'
 import type { InboxLine } from '../data/types'
 import { Dropdown } from './Dropdown'
 import { MailIcon } from './icons'
@@ -64,24 +63,20 @@ function HisOwnInbox({ mine }: { mine: string }) {
      sentence in a panel that is shut until somebody opens it, with the button that asks again,
      so a server that did not answer is no longer read as an inbox with nothing in it. */
   const inbox = useInbox(mine)
-  /* Which state of the read the last press was made on, and never a flag of its own: the read
-     replaces its state with a new object whether it comes back or fails again, so „the press is
-     out" is exactly „the state is still the one it was pressed on", and it ends by itself the
-     moment the answer lands, without an effect to clear it. */
-  const [askedOn, setAskedOn] = useState<typeof inbox | null>(null)
 
+  /* **Whether the press is out, and the press itself, are the STATE'S and not this panel's.**
+     Until the second half of the decision above this kept its own copy of both (which state the
+     last press was made on, and a call that dropped the inbox's cache and bumped its revision), for
+     the reason that nothing else could say them. The state carries them now (`FailedRead`), for
+     every reader of every address, so there is one home for „an asking again is out" and this is
+     not it. Pressed here it reaches the screen of messages too, and pressed there it reaches this
+     panel, which is what `useResource` says about `readAgain`. */
   return (
     <ThePanel
       lines={dataOr(inbox, [])}
       unreadable={
         inbox.status === 'error'
-          ? {
-              reading: askedOn === inbox,
-              retry: () => {
-                setAskedOn(inbox)
-                theInboxHasChanged()
-              },
-            }
+          ? { reading: inbox.reading, retry: inbox.readAgain }
           : undefined
       }
     />

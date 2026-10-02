@@ -29,10 +29,45 @@ import type {
   WhatIsWaiting,
 } from './types'
 
+/**
+ * A READ THAT FAILED, AND THE WAY TO ASK AGAIN FOR IT.
+ *
+ * <p>Decision of 02.10.2026 (`btl-produkt/PDL.md`, PENDING stavka 368), in the words of the PDL's
+ * record of it and not the owner's: „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda
+ * prazan, uz dugme „Pokusaj ponovo". Vazi za sve ekrane sa spiskom." The first half of it was
+ * written for the two screens that drew a failure as an empty list; this is the second, and it is
+ * carried by the state itself because every screen that goes through `Resource` reads this state:
+ * a button on the component with nothing to call would have been a button on forty-odd screens
+ * that each had to be handed what to ask.
+ *
+ * <p><b>Both fields are REQUIRED, and that is the point of putting them here.</b> A state built by
+ * hand somewhere that does not know how to ask again is a compile error and not a screen with a
+ * button that does nothing. The compiler found three test files that built one
+ * (`components/Resource.test.tsx`, `data/data.test.tsx`, `pages/event/eventWaiting.test.tsx`), and
+ * in production only `useResource` below does.
+ */
+export type FailedRead = {
+  status: 'error'
+  error: Error
+  /**
+   * Asks again for what failed, for EVERY reader of the same address that is showing the failure
+   * and not only for the one whose button was pressed.
+   *
+   * <p>The portal reads one address in several places at once (the panel under the envelope and the
+   * screen of messages, the header and any screen that lists members), and a retry that reached
+   * only the pressed one would leave its neighbour saying „cannot be read" beside a screen that
+   * had just read it - a sentence that lies, which is what the decision above is about. A reader
+   * that already holds an answer is not asked: it has nothing to say again.
+   */
+  readAgain: () => void
+  /** Whether an asking again is out. The first read of a screen is not one: nothing was pressed. */
+  reading: boolean
+}
+
 export type ResourceState<T> =
   | { status: 'loading' }
   | { status: 'ready'; data: T }
-  | { status: 'error'; error: Error }
+  | FailedRead
 
 /**
  * A resource, ready from the first render once this visit has already read it.
@@ -133,6 +168,51 @@ export type HowToRead = {
   language?: string
 }
 
+/**
+ * EVERY READER THAT IS SHOWING THE FAILURE OF AN ADDRESS, by address, each as the one thing that can
+ * be done to it: tell it to read again.
+ *
+ * <p><b>Module scope and not a ref</b>, for the reason `inboxAnsweredFor` gives and in the shape
+ * `whoIsDrawingTheInbox` has: several components read one address at once, so a retry has to be
+ * something they can all be reached through, and one home means one decision. It is the inbox's
+ * own arrangement made general - there, `theInboxHasChanged` reaches every mounted reader of one
+ * name; here, `readAgain` reaches every mounted reader of one address that is showing a failure.
+ *
+ * <p><b>Only readers that FAILED are in it</b>, which is the whole difference from that
+ * arrangement and is on purpose: a reader that holds an answer has nothing to say again, and
+ * asking it would redraw a screen that is already right (and, where something had dropped the cache
+ * in between, would ask the server for a list nobody is waiting for). A reader joins when its state
+ * becomes a failure and leaves when it stops being one or when it goes.
+ */
+const showingTheFailureOf = new Map<string, Set<() => void>>()
+
+/** The readers showing the failure of one address, made on first use so that every caller can
+ *  take it for granted (and so that no caller has a branch for „nobody has failed on this yet"
+ *  that nothing could take). */
+function whoShowsTheFailureOf(address: string): Set<() => void> {
+  let readers = showingTheFailureOf.get(address)
+
+  if (readers === undefined) {
+    readers = new Set()
+    showingTheFailureOf.set(address, readers)
+  }
+
+  return readers
+}
+
+/**
+ * Tells every reader that is showing the failure of this address to read it again.
+ *
+ * <p>Copied before it is walked, because each of them answers by changing its own state and that
+ * is how it leaves the set once the answer lands: a set walked while it is emptied skips whoever
+ * was behind the one that left.
+ */
+function askEveryoneAgain(address: string): void {
+  for (const wake of [...whoShowsTheFailureOf(address)]) {
+    wake()
+  }
+}
+
 export function useResource<T>(name: ResourceName, how: HowToRead = {}): ResourceState<T> {
   const { owner, revision, language } = how
 
@@ -151,6 +231,10 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
    * Reading it on every render would be reading a value nothing here is
    * subscribed to. */
   const [state, setState] = useState<ResourceState<T>>(() => atHand<T>(name, language))
+  /* How many times this reader has been told to read again, and nothing else: a number that
+     changes is a reason for the effect below to run once more. Two tellings that arrive before a
+     redraw are one run, because both land in the same render. */
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     /* Asked for even when the value is already in hand, and that is what closes
@@ -160,6 +244,12 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
        that, in useResource.test.tsx). `loadResource` answers from the promise it
        is already holding, so what it costs is a render nobody sees. */
     let active = true
+    /* Made here, per run of this effect, and bound to the address THIS run reads. Made once per
+       reader it would go on asking for the address the reader first had, and `pages` is the name
+       whose address changes under a reader that stays (a reader who switches language). */
+    const readAgain = () => {
+      askEveryoneAgain(address)
+    }
 
     loadResource<T>(name, language).then(
       (data) => {
@@ -169,7 +259,9 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
       },
       (error: Error) => {
         if (active) {
-          setState({ status: 'error', error })
+          /* `reading` false, and always a NEW state: the answer to an asking again that is a
+             failure again is a state of its own, which is what lets a screen draw it as news. */
+          setState({ status: 'error', error, readAgain, reading: false })
         }
       },
     )
@@ -182,8 +274,32 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
        (`/api/<name>`), so nothing about them moves. `language` is read inside this effect and
        is deliberately not listed beside it: it cannot change without `address` changing,
        because `address` is built from it, so listing it would be a second dependency saying
-       the same thing. */
-  }, [address, owner, revision])
+       the same thing. `attempt` is what a retry changes. */
+  }, [address, owner, revision, attempt])
+
+  useEffect(() => {
+    if (state.status !== 'error') {
+      return
+    }
+
+    /* Told to read again by whoever asks for this address, itself included: the button that was
+       pressed is on one reader and the failure it asks again for is on every reader of the address.
+       Marks THIS reader as asking before the effect above runs, which is what the screen draws
+       while the request is out. Nothing here reads state that could have moved since it was made:
+       it is the failure this very reader is showing. */
+    const failure = state
+    const wake = () => {
+      setState({ ...failure, reading: true })
+      setAttempt((were) => were + 1)
+    }
+    const alongside = whoShowsTheFailureOf(address)
+
+    alongside.add(wake)
+
+    return () => {
+      alongside.delete(wake)
+    }
+  }, [state, address])
 
   return state
 }
@@ -217,24 +333,40 @@ export function failed(...states: ResourceState<unknown>[]): boolean {
 }
 
 /**
- * The failure of the first resource that has one, as a state of its own.
+ * The failure of what was read, as a state of its own.
  *
  * Written to give back the error state rather than the state that carries it,
  * because an error state says nothing about the shape of the data that never
  * arrived: this one fits the combined type without anything being asserted
  * about it, and `find` would have handed back a state of one resource's type
  * for all three to be called (ADL A14).
+ *
+ * <p><b>One failure is handed back as it is, and two or more are ONE failure that asks for all of
+ * them.</b> With a single failure the state is the very object the reader holds, so nothing about
+ * it is copied and a screen can tell it is the same one. With several (a server that is down fails
+ * every file at once) a button that asked again for only the first would answer one press with
+ * the second still saying it could not be read, and the reader would press twice for one fault.
+ * The error shown is the first one's, as it always was; the asking is out while ANY of them is
+ * asking, so the button is told off for as long as there is something it is waiting for.
  */
-function firstError(
-  states: ResourceState<unknown>[],
-): { status: 'error'; error: Error } | undefined {
-  for (const state of states) {
-    if (state.status === 'error') {
-      return state
-    }
+function theFailure(states: ResourceState<unknown>[]): FailedRead | undefined {
+  const failures = states.filter((one): one is FailedRead => one.status === 'error')
+  const [first, second] = failures
+
+  if (first === undefined || second === undefined) {
+    return first
   }
 
-  return undefined
+  return {
+    status: 'error',
+    error: first.error,
+    readAgain: () => {
+      for (const one of failures) {
+        one.readAgain()
+      }
+    },
+    reading: failures.some((one) => one.reading),
+  }
 }
 
 /* One screen usually needs several resources at once, and it has to show one
@@ -245,7 +377,7 @@ export function combineResources<A, B, C>(
   second: ResourceState<B>,
   third: ResourceState<C>,
 ): ResourceState<[A, B, C]> {
-  const failure = firstError([first, second, third])
+  const failure = theFailure([first, second, third])
 
   if (failure !== undefined) {
     return failure
@@ -266,7 +398,7 @@ export function combineFour<A, B, C, D>(
   third: ResourceState<C>,
   fourth: ResourceState<D>,
 ): ResourceState<[A, B, C, D]> {
-  const failure = firstError([first, second, third, fourth])
+  const failure = theFailure([first, second, third, fourth])
 
   if (failure !== undefined) {
     return failure
@@ -289,7 +421,7 @@ export function combinePair<A, B>(
   first: ResourceState<A>,
   second: ResourceState<B>,
 ): ResourceState<[A, B]> {
-  const failure = firstError([first, second])
+  const failure = theFailure([first, second])
 
   if (failure !== undefined) {
     return failure
