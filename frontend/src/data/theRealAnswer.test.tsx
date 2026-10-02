@@ -449,6 +449,37 @@ describe('the referral link, on the answer the server gives', () => {
   })
 })
 
+describe('the balance, on a count the server gives', () => {
+  it('draws nought for a count below nought, and never a sum below nought', async () => {
+    /* **A WHOLE NUMBER THAT IS NOT A COUNT** (PENDING 227). `Number.isInteger(-3)` is true, so a reader
+       that asked only that handed it on, and the screen multiplied the price by it: minus three at six
+       hundred dinars is „-1.800 RSD", printed as what a member is owed. The reader now believes a whole
+       number of nought or more (`session/theServer.ts`, `wholeIn`), so a count below nought is „I was not
+       told", which this page draws as nought like every other count it was not told.
+
+       Asked on the screen as well as on the reader, because the finding was a sum on a page and not a
+       number in a session: the reader can be right and the page still read the count off somewhere else. */
+    const { stop } = meAnswering({
+      memberNumber: stillAMember,
+      membershipBasis: 'payment',
+      referralCode: 'aaaaaaaaaaaaaaaa',
+      referredCount: -3,
+    })
+
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
+
+      /* Waited for through the address under the sentence, which comes off the same answer, so „nothing
+         is drawn about a balance yet" cannot pass for „the balance is drawn and is not below nought". */
+      expect(await screen.findByText(/registracija\?preporuka=aaaaaaaaaaaaaaaa$/)).toBeVisible()
+      expect(screen.getByText('0 RSD')).toBeVisible()
+      expect(screen.queryByText(/1\.800/)).not.toBeInTheDocument()
+    } finally {
+      stop()
+    }
+  })
+})
+
 describe('a racing pair, on the answer the server gives', () => {
   it('says which season it is for, and asks the answer for no day', async () => {
     /* The day a pair was made „se ne prikazuje nikome" (owner, 13.09.2026) and
