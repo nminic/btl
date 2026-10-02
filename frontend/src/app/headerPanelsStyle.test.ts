@@ -3,7 +3,6 @@ import { join } from 'node:path'
 import { screen } from '@testing-library/react'
 import { htmlElement } from '../test/at'
 import { renderAt } from '../test/render'
-import { rulesInMedia, unconditionalRules } from '../test/stylesheet'
 import { setupUser } from '../test/user'
 
 /**
@@ -31,7 +30,9 @@ import { setupUser } from '../test/user'
  * the spelling of a selector, which is where every earlier draft of this guard was beaten: a rule
  * for `.lang.is-open`, for `.inbox:focus-within`, for `.shell__tools > *` or for `*` reaches an
  * element exactly as a plain class does, and a guard that reads the last class of a selector sees
- * none of them.
+ * none of them. A rule NESTED in another (`.inbox { &:focus-within { … } }`, or a query nested in a
+ * rule) is written against what it stands in, so it is asked as that rule with `&` read as the one
+ * it nests in.
  *
  * **What is then held, each as a fact about the source:**
  *
@@ -40,34 +41,38 @@ import { setupUser } from '../test/user'
  *    any query or in the one narrow query, and is not `!important`.
  * 2. The names those rules write on each element are exactly the ones pinned below. The names and
  *    not the values, so a repaint of a value fails nothing and a property nobody has written
- *    there before fails at once.
+ *    there before fails at once. Where a value alone can take a box away, it is read as well: the
+ *    `display` of the row of tools and of the bar.
  * 3. Where a base rule and the narrow query write one name on one element, the query stands after
  *    the base rule: an order of lines, which is not a claim that it wins.
- * 4. What the narrow query says and what stands outside it is read off the rules by name, which
- *    is exact because of the first fact: every rule that could say otherwise is one of those.
+ * 4. What the narrow query says and what stands outside it is read off the same rules by name,
+ *    which is exact because of the first fact: every rule that could say otherwise is one of those.
  * 5. In each of those states none of the four carries an inline `style`, which would be heavier
  *    than any rule, whether it is written for the open state only or for both.
  *
  * **The two families, as patterns and not lists.** A list of names is a list of one spelling: the
  * logical `margin-inline-end` is a way to push a panel off the screen that no list of `margin` and
  * `margin-top` has ever heard of. For the three boxes between a panel and the bar the family is
- * what can make one of them the measure of a positioned box or take its box away: `position`,
- * `display`, `all`, and the properties that give a box a containing block of its own (`transform`
- * and its three single-property cousins, `perspective`, `filter`, `backdrop-filter`, `contain`,
- * `container-type`, `content-visibility`, `will-change`). For a panel it is what places or sizes
- * it: `position`, `all`, the four offsets and `inset` in every spelling, `margin` in every
- * spelling, width and height and their minimum and maximum, physical and logical, and
- * `translate`, `rotate` and `scale`.
+ * what can make one of them the measure of a positioned box, take its box away, or clip what
+ * hangs from it: `position`, `display`, `all`, `overflow` and `clip` in every spelling, and the
+ * properties that give a box a containing block of its own (`transform` and its three
+ * single-property cousins, `perspective`, `filter`, `backdrop-filter`, `contain`, `container-type`,
+ * `content-visibility`, `will-change`). For a panel it is what places, sizes or moves it:
+ * `position`, `all`, the four offsets and `inset` in every spelling, `margin` in every spelling,
+ * width and height and their minimum and maximum, physical and logical, and `transform` with its
+ * three single-property cousins (`translate`, `rotate`, `scale`).
  *
  * **What is NOT held here, said plainly because a guard may claim only what the tool beneath it
  * answers.** Where the panel then lands, and which rule it ends up under. Properties outside the
- * families: what hides or clips a panel (`overflow`, `clip-path`, `visibility`, `opacity`,
- * `display` and `z-index` of a panel, `overflow` of the bar), and the `transform` of a panel,
- * which is the opening animation of the language menu. A rule that applies only under a
+ * families: what hides a panel (`visibility`, `opacity`, `display` and `z-index` of a panel); what
+ * enlarges its box from the inside, which is `padding`, `border` and `box-sizing` (design values
+ * that a pin would freeze, and `box-sizing: border-box` is what `index.css` says of every element,
+ * which is what lets `max-width` hold them); what its content asks of it; and the button, whose
+ * own box decides the line the panel hangs under. A rule that applies only under a
  * pseudo-class jsdom's matcher does not carry (`:active`, `:focus-visible`, `:target`), or under
- * `:hover` over anything but the button. A property jsdom's parser does not know, which it drops.
- * And a style that script writes after the state is read. Every one of those is asked of Chrome
- * and none of them of this.
+ * `:hover` over anything but the button. A property or an at-rule jsdom's parser does not know,
+ * which it drops (`@starting-style` inside a rule, measured). And a style that script writes after
+ * the state is read. Every one of those is asked of Chrome and none of them of this.
  *
  * That the shape this holds is the one that keeps a panel on the screen was measured, not argued:
  * fourteen widths from 360 to 1280 on the production build and on the QA build, the inbox with
@@ -78,7 +83,6 @@ import { setupUser } from '../test/user'
  */
 const SRC = join(process.cwd(), 'src')
 const SHEET = 'app/Shell.css'
-const css = readFileSync(join(SRC, SHEET), 'utf-8')
 
 /** The one width the portal changes this header at: the navigation unfolds above it and the
  *  button that folds it away stops being drawn (`styles/scale.test.ts` holds the list of
@@ -92,8 +96,10 @@ const NARROW = '(max-width: 51.24875em)'
  * markup, so that the class names the one holds are the ones the other finds on the page (a fact
  * with two homes drifts, and a guard over a class nobody wears holds nothing).
  *
- * `margin` is the language menu's alone (`margin: 0`, the list's own); `margin-top` is the step
- * under the button that the query gives all three.
+ * `margin` and `transform` are the language menu's alone: `margin: 0` is the list's own, and
+ * `transform` is how it opens (`translateY(-4px)` shut, `none` open, both read below by value,
+ * because they are the one place a panel is meant to be moved). `margin-top` is the step under the
+ * button that the query gives all three.
  */
 const ON_THE_PANEL = ['margin-top', 'max-width', 'min-width', 'position', 'right', 'top', 'width']
 
@@ -102,7 +108,7 @@ const HEADER_PANELS = [
     button: 'Jezik',
     box: '.lang',
     panel: '.lang__menu',
-    onThePanel: ['margin', ...ON_THE_PANEL].sort(),
+    onThePanel: ['margin', 'transform', ...ON_THE_PANEL].sort(),
   },
   { button: 'Otvori nalog', box: '.account', panel: '.account__panel', onThePanel: ON_THE_PANEL },
   { button: /^Otvori poruke/, box: '.inbox', panel: '.inbox__panel', onThePanel: ON_THE_PANEL },
@@ -117,13 +123,14 @@ const BUTTONS_BOX = HEADER_PANELS.map((one) => one.box)
 const BETWEEN_PINNED = { box: ['position'], tools: ['display'], bar: ['display', 'position'] }
 
 /** What can make one of the three boxes between a panel and the bar the measure of a positioned
- *  box, or take its box away (the head of this file says why a pattern and not a list). */
+ *  box, take its box away, or clip what hangs from it (the head of this file says why a pattern and
+ *  not a list). */
 const BETWEEN =
-  /^(position|display|all|transform|translate|rotate|scale|perspective|filter|backdrop-filter|contain|container-type|content-visibility|will-change)$/
+  /^(position|display|all|overflow(-.+)?|clip(-path)?|transform|translate|rotate|scale|perspective|filter|backdrop-filter|contain|container-type|content-visibility|will-change)$/
 
-/** What places or sizes a panel, in every spelling. */
+/** What places, sizes or moves a panel, in every spelling. */
 const THE_PANEL =
-  /^(position|all|top|right|bottom|left|inset(-.+)?|margin(-.+)?|(min-|max-)?(width|height|inline-size|block-size)|translate|rotate|scale)$/
+  /^(position|all|top|right|bottom|left|inset(-.+)?|margin(-.+)?|(min-|max-)?(width|height|inline-size|block-size)|transform|translate|rotate|scale)$/
 
 /** The width of the gutter on each side of the bar, which is the bar's own `padding-inline`
  *  (`.shell__bar`), written once as a token. */
@@ -199,9 +206,23 @@ function namesIn(style: CSSStyleDeclaration): string[] {
     : names
 }
 
-/** Every style rule of every sheet of the portal, wherever it stands: at the top, inside a media
- *  query, inside anything else that groups rules. Read through the browser's own parser and not
- *  as text, so that a rule inside a query is a rule inside a query. */
+/** A rule that carries declarations of its own and is not a style rule: what the parser calls the
+ *  declarations that follow a nested rule, or stand in a query nested in a rule. */
+function carriesDeclarations(rule: CSSRule): rule is CSSRule & { style: CSSStyleDeclaration } {
+  return 'style' in rule && rule.style instanceof CSSStyleDeclaration
+}
+
+/**
+ * Every rule of every sheet of the portal, wherever it stands: at the top, inside a media query,
+ * inside anything else that groups rules, AND NESTED inside another rule, which the parser
+ * understands and an earlier version of this walked past. A nested rule is written against what it
+ * nests in, so `&` is the rule it stands in (`:is(.inbox)`) and the declarations that follow a
+ * nested rule belong to that rule too. Read through the browser's own parser and not as text, so
+ * that a rule inside a query is a rule inside a query.
+ *
+ * What the parser drops, it drops here: an at-rule it does not know (`@starting-style` inside a
+ * rule, measured) is not seen, and the head of this file says so.
+ */
 function everythingWritten(): { rules: Written[]; sheets: number } {
   const rules: Written[] = []
   const sheets = stylesheets()
@@ -213,36 +234,51 @@ function everythingWritten(): { rules: Written[]; sheets: number } {
     tag.textContent = sheet.text
     document.head.append(tag)
 
-    const walk = (list: CSSRule[], condition: string | null) => {
+    const add = (selector: string, style: CSSStyleDeclaration, condition: string | null) => {
+      const names = namesIn(style)
+
+      line += 1
+      rules.push({
+        sheet: sheet.path,
+        selector,
+        condition,
+        line,
+        names,
+        values: Object.fromEntries(names.map((one) => [one, style.getPropertyValue(one)])),
+        important: names.filter((one) => style.getPropertyPriority(one) === 'important'),
+      })
+    }
+
+    const walk = (list: CSSRule[], condition: string | null, within: string | null) => {
       for (const rule of list) {
         if (rule instanceof CSSStyleRule) {
-          line += 1
+          const written = rule.selectorText.replace(/\s+/g, ' ').trim()
+          const selector = within === null ? written : written.replace(/&/g, `:is(${within})`)
 
-          const names = namesIn(rule.style)
-
-          rules.push({
-            sheet: sheet.path,
-            selector: rule.selectorText.replace(/\s+/g, ' ').trim(),
-            condition,
-            line,
-            names,
-            values: Object.fromEntries(names.map((one) => [one, rule.style.getPropertyValue(one)])),
-            important: names.filter((one) => rule.style.getPropertyPriority(one) === 'important'),
-          })
+          add(selector, rule.style, condition)
+          walk([...rule.cssRules], condition, selector)
+        } else if (within !== null && carriesDeclarations(rule)) {
+          add(within, rule.style, condition)
         } else if (rule instanceof CSSMediaRule) {
-          walk([...rule.cssRules], rule.conditionText)
+          walk([...rule.cssRules], rule.conditionText, within)
         } else if (rule instanceof CSSGroupingRule) {
-          walk([...rule.cssRules], '(another kind of query)')
+          walk([...rule.cssRules], '(another kind of query)', within)
         }
       }
     }
 
-    walk([...(tag.sheet?.cssRules ?? [])], null)
+    walk([...(tag.sheet?.cssRules ?? [])], null, null)
     tag.remove()
   }
 
   return { rules, sheets: sheets.length }
 }
+
+let everything: ReturnType<typeof everythingWritten> | undefined
+
+/** Read once and kept: what comes out is data, and parsing every sheet of the portal is the
+ *  costly part of every question below. */
+const read = () => (everything ??= everythingWritten())
 
 let snapshot: Promise<Snapshot> | undefined
 
@@ -255,7 +291,7 @@ let snapshot: Promise<Snapshot> | undefined
 function theHeaderAsItIs(): Promise<Snapshot> {
   snapshot ??= (async () => {
     const user = setupUser()
-    const { rules, sheets } = everythingWritten()
+    const { rules, sheets } = read()
     const reaches: Reach[] = []
     const inlined: string[] = []
     const states: Snapshot['states'] = []
@@ -336,25 +372,33 @@ function theHeaderAsItIs(): Promise<Snapshot> {
   return snapshot
 }
 
-/** What one rule says about a property of a selector, read straight off the rules given:
- *  the value of the last rule among THEM that names the selector, `undefined` where none
- *  does. The rules given are one query or the top of one sheet, so this answers where
- *  something is written and never which of two wins. Read by the parts of a selector, because
- *  two selectors written on two lines are kept with the line break between them. Exact here
- *  because of the first fact above: every rule that could write one of these is a plain class. */
-function written(rules: CSSStyleRule[], selector: string, property: string): string | undefined {
-  return rules
-    .filter((rule) => rule.selectorText.split(',').some((one) => one.trim() === selector))
-    .map((rule) => rule.style.getPropertyValue(property))
-    .filter((value) => value !== '')
-    .at(-1)
+/**
+ * What `app/Shell.css` says about a property of a selector in one place, read off the same rules
+ * the questions about what reaches an element are asked of: the value of the LAST rule written in
+ * that place (inside the narrow query, or outside any) that names the selector and writes the
+ * property, `undefined` where none does. It answers where something is written and never which
+ * of two wins. One data source on purpose: a value read from the top of the sheet by one reader
+ * while another reader walks the rules nested inside them is two readers that can disagree, and a
+ * declaration nested in a query (`.inbox { @media … { position: relative } }`) is one only the
+ * second would see. Read by the parts of a selector, because two selectors written on two lines are
+ * folded with a space; exact here because of the first fact above, that every rule that reaches
+ * one of these elements and writes one of its names is a plain class.
+ */
+function valueIn(selector: string, property: string, condition: string | null): string | undefined {
+  return read()
+    .rules.filter(
+      (rule) =>
+        rule.sheet === SHEET &&
+        rule.condition === condition &&
+        rule.names.includes(property) &&
+        rule.selector.split(',').some((one) => one.trim() === selector),
+    )
+    .at(-1)?.values[property]
 }
 
-const inTheQuery = (selector: string, property: string) =>
-  written(rulesInMedia(css, NARROW, SHEET), selector, property)
+const inTheQuery = (selector: string, property: string) => valueIn(selector, property, NARROW)
 
-const outsideAnyQuery = (selector: string, property: string) =>
-  written(unconditionalRules(css, SHEET), selector, property)
+const outsideAnyQuery = (selector: string, property: string) => valueIn(selector, property, null)
 
 describe('what reaches the three panels of the header and the boxes they hang from', () => {
   it('asks every rule of every sheet of the portal, and every state it claims to ask about', async () => {
@@ -390,7 +434,17 @@ describe('what reaches the three panels of the header and the boxes they hang fr
     const PLAIN = /^\.[\w-]+(?: ?, ?\.[\w-]+)*$/
     const offenders = new Set<string>()
 
-    for (const { rule, names } of seen.reaches) {
+    for (const { rule, role, names: written } of seen.reaches) {
+      /* The one name that is let have a heavier rule, and only on a panel: `transform` is how the
+         language menu opens, written once for the shut menu and once under `.lang.is-open`. It is
+         pinned by name below like the rest, and both of its values are read below, which is what
+         stands in for the weight of a rule that is not allowed to be a plain class. */
+      const names = role === 'panel' ? written.filter((one) => one !== 'transform') : written
+
+      if (names.length === 0) {
+        continue
+      }
+
       const where = `${rule.sheet} ${rule.condition ?? 'outside any query'} ${rule.selector}`
 
       /* ONE SHEET. A rule about these elements anywhere else is a rule whose weight this cannot
@@ -615,5 +669,16 @@ describe('what stands outside the query, above the width where the navigation un
        there, which the pins cannot see, so it is read here. */
     expect(outsideAnyQuery('.shell__tools', 'display')).toBe('flex')
     expect(outsideAnyQuery('.shell__bar', 'display')).toBe('flex')
+  })
+
+  it('moves the language menu by four pixels while it is shut and by nothing while it is open', () => {
+    /* The one place a panel is meant to be moved, and the two names that are allowed in it
+       (`transform` and the list's own `margin: 0`) are pinned by name above and not by value, so
+       a new value of either would pass for the old one. The opening animation is the whole of
+       what `transform` is for here, and `.lang.is-open .lang__menu` is a heavier rule than a
+       plain class on purpose, so it is read by the selector it is written under. */
+    expect(outsideAnyQuery('.lang__menu', 'transform')).toBe('translateY(-4px)')
+    expect(outsideAnyQuery('.lang.is-open .lang__menu', 'transform')).toBe('none')
+    expect(outsideAnyQuery('.lang__menu', 'margin')).toMatch(/^0(px)?$/)
   })
 })
