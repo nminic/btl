@@ -516,6 +516,9 @@
     "answerRefused": {
       "theFormIsNotComplete": "The answer did not reach the server in full, so no racing pair was made. Refresh the page and try again.",
       "thePairWouldNotBeMixed": "A racing pair must have one man and one woman, so this pair was not made."
+    },
+    "breakRefused": {
+      "notHeld": "This racing pair cannot be ended from here: it has already ended or has stopped holding. Trying again does not help. Reload the page to see how things stand."
     }
   },
   "topBoards": {

@@ -516,6 +516,9 @@
     "answerRefused": {
       "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa trkački par nije napravljen. Osveži stranicu i pokušaj ponovo.",
       "thePairWouldNotBeMixed": "Trkački par mora da ima jednog muškarca i jednu ženu, pa ovaj par nije napravljen."
+    },
+    "breakRefused": {
+      "notHeld": "Ovaj trkački par ne može da se raskine odavde: već je raskinut ili je prestao da važi. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
     }
   },
   "topBoards": {

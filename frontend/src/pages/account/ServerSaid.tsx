@@ -19,16 +19,33 @@ import { whatABareNumberSays } from './serverWords'
  * something that is not wrong. `refusals.test.ts` reads the Java sources and fails
  * when a route names a reason no screen carries, so this branch is the boundary rather
  * than the plan.
+ *
+ * <p><b>A ROUTE THAT NAMES NO REFUSAL AND STILL MEANS SOMETHING BY ITS NUMBER SAYS IT IN
+ * `numbers`</b> (PENDING stavka 316, owner, 02.10.2026). `DELETE /api/pairs/{id}` is the one
+ * such route: it answers an empty 404 for four callers at once on purpose (`ADL` A8: told apart,
+ * the numbers would say which pairs exist and who is in them), so the number cannot become a
+ * reason, and the portal's general sentence for a 404 cannot stand either, because it tells the
+ * reader to try again in a few minutes and for three of the four that never helps. The screen of
+ * such a route hands in what ITS number means, and that is said instead.
+ *
+ * <p><b>The table is for numbers a route gives a meaning to and for nothing else.</b> A number
+ * that is not in it is read as every other screen reads it (`serverWords.ts`), and an answer that
+ * is not a bare number (a refusal by name, the token refused, no answer) never looks at it.
+ * Every other screen passes no table at all.
  */
 export function ServerSaid({
   answer,
   refusals,
+  numbers = {},
   params = {},
 }: {
   /** Everything except "done": a screen that succeeded draws its own words. */
   answer: Exclude<Answer, { got: 'done' }>
   /** The reasons this screen's own route can name, each to a key in the dictionary. */
   refusals: Record<string, string>
+  /** The bare numbers this screen's own route gives a meaning to, each to a key in the dictionary.
+   *  Consulted before the portal's general sentence for a number, and only for a bare number. */
+  numbers?: Record<number, string>
   /** What those sentences interpolate, where they interpolate anything. */
   params?: TranslateParams
 }) {
@@ -54,10 +71,17 @@ export function ServerSaid({
     }
 
     if (answer.got === 'wrong') {
-      /* WHICH OF THE TWO IS NOT DECIDED HERE: a 400 that named no reason is the portal's own
-         fault and says so, any other number keeps the advice to wait (`serverWords.ts`, which
-         also says why this is one function and what the one remaining copy of it is). */
-      return t(whatABareNumberSays(answer.status), { status: answer.status })
+      /* THE ROUTE'S OWN MEANING FIRST, and found the way a reason is found above (`Object.hasOwn`,
+         because the number is the wire's and a table is an object). A number the route did not
+         name falls to the general sentences, and WHICH OF THOSE TWO is not decided here: a 400
+         that named no reason is the portal's own fault and says so, any other number keeps the
+         advice to wait (`serverWords.ts`, which also says why this is one function and what the
+         one remaining copy of it is). */
+      const own = Object.hasOwn(numbers, answer.status) ? numbers[answer.status] : undefined
+
+      return own === undefined
+        ? t(whatABareNumberSays(answer.status), { status: answer.status })
+        : t(own, params)
     }
 
     return t('server.nothing')
