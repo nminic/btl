@@ -326,6 +326,17 @@ class VerificationConstraintsTest extends DatabaseTest {
 				Violation.of("verification_only_the_comments_queue_carries_a_submission",
 						pointingAtCommentSubmission("teams", A_COMMENT_SUBMISSION)),
 
+				/* AND ONE TEXT OF ONE MEMBER WAITS AT A TIME, WHICH V53 ADDS. PDL, „Nov tekst o sebi
+				   se ODBIJA dok prethodni ceka odluku moderatora" (19.09.2026). Two texts of one
+				   member waiting at once, written by one statement the way the run and the proposal
+				   above are written twice: the index is the only thing that can refuse them. What it
+				   lets stand beside a waiting text is
+				   `oneTextWaitsAndEverythingElseOfHisMayStandBesideIt` below. */
+				Violation.of("verification_one_text_waits_per_member",
+						"insert into verification (queue, competitor_id, subject, body, state)"
+								+ " select 'profiles', " + A_MEMBER + ", 'Naslov', 'Tekst', 'waiting'"
+								+ " from generate_series(1, 2)"),
+
 				/* V30 gave the schedule tab the identical three shapes, off `schedule_proposal`
 				   (ADL A64 A2), until PDL P10a, 22.09.2026 took the tab and the table both away
 				   (V31): `verification_schedule_proposal_fk`,
@@ -412,6 +423,48 @@ class VerificationConstraintsTest extends DatabaseTest {
 	@MethodSource("legitimateRows")
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isOne();
+	}
+
+	/**
+	 * ONE TEXT OF HIS WAITS, AND EVERYTHING ELSE OF HIS MAY STAND BESIDE IT.
+	 *
+	 * <p>The row above that breaks {@code verification_one_text_waits_per_member} says it refuses a
+	 * second waiting text. This says what it must NOT refuse, which is the other half of the same
+	 * condition and the half a wider index would take away: a picture waiting in the same tab, his
+	 * texts already decided (approved and refused, both of which V9 keeps for ever), a row waiting in
+	 * another tab (the probe's own {@code 'teams'} row), another member's text waiting, and two texts
+	 * about nobody at all, which an index over a null never compares.
+	 */
+	@Test
+	void oneTextWaitsAndEverythingElseOfHisMayStandBesideIt() {
+		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000943', 'Drugi', 'Clan', 'F',"
+				+ " date '1991-06-06', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
+				+ " '00112233445566d1', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+				+ " timestamptz '2026-09-01 10:00:00+00')").update();
+
+		String anotherMember = "(select id from competitor where member_number = '000943')";
+
+		List<String> beside = List.of(
+				row("'profiles', " + A_MEMBER + ", 'Tekst', 'Tekst koji ceka', null, 'waiting', null,"
+						+ " null, null, null"),
+				row("'profiles', " + A_MEMBER + ", 'Slika', '', " + A_PHOTO + ", 'waiting', null, null,"
+						+ " null, null"),
+				row("'profiles', " + A_MEMBER + ", 'Tekst', 'Pusten tekst', null, 'approved', "
+						+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', null"),
+				row("'profiles', " + A_MEMBER + ", 'Tekst', 'Odbijen tekst', null, 'rejected', "
+						+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Nije o trcanju'"),
+				row("'profiles', " + anotherMember + ", 'Tekst', 'Tudji tekst koji ceka', null,"
+						+ " 'waiting', null, null, null, null"),
+				row("'profiles', null, 'Tekst', 'O nekome ko nije clan', null, 'waiting', null, null,"
+						+ " null, null"),
+				row("'profiles', null, 'Tekst', 'O jos nekome ko nije clan', null, 'waiting', null,"
+						+ " null, null, null"));
+
+		for (String insert : beside) {
+			assertThat(db.sql(insert).update())
+					.as("refused beside a waiting text: %s", insert)
+					.isOne();
+		}
 	}
 
 	/**
