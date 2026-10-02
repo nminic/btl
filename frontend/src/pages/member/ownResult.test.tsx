@@ -5,6 +5,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { useEffect, useRef } from 'react'
+import { fieldDate } from '../../forms/dateField'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -570,6 +571,32 @@ describe('the race a correction is for', () => {
     expect(stored[0]?.textContent).toContain('Probna trka')
     expect(stored[0]?.textContent).not.toContain('Sasvim druga trka')
   })
+
+  it('leaves the day open, because the day is locked only where the server will not take one', async () => {
+    /* The other side of the lock on a counted result's day, so that it cannot be widened to
+       every road that locks the race. A result still waiting is the member's own submission and
+       its day is a thing he typed and may change (PDL: „Menja se sve osim trke"); only a
+       correction of a COUNTED result has a route that takes no day (`ResultWriteApi.Correction`).
+       Without this case, locking the day wherever the race is locked passes every other case in
+       this file. */
+    const user = setupUser()
+
+    renderAt(MINE, 'competitor', ME, undefined, '2026-08-23', (
+      <>
+        <Waiting whose={ME} races={['Probna trka']} />
+        <Sent />
+      </>
+    ))
+
+    await user.click(await screen.findByRole('link', { name: 'Izmeni rezultat: Probna trka' }))
+    await screen.findByText(/Menjaš rezultat koji još čeka proveru/)
+
+    const day = screen.getByLabelText(/^Datum trke/)
+
+    expect(day).not.toHaveAttribute('readonly')
+    expect(day).not.toHaveAttribute('aria-disabled')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('readonly')
+  })
 })
 
 describe('a result sent back unchanged', () => {
@@ -758,6 +785,105 @@ describe('a result that has been counted', () => {
     expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('readonly')
     expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue(race)
   })
+
+  /**
+   * THE DAY IS LOCKED LIKE THE RACE, AND IT IS THE COORDINATOR'S REASONING AND NOT THE OWNER'S WORD.
+   *
+   * <p>`PUT /api/results/{id}` takes `distanceKm`, `ascentM`, `descentM`, `seconds`, a link and a
+   * comment (`ResultWriteApi.Correction`) and no day, so a day changed in this form was thrown away
+   * by the server in silence while the member was told the change went in. A box the server will not
+   * take must not look like one it will. What the owner decided is which six fields a correction
+   * changes (PDL 04.09.2026: the three measures and the three boxes of the time), and the day is not
+   * one of them; the decision that the day is locked is the coordinator's, written as such.
+   *
+   * <p><b>Two sources of one value, separated.</b> The day in the box is the counted result's own,
+   * read off the file by the id the ADDRESS carries, and it is neither the day the portal is read as
+   * (2026-08-23) nor the first of a month, so a box that held either would not pass for it.
+   */
+  it('leads to the form with its own day, and the day locked like the race', async () => {
+    const user = setupUser()
+
+    const { router } = renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+
+    const id = must(
+      /^\?ispravka=(\d+)$/.exec(router.state.location.search)?.[1],
+      `the address does not name a result: ${router.state.location.search}`,
+    )
+    const was = must(
+      countedResults.find((one) => String(one.id) === id),
+      'the result the address names',
+    )
+    const day = screen.getByLabelText(/^Datum trke/)
+
+    expect(day).toHaveValue(fieldDate(was.date))
+    expect(day).toHaveAttribute('readonly')
+    expect(day).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('keeps its own day whatever the box is made to say', async () => {
+    /* The half beneath the lock, measured the way the race name is: the box is forced to say
+       another day, the correction is sent and approved, and the counted row still carries the day
+       it had. Typed through the lock `user.type` would refuse a read-only box, which is the lock
+       doing its job and is measured above; this is what holds when something reaches the form
+       past it. Every row's day before and after, because a row whose day moved is also a row that
+       moves in the list, and a single cell would miss the sort. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23', <Decide as="approved" />)
+
+    const days = async () =>
+      (await countedRows()).map((one) => must(one.split(' | ')[0], 'the day of a row'))
+    const before = await days()
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+
+    fireEvent.change(screen.getByLabelText(/^Datum trke/), { target: { value: '01/01/2020' } })
+
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+    await user.click(screen.getByRole('button', { name: 'odobri' }))
+
+    expect(await days(), 'an approved correction moved the day of a result').toEqual(before)
+  }, SLOW)
+
+  it('keeps the day locked when the correction is opened again from what was sent', async () => {
+    /* The second road to the same form. A correction that waits is a submission, and reopening it
+       from the list of what was sent draws the same short form for the same reason the kind and the
+       place are left out of it (the case further down); the day has to be locked on that road as
+       well or a member shuts it on one and opens it on the other. */
+    const user = setupUser()
+
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const row = await firstCounted()
+
+    await user.click(row.getByRole('link', { name: /^Izmeni rezultat/ }))
+    await screen.findByText(/Menjaš rezultat koji je već uračunat/)
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/rezultati')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+    await screen.findByText('Rezultat je ponovo poslat na proveru.')
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    const sentList = within(must(document.querySelector('.submissions'), 'the list of what was sent'))
+
+    await user.click(await sentList.findByRole('link', { name: /^Izmeni rezultat: / }))
+    await screen.findByText(/Menjaš rezultat koji/)
+
+    const day = screen.getByLabelText(/^Datum trke/)
+
+    expect(day).toHaveAttribute('readonly')
+    expect(day).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('readonly')
+  }, SLOW)
 
   it('gives up its category on a phone rather than its controls', async () => {
     /* The column had to come from somewhere. Measured by a review on 28.08.2026

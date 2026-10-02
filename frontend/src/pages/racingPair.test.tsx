@@ -679,6 +679,51 @@ describe('a pair whose other half the portal does not have', () => {
       vi.stubGlobal('fetch', served)
     }
   }, SLOW)
+
+  it('is not offered a „Raskini", because the server answers a press on it with a 404 every time', async () => {
+    /* **THE ONE ROW THAT CANNOT BE ENDED FROM HERE, NEXT TO ONE THAT CAN** (PENDING stavka 316).
+       The roster the portal serves holds only members whose fee is paid (`CompetitorApi` ends
+       `where c.active`), and `PairWriteApi.pairHeIsHalfOf` asks for BOTH halves to be active, so a
+       pair whose other half is not in the roster is one `DELETE /api/pairs/{id}` answers 404 for,
+       whoever presses and however often. A button that cannot work is not drawn.
+
+       Two pairs and numeric keys, rather than the one pair of the case above: with a single row,
+       „the button is gone" could be read off „there is nothing else here", and a button drawn on
+       the wrong row would still be the only one. */
+    const served = globalThis.fetch
+    const pairs = [
+      { id: 71, season: 2027, memberNumbers: ['000015', '000099'] },
+      { id: 72, season: 2028, memberNumbers: ['000015', '000004'] },
+    ]
+
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) =>
+      String(input).includes('/api/pairs')
+        ? new Response(JSON.stringify(pairs), { headers: { 'content-type': 'application/json' } })
+        : served(input, init),
+    )
+
+    try {
+      renderAt(HER, 'competitor', '000015', undefined, TODAY)
+
+      await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+
+      const buttons = await screen.findAllByRole('button', { name: 'Raskini trkački par' })
+
+      expect(buttons.length, 'one button, for the pair the server can end').toBe(1)
+
+      const standing = must(at(buttons, 0).closest('p'), 'the row the button stands in')
+
+      expect(standing.textContent).toContain('Časlav Radenković')
+      expect(standing.textContent).toContain('Za sezonu 2028')
+
+      const orphan = must(screen.getByText('000099').closest('p'), 'the row of the missing half')
+
+      expect(orphan.textContent).toContain('Za sezonu 2027')
+      expect(within(orphan).queryByRole('button')).toBeNull()
+    } finally {
+      vi.stubGlobal('fetch', served)
+    }
+  }, SLOW)
 })
 
 describe('the last day of December', () => {
