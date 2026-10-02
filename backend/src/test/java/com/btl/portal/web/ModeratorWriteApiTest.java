@@ -841,6 +841,43 @@ class ModeratorWriteApiTest {
 	}
 
 	/**
+	 * A MODERATOR WHO NEVER RACED IS RENAMED TOO, AND NOBODY ELSE'S ROW MOVES WITH HIS.
+	 *
+	 * <p>The other half of an axis that the rename case above cannot reach: {@link #ACTED} races,
+	 * so his account names a member, and a statement that went looking for one finds it.
+	 * {@link #ANOTHER} names nobody - {@code competitor_id} is empty, which V23 calls the ordinary
+	 * case for a moderator and not a fault - so a route that joined {@code competitor}, or asked
+	 * for a member before it wrote a name, would answer him 404 or write nothing at all. He is
+	 * read afterwards for exactly that, and for his boxes, which a rename has no statement to
+	 * touch.
+	 */
+	@Test
+	void aModeratorWhoNeverRacedIsRenamedToo() throws Exception {
+		long his = accountOf(ANOTHER);
+
+		assertThat(rowOf(ANOTHER).competitorId())
+				.as("the moderator this case renames races, so nothing below is about one who does"
+						+ " not")
+				.isNull();
+
+		assertThat(rename(his, "Nada", "Novakovic").getStatus())
+				.as("a moderator who names no member was refused, so the route went looking for"
+						+ " a member that is not a moderator's to have")
+				.isEqualTo(204);
+
+		assertThat(nameOf(his)).isEqualTo(new CurrentName("Nada", "Novakovic"));
+		assertThat(rowOf(ANOTHER).competitorId())
+				.as("a rename gave a moderator a member he does not have")
+				.isNull();
+		assertThat(ticksInTheTableOf(ANOTHER))
+				.as("a rename moved the boxes of a moderator who never raced")
+				.containsExactly(THE_THIRD_ONES);
+		assertThat(nameOf(accountOf(ACTED)))
+				.as("renaming one moderator renamed the one who races")
+				.isEqualTo(new CurrentName("Petar", "Petric"));
+	}
+
+	/**
 	 * A NAME WITH A PART MISSING IS REFUSED SAYING WHICH, AND NOTHING IS WRITTEN.
 	 *
 	 * <p>ADL A54: a refused form says what is missing, in the order of the form, and this route is
