@@ -253,7 +253,9 @@ export function Membership() {
    * confirming button had (owner, 02.10.2026, after a refusal: `admin/Payments.tsx` does the same
    * after a 409). Raised by an answer and lowered by asking again, so „Odustani" - the member's own
    * act, which moved nothing before this branch either - still moves nothing, and nothing is focused
-   * when the page first draws.
+   * when the page first draws. The effect below depends on the flag, so it runs when the flag CHANGES:
+   * lowering it when the question is asked again is what lets the next refusal raise it again and run
+   * the effect again (`leaveTeam.test.tsx`, „puts the focus on the button again after a second refusal").
    *
    * <p><b>A ref and an effect, and NOT `autoFocus`</b>, for the reason `admin/EntityEditor.tsx`'s
    * `DeleteRecord` gives at the same state: React reuses the confirming button's element for the

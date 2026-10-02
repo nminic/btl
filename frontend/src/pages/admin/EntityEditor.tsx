@@ -732,7 +732,10 @@ export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', ask
    * confirming button had. Raised by an answer and lowered by asking again, so it is true only from an
    * answer to the next time the question is asked: the reader putting the question away himself is
    * his own act and moves nothing, as it did before this branch (a gap of its own, and not this
-   * change's), and nothing is focused when the page first draws.
+   * change's), and nothing is focused when the page first draws. The effect below depends on the flag,
+   * so it runs when the flag CHANGES: lowering it when the question is asked again is what lets the
+   * next answer raise it again and run the effect again (`deleteRecord.test.tsx`, „puts the focus on
+   * the button again after a second answer").
    *
    * <p><b>A ref and an effect, and NOT `autoFocus`, which was written first and did nothing on four
    * of the seven screens.</b> `autoFocus` acts when an element is CREATED, and the opener is not
