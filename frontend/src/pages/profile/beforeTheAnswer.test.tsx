@@ -4,7 +4,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import sr from '../../i18n/sr.json'
 import type { Role } from '../../roles/context'
 import { HOW_LONG_THE_DOOR_WAITS } from '../../session/useTheServersSession'
-import { expectFrontPage, renderAt } from '../../test/render'
+import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 
@@ -123,6 +123,70 @@ function waitingOutLoud(): HTMLElement[] {
 }
 
 /**
+ * Everything already on its way, got here without a moment going by.
+ *
+ * <p>Turns of the microtask queue and nothing else, which is all the disc reader needs: it answers
+ * out of promise continuations alone. Neither `waitFor` nor a `findBy` can be used while the clock
+ * is faked: Testing Library drains the queue after each of them with a timer that vitest's fake
+ * clock never fires, and the case hangs until its own timeout instead of failing.
+ */
+async function settledWithNoTimeGoingBy(): Promise<void> {
+  await act(async () => {
+    for (let turn = 0; turn < 30; turn += 1) {
+      await Promise.resolve()
+    }
+  })
+}
+
+/**
+ * A case that runs with the clock stopped, and puts the clock back whatever happens.
+ *
+ * <p>**For every case that ends in a REFUSAL, and it was measured why** (review of PR 467). The front
+ * page a refused reader ends on arrives from TWO sources: the answer that says nobody is signed in,
+ * and the bound the portal puts on an answer that never comes ({@link HOW_LONG_THE_DOOR_WAITS}, ten
+ * seconds, `session/useTheServersSession.ts`). Testing Library waits twenty (`test/setup.ts`,
+ * `SLOW`), so a case that waited for the front page with a `findBy` could not tell the two apart:
+ * with the lines that end the waiting taken off the answer's road and left on the bound's - the shape
+ * the comment in that file warns about - all eight cases of this kind stayed green, at 10,05 s each
+ * instead of about 100 ms. With the clock stopped the bound cannot fire, so a front page that is
+ * there can only have come from the answer. It is the same lesson the cases that say „at once" learned
+ * (the second `describe`, below), reached from the other side.
+ */
+function withTheClockStopped(run: () => Promise<void>): () => Promise<void> {
+  return async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: false })
+
+    try {
+      await run()
+    } finally {
+      vi.useRealTimers()
+    }
+  }
+}
+
+/**
+ * The front page is on screen, and the ANSWER put it there.
+ *
+ * <p>Read with the clock stopped and without a `findBy`, for the reason on {@link withTheClockStopped}.
+ * It asks the address first, so a refusal that has not happened is an assertion that says so and not
+ * an element that is missing, and it refuses to run on a clock that moves, since there it would prove
+ * nothing about which of the two sources ended the waiting.
+ */
+async function sentToTheFrontPageByTheAnswer(router: {
+  state: { location: { pathname: string } }
+}): Promise<void> {
+  expect(
+    vi.isFakeTimers(),
+    'this reads the front page with no time going by, which only means anything on a stopped clock',
+  ).toBe(true)
+
+  await settledWithNoTimeGoingBy()
+
+  expect(router.state.location.pathname, 'the answer sent him away, and no time went by').toBe('/sr')
+  expect(screen.getByRole('heading', { level: 1, name: sr.app.name })).toBeInTheDocument()
+}
+
+/**
  * Lets everything that is already on its way get here: every resource the screen asked for, and
  * the drawing of what they said.
  *
@@ -132,8 +196,19 @@ function waitingOutLoud(): HTMLElement[] {
  * resource each screen asks for is waited for by name, and one turn of the macrotask queue goes
  * after it: the disc reader answers out of promise continuations alone, so nothing is left in
  * flight once a timer has fired.
+ *
+ * <p>**On a stopped clock it is the flush of the microtask queue and a look at what was asked**,
+ * because the wait for a macrotask is a timer, and a faked one never fires.
  */
 async function theDataHasArrived(asked: Asked[], last: string): Promise<void> {
+  if (vi.isFakeTimers()) {
+    await settledWithNoTimeGoingBy()
+
+    expect(asked.map((one) => one.path)).toContain(last)
+
+    return
+  }
+
   await waitFor(() => {
     expect(asked.map((one) => one.path)).toContain(last)
   })
@@ -233,7 +308,7 @@ describe.each([
     expect(router.state.location.pathname).toBe(`${HIM}${suffix}`)
   }, SLOW)
 
-  it('still sends a visitor to the front page once the server says nobody is signed in, and never draws him first', async () => {
+  it('still sends a visitor to the front page once the server says nobody is signed in, and never draws him first', withTheClockStopped(async () => {
     /* THE DIRECTION THAT MATTERS, and the one `pages/admin/beforeTheAnswer.test.tsx` names the same
        way: waiting may DELAY a refusal and may never turn one into an admission. The same deferred
        answer, and nobody at the end of it.
@@ -247,27 +322,27 @@ describe.each([
       const { router, server: held } = await loadedWhileItWaits(HIM)
 
       await held.arrivesAs(null, 401)
-      await expectFrontPage()
+      await sentToTheFrontPageByTheAnswer(router)
 
       expect(router.state.location.pathname).toBe('/sr')
       expect(watch.seen().filter((name) => name.includes('Strahinja'))).toEqual([])
     } finally {
       watch.stop()
     }
-  }, SLOW)
+  }), SLOW)
 
-  it('sends away the reader whose answer the portal cannot read at all, the same way', async () => {
+  it('sends away the reader whose answer the portal cannot read at all, the same way', withTheClockStopped(async () => {
     /* The way to be nobody furthest from a refusal. It has to END the waiting as a 401 does, or the
        portal stands on an indicator for ever for the answers nobody anticipated. */
     const { router, server: held } = await loadedWhileItWaits(HIM)
 
     await held.arrivesAs({ role: 'wizard', account: 'not a number' })
-    await expectFrontPage()
+    await sentToTheFrontPageByTheAnswer(router)
 
     expect(router.state.location.pathname).toBe('/sr')
-  }, SLOW)
+  }), SLOW)
 
-  it('waits for a number nobody has exactly as it waits for a hidden one, and ends in the same place', async () => {
+  it('waits for a number nobody has exactly as it waits for a hidden one, and ends in the same place', withTheClockStopped(async () => {
     /* THE OWNER'S ONE ANSWER (PDL 06.09.2026). The number is in no list the server serves, which is
        also what a member whose fee has run out looks like, so this is two of the three ways to be
        unreadable in one case. Waiting for the hidden member and sending this one away at once would
@@ -282,12 +357,12 @@ describe.each([
     expect(waitingOutLoud()).toHaveLength(1)
 
     await server.arrivesAs(null, 401)
-    await expectFrontPage()
+    await sentToTheFrontPageByTheAnswer(router)
 
     expect(router.state.location.pathname).toBe('/sr')
-  }, SLOW)
+  }), SLOW)
 
-  it('goes by what the server says and not by the role the browser holds', async () => {
+  it('goes by what the server says and not by the role the browser holds', withTheClockStopped(async () => {
     /* THE SOURCE OF THE READER, SWAPPED, and it is the outcome the owner refused on 29.09.2026:
        „pamti se poslednja uloga u pregledacu", because what the browser says and what the server
        says can come apart. A browser holding the role of a competitor - the development switch, a
@@ -298,10 +373,10 @@ describe.each([
     const { router, server: held } = await loadedWhileItWaits(HIM, 'competitor')
 
     await held.arrivesAs(null, 401)
-    await expectFrontPage()
+    await sentToTheFrontPageByTheAnswer(router)
 
     expect(router.state.location.pathname).toBe('/sr')
-  }, SLOW)
+  }), SLOW)
 })
 
 /**
@@ -338,18 +413,6 @@ describe.each([
     server = null
   })
 
-  /** Everything already on its way, got here without a moment going by. Neither `waitFor` nor a
-   *  `findBy` can be used while the clock is faked: Testing Library drains the queue after each of
-   *  them with a timer that vitest's fake clock never fires, and the case hangs until its own
-   *  timeout instead of failing. */
-  async function theDataHasArrivedWithNoTimeGoingBy(): Promise<void> {
-    await act(async () => {
-      for (let turn = 0; turn < 30; turn += 1) {
-        await Promise.resolve()
-      }
-    })
-  }
-
   it('opens at once for a reader whose session is already in hand, and waits for nothing', async () => {
     /* THE OTHER HALF OF THE ORDER THE SCREEN DECIDES IN, and it is `Guard`'s own: a reader is held
        before the answer in two ways, the development switch and having just signed in
@@ -360,7 +423,7 @@ describe.each([
 
     renderAt(`${HIM}${suffix}`, 'competitor', '000002')
 
-    await theDataHasArrivedWithNoTimeGoingBy()
+    await settledWithNoTimeGoingBy()
 
     expect(server.asked.map((one) => one.path)).toContain(last)
     expect(screen.getByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeVisible()
@@ -376,7 +439,7 @@ describe.each([
 
     const { router } = renderAt(`${HER}${suffix}`, 'visitor', null)
 
-    await theDataHasArrivedWithNoTimeGoingBy()
+    await settledWithNoTimeGoingBy()
 
     expect(server.asked.map((one) => one.path)).toContain(last)
     expect(screen.getByRole('heading', { level: 1, name: /Relja Momčilović/ })).toBeVisible()
@@ -392,7 +455,7 @@ describe.each([
     /* That the data really did arrive is asserted twice: by the request having been made, and by
        the last line of this case, which can only be true once it has - the screen decides when the
        bound ends, on what it was given. */
-    await theDataHasArrivedWithNoTimeGoingBy()
+    await settledWithNoTimeGoingBy()
 
     expect(server.asked.map((one) => one.path)).toContain(last)
 
