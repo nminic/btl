@@ -378,7 +378,9 @@ export const TEAMS: EntityDef = {
      (components/crop.ts). Without the logo the field was simply missing and a
      team made here drew an empty picture element instead of its initials,
      which is why both are written out rather than left to a default. */
-  blank: { bio: '', logo: null, crop: WHOLE },
+  /* And nobody named on it in place of his record (`Team.alsoInTheTeam`): a team made during
+     this visit is made by somebody signed in, and to him every record names its own team. */
+  blank: { bio: '', logo: null, crop: WHOLE, alsoInTheTeam: [] },
   /**
    * The address the team answers at, from its name.
    *

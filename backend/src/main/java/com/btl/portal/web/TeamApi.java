@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * THE TEAMS OF THE LEAGUE, and only what the rulebook publishes about them.
@@ -34,7 +36,11 @@ import java.util.Optional;
  * standing: the same sentence lists points, placings and awards, and stops there.
  * PDL P13, 13.09.2026, draws the boundary in as many words: „Sa druge strane
  * granice stoji sve sto o timu govori kroz njegove ljude: ko ga vodi
- * ({@code admin_id}), ko je u njemu... To ne izlazi."</li>
+ * ({@code admin_id}), ko je u njemu... To ne izlazi." That sentence is a reading of
+ * the owner's decision of that day and not his words, and PDL says so since 02.10.2026;
+ * its „ko je u njemu" half is narrowed by his later decision about a member who hides
+ * his profile (see {@code alsoInTheTeam} below). The seat half, which is what this
+ * paragraph is about, is untouched.</li>
  * <li><b>No public screen publishes it even today.</b> Measured before this was
  * written: the one public page that reads the field, {@code pages/TeamDetail.tsx},
  * never draws it. All three uses are conditions - {@code runs !== null} and
@@ -243,16 +249,43 @@ import java.util.Optional;
  * out of {@code team_membership} it would carry the members whose fee has lapsed,
  * which is the door above again. Filtered to the members whose fee is standing it
  * would be the first list inverted, kept in a second place, by a second query
- * that has to be remembered every time the first one changes. So a member of a team
- * is named in no answer of this resource at all, to anybody.
+ * that has to be remembered every time the first one changes. So until 02.10.2026 a
+ * member of a team was named in no answer of this resource at all, to anybody.
+ *
+ * <p><b>SINCE 02.10.2026 ONE MEMBER IS, TO ONE READER, AND IT IS THE SAME ONE HOME RATHER
+ * THAN A SECOND.</b> PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between offered
+ * outcomes: the link from a hidden member's record to his team is withheld from a reader who is
+ * not signed in, the same as the biography and the photograph - and the owner's own words on it
+ * the same day, „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se
+ * vidi u timu i bodovi koje je doneo." The team's page and the table of teams are built out of
+ * that link, so with
+ * the link gone from the record and nothing in its place the team would lose him, and his
+ * points with him. {@code alsoInTheTeam} is what is in its place.
+ *
+ * <p><b>Why that is not the second home the paragraph above refuses.</b> It is not the roster
+ * inverted and kept beside the first: it is EXACTLY what {@code /api/competitors} withholds from
+ * this caller and nothing else, because both are asked by one condition,
+ * {@link CompetitorApi#THE_PROFILE_IS_OPEN_TO_THE_CALLER}, read there as „yes" and here as „no".
+ * For any reader each standing membership is named on exactly one of the two doors, so there is
+ * no link two answers could disagree about. The rows that condition is asked of - the
+ * membership that has not ended, of a member whose fee is standing - are written in both
+ * places, and {@code TeamApiTest.theTwoDoorsNameEveryStandingMembershipOnceToEveryCaller} is
+ * what keeps them one set. The lapsed member the paragraph above is wary of is not among them,
+ * so that door stays shut.
+ *
+ * <p><b>The channel is derived, not the owner's.</b> He decided that the team names him; that it
+ * is this resource which does is a reading of that decision, and PDL records it beside P13 on
+ * 02.10.2026 (the boundary of 13.09.2026 that kept „ko je u njemu" off this resource was a
+ * reading too, and this narrows it for one reader and one kind of member).
  *
  * <p><b>SINCE 21.09.2026 THE ROSTER IS READ HERE, AND THE DIFFERENCE BETWEEN READING IT
  * AND ANSWERING WITH IT IS THE WHOLE OF THE SENTENCE ABOVE.</b> What stood here was „nothing
  * is joined to {@code team_membership}", and the field below joins it: the standing rule
  * asks who has been in this team longest, and there is no other table that knows. What has
- * not moved is the answer - no member of a team is named in it, to anybody, and
- * {@code noMemberNumberLeavesTheServer} asks that of the whole TEXT rather than of a field
- * name, so it holds however the join is written. The rule the paragraph above gives for a
+ * not moved is the answer - no member of a team is named in it, to anybody, apart from the
+ * members {@code alsoInTheTeam} names to a visitor - and {@code noMemberNumberLeavesTheServer}
+ * asks that of the whole TEXT rather than of a field name, so it holds however the join is
+ * written. The rule the paragraph above gives for a
  * second home is kept rather than broken: the roster is read under EXACTLY the filter that
  * paragraph names („filtered to the members whose fee is standing"), it is read as a
  * condition and never as a value, and the one thing that leaves is a boolean about the
@@ -264,7 +297,9 @@ import java.util.Optional;
  * TEXT rather than over a name, because an omission guarded by a name lasts until
  * somebody answers the same fact under another one. It still asks exactly that of
  * everybody the paragraph above does not name - the visitor, the member, and a
- * signed in moderator who does not hold {@link #OVER_THE_TEAMS} - and of the
+ * signed in moderator who does not hold {@link #OVER_THE_TEAMS} - with ONE exception
+ * since 02.10.2026, and it is named rather than cut: the visitor's answer carries the
+ * numbers {@code alsoInTheTeam} owes him, inside that field and nowhere else. Of the
  * administration it asks the one thing that is now true instead: the numbers it may
  * read are the seats and no others, so every member number that is in no team's seat
  * is still absent from its answer. The roster is the door that stays shut in both -
@@ -470,12 +505,35 @@ class TeamApi {
 	}
 
 	/**
+	 * A MEMBER OF THIS TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THE ONE ASKING.
+	 *
+	 * @param memberNumber who he is, which is how the portal finds him: his record IS on
+	 *                     {@code /api/competitors}, with his name and his category, and only
+	 *                     its link to this team is withheld there
+	 * @param since        the season his membership began in, which is the {@code teamSince}
+	 *                     his record would have carried. The team's standing for a season
+	 *                     counts him from it and not before, the same as every other member
+	 *                     (PDL, 05.09.2026: „tabela i sastav tima citaju inTeamIn")
+	 */
+	record AlsoInTheTeam(String memberNumber, int since) {
+	}
+
+	/**
 	 * @param logo        where the mark's picture is asked for, or NULL for a team that
 	 *                    has none. Null and never the empty string: the portal reads the
 	 *                    two as different things ({@code frontend/src/data/types.ts}), and
 	 *                    the empty path is an address that would be asked for
 	 * @param crop        the square of the mark, or null for a team that has no mark. The
 	 *                    other half of {@code logo} and never answered without it
+	 * @param alsoInTheTeam the members of this team whose own record on
+	 *                    {@code /api/competitors} does not name it to the one asking, in
+	 *                    member number order - which since 02.10.2026 is a member who hides
+	 *                    his profile, read by somebody who is not signed in, and nobody
+	 *                    else. EMPTY, and never absent, for every other reader and every team
+	 *                    without such a member: a signed in reader is told every link on the
+	 *                    records themselves, so there is nothing to tell him here. See the
+	 *                    note on this class for why this is the other half of one condition
+	 *                    rather than a second home
 	 * @param foundedByMe whether the one asking is the member this team's seat names,
 	 *                    and ABSENT - not null, and not false - from every answer
 	 *                    nobody signed in asked for. False and absent are two
@@ -512,7 +570,7 @@ class TeamApi {
 	 *                    and not a spelling of the empty one
 	 */
 	record Team(long id, String slug, String name, String city, String country, String bio,
-			String logo, Crop crop,
+			String logo, Crop crop, List<AlsoInTheTeam> alsoInTheTeam,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean foundedByMe,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Boolean administeredByMe,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Optional<String> organizerMemberNumber) {
@@ -556,6 +614,52 @@ class TeamApi {
 		   taking the guard away fails both. */
 		boolean administration = member != null && mayHe.may(member, OVER_THE_TEAMS);
 
+		/* AND WHETHER ANYBODY IS ASKING AT ALL, which is a third question and the one
+		   `CompetitorApi` asks of a hidden member's record. Read off the ACCOUNT, never off `me`:
+		   an account that races for nobody has no member and is signed in all the same (owner,
+		   14.09.2026; PDL 02.10.2026, „i administrativni nalog koji ne trci"). Asked of `me`, he
+		   would be told on the team what his own answer of `/api/competitors` already tells him on
+		   the record, and the two doors would name one link twice. */
+		boolean signedIn = member != null;
+
+		/* THE MEMBERS OF EACH TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THIS CALLER, and only
+		   those. PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the link leaves a hidden member's
+		   record for a reader who is not signed in - and „mozda on sakrije profil, ali ako je deo
+		   tima, njegovo ime se vidi u timu i bodovi koje je doneo". So the team says what the
+		   record no longer does.
+
+		   THE ROWS ARE `CompetitorApi`'S AND THE CONDITION IS ITS OWN, TURNED OVER. The rows are
+		   the ones that resource's list joins - the membership that has not ended, of a member
+		   whose fee is standing - and of them it answers the link on the record exactly where
+		   `THE_PROFILE_IS_OPEN_TO_THE_CALLER` holds. Here it is asked with `not`, so for every
+		   caller each such membership lands on exactly one of the two doors: on the record, or
+		   here. The condition is one text and cannot drift; the two clauses about the rows are
+		   written in both places, and what holds them together is not this note but
+		   `TeamApiTest.theTwoDoorsNameEveryStandingMembershipOnceToEveryCaller`, which asks both
+		   resources for every kind of caller and requires every standing membership in the
+		   database to be named once.
+
+		   NO MEMBER NUMBER CONDITION, ON PURPOSE: `CompetitorApi` has none either, so a row the
+		   record would carry is a row this would carry, number or no number.
+
+		   A SECOND STATEMENT AND NOT A SUBQUERY of the one below, because the answer is a list
+		   per team and a typed one. The two are not read under one snapshot, and that is not a
+		   gap this could close: the two doors are two requests anyway, and what keeps them in
+		   step is the condition, not a moment. */
+		Map<Long, List<AlsoInTheTeam>> alsoIn = db.sql(
+						"select m.team_id, c.member_number, m.season_from"
+						+ " from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " where m.season_to is null and c.active"
+						+ " and not " + CompetitorApi.THE_PROFILE_IS_OPEN_TO_THE_CALLER
+						+ " order by c.member_number, c.id")
+				.param("signedIn", signedIn)
+				.query((row, one) -> Map.entry(row.getLong(1),
+						new AlsoInTheTeam(row.getString(2), row.getInt(3))))
+				.list().stream()
+				.collect(Collectors.groupingBy(Map.Entry::getKey,
+						Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
+
 		return db.sql(
 						/* WHO IS A STANDING MEMBER OF WHICH TEAM, WRITTEN ONCE BECAUSE THE RULE
 						   BELOW ASKS IT TWICE. Owner, PDL „Inkrement 133", 04.09.2026, „Administrator
@@ -563,8 +667,10 @@ class TeamApi {
 						   isprazni, po podrazumevanom ga preuzima clan koji je najduze u timu - asks
 						   the same question of the man in the seat and of everybody who might take it
 						   from him, and a condition written twice is a condition that drifts on one of
-						   the two days it is edited. THIS IS THE ONLY PLACE THE ROSTER IS READ, and it is read as a
-						   condition: nothing off it reaches the answer.
+						   the two days it is edited. THIS IS THE ONLY PLACE THIS STATEMENT READS THE
+						   ROSTER, and it is read as a condition: nothing off it reaches the answer.
+						   The one roster that does reach it is `alsoIn` above, a different set asked
+						   by a different rule, and the note there says which.
 
 						   THE MEMBERSHIP THAT HAS NOT ENDED, and never a membership that has.
 						   V11 writes `season_to` as „the last season he is in it, or empty while
@@ -722,8 +828,9 @@ class TeamApi {
 						   said „the roster is still not joined", and since 21.09.2026 that is
 						   true of the FROM clause and not of the statement: `standing`, above,
 						   reads `team_membership` for the rule the field two lines up answers.
-						   Who is IN a team remains /api/competitors' one answer, which is a
-						   sentence about what LEAVES and is held over the whole text by
+						   Who is IN a team remains /api/competitors' answer for every link that
+						   resource gives this caller, and `alsoInTheTeam` is the rest of it and
+						   nothing more - a sentence about what LEAVES, held over the whole text by
 						   `noMemberNumberLeavesTheServer`. */
 						+ " left join competitor seat on seat.id = t.admin_id"
 						/* NOTHING IS JOINED TO `team_membership` IN THIS FROM CLAUSE, and that is
@@ -771,6 +878,10 @@ class TeamApi {
 							mark == null ? null : A_PICTURE_IS_ASKED_FOR_AT + mark,
 							across == null ? null
 									: new Crop(across, row.getBigDecimal(9), row.getBigDecimal(10)),
+							/* An empty list for a team none of whose members the records leave
+							   out, and never null: „nobody is left out" is the answer, and a key
+							   carrying null would be a fifth shape for one sentence. */
+							alsoIn.getOrDefault(row.getLong(1), List.of()),
 							/* BOTH READ AS `Boolean` AND NEVER AS `boolean`, because the null the
 							   query answers a visitor with is the whole of „I do not know who you
 							   are": read as a primitive it would arrive false, which is the

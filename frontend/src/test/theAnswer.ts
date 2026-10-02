@@ -142,7 +142,26 @@ export const aTeam = {
   bio: '',
   logo: '/api/photos/7d1f0a2b',
   crop: { x: 0.5, y: 0.35, size: 0.72 },
+  /* Empty, because the administration is signed in and every record names its own team to it
+     (`TeamApi`, `alsoInTheTeam`). The other state is `aTeamToAVisitor` below. */
+  alsoInTheTeam: [],
   organizerMemberNumber: '000001',
+}
+
+/**
+ * AND A TEAM AS A VISITOR IS ANSWERED ONE, WHEN ONE OF ITS MEMBERS HIDES HIS PROFILE: the
+ * other state of `alsoInTheTeam`, written down because the row above can only show it empty.
+ *
+ * Since 02.10.2026 `/api/competitors` answers such a member's `teamId` and `teamSince` as null
+ * to a reader who is not signed in, and this resource names him on his team instead, with the
+ * season he is in it from (PDL, odeljak 16, [ODLUKA 27.09.2026, owner]). No seat, because a
+ * visitor is told nobody's. Built from the record the server declares and not read off QA: no
+ * member there hides his profile while standing in a team.
+ */
+export const aTeamToAVisitor = {
+  ...aTeam,
+  organizerMemberNumber: undefined,
+  alsoInTheTeam: [{ memberNumber: '000009', since: 2027 }],
 }
 
 /** And a team with no mark, answered to a signed in member who did not found it:
@@ -268,6 +287,9 @@ export const aWaitingItemAboutNobody = {
 
 export const readAsTeam: Team = aTeam
 export const readAsTeamWithNoMark: Team = aTeamWithNoMark
+/* The compiler holds the shape of one member named on a team only where a sample names one:
+   an empty list is assignable to a list of anything. */
+export const readAsTeamToAVisitor: Team = aTeamToAVisitor
 export const readAsWaitingItem: ServedPendingItem = aWaitingItem
 /* The compiler is the assertion here as everywhere in this file: with
    `ServedPendingItem.memberNumber` back to plain text this line does not build, which is

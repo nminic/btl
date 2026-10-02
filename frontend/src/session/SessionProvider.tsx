@@ -26,6 +26,7 @@ import {
   type SubmissionStatus,
   type Amendment,
 } from './context'
+import { readerOf, useTheCachesFollowTheReader } from './theCachesFollowTheReader'
 
 export function SessionProvider({
   initialMemberNumber = null,
@@ -60,6 +61,12 @@ export function SessionProvider({
   const theServerAnswered = useCallback(() => {
     setTheServerHasAnswered(true)
   }, [])
+  /* THE TWO CACHES THAT ANSWER DIFFERENTLY TO DIFFERENT READERS FOLLOW WHO IS SIGNED IN
+     (02.10.2026). Worked out here, from the two facts this provider already holds and while
+     it renders, because it is the one place that renders before every screen under it and
+     the one place every change of reader passes through; `session/theCachesFollowTheReader.ts`
+     says why neither an effect nor a drop written beside each caller would do. */
+  useTheCachesFollowTheReader(readerOf(memberNumber, account), theServerHasAnswered)
   /* Beside the account and never apart from it, which is the rule this provider
      already keeps for the account and its role: the two arrive in one answer
      (`GET /api/me`) and a screen that had one without the other would be reading half

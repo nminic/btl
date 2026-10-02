@@ -507,24 +507,87 @@ export function teamOf(competitor: { teamId: number | null } | undefined): numbe
 }
 
 /**
+ * One member of a team, and the season he is in it from.
+ *
+ * `since` is the `teamSince` his record carries, or - where the record does not name the team to
+ * this reader - the season the team's own answer gives with him (`Team.alsoInTheTeam`). The two
+ * are the same membership told on two doors, so they are the same number.
+ */
+export type InTheTeam = { competitor: Competitor; since: number | null }
+
+/**
+ * EVERYBODY IN A TEAM, OFF BOTH DOORS THE SERVER NAMES THEM ON, and the one place on the portal
+ * that puts the two together.
+ *
+ * **Why there are two doors, and since when.** Until 02.10.2026 a member's team reached the
+ * portal on his record alone (`Competitor.teamId`). PDL, odeljak 16, [ODLUKA 27.09.2026, owner]
+ * takes it off the record of a member who hides his profile when the reader is not signed in -
+ * and keeps him on the team: „mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u
+ * timu i bodovi koje je doneo." So the server names such a member on the team instead
+ * (`Team.alsoInTheTeam`), and to every reader each standing membership is on exactly one of the
+ * two (`TeamApiTest.theTwoDoorsNameEveryStandingMembershipOnceToEveryCaller`). Read off the
+ * record alone, the team's page and the table of teams would lose him, and his points with him.
+ *
+ * **By member number, and the record wins**, because the two answers can still come from two
+ * different readers. Signing in and out happen in place, and since 02.10.2026 the session drops
+ * both names when the reader changes (`session/theCachesFollowTheReader.ts`) - this said that only
+ * some screens drop `competitors` after a write, which was how a list read as somebody signed in
+ * came to stand beside teams read as a visitor on every sign in after the front page. What is left
+ * is smaller and is not closed: a screen that is open when the reader changes keeps what it read,
+ * and an answer already on its way lands in the cache afterwards (`loadResource` writes it; the
+ * boundary is written in `session/theCachesFollowTheReader.ts`). Then both doors name the same
+ * member, and he is still one member. The record is taken over the team's word because it is his
+ * own door.
+ *
+ * **A member the team names and the list does not carry is left out**, which is the same answer
+ * the record gives for him: the list is the members whose fee is standing, and there is nobody to
+ * draw.
+ */
+export function membersOf(team: Team, competitors: Competitor[]): InTheTeam[] {
+  const byNumber = new Map(competitors.map((one) => [one.memberNumber, one]))
+  const members = new Map<string, InTheTeam>()
+
+  for (const also of team.alsoInTheTeam) {
+    const competitor = byNumber.get(also.memberNumber)
+
+    if (competitor !== undefined) {
+      members.set(also.memberNumber, { competitor, since: also.since })
+    }
+  }
+
+  for (const one of competitors) {
+    if (one.teamId === team.id) {
+      members.set(one.memberNumber, { competitor: one, since: one.teamSince })
+    }
+  }
+
+  return [...members.values()]
+}
+
+/**
  * Whether somebody was in their team in a given season.
  *
  * A team is a thing of one season (PDL P13), so a figure headed by a year has to
- * be that year's team and not today's. `teamSince` is what the data knows, and
- * it answers both cases that arise: somebody still in a team counts from the
- * season they joined, and somebody who has left contributes nothing, which is
- * what the exit rule orders anyway (PDL P13, 31.07.2026: leaving mid-season
- * deletes the whole contribution to that team for that season).
+ * be that year's team and not today's. The season a membership began in is what
+ * the data knows, and it answers both cases that arise: somebody still in a team
+ * counts from the season they joined, and somebody who has left contributes
+ * nothing, which is what the exit rule orders anyway (PDL P13, 31.07.2026:
+ * leaving mid-season deletes the whole contribution to that team for that season).
  *
  * It also keeps out the member who has paid for next season and joined a team
  * for it, who is a member today and deliberately not in this season's tables.
+ *
+ * **It is asked of a member of a team (`membersOf`) and not of a record**, since
+ * 02.10.2026: a member who hides his profile carries no season on his record for a
+ * reader who is not signed in, and his team carries it instead. One rule, whichever
+ * door named him.
  *
  * What it cannot express is the member who left cleanly on 1 January and keeps
  * their earlier contribution. Nothing in the data names that person's old team,
  * so no rule here can restore them.
  */
-export function inTeamIn(competitor: Competitor, season: number): boolean {
-  return competitor.teamSince !== null && competitor.teamSince <= season
+export function inTeamIn(member: { since: number | null }, season: number): boolean {
+  return member.since !== null && member.since <= season
 }
 
 export function rankTeams(
@@ -535,9 +598,9 @@ export function rankTeams(
 ): Placed<TeamRow>[] {
   const rows = teams.map((team) => {
     const numbers = new Set(
-      competitors
-        .filter((one) => one.teamId === team.id && inTeamIn(one, season))
-        .map((one) => one.memberNumber),
+      membersOf(team, competitors)
+        .filter((one) => inTeamIn(one, season))
+        .map((one) => one.competitor.memberNumber),
     )
 
     return {

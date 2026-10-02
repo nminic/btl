@@ -99,14 +99,22 @@ export const RESOURCE_NAMES = [
      had kept. It was the browser's own copy, held in `useState`, and a copy in a
      component dies with the component.
 
-     THE ONE NAME ON THIS LIST WHOSE ANSWER IS DIFFERENT FOR EVERY CALLER, and the cache
+     THE FIRST NAME ON THIS LIST WHOSE ANSWER IS DIFFERENT FOR EVERY CALLER, and the cache
      above is keyed by name with nobody in the key. That is safe for exactly as long as a
      visit is one person, AND A VISIT IS NOT ONE PERSON: measured 27.09.2026, signing out and
      signing back in happen IN PLACE - `AccountMenu` calls `signOutOfTheServer()` and
      `signOut()`, `SignIn` calls `signInWith` and `navigate`, and not one of the four reloads
      anything. So this name is dropped from the cache the moment the caller changes, which is
      `theInboxNowBelongsTo` in `data/useResource.ts`, and that is the one thing on this list
-     that a name in the key would otherwise have had to buy. */
+     that a name in the key would otherwise have had to buy.
+
+     **THIS SAID „THE ONE NAME", AND IT WAS NOT THE ONLY ONE THAT DEPENDS ON WHO IS ASKING
+     (02.10.2026).** `competitors` and `teams` do as well: a member who hides his profile is
+     answered to a visitor without his team and his picture and to anybody signed in with both
+     (PDL, section 16), and a team tells a member whether he founded it. Nobody hands those two a
+     member, so no hook of theirs could drop them; the session does, when the reader changes
+     (`session/theCachesFollowTheReader.ts`). Which names depend on the caller is read out of the
+     backend rather than out of this sentence, by `session/everyNameThatDependsOnTheReader.test.ts`. */
   'inbox',
   'leagues',
   /* EVERYTHING THE ONE ASKING IS WAITING TO HEAR BACK ABOUT (`MyApplicationsApi`). The
@@ -126,7 +134,7 @@ export const RESOURCE_NAMES = [
      reads out of the Java source), and a name that dropped the `me/` would be this file
      inventing an address the backend does not answer.
 
-     **THE SECOND NAME WHOSE ANSWER IS DIFFERENT FOR EVERY CALLER**, after `inbox`, and the
+     **THE SECOND NAME A HOOK DROPS WHEN THE CALLER CHANGES**, after `inbox`, and the
      cache above is keyed by name with nobody in the key. It is dropped the moment the caller
      changes for exactly the reason written over `inbox`: signing out and back in happen IN
      PLACE, so a visit is not one person. That is `theWaitingNowBelongsTo` in
