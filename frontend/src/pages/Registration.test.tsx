@@ -756,6 +756,38 @@ describe('the letter asked for again', () => {
     expect(await screen.findByText(sr.registration.resent)).toHaveFocus()
   }, SLOW)
 
+  it('takes the last refusal off the screen while the next request is out', async () => {
+    /* MEASURED WHILE THE SECOND REQUEST IS STILL IN FLIGHT, which is the only moment the fault
+       exists and the registration's own case says so in the same words: once the answer arrives
+       the sentence under the button is replaced either way, so a case that looked afterwards would
+       measure nothing. Left standing, somebody who pressed again reads the old refusal over a
+       request that has not been answered and cannot tell which press it is about. */
+    resendAnswer = () => answeredWith(500)
+
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+    await user.click(screen.getByRole('button', ASK))
+    await screen.findByText(sr.server.wrong.replace('{status}', '500'))
+
+    const holding: { answer: ((response: Response) => void) | null } = { answer: null }
+
+    resendAnswer = () =>
+      new Promise<Response>((resolve) => {
+        holding.answer = resolve
+      })
+
+    await user.click(screen.getByRole('button', ASK))
+
+    expect(await screen.findByText(sr.registration.resending)).toBeVisible()
+    expect(screen.queryByText(sr.server.wrong.replace('{status}', '500'))).toBeNull()
+
+    must(holding.answer, 'the answer the server was holding')(did())
+
+    expect(await screen.findByText(sr.registration.resent)).toBeVisible()
+  }, SLOW)
+
   it('lets the next press through after a refusal, and then says it', async () => {
     resendAnswer = () => answeredWith(500)
 
