@@ -151,9 +151,9 @@ export function theBreakingGoesTo(pair: number): string {
  * Ends one pair on the server, and says what came back.
  *
  * <p><b>THE ROUTE NAMES NO REFUSAL AT ALL, AND THAT IS READ OFF IT RATHER THAN ASSUMED.</b>
- * `PairWriteApi.end` reaches for `away()` and never for `no(...)`, so the only answers this can
- * carry are 204 and an empty 404 - and that 404 deliberately covers four callers at once: a
- * pair that is not there, one that is not his, one of a season that is over, and one whose half
+ * `PairWriteApi.end` reaches for `nothingIsHere()` and never for `no(...)`, so the only answers
+ * this can carry are 204 and a 404 with no reason in it - and that 404 deliberately covers four
+ * callers at once: a pair that is not there, one that is not his, one of a season that is over, and one whose half
  * has stopped paying. Told apart, the numbers would answer which pairs exist and who is in them
  * to anybody walking the keys.
  *

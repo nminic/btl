@@ -246,8 +246,8 @@ export function RacingPairLine({
                   IT 404 EVERY TIME (PENDING stavka 316). The roster is what `GET /api/competitors`
                   serves and `CompetitorApi` ends it `where c.active`, so a half who is not in it is a
                   member whose fee has lapsed; `PairWriteApi.pairHeIsHalfOf` asks BOTH halves to be
-                  active, so `DELETE /api/pairs/{id}` answers this pair with an empty 404 whoever
-                  presses and however often. The pair is still drawn and still said, as it was, with
+                  active, so `DELETE /api/pairs/{id}` answers this pair with a 404 that names no
+                  reason, whoever presses and however often. The pair is still drawn and still said, as it was, with
                   the number where the name would be: what is not offered is a press that cannot
                   work. **This is the reasoning of the author of this branch, not a recorded
                   decision**; the owner's own words about such a pair are P13, 11.08.2026, „Ne
@@ -302,8 +302,9 @@ export function RacingPairLine({
  * THE REFUSALS `DELETE /api/pairs/{id}` CAN NAME, AND THERE ARE NONE.
  *
  * <p><b>Read off the route rather than remembered, and empty is what it really answers.</b>
- * `PairWriteApi.end` reaches for `away()` and never for `no(...)`, so the only two answers that
- * route gives are 204 and an empty 404 - and the 404 is deliberately four callers at once (a pair
+ * `PairWriteApi.end` reaches for `nothingIsHere()` and never for `no(...)`, so the only two
+ * answers that route gives are 204 and a 404 with no reason in it - and the 404 is deliberately
+ * four callers at once (a pair
  * that is not there, one that is not his, one of a season that is over, one whose half has
  * lapsed), because telling them apart would answer which pairs exist and who is in them to
  * anybody walking the keys.
@@ -328,7 +329,7 @@ const WHEN_BREAKING_A_PAIR: Record<string, string> = {}
  * OWNER'S.</b> What was asked of it is that it may not promise that a second try will work. It is
  * one sentence for all four causes on purpose, saying only what holds for every one of them: a
  * sentence that named the cause would be the answer to „which pairs exist and who is in them" that
- * the empty 404 is written not to give (`PairWriteApi.end`). It names the one thing that does
+ * the bare 404 is written not to give (`PairWriteApi.end`). It names the one thing that does
  * help, which is to read the page again.
  */
 const WHAT_THE_NUMBER_SAYS_WHEN_BREAKING_A_PAIR: Record<number, string> = {

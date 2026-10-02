@@ -21,9 +21,10 @@ import { whatABareNumberSays } from './serverWords'
  * than the plan.
  *
  * <p><b>A ROUTE THAT NAMES NO REFUSAL AND STILL MEANS SOMETHING BY ITS NUMBER SAYS IT IN
- * `numbers`</b> (PENDING stavka 316, owner, 02.10.2026). `DELETE /api/pairs/{id}` is the one
- * such route: it answers an empty 404 for four callers at once on purpose (`ADL` A8: told apart,
- * the numbers would say which pairs exist and who is in them), so the number cannot become a
+ * `numbers`</b> (PENDING stavka 316, a finding of the cleaning pass of 02.10.2026 and not a
+ * decision of the owner). `DELETE /api/pairs/{id}` is the one such route: it answers a 404 with no
+ * reason in it for four callers at once on purpose (`ADL` A8: told apart, the numbers would say
+ * which pairs exist and who is in them), so the number cannot become a
  * reason, and the portal's general sentence for a 404 cannot stand either, because it tells the
  * reader to try again in a few minutes and for three of the four that never helps. The screen of
  * such a route hands in what ITS number means, and that is said instead.

@@ -292,8 +292,9 @@ describe('„Raskini" on a pair the server is keeping', () => {
       await user.click(at(breakButtons(), 1))
 
       /* **The sentence is the ROUTE’S OWN for its one number, and not the portal’s general one**,
-         because that route names no refusal at all (`PairWriteApi.end` reaches for `away()` and
-         never for `no(...)`) and the general sentence for a 404 tells her to try again in a few
+         because that route names no refusal at all (`PairWriteApi.end` reaches for
+         `nothingIsHere()` and never for `no(...)`) and the general sentence for a 404 tells her
+         to try again in a few
          minutes, which is wrong for three of the four callers this 404 stands for (PENDING
          stavka 316). Its text is a PROPOSAL and not the owner’s words. */
       expect(await screen.findByText(sr.pair.breakRefused.notHeld)).toBeVisible()

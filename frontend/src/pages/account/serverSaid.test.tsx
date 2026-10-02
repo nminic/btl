@@ -74,8 +74,8 @@ describe('an answer that named no reason and is not a 400', () => {
 /**
  * A ROUTE THAT GIVES ONE OF ITS BARE NUMBERS A MEANING OF ITS OWN (PENDING stavka 316).
  *
- * <p>`DELETE /api/pairs/{id}` names no refusal at all and answers an empty 404 for four callers at
- * once on purpose (`ADL` A8), so its 404 cannot be said by name, and it cannot be said as „try again
+ * <p>`DELETE /api/pairs/{id}` names no refusal at all and answers a 404 with no reason in it for
+ * four callers at once on purpose (`ADL` A8), so its 404 cannot be said by name, and it cannot be said as „try again
  * in a few minutes" either: of the four, one is answered by waiting and three are not. The route's
  * screen hands in what its OWN number means, and `ServerSaid` says that instead of the portal's
  * general sentence for a number.
