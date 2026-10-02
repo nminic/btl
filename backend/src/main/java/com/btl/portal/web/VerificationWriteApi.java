@@ -63,8 +63,9 @@ import java.util.regex.Pattern;
  * queue:comments} and is answered about a {@code profiles} row, because that is the only
  * shape in which the two sentences disagree.
  *
- * <p><b>THE REFUSAL IS 404 AND IT GOES DOWN {@code sendError}.</b> ADL A8, the owner on
- * 13.09.2026: „Server odbija moderatora bez privilegije sa 404, ne sa 403", because the
+ * <p><b>THE REFUSAL IS 404 AND IT GOES DOWN {@code sendError}.</b> ADL A8, 13.09.2026: the
+ * owner decided that a moderator without the privilege is refused with 404 and not 403 - the
+ * journal words the entry that way, and it is not a sentence of his - because the
  * administration draws no screen a moderator may not open and the server must not be the
  * one place that says the address is there. {@link VerificationApi} measured what an
  * imitation costs - a status written onto the response came back 262 bytes with {@code
@@ -95,8 +96,10 @@ import java.util.regex.Pattern;
  * recording a decision while doing nothing else would have been worse than refusing - an
  * approved result that never enters the rankings (PDL P9, „Rezultat ulazi u rang liste tek
  * posle odobrenja") has left the queue for ever and reached nothing, the one outcome a screen
- * cannot undo. The owner answered it on 21.09.2026: „Rezultat i rang liste su UNUTAR
- * transakcije; dukati i posta idu POSLE nje", by the measure he set the same day - which half
+ * cannot undo. The owner answered it on 21.09.2026, choosing among three outcomes offered:
+ * the result and the rankings are written inside the transaction and the ducats and the post
+ * go after it (that is the journal's wording of the choice, not a sentence of his), by the
+ * measure he set the same day - which half
  * outcome can repair itself. So the result is written inside the transaction and the letter
  * goes after it, and the two things V25 and V32 said this increment must carry with it are
  * carried: V47 widens {@code result.distance_km} and {@link
@@ -150,7 +153,8 @@ import java.util.regex.Pattern;
  * a quotation that exists nowhere, which is what the citation floor caught.
  * An approved team reaches him too, which
  * is the owner's own sentence of 03.08.2026: „clanu odmah treba da stigne obavestenje u
- * portal inboks da je njihov tim prihvacen." An approved PROFILE does not, and that is
+ * portal inboks da je njihov tim prihvacen i od tog trenutka imaju Admin prava za svoj tim".
+ * An approved PROFILE does not, and that is
  * absence rather than omission - nothing decided that it should, and ADL P-javno's rule is
  * to leave out rather than to serve „za svaki slucaj".
  *
@@ -204,8 +208,10 @@ class VerificationWriteApi {
 	 * The reason this tab was refused was never that nobody had written the code: it was that
 	 * „sta je unutar transakcije a sta posle nje nije odluceno", and an approved result that
 	 * never entered the rankings would have left the queue for ever and reached nothing. The
-	 * owner answered it on 21.09.2026 - „Rezultat i rang liste su UNUTAR transakcije; dukati i
-	 * posta idu POSLE nje" - by the measure he set the same day, which of the half outcomes
+	 * owner answered it on 21.09.2026, choosing among three outcomes offered: the result and
+	 * the rankings inside the transaction, the ducats and the post after it (the journal's
+	 * wording of the choice, not a sentence of his) - by the measure he set the same day,
+	 * which of the half outcomes
 	 * can repair itself: a result without its post is repaired by sending it again, a ducat
 	 * without its result is not. So this class now writes the result inside and posts outside,
 	 * and {@code payments} is the one name left out, still waiting on the increment that lets
@@ -356,9 +362,10 @@ class VerificationWriteApi {
 
 	/**
 	 * @param id         the item he now holds
-	 * @param secondsLeft how long he has, which the owner made an obligation rather than a
-	 *                    nicety: „portal mora moderatoru da kaze koliko mu je ostalo, pre
-	 *                    nego sto odluci"
+	 * @param secondsLeft how long he has, which follows from the quarter of an hour the owner
+	 *                    chose (PDL, 18.09.2026) and which the journal derives as an obligation
+	 *                    rather than a nicety: the portal must tell the moderator how much is
+	 *                    left before he decides - the journal's derivation, not his sentence
 	 */
 	record Held(long id, long secondsLeft) {
 	}
@@ -465,11 +472,12 @@ class VerificationWriteApi {
 	/**
 	 * HE IS DONE WITH IT, OR THE SUPERADMIN TAKES IT OFF SOMEBODY WHO IS NOT.
 	 *
-	 * <p><b>The second half is the owner's, with its cost priced and accepted:</b>
-	 * „Superadmin SME da otme tudje zakljucavanje, i onaj kome je oteto to sazna. Time
-	 * zaglavljena stavka uvek ima resenje koje ne trazi bazu. Cena koju je prihvatio: jedna
-	 * ruta vise i jedna poruka u sanduce, da moderator ne otkrije tek kad mu odluka ne
-	 * prodje." This is that one route, and the message is written below.
+	 * <p><b>The second half is the owner's choice, with its cost priced and accepted</b>
+	 * (PDL, 18.09.2026, among the outcomes offered): the superadmin may take another's hold
+	 * away and the one it is taken from is told, so that a stuck item always has a way out that
+	 * does not need the database. The cost he accepted, as the journal records it: one route
+	 * more and one message in the inbox, so that a moderator does not find out only when his
+	 * decision is refused. This is that one route, and the message is written below.
 	 *
 	 * <p><b>It is the SUPERADMIN and not „a moderator holding everything".</b>
 	 * {@link WhatHeMayDo#holdsEveryRightThereIs} reads V5's {@code rights_mode = 'all'} off
@@ -542,8 +550,9 @@ class VerificationWriteApi {
 		   on 21.09.2026: asked the other way round, a plain competitor holding nothing sent
 		   `{}` and got 400 in 348 bytes, while the same body on a sibling address that maps
 		   nothing got 404 in 425. One request, and he has learnt that an administrative
-		   action lives at that address - which is the whole of what ADL A8 forbids, „ne sme
-		   ni da sazna da radnja postoji". It did not leak WHICH items exist; it leaked that
+		   action lives at that address - which is the whole of what ADL A8 forbids (the owner's
+		   own words in that section, of 30.07.2026: „Ne treba ni da budu svesni moderatori da
+		   postoje akcije koje im nisu dodeljene."). It did not leak WHICH items exist; it leaked that
 		   the route does, which is the same oracle one level up. A refusal about the form is
 		   a refusal only somebody who may decide is entitled to hear.
 
@@ -610,8 +619,9 @@ class VerificationWriteApi {
 				Carried carried = inOneTransaction.execute(committing -> write(item, answer, asking));
 
 				/* AND THE POST GOES AFTER THE TRANSACTION HAS COMMITTED, never inside it.
-				   ADL A36, the owner on 21.09.2026 for this very tab: „Rezultat i rang liste
-				   su UNUTAR transakcije; dukati i posta idu POSLE nje." The cost of the other
+				   ADL A36, the owner's choice of 21.09.2026 for this very tab, among three outcomes
+				   offered: the result and the rankings inside the transaction, the ducats and the post
+				   after it (the journal's wording, not a sentence of his). The cost of the other
 				   order is measured rather than supposed - B58, 14.09.2026: with sending
 				   inside, one request held a pool connection 5,15 s when the relay hung, ten
 				   at once took the whole pool, and a member's legitimate sign-in failed after
@@ -711,15 +721,17 @@ class VerificationWriteApi {
 		 * inbox contradicting each other, and no fault anywhere.
 		 *
 		 * `DecidingOnASubmission.decide` had already been asked and had answered - it read
-		 * the state OUTSIDE this transaction, which is a check-then-act, and the owner's own
-		 * precedent says what that is worth: `PaymentNumberConcurrencyTest` exists because
-		 * „Java provera-pa-upis prolazi svaki sekvencijalni slucaj i pada samo ovde".
+		 * the state OUTSIDE this transaction, which is a check-then-act, and the portal's own
+		 * precedent says what that is worth: `PaymentNumberConcurrencyTest` exists because a
+		 * check-then-act written in Java passes every sequential case and fails only under
+		 * concurrency (a paraphrase of that class's own note, not a sentence of the owner's).
 		 *
 		 * So the claim is the UPDATE and the answer is the COUNT. `where state = 'waiting'`
 		 * makes the statement take the row's lock and re-read it after the other transaction
-		 * commits; the loser matches nothing, writes nothing, and is told 409, which is the
-		 * owner's own requirement that „drugi moderator na zauzetu stavku dobija odbijenicu,
-		 * ne tihi neuspeh" (PDL P9, 18.09.2026). It is also why every consequence below
+		 * commits; the loser matches nothing, writes nothing, and is told 409, which is what
+		 * follows from the owner's answer about the shared queue (PDL P9, 18.09.2026, as the journal
+		 * derives it: a second moderator who meets an item that is held gets a refusal, not a
+		 * silent failure). It is also why every consequence below
 		 * happens AFTER this line and not before it. */
 		int claimed = db.sql("update verification set state = ?, decided_at = now(),"
 						+ " decided_by = a.id,"
@@ -803,9 +815,10 @@ class VerificationWriteApi {
 	 *
 	 * <p>Owner, 03.08.2026 (PDL P13): „ako ga prihvate, clanu odmah treba da stigne
 	 * obavestenje u portal inboks da je njihov tim prihvacen i od tog trenutka imaju Admin
-	 * prava za svoj tim", and 05.09.2026: „Odobrenje novog tima upisuje osnivaca u taj tim",
-	 * which was found by a review of PR 186 when approval wrote only the team and the
-	 * founder could go on to found another.
+	 * prava za svoj tim", and the entry of 05.09.2026 (PDL), which is not his sentence: it was
+	 * written after a review of PR 186 found that approval wrote only the team and the
+	 * founder could go on to found another, and it says that approval writes the founder into
+	 * the team.
 	 *
 	 * <p><b>The address is made HERE and nowhere earlier</b>, which is why
 	 * {@code team_proposal} has no {@code slug}: „a proposal standing in the queue is not a
@@ -946,12 +959,15 @@ class VerificationWriteApi {
 	 * cascade} (V32), so deleting the result being corrected would take THIS VERY SUBMISSION
 	 * away with it inside this transaction, and the {@code verification} row after it through
 	 * {@code verification_result_submission_fk} - the row this method was reached by. Writing
-	 * over it keeps the one fact the owner asked for: „Odobrenje ispravke zamenjuje rezultat,
-	 * dakle stari izlazi i novi ulazi u istom trenutku" (28.08.2026), with no moment in
+	 * over it keeps the one fact that follows from the outcome the owner chose on 28.08.2026
+	 * (the journal's wording of what follows, not his sentence): the approval replaces the
+	 * result, so the old one leaves and the new one enters in the same moment, with no moment in
 	 * between in which the member has no result.
 	 *
-	 * <p><b>The race is not written again on a correction, and the owner is why.</b> „Menja se
-	 * sve osim trke. Ko je pogrešio trku, briše rezultat i unosi nov" (27.08.2026), and V32's
+	 * <p><b>The race is not written again on a correction, and the owner is why.</b> On
+	 * 27.08.2026 he answered the questions about correcting one's own result (the journal words
+	 * the answer, it does not quote him): everything is changed except the race, and whoever
+	 * got the race wrong deletes the result and enters a new one. V32's
 	 * own check says the same from the schema's side. So the statement names the four figures
 	 * and the points and nothing else.
 	 *
@@ -974,9 +990,10 @@ class VerificationWriteApi {
 		/* WAS THE BEGINNERS' CATEGORY STILL OPEN TO HIM, ASKED BEFORE THE ROW EXISTS.
 		 *
 		 * THE SEASON IS THE ONE AFTER THE RUN'S, NEVER THE RUN'S OWN, and that distinction is
-		 * the whole of the owner's sentence of 26.09.2026: „ako odobrenje prevede clanov zbir
-		 * TEKUCE sezone na 12 ili vise, pocetnicka mu se za NAREDNU sezonu zatvara istog
-		 * trenutka." A season's category was decided off the seasons before it, and a season
+		 * the whole of the owner's decision of 26.09.2026, in the journal's wording and not in a
+		 * sentence of his: if the approval takes the member's total for the current season to
+		 * twelve or more, the beginners' category is closed for the NEXT season at once. A season's
+		 * category was decided off the seasons before it, and a season
 		 * is never before itself - `BestOfficialSeason` carries the day the portal got exactly
 		 * this wrong, when a season's own growing total closed it on him from the inside.
 		 *
@@ -1136,7 +1153,8 @@ class VerificationWriteApi {
 	 * until PDL P10a, 22.09.2026 - `scheduleMoveBehind`, `moveTheEvent` and the
 	 * `ScheduleMove` record that carried one read of "what day is this, right now"
 	 * between the P10b guard in `write` and the write itself. The owner's decision the
-	 * same day, in as many words: „Redova je pet, ne šest." What the two methods did -
+	 * same day (PDL P10a), which the journal words as five queues and not six. What the two
+	 * methods did -
 	 * move an event and its races together, by the same number of days - is still done,
 	 * from the one place P10a leaves it: `EventWriteApi.change`, the shape both copies
 	 * answered to rather than to each other, on the administrator's own screen.

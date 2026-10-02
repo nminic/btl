@@ -586,9 +586,10 @@ class VerificationWriteApiTest {
 	/**
 	 * THE OWNER'S FIFTEEN MINUTES, MEASURED ON BOTH SIDES OF ITSELF.
 	 *
-	 * <p>„Zakljucavanje ISTICE posle vremena mirovanja, i tada stavku uzima ko hoce" (owner,
-	 * 18.09.2026), chosen against the cost he was shown: „pad pregledaca ili zatvoren laptop
-	 * drzali bi stavku zauvek".
+	 * <p>The owner chose on 18.09.2026, among the outcomes offered with their costs, that a
+	 * hold EXPIRES after a time of rest and that anybody may then take the item (the journal's
+	 * wording of the choice, not a sentence of his), against the cost he was shown: a browser
+	 * that crashed or a laptop that was closed would hold the item for ever.
 	 *
 	 * <p><b>One fixture and two moments, which is the only shape that measures this.</b> A
 	 * case that takes a hold and asks straight away is green whether the spell is fifteen
@@ -628,9 +629,11 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * „Superadmin SME da otme tudje zakljucavanje, I ONAJ KOME JE OTETO TO SAZNA" (owner,
-	 * 18.09.2026), with the cost he accepted written beside it: „jedna ruta vise i jedna
-	 * poruka u sanduce, da moderator ne otkrije tek kad mu odluka ne prodje."
+	 * THE SUPERADMIN MAY TAKE ANOTHER'S HOLD AWAY, AND THE ONE IT IS TAKEN FROM IS TOLD: the
+	 * owner's choice of 18.09.2026 among the outcomes offered (the journal's wording, not a
+	 * sentence of his), with the cost he accepted written beside it: one route more and one
+	 * message in the inbox, so that a moderator does not find out only when his decision is
+	 * refused.
 	 */
 	@Test
 	void theSuperadminTakesAHoldAwayAndTheManWhoHeldItIsTold() throws Exception {
@@ -757,8 +760,9 @@ class VerificationWriteApiTest {
 	 * <p>Asked the other way round - the body checked before the door - a plain competitor
 	 * sending an empty object was answered 400 while the same body on an address that maps
 	 * nothing was answered 404. One request, and he has learnt that an administrative action
-	 * lives there, which ADL A8 forbids in as many words: „ne sme ni da sazna da radnja
-	 * postoji". The bytes of that difference are measured over a socket in
+	 * lives there, which ADL A8 forbids: the owner's own words in that section, of
+	 * 30.07.2026, are „Ne treba ni da budu svesni moderatori da postoje akcije koje im nisu
+	 * dodeljene." The bytes of that difference are measured over a socket in
 	 * {@code RightsOverRealHttpTest}; what is held here is the order of the two checks.
 	 *
 	 * <p><b>Both askers are refused for different reasons and must answer alike:</b> the
@@ -894,9 +898,10 @@ class VerificationWriteApiTest {
 	// ----- what an approval means ------------------------------------------------------
 
 	/**
-	 * „Odobrenje pravi tim... i od tog trenutka imaju Admin prava za svoj tim" (owner,
-	 * 03.08.2026), and „Odobrenje novog tima upisuje osnivaca u taj tim" (05.09.2026), which a
-	 * review of PR 186 found when approval wrote the team and left the founder out of it.
+	 * „ako ga prihvate, clanu odmah treba da stigne obavestenje u portal inboks da je njihov
+	 * tim prihvacen i od tog trenutka imaju Admin prava za svoj tim" (owner, 03.08.2026), and the
+	 * entry of 05.09.2026, which is not his sentence: a review of PR 186 found that approval
+	 * wrote the team and left the founder out of it.
 	 */
 	@Test
 	void approvingATeamMakesItPutsTheFounderInItAndTellsHim() throws Exception {
@@ -1276,14 +1281,17 @@ class VerificationWriteApiTest {
 	/**
 	 * A CORRECTION OVERWRITES THE RUN IT AMENDS AND DOES NOT ADD A SECOND ONE.
 	 *
-	 * <p>Owner, 28.08.2026, choosing between four outcomes: „Odobrenje ispravke zamenjuje
-	 * rezultat, dakle stari izlazi i novi ulazi u istom trenutku." Asserted as a COUNT and as
+	 * <p>The owner chose on 28.08.2026 between four outcomes, and what follows from the one he
+	 * took is that the approval replaces the result, so the old one leaves and the new one
+	 * enters in the same moment (the journal's wording of what follows, not his sentence).
+	 * Asserted as a COUNT and as
 	 * the same row id, not only as the new figures: a statement that inserted instead of
 	 * updating would leave the new numbers exactly where this case looks for them while
 	 * doubling the member's season.
 	 *
-	 * <p>The race is asserted unchanged because the owner said so the day before: „Menja se
-	 * sve osim trke."
+	 * <p>The race is asserted unchanged because the owner answered so the day before
+	 * (27.08.2026, in the journal's wording of his answer): everything is changed except the
+	 * race.
 	 *
 	 * <p><b>The climb and the drop are asserted as well</b> (PR 443 review). The statement that
 	 * overwrites names them beside the time, and a correction that changed only the time
@@ -1331,8 +1339,9 @@ class VerificationWriteApiTest {
 	/**
 	 * A REFUSED CORRECTION LEAVES THE STANDINGS EXACTLY WHERE THEY WERE.
 	 *
-	 * <p>Owner, 28.08.2026, and it is the half of his decision the portal once got wrong in
-	 * the direction that costs the member: „Odbijanje ne menja ništa." The fault that was
+	 * <p>The owner's choice of 28.08.2026, and it is the half of what follows from it that the
+	 * portal once got wrong in the direction that costs the member: a refusal changes nothing
+	 * (the journal's wording, not his sentence). The fault that was
 	 * measured on the day is written down beside it - the profile fell from 180 runs and
 	 * 1.752,86 points to 179 and 1.744,60, with no way back.
 	 *
@@ -1357,8 +1366,9 @@ class VerificationWriteApiTest {
 	 * APPROVING A RUN OVER THE THRESHOLD CLOSES THE BEGINNERS' CATEGORY FOR THE SEASON AFTER
 	 * IT, AND NEVER FOR THE SEASON THE RUN BELONGS TO.
 	 *
-	 * <p>Owner, 26.09.2026: „ako odobrenje prevede clanov zbir tekuce sezone na 12 ili vise,
-	 * pocetnicka mu se za NAREDNU sezonu zatvara istog trenutka." <b>Both halves are asserted
+	 * <p>The owner's decision of 26.09.2026, in the journal's wording and not in a sentence of
+	 * his: if an approval takes the member's total for the current season to twelve or more,
+	 * the beginners' category closes for the NEXT season at once. <b>Both halves are asserted
 	 * and the second is the one that cost a whole round of review once already</b>: the run is
 	 * in 2027 and it closes 2028, while 2027 itself stays open. A season's category was
 	 * decided off the seasons BEFORE it, and a season is never before itself - a portal that
@@ -1521,8 +1531,8 @@ class VerificationWriteApiTest {
 	 * „he is told when it closes, once". A member who crossed twelve points in April and goes
 	 * on running would otherwise be told his beginners' category had just been shut on every
 	 * result he sent for the rest of the season - each message true about the category and
-	 * false about the word „time", which is what the owner's sentence is built on: „ako
-	 * odobrenje PREVEDE clanov zbir... na 12 ili vise".
+	 * false about the word „time", which is what the decision of 26.09.2026 is built on (the
+	 * journal's wording: when the approval TAKES the member's total to twelve or more).
 	 *
 	 * <p>It is a different member from the two above and he had his points before this fixture
 	 * queued anything, so „already over" is a state of the record rather than something an
@@ -1724,9 +1734,10 @@ class VerificationWriteApiTest {
 	 * a refusal told the member why, like every queue but comments; and an approval that
 	 * would carry a written result across 1 January was refused, by the identical question
 	 * {@code EventWriteApiTest} and {@code RaceWriteApiTest} ask (PDL P10b) and not by a
-	 * copy of it. The owner's decision the same day, in as many words: „Redova je pet, ne
-	 * šest." What P10b guards is unmoved - „Ovo nikad nije bilo o prijavi termina... bilo bi
-	 * dostizno i da prijave nikad nije bilo" - and stays covered from the administrator's
+	 * copy of it. The owner's decision the same day (PDL P10a), which the journal words as five
+	 * queues and not six. What P10b guards is unmoved - the journal's reason is that it was never
+	 * about the schedule proposal and would be reachable if no proposal had ever existed - and
+	 * stays covered from the administrator's
 	 * own screen, where it was reachable all along.
 	 */
 
@@ -1737,8 +1748,8 @@ class VerificationWriteApiTest {
 	 * sixth tab - or a fifth that grows a consequence - fails here until somebody decides
 	 * what answering it means. ONE of the five is refused today, {@code payments}, and it is
 	 * refused because nothing lets a member reach that tab at all. {@code results} was the
-	 * second until ADL A36's boundary was settled („Rezultat i rang liste su UNUTAR
-	 * transakcije; dukati i posta idu POSLE nje", owner 21.09.2026) and V47 closed V25's debt
+	 * second until ADL A36's boundary was settled (the owner's choice of 21.09.2026: the result
+	 * and the rankings inside the transaction, the ducats and the post after it) and V47 closed V25's debt
 	 * on the column an approval copies. A sixth was refused nowhere - {@code schedule}
 	 * carried out its own approval, from V30 until PDL P10a, 22.09.2026 took the tab away
 	 * the same day: „Redova je pet, ne šest."

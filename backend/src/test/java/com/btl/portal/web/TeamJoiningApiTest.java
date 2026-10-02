@@ -759,36 +759,65 @@ class TeamJoiningApiTest {
 	@Test
 	void aRecordNamesAMemberByHisNumberAndNeverByHisKey() throws Exception {
 		JsonNode applications = answer(get("/api/teams/{id}/applications", keyOf(THE_TEAM)), LEADER);
+		JsonNode invitations = answer(get("/api/teams/{id}/invitations", keyOf(THE_TEAM)), LEADER);
 
 		assertThat(Answers.fieldsOf(applications.get(0)))
 				.containsExactlyInAnyOrder("id", "memberNumber", "date");
-		assertThat(Answers.fieldsOf(answer(get("/api/teams/{id}/invitations", keyOf(THE_TEAM)),
-				LEADER).get(0)))
+		assertThat(Answers.fieldsOf(invitations.get(0)))
 				.containsExactlyInAnyOrder("id", "memberNumber", "date");
 
-		/* THE KEY THAT MUST NOT LEAVE IS ASKED OF THE FIELD IT WOULD LEAVE IN, NOT OF THE TEXT.
-		   This used to ask whether the applicant's competitor.id appeared ANYWHERE in the answer as
-		   text, which is a question about every digit of every field: a key is a short number and a
-		   member number is a longer one that can contain it, so whether a key collided depended on
-		   how many rows earlier cases had written, and it did collide on 02.10.2026 the moment the
-		   competitors were made in another order (key 150 inside member number 001500). What the
-		   rule says is narrower and can be asked exactly: the record's `id` is the application's
-		   own key and the invitation's own key, which is read off the table for the same row. */
-		assertThat(rowOf(applications, APPLICANT).path("id").asLong())
-				.as("the record's id is not the application's own key")
-				.isEqualTo(applicationOf(APPLICANT, THE_TEAM));
-		assertThat(rowOf(answer(get("/api/teams/{id}/invitations", keyOf(THE_TEAM)), LEADER),
-						INVITED).path("id").asLong())
-				.as("the record's id is not the invitation's own key")
-				.isEqualTo(invitationOf(INVITED, THE_TEAM));
+		List<String> applicants = List.of(ANOTHER_APPLICANT, APPLICANT, HIDDEN_PROFILE,
+				LEFT_A_TEAM_LONG_AGO);
+		List<String> invitees = List.of(ANOTHER_INVITED, INVITED, LAPSED_INVITED,
+				INVITED_WHO_GOT_A_TEAM);
+
+		noMemberKeyIsAValueOf(applications, applicants,
+				applicants.stream().map(one -> applicationOf(one, THE_TEAM)).toList());
+		noMemberKeyIsAValueOf(invitations, invitees,
+				invitees.stream().map(one -> invitationOf(one, THE_TEAM)).toList());
 	}
 
-	/** The one record of a list that names this member, or nothing where none does. */
-	private static JsonNode rowOf(JsonNode list, String memberNumber) {
-		return list.valueStream()
-				.filter(row -> memberNumber.equals(row.path("memberNumber").asString()))
-				.findFirst()
-				.orElse(tools.jackson.databind.node.MissingNode.getInstance());
+	/**
+	 * NO VALUE OF THE ANSWER IS THE KEY OF A MEMBER IT NAMES - and the one place a number the same
+	 * as such a key may stand, a record's own {@code id}, is asked of that record's own key instead.
+	 *
+	 * <p><b>This replaces a question about TEXT with one about VALUES, and loses nothing.</b> It used
+	 * to ask whether the applicant's {@code competitor.id} appeared anywhere in the answer as
+	 * characters, which is a question about every digit of every field: a key is a short number and
+	 * a member number a longer one that can contain it, so whether a key collided depended on how
+	 * many rows earlier cases had written, and it did on 02.10.2026, the moment the competitors were
+	 * made in another order (key 150 inside member number 001500). Asked of values, that coincidence
+	 * is gone and the intent is whole: the key of a member listed leaves in NO field of NO record.
+	 *
+	 * <p><b>The one exception is the one that cannot be a leak.</b> The application's own key and a
+	 * competitor's key come from two different sequences and can be the same number, so asked of every
+	 * value an {@code id} equal to somebody's competitor key would fail a correct answer on some
+	 * future day. The {@code id} is therefore held to its own question - it is the key of THE ROW in
+	 * the table, read for the same member and the same team, in the order the list gives them - and a
+	 * competitor's key standing there instead is caught by that, unless it is by chance the same
+	 * number, in which case nothing has leaked that could be told apart.
+	 *
+	 * <p>The mutations this holds against, none of which the field list alone sees: the member
+	 * number replaced by the member's key, the {@code id} replaced by it, and, where a field
+	 * is added, the field list as well.
+	 *
+	 * @param members the members the list names, in the order it names them
+	 * @param ownKeys the key of each record in the table, in that same order
+	 */
+	private void noMemberKeyIsAValueOf(JsonNode list, List<String> members, List<Long> ownKeys) {
+		List<String> theirKeys = members.stream().map(one -> String.valueOf(keyOfMember(one)))
+				.toList();
+
+		assertThat(list.valueStream().map(row -> row.path("id").asLong()).toList())
+				.as("a record's id is not the key of that record's own row, so it is a number from"
+						+ " somewhere else - a member's key among the candidates")
+				.isEqualTo(ownKeys);
+
+		list.valueStream().forEach(row -> Answers.fieldsOf(row).stream()
+				.filter(name -> !"id".equals(name))
+				.forEach(name -> assertThat(row.path(name).asString("null"))
+						.as("the field %s of a record carries the key of a member it names", name)
+						.isNotIn(theirKeys)));
 	}
 
 	/**
