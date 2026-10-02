@@ -121,13 +121,22 @@ const SCREENS: Screen[] = [
   },
 ]
 
-/** A server whose answer to every `DELETE` is held until `settle` is called. */
+/**
+ * A server whose answer to every `DELETE` is held until `settle` is called.
+ *
+ * <p>`settle` takes a FUNCTION that makes the answer, and not the answer: a `Response` body can be
+ * read once, so one handed to two requests would be spent by the first, and a case that asks the
+ * question a second time would meet a body that is already gone - which reads exactly like a server
+ * that never answered.
+ */
 function holdingEveryDeletion() {
-  let settle: (answer: Response) => void = () => {}
-  const held = new Promise<Response>((resolve) => {
+  let settle: (answer: () => Response) => void = () => {}
+  const held = new Promise<() => Response>((resolve) => {
     settle = resolve
   })
-  const server = serverThat((_, init) => (init?.method === 'DELETE' ? held : null))
+  const server = serverThat((_, init) =>
+    init?.method === 'DELETE' ? held.then((make) => make()) : null,
+  )
 
   return { server, settle }
 }
@@ -184,7 +193,7 @@ describe('a deletion that is out with the server', () => {
       /* AND WHEN THE ANSWER COMES THE QUESTION GOES WITH THE RECORD, which is the owner's „list se
          zatvara sam kad stigne odgovor": nothing was pressed to close it, and nothing is left
          asking about a record that is gone. */
-      settle(did())
+      settle(did)
       await waitFor(() => {
         expect(
           here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
@@ -199,10 +208,101 @@ describe('a deletion that is out with the server', () => {
 
       expect(sending()).toHaveLength(1)
 
-      settle(did())
+      settle(did)
       await waitFor(() => {
         expect(sending()).toHaveLength(0)
       })
+
+      server.stop()
+    }, SLOW)
+
+    it('closes the question by itself when a refusal is in, and leaves the sentence and the focus with the button that asked', async () => {
+      /* THE OWNER'S RULE OF 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i uspeh"): „na svaki
+         odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz dugme". Nobody pressed
+         „Odustani" here, so a question that is gone is one the ANSWER closed; the sentence is the
+         screen's own and is said in an alert, and the focus goes where the activation puts it after
+         a 409 - to the button of the row (`admin/Payments.tsx`), because the one that had it left
+         with the question. */
+      const { server, settle, user, name, here } = await leaveItOut()
+
+      /* THE FOCUS IS MOVED ON BEFORE THE ANSWER, and on four of the screens it had been already
+         (`RowActions` and the members' list move it ahead of the answer). React gives the button that
+         asks the element „Potvrdi brisanje" had, so a focus left where it was would be on it whatever
+         the code does about it - which is how an `autoFocus` that does nothing read as working. */
+      await user.tab()
+
+      settle(() => answeredWith(404))
+
+      await waitFor(() => {
+        expect(
+          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+        ).not.toBeInTheDocument()
+      })
+
+      expect(
+        here.queryByRole('button', { name: `Odustani od brisanja: ${name}` }),
+      ).not.toBeInTheDocument()
+      expect(here.getByRole('button', { name: `Obriši: ${name}` })).toHaveFocus()
+      expect(sending()).toHaveLength(0)
+      expect(await screen.findByText(/Server je odgovorio brojem 404/)).toBeInTheDocument()
+
+      server.stop()
+    }, SLOW)
+
+    it('can be asked again after a refusal, and the second asking is sent', async () => {
+      /* The guard that refuses a second press while one is out is a ref, and one left standing after
+         the answer would answer every press with nothing beside a question that looks live. */
+      const { server, settle, user, name, here } = await leaveItOut()
+
+      settle(() => answeredWith(404))
+
+      await waitFor(() => {
+        expect(
+          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+        ).not.toBeInTheDocument()
+      })
+
+      await user.click(here.getByRole('button', { name: `Obriši: ${name}` }))
+
+      const again = await here.findByRole('button', { name: `Potvrdi brisanje: ${name}` })
+
+      /* AND NOTHING OF THE FIRST ATTEMPT IS LEFT ON IT: not told off, and no sentence about sending. */
+      expect(again).not.toHaveAttribute('aria-disabled')
+      expect(
+        here.getByRole('button', { name: `Odustani od brisanja: ${name}` }),
+      ).not.toHaveAttribute('aria-disabled')
+      expect(sending()).toHaveLength(0)
+
+      await user.click(again)
+
+      await waitFor(() => {
+        expect(server.asked.filter((each) => each.init?.method === 'DELETE')).toHaveLength(2)
+      })
+
+      server.stop()
+    }, SLOW)
+
+    it('puts a question asked again after a refusal away', async () => {
+      /* The half the old case of „lets the reader put the question away once a refusal is in"
+         measured: whatever the first attempt raised is let go of, so the way out of the second
+         question is open. */
+      const { server, settle, user, name, here } = await leaveItOut()
+
+      settle(() => answeredWith(404))
+
+      await waitFor(() => {
+        expect(
+          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+        ).not.toBeInTheDocument()
+      })
+
+      await user.click(here.getByRole('button', { name: `Obriši: ${name}` }))
+      await user.click(here.getByRole('button', { name: `Odustani od brisanja: ${name}` }))
+
+      expect(here.getByRole('button', { name: `Obriši: ${name}` })).toBeInTheDocument()
+      expect(
+        here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+      ).not.toBeInTheDocument()
 
       server.stop()
     }, SLOW)
@@ -213,7 +313,7 @@ describe('a deletion that is out with the server', () => {
          that do nothing and a sentence about why the deletion did not happen. */
       const { server, settle, user, name, here } = await leaveItOut()
 
-      settle(answeredWith(404))
+      settle(() => answeredWith(404))
       await waitFor(() => {
         expect(sending()).toHaveLength(0)
       })

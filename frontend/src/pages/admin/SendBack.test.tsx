@@ -7,8 +7,9 @@ import { SendBack } from './SendBack'
  * THE BOX THAT ASKS FOR A REASON, ASKED ON ITS OWN, WITHOUT THE QUEUE THAT DRAWS IT.
  *
  * <p>`admin/verificationDecision.test.tsx` measures what the queue does with this box, and the
- * queue guards the same request itself (`handBackGuarded`, which refuses a second walk off a
- * ref), so a guard deleted from HERE would be caught by the queue's and the case would stay green.
+ * queue guards the same request itself (`handBackGuarded`, which refuses a second refusal for the
+ * same card off a ref), so a guard deleted from HERE would be caught by the queue's and the case
+ * would stay green.
  * What follows asks the box alone, with handlers that count their own calls, so each of its guards
  * is the only thing standing between a press and its handler.
  *

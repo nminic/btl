@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { addressOf } from '../../app/head'
 import { useToday } from '../../clock/useClock'
@@ -248,6 +248,27 @@ export function Membership() {
    *  while its own request is out (`aria-disabled` below, told off rather than switched off:
    *  a control that goes away takes the keyboard focus with it). */
   const [leaving, setLeaving] = useState(false)
+  /**
+   * WHETHER THE QUESTION WAS LAST CLOSED BY AN ANSWER, so the button that asks it takes the focus the
+   * confirming button had (owner, 02.10.2026, after a refusal: `admin/Payments.tsx` does the same
+   * after a 409). Raised by an answer and lowered by asking again, so „Odustani" - the member's own
+   * act, which moved nothing before this branch either - still moves nothing, and nothing is focused
+   * when the page first draws.
+   *
+   * <p><b>A ref and an effect, and NOT `autoFocus`</b>, for the reason `admin/EntityEditor.tsx`'s
+   * `DeleteRecord` gives at the same state: React reuses the confirming button's element for the
+   * button that asks, so an attribute that acts when an element is created acts on neither road.
+   */
+  const [afterAnAnswer, setAfterAnAnswer] = useState(false)
+  const opener = useRef<HTMLButtonElement>(null)
+
+  /* A LAYOUT EFFECT, for the reason `DeleteRecord` gives: the focus is on the button in the very
+     commit that draws it, and not a task later. */
+  useLayoutEffect(() => {
+    if (afterAnAnswer) {
+      opener.current?.focus()
+    }
+  }, [afterAnAnswer])
 
   /**
    * LEAVES THE TEAM, AND THEN ASKS THE SERVER WHO IT NOW THINKS THIS MEMBER IS.
@@ -288,18 +309,20 @@ export function Membership() {
       if (who !== null) {
         theServerSignedMeIn(who)
       }
-
-      /* THE QUESTION CLOSES HERE, ON AN ANSWER, AND NOT BEFORE: with the request out „Odustani"
-         does nothing (below), so this is the one road by which the question goes once „Potvrdi
-         izlazak" has been pressed - which is the owner's „list se zatvara sam kad stigne
-         odgovor" (02.10.2026). A refusal returns above and leaves it standing, with its reason
-         beside it and the buttons live again. */
-      setAsking(false)
     } finally {
       /* In a `finally`, so a route that rejects outright still lets the next press in - the
-         same correction `admin/Payments.tsx` carries for the same reason. */
+         same correction `admin/Payments.tsx` carries for the same reason.
+
+         THE QUESTION CLOSES HERE, ON ANY ANSWER AND NOT BEFORE: with the request out „Odustani"
+         does nothing (below), so this is the one road by which the question goes once „Potvrdi
+         izlazak" has been pressed - which is the owner's „list se zatvara sam kad stigne odgovor"
+         (02.10.2026), and since the same day it holds for a refusal as well (PDL, „Odbijanje
+         zatvara pitanje kao i uspeh"). The reason returned above stands under the row, beside the
+         button that asked, and the focus goes to that button. */
       outstanding.current = false
       setLeaving(false)
+      setAsking(false)
+      setAfterAnAnswer(true)
     }
   }
 
@@ -1069,7 +1092,7 @@ export function Membership() {
                              away takes the keyboard focus with it. Owner, 02.10.2026, choosing
                              between three outcomes he was priced: „Ne", „Odustani" and Escape do
                              nothing while a request is out, and the question closes itself when
-                             the answer arrives (`leaveTheTeam`, `setAsking(false)`). */
+                             the answer arrives, whichever answer it is (`leaveTheTeam`). */
                           aria-disabled={leaving ? true : undefined}
                           onClick={() => {
                             /* Reachable means pressable, so the refusal lives here as well as
@@ -1084,10 +1107,12 @@ export function Membership() {
                             }
 
                             setAsking(false)
-                            /* The reason goes with the question it was an answer to. Left
-                               standing, „Prelazni rok je zatvoren..." would sit under a
-                               button that had just been put away and read as a refusal of
-                               the NEXT thing pressed. */
+                            /* The reason of the last attempt goes when the member, having
+                               asked again, puts the question away. Left standing,
+                               „Prelazni rok je zatvoren..." would sit under a button that
+                               asks nothing and read as a refusal of the NEXT thing
+                               pressed. (After a refusal itself it stands: it is the
+                               answer, and it stands beside the button that asked.) */
                             setRefusedTheExit(null)
                           }}
                         >
@@ -1095,7 +1120,15 @@ export function Membership() {
                         </button>
                       </>
                     ) : (
-                      <button type="button" className="button" onClick={() => setAsking(true)}>
+                      <button
+                        type="button"
+                        className="button"
+                        ref={opener}
+                        onClick={() => {
+                          setAfterAnAnswer(false)
+                          setAsking(true)
+                        }}
+                      >
                         {t('membership.leaveTeam')}
                       </button>
                     )}
@@ -1117,8 +1150,8 @@ export function Membership() {
                   inside it, which is `pages/TeamDetail.tsx`'s own arrangement: `member__links`
                   is a flex row, so a sentence of this length put among the buttons would be a
                   flex item stretching the row. `ServerSaid` draws it as an alert, so the
-                  reader hears it without the focus being moved off „Potvrdi izlazak", which is
-                  still there because nothing was written. */}
+                  reader hears it as it appears; the question has closed with the answer and
+                  the focus is on „Izađi iz tima", the button the sentence stands beside. */}
               {refusedTheExit !== null && (
                 <ServerSaid answer={refusedTheExit} refusals={WHEN_LEAVING_A_TEAM} />
               )}

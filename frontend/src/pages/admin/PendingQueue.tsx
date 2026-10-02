@@ -433,6 +433,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * box itself, which takes the focus as it appears (SendBack); this is the way
    * back. A panel in the header has the same problem and the same answer
    * (src/app/Dropdown.tsx).
+   *
+   * <p>Closed by the moderator („Odustani") or by the answer to what the box sent, a refusal
+   * as much as a success (`putTheBoxAway`): the answer takes the box away as surely as he does,
+   * and the focus goes to the same place.
    */
   const [closed, setClosed] = useState<string | null>(null)
   /** How many the last sweep settled, and null until there has been one. */
@@ -966,6 +970,25 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * same, because the box is the floor and the route decides - the same division
    * `leagueWrites.ts` names for the address of a competition.
    */
+  /**
+   * THE BOX GOES WHEN ITS ANSWER COMES, WHICHEVER ANSWER IT IS (owner, 02.10.2026; PDL, „Odbijanje
+   * zatvara pitanje kao i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja
+   * stoji uz dugme"), and it is THAT CARD'S box and no other's.
+   *
+   * <p><b>Why „that card's".</b> One box is open at a time, but a refusal can still be out when the
+   * moderator opens the box on another card - the first box is replaced and its request goes on - and
+   * the answer that comes back for the first must not take the second away with the words he has
+   * begun to write in it. The success used to be `setOpen(null)`, which closes whichever box is open.
+   *
+   * <p>The card is named in `closed` as well, so its buttons take the focus back as they return - on
+   * a refusal, that is the whole of where the focus goes, because the box that had it has left. The
+   * sentence the route gave stands on the card above those buttons (`WhatTheServerSaid`).
+   */
+  const putTheBoxAway = (one: PendingItem): void => {
+    setOpen((now) => (now === one.id ? null : now))
+    setClosed(one.id)
+  }
+
   const handBack = async (one: PendingItem, reason: string): Promise<void> => {
     /* THE SAME EXCEPTION `approveAll` MAKES, FOR THE SAME REASON: a row this visit
        made up itself (`isProposal`, above `handsBack`) has no server row to ask
@@ -977,6 +1000,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       if (answer.got !== 'done') {
         sayIt({ id: one.id, answer })
+        putTheBoxAway(one)
 
         return
       }
@@ -1031,7 +1055,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       })
     }
 
-    setOpen(null)
+    putTheBoxAway(one)
   }
 
   /**
@@ -1425,14 +1449,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             on the card it is about and above both the box and the
                             buttons rather than inside either.
 
-                            Above them because it has to be readable in both states:
-                            a refusal met while handing work back leaves the box open
-                            with the typed reason still in it, so the moderator reads
-                            why and presses again instead of typing it a second time.
-                            Put inside the box it would have gone when the box went,
-                            and put among the buttons it would not exist while the box
-                            was open - which is exactly when a refusal about a reason
-                            („Uz odbijanje je razlog obavezan.") arrives. */}
+                            Above them because it has to be readable in both states,
+                            and a refusal met while handing work back now arrives in the
+                            second of them: the box closes with the answer (owner,
+                            02.10.2026), so the sentence is what stands over the buttons
+                            it leaves behind, beside the one that asked. Put inside the
+                            box it would have gone when the box went, which is the very
+                            moment a refusal about a reason („Uz odbijanje je razlog
+                            obavezan.") arrives. */}
                         {said !== null && said.id === one.id && (
                           <WhatTheServerSaid answer={said.answer} />
                         )}
@@ -1595,6 +1619,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    named control on the portal is written this
                                    way. */
                                 aria-label={t('verification.deleteNamed', { name: one.subject })}
+                                autoFocus={one.id === closed}
                                 onClick={() => setOpen(one.id)}
                               >
                                 {t('verification.delete')}

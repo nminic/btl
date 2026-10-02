@@ -109,8 +109,9 @@ export function SendBack({
    * which would close the box over a request that goes on and take the typed reason with it - a
    * refusal that arrived afterwards was then read against nothing. Both say so with
    * `aria-disabled` and are refused in their handlers as well, and the portal's own sentence for
-   * a request that is out is said under them. The caller closes the box when the answer says the
-   * decision was taken; a refusal leaves it open with the reason in it, as it always did.
+   * a request that is out is said under them. The caller closes the box when the answer comes,
+   * whichever answer it is (owner, 02.10.2026; PDL, „Odbijanje zatvara pitanje kao i uspeh"): a
+   * refusal is drawn by the caller where it always was, over the buttons the box leaves behind.
    */
   working?: boolean
 }) {

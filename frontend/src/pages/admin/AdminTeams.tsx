@@ -403,9 +403,10 @@ export function AdminTeams() {
                               }
                             />
                             {/* Why this one did not go, in the row it was pressed in.
-                                The focus has already moved to the control that starts a
-                                new record, as it does on every other list, so the words
-                                carry themselves: `ServerSaid` draws them in an alert. */}
+                                The question closed with the answer and the focus is back
+                                on this row's own „Obriši" (`DeleteRecord`, owner
+                                02.10.2026), so the sentence stands beside the button and
+                                carries itself: `ServerSaid` draws it in an alert. */}
                             {refused !== null && refused.id === team.id && (
                               <ServerSaid answer={refused.answer} refusals={WHEN_DELETING_A_TEAM} />
                             )}

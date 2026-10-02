@@ -199,6 +199,153 @@ describe('the question about deleting a record', () => {
       expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toBeVisible()
     })
 
+    describe('and when the answer comes', () => {
+      /* THE SECOND HALF OF THE OWNER'S RULE, 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i
+         uspeh"): „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz dugme".
+         All this component can see of an answer is that the promise it was handed has settled, which
+         is why one case here stands for the refusal and the success alike; the sentence a refusal is
+         drawn as is the screen's own, drawn in the same breath, and `deletionInFlight.test.tsx`
+         measures it on each screen. */
+      it('closes the question by itself, and tells nobody it was put away', async () => {
+        const user = setupUser()
+        const onKeep = vi.fn()
+        const { onDelete, settle } = aHeldDeletion()
+
+        draw(onDelete, onKeep)
+        await ask(user)
+        await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
+
+        await act(async () => {
+          settle()
+        })
+
+        expect(
+          screen.queryByRole('button', { name: 'Potvrdi brisanje: Probni tim' }),
+        ).not.toBeInTheDocument()
+        expect(
+          screen.queryByRole('button', { name: 'Odustani od brisanja: Probni tim' }),
+        ).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toBeVisible()
+        /* The reader put nothing away, and `onKeep` is told only when he does. */
+        expect(onKeep).not.toHaveBeenCalled()
+      })
+
+      it('puts the focus on the button that asked, wherever it had gone while the answer was out', async () => {
+        /* The precedent is the activation (`admin/Payments.tsx`): after a refusal the focus goes to
+           the button of the row. Left alone it fell to the top of the page, which is where the next
+           Tab started from.
+
+           THE FOCUS IS MOVED OFF „POTVRDI" BEFORE THE ANSWER, and that is the half of this case that
+           matters. React gives the opener the confirming button's own element (both are the first
+           button this component draws), so a focus that had stayed where it was would be on the opener
+           whatever the code does about it - which is how an `autoFocus` that does nothing read as
+           working on two screens. `RowActions` moves the focus ahead of the answer on four more. */
+        const user = setupUser()
+        const { onDelete, settle } = aHeldDeletion()
+
+        draw(onDelete)
+        await ask(user)
+        await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
+        await user.tab()
+
+        expect(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })).toHaveFocus()
+
+        await act(async () => {
+          settle()
+        })
+
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toHaveFocus()
+      })
+
+      it('asks again, and the second asking really is sent', async () => {
+        /* A guard against a second press is a ref, and one left standing after the answer would
+           answer every press with nothing, beside a question that looks live. */
+        const user = setupUser()
+        const { onDelete, settle } = aHeldDeletion()
+
+        draw(onDelete)
+        await ask(user)
+        await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
+
+        await act(async () => {
+          settle()
+        })
+
+        await ask(user)
+
+        const sure = screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' })
+
+        expect(sure).not.toHaveAttribute('aria-disabled')
+
+        await user.click(sure)
+
+        expect(onDelete).toHaveBeenCalledTimes(2)
+      })
+
+      it('puts a question asked again after an answer away, and tells whoever asked', async () => {
+        /* THE OTHER END OF THE SAME STATE, and the half the old case of this name measured: a flag
+           that stayed raised after the answer would leave two buttons that do nothing. */
+        const user = setupUser()
+        const onKeep = vi.fn()
+        const { onDelete, settle } = aHeldDeletion()
+
+        draw(onDelete, onKeep)
+        await ask(user)
+        await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
+
+        await act(async () => {
+          settle()
+        })
+
+        await ask(user)
+
+        const keep = screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })
+
+        expect(keep).not.toHaveAttribute('aria-disabled')
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+        await user.click(keep)
+
+        expect(onKeep).toHaveBeenCalledTimes(1)
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toBeVisible()
+      })
+
+      /* WHAT THIS BRANCH DOES NOT CHANGE, written down as a boundary and not as a wish: the focus
+         goes to the button only where an ANSWER closed the question. Putting it away oneself is the
+         reader's own act and moved nothing before this branch either, which is a gap of its own and
+         not this change's. */
+      it('moves no focus where nothing was answered: not on the first draw, not on „Odustani"', async () => {
+        const user = setupUser()
+
+        draw(vi.fn())
+
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).not.toHaveFocus()
+
+        await ask(user)
+        await user.click(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' }))
+
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).not.toHaveFocus()
+      })
+
+      it('moves no focus when a question asked again after an answer is put away', async () => {
+        const user = setupUser()
+        const { onDelete, settle } = aHeldDeletion()
+
+        draw(onDelete)
+        await ask(user)
+        await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
+
+        await act(async () => {
+          settle()
+        })
+
+        await ask(user)
+        await user.click(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' }))
+
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).not.toHaveFocus()
+      })
+    })
+
     it('does nothing when the answer comes after the row has already left the page', async () => {
       /* The ordinary end of a successful deletion: the screen takes the row away, and with it
          this component, before the promise it handed back has settled. */

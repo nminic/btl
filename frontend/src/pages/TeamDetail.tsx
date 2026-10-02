@@ -76,17 +76,21 @@ export function TeamDetail() {
   /**
    * THE PAGE THE REFUSAL ABOVE WAS DRAWN ON, which is a team and a season (registry item 311).
    *
-   * <p><b>A refusal is about the question it answered, and it goes when that question does.</b>
-   * It used to be written when the route said no and never cleared: „Odustani" put the question
-   * away and left „Prelazni rok je zatvoren..." beside a button that asked nothing, a change of
-   * season in the picker left it too - and so did a move to ANOTHER team's page, because this is
-   * the same component with another team in it (`app/routeObjects.tsx` carries no `key` on this
-   * route), so the sentence about Vardarski krug was read on Dunavski trkači.
+   * <p><b>A refusal is about the attempt it answered, and it goes when that attempt stops being
+   * the page's.</b> It used to be written when the route said no and never cleared: „Odustani" put
+   * the question away and left „Prelazni rok je zatvoren..." beside a button that asked nothing, a
+   * change of season in the picker left it too - and so did a move to ANOTHER team's page, because
+   * this is the same component with another team in it (`app/routeObjects.tsx` carries no `key` on
+   * this route), so the sentence about Vardarski krug was read on Dunavski trkači.
+   *
+   * <p>Since 02.10.2026 the refusal also closes the question (PDL, „Odbijanje zatvara pitanje kao i
+   * uspeh"), so the sentence stands beside the „Obriši" button that asked, with the focus on it, and
+   * what takes it away is: the address changing (here), a second attempt starting (`deleteOne`), and
+   * the reader who has asked again putting the question away (`onKeep` below).
    *
    * <p><b>Held as the adjusting-state-during-render shape and not as an effect</b>: the sentence
    * is gone in the render that the address changed in, with no frame of the old one drawn over the
-   * new page. The other two ends - the reader putting the question away, and a second attempt
-   * starting - are events and clear it where they happen (`onKeep` below, `deleteOne`).
+   * new page. The other two ends are events and clear it where they happen.
    */
   const here = `${slug}/${asked}`
   const [drawnOn, setDrawnOn] = useState(here)
@@ -364,9 +368,10 @@ export function TeamDetail() {
                              decided on this screen at all: `deleteOne` sends the act to the
                              route the administration already sends it to. */
                           onDelete={() => deleteOne(team, everMembers)}
-                          /* THE SENTENCE GOES WITH THE QUESTION IT ANSWERED: put away, nothing
-                             beside the button is about a deletion any more (registry item 311;
-                             the same shape `admin/AdminTeams.tsx#deleteOne` clears it in). */
+                          /* A READER WHO ASKED AGAIN AND THEN PUT THE QUESTION AWAY HAS NO USE FOR
+                             THE LAST ANSWER: nothing beside the button is about a deletion any
+                             more (registry item 311; the same shape
+                             `admin/AdminTeams.tsx#deleteOne` clears it in). */
                           onKeep={() => setRefused(null)}
                         />
                       </>
@@ -380,9 +385,10 @@ export function TeamDetail() {
                       grid, and a sentence of this length would widen the track and squeeze
                       the name of the team beside it.
 
-                      `ServerSaid` draws it as an alert, so the reader hears it without the
-                      focus being moved: `DeleteRecord` leaves the focus on „Potvrdi
-                      brisanje", which is still there because nothing was deleted. */}
+                      `ServerSaid` draws it as an alert, so the reader hears it as it
+                      appears, and the question has closed with the answer: the focus is
+                      on „Obriši", the button the sentence stands beside (`DeleteRecord`,
+                      owner 02.10.2026). */}
                   {refused !== null && (
                     <ServerSaid answer={refused} refusals={WHEN_DELETING_A_TEAM} />
                   )}

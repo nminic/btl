@@ -105,6 +105,39 @@ const decidedIn = () => within(screen.getByRole('list', { name: 'session decisio
 const sending = () =>
   screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
 
+/**
+ * A server whose answer to the decision is held until `settle` is called.
+ *
+ * <p>`settle` takes a FUNCTION that makes the answer, not the answer: a `Response` body can be read
+ * once, so one handed to two requests would be spent by the first and the second would meet a body
+ * that is already gone - which reads exactly like a server that never answered.
+ */
+function serverThatHoldsTheDecision() {
+  let settle: (answer: () => Response) => void = () => {}
+  const held = new Promise<() => Response>((resolve) => {
+    settle = resolve
+  })
+  const server = serverThat((path, init) =>
+    init?.method === 'POST' && path.includes('/decision') ? held.then((make) => make()) : null,
+  )
+
+  return { server, settle }
+}
+
+/** The route's refusal of a card somebody has already answered. */
+const refusal = () =>
+  new Response(JSON.stringify({ reason: 'O stavci je već odlučeno.' }), {
+    status: 409,
+    headers: { 'content-type': 'application/json' },
+  })
+
+/** The route's word that it took the decision. */
+const taken = () =>
+  new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
+
 describe('a decision on a queue served by the pending screen', () => {
   it('sends an approval to the route that records it, and nothing else', async () => {
     const user = setupUser()
@@ -705,25 +738,6 @@ describe('a decision on a queue served by the pending screen', () => {
  * box before the route says anything.
  */
 describe('a refusal that is out with the route', () => {
-  /**
-   * A server whose answer to the decision is held until `settle` is called.
-   *
-   * <p>`settle` takes a FUNCTION that makes the answer, not the answer: a `Response` body can be
-   * read once, so one handed to two requests would be spent by the first and the second would meet
-   * a body that is already gone - which reads exactly like a server that never answered.
-   */
-  function serverThatHoldsTheDecision() {
-    let settle: (answer: () => Response) => void = () => {}
-    const held = new Promise<() => Response>((resolve) => {
-      settle = resolve
-    })
-    const server = serverThat((path, init) =>
-      init?.method === 'POST' && path.includes('/decision') ? held.then((make) => make()) : null,
-    )
-
-    return { server, settle }
-  }
-
   /** The box opened on the first card of the profiles, a reason typed, and the refusal sent. */
   async function sendTheRefusal(user: ReturnType<typeof setupUser>) {
     renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin', null, undefined, null, <Decided />)
@@ -735,12 +749,6 @@ describe('a refusal that is out with the route', () => {
     await user.type(await screen.findByLabelText(/^Razlog odbijanja/), 'Tekst je prekratak.')
     await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
   }
-
-  const refusal = () =>
-    new Response(JSON.stringify({ reason: 'O stavci je već odlučeno.' }), {
-      status: 409,
-      headers: { 'content-type': 'application/json' },
-    })
 
   it('tells „Odustani" off, and keeps the box with what was typed in it', async () => {
     const user = setupUser()
@@ -953,6 +961,214 @@ describe('a refusal that is out with the route', () => {
       await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
       expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+/**
+ * A REFUSAL CLOSES THE BOX AS A SUCCESS DOES (owner, 02.10.2026; PDL, „Odbijanje zatvara pitanje kao
+ * i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz dugme").
+ *
+ * <p><b>What the box did until then, measured.</b> A decision the route took closed it; one the route
+ * refused left it open with the reason typed and both buttons live again - so two answers to one
+ * question left the screen in two states, and the activation, which closes on both, was the third.
+ * What it costs is in the decision and the owner accepted it: a refusal that comes back „Uz odbijanje
+ * je razlog obavezan." now finds the box gone and the typed words with it.
+ *
+ * <p>The sentence stays where this screen has always drawn it, on the card and above the buttons the
+ * box leaves behind (`WhatTheServerSaid`), which is beside the one that asked; the focus goes to that
+ * button, because the one that had it left with the box.
+ */
+describe('when the route refuses a refusal', () => {
+  type Way = {
+    name: string
+    path: string
+    /** What opens the box on a card of that queue. */
+    opener: string | RegExp
+    /** The words typed into it, where it asks for any. */
+    typed: string
+    /** What its confirming button is called. */
+    confirm: string
+  }
+
+  const WAYS: Way[] = [
+    {
+      name: 'the profiles',
+      path: QUEUE.profiles.path,
+      opener: 'Odbij',
+      typed: 'Tekst je prekratak.',
+      confirm: 'Odbij uz ovaj razlog',
+    },
+    {
+      /* The comments have a button of their own to open the box, and it is a second place the focus
+         has to come back to: one that was left out would leave this queue the only one that drops it. */
+      name: 'the comments',
+      path: QUEUE.comments.path,
+      opener: /^Obriši:/,
+      typed: '',
+      confirm: 'Obriši komentar',
+    },
+  ]
+
+  describe.each(WAYS)('on the queue of $name', (way) => {
+    /** The box opened on the first card, the words typed where it asks for them, and the refusal sent. */
+    async function refuseTheFirstCard(user: ReturnType<typeof setupUser>) {
+      renderAt(`/sr/${way.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const first = within(
+        within(await cardsIn()).getAllByRole('listitem')[0] ?? document.createElement('li'),
+      )
+
+      await user.click(first.getByRole('button', { name: way.opener }))
+
+      if (way.typed !== '') {
+        await user.type(await screen.findByLabelText(/^Razlog odbijanja/), way.typed)
+      }
+
+      await user.click(screen.getByRole('button', { name: way.confirm }))
+
+      return first
+    }
+
+    it('closes the box by itself, with the sentence on the card and the focus on the button that opened it', async () => {
+      const user = setupUser()
+      const { server, settle } = serverThatHoldsTheDecision()
+
+      try {
+        const first = await refuseTheFirstCard(user)
+
+        settle(refusal)
+
+        expect(await first.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+        expect(screen.queryByRole('button', { name: way.confirm })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Odustani' })).not.toBeInTheDocument()
+        expect(sending()).toHaveLength(0)
+        expect(first.getByRole('button', { name: way.opener })).toHaveFocus()
+        /* And nothing was recorded, which is what a refusal is. */
+        expect(decidedIn().queryAllByRole('listitem')).toEqual([])
+      } finally {
+        server.stop()
+      }
+    })
+
+    it('can be asked again, and the second asking is sent', async () => {
+      /* The guard against a second press is a ref, and one left standing after the answer would
+         answer every press with nothing, beside a button that looks live. */
+      const user = setupUser()
+      const { server, settle } = serverThatHoldsTheDecision()
+
+      try {
+        const first = await refuseTheFirstCard(user)
+
+        settle(refusal)
+        await first.findByRole('alert')
+
+        await user.click(first.getByRole('button', { name: way.opener }))
+
+        if (way.typed !== '') {
+          await user.type(await screen.findByLabelText(/^Razlog odbijanja/), way.typed)
+        }
+
+        await user.click(screen.getByRole('button', { name: way.confirm }))
+
+        await waitFor(() => {
+          expect(decisionsIn(server.asked)).toHaveLength(2)
+        })
+      } finally {
+        server.stop()
+      }
+    })
+
+    it('puts a box asked again after a refusal away, and starts it empty', async () => {
+      /* The half the old case of „lets the box be sent again, and put away, once a refusal is in"
+         measured: whatever the first attempt raised is let go of, so the way out of the second box is
+         open - and the words typed into the first went with it, which is the price the owner was
+         shown. */
+      const user = setupUser()
+      const { server, settle } = serverThatHoldsTheDecision()
+
+      try {
+        const first = await refuseTheFirstCard(user)
+
+        settle(refusal)
+        await first.findByRole('alert')
+
+        await user.click(first.getByRole('button', { name: way.opener }))
+
+        if (way.typed !== '') {
+          const field = await screen.findByLabelText(/^Razlog odbijanja/)
+
+          expect(field).toHaveValue('')
+
+          /* Told off while the reason is empty, which is the box's own state and not a leftover: it is
+             the words that let it send, so they are typed before it is asked. */
+          await user.type(field, way.typed)
+        }
+
+        const keep = screen.getByRole('button', { name: 'Odustani' })
+
+        expect(keep).not.toHaveAttribute('aria-disabled', 'true')
+        expect(screen.getByRole('button', { name: way.confirm })).not.toHaveAttribute(
+          'aria-disabled',
+          'true',
+        )
+        expect(sending()).toHaveLength(0)
+
+        await user.click(keep)
+
+        expect(screen.queryByRole('button', { name: way.confirm })).not.toBeInTheDocument()
+        expect(first.getByRole('button', { name: way.opener })).toHaveFocus()
+      } finally {
+        server.stop()
+      }
+    })
+  })
+
+  /**
+   * THE ANSWER IS FOR ONE CARD, AND IT CLOSES THAT CARD'S BOX AND NO OTHER. Nothing stops a moderator
+   * from opening the box on a second card while the first one's refusal is still out - the box on the
+   * first is replaced - and the answer that comes back for the first must not take the second's away
+   * with the words he has begun to write in it. The success of this was `setOpen(null)`, which closes
+   * whichever box is open.
+   */
+  const ANSWERS: [string, () => Response][] = [
+    ['goes through', taken],
+    ['is refused', refusal],
+  ]
+
+  it.each(ANSWERS)('leaves the box on another card alone when the answer %s', async (_, answer) => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const cards = within(await cardsIn()).getAllByRole('listitem')
+      const last = within(cards[3] ?? document.createElement('li'))
+      const third = within(cards[2] ?? document.createElement('li'))
+
+      await user.click(last.getByRole('button', { name: /^Obriši:/ }))
+      await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+      await waitFor(() => {
+        expect(decisionsIn(server.asked)).toHaveLength(1)
+      })
+
+      /* The box on the last card is replaced, with its request still out. */
+      await user.click(third.getByRole('button', { name: /^Obriši:/ }))
+      expect(third.getByRole('button', { name: 'Obriši komentar' })).toBeInTheDocument()
+
+      settle(answer)
+
+      /* The answer has been taken in: the decision is recorded, or the sentence is on the card. */
+      await waitFor(() => {
+        expect(
+          decidedIn().queryAllByRole('listitem').length + last.queryAllByRole('alert').length,
+        ).toBe(1)
+      })
+
+      expect(third.getByRole('button', { name: 'Obriši komentar' })).toBeInTheDocument()
     } finally {
       server.stop()
     }
