@@ -29,8 +29,11 @@ export function inBoxes(totalSeconds: number): WrittenBoxes {
      plain arithmetic, so a result of 1:01:01,5 came back into its own correction as
      „1.5" in the seconds box and went out again as the number it was. Rounded, it
      would come back as 2 and the member would send a different result from the one
-     they are correcting, with different points. That the boxes take a decimal at all
-     is a fault of their own and older than this. */
+     they are correcting, with different points. ~~That the boxes take a decimal at all
+     is a fault of their own and older than this.~~ The boxes refuse a separator since
+     02.10.2026 (`types.ts`, `integer`) and the server keeps whole seconds, so a fraction
+     no longer reaches here from either side; nothing is rounded all the same, because a
+     fraction that did arrive would be sent back as somebody else's number. */
   return {
     hours: String(Math.floor(totalSeconds / 3600)),
     minutes: String(Math.floor((totalSeconds % 3600) / 60)),

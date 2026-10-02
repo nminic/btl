@@ -1,5 +1,5 @@
 import { ageOn, parseDate } from './dateField'
-import { parseNumber } from './numberField'
+import { isWhole, parseNumber } from './numberField'
 import type { FieldDef, FieldError, FormDef, FormValues } from './types'
 
 /**
@@ -97,6 +97,17 @@ export function validateField(field: FieldDef, value: string | boolean): FieldEr
 
     if (numeric === null) {
       return { key: 'form.errors.number' }
+    }
+
+    /* And no separator at all where the server keeps a whole number (`types.ts`,
+       `integer`). Asked of the writing rather than of the value, because „1.200" metres is
+       twelve hundred written with a separator for the thousands as often as it is one point
+       two, and either reading of it as a value is quietly a different climb.
+     *
+       The sentence it is told, „Unesi ceo broj.", is NOT the owner's: it was proposed with
+       this change, built on the „Unesi broj." the rule above says, and accepted as that. */
+    if (field.integer === true && !isWhole(text)) {
+      return { key: 'form.errors.integer' }
     }
 
     if (field.min !== undefined && numeric < field.min) {

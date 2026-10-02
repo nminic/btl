@@ -219,11 +219,17 @@ function holds(value: string | boolean | undefined): boolean {
  * under it. Owner, 02.10.2026: „Polje za broj prima i zarez i tacku, a portal salje tacku."
  * What the box takes is decided by `numberField.ts` instead, and the keyboard by `inputMode`,
  * which is the shape `pages/admin/Payments.tsx` drew its amount in first, for the same reason.
+ *
+ * <p><b>And a whole number is offered digits alone</b>, because a field the server keeps whole
+ * refuses a separator (`types.ts`, `integer`): a keyboard that offers one is a keyboard that
+ * invites the refusal.
  */
-function boxFor(field: FieldDef): { type: string; inputMode: 'decimal' | undefined } {
-  return field.type === 'number'
-    ? { type: 'text', inputMode: 'decimal' }
-    : { type: field.type, inputMode: undefined }
+function boxFor(field: FieldDef): { type: string; inputMode: 'decimal' | 'numeric' | undefined } {
+  if (field.type !== 'number') {
+    return { type: field.type, inputMode: undefined }
+  }
+
+  return { type: 'text', inputMode: field.integer === true ? 'numeric' : 'decimal' }
 }
 
 /** A field beside the value it is holding, which is what the form draws. */

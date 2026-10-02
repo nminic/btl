@@ -1779,12 +1779,13 @@ describe('the queue of results', () => {
          Emptied rather than filled wrongly, because a name has no bounds to break:
          what it refuses is being left out. */
       ['Naziv trke', '', /Ovo polje je obavezno/],
-      /* Not one and a half hours. The member's own form takes it, since the field
-         carries no rule about whole numbers, and `forms/clock.ts` records that the
-         boxes take a decimal as a fault of their own and older than any of this.
-         The rule here is „exactly as strict as the form", not „stricter", so a
-         value the form accepts is accepted here and the fault is one thing in one
-         place rather than two rules that disagree. */
+      /* And one and a half hours, which the member's own form refuses since 02.10.2026:
+         the field carries the rule about whole numbers now (`forms/types.ts`, `integer`,
+         held to `ResultWriteApi`'s `Integer seconds` by `forms/wholeNumbers.test.ts`).
+         Until that day the form took it, and so did this panel, because the rule here is
+         „exactly as strict as the form", not „stricter": the fault was one thing in one
+         place, and it is closed in that same one place. */
+      ['Sati', '1,5', /Unesi ceo broj/],
     ] as const) {
       const control = screen.getByLabelText(new RegExp(`^${box}`))
 
@@ -1807,12 +1808,12 @@ describe('the queue of results', () => {
       await user.type(control, box === 'Sati' ? '0' : box === 'Naziv trke' ? 'Probna trka' : '45')
     }
 
-    /* And a decimal the form would take is taken here too, which is the other
+    /* And a whole number the form would take is taken here too, which is the other
        direction of the same rule. */
     await user.clear(screen.getByLabelText(/^Sati/))
-    await user.type(screen.getByLabelText(/^Sati/), '1.5')
+    await user.type(screen.getByLabelText(/^Sati/), '2')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
-    expect(session.amend, 'a decimal the form allows').toHaveBeenCalledTimes(1)
+    expect(session.amend, 'a whole number the form allows').toHaveBeenCalledTimes(1)
 
     await user.click(screen.getByRole('button', { name: 'Ispravi' }))
     await user.clear(screen.getByLabelText(/^Naziv trke/))

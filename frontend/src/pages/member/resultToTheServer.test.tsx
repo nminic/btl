@@ -226,6 +226,38 @@ describe('a run entered away from the calendar', () => {
     SLOW,
   )
 
+  /**
+   * AND A BOX THE SERVER KEEPS WHOLE STOPS A SEPARATOR ON THE FORM, rather than sending a
+   * different number.
+   *
+   * <p>The coordinator's reasoning, not the owner's words: `ResultWriteApi.Ran` reads the time as
+   * an `Integer` and the climb as an `Integer`, so „30,5" seconds and „1.200" metres - which is
+   * twelve hundred, written with a separator for the thousands - would each have reached the
+   * route as another number. Both are refused under their own box and nothing is sent.
+   */
+  it(
+    'refuses a separator in the seconds and in the climb, and sends nothing',
+    async () => {
+      const user = setupUser()
+
+      listening()
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+
+      await describeARace(user)
+      await user.clear(screen.getByLabelText('Sekundi'))
+      await user.type(screen.getByLabelText('Sekundi'), '30,5')
+      await user.clear(screen.getByLabelText(/Uspon/))
+      await user.type(screen.getByLabelText(/Uspon/), '1.200')
+      await send(user)
+
+      expect(await screen.findAllByText('Unesi ceo broj.')).toHaveLength(2)
+      expect(screen.getByLabelText('Sekundi')).toHaveAttribute('aria-invalid', 'true')
+      expect(screen.getByLabelText(/Uspon/)).toHaveAttribute('aria-invalid', 'true')
+      expect(writes()).toHaveLength(0)
+    },
+    SLOW,
+  )
+
   it(
     'keeps every box and says why, where the server refused',
     async () => {

@@ -38,10 +38,11 @@ describe('a length of time in the boxes a form asks for it in', () => {
 
   it('rounds nothing, so a result comes back as it was sent', () => {
     /* Rounding was not here before and was written into a first draft of this. The
-       boxes take a decimal, which is a fault of their own and older than this
-       module, but a result of 1:01:01,5 has to come back into its own correction as
-       the number it was: rounded, the member sends 1:01:02 instead, with different
-       points, and nothing on the screen says anything changed.
+       boxes refuse a separator since 02.10.2026 and the server keeps whole seconds, so
+       a fraction should never arrive; but a result of 1:01:01,5 that did would have to
+       come back into its own correction as the number it was: rounded, the member
+       sends 1:01:02 instead, with different points, and nothing on the screen says
+       anything changed.
 
        Under a second as well, where rounding would swallow the number whole rather
        than shift it. */

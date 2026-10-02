@@ -827,6 +827,42 @@ describe('FormRenderer', () => {
     expect(onSubmit).toHaveBeenCalledWith({ prvi: '21.1' }, { drugi: '21.1' })
   })
 
+  /**
+   * A NUMBER THE SERVER KEEPS WHOLE IS OFFERED DIGITS ALONE, AND REFUSES A SEPARATOR.
+   *
+   * <p>The coordinator's reasoning, not the owner's words: once a box took a comma, „30,5"
+   * seconds would have travelled to a route that reads an `Integer` (`types.ts`, `integer`,
+   * and `wholeNumbers.test.ts`, which holds the definitions to the server). The keyboard is
+   * the first half of the refusal and the sentence is the second; a telephone that offered a
+   * separator would be inviting the very thing the field refuses.
+   */
+  it('offers a whole number digits alone and refuses a separator in it', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    const time: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'sekunde', type: 'number', labelKey: 'proba.sekunde', integer: true },
+        { name: 'duzina', type: 'number', labelKey: 'proba.duzina' },
+      ],
+    }
+    renderWithI18n(<FormRenderer form={time} onSubmit={onSubmit} />)
+
+    expect(screen.getByLabelText(/proba.sekunde/)).toHaveAttribute('inputmode', 'numeric')
+    expect(screen.getByLabelText(/proba.duzina/)).toHaveAttribute('inputmode', 'decimal')
+
+    await user.type(screen.getByLabelText(/proba.sekunde/), '30,5')
+    await user.type(screen.getByLabelText(/proba.duzina/), '21,1')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.getByText('Unesi ceo broj.')).toBeVisible()
+    expect(screen.getByLabelText(/proba.sekunde/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/proba.duzina/)).toHaveAttribute('aria-invalid', 'false')
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   /* A form keeps all its values in one place, so unless a field is left alone
      when nothing about it changed, every letter typed redraws every field. On the
      race form, whose one select offers all twelve hundred events, that meant

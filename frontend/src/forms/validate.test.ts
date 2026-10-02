@@ -148,6 +148,39 @@ describe('validateField', () => {
     })
   })
 
+  /* Owner, 02.10.2026: „Polje za broj prima i zarez i tacku". The floor of `distanceKm` is a
+     tenth of a kilometre, so the comma has to reach the bounds as the number it is: „0,05" is
+     under the floor and „0,1" is on it. A comma read as nothing would refuse both as „not a
+     number", and one read as a thousands separator would let „0,05" through as five. */
+  it('takes a comma as the separator of the decimals, all the way to the bounds', () => {
+    const length = text({ type: 'number', min: 0.1, max: 1000 })
+
+    expect(validateField(length, '21,1')).toBeNull()
+    expect(validateField(length, '21.1')).toBeNull()
+    expect(validateField(length, '0,1')).toBeNull()
+    expect(validateField(length, '0,05')).toEqual({ key: 'form.errors.min', params: { min: 0.1 } })
+    /* And what a browser's number box never let through still does not get through. */
+    expect(validateField(length, '0x10')).toEqual({ key: 'form.errors.number' })
+  })
+
+  /* The coordinator's reasoning, not the owner's words: a field the server keeps whole takes
+     no separator, so „30,5" seconds and „1.200" metres stop on the form rather than becoming a
+     different number on the server. Refused as not a number first where it is not one at
+     all, so a word is told what it is rather than that it should be whole. */
+  it('refuses a separator in a field the server keeps whole', () => {
+    const seconds = text({ type: 'number', min: 0, max: 59, integer: true })
+
+    expect(validateField(seconds, '30')).toBeNull()
+    expect(validateField(seconds, '30,5')).toEqual({ key: 'form.errors.integer' })
+    expect(validateField(seconds, '30.5')).toEqual({ key: 'form.errors.integer' })
+    expect(validateField(text({ type: 'number', integer: true }), '1.200')).toEqual({
+      key: 'form.errors.integer',
+    })
+    expect(validateField(seconds, 'pola')).toEqual({ key: 'form.errors.number' })
+    /* Whole, and still held to its bounds. */
+    expect(validateField(seconds, '60')).toEqual({ key: 'form.errors.max', params: { max: 59 } })
+  })
+
   it('survives a pattern that does not compile', () => {
     // The owner edits these JSON files by hand, so a broken pattern is a
     // question of when. It must reject the value, never throw out of submit.
