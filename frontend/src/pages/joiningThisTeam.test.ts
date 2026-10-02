@@ -155,6 +155,9 @@ describe('reading the two queues off the server', () => {
     ['the route answers 404, whether the team is absent or not this reader\'s', () =>
       new Response(null, { status: 404 })],
     ['the route answers 401', () => new Response(null, { status: 401 })],
+    /* A refusal that happens to carry a body shaped like a list is not a list: the number is what
+       says whether the route answered, and a read that went by the body alone would take it. */
+    ['the route answers 500 with a body that looks like a list', () => new Response('[]', { status: 500 })],
     ['the body is not JSON', () => new Response('hello', { status: 200 })],
     ['the body is not a list at all', () => listOf({ rows: [] })],
     ['one row of the list is not a row', () => listOf([ASKING[0], { id: 'seventy-two' }])],

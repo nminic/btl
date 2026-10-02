@@ -1384,6 +1384,108 @@ describe('a queue that could not be read', () => {
     }
   }, SLOW)
 
+  it('says nothing while the first read is still on its way, and draws the list when it comes', async () => {
+    /* A read that has not come back is not one that failed. Both lists start as lists that were
+       read and hold nothing, which draws no section, and the sentence is for a read that really
+       did fail: said while the first read is out, it would be said over every page that is merely
+       slow. */
+    let letGo: () => void = () => undefined
+    const failing: Failing = {
+      applications: () =>
+        new Promise<Response>((resolve) => {
+          letGo = () => {
+            resolve(listOf(ASKING))
+          }
+        }),
+      invitations: null,
+    }
+    const server = aServerWithAQueue(did, failing)
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      /* The page has arrived, and neither list has: the two are one question in two routes and
+         are drawn together, so nothing of either is on the screen while one is still out. */
+      expect(await screen.findByRole('heading', { name: MINE.name }, { timeout: SLOW })).toBeVisible()
+      expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+      expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
+      expect(screen.queryByRole('heading', { name: sr.teams.joinWaiting })).toBeNull()
+      expect(screen.queryByRole('heading', { name: sr.teams.inviteSent })).toBeNull()
+
+      letGo()
+
+      expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
+      expect((await sentList()).getAllByRole('listitem')).toHaveLength(3)
+      expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('lets the next press through after an asking again that failed', async () => {
+    /* The other half of the guard against a second press while one is out: a guard written with a
+       ref that is never turned back would refuse every press for the rest of the visit, so a team
+       whose server came back after the second try could never be shown its queue. */
+    const failing: Failing = { applications: 500, invitations: null }
+    const server = aServerWithAQueue(did, failing)
+    const user = setupUser()
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+      await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
+
+      const applicationsAsked = () =>
+        reads(server.asked).filter((one) => /\/applications$/.test(one)).length
+
+      await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
+
+      /* Until the asking again has really come back and failed: a second press made while it is
+         still out is refused, which is the other case's business and would make this one wait for
+         a read that was never sent. */
+      await waitFor(() => {
+        expect(applicationsAsked()).toBe(2)
+      })
+      await waitFor(() => {
+        expect(retryOf(sr.teams.joinWaiting)).not.toHaveAttribute('aria-disabled', 'true')
+      })
+
+      failing.applications = null
+      await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
+
+      expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
+      expect(applicationsAsked()).toBe(3)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('says both lists are being asked for while both answers are out', async () => {
+    /* One press asks BOTH lists, so both sentences give way to the loader's word, and the button
+       of each list is told off: a screen that tells only the list it was pressed under that
+       something is happening leaves the other one saying it could not be read over a read that is
+       out. */
+    const failing: Failing = { applications: 500, invitations: 500 }
+    const server = aServerWithAQueue(did, failing)
+    const user = setupUser()
+
+    try {
+      renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
+      await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
+
+      failing.applications = () => new Promise<Response>(() => undefined)
+      failing.invitations = () => new Promise<Response>(() => undefined)
+      await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
+
+      expect(await screen.findAllByText(sr.data.loading)).toHaveLength(2)
+      expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
+      expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
+      expect(retryOf(sr.teams.joinWaiting)).toHaveAttribute('aria-disabled', 'true')
+      expect(retryOf(sr.teams.inviteSent)).toHaveAttribute('aria-disabled', 'true')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('says nothing about a list that was read and holds nothing', async () => {
     /* The other side of every case above: told apart from a list that could not be read, an empty
        list stays no section, so a team with nothing waiting is not told its queue is broken. */
