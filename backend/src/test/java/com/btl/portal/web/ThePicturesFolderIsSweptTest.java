@@ -359,9 +359,9 @@ class ThePicturesFolderIsSweptTest {
 	 * A ROW WITH NO FILE IS NOT THE SWEEP'S BUSINESS: IT IS NOT TOUCHED, NOTHING IS REPORTED,
 	 * AND THE SWEEP DOES NOT FAIL.
 	 *
-	 * <p>It is a state the portal expects - the deploy notes say QA is refreshed by throwing the
-	 * volume away while the rows stay - and {@code PhotoApi} already names it when somebody asks
-	 * for the picture. The stray beside it is what proves the sweep ran.
+	 * <p>It is a state the portal expects - the deploy notes say that dropping the pictures
+	 * volume loses pictures "whose rows will then answer 404" - and {@code PhotoApi} already names
+	 * it when somebody asks for the picture. The stray beside it is what proves the sweep ran.
 	 */
 	@Test
 	void aRowWithNoFileIsNotTouchedAndNothingIsSaidAboutIt() throws IOException {

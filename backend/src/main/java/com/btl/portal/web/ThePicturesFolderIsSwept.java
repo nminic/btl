@@ -34,10 +34,11 @@ import java.util.concurrent.TimeUnit;
  * replaces a picture and the file cannot be deleted (PDL P28e: the member gets the ordinary
  * answer and the fault goes to the log) the server deletes, once an hour, „fajlove slika koji
  * nemaju svoj red" that are older than ten minutes, and writes to the log what it deleted. What
- * that closes is the one place this portal leaves a file behind on purpose: until this class
- * nothing ever came back for it, and a removal that left its file was a removal in the database
- * only. {@link AFileWaitingForItsRow} holds the two questions that need neither a disk nor a
- * database; this class is what reads the first and asks the second.
+ * that closes is a leftover this portal accepts on purpose (P28e) and one it cannot avoid, a
+ * commit that fails after the file was written ({@link MePhotoApi} names it as its one leak):
+ * until this class nothing ever came back for either, and a removal that left its file was a
+ * removal in the database only. {@link AFileWaitingForItsRow} holds the two questions that need
+ * neither a disk nor a database; this class is what reads the first and asks the second.
  *
  * <p><b>WHAT IT DOES TO ONE ENTRY, in this order, and the order is the cost:</b>
  * <ol>
@@ -67,10 +68,10 @@ import java.util.concurrent.TimeUnit;
  * <p><b>A FILE THAT WILL NOT GO IS TOLD TO THE OPERATOR AND THE SWEEP GOES ON.</b> One warning
  * with the key and the cause, no stack, because the same fault on a thousand files must not be a
  * thousand stacks (the lesson {@link PhotoApi#theFileOf} paid for in a measured amplifier of a
- * hundred times). The same shape every other place that deletes a file here has: no
- * {@code LOG.error} exists in this portal, and a fault in a deleting is a warning there too.
- * The keys are taken in ascending order as numbers, so that a sweep reads the same on every
- * machine and a fault is always met at the same place.
+ * hundred times). It is a warning, which is the level every other place that deletes a file
+ * here uses: there is no {@code LOG.error} in this portal. The keys are taken in ascending
+ * order as numbers, so that a sweep reads the same on every machine and a fault is always met at
+ * the same place.
  *
  * <p><b>THE LOG NAMES THE KEY AND NOTHING ELSE.</b> One line per deleted file, and none when
  * nothing was deleted: an hourly line saying nothing happened is twenty four a day of nothing.
@@ -102,15 +103,16 @@ import java.util.concurrent.TimeUnit;
  * <p><b>WHAT THIS CAN TAKE THAT IT SHOULD NOT, named rather than discovered.</b> The ten
  * minutes are the file's age by its time of last modification, so a copy that KEEPS times
  * arrives looking as old as the file it copies. {@code deploy/pour-from-qa.sh} is exactly that:
- * it copies the photographs with {@code cp -a} (measured: the time of last modification
- * survives it) and does so BEFORE the transaction that writes the rows, by design. A sweep that
- * ran between those two steps on production would find every poured file old and without a row,
- * and delete it. <b>Restarting the production backend immediately before a pour starts the
- * hour again</b>, so by the delay above no sweep can fall between the two steps; that is my
- * reasoning and has not been run. The script is outside this change and is not touched by it. The
- * same arrangement fits a restore of the volume before the database. And a database restored
- * from a dump older than the files makes the files of later uploads strays in THAT database, so
- * they go within the hour; they are files nothing points at there.
+ * it copies the photographs with {@code cp -a} (measured inside {@code eclipse-temurin:21-jre},
+ * the image the backend runs from: the time of last modification survives it) and does so BEFORE
+ * the transaction that writes the rows, by design. A sweep that ran between those two steps on
+ * production would find every poured file old and without a row, and delete it.
+ * <b>Restarting the production backend immediately before a pour starts the hour again</b>, so by
+ * the delay above no sweep can fall between the two steps; that is my reasoning and has not been
+ * run. The script is outside this change and is not touched by it. The same arrangement fits a
+ * restore of the volume before the database. And a database restored from a dump older than the
+ * files makes the files of later uploads strays in THAT database, so they go within the hour;
+ * they are files nothing points at there.
  *
  * <p><b>WHAT IT DOES NOT DO.</b> It looks at files and never at rows: a {@code photo} row that
  * nothing holds is not swept, and neither is its file, because the file has a row. By V9's
@@ -136,8 +138,8 @@ class ThePicturesFolderIsSwept {
 	 * built on (measured on Windows: a read only flag makes {@code Files.deleteIfExists} throw
 	 * {@link java.nio.file.AccessDeniedException}; on Linux a delete is refused by the folder
 	 * and not by the file), so a case that needs a refusal passes one of its own; every other
-	 * case, and the portal, delete for real through {@code Files::deleteIfExists}. The answer is the one
-	 * {@link Files#deleteIfExists} gives: whether this call deleted anything.
+	 * case, and the portal, delete for real through {@code Files::deleteIfExists}. The answer is
+	 * the one {@link Files#deleteIfExists} gives: whether this call deleted anything.
 	 */
 	@FunctionalInterface
 	interface Deleter {
@@ -176,8 +178,8 @@ class ThePicturesFolderIsSwept {
 	/**
 	 * THE SWEEP. Once an hour, with the first one an hour after the process starts.
 	 *
-	 * <p>{@code fixedDelay} and not {@code fixedRate}, so two sweeps cannot overlap on a volume
-	 * that is slow: the next waits an hour after this one has finished.
+	 * <p>{@code fixedDelay} and not {@code fixedRate}: the next sweep waits an hour after this one
+	 * has finished, so a slow volume cannot make them run back to back.
 	 */
 	@Scheduled(fixedDelay = 1, initialDelay = 1, timeUnit = TimeUnit.HOURS)
 	void sweep() {
