@@ -1569,10 +1569,11 @@ export type ServedTeamInvitation = {
  * EVERYTHING THE ONE ASKING IS WAITING TO HEAR BACK ABOUT, as `GET /api/me/applications`
  * answers it.
  *
- * **The second resource whose answer differs per caller**, after `inbox`, and it is
- * dropped from the cache the same way and for the same reason (`data/useResource.ts`,
- * `theWaitingNowBelongsTo`): a visit is not one person, because signing out and back in
- * happen in place.
+ * **The second resource a hook drops from the cache when the caller changes**, after
+ * `inbox`, for the same reason (`data/useResource.ts`, `theWaitingNowBelongsTo`): a visit is
+ * not one person, because signing out and back in happen in place. It is not the second that
+ * DEPENDS on the caller - `competitors` and `teams` do too, and the session drops those
+ * (`session/theCachesFollowTheReader.ts`).
  *
  * **Three of the five lists are answered and none of them is read**, and that is the shape
  * `data/servedShape.test.ts` asks for rather than an oversight: the type is what the route
