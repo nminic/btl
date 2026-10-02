@@ -7,6 +7,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { PageMeta } from '../app/PageMeta'
 import { useToday } from '../clock/useClock'
 import { CategoryDonut } from '../components/CategoryDonut'
+import { Loader } from '../components/Loader'
 import { Resource } from '../components/Resource'
 import { MEMBERS, TEAMS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
@@ -440,7 +441,7 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   const params = useParams()
   const { search } = useLocation()
   const memberNumber = given ?? memberNumberIn(params.memberNumber)
-  const { signedIn, pairsMade, pairsBroken } = useSession()
+  const { signedIn, theServerHasAnswered, pairsMade, pairsBroken } = useSession()
   const overlay = useOverlay()
   const state = combineFour(useCompetitors(), useResults(), useTeams(), usePairs())
 
@@ -457,7 +458,20 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
         const teams = recordsOf(TEAMS, allTeams, overlay)
         /* Whether anybody is signed in and not which member, so administration, which races for
            nobody, reads a hidden profile as the server already lets it (`profile/visible.ts`). */
-        const readable = profileFor(competitors, memberNumber, signedIn !== null)
+        const readable = profileFor(competitors, memberNumber, signedIn !== null, theServerHasAnswered)
+
+        if (readable.kind === 'waiting') {
+          /* **Not sent away yet, because nobody has said who is reading** (`profile/visible.ts`,
+             `Readable`, for the whole reasoning). At the first paint of a visit the reader is
+             nobody, so a cold load of a hidden profile threw a reader who IS signed in onto the
+             front page: the decision of 29.09.2026 (`PDL.md`, „Cuvar ne preusmerava dok server ne
+             kaze ko cita"), carried here from `pages/admin/Guard.tsx` as the assistant's
+             derivation and not a new word of the owner's. The price is the one he accepted there:
+             a short moment of the portal's own indicator where the screen will be, the full sheet
+             because what is waiting is the whole screen. The same for all three ways to be
+             unreadable, so a visitor reads no difference off it (PDL 06.09.2026). */
+          return <Loader inline={false} />
+        }
 
         if (readable.kind === 'none') {
           /* **The home page, and the same for a profile that does not exist.** The owner's rule,

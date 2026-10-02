@@ -102,8 +102,10 @@ import java.util.Optional;
  * the three resources above already answer „no members" while this class still answers „not
  * empty". That gap closes when the row stops covering the season, and the thing that ends
  * it is the job of 1 January at 16:00 CET which PDL P13, 19.09.2026 already decided and
- * which does not exist yet („portal dobija prvi zakazan posao ikad; u celom bekendu danas
- * nema nijednog {@code @Scheduled}"). Deleting the team earlier is the one thing that
+ * which does not exist yet. P13 counted it as the first scheduled job this backend would
+ * have; since {@link ThePicturesFolderIsSwept} the first is that one, scheduling is already
+ * switched on in {@code WhatRunsWithoutBeingAsked}, and this job needs only a
+ * {@code @Scheduled} method of its own. Deleting the team earlier is the one thing that
  * cannot be undone, so the wait is the safe half of the boundary and it is named as a
  * boundary rather than implemented as a rule.
  *
@@ -124,9 +126,10 @@ import java.util.Optional;
  * reasoning and not a decision, and it is said out loud as one rather than left to look like a
  * quote. The reasoning: a logo left standing would be a {@code photo} row and a file that
  * nothing in the schema points at any more the moment {@code team.logo_id} goes with the row it
- * was on, and nothing scans for such a thing (the class note above already measures that no
- * sweep of any kind exists in this package). {@link MePhotoApi#remove} is the portal's own
- * precedent for taking a picture down at all, and its shape is copied together with its guard:
+ * was on, and nothing scans for such a thing: {@link ThePicturesFolderIsSwept} reads files and
+ * never rows, so a {@code photo} row nothing holds keeps its file, and neither of them is ever
+ * taken. {@link MePhotoApi#remove} is the portal's own precedent for taking a picture down at
+ * all, and its shape is copied together with its guard:
  * „THE ROW AND THE FILE BOTH GO, and the order is the row first".
  */
 @Component
@@ -308,8 +311,9 @@ class ATeamGoesWithItsLastMember {
 	 * team's own row by the time this runs, so nothing more is emptied here. A fault in the
 	 * file's removal is logged and swallowed rather than thrown, for the same reason
 	 * {@link CompetitorWriteApi} swallows it - the team going is the act the owner decided
-	 * (PDL P13a, 25.09.2026), and a stray file nobody will ever serve again is the one leak
-	 * {@link PhotoApi} already answers nothing for, not a reason to leave the team standing.
+	 * (PDL P13a, 25.09.2026), and a stray file nobody will ever serve again is a leftover
+	 * {@link PhotoApi} already answers nothing for and {@link ThePicturesFolderIsSwept} deletes
+	 * once it is older than ten minutes, not a reason to leave the team standing.
 	 */
 	private void takeAwayThePhoto(long photo) {
 		db.sql("delete from photo where id = ?").param(photo).update();

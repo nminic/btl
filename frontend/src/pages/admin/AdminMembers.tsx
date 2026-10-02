@@ -260,11 +260,17 @@ export function AdminMembers() {
                                 /* The row about to go is where the focus is, moved
                                    before the answer is back exactly as
                                    `RowActions.deleteRow` moves it for the entities
-                                   that still use it. A refusal is said in a live
-                                   region rather than by putting the focus back
-                                   somewhere it has already left. */
+                                   that still use it. A refusal is said in the row
+                                   and closes the question, and the row's own
+                                   „Obriši" takes the focus back from where it was
+                                   moved (`DeleteRecord`, owner 02.10.2026).
+
+                                   HANDED BACK, so the question can wait for the answer
+                                   (`DeleteRecord`, owner 02.10.2026): it tells „Odustani" off
+                                   for as long as the promise is pending. */
                                 document.getElementById(SEARCH_ID)?.focus()
-                                void deleteOne(one)
+
+                                return deleteOne(one)
                               }}
                             />
                           </span>
