@@ -39,10 +39,13 @@ import { setupUser } from '../test/user'
  * 1. Every rule that reaches one of the four and writes a property of that element's family
  *    (below) is a plain class or a list of plain classes, is in `app/Shell.css`, stands outside
  *    any query or in the one narrow query, and is not `!important`.
- * 2. The names those rules write on each element are exactly the ones pinned below. The names and
- *    not the values, so a repaint of a value fails nothing and a property nobody has written
- *    there before fails at once. Where a value alone can take a box away, it is read as well: the
- *    `display` of the row of tools and of the bar.
+ * 2. The names those rules write on each element, and the place each is written in (outside any
+ *    query, in the narrow one), are exactly the ones pinned below. The names and the places and
+ *    not the values, so a repaint of a value fails nothing, while a property nobody has written
+ *    there before, or one written in a place it was not written in before, fails at once. Where
+ *    a value alone can take a box away or move a panel, it is read as well: the `display` of the
+ *    row of tools and of the bar, and what a panel stands on (`position`, the offsets, the step
+ *    under the button, the widths in the query, the language menu's `transform` and `margin`).
  * 3. Where a base rule and the narrow query write one name on one element, the query stands after
  *    the base rule: an order of lines, which is not a claim that it wins.
  * 4. What the narrow query says and what stands outside it is read off the same rules by name,
@@ -72,7 +75,9 @@ import { setupUser } from '../test/user'
  * pseudo-class jsdom's matcher does not carry (`:active`, `:focus-visible`, `:target`), or under
  * `:hover` over anything but the button. A property or an at-rule jsdom's parser does not know,
  * which it drops (`@starting-style` inside a rule, measured). And a style that script writes after
- * the state is read. Every one of those is asked of Chrome and none of them of this.
+ * the state is read. And the size of the floor (`min-width`) a panel is given outside the query,
+ * which is a design value: the pin says that a floor is written there, not how big it is. Every
+ * one of those is asked of Chrome and none of them of this.
  *
  * That the shape this holds is the one that keeps a panel on the screen was measured, not argued:
  * fourteen widths from 360 to 1280 on the production build and on the QA build, the inbox with
@@ -89,27 +94,50 @@ const SHEET = 'app/Shell.css'
  *  widths and says why this is on it). */
 const NARROW = '(max-width: 51.24875em)'
 
+/** Where a rule that reaches one of these elements is written: outside any query, in the one
+ *  narrow query, or anywhere else (another width, `print`, `@supports`), which nothing here has
+ *  asked about and where nothing is allowed to be written. */
+type Place = 'outside' | 'narrow' | 'elsewhere'
+
+const placeOf = (condition: string | null): Place =>
+  condition === null ? 'outside' : condition === NARROW ? 'narrow' : 'elsewhere'
+
+/** The names written on one element, by the place each is written in. A name and not the place
+ *  would let a property that is already written outside the query be written again inside it,
+ *  where nobody has read it (`@media (…) { .lang__menu { transform: … } }`). */
+type Pinned = Record<Place, string[]>
+
 /**
- * The three panels of the header: the name of the button that opens each, the box that button
- * stands in, the panel it opens, and the names written on that panel (pinned, with the reason
- * each is there below). One table, read by every question about the stylesheet and about the
- * markup, so that the class names the one holds are the ones the other finds on the page (a fact
- * with two homes drifts, and a guard over a class nobody wears holds nothing).
+ * What is written on the panels, by name and by place (pinned, with the reason each is there
+ * below). A floor is written on each outside the query (`min-width`, a design value that is not
+ * read, which the head of this file says), and what the query adds is the repair itself: the
+ * offsets, the step under the button, the width and the cap.
  *
  * `margin` and `transform` are the language menu's alone: `margin: 0` is the list's own, and
  * `transform` is how it opens (`translateY(-4px)` shut, `none` open, both read below by value,
  * because they are the one place a panel is meant to be moved). `margin-top` is the step under the
  * button that the query gives all three.
  */
-const ON_THE_PANEL = ['margin-top', 'max-width', 'min-width', 'position', 'right', 'top', 'width']
+const ON_THE_PANEL: Pinned = {
+  outside: ['min-width', 'position', 'right', 'top'],
+  narrow: ['margin-top', 'max-width', 'min-width', 'right', 'top', 'width'],
+  elsewhere: [],
+}
 
+const ON_THE_LANGUAGE_MENU: Pinned = {
+  ...ON_THE_PANEL,
+  outside: ['margin', 'min-width', 'position', 'right', 'top', 'transform'],
+}
+
+/**
+ * The three panels of the header: the name of the button that opens each, the box that button
+ * stands in, the panel it opens, and the names written on that panel. One table, read by every
+ * question about the stylesheet and about the markup, so that the class names the one holds are
+ * the ones the other finds on the page (a fact with two homes drifts, and a guard over a class
+ * nobody wears holds nothing).
+ */
 const HEADER_PANELS = [
-  {
-    button: 'Jezik',
-    box: '.lang',
-    panel: '.lang__menu',
-    onThePanel: ['margin', 'transform', ...ON_THE_PANEL].sort(),
-  },
+  { button: 'Jezik', box: '.lang', panel: '.lang__menu', onThePanel: ON_THE_LANGUAGE_MENU },
   { button: 'Otvori nalog', box: '.account', panel: '.account__panel', onThePanel: ON_THE_PANEL },
   { button: /^Otvori poruke/, box: '.inbox', panel: '.inbox__panel', onThePanel: ON_THE_PANEL },
 ]
@@ -117,10 +145,14 @@ const HEADER_PANELS = [
 const PANELS = HEADER_PANELS.map((one) => one.panel)
 const BUTTONS_BOX = HEADER_PANELS.map((one) => one.box)
 
-/** What is written on the three boxes between a panel and the bar: the box of a button is only
- *  ever positioned (`relative` outside the query, `static` in it), the row of tools is a flex row
- *  and nothing else, and the bar is a flex row that the query makes the positioned box. */
-const BETWEEN_PINNED = { box: ['position'], tools: ['display'], bar: ['display', 'position'] }
+/** What is written on the three boxes between a panel and the bar, and where: the box of a button
+ *  is only ever positioned (`relative` outside the query, `static` in it), the row of tools is a
+ *  flex row and nothing else, and the bar is a flex row that the query makes the positioned box. */
+const BETWEEN_PINNED: Record<'box' | 'tools' | 'bar', Pinned> = {
+  box: { outside: ['position'], narrow: ['position'], elsewhere: [] },
+  tools: { outside: ['display'], narrow: [], elsewhere: [] },
+  bar: { outside: ['display'], narrow: ['position'], elsewhere: [] },
+}
 
 /** What can make one of the three boxes between a panel and the bar the measure of a positioned
  *  box, take its box away, or clip what hangs from it (the head of this file says why a pattern and
@@ -475,24 +507,35 @@ describe('what reaches the three panels of the header and the boxes they hang fr
     expect([...offenders]).toEqual([])
   })
 
-  it('writes exactly the names pinned here on each of them, in the closed state and in the open one', async () => {
+  it('writes exactly the names pinned here on each of them, in each place, in the closed state and in the open one', async () => {
     const seen = await theHeaderAsItIs()
 
     /* The pins are written by hand and that is on purpose: a list that regenerates itself from
        what is there pins nothing. A property nobody has written on one of these elements before
-       is a new name, and it is read by whoever adds it before it is accepted. */
+       is a new name, and a name written in a place it was not written in before (the narrow
+       query on an element that has the name outside it) is a new pair: both are read by whoever
+       adds them before they are accepted. */
     for (const one of HEADER_PANELS) {
       const name = String(one.button)
 
       for (const open of [false, true]) {
-        const on = (role: Role) =>
-          [
+        const on = (role: Role): Pinned => {
+          const written = (place: Place) => [
             ...new Set(
               seen.reaches
-                .filter((reach) => reach.panel === name && reach.open === open && reach.role === role)
+                .filter(
+                  (reach) =>
+                    reach.panel === name &&
+                    reach.open === open &&
+                    reach.role === role &&
+                    placeOf(reach.rule.condition) === place,
+                )
                 .flatMap((reach) => reach.names),
             ),
           ].sort()
+
+          return { outside: written('outside'), narrow: written('narrow'), elsewhere: written('elsewhere') }
+        }
         const state = `${name} ${open ? 'open' : 'closed'}`
 
         expect(on('box'), `${state}, the box`).toEqual(BETWEEN_PINNED.box)
@@ -659,7 +702,7 @@ describe('what stands outside the query, above the width where the navigation un
       expect(outsideAnyQuery(panel, 'right'), `${panel} right`).toMatch(/^0(px)?$/)
     }
 
-    for (const panel of ['.account__panel', '.inbox__panel']) {
+    for (const panel of PANELS) {
       expect(outsideAnyQuery(panel, 'top'), `${panel} top`).toBe('calc(100% + var(--space-8))')
     }
 
