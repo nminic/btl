@@ -9,7 +9,8 @@ import { loadResource } from './client'
  * A tuple rather than an object because there are forty seven thousand of them
  * and the field names would outweigh the data. Built by
  * `btl-produkt/istorijski-podaci/napravi-mesta.py` out of the GeoNames export
- * (CC BY 4.0).
+ * (CC BY 4.0), and then labelled by `oznaci-istoimena-mesta.py` beside it, which
+ * gives towns that were called alike the nearest bigger town in brackets.
  *
  * The mark comes first because it is what the town **is** (owner, 08.09.2026,
  * ADL A16). Name and country tell towns apart in this codebook since 02.10.2026,
