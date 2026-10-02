@@ -9,12 +9,13 @@ import { aCompetitor, aTeam } from '../test/theAnswer'
  * A MEMBER WHO HIDES HIS PROFILE, ON HIS TEAM'S PAGE AND IN THE TABLE OF TEAMS, ON THE ANSWERS THE
  * SERVER REALLY GIVES.
  *
- * **What changed on the server, since 02.10.2026.** PDL, odeljak 16, [ODLUKA 27.09.2026, owner]:
- * the team leaves a hidden member's record for a reader who is not signed in, „isto kao biografija i
- * fotografija" - so `/api/competitors` answers his `teamId` and `teamSince` as null to a visitor -
- * and the owner's own limit on it the same day: „Samo da se razumemo, mozda on sakrije profil, ali
- * ako je deo tima, njegovo ime se vidi u timu i bodovi koje je doneo." So `/api/teams` names him on
- * his team instead (`alsoInTheTeam`), to exactly that reader.
+ * **What changed on the server, since 02.10.2026.** PDL, odeljak 16, [ODLUKA 27.09.2026, owner],
+ * chosen between offered outcomes: the team leaves a hidden member's record for a reader who is not
+ * signed in, the same as the biography and the photograph - so `/api/competitors` answers his
+ * `teamId` and `teamSince` as null to a visitor - and the owner's own words on it the same day:
+ * „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i
+ * bodovi koje je doneo." So `/api/teams` names him on his team instead (`alsoInTheTeam`), to exactly
+ * that reader.
  *
  * **What these cases hold is that nothing a visitor sees moved.** The team's page names him, with
  * his points, among the members; the table of teams adds his points to the team's sum and counts

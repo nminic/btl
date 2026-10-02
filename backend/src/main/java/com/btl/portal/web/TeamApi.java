@@ -253,11 +253,12 @@ import java.util.stream.Collectors;
  * member of a team was named in no answer of this resource at all, to anybody.
  *
  * <p><b>SINCE 02.10.2026 ONE MEMBER IS, TO ONE READER, AND IT IS THE SAME ONE HOME RATHER
- * THAN A SECOND.</b> PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the link from a hidden
- * member's record to his team is withheld from a reader who is not signed in, „isto kao
- * biografija i fotografija" - and the owner's own limit on it the same day, „Samo da se
- * razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i bodovi
- * koje je doneo." The team's page and the table of teams are built out of that link, so with
+ * THAN A SECOND.</b> PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between offered
+ * outcomes: the link from a hidden member's record to his team is withheld from a reader who is
+ * not signed in, the same as the biography and the photograph - and the owner's own words on it
+ * the same day, „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se
+ * vidi u timu i bodovi koje je doneo." The team's page and the table of teams are built out of
+ * that link, so with
  * the link gone from the record and nothing in its place the team would lose him, and his
  * points with him. {@code alsoInTheTeam} is what is in its place.
  *

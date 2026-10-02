@@ -296,10 +296,11 @@ import java.util.List;
  * null from.
  *
  * <p><b>AND SINCE 02.10.2026 THE LINK TO HIS TEAM, BY THE SAME RULE AND, FOR THE FIRST TIME, THE
- * SAME TEXT.</b> PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between three offered: „tim
- * se zadrzava od posetioca, isto kao biografija i fotografija" - and the owner's own limit on it the
- * same day: „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi
- * u timu i bodovi koje je doneo." So {@code teamId} and {@code teamSince} leave his record for a
+ * SAME TEXT.</b> PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: chosen between three offered
+ * outcomes, with the coordinator's recommendation, that the team is withheld from a visitor the
+ * same as the biography and the photograph - and the owner's own words on it the same day: „Samo
+ * da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i bodovi
+ * koje je doneo." So {@code teamId} and {@code teamSince} leave his record for a
  * reader who is not signed in, and the team does NOT lose him: his points go into the team's sum
  * and his name onto its page. The reasoning written under the decision says why that half carries
  * weight: his points are part of the team's sum, so taking him off the team would change the
@@ -629,11 +630,12 @@ class CompetitorApi {
 						+ " case when " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						+ "  then c.bio end as bio,"
 						/* AND THE TEAM HE IS IN, WITHHELD BY THE SAME CONDITION SINCE 02.10.2026.
-						   PDL, odeljak 16 [ODLUKA 27.09.2026, owner]: „tim se zadrzava od
-						   posetioca, isto kao biografija i fotografija", and the owner's own limit
-						   on it the same day: „mozda on sakrije profil, ali ako je deo tima,
-						   njegovo ime se vidi u timu i bodovi koje je doneo." So what goes is the
-						   LINK FROM HIS RECORD, both halves of it, and nothing about the team.
+						   PDL, odeljak 16 [ODLUKA 27.09.2026, owner]: chosen between offered
+						   outcomes, the team is withheld from a visitor the same as the biography
+						   and the photograph - and the owner's own words on it the same day:
+						   „mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu
+						   i bodovi koje je doneo." So what goes is the LINK FROM HIS RECORD, both
+						   halves of it, and nothing about the team.
 
 						   NULL, WHICH IS WHAT A MEMBER IN NO TEAM IS ANSWERED, ON PURPOSE. The
 						   portrait's decision gave the shape: „Oblik je null, nikad odsutan kljuc

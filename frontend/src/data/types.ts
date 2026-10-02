@@ -268,9 +268,9 @@ export type Competitor = {
    * The team of the membership that has not ended, or null for a member in none - AND, since
    * 02.10.2026, for a member who hides his profile when the reader has no session.
    *
-   * PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the team is withheld from a visitor „isto kao
-   * biografija i fotografija", and it reads exactly like no team at all, which is the shape the
-   * portrait was given (`CompetitorApi`). **So null here does not mean „in no team" to every
+   * PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between offered outcomes: the team is
+   * withheld from a visitor the same as the biography and the photograph, and it reads exactly like
+   * no team at all, which is the shape the portrait was given (`CompetitorApi`). **So null here does not mean „in no team" to every
    * reader**, and nothing that counts a team's members may read it alone: the member is named on
    * his team instead, as `Team.alsoInTheTeam`, and `data/derive.ts` (`membersOf`) is the one place
    * the two are put together.

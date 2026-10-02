@@ -1568,9 +1568,9 @@ class CompetitorApiTest {
 	/**
 	 * A HIDDEN PROFILE'S TEAM DOES NOT LEAVE ON HIS RECORD TO A CALLER WHO IS NOT SIGNED IN.
 	 *
-	 * <p>PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between three offered: „tim se
-	 * zadrzava od posetioca, isto kao biografija i fotografija." Both halves of the link go:
-	 * {@code teamId} and {@code teamSince}.
+	 * <p>PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between three offered outcomes: the
+	 * team is withheld from a visitor the same as the biography and the photograph. Both halves of
+	 * the link go: {@code teamId} and {@code teamSince}.
 	 *
 	 * <p><b>The floors come first, and they are what makes the null a withholding.</b> He hides
 	 * his profile, and the database holds a membership of his that has NOT ended - written by this
