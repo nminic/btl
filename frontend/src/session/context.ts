@@ -311,6 +311,14 @@ export type Application = {
  * It carries no answer of its own, exactly as `Invitation` does not: „may this still be accepted"
  * is worked out when the message is drawn, from whether either of them already has a pair, so two
  * people asking the same person on the same day need not know about each other.
+ *
+ * **And it carries no day, since 02.10.2026** (PENDING 147; the owner chose, against the
+ * recommendation, that the field goes). It was written when the question was asked and read by
+ * nothing: the day a member reads comes off the message that carries the question
+ * (`Message.date`), and the season the pair holds for is worked out on the day it is answered
+ * (`member/PairInviteAnswer.tsx`), so a day kept here was a second home for a fact the portal
+ * already has one for. The cost was named when it was decided: if a question ever expires after
+ * some number of days, the day comes back, together with the rule that reads it.
  */
 export type PairInvite = {
   id: string
@@ -318,8 +326,6 @@ export type PairInvite = {
   from: string
   /** Who is being asked. */
   to: string
-  /** The day it was sent. */
-  date: string
 }
 
 export type Invitation = {

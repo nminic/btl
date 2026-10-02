@@ -231,7 +231,7 @@ describe('a race that fixes no length', () => {
          ordinary races saves perfectly well; the cell of a race that fixes no
          length is the one thing here that cannot be true of the real file. */
       expect(
-        within(races).getAllByRole('spinbutton', { name: /^Dužina/ })[0],
+        within(races).getAllByRole('textbox', { name: /^Dužina/ })[0],
         'the first length is required, so these are not the served races',
       ).toHaveAttribute('aria-required', 'false')
 
@@ -280,7 +280,7 @@ describe('a race that fixes no length', () => {
         'nothing was refused, so there is no marking to measure',
       ).toBeVisible()
 
-      const lengths = screen.getAllByRole('spinbutton', { name: /^Dužina/ })
+      const lengths = screen.getAllByRole('textbox', { name: /^Dužina/ })
 
       /* Tied to the served file: with the races as they really are, the first row
          is a race of a length and this reads „true", so the case cannot pass on a
@@ -289,31 +289,35 @@ describe('a race that fixes no length', () => {
         first(lengths),
         'the first length is required, so these are not the served races',
       ).toHaveAttribute('aria-required', 'false')
-      /* And it no longer announces bounds it does not hold to. Asked beside the two
-         attributes above because all of them are read off one answer, and a control
-         that says „at least 0,1" over a value of nought announces a rule that was
-         lifted from it.
+      /* AND NO CELL ANNOUNCES BOUNDS THROUGH ATTRIBUTES A TEXT BOX CANNOT HOLD.
+       *
+         Until 02.10.2026 these cells were number boxes and said their floor and ceiling
+         through `min` and `max`, only where the save really held them to it: a control
+         saying „at least 0,1" over a race that fixes no length announces a rule that was
+         lifted from it. The cells are text boxes since then, so they take the comma Serbian
+         writes a decimal with (owner: „Polje za broj prima i zarez i tacku"), and on a text
+         box `min` and `max` announce nothing to anybody and constrain nothing. So the claim
+         is gone from every cell, and the bounds are what the save holds a cell to: the
+         length of fifty metres is refused and the tenth of a kilometre taken, written with
+         a comma, in `admin/raceRows.test.ts`. */
+      for (const cell of [...lengths, ...screen.getAllByRole('textbox', { name: /^Uspon/ })]) {
+        expect(cell, 'a cell announces a floor').not.toHaveAttribute('min')
+        expect(cell, 'a cell announces a ceiling').not.toHaveAttribute('max')
+      }
 
-         Both ends, and both directions. „It has no floor" alone is satisfied by a
-         table that announces none anywhere, which is 1612 races of a length left
-         without the one they do hold to; the row that really is bounded is asked
-         for its own in the same breath. */
-      expect(first(lengths), 'the length still announces a floor').not.toHaveAttribute('min')
-      expect(first(lengths), 'the length still announces a ceiling').not.toHaveAttribute('max')
+      const climbs = screen.getAllByRole('textbox', { name: /^Uspon/ })
 
-      const last = must(lengths[lengths.length - 1], 'the row just added')
-
-      expect(last, 'the row that is bounded lost its floor').toHaveAttribute('min', '0.1')
-      expect(last, 'the row that is bounded lost its ceiling').toHaveAttribute('max', '1000')
-
-      const climbs = screen.getAllByRole('spinbutton', { name: /^Uspon/ })
-
-      /* The climb is never required and always bounded, so it holds its own even on
-         the race the length was lifted from: the exemption is about one field and
-         not about the row. */
-      expect(first(climbs), 'the climb lost its bounds with the length').toHaveAttribute(
-        'min',
-        '0',
+      /* The keyboard says the rest of what the cell takes: a length has decimals and the
+         climb is whole metres, because the server keeps it whole (`admin-trka.form.json`,
+         `"integer": true`). Asked on the race the length was lifted from as well, so the
+         exemption stays about one field and not about the row. */
+      expect(first(lengths), 'the length is offered no separator').toHaveAttribute(
+        'inputmode',
+        'decimal',
+      )
+      expect(first(climbs), 'the climb is offered a separator').toHaveAttribute(
+        'inputmode',
+        'numeric',
       )
       expect(first(lengths), 'the length of a race that fixes none is marked wrong').toHaveAttribute(
         'aria-invalid',
@@ -375,7 +379,7 @@ describe('a race that fixes no length', () => {
 
       await user.type(length, '42.2')
 
-      expect(length).toHaveValue(42.2)
+      expect(length).toHaveValue('42.2')
     } finally {
       globalThis.fetch = real
     }

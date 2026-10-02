@@ -370,13 +370,23 @@
    the name's size would need no different leading at all and this whole rule would be wrong
    rather than merely unnecessary.
 
-   **The boundary this does not close:** below 700px this table draws no circle at all (the media
+   **The boundary this does not close:** below 745px this table draws no circle at all (the media
    query right after this one), so a long name that wraps to two lines there has nothing to
-   disagree with. Above 700px, where the circle returns, a name wide enough to wrap would still
+   disagree with. From 745px, where the circle returns, a name wide enough to wrap would still
    break this correspondence, the same way it would on the two screens that already break a name
    over two lines on purpose - and it now breaks it by 2px more than it used to, since a wrapped
    name spends the taller line twice; nothing here claims otherwise; measured in a browser rather
-   than asserted, since jsdom lays nothing out. */
+   than asserted, since jsdom lays nothing out.
+
+   **Where 745 comes from, measured over the seventeen rows of `/sr/tabela?sezona=2019`**
+   (02.10.2026, `PDL.md`, „Odluke iz ciscenja nalaza", stavka 260). It was 700. With the circle
+   drawn and nine columns, names on two lines were 9 of 17 at 700px, 3 at 720, 1 at 744 and none at
+   745, 768 or 1280, so just above 700px a circle beside a name on two lines was the common case.
+   What moved is only the circle: the nine columns go on dropping to four at 700 with every
+   other table (`styles/table.css`), so between 700 and 744 this table draws nine columns and no
+   circle. A name can still wrap there, and that was measured too and left alone on purpose: with no
+   circle, one name on two lines at 700px (Radoslav Milovanović) and none at 705, 710, 715, 720, 730,
+   740 or 744. Those are one season's seventeen names; a longer name wraps at a wider window. */
 .rankings__member-name,
 .rankings__member-number {
   display: block;
@@ -390,13 +400,14 @@
   line-height: 0.925rem;
 }
 
-/* **Krug ustupa mesto imenu na telefonu, i to samo u ovoj tabeli** (owner, 07.09.2026, asked with
-   the measurement in front of him: „Krug se ne crta ispod 700px").
+/* **Krug ustupa mesto imenu ispod 745px, i to samo u ovoj tabeli** (owner, 07.09.2026, asked with
+   the measurement in front of him: „Krug se ne crta ispod 700px"; raised to 745px on 02.10.2026,
+   `PDL.md`, „Odluke iz ciscenja nalaza", stavka 260, with the measurement in the note above).
  *
    The circle takes about thirty four pixels of a column that is 167 wide at 360, and a long name
    then wraps of its own accord: measured, nine of seventeen names ran to two lines where one did
    before, and the row grew from 75 to 100 pixels. This screen is one of the four the owner expects
-   to be easiest on a telephone (PDL P24), so the circle is the half that gives way; from a tablet
+   to be easiest on a telephone (PDL P24), so the circle is the half that gives way; from 745px
    up it is drawn as he asked.
  *
    Written against this table by name, and the name is the point: the circle stays everywhere else
@@ -407,10 +418,12 @@
    against `.rankings--tooled` would have taken their circles away; neither is what was asked for.
    `.rankings__table` is on one element in the portal and is selected from one place.
 
-   The width is the one the whole portal narrows its tables at, in pixels, on the list
-   `styles/scale.test.ts` keeps and for the reason it records there. Hiding a cell's contents at
-   that width is the shape `styles/table.css` already uses for `.table__hide-phone`. */
-@media (max-width: 699.98px) {
+   The width is 744.98, in pixels, on the list `styles/scale.test.ts` keeps and for the reason it
+   records there. It is NOT the width the portal narrows its tables at (699.98, `styles/table.css`),
+   which it was until 02.10.2026: only the circle moved, so between 700 and 744 the nine columns are
+   drawn and the circle is not. Hiding a cell's contents at a width is the shape `styles/table.css`
+   already uses for `.table__hide-phone`. */
+@media (max-width: 744.98px) {
   .rankings__table .plate__faces {
     display: none;
   }

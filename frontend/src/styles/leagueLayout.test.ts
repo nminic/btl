@@ -94,7 +94,9 @@ const COLUMNS = ['grid-template-columns', 'grid-template', 'grid:', 'column-coun
  * the member's own colour (PDL P13, and `styles/circle.test.ts` says the same in words); and the
  * whole plate on the middle of its row rather than above it (28.09.2026, „Ceo taj boks treba
  * spustiti dodatno par piksela"), which is the `vertical-align` and is held in words by
- * `styles/plateInTheRow.test.ts`.
+ * `styles/plateInTheRow.test.ts`. **And one rule that follows from a decision and not from a
+ * sentence** (02.10.2026): the circle that is a link of its own is not underlined, because the
+ * initials stand inside it (`a.plate__faces`, `NamePlate`'s `faceTo`).
  */
 const PLATE_SHEETS = `=== components/NamePlate.css ===
 @import './Portrait.css';
@@ -112,6 +114,9 @@ const PLATE_SHEETS = `=== components/NamePlate.css ===
   inline-size: 2.1rem;
   block-size: 2.1rem;
   font-size: 0.68rem;
+}
+a.plate__faces {
+  text-decoration: none;
 }
 .plate__words {
   min-inline-size: 0;
@@ -168,8 +173,9 @@ const PLATE_SHEETS = `=== components/NamePlate.css ===
  * Five of them dress the circle of another widget, which draws no plate: the chart on the top
  * boards, the ten faces on the front page, the head of a profile, the card of a competitor and
  * the header of a signed in member. The next is the owner's
- * own decision of 07.09.2026, „Krug se ne crta ispod 700px", written against the main standing by
- * name, and it is read as a rule two cases below. The last is the sheet that DEFINES a class the
+ * own decision of 07.09.2026, „Krug se ne crta ispod 700px" (raised to 745px on 02.10.2026, in
+ * the case that reads it), written against the main standing by name, and it is read as a rule
+ * two cases below. The last is the sheet that DEFINES a class the
  * plate wears rather than one reaching in to redress it, and its entry says so.
  *
  * **Three entries arrived on 27.09.2026 and each is explained where it stands.** Two of them are
@@ -380,15 +386,22 @@ describe('the name of a competitor beside their circle', () => {
     expect(rule.getPropertyValue('block-size')).toBe('1.7rem')
   })
 
-  it('is not drawn at all in the main standing on a telephone, which the owner chose', () => {
+  it('is not drawn at all in the main standing below 745px, which the owner chose', () => {
     /* **The owner's answer, with the measurement in front of him** (07.09.2026): „Krug se ne crta
        ispod 700px." The circle takes about thirty four pixels of a column that is 167 wide at 360,
        and a long name then wraps of its own accord: nine of seventeen names ran to two lines where
        one did before, and the row grew from 75 to 100 pixels. This screen is one of the four he
        expects to be easiest on a telephone (PDL P24), so the circle is the half that gives way.
      *
-       **The answer has two halves and both are asked, but not both here.** „Below 700px, and above
-       it drawn" is this rule. „**And only in the main standing**" is undone from two other sides,
+       **Raised from 700 to 745px on 02.10.2026** (`PDL.md`, „Odluke iz ciscenja nalaza", stavka
+       260), so that the circle does not stand beside a name on two lines. Measured in a browser over
+       `/sr/tabela?sezona=2019`, seventeen rows, with the circle drawn and nine columns: names on two
+       lines were 9 at 700px, 3 at 720, 1 at 744 and none at 745, 768 or 1280. Only the circle moved.
+       The nine columns go on dropping to four at 700 with every other table on the portal
+       (`styles/table.css`), which `pages/Rankings.css` says in its own words.
+     *
+       **The answer has two halves and both are asked, but not both here.** „Below the width, and
+       above it drawn" is this rule. „**And only in the main standing**" is undone from two other sides,
        and each has its own floor: written into the plate's own sheets it changes the golden text,
        and written into any other sheet in the portal it changes the sweep two cases below. Both
        were measured undoing it with the gate green.
@@ -399,7 +412,7 @@ describe('the name of a competitor beside their circle', () => {
     expect(
       ruleInMedia(
         readFileSync(RANKINGS, 'utf-8'),
-        '(max-width: 699.98px)',
+        '(max-width: 744.98px)',
         '.rankings__table .plate__faces',
         'Rankings.css',
       ).getPropertyValue('display'),

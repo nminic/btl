@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { ROLES, SIGNED_IN_ROLES } from '../roles/context'
+import { must } from '../test/at'
 import { serverThat, type Asked } from '../test/serverAnswers'
+import { myOwnRecordFromMe } from '../test/theAnswer'
 import { whoTheServerSaysIAm } from './theServer'
 
 /**
@@ -249,6 +251,11 @@ describe('who the server says I am', () => {
        what comes out of either is money printed on a member's own page. */
     ['a count that is not a number', { member: { referredCount: '4' } }, null],
     ['a count that is not whole', { member: { referredCount: 2.5 } }, null],
+    /* AND ONE THAT IS WHOLE AND STILL NOT A COUNT: nobody has brought in fewer than nobody.
+       `Number.isInteger(-3)` is true, so a reader that asks only that hands it on, and the
+       page then multiplies the price by it and prints „-1.800 RSD" as the balance of a member
+       (PENDING 227). */
+    ['a count below nought', { member: { referredCount: -3 } }, null],
   ])('says how many the caller brought in for %s', async (_what, extra, expected) => {
     server?.stop()
     server = serverThat(() =>
@@ -302,13 +309,15 @@ describe('who the server says I am', () => {
 
      A WHOLE NUMBER and not merely a number, which is the shape the count above is read
      with and for the same measurement: a season that arrived as a string would go into
-     „Član od {season}. sezone." as one, and a fraction is not a season. */
+     „Član od {season}. sezone." as one, and neither a fraction nor a number below nought is a
+     season. */
   it.each([
     ['a member who started in 2016', { member: { firstSeason: 2016 } }, 2016],
     ['an account that races for nobody', {}, null],
     ['a record that carries no season', { member: { memberNumber: '000012' } }, null],
     ['a season that is not a number', { member: { firstSeason: '2016' } }, null],
     ['a season that is not whole', { member: { firstSeason: 2016.5 } }, null],
+    ['a season below nought', { member: { firstSeason: -2016 } }, null],
   ])('says which season the caller started in for %s', async (_what, extra, expected) => {
     server?.stop()
     server = serverThat(() =>
@@ -332,6 +341,7 @@ describe('who the server says I am', () => {
     ['an account that races for nobody', {}, null],
     ['a member in no team at all', { member: { memberNumber: '000012' } }, null],
     ['a team that is not a number', { member: { teamId: 'dunavski-trkaci' } }, null],
+    ['a team below nought', { member: { teamId: -1 } }, null],
   ])('says which team the caller is in for %s', async (_what, extra, expected) => {
     server?.stop()
     server = serverThat(() =>
@@ -339,6 +349,75 @@ describe('who the server says I am', () => {
     )
 
     expect((await whoTheServerSaysIAm())?.teamId).toBe(expected)
+  })
+
+  /* **THE FLOOR UNDER THE WHOLE NUMBERS, AND IT IS ASKED OF EVERY ONE THERE IS.** The three tables above
+     name wrong numbers one at a time, and a list of wrong numbers is exactly what stopped one step short:
+     `-3` is a whole number, `Number.isInteger` says so, and it went on to be printed as „-1.800 RSD"
+     (PENDING 227). So neither side of the question is a list written here. The KEYS are every one of the
+     record the server declares whose value is a number (`test/theAnswer.ts`, which `data/contract.test.ts`
+     holds to `MeApi.MyOwnRecord`), so a fourth number the server starts to declare is measured on the day it
+     arrives, or fails here by name until this reader reads it. And the WRONG VALUES are kinds, written as
+     the JSON the wire carries because `JSON.stringify` cannot say `1e999` and the wire can.
+
+     What each key is asked is the same two things. A number the portal may believe comes back as it was
+     sent, nought included, which is the whole difference between „you brought nobody in" and „I was not
+     told". And every number it may not believe comes back as „I was not told". The set it believes is
+     written once, on the reader: a whole number of nought or more.
+
+     **Nought is believed for all three, and that is the boundary of one rule rather than a finding about
+     each.** A team numbered nought cannot exist (`team.id` is a `bigserial`, V11) and a season numbered
+     nought is not a year, so for those two the floor is looser than it could be. That is written here and
+     not mended, because a floor of its own per key would be three readers where `wholeIn` says there is
+     one, and nothing in PENDING asks for it. */
+  const NUMBERS_THE_SERVER_DECLARES = Object.entries(myOwnRecordFromMe)
+    .filter(([, value]) => typeof value === 'number')
+    .map(([key]) => key)
+
+  const NOT_BELIEVED: [kind: string, onTheWire: string][] = [
+    ['a whole number below nought', '-3'],
+    ['the first whole number below nought', '-1'],
+    ['a fraction', '2.5'],
+    ['a fraction below one', '0.5'],
+    ['a number too large to be one', '1e999'],
+    ['a number written as text', '"4"'],
+    ['a truth', 'true'],
+    ['nothing', 'null'],
+    ['a list', '[4]'],
+    ['an object', '{"value":4}'],
+  ]
+
+  const BELIEVED = ['0', '4', '2014']
+
+  it('reads the numbers the server declares, and finds some', () => {
+    /* An empty list would make both sweeps below say nothing at all, quietly. */
+    expect(NUMBERS_THE_SERVER_DECLARES.length).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(NUMBERS_THE_SERVER_DECLARES)('believes a whole number of nought or more for %s', async (key) => {
+    for (const sent of BELIEVED) {
+      server?.stop()
+      server = serverThat(() =>
+        saying(`{"role":"competitor","account":41,"member":{"${key}":${sent}}}`),
+      )
+
+      const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
+
+      expect(Reflect.get(who, key), `${key} sent as ${sent}`).toBe(Number(sent))
+    }
+  })
+
+  it.each(NUMBERS_THE_SERVER_DECLARES)('believes nothing else for %s', async (key) => {
+    for (const [kind, sent] of NOT_BELIEVED) {
+      server?.stop()
+      server = serverThat(() =>
+        saying(`{"role":"competitor","account":41,"member":{"${key}":${sent}}}`),
+      )
+
+      const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
+
+      expect(Reflect.get(who, key), `${key} sent as ${kind}: ${sent}`).toBeNull()
+    }
   })
 
   it('is nobody when the role is not one the portal knows at all', async () => {

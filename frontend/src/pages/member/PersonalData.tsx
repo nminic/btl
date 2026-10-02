@@ -7,6 +7,7 @@ import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import {
   AS_LONG_AS_THE_FORM_ALLOWS,
+  NEVER_EMPTIED,
   THE_ACCOUNT_GOES_TO,
   WHAT_THIS_SCREEN_SENDS,
   WHEN_CHANGING_MY_DATA,
@@ -140,10 +141,18 @@ export function PersonalData({ me }: { me: Competitor }) {
           {WHAT_THIS_SCREEN_SENDS.map((name) => {
             const unknown = standing[name] === null
             const noteId = `account-${name}-unknown`
+            /* **ASKED FOR WHERE THE SERVER WILL NOT TAKE IT EMPTY AND THE PORTAL KNOWS WHAT IT
+               HOLDS** (PENDING 217.5). One fact decides all three things a box says about itself,
+               the star, `aria-required` and the word „neobavezno", and it is the fact the sentence
+               under the box is drawn from: an address the portal cannot see is a box a member may
+               leave alone („Ako ostaviš prazno, ništa se ne menja"), so it is not obligatory; once
+               one is written it is known, and the server takes no empty one, so it is. The telephone
+               is optional either way, because a blank one is how it is removed. */
+            const asked = NEVER_EMPTIED.includes(name) && !unknown
 
             return (
               <div className="rankings__field" key={name}>
-                <AskedLabel id={`account-${name}`} asked={name !== 'phone'}>
+                <AskedLabel id={`account-${name}`} asked={asked}>
                   {t(`registration.${name}`)}
                 </AskedLabel>
                 <input
@@ -151,7 +160,7 @@ export function PersonalData({ me }: { me: Competitor }) {
                   type="text"
                   value={typed[name]}
                   maxLength={AS_LONG_AS_THE_FORM_ALLOWS[name]}
-                  aria-required={name === 'phone' ? undefined : 'true'}
+                  aria-required={asked ? 'true' : undefined}
                   aria-describedby={unknown ? noteId : undefined}
                   onChange={(event) => {
                     /* The answer goes the moment anything moves: a „saved" left standing
@@ -207,10 +216,12 @@ export function PersonalData({ me }: { me: Competitor }) {
           {t('account.lockedTitle')}
         </h2>
 
-        {/* A bare list, which is what `admin/EntityEditor.tsx` draws for the same thing -
-            pairs of „what it is called" and „what it says" - rather than a class name of my
-            own with no rule anywhere behind it. */}
-        <dl>
+        {/* The list `admin/EntityEditor.tsx` draws for the same thing - pairs of „what it is
+            called" and „what it says" - together with what holds it in place there: the rule on
+            the value that lets a long word break (`.member__facts dd`, `Member.css`). It was a
+            bare `<dl>` until 02.10.2026, which took the shape and none of that, and a town typed
+            as one long word sent the page sideways (PENDING 217.6). */}
+        <dl className="member__facts">
           <div>
             <dt>{t('registration.gender')}</dt>
             <dd>{t(me.gender === 'M' ? 'rankings.men' : 'rankings.women')}</dd>

@@ -1,4 +1,3 @@
-import { isoDate } from '../../forms/dateField'
 import type { RaceRow } from './raceRows'
 import { storedRow } from './raceRows'
 
@@ -61,12 +60,10 @@ export type Upsert = {
  * JSON is a field the route reads as null, and `EventWriteApi.whatIsWrongWith` checks the
  * shape of a link before it looks at whether there is one.
  *
- * <p><b>AND THE DAY IN THE SHAPE THE ROUTE TAKES, WHICH IS NOT THE SHAPE THE FORM ASKS
- * IN.</b> A form speaks `dd/mm/gggg` everywhere on the portal (PDL P8,
- * `forms/dateField.ts`), and `forms/records.ts`'s `valuesFor` writes exactly that into the
- * values this function is handed. `EventWriteApi.Upsert` takes a `LocalDate`, which Jackson
- * reads as ISO-8601 and as nothing else: there is no date format configured anywhere under
- * `backend/src/main/resources`, so `16/01/2027` is not a date the route can read at all.
+ * <p><b>AND THE DAY AS IT IS HANDED, WHICH IS ALREADY THE SHAPE THE ROUTE TAKES.</b>
+ * `EventWriteApi.Upsert` takes a `LocalDate`, which Jackson reads as ISO-8601 and as nothing
+ * else: there is no date format configured anywhere under `backend/src/main/resources`, so
+ * the reader's `16/01/2027` is not a date the route can read at all.
  *
  * <p><b>What that cost, measured on the wire on 29.09.2026 rather than reasoned about.</b>
  * Both roads sent the reader's shape - `POST /api/events` carried `"date":"08/05/2027"` and
@@ -78,29 +75,29 @@ export type Upsert = {
  * `pages/account/refusals.test.ts` could not see any of it: that floor holds the NAMES a
  * route can answer with, and a body the route cannot parse never reaches a name.
  *
- * <p><b>Through `isoDate`, which is `raceUpsertFrom`'s own answer to the same question one
- * function down</b> (`admin/raceRows.ts`, `storedRow`, `date: isoDate(row.date)`), held by
- * the case beside this one in `eventWrites.test.ts`. The rule was known, written down and
- * applied to a race; it was missed for the event in the same module.
+ * <p><b>That conversion was made HERE, through `isoDate`, from 29.09.2026 to 02.10.2026, and
+ * it is not made here any more.</b> The owner decided on 02.10.2026 that the conversion of a
+ * date from a form has ONE place for every form (`btl-produkt/PDL.md`, „Odluke iz ciscenja
+ * nalaza"): `FormRenderer` hands its values over through `forms/records.ts`'s `storedDates`,
+ * so what this function is handed is already `gggg-mm-dd`. Converted here as well, it would be
+ * `isoDate` over `gggg-mm-dd`, which is nothing at all, and every event would go over with no
+ * day. `dateOnTheWire.test.tsx` reads what really went over.
  *
- * <p><b>Here and NEVER in `valuesFor`</b>, which is what makes this one line rather than a
- * move. `admin/entityForms.ts`'s `addressOfEvent` reads `values.date` to build the address
- * an event answers at, and the record's own date is converted INTO the reader's shape to be
- * compared with it (`eventSlug(String(was.name), fieldDate(String(was.date)))`). Turning the
- * values ISO would quietly rewrite what an edit does to an address, which is the one thing
- * on this form that must not move (owner, 10.08.2026).
+ * <p><b>The table of mornings beside it keeps a conversion of its own</b> (`admin/raceRows.ts`,
+ * `storedRow`), because a race is not entered through a form: its rows are controls this screen
+ * draws itself, and `storedRow` is the one place they are converted.
+ *
+ * <p><b>Still NEVER in `valuesFor`.</b> `admin/entityForms.ts`'s `addressOfEvent` reads
+ * `values.date` to build the address an event answers at, while the form is open as well as
+ * after it is sent, and `eventSlug` takes either shape of a day for exactly that reason. What
+ * a form OPENS with stays the reader's shape.
  */
 export function upsertFrom(values: Record<string, string | boolean>): Upsert {
   const text = (name: string): string => String(values[name] ?? '')
 
   return {
     name: text('name'),
-    /* `isoDate` and not `storedDate`, which is the same pair of answers `raceRows.ts` weighed
-       and for the same reason: `storedDate` throws, and this function is called on a form
-       holding nothing at all (`upsertFrom({})`, the case below it). An unreadable day goes
-       over as the empty string and the route answers `theFormIsNotComplete` about it, which
-       is a sentence the screen already draws. */
-    date: isoDate(text('date')),
+    date: text('date'),
     placeId: null,
     city: text('city'),
     country: text('country'),

@@ -38,10 +38,11 @@ describe('a length of time in the boxes a form asks for it in', () => {
 
   it('rounds nothing, so a result comes back as it was sent', () => {
     /* Rounding was not here before and was written into a first draft of this. The
-       boxes take a decimal, which is a fault of their own and older than this
-       module, but a result of 1:01:01,5 has to come back into its own correction as
-       the number it was: rounded, the member sends 1:01:02 instead, with different
-       points, and nothing on the screen says anything changed.
+       boxes refuse a separator since 02.10.2026 and the server keeps whole seconds, so
+       a fraction should never arrive; but a result of 1:01:01,5 that did would have to
+       come back into its own correction as the number it was: rounded, the member
+       sends 1:01:02 instead, with different points, and nothing on the screen says
+       anything changed.
 
        Under a second as well, where rounding would swallow the number whole rather
        than shift it. */
@@ -73,5 +74,16 @@ describe('a length of time in the boxes a form asks for it in', () => {
        one is asked of a form that does not have them. */
     expect(fromBoxes({})).toBeNaN()
     expect(fromBoxes({ hours: '1', minutes: '0' })).toBeNaN()
+  })
+
+  /* A box takes the comma Serbian writes a decimal with since 02.10.2026 (owner: „Polje za
+     broj prima i zarez i tacku"), and `noTime` is asked of what was TYPED, while the form is
+     still open. Read with `Number()`, 0:0:30,5 was no time at all, and the form refused it
+     for having no time over three boxes that held one. */
+  it('reads a box written with a comma as the number it is, and an empty box as nought', () => {
+    expect(fromBoxes({ hours: '0', minutes: '0', seconds: '30,5' })).toBe(30.5)
+    expect(noTime({ hours: '0', minutes: '0', seconds: '30,5' })).toBe(false)
+    expect(fromBoxes({ hours: '', minutes: '1', seconds: '0' })).toBe(60)
+    expect(fromBoxes({ hours: 'sat', minutes: '1', seconds: '0' })).toBeNaN()
   })
 })

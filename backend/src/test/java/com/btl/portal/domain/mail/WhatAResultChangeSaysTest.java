@@ -169,6 +169,16 @@ class WhatAResultChangeSaysTest {
 		assertThat(WhatAResultChangeSays.asAClock(403200)).isEqualTo("112:00:00");
 	}
 
+	/** „05.05.2027", „01.02.2027" and „19.11.2026": the day and the month are padded and nothing
+	 *  else is, so the notice about a closed category, which writes the day of a run through this
+	 *  method, and the letter about the same approval cannot spell it two ways. */
+	@Test
+	void aDayIsWrittenWithItsDayAndItsMonthPadded() {
+		assertThat(WhatAResultChangeSays.asADay(LocalDate.of(2027, 5, 5))).isEqualTo("05.05.2027");
+		assertThat(WhatAResultChangeSays.asADay(LocalDate.of(2027, 2, 1))).isEqualTo("01.02.2027");
+		assertThat(WhatAResultChangeSays.asADay(LocalDate.of(2026, 11, 19))).isEqualTo("19.11.2026");
+	}
+
 	/** A run that is not there at all is refused here rather than rendered as „null". */
 	@Test
 	void nothingIsWrittenAboutARunThatIsNotThere() {

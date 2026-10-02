@@ -342,6 +342,7 @@
       "max": "The largest value allowed is {max}.",
       "email": "Enter a valid email address.",
       "number": "Enter a number.",
+      "integer": "Enter a whole number.",
       "date": "Enter a date as dd/mm/yyyy.",
       "matches": "Does not match the field above.",
       "taken": "This value is already taken. Every record must have its own.",

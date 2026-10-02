@@ -182,13 +182,14 @@ describe('the row of a competitor on the main standing', () => {
     expect(forTheName - forTheNumber).toBeCloseTo(0.25, 5)
   })
 
-  it('does not draw the circle at all below 700px, which is the boundary a wrapped name meets first', () => {
-    /* The equal-height claim above is only ever measured where the circle exists. Below 700px this
+  it('does not draw the circle at all below 745px, which is the boundary a wrapped name meets first', () => {
+    /* The equal-height claim above is only ever measured where the circle exists. Below 745px this
        table draws no circle (`styles/leagueLayout.test.ts` already holds the rule that does it),
-       so a name that wraps to two lines on a telephone has nothing to disagree with; this case says
-       only that the boundary is still there; the case above says the two sides that meet above it
-       still add up. */
-    const hidden = rankings.slice(rankings.indexOf('@media (max-width: 699.98px)'))
+       so a name that wraps to two lines there has nothing to disagree with; this case says only
+       that the boundary is still there; the case above says the two sides that meet above it
+       still add up. It was 700px until 02.10.2026 (`PDL.md`, „Odluke iz ciscenja nalaza", stavka
+       260), and the text of the query is what is read, so moving it either way fails here. */
+    const hidden = rankings.slice(rankings.indexOf('@media (max-width: 744.98px)'))
 
     expect(hidden).toContain('.rankings__table .plate__faces')
     expect(hidden.slice(hidden.indexOf('.plate__faces'))).toMatch(/display:\s*none/)

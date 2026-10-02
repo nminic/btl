@@ -157,15 +157,33 @@ import java.util.Optional;
  * cannot live in {@code MePhotoApiTest}</b>, because that class is {@code @Transactional} and
  * the route then joins the test's transaction, which is exactly why the fault survived a green
  * file; it is in {@code ThePictureAndItsFileAreOneThingTest}, which is not.
- * <li><b>{@link #remove}'s own mapping does NOT carry {@code rollbackFor}</b>, though a
- * review on 25.09.2026 found it copied there anyway. There the checked exception is the FILE
- * refusing to leave the disk after the row and the pointer are already gone, and letting it
- * commit is the point rather than a lapse: PDL P28b, 3, 24.09.2026 calls a removal immediate
- * and not moot - „Brisanje slike stupa odmah, bez moderacije... Uklanjanje ne moze da bude
- * sporno" - and rolling the row back because a file would not go undoes exactly that decision,
- * on nothing worse than a stray directory on the disk where {@link PhotoApi} already serves
- * nothing for a picture no row points at. {@code TheRemovalStandsEvenWhenTheFileWontGoTest}
- * holds this half, outside {@code MePhotoApiTest} for the identical reason the case above is.
+ * <li><b>{@link #remove}'s own mapping does NOT carry {@code rollbackFor}, and since PDL
+ * P28e nothing checked leaves it either</b>, though a review on 25.09.2026 found the attribute
+ * copied there anyway. There the checked exception is the FILE refusing to leave the disk after
+ * the row and the pointer are already gone, and the owner's decisions about it are two
+ * different sentences. PDL P28b, 3, 24.09.2026 calls a removal immediate and not moot -
+ * „Brisanje slike stupa odmah, bez moderacije... Uklanjanje ne moze da bude sporno" - so
+ * rolling the row back because a file would not go undoes exactly that decision. And PDL P28e,
+ * 25.09.2026, which he chose among the outcomes offered with my recommendation beside it,
+ * settles what the member is told: the ordinary answer, with the fault in the log. So the
+ * exception is caught where it is thrown, logged with the picture's key and its cause, and the
+ * answer is the one a removal gets when the file leaves. What stays on the disk is a stray
+ * directory or file where {@link PhotoApi} already serves nothing for a picture no row points
+ * at: it asks for a {@code photo} row and a holder, never for a file.
+ * {@code TheRemovalStandsEvenWhenTheFileWontGoTest} holds all three halves - the row goes, the
+ * answer is ordinary, the fault is in the log - outside {@code MePhotoApiTest} for the
+ * identical reason the case above is.
+ * <li><b>THE OVERWRITE IN {@link #send} DOES THE SAME FOR THE FILE OF THE PICTURE IT
+ * REPLACES, AND THAT IS MY READING OF PDL P28e AND NOT THE OWNER'S WORD ABOUT REPLACING.</b>
+ * The decision speaks of a removal, but the condition it states - the row goes and the file
+ * cannot be deleted - is true of an overwrite exactly as it is of a removal, and there it was
+ * worse: the exception rolled the whole send back through {@code rollbackFor}, so a member whose
+ * new picture had been written was answered 500, the new row went, and the new file stayed on
+ * the disk with nothing pointing at it. The {@code rollbackFor} above is for a file that cannot
+ * be WRITTEN and stays; a file that cannot be DELETED, after the row it belonged to is gone, is
+ * caught, logged and answered as a send that succeeded. The owner said nothing about what a
+ * member is told when the old file of a picture he has REPLACED will not go; if he reads it
+ * differently, this is the one place to turn.
  * <li><b>The commit itself fails after the file was written</b> and a file is left on the
  * disk that no row points at. That is the one leak, it is bounded by
  * {@link WhatAPictureIs#AT_MOST_BYTES} apiece, and {@link PhotoApi} serves nothing for it -
@@ -642,10 +660,25 @@ class MePhotoApi {
 			/* deleteIfExists AND NOT delete, for `remove`'s own reason: a row whose file has
 			   already gone is a state `PhotoApi` names and serves nothing for, and refusing to
 			   finish an overwrite because of it would leave the member unable to replace a
-			   picture nobody can see anyway. The fault is told to the operator, not to him. */
-			if (!Files.deleteIfExists(folder.resolve(String.valueOf(overwritten)))) {
-				LOG.warn("the file of photo {} was already gone when its member overwrote it",
-						overwritten);
+			   picture nobody can see anyway. The fault is told to the operator, not to him.
+
+			   AND A FILE THAT WILL NOT GO IS TOLD TO THE OPERATOR AND NOT THROWN, which is `remove`'s
+			   rule (PDL P28e) carried one road over, and the carrying is MY READING and not the
+			   owner's word about replacing: the condition the decision states - the row goes and the
+			   file cannot be deleted - is true here too. Thrown, it was worse than there: this
+			   mapping says `rollbackFor = IOException.class` for a file that cannot be WRITTEN, so a
+			   file that could not be DELETED rolled back a send whose new picture was already on the
+			   disk, answered the member 500, and left that file with no row. The rollback stays for
+			   the write above; this line is after the row it belonged to is gone. */
+			try {
+				if (!Files.deleteIfExists(folder.resolve(String.valueOf(overwritten)))) {
+					LOG.warn("the file of photo {} was already gone when its member overwrote it",
+							overwritten);
+				}
+			}
+			catch (IOException notRemoved) {
+				LOG.warn("the file of photo {} could not be removed from disk when its member"
+						+ " overwrote it", overwritten, notRemoved);
 			}
 		}
 
@@ -766,6 +799,14 @@ class MePhotoApi {
 	 * deleted after the row, outside nothing: a file removed before the transaction commits
 	 * and a transaction that then rolls back would leave a row pointing at a picture that is
 	 * gone, which is the one state {@link PhotoApi} has to log a fault for.
+	 *
+	 * <p><b>A FILE THAT WILL NOT LEAVE THE DISK IS THE OPERATOR'S AND NEVER THE MEMBER'S.</b> PDL
+	 * P28e, 25.09.2026: he chose, among the outcomes offered and with my recommendation beside
+	 * the one he took, that when the row goes and the file cannot be deleted the member gets the
+	 * ordinary answer and the fault goes to the log. The picture really has come down - it is
+	 * not served, because {@link PhotoApi} asks for a row and a holder and there is no row - so
+	 * the answer that was here before, a 500 for a removal that had happened, told him the
+	 * opposite of what is true.
 	 */
 	@DeleteMapping("/api/me/photo")
 	@Transactional
@@ -784,16 +825,31 @@ class MePhotoApi {
 				.optional();
 
 		if (standing.isPresent()) {
+			long photo = standing.orElseThrow();
+
 			db.sql("update competitor set photo_id = null where id = ?").param(me).update();
-			db.sql("delete from photo where id = ?").param(standing.orElseThrow()).update();
+			db.sql("delete from photo where id = ?").param(photo).update();
 
 			/* deleteIfExists AND NOT delete: a row whose file has already gone is a state
 			   `PhotoApi` names and serves nothing for, and refusing to take the row down
 			   because of it would leave the member unable to remove a picture nobody can see
-			   anyway. The fault is told to the operator and not to him. */
-			if (!Files.deleteIfExists(folder.resolve(String.valueOf(standing.orElseThrow())))) {
-				LOG.warn("the file of photo {} was already gone when its member took it down",
-						standing.orElseThrow());
+			   anyway. The fault is told to the operator and not to him.
+
+			   AND THE SAME FOR A FILE THAT WILL NOT GO (PDL P28e, 25.09.2026): caught here, logged
+			   with the picture's key and its cause, answered as an ordinary removal. It is not a
+			   cover-up and the reason is measured: after this the picture is no longer public,
+			   because `PhotoApi` asks for a `photo` row and a holder and neither exists, so what
+			   is left on the disk is a file nothing reads. The same shape, for the same reason,
+			   is in `CompetitorWriteApi` and `ATeamGoesWithItsLastMember`. */
+			try {
+				if (!Files.deleteIfExists(folder.resolve(String.valueOf(photo)))) {
+					LOG.warn("the file of photo {} was already gone when its member took it down",
+							photo);
+				}
+			}
+			catch (IOException notRemoved) {
+				LOG.warn("the file of photo {} could not be removed from disk when its member took"
+						+ " it down", photo, notRemoved);
 			}
 		}
 

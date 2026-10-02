@@ -45,9 +45,26 @@ export type Readable = { kind: 'none' } | { kind: 'shown'; competitor: Competito
  * profile is unreachable to a reader who is not signed in, and to nobody else. The published
  * policy gives the reason in the same sentence as the promise: „ali ne i od ostalih članova, jer
  * bi time nestao smisao zajedničkog rangiranja."
+ *
+ * **THE SECOND ARGUMENT IS WHETHER ANYBODY IS SIGNED IN, AND NOT WHICH MEMBER** (02.10.2026). It
+ * was the reader's member number, with `null` standing for „nobody", and `null` is also what the
+ * session holds for somebody the league has given no number: administration above all, which has no
+ * competitor record at all (PDL P21). The rule is about a session, as the owner wrote it („za sve
+ * posetioce koji nisu ulogovani", 06.09.2026) and as the server asks it (`CompetitorApi`: `signedIn`
+ * is „is there a session", read off the caller's ACCOUNT, and the note over it says it must not be
+ * read off the member for this very reason: an account that does not race has none). So the two
+ * answers parted for exactly one reader: the server served such an account a hidden member's
+ * biography and portrait, and the screens sent it to the front page. Recorded in `PDL.md`, under
+ * „Odluke iz ciscenja nalaza", as derived and not asked.
+ *
+ * **A boolean, and not the member number or the session's own object.** A number cannot be handed
+ * in by a call site again without the compiler saying so, which is the only thing that keeps a
+ * fourth screen from asking the old question. And the session's `signedIn` is a new object whenever
+ * anything in the session changes, so it cannot stand in a dependency list: `useProfileLink` is a
+ * `useCallback` the boards memoise over.
  */
-export function reachable(competitor: Competitor, reader: string | null): boolean {
-  return !(competitor.profileHidden && reader === null)
+export function reachable(competitor: Competitor, signedIn: boolean): boolean {
+  return !(competitor.profileHidden && !signedIn)
 }
 
 export function profileFor(
@@ -55,7 +72,8 @@ export function profileFor(
   /* Undefined where the address carried nothing a member number could be read out of, which
      is the same answer as a number nobody has. */
   memberNumber: string | undefined,
-  reader: string | null,
+  /* Whether anybody at all is signed in, which is what `reachable` asks. */
+  signedIn: boolean,
 ): Readable {
   const competitor = competitors.find((one) => one.memberNumber === memberNumber)
 
@@ -67,7 +85,7 @@ export function profileFor(
      has run out is not in this list, so `find` answers nothing about them for the same reason it
      answers nothing about a number nobody has - which is the very thing P23 asks for, now held by
      the shape of the answer instead of by a pair of conditions that had to agree. */
-  return competitor === undefined || !reachable(competitor, reader)
+  return competitor === undefined || !reachable(competitor, signedIn)
     ? { kind: 'none' }
     : { kind: 'shown', competitor }
 }

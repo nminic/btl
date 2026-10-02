@@ -52,6 +52,16 @@
   width: 100%;
 }
 
+/* What a member may read about himself and may not change (`PersonalData.tsx`): pairs of what
+   it is called and what it says. The town in it is typed text of up to 80 characters and can be
+   one word with nothing to break at, which a block does not wrap, so it ran out of its box and
+   took the page sideways with it: 119px at 360, measured in Chrome (PENDING 217.6). The rule is
+   the one `.pay__details dd` below and the confirmation list of `admin/Entity.css` already carry
+   for the same reason. */
+.member__facts dd {
+  overflow-wrap: anywhere;
+}
+
 .button[disabled] {
   opacity: 0.45;
   cursor: not-allowed;

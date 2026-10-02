@@ -1,7 +1,7 @@
 import { SLOW } from '../test/slow'
 import { matchingMedia } from '../test/media'
 import { must } from '../test/at'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import { renderAt } from '../test/render'
 import { membersAsServed } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
@@ -223,7 +223,7 @@ describe('Home', () => {
     await user.click(reset)
 
     for (const label of ['Dužina (km)', 'Uspon (m)', 'Spust (m)', 'Sati', 'Minuti', 'Sekunde']) {
-      expect(within(calc).getByLabelText(label)).toHaveValue(null)
+      expect(within(calc).getByLabelText(label)).toHaveValue('')
     }
 
     expect(reset).toHaveAttribute('aria-disabled', 'true')
@@ -264,10 +264,10 @@ describe('Home', () => {
     // Somewhere else, which is what makes the widget draw again.
     await user.type(within(calc).getByLabelText('Dužina (km)'), '5')
 
-    expect(within(calc).getByLabelText('Uspon (m)')).toHaveValue(900)
+    expect(within(calc).getByLabelText('Uspon (m)')).toHaveValue('900')
   })
 
-  it('counts a box that holds writing the browser will not read as a number', async () => {
+  it('counts a box that holds writing that is not a number as holding something', async () => {
     const user = setupUser()
     renderAt('/sr')
 
@@ -279,35 +279,51 @@ describe('Home', () => {
     const reset = within(calc).getByRole('button', { name: 'Reset' })
     const length = within(calc).getByLabelText('Dužina (km)')
 
-    /* What the browser says and jsdom does not. A box of type number reports an
-       empty value for writing it refuses to read as a number, a lone minus sign
-       or `1e`, while the characters stand in the box where anybody can see them,
-       and it says which of the two by setting `validity.badInput`.
-
-       jsdom empties the value the same way; what it does not do is set that
-       flag, so typing a minus here produces a box that is empty and content, and
-       the state the widget has to answer for cannot be reached by typing. The
-       browser's own answer is put on the node instead. Measured both ways on
-       21.08.2026: in Chrome, typing „-" gives an empty value with the flag set;
-       in jsdom, the same typing gives an empty value with the flag clear. */
-    const emptied = (bad: boolean) => {
-      Object.defineProperty(length, 'validity', { configurable: true, value: { badInput: bad } })
-      fireEvent.input(length, { target: { value: '' } })
-    }
-
+    /* ~~What the browser says and jsdom does not: a box of type number reports an
+       empty value for writing it refuses to read, a lone minus sign or `1e`, and
+       says so by setting `validity.badInput`, which jsdom never sets. The browser's
+       own answer was put on the node by hand (ADL, 21.08.2026).~~ **[02.10.2026]**
+       The boxes are text now (the owner decided that a number box takes a comma as
+       well as a dot), so a box says what is in it and the state the widget has to
+       answer for is reached by typing. What is held is the same thing it always
+       was: writing that is not a number is writing, and Reset has to be there for
+       it. */
     await user.type(length, '5')
     expect(reset).toHaveAttribute('aria-disabled', 'false')
 
-    // Empty, and nothing wrong with it: the widget is back where it started.
-    emptied(false)
+    // Emptied, and nothing wrong with it: the widget is back where it started.
+    await user.clear(length)
     expect(reset).toHaveAttribute('aria-disabled', 'true')
 
-    /* The same empty value, this time because the browser will not read what is
-       written in the box. The writing is there, so the button has to be. Both
-       directions, because the second assertion alone would pass on a widget that
-       had simply never noticed the box was emptied. */
-    emptied(true)
+    /* The same box holding writing that is not a number. The writing is there, so
+       the button has to be. Both directions, because the second assertion alone
+       would pass on a widget that had simply never noticed the box was emptied. */
+    await user.type(length, '-')
     expect(reset).toHaveAttribute('aria-disabled', 'false')
+  })
+
+  it('takes the comma a length is written with here, as it takes the dot', async () => {
+    /* PDL, „Odluke iz ciscenja nalaza", 02.10.2026: a number box takes both. „21,1"
+       is how a length is written here, and a box of type number read it as no length
+       at all. Typed, as a member types it, and the golden race of the case above:
+       the answer is the same figure whichever of the two was written. */
+    const user = setupUser()
+    renderAt('/sr')
+
+    const calc = must(
+      (await screen.findByRole('heading', { name: 'BTL kalkulator' })).closest('section'),
+      'the widget around that heading',
+    )
+
+    await user.type(within(calc).getByLabelText('Dužina (km)'), '62,07')
+    await user.type(within(calc).getByLabelText('Uspon (m)'), '3456')
+    await user.type(within(calc).getByLabelText('Spust (m)'), '3133')
+    await user.type(within(calc).getByLabelText('Sati'), '7')
+    await user.type(within(calc).getByLabelText('Minuti'), '28')
+    await user.type(within(calc).getByLabelText('Sekunde'), '31')
+
+    expect(within(calc).getByText('79,03')).toBeVisible()
+    expect(within(calc).queryByText('Unesi dužinu i vreme.')).not.toBeInTheDocument()
   })
 
   it('hides the news and the sponsor while they have nothing fresh to say', async () => {

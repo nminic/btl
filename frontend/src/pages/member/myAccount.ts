@@ -143,6 +143,22 @@ export const WHAT_THIS_SCREEN_SENDS = ['firstName', 'lastName', 'address', 'phon
 
 export type Sent = (typeof WHAT_THIS_SCREEN_SENDS)[number]
 
+/**
+ * THE BOXES THE SERVER WILL NOT TAKE EMPTIED, which is not yet the list of the ones asked for.
+ *
+ * <p>{@code MeWriteApi.NEVER_EMPTIED}: the two names and the address are refused when blank
+ * ({@code competitor_*_not_blank}, V7 and V8), while a blank telephone is a REMOVAL, since it is
+ * the one optional field of the form. Held to that list from the outside by
+ * `myAccountScreen.test.tsx`, which reads it off the Java and compares it with what the screen
+ * asks for, so a box taken off it on either side alone is a red gate on the day it is written.
+ *
+ * <p><b>A box is asked for where it is on this list AND the portal knows what the server holds
+ * in it</b> (`PersonalData.tsx`, PENDING 217.5). The second half is why this is a floor and not
+ * the answer: an address the portal cannot see is a box a member may leave alone, because an
+ * empty one is sent as nothing (`whatChanged`), and the screen says exactly that beside it.
+ */
+export const NEVER_EMPTIED: readonly Sent[] = ['firstName', 'lastName', 'address']
+
 /** How many characters each of those boxes holds, asked of the form rather than of me. */
 export const AS_LONG_AS_THE_FORM_ALLOWS: Record<Sent, number> = {
   firstName: limitOf(registracija, 'firstName'),
