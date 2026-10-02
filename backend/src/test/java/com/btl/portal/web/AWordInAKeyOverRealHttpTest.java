@@ -483,6 +483,12 @@ class AWordInAKeyOverRealHttpTest {
 		assertThat(routes.stream().filter(one -> one.keys() > 1).count())
 				.as("no route takes two keys, so the position of a key is never asked about")
 				.isPositive();
+		assertThat(everyCaller())
+				.as("nobody signed in is not among the callers, so the one answer ADL A8 keeps a number"
+						+ " for - 401, which says \"sign in\" and nothing about what is behind the address -"
+						+ " is never asked about")
+				.containsNull()
+				.hasSize(sessions.size() + 1);
 	}
 
 	/**
