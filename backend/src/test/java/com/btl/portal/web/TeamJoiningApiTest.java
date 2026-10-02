@@ -63,9 +63,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * the member number are two different answers here.
  * <li><b>Never one day, and never today.</b> Every row carries a written
  * {@code asked_at}/{@code sent_at} and NONE of them falls on the day the clock stands, so a
- * route answering {@code current_date} answers four wrong days. Two rows share one instant,
- * so the order is total or it is not; and two rows stand at half past eleven at night UTC, so
- * a day read in the machine's zone is off by one.
+ * route answering {@code current_date} answers four wrong days. Two applications share one
+ * instant and so do two invitations, so on BOTH lists the order is total or it is not; and two
+ * rows stand at half past eleven at night UTC, so a day read in the machine's zone is off by one.
+ * <li><b>Never an order any plan could mistake for the answer (ADL A52).</b> A list read with no
+ * {@code order by} at all comes back in whatever order the query planner finds the rows, and a
+ * fixture that writes its rows already in the expected order lets that pass as the answer. So the
+ * rows of both lists are WRITTEN in the reverse of the order they are expected in (the applicants
+ * and the invitees are made in that reverse order too, which is the order a plan driven from the
+ * competitor table reads them), and in each pair that shares an instant the row with the LOWER key
+ * is written again afterwards, which in PostgreSQL puts its new version behind the other one: so
+ * the order on the disk, the order of the keys, the order of the members and the order of the
+ * competitor rows each differ from the expected order, and the expected order is the one thing
+ * that only the clause itself produces.
  * <li><b>Never one reader.</b> Eight, and four of them are refused: whoever leads the team, a
  * member who merely stands in it, a member who leads ANOTHER team, a member with no team at
  * all, the administration, a moderator holding no right, an account naming no member, and
@@ -221,6 +231,11 @@ class TeamJoiningApiTest {
 
 	private static final String THAT_DAY = "2027-10-05";
 
+	/** One instant shared by two INVITATIONS, so the order of the second list is settled by the key. */
+	private static final Instant ONE_INSTANT_TWO_INVITATIONS = Instant.parse("2027-10-06T08:00:00Z");
+
+	private static final String THAT_OTHER_DAY = "2027-10-06";
+
 	private static final int A_SEASON_ALREADY_RUNNING = 2027;
 
 	private static final int A_SEASON_STILL_TO_COME = 2029;
@@ -295,18 +310,28 @@ class TeamJoiningApiTest {
 		competitor(OUTSIDER, true, false);
 		competitor(THIRD, true, false);
 		competitor(UNRELATED, true, false);
+		/* THE FOUR APPLICANTS THE FIRST LIST SHOWS, MADE IN THE REVERSE OF THE ORDER IT SHOWS THEM
+		   IN (ADL A52), and the two that share an instant are made with the one the list puts
+		   SECOND before the one it puts first. A plan that reads the lists from the competitor
+		   table returns them in this order, so with no `order by` at all it would answer the
+		   reverse of what is expected; and the member numbers, which are what a third kind of
+		   mistake would sort by, are not in the expected order either. The three withheld
+		   applicants and the other team's are made after them, where they cannot be mistaken
+		   for any of it. */
+		competitor(LEFT_A_TEAM_LONG_AGO, true, false);
+		competitor(HIDDEN_PROFILE, true, true);
 		competitor(APPLICANT, true, false);
 		competitor(ANOTHER_APPLICANT, true, false);
-		competitor(HIDDEN_PROFILE, true, true);
 		competitor(GOT_A_TEAM_TODAY, true, false);
 		competitor(JOINS_NEXT_SEASON, true, false);
-		competitor(LEFT_A_TEAM_LONG_AGO, true, false);
 		competitor(LAPSED_APPLICANT, false, false);
 		competitor(APPLIED_ELSEWHERE, true, false);
+
+		/* AND THE FOUR INVITEES THE SECOND LIST SHOWS, the same way over. */
+		competitor(INVITED_WHO_GOT_A_TEAM, true, false);
+		competitor(LAPSED_INVITED, false, false);
 		competitor(INVITED, true, false);
 		competitor(ANOTHER_INVITED, true, false);
-		competitor(LAPSED_INVITED, false, false);
-		competitor(INVITED_WHO_GOT_A_TEAM, true, false);
 		competitor(INVITED_BY_ANOTHER_TEAM, true, false);
 
 		team(A_FIRST_TEAM, "Prvi tim");
@@ -341,23 +366,41 @@ class TeamJoiningApiTest {
 		moderator(MODERATOR_OVER_THE_TEAMS, true);
 		moderator(MODERATOR_WITH_NO_RIGHT, false);
 
-		/* EVERY ROW CARRIES A WRITTEN DAY AND NONE OF THEM IS TODAY. */
-		applicationOf(ANOTHER_APPLICANT, THE_TEAM, THE_NIGHT_BEFORE);
+		/* EVERY ROW CARRIES A WRITTEN DAY AND NONE OF THEM IS TODAY.
+
+		   AND THEY ARE WRITTEN IN THE REVERSE OF THE ORDER THE FIRST LIST IS EXPECTED IN (ADL
+		   A52, 14.09.2026): the list reads oldest first, so the newest is written first and the
+		   oldest last. The pair that shares an instant is the one place the order cannot be
+		   reversed by writing - a key follows the writing - so its LOWER key, the one the list
+		   puts first, is written again after everything else. In PostgreSQL an update writes the
+		   new version of a row at the END of the table, so a scan with no order puts it behind
+		   its twin, which is not where the key puts it.
+
+		   Measured against the unchanged fixture on 02.10.2026, one mutation each: deleting
+		   the whole clause was caught on both lists, but ONLY because the competitors happened to
+		   be made with two neighbours swapped; ordering by the key alone, deleting the key from the
+		   clause, and (for the invitations) reversing the key all stayed green. */
+		applicationOf(LEFT_A_TEAM_LONG_AGO, THE_TEAM, Instant.parse("2027-10-09T08:00:00Z"));
 		applicationOf(APPLICANT, THE_TEAM, ONE_INSTANT_TWO_ROWS);
 		applicationOf(HIDDEN_PROFILE, THE_TEAM, ONE_INSTANT_TWO_ROWS);
-		applicationOf(LEFT_A_TEAM_LONG_AGO, THE_TEAM, Instant.parse("2027-10-09T08:00:00Z"));
-		applicationOf(GOT_A_TEAM_TODAY, THE_TEAM, Instant.parse("2027-10-06T08:00:00Z"));
+		applicationOf(ANOTHER_APPLICANT, THE_TEAM, THE_NIGHT_BEFORE);
 		applicationOf(JOINS_NEXT_SEASON, THE_TEAM, Instant.parse("2027-10-07T08:00:00Z"));
+		applicationOf(GOT_A_TEAM_TODAY, THE_TEAM, Instant.parse("2027-10-06T08:00:00Z"));
 		applicationOf(LAPSED_APPLICANT, THE_TEAM, Instant.parse("2027-10-03T08:00:00Z"));
+		writtenAgain("team_application", "asked_at", APPLICANT, THE_TEAM);
 
 		/* AND QUESTIONS OF THE IDENTICAL SHAPE ON TWO OTHER TEAMS. */
 		applicationOf(APPLIED_ELSEWHERE, THE_OTHER_TEAM, Instant.parse("2027-10-04T08:00:00Z"));
 		applicationOf(UNRELATED, A_THIRD_TEAM, Instant.parse("2027-10-04T09:00:00Z"));
 
-		invitationTo(ANOTHER_INVITED, THE_TEAM, THE_NIGHT_BEFORE);
+		/* THE SECOND LIST THE SAME WAY, AND WITH A PAIR THAT SHARES AN INSTANT OF ITS OWN: until
+		   02.10.2026 no two invitations did, so how a tie between them is settled was held by
+		   nothing - the key could be turned round or dropped and every case stayed green. */
+		invitationTo(LAPSED_INVITED, THE_TEAM, ONE_INSTANT_TWO_INVITATIONS);
+		invitationTo(INVITED_WHO_GOT_A_TEAM, THE_TEAM, ONE_INSTANT_TWO_INVITATIONS);
 		invitationTo(INVITED, THE_TEAM, Instant.parse("2027-10-04T08:00:00Z"));
-		invitationTo(LAPSED_INVITED, THE_TEAM, Instant.parse("2027-10-06T08:00:00Z"));
-		invitationTo(INVITED_WHO_GOT_A_TEAM, THE_TEAM, Instant.parse("2027-10-08T08:00:00Z"));
+		invitationTo(ANOTHER_INVITED, THE_TEAM, THE_NIGHT_BEFORE);
+		writtenAgain("team_invitation", "sent_at", LAPSED_INVITED, THE_TEAM);
 
 		invitationTo(INVITED_BY_ANOTHER_TEAM, THE_OTHER_TEAM, Instant.parse("2027-10-05T09:00:00Z"));
 		invitationTo(UNRELATED, A_THIRD_TEAM, Instant.parse("2027-10-05T10:00:00Z"));
@@ -397,8 +440,8 @@ class TeamJoiningApiTest {
 				.containsExactly(
 						ANOTHER_INVITED + " on " + THE_MORNING_AFTER,
 						INVITED + " on 2027-10-04",
-						"null on 2027-10-06",
-						INVITED_WHO_GOT_A_TEAM + " on 2027-10-08");
+						"null on " + THAT_OTHER_DAY,
+						INVITED_WHO_GOT_A_TEAM + " on " + THAT_OTHER_DAY);
 	}
 
 	/**
@@ -723,9 +766,29 @@ class TeamJoiningApiTest {
 				LEADER).get(0)))
 				.containsExactlyInAnyOrder("id", "memberNumber", "date");
 
-		assertThat(applications.toString())
-				.as("an applicant's competitor.id left with the answer")
-				.doesNotContain(String.valueOf(keyOfMember(APPLICANT)));
+		/* THE KEY THAT MUST NOT LEAVE IS ASKED OF THE FIELD IT WOULD LEAVE IN, NOT OF THE TEXT.
+		   This used to ask whether the applicant's competitor.id appeared ANYWHERE in the answer as
+		   text, which is a question about every digit of every field: a key is a short number and a
+		   member number is a longer one that can contain it, so whether a key collided depended on
+		   how many rows earlier cases had written, and it did collide on 02.10.2026 the moment the
+		   competitors were made in another order (key 150 inside member number 001500). What the
+		   rule says is narrower and can be asked exactly: the record's `id` is the application's
+		   own key and the invitation's own key, which is read off the table for the same row. */
+		assertThat(rowOf(applications, APPLICANT).path("id").asLong())
+				.as("the record's id is not the application's own key")
+				.isEqualTo(applicationOf(APPLICANT, THE_TEAM));
+		assertThat(rowOf(answer(get("/api/teams/{id}/invitations", keyOf(THE_TEAM)), LEADER),
+						INVITED).path("id").asLong())
+				.as("the record's id is not the invitation's own key")
+				.isEqualTo(invitationOf(INVITED, THE_TEAM));
+	}
+
+	/** The one record of a list that names this member, or nothing where none does. */
+	private static JsonNode rowOf(JsonNode list, String memberNumber) {
+		return list.valueStream()
+				.filter(row -> memberNumber.equals(row.path("memberNumber").asString()))
+				.findFirst()
+				.orElse(tools.jackson.databind.node.MissingNode.getInstance());
 	}
 
 	/**
@@ -873,6 +936,21 @@ class TeamJoiningApiTest {
 						+ " values (" + who() + ", " + which() + ", 2028, ?)")
 				.params(memberNumber, teamSlug, Timestamp.from(when))
 				.update();
+	}
+
+	/**
+	 * A ROW WRITTEN AGAIN, UNCHANGED.
+	 *
+	 * <p>PostgreSQL does not skip an update that changes nothing: it writes a new version of the
+	 * row and the new version stands behind every row that was already there. That is the whole
+	 * point of this method (ADL A52): the key of the row does not move, its place on the disk
+	 * does, so a read that asks for no order and a read ordered by anything but the clause under
+	 * test no longer agree with it.
+	 */
+	private void writtenAgain(String table, String column, String memberNumber, String teamSlug) {
+		db.sql("update " + table + " set " + column + " = " + column
+						+ " where competitor_id = " + who() + " and team_id = " + which())
+				.params(memberNumber, teamSlug).update();
 	}
 
 	private void invitationTo(String memberNumber, String teamSlug, Instant when) {

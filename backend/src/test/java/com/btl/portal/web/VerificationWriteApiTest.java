@@ -1386,16 +1386,28 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * AND HE IS TOLD, WITH THE REASON IN IT.
+	 * AND HE IS TOLD, WITH THE REASON IN IT: THE THIRD PART OF IT, WHICH SEASON CLOSED AND AT
+	 * WHAT THRESHOLD.
 	 *
-	 * <p>Owner, 27.09.2026, choosing the first of three outcomes: „Poruka nosi razlog: koji
-	 * rezultat je odobren, koliko bodova nosi, i da mu je time pocetnicka zatvorena za narednu
-	 * sezonu." He refused silence and he refused an explanation on a page the member has no
-	 * reason to open.
+	 * <p>PDL, the entry titled Ponisten izbor kategorije se javlja clanu, sa razlogom
+	 * (27.09.2026): the owner chose the first of three outcomes offered, with my recommendation
+	 * beside it, and the outcome is that the member is told. He refused silence and he refused
+	 * an explanation on a page the member has no reason to open. <b>What the message carries is
+	 * how that entry writes the outcome down - which result was approved, how many points it is
+	 * worth, and that the beginners' category is closed for the next season - and it is NOT a
+	 * sentence he said</b>: it is not in quotation marks there, and the first form of it, in the
+	 * entry of 26.09.2026, is marked as my reasoning awaiting his confirmation. So the three
+	 * parts are held separately: this case holds the third and
+	 * {@link #andHeIsToldWhichRunWasApprovedAndWhatItIsWorth} holds the first two.
 	 *
 	 * <p>The season in the message is asserted to be 2028 and not 2027, which is the same axis
 	 * as the case above read from the member's side: a message naming the run's own season
-	 * would be telling him something the portal does not do.
+	 * would be telling him something the portal does not do. <b>It is asserted on the SENTENCE
+	 * and not on the bare year</b>, because the message also names the day of the run
+	 * (10.04.2027), and a year that is merely somewhere in the text says nothing about which
+	 * season closed. The threshold is asserted the same way, as the phrase that names it and
+	 * not as a number that happens to be somewhere: with a race, a day and the points in the
+	 * text, a bare twelve could come from any of them.
 	 */
 	@Test
 	void andHeIsToldWhichSeasonItClosedAndWhatClosedIt() throws Exception {
@@ -1403,10 +1415,84 @@ class VerificationWriteApiTest {
 
 		String said = bodyOfTheMessageTo(ANA);
 
-		assertThat(said).contains("2028");
+		assertThat(said).contains("za sezonu 2028");
 		assertThat(said).as("it names the run's own season instead of the one that closed")
-				.doesNotContain("2027");
-		assertThat(said).contains(String.valueOf(Category.FIRST_SEASON_POINTS));
+				.doesNotContain("za sezonu 2027");
+		assertThat(said).contains("prag od " + Category.FIRST_SEASON_POINTS + " bodova");
+	}
+
+	/**
+	 * AND HE IS TOLD WHICH RUN IT WAS AND WHAT IT IS WORTH: THE FIRST TWO PARTS OF IT.
+	 *
+	 * <p>The message named neither the race nor the day until it was read against the entry
+	 * above, although both were in hand a few lines from where it is written - they are what the
+	 * letter about the same approval already carries - and a member with several results could
+	 * not tell WHICH of them had closed his category. And nothing held the points at all: the
+	 * case above reads the season and the threshold, so the message could have carried any
+	 * number there.
+	 *
+	 * <p><b>THE ARRANGEMENT IS WHAT MAKES THE RACE AND THE DAY MEAN SOMETHING (dva izvora, jedna
+	 * vrednost).</b> Bojan is given two OTHER counted results, one run before the approved day
+	 * and one after it, with one worth more than the approved run and the other less, so the
+	 * approved run is the middle of the three by date and by points: neither first nor last of
+	 * anything a message could take its race from - the member's first result, his last, his
+	 * best, his worst. The other wrong sources are asked of as well: the event the race belongs
+	 * to (the owner's words of 29.08.2026 about the sentence over the result form are „Nikad
+	 * događaj, uvek trka." and carrying them to this message is my reading, not his word about
+	 * it), and, for the day, the clock, which stands in March. Each wrong value is asserted
+	 * ABSENT as well as the right one present, because a text that names two races is not
+	 * telling him which.
+	 *
+	 * <p>He is under the threshold before the approval and over it after, and the case says so
+	 * itself, so that it cannot measure a member who was already shut out.
+	 */
+	@Test
+	void andHeIsToldWhichRunWasApprovedAndWhatItIsWorth() throws Exception {
+		long bojan = memberId(BOJAN);
+		LocalDate theLaterDay = LocalDate.of(2027, 6, 5);
+		long theLaterRace = race(anotherEvent, "Trinaestica", theLaterDay, "13.00", 100, 100);
+
+		resultAlreadyCounted(BOJAN, theMarathon, SATURDAY, "42.1950", 300, 300, FOUR_HOURS,
+				"11.00");
+		resultAlreadyCounted(BOJAN, theLaterRace, theLaterDay, "13.00", 100, 100, AN_HOUR,
+				"0.40");
+
+		assertThat(beginnersCategoryIsOpenFor(bojan, 2028))
+				.as("the category is shut before the approval, so nothing it does can close it and"
+						+ " the case measures nothing")
+				.isTrue();
+
+		assertThat(answer(THE_SUPERADMIN, bojansRun, true, null)).isEqualTo(200);
+
+		assertThat(beginnersCategoryIsOpenFor(bojan, 2028))
+				.as("the approval did not cross the threshold, so no message is owed and the case"
+						+ " measures nothing")
+				.isFalse();
+
+		String said = bodyOfTheMessageTo(BOJAN);
+		String points = db.sql("select points from result where competitor_id = ? and race_id = ?")
+				.params(bojan, theShortRace).query(String.class).single();
+
+		assertThat(said).as("the race it names is not the one that was approved")
+				.contains("Desetka");
+		assertThat(said).as("the day it names is not the day that run was run")
+				.contains("01.05.2027");
+		assertThat(said.contains(points) || said.contains(points.replace('.', ',')))
+				.as("the points it names are not the approved run's, which are %s", points)
+				.isTrue();
+
+		assertThat(said)
+				.as("it names the race of another result of his, or the event's own name")
+				.doesNotContain("Maraton").doesNotContain("Trinaestica")
+				.doesNotContain("Drugi dogadjaj");
+		assertThat(said)
+				.as("it names the day of another result of his, or the day it was approved")
+				.doesNotContain("10.04.2027").doesNotContain("05.06.2027")
+				.doesNotContain("15.03.2027");
+		assertThat(said)
+				.as("it names the points of another result of his")
+				.doesNotContain("11.00").doesNotContain("11,00")
+				.doesNotContain("0.40").doesNotContain("0,40");
 	}
 
 	/**

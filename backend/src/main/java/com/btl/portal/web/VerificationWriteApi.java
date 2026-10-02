@@ -35,6 +35,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * A MODERATOR ANSWERING SOMETHING IN THE QUEUE, AND HOLDING IT WHILE HE READS IT.
@@ -276,6 +277,23 @@ class VerificationWriteApi {
 	/** Who the member hears from, which is the league and never the moderator by name. */
 	private static final String THE_PORTAL = "Verifikacija";
 
+	/**
+	 * WHAT A KEY LOOKS LIKE, which is the only question asked of the text a path carries in its
+	 * place before the door is asked.
+	 *
+	 * <p>Digits, and at most eighteen of them: eighteen nines is smaller than the largest
+	 * {@code long}, so everything this accepts can be parsed and nothing that fits a {@code long}
+	 * and is longer names a row any sequence has reached. Asked about the SHAPE and not by trying
+	 * to parse, so there is no exception to turn into an answer - the same choice
+	 * {@code PageApi} makes for a language tag, for the same reason: it is complete by
+	 * construction, where „is this a number" answered by catching a failure has to be kept equal to
+	 * what the parser accepts. What Spring's own conversion also accepted - a leading plus, a
+	 * hexadecimal number - now answers as an item that is not there; measured on 02.10.2026, both
+	 * already answered 404 to a competitor holding nothing, so nothing he could tell apart moves,
+	 * and for a moderator who may moderate the tab a key spelt that way no longer finds its row.
+	 */
+	private static final Pattern A_KEY = Pattern.compile("[0-9]{1,18}");
+
 	private final JdbcClient db;
 
 	private final WhatHeMayDo mayHe;
@@ -372,7 +390,7 @@ class VerificationWriteApi {
 	 *                 not there takes, exactly as {@link VerificationApi#verification} does
 	 */
 	@PostMapping("/api/verification/{id}/hold")
-	ResponseEntity<?> hold(@PathVariable long id,
+	ResponseEntity<?> hold(@PathVariable String id,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -432,14 +450,15 @@ class VerificationWriteApi {
 						+ " set held_by = excluded.held_by, held_until = excluded.held_until"
 						+ " where verification_lock.held_by = excluded.held_by"
 						+ "    or verification_lock.held_until <= ?")
-				.params(id, asking.account(), Timestamp.from(until), Timestamp.from(now))
+				.params(item.get().id(), asking.account(), Timestamp.from(until),
+						Timestamp.from(now))
 				.update();
 
 		if (taken == 0) {
 			return no(HttpStatus.CONFLICT, SOMEBODY_ELSE_IS_READING_IT);
 		}
 
-		return ResponseEntity.ok(new Held(id, HoldingAnItem.leftOf(
+		return ResponseEntity.ok(new Held(item.get().id(), HoldingAnItem.leftOf(
 				new HoldingAnItem.Hold(asking.account(), until), now).toSeconds()));
 	}
 
@@ -462,7 +481,7 @@ class VerificationWriteApi {
 	 * leave the item free and a moderator closing a screen twice has done nothing wrong.
 	 */
 	@DeleteMapping("/api/verification/{id}/hold")
-	ResponseEntity<?> letGo(@PathVariable long id,
+	ResponseEntity<?> letGo(@PathVariable String id,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -486,7 +505,8 @@ class VerificationWriteApi {
 		}
 
 		return inOneTransaction.execute(committing -> {
-			db.sql("delete from verification_lock where verification_id = ?").param(id).update();
+			db.sql("delete from verification_lock where verification_id = ?")
+					.param(item.get().id()).update();
 
 			/* AND HE LEARNS IT, which is the half of the owner's answer that costs the
 			   message. Only when it was somebody else's and only when there is an inbox to
@@ -514,7 +534,7 @@ class VerificationWriteApi {
 	 *                 not there takes
 	 */
 	@PostMapping(path = "/api/verification/{id}/decision", consumes = MediaType.APPLICATION_JSON_VALUE)
-	ResponseEntity<?> decide(@PathVariable long id, @RequestBody Answered typed,
+	ResponseEntity<?> decide(@PathVariable String id, @RequestBody Answered typed,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -525,7 +545,16 @@ class VerificationWriteApi {
 		   action lives at that address - which is the whole of what ADL A8 forbids, „ne sme
 		   ni da sazna da radnja postoji". It did not leak WHICH items exist; it leaked that
 		   the route does, which is the same oracle one level up. A refusal about the form is
-		   a refusal only somebody who may decide is entitled to hear. */
+		   a refusal only somebody who may decide is entitled to hear.
+
+		   AND NOTHING ABOUT THE KEY EITHER, which is why it arrives as text. Measured over a
+		   socket on 02.10.2026, before this: asked for as a `long`, a word in the key's place
+		   was answered 400 by Spring before this method ran, to EVERY signed-in asker - a
+		   competitor holding nothing included - while a number was 404 for him. The same oracle,
+		   one step before the door. A key that is not a number names no item, so it is answered
+		   as an item that is not there, by the one line that answers that
+		   (`itemHeMayModerate`); `hold` and `letGo` take it the same way, since they bound it the
+		   same way. */
 		Optional<Item> found = itemHeMayModerate(id, asking);
 
 		if (found.isEmpty()) {
@@ -538,7 +567,14 @@ class VerificationWriteApi {
 		   is missing or unreadable never does: the route declares it consumes JSON and
 		   {@code @RequestBody} is required, so the chain answers 400 before this method
 		   runs. A null check over {@code typed} would be a branch no request can reach,
-		   and a branch nothing can measure is one nobody can be sure of. */
+		   and a branch nothing can measure is one nobody can be sure of.
+
+		   AND THAT SAME 400 IS STILL AN ORACLE, and it is written down here rather than left to be
+		   found: measured over a socket on 02.10.2026, a body that is not JSON, or no body at all,
+		   is answered 400 in 427 bytes to a competitor holding nothing, where the address that maps
+		   nothing answers 404 in 425. The key is closed above; this is the body, and closing it
+		   means reading the body only after the door, as bytes parsed by hand, which is a change
+		   of its own and not part of the one this note sits in. */
 		if (typed.approved() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
@@ -954,6 +990,12 @@ class VerificationWriteApi {
 		BigDecimal points = BtlScoreCalculator.calculate(sent.distanceKm().doubleValue(),
 				sent.ascentM(), sent.descentM(), sent.seconds());
 
+		/* THE RUN AS IT IS APPROVED, BUILT ONCE. The letter about this approval and the line in his
+		   inbox about what it did to his category are two messages about one run, and they cannot
+		   name two different runs if both are written from this one value. */
+		Run counted = new Run(sent.raceName(), sent.raceDate(), sent.distanceKm(), sent.ascentM(),
+				sent.descentM(), sent.seconds(), points);
+
 		if (sent.amendsResultId() == null) {
 			db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
 							+ " ascent_m, descent_m, seconds, points)"
@@ -970,11 +1012,10 @@ class VerificationWriteApi {
 		}
 
 		if (wasOpen && !beginnersCategoryIsOpenFor(item.competitorId(), theSeasonAfterTheRun)) {
-			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, points);
+			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, counted);
 		}
 
-		return WhatAResultChangeSays.approved(new Run(sent.raceName(), sent.raceDate(),
-				sent.distanceKm(), sent.ascentM(), sent.descentM(), sent.seconds(), points));
+		return WhatAResultChangeSays.approved(counted);
 	}
 
 	/**
@@ -993,11 +1034,22 @@ class VerificationWriteApi {
 	/**
 	 * AND HE IS TOLD WHEN AN APPROVAL TAKES IT AWAY FROM HIM.
 	 *
-	 * <p>Owner, 27.09.2026, choosing the first of three outcomes: the member is told when a
-	 * verification undoes his choice of the beginners' category, and „Poruka nosi razlog: koji
-	 * rezultat je odobren, koliko bodova nosi, i da mu je time pocetnicka zatvorena za narednu
-	 * sezonu." The two he refused were silence and an explanation on the membership page,
-	 * which he would have no reason to open.
+	 * <p>PDL, the entry titled Ponisten izbor kategorije se javlja clanu, sa razlogom
+	 * (27.09.2026): the owner chose the first of three outcomes offered, with my recommendation
+	 * beside it, and the outcome is that the member is told when a verification undoes his choice
+	 * of the beginners' category. The two he refused were silence and an explanation on the
+	 * membership page, which he would have no reason to open.
+	 *
+	 * <p><b>WHAT THE MESSAGE CARRIES IS HOW THAT ENTRY WRITES THE OUTCOME DOWN, AND IT IS NOT A
+	 * SENTENCE HE SAID.</b> The entry says the message carries the reason: which result was
+	 * approved, how many points it is worth, and that the beginners' category is closed for the
+	 * next season. That wording is not in quotation marks there, and its first form, in the entry
+	 * of 26.09.2026, named the result and its points only and is marked there as my reasoning
+	 * awaiting his confirmation or objection. So the three parts are read as what the chosen
+	 * outcome meant, and each is held by its own case in {@code VerificationWriteApiTest}. <b>A
+	 * result is named the way the letter about the same approval names it</b> - its race, which is
+	 * the race's own name and never the event's, and the day it was run - because both are
+	 * written from the one {@link Run}, so the two messages cannot name two runs.
 	 *
 	 * <p><b>Why a message is owed at all, in his own words:</b> what the portal keeps is the
 	 * WISH and not the category („racunaj da clan bira ono sto ZELI", 26.09.2026), so his tick
@@ -1012,9 +1064,11 @@ class VerificationWriteApi {
 	 * portal telling somebody about a category he was not asking for is a smaller fault than
 	 * staying silent towards somebody who was.
 	 */
-	private void tellHimHisCategoryMoved(long member, int season, BigDecimal points) {
+	private void tellHimHisCategoryMoved(long member, int season, Run counted) {
 		tell(member, "Početnička kategorija vam je zatvorena",
-				"Odobren vam je rezultat koji nosi " + points.toPlainString() + " bodova."
+				"Odobren vam je rezultat sa trke " + counted.raceName() + " od "
+						+ WhatAResultChangeSays.asADay(counted.day()) + ", koji nosi "
+						+ counted.points().toPlainString() + " bodova."
 						+ " Time ste u zvaničnoj sezoni prešli prag od "
 						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička"
 						+ " kategorija zatvorena za sezonu " + season + ".");
@@ -1150,20 +1204,29 @@ class VerificationWriteApi {
 	 *
 	 * <p>One method for both halves, because they answer the same way and must go on
 	 * answering the same way: an item that is not there and an item he may not see are one
-	 * refusal, and told apart the key would be an oracle for what is in the queue.
+	 * refusal, and told apart the key would be an oracle for what is in the queue. <b>A key
+	 * that is not a number is the third way to be one of them</b>: it arrives as text for that
+	 * reason, and is refused here as no item before any row is read.
 	 *
 	 * <p><b>The hold is read in the SAME statement</b>, so „who holds it" and „what state it
 	 * is in" are one reading of one moment. Read separately, a hold taken between the two
 	 * queries would be a decision made against a row somebody had just opened.
 	 */
-	private Optional<Item> itemHeMayModerate(long id, WhoIsAsking.Member asking) {
+	private Optional<Item> itemHeMayModerate(String key, WhoIsAsking.Member asking) {
+		/* A KEY THAT IS NOT ONE NAMES NO ROW, and is answered as a row that is not there - by this
+		   very return, which is also what a row he may not moderate becomes below, so the three
+		   are one answer. */
+		if (!A_KEY.matcher(key).matches()) {
+			return Optional.empty();
+		}
+
 		Optional<Item> item = db.sql("select v.id, v.queue, v.right_code, v.state, v.competitor_id,"
 						+ " v.photo_id, v.team_proposal_id, v.comment_submission_id,"
 						+ " v.result_submission_id, v.body, l.held_by, l.held_until"
 						+ " from verification v"
 						+ " left join verification_lock l on l.verification_id = v.id"
 						+ " where v.id = ?")
-				.param(id)
+				.param(Long.parseLong(key))
 				.query((row, one) -> new Item(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getObject(5, Long.class), row.getObject(6, Long.class),
 						row.getObject(7, Long.class), row.getObject(8, Long.class),
