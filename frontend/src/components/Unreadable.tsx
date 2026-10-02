@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { useI18n } from '../i18n/useI18n'
 import './Unreadable.css'
 
@@ -41,6 +42,18 @@ import './Unreadable.css'
  * reader who had focus on it is dropped at the top of the page. It is the one node of the three
  * that stays, for that reason: keyed, it would be replaced too and the focus would go with it.
  *
+ * <p><b>THE BUTTON GOES WHEN THE ASKING WORKS, AND THE KEYBOARD GOES WITH IT unless somebody puts it
+ * back</b> (review of PR 476, round 2: a press with Enter that worked left `document.activeElement`
+ * on `<body>`, on a whole screen, on a part and in the panel under the envelope alike, 4 runs of 4).
+ * Keeping the focus on the button while it asks is half of the same rule and the half that was
+ * written; the other half is the end of the asking, when what failed is replaced by what was read
+ * and the control the reader was standing on is no longer in the document (WCAG 2.2 SC 2.4.3, the
+ * class `components/LoadMore.tsx` and `forms/Suggesting.tsx` already answer). Where the focus goes
+ * is for whoever draws what replaces this, because only they know what that is; what THIS knows,
+ * and nobody else can, is that the button is leaving with the focus on it. It says so through
+ * `onLeaveWithFocus`, and only then: a reader who moved on while it asked, or who never had the
+ * focus on it (a pointer in a browser that does not focus a button), is not followed.
+ *
  * <p>The button is named by the list as well as by its own word („Pokusaj ponovo: Poruke"), because
  * two of them on one screen are two controls a reader cannot tell apart, and the visible word is
  * the first thing in the name (WCAG 2.2 SC 2.5.3). Where nothing names the list - a whole screen
@@ -53,6 +66,7 @@ export function Unreadable({
   named,
   reading,
   onRetry,
+  onLeaveWithFocus,
 }: {
   /** The sentence about THIS list, in the words of the screen it stands on. */
   said: string
@@ -63,8 +77,40 @@ export function Unreadable({
   reading: boolean
   /** Asks the list again. Not called while the last asking is still out. */
   onRetry: () => void
+  /**
+   * Said once, when this is taken out of the document while the focus is on its button, and never
+   * otherwise: not on a drawing that changes the words, not when the focus is anywhere else.
+   *
+   * <p>The focus is STILL on the button when this is called - it is called before the button is
+   * taken out - and the document has not changed yet, so what it is for is to REMEMBER, not to
+   * focus: whatever replaces this is not in the document at that moment. The caller puts the
+   * focus where the reader was once what replaces it has been drawn.
+   */
+  onLeaveWithFocus?: () => void
 }) {
   const { t } = useI18n()
+  const button = useRef<HTMLButtonElement>(null)
+  /* The one the caller has NOW, and not the one it had when this was drawn first: the cleanup below
+     is made once and must not be made again whenever a caller hands in a new function. */
+  const leaving = useRef(onLeaveWithFocus)
+
+  useLayoutEffect(() => {
+    leaving.current = onLeaveWithFocus
+  })
+
+  /* **A LAYOUT EFFECT, AND ITS CLEANUP, because that is the one moment the button is still in the
+     document.** React runs the cleanup of a component that is going before it takes the elements
+     out, so `document.activeElement` is still the button; an ordinary effect's cleanup runs after
+     the paint, when the focus has already fallen to the body and there is nothing left to ask.
+     Empty dependencies, so it runs when this goes and not when it is drawn again. */
+  useLayoutEffect(
+    () => () => {
+      if (document.activeElement === button.current) {
+        leaving.current?.()
+      }
+    },
+    [],
+  )
 
   return (
     <div className="unreadable">
@@ -78,6 +124,7 @@ export function Unreadable({
         </p>
       )}
       <button
+        ref={button}
         type="button"
         className="button button--secondary"
         aria-label={named === undefined ? undefined : `${t('data.retry')}: ${named}`}

@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { theInboxHasChanged } from '../data/useResource'
 import en from '../i18n/en.json'
@@ -481,5 +481,164 @@ describe('a failure that two readers of one address are both showing', () => {
     expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
     expect(timesAsked(INBOX)).toBe(2)
+  }, SLOW)
+})
+
+/**
+ * THE KEYBOARD, WHEN WHAT FAILED IS READ AGAIN AND WORKS (review of PR 476, round 2: a press with Enter
+ * that worked left `document.activeElement` on `<body>`, on a whole screen and in the panel under the
+ * envelope alike, 4 runs of 4, and the part was the same by construction; WCAG 2.2 SC 2.4.3).
+ *
+ * <p>The button the reader was standing on is taken out of the document when what failed is replaced
+ * by what was read. `components/Resource.test.tsx` holds what `Resource` does with the news that it
+ * left with the focus on it, one shape and one step at a time; these hold the three shapes on real
+ * screens, with the press made the way a keyboard makes it (the focus put on the button, and Enter)
+ * and the answer coming from a server.
+ *
+ * <p><b>The axes are the shape</b> (a whole screen, a part with a name, the panel under the envelope),
+ * <b>whose the focus is when the answer arrives</b> (the button's; somebody else's because the reader
+ * moved on while it asked; nobody's because the button never held it) <b>and who was pressed</b> (the
+ * screen's own button with the panel under the envelope told as well, and the panel's own).
+ *
+ * <p>Held by what the answer is and not by a count: a reader who is put on the wrong element, or on
+ * the right one when he should not have been moved, is told by `document.activeElement`.
+ */
+describe('the keyboard, when what failed is read again and works', () => {
+  /** Opens the panel under the envelope with the keyboard's own button, and hands it back. */
+  async function openThePanelOfTheEnvelope(user: ReturnType<typeof setupUser>) {
+    const opener = await screen.findByRole('button', { name: /Otvori poruke/ })
+
+    await user.click(opener)
+
+    return {
+      opener,
+      panel: within(
+        must(
+          document.getElementById(must(opener.getAttribute('aria-controls'), 'what the button controls')),
+          'the panel the button controls',
+        ),
+      ),
+    }
+  }
+
+  it('is put on the main landmark of a whole screen that was read again', async () => {
+    theServerAnswers({ '/api/teams': () => answeredWith(500) })
+    renderAt('/sr/timovi')
+
+    const button = await screen.findByRole('button', { name: sr.data.retry })
+
+    answers.set('/api/teams', () => null)
+    button.focus()
+    await setupUser().keyboard('{Enter}')
+
+    expect(await screen.findByRole('table', { name: sr.teams.title })).toBeVisible()
+    expect(screen.getByRole('main'), 'a press that worked dropped the focus out of the screen').toHaveFocus()
+  }, SLOW)
+
+  it('is put in front of a part that was read again, on a node that says its name', async () => {
+    /* The wall of ducats, read by nothing else on its screen, so the press is on the one reader there is. */
+    theServerAnswers({ '/api/ducats': () => answeredWith(500) })
+    renderAt('/sr/pravilnik')
+
+    const name = `${sr.data.retry}: ${sr.ducats.title}`
+    const button = await screen.findByRole('button', { name })
+
+    answers.set('/api/ducats', () => null)
+    button.focus()
+    await setupUser().keyboard('{Enter}')
+
+    const wall = await screen.findByRole('list', { name: sr.ducats.title })
+    const kept = document.activeElement
+
+    expect(kept, 'a press that worked dropped the focus out of the part').not.toBe(document.body)
+    expect(kept).toHaveTextContent(sr.ducats.title)
+    /* In front of the wall and in the same place, so the next thing read is the wall. */
+    expect(kept?.parentElement?.contains(wall)).toBe(true)
+    expect(kept?.compareDocumentPosition(wall)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  }, SLOW)
+
+  it('is put on the title of the panel under the envelope, and the panel stays open', async () => {
+    theServerAnswers({ [INBOX]: () => answeredWith(500) })
+    renderAt('/sr', 'competitor', MEMBER)
+
+    const user = setupUser()
+    const { opener, panel } = await openThePanelOfTheEnvelope(user)
+    const button = await panel.findByRole('button', { name: `${sr.data.retry}: ${sr.shell.messages}` })
+
+    answers.set(INBOX, () => null)
+    button.focus()
+    await user.keyboard('{Enter}')
+
+    expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
+    expect(
+      document.activeElement,
+      'a press that worked in the panel dropped the focus out of it',
+    ).toBe(panel.getByText(sr.shell.messages))
+    expect(opener).toHaveAttribute('aria-expanded', 'true')
+  }, SLOW)
+
+  it('is not taken from a reader who moved the focus on while it asked', async () => {
+    /* What the disc reader answers, kept before the server is put in front of it: the answer that is
+       held below is the REAL one, let go when the case says so. */
+    const disc = globalThis.fetch
+    let letGo: () => void = () => undefined
+
+    theServerAnswers({ '/api/teams': () => answeredWith(500) })
+    renderAt('/sr/timovi')
+
+    const button = await screen.findByRole('button', { name: sr.data.retry })
+
+    answers.set(
+      '/api/teams',
+      () =>
+        new Promise<Response>((resolve) => {
+          letGo = () => {
+            resolve(disc('/api/teams'))
+          }
+        }),
+    )
+    button.focus()
+    await setupUser().keyboard('{Enter}')
+    await waitFor(() => expect(loadingWords()).toHaveLength(1))
+
+    /* The reader goes to the language button in the header while the screen is still asking. */
+    const elsewhere = screen.getByRole('button', { name: /Jezik/ })
+
+    elsewhere.focus()
+    act(() => {
+      letGo()
+    })
+
+    expect(await screen.findByRole('table', { name: sr.teams.title })).toBeVisible()
+    expect(elsewhere, 'the focus was taken from where the reader had put it').toHaveFocus()
+  }, SLOW)
+
+  it('is not moved for a press that never had the focus on the button', async () => {
+    theServerAnswers({ '/api/teams': () => answeredWith(500) })
+    renderAt('/sr/timovi')
+
+    const button = await screen.findByRole('button', { name: sr.data.retry })
+
+    answers.set('/api/teams', () => null)
+    fireEvent.click(button)
+
+    expect(await screen.findByRole('table', { name: sr.teams.title })).toBeVisible()
+    expect(document.body, 'the focus was given to a reader who was not standing on anything').toHaveFocus()
+  }, SLOW)
+
+  it('is put on the screen, and not on the panel, when it is the screen that was pressed', async () => {
+    theServerAnswers({ [INBOX]: () => answeredWith(500) })
+    renderAt('/sr/poruke', 'competitor', MEMBER)
+
+    const button = await screen.findByRole('button', { name: sr.data.retry })
+
+    answers.set(INBOX, () => null)
+    button.focus()
+    await setupUser().keyboard('{Enter}')
+
+    expect(await screen.findByRole('link', { name: A_MESSAGE })).toBeVisible()
+    /* The panel under the envelope was told as well and read what the screen read, and it did not take
+       the keyboard: it was not the one that was pressed. */
+    expect(screen.getByRole('main')).toHaveFocus()
   }, SLOW)
 })

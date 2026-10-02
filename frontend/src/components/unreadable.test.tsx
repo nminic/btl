@@ -151,3 +151,109 @@ describe('a list that could not be read, asked again', () => {
     expect(button).toHaveFocus()
   })
 })
+
+/**
+ * THE BUTTON GOES WITH THE KEYBOARD ON IT, AND SAYS SO (review of PR 476, round 2: a press with Enter
+ * that worked left `document.activeElement` on `<body>`, on a whole screen, a part and the panel
+ * under the envelope alike).
+ *
+ * <p>What this component knows and nobody else can is that its button is leaving while the focus is on
+ * it; where the focus goes is for whoever draws what replaces it, and that is held where each of them
+ * is (`components/Resource.test.tsx`, `pages/resourceAsksAgain.test.tsx`). The axes here are where
+ * the focus is when the button goes (on it, on something else, nowhere) and what it is that goes (the
+ * whole component, or only its words).
+ *
+ * <p>The cleanup that says it is held at the moment it must be: before the button is taken out, so
+ * the callback is called with the focus STILL on the button. A callback that asked afterwards would
+ * find the body, which is the whole of the fault.
+ */
+describe('a list that could not be read, when it goes', () => {
+  const stand = (leaving?: () => void, reading = false) => (
+    <I18nProvider locale="sr">
+      <Unreadable
+        said="Spisak se ne može učitati."
+        named="Poruke"
+        reading={reading}
+        onRetry={() => undefined}
+        onLeaveWithFocus={leaving}
+      />
+      <input aria-label="Nešto drugo" />
+    </I18nProvider>
+  )
+
+  /** What is left of the page when the component is gone and the input is not. */
+  const without = (
+    <I18nProvider locale="sr">
+      <input aria-label="Nešto drugo" />
+    </I18nProvider>
+  )
+
+  it('says so, with the focus still on the button, when it is taken out with the focus on it', () => {
+    let where: Element | null = null
+    const leaving = vi.fn(() => {
+      where = document.activeElement
+    })
+    const { rerender } = render(stand(leaving))
+    const button = screen.getByRole('button', { name: `${sr.data.retry}: Poruke` })
+
+    button.focus()
+    rerender(without)
+
+    expect(leaving).toHaveBeenCalledTimes(1)
+    expect(where, 'the focus was already gone when it was asked where it was').toBe(button)
+  })
+
+  it('says nothing when the focus is on something else', () => {
+    const leaving = vi.fn()
+    const { rerender } = render(stand(leaving))
+
+    screen.getByRole('textbox', { name: 'Nešto drugo' }).focus()
+    rerender(without)
+
+    expect(leaving).not.toHaveBeenCalled()
+  })
+
+  it('says nothing when the button never had the focus', () => {
+    const leaving = vi.fn()
+    const { rerender } = render(stand(leaving))
+
+    rerender(without)
+
+    expect(leaving).not.toHaveBeenCalled()
+  })
+
+  it('says nothing for a drawing that only changes its words, with the focus on the button', () => {
+    const leaving = vi.fn()
+    const { rerender } = render(stand(leaving))
+
+    screen.getByRole('button', { name: `${sr.data.retry}: Poruke` }).focus()
+    rerender(stand(leaving, true))
+    rerender(stand(leaving, false))
+    rerender(stand(vi.fn(), false))
+
+    expect(leaving, 'it said it was leaving while it was only being drawn again').not.toHaveBeenCalled()
+  })
+
+  it('calls the one the caller has now and not the one it was first drawn with', () => {
+    const first = vi.fn()
+    const now = vi.fn()
+    const { rerender } = render(stand(first))
+
+    screen.getByRole('button', { name: `${sr.data.retry}: Poruke` }).focus()
+    rerender(stand(now))
+    rerender(without)
+
+    expect(now).toHaveBeenCalledTimes(1)
+    expect(first).not.toHaveBeenCalled()
+  })
+
+  it('goes without a word where nobody is listening', () => {
+    const { rerender } = render(stand())
+
+    screen.getByRole('button', { name: `${sr.data.retry}: Poruke` }).focus()
+
+    expect(() => {
+      rerender(without)
+    }).not.toThrow()
+  })
+})

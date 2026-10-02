@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
 import type { ResourceState } from '../data/useResource'
@@ -213,5 +214,277 @@ describe('Resource, when the read failed', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent(en.data.error)
     expect(screen.getByRole('button', { name: `${en.data.retry}: Races` })).toBeVisible()
+  })
+})
+
+/**
+ * A READ THAT FAILED IS READ AGAIN AND WORKS, AND THE KEYBOARD IS WHERE THE READER WAS (review of
+ * PR 476, round 2: a press with Enter that worked left `document.activeElement` on `<body>`, on a
+ * whole screen, on a part and in the panel under the envelope alike, 4 runs of 4; WCAG 2.2 SC 2.4.3).
+ *
+ * <p>The button is taken out of the document when what failed is replaced by what was read, and the
+ * focus was on it. `Unreadable` says it left with the focus on it (`components/unreadable.test.tsx`);
+ * what is held HERE is what `Resource` does with that: where the focus goes, for which shape of
+ * screen, and when it does not go at all. The panel under the envelope is held where it is drawn
+ * (`pages/resourceAsksAgain.test.tsx`), and the three shapes together on real screens.
+ *
+ * <p><b>The axes are the shape</b> (a whole screen, a part with a name, a part with none, a whole screen
+ * with no `main` to go to), <b>whose the focus is when the answer arrives</b> (the button's, nobody's
+ * because it was never there, somebody else's because the reader moved on, a field's because what
+ * was drawn took it) <b>and what happens between</b> (nothing, a wait for another file, a second
+ * failure).
+ *
+ * <p>The state is driven by hand, one step at a time, because that is the only way to hold the
+ * moment still: the press is a real one (`userEvent`, which puts the focus on the button as a
+ * browser does), and the answer is the harness handing the component the next state.
+ */
+describe('Resource, when what failed is read again and works', () => {
+  let give: (next: ResourceState<string>) => void = () => undefined
+
+  /** Holds the state `Resource` is given, and hands the next one over on request. */
+  function Harness({
+    first,
+    inline = false,
+    label,
+    inMain = true,
+    children = (data: string) => <p>{data}</p>,
+  }: {
+    first: ResourceState<string>
+    inline?: boolean
+    label?: string
+    inMain?: boolean
+    children?: (data: string) => ReactNode
+  }) {
+    const [state, setState] = useState(first)
+
+    give = setState
+
+    const part = (
+      <Resource<string> state={state} inline={inline} label={label}>
+        {children}
+      </Resource>
+    )
+
+    return (
+      <>
+        {inMain ? <main tabIndex={-1}>{part}</main> : part}
+        <button type="button">Drugo dugme</button>
+      </>
+    )
+  }
+
+  const READY: ResourceState<string> = { status: 'ready', data: 'Fruškogorski maraton' }
+  const retry = () => screen.getByRole('button', { name: new RegExp(sr.data.retry) })
+
+  /** The press, as a person makes it with the keyboard: the focus is on the button, and Enter. */
+  async function pressWithTheKeyboard() {
+    retry().focus()
+    await setupUser().keyboard('{Enter}')
+    expect(retry(), 'the press did not leave the focus on the button').toHaveFocus()
+  }
+
+  it('puts the keyboard on the main landmark of a whole screen', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    expect(screen.getByText('Fruškogorski maraton')).toBeVisible()
+    expect(screen.getByRole('main'), 'the focus fell out of the screen').toHaveFocus()
+  })
+
+  it('does not scroll to where it puts the keyboard, which would undo the place the reader is at', async () => {
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus')
+
+    try {
+      renderWithI18n(<Harness first={aFailedRead()} />)
+      await pressWithTheKeyboard()
+      focus.mockClear()
+
+      act(() => {
+        give(READY)
+      })
+
+      const main = screen.getByRole('main')
+      const onMain = focus.mock.calls.filter((_call, at) => focus.mock.contexts[at] === main)
+
+      expect(onMain).toEqual([[{ preventScroll: true }]])
+    } finally {
+      focus.mockRestore()
+    }
+  })
+
+  it('goes quietly where a whole screen has no main landmark to go to', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} inMain={false} />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    expect(screen.getByText('Fruškogorski maraton')).toBeVisible()
+    expect(document.body).toHaveFocus()
+  })
+
+  it('puts the keyboard on a node in front of a part, which says the name of the part', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} inline label="Trke" />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    const drawn = screen.getByText('Fruškogorski maraton')
+    const kept = document.activeElement
+
+    expect(kept, 'the focus fell out of the part').not.toBe(document.body)
+    expect(kept).toHaveTextContent('Trke')
+    /* In front of what was drawn and in the same place, which is what keeps the reader where he
+       was: the next thing read is the part, and the next Tab goes into it. */
+    expect(kept?.nextElementSibling).toBe(drawn)
+    expect(kept?.parentElement).toBe(drawn.parentElement)
+  })
+
+  it('puts it there for a part that has no name too, on a node that says nothing', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} inline />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    const kept = document.activeElement
+
+    expect(kept, 'the focus fell out of the part').not.toBe(document.body)
+    expect(kept).toHaveTextContent('')
+    expect(kept?.nextElementSibling).toBe(screen.getByText('Fruškogorski maraton'))
+  })
+
+  it('draws no such node for a part that never failed, which is the markup it always was', () => {
+    renderWithI18n(<Harness first={READY} inline label="Trke" />)
+
+    expect(screen.getByRole('main').children).toHaveLength(1)
+  })
+
+  it('does not draw what was drawn again when the part is read a second time', async () => {
+    let drawn = 0
+
+    function Counted() {
+      const once = useRef(false)
+
+      useLayoutEffect(() => {
+        if (!once.current) {
+          once.current = true
+          drawn += 1
+        }
+      }, [])
+
+      return <p>Fruškogorski maraton</p>
+    }
+
+    renderWithI18n(
+      <Harness first={aFailedRead()} inline label="Trke">
+        {() => <Counted />}
+      </Harness>,
+    )
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+    act(() => {
+      give({ status: 'ready', data: 'drugi odgovor' })
+    })
+
+    expect(drawn, 'the node in front of the part made the part start again').toBe(1)
+  })
+
+  it('does not follow a reader who moved the focus while it asked', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} />)
+    await pressWithTheKeyboard()
+
+    screen.getByRole('button', { name: 'Drugo dugme' }).focus()
+    act(() => {
+      give(READY)
+    })
+
+    expect(screen.getByText('Fruškogorski maraton')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Drugo dugme' }), 'the focus was taken from where it was').toHaveFocus()
+  })
+
+  it('does not follow a press that did not have the focus on the button', () => {
+    renderWithI18n(<Harness first={aFailedRead()} />)
+
+    /* A press with a pointer in a browser that does not focus a button, or any press that the
+       button never held the focus for: nobody was standing on anything. */
+    fireEvent.click(retry())
+    expect(document.body).toHaveFocus()
+
+    act(() => {
+      give(READY)
+    })
+
+    expect(screen.getByText('Fruškogorski maraton')).toBeVisible()
+    expect(document.body, 'the focus was taken from nobody').toHaveFocus()
+  })
+
+  it('leaves the focus where what was drawn put it', async () => {
+    function Field() {
+      const box = useRef<HTMLInputElement>(null)
+
+      useLayoutEffect(() => {
+        box.current?.focus()
+      }, [])
+
+      return <input aria-label="Polje" ref={box} />
+    }
+
+    renderWithI18n(<Harness first={aFailedRead()}>{() => <Field />}</Harness>)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    expect(screen.getByRole('textbox', { name: 'Polje' }), 'a form that took the focus lost it').toHaveFocus()
+  })
+
+  it('waits for the last file when the one that failed is read while another is still on its way', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give({ status: 'loading' })
+    })
+    expect(screen.getByRole('main'), 'the focus went to the page while it was still waiting').not.toHaveFocus()
+
+    act(() => {
+      give(READY)
+    })
+
+    expect(screen.getByText('Fruškogorski maraton')).toBeVisible()
+    expect(screen.getByRole('main')).toHaveFocus()
+  })
+
+  it('lets go of the focus when what it waited for fails again, because that button is a new one', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give({ status: 'loading' })
+    })
+    act(() => {
+      give(aFailedRead())
+    })
+    /* The reader has not touched the new button. Whoever reads the page next, the focus is nobody's
+       and it stays that way. */
+    act(() => {
+      give(READY)
+    })
+
+    expect(screen.getByText('Fruškogorski maraton')).toBeVisible()
+    expect(document.body, 'a press on the first button moved the keyboard on the strength of the second').toHaveFocus()
   })
 })

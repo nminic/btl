@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { Link } from 'react-router'
 import { Unreadable } from '../components/Unreadable'
 import { formatShortDate } from '../i18n/format'
@@ -98,6 +99,28 @@ function ThePanel({
 }) {
   const { locale, t } = useI18n()
   const unread = lines.filter((one) => !one.read).length
+  /* **WHERE THE KEYBOARD GOES WHEN THE LIST THAT FAILED IS READ AGAIN AND WORKS** (review of PR 476,
+     round 2: a press with Enter that worked left `document.activeElement` on `<body>` and the panel
+     open). The button that asked is taken out of the panel in the same stroke that draws the
+     messages, so the focus falls out of a panel the reader is still reading. It goes to the title,
+     which is what the list is under: a reader hears „Poruke" and the messages follow, and an
+     Enter pressed again by a reader who did not hear it does not open the first message, which
+     the first link would. `Unreadable` says that the button left with the focus on it; a button
+     that did not (the reader moved on, or the screen of messages was the one pressed and this
+     panel was told) is not followed. No check that the focus is nowhere before it is moved, as
+     `components/Resource.tsx` makes: nothing else in this panel takes the focus in the stroke that
+     draws it, and a branch no case could take is a branch that hides what it would have done. */
+  const title = useRef<HTMLParagraphElement>(null)
+  const keptTheFocus = useRef(false)
+
+  useLayoutEffect(() => {
+    if (unreadable !== undefined) {
+      keptTheFocus.current = false
+    } else if (keptTheFocus.current) {
+      keptTheFocus.current = false
+      title.current?.focus({ preventScroll: true })
+    }
+  })
 
   return (
     <Dropdown
@@ -120,7 +143,9 @@ function ThePanel({
     >
       {(close) => (
         <>
-          <p className="inbox__title">{t('shell.messages')}</p>
+          <p className="inbox__title" tabIndex={-1} ref={title}>
+            {t('shell.messages')}
+          </p>
 
           {unreadable !== undefined ? (
             <Unreadable
@@ -128,6 +153,9 @@ function ThePanel({
               named={t('shell.messages')}
               reading={unreadable.reading}
               onRetry={unreadable.retry}
+              onLeaveWithFocus={() => {
+                keptTheFocus.current = true
+              }}
             />
           ) : lines.length === 0 ? (
             <p className="inbox__empty">{t('shell.noMessages')}</p>
