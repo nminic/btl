@@ -800,6 +800,67 @@ class MeWriteApiTest {
 				.isOne();
 	}
 
+	/**
+	 * AND NEITHER IS A TEXT THAT WAS APPROVED, which is the other half of „decided".
+	 *
+	 * <p>The case above holds a REFUSED text, and a decided text has two states. Since V53 the rule
+	 * has a second home, {@code verification_one_text_waits_per_member}, and a condition that read
+	 * „not refused" instead of „waiting" would let every member whose text was ever approved send
+	 * nothing again: the refused case alone cannot tell those two conditions apart. A member who
+	 * mends the words a moderator already let through is the ordinary case, not a curiosity.
+	 */
+	@Test
+	void aTextThatWasApprovedIsNoBarToSendingAnother() throws Exception {
+		db.sql("insert into verification (queue, competitor_id, subject, body, state, decided_at,"
+						+ " decided_by_name)"
+						+ " values (?, ?, 'Neko Nekic', 'Tekst koji je moderator pustio.', 'approved',"
+						+ " timestamptz '2026-09-01 10:00:00+00', 'Moderator Bezimeni')")
+				.params(THE_PROFILES_TAB, competitorId(ME)).update();
+
+		MockHttpServletResponse answer = changeAs(ME, "  Nov tekst posle odobrenog.  ", null);
+
+		assertThat(answer.getStatus())
+				.as("a member whose text was approved cannot send another, so an approval shuts"
+						+ " the panel for good")
+				.isEqualTo(200);
+
+		assertThat(textsWaitingFor(ME)).containsExactly("Nov tekst posle odobrenog.");
+
+		assertThat(db.sql("select count(*) from verification where state = 'approved'"
+						+ " and competitor_id = ?")
+				.param(competitorId(ME)).query(Long.class).single())
+				.as("the approved row was taken away, and V9 says a decided row stands for ever")
+				.isOne();
+	}
+
+	/**
+	 * A TEXT THAT WAITS IS SAID BEFORE ANYTHING ELSE THE REQUEST CARRIES IS WRITTEN.
+	 *
+	 * <p><b>Why this is a case of its own since V53.</b> The database now refuses a second text by
+	 * itself, so a reader may ask what the route's own question is still for. It is for the order:
+	 * asked first, the conflict is the answer before the name, the town or the switch is written;
+	 * left to the database, it would come after them, and a request that carries a second fault
+	 * only the database finds would be answered by that fault instead. Measured on this branch: a
+	 * name carrying a NUL character, which {@code text} cannot hold, is answered 409 with the question
+	 * asked first and as a server fault without it.
+	 *
+	 * <p>What this does NOT say: that such a name is refused properly. Sent with no text waiting it
+	 * is a server fault today, with or without this question, and that is its own fault.
+	 */
+	@Test
+	void aTextThatWaitsIsToldBeforeAFieldOnlyTheDatabaseWouldRefuse() throws Exception {
+		MockHttpServletResponse answer = changeAs(WHOSE_TEXT_WAITS,
+				changing("bio", "  Drugi pokusaj sa imenom.  ", "firstName", "Vera\u0000"));
+
+		assertThat(answer.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.A_TEXT_ALREADY_WAITS);
+
+		assertThat(db.sql("select first_name from competitor where member_number = ?")
+				.param(WHOSE_TEXT_WAITS).query(String.class).single())
+				.isEqualTo("Vera");
+		assertThat(textsWaitingFor(WHOSE_TEXT_WAITS)).containsExactly(THE_TEXT_ALREADY_WAITING);
+	}
+
 	/** Something waiting in ANOTHER tab is not this member's text waiting. */
 	@Test
 	void aRowWaitingInAnotherTabIsNoBar() throws Exception {
