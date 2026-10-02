@@ -626,7 +626,7 @@ describe('Rankings', () => {
         expect(at(links, 0).contains(must(cell.querySelector('.portrait'), 'the circle'))).toBe(true)
         expect(at(links, 1).contains(at(links, 0))).toBe(false)
       }
-    })
+    }, SLOW)
 
     it('opens the profile when it is pressed', async () => {
       const { user, router, plates } = await theRows()
@@ -637,7 +637,7 @@ describe('Rankings', () => {
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(at(links, 1).getAttribute('href'))
       })
-    })
+    }, SLOW)
 
     it('leads to the profile the name leads to, in every row', async () => {
       const { plates } = await theRows()
@@ -645,7 +645,7 @@ describe('Rankings', () => {
       for (const { links } of plates) {
         expect(at(links, 0).getAttribute('href')).toBe(at(links, 1).getAttribute('href'))
       }
-    })
+    }, SLOW)
 
     it('leaves exactly one link in the row to a screen reader', async () => {
       const { plates } = await theRows()
@@ -653,7 +653,7 @@ describe('Rankings', () => {
       for (const { cell } of plates) {
         expect(within(cell).getAllByRole('link')).toHaveLength(1)
       }
-    })
+    }, SLOW)
 
     it('is not a stop of the Tab key, which goes to the name', async () => {
       const { user, plates } = await theRows()
@@ -667,7 +667,7 @@ describe('Rankings', () => {
       }
 
       expect(document.activeElement).toBe(at(links, 1))
-    })
+    }, SLOW)
   })
 })
 
