@@ -93,11 +93,12 @@ describe('a bare number that the route gives a meaning of its own', () => {
     answer: Parameters<typeof ServerSaid>[0]['answer'],
     numbers: Record<number, string> | null = MEANINGS,
     locale: Locale = 'sr',
+    params: Record<string, string | number> = {},
   ) {
     render(
       <I18nProvider locale={locale}>
         <MemoryRouter>
-          <ServerSaid answer={answer} refusals={{}} numbers={numbers ?? undefined} />
+          <ServerSaid answer={answer} refusals={{}} numbers={numbers ?? undefined} params={params} />
         </MemoryRouter>
       </I18nProvider>,
     )
@@ -132,6 +133,17 @@ describe('a bare number that the route gives a meaning of its own', () => {
     expect(
       saidWith({ got: 'wrong', status: 400 }, { 400: 'pair.breakRefused.notHeld' }),
     ).toHaveTextContent(sr.pair.breakRefused.notHeld)
+  })
+
+  it('hands the values to the route’s sentence, as it does to a refusal’s', () => {
+    /* A sentence that interpolates, taken from the dictionary as it stands: the table is a way of
+       finding the sentence, and the values a screen hands in are for whichever sentence is found. */
+    expect(
+      saidWith({ got: 'wrong', status: 404 }, { 404: 'pair.endedBody' }, 'sr', {
+        who: 'Ana Anić',
+        season: 2027,
+      }),
+    ).toHaveTextContent(sr.pair.endedBody.replace('{who}', 'Ana Anić').replace('{season}', '2027'))
   })
 
   it('does not look at the table for an answer that is not a bare number', () => {
