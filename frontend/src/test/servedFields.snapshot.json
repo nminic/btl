@@ -185,6 +185,7 @@
     "seconds"
   ],
   "teams.json": [
+    "alsoInTheTeam",
     "bio",
     "city",
     "country",

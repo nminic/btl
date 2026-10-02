@@ -124,6 +124,12 @@ class CompetitorApiTest {
 	/** And which circle of it is drawn, the other half of the same fact. */
 	private static final String THE_SQUARE_OF_IT = "crop";
 
+	/** The team of the membership that has not ended, which hiding takes off the record. */
+	private static final String THE_TEAM = "teamId";
+
+	/** And the season it began in, the other half of the same link. */
+	private static final String THE_SEASON_OF_THE_TEAM = "teamSince";
+
 	/**
 	 * WHERE A PICTURE IS ASKED FOR, written out here rather than taken from
 	 * {@link CompetitorApi}.
@@ -1499,10 +1505,19 @@ class CompetitorApiTest {
 	 * joined another, so ignoring the condition would give him two rows and the wrong
 	 * season; 000007 left a team and joined none, so it would give him a club he is not
 	 * in. The list of members in no team is checked as a whole for that second half.
+	 *
+	 * <p><b>ASKED AS A SIGNED IN MEMBER SINCE 02.10.2026, and that is what keeps the second half
+	 * measuring anything.</b> 000007 hides his profile, and a visitor is now answered no team on
+	 * his record whatever his memberships say ([ODLUKA 27.09.2026, owner]). Read off the visitor's
+	 * answer, „he left the team and joined none" and „his team is withheld" would both arrive as
+	 * null, so dropping {@code season_to is null} would give him a club and this case would still
+	 * see nobody's - one value with two sources. A signed in reader is told every link there is,
+	 * so to him the null can come from the ended membership alone.
 	 */
 	@Test
 	void theTeamIsTheOneTheMembershipHasNotEnded() throws Exception {
-		List<JsonNode> theOneInATeam = StreamSupport.stream(answer().spliterator(), false)
+		JsonNode toAMember = answerFor(HER_OWN_ACCOUNT);
+		List<JsonNode> theOneInATeam = StreamSupport.stream(toAMember.spliterator(), false)
 				.filter(one -> one.path("memberNumber").asString().equals("000012")).toList();
 
 		assertThat(theOneInATeam)
@@ -1515,11 +1530,148 @@ class CompetitorApiTest {
 				.as("the member is in a team and the answer says nothing")
 				.isFalse();
 
-		assertThat(StreamSupport.stream(answer().spliterator(), false)
-				.filter(one -> one.path("teamId").isNull())
+		assertThat(StreamSupport.stream(toAMember.spliterator(), false)
+				.filter(one -> one.path(THE_TEAM).isNull())
 				.map(one -> one.path("memberNumber").asString()).toList())
 				.as("a member who is in no team came back in one")
 				.containsExactly("000007", "000023", "000045");
+	}
+
+	/** The key the sequence handed a team, which is what {@code teamId} answers with. */
+	private long teamIdOf(String slug) {
+		return db.sql("select id from team where slug = ?").param(slug).query(Long.class).single();
+	}
+
+	/**
+	 * GIVES 000007 A MEMBERSHIP THAT HAS NOT ENDED, FOR ONE CASE, leaving {@code fiveMembers}
+	 * untouched for every other case in this class - the same arrangement
+	 * {@link #hisBiographyIs} makes for the biography.
+	 *
+	 * <p><b>Why the shared fixture cannot carry it.</b> In {@code fiveMembers} the one member who
+	 * hides is in NO team: he left {@code probni-tim} in 2027. That is the state PDL odeljak 16
+	 * warns about in as many words - „Skriven clan sa TEKUCIM timom je stanje u koje taj razred ne
+	 * ulazi uopste, i slucaj mora da ga uvede, inace tvrdnja ne meri nista" - because a null for
+	 * him would be the answer of a member in no team whether or not anything was withheld. And it
+	 * cannot be given to him there, because {@link #theTeamIsTheOneTheMembershipHasNotEnded} is
+	 * about exactly that ended membership.
+	 *
+	 * <p><b>The team and the season are chosen to differ from every other source of the same two
+	 * values</b>: {@code drugi-tim} is not the team he left, and 2029 is neither the season his
+	 * old membership began (2027), nor the season either team began (2027), nor his own first
+	 * season (2020), nor the season 000012's standing membership began (2028). A query reading
+	 * any of those instead answers a different number.
+	 */
+	private void hisStandingMembershipIs(String memberNumber, String slug, int from) {
+		membership(memberNumber, slug, from, "null", "null");
+	}
+
+	/**
+	 * A HIDDEN PROFILE'S TEAM DOES NOT LEAVE ON HIS RECORD TO A CALLER WHO IS NOT SIGNED IN.
+	 *
+	 * <p>PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between three offered outcomes: the
+	 * team is withheld from a visitor the same as the biography and the photograph. Both halves of
+	 * the link go: {@code teamId} and {@code teamSince}.
+	 *
+	 * <p><b>The floors come first, and they are what makes the null a withholding.</b> He hides
+	 * his profile, and the database holds a membership of his that has NOT ended - written by this
+	 * case, because the shared fixture has none (see {@link #hisStandingMembershipIs}). Without the
+	 * second floor a resource that withheld nothing would pass, which is the trap the decision
+	 * names.
+	 *
+	 * <p><b>The shape is a member in no team's</b>, and it is the owner's word rather than a
+	 * choice made here: „Oblik je null, nikad odsutan kljuc ... skriven clan se cita tacno kao clan
+	 * koji sliku nema" (PDL, 26.09.2026, of the portrait). 000023 is in no team at all, and his
+	 * record reads the same.
+	 *
+	 * <p><b>And the member who does NOT hide is answered hers to the same visitor</b>, which is what
+	 * makes hiding the condition rather than the session: 000012 is in {@code probni-tim} since
+	 * 2028.
+	 */
+	@Test
+	void aHiddenProfilesTeamDoesNotLeaveOnHisRecordToAVisitor() throws Exception {
+		hisStandingMembershipIs("000007", "drugi-tim", 2029);
+
+		assertThat(db.sql("select profile_hidden from competitor where member_number = '000007'")
+						.query(Boolean.class).single())
+				.as("000007 is not hiding his profile in this fixture, so the null below would be"
+						+ " the answer of a member nothing is withheld from")
+				.isTrue();
+		assertThat(db.sql("select count(*) from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " where c.member_number = '000007' and m.season_to is null")
+						.query(Integer.class).single())
+				.as("000007 has no membership that has not ended, so a null for him is a member in"
+						+ " no team and withholds nothing")
+				.isEqualTo(1);
+
+		JsonNode his = recordOf(null, "000007");
+		JsonNode inNoTeam = recordOf(null, "000023");
+
+		assertThat(his.path(THE_TEAM).isNull())
+				.as("a visitor was answered the team of a member who hides his profile")
+				.isTrue();
+		assertThat(his.path(THE_SEASON_OF_THE_TEAM).isNull())
+				.as("a visitor was answered the season a hidden member's membership began, which is"
+						+ " half of the same link")
+				.isTrue();
+		assertThat(List.of(his.has(THE_TEAM), his.path(THE_TEAM).isNull(),
+						his.has(THE_SEASON_OF_THE_TEAM), his.path(THE_SEASON_OF_THE_TEAM).isNull()))
+				.as("a member who hides his profile does not read like a member in no team")
+				.isEqualTo(List.of(inNoTeam.has(THE_TEAM), inNoTeam.path(THE_TEAM).isNull(),
+						inNoTeam.has(THE_SEASON_OF_THE_TEAM),
+						inNoTeam.path(THE_SEASON_OF_THE_TEAM).isNull()));
+
+		JsonNode hers = recordOf(null, "000012");
+
+		assertThat(hers.path(THE_TEAM).asLong())
+				.as("a visitor was not answered the team of a member who does NOT hide her profile,"
+						+ " so what is being withheld is the session and not the hiding")
+				.isEqualTo(teamIdOf("probni-tim"));
+		assertThat(hers.path(THE_SEASON_OF_THE_TEAM).asInt())
+				.as("a visitor was not answered the season of a member who does not hide hers")
+				.isEqualTo(2028);
+	}
+
+	/**
+	 * AND IT DOES LEAVE TO EVERYBODY WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION.
+	 *
+	 * <p>PDL, odeljak 18 (27.09.2026), owner: „Clan koji je aktiviran za sezonu ne moze sakriti svoje
+	 * rezultate niti profil od drugih clanova ... Moze sakriti samo od neulogovanih posetilaca
+	 * profil." And PDL, 02.10.2026, of the account that races for nobody: „Skriven profil vidi svako
+	 * ko je prijavljen, i administrativni nalog koji ne trci."
+	 *
+	 * <p><b>Every account in the fixture, read off the two lists the fixture is split by</b>, so an
+	 * account added tomorrow is walked by arriving. {@code RACES_FOR_NOBODY} and the superadmin are
+	 * the two that catch a condition asked of the caller's MEMBER rather than of his session, and
+	 * {@code RACES_FOR_NOBODY} the one that catches {@code :administration} in place of
+	 * {@code :signedIn}.
+	 *
+	 * <p><b>The values are the STANDING membership's</b>: {@code drugi-tim} from 2029, which no
+	 * other source in the fixture holds (see {@link #hisStandingMembershipIs}). The team he left is
+	 * another key and its season another year.
+	 */
+	@Test
+	void aHiddenProfilesTeamLeavesOnHisRecordToEverybodyWhoIsSignedIn() throws Exception {
+		hisStandingMembershipIs("000007", "drugi-tim", 2029);
+
+		List<String> signedIn = EVERY_KIND_OF_CALLER.stream().filter(one -> one != null).toList();
+
+		assertThat(signedIn).as("no account in the fixture is signed in, so the walk below asks"
+				+ " nobody").isNotEmpty();
+
+		for (String asking : signedIn) {
+			JsonNode his = recordOf(asking, "000007");
+
+			assertThat(his.path(THE_TEAM).asLong())
+					.as("%s is signed in and was not answered the team of a member who hides his"
+							+ " profile; hiding is from a reader who is not signed in and from nobody"
+							+ " else", asking)
+					.isEqualTo(teamIdOf("drugi-tim"));
+			assertThat(his.path(THE_SEASON_OF_THE_TEAM).asInt())
+					.as("%s was answered a season other than the one his standing membership began"
+							+ " in", asking)
+					.isEqualTo(2029);
+		}
 	}
 
 	@Test
@@ -1578,9 +1730,17 @@ class CompetitorApiTest {
 	 * VALUE, through the parsed answer and never through a second serialisation:
 	 * {@code TeamApiTest} writes out why a square's exact scale would not survive that trip,
 	 * which is also why {@code crop} stays on the excused list rather than being compared here.
+	 *
+	 * <p><b>AND SINCE 02.10.2026 THE TWO HALVES OF THE LINK TO HIS TEAM</b> ([ODLUKA 27.09.2026,
+	 * owner], PDL odeljak 16), excused on the same row and nowhere else, with their own cases:
+	 * {@link #aHiddenProfilesTeamDoesNotLeaveOnHisRecordToAVisitor} and
+	 * {@link #aHiddenProfilesTeamLeavesOnHisRecordToEverybodyWhoIsSignedIn}. In {@code fiveMembers}
+	 * the one member who hides is in no team at all, so the excuse changes nothing in the cases that
+	 * stand on it - the same state {@code bio} is in, whose fixture text is {@code ""}; the two cases
+	 * that need a standing membership write one themselves.
 	 */
 	private static final Set<String> WHAT_HIDING_MAY_WITHHOLD =
-			Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT, "bio");
+			Set.of(THE_PORTRAIT, THE_SQUARE_OF_IT, "bio", THE_TEAM, THE_SEASON_OF_THE_TEAM);
 
 	/**
 	 * ONE RECORD NAMES EXACTLY THE OTHER'S FIELDS, PLUS WHATEVER IS NAMED AS ALLOWED TO BE EXTRA
@@ -1685,11 +1845,13 @@ class CompetitorApiTest {
 						+ " empty answers agreeing")
 				.isEqualTo("000012");
 
-		/* AND TWO THINGS DO CHANGE SINCE 26.09.2026, SO THEY ARE NAMED RATHER THAN THE
+		/* AND SOME THINGS DO CHANGE SINCE 26.09.2026, SO THEY ARE NAMED RATHER THAN THE
 		   COMPARISON LOOSENED. A member who hides his profile is answered his portrait and his
 		   biography to anybody with a session and null to a visitor, twice [ODLUKA 26.09.2026,
+		   owner], and since 02.10.2026 the link to his team the same way [ODLUKA 27.09.2026,
 		   owner]. The sentence below would fail without naming them and the resource would be
-		   behaving exactly as decided. */
+		   behaving exactly as decided. In this fixture it is the portrait that makes the two
+		   answers differ: the member who hides has no standing team here. */
 		assertThat(whole(HER_OWN_ACCOUNT))
 				.as("the member's answer and the visitor's are already identical, so this case"
 						+ " measures nothing and a hidden member's picture or biography is"

@@ -26,6 +26,7 @@ const team = (fields: Partial<Team> = {}): Team => ({
   bio: '',
   logo: null,
   crop: WHOLE,
+  alsoInTheTeam: [],
   ...fields,
 })
 
