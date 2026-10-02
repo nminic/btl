@@ -428,3 +428,57 @@ describe('a town standing on a row of columns', () => {
     expect(own.getPropertyValue('grid-template-columns')).toBe('minmax(0, 1fr) minmax(0, 12rem)')
   })
 })
+
+describe('the two marks a field can hold', () => {
+  /**
+   * A TICK AND A RADIO ARE ONE SIZE, AND IT IS ONE RULE THAT SAYS SO.
+   *
+   * <p>Owner, 02.10.2026, choosing the outcome he was offered (`btl-produkt/PDL.md`, „Odluke iz
+   * ciscenja nalaza"): „Kucica i radio dugme na Podesavanjima su iste velicine, 18px". Measured
+   * on `/sr/podesavanja` before the change, at 1280: the tick 18,4px square and the radio 13,
+   * because only the tick was given a size and the radio was whatever the browser draws one as.
+   *
+   * <p><b>1.125rem, which is the eighteen pixels at the size text starts at</b>, and in `rem`
+   * because the size the tick already had was in `rem` (1.15): somebody who enlarges the text
+   * gets larger marks with it. That reading of „18px" is mine, not the owner's words.
+   *
+   * <p><b>Asked of what each mark is REACHED by, not of the text of one rule.</b> Every rule in
+   * the sheet that gives a width or a height and matches a tick has to match the radio too, and
+   * the other way round, so the two cannot be sized by two rules that drift apart. The rule is
+   * shared, so it reaches every screen that draws a mark in a field: the settings, the two
+   * categories of the membership screen, and the confirmation on the registration.
+   */
+  it('gives a tick and a radio one size, out of the same rules', () => {
+    const field = document.createElement('div')
+
+    field.className = 'field'
+
+    const [tick, radio] = ['checkbox', 'radio'].map((type) => {
+      const mark = document.createElement('input')
+
+      mark.type = type
+      mark.className = 'field__control'
+      field.append(mark)
+
+      return mark
+    })
+    const sizing = everyRule(fields, 'FormRenderer.css').filter(
+      (rule) => rule.style.getPropertyValue('width') !== '' || rule.style.getPropertyValue('height') !== '',
+    )
+    const reaching = (mark: HTMLInputElement | undefined) =>
+      sizing.filter((rule) => mark?.matches(rule.selectorText) === true)
+
+    expect(reaching(tick).length, 'nothing gives the tick a size').toBeGreaterThan(0)
+    expect(reaching(radio), 'the radio is sized by other rules than the tick').toEqual(reaching(tick))
+
+    for (const rule of reaching(tick)) {
+      expect(rule.style.getPropertyValue('width'), rule.selectorText).toBe('1.125rem')
+      expect(rule.style.getPropertyValue('height'), rule.selectorText).toBe('1.125rem')
+      /* And a size the row beside it cannot take away. A mark stands in a flex row with its
+         words, and a flex item shrinks: measured in Chrome at 360, the registration's
+         confirmation, whose sentence is long, squeezed its tick to 13px by 18,4. jsdom lays
+         nothing out, so this holds the declaration the measurement chose. */
+      expect(rule.style.getPropertyValue('flex-shrink'), rule.selectorText).toBe('0')
+    }
+  })
+})
