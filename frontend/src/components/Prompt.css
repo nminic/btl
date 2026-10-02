@@ -89,6 +89,26 @@
 }
 
 /*
+ * THE SENTENCE THAT SAYS A REQUEST IS OUT, under the buttons.
+ *
+ * Under them rather than over, so that its words arriving move nothing: a sheet whose buttons
+ * dropped a line the instant one of them was pressed would put the next one under the thumb that
+ * had just pressed. The colour is the text colour and not the muted one - it is the one thing on
+ * the sheet that changed, so it must be read at full contrast (WCAG 2.2 AA, 1.4.3).
+ *
+ * The region is on the sheet from the start and empty until it has something to say, so nothing
+ * is added to the page together with its words. Empty, it takes no room at all.
+ */
+.prompt__working {
+  margin: var(--space-12) 0 0;
+  color: var(--text);
+}
+
+.prompt__working:empty {
+  margin: 0;
+}
+
+/*
  * NOTHING MOVES FOR A READER WHO HAS ASKED FOR THAT.
  *
  * The sheet fades in, which is the one piece of motion here and is what tells a sighted reader

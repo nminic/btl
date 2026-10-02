@@ -221,7 +221,10 @@ function Row({
          sonde holding the answer unresolved found: the row's own button was not disabled either,
          so a second "Aktiviraj" reopened this same question while the first was still in the
          air, and a second „Da" sent a second, identical body. Moved here, the sheet stays up for
-         exactly as long as `activating` keeps the button below from reopening it. */
+         exactly as long as `activating` keeps the button below from reopening it - and, since
+         02.10.2026, as long as `activating` keeps the sheet's OWN buttons and Escape from putting
+         it away: it is handed to `Prompt` as `working`, and the sheet closes here and nowhere
+         else once a request is out. */
       setAsking(null)
 
       if (answer.got === 'done') {
@@ -432,6 +435,12 @@ function Row({
 
               void activate(what)
             }}
+            /* THE SHEET REFUSES THIS ITSELF WHILE ITS REQUEST IS OUT, and nothing here asks again:
+               `working` is the one fact it needs, and a second guard on this line would be a reserve
+               that hid the sheet's own from every case about it (`components/Prompt.test.tsx` asks the
+               sheet alone for that reason). „Ne", „Odustani" and Escape put the sheet away only
+               while nothing has been sent (owner, 02.10.2026). */
+            working={activating}
             onDecline={() => setAsking(null)}
           />
         )}
@@ -465,6 +474,7 @@ function Asking({
   inHisCurrency,
   onChoose,
   onDecline,
+  working,
 }: {
   one: MembershipDue
   season: number
@@ -474,10 +484,16 @@ function Asking({
   inHisCurrency: (amount: number) => string
   onChoose: (what: Sending) => void
   onDecline: () => void
+  /** Whether the request one of the answers started is still out with the server. */
+  working: boolean
 }) {
   const { t } = useI18n()
 
   const whose = `${one.firstName} ${one.lastName}`
+  /* THE PORTAL'S OWN SENTENCE FOR A REQUEST THAT IS OUT, and not a new one: `results.sending` is
+     read by the two forms that send a result, and four other keys carry the same words. Handed to
+     the sheet as text because the sheet draws none of its own. */
+  const workingSays = working ? t('results.sending') : undefined
 
   if (what.press === 'asksAboutTheGround') {
     return (
@@ -501,6 +517,7 @@ function Asking({
         ]}
         decline={t('review.cancel')}
         onDecline={onDecline}
+        working={workingSays}
       >
         <p>{t('verification.askGroundExpected', { amount: inHisCurrency(one.expected) })}</p>
         <p>{t('verification.askGroundBalance', { amount: inHisCurrency(one.balance) })}</p>
@@ -530,6 +547,7 @@ function Asking({
         choices={[{ label: t('admin.yes'), onChoose: () => onChoose(what.sending) }]}
         decline={t('admin.no')}
         onDecline={onDecline}
+        working={workingSays}
       >
         <p>{t('verification.askExemptionWhose', { whose, season })}</p>
         <p>{t('verification.askGroundExpected', { amount: inHisCurrency(one.expected) })}</p>
@@ -546,6 +564,7 @@ function Asking({
       choices={[{ label: t('admin.yes'), onChoose: () => onChoose(what.freeOfTheFee) }]}
       decline={t('admin.no')}
       onDecline={onDecline}
+      working={workingSays}
     >
       <p>{t('verification.askExemptionWhose', { whose, season })}</p>
       <p>{t('verification.askGroundExpected', { amount: inHisCurrency(one.expected) })}</p>
@@ -600,7 +619,10 @@ function Asking({
  * <p><b>„NE" NEVER TAKES A ROW OFF THE LIST.</b> Owner, over the whole specification: „Odluka NE
  * ni ovde niti u ostatku opisa funkcionalnosti ne brise red iz tabele za aktivaciju, samo odlaze
  * odluku dok se stvari ne rese van portala." So declining sends nothing at all - no request
- * leaves the screen - and that is measured rather than merely intended.
+ * leaves the screen - and that is measured rather than merely intended. <b>It is available until a
+ * request is out and not after</b> (owner, 02.10.2026): once „Da" or either ground has been
+ * pressed, „Ne", „Odustani" and Escape do nothing until the answer arrives and the sheet closes
+ * itself, because by then putting it away would only look like taking the answer back.
  *
  * <p><b>AND AN EXEMPTION IS FOR ONE SEASON.</b> Owner, in capitals: „BESPLATNI CLANOVI NISU
  * BESPLATNI DOZIVOTNO. Admin moze da odobri (jednu po jednu) godinu clanarine, ne postaju ljudi
@@ -630,6 +652,10 @@ export function Payments() {
   return (
     <TheList
       key={readAgain}
+      /* WHETHER THIS DRAWING IS THE ONE AFTER AN ACTIVATION, and it is the count that says so:
+         every remount but the first is one, because nothing else moves it. Read by the search box
+         below, which is where the focus goes when a row has left the list. */
+      afterAnActivation={readAgain > 0}
       onActivated={() => {
         /* BOTH NAMES, and the second is not tidiness. An activation draws a member number and
            sets `competitor.active`, which is what `admin/AdminMembers.tsx` reads under
@@ -643,8 +669,21 @@ export function Payments() {
   )
 }
 
-/** The reading half, so the key above has something to remount. */
-function TheList({ onActivated }: { onActivated: () => void }) {
+/**
+ * The reading half, so the key above has something to remount.
+ *
+ * @param afterAnActivation whether this is the drawing the list gets once an activation has gone
+ *                          through, which is the one time the keyboard has nowhere left to be:
+ *                          the row it was on has left the list and the remount took the button
+ *                          with it. See the search box below for where it goes instead.
+ */
+function TheList({
+  onActivated,
+  afterAnActivation,
+}: {
+  onActivated: () => void
+  afterAnActivation: boolean
+}) {
   const { t } = useI18n()
   const [search, setSearch] = useState('')
   const state = usePaymentsDue()
@@ -684,10 +723,25 @@ function TheList({ onActivated }: { onActivated: () => void }) {
                   <div className="rankings__filters">
                     <label className="rankings__field rankings__field--wide" htmlFor={SEARCH_ID}>
                       <span>{t('verification.paymentsSearch')}</span>
+                      {/* WHERE THE FOCUS GOES WHEN THE ROW IT WAS ON HAS LEFT THE LIST (WCAG 2.2
+                          AA, 2.4.3). A success remounts the whole list (`key` above), so the
+                          „Aktiviraj" the sheet had put the focus back on goes with its row and the
+                          focus would fall to the document - for a refusal nothing is remounted and
+                          the sheet's own cleanup puts it back, which is why this is asked only of
+                          the drawing after a success.
+
+                          THE PRECEDENT IS `admin/AdminMembers.tsx`, where a deleted row hands the
+                          focus to this same search box, and `RowActions.deleteRow`, where it goes
+                          to the one control that cannot be the row just deleted. Done HERE and at
+                          mount rather than where the answer arrives, because the box that is on
+                          the screen when the answer arrives is the old one and the remount destroys
+                          it too: this one is the box that stays. Never on the first drawing, so
+                          arriving on the screen is not taken for a row leaving it. */}
                       <input
                         id={SEARCH_ID}
                         type="search"
                         value={search}
+                        autoFocus={afterAnActivation}
                         onChange={(event) => setSearch(event.target.value)}
                       />
                     </label>
