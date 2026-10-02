@@ -511,7 +511,12 @@ class KeysAndIndexesTest extends DatabaseTest {
 			   PDL P10a, 22.09.2026 took them away with the tab (V31). */
 			new Index("comment_submission_event_idx", "the waiting comments about one event"),
 			new Index("comment_submission_competitor_idx", "the waiting comments one member has sent in"),
-			new Index("verification_comment_submission_idx", "the queue row a waiting comment is standing in"));
+			new Index("verification_comment_submission_idx", "the queue row a waiting comment is standing in"),
+			/* V53. The owner's „nov tekst o sebi se ODBIJA dok prethodni ceka" said by the database,
+			   so two requests that both asked before either wrote cannot both be told yes. */
+			new Index("verification_one_text_waits_per_member",
+					"one text of one member waits for a moderator at a time; a partial index because a"
+							+ " unique constraint takes no WHERE"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

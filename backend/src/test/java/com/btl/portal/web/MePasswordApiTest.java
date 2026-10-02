@@ -599,6 +599,125 @@ class MePasswordApiTest {
 		assertThat(howManySessionsOf(ME))
 				.as("a refused request still signed the member out of his other devices")
 				.isEqualTo(3);
+
+		/* AND THE LOCK IS LEFT EXACTLY AS IT STOOD. Since the misses are forgotten the moment
+		   the old password is proved rather than the moment a new one is stored, „proved" has
+		   to mean the decision said WELCOME and nothing less: a shut account answers DO_NOTHING
+		   to the right password too, and forgetting there would open the door the line above
+		   keeps shut. */
+		assertThat(missesAndLockOf(ME))
+				.as("a shut account was let off its lock by the right old password")
+				.isEqualTo(SignIn.ENOUGH_MISSES_TO_LOCK + " locked");
+	}
+
+	/**
+	 * THE MISSES ARE FORGOTTEN THE MOMENT THE OLD PASSWORD IS PROVED, EVEN WHEN THE NEW ONE IS
+	 * REFUSED.
+	 *
+	 * <p>Until this branch they were forgotten only by the statement that stores a new password,
+	 * so a member with nine misses behind him who typed his old password right and chose a
+	 * password the policy refuses was answered 400 and left ONE miss from the lock - measured, the
+	 * count stayed at nine. He had just proved he is the owner, and {@code SignInApi} already says
+	 * what that proof means for the count: „they count guesses at an account, and somebody who has
+	 * just signed in was not guessing."
+	 *
+	 * <p><b>Both refusals of the policy and not only the leaked one</b>, which is derived and not
+	 * an owner's word: a password that is too short and one that has leaked are refused by the same
+	 * policy after the same proof, and the reason the count goes is the proof.
+	 *
+	 * <p><b>Nine and not nought</b>, because nought is also what a count that was never touched
+	 * reads; and SOMEBODY ELSE's nine is read back beside his, so a statement that lost its account
+	 * cannot pass by forgetting everybody's.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			A_LEAKED_PASSWORD + ", " + MePasswordApi.THE_PASSWORD_HAS_LEAKED,
+			"kratka, " + MePasswordApi.THE_FORM_IS_NOT_COMPLETE })
+	void provingTheOldPasswordForgetsTheMissesEvenWhenTheNewOneIsRefused(String refusedNew,
+			String reason) throws Exception {
+
+		missed(ME, SignIn.ENOUGH_MISSES_TO_LOCK - 1, null);
+		missed(SOMEBODY_ELSE, SignIn.ENOUGH_MISSES_TO_LOCK - 1, null);
+
+		MockHttpServletResponse answer = asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, refusedNew, refusedNew));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(reason);
+
+		assertThat(missesAndLockOf(ME))
+				.as("the member proved his old password and is still one miss from the lock")
+				.isEqualTo("0 open");
+		assertThat(missesAndLockOf(SOMEBODY_ELSE))
+				.as("somebody else's misses were forgotten by a password he never typed")
+				.isEqualTo((SignIn.ENOUGH_MISSES_TO_LOCK - 1) + " open");
+
+		assertThat(new StoredPassword().matches(MY_OLD_PASSWORD, passwordHashOf(ME)))
+				.as("a refused new password was stored anyway")
+				.isTrue();
+	}
+
+	/**
+	 * AND THE SPENT LOCK GOES WITH THEM, the other column of the same forgetting.
+	 *
+	 * <p>A lock that has run out is still written on the row together with the ten misses that put
+	 * it there ({@code account_locked_only_after_enough_failures}, V18), and the success case already
+	 * clears both. A refused new password after the same proof must clear both as well, or the next
+	 * miss starts from somebody else's guessing.
+	 */
+	@Test
+	void aSpentLockGoesWithTheMissesWhenTheNewPasswordIsRefused() throws Exception {
+		missed(ME, SignIn.ENOUGH_MISSES_TO_LOCK, Instant.now().minus(Duration.ofMinutes(1)));
+
+		MockHttpServletResponse answer = asking(theSessionIAskFrom(),
+				body(MY_OLD_PASSWORD, A_LEAKED_PASSWORD, A_LEAKED_PASSWORD));
+
+		assertThat(reasonIn(answer)).isEqualTo(MePasswordApi.THE_PASSWORD_HAS_LEAKED);
+
+		assertThat(missesAndLockOf(ME))
+				.as("the misses went and the lock they left behind stayed, or the other way round")
+				.isEqualTo("0 open");
+	}
+
+	/**
+	 * BUT A FORM REFUSED BEFORE THE OLD PASSWORD IS JUDGED PROVES NOTHING, AND FORGETS NOTHING.
+	 *
+	 * <p>The form is asked about before the old password is (a box left out, or the two new ones not
+	 * agreeing), so a request refused there has proved nothing - and the second row sends the RIGHT
+	 * old password, which is the whole point of it: right, but never asked about.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"'', moja.nova.lozinka.2027, moja.nova.lozinka.2027",
+			"moja.stara.lozinka.2026, moja.nova.lozinka.2027, druga.nova.lozinka.2027" })
+	void aFormRefusedBeforeTheOldPasswordIsJudgedForgetsNothing(String old, String password,
+			String repeat) throws Exception {
+
+		missed(ME, SignIn.ENOUGH_MISSES_TO_LOCK - 1, null);
+
+		MockHttpServletResponse answer = asking(theSessionIAskFrom(),
+				body(old.isEmpty() ? null : old, password, repeat));
+
+		assertThat(reasonIn(answer)).isEqualTo(MePasswordApi.THE_FORM_IS_NOT_COMPLETE);
+
+		assertThat(missesAndLockOf(ME))
+				.as("misses were forgotten by a request that never had the old password judged")
+				.isEqualTo((SignIn.ENOUGH_MISSES_TO_LOCK - 1) + " open");
+	}
+
+	/** Writes a count of misses and, where given, the moment a lock ends. */
+	private void missed(String email, int misses, Instant lockedUntil) {
+		db.sql("update account set failed_sign_ins = ?, locked_until = ? where id = ?")
+				.params(misses, lockedUntil == null ? null : Timestamp.from(lockedUntil),
+						accountOf(email))
+				.update();
+	}
+
+	/** The count of misses and whether a lock is written on the row, as one string. */
+	private String missesAndLockOf(String email) {
+		return db.sql("select failed_sign_ins || ' ' || case when locked_until is null then 'open'"
+						+ " else 'locked' end from account where id = ?")
+				.param(accountOf(email)).query(String.class).single();
 	}
 
 	/**
