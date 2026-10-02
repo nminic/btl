@@ -38,9 +38,10 @@
 #   - Pour out of a QA whose schema is not that same thing. If the two checkouts sit on different
 #     commits, QA has columns production does not, and a COPY would put them in the wrong place
 #     or fail halfway. That is a finding rather than something to work around.
-#   - Pour into a database that carries ANY row its own migrations did not put there. See
-#     pour-from-qa/row-counts.sql for why that is what "empty" has to mean, and why it is also
-#     what stops a second run from doubling the data.
+#   - Pour into a database in which any table holds more or fewer rows than its own migrations
+#     left. See pour-from-qa/row-counts.sql for why that is what "empty" has to mean, what
+#     counting rows does and does not prove, and why it is also what stops a second run from
+#     deleting whatever was entered on production after the first.
 #   - Skip a table it cannot carry. If the foreign keys form a cycle, no load order exists, and
 #     this stops and names the tables rather than pouring the rest.
 #
@@ -59,17 +60,34 @@
 #
 # THE DATABASE SIDE IS ONE TRANSACTION, and that is the real way back rather than the backup.
 # TRUNCATE is transactional in PostgreSQL, so a failure anywhere - a constraint, a disconnect, a
-# full disk - rolls the whole thing back and leaves production byte for byte as it was. A
-# pg_dump taken beforehand is still worth having, but it covers a different case: this tool being
-# WRONG, not this tool failing.
+# full disk - rolls every ROW back and leaves the tables as they were. NOT EVERYTHING: a
+# sequence is not transactional, so a failure after the first setval leaves the sequences where
+# QA has them instead of where they were. The setvals are the LAST statements of the transaction,
+# so a failure before them touches no sequence at all, and one after them leaves a sequence AHEAD
+# of its table, which spends numbers and collides with nothing; the next pour sets every one of
+# them again. A pg_dump taken beforehand is still worth having, but it covers a different case:
+# this tool being WRONG, not this tool failing.
 #
 # ONE COPY PER TABLE IS A CONDITION OF CORRECTNESS, NOT A WAY OF GOING FASTER, and it is measured
 # rather than argued. See the paragraph on self references in pour-from-qa/load-order.sql.
 #
-# FOREIGN KEYS STAY ENFORCED THROUGHOUT. `pg_dump --data-only` would need --disable-triggers to
-# load in an order it does not control, and the header of proveri-qa.sh records what turning
-# those off means: measured, "a row naming a role that does not exist went into account". So the
-# order is computed instead, out of pg_constraint, and every key checks every row.
+# FOREIGN KEYS STAY ENFORCED THROUGHOUT, with the one exception written out right below.
+# `pg_dump --data-only` would need --disable-triggers to load in an order it does not control, and
+# the header of proveri-qa.sh records what turning those off means: measured, "a row naming a role
+# that does not exist went into account". So the order is computed instead, out of pg_constraint,
+# and every key checks every row.
+#
+# THE EXCEPTION IS A CONSTRAINT THAT IS NOT VALID. Such a constraint is enforced on every insert
+# and ignored for the rows that were already there, and QA holds a row that predates one: the
+# owner's own membership has no trail of who freed it from the fee, and the two constraints that
+# ask for one were added `not valid` for that reason. COPY is an insert, so the pour would stop on
+# that row. The owner decided on 02.10.2026, between three outcomes offered, that the tool copies
+# QA faithfully: each such constraint is lifted inside the same transaction before the first
+# write and put back after the last, again as not valid. Production ends exactly as QA is, the row
+# stays without its trail, and nothing is invented. WHICH constraints is asked of the catalogue
+# (pour-from-qa/not-valid-constraints.sql) and written nowhere here, so one that arrives later is
+# carried too, and the answer is asked again after the commit and compared. Every other
+# constraint, foreign keys included, checks every row.
 
 set -eu
 
@@ -97,7 +115,7 @@ PROD_NAME=${PROD_POSTGRES_DB:-btl}
 QA_ROLE=${QA_POSTGRES_USER:-btl_qa}
 QA_NAME=${QA_POSTGRES_DB:-btl_qa}
 
-# Each of the three named ONCE, here, and used through these names below. Naming a file twice -
+# Each of the files below is named ONCE, here, and used through these names. Naming a file twice -
 # once to check it is there and again to run it - is a second home for the same fact, and the
 # half that PouringFromQaTest holds is exactly that the script and the folder agree about which
 # files exist. With one mention each, renaming one here and leaving the file alone fails that
@@ -106,16 +124,21 @@ ORDER_SQL="$SQL/load-order.sql"
 COUNTS_SQL="$SQL/row-counts.sql"
 SEQUENCES_SQL="$SQL/sequences.sql"
 LETS_IN_SQL="$SQL/lets-somebody-in.sql"
+NOT_VALID_SQL="$SQL/not-valid-constraints.sql"
+LEAVES_NOTHING_SH="$SQL/leaves-nothing-behind.sh"
 
 [ -f "$PROD_COMPOSE" ] || fail "no $PROD_COMPOSE here; this is run from /opt/btl/deploy"
 [ -d "$MIGRATIONS" ] || fail "no $MIGRATIONS; the checkout beside this deploy is not complete"
-for f in "$ORDER_SQL" "$COUNTS_SQL" "$SEQUENCES_SQL" "$LETS_IN_SQL"; do
-  [ -f "$f" ] || fail "no $f; this tool is a shell script AND its SQL, and half is missing"
+for f in "$ORDER_SQL" "$COUNTS_SQL" "$SEQUENCES_SQL" "$LETS_IN_SQL" "$NOT_VALID_SQL" "$LEAVES_NOTHING_SH"; do
+  [ -f "$f" ] || fail "no $f; this tool is a shell script AND the files beside it, and part is missing"
 done
 
-WORK=$(mktemp -d)
-# shellcheck disable=SC2064
-trap "docker rm -f '$REFERENCE' >/dev/null 2>&1 || true; rm -rf '$WORK'" EXIT
+# WHERE THE WORK FILES LIVE, WHO CAN READ THEM, AND WHAT REMOVES THEM, decided in one place that is
+# measured under signals: see the header of that file. It sets WORK and the traps, and gives the
+# two functions this script reports a failed pour with.
+# shellcheck source=pour-from-qa/leaves-nothing-behind.sh
+. "$LEAVES_NOTHING_SH"
+say "work files, in memory: $WORK. Removed on exit; a SIGKILL leaves them, and then they are yours to remove."
 
 say '--- 1. both stacks are up ---'
 
@@ -158,10 +181,14 @@ want=$(ls "$MIGRATIONS" | sed -n 's/^V\([0-9][0-9]*\)__.*\.sql$/\1/p' | sort -n 
 [ -n "$want" ] || fail "$MIGRATIONS holds no V<number>__*.sql at all, so the checkout is not complete"
 
 docker rm -f "$REFERENCE" >/dev/null 2>&1 || true
-# Reachable only from inside its own container - no port is published and it is removed by the
-# trap above - so it is told to trust the local socket rather than being given a password to
-# hold. Nothing signs in to it but the two `docker exec` calls below.
-docker run -d --name "$REFERENCE" -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=ref \
+# Reachable only from inside its own container - it has NO NETWORK, so not even another container
+# on this host can reach it, and the trap in leaves-nothing-behind.sh removes it on every way out
+# a shell can catch - so it is told to trust the local socket rather than being given a password
+# to hold. Nothing signs in to it but the `docker exec` calls below, and the `pg_isready -h
+# 127.0.0.1` below runs inside it, over a loopback that `none` leaves in place. A SIGKILL leaves
+# it standing, and then it holds nothing but what the migrations seed and nothing can reach it;
+# the `docker rm -f` above takes it away by name on the next run.
+docker run -d --name "$REFERENCE" --network none -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=ref \
   "$IMAGE" >/dev/null
 
 waited=0
@@ -237,7 +264,7 @@ done
 say "both match the reference, $(wc -l < "$WORK/ref.sql") lines each"
 
 say ''
-say '--- 5. production carries nothing its own migrations did not put there ---'
+say '--- 5. production holds as many rows as its own migrations left, table by table ---'
 
 prod_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/prod.counts"
 ref_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/ref.counts"
@@ -245,28 +272,42 @@ ref_sql -F'|' -f - < "$COUNTS_SQL" > "$WORK/ref.counts"
 if ! diff -u "$WORK/ref.counts" "$WORK/prod.counts" > "$WORK/counts.diff"; then
   say 'difference (- what a fresh migration leaves, + what production holds):'
   sed -n '3,$p' "$WORK/counts.diff" | grep -E '^[-+]' || true
-  fail "production is NOT empty: it holds rows its migrations did not write.
-If this pour has already been run, it is finished and must not be run twice - running it again
-is what would double the data. If somebody has been using the portal, stop and decide what to
-keep; this tool will not merge."
+  fail "production is NOT empty: some table holds a different number of rows than its migrations left.
+If this pour has already been run, it is finished and must not be run twice: a second run empties
+every table and fills it from QA again, so it would DELETE whatever was entered on production
+since the first. If somebody has been using the portal, stop and decide what to keep; this tool
+will not merge."
 fi
-say "empty, against $(wc -l < "$WORK/ref.counts") tables that a fresh migration seeds or leaves bare"
+say "the same row count as a fresh migration leaves, in all $(wc -l < "$WORK/ref.counts") tables"
 
 say ''
-say '--- 6. the order the tables may be filled in, asked of the foreign keys ---'
+say '--- 6. what the catalogue says: the order the tables may be filled in, and the constraints that are not valid ---'
 
 qa_sql -F'|' -f - < "$ORDER_SQL" > "$WORK/order"
 [ -s "$WORK/order" ] || fail 'the load order came back empty'
 
-# A table in a cycle comes back with no level. Named rather than skipped.
-if grep -q '|$' "$WORK/order"; then
+# One line per table, `name|level|quoted`. THE NAME IS FOR READING and the third field is the only
+# form in which a table reaches SQL text below: the catalogue's own quote_ident, so a name that
+# needs quotes arrives with them. And the file is read a LINE at a time, never by expanding it
+# unquoted, so a name with a space in it stays one name.
+#
+# A table in a cycle comes back with no level, which is an empty second field. Named rather than
+# skipped.
+if grep -q '^[^|]*||' "$WORK/order"; then
   say 'these tables are in a foreign key cycle, so no order exists for them:'
-  grep '|$' "$WORK/order" | sed 's/|$//' | sed 's/^/  /'
+  grep '^[^|]*||' "$WORK/order" | cut -d'|' -f1 | sed 's/^/  /'
   fail 'the foreign keys form a cycle; nothing was poured and nothing was skipped'
 fi
 
-TABLES=$(cut -d'|' -f1 "$WORK/order" | tr '\n' ' ' | sed 's/ *$//')
-say "$(printf '%s' "$TABLES" | wc -w) tables, deepest level $(cut -d'|' -f2 "$WORK/order" | sort -n | tail -1)"
+say "$(wc -l < "$WORK/order") tables, deepest level $(cut -d'|' -f2 "$WORK/order" | sort -n | tail -1)"
+
+# THE CONSTRAINTS THAT ARE NOT VALID, asked of production here and not at the pour, so that --check
+# proves the file runs and shows what will be lifted. Why they have to be lifted, why production
+# can be asked, and what a row of each kind is, is in not-valid-constraints.sql.
+prod_sql -F'|' -f - < "$NOT_VALID_SQL" > "$WORK/not-valid"
+lifted=$(grep -c '^drop|' "$WORK/not-valid" || true)
+say "$lifted constraints are not valid, on production as on QA. They are lifted for the pour and put back, still not valid:"
+sed -n 's/^drop|/  /p' "$WORK/not-valid"
 
 say ''
 say '--- 7. where the photographs are, and where they will go ---'
@@ -316,26 +357,53 @@ say ''
 say '--- 9. the pour, as one transaction ---'
 
 STREAM="$WORK/pour.sql"
-: > "$STREAM"
 {
   printf 'begin;\n'
+  # The constraints that are not valid step aside BEFORE anything is written, in this very
+  # transaction, so that a failure anywhere puts them back with everything else. The rows are
+  # `drop|<statement>`; the statement is kept whole, bars included.
+  sed -n 's/^drop|//p' "$WORK/not-valid"
   # Every table in ONE truncate: a truncate must name every table a foreign key points from, and
   # naming all of them is how that is satisfied without CASCADE, which would widen silently.
   # No RESTART IDENTITY on purpose - the sequences take QA's positions below, not 1.
-  printf 'truncate table %s;\n' "$(printf '%s' "$TABLES" | sed 's/ /, /g')"
-} >> "$STREAM"
+  printf 'truncate table %s;\n' "$(cut -d'|' -f3 "$WORK/order" | tr '\n' ',' | sed 's/,$//')"
+} > "$STREAM"
 
-for table in $TABLES; do
-  printf 'copy public.%s from stdin;\n' "$table" >> "$STREAM"
-  docker exec "$QA_POSTGRES" psql -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" \
-    -c "copy public.$table to stdout" >> "$STREAM" \
-    || fail "reading $table out of QA did not pass; nothing has been written to production"
-  printf '\\.\n' >> "$STREAM"
-done
+# ALL OF QA IS READ IN ONE SESSION, INSIDE ONE REPEATABLE READ TRANSACTION. Forty-nine commands of
+# their own would be forty-nine snapshots, and a row written to QA between two of them could land
+# as a child whose parent was read a moment earlier. The session is a psql script written here:
+# for each table, in the order above, the line production needs in front of that table's rows, the
+# rows themselves, and the line that ends them; then the sequence positions, read inside the same
+# transaction; then the end. `\qecho` writes to the same place COPY does, so the three interleave
+# in the order they are written in.
+#
+# The lines are a here-document with nothing indented, on purpose: indentation would be part of
+# every line. A `\\` in it is one `\` in the file, and the `\\` inside the quotes of \qecho is the
+# one backslash of the `\.` that ends a COPY.
+QA_SESSION="$WORK/qa-session.sql"
+{
+  printf 'begin isolation level repeatable read read only;\n'
+  while IFS='|' read -r _ _ quoted; do
+    cat <<EOF
+\\qecho 'copy public.$quoted from stdin;'
+copy public.$quoted to stdout;
+\\qecho '\\\\.'
+EOF
+  done < "$WORK/order"
+  cat "$SEQUENCES_SQL"
+  printf 'commit;\n'
+} > "$QA_SESSION"
 
-# Where every sequence stands on QA, written out as the statements that put production there.
-qa_sql -f - < "$SEQUENCES_SQL" >> "$STREAM" \
-  || fail 'reading the sequence positions out of QA did not pass; nothing has been written to production'
+# -q so that the transaction's own BEGIN and COMMIT are not printed into what is poured. What psql
+# complains of goes to a file and is shown by report_failure, which leaves out the lines that can
+# carry a member's row.
+docker exec -i "$QA_POSTGRES" psql -q -v ON_ERROR_STOP=1 -U "$QA_ROLE" -d "$QA_NAME" -tA -f - \
+  < "$QA_SESSION" >> "$STREAM" 2> "$WORK/qa.err" \
+  || { report_failure "$WORK/qa.err" 'QA'; fail 'reading QA did not pass; nothing has been written to production'; }
+
+# ...and they come back, still not valid, after the last row and the last sequence and before the
+# commit. A constraint that cannot come back rolls the whole pour back, which is the right answer.
+sed -n 's/^restore|//p' "$WORK/not-valid" >> "$STREAM"
 
 printf 'commit;\n' >> "$STREAM"
 
@@ -343,10 +411,10 @@ printf 'commit;\n' >> "$STREAM"
 # code of psql is invisible.
 if ! docker exec -i "$PROD_DB" psql -v ON_ERROR_STOP=1 -U "$PROD_ROLE" -d "$PROD_NAME" \
      -f - < "$STREAM" > "$WORK/pour.log" 2>&1; then
-  say 'the last lines of what production said:'
-  tail -20 "$WORK/pour.log" | sed 's/^/  /'
-  fail 'the pour did not pass. It was one transaction, so production is exactly as it was before
-this ran, and the photographs copied in step 8 point at nothing until it is run again.'
+  report_failure "$WORK/pour.log" 'production'
+  fail 'the pour did not pass. It was one transaction, so no row on production changed (a sequence
+is the one thing a transaction does not take back: see the header), and the photographs copied in
+step 8 point at nothing until it is run again.'
 fi
 say 'poured'
 
@@ -362,6 +430,17 @@ if ! diff -u "$WORK/qa.after" "$WORK/prod.after" > "$WORK/after.diff"; then
   fail 'production does not hold what QA holds, although the transaction committed'
 fi
 
+# And the constraints that were not valid are back, and not valid. The question of step 6, asked
+# again: the same answer, or the pour is reported as wrong. A restore that brought one back as
+# valid would not be in this list at all, and that is the difference this shows.
+prod_sql -F'|' -f - < "$NOT_VALID_SQL" > "$WORK/not-valid.after"
+if ! diff -u "$WORK/not-valid" "$WORK/not-valid.after" > "$WORK/not-valid.diff"; then
+  say 'difference (- before the pour, + after it):'
+  sed -n '3,$p' "$WORK/not-valid.diff" | grep -E '^[-+]' || true
+  fail 'the constraints that were not valid are not what they were before the pour, although the transaction committed'
+fi
+say "the $lifted constraints that were not valid are back, and still not valid"
+
 say ''
 say 'WHAT CAME OVER'
 awk -F'|' '$2 > 0 { printf "  %-40s %s\n", $1, $2 }' "$WORK/prod.after"
@@ -374,29 +453,44 @@ say "  $(awk -F'|' '$2 == 0' "$WORK/prod.after" | wc -l) further tables are empt
 # MessageDigest over the secret with nothing from the environment in it - so a poured row
 # answers on production exactly as it did on QA. Said out loud rather than quietly left behind,
 # because leaving it out would be this tool deciding something nobody asked it to.
+#
+# THE SPLIT BETWEEN WHAT CAN BE EMPTIED AND WHAT CANNOT IS DERIVED TOO. lets-somebody-in.sql
+# returns, with each table, the column that matched, and the prose below speaks of those COLUMNS and
+# points at the list. It names no table, so a further table that carries a token_hash arrives in
+# the list marked as such and the sentence about emptying stays true without anybody remembering
+# to edit it. A further KIND of column is a different matter and is a decision, not a line in a
+# report: PouringFromQaTest fails on the day one appears.
 say ''
-LETS_IN=$(prod_sql -F'|' -f - < "$LETS_IN_SQL")
+prod_sql -F'|' -f - < "$LETS_IN_SQL" > "$WORK/lets-in"
 say 'AND WHAT OF IT LETS SOMEBODY IN. These tables hold what the portal checks a visitor'
-say 'against, and their rows now answer on production exactly as they did on QA:'
-for t in $LETS_IN; do
-  say "  $t: $(awk -F'|' -v t="$t" '$1 == t { print $2 }' "$WORK/prod.after")"
-done
+say 'against, each with the column it is checked by, and their rows now answer on production'
+say 'exactly as they did on QA:'
+while IFS='|' read -r t checked_by; do
+  say "  $t ($checked_by): $(awk -F'|' -v t="$t" '$1 == t { print $2 }' "$WORK/prod.after")"
+done < "$WORK/lets-in"
 say ''
-say 'TWO OF THESE END DIFFERENTLY, and the difference decides what you have to do next.'
+say 'THEY END IN TWO DIFFERENT WAYS, and the difference decides what you have to do next.'
 say ''
-say '  THE TOKENS can be ended. A browser still holding a QA session is signed in here, and a'
-say '  reset link mailed from QA works here. Emptying account_session, password_reset_token and'
-say '  email_verification_token ends every one of them and costs nothing but a fresh sign-in.'
+say '  THE ROWS CHECKED BY token_hash can be ended. A browser still holding a QA session is signed'
+say '  in here, and a link mailed from QA works here. Emptying a table listed above with that'
+say '  column ends every one of them, and costs the people holding one a fresh sign-in or a fresh'
+say '  link.'
 say ''
-say '  THE PASSWORDS CANNOT. account.password_hash came over with every other column, it is what'
-say '  signing in is checked against, and no amount of emptying touches it: a password is not in'
-say '  any of those three tables. EVERY PASSWORD THAT WORKED ON QA WORKS HERE, from the first'
-say '  minute. Any that was chosen as a throwaway for testing has to be CHANGED before this'
-say '  portal is open to anybody.'
+say '  THE ROWS CHECKED BY password_hash CANNOT. The column came over with every other column of'
+say '  its table, it is what signing in is checked against, and emptying a token table touches'
+say '  none of it. EVERY PASSWORD THAT WORKED ON QA WORKS HERE, from the first minute. Any that'
+say '  was chosen as a throwaway for testing has to be CHANGED before this portal is open to'
+say '  anybody.'
 say ''
 say '  AND THE SUPERADMIN IS THE ONE TO DO FIRST. compose.qa.yml says BTL_SUPERADMIN_EMAIL is'
 say '  deliberately not separated between the two stacks, so the same address holds the role on'
 say '  both, and its password here is whatever it was on QA.'
+say ''
+say '  AND WHAT A MEMBER MAY DO CAME OVER TOO. account_admin_right says which administrative'
+say '  rights each account holds, and verification.right_code says which right opens each row of'
+say '  the verification queues. EVERY RIGHT GRANTED ON QA APPLIES ON PRODUCTION FROM THE FIRST'
+say '  MINUTE, including any that was granted only to try a moderator screen out. Look at who'
+say '  holds what before this portal is open to anybody.'
 
 say ''
 say 'DONE. This tool must not be run again against this database, and it will refuse to be.'
