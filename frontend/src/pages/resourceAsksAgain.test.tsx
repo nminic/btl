@@ -656,4 +656,42 @@ describe('the keyboard, when what failed is read again and works', () => {
        the keyboard: it was not the one that was pressed. */
     expect(screen.getByRole('main')).toHaveFocus()
   }, SLOW)
+
+  it('is not taken from a reader who left the button of the panel while it asked', async () => {
+    /* What the disc reader answers, kept before the server is put in front of it, as in the case of
+       the whole screen above: the answer that is held is the REAL one. */
+    const disc = globalThis.fetch
+    let letGo: () => void = () => undefined
+
+    theServerAnswers({ [INBOX]: () => answeredWith(500) })
+    renderAt('/sr', 'competitor', MEMBER)
+
+    const user = setupUser()
+    const { panel } = await openThePanelOfTheEnvelope(user)
+    const button = await panel.findByRole('button', { name: `${sr.data.retry}: ${sr.shell.messages}` })
+
+    answers.set(
+      INBOX,
+      () =>
+        new Promise<Response>((resolve) => {
+          letGo = () => {
+            resolve(disc(INBOX))
+          }
+        }),
+    )
+    button.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(loadingWords()).toHaveLength(1))
+
+    /* The reader goes on to the link at the foot of the panel while it is still asking. */
+    const elsewhere = panel.getByRole('link', { name: sr.shell.allMessages })
+
+    elsewhere.focus()
+    act(() => {
+      letGo()
+    })
+
+    expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
+    expect(elsewhere, 'the focus was taken from where the reader had put it').toHaveFocus()
+  }, SLOW)
 })

@@ -107,16 +107,21 @@ function ThePanel({
      Enter pressed again by a reader who did not hear it does not open the first message, which
      the first link would. `Unreadable` says that the button left with the focus on it; a button
      that did not (the reader moved on, or the screen of messages was the one pressed and this
-     panel was told) is not followed. No check that the focus is nowhere before it is moved, as
-     `components/Resource.tsx` makes: nothing else in this panel takes the focus in the stroke that
-     draws it, and a branch no case could take is a branch that hides what it would have done. */
+     panel was told) is not followed.
+
+     **Two things `components/Resource.tsx` does that this does not, and why.** It checks that the
+     focus is nowhere before it moves it: nothing else in this panel takes the focus in the stroke
+     that draws it. And it drops the news when what it asked for fails again: here the button is
+     taken out only in the stroke in which the panel stops being unreadable (it is drawn if and only
+     if `unreadable` is there), and that same stroke is where the news is used, so it never outlives
+     the drawing it was told in; `Resource` is a loader between the button and the answer when
+     several files are asked for, and this is not. A branch no case could take is a branch that
+     hides what it would have done. */
   const title = useRef<HTMLParagraphElement>(null)
   const keptTheFocus = useRef(false)
 
   useLayoutEffect(() => {
-    if (unreadable !== undefined) {
-      keptTheFocus.current = false
-    } else if (keptTheFocus.current) {
+    if (keptTheFocus.current) {
       keptTheFocus.current = false
       title.current?.focus({ preventScroll: true })
     }

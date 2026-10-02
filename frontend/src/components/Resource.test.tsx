@@ -487,4 +487,83 @@ describe('Resource, when what failed is read again and works', () => {
     expect(screen.getByText('Fruškogorski maraton')).toBeVisible()
     expect(document.body, 'a press on the first button moved the keyboard on the strength of the second').toHaveFocus()
   })
+
+  it('draws nothing in front of a whole screen that was read again, because it goes to the landmark', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+
+    expect(
+      screen.getByRole('main').children,
+      'a node for the keyboard was drawn on a screen that has the landmark to go to',
+    ).toHaveLength(1)
+  })
+
+  it('puts it there once, and not again when what is drawn is drawn again', async () => {
+    renderWithI18n(<Harness first={aFailedRead()} />)
+    await pressWithTheKeyboard()
+
+    act(() => {
+      give(READY)
+    })
+    expect(screen.getByRole('main')).toHaveFocus()
+
+    /* The reader lets go of it, with a click on nothing or with Escape: nobody is standing anywhere. */
+    act(() => {
+      screen.getByRole('main').blur()
+    })
+    expect(document.body).toHaveFocus()
+
+    act(() => {
+      give({ status: 'ready', data: 'drugi odgovor' })
+    })
+
+    expect(screen.getByText('drugi odgovor')).toBeVisible()
+    expect(
+      document.body,
+      'a later drawing took the keyboard again, for a press that was answered long ago',
+    ).toHaveFocus()
+  })
+
+  it('puts it in front of the part that was pressed, and not of one that came back before it', async () => {
+    const giveToPart: Record<string, (next: ResourceState<string>) => void> = {}
+
+    function Part({ label }: { label: string }) {
+      const [state, setState] = useState<ResourceState<string>>(aFailedRead())
+
+      giveToPart[label] = setState
+
+      return (
+        <Resource<string> state={state} inline label={label}>
+          {(data) => <p>{`${label}: ${data}`}</p>}
+        </Resource>
+      )
+    }
+
+    renderWithI18n(
+      <main tabIndex={-1}>
+        <Part label="Trke" />
+        <Part label="Rezultati" />
+      </main>,
+    )
+
+    const user = setupUser()
+
+    /* The second is the one that tells: the first part's node is already in the document by then. */
+    for (const label of ['Trke', 'Rezultati']) {
+      screen.getByRole('button', { name: `${sr.data.retry}: ${label}` }).focus()
+      await user.keyboard('{Enter}')
+      act(() => {
+        giveToPart[label]?.(READY)
+      })
+
+      const kept = document.activeElement
+
+      expect(kept, `the keyboard did not go to the part called ${label}`).toHaveTextContent(label)
+      expect(kept?.nextElementSibling).toHaveTextContent(`${label}: Fruškogorski maraton`)
+    }
+  })
 })
