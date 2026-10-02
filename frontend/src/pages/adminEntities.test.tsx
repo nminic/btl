@@ -951,6 +951,29 @@ describe('the races of an event', () => {
     ])
   })
 
+  it('describes the name and the day of a row by their own sentences too', async () => {
+    /* The two cells that are not measures have one sentence each, and the day is drawn by the
+       calendar control and not by the box the others are, which takes the pointer to the sentence
+       through a prop of its own (`DatePicker.tsx`, `describedBy`). Both are asked, because a
+       description wired into the plain box alone leaves the day marked and silent. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const row = lastRow()
+    const name = row.getByLabelText(/^Trka, /)
+    const day = row.getByLabelText(/^Datum, /)
+
+    await user.clear(name)
+    await user.clear(day)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(sr.admin.race.wrong.name)).toBeVisible()
+    expect(name).toHaveAccessibleDescription(sr.admin.race.wrong.name)
+    expect(day).toHaveAccessibleDescription(sr.admin.race.wrong.date)
+  })
+
   it('takes the sentence away with the mistake', async () => {
     const user = await openFirstEvent()
 
