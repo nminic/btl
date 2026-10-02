@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -67,6 +68,18 @@ class PouringFromQaScriptTest {
 	 */
 	private static final Pattern WORK_IS_GIVEN_A_VALUE = Pattern.compile(
 			"(^|[\\s;&|({\"'])(?:(?:export|readonly|declare|local|typeset)\\s+)*WORK\\+?=|\\bunset\\s+WORK\\b");
+
+	/**
+	 * The command {@code cp}, by its name: not the end of a longer word, of a path or of an option.
+	 * Every line of the script's code that holds it is a line that copies something.
+	 */
+	private static final Pattern CP_THE_COMMAND = Pattern.compile("(?<![\\w./-])cp(?![\\w-])");
+
+	/**
+	 * The quoted string a {@code docker run} is handed as {@code -c '...'}, when it opens with
+	 * {@code cp}: the whole command that copies the photographs, as one group.
+	 */
+	private static final Pattern CP_HANDED_TO_SH = Pattern.compile("-c\\s+'(cp\\s[^']*)'");
 
 	/**
 	 * Read with CRLF folded to LF. A Windows checkout carries CRLF on disk and the index carries
@@ -561,6 +574,64 @@ class PouringFromQaScriptTest {
 
 		assertThat(linesWith(code, "account_admin_right")).as("which rights each account holds").isNotEmpty();
 		assertThat(linesWith(code, "verification.right_code")).as("which right opens a queue").isNotEmpty();
+	}
+
+	/**
+	 * THE PHOTOGRAPHS ARE COPIED WITHOUT THEIR TIMES, BY ONE LINE WHOSE OPTIONS ARE EXACTLY TWO.
+	 *
+	 * <p>The backend deletes, once an hour, every file in the pictures folder that no row names
+	 * and that is older than ten minutes by its own time of last modification
+	 * ({@code ThePicturesFolderIsSwept}), and this tool copies the files BEFORE the transaction
+	 * that writes their rows. {@code cp -a} keeps QA's times, so a poured file would arrive
+	 * looking old and, for as long as the pour takes, without a row: a sweep that fell there would
+	 * delete it. The copy keeps the mode and the owner, which is the part of {@code -a} the backend
+	 * needs, and nothing that carries a time.
+	 *
+	 * <p><b>Held as a list of what is ALLOWED and not as a list of what is forbidden</b>, because
+	 * the spellings that keep a time are not a closed set ({@code -a}, {@code -p}, {@code -dpR},
+	 * {@code --archive}, {@code --preserve}, {@code --preserve=all},
+	 * {@code --preserve=timestamps}, and whatever the next release of the tool adds), and a list of
+	 * them would only defer the next one. Every option of the command is asked about, and any that
+	 * is not one of the two fails the case, so a new option has to be argued for here instead of
+	 * slipping in.
+	 *
+	 * <p><b>The command is read the one way the shape allows and the guard fails when it cannot
+	 * read it.</b> It is taken out of the quoted string {@code docker run} is handed, by the name
+	 * {@code cp}. A copy done by anything else - a {@code tar} pipe, {@code rsync -a} - leaves no
+	 * such line and fails the first assertion, and a {@code cp} that stops being inside one
+	 * single quoted {@code -c '...'} fails the second: in both the guard says it does not know the
+	 * shape, which is the right way round for a line whose whole point is a thing it cannot see.
+	 */
+	@Test
+	void thePhotographsAreCopiedByOneLineThatKeepsNoTime() {
+		List<String> copies = scriptCode().stream()
+				.filter(one -> CP_THE_COMMAND.matcher(one).find())
+				.toList();
+
+		assertThat(copies)
+				.as("exactly one line of the script's code copies something with cp, and it is the"
+						+ " one that copies the photographs: a second line, or none, is a copy this"
+						+ " guard was not told about")
+				.hasSize(1);
+
+		Matcher handed = CP_HANDED_TO_SH.matcher(copies.get(0));
+
+		assertThat(handed.find())
+				.as("the cp command is not one single quoted string handed to sh -c, so this guard"
+						+ " cannot read its options and fails rather than guess: %s", copies.get(0))
+				.isTrue();
+
+		List<String> options = Arrays.stream(handed.group(1).trim().split("\\s+"))
+				.skip(1)
+				.filter(word -> word.startsWith("-"))
+				.toList();
+
+		assertThat(options)
+				.as("the options of the cp that copies the photographs: it keeps the mode and the"
+						+ " owner and no time, because the backend deletes a file no row names that"
+						+ " is older than ten minutes by its time, and a poured file arrives before"
+						+ " its row. Any other option, -a above all, has to be argued for here")
+				.containsExactlyInAnyOrder("-R", "--preserve=mode,ownership");
 	}
 
 	/**
