@@ -852,7 +852,8 @@ class ModeratorWriteApiTest {
 	 * rows below look the way they do. Sent as the name the row already has, a route that wrote the
 	 * present half before refusing the other would leave the row looking untouched, and the
 	 * assertion that nothing was written would be satisfied by the wrong behaviour as well as by
-	 * the right one (PENDING 234, N2, on the case this replaces).
+	 * the right one. The case this replaces sent the row's own name for the part that was
+	 * present, which is how that went unnoticed.
 	 *
 	 * <p>The boxes are read back too, because a route that wrote anything before judging the form
 	 * would leave a moderator half changed.
