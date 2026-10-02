@@ -291,12 +291,17 @@ describe('„Raskini" on a pair the server is keeping', () => {
 
       await user.click(at(breakButtons(), 1))
 
-      /* **The sentence is the portal’s own for an answer it cannot name**, because that route
-         names no refusal at all: `PairWriteApi.end` reaches for `away()` and never for `no(...)`.
-         What it costs is written down in `member/pairWrites.ts`. */
+      /* **The sentence is the ROUTE’S OWN for its one number, and not the portal’s general one**,
+         because that route names no refusal at all (`PairWriteApi.end` reaches for
+         `nothingIsHere()` and never for `no(...)`) and the general sentence for a 404 tells her
+         to try again in a few
+         minutes, which is wrong for three of the four callers this 404 stands for (PENDING
+         stavka 316). Its text is a PROPOSAL and not the owner’s words. */
+      expect(await screen.findByText(sr.pair.breakRefused.notHeld)).toBeVisible()
       expect(
-        await screen.findByText(sr.server.wrong.replace('{status}', '404')),
-      ).toBeVisible()
+        screen.queryByText(sr.server.wrong.replace('{status}', '404')),
+        'the general sentence for a 404 is not said as well',
+      ).not.toBeInTheDocument()
 
       /* **AND THE PAIR IS STILL DRAWN, WITH ITS BUTTON.** A break the server refused has not
          happened, so a screen that removed the row anyway would tell her the opposite of what the
@@ -326,6 +331,16 @@ describe('„Raskini" on a pair the server is keeping', () => {
       expect(must(alerts[0], 'the alert').textContent).toBe(
         sr.server.wrong.replace('{status}', '500'),
       )
+
+      /* **AND IT STANDS DIRECTLY UNDER THE ROW SHE PRESSED**, which a count of alerts cannot say:
+         one alert drawn under the OTHER pair is still one alert, and she would read that the
+         pair for 2027 failed to end when it was the pair for 2028 she pressed. The sentence
+         cannot live inside the row (`ServerSaid` draws a `<p>`, and a `<p>` inside a `<p>` is
+         closed by the parser), so where it stands is the only way the row owns it. Found by a
+         mutation that put it under the other row and left the whole file green (02.10.2026). */
+      const pressed = must(at(breakButtons(), 1).closest('p'), 'the row she pressed')
+
+      expect(pressed.nextElementSibling).toBe(alerts[0])
     },
     SLOW,
   )
@@ -495,9 +510,7 @@ describe('„Raskini" on a pair the server is keeping', () => {
 
       await user.click(at(breakButtons(), 1))
 
-      expect(
-        await screen.findByText(sr.server.wrong.replace('{status}', '404')),
-      ).toBeVisible()
+      expect(await screen.findByText(sr.pair.breakRefused.notHeld)).toBeVisible()
 
       /* **SHE LEAVES BY THE PARTNER’S OWN NAME, THE LINK INSIDE THE VERY ROW SHE JUST PRESSED
          „RASKINI" ON.** `RacingPairLine` is mounted once, at a fixed spot in
@@ -517,9 +530,7 @@ describe('„Raskini" on a pair the server is keeping', () => {
          `role="alert"` a screen reader would read out on arrival, about a press that happened on
          a different page, says something happened here that did not. */
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      expect(
-        screen.queryByText(sr.server.wrong.replace('{status}', '404')),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText(sr.pair.breakRefused.notHeld)).not.toBeInTheDocument()
     },
     SLOW,
   )
@@ -534,9 +545,7 @@ describe('„Raskini" on a pair the server is keeping', () => {
 
       await user.click(at(breakButtons(), 1))
 
-      expect(
-        await screen.findByText(sr.server.wrong.replace('{status}', '404')),
-      ).toBeVisible()
+      expect(await screen.findByText(sr.pair.breakRefused.notHeld)).toBeVisible()
 
       /* **TOLD OFF ONLY WHILE IT IS OUT, NOT FOR EVER AFTER A REFUSAL.** `endIt` releases both
          the ref and the state on the branch that answers with a refusal; a screen that freed the

@@ -151,19 +151,20 @@ export function theBreakingGoesTo(pair: number): string {
  * Ends one pair on the server, and says what came back.
  *
  * <p><b>THE ROUTE NAMES NO REFUSAL AT ALL, AND THAT IS READ OFF IT RATHER THAN ASSUMED.</b>
- * `PairWriteApi.end` reaches for `away()` and never for `no(...)`, so the only answers this can
- * carry are 204 and an empty 404 - and that 404 deliberately covers four callers at once: a
- * pair that is not there, one that is not his, one of a season that is over, and one whose half
+ * `PairWriteApi.end` reaches for `nothingIsHere()` and never for `no(...)`, so the only answers
+ * this can carry are 204 and a 404 with no reason in it - and that 404 deliberately covers four
+ * callers at once: a pair that is not there, one that is not his, one of a season that is over, and one whose half
  * has stopped paying. Told apart, the numbers would answer which pairs exist and who is in them
  * to anybody walking the keys.
  *
  * <p><b>So the screen has no refusals map to hand {@code ServerSaid}, and the empty one it does
- * hand is honest rather than lazy.</b> What it costs is that a 404 reads as
- * `server.wrong` - „Server je odgovorio brojem 404" - where a sentence of its own would say
- * „this pair is already gone". <b>That sentence is not written here because it would be a new
- * key in `i18n/sr.json` and `en.json`, and those two are held by another branch in flight</b>;
- * a key added to one dictionary alone fails the floors that require the two to carry exactly
- * the same set. Recorded as a boundary so that whoever takes it knows it was weighed.
+ * hand is honest rather than lazy.</b> What it hands in beside it is a table of what that one
+ * number means (`profile/RacingPairLine.tsx`, `WHAT_THE_NUMBER_SAYS_WHEN_BREAKING_A_PAIR`). Until
+ * 02.10.2026 a 404 read as `server.wrong` - „Server je odgovorio brojem 404 ... Pokusaj ponovo za
+ * koji minut" - which is advice none of the four callers the 404 stands for can use (PENDING
+ * stavka 316). The sentence it says now, `pair.breakRefused.notHeld`, says the same thing for all
+ * four and does not promise that a second try will work; <b>its words are a proposal of the author
+ * of that change and not the owner's text</b>.
  *
  * <p><b>`pairs` IS DROPPED AND THE INBOX IS NOT, WHICH IS THE ONE THING THIS FUNCTION COULD GET
  * WRONG.</b> {@link theServerWasAnswered} above drops the inbox because the member ANSWERING is

@@ -5,6 +5,7 @@ import {
   theInvitationWasTakenBack,
   whatIsWaitingOn,
   whatThisTeamHasAsked,
+  type Queue,
   type TeamApplication,
   type TeamInvitation,
 } from './joiningThisTeam'
@@ -16,6 +17,12 @@ import {
  * is not a resource: the lists are empty until the read comes back and stay empty where there
  * is nothing to draw, so the screen's condition is `length > 0` and nothing about the fee, the
  * roster or the transfer window is asked on this side to decide whether a row exists.
+ *
+ * <p><b>A list that could not be read is a third state, and it is carried, not folded into
+ * „empty"</b> (owner, 02.10.2026, PENDING stavka 368; `joiningThisTeam.ts` has the history).
+ * Each list is a {@link Queue}: its rows, or the fact that they could not be read. The two fail
+ * on their own, because they are two routes, so a screen can say that one could not be read and
+ * draw the other as it is. And asking again is this hook's to do, because both reads are its.
  */
 
 /** Which row a press is about. The two lists have their own key spaces, so the kind is half
@@ -26,8 +33,14 @@ export type QueueRow = { kind: 'application' | 'invitation'; id: number }
 export type QueueRefusal = { row: QueueRow; answer: Exclude<Answer, { got: 'done' }> }
 
 export type TheTeamsQueue = {
-  applications: TeamApplication[]
-  invitations: TeamInvitation[]
+  applications: Queue<TeamApplication>
+  invitations: Queue<TeamInvitation>
+  /** Whether an asking again is out, which is what „Pokusaj ponovo" tells the reader. The first
+   *  read of the page is not one: nothing is drawn while it is on its way, as it never was. */
+  reading: boolean
+  /** Asks BOTH lists again, and is a no-op while the last asking is still out. */
+  readAgain: () => Promise<void>
+
   /** Whether this row has a request out, so its controls can say so out loud. */
   busy: (row: QueueRow) => boolean
   refused: QueueRefusal | null
@@ -40,8 +53,15 @@ function theSameRow(one: QueueRow, two: QueueRow): boolean {
 }
 
 export function useTeamQueue(team: number): TheTeamsQueue {
-  const [applications, setApplications] = useState<TeamApplication[]>([])
-  const [invitations, setInvitations] = useState<TeamInvitation[]>([])
+  /* Nothing is drawn until the first read comes back, and a read that has not come back is not
+     one that failed: both start as lists that were read and hold nothing, which is what draws no
+     section, exactly as before. */
+  const [applications, setApplications] = useState<Queue<TeamApplication>>({ got: 'rows', rows: [] })
+  const [invitations, setInvitations] = useState<Queue<TeamInvitation>>({ got: 'rows', rows: [] })
+  const [reading, setReading] = useState(false)
+  /** A second press while the first asking is out, and a ref for the reason `outstanding` below
+   *  gives: two presses that arrive before a redraw both read `reading` as false. */
+  const askingAgain = useRef(false)
   /**
    * WHICH ROWS HAVE A REQUEST OUT, as a render can see them.
    *
@@ -90,6 +110,32 @@ export function useTeamQueue(team: number): TheTeamsQueue {
 
     return () => {
       here.current = false
+    }
+  }, [read])
+
+  /**
+   * ASKING AGAIN FOR WHAT COULD NOT BE READ, which is the button the owner asked for beside it
+   * (PENDING stavka 368).
+   *
+   * <p>Both lists, whichever of them failed: they are one question in two routes, and a screen
+   * that showed a fresh list beside a stale one would be telling the team two different moments.
+   * The flag is cleared only where the screen is still there, so a read that lands after the
+   * reader has gone writes nothing, which is the branch `useTeamQueue.test.tsx` holds.
+   */
+  const readAgain = useCallback(async (): Promise<void> => {
+    if (askingAgain.current) {
+      return
+    }
+
+    askingAgain.current = true
+    setReading(true)
+
+    await read()
+
+    askingAgain.current = false
+
+    if (here.current) {
+      setReading(false)
     }
   }, [read])
 
@@ -158,5 +204,5 @@ export function useTeamQueue(team: number): TheTeamsQueue {
     [acting],
   )
 
-  return { applications, invitations, busy, refused, decide, takeBack }
+  return { applications, invitations, reading, readAgain, busy, refused, decide, takeBack }
 }

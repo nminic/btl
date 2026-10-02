@@ -215,6 +215,12 @@ export function NewResult() {
      record on both roads in, and one name for that saves the next reader from
      having to notice that there are two. */
   const named = correcting ?? fixingOne
+  /* Whether this form corrects a result that is already COUNTED, on either road in: the counted
+     result itself (`?ispravka=`), or the submission that carries that correction and is opened
+     again from the list of what was sent (`?ponovo=`). One fact that decides two things, which
+     form is drawn and which of its boxes are held, and written once so the two cannot drift
+     apart: it was written out twice until 02.10.2026. */
+  const correctsACountedResult = correcting?.corrects !== undefined || fixingOne !== undefined
   /* Which kind of race a counted result was run at, and where, read off the race
      and its event rather than asked.
    *
@@ -579,8 +585,13 @@ export function NewResult() {
               <p className="member__note">{t('newResult.note')}</p>
             ) : correcting === undefined ? (
               /* The third state, and it says the two things this road does that the
-                 others do not: the result leaves the standing until somebody agrees
-                 again, and it will not be taken without new proof. */
+                 others do not: the OLD result stays in the standing until somebody
+                 agrees, and a refusal changes nothing (owner, 28.08.2026, PDL „Stari
+                 rezultat ostaje u poretku dok ispravka čeka": it „menja se tek kad je
+                 moderator odobri"), and the change will not be taken without new proof.
+                 This said until 02.10.2026 that the result LEAVES the standing while the
+                 correction waits, which is the behaviour that decision overturned: a
+                 refusal then cost the member his points for good. */
               <p className="member__note">{t('newResult.fixingCounted')}</p>
             ) : (
               /* Why the form is full, and of what. A member who pressed „Pošalji
@@ -608,7 +619,7 @@ export function NewResult() {
                kind the member was never asked for was theirs to set, on a correction
                of a result that is already counted (measured in review, 30.08.2026).
                What decides is what the submission is, not which address opened it. */
-            form={correcting?.corrects === undefined && fixingOne === undefined ? unosRezultata : ISPRAVKA_PREBROJANOG}
+            form={correctsACountedResult ? ISPRAVKA_PREBROJANOG : unosRezultata}
             /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
                here rather than in the definition because a field has no notion of a
                value it starts from: `emptyValues` gives every field the empty string
@@ -628,8 +639,25 @@ export function NewResult() {
                may already have read, so letting the race change turns that row into a
                different race under the same number, and the queue is told only that
                something was corrected. Whoever picked the wrong race deletes it and
-               enters another, which is what the list beside this offers. */
-            fixed={correcting === undefined && fixingOne === undefined ? undefined : ['raceName']}
+               enters another, which is what the list beside this offers.
+
+               **And the day, but only on a correction of a COUNTED result, which is the
+               coordinator's reasoning of 02.10.2026 and not the owner's word.** The route that
+               takes it (`PUT /api/results/{id}`, `ResultWriteApi.Correction`) reads the three
+               measures, the time, a link and a comment and has no day in it, so a day changed
+               here was dropped in silence while the member was told the change went in. A box the
+               server will not take must not look like one it will. The owner's decision names the
+               six fields a correction changes (PDL 04.09.2026) and the day is not among them. A
+               result still WAITING is the member's own submission, and its day stays his to
+               change: `ownResult.test.tsx` holds that half too, so the lock cannot be widened to
+               every road that locks the race. */
+            fixed={
+              correctsACountedResult
+                ? ['raceName', 'date']
+                : correcting === undefined
+                  ? undefined
+                  : ['raceName']
+            }
             /* And a counted result does not go back into the queue on somebody's
                word alone: „menja i dostavlja dokaz za tu izmenu" (owner,
                27.08.2026). Either proof will do, which is the pair the portal
