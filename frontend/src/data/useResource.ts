@@ -37,12 +37,12 @@ import type {
  * prazan, uz dugme „Pokusaj ponovo". Vazi za sve ekrane sa spiskom." The first half of it was
  * written for the two screens that drew a failure as an empty list; this is the second, and it is
  * carried by the state itself because every screen that goes through `Resource` reads this state:
- * a button on the component with nothing to call would have been a button on forty-odd screens
- * that each had to be handed what to ask.
+ * a button on the component with nothing to call would have been a button on every screen that
+ * each had to be handed what to ask.
  *
  * <p><b>Both fields are REQUIRED, and that is the point of putting them here.</b> A state built by
  * hand somewhere that does not know how to ask again is a compile error and not a screen with a
- * button that does nothing. The compiler found three test files that built one
+ * button that does nothing. Three test files built one by hand
  * (`components/Resource.test.tsx`, `data/data.test.tsx`, `pages/event/eventWaiting.test.tsx`), and
  * in production only `useResource` below does.
  */
@@ -324,6 +324,12 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
     alongside.add(woken)
 
     return () => {
+      /* **NO CASE HOLDS THIS LINE, and that is measured and not forgotten** (02.10.2026): the line
+         taken out, every case stays green, because React drops an update for a reader that has gone
+         and so a reader left in the set is told and answers nothing. What it keeps is MEMORY, a
+         closure per failure that ended in a screen being left, and a case that pretended to hold it
+         would be measuring itself. The mutation that proves the absence is in the description of
+         the change. */
       alongside.delete(woken)
     }
   }, [state, address, wake])

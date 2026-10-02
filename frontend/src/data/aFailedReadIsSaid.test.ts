@@ -394,15 +394,25 @@ const SRC = join(process.cwd(), 'src')
 
 const named = (path: string) => relative(SRC, path).split(sep).join('/')
 
-/** Production by its place under `src`: not a folder called `test` at any depth and not a test file,
- *  which is `test/sources.ts`'s own rule read off a place and not off the disc. */
-const isProduction = (place: string) =>
-  !place.startsWith('..') && !place.split('/').includes('test') && !place.includes('.test.')
+/** A file of the portal itself and not of the compiler's libraries or of `node_modules`, by its place
+ *  under `src`. It is NOT where production is told from tests: that is the roots the program is
+ *  built from (`portal` below), and a rule written here too would be a second home for it that
+ *  nothing could tell from its absence - taken out, every case stayed green, because a test file is
+ *  never in the program unless production imports it.
+ *
+ *  <p>What this one is for is TIME, and that is measured and said rather than hidden: taken out,
+ *  nothing fails and every scan walks the compiler's own libraries. A case that pretended to hold
+ *  it would be measuring the clock. */
+const underSrc = (place: string) => !place.startsWith('..')
 
 let thePortal: ts.Program | undefined
 
 /** The production sources of the portal as one program, built once because it takes seconds. The
- *  settings are the project's own, so a specifier is resolved the way the bundler resolves it. */
+ *  settings are the project's own, so a specifier is resolved the way the bundler resolves it.
+ *
+ *  <p><b>What is production is what `sources()` lists</b> (`test/sources.ts`: the files on the disc
+ *  that are not in a folder called `test` and are not test files), and it is the ROOTS of the
+ *  program, so a test that builds a state by hand is never read as a place that opens one. */
 function portal(): ts.Program {
   if (thePortal === undefined) {
     const configPath = join(process.cwd(), 'tsconfig.app.json')
@@ -426,13 +436,13 @@ describe('a read that failed', () => {
     expect(
       portal()
         .getSourceFiles()
-        .filter((file) => isProduction(named(file.fileName))).length,
+        .filter((file) => underSrc(named(file.fileName))).length,
       'the compiler read fewer production files than the portal has',
     ).toBeGreaterThan(WHOLE_PORTAL)
   }, SLOW)
 
   it('is opened only by files that have a row, and every row is a file that opens one', () => {
-    const opening = openingsIn(portal(), SRC, isProduction)
+    const opening = openingsIn(portal(), SRC, underSrc)
     const files = [...new Set(opening.map((one) => one.file))].filter((one) => !HOMES.includes(one)).sort()
     const rows = OPENING.map((one) => one.file).sort()
 
@@ -448,7 +458,7 @@ describe('a read that failed', () => {
   }, SLOW)
 
   it('still sees the two homes of the state open it, which is what shows the question reaches the portal', () => {
-    const files = new Set(openingsIn(portal(), SRC, isProduction).map((one) => one.file))
+    const files = new Set(openingsIn(portal(), SRC, underSrc).map((one) => one.file))
 
     expect(HOMES.filter((one) => !files.has(one))).toEqual([])
   }, SLOW)
@@ -647,7 +657,7 @@ export declare function loadResource(name: string): Promise<string[]>
       host,
     )
 
-    return [...new Set(openingsIn(program, HERE, (place) => !place.startsWith('..')).map((one) => one.file))].sort()
+    return [...new Set(openingsIn(program, HERE, underSrc).map((one) => one.file))].sort()
   }
 
   it.each(Object.keys(OPEN))('sees %s as a place that opens a state', (name) => {

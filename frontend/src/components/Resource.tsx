@@ -53,11 +53,10 @@ export function Resource<T>({ state, children, inline = false, label }: Props<T>
      carries the way to ask again, so one place gives all of them the button.
 
      **Drawn for every failed read, lists and screens that are not lists alike.** Telling the two
-     apart would need a verdict on each of the forty-eight elements, and a list of verdicts is
-     the shape that never converges (`data/aFailedReadIsSaid.test.ts` has the history). That is
-     MY reading of the decision, not a recorded one, and it costs nothing a reader can lose: the
-     sentence was already here, and the button asks for the same thing the sentence says could
-     not be had. */
+     apart would need a verdict on every element that goes through here, and a list of verdicts is
+     the shape that never converges. That is MY reading of the decision, not a recorded one, and
+     it costs nothing a reader can lose: the sentence was already here, and the button asks for
+     the same thing the sentence says could not be had. */
   if (state.status === 'error') {
     return (
       <Unreadable

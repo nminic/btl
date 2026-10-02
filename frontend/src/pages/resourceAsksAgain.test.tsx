@@ -17,7 +17,7 @@ import { setupUser } from '../test/user'
  *
  * <p>The first half of that decision went into the team's page and the panel under the envelope
  * (`app/messagesUnreadable.test.tsx`, `pages/teamQueueOnTheServer.test.tsx`); this is the second,
- * for the forty-odd screens that read their data through one component. Three layers hold it and
+ * for every screen that reads its data through one component. Three layers hold it and
  * this is the third: `components/Resource.test.tsx` holds what the button does with a state it is
  * handed, `data/askingAgain.test.tsx` holds who is asked and how many times the server is, and the
  * cases below hold that real screens, with real readers and a real route table, say it and do it.
