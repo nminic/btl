@@ -833,6 +833,72 @@ class RightsOverRealHttpTest {
 	}
 
 	/**
+	 * THE DECISION IS REFUSED BEFORE ITS BODY IS READ, TO EVERYBODY WHO MAY NOT TAKE THE ITEM.
+	 *
+	 * <p><b>Measured on this socket on 02.10.2026 and written into the route's own note: a body
+	 * that is not JSON, or no body at all, was answered 400 in 427 bytes to every signed in
+	 * asker, a competitor holding nothing included, while the address that maps nothing
+	 * answered 404 in 425.</b> The body is read while ARGUMENTS ARE RESOLVED, which is before the
+	 * first line of the handler, so the door that is asked inside the handler never ran. One
+	 * request with a broken body, and a plain member knows an administrative action lives at that
+	 * address - the sentence ADL A8 forbids. The case above sends the empty object, which is the
+	 * one body that reaches the handler, and so could not see it.
+	 *
+	 * <p>The three askers are refused for three different reasons and the real item is used, so
+	 * that what is measured is the door and not a missing row: a competitor holding nothing, a
+	 * moderator holding a right that is not a queue, and one holding {@code queue:results}, a queue
+	 * that is not this row's.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {A_COMPETITOR, HOLDS_THE_TICK, WITHOUT_THE_TICK})
+	void theDecisionIsRefusedBeforeItsBodyIsReadToEverybodyWhoMayNotTakeTheItem(String asking)
+			throws Exception {
+		String item = THE_QUEUE_ITEM.formatted(waitingItem) + "/decision";
+		String json = "Content-Type: application/json\r\n";
+
+		assertThat(answerTo("POST", THE_QUEUE_ITEM.formatted(waitingItem) + "/hold",
+				HOLDS_THE_PROFILES_TAB, A_TOKEN))
+				.as("the moderator who holds this row's tab cannot take it either, so every"
+						+ " comparison below is between two addresses that are simply missing")
+				.startsWith("HTTP/1.1 200");
+
+		for (String body : List.of("{", "", "[]", "nije json")) {
+			answersTheSameWay("POST", item, twinOf(item), asking, A_TOKEN, json, body);
+		}
+	}
+
+	/**
+	 * AND TO SOMEBODY WHO MAY, A BODY THAT CANNOT BE READ IS THE FORM NOT BEING FILLED IN, AND IT
+	 * IS ONE ANSWER WITH THE EMPTY OBJECT.
+	 *
+	 * <p>This is the anchor of the case above: the door is not simply answering 404 to every body
+	 * it dislikes, because the one who holds the tab and the superadmin are told something else.
+	 * Absent, empty and unreadable are one answer for the reason {@code InboxWriteApi} gives for
+	 * the identical shape - none of them carries a single value the route could act on, and the
+	 * caller who sees it is by then always somebody the address is really for - and it is the
+	 * route's own sentence and not the container's error document.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {HOLDS_THE_PROFILES_TAB, THE_SUPERADMIN})
+	void aBodyThatCannotBeReadIsTheFormNotBeingFilledInToSomebodyWhoMayTakeTheItem(String asking)
+			throws Exception {
+		String item = THE_QUEUE_ITEM.formatted(waitingItem) + "/decision";
+		String json = "Content-Type: application/json\r\n";
+
+		String theEmptyObject = answerTo("POST", item, asking, A_TOKEN, json, "{}");
+
+		assertThat(theEmptyObject).startsWith("HTTP/1.1 400").contains("Forma nije popunjena.");
+
+		for (String body : List.of("{", "", "[]", "nije json")) {
+			assertThat(withoutTheMomentOrTheAddress(answerTo("POST", item, asking, A_TOKEN, json, body),
+					item))
+					.as("body [%s] was answered differently from {}, so a body that cannot be read is"
+							+ " not the form being left empty", body)
+					.isEqualTo(withoutTheMomentOrTheAddress(theEmptyObject, item));
+		}
+	}
+
+	/**
 	 * AND A RESOURCE THAT REFUSES AN ACCOUNT WITH NO MEMBER ANSWERS LIKE AN ADDRESS THAT
 	 * IS NOT THERE.
 	 *
