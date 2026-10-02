@@ -53,19 +53,26 @@ import { setupUser } from '../test/user'
  * 4. What the narrow query says and what stands outside it is read off the same rules by name,
  *    which is exact because of the first fact: every rule that could say otherwise is one of those.
  * 5. In each of those states none of the four carries an inline `style`, which would be heavier
- *    than any rule, whether it is written for the open state only or for both.
+ *    than any rule, whether it is written for the open state only or for both; and the rendered
+ *    page carries no sheet of its own (a `<style>` or a link to a stylesheet that a component
+ *    writes at run time), since every rule asked about here is one read from a file.
  *
  * **The two families, as patterns and not lists.** A list of names is a list of one spelling: the
  * logical `margin-inline-end` is a way to push a panel off the screen that no list of `margin` and
  * `margin-top` has ever heard of. For the three boxes between a panel and the bar the family is
- * what can make one of them the measure of a positioned box, take its box away, or clip what
- * hangs from it: `position`, `display`, `all`, `overflow` and `clip` in every spelling, and the
- * properties that give a box a containing block of its own (`transform` and its three
- * single-property cousins, `perspective`, `filter`, `backdrop-filter`, `contain`, `container-type`,
- * `content-visibility`, `will-change`). For a panel it is what places, sizes or moves it:
- * `position`, `all`, the four offsets and `inset` in every spelling, `margin` in every spelling,
- * width and height and their minimum and maximum, physical and logical, and `transform` with its
- * three single-property cousins (`translate`, `rotate`, `scale`).
+ * what can make one of them the measure of a positioned box, take its box away, scale it or clip
+ * what hangs from it: `position`, `display`, `all`, `overflow` and `clip` in every spelling,
+ * `mask`, `zoom`, and the properties that give a box a containing block of its own (`transform`
+ * and its three single-property cousins, `perspective`, `filter`, `backdrop-filter`, `contain`,
+ * `container` and its longhands, `content-visibility`, `will-change`). For a panel it is what
+ * places, sizes or moves it: `position` in every spelling (anchor positioning included), `all`,
+ * the four offsets and `inset` in every spelling, `margin` in every spelling, width and height and
+ * their minimum and maximum, physical and logical, `transform` with its three single-property
+ * cousins (`translate`, `rotate`, `scale`), `zoom`, `offset` (the path a box moves along),
+ * `anchor-*` and the three alignment properties (`place-self`, `justify-self`, `align-self`).
+ * And for all four, a custom property: written on one of them it changes what every `var()` below
+ * it means (`--space-16` given another value on the row of tools is an offset on a panel that no
+ * rule about the panel says), and a value read as `var(--space-16)` says nothing of it.
  *
  * **What is NOT held here, said plainly because a guard may claim only what the tool beneath it
  * answers.** Where the panel then lands, and which rule it ends up under. Properties outside the
@@ -77,7 +84,8 @@ import { setupUser } from '../test/user'
  * pseudo-class jsdom's matcher does not carry (`:active`, `:focus-visible`, `:target`), or under
  * `:hover` over anything but the button. A property or an at-rule jsdom's parser does not know,
  * which it drops (`@starting-style` inside a rule, measured). And a style that script writes after
- * the state is read. And the size of the floor (`min-width`) a panel is given outside the query,
+ * the state is read, or through a sheet object jsdom does not have (`adoptedStyleSheets`, measured:
+ * it is not there to ask). And the size of the floor (`min-width`) a panel is given outside the query,
  * which is a design value: the pin says that a floor is written there, not how big it is. Every
  * one of those is asked of Chrome and none of them of this.
  *
@@ -160,14 +168,16 @@ const BETWEEN_PINNED: Record<'box' | 'tools' | 'bar', Pinned> = {
 }
 
 /** What can make one of the three boxes between a panel and the bar the measure of a positioned
- *  box, take its box away, or clip what hangs from it (the head of this file says why a pattern and
- *  not a list). */
+ *  box, take its box away, scale it or clip what hangs from it, and a custom property, which
+ *  changes what every `var()` below it means (the head of this file says why a pattern and not a
+ *  list). */
 const BETWEEN =
-  /^(position|display|all|overflow(-.+)?|clip(-path)?|transform|translate|rotate|scale|perspective|filter|backdrop-filter|contain|container-type|content-visibility|will-change)$/
+  /^(position|display|all|overflow(-.+)?|clip(-path)?|(-webkit-)?mask(-.+)?|transform|translate|rotate|scale|zoom|perspective|filter|backdrop-filter|contain|container(-.+)?|content-visibility|will-change|--.+)$/
 
-/** What places, sizes or moves a panel, in every spelling. */
+/** What places, sizes or moves a panel, in every spelling, and a custom property, which changes
+ *  what every `var()` in its own rules means. */
 const THE_PANEL =
-  /^(position|all|top|right|bottom|left|inset(-.+)?|margin(-.+)?|(min-|max-)?(width|height|inline-size|block-size)|transform|translate|rotate|scale)$/
+  /^(position(-.+)?|all|top|right|bottom|left|inset(-.+)?|margin(-.+)?|(min-|max-)?(width|height|inline-size|block-size)|transform|translate|rotate|scale|zoom|offset(-.+)?|anchor-.+|(place|justify|align)-self|--.+)$/
 
 /** The width of the gutter on each side of the bar, which is the bar's own `padding-inline`
  *  (`.shell__bar`), written once as a token. */
@@ -212,6 +222,10 @@ type Snapshot = {
   chain: { panel: string; box: boolean; panelClass: boolean; tools: boolean; bar: boolean }[]
   /** Rules that write a name of a family and whose selector the matcher refused. */
   unreadable: string[]
+  /** What the rendered page carries as a sheet of its own (a `<style>`, a link to a stylesheet, a
+   *  sheet the document lists), counted after every state: none is read from a file, so a rule a
+   *  component writes into the page is one this reads nothing of. */
+  sheetsInThePage: number
 }
 
 /** Every stylesheet under `src`, with its path relative to it: the floor, read off the file
@@ -403,7 +417,10 @@ function theHeaderAsItIs(): Promise<Snapshot> {
       await user.keyboard('{Escape}')
     }
 
-    return { sheets, rules: rules.length, reaches, inlined, states, chain, unreadable }
+    const sheetsInThePage =
+      document.querySelectorAll('style, link[rel~="stylesheet"]').length + document.styleSheets.length
+
+    return { sheets, rules: rules.length, reaches, inlined, states, chain, unreadable, sheetsInThePage }
   })()
 
   return snapshot
@@ -674,6 +691,11 @@ describe('the markup a panel hangs from', () => {
     const seen = await theHeaderAsItIs()
 
     expect(seen.inlined).toEqual([])
+
+    /* And no sheet of its own in the page: every rule above is read from a file of the portal,
+       and a component that writes a `<style>` (or links a sheet) into the page at run time
+       writes rules this reads nothing of. The page carries none today, which is measured. */
+    expect(seen.sheetsInThePage, 'sheets the rendered page carries').toBe(0)
 
     for (const one of seen.chain) {
       expect(one, `the chain of ${one.panel}`).toEqual({
