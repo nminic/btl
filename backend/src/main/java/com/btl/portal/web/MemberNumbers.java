@@ -35,7 +35,8 @@ import org.springframework.stereotype.Component;
  * tabelama i odstampanoj kartici." And a query is also a race: two concurrent readers see
  * the same highest value before either writes, and both draw it. PostgreSQL hands out each
  * value of {@code member_number_seq} (V16) exactly once, whichever transaction asks first,
- * which is what makes two simultaneous activations safe without a lock anywhere.
+ * which is what makes two simultaneous activations of two different people safe without
+ * any lock on the numbers themselves.
  * {@code PaymentNumberConcurrencyTest} is the floor under that, and it measures this
  * statement whichever route reaches it.
  *
@@ -47,8 +48,8 @@ import org.springframework.stereotype.Component;
  * (PDL 31.07.2026). Nothing here can fix that; where the draw SITS is the only lever there
  * is, and it belongs to each caller.
  *
- * <p><b>Where the three callers stand, measured on 28.09.2026 rather than assumed, and the
- * boundary written down rather than left to be found:</b>
+ * <p><b>Where the three callers stand, measured rather than assumed, and the boundary written
+ * down rather than left to be found:</b>
  *
  * <ul>
  * <li>{@link PaymentApi#recordIt} draws LAST, after both of its inserts and after every line
@@ -58,19 +59,25 @@ import org.springframework.stereotype.Component;
  * {@code update} that writes it down, which nothing can refuse.
  * <li>{@link MyMembershipWriteApi#letHimIn} already drew after its own
  * {@code insert into membership}, and still does.
- * <li>{@link MembershipWriteApi#grant} draws BEFORE its {@code insert into membership}, and
- * it is left that way. What stands between the two cannot fail on anything this portal can
- * reach: the account's name is {@code not null} on both halves (V23), and the one book entry
- * is guarded ahead of {@code grant} by
- * {@link com.btl.portal.domain.membership.GrantingAMembership.Outcome#NOTHING_WOULD_COME_OFF_THE_BOOK}.
- * So the only thing left that could spend a number there is {@code membership_pk} met under
- * TRUE simultaneity, and a move with no case that can fail on it is a change nobody measured.
+ * <li>{@link MembershipWriteApi#grant} draws LAST as well, after the line in the book, the
+ * {@code insert into membership} and the referral, and the two halves of that came for two
+ * different reasons. <b>Two presses at once</b> both decided to grant, both drew - the draw
+ * stood ahead of the insert - and the second then lost to {@code membership_pk}: a 500,
+ * measured by {@code FreeingTwiceAtOneInstantTest} before either half existed, inside a
+ * transaction that went back with its number already drawn. The route now locks the member's
+ * row before it decides, so the second press waits for the first and is answered the harmless
+ * repeat - that is what closes the race, and it would close it with the draw anywhere: the
+ * mutation that put the draw back first left that case green. <b>The draw moved anyway</b>, to
+ * keep the order of the other two doors to the same fact. This paragraph used to say that was a
+ * change nobody could measure, and with the lock in place no refusal the portal can reach today
+ * does come after the decision on that route; so {@code aBookingTheDatabaseRefusesDrawsNoNumber}
+ * puts one there by hand, a constraint the case adds and takes away, requires that the sequence
+ * did not move, and is the one case that fails when the draw goes back first.
  * </ul>
  *
- * <p><b>What that leaves open, in one sentence:</b> two requests activating the same
- * (competitor, season) at the same instant still cost the loser a number on the balance and
- * exemption doors, and on all three doors a booking that SUCCEEDS spends one for good, which
- * is the owner's own named boundary (PDL section 19, „Aktivacija trosi clanski broj
+ * <p><b>What that leaves open, in one sentence:</b> on all three doors a booking the database
+ * refuses now spends no number, while a booking that SUCCEEDS spends one for good, which is
+ * the owner's own named boundary (PDL section 19, „Aktivacija trosi clanski broj
  * nepovratno").
  */
 @Component

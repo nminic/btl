@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -586,15 +586,20 @@ class TeamJoiningWriteApi {
 	@PutMapping(path = "/api/teams/{id}/applications/{application}",
 			consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> decide(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable AKey id, @PathVariable AKey application, @RequestBody Answered typed) {
+			@PathVariable AKey id, @PathVariable AKey application, WhatWasSent<Answered> sent)
+			throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
+		/* AN ACCOUNT THAT NAMES NO MEMBER, and his body is not read: it is read below, after this
+		   question, and not bound as an argument (register 166). */
 		if (me == null) {
 			throw nothingIsHere();
 		}
 
-		if (typed.accepted() == null) {
+		Answered typed = sent.read();
+
+		if (typed == null || typed.accepted() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -716,7 +721,7 @@ class TeamJoiningWriteApi {
 	 */
 	@PostMapping(path = "/api/teams/{id}/invitations", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable AKey id, @RequestBody Asked typed) {
+			@PathVariable AKey id, WhatWasSent<Asked> sent) throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -724,7 +729,9 @@ class TeamJoiningWriteApi {
 			throw nothingIsHere();
 		}
 
-		if (isNothing(typed.memberNumber())) {
+		Asked typed = sent.read();
+
+		if (typed == null || isNothing(typed.memberNumber())) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -807,7 +814,8 @@ class TeamJoiningWriteApi {
 	@PutMapping(path = "/api/teams/{id}/invitations/{invitation}",
 			consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> answer(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable AKey id, @PathVariable AKey invitation, @RequestBody Answered typed) {
+			@PathVariable AKey id, @PathVariable AKey invitation, WhatWasSent<Answered> sent)
+			throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -815,7 +823,9 @@ class TeamJoiningWriteApi {
 			throw nothingIsHere();
 		}
 
-		if (typed.accepted() == null) {
+		Answered typed = sent.read();
+
+		if (typed == null || typed.accepted() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
