@@ -1,0 +1,20 @@
+/* A list that could not be read, and the button that asks again (`Unreadable.tsx`).
+ *
+ * The sentence and the button stand on one line where there is room and the button goes under the
+ * sentence where there is not, which is the 360px case: a sentence of eighty letters leaves no
+ * room for a button beside it, and a button that wrapped inside its own box would be a button
+ * whose label broke over two lines. `flex-wrap` and a gap do both. The sentence takes the full
+ * width of a line before it gives way (`flex: 1 1 16rem`), so it is never squeezed into a column
+ * of four words next to a button. */
+.unreadable {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8) var(--space-16);
+  margin-block: var(--space-12);
+}
+
+.unreadable__said {
+  flex: 1 1 16rem;
+  margin: 0;
+}
