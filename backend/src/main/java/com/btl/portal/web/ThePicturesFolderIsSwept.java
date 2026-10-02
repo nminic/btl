@@ -118,8 +118,9 @@ import java.util.concurrent.TimeUnit;
  * nothing holds is not swept, and neither is its file, because the file has a row. By V9's
  * foreign keys and by what {@link CompetitorWriteApi} deletes (read, not run), one such row is
  * made when a member is deleted while a picture of his waits in the queue: the queue row goes
- * with him and the {@code photo} row does not. That is a different leftover and the owner has
- * said nothing about it; it is reported, not handled here.
+ * with him and the {@code photo} row does not. That is a different leftover, and it goes against
+ * a recorded decision: P21 says that where a member is the subject of a picture („Ako je član
+ * predmet slike") „slika se uklanja". It is reported, not handled here.
  *
  * <p><b>IT IS NOT IN {@link MePhotoApi}</b>, whose class note says that sweeping „would be one
  * route carrying a rule about the whole disk". It is a fifth reader of the setting the four

@@ -21,19 +21,20 @@ import java.util.OptionalLong;
  * ALL.</b> The route that writes a picture inserts its {@code photo} row, writes the file under
  * the key the database issued, and only then lets the transaction commit. For that moment a
  * perfectly good picture is a file that no row can be found for. A sweep that deleted at once
- * would take pictures that are being uploaded; ten minutes is the owner's number for how long
- * such a moment may last, and it is far beyond any request this portal answers.
+ * would take pictures that are being uploaded. Ten minutes is the number in the sentence the
+ * owner chose; that it is there to cover this moment is my reading of it, and that it is far
+ * beyond any request this portal answers is my reasoning and not a measurement.
  *
  * <p><b>THE AGE IS THE FILE'S OWN LAST WRITE, AND THAT IS MY READING AND NOT THE OWNER'S WORD
- * ABOUT IT.</b> He said „stariji", not by what. A file is written once and never again by this
- * portal, so its time of last modification is the time it was put there, it is what every file
- * system keeps, and it is what a case can set without waiting. <b>What it costs is named
- * below and in {@code ThePicturesFolderIsSwept}:</b> a copy that keeps the times arrives looking
- * as old as the file it copies.
+ * ABOUT IT.</b> The sentence says „stariji", not by what. A file is written once and never
+ * again by this portal, so its time of last modification is the time it was put there, it is
+ * what every file system keeps, and it is what a case can set without waiting. <b>What it costs
+ * is named below and in {@code ThePicturesFolderIsSwept}:</b> a copy that keeps the times
+ * arrives looking as old as the file it copies.
  *
- * <p><b>STRICTLY OLDER.</b> Older than ten minutes is exactly that: a file exactly ten minutes old
- * is not older than that. A file dated in the future - a clock that stepped back, a volume copied from a
- * machine that was ahead - is not older than anything, so it stays.
+ * <p><b>STRICTLY OLDER.</b> Older than ten minutes is exactly that: a file exactly ten minutes
+ * old is not older than that. A file dated in the future - a clock that stepped back, a volume
+ * copied from a machine that was ahead - is not older than anything, so it stays.
  *
  * <p><b>A NAME IS A KEY WHEN IT IS WHAT THE WRITER WRITES.</b> The route names a file
  * {@code String.valueOf(photo)} of the key the database issued, so a name belongs to a picture
@@ -52,7 +53,8 @@ public final class AFileWaitingForItsRow {
 
 	/**
 	 * HOW LONG A FILE MAY STAND BEFORE ITS ROW IS VISIBLE, and no longer than this before it
-	 * counts as a leftover. The owner's number, not mine.
+	 * counts as a leftover. The number is in the sentence the owner chose: it came to him with
+	 * that sentence, so it is his by choice and mine by origin.
 	 */
 	private static final Duration MAY_WAIT = Duration.ofMinutes(10);
 

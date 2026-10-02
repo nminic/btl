@@ -314,7 +314,7 @@ class ThePicturesFolderIsSweptTest {
 	 * A STRAY THAT HAS NOT WAITED LONG ENOUGH STAYS, AND IT IS THE ROW ALONE THAT IS NOT YET
 	 * VISIBLE.
 	 *
-	 * <p>This is the whole of why the limit exists: the route writes the file BEFORE its
+	 * <p>This is what the limit is for, as I read it: the route writes the file BEFORE its
 	 * transaction commits, so for a moment a good picture is a file with no row. Nine minutes
 	 * beside eleven in one folder, so the verdict is read off each file's own time.
 	 */

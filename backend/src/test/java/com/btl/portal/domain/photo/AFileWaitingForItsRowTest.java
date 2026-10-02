@@ -23,9 +23,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p><b>THE LIMIT IS WRITTEN OUT AS TEN MINUTES IN EVERY CASE AND IS NEVER READ OFF THE
  * CONSTANT.</b> A case that computed its edges from {@code MAY_WAIT} would move with a
- * mutation of {@code MAY_WAIT} and say nothing about it; the number is the owner's (the
- * journal's sentence he chose says „stariji su od 10", and the unit is minutes), so it stands in
- * the cases as a number.
+ * mutation of {@code MAY_WAIT} and say nothing about it; the number is the one in the sentence
+ * the owner chose („stariji su od 10", and the unit is minutes), so it stands in the cases as a
+ * number.
  */
 class AFileWaitingForItsRowTest {
 
