@@ -954,6 +954,7 @@
     "refused": "The server refused the request with the reason {reason}, which this screen does not recognise.",
     "rejected": "The portal did not manage to prove to the server that the request comes from this page. Refresh the page and try again.",
     "wrong": "The server answered with the number {status} and nothing was changed. Try again in a few minutes.",
+    "malformed": "The portal sent data in a form the server cannot read. Nothing was changed. This is a fault of the portal, please tell us.",
     "nothing": "The portal did not manage to reach the server. Check the connection and try again.",
     "named": "from the server"
   },

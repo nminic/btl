@@ -954,6 +954,7 @@
     "refused": "Server je odbio zahtev uz razlog {reason}, koji ovaj ekran ne prepoznaje.",
     "rejected": "Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.",
     "wrong": "Server je odgovorio brojem {status} i ništa nije promenjeno. Pokušaj ponovo za koji minut.",
+    "malformed": "Portal je poslao podatak u obliku koji server ne razume. Ništa nije promenjeno. Ovo je greška portala, javi nam.",
     "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo.",
     "named": "sa servera"
   },

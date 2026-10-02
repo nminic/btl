@@ -6,7 +6,9 @@ import { registracija } from '../forms/definitions'
 import { I18nProvider } from '../i18n/I18nProvider'
 import { first, inputElement, must } from '../test/at'
 import { renderAt } from '../test/render'
+import sr from '../i18n/sr.json'
 import {
+  answeredWith,
   did,
   forgetEveryCookie,
   refused,
@@ -1358,6 +1360,70 @@ describe('a registration the server refuses', () => {
 
     expect(await screen.findByText(/theMoonIsInTheWrongHouse/)).toBeVisible()
   }, SLOW)
+
+  /**
+   * A 400 THAT NAMES NO REASON IS A REQUEST THE PORTAL SHOULD NEVER HAVE SENT, and the reader is
+   * told so (owner, 02.10.2026, PENDING stavka 376; the sentence is the coordinator's proposal).
+   *
+   * <p><b>Measured on a real screen because the join is the thing.</b> `askTheServer` turns a 400
+   * whose body names no reason into `{ got: 'wrong', status: 400 }` and `ServerSaid` turns that
+   * into a sentence, and each file has a case of its own about its half; neither can fail on the
+   * other. The three bodies are the three ways `reasonIn` answers nothing: no body at all, a body
+   * Spring wrote itself (`error`, `status`, `path`, no `reason`), and a reason that is not text.
+   *
+   * <p>And a 400 that DOES name its reason keeps the sentence of that reason: the three cases
+   * above this one hold it, so the new sentence is not what a 400 now always says.
+   */
+  it.each([
+    ['no body at all', () => answeredWith(400)],
+    [
+      'a body of the shape Spring writes itself',
+      () =>
+        new Response(JSON.stringify({ status: 400, error: 'Bad Request', path: '/api/registration' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        }),
+    ],
+    [
+      'a reason that is not text',
+      () =>
+        new Response(JSON.stringify({ reason: 7 }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        }),
+    ],
+  ])('says the fault is the portal’s, and nothing changed, on a 400 with %s', async (_what, answer) => {
+    registrationAnswered(answer)
+
+    const user = setupUser()
+    renderForm()
+
+    await fillAndSend(user)
+
+    expect(await screen.findByText(sr.server.malformed)).toBeVisible()
+    expect(screen.queryByText(sr.server.wrong.replace('{status}', '400'))).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Prijava je zabeležena' })).toBeNull()
+  }, SLOW)
+
+  it.each([404, 409, 500])(
+    'keeps the number and the old advice for a %i that named no reason',
+    async (status) => {
+      /* The boundary of the sentence above, said as a case: the owner's decision is about the 400,
+         so a number that is not 400 is not read as one. A bare 409 in particular is NOT the
+         address being taken (that one names `theAddressIsTaken`), and is reported as a finding
+         rather than changed here. */
+      registrationAnswered(() => answeredWith(status))
+
+      const user = setupUser()
+      renderForm()
+
+      await fillAndSend(user)
+
+      expect(await screen.findByText(sr.server.wrong.replace('{status}', String(status)))).toBeVisible()
+      expect(screen.queryByText(sr.server.malformed)).toBeNull()
+    },
+    SLOW,
+  )
 
   it('says nothing came back when the server never answered', async () => {
     registrationAnswered(() => {

@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
 import type { TranslateParams } from '../../i18n/translate'
 import type { Answer } from './askTheServer'
+import { whatABareNumberSays } from './serverWords'
 
 /**
  * WHAT CAME BACK, AS A SENTENCE, AND NEVER A SENTENCE OF OUR OWN OVER ONE THE SERVER
@@ -53,7 +54,10 @@ export function ServerSaid({
     }
 
     if (answer.got === 'wrong') {
-      return t('server.wrong', { status: answer.status })
+      /* WHICH OF THE TWO IS NOT DECIDED HERE: a 400 that named no reason is the portal's own
+         fault and says so, any other number keeps the advice to wait (`serverWords.ts`, which
+         also says why this is one function and what the one remaining copy of it is). */
+      return t(whatABareNumberSays(answer.status), { status: answer.status })
     }
 
     return t('server.nothing')
