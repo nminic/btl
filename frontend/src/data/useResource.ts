@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { DucatFamily } from './ducatRule'
 import { useSession } from '../session/useSession'
 import type { Message } from '../session/context'
@@ -236,6 +236,15 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
      redraw are one run, because both land in the same render. */
   const [attempt, setAttempt] = useState(0)
 
+  /* Tells THIS reader, and only this one, to read again: it is marked as asking, which is what the
+     screen draws while the request is out, and the effect below is made to run once more. Two
+     tellings that arrive before a redraw are one run, because both land in the same render. Stable,
+     because it calls two setters and reads nothing that moves. */
+  const wake = useCallback((failure: FailedRead) => {
+    setState({ ...failure, reading: true })
+    setAttempt((were) => were + 1)
+  }, [])
+
   useEffect(() => {
     /* Asked for even when the value is already in hand, and that is what closes
        the window: a value landing between the render and this effect is seen by
@@ -244,12 +253,6 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
        that, in useResource.test.tsx). `loadResource` answers from the promise it
        is already holding, so what it costs is a render nobody sees. */
     let active = true
-    /* Made here, per run of this effect, and bound to the address THIS run reads. Made once per
-       reader it would go on asking for the address the reader first had, and `pages` is the name
-       whose address changes under a reader that stays (a reader who switches language). */
-    const readAgain = () => {
-      askEveryoneAgain(address)
-    }
 
     loadResource<T>(name, language).then(
       (data) => {
@@ -261,7 +264,29 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
         if (active) {
           /* `reading` false, and always a NEW state: the answer to an asking again that is a
              failure again is a state of its own, which is what lets a screen draw it as news. */
-          setState({ status: 'error', error, readAgain, reading: false })
+          const failure: FailedRead = {
+            status: 'error',
+            error,
+            reading: false,
+            /* **THIS READER FIRST, AND THEN EVERYBODY ELSE SHOWING THE SAME FAILURE**, and the order
+               is the point. A reader joins the set below only after the commit that drew its button,
+               and a press that came before that would have asked nobody - not even the reader it
+               was pressed on. Measured on 02.10.2026, on the version that had only the set: in four
+               of twenty-four runs of the cases that press the moment the sentence is in the
+               document, one press did nothing at all and asked the server nothing. So the reader
+               that owns the button never depends on being in the set; the set is only how the
+               OTHERS are reached.
+               Made here, per run of this effect, so it is bound to the address THIS run reads: made
+               once per reader it would go on asking for the address the reader first had, and
+               `pages` is the name whose address changes under a reader that stays (a reader who
+               switches language). */
+            readAgain: () => {
+              wake(failure)
+              askEveryoneAgain(address)
+            },
+          }
+
+          setState(failure)
         }
       },
     )
@@ -275,31 +300,33 @@ export function useResource<T>(name: ResourceName, how: HowToRead = {}): Resourc
        is deliberately not listed beside it: it cannot change without `address` changing,
        because `address` is built from it, so listing it would be a second dependency saying
        the same thing. `attempt` is what a retry changes. */
-  }, [address, owner, revision, attempt])
+  }, [address, owner, revision, attempt, wake])
 
-  useEffect(() => {
+  /* A LAYOUT EFFECT AND NOT AN ORDINARY ONE, so that a reader is among the ones that can be told
+     before the browser can hand a click to the button the same commit drew. An ordinary effect runs
+     after the paint, and a press fast enough to come first (a case that presses the moment the
+     sentence is in the document) found the set empty. The reader that was pressed does not need
+     this (`readAgain` above asks it directly); the others do. */
+  useLayoutEffect(() => {
     if (state.status !== 'error') {
       return
     }
 
-    /* Told to read again by whoever asks for this address, itself included: the button that was
-       pressed is on one reader and the failure it asks again for is on every reader of the address.
-       Marks THIS reader as asking before the effect above runs, which is what the screen draws
-       while the request is out. Nothing here reads state that could have moved since it was made:
-       it is the failure this very reader is showing. */
+    /* Told to read again by whoever asks for this address: the button that was pressed is on one
+       reader and the failure it asks again for is on every reader of the address. It is the failure
+       this very reader is showing, so nothing here reads state that could have moved since. */
     const failure = state
-    const wake = () => {
-      setState({ ...failure, reading: true })
-      setAttempt((were) => were + 1)
+    const woken = () => {
+      wake(failure)
     }
     const alongside = whoShowsTheFailureOf(address)
 
-    alongside.add(wake)
+    alongside.add(woken)
 
     return () => {
-      alongside.delete(wake)
+      alongside.delete(woken)
     }
-  }, [state, address])
+  }, [state, address, wake])
 
   return state
 }

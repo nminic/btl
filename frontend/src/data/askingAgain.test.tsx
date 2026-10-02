@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { answeredWith, serverThat } from '../test/serverAnswers'
 import { setupUser } from '../test/user'
@@ -95,10 +95,12 @@ function Reader({
   name,
   language,
   label,
+  pressesAtOnce = false,
 }: {
   name: ResourceName
   language?: string
   label: string
+  pressesAtOnce?: boolean
 }) {
   const state = useResource<string[]>(name, { language })
   const seen = useRef(new Set<ResourceState<string[]>>())
@@ -114,8 +116,30 @@ function Reader({
           {`Ask again: ${label}`}
         </button>
       )}
+      {pressesAtOnce && <PressesAtOnce state={state} />}
     </section>
   )
+}
+
+/**
+ * Presses the button of the reader it stands in, in the very commit that draws the failure.
+ *
+ * <p>A layout effect of a CHILD runs before the layout effects of the component that owns the state,
+ * so at this moment that reader has not joined the ones that can be told to read again. That is the
+ * moment a person cannot reach and a case that presses as soon as it sees the sentence sometimes
+ * did, and it is staged here instead of being hoped for: the case is the same on every run.
+ */
+function PressesAtOnce({ state }: { state: ResourceState<string[]> }) {
+  const pressed = useRef(false)
+
+  useLayoutEffect(() => {
+    if (state.status === 'error' && !pressed.current) {
+      pressed.current = true
+      state.readAgain()
+    }
+  })
+
+  return null
 }
 
 const text = (label: string) => screen.getByRole('region', { name: label }).textContent
@@ -182,6 +206,54 @@ describe('a reader that failed, asked again', () => {
       held.release(serving('Liga')())
     })
     await waitFor(() => expect(text('A')).toContain('ready: Liga'))
+  })
+})
+
+describe('a button pressed in the very commit that drew it', () => {
+  it('asks again for the reader it was pressed on, which has not joined the others yet', async () => {
+    let calls = 0
+
+    theServerAnswers({
+      [LISTS]: () => {
+        calls += 1
+
+        return calls === 1 ? answeredWith(500) : serving('Liga')()
+      },
+    })
+
+    render(<Reader name="leagues" label="A" pressesAtOnce />)
+
+    await waitFor(() => expect(text('A')).toContain('ready: Liga'))
+    expect(timesAsked(LISTS), 'the press did nothing').toBe(2)
+  })
+
+  it('asks again for the readers that had joined before it, which is every reader of the commit that came first', async () => {
+    let calls = 0
+
+    theServerAnswers({
+      [LISTS]: () => {
+        calls += 1
+
+        return calls === 1 ? answeredWith(500) : serving('Liga')()
+      },
+    })
+
+    /* The two plain readers stand before the one that presses, so in the commit that draws the
+       failure their layout effects have run when the press comes: that is what makes them reachable
+       at that moment, and an effect that ran after the paint would have left both saying it
+       failed. */
+    render(
+      <>
+        <Reader name="leagues" label="A" />
+        <Reader name="leagues" label="B" />
+        <Reader name="leagues" label="C" pressesAtOnce />
+      </>,
+    )
+
+    await waitFor(() => expect(text('A')).toContain('ready: Liga'))
+    await waitFor(() => expect(text('B')).toContain('ready: Liga'))
+    await waitFor(() => expect(text('C')).toContain('ready: Liga'))
+    expect(timesAsked(LISTS), 'one asking again for the three of them').toBe(2)
   })
 })
 
