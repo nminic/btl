@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -491,7 +492,7 @@ class TeamWriteApi {
 		   moderator who does not race. There is nobody to file a proposal under, and the
 		   answer is the one InboxApi and InboxWriteApi already give him. */
 		if (me == null) {
-			return away();
+			return awayAtAnOpenAddress();
 		}
 
 		/* AND THE TWO QUESTIONS JoiningATeam ALREADY ANSWERS, asked before anything about
@@ -500,7 +501,7 @@ class TeamWriteApi {
 		   apart, for the reason written at the top of this class. */
 		if (JoiningATeam.mayJoin(membershipsOf(me), ZonedDateTime.now(clock))
 				!= JoiningATeam.Answer.YES) {
-			return away();
+			return awayAtAnOpenAddress();
 		}
 
 		if (isNothing(typed.name())) {
@@ -631,17 +632,17 @@ class TeamWriteApi {
 	 */
 	@DeleteMapping("/api/teams/{id}/membership")
 	ResponseEntity<?> leave(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id) {
+			@PathVariable AKey id) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, the same first question `propose` asks: there is
 		   nobody here whose membership this could be. */
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> leaving(me, id));
+		return inOneTransaction.execute(committing -> leaving(me, id.value()));
 	}
 
 	/**
@@ -661,7 +662,7 @@ class TeamWriteApi {
 		Optional<Membership> his = membershipHeCouldLeave(me, team);
 
 		if (his.isEmpty()) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		ZonedDateTime now = ZonedDateTime.now(clock);
@@ -781,7 +782,7 @@ class TeamWriteApi {
 	 */
 	@DeleteMapping("/api/teams/{id}")
 	ResponseEntity<?> remove(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id) {
+			@PathVariable AKey id) {
 
 		/* NULL FOR AN ACCOUNT NAMING NO MEMBER, which V23 calls the ordinary case for a
 		   moderator. Not a refusal on its own: such an account is exactly who P13b's second
@@ -790,7 +791,7 @@ class TeamWriteApi {
 
 		boolean administration = mayHe.may(asking, TeamApi.OVER_THE_TEAMS);
 
-		return inOneTransaction.execute(committing -> removing(me, administration, id));
+		return inOneTransaction.execute(committing -> removing(me, administration, id.value()));
 	}
 
 	/**
@@ -831,7 +832,7 @@ class TeamWriteApi {
 	 */
 	private ResponseEntity<?> removing(Long me, boolean administration, long team) {
 		if (!(administration ? thereIsSuchATeam(team) : heAdministersIt(me, team))) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		/* AND THE WINDOW, ASKED OF THE ONE PLACE THAT HAS IT AND ASKED OF BOTH CALLERS.
@@ -1060,7 +1061,12 @@ class TeamWriteApi {
 	}
 
 	/**
-	 * THE ANSWER FOR SOMEBODY THIS ADDRESS IS NOT FOR, which carries nothing at all.
+	 * THE ANSWER FOR SOMEBODY AN OPEN ADDRESS IS NOT FOR, which carries nothing at all.
+	 *
+	 * <p><b>Only the route on an address {@link ApiSecurity#READ_BY_ANYBODY} opens uses this one.</b>
+	 * {@code OPTIONS} there already says that a write lives at the address, a price {@link ApiSecurity}
+	 * weighed and accepted on 18.09.2026, so nothing is left for the shape of this 404 to hide.
+	 * The routes that take a key are on addresses no list opens and answer through {@link #nothingIsHere}.
 	 *
 	 * <p>The shape {@link EventWriteApi} and {@link ModeratorWriteApi} answer a caller they
 	 * refuse with, and the reason for the empty body is the one written at the top of this
@@ -1085,8 +1091,30 @@ class TeamWriteApi {
 	 * request that is NOT this route never gets here at all, since the mapping says what it
 	 * consumes.
 	 */
-	private static ResponseEntity<?> away() {
+	private static ResponseEntity<?> awayAtAnOpenAddress() {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+	}
+
+	/**
+	 * THE ANSWER FOR SOMEBODY AN ADDRESS WITH A KEY IN IT IS NOT FOR, which carries nothing at all.
+	 *
+	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND THE CALLER THROWS
+	 * IT.</b> A status written onto the response comes back with {@code Content-Length: 0}, while an
+	 * address that maps nothing comes back as the container's error document, chunked: over a real
+	 * socket that is 262 bytes against more than 380, and it is an oracle for whether a route lives at
+	 * this address, one request per guess ({@link RightsAtTheDoor} measured it).
+	 * {@link ResponseStatusException} is answered by {@code sendError}, one call into the machinery an
+	 * unmapped address already uses and not an imitation of it. It is thrown and not returned because
+	 * this is asked from inside transaction callbacks, where there is no response to hand. It is made
+	 * here and thrown at the call site and not thrown from this method, because the coverage report
+	 * counts a line whose call never comes back as not run: measured, a method that always throws left
+	 * every {@code return} that called it uncovered, and the gate refuses anything under a hundred per
+	 * cent. Every refusal here is decided before the first write, so the rollback the exception causes
+	 * undoes nothing. {@code AWordInAKeyOverRealHttpTest} compares the bytes with the twin's, for every
+	 * kind of caller.
+	 */
+	private static ResponseStatusException nothingIsHere() {
+		return new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {

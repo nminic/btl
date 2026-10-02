@@ -109,7 +109,7 @@ class InboxReadApi {
 	 *                 this class shares a table with
 	 */
 	@PostMapping("/api/inbox/{id}/read")
-	ResponseEntity<?> read(@PathVariable long id,
+	ResponseEntity<?> read(@PathVariable AKey id,
 			@AuthenticationPrincipal WhoIsAsking.Member member, HttpServletResponse response)
 			throws IOException {
 
@@ -119,7 +119,7 @@ class InboxReadApi {
 			return away(response);
 		}
 
-		Optional<WhoseMessageItIs.Message> message = messageById(id);
+		Optional<WhoseMessageItIs.Message> message = messageById(id.value());
 
 		if (message.isEmpty() || !WhoseMessageItIs.mayRead(message.get(), me)) {
 			return away(response);
@@ -130,7 +130,7 @@ class InboxReadApi {
 		   class note on why a second call must change nothing. */
 		db.sql("insert into message_read (message_id, competitor_id) values (?, ?)"
 						+ " on conflict (message_id, competitor_id) do nothing")
-				.params(id, me)
+				.params(id.value(), me)
 				.update();
 
 		return ResponseEntity.noContent().build();
