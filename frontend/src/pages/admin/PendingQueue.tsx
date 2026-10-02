@@ -953,6 +953,32 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   }
 
   /**
+   * THE BOX GOES WHEN ITS ANSWER COMES, WHICHEVER ANSWER IT IS (owner, 02.10.2026; PDL, „Odbijanje
+   * zatvara pitanje kao i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja
+   * stoji uz dugme"), and it is THAT CARD'S box and no other's.
+   *
+   * <p><b>Why „that card's".</b> One box is open at a time, but a refusal can still be out when the
+   * moderator opens the box on another card - the first box is replaced and its request goes on - and
+   * the answer that comes back for the first must not take the second away with the words he has
+   * begun to write in it. A decision the route took used to end in `setOpen(null)`, which closes
+   * whichever box is open: the settled card's own box goes with the card, so what that line added was
+   * the closing of somebody else's.
+   *
+   * <p><b>And a success still has to close its own card's box</b>, though the card goes: `open` is
+   * read by the line that says what a star means (`starsHere`, off `items` and not off `waiting`), so
+   * a box left naming a settled card would keep that line on a queue that has emptied
+   * (`adminFlows.test.tsx`, „says nothing about a star on a queue that has emptied").
+   *
+   * <p>The card is named in `closed` as well, so its buttons take the focus back as they return: on a
+   * refusal that is the whole of where the focus goes, because the box that had it has left. The
+   * sentence the route gave stands on the card above those buttons (`WhatTheServerSaid`).
+   */
+  const putTheBoxAway = (one: PendingItem): void => {
+    setOpen((now) => (now === one.id ? null : now))
+    setClosed(one.id)
+  }
+
+  /**
    * HANDING ONE BACK, or deleting it where that is what the queue does to an item
    * it will not take (`queues.ts`, `outcomeFor`).
    *
@@ -970,25 +996,6 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * same, because the box is the floor and the route decides - the same division
    * `leagueWrites.ts` names for the address of a competition.
    */
-  /**
-   * THE BOX GOES WHEN ITS ANSWER COMES, WHICHEVER ANSWER IT IS (owner, 02.10.2026; PDL, „Odbijanje
-   * zatvara pitanje kao i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja
-   * stoji uz dugme"), and it is THAT CARD'S box and no other's.
-   *
-   * <p><b>Why „that card's".</b> One box is open at a time, but a refusal can still be out when the
-   * moderator opens the box on another card - the first box is replaced and its request goes on - and
-   * the answer that comes back for the first must not take the second away with the words he has
-   * begun to write in it. The success used to be `setOpen(null)`, which closes whichever box is open.
-   *
-   * <p>The card is named in `closed` as well, so its buttons take the focus back as they return - on
-   * a refusal, that is the whole of where the focus goes, because the box that had it has left. The
-   * sentence the route gave stands on the card above those buttons (`WhatTheServerSaid`).
-   */
-  const putTheBoxAway = (one: PendingItem): void => {
-    setOpen((now) => (now === one.id ? null : now))
-    setClosed(one.id)
-  }
-
   const handBack = async (one: PendingItem, reason: string): Promise<void> => {
     /* THE SAME EXCEPTION `approveAll` MAKES, FOR THE SAME REASON: a row this visit
        made up itself (`isProposal`, above `handsBack`) has no server row to ask
