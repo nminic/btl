@@ -44,8 +44,13 @@ import java.util.concurrent.TimeUnit;
  * <li>Is its name the {@code String.valueOf} of a key? Anything else in the folder is nobody's
  * picture and is not looked at again.
  * <li>Is it a regular file, asked of the entry itself and not of what it points at
- * ({@link LinkOption#NOFOLLOW_LINKS})? A folder with the name of a key, or a link, is not
- * deleted: {@code Files.deleteIfExists} would delete an empty folder without a word.
+ * ({@link LinkOption#NOFOLLOW_LINKS})? A folder with the name of a key is not deleted, and a
+ * case holds that: {@code Files.deleteIfExists} would delete an empty one without a word.
+ * <b>A link is not deleted either, and NO CASE HOLDS THAT</b>: a link cannot be made on the
+ * machine this is written on without a privilege it does not hold, which {@link PhotoApi}
+ * measured for its own flag. What the flag decides is small and is named: with it a link is
+ * never a regular file and is left where it is; without it a link to a regular file would pass
+ * for one, and the LINK, never what it points at, would be deleted.
  * <li>Has it stood longer than ten minutes, by ITS OWN time of last modification and by the
  * {@link Clock} the portal has?
  * <li>Is there a {@code photo} row with its key? Asked last because it is the only step that
@@ -79,6 +84,20 @@ import java.util.concurrent.TimeUnit;
  * machine share. <b>What it costs is named:</b> the timer starts again with the process, so a
  * stack that is redeployed more often than hourly never sweeps. Nothing here measures how often
  * QA is redeployed.
+ *
+ * <p><b>THE THREE QUESTIONS THE JOURNAL ASKS OF A SCHEDULED JOB.</b> P13 asks of the first one
+ * „sta ako ne odradi", „sta ako odradi" (twice) and „sta ako server tog jutra ne radi", and
+ * settles them for the 1 January job with „posao je idempotentan" and „pokusava se pri svakom
+ * dizanju dok ne prodje". A sweep that does not run is made up for by the next one, an hour
+ * later, and a server that was down is swept an hour after it comes back, so the first and the
+ * third have one answer here too. <b>The second is the sweep's own property</b>: a file that has
+ * been deleted is not listed again, and a file that is gone between the check and the delete is
+ * answered by the delete itself and nothing is logged
+ * ({@code aFileThatIsGoneByTheTimeItIsDeletedIsNotReportedAsDeleted}); one that is gone before
+ * its attributes can be read is a warning that says so, which is true and rare and is held by no
+ * case. <b>What the sweep does NOT do is what P13 asks of the 1 January job, to try at every
+ * start</b>: its first run is an hour after the start, and that is my choice for the reasons
+ * above and not the owner's word.
  *
  * <p><b>WHAT THIS CAN TAKE THAT IT SHOULD NOT, named rather than discovered.</b> The ten
  * minutes are the file's age by its time of last modification, so a copy that KEEPS times
@@ -187,6 +206,10 @@ class ThePicturesFolderIsSwept {
 	 * the route that writes the first picture makes it. A folder that cannot be read is told to
 	 * the operator by its path, because the line has to say which setting to look at, and what
 	 * was read before the fault is still swept: every file is checked on its own.
+	 *
+	 * <p><b>The catch for a fault in the MIDDLE of a listing is held by no case.</b> It shares a
+	 * handler with a folder that cannot be opened, which is held, and it needs a file system that
+	 * fails halfway through a directory, which the cases cannot make.
 	 */
 	private SortedMap<Long, Path> theFilesNamedLikePictures() {
 		SortedMap<Long, Path> found = new TreeMap<>();
