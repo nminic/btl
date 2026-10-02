@@ -4,7 +4,7 @@ import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateFiel
 import { useI18n } from '../../i18n/useI18n'
 import { RACE_KINDS } from '../../data/types'
 import { raceKind } from '../../data/raceKind'
-import { asksFor, BOUNDS, isBounded, isWrong, newRaceRow, type RaceRow } from './raceRows'
+import { asksFor, BOUNDS, isWrong, keptWhole, newRaceRow, type RaceRow } from './raceRows'
 import './Entity.css'
 
 /**
@@ -146,30 +146,26 @@ export function EventRaces({
        that says it is fine sends a reader looking somewhere else
        (WCAG 2.2 SC 3.3.1). */
     const wrong = refused && isWrong(row, field)
-    /* Whether this cell refuses anything at all, which is not the same as whether it
-       is required: the climb and the fall are never required and are always bounded,
-       and a measure the race does not fix is neither. Read off the one home the
-       refusal and the marking read (`raceRows.isBounded`), so the control cannot
-       announce a rule the save does not hold it to; tied by hand to one field name,
-       it announced a floor on the limit of every race that has none. */
-    const bounded = isBounded(row, field)
 
     return (
       <input
         className="field__control"
-        type="number"
-        inputMode="decimal"
-        /* The bounds this cell refuses outside of, and only where it refuses
-           anything. A race that does not fix a length carries nought, and a
-           control announcing „at least a tenth of a kilometre" over a value of
-           nought announces a rule that was lifted from it. Both ends and not only
-           the floor: a ceiling on a cell nothing checks is the same untruth the
-           other way round, and it stood for one round saying the opposite of the
-           floor beside it. Asked of the same `isBounded` the refusal and the
-           marking ask, so these do not drift again. */
-        min={bounded ? BOUNDS[field].least : undefined}
-        max={bounded ? BOUNDS[field].most : undefined}
-        step="any"
+        /* A TEXT BOX WITH A NUMERIC KEYBOARD, and not `type="number"`, since 02.10.2026.
+           A number box in a Serbian browser refuses the comma Serbian writes a decimal
+           with and reports it as empty, so „21,1" typed into the length of a race read
+           as no length at all; the owner decided that day „Polje za broj prima i zarez i
+           tacku, a portal salje tacku", and this table is where an administrator types a
+           length. What the cell takes is read by `raceRows.ts` (`read`), and what leaves
+           it by `storedRow`. The climb and the fall are kept whole by the server, so they
+           are offered digits alone (`keptWhole`).
+         *
+           ~~`min`, `max` and `step`~~ went with the number box. They announced the bounds
+           this cell refuses outside of, and only where it refuses anything; on a text box
+           they announce nothing to anybody and constrain nothing, so kept they would be a
+           claim with nobody to hear it. The bounds are what the save holds the cell to
+           (`isBounded`, `isWrong`), and a cell outside them is marked when it is refused. */
+        type="text"
+        inputMode={keptWhole(field) ? 'numeric' : 'decimal'}
         value={row[field]}
         /* Named by its row as well as its column. „Dužina" twenty times over is
            twenty controls a screen reader cannot tell apart, and the table has no

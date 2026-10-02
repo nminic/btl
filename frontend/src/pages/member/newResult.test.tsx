@@ -545,9 +545,10 @@ describe('a race chosen out of that list', () => {
 
     await user.type(held, '999')
 
-    /* Read back as a number, because the box is one: `toHaveValue` compares what
-       the control holds and a number box holds a number. */
-    expect(held, 'a held box took what was typed into it').toHaveValue(Number(was))
+    /* Read back as text, because the box is text since 02.10.2026: a number box takes
+       a comma as well as a dot (owner, „Polje za broj prima i zarez i tacku"), which a
+       `type="number"` box cannot, so what the control holds is a string. */
+    expect(held, 'a held box took what was typed into it').toHaveValue(was)
 
     /* The time is still the member's to type: it is the one thing the calendar
        does not know. */

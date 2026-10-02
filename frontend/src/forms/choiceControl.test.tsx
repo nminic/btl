@@ -136,14 +136,27 @@ describe('the buttons one answer is chosen from', () => {
   it('shares the field in equal parts, read off the track and not off the words', () => {
     /* One third of a row is the field (`registracija.form.json`, `columns`), and
        this is what makes the buttons INSIDE it that third rather than the width
-       of „Muški" and „Ženski". `minmax(0, 1fr)` and not `1fr`: a track's floor is
-       otherwise the width of what it holds, which is exactly the dependence being
-       removed. */
+       of „Muški" and „Ženski". Every track is `1fr`, so the buttons are equal
+       whatever they hold.
+     *
+       AND THE TRACKS HAVE A FLOOR, so where two buttons would not hold their words
+       they go one under the other, still equal and each as wide as the field. Until
+       02.10.2026 the tracks were `minmax(0, 1fr)` in one line, and at 200% text on a
+       telephone of 360 „Početnička" stood 9px past both edges of its button (stavka
+       293.N1, measured in Chrome). `min(100%, ...)` so a field narrower than the floor
+       is one button wide and never wider than itself. The floor is 7em, the widest
+       option the portal has in its button; jsdom lays nothing out, so the words are
+       measured in a browser and this holds the rule that the measurement chose. */
     const choice = ruleFor(SHEET, '.choice', 'FormRenderer.css')
 
     expect(choice.getPropertyValue('display')).toBe('grid')
-    expect(choice.getPropertyValue('grid-auto-flow')).toBe('column')
-    expect(choice.getPropertyValue('grid-auto-columns')).toBe('minmax(0, 1fr)')
+    expect(choice.getPropertyValue('grid-template-columns')).toBe(
+      'repeat(auto-fit, minmax(min(100%, 7em), 1fr))',
+    )
+    /* And the one-line flow is gone rather than left beside it: with columns flowing
+       on one line the floor would push the second button off the field instead of
+       under the first. */
+    expect(choice.getPropertyValue('grid-auto-flow')).toBe('')
 
     /* THE JOIN BETWEEN THAT TRACK AND THE LABEL BELOW, which neither half on its
        own says a word about. `.choice` gives every button an equal TRACK and

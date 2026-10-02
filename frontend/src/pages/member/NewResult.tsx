@@ -6,11 +6,12 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import { unosRezultata } from '../../forms/definitions'
 
 import type { FormValues } from '../../forms/types'
-import { fieldDate, storedDate } from '../../forms/dateField'
+import { fieldDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import { raceKind } from '../../data/raceKind'
 import type { Result } from '../../data/types'
-import { useEvents, useRaces, useResults } from '../../data/useResource'
+import { useEvents, useRaces, useResults, type ResourceState } from '../../data/useResource'
+import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
 import { racesToOffer } from './racesToOffer'
@@ -40,6 +41,10 @@ const ISPRAVKA_PREBROJANOG = {
   ...unosRezultata,
   fields: unosRezultata.fields.filter((one) => one.name !== 'raceKind' && one.name !== 'city'),
 }
+
+/** What the form waits for on every road but the correction of a counted result: nothing,
+ *  so the one place that draws waiting draws the form at once. */
+const NOTHING_TO_WAIT_FOR: ResourceState<unknown> = { status: 'ready', data: null }
 
 /**
  * A refused result written back into the fields it was entered in.
@@ -321,14 +326,16 @@ export function NewResult() {
          a filled copy of its values for the same reason. So the two roads are
          separated here rather than joined by a fallback. */
       ...said,
-      /* Through `storedDate`, which reads the date or throws saying what was in
-         the box. It was parsed here and the result called a Date without
-         looking (ADL A14 bans that), and answering with an empty date instead
-         would be the other half of the same fault: a result with no date
-         belongs to no season and would reach the moderator looking ordinary
-         (rule 2). Nothing can reach the throw, because the form refuses an
-         unreadable date before it submits. */
-      date: storedDate(String(values.date)),
+      /* As it is handed: the form has already put the day in the shape a record keeps it
+         in. It was converted here, through `storedDate`, until 02.10.2026, when the owner
+         gave that conversion ONE place for every form (`btl-produkt/PDL.md`, „Odluke iz
+         ciscenja nalaza"), the door `FormRenderer` hands its values through
+         (`forms/records.ts`, `storedDates`). The door keeps what this line used to keep:
+         an unreadable day throws rather than becoming an empty one, because a result with
+         no date belongs to no season and would reach the moderator looking ordinary (ADL
+         A14, rule 2). Converted here as well, it would be converted twice, and `storedDate`
+         over yyyy-mm-dd throws. */
+      date: String(values.date),
       distanceKm,
       ascentM,
       descentM,
@@ -550,102 +557,116 @@ export function NewResult() {
 
   return (
     <div className="member">
-      <FormRenderer
-        /* Above the fields and under the heading, so the heading is the first
-           thing on the page. Drawn before the form, these notes stood ahead of
-           it and the page began without a heading at all (owner, 01.09.2026;
-           same shape as the proposal of a team). */
-        above={
-          correcting === undefined && fixingOne === undefined ? (
-          <p className="member__note">{t('newResult.note')}</p>
-        ) : correcting === undefined ? (
-          /* The third state, and it says the two things this road does that the
-             others do not: the result leaves the standing until somebody agrees
-             again, and it will not be taken without new proof. */
-          <p className="member__note">{t('newResult.fixingCounted')}</p>
-        ) : (
-          /* Why the form is full, and of what. A member who pressed „Pošalji
-             ponovo" is looking at their own words back, and the reason they are
-             looking at them is the sentence the moderator wrote.
+      {/* NOT DRAWN UNTIL IT IS KNOWN WHICH RESULT IT CORRECTS, where the address names one.
+          `FormRenderer` takes what its fields start with once, when it is mounted, and which
+          counted result `?ispravka=` names is known only when `/api/results` answers. From
+          the list that answer is already in hand; opened by the address, the form mounted
+          first, as the form for a NEW result, and stayed empty, so a press complained about
+          every box the record already held (measured 28.09.2026, PENDING stavka 332). It now
+          waits the way `EditTeam.tsx` waits for its team, through the one place loading and
+          failure look the same everywhere. A new result has nothing to be filled from, and
+          the file of counted results is the largest the portal serves, so that road does
+          not wait at all. */}
+      <Resource state={fixing === null ? NOTHING_TO_WAIT_FOR : results}>
+        {() => (
+          <FormRenderer
+            /* Above the fields and under the heading, so the heading is the first
+               thing on the page. Drawn before the form, these notes stood ahead of
+               it and the page began without a heading at all (owner, 01.09.2026;
+               same shape as the proposal of a team). */
+            above={
+              correcting === undefined && fixingOne === undefined ? (
+              <p className="member__note">{t('newResult.note')}</p>
+            ) : correcting === undefined ? (
+              /* The third state, and it says the two things this road does that the
+                 others do not: the result leaves the standing until somebody agrees
+                 again, and it will not be taken without new proof. */
+              <p className="member__note">{t('newResult.fixingCounted')}</p>
+            ) : (
+              /* Why the form is full, and of what. A member who pressed „Pošalji
+                 ponovo" is looking at their own words back, and the reason they are
+                 looking at them is the sentence the moderator wrote.
 
-             Two sentences and not one since 27.08.2026, because there are now two
-             ways in: a result that was sent back carries a reason and a result
-             that is still waiting carries none. Said with the words of a refusal,
-             the second told a member that something had been refused when nobody
-             had decided anything, and printed „Razlog je bio:" with nothing after
-             it. */
-          <p className="member__note">
-            {correcting.status === 'rejected'
-              ? t('newResult.again', { reason: correcting.note })
-              : t('newResult.changing')}
-          </p>
-          )
-        }
-        /* And the short form is the short form on both roads back to it. A
-           correction of a counted result is not asked its kind or its place, but
-           the submission it makes is a submission like any other: the member can
-           reopen it from the list of what they have sent, through `?ponovo=`, and
-           that road drew the full form with both boxes open. One click and the
-           kind the member was never asked for was theirs to set, on a correction
-           of a result that is already counted (measured in review, 30.08.2026).
-           What decides is what the submission is, not which address opened it. */
-        form={correcting?.corrects === undefined && fixingOne === undefined ? unosRezultata : ISPRAVKA_PREBROJANOG}
-        /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
-           here rather than in the definition because a field has no notion of a
-           value it starts from: `emptyValues` gives every field the empty string
-           and this prop is what the form already takes to start from something
-           else. A kind left empty would be a required select nobody filled, and
-           the member would be refused for not answering a question they were
-           never asked. */
-        initial={
-          correcting !== undefined
-            ? filledFrom(correcting)
-            : fixingOne === undefined
-              ? { raceKind: 'length' }
-              : filledFromCounted(fixingOne)
-        }
-        /* Everything except which race it was (owner, 27.08.2026: „sve osim
-           trke"). A correction keeps the identity of the submission a moderator
-           may already have read, so letting the race change turns that row into a
-           different race under the same number, and the queue is told only that
-           something was corrected. Whoever picked the wrong race deletes it and
-           enters another, which is what the list beside this offers. */
-        fixed={correcting === undefined && fixingOne === undefined ? undefined : ['raceName']}
-        /* And a counted result does not go back into the queue on somebody's
-           word alone: „menja i dostavlja dokaz za tu izmenu" (owner,
-           27.08.2026). Either proof will do, which is the pair the portal
-           already treats as one (PDL P9: a link or a picture, and a picture
-           carries a comment with it).
+                 Two sentences and not one since 27.08.2026, because there are now two
+                 ways in: a result that was sent back carries a reason and a result
+                 that is still waiting carries none. Said with the words of a refusal,
+                 the second told a member that something had been refused when nobody
+                 had decided anything, and printed „Razlog je bio:" with nothing after
+                 it. */
+              <p className="member__note">
+                {correcting.status === 'rejected'
+                  ? t('newResult.again', { reason: correcting.note })
+                  : t('newResult.changing')}
+              </p>
+              )
+            }
+            /* And the short form is the short form on both roads back to it. A
+               correction of a counted result is not asked its kind or its place, but
+               the submission it makes is a submission like any other: the member can
+               reopen it from the list of what they have sent, through `?ponovo=`, and
+               that road drew the full form with both boxes open. One click and the
+               kind the member was never asked for was theirs to set, on a correction
+               of a result that is already counted (measured in review, 30.08.2026).
+               What decides is what the submission is, not which address opened it. */
+            form={correcting?.corrects === undefined && fixingOne === undefined ? unosRezultata : ISPRAVKA_PREBROJANOG}
+            /* A fresh form starts on „Dužinska" (owner, 30.08.2026), and that is done
+               here rather than in the definition because a field has no notion of a
+               value it starts from: `emptyValues` gives every field the empty string
+               and this prop is what the form already takes to start from something
+               else. A kind left empty would be a required select nobody filled, and
+               the member would be refused for not answering a question they were
+               never asked. */
+            initial={
+              correcting !== undefined
+                ? filledFrom(correcting)
+                : fixingOne === undefined
+                  ? { raceKind: 'length' }
+                  : filledFromCounted(fixingOne)
+            }
+            /* Everything except which race it was (owner, 27.08.2026: „sve osim
+               trke"). A correction keeps the identity of the submission a moderator
+               may already have read, so letting the race change turns that row into a
+               different race under the same number, and the queue is told only that
+               something was corrected. Whoever picked the wrong race deletes it and
+               enters another, which is what the list beside this offers. */
+            fixed={correcting === undefined && fixingOne === undefined ? undefined : ['raceName']}
+            /* And a counted result does not go back into the queue on somebody's
+               word alone: „menja i dostavlja dokaz za tu izmenu" (owner,
+               27.08.2026). Either proof will do, which is the pair the portal
+               already treats as one (PDL P9: a link or a picture, and a picture
+               carries a comment with it).
 
-           Refused rather than the fields made required, because the requirement
-           is about this one road in: on every other road both are optional, and a
-           form definition is one shape for all of them. */
-        alsoRefuses={(values) =>
-          /* Trimmed here, because what arrives here is not. The form hands this
-             function what is on the screen and hands `onSubmit` the trimmed copy
-             (`FormRenderer`), so three spaces in Link read as proof and the
-             sentence that explains what is missing never appeared: the member saw
-             only the general complaint about an empty field, which is true and
-             says nothing about this road in particular. Measured by a review on
-             28.08.2026; the sending itself was refused either way, so what was
-             lost was the explanation and not the guard. */
-          fixingOne !== undefined &&
-          String(values.link).trim() === '' &&
-          String(values.photo).trim() === ''
-            ? 'newResult.needsProof'
-            : /* And a result run in no time at all, which no single box can refuse
-                 because each of the three is right to take nought on its own: a
-                 race of forty five minutes has nought hours (owner, 31.08.2026:
-                 „Ne sme da se popuni 0:0:0!"). Asked of the one place that holds
-                 that rule, so this form and the panel in the verification queue
-                 refuse the same thing. */
-              noTime(values)
-              ? 'newResult.needsTime'
-              : undefined
-        }
-        suggests={{ raceName: offered }}
-        onSubmit={onSubmit}
-      />
+               Refused rather than the fields made required, because the requirement
+               is about this one road in: on every other road both are optional, and a
+               form definition is one shape for all of them. */
+            alsoRefuses={(values) =>
+              /* Trimmed here, because what arrives here is not. The form hands this
+                 function what is on the screen and hands `onSubmit` the trimmed copy
+                 (`FormRenderer`), so three spaces in Link read as proof and the
+                 sentence that explains what is missing never appeared: the member saw
+                 only the general complaint about an empty field, which is true and
+                 says nothing about this road in particular. Measured by a review on
+                 28.08.2026; the sending itself was refused either way, so what was
+                 lost was the explanation and not the guard. */
+              fixingOne !== undefined &&
+              String(values.link).trim() === '' &&
+              String(values.photo).trim() === ''
+                ? 'newResult.needsProof'
+                : /* And a result run in no time at all, which no single box can refuse
+                     because each of the three is right to take nought on its own: a
+                     race of forty five minutes has nought hours (owner, 31.08.2026:
+                     „Ne sme da se popuni 0:0:0!"). Asked of the one place that holds
+                     that rule, so this form and the panel in the verification queue
+                     refuse the same thing. */
+                  noTime(values)
+                  ? 'newResult.needsTime'
+                  : undefined
+            }
+            suggests={{ raceName: offered }}
+            onSubmit={onSubmit}
+          />
+        )}
+      </Resource>
 
       {/* Said out loud rather than left to a button that looks unpressed, the same
           reasoning `RateEvent.tsx` keeps beside its own `role="status"`

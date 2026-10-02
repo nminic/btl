@@ -342,6 +342,7 @@
       "max": "Najveća dozvoljena vrednost je {max}.",
       "email": "Unesi ispravnu adresu elektronske pošte.",
       "number": "Unesi broj.",
+      "integer": "Unesi ceo broj.",
       "date": "Unesi datum u obliku dd/mm/gggg.",
       "matches": "Ne poklapa se sa prethodnim poljem.",
       "taken": "Ova vrednost je već zauzeta. Svaki zapis mora imati svoju.",

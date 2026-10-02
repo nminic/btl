@@ -1,5 +1,6 @@
 import { countryName } from '../data/countryName'
-import { fieldDate, isoDate } from './dateField'
+import { fieldDate, storedDate } from './dateField'
+import { storedNumber } from './numberField'
 import type { FieldDef, FieldOption, FormDef, FormValues } from './types'
 
 /* The bridge between a record and the form that changes it.
@@ -73,11 +74,79 @@ export function valuesFor(form: FormDef, record: Record<string, unknown>): FormV
 }
 
 /**
+ * EVERY DATE A FORM HOLDS, IN THE SHAPE A RECORD KEEPS IT IN: the one door a form's dates
+ * leave by.
+ *
+ * <p>Owner, 02.10.2026, choosing between the outcomes he was offered (`btl-produkt/PDL.md`,
+ * „Odluke iz ciscenja nalaza"): the conversion of a date from a form has ONE place for every
+ * form, and the rule `ADL.md` wrote down on 13.08.2026 („pretvaranje ima jedna vrata") is put
+ * back and kept rather than struck out. That rule had been recorded as done while the commit
+ * carrying it never reached `main`, so until this day every screen converted for itself: the
+ * calendar through `isoDate`, the registration and the sending of a result through
+ * `storedDate`, and the next form with a date would have had to remember to.
+ *
+ * <p><b>Called by `FormRenderer` when a form is sent, after the rules and after
+ * `trimValues`.</b> After the rules, because they read a date the way it was typed; converted
+ * first, every date on the portal would be refused as not a date. After trimming, because
+ * „  16/01/2027 " is the day somebody meant.
+ *
+ * <p><b>Driven by the type in the definition and not by a name</b>, so a fifth date field is
+ * covered on the day its JSON says so, without anybody touching a component (PDL P30).
+ *
+ * <p>Through `storedDate`, which throws rather than answering with nothing: an empty date
+ * written into a record is a result that belongs to no season (ADL A14, rule 2), and the form
+ * refuses an unreadable day before it ever gets here (`validate.ts`). A day nobody gave stays
+ * nothing, which is what an optional date is, and a field the values do not hold - one taken
+ * off the screen - is not put back.
+ */
+export function storedDates(form: FormDef, values: FormValues): FormValues {
+  const stored: FormValues = { ...values }
+
+  for (const field of form.fields) {
+    const value = values[field.name]
+
+    if (field.type === 'date' && typeof value === 'string' && value !== '') {
+      stored[field.name] = storedDate(value)
+    }
+  }
+
+  return stored
+}
+
+/**
+ * EVERY NUMBER A FORM HOLDS, WITH THE DOT THE SERVER READS, through the same door as the dates
+ * and for the same reason.
+ *
+ * <p>Owner, 02.10.2026: „Polje za broj prima i zarez i tacku, a portal salje tacku." A box
+ * keeps what was typed, comma and all, so the member reads back what he wrote; what leaves the
+ * form carries the dot. Driven by the type, so a text field holding „21,1 km" is left as it is.
+ */
+export function storedNumbers(form: FormDef, values: FormValues): FormValues {
+  const stored: FormValues = { ...values }
+
+  for (const field of form.fields) {
+    const value = values[field.name]
+
+    if (field.type === 'number' && typeof value === 'string') {
+      stored[field.name] = storedNumber(value)
+    }
+  }
+
+  return stored
+}
+
+/**
  * What the session remembers, which is the record's own shape written as text.
  *
  * The overlay is a flat map of strings on purpose: it is read back through the
  * record underneath, which is what says whether a field is a number, and it is
  * the shape a PATCH body will have when the backend arrives.
+ *
+ * <p><b>Nothing is converted here, dates included.</b> What this is handed has left a form,
+ * and a form's dates leave already in the shape a record keeps them (`storedDates` above). It
+ * converted them itself until 02.10.2026; done twice, the second time is `isoDate` over
+ * yyyy-mm-dd, which is not a day in the shape it reads and so is nothing at all, and the day
+ * would be dropped on every save.
  */
 export function textFrom(form: FormDef, values: FormValues): Record<string, string> {
   const text: Record<string, string> = {}
@@ -85,7 +154,7 @@ export function textFrom(form: FormDef, values: FormValues): Record<string, stri
   for (const field of form.fields) {
     const value = values[field.name]
 
-    text[field.name] = field.type === 'date' ? isoDate(String(value)) : String(value)
+    text[field.name] = String(value)
 
     /* And the country the town came with. It is a value the form holds and not
        a field it draws, so a loop over the fields cannot see it, and everything
@@ -268,6 +337,14 @@ export function shownValue(
 
   if (field.type === 'country') {
     return countryName(value)
+  }
+
+  /* Back into the shape it was typed in, because what is being confirmed has been through
+     the door (`storedDates`) and holds the day the way a record keeps it. Read straight out,
+     a save of an event said „2027-01-16" under a field the form spells dd/mm/gggg, which is
+     the one shape the portal never shows a date in (PDL P8). Empty stays empty. */
+  if (field.type === 'date') {
+    return fieldDate(value)
   }
 
   return optionsFor(field, supplied).find((one) => one.value === value)?.labelKey ?? value

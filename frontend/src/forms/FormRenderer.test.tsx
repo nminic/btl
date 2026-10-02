@@ -391,7 +391,13 @@ describe('FormRenderer', () => {
     // A date is a text field on purpose: the native one follows the browser
     // locale, so it would show mm/dd/yyyy to an English browser.
     expect(screen.getByLabelText(/proba.datum/)).toHaveAttribute('placeholder', 'dd/mm/gggg')
-    expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('type', 'number')
+    /* A number is a text box with a numeric keyboard, and on purpose for the same kind of
+       reason the date is: a `type="number"` box in a Serbian browser refuses the comma
+       Serbian writes a decimal with, and reports what it refuses as an empty value
+       (owner, 02.10.2026: „Polje za broj prima i zarez i tacku"). `Payments.tsx` drew its
+       amount this way first, for the same measured reason. */
+    expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('type', 'text')
+    expect(screen.getByLabelText(/proba.broj/)).toHaveAttribute('inputmode', 'decimal')
     expect(screen.getByLabelText(/proba.pol/).tagName).toBe('SELECT')
     expect(screen.getByLabelText(/proba.prazan/).children).toHaveLength(1)
     /* Four of them: the two selects with nothing chosen, the country beside the
@@ -693,6 +699,168 @@ describe('FormRenderer', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ ime: 'Vladan' }), {})
+  })
+
+  /**
+   * WHAT LEAVES THE FORM IS THE SHAPE THE SERVER READS, AND IT IS MADE AT ONE DOOR.
+   *
+   * <p>Owner, 02.10.2026 (`btl-produkt/PDL.md`, „Odluke iz ciscenja nalaza"), two decisions
+   * this one case holds together because they are kept in one place: the conversion of a
+   * date has ONE place for every form, and a number box takes a comma as well as a dot while
+   * the portal sends the dot. Until then every screen converted its own date, and a number
+   * typed the way Serbian writes it never reached a screen at all: a `type="number"` box
+   * reports „10,55" as empty, so the member read „10,55" in the box and „Ovo polje je
+   * obavezno." under it.
+   *
+   * <p><b>THE DAY AND THE MONTH ARE DIFFERENT NUMBERS</b>, 16 and 01, so a door that read the
+   * pieces the wrong way round answers `2027-16-01` rather than the right string by accident.
+   */
+  it('hands over a day as the server reads it and a number with a dot, whatever was typed', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByLabelText(/proba.saglasnost/))
+    await user.type(screen.getByLabelText(/proba.datum/), '16012027')
+    await user.type(screen.getByLabelText(/proba.broj/), '10,55')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByText('Unesi broj.')).not.toBeInTheDocument()
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ datum: '2027-01-16', broj: '10.55' }),
+      {},
+    )
+  })
+
+  it('hands over a dot that was typed as a dot, and an empty optional day as nothing', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    renderWithI18n(<FormRenderer form={everyType} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByLabelText(/proba.saglasnost/))
+    await user.type(screen.getByLabelText(/proba.broj/), '10.55')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ datum: '', broj: '10.55' }),
+      {},
+    )
+  })
+
+  /**
+   * AND EVERYTHING THAT ANSWERS THE FORM BEFORE IT IS SENT STILL READS WHAT WAS TYPED.
+   *
+   * <p>The other half of the door, and the half a screen leans on without saying so. The rule
+   * a screen hands in, what it refuses over the whole form, what it draws under the fields and
+   * what it reads off them are all asked while the reader is still typing, in the shape on the
+   * screen. `admin/AdminEvents.tsx`'s `alsoFolds` is handed THIS shape through `check` and the
+   * converted one through `onSubmit`, and it is written to take both because of exactly this.
+   * Moved in front of them, the door would hand a half typed day to a rule as nothing at all.
+   */
+  it('lets the rules of the screen read the day and the number the way they were typed', async () => {
+    const user = setupUser()
+    const seen: Record<string, unknown> = {}
+    renderWithI18n(
+      <FormRenderer
+        form={everyType}
+        onSubmit={vi.fn()}
+        check={(values) => {
+          seen.check = [values.datum, values.broj]
+          return {}
+        }}
+        alsoRefuses={(values) => {
+          seen.alsoRefuses = [values.datum, values.broj]
+          return undefined
+        }}
+        derived={(values) => {
+          seen.derived = [values.datum, values.broj]
+          return []
+        }}
+        beneath={(values) => {
+          seen.beneath = [values.datum, values.broj]
+          return null
+        }}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByLabelText(/proba.saglasnost/))
+    await user.type(screen.getByLabelText(/proba.datum/), '16012027')
+    await user.type(screen.getByLabelText(/proba.broj/), '10,55')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    for (const reader of ['check', 'alsoRefuses', 'derived', 'beneath']) {
+      expect(seen[reader], reader).toEqual(['16/01/2027', '10,55'])
+    }
+  })
+
+  /**
+   * THE HALF THAT ONLY AGREES WITH ANOTHER FIELD GOES THROUGH THE SAME DOOR.
+   *
+   * <p>`onSubmit` is handed two things since 21.09.2026 (`FormRenderer.tsx`, `Props`), and both
+   * have been trimmed by one function with one definition so that two boxes holding the same
+   * thing arrive holding the same thing. The door is the same promise one step further: a
+   * repeated number left with its comma while the first one lost it would make the comparison
+   * on the other side refuse a form that was filled in correctly. No route asks for a repeated
+   * number today, so this is held on a definition made for it.
+   */
+  it('converts the agreeing half the way it converts the rest', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    const twice: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'prvi', type: 'number', labelKey: 'proba.prvi' },
+        { name: 'drugi', type: 'number', labelKey: 'proba.drugi', matches: 'prvi' },
+      ],
+    }
+    renderWithI18n(<FormRenderer form={twice} onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText(/proba.prvi/), '21,1')
+    await user.type(screen.getByLabelText(/proba.drugi/), '21,1')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).toHaveBeenCalledWith({ prvi: '21.1' }, { drugi: '21.1' })
+  })
+
+  /**
+   * A NUMBER THE SERVER KEEPS WHOLE IS OFFERED DIGITS ALONE, AND REFUSES A SEPARATOR.
+   *
+   * <p>The coordinator's reasoning, not the owner's words: once a box took a comma, „30,5"
+   * seconds would have travelled to a route that reads an `Integer` (`types.ts`, `integer`,
+   * and `wholeNumbers.test.ts`, which holds the definitions to the server). The keyboard is
+   * the first half of the refusal and the sentence is the second; a telephone that offered a
+   * separator would be inviting the very thing the field refuses.
+   */
+  it('offers a whole number digits alone and refuses a separator in it', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    const time: FormDef = {
+      id: 'proba',
+      titleKey: 'proba.naslov',
+      submitKey: 'form.submit',
+      fields: [
+        { name: 'sekunde', type: 'number', labelKey: 'proba.sekunde', integer: true },
+        { name: 'duzina', type: 'number', labelKey: 'proba.duzina' },
+      ],
+    }
+    renderWithI18n(<FormRenderer form={time} onSubmit={onSubmit} />)
+
+    expect(screen.getByLabelText(/proba.sekunde/)).toHaveAttribute('inputmode', 'numeric')
+    expect(screen.getByLabelText(/proba.duzina/)).toHaveAttribute('inputmode', 'decimal')
+
+    await user.type(screen.getByLabelText(/proba.sekunde/), '30,5')
+    await user.type(screen.getByLabelText(/proba.duzina/), '21,1')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.getByText('Unesi ceo broj.')).toBeVisible()
+    expect(screen.getByLabelText(/proba.sekunde/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/proba.duzina/)).toHaveAttribute('aria-invalid', 'false')
+    expect(onSubmit).not.toHaveBeenCalled()
   })
 
   /* A form keeps all its values in one place, so unless a field is left alone
@@ -1285,7 +1453,7 @@ describe('a field filled from a list', () => {
        review the same day wrote `className` after the spread on the select and
        watched the whole suite stay green. There are **five** of them, and all five
        are asked in `held.test.tsx` — the select, the country, the confirmation, the
-       picture, and the plain `<input type={field.type}>` that draws `text`, `email`,
+       picture, and the plain `<input {...boxFor(field)}>` that draws `text`, `email`,
        `password` and `number` alike. The picture was left out until 29.08.2026, when
        a review wrote `className="field__control"` after the spread on it and the
        whole suite stayed green; the plain box was miscounted as four branches

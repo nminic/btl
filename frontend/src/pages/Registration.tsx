@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { useFilterParams } from '../app/useFilterParams'
-import { storedDate } from '../forms/dateField'
 import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
 import type { FormValues } from '../forms/types'
@@ -60,21 +59,16 @@ function theBody(values: FormValues, agreeing: FormValues, referral: string | nu
     firstName: written(values, 'firstName'),
     lastName: written(values, 'lastName'),
     fatherName: written(values, 'fatherName'),
-    /* THROUGH `storedDate`, AND THIS WAS A REAL FAULT RATHER THAN A TIDYING. A date
-       field HOLDS what the region reads, dd/mm/gggg, because that is what somebody
-       typed and what goes back into the box; `Typed.birthDate` is read by
-       `LocalDate.parse`, which takes yyyy-mm-dd and nothing else. Sent as it stands,
-       „12/04/1985" is not a day, `theDay` answers nothing, and EVERY registration this
-       portal makes is refused with „the form is not complete" naming no field.
-     *
-       The same crossing as `NewResult.tsx`, and through the same function: it reads the
-       date or throws saying what was in the box, rather than answering with an empty
-       string. An empty one would travel and be refused, which is the silent half of the
-       same fault. Nothing can reach the throw, because the form refuses an unreadable
-       date before it submits (`forms/validate.ts`), and the body is built on the press
-       rather than inside the sending, so the day something does reach it, it stops where
-       the portal stops rather than becoming a promise nobody is holding. */
-    birthDate: storedDate(written(values, 'birthDate')),
+    /* AS IT IS HANDED, because the form has already put it in the shape the route reads.
+       A date field HOLDS what the region reads, dd/mm/gggg, and `Typed.birthDate` is read
+       by `LocalDate.parse`, which takes yyyy-mm-dd and nothing else: sent as the box holds
+       it, „12/04/1985" is not a day and EVERY registration is refused with „the form is
+       not complete" naming no field. That crossing was made here, through `storedDate`,
+       until 02.10.2026; the owner decided that day that it has ONE place for every form
+       (`btl-produkt/PDL.md`, „Odluke iz ciscenja nalaza"), which is the door `FormRenderer`
+       hands its values through (`forms/records.ts`, `storedDates`). Made here as well, it
+       would be made twice, and `storedDate` over yyyy-mm-dd throws. */
+    birthDate: written(values, 'birthDate'),
     gender: written(values, 'gender'),
     /* A BOOLEAN AND NOT THE WORD „yes", and this was a real fault rather than a
        tidying: the form offers the strings `yes` and `no` (`registracija.form.json`)
@@ -311,9 +305,12 @@ export function Registration() {
             return
           }
 
-          /* BUILT HERE AND NOT INSIDE THE SENDING, so that `storedDate` throwing lands in
+          /* BUILT HERE AND NOT INSIDE THE SENDING, so that anything building it throws in
              the press that React is already holding - where the portal's error boundary
-             is - rather than in a promise nobody kept a handle on. */
+             is - rather than in a promise nobody kept a handle on. The one conversion that
+             can throw, an unreadable date, now happens a step earlier and in the same
+             press (`forms/records.ts`, `storedDates`), and the reason stands for whatever
+             is built here next. */
           void send(theBody(values, agreeing, referral), written(values, 'email'))
         }}
       />
