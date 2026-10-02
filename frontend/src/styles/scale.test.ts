@@ -187,17 +187,6 @@ const IN_PIXELS = new Map([
     'cuts a competitor name and a race name to an ellipsis, both already clipped above',
   ],
   [
-    'pages/Rankings.css 744.98',
-    /* In pixels because the circle is TAKEN AWAY below it, and a query in `em` would take it from a
-       1280 screen that has room for it as soon as the reader makes the text twice as big, which is
-       what the test further down holds. The width is its own and not borrowed from the one table
-       columns drop at: it was 699.98 until 02.10.2026, and the owner raised it to 745px so that the
-       circle does not stand beside a name on two lines (measured over the seventeen rows of
-       `/sr/tabela?sezona=2019`: 9 of them at 700px, 3 at 720, 1 at 744, none from 745). The nine
-       columns still drop to four at 699.98, in `styles/table.css`, with every other table. */
-    'takes the circle out of the main standing so the name keeps its one line',
-  ],
-  [
     'components/NamePlate.css 699.98',
     /* In pixels because it is the other half of the query in `pages/league/League.css`, on the same
        screen. The first column of a competition's standing is capped at 7,5rem there and the circle stands inside
@@ -363,9 +352,6 @@ describe('space and corners are chosen from the scale, not typed', () => {
       559.98, 560,
       // A narrow window, where a table gives up its columns. Same, and its half.
       620, 699.98, 700,
-      // Where the circle comes back in the main standing, which is its own width and has no half: it
-      // is only ever asked from below.
-      744.98,
       // The wide layout, and the navigation stops folding away, with its half.
       780, 819.98, 820,
       // Set by their own content, each said where it is written: the front page
