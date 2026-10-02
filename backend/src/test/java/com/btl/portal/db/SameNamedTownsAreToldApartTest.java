@@ -48,13 +48,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * file, which has no coordinates; {@link #theOwnersExamplesCarryTheNamesHeGave()} asks it for the
  * handful of towns where the owner named the answer, and the whole of it is read by a person ("preostalih
  * 27 i svih 44 iz regiona lige se pregledaju rucno");
- * <li>a town that keeps its bare name is the BEST RANKED of its pair, and the only one that does. The
- * owner decided (02.10.2026) that every namesake carries a label, a town of fifteen thousand as much as a
- * village, so a bare name survives only where no label can be worked out: San José, the capital of Costa
- * Rica, which nothing in its country is bigger than, and two towns of China the GeoNames file has no row
- * for. That is fewer than one pair in a hundred, and it is what tells his decision from the other one he
- * was asked about, that the real town of a pair keeps its name: that would leave six pairs in ten with a
- * bare member.
+ * <li>a town that keeps its bare name is the BEST RANKED of its pair, and the only one that does, and
+ * there are exactly three of them: San José in Costa Rica, the capital, which nothing in its country is
+ * bigger than, and two towns of China the GeoNames file has no row for, Donghe and Wuchang
+ * ({@link #THE_THREE_WITH_NO_LABEL}). The owner decided (02.10.2026) that every namesake carries a label,
+ * a town of fifteen thousand as much as a village; those three are the exception that was approved, and
+ * the same equality is what tells his decision from the other reading he was asked about, that the real
+ * town of a pair keeps its name, which would leave six pairs in ten with a bare member.
  * </ul>
  *
  * <p>A label is accepted when it is the name of that bigger town or its English name. The codebook calls
@@ -92,6 +92,25 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 			792277L, "Brezovica (Leskovac)",
 			790698L, "Glogovac (Jagodina)",
 			3200572L, "Glogovac (Bogatić)");
+
+	/**
+	 * THE THREE TOWNS OF A PAIR NO LABEL COULD BE WORKED OUT FOR, by GeoNames mark, and why each one is here.
+	 *
+	 * <p>San José (3621849) is the capital of Costa Rica and nothing in its country is bigger, so there is
+	 * no bigger town to name. Donghe (2037643) and Wuchang (1791351) are towns of China that the GeoNames
+	 * file the labels were worked out from has no row for, so they have no coordinates and nothing is
+	 * nearest to them. Each is the best ranked of its pair, which is why the pair is told apart all the
+	 * same: its namesake carries the label. Approved on 02.10.2026 as the exception to "every namesake
+	 * is labelled", and the same day the owner said the rule itself: „Isključivo DUPLIRANI nazivi
+	 * dobijaju u zagradi veći mesto. Svi ostali nemaju."
+	 *
+	 * <p><b>A list, and the floor under it is a query.</b> A hand written list is not the fault; one with
+	 * nothing under it is. This one is the recorded decision itself, and what it is compared with is
+	 * asked of the database: of the towns that stood in a pair in V3, which carry their bare name now.
+	 * Equality in both directions, so a fourth bare name fails it and so does a label on one of the three,
+	 * and neither can pass for the other.
+	 */
+	private static final Set<Long> THE_THREE_WITH_NO_LABEL = Set.of(3_621_849L, 2_037_643L, 1_791_351L);
 
 	@Test
 	void theOwnersExamplesCarryTheNamesHeGave() {
@@ -189,7 +208,6 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 				.collect(Collectors.groupingBy(town -> new Pair(town.country(), town.name())));
 		List<String> offences = new ArrayList<>();
 		int pairsRead = 0;
-		int barePairs = 0;
 
 		for (Map.Entry<Pair, List<Town>> pair : pairs.entrySet()) {
 			if (pair.getValue().size() < 2) {
@@ -210,19 +228,31 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 				offences.add(pair.getKey().name() + " [" + pair.getKey().country() + "]: the bare name stayed with "
 						+ bare.getFirst().mark() + " and the best ranked town of the pair is " + best.mark());
 			}
-
-			if (bare.size() == 1) {
-				barePairs++;
-			}
 		}
 
 		assertThat(pairsRead).as("V3 held no pair, so nothing was asked").isPositive();
 		assertThat(offences).as("a bare name kept by a smaller town, or by more than one").isEmpty();
-		assertThat(barePairs * 100)
-				.as("a bare member in one pair in a hundred or more: the owner decided that every namesake is"
-						+ " labelled, and a codebook in which the real town of each pair kept its name is the"
-						+ " reading he did not choose")
-				.isLessThan(pairsRead);
+	}
+
+	@Test
+	void theTownsOfAPairThatKeepTheirBareNameAreExactlyTheThreeNoLabelCouldBeWorkedOutFor() {
+		Map<Long, Town> before = byMark(loadedByV3());
+		Map<Pair, Long> carried = before.values().stream()
+				.collect(Collectors.groupingBy(town -> new Pair(town.country(), town.name()), Collectors.counting()));
+		Map<Long, String> now = db.sql("select geonames_id, name from place")
+				.query((rs, row) -> Map.entry(rs.getLong("geonames_id"), rs.getString("name")))
+				.list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+		Set<Long> bare = before.values().stream()
+				.filter(town -> carried.get(new Pair(town.country(), town.name())) > 1)
+				.filter(town -> town.name().equals(now.get(town.mark())))
+				.map(Town::mark)
+				.collect(Collectors.toSet());
+
+		assertThat(bare)
+				.as("the towns of a pair that carry their bare name are not the three the exception was approved"
+						+ " for: a fourth one lost its label, or one of the three was given one")
+				.containsExactlyInAnyOrderElementsOf(THE_THREE_WITH_NO_LABEL);
 	}
 
 	// ------------------------------------------------------------------ reading the two migrations
