@@ -212,6 +212,68 @@ describe('activating a membership from the payments screen', () => {
     return [...paymentsIn(asked), ...grantsIn(asked)]
   }
 
+  /**
+   * A server whose write route answers only when `settle` is called, so a case can press more
+   * than once, and press the controls that put the question away, before it says anything.
+   *
+   * <p>Outside the block that first needed it (`a second press while the first is out`) because
+   * a second block does: what the sheet lets a moderator do while its own request is out is the
+   * same question asked of other controls.
+   */
+  function servingSlowly() {
+    let settle: ((response: Response) => void) | undefined
+    const answered = new Promise<Response>((resolve) => {
+      settle = resolve
+    })
+
+    const server = serving(OUTSTANDING, () => answered)
+
+    if (settle === undefined) {
+      throw new Error('the executor above runs synchronously')
+    }
+
+    return { server, settle }
+  }
+
+  /**
+   * A server whose list loses one person once a write has gone through, which is what the real
+   * one derives: a row is on the list because no membership exists for that person and season.
+   *
+   * <p>The write answers 201 at once. `reads` says how many times the list was asked for, so a
+   * case can tell the first drawing of the screen from the one after an activation.
+   */
+  function servingTheListWithout(gone: number) {
+    const reads = { count: 0 }
+
+    clearResourceCache()
+
+    const server = serverThat((path, init) => {
+      if (path === '/api/payments' && (init?.method ?? 'GET') === 'GET') {
+        reads.count += 1
+
+        return new Response(
+          JSON.stringify(
+            reads.count === 1
+              ? OUTSTANDING
+              : { season: 2031, accounts: ACCOUNTS.filter((one) => one.competitorId !== gone) },
+          ),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }
+
+      if (
+        (path === '/api/memberships' || path === '/api/payments') &&
+        init?.method === 'POST'
+      ) {
+        return new Response(null, { status: 201 })
+      }
+
+      return null
+    })
+
+    return { server, reads }
+  }
+
   describe('what stands in the row', () => {
     /**
      * THE OWNER'S THREE THINGS, ALL IN HIS CURRENCY AND NONE IN ANYBODY ELSE'S.
@@ -1335,23 +1397,6 @@ describe('activating a membership from the payments screen', () => {
    * case below can press twice and inspect the row before ever letting the server speak.
    */
   describe('a second press while the first is out', () => {
-    /** A server whose write route answers only when `settle` is called, so a case can press
-     *  more than once before it says anything. */
-    function servingSlowly() {
-      let settle: ((response: Response) => void) | undefined
-      const answered = new Promise<Response>((resolve) => {
-        settle = resolve
-      })
-
-      const server = serving(OUTSTANDING, () => answered)
-
-      if (settle === undefined) {
-        throw new Error('the executor above runs synchronously')
-      }
-
-      return { server, settle }
-    }
-
     /**
      * <p><b>THE ASSERTION IS ON THE BODY THE SERVER RECEIVED, NOT ON HOW MANY TIMES ANYTHING
      * WAS CLICKED.</b> Three presses land on this row - the button that opened the sheet, and
@@ -1595,6 +1640,355 @@ describe('activating a membership from the payments screen', () => {
       await user.click(aktiviraj)
       expect(await screen.findByRole('dialog')).toBeVisible()
       expect(grantsIn(server.asked)).toEqual([])
+
+      server.stop()
+    })
+  })
+
+  /**
+   * „NE", „ODUSTANI" AND ESCAPE DO NOTHING WHILE THE SHEET'S OWN REQUEST IS OUT (owner,
+   * 02.10.2026, choosing between three outcomes he was priced; PDL, „Odluke iz ciscenja nalaza",
+   * and the registry's items 259, 352 and 354).
+   *
+   * <p><b>What the sheet did until then.</b> „Da" sent the request and the sheet stayed up for
+   * exactly as long as the row's own button was told off - but „Ne", „Odustani" and Escape were
+   * all still live, and each of them put the sheet away. The moderator read that as „I took it
+   * back" while the request went on to the server and drew a member number that cannot be given
+   * back (PDL section 19, „Aktivacija trosi clanski broj nepovratno"). A refusal arriving
+   * afterwards was then drawn under a question that was no longer there.
+   *
+   * <p><b>The press is measured by what the SHEET does and by what the SERVER received</b>, and
+   * the three questions are three cases because they are three different `Prompt` calls: his 6
+   * and his 3 say „Ne", his 4 and 5 say „Odustani", and only the second of those two shapes has
+   * two ways of saying yes.
+   */
+  describe('while its request is out, the question cannot be put away', () => {
+    /**
+     * <p>Ana, first row, his case 6: one way of saying yes, and „Ne" beside it. A press on „Ne"
+     * after „Da" must leave the sheet exactly where it was, and the request that was already on
+     * its way must still be the only one.
+     */
+    it('keeps the sheet up when „Ne" is pressed after „Da", and the grant still goes once', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Ana Ilić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      const ne = within(screen.getByRole('dialog')).getByRole('button', { name: 'Ne' })
+
+      /* TOLD OFF AND NOT SWITCHED OFF, which is the portal's own answer and the one the row's
+         „Aktiviraj" already gives: `disabled` would take the control out of the tab order, and
+         the button that was just pressed has the focus. */
+      expect(ne).toHaveAttribute('aria-disabled', 'true')
+      expect(ne).not.toBeDisabled()
+
+      await user.click(ne)
+
+      expect(screen.getByRole('dialog')).toBeVisible()
+
+      settle(new Response(null, { status: 201 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect(grantsIn(server.asked)).toEqual([{ competitorId: 41, ground: 'feeExempt' }])
+
+      server.stop()
+    })
+
+    /**
+     * <p>Nikola, his case 4: two ways of saying yes, and „Odustani" is the way out. Both of the
+     * ways of saying yes are told off too, because a second one pressed while the first is out
+     * would be an answer to a question that has already been answered.
+     */
+    it('keeps the sheet up when „Odustani" is pressed, and tells off every button on it', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Nikola Zorić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odobri iz balansa' }),
+      )
+
+      const sheet = within(screen.getByRole('dialog'))
+
+      for (const name of ['Odobri oslobođenje od članarine', 'Odobri iz balansa', 'Odustani']) {
+        expect(sheet.getByRole('button', { name })).toHaveAttribute('aria-disabled', 'true')
+      }
+
+      await user.click(sheet.getByRole('button', { name: 'Odustani' }))
+
+      expect(screen.getByRole('dialog')).toBeVisible()
+
+      settle(new Response(null, { status: 201 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect(grantsIn(server.asked)).toEqual([{ competitorId: 77, ground: 'balance' }])
+
+      server.stop()
+    })
+
+    /**
+     * <p>Petar, fourth row and in euro, his case 3: thirty typed over a balance that does not
+     * reach the rest. The question carries the body of the PAYMENT door, so this is also the one
+     * that says the sheet is as inert in front of that door as in front of the other.
+     */
+    it('keeps the shortfall question up when „Ne" is pressed, and the payment goes once', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '30')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Ne' }))
+
+      expect(screen.getByRole('dialog')).toBeVisible()
+
+      settle(new Response(null, { status: 201 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      expect(paymentsIn(server.asked)).toEqual([
+        { competitorId: 58, received: 30, useTheBalance: true, method: 'paypal', reference: null },
+      ])
+      expect(grantsIn(server.asked)).toEqual([])
+
+      server.stop()
+    })
+
+    /**
+     * ESCAPE IS NOT „NE" WHILE THE REQUEST IS OUT, AND IT IS STILL STOPPED.
+     *
+     * <p><b>Two things are asserted and they are not the same thing.</b> The sheet stays up, which
+     * is the rule. And the press still does not reach a bubble-phase listener on the document,
+     * which is what `components/Prompt.tsx` writes down for the menus behind it: a press that
+     * answers nothing is still a press the sheet took, and one that leaked to the language menu
+     * would shut a menu the reader left open while doing nothing to the question.
+     */
+    it('ignores Escape, and does not let it through to the document either', async () => {
+      const bubbled: string[] = []
+      const onBubble = (pressed: KeyboardEvent) => bubbled.push(pressed.key)
+
+      document.addEventListener('keydown', onBubble)
+
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+
+      try {
+        renderAt(ADDRESS, 'superadmin')
+
+        const row = await rowOf('Ana Ilić')
+
+        await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+        await user.click(
+          within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }),
+        )
+
+        /* The focus is on the „Da" that was just pressed, which is inside the sheet, so the press
+           goes through the sheet's own handler exactly as a reader's would. */
+        const before = bubbled.length
+
+        await user.keyboard('{Escape}')
+
+        expect(screen.getByRole('dialog')).toBeVisible()
+        expect(bubbled.slice(before)).toEqual([])
+
+        settle(new Response(null, { status: 201 }))
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+        expect(grantsIn(server.asked)).toEqual([{ competitorId: 41, ground: 'feeExempt' }])
+      } finally {
+        document.removeEventListener('keydown', onBubble)
+        server.stop()
+      }
+    })
+
+    /**
+     * THE STATE IS SAID IN WORDS, AND ONLY WHILE IT IS TRUE (WCAG 2.2 AA, 4.1.3).
+     *
+     * <p>„Šalje se" is the portal's own sentence for a request that is out (`results.sending`
+     * and four others of the same words), so no sentence was invented for this. The region is on
+     * the sheet from the moment it opens and EMPTY until a request is out, which is the shape
+     * `activate__said` beside it already has: a region added to the page together with its text
+     * is one a screen reader often misses.
+     */
+    it('says that it is sending, only while the request is out', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Ana Ilić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const status = within(await screen.findByRole('dialog')).getByRole('status')
+
+      expect(status).toBeEmptyDOMElement()
+
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      expect(status).toHaveTextContent('Šalje se')
+
+      settle(new Response(null, { status: 201 }))
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+      server.stop()
+    })
+
+    /**
+     * THE SHEET CLOSES ITSELF WHEN A REFUSAL ARRIVES, AND THE NEXT QUESTION IS A FRESH ONE.
+     *
+     * <p>The other end of the same sentence of the owner's: „List se zatvara sam kad stigne
+     * odgovor", and an answer is not only a 201. A press on „Ne" made while the request was out
+     * must not have left anything behind that stops the refusal from closing the sheet or the
+     * row from being pressed again.
+     */
+    it('closes itself on a refusal, says why, and asks again from the start', async () => {
+      const { server, settle } = servingSlowly()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Nikola Zorić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odobri iz balansa' }),
+      )
+      await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Odustani' }))
+
+      settle(
+        new Response(JSON.stringify({ reason: 'nothingWouldComeOffTheBalance' }), {
+          status: 409,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+      expect(
+        await within(await rowOf('Nikola Zorić')).findByText(/Sa balansa ovog člana/),
+      ).toBeVisible()
+
+      await user.click(within(await rowOf('Nikola Zorić')).getByRole('button', { name: 'Aktiviraj' }))
+
+      const fresh = within(await screen.findByRole('dialog'))
+
+      expect(fresh.getByRole('button', { name: 'Odustani' })).not.toHaveAttribute('aria-disabled')
+      expect(fresh.getByRole('status')).toBeEmptyDOMElement()
+
+      server.stop()
+    })
+  })
+
+  /**
+   * WHERE THE FOCUS GOES WHEN THE ROW IT WAS ON HAS LEFT THE LIST (WCAG 2.2 AA, 2.4.3; registry
+   * item 255).
+   *
+   * <p><b>`Payments` reads the list again by remounting it</b> (`key={readAgain}`), so an
+   * activation that goes through takes every row with it, the „Aktiviraj" the focus had been put
+   * back on included. For a refusal nothing is remounted and the sheet's own cleanup puts the
+   * focus back on that button; for a success there was nothing to put it back on, and it fell to
+   * the document.
+   *
+   * <p><b>The precedent is `admin/AdminMembers.tsx`</b> (and `RowActions.deleteRow` in
+   * `admin/EntityEditor.tsx`): when a row is deleted the focus goes to a control that is on the
+   * screen whatever happens to the row - there the search box - so the keyboard is left where the
+   * work is rather than at the top of the document. The search box is the same one here. It is
+   * moved to AFTER the list has been read again, because the box that is on the screen when the
+   * answer arrives is the old one and the remount destroys it too.
+   */
+  describe('where the focus goes once the row is gone', () => {
+    const SEARCH = 'Pretraga po članskom broju, imenu ili prezimenu'
+
+    /**
+     * <p>His case 1, no sheet at all: the press books at once, so the focus is on „Aktiviraj"
+     * itself when the answer comes and that button is gone with the row. Petar, fourth of six.
+     */
+    it('goes to the search box when a payment booked at once has taken its row off the list', async () => {
+      const { server, reads } = servingTheListWithout(58)
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43,50')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      await waitFor(() => expect(screen.queryByText('Petar Marko')).toBeNull())
+
+      expect(reads.count).toBe(2)
+      await waitFor(() => expect(screen.getByRole('searchbox', { name: SEARCH })).toHaveFocus())
+
+      server.stop()
+    })
+
+    /** <p>And through a question, where the sheet's own cleanup has already put the focus back on
+     *  the button that opened it, one step before that button goes. Ana, first row, his case 6. */
+    it('goes to the search box when an answered question has taken its row off the list', async () => {
+      const { server } = servingTheListWithout(41)
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Ana Ilić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      await waitFor(() => expect(screen.queryByText('Ana Ilić')).toBeNull())
+      await waitFor(() => expect(screen.getByRole('searchbox', { name: SEARCH })).toHaveFocus())
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>NOT ON THE FIRST DRAWING OF THE SCREEN.</b> The search box takes the focus because a
+     * row left, and arriving on the screen is not that: a moderator who has just opened it has
+     * the focus where the page put it, and a box that grabbed it on every mount would be the
+     * first thing every keyboard reader here had to get away from.
+     */
+    it('is not taken by the search box when the screen is first drawn', async () => {
+      const server = serving()
+      renderAt(ADDRESS, 'superadmin')
+
+      await rowOf('Ana Ilić')
+
+      expect(screen.getByRole('searchbox', { name: SEARCH })).not.toHaveFocus()
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>AND NOT AFTER A REFUSAL</b>, where nothing left the list and the row is still there to
+     * go back to. The focus is on the button that opened the question, which is what the sheet's
+     * own cleanup does and what a keyboard reader pressing it again expects.
+     */
+    it('stays on the button that opened the question when the server refuses', async () => {
+      const server = serving(OUTSTANDING, () =>
+        new Response(JSON.stringify({ reason: 'nothingWouldComeOffTheBalance' }), {
+          status: 409,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const opener = within(await rowOf('Nikola Zorić')).getByRole('button', { name: 'Aktiviraj' })
+
+      await user.click(opener)
+      await user.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Odobri iz balansa' }),
+      )
+
+      await within(await rowOf('Nikola Zorić')).findByText(/Sa balansa ovog člana/)
+
+      expect(opener).toHaveFocus()
+      expect(screen.getByRole('searchbox', { name: SEARCH })).not.toHaveFocus()
 
       server.stop()
     })

@@ -18,12 +18,23 @@ import './Prompt.css'
  * only counts up. A control that can be scrolled past is the wrong shape for that: the point
  * is that nothing else on the page can be pressed until this is answered.
  *
- * <p><b>ESCAPE IS „NO", AND „NO" CHANGES NOTHING.</b> The owner, PDL section 19, rule 1 over
- * the whole of it: „Odluka NE ni ovde niti u ostatku opisa funkcionalnosti ne brise red iz
- * tabele za aktivaciju, samo odlaze odluku dok se stvari ne rese van portala." So closing this
- * by any road is safe by construction - nothing is written, no balance is touched, the row
- * stays where it was - which is also what lets Escape close it at all. WCAG 2.2 asks for that
- * (2.1.2, no keyboard trap) and it costs nothing here.
+ * <p><b>ESCAPE IS „NO", AND „NO" CHANGES NOTHING, FOR AS LONG AS NO REQUEST IS OUT.</b> The
+ * owner, PDL section 19, rule 1 over the whole of it: „Odluka NE ni ovde niti u ostatku opisa
+ * funkcionalnosti ne brise red iz tabele za aktivaciju, samo odlaze odluku dok se stvari ne
+ * rese van portala." So until a way of saying yes has been pressed, closing this by any road
+ * writes nothing, touches no balance and leaves the row where it was - which is also what lets
+ * Escape close it at all. WCAG 2.2 asks for that (2.1.2, no keyboard trap) and it costs nothing
+ * here.
+ *
+ * <p><b>ONCE A REQUEST IS OUT IT IS NOT SAFE BY CONSTRUCTION, AND THAT IS WHAT `working` IS
+ * FOR.</b> A way of saying yes starts a request, and from then on putting the sheet away stops
+ * nothing: the request is already on its way and the row is activated whatever was done to the
+ * sheet. A „Ne" that closed it then was a sheet saying „I took it back" over a member number that
+ * had been drawn and cannot be given back. The owner chose on 02.10.2026, between three outcomes
+ * he was priced, that „Ne", „Odustani" and Escape are onemoguceni while the request travels, with
+ * the state said in words, and that the sheet closes itself when the answer arrives (PDL, „Odluke
+ * iz ciscenja nalaza", first item; the registry's items 259, 352 and 354). The journal records it
+ * in my words and not in his, so it is not quoted here.
  *
  * <p><b>A PRESS OUTSIDE DOES NOT CLOSE IT, and that is the one place this differs from the
  * menus.</b> `app/Dropdown.tsx` closes on a press anywhere outside, which is right for a panel
@@ -37,6 +48,7 @@ export function Prompt({
   choices,
   decline,
   onDecline,
+  working,
 }: {
   /** The question, which becomes the dialog's accessible name. */
   title: string
@@ -55,7 +67,23 @@ export function Prompt({
    *  choice between grounds. */
   decline: string
   onDecline: () => void
+  /**
+   * The sentence that says a request is out, or nothing when none is.
+   *
+   * <p><b>The sentence and not a flag</b>, because this file draws no words of its own: every
+   * string on the sheet is its caller's, and the caller already holds the portal's one sentence
+   * for a request that is out (`results.sending`, and four others of the same words).
+   *
+   * <p><b>While it is set the sheet answers nothing</b>: neither way of saying yes, not the one
+   * that declines, and not Escape - which is still STOPPED, so a press the sheet took does not
+   * go on to shut a menu behind it. Every button says so with `aria-disabled` and none is taken
+   * out of the tab order, because the one that was just pressed has the focus and a native
+   * `disabled` would drop it to the top of the document. The caller closes the sheet itself when
+   * the answer arrives, so there is no way out of this state but the answer.
+   */
+  working?: string
 }) {
+  const busy = working !== undefined
   const sheet = useRef<HTMLDivElement>(null)
   /* WHERE THE FOCUS WAS, so it can be put back. WCAG 2.2 AA, 2.4.3: a dialog that closes
      leaving the focus on the body puts a keyboard reader back at the top of a table of six
@@ -110,8 +138,15 @@ export function Prompt({
    */
   function onKeyDown(pressed: React.KeyboardEvent<HTMLDivElement>) {
     if (pressed.key === 'Escape') {
+      /* STOPPED WHETHER OR NOT IT ANSWERS. With a request out it answers nothing, but it is
+         still a press this sheet took: letting it through would shut a menu the reader left
+         open behind the sheet while doing nothing to the question, which is the one outcome
+         worse than either. */
       pressed.stopPropagation()
-      onDecline()
+
+      if (!busy) {
+        onDecline()
+      }
 
       return
     }
@@ -180,9 +215,25 @@ export function Prompt({
 
         <div className="prompt__body">{children}</div>
 
+        {/* TOLD OFF AND NOT SWITCHED OFF, on every button and for the reason `working` gives: the
+            one that was pressed has the focus. `aria-disabled` stops nothing by itself, so each
+            press is refused in its own handler as well - which is how this portal writes a
+            control that cannot act (`PendingQueue.tsx`, `Membership.tsx`). */}
         <div className="prompt__answers">
           {choices.map((one) => (
-            <button key={one.label} type="button" className="button" onClick={one.onChoose}>
+            <button
+              key={one.label}
+              type="button"
+              className="button"
+              aria-disabled={busy ? true : undefined}
+              onClick={() => {
+                if (busy) {
+                  return
+                }
+
+                one.onChoose()
+              }}
+            >
               {one.label}
             </button>
           ))}
@@ -190,10 +241,31 @@ export function Prompt({
           {/* LAST, and that is not only visual order. It is the last thing in the tab ring, so
               the ways of saying yes come first for a keyboard reader in the order the owner
               listed them, and the way out is where a reader expects it. */}
-          <button type="button" className="button button--secondary" onClick={onDecline}>
+          <button
+            type="button"
+            className="button button--secondary"
+            aria-disabled={busy ? true : undefined}
+            onClick={() => {
+              if (busy) {
+                return
+              }
+
+              onDecline()
+            }}
+          >
             {decline}
           </button>
         </div>
+
+        {/* A REGION THAT IS ALWAYS ON THE SHEET, EMPTY UNTIL A REQUEST IS OUT, and under the buttons
+            rather than over them so that its words arriving move nothing: the thumb that has just
+            pressed a way of saying yes is still over a button, and a second press is refused where
+            it lands. One added to the page together with its text is one a screen reader often
+            misses (WCAG 2.2 AA, 4.1.3), which is the reason `admin/Payments.tsx` keeps its own
+            region the same way. */}
+        <p className="prompt__working" role="status">
+          {working}
+        </p>
       </div>
     </div>
   )

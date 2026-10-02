@@ -45,16 +45,19 @@ export function MyResults() {
    * row stays exactly where it is and a sentence appears above the table - which is the
    * honest thing, because the points really are still counted.
    */
-  function takeBack(result: number) {
+  function takeBack(result: number): Promise<void> | undefined {
     if (outstanding.current) {
-      return
+      return undefined
     }
 
     outstanding.current = true
     setGoing(true)
     setRefusal(null)
 
-    void theResultWasTakenBack(result).then((answer) => {
+    /* RETURNED, which `DeleteRecord` waits on: its „Odustani" is told off, and „Šalje se" said
+       beside it, for as long as this promise is pending (owner, 02.10.2026). The page-level line
+       above the table stays: it is the one that explains a press on ANOTHER row being refused. */
+    return theResultWasTakenBack(result).then((answer) => {
       outstanding.current = false
       setGoing(false)
 
@@ -306,9 +309,10 @@ export function MyResults() {
                           <DeleteRecord
                             name={result.raceName}
                             look="button button--secondary"
-                            onDelete={() => {
-                              takeBack(result.id)
-                            }}
+                            /* HANDED BACK, so the question can wait for the answer: the
+                               promise of the deletion, or nothing where another one is
+                               already out and this press is refused (`takeBack`). */
+                            onDelete={() => takeBack(result.id)}
                           />
                         </div>
                       </td>

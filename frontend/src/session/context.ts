@@ -637,10 +637,15 @@ export type SessionValue = {
    * bounded rather than waited on, and the bound and its reason live where the question
    * is asked.
    *
-   * <p><b>Who reads it, and it is deliberately one.</b> `pages/admin/Guard.tsx`, and it
-   * reads it only on the arm where it would REFUSE. So waiting can delay a refusal and
-   * can never turn one into an admission - a property of the order the door decides in,
-   * not a promise made about it.
+   * <p><b>Who reads it: three, and each is named, because the sentence that said „deliberately
+   * one" stopped being true on 02.10.2026.</b> `pages/admin/Guard.tsx`, and
+   * `pages/CompetitorProfile.tsx` and `pages/CompetitorAwards.tsx` through
+   * `pages/profile/visible.ts`: the three places that turn a reader away by who he is. Each reads
+   * it only on the arm where it would REFUSE, so waiting can delay a refusal and can never turn
+   * one into an admission - a property of the order each decides in, not a promise made about it.
+   * What holds the three is a case apiece that puts a server in front whose answer has not come
+   * back (`pages/admin/beforeTheAnswer.test.tsx`, `pages/profile/beforeTheAnswer.test.tsx`), and
+   * not this list: a fourth reader is a fourth case.
    */
   theServerHasAnswered: boolean
   /** That the answer came back. Called once a visit from the one place that asks

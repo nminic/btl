@@ -17,8 +17,42 @@ import type { Competitor } from '../../data/types'
  * preusmerava na naslovnu stranu portala." A profile that cannot be reached and a profile that
  * does not exist are then the same answer, which is also what keeps a visitor from learning which
  * numbers belong to members who are hiding.
+ *
+ * **AND A THIRD KIND THAT IS NOT AN ANSWER, since 02.10.2026: `waiting`.** It says nobody has told
+ * the screen who is reading yet, and it is not the third state that fell on 07.09.2026 (the page
+ * that said „this member is hiding"): that one told a visitor which numbers hide, and this one
+ * cannot, because **every one of the three ways to be unreadable passes through it the same way** -
+ * a hidden member, a number nobody has and a member whose fee has run out all wait, and all of them
+ * then end as `none`. `PDL.md`, 06.09.2026, „Preusmerenje mora da se ponaša isto i za profil koga
+ * nema" (derived, not the owner's word, with the reason: otherwise a visitor reads the difference
+ * off the screen). A screen that waited for the hidden member and sent the other two away at once
+ * would show that difference for as long as the answer takes.
+ *
+ * **Why it exists at all.** At the first paint of a visit the reader is nobody
+ * (`app/App.tsx` mounts `RoleProvider` with no prop, and the session holds nothing until `GET
+ * /api/me` has come back), so a hidden profile turned a reader who IS signed in onto the front page
+ * on a cold load: a new tab, `F5`, a bookmark. Measured in the review of PR 461 with the member
+ * served as hidden: an account with no member 2 times in 4 on the profile, the same account with
+ * the answer held back 1,5 s 2 times in 2, member 000012 1 time in 2. It is the decision of
+ * 29.09.2026 (`PDL.md`, „Cuvar ne preusmerava dok server ne kaze ko cita", owner, chosen between
+ * three offered outcomes), which was carried out in `pages/admin/Guard.tsx` and nowhere else.
+ * **That the two screens that turn a reader away by who he is are the same fault is the
+ * assistant's derivation and not a new word of the owner's.**
+ *
+ * **The order is the safety, and it is `Guard`'s.** `shown` is reached only through `reachable`,
+ * never through the flag below, so waiting can DELAY a refusal and can never turn one into an
+ * admission: there is no arrangement of the answer that reaches a profile through the waiting. And
+ * a reader who is already known (just signed in, or the development switch) opens at once, because
+ * the first line asks about him before the last one asks about the server.
+ *
+ * **A kind and not a flag beside the answer, so that a screen cannot forget it**: a screen that
+ * handled only `none` and then read `readable.competitor` does not compile, so a fourth screen
+ * written tomorrow meets the question instead of inheriting the old fault.
  */
-export type Readable = { kind: 'none' } | { kind: 'shown'; competitor: Competitor }
+export type Readable =
+  | { kind: 'none' }
+  | { kind: 'waiting' }
+  | { kind: 'shown'; competitor: Competitor }
 
 /**
  * Whether anything may lead this reader to this profile.
@@ -74,20 +108,30 @@ export function profileFor(
   memberNumber: string | undefined,
   /* Whether anybody at all is signed in, which is what `reachable` asks. */
   signedIn: boolean,
+  /* Whether `GET /api/me` has come back, whatever it came back with (`session/context.ts`,
+     `theServerHasAnswered`). Not „is anybody signed in": that is the argument above, and the
+     difference between the two is the whole of why this one exists. */
+  theServerHasAnswered: boolean,
 ): Readable {
   const competitor = competitors.find((one) => one.memberNumber === memberNumber)
 
+  /* THE FIRST LINE ASKS ABOUT THE READER AND NEVER ABOUT THE SERVER, which is the order that makes
+     waiting safe: a reader who may open it opens at once, and nothing below can turn into an
+     admission. */
+  if (competitor !== undefined && reachable(competitor, signedIn)) {
+    return { kind: 'shown', competitor }
+  }
+
   /* A number nobody has, a member who is not active, and a member hiding from a reader who is
      not signed in: one answer for all three, so the difference between them cannot be read off
-     the screen (PDL P23, 06.09.2026).
+     the screen (PDL P23, 06.09.2026) - and since 02.10.2026 ONE WAITING for all three, for as long
+     as nobody has said who is reading, for the same reason (see `Readable`).
 
      **THE FIRST TWO ARE ONE LOOKUP SINCE 21.09.2026 AND NOT TWO QUESTIONS.** A member whose fee
      has run out is not in this list, so `find` answers nothing about them for the same reason it
      answers nothing about a number nobody has - which is the very thing P23 asks for, now held by
      the shape of the answer instead of by a pair of conditions that had to agree. */
-  return competitor === undefined || !reachable(competitor, signedIn)
-    ? { kind: 'none' }
-    : { kind: 'shown', competitor }
+  return theServerHasAnswered ? { kind: 'none' } : { kind: 'waiting' }
 }
 
 /**
