@@ -11,6 +11,7 @@
     "test:coverage": "vitest run --coverage && npm run test:another-day",
     "test:another-day": "vitest run --config vitest.anotherDay.config.ts",
     "appearance": "node scripts/refused-control-appearance.mjs",
+    "header-panels": "node scripts/header-panels-geometry.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
