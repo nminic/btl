@@ -401,7 +401,7 @@ export function AdminLeagues() {
                             record={league}
                             name={league.name}
                             onOpen={() => setEditing({ mode: 'one', record: league })}
-                            deleteRecord={() => void deleteOne(league)}
+                            deleteRecord={() => deleteOne(league)}
                           />
                           {/* Why this one did not go, in the row it was pressed in.
                               The focus has already moved to the control that starts a

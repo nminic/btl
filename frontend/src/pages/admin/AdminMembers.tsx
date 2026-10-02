@@ -262,9 +262,14 @@ export function AdminMembers() {
                                    `RowActions.deleteRow` moves it for the entities
                                    that still use it. A refusal is said in a live
                                    region rather than by putting the focus back
-                                   somewhere it has already left. */
+                                   somewhere it has already left.
+
+                                   HANDED BACK, so the question can wait for the answer
+                                   (`DeleteRecord`, owner 02.10.2026): it tells „Odustani" off
+                                   for as long as the promise is pending. */
                                 document.getElementById(SEARCH_ID)?.focus()
-                                void deleteOne(one)
+
+                                return deleteOne(one)
                               }}
                             />
                           </span>

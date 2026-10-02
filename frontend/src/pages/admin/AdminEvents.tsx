@@ -1241,7 +1241,7 @@ export function AdminEvents() {
                                address made it impossible to say whose result was
                                whose. The cascade joins by the race's own key, which
                                answers for one race and no other. */
-                            deleteRecord={() => void deleteOne(one)}
+                            deleteRecord={() => deleteOne(one)}
                           />
                           {/* Beside the row it was pressed on, because a refusal that
                               named no row would be a sentence about one of sixty. The

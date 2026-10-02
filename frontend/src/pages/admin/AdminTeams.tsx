@@ -362,7 +362,7 @@ export function AdminTeams() {
                                  server has never heard of: its key is negative and
                                  `DELETE /api/teams/-1` is an address nothing answers to.
                                  See `standsOnTheServer`. */
-                              deleteRecord={served ? () => void deleteOne(team) : undefined}
+                              deleteRecord={served ? () => deleteOne(team) : undefined}
                               /**
                                * AND WHAT GOES WITH THE TEAM, FOR THE SESSION HALF AND FOR
                                * THAT HALF ALONE.

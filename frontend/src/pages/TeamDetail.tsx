@@ -336,9 +336,7 @@ export function TeamDetail() {
                              result (PDL, 04.09.2026), and since 28.09.2026 none of that is
                              decided on this screen at all: `deleteOne` sends the act to the
                              route the administration already sends it to. */
-                          onDelete={() => {
-                            void deleteOne(team, everMembers)
-                          }}
+                          onDelete={() => deleteOne(team, everMembers)}
                         />
                       </>
                     )}
