@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -101,6 +102,20 @@ class ConstraintsTest extends DatabaseTest {
 	private static final String GOOD_PLACE =
 			"insert into place (geonames_id, name, country_id, english_name, rank) "
 					+ "select 99000001, 'Probno Mesto', id, 'Probe Town', 900001 from country where code = 'RS'";
+	/**
+	 * THE OTHER HALF OF THE KEY OVER A TOWN'S NAME: the name of the town at rank 1, in a country that is
+	 * not its own.
+	 *
+	 * <p>The row in the violation list says what the key refuses; this says what it lets through, and it
+	 * is the only thing that tells the right key from a wrong one. Written over the name alone it would
+	 * refuse Boston in England because Boston in the United States is there, which is the mistake the
+	 * owner's decision cannot mean: it says two equal names in ONE country. Every violation in the list
+	 * would still pass under that key.
+	 */
+	private static final String A_NAMESAKE_IN_ANOTHER_COUNTRY =
+			"insert into place (geonames_id, name, country_id, rank) "
+					+ "select 99000001, p.name, (select min(c.id) from country c where c.id <> p.country_id), 900001 "
+					+ "from place p where p.rank = 1";
 	private static final String GOOD_PRICE_ROW =
 			"insert into price_row (key, kind, day_from, day_to, eur, rsd, ranking, sort_order, label) "
 					+ "values ('probe', 'period', '02-01', '02-02', 1, 120, true, 9001, 'Naziv probe')";
@@ -169,6 +184,20 @@ class ConstraintsTest extends DatabaseTest {
 				Violation.of("place_geonames_id_unique",
 						"insert into place (geonames_id, name, country_id, rank) "
 								+ "select geonames_id, 'Probno Mesto', country_id, 900001 from place where rank = 1"),
+				/* A town that tells nothing apart from its namesake. Owner, 02.10.2026, PDL "Odluke iz
+				   ciscenja nalaza (02.10.2026, vlasnik)", the entry that begins „Istoimena mesta u istoj
+				   drzavi dobijaju u zagradi": towns of one country that were called alike now carry the
+				   nearest bigger town in brackets, and from then on the database refuses a second town of
+				   that country under a name one already wears.
+
+				   The probe takes the NAME AND THE COUNTRY of the town at rank 1 and nothing else of it:
+				   a mark and a rank nobody holds, so this key is the only one it can break. That the key
+				   covers the country as well as the name is a different fact and has a row of its own,
+				   A_NAMESAKE_IN_ANOTHER_COUNTRY below: the same name in another country goes in, as
+				   Boston stands in the United States and in England. */
+				Violation.of("place_country_name_unique",
+						"insert into place (geonames_id, name, country_id, rank) "
+								+ "select 99000001, name, country_id, 900001 from place where rank = 1"),
 				Violation.of("place_geonames_id_positive",
 						"insert into place (geonames_id, name, country_id, rank) "
 								+ "select 0, 'Probno Mesto', id, 900001 from country where code = 'RS'"),
@@ -387,8 +416,80 @@ class ConstraintsTest extends DatabaseTest {
 	 * would otherwise be answered by turning a check off.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = { GOOD_COUNTRY, GOOD_PLACE, GOOD_PRICE_ROW, A_FREE_PRICE_ROW })
+	@ValueSource(strings = { GOOD_COUNTRY, GOOD_PLACE, A_NAMESAKE_IN_ANOTHER_COUNTRY, GOOD_PRICE_ROW, A_FREE_PRICE_ROW })
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isEqualTo(1);
+	}
+
+	/**
+	 * TWO TOWNS OF ONE COUNTRY EXCHANGE THEIR NAMES IN ONE STATEMENT, and the key over a town's name
+	 * lets them.
+	 *
+	 * <p>The key is DEFERRABLE INITIALLY IMMEDIATE, as {@code place_rank_unique} beside it is, and for
+	 * the same reason in a different column: a name is maintained by a delta moving it, and a delta
+	 * that renames two towns of one country into each other's names has to be one UPDATE
+	 * ({@code generate_reference_migrations.py} writes it as one). Under a plain key the first of the
+	 * two rows to be written lands on a name the second has not given up, measured on 02.10.2026 on
+	 * PostgreSQL 18: {@code duplicate key value violates unique constraint "place_country_name_unique"},
+	 * with the exchange the same one both ways round. The generator's own header names the keys
+	 * the deferral cannot reach, so a plain key would also have to be named there and refused as
+	 * the exchange of two countries' names is; deferrable, nothing else changes. The price of
+	 * deferring is the one {@link KeysAndIndexesTest} measures for every deferrable key: nothing may
+	 * point at it and it is no {@code ON CONFLICT} arbiter, and a town is pointed at by its mark.
+	 *
+	 * <p>The two towns are the first two of one country in the codebook, found by the catalogue
+	 * rather than named, and the exchange is read back, so a statement that updated nothing does not
+	 * pass for one that worked.
+	 */
+	@Test
+	void twoTownsOfOneCountryExchangeNamesInOneStatement() {
+		Map<String, Object> pair = twoTownsOfOneCountry();
+		long first = (Long) pair.get("one");
+		long second = (Long) pair.get("another");
+		String firstName = nameOf(first);
+		String secondName = nameOf(second);
+
+		assertThat(firstName).as("two towns that wear one name would make this exchange mean nothing")
+				.isNotEqualTo(secondName);
+
+		assertThat(db.sql("update place p set name = other.name from place other"
+						+ " where (p.id = ? and other.id = ?) or (p.id = ? and other.id = ?)")
+				.params(first, second, second, first).update())
+				.isEqualTo(2);
+
+		assertThat(nameOf(first)).isEqualTo(secondName);
+		assertThat(nameOf(second)).isEqualTo(firstName);
+	}
+
+	/**
+	 * AND A STATEMENT THAT ENDS WITH TWO TOWNS OF ONE COUNTRY UNDER ONE NAME IS STILL REFUSED.
+	 *
+	 * <p>The half that says the case above is not the key switched off. Deferrable moves the check to
+	 * the end of the statement and does not remove it; a key that lost its UNIQUE, or became INITIALLY
+	 * DEFERRED, would let this through to a COMMIT that never comes in a rolled back test. The
+	 * message has to name the key, so a failure of some other constraint does not stand in for it.
+	 */
+	@Test
+	void aStatementThatEndsWithTwoTownsOfOneCountryUnderOneNameIsStillRefused() {
+		Map<String, Object> pair = twoTownsOfOneCountry();
+		long first = (Long) pair.get("one");
+		long second = (Long) pair.get("another");
+
+		assertThatThrownBy(() -> db.sql("update place set name = (select name from place where id = ?) where id = ?")
+				.params(first, second).update())
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("place_country_name_unique");
+	}
+
+	/** The first two towns, by rank, of the country that holds the town at rank 1. */
+	private Map<String, Object> twoTownsOfOneCountry() {
+		return db.sql("select a.id as one, b.id as another from place a"
+						+ " join place b on b.country_id = a.country_id and b.rank > a.rank"
+						+ " where a.rank = 1 order by b.rank limit 1")
+				.query().singleRow();
+	}
+
+	private String nameOf(long town) {
+		return db.sql("select name from place where id = ?").param(town).query(String.class).single();
 	}
 }

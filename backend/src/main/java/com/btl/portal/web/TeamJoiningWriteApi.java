@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -506,15 +507,15 @@ class TeamJoiningWriteApi {
 	 */
 	@PostMapping("/api/teams/{id}/applications")
 	ResponseEntity<?> apply(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id) {
+			@PathVariable AKey id) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> asking(me, id));
+		return inOneTransaction.execute(committing -> asking(me, id.value()));
 	}
 
 	private ResponseEntity<?> asking(long me, long team) {
@@ -523,18 +524,18 @@ class TeamJoiningWriteApi {
 		/* THE FEE FIRST, because `JoiningATeam` does not ask it and says so: „Whether a
 		   member has paid is the service layer's question, and it is still open." */
 		if (!heIsStillAMember(me)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		/* AND THE TWO QUESTIONS `JoiningATeam` DOES ANSWER, asked of the one place that holds
 		   them rather than as a month and a query written here. Which of the two refused him
 		   is not told apart, for the reason written on this method. */
 		if (JoiningATeam.mayJoin(alreadyInATeam.everyOneHeHasHad(me), now) != JoiningATeam.Answer.YES) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (!somebodyCouldAnswerForThisTeam(team)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (aQuestionOfHisAlreadyStands(me)) {
@@ -585,26 +586,26 @@ class TeamJoiningWriteApi {
 	@PutMapping(path = "/api/teams/{id}/applications/{application}",
 			consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> decide(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long application, @RequestBody Answered typed) {
+			@PathVariable AKey id, @PathVariable AKey application, @RequestBody Answered typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (typed.accepted() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> deciding(me, id, application, typed.accepted()));
+		return inOneTransaction.execute(committing -> deciding(me, id.value(), application.value(), typed.accepted()));
 	}
 
 	private ResponseEntity<?> deciding(long me, long team, long application, boolean accepted) {
 		Optional<TheApplication> his = applicationHeMayDecide(me, team, application);
 
 		if (his.isEmpty()) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		ZonedDateTime now = ZonedDateTime.now(clock);
@@ -613,7 +614,7 @@ class TeamJoiningWriteApi {
 		   the decision of 06.09.2026 on this method and is asked in Java so that
 		   `Membership.standsInTheWayOfJoiningIn` stays the one home of the rule. */
 		if (alreadyInATeam.standsInHisWay(his.get().applicant(), now)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (!accepted) {
@@ -658,15 +659,15 @@ class TeamJoiningWriteApi {
 	 */
 	@DeleteMapping("/api/teams/{id}/applications/{application}")
 	ResponseEntity<?> withdraw(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long application) {
+			@PathVariable AKey id, @PathVariable AKey application) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> withdrawing(me, id, application));
+		return inOneTransaction.execute(committing -> withdrawing(me, id.value(), application.value()));
 	}
 
 	private ResponseEntity<?> withdrawing(long me, long team, long application) {
@@ -678,7 +679,7 @@ class TeamJoiningWriteApi {
 				.single();
 
 		if (!his) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		theApplicationIsOver(application);
@@ -715,12 +716,12 @@ class TeamJoiningWriteApi {
 	 */
 	@PostMapping(path = "/api/teams/{id}/invitations", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @RequestBody Asked typed) {
+			@PathVariable AKey id, @RequestBody Asked typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (isNothing(typed.memberNumber())) {
@@ -728,12 +729,12 @@ class TeamJoiningWriteApi {
 		}
 
 		return inOneTransaction.execute(
-				committing -> inviting(me, id, typed.memberNumber().strip()));
+				committing -> inviting(me, id.value(), typed.memberNumber().strip()));
 	}
 
 	private ResponseEntity<?> inviting(long me, long team, String memberNumber) {
 		if (!heAdministersThisTeam(me, team)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		ZonedDateTime now = ZonedDateTime.now(clock);
@@ -751,7 +752,7 @@ class TeamJoiningWriteApi {
 		   `PairWriteApi.halfNumbered` explains it: told apart, the difference between two
 		   answers over consecutive numbers would be a list of who has not paid. */
 		if (him.isEmpty() || him.get() == me) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (alreadyInATeam.standsInHisWay(him.get(), now)) {
@@ -806,12 +807,12 @@ class TeamJoiningWriteApi {
 	@PutMapping(path = "/api/teams/{id}/invitations/{invitation}",
 			consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> answer(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long invitation, @RequestBody Answered typed) {
+			@PathVariable AKey id, @PathVariable AKey invitation, @RequestBody Answered typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (typed.accepted() == null) {
@@ -819,14 +820,14 @@ class TeamJoiningWriteApi {
 		}
 
 		return inOneTransaction.execute(
-				committing -> answering(me, id, invitation, typed.accepted()));
+				committing -> answering(me, id.value(), invitation.value(), typed.accepted()));
 	}
 
 	private ResponseEntity<?> answering(long me, long team, long invitation, boolean accepted) {
 		Optional<TheInvitation> his = invitationHeMayAnswer(me, team, invitation);
 
 		if (his.isEmpty()) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (!accepted) {
@@ -896,20 +897,20 @@ class TeamJoiningWriteApi {
 	 */
 	@DeleteMapping("/api/teams/{id}/invitations/{invitation}")
 	ResponseEntity<?> takeBack(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long invitation) {
+			@PathVariable AKey id, @PathVariable AKey invitation) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
-		return inOneTransaction.execute(committing -> takingBack(me, id, invitation));
+		return inOneTransaction.execute(committing -> takingBack(me, id.value(), invitation.value()));
 	}
 
 	private ResponseEntity<?> takingBack(long me, long team, long invitation) {
 		if (!heAdministersThisTeam(me, team)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		boolean itIsTheirs = db.sql("select exists(select 1 from team_invitation"
@@ -919,7 +920,7 @@ class TeamJoiningWriteApi {
 				.single();
 
 		if (!itIsTheirs) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		theInvitationIsOver(invitation);
@@ -1277,9 +1278,24 @@ class TeamJoiningWriteApi {
 	 *
 	 * <p>The owner's reason of 05.09.2026: „adresa koju član ne sme da otvori nije strana sa
 	 * objašnjenjem nego adresa koje za njega nema."
+	 *
+	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND THE CALLER THROWS
+	 * IT.</b> A status written onto the response comes back with {@code Content-Length: 0}, while an
+	 * address that maps nothing comes back as the container's error document, chunked: over a real
+	 * socket that is 262 bytes against more than 380, and it is an oracle for whether a route lives at
+	 * this address, one request per guess ({@link RightsAtTheDoor} measured it).
+	 * {@link ResponseStatusException} is answered by {@code sendError}, one call into the machinery an
+	 * unmapped address already uses and not an imitation of it. It is thrown and not returned because
+	 * this is asked from inside transaction callbacks, where there is no response to hand. It is made
+	 * here and thrown at the call site and not thrown from this method, because the coverage report
+	 * counts a line whose call never comes back as not run: measured, a method that always throws left
+	 * every {@code return} that called it uncovered, and the gate refuses anything under a hundred per
+	 * cent. Every refusal here is decided before the first write, so the rollback the exception causes
+	 * undoes nothing. {@code AWordInAKeyOverRealHttpTest} compares the bytes with the twin's, for every
+	 * kind of caller.
 	 */
-	private static ResponseEntity<?> away() {
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+	private static ResponseStatusException nothingIsHere() {
+		return new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {
