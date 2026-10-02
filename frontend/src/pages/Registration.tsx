@@ -87,21 +87,27 @@ function theBody(values: FormValues, agreeing: FormValues, referral: string | nu
     address: written(values, 'address'),
     /* THE TOWN GOES BY NAME AND COUNTRY, AND `placeId` IS DELIBERATELY NOT SENT.
      *
-       `theTown` takes exactly one of the two shapes and refuses both together, so this
-       is not a preference but the only one of them this form can fill: `PlaceField`
-       writes the town's NAME and its country code, never the GeoNames mark that
-       `placeId` means, and a mark has no source anywhere in the values.
+       The server takes a town in exactly one of two shapes and refuses both together
+       (`ATownFromTheCodebookOrTyped`): a town of the codebook by its GeoNames number
+       alone, which brings its own country, or a name typed by hand together with a
+       country code. So this is not a preference but the only shape of the two this form
+       can fill: `PlaceField` writes the town's NAME and its country code, never the
+       GeoNames mark that `placeId` means, and a mark has no source anywhere in the
+       values.
      *
        PDL of 11.08.2026 is still kept, by the screen rather than by the body: a town
        the codebook recognises has its country switched off beside it, so nobody can
        put Belgrade in France.
      *
-       **The boundary this leaves, written down rather than left to be found.** 1616
-       name-and-country pairs in the codebook are carried by more than one town, so a
-       registration in one of those resolves to whichever row the country query returns
-       first. Carrying the mark would end that, and it is its own job: it reaches into
-       `PlaceField` and `FormRenderer`, which the form for events draws too
-       (`btl-produkt/PENDING.md`). */
+       **What the server does with the name it is sent is keep it, and nothing more.** It
+       stores the text as typed, with the country, and never looks the name up in the
+       codebook: the one lookup it makes by a town is the one by GeoNames number, and no
+       number arrives from this form (`RegistrationApi` hands `placeId`, `city` and
+       `country` to `ATownFromTheCodebookOrTyped.of`, and what it writes is what that
+       answers). A name and a country are therefore not resolved to a row of the codebook,
+       however many towns carry that pair, and no count of such pairs is written here: it
+       is the codebook's to change. (This comment used to say that a registration resolves
+       to the row the country query returns first. The server does not do that.) */
     city: written(values, 'city'),
     country: written(values, 'country'),
     idNumber: written(values, 'idNumber'),

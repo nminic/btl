@@ -990,9 +990,9 @@ describe('what the registration sends', () => {
          somebody's disc and the route does not collect a picture.~~ The field itself went
          on 28.09.2026, so there is no longer a value to leave out; what this comparison
          still says about it is that nothing put one back under another name.
-       - `placeId` IS ABSENT. `theTown` takes the codebook's mark or a name with a
-         country and refuses BOTH TOGETHER, so a mark sent beside the name would refuse
-         every registration this portal makes.
+       - `placeId` IS ABSENT. `ATownFromTheCodebookOrTyped` takes the codebook's mark or a
+         name with a country and refuses BOTH TOGETHER, so a mark sent beside the name
+         would refuse every registration this portal makes.
 
        And `passwordRepeat` is here at all only because `FormRenderer` hands it over
        beside what it sends: `onScreen` drops it, and with one argument this body could
