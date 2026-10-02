@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import type { Moderator } from '../../data/types'
+import sr from '../../i18n/sr.json'
 import { expectFrontPage, renderAt } from '../../test/render'
 import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
@@ -149,18 +150,14 @@ describe('the moderators screen', () => {
    * „Izabrao ime da, adresa ne ... Greška u imenu se ispravlja kroz portal; adresa se ne
    * menja jer je to prijava." So „Otvori" now opens a form, and the one thing that form
    * must never ask for is the address - not because nobody built the field, but because
-   * `ModeratorWriteApi.change` refuses one by name regardless of what this or any form
-   * sends.
+   * `ModeratorWriteApi.rename` (and `change` beside it) refuses one by name regardless of
+   * what this or any form sends. And since 02.10.2026 what it sends is the name and
+   * nothing else, to a route of its own.
    */
   it('opens a form with no address field for an existing row, since 26.09.2026', async () => {
-    const server = serving((_path, init) =>
-      init?.method === 'PUT'
-        ? new Response(
-            JSON.stringify({ id: TWO_RIGHTS, rights: rightsOf('entity:events', 'queue:payments') }),
-            { status: 200, headers: { 'content-type': 'application/json' } },
-          )
-        : did(),
-    )
+    /* A 204 and nothing in it, which is what `ModeratorWriteApi.rename` answers: the screen
+       draws what was typed, so there is no body for it to read back. */
+    const server = serving()
     const user = setupUser()
 
     renderAt('/sr/administracija/moderatori', 'superadmin')
@@ -183,18 +180,15 @@ describe('the moderators screen', () => {
 
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    /* HIS RIGHTS TRAVEL UNCHANGED, because this route requires them exactly as it
-       requires the name - a save of the name alone that dropped `rights` would be
-       exactly the request `ModeratorWriteApi.change` refuses. */
+    /* THE NAME AND NOTHING ELSE, TO THE ROUTE OF THE NAME (PDL, 02.10.2026): Zoran holds
+       two rights here and neither is in the request, so the correction cannot write back
+       what this screen last read over what another superadmin ticked since. The body is
+       compared as a whole, so a request that named `rights` - or an address - fails it. */
     expect(writes(server.asked)).toEqual([
       {
-        path: `/api/moderators/${TWO_RIGHTS}`,
+        path: `/api/moderators/${TWO_RIGHTS}/name`,
         how: 'PUT',
-        body: {
-          firstName: 'Zorana',
-          lastName: 'Vuković',
-          rights: rightsOf('entity:events', 'queue:payments'),
-        },
+        body: { firstName: 'Zorana', lastName: 'Vuković' },
       },
     ])
 
@@ -224,14 +218,7 @@ describe('the moderators screen', () => {
    * carries.
    */
   it('writes the row Otvori was pressed on, not the first moderator served', async () => {
-    const server = serving((_path, init) =>
-      init?.method === 'PUT'
-        ? new Response(JSON.stringify({ id: ONE_RIGHT, rights: rightsOf('entity:teams') }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          })
-        : did(),
-    )
+    const server = serving()
     const user = setupUser()
 
     renderAt('/sr/administracija/moderatori', 'superadmin')
@@ -249,13 +236,13 @@ describe('the moderators screen', () => {
 
     await screen.findByRole('status', { name: 'Sačuvano' })
 
-    /* Marko's own address and his own one right - a save that read the first
-       moderator served instead would PUT Zoran's id and resend HIS two rights. */
+    /* Marko's own id and Marko's own name - a save that read the first moderator served
+       instead would PUT Zoran's id, and with Zoran's name. */
     expect(writes(server.asked)).toEqual([
       {
-        path: `/api/moderators/${ONE_RIGHT}`,
+        path: `/api/moderators/${ONE_RIGHT}/name`,
         how: 'PUT',
-        body: { firstName: 'Marko', lastName: 'Petrović', rights: rightsOf('entity:teams') },
+        body: { firstName: 'Marko', lastName: 'Petrović' },
       },
     ])
 
@@ -263,41 +250,60 @@ describe('the moderators screen', () => {
   }, SLOW)
 
   /**
-   * A REFUSED NAME CHANGE SAYS WHY, ON THE FORM, AND LEAVES THE ROW AS IT WAS.
+   * A REFUSED NAME CORRECTION SAYS WHY, ON THE FORM, AND LEAVES THE ROW AS IT WAS.
    *
    * The same branch `saveOne` already had for a refused `POST` (`says a taken address is
    * taken`), now measured for the `PUT` beside it: an edit that comes back refused shows
    * the route's own reason rather than the „saved" screen, and the list this reader goes
    * back to still carries the old name, because nothing was written.
+   *
+   * THREE SHAPES OF REFUSAL, because `ModeratorWriteApi.rename` gives three and the screen
+   * has one sentence for each: a reason by name (a part of the name missing, which the form
+   * turns back before it leaves the browser and the route answers anyway), a 400 with no
+   * reason (an address nobody sends: a request the portal should never have made, which is
+   * the sentence of PDL 02.10.2026 about exactly that), and a 404 (a key that is not a
+   * moderator, with nothing in the body).
    */
-  it('says why a name change was refused, and leaves the row exactly as it was', async () => {
-    const server = serving(() => refused('aRightTheMatrixDoesNotHold'))
-    const user = setupUser()
+  it.each([
+    [
+      'a reason by name',
+      () => refused('theFormIsNotComplete'),
+      'Nedostaje ime, prezime ili adresa elektronske pošte.',
+    ],
+    ['a 400 with no reason', () => answeredWith(400), sr.server.malformed],
+    ['a 404', () => answeredWith(404), '404'],
+  ])(
+    'says why a name correction was refused (%s), and leaves the row exactly as it was',
+    async (_shape, answer, sentence) => {
+      const server = serving(answer)
+      const user = setupUser()
 
-    renderAt('/sr/administracija/moderatori', 'superadmin')
+      renderAt('/sr/administracija/moderatori', 'superadmin')
 
-    const rows = within(await screen.findByRole('table', { name: 'Moderatori' }))
+      const rows = within(await screen.findByRole('table', { name: 'Moderatori' }))
 
-    await user.click(await rows.findByRole('button', { name: 'Otvori: Zoran Vuković' }))
-    await user.clear(screen.getByLabelText(/^Ime/))
-    await user.type(screen.getByLabelText(/^Ime/), 'Zorana')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await user.click(await rows.findByRole('button', { name: 'Otvori: Zoran Vuković' }))
+      await user.clear(screen.getByLabelText(/^Ime/))
+      await user.type(screen.getByLabelText(/^Ime/), 'Zorana')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Portal ne poznaje to pravo.')
-    /* Still on the form, not the „saved" screen - a refusal is not a confirmation. */
-    expect(screen.getByLabelText(/^Ime/)).toHaveValue('Zorana')
-    expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
+      expect(await screen.findByRole('alert')).toHaveTextContent(sentence)
+      /* Still on the form, not the „saved" screen - a refusal is not a confirmation. */
+      expect(screen.getByLabelText(/^Ime/)).toHaveValue('Zorana')
+      expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
 
-    const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
+      const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
 
-    /* Nothing was written, so the list still reads the name the server always had. */
-    expect(listed.getByText('Zoran')).toBeVisible()
-    expect(listed.queryByText('Zorana')).toBeNull()
+      /* Nothing was written, so the list still reads the name the server always had. */
+      expect(listed.getByText('Zoran')).toBeVisible()
+      expect(listed.queryByText('Zorana')).toBeNull()
 
-    server.stop()
-  }, SLOW)
+      server.stop()
+    },
+    SLOW,
+  )
 
   it('sends a new one to POST /api/moderators with the three typed fields', async () => {
     const server = serving(() =>
@@ -557,9 +563,10 @@ describe('the moderators screen', () => {
        route answers with a body this screen can parse - `did()` (204, no body) is right
        for a DELETE and wrong here.
 
-       AND HIS NAME TRAVELS ALONG, UNCHANGED, SINCE 26.09.2026: `ModeratorWriteApi.change`
-       now requires it exactly as it already required `rights`, so a press on the matrix -
-       which never asks about a name at all - resends the one this row already carries. */
+       AND HIS NAME DOES NOT TRAVEL, SINCE 02.10.2026: `ModeratorWriteApi.change` takes the
+       boxes and nothing besides, and the name has a route of its own (`rename`), so a press
+       on the matrix sends the whole row of boxes and no name - neither the one this row was
+       served with nor one corrected since. */
     const server = serving((_path, init) =>
       init?.method === 'PUT'
         ? new Response(
@@ -585,11 +592,7 @@ describe('the moderators screen', () => {
       {
         path: `/api/moderators/${TWO_RIGHTS}`,
         how: 'PUT',
-        body: {
-          firstName: 'Zoran',
-          lastName: 'Vuković',
-          rights: rightsOf('entity:events', 'queue:payments', 'entity:teams'),
-        },
+        body: { rights: rightsOf('entity:events', 'queue:payments', 'entity:teams') },
       },
     ])
 
@@ -620,7 +623,7 @@ describe('the moderators screen', () => {
         {
           path: `/api/moderators/${TWO_RIGHTS}`,
           how: 'PUT',
-          body: { firstName: 'Zoran', lastName: 'Vuković', rights: rightsOf('queue:payments') },
+          body: { rights: rightsOf('queue:payments') },
         },
       ])
 
@@ -628,16 +631,16 @@ describe('the moderators screen', () => {
     }, SLOW)
 
   /**
-   * SENDS THE NAME OF THE ROW THAT WAS TICKED, NOT THE FIRST MODERATOR SERVED.
+   * SENDS THE BOXES OF THE ROW THAT WAS TICKED, NOT THE FIRST MODERATOR SERVED.
    *
    * Every tick above presses a box of Zoran's, who is also `MODERATORS[0]` and
-   * `TWO_RIGHTS` - the constant most of this file's writes happen to share. A name
-   * hardcoded to his would satisfy every tick assertion above this one, because none of
-   * them ever ticks anybody else. Ana is the second row served and starts this fixture
-   * holding nothing, so a tick of hers naming Zoran instead could not be mistaken for a
-   * passing case.
+   * `TWO_RIGHTS` - the constant most of this file's writes happen to share. An id or a row of
+   * boxes hardcoded to his would satisfy every tick assertion above this one, because none
+   * of them ever ticks anybody else. Ana is the second row served and starts this fixture
+   * holding nothing, so a tick of hers addressed at Zoran, or carrying his boxes, could not
+   * be mistaken for a passing case.
    */
-  it('sends the name of the row that was ticked, not the first moderator served', async () => {
+  it('sends the boxes of the row that was ticked, not the first moderator served', async () => {
     const server = serving((_path, init) =>
       init?.method === 'PUT'
         ? new Response(JSON.stringify({ id: NO_RIGHTS, rights: rightsOf('entity:teams') }), {
@@ -660,7 +663,7 @@ describe('the moderators screen', () => {
       {
         path: `/api/moderators/${NO_RIGHTS}`,
         how: 'PUT',
-        body: { firstName: 'Ana', lastName: 'Jovanović', rights: rightsOf('entity:teams') },
+        body: { rights: rightsOf('entity:teams') },
       },
     ])
 
@@ -856,15 +859,27 @@ describe('the moderators screen', () => {
 
   describe('what this visit wrote, once the screen is left and returned to', () => {
     /** The moderators above, remembered and changed by a write - the same shape
-     *  `adminLeagues.test.tsx`'s own `servingWithMemory` keeps, over moderators. */
-    function servingWithMemory() {
+     *  `adminLeagues.test.tsx`'s own `servingWithMemory` keeps, over moderators.
+     *
+     *  <p>**The two `PUT` routes write what each of them takes and nothing else**, which is
+     *  what `ModeratorWriteApi` does by construction since 02.10.2026: the route of the
+     *  boxes writes boxes and the route of the name writes the name, and a field of the
+     *  other one that arrives is dropped. So this fake is not neutral about the
+     *  property the screen is measured for: a screen that sent the other half would
+     *  still look right here, and what holds the screen to sending only its own is the
+     *  request each case reads off `server.asked`.
+     *
+     *  <p>`remembered` can be handed in, so a case can change the server's own copy
+     *  behind the screen's back, which is what a second superadmin is. */
+    function servingWithMemory(
+      remembered: Moderator[] = MODERATORS.map((one) => ({ ...one, rights: [...one.rights] })),
+    ) {
       clearResourceCache()
-
-      const remembered = MODERATORS.map((one) => ({ ...one, rights: [...one.rights] }))
 
       return serverThat((path, init) => {
         const how = init?.method ?? 'GET'
-        const changed = /^\/api\/moderators\/(\d+)$/.exec(path)
+        const ticked = /^\/api\/moderators\/(\d+)$/.exec(path)
+        const renamed = /^\/api\/moderators\/(\d+)\/name$/.exec(path)
         const sent: Record<string, unknown> =
           typeof init?.body === 'string' ? JSON.parse(init.body) : {}
 
@@ -892,34 +907,39 @@ describe('the moderators screen', () => {
           )
         }
 
-        if (changed !== null && how === 'PUT') {
-          const pos = remembered.findIndex((one) => one.id === Number(changed[1]))
+        if (ticked !== null && how === 'PUT') {
+          const pos = remembered.findIndex((one) => one.id === Number(ticked[1]))
           /* Looked at rather than claimed (ADL A14): `sent.rights` is `unknown`, and
              `.map(String)` reads whatever is there without asserting it was already a
              `string[]`. */
           const rights = Array.isArray(sent.rights) ? sent.rights.map(String) : []
 
           if (pos !== -1) {
-            /* AND THE NAME, SINCE 26.09.2026, THE SAME DEFENSIVE READING AS `rights` -
-               `sent.firstName`/`lastName` are `unknown`, and this route requires both on
-               every `PUT`, so a fixture that dropped them here would be no fixture of
-               this route at all. */
-            remembered[pos] = {
-              ...at(remembered, pos),
-              firstName: String(sent.firstName),
-              lastName: String(sent.lastName),
-              rights,
-            }
+            remembered[pos] = { ...at(remembered, pos), rights }
           }
 
-          return new Response(JSON.stringify({ id: Number(changed[1]), rights }), {
+          return new Response(JSON.stringify({ id: Number(ticked[1]), rights }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           })
         }
 
-        if (changed !== null && how === 'DELETE') {
-          const pos = remembered.findIndex((one) => one.id === Number(changed[1]))
+        if (renamed !== null && how === 'PUT') {
+          const pos = remembered.findIndex((one) => one.id === Number(renamed[1]))
+
+          if (pos !== -1) {
+            remembered[pos] = {
+              ...at(remembered, pos),
+              firstName: String(sent.firstName),
+              lastName: String(sent.lastName),
+            }
+          }
+
+          return did()
+        }
+
+        if (ticked !== null && how === 'DELETE') {
+          const pos = remembered.findIndex((one) => one.id === Number(ticked[1]))
 
           if (pos !== -1) {
             remembered.splice(pos, 1)
@@ -1019,6 +1039,146 @@ describe('the moderators screen', () => {
       expect(
         matrix.getByRole('checkbox', { name: 'Zorana Vuković, uređivanje događaja' }),
       ).toBeChecked()
+
+      server.stop()
+    }, SLOW)
+
+    /**
+     * A NAME CORRECTION CARRIES NONE OF THE RIGHTS, WHICHEVER OF THREE PLACES THEY COULD COME
+     * FROM, AND WHAT ANOTHER SUPERADMIN TICKED IN THE MEANTIME STANDS AFTERWARDS.
+     *
+     * This is the decision of 02.10.2026 at the screen (PDL, „Odluke iz ciscenja nalaza"). Three
+     * different sets of rights meet for Zoran in one visit: what the list SERVED
+     * (`entity:events`, `queue:payments`), what this visit CONFIRMED (a box pressed first, so
+     * `entity:teams` has joined them in `rightsOverlay`), and what the SERVER holds NOW, because a
+     * second superadmin changed it behind this screen's back (`entity:leagues`, `queue:results`,
+     * which neither of the other two has). A correction that sent the first would undo the third;
+     * one that sent the second would too; and one that sent the third would be a screen that read
+     * the server in the middle of a save. The three are visibly different, so the request is
+     * compared whole, and the matrix read back from the server afterwards is the other half: it
+     * holds the second superadmin's set and neither of this screen's.
+     */
+    it('sends no right with a name correction, from the list, from this visit or from the server',
+      async () => {
+        const remembered = MODERATORS.map((one) => ({ ...one, rights: [...one.rights] }))
+        const server = servingWithMemory(remembered)
+        const user = setupUser()
+        const { router } = renderAt('/sr/administracija/moderatori', 'superadmin')
+
+        const matrix = await openMatrix()
+        const teamsBox = matrix.getByRole('checkbox', { name: 'Zoran Vuković, uređivanje timova' })
+
+        await user.click(teamsBox)
+        await waitFor(() => expect(teamsBox).toBeChecked())
+
+        /* A second superadmin, behind this screen's back. */
+        const index = remembered.findIndex((one) => one.id === TWO_RIGHTS)
+
+        remembered[index] = {
+          ...at(remembered, index),
+          rights: rightsOf('entity:leagues', 'queue:results'),
+        }
+
+        const rows = within(await screen.findByRole('table', { name: 'Moderatori' }))
+
+        await user.click(await rows.findByRole('button', { name: 'Otvori: Zoran Vuković' }))
+        await user.clear(screen.getByLabelText(/^Ime/))
+        await user.type(screen.getByLabelText(/^Ime/), 'Zorana')
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+        await screen.findByRole('status', { name: 'Sačuvano' })
+        await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+        expect(writes(server.asked)).toEqual([
+          {
+            path: `/api/moderators/${TWO_RIGHTS}`,
+            how: 'PUT',
+            body: { rights: rightsOf('entity:events', 'queue:payments', 'entity:teams') },
+          },
+          {
+            path: `/api/moderators/${TWO_RIGHTS}/name`,
+            how: 'PUT',
+            body: { firstName: 'Zorana', lastName: 'Vuković' },
+          },
+        ])
+
+        await awayAndBack(router)
+
+        const again = await openMatrix()
+
+        expect(
+          again.getByRole('checkbox', { name: 'Zorana Vuković, uređivanje liga' }),
+        ).toBeChecked()
+        expect(
+          again.getByRole('checkbox', { name: 'Zorana Vuković, odlučivanje o rezultatima' }),
+        ).toBeChecked()
+        expect(
+          again.getByRole('checkbox', { name: 'Zorana Vuković, uređivanje događaja' }),
+        ).not.toBeChecked()
+        expect(
+          again.getByRole('checkbox', { name: 'Zorana Vuković, uređivanje timova' }),
+        ).not.toBeChecked()
+
+        server.stop()
+      }, SLOW)
+
+    /**
+     * A TICK CARRIES NO NAME, WHICHEVER OF THREE PLACES IT COULD COME FROM, AND A CORRECTION
+     * ANOTHER SUPERADMIN MADE IN THE MEANTIME STANDS AFTERWARDS.
+     *
+     * The same fault the other way round, which „the rights are sent separately" closes as well
+     * (PDL, 02.10.2026): until then every press on the matrix carried the name of its row. Three
+     * names meet for the one row in one visit: the one the list SERVED (`Zoran`), the one this
+     * visit CORRECTED it to (`Zorana`, which is what the matrix is drawn from afterwards), and the
+     * one a second superadmin corrected it to behind this screen's back (`Zorica`). A press that
+     * sent either of the first two would write over the third, so the request is compared whole
+     * and the list read back from the server afterwards is the other half.
+     */
+    it('sends no name with a tick, from the list, from this visit or from the server', async () => {
+      const remembered = MODERATORS.map((one) => ({ ...one, rights: [...one.rights] }))
+      const server = servingWithMemory(remembered)
+      const user = setupUser()
+      const { router } = renderAt('/sr/administracija/moderatori', 'superadmin')
+
+      const rows = within(await screen.findByRole('table', { name: 'Moderatori' }))
+
+      await user.click(await rows.findByRole('button', { name: 'Otvori: Zoran Vuković' }))
+      await user.clear(screen.getByLabelText(/^Ime/))
+      await user.type(screen.getByLabelText(/^Ime/), 'Zorana')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+      /* A second superadmin, behind this screen's back. */
+      const index = remembered.findIndex((one) => one.id === TWO_RIGHTS)
+
+      remembered[index] = { ...at(remembered, index), firstName: 'Zorica' }
+
+      const matrix = await openMatrix()
+      const teamsBox = matrix.getByRole('checkbox', { name: 'Zorana Vuković, uređivanje timova' })
+
+      await user.click(teamsBox)
+      await waitFor(() => expect(teamsBox).toBeChecked())
+
+      expect(writes(server.asked)).toEqual([
+        {
+          path: `/api/moderators/${TWO_RIGHTS}/name`,
+          how: 'PUT',
+          body: { firstName: 'Zorana', lastName: 'Vuković' },
+        },
+        {
+          path: `/api/moderators/${TWO_RIGHTS}`,
+          how: 'PUT',
+          body: { rights: rightsOf('entity:events', 'queue:payments', 'entity:teams') },
+        },
+      ])
+
+      await awayAndBack(router)
+
+      const listed = within(await screen.findByRole('table', { name: 'Moderatori' }))
+
+      expect(listed.getByText('Zorica')).toBeVisible()
+      expect(listed.queryByText('Zorana')).toBeNull()
+      expect(listed.queryByText('Zoran')).toBeNull()
 
       server.stop()
     }, SLOW)
