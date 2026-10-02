@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { Link } from 'react-router'
 import { Unreadable } from '../components/Unreadable'
 import { formatShortDate } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { useSession } from '../session/useSession'
-import { dataOr, theInboxHasChanged, useInbox } from '../data/useResource'
+import { dataOr, useInbox } from '../data/useResource'
 import type { InboxLine } from '../data/types'
 import { Dropdown } from './Dropdown'
 import { MailIcon } from './icons'
@@ -64,24 +64,20 @@ function HisOwnInbox({ mine }: { mine: string }) {
      sentence in a panel that is shut until somebody opens it, with the button that asks again,
      so a server that did not answer is no longer read as an inbox with nothing in it. */
   const inbox = useInbox(mine)
-  /* Which state of the read the last press was made on, and never a flag of its own: the read
-     replaces its state with a new object whether it comes back or fails again, so „the press is
-     out" is exactly „the state is still the one it was pressed on", and it ends by itself the
-     moment the answer lands, without an effect to clear it. */
-  const [askedOn, setAskedOn] = useState<typeof inbox | null>(null)
 
+  /* **Whether the press is out, and the press itself, are the STATE'S and not this panel's.**
+     Until the second half of the decision above this kept its own copy of both (which state the
+     last press was made on, and a call that dropped the inbox's cache and bumped its revision), for
+     the reason that nothing else could say them. The state carries them now (`FailedRead`), for
+     every reader of every address, so there is one home for „an asking again is out" and this is
+     not it. Pressed here it reaches the screen of messages too, and pressed there it reaches this
+     panel, which is what `useResource` says about `readAgain`. */
   return (
     <ThePanel
       lines={dataOr(inbox, [])}
       unreadable={
         inbox.status === 'error'
-          ? {
-              reading: askedOn === inbox,
-              retry: () => {
-                setAskedOn(inbox)
-                theInboxHasChanged()
-              },
-            }
+          ? { reading: inbox.reading, retry: inbox.readAgain }
           : undefined
       }
     />
@@ -103,6 +99,33 @@ function ThePanel({
 }) {
   const { locale, t } = useI18n()
   const unread = lines.filter((one) => !one.read).length
+  /* **WHERE THE KEYBOARD GOES WHEN THE LIST THAT FAILED IS READ AGAIN AND WORKS** (review of PR 476,
+     round 2: a press with Enter that worked left `document.activeElement` on `<body>` and the panel
+     open). The button that asked is taken out of the panel in the same stroke that draws the
+     messages, so the focus falls out of a panel the reader is still reading. It goes to the title,
+     which is what the list is under: a reader hears „Poruke" and the messages follow, and an
+     Enter pressed again by a reader who did not hear it does not open the first message, which
+     the first link would. `Unreadable` says that the button left with the focus on it; a button
+     that did not (the reader moved on, or the screen of messages was the one pressed and this
+     panel was told) is not followed.
+
+     **Two things `components/Resource.tsx` does that this does not, and why.** It checks that the
+     focus is nowhere before it moves it: nothing else in this panel takes the focus in the stroke
+     that draws it. And it drops the news when what it asked for fails again: here the button is
+     taken out only in the stroke in which the panel stops being unreadable (it is drawn if and only
+     if `unreadable` is there), and that same stroke is where the news is used, so it never outlives
+     the drawing it was told in; `Resource` is a loader between the button and the answer when
+     several files are asked for, and this is not. A branch no case could take is a branch that
+     hides what it would have done. */
+  const title = useRef<HTMLParagraphElement>(null)
+  const keptTheFocus = useRef(false)
+
+  useLayoutEffect(() => {
+    if (keptTheFocus.current) {
+      keptTheFocus.current = false
+      title.current?.focus({ preventScroll: true })
+    }
+  })
 
   return (
     <Dropdown
@@ -125,7 +148,9 @@ function ThePanel({
     >
       {(close) => (
         <>
-          <p className="inbox__title">{t('shell.messages')}</p>
+          <p className="inbox__title" tabIndex={-1} ref={title}>
+            {t('shell.messages')}
+          </p>
 
           {unreadable !== undefined ? (
             <Unreadable
@@ -133,6 +158,9 @@ function ThePanel({
               named={t('shell.messages')}
               reading={unreadable.reading}
               onRetry={unreadable.retry}
+              onLeaveWithFocus={() => {
+                keptTheFocus.current = true
+              }}
             />
           ) : lines.length === 0 ? (
             <p className="inbox__empty">{t('shell.noMessages')}</p>

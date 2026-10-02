@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
 import type { ResourceState } from '../../data/useResource'
 import type { EventComment, Result } from '../../data/types'
+import { aFailedRead } from '../../test/failedRead'
 import { renderAt } from '../../test/render'
 
 /**
@@ -53,8 +54,8 @@ function waiting(): void {
 }
 
 function broken(): void {
-  comments = { status: 'error', error: new Error('pukla veza') }
-  results = { status: 'error', error: new Error('pukla veza') }
+  comments = aFailedRead()
+  results = aFailedRead()
 }
 
 /**
@@ -67,7 +68,7 @@ function broken(): void {
  * asked for below would have been satisfied by a page that drew neither.
  */
 function onlyTheCommentsAreBroken(): void {
-  comments = { status: 'error', error: new Error('pukla veza') }
+  comments = aFailedRead()
   results = { status: 'loading' }
 }
 
