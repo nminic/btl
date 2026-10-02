@@ -808,6 +808,11 @@ class RightsOverRealHttpTest {
 	 * Twenty digits is the length the first measurement used. The anchor is the same as the case
 	 * above: the moderator holding this tab can really take a hold on the real item, so every
 	 * comparison below is between two addresses that are both there for him and a twin that is not.
+	 *
+	 * <p>The three writes take the key as an {@code AKey} now, as does every route no right guards
+	 * at the door, and {@code AWordInAKeyOverRealHttpTest} asks all of them the same question, derived
+	 * from the dispatcher. This case stays beside the queue because it asks with a real item standing
+	 * and the moderator who holds its tab among the askers, which that one has no fixture for.
 	 */
 	@ParameterizedTest
 	@ValueSource(strings = {A_COMPETITOR, HOLDS_THE_TICK, WITHOUT_THE_TICK, HOLDS_THE_PROFILES_TAB,

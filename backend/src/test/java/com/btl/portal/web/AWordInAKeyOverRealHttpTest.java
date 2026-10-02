@@ -10,17 +10,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.net.Socket;
@@ -34,9 +39,12 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -122,6 +130,9 @@ class AWordInAKeyOverRealHttpTest {
 
 	@Autowired
 	private JdbcClient db;
+
+	@Autowired
+	private ApplicationContext context;
 
 	/** The dispatcher, asked which routes exist rather than told. */
 	@Autowired
@@ -314,10 +325,13 @@ class AWordInAKeyOverRealHttpTest {
 	/**
 	 * A ROUTE THE DISPATCHER MAPS WHOSE KEY IS TYPED AND WHOSE ANSWER NO RIGHT DECIDES AT THE DOOR.
 	 *
-	 * @param body what to send so that a refusal about the FORM is not what is measured: built from
-	 *             the type the handler declares for its body, never written here
+	 * @param body    what to send so that a refusal about the FORM is not what is measured: built from
+	 *                the type the handler declares for its body, never written here
+	 * @param handler the class and method that answer it, which is what the second derivation
+	 *                below is compared by
 	 */
-	private record Route(String verb, String pattern, int keys, boolean json, String body) {
+	private record Route(String verb, String pattern, int keys, boolean json, String body,
+			String handler) {
 
 		/** The address with one key spelt as asked and every other key a number that matches no row. */
 		String addressWith(int position, String spelt) {
@@ -366,7 +380,8 @@ class AWordInAKeyOverRealHttpTest {
 					: patterns.getPatternValues()) {
 				for (String verb : one.getKey().getMethodsCondition().getMethods().stream()
 						.map(Enum::name).toList()) {
-					found.add(new Route(verb, pattern, keys, json, validBodyOf(method, json)));
+					found.add(new Route(verb, pattern, keys, json, validBodyOf(method, json),
+							handlerName(method.getMethod())));
 				}
 			}
 		}
@@ -378,8 +393,16 @@ class AWordInAKeyOverRealHttpTest {
 
 	/** The very question {@code RightsAtTheDoorTest} asks, of the annotations themselves. */
 	private static boolean decidedAtTheDoor(HandlerMethod method) {
-		return Stream.of(method.getMethod().getAnnotations())
+		return decidedAtTheDoor(method.getMethod());
+	}
+
+	private static boolean decidedAtTheDoor(Method method) {
+		return Stream.of(method.getAnnotations())
 				.anyMatch(one -> one.annotationType().isAnnotationPresent(AskedAtTheDoor.class));
+	}
+
+	private static String handlerName(Method method) {
+		return method.getDeclaringClass().getSimpleName() + "#" + method.getName();
 	}
 
 	/**
@@ -463,6 +486,82 @@ class AWordInAKeyOverRealHttpTest {
 	}
 
 	/**
+	 * THE ROUTES ASKED ABOUT ARE EVERY ONE THE CONTROLLERS DECLARE, asked of the language a second
+	 * time.
+	 *
+	 * <p>{@link #routes()} reads the dispatcher. A derivation that dropped a route - a filter one
+	 * condition too tight, a mapping registered twice - would make every comparison below true about
+	 * fewer routes than the portal has, and nothing in them would say so. This asks the controllers
+	 * instead: every bean marked as one, every method of it that carries a mapping (through its
+	 * meta-annotations, so {@code @GetMapping} and {@code @RequestMapping} are one question), that no
+	 * right decides at the door and one of whose path variables is typed. The two have to name the same
+	 * handlers, in both directions.
+	 */
+	@Test
+	void theRoutesAskedAboutAreEveryKeyedHandlerTheControllersDeclare() {
+		Set<String> declared = context.getBeansWithAnnotation(RestController.class).values().stream()
+				.map(ClassUtils::getUserClass)
+				.flatMap(type -> Stream.of(type.getDeclaredMethods()))
+				.filter(method -> AnnotatedElementUtils.hasAnnotation(method, RequestMapping.class))
+				.filter(method -> !decidedAtTheDoor(method))
+				.filter(method -> Stream.of(method.getParameters()).anyMatch(
+						p -> p.isAnnotationPresent(PathVariable.class) && p.getType() != String.class))
+				.map(AWordInAKeyOverRealHttpTest::handlerName)
+				.collect(Collectors.toCollection(TreeSet::new));
+
+		assertThat(declared)
+				.as("the controllers declare no handler that takes a typed key, so the comparison below"
+						+ " is between two empty sets")
+				.isNotEmpty();
+		Set<String> asked = routes().stream().map(Route::handler)
+				.collect(Collectors.toCollection(TreeSet::new));
+
+		assertThat(asked)
+				.as("the routes this class asks about are not the handlers the controllers declare, so"
+						+ " a route is either asked about twice under one name or not asked about at all")
+				.isEqualTo(declared);
+	}
+
+	/**
+	 * THE KEY IS IN THE PLACE THE ROUTE SAYS IT IS, AND NOWHERE ELSE.
+	 *
+	 * <p>{@link Route#addressWith} is what every comparison here builds its address with, and it
+	 * works by replacing the variables of a pattern. It is checked by splitting the pattern and the
+	 * address into segments, which is another way to the same answer, so a position that quietly
+	 * meant another one - and left the second key of a route never asked about - fails.
+	 */
+	@Test
+	void theKeyIsInThePlaceTheRouteSaysItIs() {
+		for (Route route : routes()) {
+			List<String> pattern = List.of(route.pattern().split("/"));
+			List<Integer> variables = IntStream.range(0, pattern.size())
+					.filter(at -> pattern.get(at).startsWith("{")).boxed().toList();
+
+			assertThat(variables)
+					.as("%s takes %d typed keys and its pattern has %d variables, so a variable of"
+							+ " another type is asked about as a key", route, route.keys(), variables.size())
+					.hasSize(route.keys());
+
+			for (int position = 0; position < route.keys(); position++) {
+				List<String> asked = List.of(route.addressWith(position, A_WORD).split("/"));
+
+				assertThat(asked).as("%s with the word at key %d changed the shape of the address",
+						route, position).hasSameSizeAs(pattern);
+
+				for (int at = 0; at < pattern.size(); at++) {
+					int variable = variables.indexOf(at);
+					String expected = variable < 0 ? pattern.get(at)
+							: variable == position ? A_WORD : A_NUMBER_WITH_NO_ROW;
+
+					assertThat(asked.get(at))
+							.as("%s with the word at key %d, segment %d", route, position, at)
+							.isEqualTo(expected);
+				}
+			}
+		}
+	}
+
+	/**
 	 * A WORD IS A NUMBER THAT MATCHES NO ROW.
 	 *
 	 * <p>For every route, every kind of caller, every position of the key and every body. The two
@@ -479,6 +578,18 @@ class AWordInAKeyOverRealHttpTest {
 					for (String body : bodiesFor(route)) {
 						String toTheNumber = answerTo(route.verb(), reference, caller,
 								extraFor(route), body);
+
+						/* AND WHAT THE NUMBER IS ANSWERED IS PINNED, so that two answers that are
+						   both a fault are not "the same". Nobody signed in is told to sign in
+						   whatever was sent; somebody who is, and sent a body the form accepts, is told
+						   there is nothing there. The other two bodies are asked about only to be
+						   answered like the number, whatever that is. */
+						if (caller == null || body.equals(route.body())) {
+							assertThat(firstLine(toTheNumber))
+									.as("%s as %s: a number that matches no row was not answered as"
+											+ " nothing is", route, caller)
+									.isEqualTo(caller == null ? "HTTP/1.1 401 " : "HTTP/1.1 404 ");
+						}
 
 						String asked = route.addressWith(position, A_WORD);
 
@@ -508,11 +619,20 @@ class AWordInAKeyOverRealHttpTest {
 					for (String key : List.of(A_NUMBER_WITH_NO_ROW, NINETEEN_DIGITS)) {
 						String asked = route.addressWith(position, key);
 						String twin = twinOf(asked);
+						String toTheTwin = answerTo(route.verb(), twin, caller, extraFor(route),
+								route.body());
+
+						/* THE TWIN IS PINNED TOO: an address that maps nothing is 404 to somebody
+						   signed in and 401 to nobody, and an answer that is neither would make
+						   "the same as the twin" a sentence about two faults. */
+						assertThat(firstLine(toTheTwin))
+								.as("%s as %s: an address that maps nothing was not answered as nothing"
+										+ " is", route, caller)
+								.isEqualTo(caller == null ? "HTTP/1.1 401 " : "HTTP/1.1 404 ");
 
 						oneAnswer(route + " as " + caller + ", key " + position + " = " + key,
 								answerTo(route.verb(), asked, caller, extraFor(route), route.body()),
-								asked, answerTo(route.verb(), twin, caller, extraFor(route),
-										route.body()), twin);
+								asked, toTheTwin, twin);
 					}
 				}
 			}
