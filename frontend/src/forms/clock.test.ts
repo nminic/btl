@@ -74,4 +74,15 @@ describe('a length of time in the boxes a form asks for it in', () => {
     expect(fromBoxes({})).toBeNaN()
     expect(fromBoxes({ hours: '1', minutes: '0' })).toBeNaN()
   })
+
+  /* A box takes the comma Serbian writes a decimal with since 02.10.2026 (owner: „Polje za
+     broj prima i zarez i tacku"), and `noTime` is asked of what was TYPED, while the form is
+     still open. Read with `Number()`, 0:0:30,5 was no time at all, and the form refused it
+     for having no time over three boxes that held one. */
+  it('reads a box written with a comma as the number it is, and an empty box as nought', () => {
+    expect(fromBoxes({ hours: '0', minutes: '0', seconds: '30,5' })).toBe(30.5)
+    expect(noTime({ hours: '0', minutes: '0', seconds: '30,5' })).toBe(false)
+    expect(fromBoxes({ hours: '', minutes: '1', seconds: '0' })).toBe(60)
+    expect(fromBoxes({ hours: 'sat', minutes: '1', seconds: '0' })).toBeNaN()
+  })
 })

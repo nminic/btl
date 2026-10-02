@@ -6,7 +6,7 @@ import { FormRenderer } from '../../forms/FormRenderer'
 import { unosRezultata } from '../../forms/definitions'
 
 import type { FormValues } from '../../forms/types'
-import { fieldDate, storedDate } from '../../forms/dateField'
+import { fieldDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import { raceKind } from '../../data/raceKind'
 import type { Result } from '../../data/types'
@@ -321,14 +321,16 @@ export function NewResult() {
          a filled copy of its values for the same reason. So the two roads are
          separated here rather than joined by a fallback. */
       ...said,
-      /* Through `storedDate`, which reads the date or throws saying what was in
-         the box. It was parsed here and the result called a Date without
-         looking (ADL A14 bans that), and answering with an empty date instead
-         would be the other half of the same fault: a result with no date
-         belongs to no season and would reach the moderator looking ordinary
-         (rule 2). Nothing can reach the throw, because the form refuses an
-         unreadable date before it submits. */
-      date: storedDate(String(values.date)),
+      /* As it is handed: the form has already put the day in the shape a record keeps it
+         in. It was converted here, through `storedDate`, until 02.10.2026, when the owner
+         gave that conversion ONE place for every form (`btl-produkt/PDL.md`, „Odluke iz
+         ciscenja nalaza"), the door `FormRenderer` hands its values through
+         (`forms/records.ts`, `storedDates`). The door keeps what this line used to keep:
+         an unreadable day throws rather than becoming an empty one, because a result with
+         no date belongs to no season and would reach the moderator looking ordinary (ADL
+         A14, rule 2). Converted here as well, it would be converted twice, and `storedDate`
+         over yyyy-mm-dd throws. */
+      date: String(values.date),
       distanceKm,
       ascentM,
       descentM,

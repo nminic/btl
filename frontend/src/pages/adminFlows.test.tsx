@@ -535,8 +535,8 @@ describe('the price list', () => {
     /* The form of a price, which asks for a name, euro and dinars and nothing
        else: a credit has no window in the year and nothing to say about the
        right to be ranked, so it fits this form exactly. */
-    expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue(5)
-    expect(screen.getByLabelText(/^Iznos u dinarima/)).toHaveValue(600)
+    expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue('5')
+    expect(screen.getByLabelText(/^Iznos u dinarima/)).toHaveValue('600')
   })
 
   it('will not set the referral amount once the season it belongs to is being renewed', async () => {
@@ -608,7 +608,7 @@ describe('the price list', () => {
 
     await user.click(open)
 
-    expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue(5)
+    expect(await screen.findByLabelText(/^Iznos u evrima/)).toHaveValue('5')
   })
 
   it('admits that setting the amount in January moves the running season too', async () => {

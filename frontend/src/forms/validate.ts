@@ -1,4 +1,5 @@
 import { ageOn, parseDate } from './dateField'
+import { parseNumber } from './numberField'
 import type { FieldDef, FieldError, FormDef, FormValues } from './types'
 
 /**
@@ -86,11 +87,15 @@ export function validateField(field: FieldDef, value: string | boolean): FieldEr
   }
 
   if (field.type === 'number') {
-    const numeric = Number(text)
+    /* Read through the one reader a number box has (`numberField.ts`), which takes the
+       comma Serbian writes a decimal with as well as the dot (owner, 02.10.2026). Read with
+       `Number()` as it was until then, „10,55" was not a number at all; and with the box no
+       longer `type="number"`, `Number()` would also have taken „0x10" as sixteen. Nothing
+       read means not a number, and without that a bounded field would silently accept
+       words, since every comparison against NaN is false. */
+    const numeric = parseNumber(text)
 
-    // Number('abc') is NaN, and every comparison against NaN is false, so
-    // without this a bounded number field silently accepts words.
-    if (!Number.isFinite(numeric)) {
+    if (numeric === null) {
       return { key: 'form.errors.number' }
     }
 

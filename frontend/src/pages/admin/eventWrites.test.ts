@@ -17,7 +17,7 @@ describe('what an event being written carries', () => {
        (`theTownIsNotSaidOnce`): out of the world codebook by its key, or typed with the
        country beside it. `forms/PlaceField.tsx` writes a town and a country as text and
        knows no key at all, so every event this portal sends is the second kind. */
-    const sent = upsertFrom({ name: 'Trka', date: '16/01/2027', city: 'Novi Sad', country: 'RS' })
+    const sent = upsertFrom({ name: 'Trka', date: '2027-01-16', city: 'Novi Sad', country: 'RS' })
 
     expect(sent.placeId).toBeNull()
     expect(sent.city).toBe('Novi Sad')
@@ -25,34 +25,27 @@ describe('what an event being written carries', () => {
   })
 
   /**
-   * THE DAY IN THE SHAPE THE ROUTE TAKES, WHICH IS NOT THE SHAPE THE FORM ASKS IN.
+   * THE DAY GOES OVER AS IT WAS HANDED, BECAUSE THE FORM HAS ALREADY CONVERTED IT.
    *
-   * <p>The twin of the case thirty lines down, which has asked this of a RACE since the day
-   * the calendar began to send, and it was missing here until 29.09.2026. What that cost was
-   * measured on the wire: both roads carried the reader's `dd/mm/gggg`, Jackson refused the
-   * body before `EventWriteApi` was entered, and the screen said „Server je odgovorio brojem
-   * 400" over every save of every event.
+   * <p>Until 02.10.2026 this function converted the day itself, through `isoDate`, and that
+   * was right for as long as a form handed over the reader's `dd/mm/gggg`. The owner decided
+   * that day that the conversion of a date has ONE place for every form (`btl-produkt/PDL.md`,
+   * „Odluke iz ciscenja nalaza"), which is `storedDates` in `forms/records.ts`, called by
+   * `FormRenderer` when the form is sent. So what arrives here is already `gggg-mm-dd`.
    *
-   * <p><b>THE DAY AND THE MONTH ARE DIFFERENT NUMBERS ON PURPOSE.</b> 16 and 01, so the two
-   * shapes are two different strings and a function that swapped them would answer
-   * `2027-16-01` rather than the same thing twice. A date like 05/05/2027 would pass this
-   * case whichever way round the pieces were read.
-   *
-   * <p><b>And the value going IN is one the form can really hold.</b> The case above fed
-   * `2027-05-08` until this was written, which is a shape `forms/records.ts` never writes
-   * into the values (`valuesFor` converts a record's ISO into the reader's shape), so the
-   * value that went in and the value that should come out were the SAME STRING and passing
-   * it through unchanged read as correct. That is what hid this for a day.
+   * <p><b>THE SAME STRING IN AND OUT IS THE ASSERTION, and that is the opposite of what this
+   * case used to warn against.</b> It used to feed the reader's shape because that was the
+   * shape the form really handed over; it feeds the record's shape now for the same reason.
+   * A second conversion here would be `isoDate` over `gggg-mm-dd`, which is not a day in the
+   * shape it reads and so is nothing at all: every save of every event would go over with no
+   * day. That the screen really hands this function what the door made is held where the
+   * request body is read (`dateOnTheWire.test.tsx`).
    */
-  it('sends the day in the shape the route takes, which is not the shape the form asks in', () => {
+  it('sends the day it is handed, and converts nothing a second time', () => {
     /* `EventWriteApi.Upsert` takes a `LocalDate` and nothing under
        `backend/src/main/resources` names a date format, so ISO-8601 is the only thing the
-       route can read. */
-    expect(upsertFrom({ date: '16/01/2027' }).date).toBe('2027-01-16')
-    /* And a day the form never finished goes over as nothing rather than as half of one:
-       the route answers `theFormIsNotComplete` about it, which is a sentence the screen
-       draws, where a half typed `16/01/` would be a body Jackson cannot read at all. */
-    expect(upsertFrom({ date: '16/01/' }).date).toBe('')
+       route can read, and that is the shape the form now hands over. */
+    expect(upsertFrom({ date: '2027-01-16' }).date).toBe('2027-01-16')
     expect(upsertFrom({}).date).toBe('')
   })
 

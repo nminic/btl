@@ -1,3 +1,4 @@
+import { parseNumber } from './numberField'
 import type { FormValues } from './types'
 
 /** The three as they are written back into a form, which is always text. */
@@ -57,5 +58,24 @@ export function noTime(values: FormValues): boolean {
 /** And the three boxes added up. Every form that asks for a time requires all
  *  three, so there is nothing here to fall back to. */
 export function fromBoxes(values: FormValues): number {
-  return Number(values.hours) * 3600 + Number(values.minutes) * 60 + Number(values.seconds)
+  return box(values.hours) * 3600 + box(values.minutes) * 60 + box(values.seconds)
+}
+
+/**
+ * One box of a time, read the way every number box on the portal is read (`numberField.ts`).
+ *
+ * <p><b>Through that reader and not through `Number()`, and the reason is a reader that comes
+ * BEFORE the form is sent.</b> A box takes a comma since 02.10.2026 (owner: „Polje za broj
+ * prima i zarez i tacku"), and `noTime` above is asked of what was typed, while the form is
+ * still open (`alsoRefuses` on both forms that report a result). Read with `Number()`, „30,5"
+ * seconds is not a number, and a run of 0:0:30,5 was refused as no time at all over boxes the
+ * field rules had just let through.
+ *
+ * <p>An empty box is nought, as `Number('')` always made it; something that is not a number at
+ * all is still not one.
+ */
+function box(value: string | boolean | undefined): number {
+  const written = String(value)
+
+  return written.trim() === '' ? 0 : (parseNumber(written) ?? Number.NaN)
 }

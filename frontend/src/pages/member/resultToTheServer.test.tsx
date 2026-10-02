@@ -195,6 +195,37 @@ describe('a run entered away from the calendar', () => {
     SLOW,
   )
 
+  /**
+   * A LENGTH WRITTEN THE WAY IT IS WRITTEN HERE GOES OVER WITH A DOT.
+   *
+   * <p>Owner, 02.10.2026 (`btl-produkt/PDL.md`, „Odluke iz ciscenja nalaza"): „Polje za broj
+   * prima i zarez i tacku, a portal salje tacku. „21,1" je oblik u kom se ovde pise duzina."
+   * Until that day the box was `type="number"`, which reports „10,55" as empty, so the member
+   * read „10,55" in the box and was told the field was obligatory. The number is not 21.1,
+   * which the helper above types, so a body carrying the helper's number fails here.
+   */
+  it(
+    'sends a length typed with a comma as the number it is, with a dot',
+    async () => {
+      const user = setupUser()
+
+      listening()
+      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+
+      await describeARace(user)
+      await user.clear(screen.getByLabelText(/Dužina/))
+      await user.type(screen.getByLabelText(/Dužina/), '10,55')
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      expect(bodyOf(must(writes()[0], 'the request')).distanceKm).toBe(10.55)
+    },
+    SLOW,
+  )
+
   it(
     'keeps every box and says why, where the server refused',
     async () => {
@@ -219,8 +250,8 @@ describe('a run entered away from the calendar', () => {
       /* And nothing typed is lost. The refusal is usually about one field, and a form that
          emptied itself would make the member enter the whole race again to change a link. */
       expect(await screen.findByLabelText(/^Naziv trke/)).toHaveValue('Trka kroz šumu')
-      expect(screen.getByLabelText(/Dužina/)).toHaveValue(21.1)
-      expect(screen.getByLabelText('Minuta')).toHaveValue(52)
+      expect(screen.getByLabelText(/Dužina/)).toHaveValue('21.1')
+      expect(screen.getByLabelText('Minuta')).toHaveValue('52')
       expect(screen.getByLabelText(/Link/)).toHaveValue('https://primer.rs/rezultati')
     },
     SLOW,
