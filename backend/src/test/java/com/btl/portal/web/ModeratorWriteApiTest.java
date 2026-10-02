@@ -84,6 +84,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * superadmin, who is not a moderator and therefore not a row either route can reach.
  * <li><b>The moment a tick was given is in the PAST in the fixture</b>, so „the box was
  * left alone" and „the box was written again" are different instants rather than one.
+ * <li><b>THE TWO SUPERADMINS ARE TWO SESSIONS AND BOTH ARE USED</b> (02.10.2026): in the cases
+ * about one request undoing another, the account that writes one half is never the account that
+ * writes the other, so „the one who ticked" and „the one who corrected the name" are different
+ * rows and neither is the only superadmin in the table.
+ * <li><b>THE BOXES A SCREEN HAD READ, THE BOXES ANOTHER SUPERADMIN TICKED SINCE AND NO BOXES AT
+ * ALL ARE THREE DIFFERENT ANSWERS</b>: the set the second one ticks shares no box with the set the
+ * fixture holds and is not empty, so a route that kept the table's, wrote the stale ones back or
+ * wrote none cannot satisfy one assertion. Names are the same: the name the screen had and the
+ * one the other superadmin corrected it to share no part with one another, so a stale name written
+ * back is visibly the old one.
  * </ul>
  *
  * <p><b>AND ONE AXIS THAT THIS FIXTURE CANNOT SEPARATE EVERYWHERE, said here rather than
@@ -347,6 +357,7 @@ class ModeratorWriteApiTest {
 				+ " where r.rights_mode = 'all'").query(Long.class).single();
 	}
 
+	/** The route of the BOXES, with a body of the caller's own making. */
 	private MockHttpServletResponse save(long id, String body, String asking) throws Exception {
 		return http.perform(put("/api/moderators/" + id).with(csrf())
 						.contentType(MediaType.APPLICATION_JSON).content(body)
@@ -354,55 +365,50 @@ class ModeratorWriteApiTest {
 				.andReturn().getResponse();
 	}
 
+	/** The route of the NAME, with a body of the caller's own making. */
+	private MockHttpServletResponse renameWith(long id, String body, String asking)
+			throws Exception {
+		return http.perform(put("/api/moderators/" + id + "/name").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(body)
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(asking).secret())))
+				.andReturn().getResponse();
+	}
+
 	/**
-	 * THE ROW'S OWN NAME, RIGHT NOW, so a case about rights alone can resend it unchanged
-	 * rather than silently renaming the very moderator it is not testing that on.
-	 *
-	 * <p>Since 26.09.2026 {@code firstName} and {@code lastName} are as required on this
-	 * route as {@code rights} already was ({@link ModeratorWriteApi#change}), so every one
-	 * of this file's existing cases about rights has to carry SOME name to keep reaching the
-	 * matrix logic at all. Reading it back off the row rather than writing a constant here
-	 * is what keeps those cases measuring rights and nothing about names: a constant would
-	 * quietly turn every one of them into a rename as well, and a mutation that stopped
-	 * writing rights while still renaming everybody would pass every one of them unnoticed.
+	 * A NAME, READ OFF A ROW, which is where every claim about a rename lands: the answer
+	 * of the route says nothing about a name at all (204), so there is nothing else to read.
 	 */
 	private record CurrentName(String firstName, String lastName) {
 	}
 
-	/**
-	 * A name with no meaning of its own, sent only to satisfy the new shape check when the
-	 * id being asked about names no row at all - {@code -1} and the like - so a case about
-	 * „a key nobody holds" keeps measuring the 404 it always measured rather than a 400 this
-	 * change would otherwise put in front of it.
-	 */
-	private static final CurrentName NO_SUCH_ACCOUNT = new CurrentName("Nepostojeci", "Nalog");
-
 	private CurrentName nameOf(long id) {
 		return db.sql("select first_name, last_name from account where id = ?").param(id)
 				.query((row, one) -> new CurrentName(row.getString(1), row.getString(2)))
-				.optional()
-				.orElse(NO_SUCH_ACCOUNT);
+				.single();
 	}
 
 	/** The same shape, off {@code competitor} rather than {@code account} - a member's own
-	 *  name, which {@link ModeratorWriteApi#change} must never move (PDL, 14.09.2026). */
+	 *  name, which {@link ModeratorWriteApi#rename} must never move (PDL, 14.09.2026). */
 	private CurrentName competitorNameOf(long id) {
 		return db.sql("select first_name, last_name from competitor where id = ?").param(id)
 				.query((row, one) -> new CurrentName(row.getString(1), row.getString(2)))
 				.single();
 	}
 
+	/**
+	 * THE BOXES ALONE, BY THE SUPERADMIN, which is all this route takes since 02.10.2026.
+	 *
+	 * <p>Nothing here carries a name, so a case about boxes cannot be satisfied by a route that
+	 * also renames: the row's name is asked about wherever it matters, by its own cases.
+	 */
 	private MockHttpServletResponse save(long id, List<String> rights) throws Exception {
-		CurrentName unchanged = nameOf(id);
-
-		return save(id, ticks(unchanged.firstName(), unchanged.lastName(), rights), EVERYTHING);
+		return save(id, ticks(rights), EVERYTHING);
 	}
 
-	/** The same route, with a name of this case's own choosing rather than the row's
-	 *  current one - what a save that means to test the NAME, not only the boxes, sends. */
-	private MockHttpServletResponse save(long id, String firstName, String lastName,
-			List<String> rights, String asking) throws Exception {
-		return save(id, ticks(firstName, lastName, rights), asking);
+	/** The name alone, by the superadmin. */
+	private MockHttpServletResponse rename(long id, String firstName, String lastName)
+			throws Exception {
+		return renameWith(id, named(firstName, lastName), EVERYTHING);
 	}
 
 	private MockHttpServletResponse remove(long id, String asking) throws Exception {
@@ -529,9 +535,26 @@ class ModeratorWriteApiTest {
 		return new ObjectMapper().readTree(answer.getContentAsString()).path("role").asString();
 	}
 
-	private static String ticks(String firstName, String lastName, List<String> rights) {
+	/** A body for the route of the boxes, in the shape that route takes and no other. */
+	private static String ticks(List<String> rights) {
+		return new ObjectMapper().writeValueAsString(new ModeratorWriteApi.Ticks(null, rights));
+	}
+
+	/** A body for the route of the name, in the shape that route takes and no other. */
+	private static String named(String firstName, String lastName) {
 		return new ObjectMapper()
-				.writeValueAsString(new ModeratorWriteApi.Ticks(firstName, lastName, null, rights));
+				.writeValueAsString(new ModeratorWriteApi.Renamed(firstName, lastName, null));
+	}
+
+	/**
+	 * THE OLD SHAPE, a name beside the boxes, which is what the screen sent to the one
+	 * {@code PUT} between 26.09.2026 and 02.10.2026 and what a screen that has not been
+	 * reloaded since still sends. Built as a map and not out of either record, because it is
+	 * the shape of NEITHER of them.
+	 */
+	private static String bothHalves(String firstName, String lastName, List<String> rights) {
+		return new ObjectMapper().writeValueAsString(
+				Map.of("firstName", firstName, "lastName", lastName, "rights", rights));
 	}
 
 	private static String reasonIn(MockHttpServletResponse answer) throws Exception {
@@ -707,157 +730,254 @@ class ModeratorWriteApiTest {
 	}
 
 	/**
-	 * A NEW NAME REPLACES THE OLD ONE EVERYWHERE IT IS READ, AND THE SAME NAME SENT AGAIN
-	 * CHANGES NOTHING.
+	 * A NEW NAME REPLACES THE OLD ONE EVERYWHERE IT IS READ, AND NOTHING ELSE ABOUT THE ROW
+	 * MOVES WITH IT.
 	 *
-	 * <p>The owner, 26.09.2026, on three offered outcomes: „Izabrao ime da, adresa ne ...
-	 * Greška u imenu se ispravlja kroz portal." Both directions are measured rather than
-	 * one: a save that only ever wrote would pass a case that never resent the old value,
-	 * and a save that only ever left the row alone would pass a case that never sent a
-	 * different one.
+	 * <p>PDL, 26.09.2026: a mistake in a moderator's name is corrected through the portal, and
+	 * since 02.10.2026 by a request of its own that carries the name and nothing else. Both
+	 * directions of the write are measured rather than one: a rename that only ever wrote
+	 * would pass a case that never resent the old value, and one that only ever left the row
+	 * alone would pass a case that never sent a different one. The two parts of the name are
+	 * changed together, then each alone, and every pair differs from the one before it in
+	 * exactly the part the step claims to change, so a statement that wrote the surname into
+	 * the first name, or kept one of the two, answers differently at some step.
 	 *
-	 * <p><b>Read off the row and not off the answer</b>, because {@link Ticked} carries no
-	 * name at all, so a screen believing this route echoed the name it saved would be
-	 * believing something this response cannot say.
+	 * <p><b>Read off the row and not off the answer</b>: the answer is 204 and carries nothing,
+	 * which is the point of it, so a screen believing the route echoed the name it saved would
+	 * be believing something this response cannot say.
 	 *
-	 * <p><b>Two things this save must NOT move, read beside the one it does.</b>
-	 * {@link #FIRST_WRITTEN}'s row proves a statement that lost its condition on the id would
-	 * rename every moderator rather than one, the axis
-	 * {@link #theBoxesSavedAreTheBoxesTheTableHoldsAfterwards} already keeps for rights. And
-	 * {@link #ACTED}'s own {@code competitor} row proves this route writes
-	 * {@code account.first_name}/{@code last_name} alone: „Ime i prezime nosi sam nalog"
-	 * (owner, 14.09.2026) is two facts about two tables, and {@link #competitor} gives him a
-	 * member name that shares no word with the one on his account, so a statement that wrote
-	 * the wrong table could not pass behind a word they share.
+	 * <p><b>Three things this save must NOT move, read beside the one it does.</b>
+	 * {@link #FIRST_WRITTEN}, {@link #ANOTHER} and {@link #EVERY_TICK} prove a statement that lost
+	 * its condition on the id would rename every moderator rather than one. {@link #ACTED}'s own
+	 * {@code competitor} row proves the route writes {@code account.first_name} and
+	 * {@code last_name} alone - „Ime i prezime nosi sam nalog" (PDL, 14.09.2026) is two facts about
+	 * two tables - and {@link #competitor} gives him a member name that shares no word with the one
+	 * on his account. And his BOXES are read last, with the instant one of them was given, because
+	 * the route this one replaced wrote them on every save and this one has no statement that can.
 	 */
 	@Test
-	void aNewNameReplacesTheOldOneEverywhereItIsReadAndAResentOneChangesNothing() throws Exception {
-		Row before = rowOf(ACTED);
+	void aNewNameReplacesTheOldOneEverywhereItIsReadAndNothingElseMovesWithIt() throws Exception {
+		long his = accountOf(ACTED);
 
-		assertThat(before.firstName()).isEqualTo("Petar");
-		assertThat(before.lastName()).isEqualTo("Petric");
+		assertThat(nameOf(his))
+				.as("the fixture's moderator is not called what the first step assumes, so nothing"
+						+ " below says which half of a name was written")
+				.isEqualTo(new CurrentName("Petar", "Petric"));
 
-		long runner = before.competitorId();
+		long runner = rowOf(ACTED).competitorId();
 		CurrentName hisMemberName = competitorNameOf(runner);
+		Instant whenTheBoxWasGiven = whenGiven(ACTED, LEFT_ALONE);
 
-		MockHttpServletResponse renamed = save(accountOf(ACTED), "Petra", "Petrovic",
-				List.of(TAKEN_AWAY, LEFT_ALONE), EVERYTHING);
+		MockHttpServletResponse renamed = rename(his, "Petra", "Petrovic");
 
-		assertThat(renamed.getStatus()).isEqualTo(200);
-		assertThat(rowOf(ACTED).firstName())
-				.as("a new name was saved and the row did not take it")
-				.isEqualTo("Petra");
-		assertThat(rowOf(ACTED).lastName()).isEqualTo("Petrovic");
-		assertThat(new ObjectMapper().readTree(renamed.getContentAsString()).has("firstName"))
-				.as("the answer echoed a name Ticked was never given a field to carry")
-				.isFalse();
+		assertThat(renamed.getStatus()).isEqualTo(204);
+		assertThat(renamed.getContentAsString())
+				.as("a rename was answered with a body, which is a field nothing reads")
+				.isEmpty();
+		assertThat(nameOf(his))
+				.as("a new name was saved and the row did not take it, or took one half of it")
+				.isEqualTo(new CurrentName("Petra", "Petrovic"));
 
-		assertThat(rowOf(FIRST_WRITTEN).firstName())
-				.as("renaming the moderator this case acts on renamed another one too")
-				.isEqualTo("Prvi");
-		assertThat(rowOf(FIRST_WRITTEN).lastName()).isEqualTo("Prvic");
-
+		assertThat(nameOf(accountOf(FIRST_WRITTEN)))
+				.as("renaming the moderator this case acts on renamed the first one written")
+				.isEqualTo(new CurrentName("Prvi", "Prvic"));
+		assertThat(nameOf(accountOf(ANOTHER)))
+				.as("renaming one moderator renamed a third one")
+				.isEqualTo(new CurrentName("Treci", "Trecic"));
+		assertThat(nameOf(accountOf(EVERY_TICK)))
+				.as("renaming one moderator renamed the one who holds every box")
+				.isEqualTo(new CurrentName("Iskusni", "Iskic"));
 		assertThat(competitorNameOf(runner))
 				.as("renaming the account moved the member record it names, and those are two"
 						+ " facts about two tables")
 				.isEqualTo(hisMemberName);
+		assertThat(ticksInTheTableOf(ACTED))
+				.as("a rename moved his boxes, which it has no statement to do")
+				.containsExactlyInAnyOrder(TAKEN_AWAY, LEFT_ALONE);
+		assertThat(whenGiven(ACTED, LEFT_ALONE))
+				.as("a rename wrote a box that was already ticked again")
+				.isEqualTo(whenTheBoxWasGiven);
 
-		MockHttpServletResponse resent = save(accountOf(ACTED), "Petra", "Petrovic",
-				List.of(TAKEN_AWAY, LEFT_ALONE), EVERYTHING);
-
-		assertThat(resent.getStatus()).isEqualTo(200);
-		assertThat(rowOf(ACTED).firstName())
+		assertThat(rename(his, "Petra", "Petrovic").getStatus())
+				.as("the same name sent again is a request like any other")
+				.isEqualTo(204);
+		assertThat(nameOf(his))
 				.as("the same name sent again is still the row's name, not a second rename")
-				.isEqualTo("Petra");
-		assertThat(rowOf(ACTED).lastName()).isEqualTo("Petrovic");
+				.isEqualTo(new CurrentName("Petra", "Petrovic"));
+
+		assertThat(rename(his, "Petar", "Petrovic").getStatus()).isEqualTo(204);
+		assertThat(nameOf(his))
+				.as("only the first name was changed, and the surname came out of the wrong part"
+						+ " of the request or was not written")
+				.isEqualTo(new CurrentName("Petar", "Petrovic"));
+
+		assertThat(rename(his, "Petar", "Petric").getStatus()).isEqualTo(204);
+		assertThat(nameOf(his))
+				.as("only the surname was changed, and the first name was not kept or was written"
+						+ " from the wrong part of the request")
+				.isEqualTo(new CurrentName("Petar", "Petric"));
 	}
 
 	/**
-	 * A BLANK OR ABSENT NAME IS REFUSED, AND NOTHING IS WRITTEN, NOT EVEN THE BOXES.
+	 * A NAME TYPED WITH SPACES AROUND IT IS STORED WITHOUT THEM.
 	 *
-	 * <p>„Izabrao ime da" (owner, 26.09.2026) still has to answer to
-	 * {@code account_first_name_not_blank} (V23), so a blank one judged here answers with a
-	 * sentence rather than reaching that constraint as a 500 - the same reasoning {@link
-	 * #add}'s own {@code isNothing} already carries for {@link Invited}'s two name fields:
-	 * blank, empty and absent are one answer, because the fix is one thing - type it in.
+	 * <p>The statement strips what it is given, the choice {@link ModeratorWriteApi#add} makes for
+	 * an invitation, so a space typed at either end does not become a second name in the row. The
+	 * fixture pads each part differently: a plain space and an EM SPACE (U+2003) on one, the EM
+	 * SPACE and two plain spaces on the other. The EM SPACE is the half that tells {@code strip()}
+	 * from {@code trim()}, which removes nothing above U+0020, so a route written with it passes the
+	 * plain spaces and leaves the other.
+	 */
+	@Test
+	void aNameWithSpacesAroundItIsStoredWithoutThem() throws Exception {
+		long his = accountOf(ACTED);
+
+		assertThat(rename(his, " \u2003Petra ", "\u2003Petrovic  ").getStatus()).isEqualTo(204);
+
+		assertThat(nameOf(his))
+				.as("a name typed with spaces around it was stored with them, so the same man is"
+						+ " now two names that look alike")
+				.isEqualTo(new CurrentName("Petra", "Petrovic"));
+	}
+
+	/**
+	 * A MODERATOR WHO NEVER RACED IS RENAMED TOO, AND NOBODY ELSE'S ROW MOVES WITH HIS.
 	 *
-	 * <p><b>Either field alone is enough</b>, because the name is the two of them together;
-	 * a first name with no surname is a request that lost a field on the way, the same shape
-	 * a missing {@code rights} already refuses above.
+	 * <p>The other half of an axis that the rename case above cannot reach: {@link #ACTED} races,
+	 * so his account names a member, and a statement that went looking for one finds it.
+	 * {@link #ANOTHER} names nobody - {@code competitor_id} is empty, which V23 calls the ordinary
+	 * case for a moderator and not a fault - so a route that joined {@code competitor}, or asked
+	 * for a member before it wrote a name, would answer him 404 or write nothing at all. He is
+	 * read afterwards for exactly that, and for his boxes, which a rename has no statement to
+	 * touch.
+	 */
+	@Test
+	void aModeratorWhoNeverRacedIsRenamedToo() throws Exception {
+		long his = accountOf(ANOTHER);
+
+		assertThat(rowOf(ANOTHER).competitorId())
+				.as("the moderator this case renames races, so nothing below is about one who does"
+						+ " not")
+				.isNull();
+
+		assertThat(rename(his, "Nada", "Novakovic").getStatus())
+				.as("a moderator who names no member was refused, so the route went looking for"
+						+ " a member that is not a moderator's to have")
+				.isEqualTo(204);
+
+		assertThat(nameOf(his)).isEqualTo(new CurrentName("Nada", "Novakovic"));
+		assertThat(rowOf(ANOTHER).competitorId())
+				.as("a rename gave a moderator a member he does not have")
+				.isNull();
+		assertThat(ticksInTheTableOf(ANOTHER))
+				.as("a rename moved the boxes of a moderator who never raced")
+				.containsExactly(THE_THIRD_ONES);
+		assertThat(nameOf(accountOf(ACTED)))
+				.as("renaming one moderator renamed the one who races")
+				.isEqualTo(new CurrentName("Petar", "Petric"));
+	}
+
+	/**
+	 * A NAME WITH A PART MISSING IS REFUSED SAYING WHICH, AND NOTHING IS WRITTEN.
 	 *
-	 * <p><b>Rights are read back too, and not only the name</b>, because a route that wrote
-	 * the boxes before judging the name would leave a moderator with a NEW set of rights and
-	 * his OLD name - half a save is not a smaller mistake than a whole one.
+	 * <p>ADL A54: a refused form says what is missing, in the order of the form, and this route is
+	 * born with it. Blank, empty and absent are one answer, because the fix is one thing - type it
+	 * in - and because {@code account_first_name_not_blank} (V23) treats them as one: a name of one
+	 * space is refused by the table exactly as an absent one is.
+	 *
+	 * <p><b>The part that IS present is never the row's own</b>, and that is the whole of why the
+	 * rows below look the way they do. Sent as the name the row already has, a route that wrote the
+	 * present half before refusing the other would leave the row looking untouched, and the
+	 * assertion that nothing was written would be satisfied by the wrong behaviour as well as by
+	 * the right one. The case this replaces sent the row's own name for the part that was
+	 * present, which is how that went unnoticed.
+	 *
+	 * <p>The boxes are read back too, because a route that wrote anything before judging the form
+	 * would leave a moderator half changed.
 	 */
 	@ParameterizedTest
 	@CsvSource(nullValues = "-", value = {
-			"-, Petric",
-			"'', Petric",
-			"'   ', Petric",
-			"Petar, -",
-			"Petar, ''",
-			"Petar, '   '",
-			"-, -",
+			"-, Osoba, firstName",
+			"'', Osoba, firstName",
+			"'   ', Osoba, firstName",
+			"Nova, -, lastName",
+			"Nova, '', lastName",
+			"Nova, '   ', lastName",
+			"-, -, firstName lastName",
+			"'', '   ', firstName lastName",
 	})
-	void aBlankOrAbsentNameIsRefusedAndNothingIsWritten(String firstName, String lastName)
-			throws Exception {
+	void aNamePartThatIsMissingIsRefusedSayingWhichAndNothingIsWritten(String firstName,
+			String lastName, String missing) throws Exception {
+		long his = accountOf(ACTED);
 		List<String> before = ticksInTheTableOf(ACTED);
-		String body = new ObjectMapper()
-				.writeValueAsString(new ModeratorWriteApi.Ticks(firstName, lastName, null,
-						List.of(GIVEN)));
 
-		MockHttpServletResponse answer = save(accountOf(ACTED), body, EVERYTHING);
+		MockHttpServletResponse answer = renameWith(his, named(firstName, lastName), EVERYTHING);
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(reasonIn(answer)).isEqualTo(ModeratorWriteApi.THE_FORM_IS_NOT_COMPLETE);
-		assertThat(rowOf(ACTED).firstName())
-				.as("a name missing a field was refused and the row was renamed anyway")
-				.isEqualTo("Petar");
-		assertThat(rowOf(ACTED).lastName()).isEqualTo("Petric");
+		assertThat(missingIn(answer))
+				.as("the refusal does not say which parts of the name are missing, or says it in an"
+						+ " order other than the form's")
+				.containsExactlyElementsOf(List.of(missing.split(" ")));
+		assertThat(nameOf(his))
+				.as("a name with a part missing was refused and the row was renamed anyway")
+				.isEqualTo(new CurrentName("Petar", "Petric"));
 		assertThat(ticksInTheTableOf(ACTED))
-				.as("a name missing a field was refused and the boxes moved anyway")
+				.as("a name with a part missing was refused and the boxes moved anyway")
 				.isEqualTo(before);
 	}
 
 	/**
-	 * AN ADDRESS NAMED IN THE REQUEST IS REFUSED, WITH NO REASON A CALLER COULD ACT ON.
+	 * AN ADDRESS NAMED IN EITHER REQUEST IS REFUSED, WITH NO REASON A CALLER COULD ACT ON, AND
+	 * NOTHING IS WRITTEN.
 	 *
-	 * <p>Measured before this check existed, and it is the reason this field and this check
-	 * exist at all: a {@code PUT} sent on the shape {@link Ticks} carried before 26.09.2026 -
-	 * one with no field for an address - answered 200 and silently dropped it, which is the
-	 * opposite of a refusal. „adresa se ne menja jer je to prijava" (owner, 26.09.2026):
-	 * moving it would let the superadmin who changed it read the next password reset link
-	 * meant for the man who used to hold it, so this is not a courtesy that may quietly stop
-	 * working.
+	 * <p>Measured before the check existed, and it is the reason the field and the check exist at
+	 * all: a request on a shape with no field for an address answered 200 and silently dropped it,
+	 * which is the opposite of a refusal. PDL, 26.09.2026: the address is not changed, because it
+	 * is what he signs in with, so this is not a courtesy that may quietly stop working. It is
+	 * refused on BOTH routes, because the owner's boundary is about the resource and not about the
+	 * route a caller happened to pick; each has its own half of this case, and each half falls
+	 * alone when that route's check goes.
 	 *
-	 * <p><b>No reason accompanies the 400</b>, the same empty body a moderator who is not
-	 * there gets below: the form behind this route never sends this field
-	 * ({@code AdminModerators.tsx}), so a request naming one reaches here only through a
-	 * bypass of that form or a mistake, and neither has a reader owed a sentence.
+	 * <p><b>No reason accompanies the 400</b>, the same empty body a moderator who is not there
+	 * gets: the screen behind these routes never sends this field ({@code AdminModerators.tsx}),
+	 * so a request naming one reaches here only through a bypass of that screen or a mistake, and
+	 * neither has a reader owed a sentence.
 	 *
-	 * <p><b>The name, the address and the boxes are all read back afterwards</b>, because a
-	 * route that refused the address but wrote the rest first would still have moved half
-	 * the row.
+	 * <p><b>The name, the address and the boxes are all read back afterwards</b>, because a route
+	 * that refused the address but wrote the rest first would still have moved part of the row.
 	 */
 	@Test
-	void anAddressNamedInTheRequestIsRefusedAndNothingIsWritten() throws Exception {
+	void anAddressNamedInEitherRequestIsRefusedAndNothingIsWritten() throws Exception {
+		long his = accountOf(ACTED);
 		List<String> before = ticksInTheTableOf(ACTED);
-		String body = new ObjectMapper().writeValueAsString(new ModeratorWriteApi.Ticks("Petra",
-				"Petrovic", "noticed@primer.rs", List.of(GIVEN)));
 
-		MockHttpServletResponse answer = save(accountOf(ACTED), body, EVERYTHING);
+		MockHttpServletResponse boxes = save(his, new ObjectMapper().writeValueAsString(
+				new ModeratorWriteApi.Ticks("noticed@primer.rs", List.of(GIVEN))), EVERYTHING);
 
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(answer.getContentAsString())
-				.as("an address that must never move was refused with a reason, which is a"
-						+ " sentence somebody could read as an invitation to keep trying field names")
+		assertThat(boxes.getStatus())
+				.as("the route of the boxes accepted a request naming an address")
+				.isEqualTo(400);
+		assertThat(boxes.getContentAsString())
+				.as("an address that must never move was refused with a reason, which is a sentence"
+						+ " somebody could read as an invitation to keep trying field names")
 				.isEmpty();
-		assertThat(rowOf(ACTED).firstName())
+
+		MockHttpServletResponse name = renameWith(his, new ObjectMapper().writeValueAsString(
+				new ModeratorWriteApi.Renamed("Petra", "Petrovic", "noticed@primer.rs")), EVERYTHING);
+
+		assertThat(name.getStatus())
+				.as("the route of the name accepted a request naming an address")
+				.isEqualTo(400);
+		assertThat(name.getContentAsString())
+				.as("the route of the name refused an address with a reason")
+				.isEmpty();
+
+		assertThat(nameOf(his))
 				.as("a request naming an address was refused and the name was written anyway")
-				.isEqualTo("Petar");
-		assertThat(rowOf(ACTED).lastName()).isEqualTo("Petric");
+				.isEqualTo(new CurrentName("Petar", "Petric"));
 		assertThat(rowOf(ACTED).email())
-				.as("the address moved despite being the one thing this route must always refuse")
+				.as("the address moved despite being the one thing these routes must always refuse")
 				.isEqualTo(ACTED);
 		assertThat(ticksInTheTableOf(ACTED))
 				.as("a request naming an address was refused and the boxes moved anyway")
@@ -865,63 +985,194 @@ class ModeratorWriteApiTest {
 	}
 
 	/**
-	 * A KEY THAT NAMES NO MODERATOR STILL READS 404 WHEN THE BODY ALSO NAMES A NEW NAME.
+	 * A KEY THAT NAMES NO MODERATOR IS NOT RENAMED, AND READS EXACTLY LIKE ONE THAT IS NOT THERE.
 	 *
-	 * <p>{@link #anAccountThatIsNotAModeratorReadsLikeOneThatIsNotThere} measures this
-	 * already for a body carrying rights alone; this is the same claim for the shape
-	 * {@link #change} has carried since 26.09.2026, so a name added to {@link Ticks} that
-	 * somehow let a statement skip the join on {@code role} could not pass either case on
-	 * its own.
+	 * <p>The same refusal {@link #anAccountThatIsNotAModeratorReadsLikeOneThatIsNotThere} measures
+	 * for the other two routes, for this one: the condition on the role is written once in each
+	 * statement, so each statement has to be asked. Four kinds of key, because they are four ways
+	 * of getting it wrong: a key nobody holds (refused by a statement with no condition on the
+	 * role at all only by luck), the plain member (the half that says this is about the ROLE), the
+	 * superadmin who is asking, and the other superadmin - two of them, so „a superadmin" and „the
+	 * last remaining one" are different rows (ADL A40, 14.09.2026).
+	 *
+	 * <p>The body is a perfectly good name every time, so the 404 is about the key and cannot be a
+	 * 400 about the form. And the name, the role and the boxes of every account that exists are
+	 * read back afterwards, because a route that renamed him would answer 404 and rename him.
+	 *
+	 * <p><b>The anchor is the same request for a moderator</b>: a route that refused everybody
+	 * would pass everything above it.
 	 */
 	@Test
-	void aKeyThatNamesNoModeratorStillReads404WithANameInTheBody() throws Exception {
-		MockHttpServletResponse nobody = save(-1, "Nova", "Osoba", List.of(GIVEN), EVERYTHING);
+	void aKeyThatNamesNoModeratorIsNotRenamedAndReadsLikeOneThatIsNotThere() throws Exception {
+		MockHttpServletResponse nobody = rename(-1, "Nova", "Osoba");
 
 		assertThat(nobody.getStatus()).isEqualTo(404);
-		assertThat(nobody.getContentAsString()).isEmpty();
-
-		String beforeName = rowOf(A_MEMBER).firstName();
-		MockHttpServletResponse member =
-				save(accountOf(A_MEMBER), "Nova", "Osoba", List.of(GIVEN), EVERYTHING);
-
-		assertThat(member.getStatus())
-				.as("a competitor's account was renamed and given a tick through this screen")
-				.isEqualTo(404);
-		assertThat(member.getContentAsString()).isEmpty();
-		assertThat(rowOf(A_MEMBER).firstName())
-				.as("the refusal was answered and the competitor's account was renamed anyway")
-				.isEqualTo(beforeName);
-		assertThat(ticksInTheTableOf(A_MEMBER))
-				.as("a refused save still ticked a box for an account that holds none")
+		assertThat(nobody.getContentAsString())
+				.as("a key nobody holds was answered with a reason")
 				.isEmpty();
+
+		for (String account : List.of(A_MEMBER, EVERYTHING, THE_OTHER_SUPERADMIN)) {
+			CurrentName before = nameOf(accountOf(account));
+			String role = roleOf(account);
+
+			MockHttpServletResponse answer = rename(accountOf(account), "Nova", "Osoba");
+
+			assertThat(answer.getStatus())
+					.as("%s is not a moderator and was renamed through the moderators' screen, or"
+							+ " was refused with a number that says the address is real", account)
+					.isEqualTo(404);
+			assertThat(answer.getContentAsString())
+					.as("%s was refused with a body, which an address that is not there would not"
+							+ " have", account)
+					.isEmpty();
+			assertThat(nameOf(accountOf(account)))
+					.as("the refusal was answered and %s was renamed anyway", account)
+					.isEqualTo(before);
+			assertThat(roleOf(account))
+					.as("the refusal was answered and the role of %s moved anyway", account)
+					.isEqualTo(role);
+			assertThat(ticksInTheTableOf(account))
+					.as("a rename wrote a box for %s, an account whose role can hold none", account)
+					.isEmpty();
+		}
+
+		assertThat(rename(accountOf(ACTED), "Nova", "Osoba").getStatus())
+				.as("the moderator was refused the same request, so the refusals above are a route"
+						+ " that is shut to everybody rather than a condition on the role")
+				.isEqualTo(204);
 	}
 
 	/**
-	 * A CODE THE MATRIX DOES NOT HOLD REFUSES THE NEW NAME TOO, NOT ONLY THE BOXES.
+	 * CORRECTING A NAME ON A SCREEN THAT IS A MINUTE OLD DOES NOT UNDO THE BOXES ANOTHER
+	 * SUPERADMIN TICKED IN THAT MINUTE.
 	 *
-	 * <p>{@link #aCodeTheMatrixDoesNotHoldIsRefusedAndNothingIsWritten} below resends this
-	 * moderator's OWN current name unchanged (through {@link #save(long, List)}), so it
-	 * cannot tell a route that renamed him anyway from one that did not - resending an
-	 * unchanged value reads identically to never having written it. This sends a DIFFERENT
-	 * name alongside the same invalid code, so a statement moved to write the name BEFORE
-	 * the matrix check - rather than after, where {@link #change} puts it - fails this case
-	 * rather than passing unnoticed.
+	 * <p>This is the owner's decision of 02.10.2026 and the whole of why the name has a request of
+	 * its own. Three different sets of boxes meet in one case: what the screen read when it was
+	 * drawn ({@code R0}, which is what {@link #ACTED} holds in this fixture), what a second
+	 * superadmin ticked since ({@code R1}, which shares no box with {@code R0} and is not empty),
+	 * and what the table holds after the correction, which must be {@code R1}. Were the correction
+	 * to write the boxes the screen last read, the table would be {@code R0} again; were it to
+	 * write none, it would be empty. Neither is {@code R1}, so the three answers cannot be told
+	 * from one another.
+	 *
+	 * <p><b>The two superadmins are two sessions</b>, and the one who ticks is not the one who
+	 * renames: the fixture holds both so that „the one who wrote the boxes" and „the one who
+	 * wrote the name" are different accounts, and neither is the only superadmin in the table.
+	 * Both writes go through the routes and not through the database, so each is what the
+	 * portal would have done.
 	 */
 	@Test
-	void aCodeTheMatrixDoesNotHoldRefusesANewNameAsWellAsTheBoxes() throws Exception {
-		assertThat(everyRightThereIs())
-				.as("the matrix holds this code after all, so refusing it is not what this measures")
-				.doesNotContain("entity:moderators");
+	void correctingANameLeavesTheBoxesAnotherSuperadminTickedInTheMeantime() throws Exception {
+		long his = accountOf(ACTED);
+		List<String> whatTheScreenRead = ticksInTheTableOf(ACTED);
+		List<String> whatTheOtherOneTicked = List.of(GIVEN, THE_THIRD_ONES);
 
-		MockHttpServletResponse answer = save(accountOf(ACTED), "Petra", "Petrovic",
-				List.of("entity:moderators"), EVERYTHING);
+		assertThat(whatTheScreenRead)
+				.as("the two sets share a box, or the second is empty, so keeping the boxes and"
+						+ " writing the stale ones back read alike")
+				.isNotEmpty()
+				.doesNotContainAnyElementsOf(whatTheOtherOneTicked);
 
-		assertThat(answer.getStatus()).isEqualTo(400);
-		assertThat(reasonIn(answer)).isEqualTo(ModeratorWriteApi.A_RIGHT_THE_MATRIX_DOES_NOT_HOLD);
-		assertThat(rowOf(ACTED).firstName())
-				.as("a code the matrix does not hold was refused and the name was written anyway")
-				.isEqualTo("Petar");
-		assertThat(rowOf(ACTED).lastName()).isEqualTo("Petric");
+		assertThat(save(his, ticks(whatTheOtherOneTicked), THE_OTHER_SUPERADMIN).getStatus())
+				.isEqualTo(200);
+
+		assertThat(renameWith(his, named("Petra", "Petrovic"), EVERYTHING).getStatus())
+				.isEqualTo(204);
+
+		assertThat(nameOf(his)).isEqualTo(new CurrentName("Petra", "Petrovic"));
+		assertThat(ticksInTheTableOf(ACTED))
+				.as("correcting the name undid what the other superadmin ticked in the meantime, so"
+						+ " the table holds what the screen had read or nothing at all")
+				.containsExactly(GIVEN, THE_THIRD_ONES);
+	}
+
+	/**
+	 * BOXES SENT TO THE ROUTE OF THE NAME ARE NEVER WRITTEN, WHATEVER THEY SAY.
+	 *
+	 * <p>The old shape of the correction was the name beside the boxes the screen had last read,
+	 * and the route has no statement that writes a box, so a request of that shape meeting this
+	 * route is answered as the name it also carries. That is the guarantee by construction, and
+	 * this is the case that holds it: a route that read a {@code rights} field and wrote the
+	 * difference would pass every case above, because none of them sends one. The stale boxes
+	 * sent here are what the screen had read, the table holds what another superadmin ticked
+	 * since, and the two share nothing.
+	 *
+	 * <p>It is also silent, which is named in the class comment and measured here rather than
+	 * claimed: the answer is the same 204 whether or not the boxes were looked at.
+	 */
+	@Test
+	void boxesSentToTheNameRouteAreNeverWritten() throws Exception {
+		long his = accountOf(ACTED);
+		List<String> whatTheScreenRead = ticksInTheTableOf(ACTED);
+
+		assertThat(save(his, ticks(List.of(GIVEN, THE_THIRD_ONES)), THE_OTHER_SUPERADMIN).getStatus())
+				.isEqualTo(200);
+
+		MockHttpServletResponse answer =
+				renameWith(his, bothHalves("Petra", "Petrovic", whatTheScreenRead), EVERYTHING);
+
+		assertThat(answer.getStatus()).isEqualTo(204);
+		assertThat(nameOf(his)).isEqualTo(new CurrentName("Petra", "Petrovic"));
+		assertThat(ticksInTheTableOf(ACTED))
+				.as("the route of the name wrote the boxes it was sent, so the old shape of the"
+						+ " correction undoes another superadmin's tick again")
+				.containsExactly(GIVEN, THE_THIRD_ONES);
+	}
+
+	/**
+	 * PRESSING A BOX ON A SCREEN THAT IS A MINUTE OLD DOES NOT UNDO THE NAME ANOTHER SUPERADMIN
+	 * CORRECTED IN THAT MINUTE.
+	 *
+	 * <p>The same fault the other way round, which the decision of 02.10.2026 names in one
+	 * direction and its words - the rights are sent separately - close in both: until then every
+	 * press on the matrix carried the name the row had when the screen was drawn. The first
+	 * superadmin renames, the second presses a box with a screen that still has the old name, and
+	 * the name that stands afterwards has to be the first one's.
+	 */
+	@Test
+	void pressingABoxLeavesTheNameAnotherSuperadminCorrectedInTheMeantime() throws Exception {
+		long his = accountOf(ACTED);
+
+		assertThat(renameWith(his, named("Petra", "Petrovic"), THE_OTHER_SUPERADMIN).getStatus())
+				.isEqualTo(204);
+
+		assertThat(save(his, ticks(List.of(LEFT_ALONE, GIVEN)), EVERYTHING).getStatus())
+				.isEqualTo(200);
+
+		assertThat(ticksInTheTableOf(ACTED)).containsExactly(GIVEN, LEFT_ALONE);
+		assertThat(nameOf(his))
+				.as("a press on a box wrote the name back, so it holds what the screen had read and"
+						+ " not what the other superadmin corrected it to")
+				.isEqualTo(new CurrentName("Petra", "Petrovic"));
+	}
+
+	/**
+	 * A NAME SENT TO THE ROUTE OF THE BOXES IS NEVER WRITTEN, WHATEVER IT SAYS.
+	 *
+	 * <p>This is what a screen that has not been reloaded since 02.10.2026 sends: the name beside
+	 * the boxes, to the address that used to take both. The boxes are written, and the answer says
+	 * so, and the name is not - silently, which is named in the class comment and measured here
+	 * rather than claimed. The old name sent here is the one the row held when that screen was
+	 * drawn, and the row holds a different one now, so a route that wrote the name it was sent
+	 * would visibly put the old one back.
+	 */
+	@Test
+	void aNameSentToTheBoxesRouteIsNeverWritten() throws Exception {
+		long his = accountOf(ACTED);
+
+		assertThat(renameWith(his, named("Petra", "Petrovic"), THE_OTHER_SUPERADMIN).getStatus())
+				.isEqualTo(204);
+
+		MockHttpServletResponse answer =
+				save(his, bothHalves("Petar", "Petric", List.of(GIVEN)), EVERYTHING);
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(rightsIn(answer)).containsExactly(GIVEN);
+		assertThat(ticksInTheTableOf(ACTED)).containsExactly(GIVEN);
+		assertThat(nameOf(his))
+				.as("the route of the boxes wrote the name it was sent, so the old shape of the"
+						+ " request puts a stale name back over a correction")
+				.isEqualTo(new CurrentName("Petra", "Petrovic"));
 	}
 
 	/**
@@ -1094,24 +1345,26 @@ class ModeratorWriteApiTest {
 	}
 
 	/**
-	 * A MODERATOR HOLDING EVERY TICK THERE IS IS REFUSED BOTH ROUTES, AND WHAT HE ASKED
-	 * ABOUT IS UNTOUCHED AFTERWARDS.
+	 * A MODERATOR HOLDING EVERY TICK THERE IS IS REFUSED EVERY ROUTE THAT NAMES A KEY, AND WHAT
+	 * HE ASKED ABOUT IS UNTOUCHED AFTERWARDS.
 	 *
 	 * <p>„Bez te granice moderator bi sam sebi mogao da dodeli prava, pa granularna prava ne
 	 * bi značila ništa" (PDL P28a, 30.07.2026). There is no box that opens this, which is
 	 * why there is no column for it in the matrix, so holding all of them changes nothing.
 	 *
-	 * <p><b>The second half of every assertion is the case.</b> Both routes answer 404 to a
+	 * <p><b>The second half of every assertion is the case.</b> Every route answers 404 to a
 	 * key nobody holds as well, on purpose (ADL A8 applied to a row), so the number alone
 	 * says nothing whatever. The row he named really exists and is read back afterwards -
 	 * which is exactly the hole PR 295 was found to have, where a {@code DELETE} said 404
 	 * both when it refused and when there was nothing there.
 	 *
-	 * <p><b>And the superadmin doing the same two things is the anchor</b>: without it a
-	 * pair of routes that refused everybody would pass this.
+	 * <p><b>And the superadmin doing the same three things is the anchor</b>: without it a
+	 * set of routes that refused everybody would pass this. The name is the third since
+	 * 02.10.2026, and it is asked here because its own statement carries its own condition on
+	 * the role and nothing else in this file would notice that statement losing the door.
 	 */
 	@Test
-	void aModeratorHoldingEveryTickThereIsIsRefusedBothRoutes() throws Exception {
+	void aModeratorHoldingEveryTickThereIsIsRefusedEveryRouteThatNamesAKey() throws Exception {
 		List<String> matrix = everyRightThereIs();
 
 		assertThat(ticksInTheTableOf(EVERY_TICK))
@@ -1119,9 +1372,8 @@ class ModeratorWriteApiTest {
 						+ " says nothing about a tick not opening these")
 				.containsExactlyElementsOf(matrix);
 
-		CurrentName untouched = nameOf(accountOf(ACTED));
-		MockHttpServletResponse saved = save(accountOf(ACTED),
-				ticks(untouched.firstName(), untouched.lastName(), List.of(GIVEN)), EVERY_TICK);
+		MockHttpServletResponse saved =
+				save(accountOf(ACTED), ticks(List.of(GIVEN)), EVERY_TICK);
 
 		assertThat(saved.getStatus())
 				.as("a moderator with every one of the %d ticks rewrote another moderator's boxes,"
@@ -1135,6 +1387,21 @@ class ModeratorWriteApiTest {
 				.as("the save was refused and the boxes moved anyway, so the 404 above is the one"
 						+ " that means nothing was there while the row is very much there")
 				.containsExactlyInAnyOrder(TAKEN_AWAY, LEFT_ALONE);
+
+		MockHttpServletResponse renamed =
+				renameWith(accountOf(ACTED), named("Nova", "Osoba"), EVERY_TICK);
+
+		assertThat(renamed.getStatus())
+				.as("a moderator with every one of the %d ticks renamed another moderator",
+						matrix.size())
+				.isEqualTo(404);
+		assertThat(renamed.getContentAsString())
+				.as("the refusal carries a body, which an address that is not there would not")
+				.isEmpty();
+		assertThat(nameOf(accountOf(ACTED)))
+				.as("the rename was refused and the name moved anyway, so the 404 above is the one"
+						+ " that means nothing was there while the row is very much there")
+				.isEqualTo(new CurrentName("Petar", "Petric"));
 
 		MockHttpServletResponse removed = remove(accountOf(ACTED), EVERY_TICK);
 
@@ -1157,6 +1424,9 @@ class ModeratorWriteApiTest {
 				.as("the superadmin was refused the same save, so the refusals above are routes"
 						+ " that are shut to everybody rather than a guard that asks who")
 				.isEqualTo(200);
+		assertThat(rename(accountOf(ACTED), "Nova", "Osoba").getStatus())
+				.as("the superadmin was refused the same rename")
+				.isEqualTo(204);
 		assertThat(remove(accountOf(ACTED)).getStatus())
 				.as("the superadmin was refused the same delete")
 				.isEqualTo(204);
