@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { theInboxHasChanged } from '../data/useResource'
 import en from '../i18n/en.json'
 import sr from '../i18n/sr.json'
@@ -567,14 +567,29 @@ describe('the keyboard, when what failed is read again and works', () => {
 
     answers.set(INBOX, () => null)
     button.focus()
-    await user.keyboard('{Enter}')
 
-    expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
-    expect(
-      document.activeElement,
-      'a press that worked in the panel dropped the focus out of it',
-    ).toBe(panel.getByText(sr.shell.messages))
-    expect(opener).toHaveAttribute('aria-expanded', 'true')
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus')
+
+    try {
+      await user.keyboard('{Enter}')
+
+      expect(await panel.findByRole('link', { name: A_MESSAGE })).toBeVisible()
+
+      const title = panel.getByText(sr.shell.messages)
+
+      expect(
+        document.activeElement,
+        'a press that worked in the panel dropped the focus out of it',
+      ).toBe(title)
+      expect(opener).toHaveAttribute('aria-expanded', 'true')
+      /* Not scrolled, as on a screen: the panel hangs from the bar and the page under it is where the
+         reader left it. */
+      expect(focus.mock.calls.filter((_call, at) => focus.mock.contexts[at] === title)).toEqual([
+        [{ preventScroll: true }],
+      ])
+    } finally {
+      focus.mockRestore()
+    }
   }, SLOW)
 
   it('is not taken from a reader who moved the focus on while it asked', async () => {
