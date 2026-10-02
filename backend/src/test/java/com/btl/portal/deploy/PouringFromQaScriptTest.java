@@ -7,11 +7,15 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 
 /**
  * THE FORM OF {@code deploy/pour-from-qa.sh}, HELD WITHOUT A DATABASE.
@@ -53,6 +57,16 @@ class PouringFromQaScriptTest {
 	private static final Path SCRIPT = DEPLOY.resolve("pour-from-qa.sh");
 
 	private static final Path README = DEPLOY.resolve("README.md");
+
+	private static final Path HELPER = DEPLOY.resolve("pour-from-qa").resolve("leaves-nothing-behind.sh");
+
+	/**
+	 * A line that gives WORK a value, or takes it away: an assignment, one behind {@code export},
+	 * {@code readonly} and the like, an append, an {@code unset}, or a string handed to
+	 * {@code eval}. The character before it may be a quote, so that {@code eval "WORK=..."} is seen.
+	 */
+	private static final Pattern WORK_IS_GIVEN_A_VALUE = Pattern.compile(
+			"(^|[\\s;&|({\"'])(?:(?:export|readonly|declare|local|typeset)\\s+)*WORK\\+?=|\\bunset\\s+WORK\\b");
 
 	/**
 	 * Read with CRLF folded to LF. A Windows checkout carries CRLF on disk and the index carries
@@ -123,6 +137,13 @@ class PouringFromQaScriptTest {
 	 * measuring class runs under signals. The mutation this holds is the quiet one: a
 	 * {@code mktemp -d} or a {@code trap} written back into the script, which leaves the helper
 	 * green and valid and the dump on a disk again.
+	 *
+	 * <p><b>And it is the same fault when the work directory is not made but RENAMED.</b> The
+	 * helper makes one in memory, the cleanup removes that one and nothing else, and a line after
+	 * the helper that gives {@code WORK} another value puts every file of the pour somewhere the
+	 * cleanup has never heard of: a {@code mktemp} guard is satisfied and the dump is on a disk. So
+	 * the question is asked about the VALUE as well: no line of the script gives {@code WORK} one,
+	 * and exactly one line of the helper does, in memory.
 	 */
 	@Test
 	void theScriptTakesItsWorkDirectoryFromTheHelperAndMakesNoneOfItsOwn() {
@@ -140,6 +161,160 @@ class PouringFromQaScriptTest {
 				.as("a trap set here would replace the one the helper set, and the helper's is the"
 						+ " one measured under HUP, INT, TERM and a plain exit")
 				.isEmpty();
+
+		assertThat(code.stream().filter(one -> WORK_IS_GIVEN_A_VALUE.matcher(one).find()))
+				.as("a line of the script that gives WORK a value of its own: the cleanup removes the"
+						+ " directory the helper made and nothing else, so every file of the pour would"
+						+ " be written where nothing removes it")
+				.isEmpty();
+
+		List<String> helper = code(text(HELPER));
+		assertThat(helper.stream().filter(one -> WORK_IS_GIVEN_A_VALUE.matcher(one).find()))
+				.as("WORK is given a value in exactly one place, and it is a directory made in memory")
+				.containsExactly("WORK=$(mktemp -d \"$MEMORY/btl-pour.XXXXXX\")");
+
+		Pattern template = Pattern.compile("mktemp\\s+(?:-\\S+\\s+)*(\\S+)");
+		for (String line : linesWith(helper, "mktemp")) {
+			Matcher made = template.matcher(line);
+			assertThat(made.find()).as("a mktemp whose template cannot be read: %s", line).isTrue();
+			assertThat(made.group(1))
+					.as("everything the helper makes is made in memory, and this one is not: %s", line)
+					.startsWith("\"$MEMORY/");
+		}
+	}
+
+	/**
+	 * EVERY FILE THE SCRIPT WRITES IS UNDER THE WORK DIRECTORY, and the question is asked of each
+	 * redirection on its own.
+	 *
+	 * <p>The pour writes the whole database, with the password hashes and the live sessions, to
+	 * one file, and the cleanup removes the work directory and nothing else. A file written
+	 * anywhere else is therefore one that nothing removes, and it is still there after a pour that
+	 * passed. A guard that knew only {@code mktemp} and {@code trap} was satisfied by
+	 * {@code STREAM="/var/tmp/btl-pour.sql"}: the helper was right, the cases about it were green,
+	 * and the dump was on a disk. What binds the helper to the script is where the script writes,
+	 * so that is what is held.
+	 *
+	 * <p><b>Why this asks about one redirection at a time and follows nothing.</b> Every
+	 * redirection of the script is read the way the shell reads it, so a {@code >} in a quoted
+	 * message, in an awk program, in a comment or in a here-document is not one, and each target
+	 * has to be one of five things: a path under {@code "$WORK/}, {@code /dev/null}, a
+	 * duplication of a descriptor, one of the two variables named below, or the fourth parameter
+	 * of {@code dump_into}. Anything else, including a variable nobody has thought of, is REFUSED,
+	 * so the list cannot be short in silence: a new way to write a file fails here and asks the
+	 * person who wrote it to say where it goes. The two variables are checked where they are
+	 * given a value, which must be one line that starts under {@code "$WORK/}, and the calls of
+	 * {@code dump_into} must hand it a path under it.
+	 *
+	 * <p><b>What this does NOT see, written down rather than left to be found.</b> A file written
+	 * without a redirection: {@code tee}, {@code cp}, {@code dd}, {@code sed -i}, {@code docker cp},
+	 * a redirection inside an awk program or the output option of a command. The script uses
+	 * none of them today, and the day it does, this is where to look. And the measuring of what
+	 * the pour really leaves behind is the rehearsal on a throwaway stack, where
+	 * {@code docker diff} says what a pour wrote outside memory; it is not run in this gate
+	 * because the script needs two live stacks.
+	 */
+	@Test
+	void everyFileTheScriptWritesIsUnderTheWorkDirectory() {
+		String script = text(SCRIPT);
+		List<Redirection> redirections = redirections(script);
+		List<String> code = scriptCode();
+		List<String> lines = List.of(script.split("\n", -1));
+
+		assertThat(redirections)
+				.as("the script redirects output to files in thirty places, so a reading that found"
+						+ " almost none read nothing")
+				.hasSizeGreaterThan(20);
+
+		int dumpIntoFirst = -1;
+		int dumpIntoLast = -1;
+		for (int at = 0; at < lines.size(); at++) {
+			if (dumpIntoFirst < 0 && lines.get(at).startsWith("dump_into() {")) {
+				dumpIntoFirst = at + 1;
+			}
+			else if (dumpIntoFirst > 0 && dumpIntoLast < 0 && lines.get(at).equals("}")) {
+				dumpIntoLast = at + 1;
+			}
+		}
+
+		List<String> refused = new ArrayList<>();
+		for (Redirection one : redirections) {
+			String target = one.target();
+			boolean underWork = target.startsWith("\"$WORK/");
+			boolean notAFile = target.equals("/dev/null") || target.startsWith("&");
+			boolean namedOutput = target.equals("\"$STREAM\"") || target.equals("\"$QA_SESSION\"");
+			boolean parameterOfDumpInto = target.equals("\"$4\"")
+					&& one.line() >= dumpIntoFirst && one.line() <= dumpIntoLast;
+			if (!(underWork || notAFile || namedOutput || parameterOfDumpInto)) {
+				refused.add("line " + one.line() + ": " + one.operator() + " " + target);
+			}
+		}
+		assertThat(refused)
+				.as("a file written somewhere other than under \"$WORK/\": the cleanup removes the work"
+						+ " directory and nothing else, so what is written elsewhere is still on the"
+						+ " disk after a pour that passed")
+				.isEmpty();
+
+		for (String name : List.of("STREAM", "QA_SESSION")) {
+			Pattern given = Pattern.compile("(^|[\\s;&|({\"'])" + name + "\\+?=");
+			List<String> assigned = code.stream().filter(one -> given.matcher(one).find()).toList();
+			assertThat(assigned).as("%s is given a value in exactly one place", name).hasSize(1);
+			assertThat(assigned.get(0))
+					.as("%s names a file the pour writes, so it has to start under \"$WORK/\"", name)
+					.startsWith(name + "=\"$WORK/");
+		}
+
+		List<String> calls = code.stream().filter(one -> one.startsWith("dump_into ")).toList();
+		assertThat(calls).as("dump_into is called, or its redirection to a parameter is not followed")
+				.isNotEmpty();
+		for (String call : calls) {
+			List<String> words = new ArrayList<>();
+			Matcher word = Pattern.compile("\"[^\"]*\"|'[^']*'|\\S+").matcher(call);
+			while (word.find()) {
+				words.add(word.group());
+			}
+			assertThat(words.get(4))
+					.as("dump_into writes its schema dump to the fourth parameter: %s", call)
+					.startsWith("\"$WORK/");
+		}
+	}
+
+	/**
+	 * THE READER OF REDIRECTIONS READS SHELL THE WAY THE SHELL DOES, which is the whole of what the
+	 * case above rests on.
+	 *
+	 * <p>A guard whose reader finds nothing passes for any script, so the reader is held on its
+	 * own, on text that is meant to trip it: a {@code >} in a quoted message and in an awk
+	 * program, which are not redirections; one in a comment and in the body of a here-document,
+	 * which are not either; and the forms that ARE ones, appended, behind a descriptor, joined to
+	 * its target, inside a command substitution that has quotes of its own, and a duplication.
+	 */
+	@Test
+	void theReaderOfRedirectionsReadsShellTheWayTheShellDoes() {
+		String shell = String.join("\n",
+				"say \"a message with V<number>__*.sql in it\" # and a > in a comment",
+				"awk '$2 > 0 { print }' \"$WORK/a\"",
+				"cat <<EOF",
+				"a > in a here-document",
+				"EOF",
+				"first > \"$WORK/one\"",
+				"second >> \"$STREAM\"",
+				"third 2>\"$WORK/three\" 4> /dev/null",
+				"fourth >&2",
+				"x=\"$(inside \"quotes\" > \"$WORK/four\")\"",
+				"printf '%s' \"it's\" > \"$WORK/five\"",
+				"");
+
+		assertThat(redirections(shell))
+				.extracting(Redirection::operator, Redirection::target)
+				.containsExactly(
+						tuple(">", "\"$WORK/one\""),
+						tuple(">>", "\"$STREAM\""),
+						tuple(">", "\"$WORK/three\""),
+						tuple(">", "/dev/null"),
+						tuple(">", "&2"),
+						tuple(">", "\"$WORK/four\""),
+						tuple(">", "\"$WORK/five\""));
 	}
 
 	/**
@@ -413,5 +588,354 @@ class PouringFromQaScriptTest {
 				.as("the pour has to be described BEFORE the superadmin's registration: the tool"
 						+ " refuses a production database that somebody has already used")
 				.isLessThan(registration);
+	}
+
+	/** One output redirection of a shell script: the line it is on, the operator, and its target as written. */
+	record Redirection(int line, String operator, String target) {
+	}
+
+	/**
+	 * Every output redirection of a shell script, found the way the shell finds them. A reading
+	 * that cannot make sense of the text, a quote that is never closed, throws: a guard that cannot
+	 * read the script says nothing about it, and must fail rather than pass.
+	 */
+	static List<Redirection> redirections(String shell) {
+		return new ShellReader(shell).read();
+	}
+
+	/**
+	 * A reader of exactly as much shell as the question needs: quotes, comments, here-documents,
+	 * command substitutions and parameter expansions, so that it knows when a {@code >} is an
+	 * operator and when it is a character in a string. It does not run anything, expand anything or
+	 * follow a value.
+	 */
+	private static final class ShellReader {
+
+		private final String s;
+
+		private int i;
+
+		private int line = 1;
+
+		private final List<Redirection> found = new ArrayList<>();
+
+		/** Each entry is a delimiter and whether it was written {@code <<-}, waiting for the next newline. */
+		private final Deque<String[]> hereDocuments = new ArrayDeque<>();
+
+		ShellReader(String shell) {
+			this.s = shell;
+		}
+
+		List<Redirection> read() {
+			code(false);
+			if (!hereDocuments.isEmpty()) {
+				throw unreadable("a here-document that is never closed");
+			}
+			return found;
+		}
+
+		private AssertionError unreadable(String why) {
+			return new AssertionError("line " + line + " cannot be read as shell: " + why
+					+ ". A guard that cannot read the script says nothing about it, so it fails.");
+		}
+
+		private char at(int index) {
+			return index < s.length() ? s.charAt(index) : '\0';
+		}
+
+		/** Code, up to the end of the text or, inside {@code $( ... )}, up to its closing parenthesis. */
+		private void code(boolean substitution) {
+			boolean startsWord = true;
+			int depth = 0;
+			while (i < s.length()) {
+				char c = s.charAt(i);
+				if (c == '\n') {
+					i++;
+					line++;
+					swallowHereDocuments();
+					startsWord = true;
+				}
+				else if (c == '\\') {
+					if (at(i + 1) == '\n') {
+						line++;
+					}
+					i += 2;
+					startsWord = false;
+				}
+				else if (c == '\'') {
+					singleQuoted();
+					startsWord = false;
+				}
+				else if (c == '"') {
+					i++;
+					doubleQuoted();
+					startsWord = false;
+				}
+				else if (c == '`') {
+					backticked();
+					startsWord = false;
+				}
+				else if (c == '$') {
+					dollar();
+					startsWord = false;
+				}
+				else if (c == '#' && startsWord) {
+					while (i < s.length() && s.charAt(i) != '\n') {
+						i++;
+					}
+				}
+				else if (c == '>') {
+					redirection();
+					startsWord = true;
+				}
+				else if (c == '<') {
+					input();
+					startsWord = true;
+				}
+				else if (c == '(') {
+					depth++;
+					i++;
+					startsWord = true;
+				}
+				else if (c == ')') {
+					i++;
+					if (depth > 0) {
+						depth--;
+					}
+					else if (substitution) {
+						return;
+					}
+					startsWord = true;
+				}
+				else {
+					startsWord = Character.isWhitespace(c) || ";|&{}".indexOf(c) >= 0;
+					i++;
+				}
+			}
+			if (substitution) {
+				throw unreadable("a $( that is never closed");
+			}
+		}
+
+		private void swallowHereDocuments() {
+			while (!hereDocuments.isEmpty()) {
+				String[] document = hereDocuments.poll();
+				while (true) {
+					if (i >= s.length()) {
+						throw unreadable("the here-document <<" + document[0] + " is never closed");
+					}
+					int end = s.indexOf('\n', i);
+					String body = end < 0 ? s.substring(i) : s.substring(i, end);
+					i = end < 0 ? s.length() : end + 1;
+					line++;
+					if ((document[1].equals("-") ? body.replaceAll("^\t+", "") : body).equals(document[0])) {
+						break;
+					}
+				}
+			}
+		}
+
+		private void singleQuoted() {
+			int end = s.indexOf('\'', i + 1);
+			if (end < 0) {
+				throw unreadable("a single quote that is never closed");
+			}
+			for (int at = i; at < end; at++) {
+				if (s.charAt(at) == '\n') {
+					line++;
+				}
+			}
+			i = end + 1;
+		}
+
+		/** Inside double quotes, with {@code i} just past the opening one. */
+		private void doubleQuoted() {
+			while (i < s.length()) {
+				char c = s.charAt(i);
+				if (c == '"') {
+					i++;
+					return;
+				}
+				if (c == '\\') {
+					if (at(i + 1) == '\n') {
+						line++;
+					}
+					i += 2;
+				}
+				else if (c == '$') {
+					dollar();
+				}
+				else if (c == '`') {
+					backticked();
+				}
+				else {
+					if (c == '\n') {
+						line++;
+					}
+					i++;
+				}
+			}
+			throw unreadable("a double quote that is never closed");
+		}
+
+		private void backticked() {
+			int end = i + 1;
+			while (end < s.length() && s.charAt(end) != '`') {
+				if (s.charAt(end) == '\\') {
+					end++;
+				}
+				end++;
+			}
+			if (end >= s.length()) {
+				throw unreadable("a backtick that is never closed");
+			}
+			for (int at = i; at < end; at++) {
+				if (s.charAt(at) == '\n') {
+					line++;
+				}
+			}
+			i = end + 1;
+		}
+
+		private void dollar() {
+			char next = at(i + 1);
+			if (next == '(') {
+				if (at(i + 2) == '(') {
+					int end = s.indexOf("))", i + 3);
+					if (end < 0) {
+						throw unreadable("an arithmetic expansion that is never closed");
+					}
+					i = end + 2;
+				}
+				else {
+					i += 2;
+					code(true);
+				}
+			}
+			else if (next == '{') {
+				int depth = 1;
+				i += 2;
+				while (i < s.length() && depth > 0) {
+					char c = s.charAt(i);
+					if (c == '\'') {
+						singleQuoted();
+						continue;
+					}
+					if (c == '"') {
+						i++;
+						doubleQuoted();
+						continue;
+					}
+					if (c == '{') {
+						depth++;
+					}
+					else if (c == '}') {
+						depth--;
+					}
+					else if (c == '\\') {
+						i++;
+					}
+					else if (c == '\n') {
+						line++;
+					}
+					i++;
+				}
+				if (depth > 0) {
+					throw unreadable("a ${ that is never closed");
+				}
+			}
+			else if (next != '\0' && "@*#?$!-0123456789".indexOf(next) >= 0) {
+				i += 2;
+			}
+			else {
+				i++;
+			}
+		}
+
+		/** A shell word, quotes and expansions included, read to the character that ends it. */
+		private void word() {
+			while (i < s.length()) {
+				char c = s.charAt(i);
+				if (Character.isWhitespace(c) || ";|&()<>".indexOf(c) >= 0) {
+					return;
+				}
+				if (c == '\\') {
+					if (at(i + 1) == '\n') {
+						line++;
+					}
+					i += 2;
+				}
+				else if (c == '\'') {
+					singleQuoted();
+				}
+				else if (c == '"') {
+					i++;
+					doubleQuoted();
+				}
+				else if (c == '`') {
+					backticked();
+				}
+				else if (c == '$') {
+					dollar();
+				}
+				else {
+					i++;
+				}
+			}
+		}
+
+		private void redirection() {
+			i++;
+			String operator = ">";
+			if (at(i) == '>') {
+				operator = ">>";
+				i++;
+			}
+			if (at(i) == '&') {
+				int end = i + 1;
+				while (end < s.length() && (Character.isDigit(s.charAt(end)) || s.charAt(end) == '-')) {
+					end++;
+				}
+				found.add(new Redirection(line, operator, s.substring(i, end)));
+				i = end;
+				return;
+			}
+			if (at(i) == '|') {
+				i++;
+			}
+			while (at(i) == ' ' || at(i) == '\t') {
+				i++;
+			}
+			int start = i;
+			word();
+			found.add(new Redirection(line, operator, s.substring(start, i)));
+		}
+
+		private void input() {
+			if (at(i + 1) == '<' && at(i + 2) != '<') {
+				i += 2;
+				String strip = "";
+				if (at(i) == '-') {
+					strip = "-";
+					i++;
+				}
+				while (at(i) == ' ' || at(i) == '\t') {
+					i++;
+				}
+				int start = i;
+				word();
+				String delimiter = s.substring(start, i).replace("'", "").replace("\"", "").replace("\\", "");
+				if (delimiter.isEmpty()) {
+					throw unreadable("a here-document with no delimiter");
+				}
+				hereDocuments.add(new String[] { delimiter, strip });
+			}
+			else if (at(i + 1) == '<') {
+				i += 3;
+			}
+			else {
+				i++;
+			}
+		}
 	}
 }
