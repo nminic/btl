@@ -7,7 +7,10 @@
  * edge of a button 110px from that edge began 163px off the screen. What was cut off
  * could not be scrolled to and the page did not scroll sideways either, so nothing on
  * the screen said it was there. `src/app/headerPanelsStyle.test.ts` holds what the
- * stylesheet SAYS about it, in the gate; this asks where the panel then LANDS.
+ * stylesheet SAYS about it, in the gate; this asks where the panel then LANDS, which is
+ * the question ADL A33 (29.08.2026) says is a browser's: a guard over the text may claim
+ * where something is written, and which rule wins, what a query does and where a box
+ * ends up are computed by the browser.
  *
  * Run by hand, not in the gate, because the browser the owner decided on in ADL A63
  * (22.09.2026) is not in the package yet and this is the stand-in until it is, in the
@@ -494,6 +497,10 @@ function askThePage(spec) {
     innerWidth,
     screen: root.clientWidth,
     rootFont: Number.parseFloat(getComputedStyle(root).fontSize),
+    /* The gutter is read off the bar and not assumed to be a rem: it is the bar's own
+       `padding-inline` and the panels hang from it, so a gutter changed in the stylesheet
+       moves both and this goes on holding them to each other. */
+    gutter: Number.parseFloat(getComputedStyle(document.querySelector('.shell__bar')).paddingRight),
     probe: matchMedia(spec.probe).matches,
     sideways: root.scrollWidth - root.clientWidth,
     panel: box(panel),
@@ -613,8 +620,8 @@ async function measure(browser, base, width, state, font) {
 /** What is wrong with one measurement, in words, or nothing. */
 function judge(found) {
   const wrong = []
-  /* One rem, which is one gutter and twice one step: `--space-16` is the bar's own
-     `padding-inline` and `--space-8` is the gap under a button. */
+  /* One rem, which is twice one step: `--space-8` is the gap under a button, and it is half of
+     the root. The gutter is not assumed to be a rem, it is what the bar says it is. */
   const rem = found.rootFont
   /* The width the rules change at moves with the text (ADL A34), so it is counted in `em`
      and not in pixels: 51.25em is 820px at the browser's own size and 1640px at 200%. */
@@ -654,17 +661,17 @@ function judge(found) {
   }
 
   if (under) {
-    const gutter = found.screen - rem
+    const edge = found.screen - found.gutter
 
-    if (Math.abs(found.panel.right - gutter) > 1) {
+    if (Math.abs(found.panel.right - edge) > 1) {
       wrong.push(
-        `is not hung from the gutter at the right edge of the bar: its right edge is ${found.panel.right.toFixed(1)} and the gutter is at ${gutter}`,
+        `is not hung from the gutter at the right edge of the bar: its right edge is ${found.panel.right.toFixed(1)} and the gutter is at ${edge}`,
       )
     }
 
-    if (found.panel.width > found.screen - 2 * rem + SLACK) {
+    if (found.panel.width > found.screen - 2 * found.gutter + SLACK) {
       wrong.push(
-        `is ${found.panel.width.toFixed(1)}px wide, wider than the bar allows (${found.screen - 2 * rem}px)`,
+        `is ${found.panel.width.toFixed(1)}px wide, wider than the bar allows (${found.screen - 2 * found.gutter}px)`,
       )
     } else if (!found.grows && found.panel.width > WIDEST_IN_REM[found.opens] * rem + SLACK) {
       wrong.push(

@@ -614,14 +614,14 @@
 
    Above it the tools stand in one row at the right, so a panel measured from its
    own button with the right edges together lies inside the screen: that is the
-   rule further up, and it is untouched. Under it the row of tools wraps onto a row
-   of its own against the LEFT edge, and a panel 20rem wide measured from the right
-   edge of a button 110px from the left edge of the screen began 163px off it.
-   Measured in Chrome on 02.10.2026, and in all three panels (messages, account,
-   language): at every width from 360 to 640 in production (whole from 700), at 360
-   and 400 in QA (whole from 560), and at 360 with the text at 200%. What was cut
-   off could not be scrolled to, and the page did not scroll sideways either, so
-   nothing on the screen said there was anything missing.
+   rule further up, and it is untouched. Under it the row of tools can wrap onto a
+   row of its own against the LEFT edge, and a panel 20rem wide measured from the
+   right edge of a button 110px from the left edge of the screen began 163px off
+   it. Measured in Chrome on 02.10.2026, and in all three panels (messages,
+   account, language): at every width from 360 to 640 in production (whole from
+   700), at 360 and 400 in QA (whole from 560), and at 360 with the text at 200%.
+   What was cut off could not be scrolled to, and the page did not scroll sideways
+   either, so nothing on the screen said there was anything missing.
 
    Where the buttons stand is not something a stylesheet can know: it moves with
    the language, with the words on the menu button, with the development controls
