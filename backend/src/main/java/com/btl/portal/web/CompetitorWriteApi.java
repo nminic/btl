@@ -411,9 +411,10 @@ class CompetitorWriteApi {
 	 * <p><b>A fault taking the file off the disk is logged and swallowed, not thrown.</b> The
 	 * member's deletion is the act PDL P23 calls immediate and final, and a stray file
 	 * {@link PhotoApi} will never serve again - because nothing in {@code photo} points at it
-	 * once its row is gone below - is the one leak that class already answers nothing for, not
-	 * a reason to leave a deleted member's account and pairs standing while an administrator is
-	 * told a disk fault instead of a completed deletion.
+	 * once its row is gone below - is a leftover that class already answers nothing for and that
+	 * {@link ThePicturesFolderIsSwept} deletes once it is older than ten minutes, not a reason to
+	 * leave a deleted member's account and pairs standing while an administrator is told a disk
+	 * fault instead of a completed deletion.
 	 */
 	private void takeAwayThePhoto(long photo) {
 		db.sql("delete from photo where id = ?").param(photo).update();
