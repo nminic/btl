@@ -447,6 +447,46 @@ describe('the referral link, on the answer the server gives', () => {
       stop()
     }
   })
+
+  it.each([
+    ['an ampersand and a hash in it', 'a&b=c#d'],
+    ['capitals, which the schema refuses', '7F07B38FF7EE7543'],
+    ['a space and a percent sign in it', '7f07b38f 7ee754%'],
+  ])('draws no code for a code with %s, and never the text it carried', async (_what, sent) => {
+    /* **THE ADDRESS IS WHAT THE FINDING WAS ABOUT, SO IT IS ASKED ON THE PAGE AND NOT ONLY ON
+       THE READER** (PENDING 227, part b; the reader's own rows are in `session/theServer.test.ts`).
+       The link is there to be copied and sent on, and it used to be built from whatever string the
+       answer carried: a code with an ampersand and a hash in it was drawn as „…?preporuka=a&b=c#d",
+       which is an address with another parameter and a fragment in place of a code. The reader
+       believes only what the schema holds now, so such a code is „I was not told", and the page
+       draws what it draws for that: the address with nothing after the sign.
+
+       **Nothing is encoded where the address is built, and this is the case that makes that safe**:
+       the alphabet of a code has no character an address spells differently, and what keeps a
+       character that has one from arriving is the question the reader asks, not a second one asked
+       by the page. Three codes that differ in the way that matters - a character an address
+       spells differently, a code refused for its capitals alone, and one with a space and a percent
+       sign - so a reader that gave up any one of them is found on the page as well as in its table.
+
+       And the text that was sent is asked to be NOWHERE on the page, because „nothing after the
+       sign" is also satisfied by a page that draws the empty address and prints the code beside it. */
+    const { stop } = meAnswering({
+      memberNumber: stillAMember,
+      membershipBasis: 'payment',
+      referralCode: sent,
+    })
+
+    try {
+      renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
+
+      expect(await screen.findByText(/registracija\?preporuka=$/)).toBeVisible()
+      expect(document.body.textContent ?? '', 'the code the answer carried, written on the page').not.toContain(
+        sent,
+      )
+    } finally {
+      stop()
+    }
+  })
 })
 
 describe('the balance, on a count the server gives', () => {
