@@ -246,9 +246,12 @@ describe('the main standing, at the widths the owner chose', () => {
     for (let up = circle.parentElement; up !== null; up = up.parentElement) {
       const candidate = up
 
+      /* `inline-size` and nothing else. `size` contains the HEIGHT of the box as well, which a table's
+         box has none of its own to give, so it would collapse to nothing in a browser while jsdom
+         lays nothing out and saw no difference. */
       const makesOne = written.some(
         ({ rule }) =>
-          /inline-size|^size/.test(rule.style.getPropertyValue('container-type')) &&
+          rule.style.getPropertyValue('container-type') === 'inline-size' &&
           rule.style.getPropertyValue('container-name').split(/\s+/).includes(asked.containerName) &&
           candidate.matches(rule.selectorText),
       )
