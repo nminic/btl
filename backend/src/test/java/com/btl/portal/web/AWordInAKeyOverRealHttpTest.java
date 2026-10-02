@@ -12,12 +12,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.HandlerMethod;
@@ -419,15 +417,11 @@ class AWordInAKeyOverRealHttpTest {
 			return "";
 		}
 
-		for (MethodParameter p : method.getMethodParameters()) {
-			if (p.hasParameterAnnotation(RequestBody.class)) {
-				return Stream.of(p.getParameterType().getRecordComponents())
+		return TheBodyOf.type(method)
+				.map(type -> Stream.of(type.getRecordComponents())
 						.map(AWordInAKeyOverRealHttpTest::aValueFor).filter(v -> v != null)
-						.collect(Collectors.joining(",", "{", "}"));
-			}
-		}
-
-		return "{}";
+						.collect(Collectors.joining(",", "{", "}")))
+				.orElse("{}");
 	}
 
 	private static String aValueFor(RecordComponent component) {

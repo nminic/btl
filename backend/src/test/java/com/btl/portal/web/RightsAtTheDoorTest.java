@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
@@ -1165,6 +1166,65 @@ class RightsAtTheDoorTest {
 			return method.getBeanType().getSimpleName() + "#" + method.getMethod().getName()
 					+ " takes its key as " + type.getSimpleName();
 		}
+	}
+
+	/**
+	 * NO CLASS THAT ASKS WHICH MEMBER IS ASKING BINDS A BODY AS AN ARGUMENT, EXCEPT WHERE THE DOOR
+	 * DECIDES THE ROUTE.
+	 *
+	 * <p><b>This is the floor under {@code WhatWasSent}, and the other half of
+	 * {@code ABodyIsReadAfterTheDoorOverRealHttpTest}.</b> A body bound with {@code @RequestBody} is read
+	 * while the arguments are resolved, which is before the first line of the handler, so a handler that
+	 * asks „has this account a member" has been told 400 for a body that is not JSON by the time it asks:
+	 * a moderator who races for nobody learnt that a write lives at the address (ADL A8, owner,
+	 * 13.09.2026: the server need not give away even that an address exists; register 166, nine routes,
+	 * measured over a socket by PR 466). The socket case measures what a route ANSWERS; this holds the way
+	 * a route is WRITTEN, so a tenth route with the same fault is caught on the day it is mapped, whatever
+	 * its author remembers and with no list.
+	 *
+	 * <p><b>"Asks which member" is the type system answering</b>: {@link MemberOfAccount} is the one home
+	 * of that question, so a class that holds one asks it. {@code MePasswordApi} is not such a class and is
+	 * not named: a password belongs to the account and not to a member, so there is no question for a body
+	 * to be read in front of, and every signed in account is entitled to be told 400 there.
+	 *
+	 * <p><b>The routes the door decides are asked the opposite question, which is why this has two
+	 * halves.</b> A route a right guards is refused by the door, in {@code preHandle}, before any argument
+	 * is resolved, so a body bound there is bound only for somebody the door let through. {@code
+	 * PaymentApi}'s confirmation is one: its class asks which member, and it binds its body, and that is
+	 * right. Each half is not empty, because a floor that found nothing to ask about would be true of every
+	 * portal.
+	 */
+	@Test
+	void noClassThatAsksWhichMemberIsAskingBindsABodyAsAnArgumentUnlessTheDoorDecidesTheRoute() {
+		List<HandlerMethod> inClassesThatAsk = mappings.getHandlerMethods().values().stream().distinct()
+				.filter(method -> Stream.of(method.getBeanType().getDeclaredFields())
+						.anyMatch(field -> field.getType() == MemberOfAccount.class))
+				.toList();
+
+		assertThat(inClassesThatAsk.stream().filter(method -> !theDoorDecides(method))
+				.filter(method -> TheBodyOf.type(method).isPresent())
+				.filter(method -> Stream.of(method.getMethodParameters())
+						.anyMatch(one -> one.getParameterType() == WhatWasSent.class)).count())
+				.as("no route in a class that asks which member reads its body after the question, so the"
+						+ " first half asks about nothing")
+				.isPositive();
+		assertThat(inClassesThatAsk.stream().filter(method -> theDoorDecides(method))
+				.filter(method -> Stream.of(method.getMethodParameters())
+						.anyMatch(one -> one.hasParameterAnnotation(RequestBody.class))).count())
+				.as("no route the door decides binds its body in a class that asks which member, so the"
+						+ " exception below is an exception to nothing")
+				.isPositive();
+
+		assertThat(inClassesThatAsk.stream().filter(method -> !theDoorDecides(method))
+				.filter(method -> Stream.of(method.getMethodParameters())
+						.anyMatch(one -> one.hasParameterAnnotation(RequestBody.class)))
+				.map(method -> method.getBeanType().getSimpleName() + "#" + method.getMethod().getName())
+				.toList())
+				.as("a route in a class that asks which member binds its body as an argument, so the body"
+						+ " is read before the question and an account that names no member is told 400 for"
+						+ " a body that is not JSON while a body that reads is told 404; it takes a"
+						+ " WhatWasSent and reads it after the question")
+				.isEmpty();
 	}
 
 	/**

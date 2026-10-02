@@ -8,9 +8,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Optional;
@@ -44,10 +45,19 @@ import java.util.Optional;
  * and the 201 a member gets - a leak {@link NothingIsHereRatherThanAlmost} exists to
  * close everywhere else on this server.
  *
- * <p><b>AN ACCOUNT NAMING NO MEMBER IS ANSWERED THE SAME EMPTY 404 {@link TeamWriteApi}
- * ANSWERS IT WITH</b>, for the same reason: V23 calls it the ordinary case for a
- * moderator who does not race, and {@link InboxApi} and {@link InboxWriteApi} already
- * answer it that way. There is nobody to file a submission under.
+ * <p><b>AN ACCOUNT NAMING NO MEMBER IS ANSWERED LIKE AN ADDRESS THAT MAPS NOTHING, AND BEFORE
+ * ITS BODY IS READ.</b> V23 calls it the ordinary case for a moderator who does not race, and
+ * there is nobody to file a submission under. Two things follow from ADL A8 (owner, 13.09.2026:
+ * the server need not give away even that an address exists), and
+ * {@code ABodyIsReadAfterTheDoorOverRealHttpTest} measures both over a real socket rather than
+ * arguing them. The body is read by {@link WhatWasSent#read} AFTER the member question and is not
+ * bound as an argument, because an argument is bound before the first line of the handler and an
+ * account that names no member was told 400 for a body that is not JSON while a body that reads
+ * got 404 (register 166). And the 404 is the one {@link #nothingIsHere} makes - answered through
+ * {@code sendError}, as an address that maps nothing is - and not a status written onto the
+ * response, which came back as 225 bytes with {@code Content-Length: 0} where the twin came back
+ * chunked as 373. This address is not on {@link ApiSecurity#READ_BY_ANYBODY}, so the price the
+ * owner accepted on 18.09.2026 for the three writes that are does not apply to it.
  *
  * <p><b>ALL THREE MARKS OR NONE, NEVER A SUBSET, AND THAT IS PDL P6'S OWN ARITHMETIC
  * RATHER THAN A TASTE FOR SYMMETRY.</b> PDL, 07.08.2026 („Ukupna ocena se pokazuje samo
@@ -108,7 +118,7 @@ import java.util.Optional;
  * in as many words. Left out here rather than invented, for the day somebody decides one.
  * <li><b>Whether the member's fee is current, on EITHER of the two walls PDL keeps
  * apart.</b> PDL P21, „nigde nije vidljiv i ne može ništa" is about an account with NO
- * competitor behind it at all - the case {@link #away()}
+ * competitor behind it at all - the case {@link #nothingIsHere}
  * already answers - not about a member whose fee has since lapsed. The second wall, PDL
  * P8, 19.09.2026, „prvi jos nije usao, drugi je izasao" - a member whose fee has LAPSED
  * is meant to have only the renewal page, measured here and found to be a decision
@@ -211,16 +221,20 @@ class CommentWriteApi {
 	}
 
 	@PostMapping(path = "/api/comments", consumes = MediaType.APPLICATION_JSON_VALUE)
-	ResponseEntity<?> rate(@AuthenticationPrincipal WhoIsAsking.Member asking, @RequestBody Rated typed) {
+	ResponseEntity<?> rate(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			WhatWasSent<Rated> sent) throws IOException {
 		Long me = memberOfAccount.competitorId(asking.account());
 
-		/* AN ACCOUNT THAT NAMES NO MEMBER, the same case and the same answer TeamWriteApi
-		   gives it: there is nobody to file this under. */
+		/* AN ACCOUNT THAT NAMES NO MEMBER: there is nobody to file this under, and his body is not
+		   read. It is read below, after this question, and not bound as an argument - see the class
+		   note for what that cost. */
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
-		if (!allThreeAreGiven(typed)) {
+		Rated typed = sent.read();
+
+		if (typed == null || !allThreeAreGiven(typed)) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -301,11 +315,21 @@ class CommentWriteApi {
 		return value == null ? "" : value.strip();
 	}
 
-	/** The answer for somebody this address is not for, which carries nothing at all -
-	 *  {@link TeamWriteApi#away}'s own shape and its own reason: there is nothing decided
-	 *  to put in a body. */
-	private static ResponseEntity<?> away() {
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+	/**
+	 * THE ANSWER FOR SOMEBODY THIS ADDRESS IS NOT FOR, which goes down the road an address that maps
+	 * nothing goes down, and the caller throws it.
+	 *
+	 * <p>{@link ResponseStatusException} is answered by {@code sendError}, one call into the machinery
+	 * an unmapped address already uses and not an imitation of it. The status written onto the response
+	 * that stood here came back as 225 bytes with {@code Content-Length: 0} where the twin came back
+	 * chunked as 373 (the clock lines left out), which is an oracle for whether a route lives at this
+	 * address, one request per guess. It is made here and thrown at the call site and not thrown from
+	 * this method, because the coverage report counts a line whose call never comes back as not run:
+	 * PR 466 measured that a method that always throws left every {@code return} that called it
+	 * uncovered, and the gate refuses anything under a hundred per cent.
+	 */
+	private static ResponseStatusException nothingIsHere() {
+		return new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {
