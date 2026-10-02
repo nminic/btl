@@ -94,6 +94,27 @@ export type FieldDef = {
   maxLength?: number
   min?: number
   max?: number
+  /**
+   * A number the server keeps as a WHOLE number, so the box takes no separator at all.
+   *
+   * <p>Twelve of the sixteen number fields the portal has: hours, minutes and seconds (the
+   * server keeps their sum, `result.seconds integer`, so each of the three has to be whole for
+   * the sum to be whole), the climb and the fall (`ascent_m`, `descent_m integer`), the season
+   * of a competition and a member's first season. A length and the two amounts of a price are
+   * kept with two decimals and do not carry it.
+   *
+   * <p><b>Why it exists, and it is the coordinator's reasoning rather than the owner's
+   * words:</b> once a number box took a comma (owner, 02.10.2026, „Polje za broj prima i zarez
+   * i tacku"), „30,5" seconds no longer stopped at „obavezno" and went to a server that keeps a
+   * whole number, and „1.200" metres of climb, which somebody writing twelve hundred types,
+   * was already quietly one point two. A field that keeps a whole number now refuses a
+   * separator on the form, so the member is stopped there rather than given a different
+   * number or a refusal he cannot read.
+   *
+   * <p>Read off the definition and held to the server by `forms/wholeNumbers.test.ts`, which
+   * reads the type the route declares for every number field on disk.
+   */
+  integer?: boolean
   pattern?: string
   options?: FieldOption[]
   /** Must hold the same value as this field. Used by the password repeat. */

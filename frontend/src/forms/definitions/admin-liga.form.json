@@ -24,7 +24,8 @@
       "labelKey": "rankings.season",
       "required": true,
       "min": 2027,
-      "max": 2100
+      "max": 2100,
+      "integer": true
     },
     {
       "name": "rules",

@@ -32,7 +32,7 @@ import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
 import { PlaceField } from './PlaceField'
 import { Suggesting } from './Suggesting'
-import { optionsFor } from './records'
+import { optionsFor, storedDates, storedNumbers } from './records'
 import {
   asAsked,
   emptyValues,
@@ -70,6 +70,15 @@ type Props = {
    * no `matches` field. Eleven of the twelve are empty today, so no other caller can
    * see a difference, and a thirteenth form that grows such a field arrives as a red
    * gate rather than as a body somebody has to notice.
+   *
+   * <p><b>And both are handed over in the shape the SERVER reads, not the shape the screen
+   * spells.</b> A date leaves as yyyy-mm-dd and a number with a dot, whatever was typed:
+   * owner, 02.10.2026 (`btl-produkt/PDL.md`, „Odluke iz ciscenja nalaza"), the conversion of a
+   * date has one place for every form and the portal sends a number with a dot. That place is
+   * here, at the one door every form leaves by (`records.ts`, `storedDates` and
+   * `storedNumbers`), so a screen reads the day it is handed and converts nothing itself.
+   * Everything else arrives as it was typed, trimmed. What a screen is asked WHILE the form is
+   * open - `check`, `alsoRefuses`, `derived`, `beneath` - still reads what is on the screen.
    */
   onSubmit: (values: FormValues, agreeing: FormValues) => void
   /**
@@ -199,6 +208,28 @@ function outside<T>(names: string[]): (current: Record<string, T>) => Record<str
  *  field the form has. */
 function holds(value: string | boolean | undefined): boolean {
   return value !== undefined && value !== ''
+}
+
+/**
+ * How a box somebody types into is drawn: its type, and the keyboard a telephone offers for it.
+ *
+ * <p><b>A number is a TEXT box, on purpose and for a measured reason.</b> A `type="number"` box
+ * in a Serbian browser refuses the comma Serbian writes a decimal with and reports what it
+ * refuses as an empty value, so the member read „21,1" in the box and „Ovo polje je obavezno."
+ * under it. Owner, 02.10.2026: „Polje za broj prima i zarez i tacku, a portal salje tacku."
+ * What the box takes is decided by `numberField.ts` instead, and the keyboard by `inputMode`,
+ * which is the shape `pages/admin/Payments.tsx` drew its amount in first, for the same reason.
+ *
+ * <p><b>And a whole number is offered digits alone</b>, because a field the server keeps whole
+ * refuses a separator (`types.ts`, `integer`): a keyboard that offers one is a keyboard that
+ * invites the refusal.
+ */
+function boxFor(field: FieldDef): { type: string; inputMode: 'decimal' | 'numeric' | undefined } {
+  if (field.type !== 'number') {
+    return { type: field.type, inputMode: undefined }
+  }
+
+  return { type: 'text', inputMode: field.integer === true ? 'numeric' : 'decimal' }
 }
 
 /** A field beside the value it is holding, which is what the form draws. */
@@ -828,7 +859,7 @@ const Field = memo(function Field({
           <input
             {...shared}
             readOnly={locked ? true : undefined}
-            type={field.type}
+            {...boxFor(field)}
             value={String(value)}
             onChange={(e) => change(e.target.value)}
           />
@@ -1205,8 +1236,17 @@ export function FormRenderer({
          (ADL A62c), and the repeated one is a password too; trimmed on one side only,
          two boxes holding the same thing would arrive at the server holding different
          things, and the comparison there would refuse a form the reader filled in
-         correctly. */
-      onSubmit(trimValues(form, onScreen(filled)), trimValues(form, agreeing(filled)))
+         correctly.
+       *
+         AND BOTH THROUGH THE ONE DOOR, after the rules and after the trimming, for the same
+         reason: a date leaves as yyyy-mm-dd and a number with a dot (`records.ts`,
+         `storedDates` and `storedNumbers`; owner, 02.10.2026). The rules above read what was
+         typed, so the door cannot stand in front of them; it stands here, where nothing on
+         this side of the form reads the values again. */
+      const sent = (all: FormValues): FormValues =>
+        storedNumbers(form, storedDates(form, trimValues(form, all)))
+
+      onSubmit(sent(onScreen(filled)), sent(agreeing(filled)))
     }
   }
 

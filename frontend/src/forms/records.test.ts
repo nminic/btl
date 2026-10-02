@@ -1,6 +1,6 @@
 import { must } from '../test/at'
 import { fieldDate, isoDate, storedDate } from './dateField'
-import { profil, registracija } from './definitions'
+import { formDef, profil, registracija } from './definitions'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import {
@@ -10,6 +10,8 @@ import {
   optionsFor,
   recordValue,
   shownValue,
+  storedDates,
+  storedNumbers,
   textFrom,
   valuesFor,
 } from './records'
@@ -143,12 +145,17 @@ describe('the values a form opens with', () => {
 })
 
 describe('what the session remembers', () => {
-  it('is the record shape written as text', () => {
+  /* THE DAY GOES IN AS THE RECORD KEEPS IT AND COMES OUT THE SAME, AND THAT SAMENESS IS
+     THE ASSERTION. What this is handed has already left the form, and the form converts
+     its dates at the one door it is left by (`storedDates` below, owner 02.10.2026). A
+     second conversion here would be `isoDate` over yyyy-mm-dd, which is not a day in the
+     shape it reads and so is nothing at all: the day would be dropped on every save. */
+  it('is the record shape written as text, and converts nothing a second time', () => {
     expect(
       textFrom(form, {
         name: 'Jadovnik',
         count: '42',
-        day: '04/07/2027',
+        day: '2027-07-04',
         on: false,
         land: 'RS',
         pick: 'a',
@@ -167,6 +174,75 @@ describe('what the session remembers', () => {
       beginner: 'yes',
       sex: 'F',
     })
+  })
+})
+
+/**
+ * THE ONE DOOR A FORM'S VALUES LEAVE BY.
+ *
+ * <p>Owner, 02.10.2026, choosing between the outcomes he was offered (`btl-produkt/PDL.md`,
+ * „Odluke iz ciscenja nalaza"): the conversion of a date has ONE place for all forms, and the
+ * rule of 13.08.2026 in `ADL.md` („pretvaranje ima jedna vrata") is put back and kept rather
+ * than struck out. The same day: a number box takes a comma as well as a dot, and the portal
+ * sends the dot. Both are driven by the TYPE of the field in the definition, never by its name
+ * and never by what the value looks like, so a fifth form with a date is covered the day its
+ * JSON says so and a text field holding „21,1 km" is not a number.
+ */
+describe('what a form hands over', () => {
+  it('puts every day in the shape a record keeps and touches nothing else', () => {
+    /* 04 and 07 rather than one number twice, so pieces read the wrong way round give
+       another day rather than the same string. */
+    expect(
+      storedDates(form, { name: '04/07/2027', count: '4,5', day: '04/07/2027' }),
+    ).toEqual({ name: '04/07/2027', count: '4,5', day: '2027-07-04' })
+  })
+
+  it('leaves a day nobody gave as nothing, which is what an optional day is', () => {
+    expect(storedDates(form, { day: '' })).toEqual({ day: '' })
+  })
+
+  /* A field taken off the screen is taken out of what is sent before the door is reached
+     (`FormRenderer.tsx`, `onScreen`), and the half that only agrees with another field holds
+     nothing else at all. The door must not put a field back that the values do not hold. */
+  it('puts back nothing the values do not hold', () => {
+    expect(storedDates(form, { name: 'Jadovnik' })).toEqual({ name: 'Jadovnik' })
+    expect(storedNumbers(form, { name: 'Jadovnik' })).toEqual({ name: 'Jadovnik' })
+  })
+
+  /* Unreachable from a screen, because the form refuses a day it cannot read before it
+     sends anything (`forms/validate.ts`). Written as a throw and not as an empty string for
+     the reason `storedDate` gives: an empty date written into a record is a result that
+     belongs to no season, and it would travel looking ordinary (ADL A14, rule 2). */
+  it('refuses to hand over a day it cannot read rather than handing over nothing', () => {
+    expect(() => storedDates(form, { day: '31/02/2027' })).toThrow('31/02/2027 is not a date')
+  })
+
+  it('puts a dot where a number was written with a comma, and only in a number', () => {
+    expect(
+      storedNumbers(form, { name: '21,1 km', count: '21,1', day: '04/07/2027' }),
+    ).toEqual({ name: '21,1 km', count: '21.1', day: '04/07/2027' })
+    expect(storedNumbers(form, { count: '21.1' })).toEqual({ count: '21.1' })
+    expect(storedNumbers(form, { count: '' })).toEqual({ count: '' })
+  })
+
+  /* Every date field the portal has, read off the files rather than named here: the door is
+     driven by the type, and this is what says so about the definitions as they really are.
+     A form that grows a date field tomorrow is in this sweep on the day it is written. */
+  it('reaches every date field of every form on disk', () => {
+    const folder = join(process.cwd(), 'src', 'forms', 'definitions')
+    const dated = readdirSync(folder)
+      .filter((name) => name.endsWith('.form.json'))
+      .map((name) => formDef(JSON.parse(readFileSync(join(folder, name), 'utf-8'))))
+      .flatMap((one) =>
+        one.fields.filter((each) => each.type === 'date').map((each) => ({ one, each })),
+      )
+
+    expect(dated.length, 'no form on disk asks for a day any more').toBeGreaterThan(0)
+
+    for (const { one, each } of dated) {
+      expect(storedDates(one, { [each.name]: '16/01/2027' })[each.name], `${one.id}.${each.name}`)
+        .toBe('2027-01-16')
+    }
   })
 })
 
@@ -252,6 +328,15 @@ describe('the words the confirmation shows', () => {
 
   it('shows plain text as it was typed', () => {
     expect(shownValue(field('name'), 'Jadovnik', {})).toBe('Jadovnik')
+  })
+
+  /* What is confirmed has already been through the door (`storedDates`), so it holds the
+     day the way a record keeps it. Read straight out, a save of an event would say
+     „2027-07-04" under a field the form spells dd/mm/gggg, which is the one shape the
+     portal never shows a date in (PDL P8). Empty stays empty: nothing to spell. */
+  it('spells a day back the way the form asks for one', () => {
+    expect(shownValue(field('day'), '2027-07-04', {})).toBe('04/07/2027')
+    expect(shownValue(field('day'), '', {})).toBe('')
   })
 })
 

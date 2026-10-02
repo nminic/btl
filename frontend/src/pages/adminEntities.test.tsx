@@ -104,14 +104,6 @@ describe('the races of an event', () => {
       'aria-required',
       'false',
     )
-    expect(length(), 'the length of a race that fixes one announces no floor').toHaveAttribute(
-      'min',
-      '0.1',
-    )
-    expect(limit(), 'the limit announces a floor on a race that has none').not.toHaveAttribute(
-      'min',
-    )
-
     await user.selectOptions(kind, 'time')
 
     /* And the two swap over: the length is no longer asked for and the limit is. */
@@ -121,15 +113,20 @@ describe('the races of an event', () => {
     )
     expect(limit()).toHaveAttribute('aria-required', 'true')
 
-    /* And the floor and the ceiling swap with them, because a control that announces
-       a rule the save does not hold it to sends a reader to fix something that is
-       not wrong (WCAG 2.2 SC 3.3.1). Both cells and both ends, so a table that
-       announced none anywhere would fall as surely as one that announced them where
-       they do not hold. */
-    expect(limit(), 'the limit of a timed race announces no floor').toHaveAttribute('min', '0.1')
-    expect(limit()).toHaveAttribute('max', '200')
-    expect(length(), 'the length still announces a floor').not.toHaveAttribute('min')
-    expect(length()).not.toHaveAttribute('max')
+    /* ~~And the floor and the ceiling swap with them~~, through `min` and `max`, which is
+       what these cells said until 02.10.2026, on the reasoning that a control announcing a
+       rule the save does not hold sends a reader to fix something that is not wrong (WCAG
+       2.2 SC 3.3.1). The cells are text boxes since then, so they take the comma Serbian
+       writes a decimal with (owner: „Polje za broj prima i zarez i tacku"), and on a text
+       box `min` and `max` announce nothing and hold nothing. What is left to announce is
+       what is asked, swapped above, and the bounds are held by the save
+       (`admin/raceRows.test.ts`). So neither cell claims a floor or a ceiling in either
+       kind, and both offer a keyboard with a separator, because both take decimals. */
+    for (const cell of [length(), limit()]) {
+      expect(cell, 'a cell claims a floor').not.toHaveAttribute('min')
+      expect(cell, 'a cell claims a ceiling').not.toHaveAttribute('max')
+      expect(cell).toHaveAttribute('inputmode', 'decimal')
+    }
   }, SLOW)
 
   it('will not save a timed race with no limit, and marks the cell that is missing', async () => {
@@ -834,11 +831,11 @@ describe('the races of an event', () => {
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
     await user.click(screen.getByRole('button', { name: 'Nova trka' }))
 
+    /* Every control of the table is a text box since 02.10.2026, the measures included: they
+       take a comma as well as a dot (owner, „Polje za broj prima i zarez i tacku"), which a
+       number box cannot. */
     const named = within(screen.getByRole('table', { name: /^Trke na događaju/ }))
       .getAllByRole('textbox')
-      .concat(
-        within(screen.getByRole('table', { name: /^Trke na događaju/ })).getAllByRole('spinbutton'),
-      )
       .map((one) => one.getAttribute('aria-label') ?? '')
 
     expect(named.length).toBeGreaterThan(4)

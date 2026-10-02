@@ -6,8 +6,19 @@
 -- One home, two readers: a list written here instead would be a second home for a fact the
 -- database already holds, and the day a migration adds a table the list would be silently short.
 --
--- Two columns come back, `name` and `level`. `level` is the LONGEST path from a table nobody
--- points at, so every parent is strictly below every child and sorting by it is a load order.
+-- Three columns come back, `name`, `level` and `quoted`. `level` is the LONGEST path from a table
+-- nobody points at, so every parent is strictly below every child and sorting by it is a load
+-- order. `quoted` is quote_ident(name): the ONE form in which a table name goes into the text of a
+-- statement, so a name that needs quotes arrives with them. The script used to put the bare name
+-- after `public.` in three places and quoted it in none, while row-counts.sql and sequences.sql
+-- beside it quoted theirs, and a fact handled in two ways in one folder is the one that goes
+-- wrong. `name` stays for reading and for comparing against the catalogue.
+--
+-- THE BOUNDARY OF `quoted`, written down. It is spliced into a psql script line that carries it
+-- inside single quotes, and it is read from a file whose fields are separated by a bar, so a
+-- name with a single quote, a backslash, a bar or a newline in it cannot be carried. None exists,
+-- and PouringFromQaTest asks the catalogue, so the migration that writes one fails the build and
+-- not the pour.
 --
 -- A TABLE IN A CYCLE COMES BACK WITH level = NULL, and that is the point rather than an
 -- oversight: nothing reaches it from a root, so no order exists for it, and the script stops and
@@ -59,7 +70,7 @@ reached as (
       join fk on fk.parent = reached.name
      where not fk.child = any(reached.path)
 )
-select t.name, max(reached.level) as level
+select t.name, max(reached.level) as level, quote_ident(t.name) as quoted
   from t
   left join reached on reached.name = t.name
  group by t.name
