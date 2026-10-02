@@ -88,7 +88,7 @@ export function TeamDetail() {
    * new page. The other two ends - the reader putting the question away, and a second attempt
    * starting - are events and clear it where they happen (`onKeep` below, `deleteOne`).
    */
-  const here = `${slug ?? ''}/${asked}`
+  const here = `${slug}/${asked}`
   const [drawnOn, setDrawnOn] = useState(here)
 
   if (drawnOn !== here) {
