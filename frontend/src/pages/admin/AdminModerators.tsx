@@ -468,7 +468,7 @@ export function AdminModerators() {
                               setEditingModerator(one)
                               setEditing({ mode: 'one', record: one })
                             }}
-                            deleteRecord={() => void deleteOne(one)}
+                            deleteRecord={() => deleteOne(one)}
                           />
                           {refused !== null && refused.id === one.id && saying(refused.answer)}
                         </td>
