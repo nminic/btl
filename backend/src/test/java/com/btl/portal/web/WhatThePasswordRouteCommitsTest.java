@@ -64,6 +64,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * passing and measures nothing, which is the very thing this class replaces. So the setup refuses to
  * run inside a transaction at all. It asks Spring's own record of the thread and does not read the
  * annotations of this file, because the question is about what happens and not about what is written.
+ * Measured 02.10.2026: with the annotation back and this line taken out, a rollback mark on every
+ * outcome of the route left all four cases green; with the line in, all four go red before a request
+ * is sent.
  *
  * <p><b>NO MAILBOX AND NO PORT.</b> The refusals send nothing. The last case does send, to the
  * development default relay that points at nothing, and that is by design and not by luck: the route
@@ -92,8 +95,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * </ul>
  *
  * <p>The owner's decision the miss carries out is ADL A43.1, 11.09.2026: „zakljucavanje | posle 10
- * neuspelih pokusaja, 15 minuta". The forgetting is a reading of it and not his word, which
- * {@code MePasswordApi} says in its own comments, and what is measured here is only that it is KEPT.
+ * neuspelih pokusaja, 15 minuta". The forgetting is a reading of it and not his word:
+ * {@code MePasswordApi} derives it from {@code SignInApi}'s sentence that somebody who has just
+ * signed in was not guessing. What is measured here is only that it is KEPT.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -215,8 +219,11 @@ class WhatThePasswordRouteCommitsTest {
 	 * count stays at nine. Guessing at this door then costs nothing and ADL A43.1 is carried out in a
 	 * transaction that is thrown away.
 	 *
-	 * <p><b>The mutation this is written against:</b> a rollback mark set on every refusal. A mark
-	 * set on the policy refusals alone leaves this case green, which is why the rows above exist.
+	 * <p><b>The mutations this is written against:</b> a rollback mark set on every refusal, which
+	 * turns this case red along with the two rows above; and the miss written against every account
+	 * instead of the one asking, which {@code MePasswordApiTest} cannot see because it reads only the
+	 * account that asks. A mark set on the policy refusals alone leaves this case green and belongs to
+	 * the rows above.
 	 */
 	@Test
 	void aMissAtTheOldPasswordStaysCommittedAndTheTenthShutsTheAccount() throws Exception {
@@ -243,10 +250,12 @@ class WhatThePasswordRouteCommitsTest {
 	 * this one loses the thing the member asked for.
 	 *
 	 * <p>The notice goes to a relay that is not there. The route answers 204 regardless (see the head
-	 * of this class), and the one warning that costs is the only thing this case adds to the log.
+	 * of this class), and the one logged warning with its stack trace is all this case adds to the
+	 * output.
 	 *
-	 * <p><b>The mutation this is written against:</b> a rollback mark set on every outcome, the
-	 * success included.
+	 * <p><b>The mutation this is written against:</b> a rollback mark set on the change that goes
+	 * through and on nothing else, which turns only this case red. A mark set on every outcome turns
+	 * all four red, so it is not the one that shows this case is needed.
 	 */
 	@Test
 	void theNewPasswordAndTheForgettingAreCommittedWhenTheChangeGoesThrough() throws Exception {
