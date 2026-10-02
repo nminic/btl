@@ -5,6 +5,7 @@ import { Navigate, useLocation, useParams } from 'react-router'
 import { useToday } from '../clock/useClock'
 import { PageMeta } from '../app/PageMeta'
 import { DucatArt } from '../components/DucatArt'
+import { Loader } from '../components/Loader'
 import { Resource } from '../components/Resource'
 import { useColumns, useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
@@ -54,7 +55,7 @@ function AwardsBody({
   part: string | undefined
 }) {
   const { locale } = useI18n()
-  const { signedIn } = useSession()
+  const { signedIn, theServerHasAnswered } = useSession()
   const overlay = useOverlay()
   const state = combinePair(
     combineResources(useCompetitors(), useResults(), useTeams()),
@@ -68,7 +69,17 @@ function AwardsBody({
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
-        const readable = profileFor(competitors, memberNumber, signedIn !== null)
+        const readable = profileFor(competitors, memberNumber, signedIn !== null, theServerHasAnswered)
+
+        if (readable.kind === 'waiting') {
+          /* The same wait as the profile's, from the same place and for the same reason
+             (`pages/CompetitorProfile.tsx`, `profile/visible.ts`): this address is public and
+             bookmarked, and a cold load of it threw a signed in reader onto the front page before
+             the server had said who he was. Written on this screen as well and not only on the
+             profile, because the fault is one expression on each of them and mending one leaves
+             the other as it was. */
+          return <Loader inline={false} />
+        }
 
         if (readable.kind === 'none') {
           /* **The home page, and the same for a profile that does not exist.** The owner's rule,
