@@ -476,27 +476,6 @@ describe('leaving a team from the membership screen', () => {
     expect(screen.getByText(`Trenutno si u timu ${MINE.name}.`)).toBeInTheDocument()
   })
 
-  /** And the reason goes away with the question it was an answer to. */
-  it('takes the reason away when the question is put away', async () => {
-    const user = setupUser()
-    ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
-
-    renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
-
-    await user.click(
-      await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
-    )
-    await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
-
-    expect(
-      await screen.findByText(sr.membership.transferShut, undefined, { timeout: SLOW }),
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamKeep }))
-
-    expect(screen.queryByText(sr.membership.transferShut)).not.toBeInTheDocument()
-  })
-
   /**
    * TWO PRESSES WHILE THE FIRST IS STILL OUT ARE ONE REQUEST.
    *
@@ -625,6 +604,354 @@ describe('leaving a team from the membership screen', () => {
     },
     SLOW,
   )
+
+  /**
+   * „ODUSTANI" DOES NOTHING WHILE THE LEAVING IS OUT (owner, 02.10.2026, choosing between three
+   * outcomes he was priced; PDL, „Odluke iz ciscenja nalaza"; the registry's items 352 and 354).
+   *
+   * <p><b>What it did until then, measured.</b> „Potvrdi izlazak" sent the request and „Odustani"
+   * stayed live, so a member who pressed the second after the first put the question away while
+   * the request went on to the server. Two things followed and they are the two items: a 409
+   * arriving afterwards was drawn UNDER „Izađi iz tima" - a refusal about a question that was no
+   * longer there, beside a button that had not been pressed - and a 204 arriving afterwards took
+   * him out of the team after he had pressed „Odustani", with nothing on the screen having said
+   * so.
+   *
+   * <p><b>The answer is held in front of the recording server</b> rather than inside it, the way
+   * the double-press case above holds its own, so what is recorded is still exactly what the
+   * screen sent.
+   */
+  describe('while the leaving is out, the question stays', () => {
+    /** Holds the route's answer until the function that comes back is called. */
+    function holdTheLeaving(): () => void {
+      let letItAnswer = () => {}
+      const held = new Promise<void>((resolve) => {
+        letItAnswer = resolve
+      })
+      const answering = globalThis.fetch
+
+      globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith('/membership') && init?.method === 'DELETE') {
+          await held
+        }
+
+        return answering(input, init)
+      }
+
+      return letItAnswer
+    }
+
+    /** Asks the question and answers it, which is the whole of what puts a leaving out. */
+    async function leave(user: ReturnType<typeof setupUser>) {
+      await user.click(
+        await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+      )
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
+    }
+
+    it('keeps the question when „Odustani" is pressed, and the answer closes it', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leave(user)
+
+      const keep = screen.getByRole('button', { name: sr.membership.leaveTeamKeep })
+
+      /* TOLD OFF AND NOT SWITCHED OFF, which is what `Potvrdi izlazak` beside it already is: a
+         control that goes away takes the keyboard focus with it. */
+      expect(keep).toHaveAttribute('aria-disabled', 'true')
+      expect(keep).not.toBeDisabled()
+
+      await user.click(keep)
+
+      /* THE QUESTION IS STILL ASKED, and the button that opens it is not what stands there. */
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeamSure })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: sr.membership.leaveTeam }),
+      ).not.toBeInTheDocument()
+
+      letItAnswer()
+
+      expect(
+        await screen.findByText(sr.membership.transferShut, undefined, { timeout: SLOW }),
+      ).toBeInTheDocument()
+
+      /* AND THE ANSWER CLOSES THE QUESTION, which „Odustani" could not: the refusal stands beside the
+         button that asked (owner, 02.10.2026), and he is still in the team. */
+      expect(
+        screen.queryByRole('button', { name: sr.membership.leaveTeamSure }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeam })).toBeInTheDocument()
+      expect(screen.getByText(`Trenutno si u timu ${MINE.name}.`)).toBeInTheDocument()
+    })
+
+    it('closes the question itself when the leaving goes through, and he reads that he is out', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft())
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leave(user)
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamKeep }))
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeamSure })).toBeInTheDocument()
+
+      letItAnswer()
+
+      /* THE SCREEN SAYS IT, which is what he was left without: the answer he was waiting for is
+         the sentence that he is in no team. */
+      expect(
+        await screen.findByText(sr.membership.noTeam, undefined, { timeout: SLOW }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: sr.membership.leaveTeamSure }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('puts the focus on the button that asked, wherever it had gone while the answer was out', async () => {
+      /* THE FOCUS IS MOVED OFF „POTVRDI IZLAZAK" BEFORE THE ANSWER, which is the half that matters:
+         React gives the button that asks the element „Potvrdi izlazak" had, so a focus left where it
+         was would be on it whatever the code does about it, and an attribute that acts only when an
+         element is created would read as working. */
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leave(user)
+      await user.tab()
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeamKeep })).toHaveFocus()
+
+      letItAnswer()
+      await screen.findByText(sr.membership.transferShut, undefined, { timeout: SLOW })
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeam })).toHaveFocus()
+    })
+
+    it('puts the focus on the button again after a second refusal, wherever it had gone', async () => {
+      /* WHAT LOWERING THE FLAG WHEN THE QUESTION IS ASKED AGAIN IS FOR, and „Odustani" cannot show it:
+         the effect runs when the flag CHANGES, so a flag that stayed raised after the first refusal
+         would be raised again by the second without changing, and the focus would not come back the
+         second time. Each answer is held on its own, and the focus is moved off „Potvrdi izlazak"
+         before it. */
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+      const letTheFirstAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leave(user)
+      letTheFirstAnswer()
+      await screen.findByText(sr.membership.transferShut, undefined, { timeout: SLOW })
+
+      const letTheSecondAnswer = holdTheLeaving()
+
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeam }))
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
+      await user.tab()
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeamKeep })).toHaveFocus()
+
+      letTheSecondAnswer()
+
+      await waitFor(
+        () => {
+          expect(
+            screen.queryByRole('button', { name: sr.membership.leaveTeamSure }),
+          ).not.toBeInTheDocument()
+        },
+        { timeout: SLOW },
+      )
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeam })).toHaveFocus()
+    })
+
+    it('says that it is sending, only while it is', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft())
+      const letItAnswer = holdTheLeaving()
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      const sending = () =>
+        screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
+
+      await user.click(
+        await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+      )
+
+      expect(sending()).toHaveLength(0)
+
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
+
+      expect(sending()).toHaveLength(1)
+
+      letItAnswer()
+
+      await waitFor(
+        () => {
+          expect(sending()).toHaveLength(0)
+        },
+        { timeout: SLOW },
+      )
+    })
+
+  })
+
+  /**
+   * A REFUSAL CLOSES THE QUESTION AS A SUCCESS DOES (owner, 02.10.2026; PDL, „Odbijanje zatvara
+   * pitanje kao i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz
+   * dugme").
+   *
+   * <p><b>What it did until then, measured.</b> The leaving that went through closed the question
+   * and a refusal left it standing, with „Potvrdi izlazak" live again beside the sentence - so the
+   * two answers to one question put the screen in two different states, and the activation, which
+   * closes on both, was the third. The sentence stays where it was drawn, under the row, and now
+   * stands beside the button that asked; the focus goes to that button, because the one that had it
+   * left with the question (the activation does the same after a 409).
+   */
+  describe('when the answer is a refusal', () => {
+    async function leaveAndBeRefused(user: ReturnType<typeof setupUser>) {
+      await user.click(
+        await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+      )
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamSure }))
+
+      await screen.findByText(sr.membership.transferShut, undefined, { timeout: SLOW })
+    }
+
+    it('closes the question by itself, with the reason and the focus beside the button that asked', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leaveAndBeRefused(user)
+
+      expect(
+        screen.queryByRole('button', { name: sr.membership.leaveTeamSure }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: sr.membership.leaveTeamKeep }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeam })).toHaveFocus()
+      /* AND HE IS STILL IN THE TEAM, which is what a refusal is about. */
+      expect(screen.getByText(`Trenutno si u timu ${MINE.name}.`)).toBeInTheDocument()
+    })
+
+    it('can be asked again, and the second asking is sent', async () => {
+      /* The guard against a second press is a ref, and one left standing after the answer would
+         answer every press with nothing, beside a question that looks live. */
+      const user = setupUser()
+      let asked: Asked[] = []
+      ;({ stop, asked } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leaveAndBeRefused(user)
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeam }))
+
+      const sure = screen.getByRole('button', { name: sr.membership.leaveTeamSure })
+
+      expect(sure).not.toHaveAttribute('aria-disabled')
+
+      await user.click(sure)
+
+      await waitFor(
+        () => {
+          expect(writes(asked)).toHaveLength(2)
+        },
+        { timeout: SLOW },
+      )
+    })
+
+    it('takes the reason away when a question asked again is put away', async () => {
+      /* The half the old case of „takes the reason away when the question is put away" measured:
+         the sentence is the answer to the last attempt, and a member who has asked again and then
+         put the question away has no use for it. */
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leaveAndBeRefused(user)
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeam }))
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamKeep }))
+
+      expect(screen.queryByText(sr.membership.transferShut)).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeam })).toBeInTheDocument()
+    })
+
+    it('puts a question asked again after a refusal away, and leaves nothing of the first attempt on it', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft(() => refused('theWindowIsShut', 409)))
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await leaveAndBeRefused(user)
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeam }))
+
+      const keep = screen.getByRole('button', { name: sr.membership.leaveTeamKeep })
+
+      expect(keep).not.toHaveAttribute('aria-disabled')
+      expect(
+        screen
+          .queryAllByRole('status')
+          .filter((one) => one.textContent === sr.results.sending),
+      ).toHaveLength(0)
+    })
+
+    it('takes no focus when the page is drawn again with everything it needs already known', async () => {
+      /* THE FIRST DRAWING OF THE PAGE, in the state where it matters. The member's team reaches this
+         page from `/api/me` a moment after it mounts, so on a cold start the button that asks is not on
+         the page at the first commit and a flag that started raised would have nothing to focus. Left
+         and come back to, the page is drawn with the session and the teams already in hand and the
+         button IS there at the first commit - which is where a flag that started raised steals the
+         focus from wherever the member was. */
+      ;({ stop } = aServerThatIsLeft())
+
+      const view = renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW })
+      await view.router.navigate('/sr/moji-rezultati')
+      await screen.findByRole('heading', { level: 1, name: sr.myResults.title }, { timeout: SLOW })
+      await view.router.navigate('/sr/moja-clanarina')
+
+      expect(
+        await screen.findByRole('button', { name: sr.membership.leaveTeam }, { timeout: SLOW }),
+      ).not.toHaveFocus()
+    })
+
+    /* WHAT THIS BRANCH DOES NOT CHANGE, written down as a boundary and not as a wish: the focus goes
+       to the button only where an ANSWER closed the question. „Odustani" is the member's own act and
+       moved nothing before this branch either, which is a gap of its own and not this change's. */
+    it('moves no focus where nothing was answered: not on the first draw, not on „Odustani"', async () => {
+      const user = setupUser()
+      ;({ stop } = aServerThatIsLeft())
+
+      renderAt('/sr/moja-clanarina', 'competitor', ME.memberNumber, undefined, DAY)
+
+      const asking = await screen.findByRole(
+        'button',
+        { name: sr.membership.leaveTeam },
+        { timeout: SLOW },
+      )
+
+      expect(asking).not.toHaveFocus()
+
+      await user.click(asking)
+      await user.click(screen.getByRole('button', { name: sr.membership.leaveTeamKeep }))
+
+      expect(screen.getByRole('button', { name: sr.membership.leaveTeam })).not.toHaveFocus()
+    })
+
+  })
 
   /**
    * OUTSIDE THE WINDOW THERE IS NO BUTTON, AND THE SENTENCE IS WHAT STANDS IN ITS PLACE.
