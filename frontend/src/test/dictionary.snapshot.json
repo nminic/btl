@@ -1158,6 +1158,20 @@
     "eventTaken": "Događaj sa tim nazivom već postoji te godine. Promenite naziv ili godinu: adresa se pravi od naziva i godine.",
     "racesOf": "Trke na događaju {event}",
     "noRaces": "Ovaj događaj još nema nijednu trku.",
+    "race": {
+      "wrong": {
+        "list": "Šta je pogrešno u trkama",
+        "name": "Upiši naziv trke.",
+        "date": "Izaberi dan trke ili ga upiši kao dd/mm/gggg.",
+        "missing": "Ovo polje je obavezno.",
+        "notANumber": {
+          "decimal": "Upiši broj, na primer 21,1.",
+          "whole": "Upiši ceo broj, na primer 1200."
+        },
+        "notWhole": "Upiši ceo broj bez tačke i zareza: 1200, a ne 1.200.",
+        "outOfBounds": "Dozvoljene su vrednosti od {least} do {most}."
+      }
+    },
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
     "waitingForResults": "Brisanje čeka rezultate",
@@ -1209,7 +1223,7 @@
       "raceNumber": "{which}. trka",
       "nextSeason": "Isto mesto u kalendaru naredne godine",
       "nextWeek": "Tačno sedam dana posle kopiranog događaja",
-      "racesRefused": "Svaka trka mora da ima naziv i dan; obeležena polja pokazuju šta još nedostaje. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
+      "racesRefused": "Trke nisu sačuvane. Ispravi obeležena polja; ispod tabele piše šta je pogrešno u svakom od njih.",
       "deleteNamed": "Obriši: {name}",
       "deleteSure": "Sigurno?",
       "deleteSureNamed": "Potvrdi brisanje: {name}",

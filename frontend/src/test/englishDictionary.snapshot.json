@@ -1158,6 +1158,20 @@
     "eventTaken": "An event with that name already exists in that year. Change the name or the year: the address is made from the name and the year.",
     "racesOf": "The races at the event {event}",
     "noRaces": "This event has no race yet.",
+    "race": {
+      "wrong": {
+        "list": "What is wrong in the races",
+        "name": "Enter the name of the race.",
+        "date": "Pick the day of the race or write it as dd/mm/yyyy.",
+        "missing": "This field is required.",
+        "notANumber": {
+          "decimal": "Enter a number, for example 21.1.",
+          "whole": "Enter a whole number, for example 1200."
+        },
+        "notWhole": "Enter a whole number without a dot or a comma: 1200, not 1.200.",
+        "outOfBounds": "The allowed values are from {least} to {most}."
+      }
+    },
     "searchEvents": "A name or a town",
     "showing": "Showing: {count}",
     "waitingForResults": "Deleting is waiting for the results",
@@ -1209,7 +1223,7 @@
       "raceNumber": "Race {which}",
       "nextSeason": "The same place in the calendar next year",
       "nextWeek": "Exactly seven days after the event copied",
-      "racesRefused": "Every race must have a name and a day; the fields marked show what is still missing. The ascent and the descent may stay empty; they are then read as 0.",
+      "racesRefused": "The races were not saved. Correct the marked fields; under the table it says what is wrong with each of them.",
       "deleteNamed": "Delete: {name}",
       "deleteSure": "Are you sure?",
       "deleteSureNamed": "Confirm the deletion: {name}",

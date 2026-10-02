@@ -1,14 +1,23 @@
 import {
   allFinished,
+  boundsOf,
   isWrong,
   newRaceRow,
+  RACE_CELLS,
   rowsOf,
+  sentenceFor,
   storedRow,
   whatIsMissing,
+  whyWrong,
+  type RaceCell,
   type RaceRow,
+  type WhatIsWrong,
 } from './raceRows'
 import { fieldDate } from '../../forms/dateField'
 import { RACE_KINDS, type Race } from '../../data/types'
+import en from '../../i18n/en.json'
+import sr from '../../i18n/sr.json'
+import { translate } from '../../i18n/translate'
 import { first } from '../../test/at'
 
 /** A race as the store keeps one, with only what a row reads off it. */
@@ -298,5 +307,167 @@ describe('the races of an event while they are being entered', () => {
        something: 21,1 is a half and 21,0 is not. */
     expect(storedRow(row({ distanceKm: '21.1' }), 'evt')).toMatchObject({ category: 'half' })
     expect(storedRow(row({ distanceKm: '21' }), 'evt')).toMatchObject({ category: 'short' })
+  })
+})
+
+/**
+ * WHAT IS WRONG WITH ONE CELL, ASKED OF THE ONE FUNCTION EVERY READER ASKS (PENDING, the table of
+ * races, review of PR 463: WCAG 3.3.1 and 3.3.3).
+ *
+ * <p>The table refused „1.200" in the climb and said, in the one sentence it had, that the climb
+ * and the fall may stay empty and are then read as nought. An administrator who obeyed it emptied
+ * the cell and saved a climb of nought. A refusal has to say WHAT is wrong with the cell it marks
+ * and what to do, so the answer to „why is this cell wrong" has one home and three readers: the
+ * marking of the cell (`isWrong`), the refusal of the save (`whatIsMissing`) and the sentence that
+ * is drawn for it (`sentenceFor`).
+ *
+ * <p>The axes are the cell, the kind of race (which decides whether a cell is asked at all) and the
+ * way the cell is written. A cell is asked about only where its race fixes it, so the same writing
+ * is wrong in one kind and nothing in another.
+ */
+describe('what is wrong with one cell of a row', () => {
+  const NONE = undefined
+
+  it.each<[string, Partial<RaceRow>, RaceCell, WhatIsWrong | undefined]>([
+    ['an empty name', { name: '' }, 'name', 'missing'],
+    ['a name of spaces', { name: '   ' }, 'name', 'missing'],
+    ['a name', {}, 'name', NONE],
+    ['no day', { date: '' }, 'date', 'missing'],
+    ['a day that is not a day', { date: '31/02/2026' }, 'date', 'missing'],
+    ['a day', {}, 'date', NONE],
+    ['no length', { distanceKm: '' }, 'distanceKm', 'missing'],
+    ['a length that is not a number', { distanceKm: 'sto' }, 'distanceKm', 'notANumber'],
+    ['a length under the floor', { distanceKm: '0.05' }, 'distanceKm', 'outOfBounds'],
+    ['a length over the ceiling', { distanceKm: '1001' }, 'distanceKm', 'outOfBounds'],
+    ['a length with a comma', { distanceKm: '21,1' }, 'distanceKm', NONE],
+    ['a length on the floor', { distanceKm: '0.1' }, 'distanceKm', NONE],
+    ['a length on a timed race, which it does not ask', { kind: 'time', distanceKm: 'sto' }, 'distanceKm', NONE],
+    ['no limit on a timed race', { kind: 'time', limitHours: '' }, 'limitHours', 'missing'],
+    ['a limit that is not a number', { kind: 'time', limitHours: 'sto' }, 'limitHours', 'notANumber'],
+    ['a limit of nought', { kind: 'time', limitHours: '0' }, 'limitHours', 'outOfBounds'],
+    ['a limit over the ceiling', { kind: 'time', limitHours: '201' }, 'limitHours', 'outOfBounds'],
+    ['a limit with a comma', { kind: 'time', limitHours: '1,5' }, 'limitHours', NONE],
+    ['a limit on a race of a length, which it does not ask', { limitHours: 'sto' }, 'limitHours', NONE],
+    ['an empty climb, which is nought', { ascentM: '' }, 'ascentM', NONE],
+    ['a climb written with a dot for the thousands', { ascentM: '1.200' }, 'ascentM', 'notWhole'],
+    ['a climb written with a comma for the thousands', { ascentM: '1,200' }, 'ascentM', 'notWhole'],
+    ['a climb with a fraction that is nought', { ascentM: '10,0' }, 'ascentM', 'notWhole'],
+    ['a climb written as a power of ten', { ascentM: '1e3' }, 'ascentM', 'notWhole'],
+    ['a whole climb', { ascentM: '1200' }, 'ascentM', NONE],
+    ['a climb that is not a number', { ascentM: 'sto' }, 'ascentM', 'notANumber'],
+    ['a negative climb', { ascentM: '-500' }, 'ascentM', 'outOfBounds'],
+    ['a climb over the ceiling', { ascentM: '30001' }, 'ascentM', 'outOfBounds'],
+    ['a climb that is both separated and over the ceiling', { ascentM: '30.001' }, 'ascentM', 'notWhole'],
+    ['an empty fall, which is nought', { descentM: '' }, 'descentM', NONE],
+    ['a fall written with a dot for the thousands', { descentM: '1.200' }, 'descentM', 'notWhole'],
+    ['a fall that is not a number', { descentM: 'sto' }, 'descentM', 'notANumber'],
+    ['a negative fall', { descentM: '-1' }, 'descentM', 'outOfBounds'],
+  ])('says %s', (_what, over, cell, expected) => {
+    expect(whyWrong(row(over), cell)).toBe(expected)
+  })
+
+  /**
+   * ONE ANSWER AND THREE READERS, so a cell cannot be marked that the save lets through or the
+   * other way round (ADL A31). Asked over every combination of a few writings of each cell rather
+   * than over a list of cases, so a state nobody thought of is asked too.
+   */
+  it('is the one answer the marking and the refusal of the save read', () => {
+    const axes: Partial<RaceRow>[][] = [
+      [{ name: '' }, { name: 'x' }],
+      [{ date: '' }, { date: '17/10/2026' }],
+      RACE_KINDS.map((kind) => ({ kind })),
+      [{ distanceKm: '' }, { distanceKm: '10' }, { distanceKm: 'sto' }],
+      [{ limitHours: '' }, { limitHours: '2' }, { limitHours: 'sto' }],
+      [{ ascentM: '' }, { ascentM: '1200' }, { ascentM: '1.200' }],
+      [{ descentM: '' }, { descentM: '-1' }],
+    ]
+    let rows: Partial<RaceRow>[] = [{}]
+
+    for (const axis of axes) {
+      rows = rows.flatMap((made) => axis.map((one) => ({ ...made, ...one })))
+    }
+
+    expect(rows.length, 'the grid is the whole of the combinations').toBe(
+      2 * 2 * RACE_KINDS.length * 3 * 3 * 3 * 2,
+    )
+
+    for (const over of rows) {
+      const one = row(over)
+      const wrong = RACE_CELLS.filter((cell) => whyWrong(one, cell) !== undefined)
+
+      for (const cell of RACE_CELLS) {
+        expect(isWrong(one, cell), `${cell} of ${JSON.stringify(over)}`).toBe(wrong.includes(cell))
+      }
+
+      /* The save is held back exactly where some cell is wrong, and names the FIRST of them in
+         the order the table draws them. */
+      expect(whatIsMissing(one), JSON.stringify(over)).toBe(wrong[0])
+      expect(allFinished([one])).toBe(wrong.length === 0)
+    }
+  })
+
+  it('names every cell of the table, in the order it is drawn', () => {
+    expect(RACE_CELLS).toEqual(['name', 'date', 'distanceKm', 'limitHours', 'ascentM', 'descentM'])
+  })
+})
+
+describe('the sentence that says what is wrong with a cell', () => {
+  it.each<[RaceCell, WhatIsWrong, string]>([
+    ['name', 'missing', 'admin.race.wrong.name'],
+    ['date', 'missing', 'admin.race.wrong.date'],
+    ['distanceKm', 'missing', 'admin.race.wrong.missing'],
+    ['limitHours', 'missing', 'admin.race.wrong.missing'],
+    ['distanceKm', 'notANumber', 'admin.race.wrong.notANumber.decimal'],
+    ['limitHours', 'notANumber', 'admin.race.wrong.notANumber.decimal'],
+    ['ascentM', 'notANumber', 'admin.race.wrong.notANumber.whole'],
+    ['descentM', 'notANumber', 'admin.race.wrong.notANumber.whole'],
+    ['ascentM', 'notWhole', 'admin.race.wrong.notWhole'],
+    ['descentM', 'notWhole', 'admin.race.wrong.notWhole'],
+    ['distanceKm', 'outOfBounds', 'admin.race.wrong.outOfBounds'],
+    ['ascentM', 'outOfBounds', 'admin.race.wrong.outOfBounds'],
+  ])('is the one for %s, %s', (cell, why, key) => {
+    expect(sentenceFor(cell, why)).toBe(key)
+  })
+
+  /**
+   * THE FLOOR UNDER THE KEYS: every sentence a cell of this table can be given resolves in both
+   * dictionaries. The keys are built from the cell and the reason, so a sentence that is not
+   * written is a key drawn as ITSELF in front of an administrator (`i18n/translate.ts` answers the
+   * key for a name it does not know), and nothing else fails on it. Derived from the cells and the
+   * four reasons and not written out, so a fifth reason is a failure here before it is a screen.
+   */
+  it.each([
+    ['sr', sr],
+    ['en', en],
+  ] as const)('resolves, for every cell and every reason it can have, in %s', (locale, dictionary) => {
+    const reasons: WhatIsWrong[] = ['missing', 'notANumber', 'notWhole', 'outOfBounds']
+    const unresolved: string[] = []
+
+    for (const cell of RACE_CELLS) {
+      for (const why of reasons) {
+        const key = sentenceFor(cell, why)
+
+        if (translate(dictionary, locale, key, boundsOf(cell, locale)) === key) {
+          unresolved.push(`${cell} ${why} -> ${key}`)
+        }
+      }
+    }
+
+    expect(unresolved).toEqual([])
+  })
+
+  /**
+   * THE NUMBERS IN THE SENTENCE ARE THE ONES THE SAVE HOLDS THE CELL TO, and written the way the
+   * reader writes them: a comma for the decimals in Serbian and a dot in English, and no separator
+   * for the thousands, because the sentence is about a cell that refuses one.
+   */
+  it('says the bounds of its own cell, in the way its language writes them', () => {
+    expect(boundsOf('distanceKm', 'sr')).toEqual({ least: '0,1', most: '1000' })
+    expect(boundsOf('distanceKm', 'en')).toEqual({ least: '0.1', most: '1000' })
+    expect(boundsOf('limitHours', 'sr')).toEqual({ least: '0,1', most: '200' })
+    expect(boundsOf('ascentM', 'sr')).toEqual({ least: '0', most: '30000' })
+    expect(boundsOf('descentM', 'en')).toEqual({ least: '0', most: '30000' })
+    expect(boundsOf('name', 'sr')).toEqual({})
+    expect(boundsOf('date', 'en')).toEqual({})
   })
 })

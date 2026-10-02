@@ -344,3 +344,23 @@
 .entity-races .table th.races__measure {
   text-align: right;
 }
+
+/* What is wrong with each marked cell, said under the table (`EventRaces.tsx`).
+ *
+ * Under the table and not in the cells, because the columns are narrow on purpose: a sentence in a
+ * cell of five rem is a cell a dozen lines tall, and the table already scrolls inside its box
+ * (owner, 23.08.2026). The list takes the width of the section instead, so each sentence is one or
+ * two lines at 360px, and it is read in the colour and the size a field's own error is
+ * (`.field__error`, `forms/FormRenderer.css`), which is the one dress this portal gives a
+ * refusal. Said again here and not inherited, because that file belongs to the forms and this
+ * list stands where no form class reaches. */
+.entity-races .races__problems {
+  margin: var(--space-12) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-4);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--down);
+}
