@@ -58,7 +58,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * reads it the answer is 413. Where nobody does - somebody who is not signed in, an account that names no
  * member, a moderator without the right - the answer is exactly the answer the same caller gets for an
  * empty object, and exactly the twin's: the limit takes nothing from ADL A8 (the server need not give away
- * even that an address exists) and changes no answer anybody was given before it existed.
+ * even that an address exists) and changes no answer anybody was given before it existed. <b>Who is
+ * read is told by what a caller is told for two small bodies and not by who got a 413</b>: a 413 that
+ * excused itself would excuse a body read before the door, which is the only thing such a read leaves
+ * behind.
  * <li><b>The line is where it says it is, in both directions</b>, for a declared and for a chunked body:
  * exactly the limit is read, one byte over is refused.
  * <li><b>What it does not bound is left alone</b>: a photograph is the container's and the picture's, and
@@ -418,6 +421,20 @@ class NoBodyIsLargerThanOverRealHttpTest {
 	}
 
 	/**
+	 * WHETHER A CALLER IS TURNED AWAY BEFORE HIS BODY IS LOOKED AT, told by what he is told for two small
+	 * bodies and not by whether a 413 came back.
+	 *
+	 * <p>The same 401 or 404 for an empty object and for a truncated one: a route that read the body first
+	 * could not say it, because the truncated one cannot be parsed and is answered 400 - or, where the
+	 * empty one is stopped by a row that is not there, the two differ. Asked of the answers and of nothing
+	 * else, so that it needs no list of who is refused where.
+	 */
+	private static boolean isTurnedAwayBeforeHisBody(String empty, String broken, String address) {
+		return (firstLine(empty).equals("HTTP/1.1 401 ") || firstLine(empty).equals("HTTP/1.1 404 "))
+				&& differences("", empty, address, broken, address).isEmpty();
+	}
+
+	/**
 	 * THE LIMIT HOLDS WHEREVER A BODY IS READ, AND CHANGES NO ANSWER WHERE IT IS NOT.
 	 *
 	 * <p>For every route, every caller and both ways of arriving - a body that declares its length and
@@ -426,41 +443,81 @@ class NoBodyIsLargerThanOverRealHttpTest {
 	 * twin's. That is the whole of what ADL A8 asks: nobody who may not be told that a route exists is
 	 * told it by how long his body is.
 	 *
+	 * <p><b>WHO IS READ IS NOT DECIDED BY WHO WAS TOLD 413, which is what this case did until the
+	 * independent review of PR 471 (02.10.2026).</b> It accepted a 413 from anybody and compared with the
+	 * empty object and the twin only where none came back, so the 413 that gives a body read too early
+	 * away excused itself: a read lifted above the member question in one handler, a byte array hoisted
+	 * above it in {@code InboxWriteApi}, and a filter that refused a declared JSON body before the chain
+	 * - for everybody, so that somebody not signed in was told 413 and not 401 - all passed. A body read
+	 * early leaves no other trace, because for a small one the parse error is swallowed and the bytes are
+	 * thrown away. Who is read is derived from what the caller is told for two SMALL bodies instead
+	 * ({@link #isTurnedAwayBeforeHisBody}): somebody told the same 401 or 404 for an empty object and for
+	 * a truncated one is turned away before the route looks at what he sent, and a body over the line
+	 * must be answered exactly like the empty object and exactly like the twin - never 413. Everybody
+	 * else is somebody whose body the route reads, and is answered 413.
+	 *
 	 * <p><b>And a route nobody could read is a route this class would be silent about</b>, so every route
 	 * has to be read by somebody. The superadmin passes every door there is and the member passes the
 	 * ones that ask which member it is; if neither reaches the read, the comparison above is true of a
 	 * route that was never measured.
+	 *
+	 * <p><b>The routes that read their bytes by hand are the ones the comparison in
+	 * {@code ABodyIsReadAfterTheDoorOverRealHttpTest} cannot see</b>, because the type of their body is
+	 * not in their signature: the one that asks which member, the one that changes the category and the
+	 * decision on the verification queue. Each of them must have a caller who is SIGNED IN and turned
+	 * away, since somebody who is not is refused by the security chain before any handler runs and
+	 * would not feel a read lifted above the door.
 	 */
 	@Test
 	void aBodyThatIsTooLongIsRefusedWhereItIsReadAndChangesNothingWhereItIsNot() throws Exception {
 		List<String> wrong = new ArrayList<>();
 		Set<String> routesNobodyRead = new TreeSet<>();
+		Set<String> readByHand = new TreeSet<>();
+		Set<String> readByHandAndTurnedAwayWhenSignedIn = new TreeSet<>();
 		byte[] tooLong = anObjectOf(OVER);
 
 		for (Route route : routes()) {
 			String address = route.address(waitingItem);
 			String twin = twinOf(address);
 			boolean someoneRead = false;
+			boolean byHand = TheBodyOf.type(handlerOf(route)).isEmpty();
+
+			if (byHand) {
+				readByHand.add(route.toString());
+			}
 
 			for (String caller : everyCaller()) {
-				String ordinary = answerTo(route.verb(), address, caller, JSON, "{}".getBytes(), false);
+				String empty = answerTo(route.verb(), address, caller, JSON, "{}".getBytes(), false);
+				String broken = answerTo(route.verb(), address, caller, JSON, "{".getBytes(), false);
+				boolean turnedAway = isTurnedAwayBeforeHisBody(empty, broken, address);
+
+				if (turnedAway && byHand && caller != null) {
+					readByHandAndTurnedAwayWhenSignedIn.add(route.toString());
+				}
 
 				for (boolean chunked : new boolean[] {false, true}) {
 					String what = route + " as " + caller + (chunked ? ", chunked" : ", declared");
 					String answer = answerTo(route.verb(), address, caller, JSON, tooLong, chunked);
 
-					if (firstLine(answer).equals("HTTP/1.1 413 ")) {
-						someoneRead = true;
+					if (!turnedAway) {
+						if (firstLine(answer).equals("HTTP/1.1 413 ")) {
+							someoneRead = true;
+						}
+						else {
+							wrong.add(what + ": the route reads this caller's body, and a body over the line"
+									+ " was answered " + firstLine(answer).strip() + " and not 413");
+						}
 
 						continue;
 					}
 
-					wrong.addAll(differences(what + ": the body was not read and the answer is not the one"
-							+ " for an empty object", answer, address, ordinary, address));
+					wrong.addAll(differences(what + ": the caller is turned away before his body is looked"
+							+ " at, and a body over the line was not answered like an empty object", answer,
+							address, empty, address));
 
 					if (!route.open()) {
-						wrong.addAll(differences(what + ": the body was not read and the answer is not the"
-								+ " twin's", answer, address,
+						wrong.addAll(differences(what + ": the caller is turned away before his body is looked"
+								+ " at, and a body over the line was not answered like the twin", answer, address,
 								answerTo(route.verb(), twin, caller, JSON, tooLong, chunked), twin));
 					}
 				}
@@ -472,13 +529,22 @@ class NoBodyIsLargerThanOverRealHttpTest {
 		}
 
 		assertThat(wrong)
-				.as("a body that is too long was answered differently from what the same caller is told for"
-						+ " an empty object or from the twin, where nobody read it")
+				.as("a body that is too long was answered 413 to somebody whose body is not read, or something"
+						+ " other than 413 to somebody whose body is, or differently from the empty object and the"
+						+ " twin where it was not read")
 				.isEmpty();
 		assertThat(routesNobodyRead)
 				.as("no caller in this class reaches the read on these routes, so the limit is not measured"
 						+ " on them")
 				.isEmpty();
+		assertThat(readByHand)
+				.as("every route declares its body, so the ones that read their bytes by hand are never asked"
+						+ " about")
+				.isNotEmpty();
+		assertThat(readByHandAndTurnedAwayWhenSignedIn)
+				.as("a route that reads its bytes by hand has no caller who is signed in and turned away, so a"
+						+ " read lifted above its question changes nothing this class can see")
+				.containsExactlyInAnyOrderElementsOf(readByHand);
 	}
 
 	/**

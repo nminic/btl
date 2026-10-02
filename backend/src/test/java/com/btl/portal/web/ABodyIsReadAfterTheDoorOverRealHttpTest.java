@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.condition.PathPatternsRequestConditio
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
@@ -61,8 +62,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <ul>
  * <li>An account that names no member is answered the same for every body: the one the form accepts,
- * a truncated one, none, an array, text, and the word {@code null}. Pinned to 404, so that two answers
- * that are both a fault are not "the same".
+ * a truncated one, none, an array, text, the word {@code null}, and one a byte longer than
+ * {@link NoBodyIsLargerThan#BYTES}, declared and in chunks. Pinned to 404, so that two answers that
+ * are both a fault are not "the same".
  * <li>Where the address is NOT one {@link ApiSecurity#READ_BY_ANYBODY} opens, that answer is exactly
  * the twin's, byte for byte: the status, the length and the document. A status written onto the
  * response comes back as 262 bytes with {@code Content-Length: 0} and an address that maps nothing
@@ -74,9 +76,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  * about what is behind the address.
  * </ul>
  *
+ * <p><b>THE BODY OVER THE LINE IS THERE BECAUSE IT IS THE ONLY TRACE OF A BODY READ TOO EARLY.</b> A
+ * route that reads its body BEFORE it asks which member is asking, and judges it AFTER, leaves nothing
+ * for a small body to show: the parse error is swallowed and the bytes are thrown away, so every body
+ * above is answered as if the question had come first. What an early read leaves behind is the limit -
+ * a body over the line is refused 413 by whoever reads it - so one is sent to the accounts that name
+ * no member and has to be answered exactly like the others. Found by the independent review of PR 471
+ * (02.10.2026): a read lifted above the question in one handler passed every case here, and the case
+ * in {@code NoBodyIsLargerThanOverRealHttpTest} that should have seen it excused any caller who was
+ * told 413.
+ *
  * <p><b>AND THE ANCHOR, which is what keeps a route that was simply broken from satisfying all of
- * that.</b> A member is told 400, in the route's own words, for a body that cannot be read: so the
- * route DOES read it, and the account that names no member is turned away before it does.
+ * that.</b> A member is told 400, in the route's own words, for a body that cannot be read, and 413 for
+ * one that is too long: so the route DOES read it, and the account that names no member is turned away
+ * before it does.
  *
  * <p><b>The twin is an address of the same length that maps nothing</b>, built from the address
  * itself, because the error document carries the path that was asked for.
@@ -106,6 +119,21 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	 */
 	private static final List<String> BODIES_THAT_ARE_NOT_THE_FORM =
 			List.of("{", "", "[]", "nije json", "null");
+
+	/** One byte over the line. */
+	private static final int OVER = (int) NoBodyIsLargerThan.BYTES + 1;
+
+	/**
+	 * A body one byte over the line that parses to a form with nothing in it, so that the only thing
+	 * that can be said about it is its length.
+	 */
+	private static byte[] aBodyOverTheLine() {
+		String start = "{\"p\":\"";
+		String end = "\"}";
+
+		return (start + "a".repeat(OVER - start.length() - end.length()) + end)
+				.getBytes(StandardCharsets.ISO_8859_1);
+	}
 
 	@LocalServerPort
 	private int port;
@@ -187,21 +215,48 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 
 	/** The whole answer, headers and body and chunk sizes, as it came off the wire. */
 	private String answerTo(String method, String path, String email, String body) throws Exception {
+		return answerTo(method, path, email, body.getBytes(StandardCharsets.ISO_8859_1), false);
+	}
+
+	/**
+	 * @param chunked whether the body DECLARES no length and arrives in chunks, which is the shape a
+	 *                limit written only against {@code Content-Length} never sees
+	 */
+	private String answerTo(String method, String path, String email, byte[] body, boolean chunked)
+			throws Exception {
 		String cookies = "XSRF-TOKEN=" + A_TOKEN
 				+ (email == null ? "" : "; " + SessionCookie.NAME + "=" + sessions.get(email));
 
-		String asking = method + " " + path + " HTTP/1.1\r\n"
+		ByteArrayOutputStream asking = new ByteArrayOutputStream();
+
+		asking.write((method + " " + path + " HTTP/1.1\r\n"
 				+ "Host: localhost:" + port + "\r\n"
 				+ "Cookie: " + cookies + "\r\n"
 				+ "X-XSRF-TOKEN: " + A_TOKEN + "\r\n"
 				+ JSON
-				+ "Content-Length: " + body.getBytes(StandardCharsets.ISO_8859_1).length + "\r\n"
-				+ "Connection: close\r\n\r\n"
-				+ body;
+				+ (chunked ? "Transfer-Encoding: chunked\r\n" : "Content-Length: " + body.length + "\r\n")
+				+ "Connection: close\r\n\r\n").getBytes(StandardCharsets.ISO_8859_1));
+
+		if (chunked) {
+			for (int from = 0; from < body.length; from += 8192) {
+				int length = Math.min(8192, body.length - from);
+
+				asking.write((Integer.toHexString(length) + "\r\n").getBytes(StandardCharsets.ISO_8859_1));
+				asking.write(body, from, length);
+				asking.write("\r\n".getBytes(StandardCharsets.ISO_8859_1));
+			}
+
+			asking.write("0\r\n\r\n".getBytes(StandardCharsets.ISO_8859_1));
+		}
+		else {
+			asking.write(body);
+		}
 
 		try (Socket socket = new Socket("localhost", port)) {
-			socket.getOutputStream().write(asking.getBytes(StandardCharsets.ISO_8859_1));
+			socket.setSoTimeout(30_000);
+			socket.getOutputStream().write(asking.toByteArray());
 			socket.getOutputStream().flush();
+
 			return new String(socket.getInputStream().readAllBytes(), StandardCharsets.ISO_8859_1);
 		}
 	}
@@ -443,6 +498,15 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 							answerTo(route.verb(), address, caller, body), address, reference, address));
 				}
 
+				/* AND A BODY ONE BYTE OVER THE LINE, the only thing a read that came BEFORE the question
+				   leaves behind: it is refused 413 by whoever reads it, and nobody reads his. */
+				for (boolean chunked : new boolean[] {false, true}) {
+					wrong.addAll(differences(route + " as " + caller + ", a body one byte over the line, "
+							+ (chunked ? "chunked" : "declared"),
+							answerTo(route.verb(), address, caller, aBodyOverTheLine(), chunked), address,
+							reference, address));
+				}
+
 				if (!route.open()) {
 					String twin = twinOf(address);
 
@@ -485,6 +549,21 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				wrong.addAll(differences(route + " with body [" + body + "] and nobody signed in against its"
 						+ " twin", toTheRoute, address, answerTo(route.verb(), twin, null, body), twin));
 			}
+
+			/* A BODY OVER THE LINE TOO, declared and in chunks: 401 comes from the chain before anything
+			   reads a byte, and a limit that refused it first, for everybody, would turn 401 into 413. */
+			for (boolean chunked : new boolean[] {false, true}) {
+				String toTheRoute = answerTo(route.verb(), address, null, aBodyOverTheLine(), chunked);
+				String what = route + " with a body one byte over the line, "
+						+ (chunked ? "chunked" : "declared") + ", and nobody signed in";
+
+				if (!firstLine(toTheRoute).equals("HTTP/1.1 401 ")) {
+					wrong.add(what + " was not told to sign in, but " + firstLine(toTheRoute).strip());
+				}
+
+				wrong.addAll(differences(what + " against its twin", toTheRoute, address,
+						answerTo(route.verb(), twin, null, aBodyOverTheLine(), chunked), twin));
+			}
 		}
 
 		assertThat(wrong)
@@ -524,6 +603,36 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 
 		assertThat(wrong)
 				.as("a member was not told that the form is not complete for a body that cannot be read")
+				.isEmpty();
+	}
+
+	/**
+	 * THE OTHER HALF OF THE ANCHOR: THE BODY OVER THE LINE IS READ, AND REFUSED 413, WHEN IT IS A MEMBER'S.
+	 *
+	 * <p>The comparison above sends a body over the line to the accounts that name no member and requires
+	 * it to be answered like any other. That says something only if the same body, sent by somebody the
+	 * route does read, is refused: without this a limit that bounded nothing would leave the comparison
+	 * true of every route, the one that reads early included. Declared and chunked, because the first
+	 * is refused when the stream is first asked for and the second at the byte that crosses the line.
+	 */
+	@Test
+	void aMemberWhoseBodyIsTooLongIsToldSoBecauseTheRouteReadsIt() throws Exception {
+		List<String> wrong = new ArrayList<>();
+
+		for (Route route : routes()) {
+			for (boolean chunked : new boolean[] {false, true}) {
+				String answer = answerTo(route.verb(), route.address(), A_MEMBER, aBodyOverTheLine(), chunked);
+
+				if (!firstLine(answer).equals("HTTP/1.1 413 ")) {
+					wrong.add(route + " with a body one byte over the line, " + (chunked ? "chunked" : "declared")
+							+ ", as a member was answered " + firstLine(answer).strip() + " and not 413");
+				}
+			}
+		}
+
+		assertThat(wrong)
+				.as("a member's body over the line was read and not refused, so a body that reaches nobody is"
+						+ " compared above with a body that reaches nobody")
 				.isEmpty();
 	}
 
