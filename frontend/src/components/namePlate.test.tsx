@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { NamePlate, OverTwoLines } from './NamePlate'
 import { at, first, htmlElement, must } from '../test/at'
 import { PLATE_CLASSES, person } from '../test/plate'
@@ -121,7 +122,7 @@ describe('a competitor as a circle and a name', () => {
     expect(words.textContent).toBe('Ana Marković')
   })
 
-  it('wears these classes and no others, which is what a stylesheet can reach it by', () => {
+  it('wears these classes and no others, in every shape this component has', () => {
     /* **The floor under `PLATE_CLASSES`**, written in the same commit as the list itself
        (07.09.2026). A guard over the stylesheets asks „does any other sheet in the portal write
        one of the plate's classes", and it can only ask that of names it has. Read off the source,
@@ -133,9 +134,18 @@ describe('a competitor as a circle and a name', () => {
        `pages/Rankings.css` and the main standing drew no circle at any width, against the owner's
        „Krug se ne crta ispod 700px" (which says it is drawn above it), with the whole gate green.
 
-       A pair with a name over two lines is every shape this component has: the plain plate is the
-       same element without one modifier, and a screen that writes its own words writes no class of
-       the plate's.
+       **Two shapes, since 02.10.2026, and this said one.** It said „a pair with a name over two
+       lines is every shape this component has", which stopped being true the day `faceTo` gave the
+       circle a branch of its own: a plate of one whose circle is a LINK is drawn by a different
+       element than the pair is, and a class written on that branch alone was never drawn here.
+       Measured in the review of PR 461 (`PENDING.md`): a class added to the link's branch only
+       passed 129 of 129 cases, and with a rule in `Rankings.css` that takes the circle away on that
+       class the circle left the main standing at every width with 372 of 372 green. Both are drawn
+       now, each asked on its own, so the message names the shape that wears the class nobody has
+       heard of.
+
+       The plain plate is still the same element as the pair without one modifier, and a screen that
+       writes its own words writes no class of the plate's.
 
        **One of the two carries a portrait and the other does not, and that is not decoration of
        the case.** Since 26.09.2026 the circle has two forms, a photograph and a monogram, and only
@@ -143,20 +153,42 @@ describe('a competitor as a circle and a name', () => {
        this case would pass while never once seeing the class the photograph brings, and the
        stylesheet guard beside it would go on never having heard of it. */
     const { container } = render(
-      <NamePlate competitors={[ANA, HAS_A_PORTRAIT]}>
-        <OverTwoLines competitor={ANA} />
-      </NamePlate>,
+      <MemoryRouter>
+        <NamePlate competitors={[ANA, HAS_A_PORTRAIT]}>
+          <OverTwoLines competitor={ANA} />
+        </NamePlate>
+        <NamePlate competitors={[BORIS]} faceTo="/sr/takmicar/000022-boris-petrovic">
+          Boris Petrović
+        </NamePlate>
+      </MemoryRouter>,
     )
+
+    /* THE SECOND SHAPE IS REALLY THE ONE WITH A LINK. A `faceTo` the component ignored would draw
+       a plain plate and this floor would go on passing while never once seeing the branch it was
+       written for. */
+    const links = container.querySelectorAll('a')
+
+    expect(links).toHaveLength(1)
+    expect(first(links)).toHaveAttribute('href', '/sr/takmicar/000022-boris-petrovic')
+    expect(first(links).querySelector('.portrait'), 'the circle is inside the link').not.toBeNull()
 
     const worn = new Set<string>()
 
-    for (const one of container.querySelectorAll('*')) {
-      for (const name of one.classList) {
-        worn.add(name)
+    for (const plate of container.children) {
+      for (const one of [plate, ...plate.querySelectorAll('*')]) {
+        for (const name of one.classList) {
+          expect(
+            PLATE_CLASSES,
+            `the plate ${plate.querySelector('a') === null ? 'without' : 'with'} a link wears „${name}", which the stylesheet guard has never heard of`,
+          ).toContain(name)
+
+          worn.add(name)
+        }
       }
     }
 
-    expect([...worn].sort(), 'the plate wears a class the stylesheet guard has never heard of')
-      .toEqual(PLATE_CLASSES)
+    /* And the list has no class that no shape wears, which is the other half: a name left in it
+       after the markup stopped writing it is a name every sheet is held against for nothing. */
+    expect([...worn].sort()).toEqual(PLATE_CLASSES)
   })
 })
