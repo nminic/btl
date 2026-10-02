@@ -9,7 +9,7 @@ import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
 import countries from './countries.json'
-import { plainly, type Place } from './places'
+import { nameBeforeItsBracket, plainly, type Place } from './places'
 import { EVENT_KINDS, ITEM_KINDS, RACE_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
@@ -452,6 +452,26 @@ describe('the generated data', () => {
     }
 
     expect(repeated).toEqual([])
+  })
+
+  it('carries a codebook in which every name that ends in a bracket is one the field can read back', async () => {
+    /* `countriesByName` reads a label as the last bracket group of a name, with a
+       space before it and no bracket inside it (data/places.ts). A name that ends
+       in a closing bracket and is not of that shape, say a town labelled with a
+       town that has a bracket of its own, is not read: the namesakes it belongs to
+       lose the country their bare name closes on, and no test of the field
+       notices, because the field is tested on fixtures.
+
+       Held over the shipped file, since the fault would be the generator's, and
+       asked of the function rather than written out here a second time, so that
+       this cannot disagree with what the field does. When it fails the way to go
+       is a decision about that label, and not a looser reading. */
+    const places = await loadResource<Place[]>('places')
+    const unreadable = places
+      .filter(([, name]) => name.endsWith(')') && nameBeforeItsBracket(name) === undefined)
+      .map(([, name, country]) => `${name} (${country})`)
+
+    expect(unreadable).toEqual([])
   })
 
   it('names every country its towns stand in, and puts Kosovo in Serbia', async () => {

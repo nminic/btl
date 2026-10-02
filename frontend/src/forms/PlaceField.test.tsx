@@ -35,11 +35,11 @@ const CODEBOOK: Place[] = [
 
 /** The codebook as the portal fetches it. The list is a resource rather than an
  *  import, so a request is what these have to answer. */
-function servingTheCodebook() {
+function servingTheCodebook(codebook: Place[] = CODEBOOK) {
   const real = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL) =>
     String(input).endsWith('/api/places')
-      ? new Response(JSON.stringify(CODEBOOK), { status: 200 })
+      ? new Response(JSON.stringify(codebook), { status: 200 })
       : real(input))
 
   return () => {
@@ -592,6 +592,141 @@ describe('the town on a form', () => {
     })
 
     globalThis.fetch = real
+  })
+})
+
+/**
+ * A town typed out in full by a name that its namesakes only carry with a label.
+ *
+ * Towns of one country that were called alike carry the nearest bigger town in
+ * brackets since 02.10.2026 (owner, PDL „Odluke iz ciscenja nalaza (02.10.2026,
+ * vlasnik)"), and what somebody types who never looks at the list is still the
+ * bare name. The codebook no longer holds that name as it is written, so a field
+ * that asks only whether the name is there answers differently than it did, and
+ * both ways it can differ are wrong: the country is not recognised where every
+ * town of the name is in one country, and it is recognised as the wrong one where
+ * only one country is left with the bare name (review of PR 464).
+ *
+ * The first case here is the review's own: the name typed in full, the list
+ * never touched, and the country has to end where it ended before the labels.
+ * The field opens on Serbia, so a country that is recognised has somewhere to
+ * move to.
+ */
+const NAMESAKES: Place[] = [
+  /* Two towns of China that were „Yantai" twice over. */
+  [1787093, 'Yantai (Dalian)', 'CN'],
+  [1942254, 'Yantai (Chengxi)', 'CN'],
+  /* Italy keeps its bare Rome, and the two of the United States carry a label
+     each. */
+  [3169070, 'Rome', 'IT'],
+  [4219762, 'Rome (Marietta)', 'US'],
+  [5134295, 'Rome (Utica)', 'US'],
+  /* A bracket GeoNames wrote into the name itself, with no namesake to be told
+     from: the bare Dubova of this codebook is the Romanian one. */
+  [678796, 'Dubova', 'RO'],
+  [790977, 'Dubova (Driloni)', 'RS'],
+  /* With marks, for the name typed without them. */
+  [3204307, 'Belotić (Bogatić)', 'RS'],
+  [3204308, 'Belotić (Šabac)', 'RS'],
+]
+
+describe('a town typed out in full by a name its namesakes carry only with a label', () => {
+  let stop = () => {}
+
+  beforeEach(() => {
+    stop = servingTheCodebook(NAMESAKES)
+  })
+
+  afterEach(() => {
+    stop()
+  })
+
+  it('recognises the country of a name that every town of it carries with a label', async () => {
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Yantai')
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('CN')
+    })
+    expect(country).toBeDisabled()
+    expect(onCountry).toHaveBeenLastCalledWith('CN')
+  })
+
+  it('recognises the same country when the label is typed with it', async () => {
+    /* The whole name is a name of one town, and it was recognised before the
+       bare one was asked about. Held on its own so that reading the bare name
+       back cannot be written to replace it. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Yantai (Dalian)')
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('CN')
+    })
+    expect(country).toBeDisabled()
+    expect(onCountry).toHaveBeenLastCalledWith('CN')
+  })
+
+  it('recognises it typed without its marks, like every other name', async () => {
+    /* Belotić is two villages of Serbia; the field opens on Croatia so that the
+       country has somewhere to move to. */
+    const user = setupUser()
+    const { onCountry, box } = renderField({ town: '', country: 'HR' })
+
+    await user.type(box, 'belotic')
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('RS')
+    })
+    expect(country).toBeDisabled()
+    expect(onCountry).toHaveBeenLastCalledWith('RS')
+  })
+
+  it('leaves the choice open for a name that one country carries bare and another with a label', async () => {
+    /* Rome is Italian, and two towns of the United States are „Rome (Marietta)"
+       and „Rome (Utica)". The name stood in two countries before the labels and
+       recognised nothing. Read as it is written it stands in Italy alone, and the
+       country would shut on Italy under somebody in Georgia. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Rome')
+    /* The list is the proof that the codebook has arrived and been read. Without
+       it „nothing recognised" is also what a field says before the answer comes. */
+    await offered()
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    expect(country).not.toBeDisabled()
+    expect(country).toHaveValue('RS')
+    expect(onCountry).toHaveBeenLastCalledWith('RS')
+  })
+
+  it('does not take a bracket that a town was written with for a label', async () => {
+    /* „Dubova (Driloni)" is one village of Serbia with a bracket in its name, and
+       nothing else in Serbia is called Dubova. The bare name is the Romanian town
+       and nothing else, as it was before the labels. */
+    const user = setupUser()
+    const { onCountry, box } = renderField()
+
+    await user.type(box, 'Dubova')
+
+    const country = screen.getByRole('combobox', { name: /^Država/ })
+
+    await waitFor(() => {
+      expect(country).toHaveValue('RO')
+    })
+    expect(country).toBeDisabled()
+    expect(onCountry).toHaveBeenLastCalledWith('RO')
   })
 })
 

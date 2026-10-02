@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { clearResourceCache, loadResource, RESOURCE_NAMES } from './client'
 import { myOwnRecordFromMe, whoIAm } from '../test/theAnswer'
-import { plainly, type Place } from './places'
+import { countriesByName, plainly, type Place } from './places'
 import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
 /* Two rules that say something the code cannot say for itself, and that have
@@ -523,8 +523,14 @@ describe('what the ducats are called', () => {
  * **What holds it.** Not a list of files: the facts below are read out of every
  * file the sweep opens, so a home written tomorrow is held the day it is
  * written. The expected side is derived from the shipped codebook every time
- * this runs, and the folding is `plainly` itself rather than a copy of it, so a
- * name is counted the way the portal counts it.
+ * this runs, and the names that stand in more than one country are counted by
+ * `countriesByName` itself, folding and the reading back of labels included,
+ * rather than by a copy of it, so a name is counted the way the portal counts it.
+ * On 02.10.2026 the figure written beside the field's lock came out the same
+ * before and after the labels, which is the check that reading them back changes
+ * nothing the field answers: counted over the names as the shipped file writes
+ * them it comes out smaller, and the difference is the namesakes whose bare name
+ * the field reads back.
  *
  * **And what it does not hold, measured rather than assumed.** The „written down
  * somewhere" line is per fact and not per home. It fails when the last home of a
@@ -638,9 +644,9 @@ describe('what the portal writes down about the codebook of towns', () => {
       is: Math.round(statSync(CODEBOOK).size / 1024 / 100) * 100,
     },
     {
-      what: 'names in more than one country, folded the way the field folds them',
+      what: 'names in more than one country, counted the way the field counts them',
       says: /(\d+) names in it stand in more than one country/g,
-      is: inMoreThanOneCountry((town) => written(town).map(plainly)),
+      is: [...countriesByName(towns).values()].filter((held) => held.size > 1).length,
     },
     {
       what: 'names in more than one country, spelt the way the codebook spells them',
