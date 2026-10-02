@@ -461,10 +461,9 @@ describe('a decision on a queue served by the pending screen', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Uz odbijanje je razlog obavezan.',
       )
-      /* The box is still open with the typed reason in it, which is why the sentence is
-         drawn above it rather than among the buttons: the moderator reads why and
-         presses again instead of typing it a second time. */
-      expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Nejasno.')
+      /* The box has closed with the answer (owner, 02.10.2026), so the sentence is what stands over
+         the buttons it left behind, and the words typed into it went with it. */
+      expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
       expect(decidedIn().queryAllByRole('listitem')).toEqual([])
       /* Signed in as the member `ver-bio-1` itself names (`memberNumber` "000010"
          in `public/mock/verification.json`), so a message that reached them
@@ -772,12 +771,10 @@ describe('a refusal that is out with the route', () => {
 
       settle(refusal)
 
+      /* AND THE ANSWER CLOSES THE BOX, which „Odustani" could not: the sentence is the answer, over
+         the buttons the box leaves behind (owner, 02.10.2026). */
       expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
-      expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Tekst je prekratak.')
-      expect(screen.getByRole('button', { name: 'Odustani' })).not.toHaveAttribute(
-        'aria-disabled',
-        'true',
-      )
+      expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
     } finally {
       server.stop()
     }
@@ -929,42 +926,6 @@ describe('a refusal that is out with the route', () => {
     }
   })
 
-  it('lets the box be sent again, and put away, once a refusal is in', async () => {
-    /* THE OTHER END OF THE SAME STATE: a refusal leaves the box open with the reason typed, so the
-       moderator can read why and press again. A flag that stayed raised would leave him a box with
-       two buttons that do nothing. */
-    const user = setupUser()
-    const { server, settle } = serverThatHoldsTheDecision()
-
-    try {
-      await sendTheRefusal(user)
-
-      settle(refusal)
-      await screen.findByRole('alert')
-
-      /* `aria-disabled="false"` is how this box has always said a button is live (the attribute is
-         written as a boolean), so the question is whether it is `true`, not whether it is there. */
-      expect(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })).not.toHaveAttribute(
-        'aria-disabled',
-        'true',
-      )
-
-      /* AND IT REALLY SENDS AGAIN, which the attribute cannot say: the guard that refuses a second
-         press while one is out is a ref, and one left standing after the answer would answer every
-         press with nothing, beside a button that looks live (`member/resultToTheServer.test.tsx`
-         measures the same fault on the member's own results). */
-      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
-      await waitFor(() => {
-        expect(decisionsIn(server.asked)).toHaveLength(2)
-      })
-
-      await user.click(screen.getByRole('button', { name: 'Odustani' }))
-
-      expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
-    } finally {
-      server.stop()
-    }
-  })
 })
 
 /**

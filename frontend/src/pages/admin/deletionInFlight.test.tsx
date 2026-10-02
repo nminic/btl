@@ -35,8 +35,9 @@ import sr from '../../i18n/sr.json'
  * one asked about - and the member's second counted result, for the reason
  * `member/resultToTheServer.test.tsx` gives (with the first, replacing the result the screen
  * deletes with `counted[0]` changes nothing). The sentence a refusal is drawn as belongs to each
- * screen and is measured in its own file; here a refusal is only the answer that leaves the
- * question standing.
+ * screen and is measured in its own file; here a refusal is the answer that closes the question
+ * (owner, 02.10.2026, the second half of the same rule) and leaves the sentence and the focus with
+ * the button that asked.
  */
 
 type Screen = {
@@ -279,13 +280,23 @@ describe('a deletion that is out with the server', () => {
         expect(server.asked.filter((each) => each.init?.method === 'DELETE')).toHaveLength(2)
       })
 
+      /* AND THE SECOND REFUSAL BRINGS THE FOCUS BACK AS WELL, which is what lowering the flag when the
+         question is asked again is for: `RowActions` and the members' list move the focus off the
+         confirming button when it is pressed, and a flag left raised by the first answer would be
+         raised again by the second without changing, so nothing would bring it back. */
+      await waitFor(() => {
+        expect(
+          here.queryByRole('button', { name: `Potvrdi brisanje: ${name}` }),
+        ).not.toBeInTheDocument()
+      })
+      expect(here.getByRole('button', { name: `Obriši: ${name}` })).toHaveFocus()
+
       server.stop()
     }, SLOW)
 
     it('puts a question asked again after a refusal away', async () => {
-      /* The half the old case of „lets the reader put the question away once a refusal is in"
-         measured: whatever the first attempt raised is let go of, so the way out of the second
-         question is open. */
+      /* Whatever the first attempt raised is let go of, so the way out of the second question is
+         open: a flag that stayed raised would leave two buttons that do nothing. */
       const { server, settle, user, name, here } = await leaveItOut()
 
       settle(() => answeredWith(404))
@@ -307,27 +318,6 @@ describe('a deletion that is out with the server', () => {
       server.stop()
     }, SLOW)
 
-    it('lets the reader put the question away once a refusal is in', async () => {
-      /* A refusal is the answer that leaves the question standing, so it is the one that shows
-         whether the state ends with the answer: a flag that stayed raised would leave two buttons
-         that do nothing and a sentence about why the deletion did not happen. */
-      const { server, settle, user, name, here } = await leaveItOut()
-
-      settle(() => answeredWith(404))
-      await waitFor(() => {
-        expect(sending()).toHaveLength(0)
-      })
-
-      const keep = here.getByRole('button', { name: `Odustani od brisanja: ${name}` })
-
-      expect(keep).not.toHaveAttribute('aria-disabled')
-
-      await user.click(keep)
-
-      expect(here.getByRole('button', { name: `Obriši: ${name}` })).toBeInTheDocument()
-
-      server.stop()
-    }, SLOW)
   })
 
   /**

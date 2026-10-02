@@ -887,4 +887,39 @@ describe('a counted result the member takes back', () => {
     },
     SLOW,
   )
+
+  it(
+    'can be taken back again after a refusal, with the question asked afresh',
+    async () => {
+      /* THE SAME GUARD, FOR THE QUESTION AS IT IS AFTER 02.10.2026: a refusal closes it (PDL, „Odbijanje
+         zatvara pitanje kao i uspeh"), so the member asks again - „Obriši" and then „Potvrdi
+         brisanje" on the same row - and the second press must go out. `MyResults.tsx` clears
+         `outstanding.current` inside `takeBack`'s `.then()` regardless of what the server said, and a
+         version that cleared it only on success would leave the member with a question that can be
+         asked and a button that does nothing, and nothing on screen saying why. */
+      const user = setupUser()
+
+      listening(() => refused('theFormIsNotComplete'))
+      renderAt(COUNTED, 'competitor', '000001', undefined, null)
+
+      const row = await secondRow()
+
+      await user.click(row.getByRole('button', { name: /^Obriši: / }))
+      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+
+      await screen.findByText(/Proveri dužinu, uspon, spust i vreme/, undefined, SOON)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      await user.click(row.getByRole('button', { name: /^Obriši: / }))
+      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(2)
+      }, SOON)
+    },
+    SLOW,
+  )
 })

@@ -765,4 +765,69 @@ describe('a refusal of the deletion of a team', () => {
 
     server.stop()
   }, SLOW)
+
+  /*
+   * THE SAME CASES AGAIN, FOR THE LIFE OF THE SENTENCE AFTER 02.10.2026 (PDL, „Odbijanje zatvara
+   * pitanje kao i uspeh"): the refusal closes the question itself and the sentence stands beside the
+   * button that asked. The reader's end of it is therefore the SECOND asking's - he asks again, and
+   * puts that one away - and the start of a second attempt is an asking of its own.
+   */
+  it('goes when a question asked again is put away', async () => {
+    const user = setupUser()
+    const { server } = await refusedOnce(user)
+
+    await user.click(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` }))
+    await user.click(screen.getByRole('button', { name: `Odustani od brisanja: ${ITS_NAME}` }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` })).toBeInTheDocument()
+
+    server.stop()
+  }, SLOW)
+
+  it('goes when a second asking is answered, and comes back if that one is refused too', async () => {
+    const user = setupUser()
+    const { server } = await refusedOnce(user)
+
+    /* THE SECOND DELETION IS HELD, in front of the recording server, so what is read is the page
+       WHILE it is out: the old sentence must not stand over a request that has not been answered. */
+    let letItAnswer = () => {}
+    const held = new Promise<void>((resolve) => {
+      letItAnswer = resolve
+    })
+    const answering = globalThis.fetch
+
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        await held
+      }
+
+      return answering(input, init)
+    }
+
+    await user.click(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` }))
+    await user.click(screen.getByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    letItAnswer()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+
+    server.stop()
+  }, SLOW)
+
+  it('stands beside the button the question came from, until one of the four', async () => {
+    const user = setupUser()
+    const { server } = await refusedOnce(user)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Prelazni rok je zatvoren.')
+    /* THE QUESTION HAS CLOSED, and the focus is on the button the sentence stands beside. */
+    expect(
+      screen.queryByRole('button', { name: `Potvrdi brisanje: ${ITS_NAME}` }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: `Obriši: ${ITS_NAME}` })).toHaveFocus()
+
+    server.stop()
+  }, SLOW)
 })

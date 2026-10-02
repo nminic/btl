@@ -31,6 +31,19 @@ describe('the question about deleting a record', () => {
     return { onDelete, settle }
   }
 
+  /** A deletion whose every call is held on its own, so that two answers can be let go one after the other. */
+  function heldDeletions() {
+    const settles: (() => void)[] = []
+    const onDelete = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          settles.push(resolve)
+        }),
+    )
+
+    return { onDelete, settle: (which: number) => settles[which]?.() }
+  }
+
   function draw(onDelete: () => void | Promise<unknown>, onKeep?: () => void) {
     return render(
       <I18nProvider locale="sr">
@@ -174,31 +187,6 @@ describe('the question about deleting a record', () => {
       expect(onDelete).toHaveBeenCalledTimes(1)
     })
 
-    it('lets the reader try again, and put the question away, once the answer has come', async () => {
-      /* A refusal is the answer that leaves the question standing, and the promise settling is
-         all the component can see of it: the screen drew the sentence in the same breath. */
-      const user = setupUser()
-      const onKeep = vi.fn()
-      const { onDelete, settle } = aHeldDeletion()
-
-      draw(onDelete, onKeep)
-      await ask(user)
-      await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
-
-      await act(async () => {
-        settle()
-      })
-
-      expect(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' })).not.toHaveAttribute(
-        'aria-disabled',
-      )
-
-      await user.click(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' }))
-
-      expect(onKeep).toHaveBeenCalledTimes(1)
-      expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toBeVisible()
-    })
-
     describe('and when the answer comes', () => {
       /* THE SECOND HALF OF THE OWNER'S RULE, 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i
          uspeh"): „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz dugme".
@@ -327,22 +315,35 @@ describe('the question about deleting a record', () => {
         expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).not.toHaveFocus()
       })
 
-      it('moves no focus when a question asked again after an answer is put away', async () => {
+      it('puts the focus on the button again after a second answer, wherever it had gone', async () => {
+        /* WHAT LOWERING THE FLAG WHEN THE QUESTION IS ASKED AGAIN IS FOR, and „Odustani" cannot show it:
+           the effect runs when the flag CHANGES, so a flag that stayed raised after the first answer
+           would be raised again by the second without changing, and the focus would not come back the
+           second time. Each answer is held on its own, and the focus is moved off the confirming button
+           before it, so that neither the element the opener shares with that button nor the first
+           answer's focus can stand in for the second. */
         const user = setupUser()
-        const { onDelete, settle } = aHeldDeletion()
+        const { onDelete, settle } = heldDeletions()
 
         draw(onDelete)
         await ask(user)
         await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
 
         await act(async () => {
-          settle()
+          settle(0)
         })
 
         await ask(user)
-        await user.click(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' }))
+        await user.click(screen.getByRole('button', { name: 'Potvrdi brisanje: Probni tim' }))
+        await user.tab()
 
-        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).not.toHaveFocus()
+        expect(screen.getByRole('button', { name: 'Odustani od brisanja: Probni tim' })).toHaveFocus()
+
+        await act(async () => {
+          settle(1)
+        })
+
+        expect(screen.getByRole('button', { name: 'Obriši: Probni tim' })).toHaveFocus()
       })
     })
 
