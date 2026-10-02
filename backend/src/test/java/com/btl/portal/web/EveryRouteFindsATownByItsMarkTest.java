@@ -12,13 +12,11 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
-import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
@@ -465,10 +463,9 @@ class EveryRouteFindsATownByItsMarkTest {
 	 * kind from walking forever.
 	 */
 	private static boolean takesATown(HandlerMethod handler) {
-		return Stream.of(handler.getMethodParameters())
-				.filter(one -> one.hasParameterAnnotation(RequestBody.class))
-				.map(MethodParameter::getParameterType)
-				.anyMatch(one -> holdsATown(one, new HashSet<>()));
+		return TheBodyOf.type(handler)
+				.filter(one -> holdsATown(one, new HashSet<>()))
+				.isPresent();
 	}
 
 	private static boolean holdsATown(Class<?> type, Set<Class<?>> seen) {

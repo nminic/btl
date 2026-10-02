@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -66,7 +66,8 @@ import java.util.Optional;
  * declared anyway, it would refuse the ordinary request - a {@code DELETE} with no body
  * carries no {@code Content-Type}, which matches no media type - and the address would
  * answer 404 to the one caller it is for. The rule above is about a handler that takes a
- * {@code @RequestBody}, and every mapping in this class that takes one declares it. It is
+ * body, as a {@code @RequestBody} or as a {@link WhatWasSent}, and every mapping in this class
+ * that takes one declares it. It is
  * the shape {@code DELETE /api/events/{id}} and {@code DELETE /api/moderators/{id}} are
  * already written in.
  *
@@ -414,18 +415,22 @@ class PairWriteApi {
 	 */
 	@PostMapping(path = "/api/pairs", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@RequestBody Asked typed) {
+			WhatWasSent<Asked> sent) throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 calls the ordinary case for a moderator
 		   who does not race. A pair is two members, and there is nobody here to be one of
-		   them; the answer is the one InboxApi and InboxWriteApi already give him. */
+		   them; the answer is the one InboxApi and InboxWriteApi already give him, and his
+		   body is not read: it is read below, after this question, and not bound as an
+		   argument (register 166). */
 		if (me == null) {
 			return awayAtAnOpenAddress();
 		}
 
-		if (isNothing(typed.memberNumber())) {
+		Asked typed = sent.read();
+
+		if (typed == null || isNothing(typed.memberNumber())) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -538,7 +543,7 @@ class PairWriteApi {
 	 */
 	@PutMapping(path = "/api/pairs/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> answer(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable AKey id, @RequestBody Answered typed) {
+			@PathVariable AKey id, WhatWasSent<Answered> sent) throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -546,7 +551,9 @@ class PairWriteApi {
 			throw nothingIsHere();
 		}
 
-		if (typed.accepted() == null) {
+		Answered typed = sent.read();
+
+		if (typed == null || typed.accepted() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 

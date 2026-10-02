@@ -14,10 +14,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -484,15 +484,27 @@ class TeamWriteApi {
 
 	@PostMapping(path = "/api/teams", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> propose(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@RequestBody Proposed typed) {
+			WhatWasSent<Proposed> sent) throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race. There is nobody to file a proposal under, and the
-		   answer is the one InboxApi and InboxWriteApi already give him. */
+		   answer is the one InboxApi and InboxWriteApi already give him - and his body is not
+		   read: it is read below, after this question, and not bound as an argument
+		   (register 166). */
 		if (me == null) {
 			return awayAtAnOpenAddress();
+		}
+
+		Proposed typed = sent.read();
+
+		/* A BODY THAT CANNOT BE READ IS THE FORM NOT BEING FILLED IN, and it is answered HERE and
+		   not among the form questions further down. It was bound before anything else while it
+		   was an argument, so a member the window shuts or a member already in a team was told
+		   400 for it and goes on being told so: only the account that names no member changes. */
+		if (typed == null) {
+			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
 		/* AND THE TWO QUESTIONS JoiningATeam ALREADY ANSWERS, asked before anything about
