@@ -143,6 +143,14 @@ the order here does not decide it.
 and the rights each account holds all come over, and the tool lists them when it
 finishes. Read that list before the portal is opened to anybody.
 
+**The photographs go first, and without their times.** Step 8 copies the pictures before the
+transaction that writes their rows, so for as long as the pour takes every copied file is a file
+no `photo` row names yet, and the backend deletes such files once an hour when they are older
+than ten minutes by their own time of last modification. The copy therefore keeps the mode and
+the owner and not the times (`--preserve=mode,ownership`, not `-a`), so a poured file is as young
+as the copy. A pour whose copy and transaction together last longer than ten minutes could still
+lose its first files if a sweep fell in that time; nothing here measures how long a pour takes.
+
 **A row that predates a `not valid` constraint is carried as it is.** The owner's own
 membership has no record of who freed it from the fee, and the constraints that ask for one
 were added `not valid` for that reason (V35). The pour lifts each such constraint inside its
@@ -698,7 +706,8 @@ is attached to.
   next thing this directory needs.
   QA is different and stays different: it holds nothing that needs restoring, so
   `qa_postgres-data` is backed up by nothing on purpose and is rebuilt by
-  dropping it and letting Flyway run again.
+  dropping it and letting Flyway run again. Pictures left in `qa_photos` then name no row,
+  and the backend deletes such files once an hour when they are older than ten minutes.
 - **And the pictures are a second volume with the same gap.** `qa_photos` holds
   the files `/api/photos/{name}` serves, which ADL A43, 2, decided should live in a
   named volume beside the database rather than in a folder on the host: "rezervna
