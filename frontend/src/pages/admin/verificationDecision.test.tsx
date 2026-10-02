@@ -701,14 +701,20 @@ describe('a decision on a queue served by the pending screen', () => {
  * box before the route says anything.
  */
 describe('a refusal that is out with the route', () => {
-  /** A server whose answer to the decision is held until `settle` is called. */
+  /**
+   * A server whose answer to the decision is held until `settle` is called.
+   *
+   * <p>`settle` takes a FUNCTION that makes the answer, not the answer: a `Response` body can be
+   * read once, so one handed to two requests would be spent by the first and the second would meet
+   * a body that is already gone - which reads exactly like a server that never answered.
+   */
   function serverThatHoldsTheDecision() {
-    let settle: (answer: Response) => void = () => {}
-    const held = new Promise<Response>((resolve) => {
+    let settle: (answer: () => Response) => void = () => {}
+    const held = new Promise<() => Response>((resolve) => {
       settle = resolve
     })
     const server = serverThat((path, init) =>
-      init?.method === 'POST' && path.includes('/decision') ? held : null,
+      init?.method === 'POST' && path.includes('/decision') ? held.then((make) => make()) : null,
     )
 
     return { server, settle }
@@ -756,7 +762,7 @@ describe('a refusal that is out with the route', () => {
          with it and a refusal that arrived afterwards had nothing beside it to be read against. */
       expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Tekst je prekratak.')
 
-      settle(refusal())
+      settle(refusal)
 
       expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
       expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Tekst je prekratak.')
@@ -778,7 +784,7 @@ describe('a refusal that is out with the route', () => {
 
       expect(sending()).toHaveLength(1)
 
-      settle(refusal())
+      settle(refusal)
       await screen.findByRole('alert')
 
       expect(sending()).toHaveLength(0)
@@ -796,10 +802,11 @@ describe('a refusal that is out with the route', () => {
       await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
       settle(
-        new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
+        () =>
+          new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
       )
 
       await waitFor(() => {
@@ -838,7 +845,7 @@ describe('a refusal that is out with the route', () => {
       /* COUNTED AFTER THE ANSWER HAS COME, because the request leaves a few turns after the press
          (the token is read first): counted at once, a second request still on its way would read
          as one that was never sent. */
-      settle(refusal())
+      settle(refusal)
       await screen.findByRole('alert')
 
       expect(decisionsIn(server.asked)).toHaveLength(1)
@@ -885,10 +892,11 @@ describe('a refusal that is out with the route', () => {
       expect(screen.queryByRole('button', { name: 'Obriši komentar' })).not.toBeInTheDocument()
 
       settle(
-        new Response(JSON.stringify({ id: 1, state: 'approved' }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }),
+        () =>
+          new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
       )
       await screen.findByText(/^Rešen.* \d+ stavk/)
     } finally {
@@ -907,7 +915,7 @@ describe('a refusal that is out with the route', () => {
     try {
       await sendTheRefusal(user)
 
-      settle(refusal())
+      settle(refusal)
       await screen.findByRole('alert')
 
       /* `aria-disabled="false"` is how this box has always said a button is live (the attribute is
@@ -916,6 +924,15 @@ describe('a refusal that is out with the route', () => {
         'aria-disabled',
         'true',
       )
+
+      /* AND IT REALLY SENDS AGAIN, which the attribute cannot say: the guard that refuses a second
+         press while one is out is a ref, and one left standing after the answer would answer every
+         press with nothing, beside a button that looks live (`member/resultToTheServer.test.tsx`
+         measures the same fault on the member's own results). */
+      await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+      await waitFor(() => {
+        expect(decisionsIn(server.asked)).toHaveLength(2)
+      })
 
       await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
