@@ -410,8 +410,10 @@ describe('the name of a competitor beside their circle', () => {
        words, and which `pages/rankingsLayout.test.tsx` holds against every rule of the portal.
      *
        **And asked of the table's box and not of the window after PR 461** (review, 02.10.2026): the
-       edge is 713px of table, which is a window of 745px with no scrollbar and one of 760px with a
-       scrollbar of 15, the same table. This case reads the rule where it is written; that the box it
+       edge is 727px of table, a window of 759px with no scrollbar and one of 774px with a scrollbar
+       of 15, and it is the narrowest table in which every name of every season is on one line
+       (`pages/Rankings.css` has the seasons and the boundary). This case reads the rule where it is
+       written; that the box it
        asks is a real one, that it is the only rule that takes a circle away and where the edge falls
        are asked of the rendered tree in `pages/rankingsLayout.test.tsx`.
      *
@@ -427,7 +429,7 @@ describe('the name of a competitor beside their circle', () => {
     expect(
       ruleInContainer(
         readFileSync(RANKINGS, 'utf-8'),
-        'standing (max-width: 712.98px)',
+        'standing (max-width: 726.98px)',
         '.rankings__table .plate__faces',
         'Rankings.css',
       ).getPropertyValue('display'),

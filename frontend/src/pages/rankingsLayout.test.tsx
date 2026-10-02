@@ -266,15 +266,19 @@ describe('the main standing, at the widths the owner chose', () => {
       must(table.closest('.table-scroll'), 'the box around the table'),
     )
 
-    /* WHERE IT CHANGES, in the width of that box. 713px is the table of a 745px window with no
-       scrollbar, which is the width PR 461 measured the names stop wrapping at; a window of 760px with a
-       15px scrollbar is the same table. 328 is a 360px telephone, 668 a 700px window. The edge is
+    /* WHERE IT CHANGES, in the width of that box. 727px is the table in which every name of every
+       season the standing draws is on one line (`pages/Rankings.css` has the table of seasons and
+       the boundary it is written as): a window of 759px with no scrollbar and one of 774px with a
+       15px scrollbar. 713px, which was the first choice in this branch and is the table of a 745px
+       window, is taken away now; 328 is a 360px telephone and 668 a 700px window. The edge is
        asked from both sides, so moving it either way fails. */
-    for (const width of [328, 668, 712.98]) {
+    for (const width of [328, 668, 713, 726.98]) {
       expect(holdsAt(asked.containerQuery, width, 'the circle'), `taken away at ${width}`).toBe(true)
     }
 
-    for (const width of [713, 1068]) {
+    /* And drawn from the edge up: 736 is a tablet of 768px in portrait with overlay scrollbars, 1068 a
+       desktop of 1280px. */
+    for (const width of [727, 736, 1068]) {
       expect(holdsAt(asked.containerQuery, width, 'the circle'), `drawn at ${width}`).toBe(false)
     }
   }, SLOW)

@@ -182,16 +182,17 @@ describe('the row of a competitor on the main standing', () => {
     expect(forTheName - forTheNumber).toBeCloseTo(0.25, 5)
   })
 
-  it('does not draw the circle at all where the table is narrower than 713px, which is the boundary a wrapped name meets first', () => {
+  it('does not draw the circle at all where the table is narrower than 727px, which is the boundary a wrapped name meets first', () => {
     /* The equal-height claim above is only ever measured where the circle exists. Where this table
        draws no circle (`styles/leagueLayout.test.ts` already holds the rule that does it), a name
        that wraps to two lines has nothing to disagree with; this case says only that the boundary
        is still there; the case above says the two sides that meet above it still add up. It was
        700px of window until 02.10.2026 (`PDL.md`, „Odluke iz ciscenja nalaza", stavka 260), then
-       745px of window, and is 713px of the table's own box since the review of PR 461 (that is
-       745px of window with no scrollbar and 760px with one of 15; `pages/Rankings.css` has the
-       measurement). The text of the query is what is read, so moving it either way fails here. */
-    const hidden = rankings.slice(rankings.indexOf('@container standing (max-width: 712.98px)'))
+       745px of window, and is 727px of the table's own box since the review of PR 461 (a window of
+       759px with no scrollbar and 774px with one of 15; `pages/Rankings.css` has the measurement
+       and the seasons it was measured over). The text of the query is what is read, so moving it
+       either way fails here. */
+    const hidden = rankings.slice(rankings.indexOf('@container standing (max-width: 726.98px)'))
 
     expect(hidden).toContain('.rankings__table .plate__faces')
     expect(hidden.slice(hidden.indexOf('.plate__faces'))).toMatch(/display:\s*none/)

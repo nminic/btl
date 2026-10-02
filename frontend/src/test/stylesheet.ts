@@ -287,7 +287,7 @@ export function ruleInMedia(
  * The same question `rulesInMedia` asks, of the other kind of query: a rule that depends on the
  * width of a BOX and not of the window (`pages/Rankings.css`, the circle of the main standing). The
  * condition is the text jsdom hands back, the name of the container and then the query, as in
- * `standing (max-width: 712.98px)`, matched as written for the reason `rulesInMedia` gives: a rule
+ * `standing (max-width: 726.98px)`, matched as written for the reason `rulesInMedia` gives: a rule
  * moved into another box or another width fails here rather than being found under one nobody asked
  * about.
  *
