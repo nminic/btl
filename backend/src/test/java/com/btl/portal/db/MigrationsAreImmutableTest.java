@@ -258,7 +258,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   so a migration numbered into the gap would run BEFORE the three that are already on
 			   main - and this one has to run after V34, which wrote the names it rewrites, and
 			   after V46, which last rewrote the article it edits. */
-			new Applied("49", "V49__the_selling_year_opens_on_the_fifteenth_of_october.sql", 618253647));
+			new Applied("49", "V49__the_selling_year_opens_on_the_fifteenth_of_october.sql", 618253647),
+
+			/* V50. The member number sequence is moved above the numbers already written, so the next
+			   draw is a number nobody holds (seen on QA on 29.09.2026: one member holding 000001 and a
+			   sequence standing at 1 | false). No schema, no row.
+
+			   50 because it is the next free number, and that was MEASURED rather than taken: every
+			   local and remote ref, every worktree and the list of open pull requests were searched on
+			   01.10.2026 and none held a migration at V50 or above.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file:
+			   it was worked out with a copy of Flyway's algorithm (CRC32 over the lines, with line
+			   breaks and a BOM left out), which reproduces six numbers pinned above to the digit, and
+			   this list is what confirms it on the gate. */
+			new Applied("50", "V50__the_member_number_sequence_stands_above_the_numbers_already_written.sql",
+					-955843776));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
