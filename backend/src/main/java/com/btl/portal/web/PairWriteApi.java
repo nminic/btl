@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -421,7 +422,7 @@ class PairWriteApi {
 		   who does not race. A pair is two members, and there is nobody here to be one of
 		   them; the answer is the one InboxApi and InboxWriteApi already give him. */
 		if (me == null) {
-			return away();
+			return awayAtAnOpenAddress();
 		}
 
 		if (isNothing(typed.memberNumber())) {
@@ -447,7 +448,7 @@ class PairWriteApi {
 		   they would answer 409 or 201 where this answers 404, and the difference between
 		   those answers over consecutive numbers is a list of who has not paid. */
 		if (mine.isEmpty() || other.isEmpty() || other.get().id() == me) {
-			return away();
+			return awayAtAnOpenAddress();
 		}
 
 		Optional<Mixed> mixed = mixed(mine.get(), other.get());
@@ -507,10 +508,11 @@ class PairWriteApi {
 	 *
 	 * <p><b>What the 404 hides and what it does not.</b> It hides WHICH question is his -
 	 * „refused" and „not there" are one number and one empty body, so a caller walking the
-	 * keys learns nothing about anybody. It does not hide that the ADDRESS exists, and it does
-	 * not need to: every member may answer his own question, so unlike the administrative
-	 * addresses ADL A8's 404 was written for, there is nothing about this one to keep from
-	 * him.
+	 * keys learns nothing about anybody. It goes down the road an address that maps nothing goes
+	 * down ({@link #away}), so it hides that the ADDRESS exists as well. The other answers - 400 about
+	 * the form, 409 - do not, and need not: every member may answer his own question, so unlike the
+	 * administrative addresses ADL A8's 404 was written for, there is nothing about this one to
+	 * keep from him, and the 404 takes that road all the same because it is one answer of one class.
 	 *
 	 * <p><b>THE ID IS THE QUESTION'S AND NOT THE PAIR'S, AND THAT IS A DECISION OF 19.09.2026
 	 * RATHER THAN A CURIOSITY.</b> {@code GET /api/pairs} answers {@code racing_pair.id} and
@@ -536,7 +538,7 @@ class PairWriteApi {
 	 */
 	@PutMapping(path = "/api/pairs/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> answer(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @RequestBody Answered typed) {
+			@PathVariable AKey id, @RequestBody Answered typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -548,7 +550,7 @@ class PairWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> settle(me, id, typed.accepted()));
+		return inOneTransaction.execute(committing -> settle(me, id.value(), typed.accepted()));
 	}
 
 	private ResponseEntity<?> settle(long me, long question, boolean accepted) {
@@ -755,7 +757,7 @@ class PairWriteApi {
 	 */
 	@DeleteMapping("/api/pairs/{id}")
 	ResponseEntity<?> breakUp(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id) {
+			@PathVariable AKey id) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -763,7 +765,7 @@ class PairWriteApi {
 			return away();
 		}
 
-		return inOneTransaction.execute(committing -> end(me, id));
+		return inOneTransaction.execute(committing -> end(me, id.value()));
 	}
 
 	/**
@@ -1088,14 +1090,38 @@ class PairWriteApi {
 	}
 
 	/**
-	 * THE ANSWER FOR SOMEBODY THIS ADDRESS IS NOT FOR, which carries nothing at all.
+	 * THE ANSWER FOR SOMEBODY AN OPEN ADDRESS IS NOT FOR, which carries nothing at all.
+	 *
+	 * <p><b>Only the route on an address {@link ApiSecurity#READ_BY_ANYBODY} opens uses this one.</b>
+	 * {@code OPTIONS} there already says that a write lives at the address, a price {@link ApiSecurity}
+	 * weighed and accepted on 18.09.2026, so nothing is left for the shape of this 404 to hide.
+	 * The routes that take a key are on addresses no list opens and answer through {@link #away}.
 	 *
 	 * <p>The shape {@link EventWriteApi} answers a caller it refuses
 	 * with, and the reason for the empty body is the owner's of 05.09.2026: „adresa koju clan
 	 * ne sme da otvori nije strana sa objasnjenjem nego adresa koje za njega nema."
 	 */
-	private static ResponseEntity<?> away() {
+	private static ResponseEntity<?> awayAtAnOpenAddress() {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+	}
+
+	/**
+	 * THE ANSWER FOR SOMEBODY AN ADDRESS WITH A KEY IN IT IS NOT FOR, which carries nothing at all.
+	 *
+	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND IT IS THROWN
+	 * RATHER THAN RETURNED.</b> A status written onto the response comes back with
+	 * {@code Content-Length: 0}, while an address that maps nothing comes back as the container's
+	 * error document, chunked: over a real socket that is 262 bytes against more than 380, and it
+	 * is an oracle for whether a route lives at this address, one request per guess
+	 * ({@link RightsAtTheDoor} measured it). {@link ResponseStatusException} is answered by
+	 * {@code sendError}, one call into the machinery an unmapped address already uses and not an
+	 * imitation of it, and it is thrown because this is asked from inside transaction callbacks,
+	 * where there is no response to hand. Every refusal here is decided before the first write, so
+	 * the rollback the exception causes undoes nothing. {@code AWordInAKeyOverRealHttpTest}
+	 * compares the bytes with the twin's, for every kind of caller.
+	 */
+	private static ResponseEntity<?> away() {
+		throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {

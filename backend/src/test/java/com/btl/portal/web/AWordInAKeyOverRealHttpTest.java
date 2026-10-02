@@ -62,10 +62,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>Three comparisons, because there are three things a refusal can give away.</b>
  *
  * <ul>
- * <li>A word, a plus sign, a hexadecimal number are each answered exactly as a number that
- * matches no row, for every kind of caller, every body and every position of the key. They travel
- * the same road, so a handler that asks about the FORM before it asks about the row answers the
- * form first for both.
+ * <li>A word is answered exactly as a number that matches no row, for every kind of caller, every
+ * body and every position of the key. They travel the same road, so a handler that asks about the
+ * FORM before it asks about the row answers the form first for both.
  * <li>A number that matches no row is answered exactly as an address that maps nothing: the same
  * status, the same length, the same bytes. A status written onto the response and an error sent
  * through the container differ by about a hundred and fifty bytes, and over MockMvc they are
@@ -88,8 +87,13 @@ class AWordInAKeyOverRealHttpTest {
 	/** Ten characters, shaped like a key, and a key no sequence has ever reached. */
 	private static final String A_NUMBER_WITH_NO_ROW = "9999999999";
 
-	/** Each as long as {@link #A_NUMBER_WITH_NO_ROW}, so the three are compared byte for byte. */
-	private static final List<String> NOT_A_KEY = List.of("nije-kljuc", "+999999999", "0x99999999");
+	/**
+	 * As long as {@link #A_NUMBER_WITH_NO_ROW}, so the two are compared byte for byte. A plus sign and
+	 * a hexadecimal number are not asked about here: spelt round a number that matches no row they
+	 * are answered as it is whatever reads them, so only a row that EXISTS tells them from digits,
+	 * and {@link #aKeySpeltAnyOtherWayThanInDigitsIsNoItemEvenToTheOneWhoMayOpenIt} has one.
+	 */
+	private static final String A_WORD = "nije-kljuc";
 
 	/** Nineteen digits: larger than the largest {@code long}, so a bound one digit too wide fails. */
 	private static final String NINETEEN_DIGITS = "9999999999999999999";
@@ -459,7 +463,7 @@ class AWordInAKeyOverRealHttpTest {
 	}
 
 	/**
-	 * A WORD, A PLUS SIGN AND A HEXADECIMAL NUMBER ARE EACH A NUMBER THAT MATCHES NO ROW.
+	 * A WORD IS A NUMBER THAT MATCHES NO ROW.
 	 *
 	 * <p>For every route, every kind of caller, every position of the key and every body. The two
 	 * addresses are as long as each other and differ only in the key; if the answers differ, the
@@ -476,13 +480,11 @@ class AWordInAKeyOverRealHttpTest {
 						String toTheNumber = answerTo(route.verb(), reference, caller,
 								extraFor(route), body);
 
-						for (String spelt : NOT_A_KEY) {
-							String asked = route.addressWith(position, spelt);
+						String asked = route.addressWith(position, A_WORD);
 
-							oneAnswer(route + " as " + caller + ", key " + position + " spelt " + spelt
-									+ ", body [" + body + "]", answerTo(route.verb(), asked, caller,
-									extraFor(route), body), asked, toTheNumber, reference);
-						}
+						oneAnswer(route + " as " + caller + ", key " + position + " a word, body ["
+								+ body + "]", answerTo(route.verb(), asked, caller, extraFor(route),
+								body), asked, toTheNumber, reference);
 					}
 				}
 			}

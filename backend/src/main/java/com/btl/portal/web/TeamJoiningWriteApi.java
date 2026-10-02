@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -506,7 +507,7 @@ class TeamJoiningWriteApi {
 	 */
 	@PostMapping("/api/teams/{id}/applications")
 	ResponseEntity<?> apply(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id) {
+			@PathVariable AKey id) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -514,7 +515,7 @@ class TeamJoiningWriteApi {
 			return away();
 		}
 
-		return inOneTransaction.execute(committing -> asking(me, id));
+		return inOneTransaction.execute(committing -> asking(me, id.value()));
 	}
 
 	private ResponseEntity<?> asking(long me, long team) {
@@ -585,7 +586,7 @@ class TeamJoiningWriteApi {
 	@PutMapping(path = "/api/teams/{id}/applications/{application}",
 			consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> decide(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long application, @RequestBody Answered typed) {
+			@PathVariable AKey id, @PathVariable AKey application, @RequestBody Answered typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -597,7 +598,7 @@ class TeamJoiningWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		return inOneTransaction.execute(committing -> deciding(me, id, application, typed.accepted()));
+		return inOneTransaction.execute(committing -> deciding(me, id.value(), application.value(), typed.accepted()));
 	}
 
 	private ResponseEntity<?> deciding(long me, long team, long application, boolean accepted) {
@@ -658,7 +659,7 @@ class TeamJoiningWriteApi {
 	 */
 	@DeleteMapping("/api/teams/{id}/applications/{application}")
 	ResponseEntity<?> withdraw(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long application) {
+			@PathVariable AKey id, @PathVariable AKey application) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -666,7 +667,7 @@ class TeamJoiningWriteApi {
 			return away();
 		}
 
-		return inOneTransaction.execute(committing -> withdrawing(me, id, application));
+		return inOneTransaction.execute(committing -> withdrawing(me, id.value(), application.value()));
 	}
 
 	private ResponseEntity<?> withdrawing(long me, long team, long application) {
@@ -715,7 +716,7 @@ class TeamJoiningWriteApi {
 	 */
 	@PostMapping(path = "/api/teams/{id}/invitations", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @RequestBody Asked typed) {
+			@PathVariable AKey id, @RequestBody Asked typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -728,7 +729,7 @@ class TeamJoiningWriteApi {
 		}
 
 		return inOneTransaction.execute(
-				committing -> inviting(me, id, typed.memberNumber().strip()));
+				committing -> inviting(me, id.value(), typed.memberNumber().strip()));
 	}
 
 	private ResponseEntity<?> inviting(long me, long team, String memberNumber) {
@@ -806,7 +807,7 @@ class TeamJoiningWriteApi {
 	@PutMapping(path = "/api/teams/{id}/invitations/{invitation}",
 			consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> answer(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long invitation, @RequestBody Answered typed) {
+			@PathVariable AKey id, @PathVariable AKey invitation, @RequestBody Answered typed) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -819,7 +820,7 @@ class TeamJoiningWriteApi {
 		}
 
 		return inOneTransaction.execute(
-				committing -> answering(me, id, invitation, typed.accepted()));
+				committing -> answering(me, id.value(), invitation.value(), typed.accepted()));
 	}
 
 	private ResponseEntity<?> answering(long me, long team, long invitation, boolean accepted) {
@@ -896,7 +897,7 @@ class TeamJoiningWriteApi {
 	 */
 	@DeleteMapping("/api/teams/{id}/invitations/{invitation}")
 	ResponseEntity<?> takeBack(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable long id, @PathVariable long invitation) {
+			@PathVariable AKey id, @PathVariable AKey invitation) {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
@@ -904,7 +905,7 @@ class TeamJoiningWriteApi {
 			return away();
 		}
 
-		return inOneTransaction.execute(committing -> takingBack(me, id, invitation));
+		return inOneTransaction.execute(committing -> takingBack(me, id.value(), invitation.value()));
 	}
 
 	private ResponseEntity<?> takingBack(long me, long team, long invitation) {
@@ -1277,9 +1278,21 @@ class TeamJoiningWriteApi {
 	 *
 	 * <p>The owner's reason of 05.09.2026: „adresa koju član ne sme da otvori nije strana sa
 	 * objašnjenjem nego adresa koje za njega nema."
+	 *
+	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND IT IS THROWN
+	 * RATHER THAN RETURNED.</b> A status written onto the response comes back with
+	 * {@code Content-Length: 0}, while an address that maps nothing comes back as the container's
+	 * error document, chunked: over a real socket that is 262 bytes against more than 380, and it
+	 * is an oracle for whether a route lives at this address, one request per guess
+	 * ({@link RightsAtTheDoor} measured it). {@link ResponseStatusException} is answered by
+	 * {@code sendError}, one call into the machinery an unmapped address already uses and not an
+	 * imitation of it, and it is thrown because this is asked from inside transaction callbacks,
+	 * where there is no response to hand. Every refusal here is decided before the first write, so
+	 * the rollback the exception causes undoes nothing. {@code AWordInAKeyOverRealHttpTest}
+	 * compares the bytes with the twin's, for every kind of caller.
 	 */
 	private static ResponseEntity<?> away() {
-		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		throw new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {
