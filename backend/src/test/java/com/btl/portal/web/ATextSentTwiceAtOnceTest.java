@@ -148,7 +148,7 @@ class ATextSentTwiceAtOnceTest {
 	 * THE SAME BUTTON PRESSED TWICE: ONE TEXT WAITS, ONE PRESS IS TOLD IT ALREADY DOES.
 	 *
 	 * <p>Measured on the code before V53, with this case written first: both presses were answered
-	 * 200 and two texts of one member stood in the queue.
+	 * 200 - and on that code a 200 for a text is a row written, so the queue held two.
 	 */
 	@Test
 	void theSameTextSentTwiceAtOnceLeavesOneWaitingAndTheOtherPressIsTold() throws Exception {

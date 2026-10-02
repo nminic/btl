@@ -231,7 +231,8 @@ class FreeingTwiceAtOneInstantTest {
 	@ParameterizedTest
 	@EnumSource(Press.class)
 	void twoPressesAtOnceActivateOnceAndDrawAtMostOneNumber(Press press) throws Exception {
-		long him = competitor(press.alreadyNumbered ? THE_NUMBER_HE_HAS : null, "b2032000000000a" + press.ordinal());
+		long him = competitor(press.alreadyNumbered ? THE_NUMBER_HE_HAS : null,
+				"b2032000000000a" + press.ordinal());
 
 		if (press.ground.equals("balance")) {
 			aBookThatCoversTheFee(him);

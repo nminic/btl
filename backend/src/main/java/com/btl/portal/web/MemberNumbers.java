@@ -61,16 +61,18 @@ import org.springframework.stereotype.Component;
  * {@code insert into membership}, and still does.
  * <li>{@link MembershipWriteApi#grant} draws LAST as well, after the line in the book, the
  * {@code insert into membership} and the referral, and the two halves of that came for two
- * different reasons. <b>Two presses at once</b> used to both draw and the second then lost to
- * {@code membership_pk}: a 500 and a number spent for good, measured by
- * {@code FreeingTwiceAtOneInstantTest} before either half existed. The route now locks the
- * member's row before it decides, so the second press waits for the first and is answered the
- * harmless repeat - that is what closes the race, and it would close it with the draw anywhere.
- * <b>The draw moved anyway</b>, to keep the order of the other two doors to the same fact.
- * This paragraph used to say that was a change nobody could measure, and with the lock in
- * place no refusal the portal can reach today does come after the decision on that route; so
- * {@code aBookingTheDatabaseRefusesDrawsNoNumber} puts one there by hand, a constraint the case
- * adds and takes away, and requires that the sequence did not move.
+ * different reasons. <b>Two presses at once</b> both decided to grant, both drew - the draw
+ * stood ahead of the insert - and the second then lost to {@code membership_pk}: a 500,
+ * measured by {@code FreeingTwiceAtOneInstantTest} before either half existed, inside a
+ * transaction that went back with its number already drawn. The route now locks the member's
+ * row before it decides, so the second press waits for the first and is answered the harmless
+ * repeat - that is what closes the race, and it would close it with the draw anywhere: the
+ * mutation that put the draw back first left that case green. <b>The draw moved anyway</b>, to
+ * keep the order of the other two doors to the same fact. This paragraph used to say that was a
+ * change nobody could measure, and with the lock in place no refusal the portal can reach today
+ * does come after the decision on that route; so {@code aBookingTheDatabaseRefusesDrawsNoNumber}
+ * puts one there by hand, a constraint the case adds and takes away, requires that the sequence
+ * did not move, and is the one case that fails when the draw goes back first.
  * </ul>
  *
  * <p><b>What that leaves open, in one sentence:</b> on all three doors a booking the database

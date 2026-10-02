@@ -50,11 +50,10 @@ final class BlockedBehindThisHold {
 	 * genuinely stopped behind a held row, one waits on a {@code transactionid} - this
 	 * connection's - and the other on a {@code tuple} the first waiter already holds. Rooted at
 	 * this pid and read one level deep the count is 1 and the wait below would time out on a
-	 * pair that had arrived. The same closure is what counts a second insert that waits on the
-	 * FIRST insert's uncommitted key rather than on the held row at all, which is how two texts
-	 * sent at once queue once a unique index stands between them. The closure is the shape of
-	 * the queue rather than a guess at its depth: whatever chain leads back here is counted, and
-	 * nothing else can.
+	 * pair that had arrived. The same closure counts a request that waits on ANOTHER REQUEST
+	 * rather than on the held row, whatever statement makes it wait, so a case does not have to
+	 * know which of its two requests stops on what. The closure is the shape of the queue rather
+	 * than a guess at its depth: whatever chain leads back here is counted, and nothing else can.
 	 *
 	 * <p><b>Nothing is read off {@code state} or {@code query}, and that is not a preference.</b>
 	 * Measured the same day: a backend really stopped on a row lock reports {@code state =
