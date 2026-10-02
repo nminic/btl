@@ -656,22 +656,24 @@ describe('a town typed out in full by a name its namesakes carry only with a lab
     expect(onCountry).toHaveBeenLastCalledWith('CN')
   })
 
-  it('recognises the same country when the label is typed with it', async () => {
-    /* The whole name is a name of one town, and it was recognised before the
-       bare one was asked about. Held on its own so that reading the bare name
-       back cannot be written to replace it. */
+  it('recognises the country of the whole name, even where the bare name stands in two', async () => {
+    /* The label is what makes a name one town's, and typed in full it recognises
+       that town's country whatever the bare name does: „Rome" stands in two
+       countries and „Rome (Utica)" in one. The whole name was recognised before
+       the bare one was asked about, and this holds it on its own so that reading
+       the bare name back cannot be written to replace it. */
     const user = setupUser()
     const { onCountry, box } = renderField()
 
-    await user.type(box, 'Yantai (Dalian)')
+    await user.type(box, 'Rome (Utica)')
 
     const country = screen.getByRole('combobox', { name: /^Država/ })
 
     await waitFor(() => {
-      expect(country).toHaveValue('CN')
+      expect(country).toHaveValue('US')
     })
     expect(country).toBeDisabled()
-    expect(onCountry).toHaveBeenLastCalledWith('CN')
+    expect(onCountry).toHaveBeenLastCalledWith('US')
   })
 
   it('recognises it typed without its marks, like every other name', async () => {
