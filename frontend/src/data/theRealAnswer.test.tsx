@@ -770,6 +770,7 @@ describe('who administers a team, on the answer a member is given', () => {
     bio: '',
     logo: null,
     crop: null,
+    alsoInTheTeam: [],
     ...fields,
   })
 

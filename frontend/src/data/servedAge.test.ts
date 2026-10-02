@@ -269,7 +269,17 @@ describe('which fields the portal serves', () => {
        identifiers a sequence handed out; `teamId` is a team's key and not a season, and the
        one field that sounds like a year is not there at all - `MyApplicationsApi` answers no
        `season` on any of the four lists, which is `TeamJoiningWriteApi`'s own decision that the
-       season is read on the day of the ANSWER and never off the question. */
+       season is read on the day of the ANSWER and never off the question.
+
+       **One more path since 02.10.2026, `alsoInTheTeam` on a team, and it IS about a person:**
+       a member who hides his profile, named on his team to a visitor because his own record no
+       longer names it (PDL, odeljak 16, [ODLUKA 27.09.2026, owner]). Added to the snapshot by
+       hand, as this file requires. Every served team carries it EMPTY - no generated member hides
+       his profile - so the two names under it are not in the file at all and the rule below has
+       none of their values to read. What they hold on the server is a member NUMBER, the same
+       spelling every public answer uses for somebody, and `since`, which is `teamSince` told on
+       the other door: the season a membership began in, which V11 keeps at 2027 or later, and
+       not anything an age could be read off. */
     expect(Object.keys(served)).toHaveLength(17)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(

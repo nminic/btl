@@ -14,6 +14,7 @@ import {
   bestOfficialSeason,
   bestSingleRaces,
   memberOf,
+  membersOf,
   rankingFor,
   rankMembers,
   topByKilometers,
@@ -587,6 +588,7 @@ describe('rankTeams', () => {
     organizerMemberNumber: '000001',
     bio: '',
     logo: null,
+    alsoInTheTeam: [],
   })
 
   it('sums every member, without normalising for team size', () => {
@@ -752,6 +754,104 @@ describe('rankTeams', () => {
     expect(in2021.totals.points).toBe(30)
 
     expect(first(rankTeams(teams, competitors, results, 2027)).members).toBe(2)
+  })
+
+  it('counts a member his team names in place of his record, from the season it gives with him', () => {
+    /* PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: a member who hides his profile has no team
+       on his record for a reader who is not signed in, and „ako je deo tima, njegovo ime se vidi
+       u timu i bodovi koje je doneo". The server names him on the team instead
+       (`Team.alsoInTheTeam`), so the sum and the head count have to read it.
+
+       Two seasons, because the team gives the season with him and the rule reads it like any
+       other: he is in team 1 from 2028, so 2027 is the year that tells „from the season it
+       gives" apart from „always". Team 2 stands on 15 points in 2028, between team 1 with him
+       (17) and team 1 without him (10), so leaving him out changes the ORDER and not only a
+       number. */
+    const teams = [{ ...team(1), alsoInTheTeam: [{ memberNumber: '000002', since: 2028 }] }, team(2)]
+    const competitors = [
+      competitor('000001', { teamId: 1, teamSince: 2027 }),
+      competitor('000002', { profileHidden: true }),
+      competitor('000003', { teamId: 2, teamSince: 2027 }),
+    ]
+    const in2027 = [result('000001', '2027-05-01', 10), result('000002', '2027-05-01', 7)]
+    const in2028 = [
+      result('000001', '2028-05-01', 10),
+      result('000002', '2028-05-01', 7),
+      result('000003', '2028-05-01', 15),
+    ]
+
+    expect(
+      rankTeams(teams, competitors, in2028, 2028).map((row) => [row.team.id, row.members, row.totals.points]),
+    ).toEqual([
+      [1, 2, 17],
+      [2, 1, 15],
+    ])
+    expect(
+      rankTeams(teams, competitors, in2027, 2027).map((row) => [row.team.id, row.members, row.totals.points]),
+    ).toEqual([
+      [1, 1, 10],
+      [2, 1, 0],
+    ])
+  })
+})
+
+describe('membersOf', () => {
+  /* The one place the two doors a member of a team is named on are put together: his record,
+     and - for a member who hides his profile, read by a visitor - the team's own answer. */
+  const theTeam = (alsoInTheTeam: Team['alsoInTheTeam'] = []): Team => ({
+    id: 7,
+    slug: 'tim-7',
+    name: 'Tim 7',
+    city: 'Beograd',
+    country: 'RS',
+    bio: '',
+    logo: null,
+    crop: null,
+    alsoInTheTeam,
+  })
+
+  const named = (team: Team, competitors: Competitor[]) =>
+    membersOf(team, competitors)
+      .map((one) => `${one.competitor.memberNumber} ${String(one.since)}`)
+      .sort()
+
+  it('names a member off his record, and one his team names, each with his own season', () => {
+    /* 000003 is in ANOTHER team, so a reading that took every record named on any team is a
+       third name here; 000002 has nothing on his record, so a reading of the records alone is
+       one name short. */
+    const competitors = [
+      competitor('000001', { teamId: 7, teamSince: 2027 }),
+      competitor('000002', { profileHidden: true }),
+      competitor('000003', { teamId: 8, teamSince: 2027 }),
+    ]
+
+    expect(named(theTeam([{ memberNumber: '000002', since: 2028 }]), competitors)).toEqual([
+      '000001 2027',
+      '000002 2028',
+    ])
+  })
+
+  it('counts a member once when both doors name him, and takes his record over the team', () => {
+    /* One visit can hold the list as somebody signed in and the teams as a visitor, because
+       signing in happens in place and only some screens drop `competitors` after a write. Then
+       the same member stands on both doors. The seasons differ here only so the case can say
+       WHICH door was believed; on the server they are one membership and one number. */
+    const competitors = [competitor('000002', { teamId: 7, teamSince: 2027 })]
+
+    expect(named(theTeam([{ memberNumber: '000002', since: 2028 }]), competitors)).toEqual([
+      '000002 2027',
+    ])
+  })
+
+  it('leaves out a member the team names and the list does not carry', () => {
+    /* The list is the members whose fee is standing, so a number it does not carry has no
+       name, no category and no row to draw; the record would have said the same by not being
+       there. */
+    const competitors = [competitor('000001', { teamId: 7, teamSince: 2027 })]
+
+    expect(named(theTeam([{ memberNumber: '000099', since: 2027 }]), competitors)).toEqual([
+      '000001 2027',
+    ])
   })
 })
 

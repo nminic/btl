@@ -53,6 +53,7 @@ const TEAMS: Team[] = [
     bio: '',
     logo: null,
     crop: { x: 0.5, y: 0.5, size: 1 },
+    alsoInTheTeam: [],
   },
 ]
 

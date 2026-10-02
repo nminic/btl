@@ -243,8 +243,10 @@ import java.util.List;
  * {@code aMemberWhoseOnlyPictureIsWaitingCarriesNoPortrait} is the half a {@code coalesce}
  * of the two columns would otherwise pass.
  *
- * <p><b>A hidden profile is still in this list, and since 26.09.2026 its PORTRAIT is the one
- * thing on the list that hiding takes away.</b> Hiding a profile is about the
+ * <p><b>A hidden profile is still in this list, and what hiding takes off its record - from a
+ * reader who is not signed in - is what a profile page would have shown: the portrait since
+ * 26.09.2026, the biography since 27.09.2026 and the link to his team since 02.10.2026.</b>
+ * Each of the three has its own decision and its own paragraph below. Hiding a profile is about the
  * profile PAGE (PDL P23); the member number and the name stay public (Article
  * 73), and the portal needs the flag in order to know what to draw. Deleting a
  * member is the other door and it takes the row with it. A lapsed fee is a third
@@ -293,6 +295,28 @@ import java.util.List;
  * way this still differs from the portrait: there is no "member with none" state to borrow the
  * null from.
  *
+ * <p><b>AND SINCE 02.10.2026 THE LINK TO HIS TEAM, BY THE SAME RULE AND, FOR THE FIRST TIME, THE
+ * SAME TEXT.</b> PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between three offered: „tim
+ * se zadrzava od posetioca, isto kao biografija i fotografija" - and the owner's own limit on it the
+ * same day: „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi
+ * u timu i bodovi koje je doneo." So {@code teamId} and {@code teamSince} leave his record for a
+ * reader who is not signed in, and the team does NOT lose him: his points go into the team's sum
+ * and his name onto its page. The reasoning written under the decision says why that half carries
+ * weight: his points are part of the team's sum, so taking him off the team would change the
+ * arithmetic of the league and not only a page.
+ *
+ * <p><b>Which is why the link moves rather than goes.</b> {@link TeamApi} answers it on the team, as
+ * {@code alsoInTheTeam}, to exactly the reader this resource withholds it from and to nobody else:
+ * the same condition, {@link #THE_PROFILE_IS_OPEN_TO_THE_CALLER}, read here as „yes" and there as
+ * „no". So for every reader each standing membership stands on exactly one of the two doors, and
+ * one link never has two homes. The channel - a field on the team's resource - is derived and not
+ * the owner's word; PDL records it beside P13 (02.10.2026).
+ *
+ * <p><b>The shape is null, which is what a member in no team is answered.</b> The portrait's
+ * decision gave it: „Oblik je null, nikad odsutan kljuc" (PDL, 26.09.2026). And the condition stands
+ * on the SELECT expression rather than on the join, the biography's mechanism rather than the
+ * portrait's, because the join is {@link MeApi}'s clause word for word and stays one text.
+ *
  * <p><b>In member number order</b>, which is the one order the portal speaks of
  * them in: it is printed on the card and it never changes.
  */
@@ -333,6 +357,32 @@ class CompetitorApi {
 	 * comparison of two strings.
 	 */
 	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
+
+	/**
+	 * WHETHER THE ONE ASKING MAY READ WHAT A MEMBER'S PROFILE HOLDS, written ONCE and asked of
+	 * three things here and of one list in {@link TeamApi}.
+	 *
+	 * <p><b>One text and not three, because the owner made the axis one.</b> PDL, odeljak 18,
+	 * 27.09.2026: „Clan koji je aktiviran za sezonu ne moze sakriti svoje rezultate niti profil od
+	 * drugih clanova (osim recimo da se ne prikazuje datum rodjenja). Moze sakriti samo od
+	 * neulogovanih posetilaca profil." Until 02.10.2026 the portrait's join and the biography's
+	 * {@code case} each spelt this out for themselves; the link to his team is the third thing it
+	 * decides, and {@link TeamApi} has to ask the same question with the answer turned over, so a
+	 * spelling per use would have been four homes of one sentence.
+	 *
+	 * <p><b>Read off the SESSION and never off the member</b>, for the reason written over
+	 * {@code signedIn} in {@link #competitors}: an account that races for nobody is signed in
+	 * (owner, 14.09.2026, and PDL 02.10.2026: „Skriven profil vidi svako ko je prijavljen, i
+	 * administrativni nalog koji ne trci").
+	 *
+	 * <p><b>A fragment rather than a query</b>: it needs the member aliased {@code c} and
+	 * {@code :signedIn} bound, which is the price {@link TeamApi#WHO_STANDS_IN_A_TEAM} names for the
+	 * same shape. The parameter is CAST because it stands alone as an operand of {@code or}, with
+	 * nothing beside it to take a type from, and PostgreSQL refuses the statement rather than
+	 * guessing („could not determine data type of parameter").
+	 */
+	static final String THE_PROFILE_IS_OPEN_TO_THE_CALLER =
+			"(cast(:signedIn as boolean) or not c.profile_hidden)";
 
 	private final JdbcClient db;
 
@@ -438,6 +488,19 @@ class CompetitorApi {
 	 *                       {@code null}. Withheld on the SELECT expression rather than on a
 	 *                       join, because this column stands on {@code competitor} itself,
 	 *                       the FROM table, which never fails to match
+	 * @param teamId         the team of the membership that has NOT ENDED, or NULL for a
+	 *                       member who is in none - and, since 02.10.2026, for a member who
+	 *                       hides his profile when nobody is signed in, which is the same
+	 *                       shape on purpose: the portrait's decision says „Oblik je null,
+	 *                       nikad odsutan kljuc ... skriven clan se cita tacno kao clan koji
+	 *                       sliku nema" (PDL, 26.09.2026), and this is the same withholding
+	 *                       (PDL, odeljak 16, [ODLUKA 27.09.2026, owner]). The link is not
+	 *                       lost: {@link TeamApi} names him on his team, as
+	 *                       {@code alsoInTheTeam}, to exactly the reader it is withheld from
+	 *                       here
+	 * @param teamSince      the season that membership began in, null exactly when
+	 *                       {@code teamId} is, for both of its reasons: the two halves of the
+	 *                       link leave together or neither does
 	 * @param birthdayShown  what the member chose about their birthday, which the
 	 *                       portal needs in order to draw the card at all
 	 * @param ageBand        the band alone and never the finished code, so the sex is
@@ -484,18 +547,20 @@ class CompetitorApi {
 	 *               a signed in MEMBER is now answered what a visitor is, to the byte,
 	 *               with nothing cut out of either. That claim was not available while
 	 *               those two existed.
-	 *               <p><b>AND SINCE 26.09.2026 IT HOLDS OF EVERY FIELD BUT TWO, which is
-	 *               said here rather than left for the case to carry alone.</b> A session
-	 *               now decides two things, each its own [ODLUKA 26.09.2026, owner]: whether
-	 *               a member who hides his profile has his portrait answered, and whether he
-	 *               has his biography answered (see the note on this class). So the two
+	 *               <p><b>AND SINCE 26.09.2026 IT HOLDS OF EVERY FIELD BUT THOSE HIDING
+	 *               MOVES, which is said here rather than left for the case to carry
+	 *               alone.</b> A session decides, for a member who hides his profile, whether
+	 *               his portrait is answered and whether his biography is [ODLUKA 26.09.2026,
+	 *               owner, twice], and since 02.10.2026 whether the link to his team is
+	 *               [ODLUKA 27.09.2026, owner] (see the note on this class). So the two
 	 *               answers are equal on every OTHER name the portal reads, and the case
-	 *               NAMES the two fields it excuses rather than discovering them by what it
+	 *               NAMES the fields it excuses rather than discovering them by what it
 	 *               declines to look at - a comparison that has to ignore something to pass
 	 *               is only as honest as the reason it gives for the difference (rule of
 	 *               14.09.2026, from a review whose only real finding was its own blind
-	 *               spot). It first requires that the two really DO differ before excusing
-	 *               either, so naming them cannot become the thing that makes the case pass
+	 *               spot). It first requires that the answers really DO differ before
+	 *               excusing anything, so naming them cannot become the thing that makes the
+	 *               case pass
 	 */
 	@GetMapping("/api/competitors")
 	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
@@ -518,8 +583,10 @@ class CompetitorApi {
 		boolean administration = member != null && mayHe.may(member, OVER_THE_MEMBERS);
 
 		/* AND WHETHER ANYBODY IS ASKING AT ALL, which is a second question and not the one
-		   above. It decides one thing only: whether a hidden member's portrait leaves (PDL
-		   P23 and the decision of 26.09.2026, see the note on this class).
+		   above. It decides what a hidden member's record gives a reader, and since 02.10.2026
+		   that is three things: his portrait, his biography and the link to his team (PDL P23,
+		   the decisions of 26.09.2026 and 27.09.2026). All three are asked through
+		   `THE_PROFILE_IS_OPEN_TO_THE_CALLER`, which is the one place the question is written.
 
 		   IT IS READ OFF THE ACCOUNT, and that is the same trap the line above avoids rather
 		   than a repetition of it. An account that does not race has no member at all (V23,
@@ -551,21 +618,42 @@ class CompetitorApi {
 						   than on a joined row that can simply fail to match (see the note on
 						   this class and on `bio` in `Competitor`).
 
-						   THE SAME CONDITION AS THE PORTRAIT'S JOIN, `:signedIn or not
-						   profile_hidden`, and the SAME PARAMETER: nothing new is bound, because
-						   it is the same question asked twice for two different mechanisms.
-						   Written as `:administration` instead - the mistake `membership_basis`
-						   two names below makes on purpose for a different question - a signed
-						   in member would stop seeing a hiding colleague's biography although
-						   PDL, 06.09.2026 requires that he still does;
-						   `aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn` is written to
-						   catch exactly that swap.
-
-						   CAST, for the reason written beside `:administration` above: standing
-						   alone as an operand of `or` it has no neighbour to take a type from. */
-						+ " case when (cast(:signedIn as boolean) or not c.profile_hidden)"
+						   THE SAME CONDITION AS THE PORTRAIT'S JOIN, and since 02.10.2026 the
+						   same TEXT: `THE_PROFILE_IS_OPEN_TO_THE_CALLER`, one sentence of the
+						   owner's asked of three things. Written as `:administration` instead -
+						   the mistake `membership_basis` two names below makes on purpose for a
+						   different question - a signed in member would stop seeing a hiding
+						   colleague's biography although PDL, 06.09.2026 requires that he still
+						   does; `aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn` is
+						   written to catch exactly that swap. */
+						+ " case when " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						+ "  then c.bio end as bio,"
-						+ " m.team_id, m.season_from as team_since,"
+						/* AND THE TEAM HE IS IN, WITHHELD BY THE SAME CONDITION SINCE 02.10.2026.
+						   PDL, odeljak 16 [ODLUKA 27.09.2026, owner]: „tim se zadrzava od
+						   posetioca, isto kao biografija i fotografija", and the owner's own limit
+						   on it the same day: „mozda on sakrije profil, ali ako je deo tima,
+						   njegovo ime se vidi u timu i bodovi koje je doneo." So what goes is the
+						   LINK FROM HIS RECORD, both halves of it, and nothing about the team.
+
+						   NULL, WHICH IS WHAT A MEMBER IN NO TEAM IS ANSWERED, ON PURPOSE. The
+						   portrait's decision gave the shape: „Oblik je null, nikad odsutan kljuc
+						   ... skriven clan se cita tacno kao clan koji sliku nema" (PDL,
+						   26.09.2026), and this is the same withholding.
+
+						   ON THE SELECT EXPRESSION AND NOT ON THE JOIN BELOW, for two reasons. The
+						   join is `MeApi`'s clause word for word and its note says so, so the
+						   clause stays one text. And the condition here is the same one the
+						   biography stands on, two lines up.
+
+						   THE LINK IS NOT LOST, IT IS MOVED: `TeamApi` names him on his team, as
+						   `alsoInTheTeam`, by this same condition turned over, so for every reader
+						   each standing membership is on exactly one of the two doors.
+						   `TeamApiTest.theTwoDoorsNameEveryStandingMembershipOnceToEveryCaller`
+						   holds that over every kind of caller. */
+						+ " case when " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
+						+ "  then m.team_id end as team_id,"
+						+ " case when " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
+						+ "  then m.season_from end as team_since,"
 						+ " c.profile_hidden, c.birthday_shown,"
 						/* THE CALLER'S OWN REFERRAL LINK AND HIS COUNT OF WHOM HE BROUGHT IN
 						   STOOD HERE UNTIL 25.09.2026, each as `case when c.id = :me then ...`.
@@ -677,12 +765,11 @@ class CompetitorApi {
 						   slucaja dobijaju isti ishod"). Written as a `case` over the digest it
 						   would be four cases, and a fifth column tomorrow would be a fifth.
 
-						   THE PARAMETER IS CAST because it stands alone as an operand of `or`
-						   with nothing beside it to take a type from, which is the same refusal
-						   `TeamApi` writes out beside its own („could not determine data type of
-						   parameter") and the same shape `:administration` takes above. */
+						   THE CONDITION IS `THE_PROFILE_IS_OPEN_TO_THE_CALLER`, the one text the
+						   biography and the team above stand on as well; its note says why it is
+						   cast. */
 						+ " left join photo mine on mine.id = c.photo_id"
-						+ "  and (cast(:signedIn as boolean) or not c.profile_hidden)"
+						+ "  and " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						/* AND ONLY THE MEMBERS WHOSE FEE IS STANDING, which is the whole of what
 						   this resource is allowed to say about a fee. PDL P11: „Status clanarine
 						   se ne prikazuje na profilu... ko nije platio, ne vidi se nigde osim u

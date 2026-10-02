@@ -28,7 +28,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.StreamSupport;
@@ -64,6 +66,14 @@ class TeamApiTest {
 	 * <b>niko ne saznaje ko u sedistu sedi</b>."
 	 */
 	private static final String WHETHER_I_ADMINISTER_IT = "administeredByMe";
+
+	/**
+	 * AND THE MEMBERS OF A TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THE ONE ASKING, since
+	 * 02.10.2026: a member who hides his profile, read by a visitor (PDL, odeljak 16, [ODLUKA
+	 * 27.09.2026, owner]). Written out here rather than taken from {@code TeamApi}, for the reason
+	 * every name in this class is: a rename has to fail a case, not rename the case with it.
+	 */
+	private static final String ALSO_IN_THE_TEAM = "alsoInTheTeam";
 
 	/**
 	 * Founded the team that comes back FIRST, which is the source the next one separates,
@@ -289,6 +299,26 @@ class TeamApiTest {
 	 * is a member whose fee has lapsed, whom {@code /api/competitors} does not carry at
 	 * all.
 	 *
+	 * <p><b>AND SINCE 02.10.2026 FOUR OF THEM HIDE THEIR PROFILE, one per state of the link
+	 * from a record to a team</b>, because a visitor is now answered on the team exactly the
+	 * members whose record withholds that link from him ({@code alsoInTheTeam}). Two of them
+	 * must be named and two must not, and every one differs from the others in exactly the
+	 * thing being asked:
+	 *
+	 * <ul>
+	 * <li>{@code 000002}, standing in {@code novosadski-trkaci} since 2028 - named, on the
+	 * FIRST team by name, beside {@code 000001}, who does not hide and is not named. 2028 is
+	 * neither the season the team began (2029) nor his own first season (2027), so the
+	 * season answered with him has one source.</li>
+	 * <li>{@code 000004}, standing in {@code klub-lovcen} since 2027 - named, on the SECOND
+	 * team, so „the team he is in" and „the first team" are two places.</li>
+	 * <li>{@code 000008}, who LEFT {@code vardarski-krug} - named nowhere, which is what
+	 * dropping {@code season_to is null} would change.</li>
+	 * <li>{@code 000003}, standing in {@code novosadski-trkaci} since 2029 with a fee that has
+	 * lapsed - named nowhere, which is what dropping {@code c.active} would change, and which
+	 * is the door the note on {@code TeamApi} keeps shut.</li>
+	 * </ul>
+	 *
 	 * <p><b>AND SINCE 21.09.2026 THE TEAM WHOSE SEAT NAMES NOBODY HAS SIX OF THEM</b>,
 	 * which is the half the fixture was missing: with no roster at all, „nobody
 	 * administers it" was true because the seat was empty AND because there was nobody to
@@ -372,6 +402,14 @@ class TeamApiTest {
 		leftIn("000008", "vardarski-krug", 2027, 2027, "Presao u drugi tim");
 		membership("000009", "vardarski-krug", 2027);
 		membership(paidAndUnnumbered, "vardarski-krug", 2027);
+
+		/* AND FOUR WHO HIDE THEIR PROFILE, one per state of the link: two standing, on two
+		   different teams, and two who must not be named at all - one who left and one whose
+		   fee has lapsed. The note on this method says what each one separates. */
+		hidesHisProfile("000002");
+		hidesHisProfile("000004");
+		hidesHisProfile("000008");
+		hidesHisProfile("000003");
 
 		/* AND FOUR WAYS OF ASKING, because the answer now depends on who asks. The
 		   teams come back in name order - Dunavski trkaci, Njegosevi trkaci, Vardarski
@@ -563,6 +601,12 @@ class TeamApiTest {
 				.params(first, last, referralCode).query(Long.class).single();
 	}
 
+	/** The switch in the member's Settings, written where {@code CompetitorApi} reads it. */
+	private void hidesHisProfile(String number) {
+		db.sql("update competitor set profile_hidden = true where member_number = ?").param(number)
+				.update();
+	}
+
 	/** Puts somebody in a team's seat by KEY, which is what {@code team.admin_id} is. */
 	private void sits(long competitorId, String slug) {
 		db.sql("update team set admin_id = ? where slug = ?").params(competitorId, slug).update();
@@ -650,6 +694,83 @@ class TeamApiTest {
 				.map(one -> one.path("slug").asString()).toList();
 	}
 
+	/** One member a team is owed on its record, as the DATABASE says it, in team then number order. */
+	private record Owed(String slug, String memberNumber, int since) {
+	}
+
+	/**
+	 * WHAT A VISITOR IS OWED ON EACH TEAM, READ OUT OF THE DATABASE AND WRITTEN AS THE EXACT TEXT
+	 * THE ANSWER MUST CARRY IT IN.
+	 *
+	 * <p>Read here by its own query rather than taken from {@code TeamApi}: the members whose
+	 * membership has not ended, whose fee is standing, and who hide their profile. A server that
+	 * read any of the three differently names somebody else, and the text below stops matching.
+	 *
+	 * @return every team that owes a visitor anybody, by address, with the whole value of its
+	 *         {@code alsoInTheTeam} as the server writes it
+	 */
+	private Map<String, String> whatAVisitorIsOwedOnEachTeam() throws Exception {
+		List<Owed> owed = db.sql("select t.slug, c.member_number, m.season_from"
+						+ " from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " join team t on t.id = m.team_id"
+						+ " where m.season_to is null and c.active and c.profile_hidden"
+						+ " order by t.slug, c.member_number")
+				.query((row, one) -> new Owed(row.getString(1), row.getString(2), row.getInt(3)))
+				.list();
+
+		Map<String, List<Map<String, Object>>> byTeam = new LinkedHashMap<>();
+
+		for (Owed one : owed) {
+			Map<String, Object> written = new LinkedHashMap<>();
+			written.put("memberNumber", one.memberNumber());
+			written.put("since", one.since());
+			byTeam.computeIfAbsent(one.slug(), any -> new ArrayList<>()).add(written);
+		}
+
+		Map<String, String> asText = new LinkedHashMap<>();
+		ObjectMapper mapper = new ObjectMapper();
+
+		for (Map.Entry<String, List<Map<String, Object>>> one : byTeam.entrySet()) {
+			asText.put(one.getKey(), mapper.writeValueAsString(one.getValue()));
+		}
+
+		return asText;
+	}
+
+	/**
+	 * THE VISITOR'S ANSWER WITH WHAT HE IS OWED ON THE TEAMS SET BACK TO WHAT A SIGNED IN READER IS
+	 * TOLD THERE, which is nothing, because the records tell him.
+	 *
+	 * <p><b>This is the one thing a session changes in this answer for a reader who is not the
+	 * administration, and it is named rather than cut by a pattern</b> (rule of 14.09.2026: what a
+	 * comparison has to ignore to pass is often exactly what it should be measuring). So the
+	 * excuse is EXACT: every team's value is built from the database, it has to be found in the
+	 * visitor's text once and only once, and only then is it emptied. A visitor told one member too
+	 * many or too few, or told nothing, fails here before any comparison is made; and the case that
+	 * proves the VALUE, team by team, is {@link #aMemberWhoHidesHisProfileIsNamedOnHisTeamToAVisitor}.
+	 */
+	private String theVisitorsAnswerWithWhatHeIsOwedEmptied() throws Exception {
+		String visitor = whole(null);
+		Map<String, String> owed = whatAVisitorIsOwedOnEachTeam();
+
+		assertThat(owed).as("nobody in the fixture hides his profile while standing in a team, so"
+				+ " nothing is excused below and nothing about it is measured").isNotEmpty();
+
+		for (Map.Entry<String, String> one : owed.entrySet()) {
+			String said = "\"" + ALSO_IN_THE_TEAM + "\":" + one.getValue();
+
+			assertThat(visitor.split(java.util.regex.Pattern.quote(said), -1).length - 1)
+					.as("the visitor was not told, exactly once, the members whose record withholds"
+							+ " %s from him: %s", one.getKey(), one.getValue())
+					.isEqualTo(1);
+
+			visitor = visitor.replace(said, "\"" + ALSO_IN_THE_TEAM + "\":[]");
+		}
+
+		return visitor;
+	}
+
 	/**
 	 * EVERY FIELD THE PORTAL READS IS ANSWERED TO THE VISITOR, EXCEPT THE ONE THAT IS
 	 * NOT HIS TO SEE, and it is named here with the reason.
@@ -720,6 +841,15 @@ class TeamApiTest {
 	 * anybody: every member who is in no team's seat is absent from their answer too.
 	 * The fixture holds exactly such a member - 000002, who is in a team and sits in no
 	 * seat - so that half is measured by a value and not by an empty set.
+	 *
+	 * <p><b>AND SINCE 02.10.2026 THE VISITOR IS OWED SOME, NAMED RATHER THAN CUT.</b> A member
+	 * who hides his profile is named on his team to a visitor, because the visitor's
+	 * {@code /api/competitors} withholds the link from his record (PDL, odeljak 16, [ODLUKA
+	 * 27.09.2026, owner]). Those numbers leave inside {@code alsoInTheTeam} and nowhere else, so
+	 * they are emptied out of the visitor's answer by their exact text, read off the database
+	 * ({@link #theVisitorsAnswerWithWhatHeIsOwedEmptied}), and what is left is asked exactly
+	 * what it was asked before: no member number at all. Every signed in reader is asked it of
+	 * his whole answer, untouched, because he is owed nothing here.
 	 */
 	@Test
 	void noMemberNumberLeavesTheServer() throws Exception {
@@ -733,7 +863,7 @@ class TeamApiTest {
 				+ " assert nothing").hasSize(9);
 
 		for (String nobody : NOBODY_WHO_MAY_SEE_THE_SEAT) {
-			String whole = whole(nobody);
+			String whole = nobody == null ? theVisitorsAnswerWithWhatHeIsOwedEmptied() : whole(nobody);
 
 			assertThat(whole).as("the answer to %s carries nothing at all, so it says nothing"
 							+ " about what it leaves out", nobody)
@@ -743,8 +873,10 @@ class TeamApiTest {
 				assertThat(whole).as("a member number (%s) left the server with a team, to %s, who"
 								+ " is not the administration. Clan 73 makes the team public and"
 								+ " names no role inside one: who is in which team is"
-								+ " /api/competitors' one answer, and who administers one is a"
-								+ " right rather than a standing", number, nobody)
+								+ " /api/competitors' answer, except a hidden member's team, which"
+								+ " a visitor is told in alsoInTheTeam and nowhere else; and who"
+								+ " administers one is a right rather than a standing",
+								number, nobody)
 						.doesNotContain(number);
 			}
 		}
@@ -1050,6 +1182,170 @@ class TeamApiTest {
 	}
 
 	/**
+	 * A MEMBER WHO HIDES HIS PROFILE IS NAMED ON HIS TEAM TO A VISITOR, with the season he is in it
+	 * from, and nobody else is.
+	 *
+	 * <p>PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the team leaves his record for a visitor,
+	 * and in the owner's own words of the same day „mozda on sakrije profil, ali ako je deo tima,
+	 * njegovo ime se vidi u timu i bodovi koje je doneo." The team's page and the table of teams
+	 * are built out of the link, so this is where the link has to be.
+	 *
+	 * <p><b>Written out team by team, and not read back out of the database</b>, because what is
+	 * measured is exactly WHO is named WHERE: the four who hide differ in the one thing each
+	 * condition is about (see the note on {@link #threeTeams}). 000001 stands in the same team as
+	 * 000002 and does not hide, so his name on this list would be the condition turned off; 000008
+	 * has left and 000003's fee has lapsed, so either name here is a clause of the rows dropped;
+	 * and 000004 is on the SECOND team, so a list hung on the first one fails.
+	 *
+	 * <p><b>The field is on every team, and empty is a value</b>: a team that owes nobody says
+	 * {@code []}, which the portal reads without a branch for a missing key.
+	 */
+	@Test
+	void aMemberWhoHidesHisProfileIsNamedOnHisTeamToAVisitor() throws Exception {
+		assertThat(db.sql("select member_number from competitor where profile_hidden"
+						+ " order by member_number").query(String.class).list())
+				.as("the four states of a hidden member's link are not the ones this case is written"
+						+ " against")
+				.containsExactly("000002", "000003", "000004", "000008");
+		assertThat(db.sql("select first_season from team where slug = 'novosadski-trkaci'")
+						.query(Integer.class).single())
+				.as("the team began in the same season as his membership, so the season answered"
+						+ " with him could be either")
+				.isNotEqualTo(2028);
+
+		Map<String, List<String>> named = new LinkedHashMap<>();
+
+		for (JsonNode one : new ObjectMapper().readTree(whole(null))) {
+			assertThat(one.path(ALSO_IN_THE_TEAM).isArray())
+					.as("%s answered no list of the members a visitor is owed; empty is a value and"
+							+ " the key is never absent", one.path("slug").asString())
+					.isTrue();
+
+			List<String> here = new ArrayList<>();
+
+			for (JsonNode also : one.path(ALSO_IN_THE_TEAM)) {
+				here.add(also.path("memberNumber").asString() + " since " + also.path("since").asInt());
+			}
+
+			named.put(one.path("slug").asString(), here);
+		}
+
+		assertThat(named)
+				.as("a visitor was not told, team by team, exactly the members who hide their"
+						+ " profile while standing in it, with the season their membership began")
+				.containsExactly(
+						Map.entry("novosadski-trkaci", List.of("000002 since 2028")),
+						Map.entry("klub-lovcen", List.of("000004 since 2027")),
+						Map.entry("vardarski-krug", List.of()));
+	}
+
+	/**
+	 * AND NOBODY WHO IS SIGNED IN IS OWED ANYBODY HERE, BECAUSE HIS RECORDS ALREADY SAY IT.
+	 *
+	 * <p>PDL, odeljak 18 (27.09.2026): hiding is from „neulogovanih posetilaca" and from nobody
+	 * else, so to a signed in reader {@code /api/competitors} answers every link on the record. Told
+	 * here as well, the same link would stand on two doors. Every account the fixture has is walked,
+	 * read off the two lists the fixture is split by, and the two that race for nobody are the ones
+	 * that catch a condition asked of the caller's member rather than of his session.
+	 */
+	@Test
+	void nobodyWhoIsSignedInIsOwedAnybodyHere() throws Exception {
+		List<String> signedIn = new ArrayList<>(THE_ADMINISTRATION);
+		NOBODY_WHO_MAY_SEE_THE_SEAT.stream().filter(one -> one != null).forEach(signedIn::add);
+
+		for (String asking : signedIn) {
+			for (JsonNode one : new ObjectMapper().readTree(whole(asking))) {
+				assertThat(one.path(ALSO_IN_THE_TEAM).isArray())
+						.as("%s was answered no list of the members owed on %s; empty is a value and"
+								+ " the key is never absent", asking, one.path("slug").asString())
+						.isTrue();
+				assertThat(one.path(ALSO_IN_THE_TEAM).size())
+						.as("%s is signed in and was told on %s a member his own records already name,"
+								+ " so one link stands on two doors", asking, one.path("slug").asString())
+						.isZero();
+			}
+		}
+	}
+
+	/** One link from a member to a team, from whichever door named it. */
+	private record Link(String memberNumber, long team, int since) {
+	}
+
+	/** What {@code /api/competitors} answers this caller, and null for the visitor. */
+	private JsonNode competitorsAnsweredTo(String email) throws Exception {
+		MockHttpServletRequestBuilder asks = get("/api/competitors");
+
+		return new ObjectMapper().readTree(http.perform(email == null ? asks
+						: asks.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
+	}
+
+	/**
+	 * THE TWO DOORS NAME EVERY STANDING MEMBERSHIP ONCE, TO EVERY CALLER, which is the floor under
+	 * the one condition they share.
+	 *
+	 * <p>{@code /api/competitors} names a link on the record where
+	 * {@code CompetitorApi.THE_PROFILE_IS_OPEN_TO_THE_CALLER} holds, and this resource names it on
+	 * the team where it does not. The condition is one text and cannot drift; the ROWS it is asked
+	 * of are written in both places - the membership that has not ended, of a member whose fee is
+	 * standing - and this is what makes them one set. The precedent is
+	 * {@code TeamWriteApiTest.theDeleteRouteAndTheListAgreeOnWhoAdministersEachTeam}, one rule with
+	 * two readers asked over one fixture.
+	 *
+	 * <p><b>Asked as a list and compared with its multiplicity</b>, so it holds both halves at once:
+	 * every standing membership in the database is named (nothing is lost - the team does not lose
+	 * a member who hides) and none is named twice (no link has two homes). It fails for a team side
+	 * that forgets the {@code not}, a session read off {@code me} rather than off the account, a
+	 * row clause dropped on either side, and a record that stops withholding.
+	 *
+	 * <p><b>The rows are read out of the database</b>, and they include the one with no member
+	 * number, because {@code /api/competitors} has no condition on the number and neither has the
+	 * team side.
+	 */
+	@Test
+	void theTwoDoorsNameEveryStandingMembershipOnceToEveryCaller() throws Exception {
+		List<Link> standing = db.sql("select c.member_number, m.team_id, m.season_from"
+						+ " from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " where m.season_to is null and c.active")
+				.query((row, one) -> new Link(row.getString(1), row.getLong(2), row.getInt(3)))
+				.list();
+
+		assertThat(standing.stream().map(Link::memberNumber).toList())
+				.as("the fixture no longer holds a standing member who hides beside one who does not,"
+						+ " so the two doors are not both asked")
+				.contains("000001", "000002", "000004");
+
+		List<String> everybody = new ArrayList<>(NOBODY_WHO_MAY_SEE_THE_SEAT);
+		everybody.addAll(THE_ADMINISTRATION);
+
+		for (String asking : everybody) {
+			List<Link> named = new ArrayList<>();
+
+			for (JsonNode one : competitorsAnsweredTo(asking)) {
+				if (!one.path("teamId").isNull()) {
+					named.add(new Link(one.path("memberNumber").isNull() ? null
+							: one.path("memberNumber").asString(),
+							one.path("teamId").asLong(), one.path("teamSince").asInt()));
+				}
+			}
+
+			for (JsonNode team : new ObjectMapper().readTree(whole(asking))) {
+				for (JsonNode also : team.path(ALSO_IN_THE_TEAM)) {
+					named.add(new Link(also.path("memberNumber").asString(),
+							team.path("id").asLong(), also.path("since").asInt()));
+				}
+			}
+
+			assertThat(named)
+					.as("to %s the two doors together did not name every standing membership exactly"
+							+ " once: one was lost between them, or stood on both",
+							asking == null ? "a visitor" : asking)
+					.containsExactlyInAnyOrderElementsOf(standing);
+		}
+	}
+
+	/**
 	 * THE VISITOR'S ANSWER HAS NOT MOVED, AND THAT IS THE FIRST THING THIS INCREMENT
 	 * WAS MEASURED BY.
 	 *
@@ -1077,9 +1373,15 @@ class TeamApiTest {
 					.doesNotContain(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT);
 		}
 
+		/* AND THE VISITOR'S SIDE HAS WHAT HE IS OWED ON THE TEAMS EMPTIED, since 02.10.2026:
+		   the one thing a session changes here besides the member's own two fields, emptied by
+		   its exact value and not by a pattern (`theVisitorsAnswerWithWhatHeIsOwedEmptied` says
+		   how, and the case that proves the value is
+		   `aMemberWhoHidesHisProfileIsNamedOnHisTeamToAVisitor`). */
 		assertThat(withoutTheMembersOwnTwo(whole(FOUNDED_THE_SECOND_TEAM)))
-				.as("signing in changed something other than the two fields it was allowed to")
-				.isEqualTo(whole(null));
+				.as("signing in changed something other than the two fields it was allowed to and"
+						+ " the members a visitor is owed on the teams")
+				.isEqualTo(theVisitorsAnswerWithWhatHeIsOwedEmptied());
 	}
 
 	/**
@@ -1196,7 +1498,9 @@ class TeamApiTest {
 	}
 
 	/**
-	 * AND AN ACCOUNT THAT RACES FOR NOBODY IS ANSWERED WHAT A VISITOR IS, TO THE BYTE.
+	 * AND AN ACCOUNT THAT RACES FOR NOBODY IS ANSWERED WHAT A VISITOR IS, TO THE BYTE, BUT
+	 * FOR WHAT A VISITOR IS OWED ON THE TEAMS SINCE 02.10.2026 - which a signed in account is
+	 * not owed, and the line at the end says why that is the point of this account.
 	 *
 	 * <p>V23 leaves {@code account.competitor_id} empty for an account that does not
 	 * race (owner, 14.09.2026), so being signed in and being a member are two
@@ -1230,9 +1534,17 @@ class TeamApiTest {
 						+ " racing for nobody")
 				.isZero();
 
+		/* THE ONE DIFFERENCE IS THE OTHER WAY ROUND, AND IT IS THE POINT RATHER THAN AN
+		   EXCEPTION. Since 02.10.2026 a visitor is told on the teams the members whose record
+		   withholds the team from him; this account is signed in, so his records withhold
+		   nothing and he is owed nothing here. Asked of `me` rather than of the session, he
+		   would be owed them as well, and the two doors would name one link twice - which is
+		   the mutation `theTwoDoorsNameEveryStandingMembershipOnceToEveryCaller` is written
+		   against, and this line refuses it from a second side. */
 		assertThat(whole(RACES_FOR_NOBODY))
-				.as("an account with no member behind it was told something about a seat")
-				.isEqualTo(whole(null));
+				.as("an account with no member behind it was told something about a seat, or was"
+						+ " told on the teams what only a visitor is owed there")
+				.isEqualTo(theVisitorsAnswerWithWhatHeIsOwedEmptied());
 	}
 
 	/**
@@ -1719,9 +2031,9 @@ class TeamApiTest {
 
 			assertThat(withoutTheMembersOwnTwo(whole))
 					.as("%s was answered something other than the visitor's answer with the seat"
-							+ " added: the list itself moved, or a key nobody named arrived with"
-							+ " it", administration)
-					.isEqualTo(whole(null));
+							+ " added and what a visitor is owed on the teams left out: the list"
+							+ " itself moved, or a key nobody named arrived with it", administration)
+					.isEqualTo(theVisitorsAnswerWithWhatHeIsOwedEmptied());
 		}
 
 		JsonNode both = StreamSupport.stream(new ObjectMapper()
@@ -1825,7 +2137,7 @@ class TeamApiTest {
 				.as("a moderator holding the right over the QUEUE of proposed teams was told who"
 						+ " administers the teams that exist; the two are different permissions"
 						+ " and V5 writes them as two rows")
-				.isEqualTo(whole(null));
+				.isEqualTo(theVisitorsAnswerWithWhatHeIsOwedEmptied());
 	}
 
 	/**

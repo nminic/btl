@@ -264,6 +264,17 @@ export type Competitor = {
    * (Član 74). That half is now the whole of what the record carries — see `ageBand`.
    */
   birthdayShown: BirthdayShown
+  /**
+   * The team of the membership that has not ended, or null for a member in none - AND, since
+   * 02.10.2026, for a member who hides his profile when the reader has no session.
+   *
+   * PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the team is withheld from a visitor „isto kao
+   * biografija i fotografija", and it reads exactly like no team at all, which is the shape the
+   * portrait was given (`CompetitorApi`). **So null here does not mean „in no team" to every
+   * reader**, and nothing that counts a team's members may read it alone: the member is named on
+   * his team instead, as `Team.alsoInTheTeam`, and `data/derive.ts` (`membersOf`) is the one place
+   * the two are put together.
+   */
   teamId: number | null
   /**
    * The season this member joined their club, which is not the season they
@@ -272,7 +283,8 @@ export type Competitor = {
    * The profile names both, one after the other, because they answer different
    * questions and people join a club years after they start racing (owner,
    * 31.07.2026). Null wherever there is no club, so the two always travel
-   * together and a club can never be named without a year.
+   * together and a club can never be named without a year - and null wherever
+   * `teamId` is withheld, for the same reason.
    */
   teamSince: number | null
   /**
@@ -644,6 +656,22 @@ export type Team = {
    * with no square since the day a missing key took a whole table into the error boundary.
    */
   crop: Crop | null
+  /**
+   * THE MEMBERS OF THIS TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THE ONE READING, with the
+   * season each is in it from.
+   *
+   * Since 02.10.2026 that is a member who hides his profile, read by somebody who is not signed
+   * in: `/api/competitors` answers his `teamId` as null to that reader (PDL, odeljak 16, [ODLUKA
+   * 27.09.2026, owner]), and the owner's own limit on the same decision is that the team keeps
+   * him - „mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i bodovi koje
+   * je doneo." His record is still on the list; only its link to this team is here instead.
+   *
+   * **Empty for everybody who is signed in, and never absent**: to them the records carry every
+   * link, so the two never name the same member. `data/derive.ts` (`membersOf`) reads both and is
+   * the one place that does. `since` is the `teamSince` his record would have carried, and the
+   * season rule reads it the same way (`inTeamIn`).
+   */
+  alsoInTheTeam: { memberNumber: string; since: number }[]
 }
 
 /**

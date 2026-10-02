@@ -12,6 +12,7 @@ import {
   categoryOfMember,
   countsByCategory,
   inTeamIn,
+  membersOf,
   numbered,
   rankMembers,
   seasonOf,
@@ -242,8 +243,12 @@ export function TeamDetail() {
             one.memberNumber === memberNumber &&
             listedTeams.some((each) => each.id === one.teamId),
         )
-        const everMembers = listedMembers.filter((one) => one.teamId === team.id)
-        const everNumbers = new Set(everMembers.map((one) => one.memberNumber))
+        /* Off BOTH doors the server names a member of this team on, since 02.10.2026: his
+           record, and - for a member who hides his profile, read by a visitor - the team's own
+           answer (PDL, odeljak 16: „ako je deo tima, njegovo ime se vidi u timu i bodovi koje je
+           doneo"). `membersOf` is the one place the two are put together. */
+        const everMembers = membersOf(team, listedMembers)
+        const everNumbers = new Set(everMembers.map((one) => one.competitor.memberNumber))
         /* The seasons this team has anything in, plus the running one, which is
            the default and a control cannot open on an option it does not have.
            Worked out before the choice, because the choice is held against it. */
@@ -255,7 +260,9 @@ export function TeamDetail() {
         const season = offeredSeason(asked, seasons, running)
         /* The roster of the season being read, not of today: a page headed by
            a year has to be that year's team (PDL P13). */
-        const members = everMembers.filter((one) => inTeamIn(one, Number(season)))
+        const members = everMembers
+          .filter((one) => inTeamIn(one, Number(season)))
+          .map((one) => one.competitor)
         const numbers = new Set(members.map((one) => one.memberNumber))
         const inSeason = results.filter((one) => seasonOf(one) === Number(season))
         const mine = numbered(inSeason).filter((one) => numbers.has(one.memberNumber))
@@ -367,7 +374,7 @@ export function TeamDetail() {
                              result (PDL, 04.09.2026), and since 28.09.2026 none of that is
                              decided on this screen at all: `deleteOne` sends the act to the
                              route the administration already sends it to. */
-                          onDelete={() => deleteOne(team, everMembers)}
+                          onDelete={() => deleteOne(team, everMembers.map((one) => one.competitor))}
                           /* A READER WHO ASKED AGAIN AND THEN PUT THE QUESTION AWAY HAS NO USE FOR
                              THE LAST ANSWER: nothing beside the button is about a deletion any
                              more (registry item 311; the same shape
