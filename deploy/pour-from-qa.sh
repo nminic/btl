@@ -58,6 +58,17 @@
 # not at all. Photographs first means a failed pour leaves files nothing points at, which the
 # next run overwrites; the other order would leave rows pointing at files that never arrived.
 #
+# AND THEY ARE COPIED WITHOUT THEIR TIMES: the one part of `cp -a` this must not do. The backend
+# deletes, once an hour, every file in that folder that no `photo` row names and that is older
+# than ten minutes by its own time of last modification (ThePicturesFolderIsSwept), and the files
+# go first, so for as long as the pour takes each of them is a file no row names yet. Copied with
+# `-a` they would arrive carrying QA's old times and look ready to be deleted. Copied with
+# `--preserve=mode,ownership` they keep their mode and their owner, as `-a` kept them, and are
+# exactly as young as the copy, so the ten minutes cover the time until the commit.
+# PouringFromQaScriptTest holds the options of that one line. A pour whose copy and transaction
+# together last longer than ten minutes could still lose its first files if a sweep fell in that
+# time, and nothing here measures how long a pour takes.
+#
 # THE DATABASE SIDE IS ONE TRANSACTION, and that is the real way back rather than the backup.
 # TRUNCATE is transactional in PostgreSQL, so a failure anywhere - a constraint, a disconnect, a
 # full disk - rolls every ROW back and leaves the tables as they were. NOT EVERYTHING: a
@@ -344,8 +355,9 @@ fi
 say ''
 say '--- 8. copying the photographs, which are not in the database ---'
 
+# NOT `-a`, which keeps the files' times: see "AND THEY ARE COPIED WITHOUT THEIR TIMES" in the header.
 docker run --rm --entrypoint sh -v "$QA_VOLUME":/from:ro -v "$PROD_VOLUME":/to "$IMAGE" \
-  -c 'cp -a /from/. /to/' || fail 'copying the photographs did not pass'
+  -c 'cp -R --preserve=mode,ownership /from/. /to/' || fail 'copying the photographs did not pass'
 
 from_count=$(docker run --rm --entrypoint sh -v "$QA_VOLUME":/from:ro "$IMAGE" -c 'ls -A /from | wc -l')
 to_count=$(docker run --rm --entrypoint sh -v "$PROD_VOLUME":/to:ro "$IMAGE" -c 'ls -A /to | wc -l')
