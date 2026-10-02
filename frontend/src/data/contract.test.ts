@@ -559,9 +559,13 @@ describe('what the ducats are called', () => {
  * are edited as freely as any other line: `places.ts`, which this very sweep
  * opens, and `PlaceIdentityTest`. Measured on 09.09.2026, a wrong number written
  * into `places.ts` left the whole suite green, so the sentence excusing it was
- * telling the next reader not to look at the one home that had gone stale. It is
- * held below now, and `PlaceIdentityTest`, which this sweep cannot reach, says
- * that pairs repeat without saying how many.
+ * telling the next reader not to look at the one home that had gone stale. It was
+ * held here until 02.10.2026, when towns that were called alike were given the
+ * nearest bigger town in brackets (owner, PDL "Odluke iz ciscenja nalaza
+ * (02.10.2026, vlasnik)") and the number became zero. A zero is written down
+ * nowhere, so there is nothing for this sweep to hold: `data.test.tsx` holds it
+ * on the shipped codebook, `ReferenceDataMatchesCodebookTest` on the source file,
+ * and `V3__place.sql` still says how many pairs there were on the day it loaded.
  */
 describe('what the portal writes down about the codebook of towns', () => {
   /** The shipped file, which `everything()` deliberately drops and which is the
@@ -592,25 +596,6 @@ describe('what the portal writes down about the codebook of towns', () => {
     }
 
     return [...countries.values()].filter((held) => held.size > 1).length
-  }
-
-  /** How many name-and-country pairs more than one town carries, spelt the way
-   *  the codebook spells them. This is the number that says a town's identity
-   *  cannot be what it is called and where it is, which is why the mark exists
-   *  (owner, 08.09.2026, ADL A16), so it is asked of the codebook rather than
-   *  remembered. */
-  function pairsMoreThanOneTownCarries(): number {
-    const carried = new Map<string, number>()
-
-    for (const town of towns) {
-      /* Written as JSON rather than joined by a separator, because a name
-         may carry any character a separator could be. */
-      const pair = JSON.stringify([town[1], town[2]])
-
-      carried.set(pair, (carried.get(pair) ?? 0) + 1)
-    }
-
-    return [...carried.values()].filter((many) => many > 1).length
   }
 
   /**
@@ -668,11 +653,6 @@ describe('what the portal writes down about the codebook of towns', () => {
       is: towns.filter((town) =>
         written(town).some((name) => [...name].some((letter) => curly.has(letter))),
       ).length,
-    },
-    {
-      what: 'name and country pairs more than one town carries',
-      says: /(\d+) name and country pairs in the codebook are carried by more than one town/g,
-      is: pairsMoreThanOneTownCarries(),
     },
   ]
 

@@ -421,13 +421,36 @@ describe('the generated data', () => {
 
     expect(marks.every((mark) => Number.isInteger(mark) && mark > 0)).toBe(true)
     expect(new Set(marks).size).toBe(places.length)
+  })
 
-    /* And the floor under that, measured on the same file: the pair everything
-       used before the mark arrived does repeat, so the assertion above is one
-       this codebook could have failed. */
-    const pairs = places.map(([, name, country]) => `${name}|${country}`)
+  it('carries a codebook in which no two towns of one country share a name', async () => {
+    /* Owner, 02.10.2026, PDL "Odluke iz ciscenja nalaza (02.10.2026, vlasnik)", the
+       entry that begins „Istoimena mesta u istoj drzavi dobijaju u zagradi": towns
+       that were called alike carry the nearest bigger town in brackets, and the
+       database refuses a second one. Until that day the pair repeated, and the
+       floor under the mark's test above asserted that it did; a member from
+       Belotic was stored as "Belotic" without saying which one.
 
-    expect(new Set(pairs).size).toBeLessThan(places.length)
+       Held over the shipped file, because the fault would be the generator's: the
+       file `napravi-mesta.py` writes carries every namesake bare, and a codebook
+       rebuilt from a newer export that skips the labelling step fails here and not
+       in a member's profile. The pair is written as JSON rather than joined by a
+       separator, because a name may carry any character a separator could be. */
+    const places = await loadResource<Place[]>('places')
+    const seen = new Set<string>()
+    const repeated: string[] = []
+
+    for (const [, name, country] of places) {
+      const pair = JSON.stringify([country, name])
+
+      if (seen.has(pair)) {
+        repeated.push(`${name} (${country})`)
+      }
+
+      seen.add(pair)
+    }
+
+    expect(repeated).toEqual([])
   })
 
   it('names every country its towns stand in, and puts Kosovo in Serbia', async () => {

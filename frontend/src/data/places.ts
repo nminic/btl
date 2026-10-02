@@ -12,9 +12,11 @@ import { loadResource } from './client'
  * (CC BY 4.0).
  *
  * The mark comes first because it is what the town **is** (owner, 08.09.2026,
- * ADL A16). Name and country are not: 1616 name and country pairs in the
- * codebook are carried by more than one town, and China alone has more than one
- * town called Zhongshan. It is a GeoNames identifier and the same number the
+ * ADL A16). Name and country tell towns apart in this codebook since 02.10.2026,
+ * when towns that were called alike were given the nearest bigger town in
+ * brackets (owner, PDL "Odluke iz ciscenja nalaza (02.10.2026, vlasnik)"), but
+ * a label moves when GeoNames does, and a name is what the town is called today
+ * and not what it is. The mark is a GeoNames identifier and the same number the
  * database keeps in `place.geonames_id`, so a town written down anywhere still
  * means that town after the codebook is rebuilt.
  */
