@@ -40,7 +40,9 @@
  *
  * - the panel lies whole inside the screen: its left edge is not negative and its right
  *   edge is not past the width of the layout viewport;
- * - the page does not scroll sideways, closed or open;
+ * - the page does not scroll sideways, closed or open, and is not WIDENED by something running
+ *   off the right edge: a phone browser makes the layout viewport as wide as what overflows it,
+ *   so there is nothing to scroll and the screen is simply wider than the one asked for;
  * - every control in the panel can be reached: scrolled into view, the point at its
  *   centre is on the screen and is the control and not something laid over it;
  * - under the width where the navigation unfolds (`51.24875em`) the panel hangs from the
@@ -81,13 +83,15 @@
  *   screen (344 at 360, 374 at 390, 752 at 768, 803 at 819), and from 820 up they are where
  *   they were (894.1..1118.1 for messages at 1280, the right edge of its own button).
  * - *At 360 with the text at 200% the card is whole and its rows are not:* the card is 296
- *   wide (the bar less two gutters of 32px) and the rows of the inbox ask for more, so the
- *   date at the end of a row is clipped by the list the rows stand in. The panel was cut off
- *   by the screen there before, so this is less than it was and is not nothing: it is
- *   printed with `--table` (`clip`) and nothing here fails on it.
+ *   wide (the bar less two gutters of 32px) and the rows of the inbox ask for 76px more than
+ *   the list gives them, so the date at the end of a row is clipped by the list the rows
+ *   stand in (`clip` in `--table`). It was clipped before the repair too, by 46px, in a card
+ *   326 wide and 49.6px off the left edge of the screen: the 30px between the two are the width
+ *   the card gave up to be whole, so the card is better and the date is not. The reader can
+ *   still scroll the list sideways to it; nothing here fails on it.
  * - *One subject made of a single word wider than the bar* (59 characters measured): at 360
- *   the card is held to the bar and the word is clipped inside the list; at 768 the card
- *   grows to the word (550px) and is whole. Not asked here, because the portal does not
+ *   the card is held to the bar and the word is clipped inside the list (245px); at 768 the
+ *   card grows to the word (550px) and is whole. Not asked here, because the portal does not
  *   write such a subject and the server does not forbid one.
  * - *The panels no longer stand under their own button between 690 and 820:* they hang from
  *   the gutter at the right edge of the bar, which is the choice `forms/FieldHint.css` made
@@ -569,7 +573,13 @@ async function measure(browser, base, width, state, font) {
     await browser.evaluate(`JSON.stringify((${askThePage.toString()})(${JSON.stringify(spec)}))`),
   )
 
-  if (width !== asked.innerWidth) {
+  /* A page NARROWER than the screen it was asked for is the emulation not landing, and that
+     is not a measurement. A page WIDER than it is the finding and not a fault of the run: a
+     phone browser widens the layout viewport to take in whatever runs off the right edge (a
+     panel pushed 8px past it made 360 into 369, measured), and from then on every box is
+     inside a screen that grew to hold it. So the screen everything is held against below is
+     the one that was asked for, and the growth is reported as what it is (`widened`). */
+  if (asked.innerWidth < width) {
     throw new Error(`the browser was asked for ${width}px and gave ${asked.innerWidth}px`)
   }
 
@@ -588,6 +598,8 @@ async function measure(browser, base, width, state, font) {
   return {
     ...asked,
     width,
+    screen: Math.min(width, asked.screen),
+    widened: asked.innerWidth - width,
     state: state.id,
     text: (wantedFont * 100) / 16,
     closed,
@@ -615,6 +627,12 @@ function judge(found) {
 
   if (found.panel.right > found.screen + SLACK) {
     wrong.push(`runs off the RIGHT edge by ${(found.panel.right - found.screen).toFixed(1)}px (${where})`)
+  }
+
+  if (found.widened > SLACK) {
+    wrong.push(
+      `the page is wider than the screen: asked for ${found.width}px and got ${found.width + found.widened}px, which is what a phone browser does when something runs off the right edge`,
+    )
   }
 
   if (found.closed > SLACK) {

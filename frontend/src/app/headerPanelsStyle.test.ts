@@ -28,8 +28,12 @@ import { everyRule, unconditionalRules } from '../test/stylesheet'
  * the package yet. Until it is, the words below are a guard over a SHAPE: the shape
  * `forms/FieldHint.css` found for the same fault in August, and
  * `forms/fieldHintStyle.test.ts` holds in the same way. That the shape is the one
- * that keeps a panel on the screen was measured, not argued: every width from 360
- * to 900, production and QA, both states of the inbox, and 360 at 200% text.
+ * that keeps a panel on the screen was measured, not argued: fourteen widths from 360
+ * to 1280 on the production build and on the QA build, the inbox with messages, empty,
+ * refused by the server and never answered, and 360 at 200% text, where every panel
+ * lies whole on the screen. The numbers it was measured at, before and after, are the
+ * boundary written in the head of `scripts/header-panels-geometry.mjs`, for the browser
+ * of ADL A63 to turn into guards one at a time.
  *
  * **Both halves are held, since one without the other is the fault again.** The
  * button's box must not be positioned, or it is what the panel is measured from;
