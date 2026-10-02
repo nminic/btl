@@ -1172,13 +1172,24 @@ describe('a confirming press, in every state the queue can be in', () => {
    * decision. A server that answered every decision 200 would let the sweep's later approval overwrite
    * the moderator's refusal and read as though the refusal had never been sent, which is exactly the
    * picture the review drew and the one thing this case must be able to tell from the real one.
+   *
+   * <p><b>Each held card has a gate of its own, and `release` lets one go, or all.</b> One gate for
+   * every card was enough while the question was whether a press is sent; it cannot say IN WHAT ORDER
+   * two answers come back, and the order is the axis the review of round 2 found missing (the earlier
+   * of two refusals answered first). `refusing` names the cards whose first decision the route refuses.
    */
-  function serverThatHolds(...held: string[]) {
+  function serverThatHolds(held: string[], refusing: string[] = []) {
     const recorded = new Set<string>()
-    let release: () => void = () => {}
-    const letGo = new Promise<void>((resolve) => {
-      release = resolve
-    })
+    const gates = new Map<string, { opens: () => void; shut: Promise<void> }>()
+
+    for (const id of held) {
+      let opens: () => void = () => {}
+      const shut = new Promise<void>((resolve) => {
+        opens = resolve
+      })
+
+      gates.set(pathOf(id), { opens, shut })
+    }
 
     const server = serverThat((path, init) => {
       if (init?.method !== 'POST' || !path.includes('/decision')) {
@@ -1190,26 +1201,36 @@ describe('a confirming press, in every state the queue can be in', () => {
       recorded.add(path)
 
       const answer = () =>
-        second
+        second || refusing.some((id) => pathOf(id) === path)
           ? refused('O stavci je već odlučeno.', 409)
           : new Response(JSON.stringify({ id: 1, state: 'decided' }), {
               status: 200,
               headers: { 'content-type': 'application/json' },
             })
+      const gate = gates.get(path)
 
-      return held.some((id) => pathOf(id) === path) ? letGo.then(answer) : answer()
+      return gate === undefined ? answer() : gate.shut.then(answer)
     })
 
-    return { server, release }
+    return {
+      server,
+      release: (id?: string) => {
+        for (const [path, gate] of gates) {
+          if (id === undefined || path === pathOf(id)) {
+            gate.opens()
+          }
+        }
+      },
+    }
   }
 
   const countFor = (asked: Asked[], id: string) =>
     decisionsIn(asked).filter((one) => one.path === pathOf(id)).length
 
   /** Everything a case does to the page, written once. */
-  async function pageWith(held: string[]) {
+  async function pageWith(held: string[], refusing: string[] = []) {
     const user = setupUser()
-    const { server, release } = serverThatHolds(...held)
+    const { server, release } = serverThatHolds(held, refusing)
 
     renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
 
@@ -1237,6 +1258,21 @@ describe('a confirming press, in every state the queue can be in', () => {
         waitFor(() => {
           expect(countFor(server.asked, id)).toBe(times)
         }),
+      /**
+       * The answer for a card has been TAKEN IN: its decision is recorded, or the sentence of its
+       * refusal is on its card. Its box is not on the page to say so - the box on the other card has
+       * replaced it - so what is read is what the answer leaves behind.
+       */
+      answered: (card: { index: number; id: string }) =>
+        waitFor(() => {
+          const decided = decidedIn()
+            .queryAllByRole('listitem')
+            .some((one) => (one.textContent ?? '').startsWith(`${card.id} | `))
+          const said =
+            within(cards[card.index] ?? document.createElement('li')).queryAllByRole('alert').length > 0
+
+          expect(decided || said, `the answer for ${card.id} has been taken in`).toBe(true)
+        }),
     }
   }
 
@@ -1246,6 +1282,8 @@ describe('a confirming press, in every state the queue can be in', () => {
     name: string
     /** The cards whose answer the route holds. */
     held: string[]
+    /** The cards whose FIRST decision the route refuses, where a scene needs one that is. */
+    refusing?: string[]
     /** Whether the state starts a sweep, which is what has to be waited out at the end. */
     sweeping: boolean
     /** Gets the screen into the state and leaves the box open on the card `target`. */
@@ -1347,11 +1385,78 @@ describe('a confirming press, in every state the queue can be in', () => {
       target: LAST.id,
       toldOff: true,
     },
+    /* THE ORDER OF TWO ANSWERS, which is the axis this table lacked until the review of round 2 (q6).
+       The scene above has the LATER card's answer come back first, and a set that is let go of from the
+       state of the render the press was made in passes it by accident: the later press was made after
+       the earlier card was marked, so the state it carries still names it. The EARLIER answer first is
+       the order that breaks it. Both cards are pressed, both answers are held, and the earlier is let go
+       while the box of the later is open - one scene for an earlier that goes through and one for an
+       earlier that is refused, because they leave the earlier card in two different states. */
+    {
+      name: 'two refusals are out, the earlier one has gone through, and the box of the later one is open',
+      held: [LAST.id, THIRD.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        page.release(LAST.id)
+        await page.answered(LAST)
+      },
+      target: THIRD.id,
+      toldOff: true,
+    },
+    {
+      name: 'two refusals are out, the earlier one has been refused, and the box of the later one is open',
+      held: [LAST.id, THIRD.id],
+      refusing: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        page.release(LAST.id)
+        await page.answered(LAST)
+      },
+      target: THIRD.id,
+      toldOff: true,
+    },
+    {
+      /* AND THE OTHER HALF OF THE SAME ORDER: what the earlier answer left behind. A card that was
+         refused first and asked again once both are in must be live and must not say it is sending; the
+         set that was let go of from a stale state kept it, and the box of a card nothing was out for
+         stayed on „Šalje se". */
+      name: 'two refusals were out, the earlier was refused and the later went through, and the refused card is asked again',
+      held: [LAST.id, THIRD.id],
+      refusing: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        page.release(LAST.id)
+        await page.answered(LAST)
+        page.release(THIRD.id)
+        await page.answered(THIRD)
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: false,
+    },
   ]
 
   it.each(SCENES)('$name', async (scene) => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const page = await pageWith(scene.held)
+    const page = await pageWith(scene.held, scene.refusing)
 
     try {
       await scene.arrange(page)
@@ -1362,6 +1467,11 @@ describe('a confirming press, in every state the queue can be in', () => {
 
       /* WHAT THE BUTTON SAYS IS WRITTEN DOWN, and the press is the other half of the claim. */
       expect(toldOff).toBe(scene.toldOff)
+
+      /* AND THE SENTENCE SAYS THE SAME AS THE BUTTON: a box that is told off says it is sending, and one
+         that is not says nothing. Both read what the box is handed (`working`), so a state in which
+         they differ is a state in which one of them reads a second home. */
+      expect(sending(), 'the sentence that a request is out').toHaveLength(toldOff ? 1 : 0)
 
       await page.user.click(button)
 
