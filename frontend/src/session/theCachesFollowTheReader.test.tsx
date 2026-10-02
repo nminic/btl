@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { arrivedResource, loadResource } from '../data/client'
 import { isResource, serverThat } from '../test/serverAnswers'
@@ -52,12 +53,32 @@ function WhoIsAsking() {
   return <output aria-label="who is signed in">{JSON.stringify({ signedIn, reader: readerOf(memberNumber, account) })}</output>
 }
 
+/**
+ * A screen that is mounted by the render a sign in causes, and reads the cache the way every
+ * `useResource` does: once, while it renders, and never again.
+ *
+ * <p>That is the whole of what makes the MOMENT of the drop matter. What a screen reads at its first
+ * render is what it holds from then on, so a drop that comes after that render (in an effect, of
+ * the provider or of anybody else) is a drop the screen never hears about. The header's
+ * `AccountMenu` is exactly this, and the only one on the portal: it exists while somebody is signed
+ * in, so it mounts in the render in which the reader changes.
+ */
+function AScreenThatMountsWithTheSignIn() {
+  const [found] = useState(() => ({
+    competitors: arrivedResource('competitors') !== undefined,
+    teams: arrivedResource('teams') !== undefined,
+  }))
+
+  return <output aria-label="what the screen found when it mounted">{JSON.stringify(found)}</output>
+}
+
 function Probe() {
-  const { theServerAnswered, theServerSignedMeIn, signOut, setGoing } = useSession()
+  const { theServerAnswered, theServerSignedMeIn, signOut, setGoing, signedIn } = useSession()
 
   return (
     <>
       <WhoIsAsking />
+      {signedIn !== null && <AScreenThatMountsWithTheSignIn />}
       <button type="button" onClick={theServerAnswered}>
         server answered nobody
       </button>
@@ -184,6 +205,38 @@ describe('somebody signing in', () => {
     await user.click(screen.getByRole('button', { name: 'moderator signs in' }))
 
     expect(held()).toEqual(THE_TWO_ARE_GONE)
+  })
+})
+
+describe('a screen that mounts in the render that changes the reader', () => {
+  /* **The guard of the mechanism, and not of an outcome.** Every other case here asks whether the
+     two names are held at the moment the case looks, and an effect that dropped them a render later
+     would pass all of them: by then it has run. The screen below reads at its FIRST render, so it
+     sees only what is already gone when the provider hands over. */
+  it('finds nothing of the answers the other reader was given', async () => {
+    const user = visit()
+
+    await user.click(screen.getByRole('button', { name: 'server answered nobody' }))
+    await warm()
+    await user.click(screen.getByRole('button', { name: 'member signs in' }))
+
+    expect(screen.getByLabelText('what the screen found when it mounted')).toHaveTextContent(
+      JSON.stringify({ competitors: false, teams: false }),
+    )
+  })
+
+  it('finds what the first screen read, when the render is the first answer of a visit', async () => {
+    /* The other end of the case above, and the one that keeps it from being satisfied by a screen
+       that cannot see the cache at all: the same screen, mounted by the same kind of render, finds
+       both lists where nothing was dropped. */
+    const user = visit()
+
+    await warm()
+    await user.click(screen.getByRole('button', { name: 'server answered a member' }))
+
+    expect(screen.getByLabelText('what the screen found when it mounted')).toHaveTextContent(
+      JSON.stringify({ competitors: true, teams: true }),
+    )
   })
 })
 

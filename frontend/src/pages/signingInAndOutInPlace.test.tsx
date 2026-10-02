@@ -179,10 +179,23 @@ function whoTheServerSays(session: Session): Response {
 
 let session: Session = { who: 'nobody', member: HIDDEN, founder: false, signsInAs: 'member' }
 let server: { asked: Asked[]; stop: () => void } | null = null
+/* The way to let the held list of members through, while one is held. */
+let letTheHeldListThrough: (() => void) | null = null
 
-/** A server that answers by the session it holds, which `/api/sign-in` and `/api/sign-out` move. */
-function aServerThatAnswersBySession(start: Partial<Session>): void {
+/**
+ * A server that answers by the session it holds, which `/api/sign-in` and `/api/sign-out` move.
+ *
+ * @param holdTheListOfMembersAsAMember keeps the FIRST list of members it is asked for once somebody is
+ * signed in on its way, answered in the shape the session had when it was asked and delivered only
+ * when `letTheHeldListThrough` is called. A promise is an answer that has not come back yet, which
+ * is the only way to look at what a screen draws while it waits.
+ */
+function aServerThatAnswersBySession(
+  start: Partial<Session>,
+  { holdTheListOfMembersAsAMember = false } = {},
+): void {
   session = { who: 'nobody', member: HIDDEN, founder: false, signsInAs: 'member', ...start }
+  let held = false
 
   server = serverThat((path) => {
     switch (path) {
@@ -196,8 +209,19 @@ function aServerThatAnswersBySession(start: Partial<Session>): void {
         session.who = 'nobody'
 
         return did()
-      case '/api/competitors':
-        return json(competitorsTo(session.who !== 'nobody'))
+      case '/api/competitors': {
+        const said = json(competitorsTo(session.who !== 'nobody'))
+
+        if (holdTheListOfMembersAsAMember && session.who !== 'nobody' && !held) {
+          held = true
+
+          return new Promise<Response>((resolve) => {
+            letTheHeldListThrough = () => resolve(said)
+          })
+        }
+
+        return said
+      }
       case '/api/teams':
         return json(teamsTo(session))
       case '/api/results':
@@ -247,18 +271,27 @@ async function hisTeamRow(): Promise<{ points: string; members: string; first: s
 }
 
 /**
- * The portraits the page draws, by the address each is drawn from, once the cards are there.
+ * The portraits drawn inside an element, by the address each is drawn from.
+ *
+ * <p>A circle is decoration (`components/Portrait.tsx`), so it is found as what it is: a picture
+ * with no name.
+ */
+function picturesIn(scope: HTMLElement): string[] {
+  return within(scope)
+    .queryAllByRole('presentation', { hidden: true })
+    .flatMap((one) => (one.tagName === 'IMG' ? [one.getAttribute('src') ?? ''] : []))
+}
+
+/**
+ * The portraits the page draws, once the cards are there.
  *
  * <p>Waited for by the member who hides, whose card is drawn in both answers: a page that has not
- * drawn him yet has no portrait of his either, which is what „none" would read as. A circle is
- * decoration (`components/Portrait.tsx`), so it is found as what it is: a picture with no name.
+ * drawn him yet has no portrait of his either, which is what „none" would read as.
  */
 async function picturesOnTheCards(): Promise<string[]> {
   expect(await screen.findByText('Skriven Skrivenic')).toBeVisible()
 
-  return within(screen.getByRole('main'))
-    .queryAllByRole('presentation', { hidden: true })
-    .flatMap((one) => (one.tagName === 'IMG' ? [one.getAttribute('src') ?? ''] : []))
+  return picturesIn(screen.getByRole('main'))
 }
 
 beforeEach(() => {
@@ -267,6 +300,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  letTheHeldListThrough?.()
+  letTheHeldListThrough = null
   server?.stop()
   server = null
   forgetEveryCookie()
@@ -373,6 +408,58 @@ describe('a moderator signs in behind a visitor', () => {
 
     expect(row.points).toBe(formatPoints(17, 'sr'))
     expect(row.members).toBe('2')
+  })
+})
+
+describe('the header of somebody who has just signed in', () => {
+  /* **THE ONE READER THAT MOUNTS IN THE SAME COMMIT AS THE CHANGE OF READER, which is what makes
+     this the guard of the mechanism and not only of its outcome** (review of 02.10.2026, round 2).
+     `AccountMenu` exists only while somebody is signed in, so it is mounted by the very render a
+     sign in causes, and it reads `competitors` while it renders. The session drops the two names
+     WHILE IT RENDERS, so what it finds is an empty cache and it names the member by his number
+     until his own record comes. Dropped in an effect instead, it would find the answer the visitor
+     was given: with the drop in `useEffect` it keeps that answer for good (its own effect, a
+     child's, runs before the provider's and takes the cached promise), and with it in
+     `useLayoutEffect` it draws the visitor's record, without the picture, until a new answer
+     arrives. Every other screen is mounted by the router a render later, after either effect has
+     run, so nothing else on the portal tells the three apart - which is how the first two rounds of
+     this fix passed with the drop in an effect (PDL P28f: the picture is in the header). */
+  it('names him by his number while the list of members is on its way, and draws his picture when it comes', async () => {
+    aServerThatAnswersBySession(
+      { signsInAs: 'member', member: HIDDEN },
+      { holdTheListOfMembersAsAMember: true },
+    )
+    const { router } = renderAt('/sr', 'visitor', null, undefined, TODAY)
+
+    /* The front page asks as a visitor, and that is the answer that is in the cache when he signs in. */
+    await waitFor(() => {
+      expect(askedFor('/api/competitors')).toHaveLength(1)
+    })
+    await act(async () => {
+      await router.navigate('/sr/prijava')
+    })
+    await signInHere()
+
+    const header = await screen.findByRole('button', { name: 'Otvori nalog' })
+
+    /* The second ask, the one made as a member, is on its way and held. */
+    await waitFor(() => {
+      expect(askedFor('/api/competitors')).toHaveLength(2)
+    })
+
+    /* Both halves of „not yet": his number where his name would be, and no picture. The record the
+       visitor was answered would give his INITIALS here, without a picture as well, which is why the
+       number is asserted and not only the absence of the picture. */
+    expect(header).toHaveTextContent(/^02$/)
+    expect(picturesIn(header)).toEqual([])
+
+    await act(async () => {
+      letTheHeldListThrough?.()
+    })
+
+    await waitFor(() => {
+      expect(picturesIn(screen.getByRole('button', { name: 'Otvori nalog' }))).toEqual([aCompetitor.photo])
+    })
   })
 })
 
