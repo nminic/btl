@@ -30,7 +30,8 @@ import java.util.OptionalLong;
  * again by this portal, so its time of last modification is the time it was put there, it is
  * what every file system keeps, and it is what a case can set without waiting. <b>What it costs
  * is named below and in {@code ThePicturesFolderIsSwept}:</b> a copy that keeps the times
- * arrives looking as old as the file it copies.
+ * arrives looking as old as the file it copies, which is why the copy in
+ * {@code deploy/pour-from-qa.sh} does not keep them.
  *
  * <p><b>STRICTLY OLDER.</b> Older than ten minutes is exactly that: a file exactly ten minutes
  * old is not older than that. A file dated in the future - a clock that stepped back, a volume

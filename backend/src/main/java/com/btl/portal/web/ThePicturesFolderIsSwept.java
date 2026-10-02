@@ -102,25 +102,33 @@ import java.util.concurrent.TimeUnit;
  *
  * <p><b>WHAT THIS CAN TAKE THAT IT SHOULD NOT, named rather than discovered.</b> The ten
  * minutes are the file's age by its time of last modification, so a copy that KEEPS times
- * arrives looking as old as the file it copies. {@code deploy/pour-from-qa.sh} is exactly that:
- * it copies the photographs with {@code cp -a} (measured inside {@code eclipse-temurin:21-jre},
- * the image the backend runs from: the time of last modification survives it) and does so BEFORE
- * the transaction that writes the rows, by design. A sweep that ran between those two steps on
- * production would find every poured file old and without a row, and delete it.
- * <b>Restarting the production backend immediately before a pour starts the hour again</b>, so by
- * the delay above no sweep can fall between the two steps; that is my reasoning and has not been
- * run. The script is outside this change and is not touched by it. The same arrangement fits a
- * restore of the volume before the database. And a database restored from a dump older than the
- * files makes the files of later uploads strays in THAT database, so they go within the hour;
- * they are files nothing points at there.
+ * arrives looking as old as the file it copies, and a sweep that fell between that copy and the
+ * commit of its row would find it old and without a row. {@code deploy/pour-from-qa.sh} was
+ * exactly that: it copied the photographs with {@code cp -a}, and a rehearsal on a throwaway
+ * stack measured the files arriving on production still dated as QA had them, with the copy
+ * running BEFORE the transaction that writes the rows, by design. It now copies with
+ * {@code --preserve=mode,ownership} and no time; the same rehearsal measured the files arriving
+ * dated the moment of the copy, owner and mode unchanged, and
+ * {@code PouringFromQaScriptTest} holds the options of that one line. <b>What stays open,
+ * named:</b> a pour whose copy and transaction together last longer than ten minutes could
+ * still lose its first files if a sweep fell in that time, and nothing here measures how long a
+ * pour takes. A restore of the volume before the database is the same arrangement with no
+ * script of ours to change. And a database restored from a dump older than the files makes the
+ * files of later uploads strays in THAT database, so they go within the hour; they are files
+ * nothing points at there.
  *
  * <p><b>WHAT IT DOES NOT DO.</b> It looks at files and never at rows: a {@code photo} row that
  * nothing holds is not swept, and neither is its file, because the file has a row. By V9's
- * foreign keys and by what {@link CompetitorWriteApi} deletes (read, not run), one such row is
- * made when a member is deleted while a picture of his waits in the queue: the queue row goes
- * with him and the {@code photo} row does not. That is a different leftover, and it goes against
- * a recorded decision: P21 says that where a member is the subject of a picture („Ako je član
- * predmet slike") „slika se uklanja". It is reported, not handled here.
+ * foreign keys and by what {@link CompetitorWriteApi} deletes, one such row is made when a
+ * member is deleted while a picture of his waits in the queue (measured on 02.10.2026 through
+ * the route's own door: after the deletion the {@code photo} row is still there and no queue row
+ * points at it): the queue row goes with him and the {@code photo} row does not. That is a
+ * different leftover, and it goes against a recorded decision: P21 says that where a member is
+ * the subject of a picture („Ako je član predmet slike") „slika se uklanja". It is reported, not
+ * handled here. <b>When it is handled, the route has to delete only the ROW</b> of each picture
+ * waiting in his queue rows, in the same transaction: the file then has no row, this sweep
+ * deletes it once it is older than ten minutes, and the route carries no deletion of a file of
+ * its own for it and no second rule about the disk.
  *
  * <p><b>IT IS NOT IN {@link MePhotoApi}</b>, whose class note says that sweeping „would be one
  * route carrying a rule about the whole disk". It is a fifth reader of the setting the four
