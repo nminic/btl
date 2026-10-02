@@ -411,12 +411,15 @@ describe('a sentence with a value put into it', () => {
       'seo.team.recordTitle',
       'seo.verificationQueue.queueDescription',
       'seo.verificationQueue.queueTitle',
-      /* What the server answered, in the two cases where the screen can only repeat it:
-         the name of a refusal this portal does not know, and the number of an answer
-         that is not one of the shapes it reads. Both are values the server chose, so
-         neither can be written into the words. */
+      /* What the server answered, in the case where the screen can only repeat it: the
+         name of a refusal this portal does not know. A value the server chose, so it
+         cannot be written into the words. The number of an answer that is not one of the
+         shapes the portal reads is the same kind of value, and its sentence is chosen at
+         run time (`pages/account/serverWords.ts`), so it stands under the two files that
+         ask for it, `? (ServerSaid.tsx)` and `? (PendingQueue.tsx)`, and not under a name
+         of its own: `server.wrong` stood here until 02.10.2026, when the last screen that
+         wrote its key into a call went through that function instead. */
       'server.refused',
-      'server.wrong',
       /* The number of the account somebody is signed in as, in the header, and it takes
          no case at all: the sentence is „Nalog 41", the word stands first and the number
          after it is a label rather than a thing being counted. It is drawn only where the
