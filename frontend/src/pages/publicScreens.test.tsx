@@ -2910,8 +2910,9 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        sentence a visitor reads when `leagues.json` fails is the portal speaking about a
        competition as much as anything else on the page. No seat above is in that state,
        and the one case that draws it matches by substring, so the overturned rule
-       appended to `data.error` passed the whole gate (review, 01.09.2026). Four words,
-       held whole. */
+       appended to `data.error` passed the whole gate (review, 01.09.2026). Five words,
+       held whole: the fifth is `data.retry`, the word of the button that asks again for a list
+       that could not be read (02.10.2026, PENDING stavka 368). */
     expect(sr.data).toEqual(words.data)
 
     /* **The whole of `seo`, not the four names about competitions.** Held as four, the

@@ -154,21 +154,17 @@ export const BOUNDS: Record<(typeof MEASURES)[number], { least: number; most: nu
  * required and marked wrong, which sends a screen reader into a cell it has nothing
  * to fix with (WCAG 2.2 SC 3.3.1, and ADL A31 on a fact with more than one home).
  *
- * There is a fourth reader that cannot be one of these, and it is written by hand:
- * the words of the refusal (`i18n`, `admin.form.racesRefused`). One sentence stands
- * for the whole table, so it cannot name what is wrong with one row, and until
- * 30.08.2026 it said every race must give a length, which stopped being true the
- * moment two of the three kinds stopped fixing one.
- *
- * It does not try to say it conditionally either, which was the next thing tried
- * and worse: „a race that fixes a length" names a property this table does not
- * draw, and the only thing on the screen that looks like it, the number in the
- * length cell, points the other way. The exempt row shows „0" and the refused one
- * shows nothing, so a reader following the words lands on the wrong row. The
- * sentence now says what every race must have and sends the reader to the marked
- * cells, which are marked one by one and correctly. That the sentence itself does
- * not name the row is a fault of its own, written down in PENDING since
- * 23.08.2026.
+ * **The words of the refusal were a fourth reader that could not be one of these, and
+ * stopped being one on 02.10.2026.** One sentence stood for the whole table
+ * (`admin.form.racesRefused`), so it could not name what was wrong with one row, and until
+ * 30.08.2026 it said every race must give a length, which stopped being true the moment two
+ * of the three kinds stopped fixing one. It then said what every race must have and sent the
+ * reader to the marked cells, and told the climb and the fall to be left empty, which sent an
+ * administrator who obeyed it to save a climb of nought over a number he had typed (review of
+ * PR 463). What names the row and the cell now is a sentence per marked cell, drawn under the
+ * table (`EventRaces.tsx`) from the answer to „why is this cell wrong" (`whyWrong`), which
+ * this question and `isWrong` and `whatIsMissing` all share. The sentence over the table says
+ * only that the races were not saved and where to look.
  *
  * The climb and the fall are never asked for: a course has both whichever way it is
  * run, and an empty one is read as nought. That they are nonetheless held to their
@@ -250,18 +246,84 @@ export function keptWhole(field: keyof typeof BOUNDS): boolean {
   return trka.fields.some((one) => one.name === field && one.integer === true)
 }
 
-/** Whether a measurement is inside what a race can be. An empty climb or fall is
- *  nought and is inside it; an empty length is not a length.
- *
- *  And a measure the server keeps whole takes no separator, asked of the writing: „1.200"
- *  metres is twelve hundred as often as it is one point two (`forms/numberField.ts`,
- *  `isWhole`). The coordinator's reasoning, not the owner's words. */
-function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
-  const { least, most } = BOUNDS[field]
-  const number = said === '' && field !== 'distanceKm' ? 0 : read(said)
-  const whole = !keptWhole(field) || said === '' || isWhole(said)
+/** Every cell of a row, in the order the table draws them, and the one list `RACE_CELLS` and the
+ *  readers below walk, so a cell added to the table is asked about without anybody remembering to. */
+export type RaceCell = keyof typeof BOUNDS | 'date' | 'name'
 
-  return whole && Number.isFinite(number) && number >= least && number <= most
+/** The four ways one cell of this table can be wrong, which are the four things a reader is told
+ *  to do something different about: write it, write a number, write a whole one, write one inside
+ *  the range. */
+export type WhatIsWrong = 'missing' | 'notANumber' | 'notWhole' | 'outOfBounds'
+
+/** Every cell of a row in the order the table draws them: the name, the day, then the measures. */
+export const RACE_CELLS: readonly RaceCell[] = ['name', 'date', ...MEASURES]
+
+/**
+ * WHY ONE CELL OF ONE ROW IS WRONG, or nothing where it is not: the one home for the question.
+ *
+ * <p>It has three readers and used to have two answers. The marking of a cell (`isWrong`) and the
+ * refusal of the save (`whatIsMissing`) asked „is it wrong"; the words under the table
+ * (`sentenceFor`) have to ask WHY, and a third reading of the same bounds would have been a third
+ * chance to disagree (ADL A31). All three ask here, and the first two are one line each.
+ *
+ * <p><b>Why it is a reason and not a yes or a no.</b> The table refused „1.200" in the climb with
+ * one sentence for the whole table, and that sentence told the climb and the fall to be left
+ * empty. An administrator who obeyed it saved a climb of nought over the number he had typed
+ * (review of PR 463; WCAG 2.2 SC 3.3.1 and 3.3.3). What is wrong with a cell decides what it is
+ * told to type, and four things can be.
+ *
+ * <p>The order the reasons are asked in is the order a reader can act on them: a cell that is
+ * empty is asked for, one that is not a number is asked for a number, one that is a number but
+ * is written with a separator is asked for a whole one, and only a number that is whole is asked
+ * about its range. A climb of „30.001" is therefore `notWhole` and not `outOfBounds`, because
+ * typing 30001 would not be what he meant either.
+ *
+ * <p>Nothing is wrong with a measure the race does not fix, whichever measure it is: it carries
+ * nought on purpose, and nought is outside the bounds on purpose.
+ */
+export function whyWrong(row: RaceRow, field: RaceCell): WhatIsWrong | undefined {
+  if (field === 'name') {
+    /* Cut the same way the press cuts it. Asked without `trim`, a name of three
+       spaces was refused by the press and the cell that carried it said
+       `aria-invalid="false"`: the reader was told the row is wrong and every control
+       in it said it was fine, which in a table of twelve rows leaves nowhere to look
+       (WCAG 2.2 SC 3.3.1). Measured 23.08.2026. Of the four fields this knows, the
+       name was the only one whose two answers disagreed. */
+    return row.name.trim() === '' ? 'missing' : undefined
+  }
+
+  if (field === 'date') {
+    return isoDate(row.date) === '' ? 'missing' : undefined
+  }
+
+  if (!isBounded(row, field)) {
+    return undefined
+  }
+
+  const said = row[field]
+
+  /* An empty climb or fall is nought and is inside the range; an empty length or limit is not
+     a measure at all. */
+  if (said === '') {
+    return field === 'ascentM' || field === 'descentM' ? undefined : 'missing'
+  }
+
+  const number = parseNumber(said)
+
+  if (number === null) {
+    return 'notANumber'
+  }
+
+  /* A measure the server keeps whole takes no separator, asked of the writing: „1.200" metres is
+     twelve hundred as often as it is one point two (`forms/numberField.ts`, `isWhole`). The
+     coordinator's reasoning, not the owner's words. */
+  if (keptWhole(field) && !isWhole(said)) {
+    return 'notWhole'
+  }
+
+  const { least, most } = BOUNDS[field]
+
+  return number >= least && number <= most ? undefined : 'outOfBounds'
 }
 
 /**
@@ -273,28 +335,49 @@ function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
  * `aria-invalid="false"`, so a reader was sent looking somewhere else
  * (WCAG 2.2 SC 3.3.1). Measured 23.08.2026.
  */
-export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'name'): boolean {
-  if (field === 'name') {
-    /* Cut the same way the press cuts it. Asked without `trim`, a name of three
-       spaces was refused by the press and the cell that carried it said
-       `aria-invalid="false"`: the reader was told the row is wrong and every control
-       in it said it was fine, which in a table of twelve rows leaves nowhere to look
-       (WCAG 2.2 SC 3.3.1). Measured 23.08.2026. Of the four fields this knows, the
-       name was the only one whose two answers disagreed. */
-    return row.name.trim() === ''
+export function isWrong(row: RaceRow, field: RaceCell): boolean {
+  return whyWrong(row, field) !== undefined
+}
+
+/**
+ * The key of the sentence that says what is wrong with one cell, built from the cell and the
+ * reason and never written out per pair.
+ *
+ * <p>The name and the day have one sentence each, because for them there is one thing to say. A
+ * measure has the four, and the one reason that is worded differently by cell is „not a number":
+ * a cell that is kept whole is told a whole number and one that is not is told a number with a
+ * comma, because the example in the sentence is what the administrator copies.
+ * `admin/raceRows.test.ts` asks the dictionaries about every pair this function can answer.
+ */
+export function sentenceFor(field: RaceCell, why: WhatIsWrong): string {
+  if (field === 'name' || field === 'date') {
+    return `admin.race.wrong.${field}`
   }
 
-  if (field === 'date') {
-    return isoDate(row.date) === ''
+  if (why === 'notANumber') {
+    return `admin.race.wrong.notANumber.${keptWhole(field) ? 'whole' : 'decimal'}`
   }
 
-  /* Nothing is wrong with a measure the race does not fix, whichever measure it is:
-     it carries nought on purpose, and nought is outside the bounds on purpose. */
-  if (!isBounded(row, field)) {
-    return false
+  return `admin.race.wrong.${why}`
+}
+
+/**
+ * The bounds of a cell as the sentence about them writes them: the numbers the save holds the cell
+ * to (`BOUNDS`), with the decimal separator of the language and no separator for the thousands.
+ *
+ * <p>No separator for the thousands because the sentence is about a cell that refuses one: „od 0 do
+ * 30.000" would be the very writing it has just been told is wrong. And a number of the cell is
+ * written by `String`, which is also how the portal sends it, so „0.1" and „1000" come out as
+ * themselves. A cell with no bounds (the name and the day) answers nothing.
+ */
+export function boundsOf(field: RaceCell, locale: string): Record<string, string> {
+  if (field === 'name' || field === 'date') {
+    return {}
   }
 
-  return !withinBounds(row[field], field)
+  const written = (number: number) => String(number).replace('.', locale === 'sr' ? ',' : '.')
+
+  return { least: written(BOUNDS[field].least), most: written(BOUNDS[field].most) }
 }
 
 /**
@@ -309,28 +392,22 @@ export function isWrong(row: RaceRow, field: keyof typeof BOUNDS | 'date' | 'nam
  * A length of nought is refused rather than kept: it passes „not empty" and is
  * not a distance, and the whole standing is worked out from it.
  */
-export function whatIsMissing(row: RaceRow): keyof typeof BOUNDS | 'date' | 'name' | undefined {
-  /* A race always has a name, and it cannot be emptied: it opens as the name of
-     its event and may be changed, not taken away (owner, 23.08.2026). A row with
-     no name is a row nobody can pick out of a list of races. */
-  if (row.name.trim() === '') {
-    return 'name'
-  }
+export function whatIsMissing(row: RaceRow): RaceCell | undefined {
+  /* Walked over every cell the table draws rather than listed, in the order it draws them, so a
+     measure added to `BOUNDS` is asked about without anybody remembering to, and the first thing
+     wrong is the first one a reader meets.
 
-  if (isoDate(row.date) === '') {
-    return 'date'
-  }
+     A race always has a name, and it cannot be emptied: it opens as the name of its event and may
+     be changed, not taken away (owner, 23.08.2026). A row with no name is a row nobody can pick
+     out of a list of races.
 
-  /* The bounds the race's own form carried until 23.08.2026
-     (`definitions/admin-trka.form.json`). The form went with the owner's change
-     and the bounds nearly went with it: `min` on a number box is decoration here,
-     because the form is `noValidate` and nothing reads `checkValidity`. Measured
-     on the real screen: a climb of **minus five hundred** metres saved. `Le = L +
-     (1.25×AP + 0.75×AN)/200` then works out a profile that was never run, and the
-     whole standing is worked out from it. */
-  /* Walked over every field that has bounds rather than listed, so a measure added
-     to `BOUNDS` is asked about without anybody remembering to. */
-  return MEASURES.find((field) => isBounded(row, field) && !withinBounds(row[field], field))
+     The bounds are the ones the race's own form carried until 23.08.2026
+     (`definitions/admin-trka.form.json`). The form went with the owner's change and the bounds
+     nearly went with it: `min` on a number box is decoration here, because the form is
+     `noValidate` and nothing reads `checkValidity`. Measured on the real screen: a climb of
+     **minus five hundred** metres saved. `Le = L + (1.25×AP + 0.75×AN)/200` then works out a
+     profile that was never run, and the whole standing is worked out from it. */
+  return RACE_CELLS.find((field) => whyWrong(row, field) !== undefined)
 }
 
 /**

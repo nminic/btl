@@ -237,6 +237,12 @@ describe('a sentence with a value put into it', () => {
          and several such calls in one file share this line. */
       '? (CategoryDonut.tsx)',
       '? (Counters.tsx)',
+      /* What is wrong with one cell of the table of races. The key is built from the cell and
+         the reason (`admin/raceRows.ts`, `sentenceFor`), so it is not written into the call. The
+         only values any of them take are the two bounds of the cell, in „Dozvoljene su
+         vrednosti od {least} do {most}.": numbers written in figures after „od" and „do", with
+         no separator for the thousands, so they have no case to be wrong in. */
+      '? (EventRaces.tsx)',
       '? (FormRenderer.tsx)',
       '? (Home.tsx)',
       /* The rule beside the password, whose name is declared as a `hintKey` on the

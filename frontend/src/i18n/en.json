@@ -212,6 +212,7 @@
       "other": "{count} unread"
     },
     "noMessages": "No messages.",
+    "messagesUnreadable": "The messages cannot be loaded.",
     "allMessages": "All messages",
     "account": "Account",
     "accountNumber": "Account {number}",
@@ -326,6 +327,7 @@
     "loading": "Loading",
     "loadingPart": "Loading: {part}",
     "error": "The data cannot be loaded.",
+    "retry": "Try again",
     "empty": "There is nothing here yet."
   },
   "form": {
@@ -406,7 +408,8 @@
     "doneTitle": "The application is recorded",
     "checkSpam": "If the message does not arrive within a few minutes, look in the junk mail as well.",
     "resend": "Send the confirmation again",
-    "resent": "The confirmation has been sent again. If it still does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net.",
+    "resent": "If this address is still waiting to be confirmed, a new message has been sent. If it still does not arrive within a few minutes, write to us at info@balkanskatrkackaliga.net.",
+    "resending": "Asking for the confirmation to be sent again...",
     "doneText": "We have sent a message to {email}. Open it and confirm the address, because the account is activated only then.",
     "sending": "Sending the application...",
     "formIsNotComplete": "The server did not accept the application, because an answer is incomplete or unrecognised. Check the answers, the town and the country above all, then send again.",
@@ -513,6 +516,9 @@
     "answerRefused": {
       "theFormIsNotComplete": "The answer did not reach the server in full, so no racing pair was made. Refresh the page and try again.",
       "thePairWouldNotBeMixed": "A racing pair must have one man and one woman, so this pair was not made."
+    },
+    "breakRefused": {
+      "notHeld": "This racing pair cannot be ended from here: it has already ended or has stopped holding. Trying again does not help. Reload the page to see how things stand."
     }
   },
   "topBoards": {
@@ -848,6 +854,8 @@
     "inviteAccept": "Accept",
     "inviteRefuse": "Decline",
     "inviteSent": "Invitations sent",
+    "applicationsUnreadable": "The list of applications cannot be loaded, so it is not known whether anybody is waiting for the team's answer.",
+    "invitationsUnreadable": "The list of invitations sent cannot be loaded, so it is not known which invitations are still waiting.",
     "inviteWithdraw": "Withdraw the invitation",
     "inviteWithdrawNamed": "Withdraw the invitation: {name}",
     "inviteLapsed": "A member whose fee has lapsed",
@@ -954,6 +962,7 @@
     "refused": "The server refused the request with the reason {reason}, which this screen does not recognise.",
     "rejected": "The portal did not manage to prove to the server that the request comes from this page. Refresh the page and try again.",
     "wrong": "The server answered with the number {status} and nothing was changed. Try again in a few minutes.",
+    "malformed": "The portal sent data in a form the server cannot read. Nothing was changed. This is a fault of the portal, please tell us.",
     "nothing": "The portal did not manage to reach the server. Check the connection and try again.",
     "named": "from the server"
   },
@@ -978,7 +987,7 @@
     "note": "The result enters the boards only once an administrator approves it. While it waits, only you see it.",
     "again": "You are correcting a result that was refused. The reason was: {reason}",
     "changing": "You are changing a result that is still waiting to be checked. Once you send it, it goes back to the end of the queue.",
-    "fixingCounted": "You are changing a result that is already counted. Until the change is approved, it leaves the standing, and new proof has to go with it.",
+    "fixingCounted": "You are changing a result that is already counted. Until the change is approved, the old result stays in the standing, and a refused change alters nothing. New proof has to go with the change.",
     "needsProof": "A change to a counted result must carry a link to the official results or a picture as proof.",
     "needsTime": "A time must be entered. Hours, minutes and seconds cannot all be zero.",
     "pointsNotFinal": "The reckoning is not final. The League confirms it at verification, and the number can change.",
@@ -1156,6 +1165,20 @@
     "eventTaken": "An event with that name already exists in that year. Change the name or the year: the address is made from the name and the year.",
     "racesOf": "The races at the event {event}",
     "noRaces": "This event has no race yet.",
+    "race": {
+      "wrong": {
+        "list": "What is wrong in the races",
+        "name": "Enter the name of the race.",
+        "date": "Pick the day of the race or write it as dd/mm/yyyy.",
+        "missing": "This field is required.",
+        "notANumber": {
+          "decimal": "Enter a number, for example 21.1.",
+          "whole": "Enter a whole number, for example 1200."
+        },
+        "notWhole": "Enter a whole number without a dot or a comma: 1200, not 1.200.",
+        "outOfBounds": "The allowed values are from {least} to {most}."
+      }
+    },
     "searchEvents": "A name or a town",
     "showing": "Showing: {count}",
     "waitingForResults": "Deleting is waiting for the results",
@@ -1207,7 +1230,7 @@
       "raceNumber": "Race {which}",
       "nextSeason": "The same place in the calendar next year",
       "nextWeek": "Exactly seven days after the event copied",
-      "racesRefused": "Every race must have a name and a day; the fields marked show what is still missing. The ascent and the descent may stay empty; they are then read as 0.",
+      "racesRefused": "The races were not saved. Correct the marked fields; under the table it says what is wrong with each of them.",
       "deleteNamed": "Delete: {name}",
       "deleteSure": "Are you sure?",
       "deleteSureNamed": "Confirm the deletion: {name}",
