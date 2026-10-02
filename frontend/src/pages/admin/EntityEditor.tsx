@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { FormRenderer } from '../../forms/FormRenderer'
 import { fieldValue, shownValue, textFrom, valuesFor } from '../../forms/records'
 import type { FieldError, FieldOption, FormDef, FormValues } from '../../forms/types'
@@ -484,10 +484,19 @@ export function RowActions({
    * <p><b>It replaces the session write and nothing else.</b> The focus still moves to the
    * one control that cannot be the row just pressed, before the answer is back, which is
    * what the six already do and what a reader on a row that is about to vanish needs. A
-   * deletion the server refuses is said in a live region rather than by putting the focus
-   * back somewhere it has already left.
+   * deletion the server refuses is said beside the row, the question closes with the answer,
+   * and the row's own „Obriši" takes the focus back from where it was moved ahead of it
+   * (`DeleteRecord`, owner 02.10.2026).
+   *
+   * <p><b>It returns the promise of the deletion, and that is not optional for a route.</b>
+   * The question the reader answered stays on the page while the request is out, told off
+   * and saying it is sending (owner, 02.10.2026: „Ne", „Odustani" and Escape do nothing
+   * while a request is out), and it can only know the request is out if what it was handed
+   * gives it something to wait for. A handler written `() => void deleteOne(one)` hands it
+   * nothing, so „Odustani" would go on putting the question away over a deletion that goes
+   * on - which is exactly what every caller wrote until that day.
    */
-  deleteRecord?: () => void
+  deleteRecord?: () => void | Promise<unknown>
   /**
    * What goes with the record, where something does.
    *
@@ -527,7 +536,7 @@ export function RowActions({
      control that starts a new record, which is the one thing on the screen that
      cannot be the row just deleted; a screen reader announces the move, which is
      also the only word anyone gets that the deletion happened. */
-  function deleteRow() {
+  function deleteRow(): void | Promise<unknown> {
     const anchor = document.getElementById(NEW_RECORD_ID)
 
     if (anchor !== null) {
@@ -542,7 +551,8 @@ export function RowActions({
       return
     }
 
-    deleteRecord()
+    /* HANDED BACK, so the question can wait for the answer (see `deleteRecord`). */
+    return deleteRecord()
   }
 
   return (
@@ -624,10 +634,58 @@ export function OpenRecord({
  * The name of the record is on all three, so a screen reader asking "delete
  * what?" is answered without reading back up the row, and two rows asking at
  * once are two different questions rather than two buttons called Odustani.
+ *
+ * <p><b>WHILE THE DELETION IS OUT THE QUESTION CANNOT BE PUT AWAY</b> (owner, 02.10.2026,
+ * choosing between three outcomes he was priced; PDL, „Odluke iz ciscenja nalaza", first
+ * item). The second press starts a request wherever `onDelete` hands back the promise of
+ * it, and from then on „Odustani" would only LOOK as though it took the answer back: the
+ * request goes on, and a refusal arriving afterwards was drawn under a question that was no
+ * longer there. So both buttons are told off for as long as the promise is pending -
+ * `aria-disabled`, and refused in their handlers as well, because it stops nothing by
+ * itself - the portal's own sentence for a request that is out is said beside them, and the
+ * question goes when the answer comes.
+ *
+ * <p><b>ANY ANSWER CLOSES IT, AND THE REFUSAL STANDS BESIDE THE BUTTON</b> (owner, 02.10.2026, the
+ * second half of the same rule; PDL, „Odbijanje zatvara pitanje kao i uspeh": „na svaki odgovor
+ * servera pitanje se zatvara, a razlog odbijanja stoji uz dugme"). A refusal used to leave the
+ * question standing with the buttons live again, which put one question in two states according to
+ * what the route said - and the portal's own sheet for the activation closed on both. The sentence
+ * is the screen's and stays where it draws it, and the focus goes to the button the question came
+ * from, because the one that had it went with the question (the activation does the same after a
+ * 409). The reader asks again by pressing it again.
+ *
+ * <p>A deletion that hands back nothing (the session's own, which have nobody to wait for)
+ * is not out with anyone: the row leaves in the same render, and the question behaves as it
+ * always did. Nothing here handles Escape, so there is no key to refuse.
  */
-export function DeleteRecord({ name, onDelete, look = 'entity-open', asksWith }: {
+export function DeleteRecord({ name, onDelete, onKeep, look = 'entity-open', asksWith }: {
   name: string
-  onDelete: () => void
+  /**
+   * What the second press does, and whether the reader has to wait for it.
+   *
+   * <p><b>Hand back the promise of a deletion that goes to the server</b>
+   * (`() => deleteOne(one)`, never `() => void deleteOne(one)`): the question tells itself
+   * off for as long as that promise is pending. A handler that returns nothing is taken to
+   * be finished when it returns.
+   */
+  onDelete: () => void | Promise<unknown>
+  /**
+   * Told when the READER puts the question away, and not when it goes by itself: with its
+   * record, or because an answer came.
+   *
+   * <p>A screen that drew something about an earlier attempt - a refusal - takes it back here.
+   * The reader who has asked again and then puts the question away has said he does not mean to
+   * go on, and the sentence about the last attempt should not outlive that and stand beside a
+   * button that has gone back to asking nothing (registry item 311, `pages/TeamDetail.tsx`).
+   * The refusal itself is NOT taken back when it closes the question: that sentence is the
+   * answer, and it stands beside the button (owner, 02.10.2026).
+   *
+   * <p><b>Only `TeamDetail` passes it today, and that is a boundary rather than a rule.</b>
+   * The lists of the administration and the member's own results draw a refusal beside the
+   * row in the same way and do not take it back when the question is put away: the same fault
+   * one screen wider, recorded and not fixed with the item that named one screen.
+   */
+  onKeep?: () => void
   /**
    * WHAT ELSE THIS DELETION TAKES, said between the question and the answer.
    *
@@ -657,6 +715,56 @@ export function DeleteRecord({ name, onDelete, look = 'entity-open', asksWith }:
 }) {
   const { t } = useI18n()
   const [asking, setAsking] = useState(false)
+  /**
+   * WHETHER THE DELETION THE SECOND PRESS STARTED IS STILL OUT, as a render can see it - for the
+   * two buttons to say so, and for the sentence beside them.
+   */
+  const [working, setWorking] = useState(false)
+  /**
+   * AND THE SAME FACT AS A PRESS CAN SEE IT: a ref, because a value set inside the handler is not
+   * visible to a second click fired before the render it would cause, and two clicks fired without
+   * waiting are what a double press is (`member/Membership.tsx`'s `outstanding` and
+   * `admin/Payments.tsx`'s give the same reason). Both buttons refuse a press off this one.
+   */
+  const outstanding = useRef(false)
+  /**
+   * WHETHER THE QUESTION WAS LAST CLOSED BY AN ANSWER, so the button that asks it takes the focus the
+   * confirming button had. Raised by an answer and lowered by asking again, so it is true only from an
+   * answer to the next time the question is asked: the reader putting the question away himself is
+   * his own act and moves nothing, as it did before this branch (a gap of its own, and not this
+   * change's), and nothing is focused when the page first draws. The effect below depends on the flag,
+   * so it runs when the flag CHANGES: lowering it when the question is asked again is what lets the
+   * next answer raise it again and run the effect again (`deleteRecord.test.tsx`, „puts the focus on
+   * the button again after a second answer").
+   *
+   * <p><b>A ref and an effect, and NOT `autoFocus`, which was written first and did nothing on four
+   * of the seven screens.</b> `autoFocus` acts when an element is CREATED, and the opener is not
+   * always a new element: React gives it the confirming button's own, because both are the first
+   * button this component draws (same type, no `key`). Measured: where `asksWith` is not given there
+   * is nothing before the confirming button, so the element was reused, the attribute changed on an
+   * element already in the page, and the focus stayed where it had been moved ahead of the answer
+   * (`RowActions`, the members' list). Where it is given, the sentence is the first child and the
+   * opener is created, so the same line worked on the events screen. On the team page and the
+   * member's own results it only LOOKED right: nothing had moved the focus, so it was still on the
+   * very element that became the opener. The effect says where the focus goes whichever way the
+   * element came back.
+   *
+   * <p>And a `key` on the opener would have made it a new element every time, which is the other
+   * thing that rides on the reuse: asking the question hands the focus from the opener to „Potvrdi
+   * brisanje" because they are one element (`admin/deleting.test.tsx`), and a key would drop it.
+   */
+  const [afterAnAnswer, setAfterAnAnswer] = useState(false)
+  const opener = useRef<HTMLButtonElement>(null)
+
+  /* A LAYOUT EFFECT, so the focus is on the button in the very commit that draws it. A passive one
+     runs a task later, after the paint: a reader would see a frame with the focus nowhere, and
+     anything that looks the moment the sentence appears - a screen reader, and a test - looks before
+     it has moved. */
+  useLayoutEffect(() => {
+    if (afterAnAnswer) {
+      opener.current?.focus()
+    }
+  }, [afterAnAnswer])
   /* One id per row. Sixty rows sharing one would point every confirming button at the
      first row's sentence, which is the same fault an `id` written out by hand always
      has on a list (`OpenRecord`, `describedBy`, says it one control along). */
@@ -668,7 +776,11 @@ export function DeleteRecord({ name, onDelete, look = 'entity-open', asksWith }:
         type="button"
         className={`${look} entity-delete`}
         aria-label={t('admin.form.deleteNamed', { name })}
-        onClick={() => setAsking(true)}
+        ref={opener}
+        onClick={() => {
+          setAfterAnAnswer(false)
+          setAsking(true)
+        }}
       >
         {t('admin.form.delete')}
       </button>
@@ -693,7 +805,42 @@ export function DeleteRecord({ name, onDelete, look = 'entity-open', asksWith }:
            is what tells twenty of these buttons apart and a number in it would make
            two rows with the same count read as one control. */
         aria-describedby={asksWith === undefined ? undefined : saying}
-        onClick={onDelete}
+        /* TOLD OFF WHILE ITS OWN DELETION IS OUT, not switched off: the control a reader pressed
+           has the focus (or had it, where `RowActions` has moved it on), and `disabled` would
+           take it out of the tab order. */
+        aria-disabled={working ? true : undefined}
+        onClick={() => {
+          /* Reachable means pressable, so the refusal lives here as well as on the attribute. A
+             second press while the first is out would send a second deletion, which the route
+             answers 404 - and the reader is then told his first one failed. */
+          if (outstanding.current) {
+            return
+          }
+
+          const answer = onDelete()
+
+          /* A handler that hands back nothing has nothing to wait for. A promise is a deletion
+             that is out, and it is let go of when it settles, whichever way it did. */
+          if (!(answer instanceof Promise)) {
+            return
+          }
+
+          outstanding.current = true
+          setWorking(true)
+
+          /* THE QUESTION CLOSES HERE, ON ANY ANSWER AND NOT BEFORE (owner, 02.10.2026): with the
+             request out nothing the reader presses puts it away, so this is the one road by which it
+             goes once „Potvrdi brisanje" has been pressed. A success takes the row, and this component
+             with it, in the same breath; a refusal leaves the row, the sentence the screen drew, and
+             the button this question came from - which takes the focus, because the one that had it is
+             gone. */
+          void answer.finally(() => {
+            outstanding.current = false
+            setWorking(false)
+            setAsking(false)
+            setAfterAnAnswer(true)
+          })
+        }}
       >
         {t('admin.form.deleteSure')}
       </button>
@@ -701,10 +848,28 @@ export function DeleteRecord({ name, onDelete, look = 'entity-open', asksWith }:
         type="button"
         className={look}
         aria-label={t('admin.form.keepNamed', { name })}
-        onClick={() => setAsking(false)}
+        aria-disabled={working ? true : undefined}
+        onClick={() => {
+          /* PUT AWAY ONLY WHEN NOTHING IS OUT (owner, 02.10.2026): with the deletion on its way
+             this would say „I took it back" over a request that goes on. */
+          if (outstanding.current) {
+            return
+          }
+
+          setAsking(false)
+          onKeep?.()
+        }}
       >
         {t('admin.form.keep')}
       </button>
+      {/* SAID IN WORDS, ONLY WHILE IT IS TRUE (WCAG 2.2 AA, 4.1.3), in the portal's own sentence
+          for a request that is out: `results.sending` is read by the two forms that send a
+          result and four other keys carry the same words, so nothing new was written. */}
+      {working && (
+        <span className="entity-row-note" role="status">
+          {t('results.sending')}
+        </span>
+      )}
     </>
   )
 }

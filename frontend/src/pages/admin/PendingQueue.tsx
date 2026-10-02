@@ -433,6 +433,10 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * box itself, which takes the focus as it appears (SendBack); this is the way
    * back. A panel in the header has the same problem and the same answer
    * (src/app/Dropdown.tsx).
+   *
+   * <p>Closed by the moderator („Odustani") or by the answer to what the box sent, a refusal
+   * as much as a success (`putTheBoxAway`): the answer takes the box away as surely as he does,
+   * and the focus goes to the same place.
    */
   const [closed, setClosed] = useState<string | null>(null)
   /** How many the last sweep settled, and null until there has been one. */
@@ -475,6 +479,28 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * cannot act without asking either for a new line.
    */
   const [deciding, setDeciding] = useState(false)
+  /**
+   * THE CARDS WHOSE REFUSAL IS OUT WITH THE ROUTE, as a render reads it, and `handingBackNow` as a press
+   * reads it: ONE FACT IN THE TWO LIFETIMES A FACT HAS HERE, written at exactly one place
+   * (`markHandingBack`) to the identical value, the way `brokenPictures` and `brokenPicturesRef` are.
+   * The state is for the box that sent the refusal, to say so and to tell its buttons off
+   * (`SendBack`, `working`); the ref is for the press, because a second press can arrive before the
+   * render the state would cause.
+   *
+   * <p><b>The cards, and not a flag and not `outstanding`.</b> `deciding` above is true for a whole
+   * sweep, and a box open on another card has nothing of its own out: told off for the sweep's work it
+   * is a box that says it cannot act. The first version of this guard asked `outstanding` while the
+   * display asked the card, and that disagreement is the fault the review of 02.10.2026 measured: a
+   * box opened while „Odobri sve" was out read live and sent NOTHING when pressed, and the sweep then
+   * reached that card and approved what the moderator had just refused. The press and the display ask
+   * this one set; neither asks the walk.
+   */
+  const [handingBack, setHandingBack] = useState<ReadonlySet<string>>(new Set())
+  const handingBackNow = useRef<ReadonlySet<string>>(new Set())
+  const markHandingBack = (now: ReadonlySet<string>): void => {
+    handingBackNow.current = now
+    setHandingBack(now)
+  }
   /**
    * Which rows' pictures have failed to load, so the Approve button beside a
    * broken photograph can read the identical fact `WaitingPicture` already
@@ -927,6 +953,32 @@ export function PendingQueue({ queue }: { queue: Queue }) {
   }
 
   /**
+   * THE BOX GOES WHEN ITS ANSWER COMES, WHICHEVER ANSWER IT IS (owner, 02.10.2026; PDL, „Odbijanje
+   * zatvara pitanje kao i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja
+   * stoji uz dugme"), and it is THAT CARD'S box and no other's.
+   *
+   * <p><b>Why „that card's".</b> One box is open at a time, but a refusal can still be out when the
+   * moderator opens the box on another card - the first box is replaced and its request goes on - and
+   * the answer that comes back for the first must not take the second away with the words he has
+   * begun to write in it. A decision the route took used to end in `setOpen(null)`, which closes
+   * whichever box is open: the settled card's own box goes with the card, so what that line added was
+   * the closing of somebody else's.
+   *
+   * <p><b>And a success still has to close its own card's box</b>, though the card goes: `open` is
+   * read by the line that says what a star means (`starsHere`, off `items` and not off `waiting`), so
+   * a box left naming a settled card would keep that line on a queue that has emptied
+   * (`adminFlows.test.tsx`, „says nothing about a star on a queue that has emptied").
+   *
+   * <p>The card is named in `closed` as well, so its buttons take the focus back as they return: on a
+   * refusal that is the whole of where the focus goes, because the box that had it has left. The
+   * sentence the route gave stands on the card above those buttons (`WhatTheServerSaid`).
+   */
+  const putTheBoxAway = (one: PendingItem): void => {
+    setOpen((now) => (now === one.id ? null : now))
+    setClosed(one.id)
+  }
+
+  /**
    * HANDING ONE BACK, or deleting it where that is what the queue does to an item
    * it will not take (`queues.ts`, `outcomeFor`).
    *
@@ -955,6 +1007,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
       if (answer.got !== 'done') {
         sayIt({ id: one.id, answer })
+        putTheBoxAway(one)
 
         return
       }
@@ -1009,7 +1062,48 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       })
     }
 
-    setOpen(null)
+    putTheBoxAway(one)
+  }
+
+  /**
+   * `handBack`, WITH THE GUARD THE BOX NEEDS: one refusal per card at a time, and nothing else is
+   * its business.
+   *
+   * <p><b>What it cost without one, measured.</b> `handBack` kept no record of itself, so a second
+   * press on „Odbij uz ovaj razlog" sent a second decision for the same card - the route answered it
+   * 409 and the moderator was told his first one had failed - and „Odustani" closed the box over a
+   * request that went on (owner, 02.10.2026: „Ne", „Odustani" and Escape do nothing while a request
+   * is out). Written round `handBack` rather than into it, so the act and the guard stay two things a
+   * reader can tell apart.
+   *
+   * <p><b>And what the first version of this guard cost, which is why it asks what it asks.</b> It
+   * asked `outstanding`, the whole queue's walk, a fact that is about ONE CARD: a refusal out for THIS
+   * card. A box opened on another card while „Odobri sve" was out read live (its display asked the
+   * card) and sent nothing when pressed (its guard asked the walk), and the sweep then reached that
+   * card and approved what the moderator had just refused. Measured by the review of 02.10.2026; on
+   * `main` the same press sends the refusal. The press and the display now ask the SAME fact, and the
+   * walk's own flags (`outstanding`, `deciding`) are not touched here at all, so a sweep, a card's
+   * „Odobri" and a refusal on another card behave exactly as they did before this branch. Nothing
+   * new is forbidden, so there is nothing new to explain in words the dictionaries do not have.
+   *
+   * <p><b>What this does not guard, written down rather than left to be found.</b> A sweep's own
+   * request for THIS card: the box opened on the card the walk is asking about can send its refusal
+   * beside the approval already out. The route records the first decision it receives for a card and
+   * answers the second 409 (`VerificationWriteApi.decide`) and the sentence says so, which is the
+   * contract this queue had on `main`.
+   */
+  const handBackGuarded = async (one: PendingItem, reason: string): Promise<void> => {
+    if (handingBackNow.current.has(one.id)) {
+      return
+    }
+
+    markHandingBack(new Set(handingBackNow.current).add(one.id))
+
+    try {
+      await handBack(one, reason)
+    } finally {
+      markHandingBack(new Set([...handingBackNow.current].filter((each) => each !== one.id)))
+    }
   }
 
   /** What the text on the card is called: the comment, the reason given, the
@@ -1362,14 +1456,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                             on the card it is about and above both the box and the
                             buttons rather than inside either.
 
-                            Above them because it has to be readable in both states:
-                            a refusal met while handing work back leaves the box open
-                            with the typed reason still in it, so the moderator reads
-                            why and presses again instead of typing it a second time.
-                            Put inside the box it would have gone when the box went,
-                            and put among the buttons it would not exist while the box
-                            was open - which is exactly when a refusal about a reason
-                            („Uz odbijanje je razlog obavezan.") arrives. */}
+                            Above them because it has to be readable in both states,
+                            and a refusal met while handing work back now arrives in the
+                            second of them: the box closes with the answer (owner,
+                            02.10.2026), so the sentence is what stands over the buttons
+                            it leaves behind, beside the one that asked. Put inside the
+                            box it would have gone when the box went, which is the very
+                            moment a refusal about a reason („Uz odbijanje je razlog
+                            obavezan.") arrives. */}
                         {said !== null && said.id === one.id && (
                           <WhatTheServerSaid answer={said.answer} />
                         )}
@@ -1434,7 +1528,8 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                uses for a press that speaks to the server
                                (`admin/AdminLeagues.tsx`,
                                `admin/LeagueRaceModeration.tsx`). */
-                            onConfirm={(reason) => void handBack(one, reason)}
+                            onConfirm={(reason) => void handBackGuarded(one, reason)}
+                            working={handingBack.has(one.id)}
                             onCancel={() => {
                               setOpen(null)
                               setClosed(one.id)
@@ -1531,6 +1626,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                                    named control on the portal is written this
                                    way. */
                                 aria-label={t('verification.deleteNamed', { name: one.subject })}
+                                autoFocus={one.id === closed}
                                 onClick={() => setOpen(one.id)}
                               >
                                 {t('verification.delete')}

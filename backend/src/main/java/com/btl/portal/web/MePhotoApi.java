@@ -168,8 +168,9 @@ import java.util.Optional;
  * settles what the member is told: the ordinary answer, with the fault in the log. So the
  * exception is caught where it is thrown, logged with the picture's key and its cause, and the
  * answer is the one a removal gets when the file leaves. What stays on the disk is a stray
- * directory or file where {@link PhotoApi} already serves nothing for a picture no row points
- * at: it asks for a {@code photo} row and a holder, never for a file.
+ * file, and until {@link ThePicturesFolderIsSwept} deletes it - once an hour, when it is older
+ * than ten minutes - {@link PhotoApi} already serves nothing for a picture no row points at: it
+ * asks for a {@code photo} row and a holder, never for a file.
  * {@code TheRemovalStandsEvenWhenTheFileWontGoTest} holds all three halves - the row goes, the
  * answer is ordinary, the fault is in the log - outside {@code MePhotoApiTest} for the
  * identical reason the case above is.
@@ -185,11 +186,12 @@ import java.util.Optional;
  * member is told when the old file of a picture he has REPLACED will not go; if he reads it
  * differently, this is the one place to turn.
  * <li><b>The commit itself fails after the file was written</b> and a file is left on the
- * disk that no row points at. That is the one leak, it is bounded by
+ * disk that no row points at. That is the one leak this route makes, it is bounded by
  * {@link WhatAPictureIs#AT_MOST_BYTES} apiece, and {@link PhotoApi} serves nothing for it -
- * „a picture nothing holds at all answers the same as a digest nobody wrote". Sweeping such
- * files is work nothing in this portal does for any table yet, and inventing it here would
- * be one route carrying a rule about the whole disk.
+ * „a picture nothing holds at all answers the same as a digest nobody wrote". It is not swept
+ * here, because that would be one route carrying a rule about the whole disk:
+ * {@link ThePicturesFolderIsSwept} deletes such files once an hour, once they are older than ten
+ * minutes, and a file whose commit is still on its way is younger than that.
  * </ul>
  *
  * <h2>WHAT IS NOT HERE, EACH NAMED RATHER THAN DISCOVERED</h2>
@@ -839,7 +841,8 @@ class MePhotoApi {
 			   with the picture's key and its cause, answered as an ordinary removal. It is not a
 			   cover-up and the reason is measured: after this the picture is no longer public,
 			   because `PhotoApi` asks for a `photo` row and a holder and neither exists, so what
-			   is left on the disk is a file nothing reads. The same shape, for the same reason,
+			   is left on the disk is a file nothing reads, which `ThePicturesFolderIsSwept`
+			   deletes once it is older than ten minutes. The same shape, for the same reason,
 			   is in `CompetitorWriteApi` and `ATeamGoesWithItsLastMember`. */
 			try {
 				if (!Files.deleteIfExists(folder.resolve(String.valueOf(photo)))) {
