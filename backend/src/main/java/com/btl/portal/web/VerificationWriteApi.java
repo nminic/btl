@@ -10,6 +10,7 @@ import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.verification.DecidingOnASubmission;
 import com.btl.portal.domain.verification.HoldingAnItem;
 import com.btl.portal.mail.Postman;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +25,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -35,7 +37,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * A MODERATOR ANSWERING SOMETHING IN THE QUEUE, AND HOLDING IT WHILE HE READS IT.
@@ -283,23 +284,6 @@ class VerificationWriteApi {
 	/** Who the member hears from, which is the league and never the moderator by name. */
 	private static final String THE_PORTAL = "Verifikacija";
 
-	/**
-	 * WHAT A KEY LOOKS LIKE, which is the only question asked of the text a path carries in its
-	 * place before the door is asked.
-	 *
-	 * <p>Digits, and at most eighteen of them: eighteen nines is smaller than the largest
-	 * {@code long}, so everything this accepts can be parsed and nothing that fits a {@code long}
-	 * and is longer names a row any sequence has reached. Asked about the SHAPE and not by trying
-	 * to parse, so there is no exception to turn into an answer - the same choice
-	 * {@code PageApi} makes for a language tag, for the same reason: it is complete by
-	 * construction, where „is this a number" answered by catching a failure has to be kept equal to
-	 * what the parser accepts. What Spring's own conversion also accepted - a leading plus, a
-	 * hexadecimal number - now answers as an item that is not there; measured on 02.10.2026, both
-	 * already answered 404 to a competitor holding nothing, so nothing he could tell apart moves,
-	 * and for a moderator who may moderate the tab a key spelt that way no longer finds its row.
-	 */
-	private static final Pattern A_KEY = Pattern.compile("[0-9]{1,18}");
-
 	private final JdbcClient db;
 
 	private final WhatHeMayDo mayHe;
@@ -340,12 +324,19 @@ class VerificationWriteApi {
 
 	private final Postman postman;
 
+	/**
+	 * The one the rest of this application reads bodies with, asked for rather than made, so that a
+	 * body read here is read exactly as {@code @RequestBody} would have read it and the only thing
+	 * that changed about reading it is WHEN.
+	 */
+	private final ObjectMapper json;
+
 	/** The address the league is blind-copied at, exactly as {@link ResultWriteApi} takes it. */
 	private final String theLeague;
 
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
 			Clock clock, MemberOfAccount memberOfAccount, BestOfficialSeason bestOfficialSeason,
-			Postman postman, @Value("${btl.mail.league}") String theLeague) {
+			Postman postman, ObjectMapper json, @Value("${btl.mail.league}") String theLeague) {
 		this.db = db;
 		this.mayHe = mayHe;
 		this.inOneTransaction = inOneTransaction;
@@ -353,6 +344,7 @@ class VerificationWriteApi {
 		this.memberOfAccount = memberOfAccount;
 		this.bestOfficialSeason = bestOfficialSeason;
 		this.postman = postman;
+		this.json = json;
 		this.theLeague = theLeague;
 	}
 
@@ -397,7 +389,7 @@ class VerificationWriteApi {
 	 *                 not there takes, exactly as {@link VerificationApi#verification} does
 	 */
 	@PostMapping("/api/verification/{id}/hold")
-	ResponseEntity<?> hold(@PathVariable String id,
+	ResponseEntity<?> hold(@PathVariable AKey id,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -489,7 +481,7 @@ class VerificationWriteApi {
 	 * leave the item free and a moderator closing a screen twice has done nothing wrong.
 	 */
 	@DeleteMapping("/api/verification/{id}/hold")
-	ResponseEntity<?> letGo(@PathVariable String id,
+	ResponseEntity<?> letGo(@PathVariable AKey id,
 			@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
@@ -538,13 +530,13 @@ class VerificationWriteApi {
 	 * automatski se skida svim ostalima" - and a second mechanism that removed it would be a
 	 * second home for what „waiting" means.
 	 *
+	 * @param request  the request, whose body is not touched until „may he" is answered
 	 * @param response asked for so a refusal can go down the same road an address that is
 	 *                 not there takes
 	 */
 	@PostMapping(path = "/api/verification/{id}/decision", consumes = MediaType.APPLICATION_JSON_VALUE)
-	ResponseEntity<?> decide(@PathVariable String id, @RequestBody Answered typed,
-			@AuthenticationPrincipal WhoIsAsking.Member asking,
-			HttpServletResponse response) throws IOException {
+	ResponseEntity<?> decide(@PathVariable AKey id, @AuthenticationPrincipal WhoIsAsking.Member asking,
+			HttpServletRequest request, HttpServletResponse response) throws IOException {
 
 		/* THE DOOR FIRST, AND NOTHING ABOUT THE BODY BEFORE IT. Measured on a real socket
 		   on 21.09.2026: asked the other way round, a plain competitor holding nothing sent
@@ -556,14 +548,20 @@ class VerificationWriteApi {
 		   the route does, which is the same oracle one level up. A refusal about the form is
 		   a refusal only somebody who may decide is entitled to hear.
 
-		   AND NOTHING ABOUT THE KEY EITHER, which is why it arrives as text. Measured over a
-		   socket on 02.10.2026, before this: asked for as a `long`, a word in the key's place
-		   was answered 400 by Spring before this method ran, to EVERY signed-in asker - a
-		   competitor holding nothing included - while a number was 404 for him. The same oracle,
-		   one step before the door. A key that is not a number names no item, so it is answered
-		   as an item that is not there, by the one line that answers that
-		   (`itemHeMayModerate`); `hold` and `letGo` take it the same way, since they bound it the
-		   same way. */
+		   AND THE BODY IS READ BY THIS METHOD, which is why it takes the request and not
+		   `@RequestBody`. Measured over a socket on 02.10.2026: with the body bound as an argument,
+		   a body that is not JSON, or none at all, was answered 400 in 427 bytes to a competitor
+		   holding nothing, where the address that maps nothing answers 404 in 425. The same
+		   oracle, because arguments are bound before the first line of this method and the door
+		   below never ran. Taking the request leaves `consumes` asking about the type before
+		   anything is dispatched, and nothing is read until the door has said yes. The shape is
+		   `InboxWriteApi.write`'s.
+
+		   AND NOTHING ABOUT THE KEY EITHER, which is why it arrives as an `AKey`. A word in the
+		   key's place used to be answered 400 by Spring before this method ran, to EVERY signed-in
+		   asker, while a number was 404 for him; now it is the key no row has, and it is answered as
+		   an item that is not there, by the one line that answers that (`itemHeMayModerate`).
+		   `hold` and `letGo` take it the same way. */
 		Optional<Item> found = itemHeMayModerate(id, asking);
 
 		if (found.isEmpty()) {
@@ -572,19 +570,12 @@ class VerificationWriteApi {
 
 		Item item = found.get();
 
-		/* AN EMPTY OBJECT, WHICH IS THE ONE INCOMPLETE FORM THAT REACHES HERE. A body that
-		   is missing or unreadable never does: the route declares it consumes JSON and
-		   {@code @RequestBody} is required, so the chain answers 400 before this method
-		   runs. A null check over {@code typed} would be a branch no request can reach,
-		   and a branch nothing can measure is one nobody can be sure of.
+		/* AN EMPTY OBJECT, A BODY THAT IS NOT JSON AND NO BODY AT ALL ARE ONE ANSWER, which is the
+		   one `InboxWriteApi` gives the same three: none of them carries a value this route could
+		   act on, and the caller who sees it is by now somebody who may take this item. */
+		Answered typed = read(request);
 
-		   AND THAT SAME 400 IS STILL AN ORACLE, and it is written down here rather than left to be
-		   found: measured over a socket on 02.10.2026, a body that is not JSON, or no body at all,
-		   is answered 400 in 427 bytes to a competitor holding nothing, where the address that maps
-		   nothing answers 404 in 425. The key is closed above; this is the body, and closing it
-		   means reading the body only after the door, as bytes parsed by hand, which is a change
-		   of its own and not part of the one this note sits in. */
-		if (typed.approved() == null) {
+		if (typed == null || typed.approved() == null) {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
@@ -632,6 +623,29 @@ class VerificationWriteApi {
 				yield carried.answer();
 			}
 		};
+	}
+
+	/**
+	 * WHAT WAS SENT, TURNED INTO THE RECORD, OR NOTHING AT ALL.
+	 *
+	 * <p>The application's own {@link ObjectMapper}, so a body is read exactly as
+	 * {@code @RequestBody} would have read it and the only thing that changed about reading it is
+	 * WHEN. Read off the stream and not into an array first, so a body is never held whole: a
+	 * parser stops at the first byte it cannot use, which is all a body that is not JSON costs.
+	 *
+	 * <p>Absent, empty and unreadable are one answer and not three, for the reason
+	 * {@code InboxWriteApi} gives for the same shape: none of them carries a single value this
+	 * route could act on. Written with no condition of its own, on purpose: Jackson refuses empty
+	 * input exactly as it refuses input it cannot parse, so a check for one would be a branch
+	 * beside a road that already goes where it should.
+	 */
+	private Answered read(HttpServletRequest request) throws IOException {
+		try {
+			return json.readValue(request.getInputStream(), Answered.class);
+		}
+		catch (JacksonException cannot) {
+			return null;
+		}
 	}
 
 	/**
@@ -1223,28 +1237,21 @@ class VerificationWriteApi {
 	 * <p>One method for both halves, because they answer the same way and must go on
 	 * answering the same way: an item that is not there and an item he may not see are one
 	 * refusal, and told apart the key would be an oracle for what is in the queue. <b>A key
-	 * that is not a number is the third way to be one of them</b>: it arrives as text for that
-	 * reason, and is refused here as no item before any row is read.
+	 * that is not a number is the third way to be one of them</b>: it arrives as {@link AKey#NONE},
+	 * the key no row has, and finds no row.
 	 *
 	 * <p><b>The hold is read in the SAME statement</b>, so „who holds it" and „what state it
 	 * is in" are one reading of one moment. Read separately, a hold taken between the two
 	 * queries would be a decision made against a row somebody had just opened.
 	 */
-	private Optional<Item> itemHeMayModerate(String key, WhoIsAsking.Member asking) {
-		/* A KEY THAT IS NOT ONE NAMES NO ROW, and is answered as a row that is not there - by this
-		   very return, which is also what a row he may not moderate becomes below, so the three
-		   are one answer. */
-		if (!A_KEY.matcher(key).matches()) {
-			return Optional.empty();
-		}
-
+	private Optional<Item> itemHeMayModerate(AKey key, WhoIsAsking.Member asking) {
 		Optional<Item> item = db.sql("select v.id, v.queue, v.right_code, v.state, v.competitor_id,"
 						+ " v.photo_id, v.team_proposal_id, v.comment_submission_id,"
 						+ " v.result_submission_id, v.body, l.held_by, l.held_until"
 						+ " from verification v"
 						+ " left join verification_lock l on l.verification_id = v.id"
 						+ " where v.id = ?")
-				.param(Long.parseLong(key))
+				.param(key.value())
 				.query((row, one) -> new Item(row.getLong(1), row.getString(2), row.getString(3),
 						row.getString(4), row.getObject(5, Long.class), row.getObject(6, Long.class),
 						row.getObject(7, Long.class), row.getObject(8, Long.class),

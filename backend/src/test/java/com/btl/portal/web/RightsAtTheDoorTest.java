@@ -18,6 +18,7 @@ import org.springframework.security.web.access.WebInvocationPrivilegeEvaluator;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
@@ -1097,6 +1098,76 @@ class RightsAtTheDoorTest {
 	}
 
 	/**
+	 * EVERY KEY A ROUTE TAKES IS AN {@code AKey}, EXCEPT WHERE THE DOOR DECIDES THE ROUTE - AND THERE
+	 * IT MAY NOT BE ONE.
+	 *
+	 * <p><b>This is the floor under {@code AKey}, and the other half of {@link #NOT_AN_ID}.</b> A path
+	 * variable typed as a number is bound by Spring before the handler runs, and a word in its place is
+	 * answered 400 to everybody who is signed in while a number that matches no row is answered 404:
+	 * the oracle ADL A8 forbids (the owner, 13.09.2026: the server need not give away even that an
+	 * address exists). A route that arrives tomorrow with a {@code long} key is caught here on the day
+	 * it is mapped, whatever its author remembers, and so is a key typed as anything else Spring
+	 * converts - a date, an enumeration - because the only types an unguarded route may take are the
+	 * text it validates itself and the key that cannot fail.
+	 *
+	 * <p><b>The routes the door decides are asked the opposite question, and that is the reason this
+	 * floor has two halves.</b> The sweep above reads a 400 for {@link #NOT_AN_ID} as the proof that the
+	 * door is what answered: the door runs before any variable is bound, so a plain member is told 404
+	 * by it while anything downstream is told 400. {@code AKey} would make downstream a 404 too, and a
+	 * door knocked out for one of those routes would go on looking shut. What that costs is known and
+	 * accepted: somebody who holds the right is told 400 for a word there, and he is entitled to know
+	 * the route exists.
+	 *
+	 * <p><b>Derived from the dispatcher and from the types the handlers declare</b>, so it has no list.
+	 * It is not empty on either side, because a floor that found no key to ask about would be true
+	 * of every portal.
+	 */
+	@Test
+	void everyKeyARouteTakesIsAnAKeyUnlessTheDoorDecidesTheRoute() {
+		List<KeyOf> keys = mappings.getHandlerMethods().values().stream().distinct()
+				.flatMap(method -> Stream.of(method.getMethodParameters())
+						.filter(p -> p.hasParameterAnnotation(PathVariable.class))
+						.map(p -> new KeyOf(method, p.getParameterType())))
+				.toList();
+
+		assertThat(keys.stream().filter(one -> !one.guarded() && one.type() == AKey.class).count())
+				.as("no route that no right guards takes an AKey, so the first half asks about nothing")
+				.isPositive();
+		assertThat(keys.stream().filter(one -> one.guarded() && one.type() != String.class).count())
+				.as("no route the door decides takes a typed key, so the sweep above reads a 400 for"
+						+ " nothing and the second half asks about nothing")
+				.isPositive();
+
+		assertThat(keys.stream().filter(one -> !one.guarded())
+				.filter(one -> one.type() != AKey.class && one.type() != String.class).toList())
+				.as("a route no right guards takes a key Spring converts on its own, so a word in its"
+						+ " place is answered 400 before the handler runs while a number that matches no"
+						+ " row is answered 404; it takes an AKey, or it takes the text and answers it"
+						+ " itself")
+				.isEmpty();
+
+		assertThat(keys.stream().filter(KeyOf::guarded).filter(one -> one.type() == AKey.class).toList())
+				.as("a route the door decides takes an AKey, which answers a word with the same 404 the"
+						+ " door answers a plain member with, so the sweep above can no longer tell a"
+						+ " door that answered from a door that was knocked out")
+				.isEmpty();
+	}
+
+	/** One path variable of one handler, and whether a right decides that handler at the door. */
+	private record KeyOf(HandlerMethod method, Class<?> type) {
+
+		boolean guarded() {
+			return theDoorDecides(method);
+		}
+
+		@Override
+		public String toString() {
+			return method.getBeanType().getSimpleName() + "#" + method.getMethod().getName()
+					+ " takes its key as " + type.getSimpleName();
+		}
+	}
+
+	/**
 	 * AND EVERY ROUTE UNDER {@code /api} EITHER NEEDS A RIGHT OR IS NAMED ON PURPOSE.
 	 *
 	 * <p><b>This is the floor under the mechanism itself, and it exists because the
@@ -1467,6 +1538,12 @@ class RightsAtTheDoorTest {
 	 * somebody it refuses; everything downstream answers 400, because nothing turns this
 	 * into the {@code long} the method asks for. Refused and not-there stop being the same
 	 * number, and the sweep goes back to measuring the door.
+	 *
+	 * <p>That holds for the routes THIS sweep asks about, which are the ones the door decides. A
+	 * route no right guards takes an {@code AKey} and answers a word as an item that is not there, so
+	 * the 400 is no longer what "downstream" says there - and {@link
+	 * #everyKeyARouteTakesIsAnAKeyUnlessTheDoorDecidesTheRoute} is what keeps the two kinds of route
+	 * on their own sides of that line.
 	 */
 	private static final String NOT_AN_ID = "nije-kljuc";
 

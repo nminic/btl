@@ -727,14 +727,11 @@ class PhotoApi {
 	 * the wide version until it was measured against the log, and the wide version is the one
 	 * that reads as „no screen may ever show him his own picture".
 	 *
-	 * @param id       {@code verification.id}, taken as a {@code long} because that is what
-	 *                 {@code VerificationWriteApi} takes for the same key. <b>What that
-	 *                 costs is named rather than hidden:</b> an id that is not a number is
-	 *                 answered 400 by Spring and not 404, which tells the caller this path
-	 *                 pattern exists. That is not this route's doing - {@code POST
-	 *                 /api/verification/{id}/hold} has had it since it was written - so it is
-	 *                 recorded rather than fixed here, where fixing it for one route of three
-	 *                 would leave the other two saying otherwise
+	 * @param id       {@code verification.id}, taken as an {@link AKey}, which is what
+	 *                 {@code VerificationWriteApi} takes for the same key. A word in its place is
+	 *                 the key no row has, so it finds no row and is answered as a row that is not
+	 *                 there: it does not tell the caller this path pattern exists, which is what
+	 *                 {@code hold}, {@code letGo} and {@code decision} answer it too
 	 * @param asking   whose request it is, as the chain resolved it. Taken as a parameter
 	 *                 rather than read off the context because that is the shape
 	 *                 {@link WhatHeMayDo#may(WhoIsAsking.Member, String)} exists for, and it
@@ -743,13 +740,13 @@ class PhotoApi {
 	 *                 takes, exactly as {@link #photo} and {@link VerificationApi} do
 	 */
 	@GetMapping("/api/verification/{id}/photo")
-	ResponseEntity<byte[]> waitingOn(@PathVariable long id,
+	ResponseEntity<byte[]> waitingOn(@PathVariable AKey id,
 			@AuthenticationPrincipal WhoIsAsking.Member asking, HttpServletResponse response)
 			throws IOException {
 
 		Optional<KeptForADecision> kept = db
 				.sql(THE_WAITING_PICTURE_OF_A_ROW)
-				.param("id", id)
+				.param("id", id.value())
 				.query((row, one) -> new KeptForADecision(row.getLong(1), row.getString(2),
 						row.getString(3)))
 				.optional()
@@ -767,7 +764,7 @@ class PhotoApi {
 			return nothingIsHere(response);
 		}
 
-		Optional<byte[]> bytes = theFileOf(kept.get().id(), id);
+		Optional<byte[]> bytes = theFileOf(kept.get().id(), id.value());
 
 		if (bytes.isEmpty()) {
 			return nothingIsHere(response);
