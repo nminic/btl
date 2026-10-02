@@ -370,18 +370,20 @@
    the name's size would need no different leading at all and this whole rule would be wrong
    rather than merely unnecessary.
 
-   **The boundary this does not close:** below 745px this table draws no circle at all (the media
-   query right after this one), so a long name that wraps to two lines there has nothing to
-   disagree with. From 745px, where the circle returns, a name wide enough to wrap would still
+   **The boundary this does not close:** where this table draws no circle at all (the container
+   query right after this one, a table narrower than 727px), a long name that wraps to two lines
+   has nothing to disagree with. Where the circle returns, a name wide enough to wrap would still
    break this correspondence, the same way it would on the two screens that already break a name
    over two lines on purpose - and it now breaks it by 2px more than it used to, since a wrapped
    name spends the taller line twice; nothing here claims otherwise; measured in a browser rather
    than asserted, since jsdom lays nothing out.
 
-   **Where 745 comes from, measured over the seventeen rows of `/sr/tabela?sezona=2019`**
-   (02.10.2026, `PDL.md`, „Odluke iz ciscenja nalaza", stavka 260). It was 700. With the circle
+   **Where 745 came from, measured over the seventeen rows of `/sr/tabela?sezona=2019`**
+   (02.10.2026, `PDL.md`, „Odluke iz ciscenja nalaza", stavka 260), **and what it is now: a table
+   of 727px** (the block at the foot of this one). It was 700. With the circle
    drawn and nine columns, names on two lines were 9 of 17 at 700px, 3 at 720, 1 at 744 and none at
-   745, 768 or 1280, so just above 700px a circle beside a name on two lines was the common case.
+   745, 768 or 1280 of a window with no scrollbar, so just above 700px a circle beside a name on two
+   lines was the common case.
    What moved is only the circle: the nine columns go on dropping to four at 700 with every
    other table (`styles/table.css`), so between 700 and 744 this table draws nine columns and no
    circle. A name can still wrap there, and that was measured too and left alone on purpose: with no
@@ -400,15 +402,16 @@
   line-height: 0.925rem;
 }
 
-/* **Krug ustupa mesto imenu ispod 745px, i to samo u ovoj tabeli** (owner, 07.09.2026, asked with
-   the measurement in front of him: „Krug se ne crta ispod 700px"; raised to 745px on 02.10.2026,
-   `PDL.md`, „Odluke iz ciscenja nalaza", stavka 260, with the measurement in the note above).
+/* **Krug ustupa mesto imenu kad tabela nema mesta za oboje, i to samo u ovoj tabeli** (owner,
+   07.09.2026, asked with the measurement in front of him: „Krug se ne crta ispod 700px"; made „tek
+   od 745px, kad ime staje u jedan red" on 02.10.2026, `PDL.md`, „Odluke iz ciscenja nalaza",
+   stavka 260, with the measurement in the note above).
  *
    The circle takes about thirty four pixels of a column that is 167 wide at 360, and a long name
    then wraps of its own accord: measured, nine of seventeen names ran to two lines where one did
    before, and the row grew from 75 to 100 pixels. This screen is one of the four the owner expects
-   to be easiest on a telephone (PDL P24), so the circle is the half that gives way; from 745px
-   up it is drawn as he asked.
+   to be easiest on a telephone (PDL P24), so the circle is the half that gives way; where the
+   table has room it is drawn as he asked.
  *
    Written against this table by name, and the name is the point: the circle stays everywhere else
    it is drawn. Measured rather than assumed (review, 07.09.2026, after an earlier version of this
@@ -418,12 +421,81 @@
    against `.rankings--tooled` would have taken their circles away; neither is what was asked for.
    `.rankings__table` is on one element in the portal and is selected from one place.
 
-   The width is 744.98, in pixels, on the list `styles/scale.test.ts` keeps and for the reason it
-   records there. It is NOT the width the portal narrows its tables at (699.98, `styles/table.css`),
-   which it was until 02.10.2026: only the circle moved, so between 700 and 744 the nine columns are
-   drawn and the circle is not. Hiding a cell's contents at a width is the shape `styles/table.css`
-   already uses for `.table__hide-phone`. */
-@media (max-width: 744.98px) {
+   **ASKED OF THE TABLE AND NOT OF THE WINDOW, which is the correction of PR 461** (its review,
+   02.10.2026), and it is the assistant's derivation from the owner's own reason and not a new word
+   of his. His reason is „kad ime staje u jedan red", and that is a fact about the width of the
+   TABLE. It was written as a query on the window, 744.98px, which is the window at which the table
+   is 713px when the browser takes nothing for a scrollbar (the page puts 16px of padding on each
+   side). A classic scrollbar, 15px on Windows, takes its width out of the same room, so the table
+   is 15px narrower at the same window and the names it was measured to hold wrap again: with the
+   scrollbar emulated (`padding-right: 15px` on `html`), two names of seventeen on two lines at
+   745px, one at 752 and none at 760.
+ *
+   **The table, and not a bigger number for the window, because the same table is the same layout
+   whatever the window and the scrollbar.** Measured over the same seventeen rows: a window of 745px
+   with no scrollbar and one of 760px with a 15px scrollbar are both a table of 713px, with the nine
+   columns the same to a tenth of a pixel (35,2 / 211,7 / 71,3 / 45,3 / 74,7 / 62,6 / 62,6 / 83,3 /
+   66,4), the same height (1029,96px) and no name on two lines in either. A number for the window
+   would be right for one scrollbar and wrong for the others, and it would be a number about this
+   page's padding and not about the table: the 16px a side that turn a window into a table are one
+   rule away from changing.
+ *
+   So the box is asked. `rankings__scroll` is the box `table-scroll` already was, one element in
+   the portal, now a container called `standing`, and the circle is taken away where it is
+   narrower than **727px**.
+ *
+   **WHY 727 AND NOT 713, which is the assistant's correction of the first choice in this branch,
+   made before review, and a derivation from the owner's reason and not a new word of his.** 713 is the
+   narrowest table for the seventeen names of ONE season, 2019, which is what PR 461 measured and
+   what 745px of window is. The reason is „kad ime staje u jedan red" and it is not about one
+   season: measured over every season the standing draws, 713 leaves the circle beside a name on
+   two lines in four of them. The narrowest table in which every name is on one line, in pixels,
+   for a window under 780px and, after the slash where it differs, from 780px (the page changes
+   shape there and the same names want a pixel more):
+ *
+     2014 654 | 2015 727 | 2016 727 | 2017 713/714 | 2018 727 | 2019 713/714 | 2020 701/702
+     2021 727 | 2022 675/676 | 2023 627/628 | 2024 592 | 2025 607/608 | 2026 693
+ *
+   2024 is the narrowest width tried, and a name still fits there. 2010, 2012 and 2013 draw no
+   table, they have no row in the standing. The name that wraps first is Radoslav Milovanović in
+   every season but four: Vukićević in 2014, Đorđević in 2023 and 2025, Krstić in 2024. **727 is the
+   largest of them** (2015, 2016, 2018 and 2021, in both columns), so every name of every season
+   the portal has stands on one line beside a drawn circle, which is what the reason asks.
+   Measured in a browser over the data the portal is built from, with the circle forced drawn
+   (`container-type: normal` on the box) and the box narrowed by padding on `html` until the
+   first name wraps.
+ *
+   **What it costs, said as the owner will be asked it.** The circle is not drawn in a window from
+   745px to about 758px with no scrollbar, and to about 773px with one of 15 (a table of 727px is a
+   window of 759px and of 774px). A tablet in portrait is outside that band: 768px with overlay
+   scrollbars is a table of 736px, and 744px was already without the circle. The assistant's
+   judgement is that this is smaller than the fault the decision exists to remove.
+ *
+   **A BOUNDARY, WRITTEN AS ONE: 727 IS THE LARGEST OF THESE NUMBERS, AND THEY ARE ABOUT THESE
+   NAMES.** A season with a longer name, or one whose columns take more room, can want a table
+   wider than 727, and nothing asks the data: that season draws its circle beside a name on two
+   lines until somebody measures it and moves the edge below. The numbers are also about Segoe UI,
+   which is what they were measured with, and the portal's font is the system's (`--sans`), so on
+   another system a name is a few pixels wider or narrower and the edge moves with it.
+ *
+   **In pixels, for the reason `styles/scale.test.ts` gives for the other widths it keeps in
+   pixels**: in `em` the circle would be taken from a 1280 screen that has room for it as soon as
+   the reader makes the text twice as big. The width is not on that list, because a container
+   query asks the same question of a box and not of the window, and its width is a property of one
+   component and not a place where the portal changes shape (that file says so too).
+ *
+   **What else it costs, and what is not measured.** A browser without container queries (before
+   2022) draws the circle at every width. A container query that names a box which does not exist
+   applies to nothing, and here that would leave the circle on a telephone, so that the box is
+   real is asked of the rendered tree (`pages/rankingsLayout.test.tsx`), with the claim that this
+   is the only rule that takes a circle away and that the nine columns go on dropping to four at
+   699.98 with every other table (`styles/table.css`) and nothing else takes one away. */
+.rankings__scroll {
+  container-type: inline-size;
+  container-name: standing;
+}
+
+@container standing (max-width: 726.98px) {
   .rankings__table .plate__faces {
     display: none;
   }

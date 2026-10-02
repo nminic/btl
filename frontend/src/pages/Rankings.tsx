@@ -189,7 +189,11 @@ function Standing({
       {rows.length === 0 ? (
         <p className="rankings__empty">{t('rankings.empty')}</p>
       ) : (
-        <div className="table-scroll">
+        /* THE BOX THE CIRCLE IS ASKED ABOUT (`Rankings.css`, `rankings__scroll`, for the whole measurement). A
+           second class on the box `table-scroll` already is, and the way the matrix of rights wears one
+           (`rights-wrap table-scroll`): the table is the thing whose width decides whether the name stays on one
+           line, so it is the table's own box that is made a container and not the window. */
+        <div className="table-scroll rankings__scroll">
           <table className="table rankings__table">
             <thead>
               <tr>
@@ -277,11 +281,14 @@ function Standing({
                         nine of seventeen names ran to two lines where one did before, and the row
                         grew from 75 to 100 pixels. This is one of the four screens he expects to
                         be easiest on a telephone (PDL P24), so the circle is the half that gives
-                        way. **From 745px up since 02.10.2026, and not from 700** (`PDL.md`, „Odluke
-                        iz ciscenja nalaza", stavka 260): just above 700 the circle stood beside a
-                        name on two lines in nine of the seventeen rows, and `Rankings.css` has the
-                        measurement. The rule is in `Rankings.css` and is held, with the class it
-                        hangs off, by `styles/leagueLayout.test.ts`. */}
+                        way. **Where the table has room for the names since 02.10.2026, and not from
+                        700** (`PDL.md`, „Odluke iz ciscenja nalaza", stavka 260, chosen as 745px of
+                        window): just above 700 the circle stood beside a name on two lines in nine of
+                        the seventeen rows. **Asked of the table and not of the window after PR 461**,
+                        because a scrollbar takes its width from the table and not from the window's
+                        number; `Rankings.css` has the measurement. The rule is in `Rankings.css` and
+                        is held, with the box it asks, by `pages/rankingsLayout.test.tsx` and
+                        `styles/leagueLayout.test.ts`. */}
                     <NamePlate competitors={[row.competitor]} faceTo={linkTo(row.competitor)}>
                       <CompetitorName competitor={row.competitor} className="rankings__member-name" />
                       <span className="table__member-number rankings__member-number">

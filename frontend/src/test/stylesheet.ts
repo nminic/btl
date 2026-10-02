@@ -281,6 +281,57 @@ export function ruleInMedia(
   return must(found[0], `the rule ${selector}`).style
 }
 
+/**
+ * Every rule of one container query, read the way a browser reads it.
+ *
+ * The same question `rulesInMedia` asks, of the other kind of query: a rule that depends on the
+ * width of a BOX and not of the window (`pages/Rankings.css`, the circle of the main standing). The
+ * condition is the text jsdom hands back, the name of the container and then the query, as in
+ * `standing (max-width: 726.98px)`, matched as written for the reason `rulesInMedia` gives: a rule
+ * moved into another box or another width fails here rather than being found under one nobody asked
+ * about.
+ *
+ * **It says nothing about whether such a box exists.** A container query that names no container
+ * applies to nothing, and that is a question about the document and not about the sheet
+ * (`pages/rankingsLayout.test.tsx` asks it of the real tree).
+ */
+export function rulesInContainer(css: string, condition: string, named: string): CSSStyleRule[] {
+  const tag = document.createElement('style')
+
+  tag.textContent = css
+  document.head.append(tag)
+
+  const sheet = tag.sheet
+
+  expect(sheet, `jsdom did not parse ${named}`).not.toBeNull()
+
+  const found = [...(sheet?.cssRules ?? [])]
+    .filter((rule): rule is CSSContainerRule => rule instanceof CSSContainerRule)
+    .filter((rule) => rule.conditionText === condition)
+    .flatMap((rule) => [...rule.cssRules])
+    .filter((rule): rule is CSSStyleRule => rule instanceof CSSStyleRule)
+
+  tag.remove()
+
+  return found
+}
+
+/** The one rule of one container query written for exactly this selector. */
+export function ruleInContainer(
+  css: string,
+  condition: string,
+  selector: string,
+  named: string,
+): CSSStyleDeclaration {
+  const found = rulesInContainer(css, condition, named).filter(
+    (rule) => rule.selectorText === selector,
+  )
+
+  expect(found.length, `${selector} is not one rule of ${condition} in ${named}`).toBe(1)
+
+  return must(found[0], `the rule ${selector}`).style
+}
+
 /** The one unconditional rule written for exactly this selector, and a failure
  *  naming it where there is none or more than one. */
 export function ruleFor(css: string, selector: string, named: string): CSSStyleDeclaration {
