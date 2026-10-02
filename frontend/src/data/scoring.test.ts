@@ -53,4 +53,16 @@ describe('btlPoints', () => {
     expect(btlPoints(21.1, -1, 0, 7200)).toBeNull()
     expect(btlPoints(21.1, 0, -1, 7200)).toBeNull()
   })
+
+  /* A number that is not one is refused by the same sentence as a negative, for every one of the
+     four. The three beside the climb were already refused, because a comparison asked as „above
+     nought" is false for `NaN`; the climb and the fall were asked as „below nought", which is
+     false for it too, and the formula answered `NaN` for a race with a climb that was not a number
+     (the calculator on the front page, whose boxes are text since 02.10.2026, PENDING 383). */
+  it('refuses a number that is not one, in every place there is one', () => {
+    expect(btlPoints(Number.NaN, 0, 0, 7200)).toBeNull()
+    expect(btlPoints(21.1, Number.NaN, 0, 7200)).toBeNull()
+    expect(btlPoints(21.1, 0, Number.NaN, 7200)).toBeNull()
+    expect(btlPoints(21.1, 0, 0, Number.NaN)).toBeNull()
+  })
 })

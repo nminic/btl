@@ -5,6 +5,7 @@ import { outsideOf } from '../components/outsideOf'
 import { CountryOptions } from './CountryOptions'
 import { countryName } from '../data/countryName'
 import {
+  countriesByName,
   placeName,
   placesLike,
   plainly,
@@ -77,7 +78,7 @@ export function PlaceField({
   locked?: boolean
 }) {
   const { locale, t } = useI18n()
-  /* Asked for on the second letter and not before: the codebook is 1200 KB, and
+  /* Asked for on the second letter and not before: the codebook is 1300 KB, and
      somebody who opened a form has not asked for it yet. */
   const places = usePlaces(value.trim().length >= TYPED_BEFORE_GUESSING)
   const [open, setOpen] = useState(false)
@@ -104,10 +105,21 @@ export function PlaceField({
    *
    * Recognised means the codebook holds this name **and holds it once**. 862
    * names in it stand in more than one country, counted the way this counts
-   * them, which is folded (`plainly`) rather than letter for letter: London is
-   * British and American, Lagos is Nigerian and Portuguese.
+   * them (`countriesByName`), which is folded (`plainly`) rather than letter for
+   * letter, and with the bracket a namesake carries read away: London is British
+   * and American, Lagos is Nigerian and Portuguese, and Rome is Italian and
+   * American although the two American ones are written „Rome (Marietta)" and
+   * „Rome (Utica)".
    * For those the name recognises nothing by itself, so the choice stays where
    * it was.
+   *
+   * **The labels do not change what a typed name recognises.** Namesakes of one
+   * country carry the nearest bigger town in brackets since 02.10.2026, so the
+   * bare name a person types who never looks at the list is no longer held as it
+   * is written. Left at that, „Yantai" typed in full lost the country it used to
+   * close on, and „Rome" closed it on Italy under somebody in Georgia (review of
+   * PR 464). The bare name is read back from the labels, and the answer is the
+   * one the name gave before them.
    */
   const spelt = plainly(value.trim())
   /* The codebook folded once, into a name and the countries that answer to it.
@@ -120,24 +132,7 @@ export function PlaceField({
    *
      A map of names to countries and not to towns, because that is the whole
      question here: whether the codebook can mean only one place by this name. */
-  const byName = useMemo(() => {
-    const found = new Map<string, Set<string>>()
-
-    for (const one of places) {
-      for (const written of one[3] === undefined ? [one[1]] : [one[1], one[3]]) {
-        const folded = plainly(written)
-        const already = found.get(folded)
-
-        if (already === undefined) {
-          found.set(folded, new Set([one[2]]))
-        } else {
-          already.add(one[2])
-        }
-      }
-    }
-
-    return found
-  }, [places])
+  const byName = useMemo(() => countriesByName(places), [places])
   const only = [...(byName.get(spelt) ?? [])]
   /* Picked off the list, or spelt out so that the codebook can only mean one
      place. Picking counts even for a name two countries share, because then the
@@ -390,12 +385,15 @@ export function PlaceField({
         <ul className="place__list" id={listId} role="listbox" aria-label={t('form.places')}>
           {offered.map((place, index) => (
             <li
-              /* The town's own mark, which is what it is for: the name and the
-                 country are not a key, since 744 names in the codebook stand in
-                 more than one country and a country can hold two towns of one
-                 name. Before the codebook carried a mark this was name, country
-                 and the row number together, and the row number was doing the
-                 work. */
+              /* The town's own mark, which is what it is for. The name alone is
+                 not a key, since 644 names in the codebook stand in more than
+                 one country. Name and country do tell towns apart since
+                 02.10.2026, when namesakes were given the nearest bigger town in
+                 brackets, but a name is what a town is called today and not what
+                 it is, and a label moves when GeoNames does (`data/places.ts`):
+                 the mark is what stays. Before the codebook carried a mark this
+                 was name, country and the row number together, and the row
+                 number was doing the work. */
               key={place[0]}
               id={`${listId}-${String(index)}`}
               className={index === at ? 'place__one place__one--at' : 'place__one'}

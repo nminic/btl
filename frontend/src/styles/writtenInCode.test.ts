@@ -98,9 +98,9 @@ const SPOKEN = ['title', 'alt', 'aria-label', 'aria-description', 'aria-valuetex
  *
  * **Both spellings, and the second has no living example.** JSX writes a value as
  * alt="a" or as alt={'a'}, and counted with this same parser the portal writes the
- * first for all sixteen hundred and eighty five of them, the second for none. So the
- * reading of `{'a'}` and of a template literal cannot be held by the floor below, which
- * would freeze the same sixty names with either one removed; it is held by the three
+ * first for every one of them (sixteen hundred and eighty five on that day), the second
+ * for none. So the reading of `{'a'}` and of a template literal cannot be held by the
+ * floor below, which would freeze the same names with either one removed; it is held by the three
  * cases at the bottom of this file and by nothing else (review, 05.09.2026).
  *
  * It is read all the same, because the fault it stops is a live one: `alt={'Znak tima'}`
@@ -249,8 +249,13 @@ describe('what a screen says in its own voice', () => {
        thinking harder about it, so it is not the list that is held here but the
        whole of what it is a list of.
 
-       Sixty names carry a value written out today, over sixteen hundred and
-       eighty five values, and none of them is one a reader meets. A name that is
+       Fifty seven names carry a value written out today, over nineteen hundred
+       and ninety values (1997 on 02.10.2026, a number that moves with every
+       screen), and none of them is one a reader meets. The list was sixty
+       names until that day: `min`, `max` and `step` were written nowhere but
+       on the boxes of the calculator, and left the portal with their type when
+       the owner decided that a number box takes a comma and the boxes became
+       text. A name that is
        not among them arriving with a written value fails here, and whoever adds it
        answers one question: does a reader hear it? Yes puts it in `SPOKEN` above,
        no puts it in the list here. Either way it is decided once, by somebody, and
@@ -297,8 +302,6 @@ describe('what a screen says in its own voice', () => {
       'leftId',
       'loading',
       'look',
-      'max',
-      'min',
       'name',
       'r',
       'rel',
@@ -311,7 +314,6 @@ describe('what a screen says in its own voice', () => {
       'slug',
       'src',
       'startOffset',
-      'step',
       'stroke',
       'strokeLinecap',
       'strokeLinejoin',

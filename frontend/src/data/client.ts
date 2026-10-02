@@ -151,7 +151,7 @@ export const RESOURCE_NAMES = [
   'payments',
   /* Every town in the region from five hundred people up, and every town in the
      world from fifteen thousand up, with the country each belongs to (owner,
-     10.08.2026). The codebook is 1200 KB, which is why it is a resource and not
+     10.08.2026). The codebook is 1300 KB, which is why it is a resource and not
      an import: it is asked for when somebody starts typing a place, and on no
      other screen. */
   'places',

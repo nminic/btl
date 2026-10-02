@@ -39,14 +39,23 @@ export function pointsOf(
   return btlPoints(lengthKm, ascentM, descentM, seconds) ?? 0
 }
 
-/** Points, or null when the input is not a race: no length, or no time. */
+/**
+ * Points, or null when the input is not a race: no length, or no time.
+ *
+ * Every number is asked as „at or above" and none as „below", so that `NaN` is refused by
+ * the same sentence as a negative: a comparison against `NaN` is false whichever way it is
+ * written, and `ascentM < 0` let a climb that was not a number through to the formula,
+ * which answered `NaN` (`forms/clock.ts`, `noTime`, says the same of the time). The
+ * calculator on the front page reaches it: its boxes are text and are read as they are
+ * typed (`pages/home/Calculator.tsx`).
+ */
 export function btlPoints(
   lengthKm: number,
   ascentM: number,
   descentM: number,
   seconds: number,
 ): number | null {
-  if (!(lengthKm > 0) || !(seconds > 0) || ascentM < 0 || descentM < 0) {
+  if (!(lengthKm > 0) || !(seconds > 0) || !(ascentM >= 0) || !(descentM >= 0)) {
     return null
   }
 
