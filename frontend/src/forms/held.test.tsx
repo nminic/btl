@@ -17,7 +17,7 @@ import type { FieldType, FormDef } from './types'
  *  (`LongBox`); those two cross a component boundary carrying the object. The other
  *  five spread it onto an element of their own inside `FormRenderer.tsx`, and there
  *  are five and not four: `izbor`, `drzava`, `slika`, `pristanak`, and the plain
- *  `<input type={field.type}>`, which is `broj` here.
+ *  `<input {...boxFor(field)}>`, which is `broj` here.
  *
  *  **That fifth one was represented by `dopisano` alone until 29.08.2026, and
  *  `dopisano` is by design the one nothing locks**, so the branch that draws four
@@ -66,7 +66,7 @@ const everyHeldKind: FormDef = {
     { name: 'trka', type: 'text', labelKey: 'proba.trka' },
     /* The plain box, twice: one the form locks and one it leaves alone, on the one
        branch of the renderer that draws four of the twelve kinds
-       (`<input {...shared} type={field.type}>`). Only the live one was here until
+       (`<input {...shared} {...boxFor(field)}>`). Only the live one was here until
        29.08.2026, which left that branch out of every measurement this file makes,
        and it is the branch that draws the length, the climb and the fall a chosen
        race locks. `number` for the locked one because that is what those three
@@ -123,7 +123,7 @@ const FIXED = ['trka', 'broj', 'prica', 'izbor', 'drzava', 'slika', 'pristanak',
  */
 const KINDS: Record<FieldType, true | string> = {
   text: true,
-  /* One `<input {...shared} type={field.type}>` draws all four of these, and
+  /* One `<input {...shared} {...boxFor(field)}>` draws all four of these, and
      `number` is the one held above. A field per kind on one branch measures one
      thing four times. */
   email: 'drawn by the branch that draws `number`, which is held above',

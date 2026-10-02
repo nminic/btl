@@ -1453,7 +1453,7 @@ describe('a field filled from a list', () => {
        review the same day wrote `className` after the spread on the select and
        watched the whole suite stay green. There are **five** of them, and all five
        are asked in `held.test.tsx` — the select, the country, the confirmation, the
-       picture, and the plain `<input type={field.type}>` that draws `text`, `email`,
+       picture, and the plain `<input {...boxFor(field)}>` that draws `text`, `email`,
        `password` and `number` alike. The picture was left out until 29.08.2026, when
        a review wrote `className="field__control"` after the spread on it and the
        whole suite stayed green; the plain box was miscounted as four branches
