@@ -101,6 +101,10 @@ const cardsIn = () => screen.findByRole('list', { name: /Čeka/ })
 
 const decidedIn = () => within(screen.getByRole('list', { name: 'session decisions' }))
 
+/** The sentence that says a request is out, wherever on the page it was drawn. */
+const sending = () =>
+  screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
+
 describe('a decision on a queue served by the pending screen', () => {
   it('sends an approval to the route that records it, and nothing else', async () => {
     const user = setupUser()
@@ -732,10 +736,6 @@ describe('a refusal that is out with the route', () => {
     await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
   }
 
-  /** The sentence that says a request is out, wherever on the page it was drawn. */
-  const sending = () =>
-    screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
-
   const refusal = () =>
     new Response(JSON.stringify({ reason: 'O stavci je već odlučeno.' }), {
       status: 409,
@@ -854,7 +854,7 @@ describe('a refusal that is out with the route', () => {
     }
   })
 
-  it('does not tell a box off for a decision that is not its own', async () => {
+  it('does not tell a box off for a decision that is not its own, and sends what it is pressed for', async () => {
     /* A SOURCE REPLACEMENT, ASKED AS A CASE: „a request is out for THIS box" against „a request is
        out". `deciding` is true for a whole sweep as well, and a box opened on another card while the
        sweep is held has nothing of its own out - its buttons must answer, or a moderator who opened
@@ -890,6 +890,22 @@ describe('a refusal that is out with the route', () => {
       await user.click(screen.getByRole('button', { name: 'Odustani' }))
 
       expect(screen.queryByRole('button', { name: 'Obriši komentar' })).not.toBeInTheDocument()
+
+      /* AND IT SENDS WHAT IT IS PRESSED FOR, which the attributes above cannot say and which is the
+         half of this case that was missing: it read the box as live and never pressed it, so a
+         press that was silently dropped beside a button that looked live - the guard asked
+         `outstanding`, the whole sweep's, while the display asked the card's own - read as green.
+         The box is opened again and pressed, and the decision for THAT card is on its way. */
+      await user.click(last.getByRole('button', { name: /^Obriši:/ }))
+      await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+
+      await waitFor(() => {
+        expect(
+          decisionsIn(server.asked).filter(
+            (one) => one.path === '/api/verification/ver-kom-4/decision',
+          ),
+        ).toHaveLength(1)
+      })
 
       settle(
         () =>
@@ -939,6 +955,287 @@ describe('a refusal that is out with the route', () => {
       expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
     } finally {
       server.stop()
+    }
+  })
+})
+
+/**
+ * EVERY STATE A CONFIRMING PRESS CAN MEET ON THE COMMENTS QUEUE, AND ONE CLAIM ASKED OF ALL OF THEM.
+ *
+ * <p><b>The fault, measured by the review of this branch (02.10.2026) and not imagined.</b> „Odobri
+ * sve" holds a walk (`outstanding`) for as long as it is out, and the hand-back's own guard asked that
+ * same flag: a moderator who opened the box on a card the sweep had not reached and pressed „Obriši
+ * komentar" pressed a button that read live (`aria-disabled="false"`, because the DISPLAY asked the
+ * card's own request) and sent nothing. The sweep then reached that card and approved it. One fact
+ * with two homes that disagree - and the case that should have caught it read the box as live and
+ * never pressed it.
+ *
+ * <p><b>So the claim every state below is asked is the same one: a confirming button that is not
+ * told off sends when it is pressed, and one that is told off sends nothing.</b> Read off the button
+ * and off the server, and it is the DISAGREEMENT that fails, whichever way it lies. Each state also
+ * writes down which of the two answers it gives (`toldOff`), so that a guard widened to tell off
+ * every state, or narrowed to tell off none, cannot pass by agreeing with itself.
+ */
+describe('a confirming press, in every state the queue can be in', () => {
+  const pathOf = (id: string) => `/api/verification/${id}/decision`
+
+  /* The cards by the place they stand in the queue and by the item they are, which is what the
+     address of a decision carries (`ver-kom-N` is the N-th comment waiting in the generated data). */
+  const FIRST = { index: 0, id: 'ver-kom-1' }
+  const THIRD = { index: 2, id: 'ver-kom-3' }
+  const LAST = { index: 3, id: 'ver-kom-4' }
+
+  /**
+   * A server that holds the answer to the decisions on the cards it is told to, answers every other
+   * one at once, and in which the FIRST decision for a card is the one that stands.
+   *
+   * <p>First, because that is what the route does (`VerificationWriteApi.decide`, `update ... where
+   * state = 'waiting'`: the loser matches nothing and is told 409). It is decided when the request
+   * ARRIVES and not when the answer is let go, so a held answer is a slow road back and not a late
+   * decision. A server that answered every decision 200 would let the sweep's later approval overwrite
+   * the moderator's refusal and read as though the refusal had never been sent, which is exactly the
+   * picture the review drew and the one thing this case must be able to tell from the real one.
+   */
+  function serverThatHolds(...held: string[]) {
+    const recorded = new Set<string>()
+    let release: () => void = () => {}
+    const letGo = new Promise<void>((resolve) => {
+      release = resolve
+    })
+
+    const server = serverThat((path, init) => {
+      if (init?.method !== 'POST' || !path.includes('/decision')) {
+        return null
+      }
+
+      const second = recorded.has(path)
+
+      recorded.add(path)
+
+      const answer = () =>
+        second
+          ? refused('O stavci je već odlučeno.', 409)
+          : new Response(JSON.stringify({ id: 1, state: 'decided' }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+
+      return held.some((id) => pathOf(id) === path) ? letGo.then(answer) : answer()
+    })
+
+    return { server, release }
+  }
+
+  const countFor = (asked: Asked[], id: string) =>
+    decisionsIn(asked).filter((one) => one.path === pathOf(id)).length
+
+  /** Everything a case does to the page, written once. */
+  async function pageWith(held: string[]) {
+    const user = setupUser()
+    const { server, release } = serverThatHolds(...held)
+
+    renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+    const cards = within(await cardsIn()).getAllByRole('listitem')
+
+    /* Named by place, so a queue that grew or shrank would move every state under this table. */
+    expect(cards).toHaveLength(4)
+
+    return {
+      user,
+      server,
+      release,
+      sweep: () => fireEvent.click(screen.getByRole('button', { name: 'Odobri sve' })),
+      open: (card: number) =>
+        user.click(
+          within(cards[card] ?? document.createElement('li')).getByRole('button', {
+            name: /^Obriši:/,
+          }),
+        ),
+      confirm: () => screen.getByRole('button', { name: 'Obriši komentar' }),
+      press: () => user.click(screen.getByRole('button', { name: 'Obriši komentar' })),
+      /** The request leaves a few turns after the press (the token is read first), so it is waited for. */
+      sentTo: (id: string, times: number) =>
+        waitFor(() => {
+          expect(countFor(server.asked, id)).toBe(times)
+        }),
+    }
+  }
+
+  type Page = Awaited<ReturnType<typeof pageWith>>
+
+  type Scene = {
+    name: string
+    /** The cards whose answer the route holds. */
+    held: string[]
+    /** Whether the state starts a sweep, which is what has to be waited out at the end. */
+    sweeping: boolean
+    /** Gets the screen into the state and leaves the box open on the card `target`. */
+    arrange: (page: Page) => Promise<void>
+    target: string
+    /** What the button says in that state, written down so that no guard can agree with itself. */
+    toldOff: boolean
+  }
+
+  const SCENES: Scene[] = [
+    {
+      name: 'nothing is out',
+      held: [],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: false,
+    },
+    {
+      name: 'a sweep is out, and the box is on a card it has not reached',
+      held: [FIRST.id],
+      sweeping: true,
+      arrange: async (page) => {
+        page.sweep()
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: false,
+    },
+    {
+      name: 'a sweep is out, and the box is on the card it is asking about',
+      held: [FIRST.id],
+      sweeping: true,
+      arrange: async (page) => {
+        page.sweep()
+        await page.open(FIRST.index)
+      },
+      target: FIRST.id,
+      toldOff: false,
+    },
+    {
+      name: 'the refusal of this very card is out',
+      held: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+      },
+      target: LAST.id,
+      toldOff: true,
+    },
+    {
+      name: 'the refusal of another card is out',
+      held: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+      },
+      target: THIRD.id,
+      toldOff: false,
+    },
+    {
+      name: 'a sweep is out, and the refusal of this very card is out',
+      held: [FIRST.id, LAST.id],
+      sweeping: true,
+      arrange: async (page) => {
+        page.sweep()
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+      },
+      target: LAST.id,
+      toldOff: true,
+    },
+  ]
+
+  it.each(SCENES)('$name', async (scene) => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const page = await pageWith(scene.held)
+
+    try {
+      await scene.arrange(page)
+
+      const button = page.confirm()
+      const toldOff = button.getAttribute('aria-disabled') === 'true'
+      const before = countFor(page.server.asked, scene.target)
+
+      /* WHAT THE BUTTON SAYS IS WRITTEN DOWN, and the press is the other half of the claim. */
+      expect(toldOff).toBe(scene.toldOff)
+
+      await page.user.click(button)
+
+      /* THE CLAIM, counted BEFORE anything is let go: the sweep's own request for the same card
+         arrives after that, and would be counted as the press's. */
+      const sent = () => countFor(page.server.asked, scene.target) - before
+
+      if (toldOff) {
+        /* One turn of the event loop, which is longer than a request takes to leave a press (the
+           token is read first, a few promises) and so long enough to say „nothing was sent". */
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        })
+
+        expect(sent(), 'a button that is told off sends nothing').toBe(0)
+      } else {
+        await waitFor(() => {
+          expect(sent(), 'a button that is not told off sends').toBeGreaterThan(0)
+        })
+
+        /* It was this press that sent it, and what it sent is the refusal: the request at the place
+           the count stood at is the first one after the press, whatever the sweep sends later. */
+        const mine = decisionsIn(page.server.asked).filter(
+          (one) => one.path === pathOf(scene.target),
+        )[before]
+
+        expect(bodyOf(mine)).toEqual({ approved: false, reason: '' })
+      }
+
+      /* Let everything go, so that nothing is left in flight when the case ends. */
+      page.release()
+
+      if (scene.sweeping) {
+        await screen.findByText(/^Rešen.* \d+ stavk/)
+      }
+
+      await waitFor(() => {
+        expect(sending()).toHaveLength(0)
+      })
+    } finally {
+      page.server.stop()
+      confirm.mockRestore()
+    }
+  })
+
+  it('keeps the refusal of a card the sweep had not reached, and lets the sweep settle the rest', async () => {
+    /* THE REVIEW'S OWN PICTURE, as a whole: four waiting, the sweep held on the first, the box opened
+       on the last and pressed. What the moderator decided is what stands - the route records the
+       first decision it receives for a card - and the sweep is told so by the one it was refused. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const page = await pageWith([FIRST.id])
+
+    try {
+      page.sweep()
+      await page.open(LAST.index)
+      await page.press()
+      await page.sentTo(LAST.id, 1)
+
+      page.release()
+      await screen.findByText(/^Rešen.* 3 stavk/)
+
+      const decided = decidedIn()
+        .getAllByRole('listitem')
+        .map((one) => one.textContent ?? '')
+      const line = (id: string) => decided.find((one) => one.startsWith(`${id} | `)) ?? ''
+
+      expect(line(LAST.id)).toMatch(/^ver-kom-4 \| rejected \|/)
+      expect(line(FIRST.id)).toMatch(/^ver-kom-1 \| approved \|/)
+      expect(line('ver-kom-2')).toMatch(/^ver-kom-2 \| approved \|/)
+      expect(line(THIRD.id)).toMatch(/^ver-kom-3 \| approved \|/)
+    } finally {
+      page.server.stop()
+      confirm.mockRestore()
     }
   })
 })
