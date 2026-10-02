@@ -131,6 +131,41 @@ describe('validateField', () => {
     expect(afterTheDot, 'in the domain, behind the dot').toEqual(allowed)
   })
 
+  /**
+   * THE LENGTH OF A PASSWORD IS ONE FACT, AND THE FORM MEASURES IT THE WAY THE SERVER DOES.
+   *
+   * <p>Over what was TYPED, spaces included: a password is never trimmed (owner, 21.09.2026,
+   * `ADL.md` A62c), so „  lozinka123" is twelve characters on the server and was ten on the
+   * form, which refused it aloud for no reason (derived 02.10.2026 in `PDL.md`, „Odluke iz
+   * ciscenja nalaza"). And in CODE POINTS, which is how `PasswordPolicy.java` counts
+   * (`codePointCount`): counted in UTF-16 units, eleven characters with one emoji in them came
+   * to twelve, passed the form and were refused by the server.
+   *
+   * <p>A password of nothing but spaces is still an unanswered field, which A62c says is right.
+   */
+  it('measures a password over what was typed, in the units the server counts', () => {
+    const password = text({ type: 'password', required: true, minLength: 12 })
+
+    expect(validateField(password, '  lozinka123')).toBeNull()
+    expect(validateField(password, 'lozinka123  ')).toBeNull()
+    expect(validateField(password, '            ')).toEqual({ key: 'form.errors.required' })
+    /* Eleven characters, one of them an emoji that is two UTF-16 units: `.length` says twelve. */
+    expect(validateField(password, 'lozinka123🏃')).toEqual({
+      key: 'form.errors.minLength',
+      params: { min: 12 },
+    })
+    expect(validateField(password, 'lozinka1234🏃')).toBeNull()
+  })
+
+  /* And only a password: everything else is trimmed before it is sent, so it is measured
+     trimmed, which is what the server receives. */
+  it('goes on measuring every other field the way it is sent, trimmed', () => {
+    expect(validateField(text({ minLength: 3 }), '  ab  ')).toEqual({
+      key: 'form.errors.minLength',
+      params: { min: 3 },
+    })
+  })
+
   it('checks numeric bounds only for number fields', () => {
     const field = text({ type: 'number', min: 1, max: 300 })
 

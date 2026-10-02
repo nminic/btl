@@ -62,15 +62,29 @@ export function validateField(field: FieldDef, value: string | boolean): FieldEr
 
   const text = value.trim()
 
+  /* Asked of the trimmed value for every field, a password too: a password of nothing but
+     spaces is an unanswered field, which `ADL.md` A62c says is right. */
   if (text === '') {
     return field.required === true ? { key: REQUIRED_KEY } : null
   }
 
-  if (field.minLength !== undefined && text.length < field.minLength) {
+  /* MEASURED OVER WHAT IS SENT. Every other field is trimmed before it is sent
+     (`trimValues`), so it is measured trimmed; a secret is sent exactly as it was typed, so it
+     is measured as typed, spaces included (owner, 21.09.2026, A62c, and derived from it on
+     02.10.2026 in `PDL.md`, „Odluke iz ciscenja nalaza"): „  lozinka123" is twelve characters
+     on the server and was ten here, refused aloud for no reason.
+   *
+     And a secret is counted in CODE POINTS, which is how the server counts it
+     (`PasswordPolicy.java`, `codePointCount`). Counted in UTF-16 units, eleven characters
+     with one emoji among them came to twelve, passed this form and died at the server: the
+     length is one fact and the form now reads it the way the side that decides does. */
+  const length = isSecret(field) ? [...value].length : text.length
+
+  if (field.minLength !== undefined && length < field.minLength) {
     return { key: 'form.errors.minLength', params: { min: field.minLength } }
   }
 
-  if (field.maxLength !== undefined && text.length > field.maxLength) {
+  if (field.maxLength !== undefined && length > field.maxLength) {
     return { key: 'form.errors.maxLength', params: { max: field.maxLength } }
   }
 
@@ -275,6 +289,18 @@ export function validateForm(
 }
 
 /**
+ * WHETHER A FIELD IS A SECRET, which is sent exactly as typed and measured as typed.
+ *
+ * <p>One question with two readers, asked in one place: `trimValues` leaves a secret alone
+ * (A62c) and `validateField` measures it the way it is sent. Answered in each of them by hand,
+ * the two would drift the day a second kind of secret appeared, and a form would measure one
+ * thing and send another - which is the fault A62c was written about.
+ */
+function isSecret(field: FieldDef): boolean {
+  return field.type === 'password'
+}
+
+/**
  * What actually gets submitted. Validation trims, so submission must too, or
  * "  Vladan  " passes the length rules and is stored with its spaces.
  *
@@ -307,7 +333,7 @@ export function validateForm(
  * country a place writes beside itself, is trimmed like any other.
  */
 export function trimValues(form: FormDef, values: FormValues): FormValues {
-  const secret = form.fields.filter((field) => field.type === 'password').map((field) => field.name)
+  const secret = form.fields.filter(isSecret).map((field) => field.name)
   const trimmed: FormValues = {}
 
   for (const [name, value] of Object.entries(values)) {
