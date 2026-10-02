@@ -1014,8 +1014,14 @@ describe('a counted result the member takes back', () => {
   )
 
   it(
-    'is free to take back again after a refusal, not left refusing every press after the first',
+    'can be taken back again after a refusal, with the question asked afresh',
     async () => {
+      /* THE SAME GUARD, FOR THE QUESTION AS IT IS AFTER 02.10.2026: a refusal closes it (PDL, „Odbijanje
+         zatvara pitanje kao i uspeh"), so the member asks again - „Obriši" and then „Potvrdi
+         brisanje" on the same row - and the second press must go out. `MyResults.tsx` clears
+         `outstanding.current` inside `takeBack`'s `.then()` regardless of what the server said, and a
+         version that cleared it only on success would leave the member with a question that can be
+         asked and a button that does nothing, and nothing on screen saying why. */
       const user = setupUser()
 
       listening(() => refused('theFormIsNotComplete'))
@@ -1032,14 +1038,8 @@ describe('a counted result the member takes back', () => {
         expect(writes()).toHaveLength(1)
       }, SOON)
 
-      /* THE GUARD RESETS ON A REFUSAL HERE TOO. `DeleteRecord` does not close the question
-         on its own press (`admin/EntityEditor.tsx`; only its own „Odustani" does), so the row
-         is still asking and „Potvrdi brisanje" is the only way on - `MyResults.tsx` clears
-         `outstanding.current` inside `takeBack`'s `.then()` regardless of what the server
-         said, and a version that cleared it only on success would leave this button dead
-         after the first refusal, with the row still open and nothing on screen saying why a
-         second press does nothing. */
-      await user.click(screen.getByRole('button', { name: /^Potvrdi brisanje/ }))
+      await user.click(row.getByRole('button', { name: /^Obriši: / }))
+      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
 
       await waitFor(() => {
         expect(writes()).toHaveLength(2)

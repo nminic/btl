@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
@@ -100,6 +100,43 @@ const serverThatRefuses = (answer: () => Response) =>
 const cardsIn = () => screen.findByRole('list', { name: /Čeka/ })
 
 const decidedIn = () => within(screen.getByRole('list', { name: 'session decisions' }))
+
+/** The sentence that says a request is out, wherever on the page it was drawn. */
+const sending = () =>
+  screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
+
+/**
+ * A server whose answer to the decision is held until `settle` is called.
+ *
+ * <p>`settle` takes a FUNCTION that makes the answer, not the answer: a `Response` body can be read
+ * once, so one handed to two requests would be spent by the first and the second would meet a body
+ * that is already gone - which reads exactly like a server that never answered.
+ */
+function serverThatHoldsTheDecision() {
+  let settle: (answer: () => Response) => void = () => {}
+  const held = new Promise<() => Response>((resolve) => {
+    settle = resolve
+  })
+  const server = serverThat((path, init) =>
+    init?.method === 'POST' && path.includes('/decision') ? held.then((make) => make()) : null,
+  )
+
+  return { server, settle }
+}
+
+/** The route's refusal of a card somebody has already answered. */
+const refusal = () =>
+  new Response(JSON.stringify({ reason: 'O stavci je već odlučeno.' }), {
+    status: 409,
+    headers: { 'content-type': 'application/json' },
+  })
+
+/** The route's word that it took the decision. */
+const taken = () =>
+  new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  })
 
 describe('a decision on a queue served by the pending screen', () => {
   it('sends an approval to the route that records it, and nothing else', async () => {
@@ -424,10 +461,9 @@ describe('a decision on a queue served by the pending screen', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Uz odbijanje je razlog obavezan.',
       )
-      /* The box is still open with the typed reason in it, which is why the sentence is
-         drawn above it rather than among the buttons: the moderator reads why and
-         presses again instead of typing it a second time. */
-      expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Nejasno.')
+      /* The box has closed with the answer (owner, 02.10.2026), so the sentence is what stands over
+         the buttons it left behind, and the words typed into it went with it. */
+      expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
       expect(decidedIn().queryAllByRole('listitem')).toEqual([])
       /* Signed in as the member `ver-bio-1` itself names (`memberNumber` "000010"
          in `public/mock/verification.json`), so a message that reached them
@@ -679,6 +715,865 @@ describe('a decision on a queue served by the pending screen', () => {
       expect(reads).toBe(2)
     } finally {
       server.stop()
+    }
+  })
+})
+
+/**
+ * A REFUSAL THAT IS OUT WITH THE ROUTE: THE BOX CANNOT BE PUT AWAY, AND IT CANNOT BE SENT TWICE
+ * (owner, 02.10.2026, choosing between three outcomes he was priced; PDL, „Odluke iz ciscenja
+ * nalaza", first item: „Ne", „Odustani" and Escape are onemoguceni while the request travels. It
+ * holds for every screen with a confirmation, and a box that asks for the reason a refusal is
+ * written with is one).
+ *
+ * <p><b>What the box did until then, measured.</b> „Odbij uz ovaj razlog" sent the decision and
+ * `handBack` kept NO record of it being out: „Odustani" closed the box over a request that went on,
+ * so a refusal arriving afterwards was drawn above buttons with the typed reason already gone, and
+ * a second press on „Odbij uz ovaj razlog" sent a second decision for the same card - the route
+ * answered it 409 and the moderator was told his first one had failed.
+ *
+ * <p><b>The answer is HELD</b>, a promise that has not come back (`test/serverAnswers.ts` says why
+ * it is the only way to measure a screen while it waits), so every case can press and inspect the
+ * box before the route says anything.
+ */
+describe('a refusal that is out with the route', () => {
+  /** The box opened on the first card of the profiles, a reason typed, and the refusal sent. */
+  async function sendTheRefusal(user: ReturnType<typeof setupUser>) {
+    renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+    const waiting = within(await cardsIn())
+    const first = within(waiting.getAllByRole('listitem')[0] ?? document.createElement('li'))
+
+    await user.click(first.getByRole('button', { name: 'Odbij' }))
+    await user.type(await screen.findByLabelText(/^Razlog odbijanja/), 'Tekst je prekratak.')
+    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
+  }
+
+  it('tells „Odustani" off, and keeps the box with what was typed in it', async () => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      await sendTheRefusal(user)
+
+      const keep = screen.getByRole('button', { name: 'Odustani' })
+
+      /* TOLD OFF AND NOT SWITCHED OFF, which is how this box already tells off its confirming
+         button: `disabled` would take the control out of the tab order. */
+      expect(keep).toHaveAttribute('aria-disabled', 'true')
+      expect(keep).not.toBeDisabled()
+
+      await user.click(keep)
+
+      /* THE BOX IS STILL THERE, with the reason in it: put away, it took the moderator's words
+         with it and a refusal that arrived afterwards had nothing beside it to be read against. */
+      expect(screen.getByLabelText(/^Razlog odbijanja/)).toHaveValue('Tekst je prekratak.')
+
+      settle(refusal)
+
+      /* AND THE ANSWER CLOSES THE BOX, which „Odustani" could not: the sentence is the answer, over
+         the buttons the box leaves behind (owner, 02.10.2026). */
+      expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+      expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('says that it is sending, only while it is', async () => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      await sendTheRefusal(user)
+
+      expect(sending()).toHaveLength(1)
+
+      settle(refusal)
+      await screen.findByRole('alert')
+
+      expect(sending()).toHaveLength(0)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('closes the box by itself when the decision goes through', async () => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      await sendTheRefusal(user)
+      await user.click(screen.getByRole('button', { name: 'Odustani' }))
+
+      settle(
+        () =>
+          new Response(JSON.stringify({ id: 1, state: 'rejected' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      )
+
+      await waitFor(() => {
+        expect(screen.queryByLabelText(/^Razlog odbijanja/)).not.toBeInTheDocument()
+      })
+      expect(decidedIn().getAllByRole('listitem')).toHaveLength(1)
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('sends one decision for two presses with nothing awaited between them', async () => {
+    /* TWO RAW CLICKS IN ONE `act`, for the reason the double-press case above gives: `user.click`
+       awaits its own click through and lets React render, so the flag beside the guard would
+       already have caught up. Nothing commits between these two. */
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      renderAt(`/sr/${QUEUE.profiles.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const waiting = within(await cardsIn())
+      const first = within(waiting.getAllByRole('listitem')[0] ?? document.createElement('li'))
+
+      await user.click(first.getByRole('button', { name: 'Odbij' }))
+      await user.type(await screen.findByLabelText(/^Razlog odbijanja/), 'Tekst je prekratak.')
+
+      const send = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
+
+      act(() => {
+        send.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        send.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      })
+
+      /* COUNTED AFTER THE ANSWER HAS COME, because the request leaves a few turns after the press
+         (the token is read first): counted at once, a second request still on its way would read
+         as one that was never sent. */
+      settle(refusal)
+      await screen.findByRole('alert')
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('does not tell a box off for a decision that is not its own, and sends what it is pressed for', async () => {
+    /* A SOURCE REPLACEMENT, ASKED AS A CASE: „a request is out for THIS box" against „a request is
+       out". `deciding` is true for a whole sweep as well, and a box opened on another card while the
+       sweep is held has nothing of its own out - its buttons must answer, or a moderator who opened
+       it to write a note would be told off by work that is not his. The sweep is held at its first
+       decision, which is the state this case is about. */
+    const user = setupUser()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const cards = within(await cardsIn()).getAllByRole('listitem')
+
+      expect(cards.length, 'a card for the box and others for the sweep').toBeGreaterThan(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Odobri sve' }))
+
+      const last = within(cards[cards.length - 1] ?? document.createElement('li'))
+
+      await user.click(last.getByRole('button', { name: /^Obriši:/ }))
+
+      expect(screen.getByRole('button', { name: 'Odustani' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(screen.getByRole('button', { name: 'Obriši komentar' })).not.toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(sending()).toHaveLength(0)
+
+      await user.click(screen.getByRole('button', { name: 'Odustani' }))
+
+      expect(screen.queryByRole('button', { name: 'Obriši komentar' })).not.toBeInTheDocument()
+
+      /* AND IT SENDS WHAT IT IS PRESSED FOR, which the attributes above cannot say and which is the
+         half of this case that was missing: it read the box as live and never pressed it, so a
+         press that was silently dropped beside a button that looked live - the guard asked
+         `outstanding`, the whole sweep's, while the display asked the card's own - read as green.
+         The box is opened again and pressed, and the decision for THAT card is on its way. */
+      await user.click(last.getByRole('button', { name: /^Obriši:/ }))
+      await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+
+      await waitFor(() => {
+        expect(
+          decisionsIn(server.asked).filter(
+            (one) => one.path === '/api/verification/ver-kom-4/decision',
+          ),
+        ).toHaveLength(1)
+      })
+
+      settle(
+        () =>
+          new Response(JSON.stringify({ id: 1, state: 'approved' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      )
+      await screen.findByText(/^Rešen.* \d+ stavk/)
+    } finally {
+      server.stop()
+      confirm.mockRestore()
+    }
+  })
+
+})
+
+/**
+ * A REFUSAL CLOSES THE BOX AS A SUCCESS DOES (owner, 02.10.2026; PDL, „Odbijanje zatvara pitanje kao
+ * i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz dugme").
+ *
+ * <p><b>What the box did until then, measured.</b> A decision the route took closed it; one the route
+ * refused left it open with the reason typed and both buttons live again - so two answers to one
+ * question left the screen in two states, and the activation, which closes on both, was the third.
+ * What it costs is in the decision and the owner accepted it: a refusal that comes back „Uz odbijanje
+ * je razlog obavezan." now finds the box gone and the typed words with it.
+ *
+ * <p>The sentence stays where this screen has always drawn it, on the card and above the buttons the
+ * box leaves behind (`WhatTheServerSaid`), which is beside the one that asked; the focus goes to that
+ * button, because the one that had it left with the box.
+ */
+describe('when the route refuses a refusal', () => {
+  type Way = {
+    name: string
+    path: string
+    /** What opens the box on a card of that queue. */
+    opener: string | RegExp
+    /** The words typed into it, where it asks for any. */
+    typed: string
+    /** What its confirming button is called. */
+    confirm: string
+  }
+
+  const WAYS: Way[] = [
+    {
+      name: 'the profiles',
+      path: QUEUE.profiles.path,
+      opener: 'Odbij',
+      typed: 'Tekst je prekratak.',
+      confirm: 'Odbij uz ovaj razlog',
+    },
+    {
+      /* The comments have a button of their own to open the box, and it is a second place the focus
+         has to come back to: one that was left out would leave this queue the only one that drops it. */
+      name: 'the comments',
+      path: QUEUE.comments.path,
+      opener: /^Obriši:/,
+      typed: '',
+      confirm: 'Obriši komentar',
+    },
+  ]
+
+  describe.each(WAYS)('on the queue of $name', (way) => {
+    /** The box opened on the first card, the words typed where it asks for them, and the refusal sent. */
+    async function refuseTheFirstCard(user: ReturnType<typeof setupUser>) {
+      renderAt(`/sr/${way.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const first = within(
+        within(await cardsIn()).getAllByRole('listitem')[0] ?? document.createElement('li'),
+      )
+
+      await user.click(first.getByRole('button', { name: way.opener }))
+
+      if (way.typed !== '') {
+        await user.type(await screen.findByLabelText(/^Razlog odbijanja/), way.typed)
+      }
+
+      await user.click(screen.getByRole('button', { name: way.confirm }))
+
+      return first
+    }
+
+    it('closes the box by itself, with the sentence on the card and the focus on the button that opened it', async () => {
+      const user = setupUser()
+      const { server, settle } = serverThatHoldsTheDecision()
+
+      try {
+        const first = await refuseTheFirstCard(user)
+
+        settle(refusal)
+
+        expect(await first.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+        expect(screen.queryByRole('button', { name: way.confirm })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Odustani' })).not.toBeInTheDocument()
+        expect(sending()).toHaveLength(0)
+        expect(first.getByRole('button', { name: way.opener })).toHaveFocus()
+        /* And nothing was recorded, which is what a refusal is. */
+        expect(decidedIn().queryAllByRole('listitem')).toEqual([])
+      } finally {
+        server.stop()
+      }
+    })
+
+    it('can be asked again, and the second asking is sent', async () => {
+      /* The guard against a second press is a ref, and one left standing after the answer would
+         answer every press with nothing, beside a button that looks live. */
+      const user = setupUser()
+      const { server, settle } = serverThatHoldsTheDecision()
+
+      try {
+        const first = await refuseTheFirstCard(user)
+
+        settle(refusal)
+        await first.findByRole('alert')
+
+        await user.click(first.getByRole('button', { name: way.opener }))
+
+        if (way.typed !== '') {
+          await user.type(await screen.findByLabelText(/^Razlog odbijanja/), way.typed)
+        }
+
+        await user.click(screen.getByRole('button', { name: way.confirm }))
+
+        await waitFor(() => {
+          expect(decisionsIn(server.asked)).toHaveLength(2)
+        })
+      } finally {
+        server.stop()
+      }
+    })
+
+    it('puts a box asked again after a refusal away, and starts it empty', async () => {
+      /* The half the old case of „lets the box be sent again, and put away, once a refusal is in"
+         measured: whatever the first attempt raised is let go of, so the way out of the second box is
+         open - and the words typed into the first went with it, which is the price the owner was
+         shown. */
+      const user = setupUser()
+      const { server, settle } = serverThatHoldsTheDecision()
+
+      try {
+        const first = await refuseTheFirstCard(user)
+
+        settle(refusal)
+        await first.findByRole('alert')
+
+        await user.click(first.getByRole('button', { name: way.opener }))
+
+        if (way.typed !== '') {
+          const field = await screen.findByLabelText(/^Razlog odbijanja/)
+
+          expect(field).toHaveValue('')
+
+          /* Told off while the reason is empty, which is the box's own state and not a leftover: it is
+             the words that let it send, so they are typed before it is asked. */
+          await user.type(field, way.typed)
+        }
+
+        const keep = screen.getByRole('button', { name: 'Odustani' })
+
+        expect(keep).not.toHaveAttribute('aria-disabled', 'true')
+        expect(screen.getByRole('button', { name: way.confirm })).not.toHaveAttribute(
+          'aria-disabled',
+          'true',
+        )
+        expect(sending()).toHaveLength(0)
+
+        await user.click(keep)
+
+        expect(screen.queryByRole('button', { name: way.confirm })).not.toBeInTheDocument()
+        expect(first.getByRole('button', { name: way.opener })).toHaveFocus()
+      } finally {
+        server.stop()
+      }
+    })
+  })
+
+  /**
+   * THE ANSWER IS FOR ONE CARD, AND IT CLOSES THAT CARD'S BOX AND NO OTHER. Nothing stops a moderator
+   * from opening the box on a second card while the first one's refusal is still out - the box on the
+   * first is replaced - and the answer that comes back for the first must not take the second's away
+   * with the words he has begun to write in it. The success of this was `setOpen(null)`, which closes
+   * whichever box is open.
+   */
+  const ANSWERS: [string, () => Response][] = [
+    ['goes through', taken],
+    ['is refused', refusal],
+  ]
+
+  it.each(ANSWERS)('leaves the box on another card alone when the answer %s', async (_, answer) => {
+    const user = setupUser()
+    const { server, settle } = serverThatHoldsTheDecision()
+
+    try {
+      renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+      const cards = within(await cardsIn()).getAllByRole('listitem')
+      const last = within(cards[3] ?? document.createElement('li'))
+      const third = within(cards[2] ?? document.createElement('li'))
+
+      await user.click(last.getByRole('button', { name: /^Obriši:/ }))
+      await user.click(screen.getByRole('button', { name: 'Obriši komentar' }))
+      await waitFor(() => {
+        expect(decisionsIn(server.asked)).toHaveLength(1)
+      })
+
+      /* The box on the last card is replaced, with its request still out. */
+      await user.click(third.getByRole('button', { name: /^Obriši:/ }))
+      expect(third.getByRole('button', { name: 'Obriši komentar' })).toBeInTheDocument()
+
+      settle(answer)
+
+      /* The answer has been taken in: the decision is recorded, or the sentence is on the card. */
+      await waitFor(() => {
+        expect(
+          decidedIn().queryAllByRole('listitem').length + last.queryAllByRole('alert').length,
+        ).toBe(1)
+      })
+
+      expect(third.getByRole('button', { name: 'Obriši komentar' })).toBeInTheDocument()
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+/**
+ * EVERY STATE A CONFIRMING PRESS CAN MEET ON THE COMMENTS QUEUE, AND ONE CLAIM ASKED OF ALL OF THEM.
+ *
+ * <p><b>The fault, measured by the review of this branch (02.10.2026) and not imagined.</b> „Odobri
+ * sve" holds a walk (`outstanding`) for as long as it is out, and the hand-back's own guard asked that
+ * same flag: a moderator who opened the box on a card the sweep had not reached and pressed „Obriši
+ * komentar" pressed a button that read live (`aria-disabled="false"`, because the DISPLAY asked the
+ * card's own request) and sent nothing. The sweep then reached that card and approved it. One fact
+ * with two homes that disagree - and the case that should have caught it read the box as live and
+ * never pressed it.
+ *
+ * <p><b>So the claim every state below is asked is the same one: a confirming button that is not
+ * told off sends when it is pressed, and one that is told off sends nothing.</b> Read off the button
+ * and off the server, and it is the DISAGREEMENT that fails, whichever way it lies. Each state also
+ * writes down which of the two answers it gives (`toldOff`), so that a guard widened to tell off
+ * every state, or narrowed to tell off none, cannot pass by agreeing with itself.
+ */
+describe('a confirming press, in every state the queue can be in', () => {
+  const pathOf = (id: string) => `/api/verification/${id}/decision`
+
+  /* The cards by the place they stand in the queue and by the item they are, which is what the
+     address of a decision carries (`ver-kom-N` is the N-th comment waiting in the generated data). */
+  const FIRST = { index: 0, id: 'ver-kom-1' }
+  const THIRD = { index: 2, id: 'ver-kom-3' }
+  const LAST = { index: 3, id: 'ver-kom-4' }
+
+  /**
+   * A server that holds the answer to the decisions on the cards it is told to, answers every other
+   * one at once, and in which the FIRST decision for a card is the one that stands.
+   *
+   * <p>First, because that is what the route does (`VerificationWriteApi.decide`, `update ... where
+   * state = 'waiting'`: the loser matches nothing and is told 409). It is decided when the request
+   * ARRIVES and not when the answer is let go, so a held answer is a slow road back and not a late
+   * decision. A server that answered every decision 200 would let the sweep's later approval overwrite
+   * the moderator's refusal and read as though the refusal had never been sent, which is exactly the
+   * picture the review drew and the one thing this case must be able to tell from the real one.
+   *
+   * <p><b>Each held card has a gate of its own, and `release` lets one go, or all.</b> One gate for
+   * every card was enough while the question was whether a press is sent; it cannot say IN WHAT ORDER
+   * two answers come back, and the order is the axis the review of round 2 found missing (the earlier
+   * of two refusals answered first). `refusing` names the cards whose first decision the route refuses.
+   */
+  function serverThatHolds(held: string[], refusing: string[] = []) {
+    const recorded = new Set<string>()
+    const gates = new Map<string, { opens: () => void; shut: Promise<void> }>()
+
+    for (const id of held) {
+      let opens: () => void = () => {}
+      const shut = new Promise<void>((resolve) => {
+        opens = resolve
+      })
+
+      gates.set(pathOf(id), { opens, shut })
+    }
+
+    const server = serverThat((path, init) => {
+      if (init?.method !== 'POST' || !path.includes('/decision')) {
+        return null
+      }
+
+      const second = recorded.has(path)
+
+      recorded.add(path)
+
+      const answer = () =>
+        second || refusing.some((id) => pathOf(id) === path)
+          ? refused('O stavci je već odlučeno.', 409)
+          : new Response(JSON.stringify({ id: 1, state: 'decided' }), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+      const gate = gates.get(path)
+
+      return gate === undefined ? answer() : gate.shut.then(answer)
+    })
+
+    return {
+      server,
+      release: (id?: string) => {
+        for (const [path, gate] of gates) {
+          if (id === undefined || path === pathOf(id)) {
+            gate.opens()
+          }
+        }
+      },
+    }
+  }
+
+  const countFor = (asked: Asked[], id: string) =>
+    decisionsIn(asked).filter((one) => one.path === pathOf(id)).length
+
+  /** Everything a case does to the page, written once. */
+  async function pageWith(held: string[], refusing: string[] = []) {
+    const user = setupUser()
+    const { server, release } = serverThatHolds(held, refusing)
+
+    renderAt(`/sr/${QUEUE.comments.path}`, 'superadmin', null, undefined, null, <Decided />)
+
+    const cards = within(await cardsIn()).getAllByRole('listitem')
+
+    /* Named by place, so a queue that grew or shrank would move every state under this table. */
+    expect(cards).toHaveLength(4)
+
+    return {
+      user,
+      server,
+      release,
+      sweep: () => fireEvent.click(screen.getByRole('button', { name: 'Odobri sve' })),
+      card: (index: number) => within(cards[index] ?? document.createElement('li')),
+      open: (card: number) =>
+        user.click(
+          within(cards[card] ?? document.createElement('li')).getByRole('button', {
+            name: /^Obriši:/,
+          }),
+        ),
+      confirm: () => screen.getByRole('button', { name: 'Obriši komentar' }),
+      press: () => user.click(screen.getByRole('button', { name: 'Obriši komentar' })),
+      /** The request leaves a few turns after the press (the token is read first), so it is waited for. */
+      sentTo: (id: string, times: number) =>
+        waitFor(() => {
+          expect(countFor(server.asked, id)).toBe(times)
+        }),
+      /**
+       * The answer for a card has been TAKEN IN: its decision is recorded, or the sentence of its
+       * refusal is on its card. Its box is not on the page to say so - the box on the other card has
+       * replaced it - so what is read is what the answer leaves behind.
+       */
+      answered: (card: { index: number; id: string }) =>
+        waitFor(() => {
+          const decided = decidedIn()
+            .queryAllByRole('listitem')
+            .some((one) => (one.textContent ?? '').startsWith(`${card.id} | `))
+          const said =
+            within(cards[card.index] ?? document.createElement('li')).queryAllByRole('alert').length > 0
+
+          expect(decided || said, `the answer for ${card.id} has been taken in`).toBe(true)
+        }),
+    }
+  }
+
+  type Page = Awaited<ReturnType<typeof pageWith>>
+
+  type Scene = {
+    name: string
+    /** The cards whose answer the route holds. */
+    held: string[]
+    /** The cards whose FIRST decision the route refuses, where a scene needs one that is. */
+    refusing?: string[]
+    /** Whether the state starts a sweep, which is what has to be waited out at the end. */
+    sweeping: boolean
+    /** Gets the screen into the state and leaves the box open on the card `target`. */
+    arrange: (page: Page) => Promise<void>
+    target: string
+    /** What the button says in that state, written down so that no guard can agree with itself. */
+    toldOff: boolean
+  }
+
+  const SCENES: Scene[] = [
+    {
+      name: 'nothing is out',
+      held: [],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: false,
+    },
+    {
+      name: 'a sweep is out, and the box is on a card it has not reached',
+      held: [FIRST.id],
+      sweeping: true,
+      arrange: async (page) => {
+        page.sweep()
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: false,
+    },
+    {
+      name: 'a sweep is out, and the box is on the card it is asking about',
+      held: [FIRST.id],
+      sweeping: true,
+      arrange: async (page) => {
+        page.sweep()
+        await page.open(FIRST.index)
+      },
+      target: FIRST.id,
+      toldOff: false,
+    },
+    {
+      name: 'the refusal of this very card is out',
+      held: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+      },
+      target: LAST.id,
+      toldOff: true,
+    },
+    {
+      name: 'the refusal of another card is out',
+      held: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+      },
+      target: THIRD.id,
+      toldOff: false,
+    },
+    {
+      name: 'a sweep is out, and the refusal of this very card is out',
+      held: [FIRST.id, LAST.id],
+      sweeping: true,
+      arrange: async (page) => {
+        page.sweep()
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+      },
+      target: LAST.id,
+      toldOff: true,
+    },
+    {
+      /* THE ANSWER OF ANOTHER CARD LETS GO OF ITS OWN CARD AND OF NO OTHER: a set that was emptied
+         when any one refusal came back would leave this card's request out and its box live. */
+      name: "the refusal of this very card is out, and another card's has come back",
+      held: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        await waitFor(() => {
+          expect(screen.queryByRole('button', { name: 'Obriši komentar' })).not.toBeInTheDocument()
+        })
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: true,
+    },
+    /* THE ORDER OF TWO ANSWERS, which is the axis this table lacked until the review of round 2 (q6).
+       The scene above has the LATER card's answer come back first, and a set that is let go of from the
+       state of the render the press was made in passes it by accident: the later press was made after
+       the earlier card was marked, so the state it carries still names it. The EARLIER answer first is
+       the order that breaks it. Both cards are pressed, both answers are held, and the earlier is let go
+       while the box of the later is open - one scene for an earlier that goes through and one for an
+       earlier that is refused, because they leave the earlier card in two different states. */
+    {
+      name: 'two refusals are out, the earlier one has gone through, and the box of the later one is open',
+      held: [LAST.id, THIRD.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        page.release(LAST.id)
+        await page.answered(LAST)
+      },
+      target: THIRD.id,
+      toldOff: true,
+    },
+    {
+      name: 'two refusals are out, the earlier one has been refused, and the box of the later one is open',
+      held: [LAST.id, THIRD.id],
+      refusing: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        page.release(LAST.id)
+        await page.answered(LAST)
+      },
+      target: THIRD.id,
+      toldOff: true,
+    },
+    {
+      /* AND THE OTHER HALF OF THE SAME ORDER: what the earlier answer left behind. A card that was
+         refused first and asked again once both are in must be live and must not say it is sending; the
+         set that was let go of from a stale state kept it, and the box of a card nothing was out for
+         stayed on „Šalje se". */
+      name: 'two refusals were out, the earlier was refused and the later went through, and the refused card is asked again',
+      held: [LAST.id, THIRD.id],
+      refusing: [LAST.id],
+      sweeping: false,
+      arrange: async (page) => {
+        await page.open(LAST.index)
+        await page.press()
+        await page.sentTo(LAST.id, 1)
+        await page.open(THIRD.index)
+        await page.press()
+        await page.sentTo(THIRD.id, 1)
+        page.release(LAST.id)
+        await page.answered(LAST)
+        page.release(THIRD.id)
+        await page.answered(THIRD)
+        await page.open(LAST.index)
+      },
+      target: LAST.id,
+      toldOff: false,
+    },
+  ]
+
+  it.each(SCENES)('$name', async (scene) => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const page = await pageWith(scene.held, scene.refusing)
+
+    try {
+      await scene.arrange(page)
+
+      const button = page.confirm()
+      const toldOff = button.getAttribute('aria-disabled') === 'true'
+      const before = countFor(page.server.asked, scene.target)
+
+      /* WHAT THE BUTTON SAYS IS WRITTEN DOWN, and the press is the other half of the claim. */
+      expect(toldOff).toBe(scene.toldOff)
+
+      /* AND THE SENTENCE SAYS THE SAME AS THE BUTTON: a box that is told off says it is sending, and one
+         that is not says nothing. Both read what the box is handed (`working`), so a state in which
+         they differ is a state in which one of them reads a second home. */
+      expect(sending(), 'the sentence that a request is out').toHaveLength(toldOff ? 1 : 0)
+
+      await page.user.click(button)
+
+      /* THE CLAIM, counted BEFORE anything is let go: the sweep's own request for the same card
+         arrives after that, and would be counted as the press's. */
+      const sent = () => countFor(page.server.asked, scene.target) - before
+
+      if (toldOff) {
+        /* One turn of the event loop, which is longer than a request takes to leave a press (the
+           token is read first, a few promises) and so long enough to say „nothing was sent". */
+        await act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 0))
+        })
+
+        expect(sent(), 'a button that is told off sends nothing').toBe(0)
+      } else {
+        await waitFor(() => {
+          expect(sent(), 'a button that is not told off sends').toBeGreaterThan(0)
+        })
+
+        /* It was this press that sent it, and what it sent is the refusal: the request at the place
+           the count stood at is the first one after the press, whatever the sweep sends later. */
+        const mine = decisionsIn(page.server.asked).filter(
+          (one) => one.path === pathOf(scene.target),
+        )[before]
+
+        expect(bodyOf(mine)).toEqual({ approved: false, reason: '' })
+      }
+
+      /* Let everything go, so that nothing is left in flight when the case ends. */
+      page.release()
+
+      if (scene.sweeping) {
+        await screen.findByText(/^Rešen.* \d+ stavk/)
+      }
+
+      await waitFor(() => {
+        expect(sending()).toHaveLength(0)
+      })
+    } finally {
+      page.server.stop()
+      confirm.mockRestore()
+    }
+  })
+
+  it('keeps the refusal of a card the sweep had not reached, and lets the sweep settle the rest', async () => {
+    /* THE REVIEW'S OWN PICTURE, as a whole: four waiting, the sweep held on the first, the box opened
+       on the last and pressed. What the moderator decided is what stands - the route records the
+       first decision it receives for a card - and the sweep is told so by the one it was refused. */
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const page = await pageWith([FIRST.id])
+
+    try {
+      page.sweep()
+      await page.open(LAST.index)
+      await page.press()
+      await page.sentTo(LAST.id, 1)
+
+      page.release()
+      await screen.findByText(/^Rešen.* 3 stavk/)
+
+      const decided = decidedIn()
+        .getAllByRole('listitem')
+        .map((one) => one.textContent ?? '')
+      const line = (id: string) => decided.find((one) => one.startsWith(`${id} | `)) ?? ''
+
+      expect(line(LAST.id)).toMatch(/^ver-kom-4 \| rejected \|/)
+      expect(line(FIRST.id)).toMatch(/^ver-kom-1 \| approved \|/)
+      expect(line('ver-kom-2')).toMatch(/^ver-kom-2 \| approved \|/)
+      expect(line(THIRD.id)).toMatch(/^ver-kom-3 \| approved \|/)
+    } finally {
+      page.server.stop()
+      confirm.mockRestore()
+    }
+  })
+
+  it('does not stop another card from being approved while a refusal is out', async () => {
+    /* WHAT THIS GUARD DOES NOT TAKE FROM THE SCREEN, asked as a case. The first version marked the
+       whole walk (`outstanding`) while a refusal was out, so „Odobri" on any other card, and the sweep
+       with it, were told off for work that was not theirs - a prohibition `main` never had, with no
+       sentence to say why. The box is the only thing a refusal out for one card may switch off. */
+    const page = await pageWith([LAST.id])
+
+    try {
+      await page.open(LAST.index)
+      await page.press()
+      await page.sentTo(LAST.id, 1)
+
+      const approve = page.card(FIRST.index).getByRole('button', { name: 'Odobri' })
+
+      expect(approve).not.toHaveAttribute('aria-disabled', 'true')
+
+      await page.user.click(approve)
+      await page.sentTo(FIRST.id, 1)
+
+      expect(
+        bodyOf(decisionsIn(page.server.asked).find((one) => one.path === pathOf(FIRST.id))),
+      ).toEqual({ approved: true, reason: '' })
+
+      page.release()
+    } finally {
+      page.server.stop()
     }
   })
 })
