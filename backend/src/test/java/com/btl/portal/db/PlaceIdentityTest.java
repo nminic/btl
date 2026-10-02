@@ -21,12 +21,18 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * This class then held a boundary: nothing anywhere may reference a town. The
  * owner lifted it on 08.09.2026 by having the codebook carry the GeoNames
  * identifier the generator was already reading and dropping (ADL A16, A36 O5).
- * How many such pairs there are is deliberately not written here: it is a number
- * that changes every time the codebook is rebuilt, and the two homes that give it
- * are {@code V3__place.sql}, which nothing may rewrite, and {@code places.ts},
- * where {@code contract.test.ts} asks the shipped codebook for it on every run.
- * Written here it would be a third copy with nothing under it, and it was one
- * until 09.09.2026.
+ * How many such pairs there were is deliberately not written here, and
+ * {@code V3__place.sql}, which nothing may rewrite, gives it for the day it was loaded.
+ *
+ * <p><b>Since 02.10.2026 the shipped codebook has no such pair, and the mark is the
+ * identity all the same.</b> Owner, PDL "Odluke iz ciscenja nalaza (02.10.2026,
+ * vlasnik)", the entry that begins „Istoimena mesta u istoj drzavi dobijaju u
+ * zagradi": a town that shared its name with another of its country now carries the
+ * nearest bigger town in brackets, and {@code place_country_name_unique} refuses a
+ * second one. A name in a country therefore tells towns apart today. It is still not
+ * what a town is, because a label is the nearest bigger town and moves when GeoNames
+ * does, so a name written down anywhere can stop meaning the town it meant while the
+ * mark goes on meaning it.
  *
  * <p><b>What holds now, and what each half is worth on its own.</b> The mark
  * without the key is a column somebody may fill twice; the key without

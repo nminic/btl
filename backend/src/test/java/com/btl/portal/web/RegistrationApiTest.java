@@ -26,6 +26,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.Reader;
@@ -1066,6 +1067,64 @@ class RegistrationApiTest {
 				.query(String.class).single())
 				.as("the country of a typed town was not the one whoever typed it chose")
 				.isEqualTo(anotherCountry);
+	}
+
+	/**
+	 * A TOWN PICKED OFF THE LIST WITH ITS LABEL IS STORED AS THE NAME THE LIST SHOWED, BRACKETS AND ALL.
+	 *
+	 * <p>Owner, 02.10.2026, PDL "Odluke iz ciscenja nalaza (02.10.2026, vlasnik)", the entry that begins
+	 * „Istoimena mesta u istoj drzavi dobijaju u zagradi": the two Belotics of Serbia are told apart by
+	 * the nearest bigger town in brackets, and the same entry says the portal does not send the town's
+	 * mark: <b>the name and the country are what travels</b>, as {@code PlaceField.choose} writes them
+	 * and {@code Registration.tsx} sends them. So the label has to survive a road it was never asked
+	 * about: the server that serves it ({@code /api/places}), the request that carries it back as a
+	 * typed town, the route that strips and stores it, and the column it lands in.
+	 *
+	 * <p><b>Read from the list and not typed here.</b> The name sent is the one {@code /api/places}
+	 * answers for mark 3204307, because a literal in this test would measure the literal. It is also
+	 * asserted to carry brackets, so a codebook that serves the town bare fails on the codebook and not
+	 * on a comparison further down that happens to be about something else.
+	 *
+	 * <p>The brackets are the part that could go wrong: nothing on this road checks a character or a
+	 * length today ({@code competitor_city_not_blank} is the only rule on the column), and a
+	 * validation added tomorrow that refuses a bracket would turn every namesake of the country into a
+	 * town nobody can register in.
+	 */
+	@Test
+	void aTownPickedOffTheListWithItsLabelIsStoredAsTheListShowedIt() throws Exception {
+		JsonNode served = new ObjectMapper().readTree(http.perform(get("/api/places")).andReturn().getResponse()
+				.getContentAsString(StandardCharsets.UTF_8));
+		JsonNode belotic = null;
+
+		for (JsonNode town : served) {
+			if (town.get(0).longValue() == 3_204_307L) {
+				belotic = town;
+			}
+		}
+
+		assertThat(belotic).as("the codebook does not serve mark 3204307, the Belotic by Bogatic").isNotNull();
+
+		String name = belotic.get(1).stringValue();
+		String country = belotic.get(2).stringValue();
+
+		assertThat(name).as("the codebook serves this town bare, so the label was never put on it").contains(" (");
+
+		Map<String, Object> picked = aGrownUp();
+
+		picked.remove("placeId");
+		picked.put("city", name);
+		picked.put("country", country);
+
+		assertThat(register(picked).getStatus()).isEqualTo(204);
+
+		Map<String, Object> stored = theCompetitorBehind(ADDRESS);
+
+		assertThat(stored.get("place_id")).isNull();
+		assertThat(stored.get("city"))
+				.as("a name with a label was changed on its way from the list to the column")
+				.isEqualTo(name);
+		assertThat(db.sql("select code from country where id = ?").param(stored.get("country_id"))
+				.query(String.class).single()).isEqualTo(country);
 	}
 
 	/**
