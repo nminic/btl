@@ -479,7 +479,11 @@ describe('the referral link, on the answer the server gives', () => {
     try {
       renderAt('/sr/moja-clanarina', 'competitor', stillAMember)
 
-      expect(await screen.findByText(/registracija\?preporuka=$/)).toBeVisible()
+      /* Found by what is the same in both states - the address up to the sign - and then read, so
+         that a page which draws the code fails on what it drew instead of on a wait that never ends. */
+      const drawn = await screen.findByText(/registracija\?preporuka=/)
+
+      expect(drawn.textContent, 'what the page draws after the sign').toMatch(/registracija\?preporuka=$/)
       expect(document.body.textContent ?? '', 'the code the answer carried, written on the page').not.toContain(
         sent,
       )
