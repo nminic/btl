@@ -348,13 +348,13 @@ class ResultWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		Optional<Counted> standing = his(id.value(), me);
 
 		if (standing.isEmpty()) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		ResponseEntity<?> proof = whatIsWrongWithTheProof(typed.link(), typed.comment());
@@ -421,13 +421,13 @@ class ResultWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		Optional<Counted> standing = his(id.value(), me);
 
 		if (standing.isEmpty()) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		Said said = WhatAResultChangeSays.deleted(standing.get().run());
@@ -866,7 +866,7 @@ class ResultWriteApi {
 	 * <p>Only {@link #report} uses it: its address is one {@link ApiSecurity#READ_BY_ANYBODY} opens,
 	 * {@code OPTIONS} there already says that a write lives at it ({@link ApiSecurity}, 18.09.2026),
 	 * and {@link TeamWriteApi#awayAtAnOpenAddress} says why nothing is left for the shape of this 404
-	 * to hide. The routes that take a key answer through {@link #away}.
+	 * to hide. The routes that take a key answer through {@link #nothingIsHere}.
 	 */
 	private static ResponseEntity<?> awayAtAnOpenAddress() {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -875,20 +875,23 @@ class ResultWriteApi {
 	/**
 	 * THE ANSWER FOR SOMEBODY AN ADDRESS WITH A KEY IN IT IS NOT FOR, which carries nothing at all.
 	 *
-	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND IT IS THROWN
-	 * RATHER THAN RETURNED.</b> A status written onto the response comes back with
-	 * {@code Content-Length: 0}, while an address that maps nothing comes back as the container's
-	 * error document, chunked: over a real socket that is 262 bytes against more than 380, and it
-	 * is an oracle for whether a route lives at this address, one request per guess
-	 * ({@link RightsAtTheDoor} measured it). {@link ResponseStatusException} is answered by
-	 * {@code sendError}, one call into the machinery an unmapped address already uses and not an
-	 * imitation of it, and it is thrown because this is asked from inside transaction callbacks,
-	 * where there is no response to hand. Every refusal here is decided before the first write, so
-	 * the rollback the exception causes undoes nothing. {@code AWordInAKeyOverRealHttpTest}
-	 * compares the bytes with the twin's, for every kind of caller.
+	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND THE CALLER THROWS
+	 * IT.</b> A status written onto the response comes back with {@code Content-Length: 0}, while an
+	 * address that maps nothing comes back as the container's error document, chunked: over a real
+	 * socket that is 262 bytes against more than 380, and it is an oracle for whether a route lives at
+	 * this address, one request per guess ({@link RightsAtTheDoor} measured it).
+	 * {@link ResponseStatusException} is answered by {@code sendError}, one call into the machinery an
+	 * unmapped address already uses and not an imitation of it. It is thrown and not returned because
+	 * this is asked from inside transaction callbacks, where there is no response to hand. It is made
+	 * here and thrown at the call site and not thrown from this method, because the coverage report
+	 * counts a line whose call never comes back as not run: measured, a method that always throws left
+	 * every {@code return} that called it uncovered, and the gate refuses anything under a hundred per
+	 * cent. Every refusal here is decided before the first write, so the rollback the exception causes
+	 * undoes nothing. {@code AWordInAKeyOverRealHttpTest} compares the bytes with the twin's, for every
+	 * kind of caller.
 	 */
-	private static ResponseEntity<?> away() {
-		throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+	private static ResponseStatusException nothingIsHere() {
+		return new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 
 	private static ResponseEntity<?> no(String reason) {

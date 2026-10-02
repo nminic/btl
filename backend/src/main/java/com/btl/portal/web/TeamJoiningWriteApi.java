@@ -512,7 +512,7 @@ class TeamJoiningWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		return inOneTransaction.execute(committing -> asking(me, id.value()));
@@ -524,18 +524,18 @@ class TeamJoiningWriteApi {
 		/* THE FEE FIRST, because `JoiningATeam` does not ask it and says so: „Whether a
 		   member has paid is the service layer's question, and it is still open." */
 		if (!heIsStillAMember(me)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		/* AND THE TWO QUESTIONS `JoiningATeam` DOES ANSWER, asked of the one place that holds
 		   them rather than as a month and a query written here. Which of the two refused him
 		   is not told apart, for the reason written on this method. */
 		if (JoiningATeam.mayJoin(alreadyInATeam.everyOneHeHasHad(me), now) != JoiningATeam.Answer.YES) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (!somebodyCouldAnswerForThisTeam(team)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (aQuestionOfHisAlreadyStands(me)) {
@@ -591,7 +591,7 @@ class TeamJoiningWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (typed.accepted() == null) {
@@ -605,7 +605,7 @@ class TeamJoiningWriteApi {
 		Optional<TheApplication> his = applicationHeMayDecide(me, team, application);
 
 		if (his.isEmpty()) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		ZonedDateTime now = ZonedDateTime.now(clock);
@@ -614,7 +614,7 @@ class TeamJoiningWriteApi {
 		   the decision of 06.09.2026 on this method and is asked in Java so that
 		   `Membership.standsInTheWayOfJoiningIn` stays the one home of the rule. */
 		if (alreadyInATeam.standsInHisWay(his.get().applicant(), now)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (!accepted) {
@@ -664,7 +664,7 @@ class TeamJoiningWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		return inOneTransaction.execute(committing -> withdrawing(me, id.value(), application.value()));
@@ -679,7 +679,7 @@ class TeamJoiningWriteApi {
 				.single();
 
 		if (!his) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		theApplicationIsOver(application);
@@ -721,7 +721,7 @@ class TeamJoiningWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (isNothing(typed.memberNumber())) {
@@ -734,7 +734,7 @@ class TeamJoiningWriteApi {
 
 	private ResponseEntity<?> inviting(long me, long team, String memberNumber) {
 		if (!heAdministersThisTeam(me, team)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		ZonedDateTime now = ZonedDateTime.now(clock);
@@ -752,7 +752,7 @@ class TeamJoiningWriteApi {
 		   `PairWriteApi.halfNumbered` explains it: told apart, the difference between two
 		   answers over consecutive numbers would be a list of who has not paid. */
 		if (him.isEmpty() || him.get() == me) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (alreadyInATeam.standsInHisWay(him.get(), now)) {
@@ -812,7 +812,7 @@ class TeamJoiningWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (typed.accepted() == null) {
@@ -827,7 +827,7 @@ class TeamJoiningWriteApi {
 		Optional<TheInvitation> his = invitationHeMayAnswer(me, team, invitation);
 
 		if (his.isEmpty()) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		if (!accepted) {
@@ -902,7 +902,7 @@ class TeamJoiningWriteApi {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		return inOneTransaction.execute(committing -> takingBack(me, id.value(), invitation.value()));
@@ -910,7 +910,7 @@ class TeamJoiningWriteApi {
 
 	private ResponseEntity<?> takingBack(long me, long team, long invitation) {
 		if (!heAdministersThisTeam(me, team)) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		boolean itIsTheirs = db.sql("select exists(select 1 from team_invitation"
@@ -920,7 +920,7 @@ class TeamJoiningWriteApi {
 				.single();
 
 		if (!itIsTheirs) {
-			return away();
+			throw nothingIsHere();
 		}
 
 		theInvitationIsOver(invitation);
@@ -1279,20 +1279,23 @@ class TeamJoiningWriteApi {
 	 * <p>The owner's reason of 05.09.2026: „adresa koju član ne sme da otvori nije strana sa
 	 * objašnjenjem nego adresa koje za njega nema."
 	 *
-	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND IT IS THROWN
-	 * RATHER THAN RETURNED.</b> A status written onto the response comes back with
-	 * {@code Content-Length: 0}, while an address that maps nothing comes back as the container's
-	 * error document, chunked: over a real socket that is 262 bytes against more than 380, and it
-	 * is an oracle for whether a route lives at this address, one request per guess
-	 * ({@link RightsAtTheDoor} measured it). {@link ResponseStatusException} is answered by
-	 * {@code sendError}, one call into the machinery an unmapped address already uses and not an
-	 * imitation of it, and it is thrown because this is asked from inside transaction callbacks,
-	 * where there is no response to hand. Every refusal here is decided before the first write, so
-	 * the rollback the exception causes undoes nothing. {@code AWordInAKeyOverRealHttpTest}
-	 * compares the bytes with the twin's, for every kind of caller.
+	 * <p><b>IT GOES DOWN THE ROAD AN ADDRESS THAT MAPS NOTHING GOES DOWN, AND THE CALLER THROWS
+	 * IT.</b> A status written onto the response comes back with {@code Content-Length: 0}, while an
+	 * address that maps nothing comes back as the container's error document, chunked: over a real
+	 * socket that is 262 bytes against more than 380, and it is an oracle for whether a route lives at
+	 * this address, one request per guess ({@link RightsAtTheDoor} measured it).
+	 * {@link ResponseStatusException} is answered by {@code sendError}, one call into the machinery an
+	 * unmapped address already uses and not an imitation of it. It is thrown and not returned because
+	 * this is asked from inside transaction callbacks, where there is no response to hand. It is made
+	 * here and thrown at the call site and not thrown from this method, because the coverage report
+	 * counts a line whose call never comes back as not run: measured, a method that always throws left
+	 * every {@code return} that called it uncovered, and the gate refuses anything under a hundred per
+	 * cent. Every refusal here is decided before the first write, so the rollback the exception causes
+	 * undoes nothing. {@code AWordInAKeyOverRealHttpTest} compares the bytes with the twin's, for every
+	 * kind of caller.
 	 */
-	private static ResponseEntity<?> away() {
-		throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+	private static ResponseStatusException nothingIsHere() {
+		return new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 
 	private static ResponseEntity<?> no(HttpStatus status, String reason) {
