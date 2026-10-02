@@ -46,25 +46,31 @@ export function Resource<T>({ state, children, inline = false, label }: Props<T>
      **ONLY IF IT LEFT WITH THE FOCUS ON IT, AND ONLY IF NOBODY HAS TAKEN THE FOCUS SINCE.** A
      reader who moved on while it asked, or who never had the focus on the button, is not followed:
      that would be the portal taking the keyboard from somebody who was using it. And a screen that
-     put the focus somewhere of its own while it drew (`forms/FormRenderer.tsx` opens a form
-     with a field focused) keeps it, as `app/useNewScreen.ts` keeps it for the same reason: the
-     children's own layout effects run before this one, so by now the focus is theirs.
+     put the focus somewhere of its own while it drew (`autoFocus` in `pages/admin/PendingQueue.tsx`
+     puts it on a control the moment the control is drawn) keeps it, as `app/useNewScreen.ts` keeps
+     it for the same reason: the children's own layout effects run before this one, so by now the
+     focus is theirs.
 
      **A WHOLE SCREEN GOES TO `main`**, which the shell already makes focusable for the router
      (`useNewScreen`) and already draws without a ring (`.shell__main:focus-visible`): the reader is
      put at the top of the screen, as after any navigation, and the next Tab goes into it. Not
-     scrolled, for the reason `useNewScreen` gives: the focus must not undo the position the reader
-     is at.
+     scrolled, as `useNewScreen` does not scroll: pulling the landmark into view would undo the
+     position the reader is at.
 
      **A PART GOES TO A NODE OF ITS OWN IN FRONT OF IT, NOT TO A WRAPPER AROUND IT.** The reviewer
-     proposed a wrapper with `tabIndex={-1}`, and that was measured before it was written: every
-     container the parts are drawn in (`.section-body`, `.member`, `.home`, `.page`) is a flex column
-     with a `gap`, so a wrapper would swallow the gap between the part's own root elements and the
-     part would be laid out differently after it was read again than before it failed. The node here
-     is `visually-hidden`, so it is positioned absolutely and is not a flex item, and the stylesheets
-     of the portal have one structural selector between them (`.entity-races`, in a table the parts
-     are not in), so a child more shifts nothing. It is drawn only by a Resource that has failed at
-     least once, so a part that never failed is exactly the markup it always was.
+     proposed a wrapper with `tabIndex={-1}`, and that was measured before it was written: the
+     containers parts are drawn in include `.section-body` (the wall of ducats) and `.member` (the
+     settings), and each is a flex column with a `gap`, so a wrapper would swallow the gap between
+     the part's own root elements and the part would be laid out differently after it was read
+     again than before it failed. The node here is `visually-hidden`, so it is positioned
+     absolutely and is not a flex item. Nor is it where a positional selector of the stylesheets
+     looks (`:first-child`, `:nth-child`, `:empty`, `+`): those are aimed at table cells, a menu,
+     chart columns, form and rights groups and three lines that say something and are empty
+     otherwise, and none of the thirteen parts is drawn in one of them (read off the stylesheets and
+     the parts, not measured on each part). The one part that was measured in a browser, the wall of
+     ducats at three widths and with the text doubled, is laid out identically with the node and
+     without it. The node is drawn only by a Resource that has failed at least once, so a part that
+     never failed is exactly the markup it always was.
 
      **ACROSS A WAIT, NOT ACROSS A FAILURE.** When several files are asked for and the one that
      failed is read while another is still on its way, what is drawn is the loader, and the button
