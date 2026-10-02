@@ -330,6 +330,16 @@ describe('„Raskini" on a pair the server is keeping', () => {
       expect(must(alerts[0], 'the alert').textContent).toBe(
         sr.server.wrong.replace('{status}', '500'),
       )
+
+      /* **AND IT STANDS DIRECTLY UNDER THE ROW SHE PRESSED**, which a count of alerts cannot say:
+         one alert drawn under the OTHER pair is still one alert, and she would read that the
+         pair for 2027 failed to end when it was the pair for 2028 she pressed. The sentence
+         cannot live inside the row (`ServerSaid` draws a `<p>`, and a `<p>` inside a `<p>` is
+         closed by the parser), so where it stands is the only way the row owns it. Found by a
+         mutation that put it under the other row and left the whole file green (02.10.2026). */
+      const pressed = must(at(breakButtons(), 1).closest('p'), 'the row she pressed')
+
+      expect(pressed.nextElementSibling).toBe(alerts[0])
     },
     SLOW,
   )
