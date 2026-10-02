@@ -325,6 +325,43 @@ describe('hiding a profile from readers who are not signed in', () => {
     expect(screen.getByText('000007')).toBeVisible()
   }, SLOW)
 
+  it('leaves the circle and the name in the main standing, with no way in from either', async () => {
+    /* The circle there is a link of its own to the same profile as the name (`pages/Rankings.tsx`),
+       so a hidden member has two ways in to take away and a reader who is not signed in must be
+       left with neither: the sweep below asks every address the portal has whether any of them
+       leads to the member, and says nothing about the screen going on to draw the person. A row
+       that lost its circle with its link would satisfy that sweep exactly as well, and it would be
+       the member's face taken off a table the owner asked it be on (PDL P23: hiding is about
+       reaching the profile, not about what a list says). */
+    const user = setupUser()
+    const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
+
+    await hide(user)
+    await user.click(screen.getByRole('button', { name: 'odjavi se' }))
+    await router.navigate('/sr/tabela')
+
+    const him = must((await screen.findByText('Strahinja Vukićević')).closest('tr'), 'his row')
+
+    /* `hidden: true`, because the circle's link is out of the accessibility tree and a reading that
+       left it out would count none for a row that still carried it. */
+    expect(within(him).queryAllByRole('link', { hidden: true })).toEqual([])
+    expect(him.querySelector('.portrait'), 'the circle is still there').not.toBeNull()
+    expect(within(him).getByText('Strahinja Vukićević')).toBeVisible()
+
+    /* A member who is not hiding, in the same table: with no ways in anywhere this half is what a
+       screen that drew no links at all would also say. */
+    const others = within(must(him.closest('table'), 'the standing'))
+      .getAllByRole('row')
+      .slice(1)
+      .filter((row) => row !== him)
+
+    expect(others.length).toBeGreaterThan(0)
+
+    for (const row of others) {
+      expect(within(row).getAllByRole('link', { hidden: true })).toHaveLength(2)
+    }
+  }, SLOW)
+
   /* **Every screen, and not the one that remembered** (review, 07.09.2026).
      Hiding is chosen during a visit and there is no database, so the only place it lives is the
      session. Eleven screens hand the rule whatever record they hold, and eleven of them hold the

@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { Portrait } from './Portrait'
 import type { Competitor } from '../data/types'
 import type { ReactNode } from 'react'
@@ -30,23 +31,45 @@ import './NamePlate.css'
  * **The circle says nothing out loud.** `Portrait` is `aria-hidden`, so a reader who cannot see it
  * hears the words and only the words; the initials in it are the same two letters the name begins
  * with, and hearing them twice is worse than not hearing them at all.
+ *
+ * **A way in of its own, for the one screen whose link cannot hold the circle** (`faceTo`,
+ * 02.10.2026, `PDL.md`, „Odluke iz ciscenja nalaza", stavka 114). The other screens that link a
+ * name put the whole plate inside the link to the profile (`pages/league/LeagueResults.tsx`,
+ * `pages/TopBoards.tsx`), so pressing the circle opens it. The main standing cannot: the member
+ * number stands in `.plate__words` under the name and must stay out of every link
+ * (`pages/publicScreens.test.tsx`, PR 412), so there the link is the name alone and the circle
+ * would be dead to a finger and a mouse. Given an address, the circle becomes a second link to the
+ * same place, **out of the tab order and out of the accessibility tree**: a keyboard and a screen
+ * reader meet the name's link and only that one, and nobody is read a link whose words are a
+ * picture. `tabIndex={-1}` is what makes `aria-hidden` allowed on a link at all.
+ *
+ * It is the screen that decides whether there is an address (`profile/useProfileLink.ts`), so a
+ * profile nobody may reach has neither link and the circle is still drawn. For ONE competitor: a
+ * pair has two profiles and no single address, which is why the board of pairs does not pass one.
  */
 export function NamePlate({
   competitors,
+  faceTo,
   children,
 }: {
   /** One, or two where a pair is drawn. */
   competitors: Competitor[]
+  /** Where pressing the circle leads, where it leads anywhere. For a plate of one only. */
+  faceTo?: string
   /** The words beside the circles, written by the screen that knows how it writes a name. */
   children: ReactNode
 }) {
+  const faces = competitors.map((one) => <Portrait key={one.memberNumber} competitor={one} />)
+
   return (
     <span className={`plate${competitors.length > 1 ? ' plate--pair' : ''}`}>
-      <span className="plate__faces">
-        {competitors.map((one) => (
-          <Portrait key={one.memberNumber} competitor={one} />
-        ))}
-      </span>
+      {faceTo === undefined ? (
+        <span className="plate__faces">{faces}</span>
+      ) : (
+        <Link className="plate__faces" to={faceTo} tabIndex={-1} aria-hidden="true">
+          {faces}
+        </Link>
+      )}
 
       <span className="plate__words">{children}</span>
     </span>
