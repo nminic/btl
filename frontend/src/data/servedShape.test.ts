@@ -72,8 +72,9 @@ import type { Place } from './places'
  * build that does not finish; nothing here has to be run for that half to hold.
  * Written the other way round, as a literal annotated in place, TypeScript would
  * also refuse a field the answer carries and the type does not, which is the one
- * thing that must be allowed: `/api/leagues` answers with `raceIds` and the
- * portal does not read it yet.
+ * thing that must be allowed: a field the server answers and no screen reads yet.
+ * `/api/leagues` was that example until 01.10.2026, when the standing and the list
+ * of competitions began counting by `raceIds` and the field went onto the type.
  *
  * **ALL FIFTEEN ARE READ BY THEIR TYPES SINCE 21.09.2026, WHICH IS THE OTHER HALF
  * OF THE OWNER'S ORDER CARRIED OUT.** `/api/competitors` answered thirteen fields
@@ -592,6 +593,12 @@ describe('the answer the backend gives', () => {
     expect(readAsTeamWithNoMark.crop).toBeNull()
     expect(readAsTeamWithNoMark.foundedByMe).toBe(false)
     expect(readAsPair.memberNumbers).toHaveLength(2)
+    /* **The races a competition counts, read through the type** since 01.10.2026. Taking the field
+       off `League` fails the build on this line and taking it off the sample fails the case, and
+       the two are different breakages: the sample is what the server answers, the type is what the
+       portal reads it as. `275` and `273` are not the same number on purpose, because a race and
+       an event are two sequences and a reading that took one for the other would pass otherwise. */
+    expect(readAsLeague.raceIds).toEqual([275])
     expect(readAsLeague.eventIds).toEqual([273])
     /* THE FIFTEENTH, AND ITS THREE NULLS ARE THE WHOLE OF WHY IT IS WRITTEN DOWN TWICE.
        A period answers all seven fields; the processing fee answers four of them and says
