@@ -440,7 +440,7 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   const params = useParams()
   const { search } = useLocation()
   const memberNumber = given ?? memberNumberIn(params.memberNumber)
-  const { memberNumber: reader, pairsMade, pairsBroken } = useSession()
+  const { signedIn, pairsMade, pairsBroken } = useSession()
   const overlay = useOverlay()
   const state = combineFour(useCompetitors(), useResults(), useTeams(), usePairs())
 
@@ -455,7 +455,9 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
            had just joined it that they were in no club at all (review, same day). */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
         const teams = recordsOf(TEAMS, allTeams, overlay)
-        const readable = profileFor(competitors, memberNumber, reader)
+        /* Whether anybody is signed in and not which member, so administration, which races for
+           nobody, reads a hidden profile as the server already lets it (`profile/visible.ts`). */
+        const readable = profileFor(competitors, memberNumber, signedIn !== null)
 
         if (readable.kind === 'none') {
           /* **The home page, and the same for a profile that does not exist.** The owner's rule,

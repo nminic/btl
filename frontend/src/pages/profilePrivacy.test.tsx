@@ -21,13 +21,65 @@ import { MEMBERS } from './admin/entityForms'
  */
 
 /** The reader becomes somebody else inside one visit, because what one member chose is read
- *  by another. */
+ *  by another.
+ *
+ *  **And it says who the session is signed in as, so a case can ask whether the change really
+ *  happened** (`becomes` below). Without that line this probe could stop working and nothing would
+ *  notice: the reader would silently stay the member who is hiding, and every assertion a case
+ *  makes about „somebody else" would be made about the owner instead (`btl-produkt/PENDING.md`,
+ *  item 146). */
 function Become({ who }: { who: string }) {
-  const { signIn } = useSession()
+  const { signIn, memberNumber } = useSession()
 
   return (
-    <button type="button" onClick={() => { signIn(who) }}>
-      postani {who}
+    <>
+      <button type="button" onClick={() => { signIn(who) }}>
+        postani {who}
+      </button>
+      <p>čitalac: {memberNumber ?? 'niko'}</p>
+    </>
+  )
+}
+
+/** Presses the button of `Become` and WAITS FOR THE SESSION TO SAY IT WORKED, which is the whole of why
+ *  this is a function and not a click: a case that pressed and went on would be reading the
+ *  screens as whoever the session still was. */
+async function becomes(user: ReturnType<typeof setupUser>, who: string): Promise<void> {
+  await user.click(screen.getByRole('button', { name: `postani ${who}` }))
+
+  expect(await screen.findByText(`čitalac: ${who}`)).toBeVisible()
+}
+
+/**
+ * Somebody is signed in whom the league has given NO member number: administration, which has no
+ * competitor record at all (PDL P21), and anybody who has registered and is not a member yet.
+ *
+ * The same call `member/SignIn.tsx` and `session/useTheServersSession.ts` make with the answer of
+ * `GET /api/me`, written the way the four cases that sign somebody in during a visit write it
+ * (`member/profileVisibility.test.tsx`), with the one field that is the point of this probe left
+ * empty. It is the third state of the reader and the only one the member number cannot tell from a
+ * visitor: both read `null` there.
+ */
+function SignInAsAnAccount() {
+  const { theServerSignedMeIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        theServerSignedMeIn({
+          account: 2,
+          memberNumber: null,
+          country: null,
+          firstSeason: null,
+          teamId: null,
+          membershipBasis: null,
+          referralCode: null,
+          referredCount: null,
+        })
+      }}
+    >
+      prijavi nalog bez člana
     </button>
   )
 }
@@ -316,7 +368,7 @@ describe('hiding a profile from readers who are not signed in', () => {
        So each address names the member it can really answer about, and both are hidden before the
        walk starts. Both edits live in the same overlay, keyed by member number, so one visit is
        enough. */
-    await user.click(screen.getByRole('button', { name: 'postani 000001' }))
+    await becomes(user, '000001')
     await router.navigate('/sr/podesavanja')
     await hide(user)
 
@@ -408,7 +460,7 @@ describe('hiding a profile from readers who are not signed in', () => {
 
     /* Another member, not the one who is hiding: hiding is from readers who are not signed in and
        from nobody else, so a member reading somebody else's list sees the way in (P23). */
-    await user.click(screen.getByRole('button', { name: 'postani 000002' }))
+    await becomes(user, '000002')
     await router.navigate('/sr/takmicari')
 
     expect((await screen.findByText('Strahinja Vukićević')).closest('a')).not.toBeNull()
@@ -444,13 +496,25 @@ describe('hiding a profile from readers who are not signed in', () => {
     )
 
     await hide(user)
-    await user.click(screen.getByRole('button', { name: 'postani 000012' }))
+    await becomes(user, '000012')
     await router.navigate(HIM)
 
     await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ })
 
     expect(lineUnderTheName('000007')).toMatch(/Banja Luka/)
     expect(screen.queryByText(/sakrio svoj profil/)).toBeNull()
+
+    /* **THE ONE ASSERTION HERE THAT ONLY A READER WHO IS NOT THE OWNER CAN PRODUCE** (`PENDING.md`,
+       item 146). Everything above is what the owner sees as well, so a probe that silently left him
+       signed in passed this case with the rule narrowed to „the reader is the owner" and without
+       it: measured 02.10.2026, both ways, on the file as it stood.
+
+       The button is the portal's own answer to a reader who is not the owner: `000007` is a man and
+       `000012` a woman (`test/mock/competitors.json`), and `profile/InviteToPair.tsx` offers
+       nothing where the two are of one sex, which is what the owner is to himself. So with the
+       owner in the chair this line cannot be satisfied, and `becomes` above is the other half of
+       the same guard: it fails at the moment the probe stops working, rather than here. */
+    expect(await screen.findByRole('button', { name: 'Pozovi u trkački par' })).toBeVisible()
   }, SLOW)
 
   it('holds on the page of awards, which draws the same head', async () => {
@@ -480,6 +544,88 @@ describe('hiding a profile from readers who are not signed in', () => {
        carried the name, and since 06.09.2026 both addresses answer the same way as a profile that
        was never there. */
     expect(screen.queryByText(/Strahinja Vukićević/)).toBeNull()
+  }, SLOW)
+})
+
+/**
+ * SOMEBODY SIGNED IN WHO RACES FOR NOBODY READS A HIDDEN PROFILE.
+ *
+ * <p>The rule is about whether ANYBODY is signed in: „za sve posetioce koji nisu ulogovani"
+ * (owner, 06.09.2026), and the server asks exactly that (`CompetitorApi`, `signedIn` is „is there a
+ * session", with a note saying why it is not asked of the member). The screens asked something
+ * narrower, whether the reader is a MEMBER, and the two answers part for exactly one reader: an
+ * account the league has given no number, which is administration (PDL P21). The server served such
+ * an account a hidden member's biography and portrait, and the screens sent it to the front page.
+ * Recorded as derived, not asked, in `PDL.md` under „Odluke iz ciscenja nalaza" (02.10.2026).
+ *
+ * <p>**Each of the three screens that ask has a case of its own**, because the fault is one
+ * expression on each and restoring it on one leaves the other two green: measured as three
+ * separate mutations, `memberNumber` in place of `signedIn` at each call site.
+ *
+ * <p>**Each case is one visit with the reader as the only thing that changes.** The same hidden
+ * member, first for a reader nobody has signed in, who is turned away, and then for the account.
+ * Read the other way round, the case would pass for a screen that lets everybody in, and the first
+ * half of it passes for a screen that turns everybody away only until the second half is asked.
+ */
+describe('a hidden profile, read by somebody signed in who races for nobody', () => {
+  /** The member is hidden and the reader is the administration, in a visit that has not signed
+   *  anybody in yet. The role is the moderator's because that is what the account is on the portal,
+   *  and the session has no number, which is the state under test. */
+  async function visit(where: string) {
+    const user = setupUser()
+    const { router } = renderAt(
+      where,
+      'moderator',
+      null,
+      undefined,
+      DAY,
+      <>
+        <Hide who="000007" />
+        <SignInAsAnAccount />
+      </>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+
+    return { user, router }
+  }
+
+  it.each([
+    ['opens the profile', HIM],
+    ['opens the page of awards', `${HIM}/priznanja`],
+  ])('%s', async (_what, where) => {
+    const { user, router } = await visit('/sr')
+
+    /* Turned away first, which is what the reader is until somebody signs in: the other state of
+       the same axis, in the same visit, for the same member. */
+    await router.navigate(where)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'prijavi nalog bez člana' }))
+    await router.navigate(where)
+
+    /* By their name and by the address, and not by „there is a heading": a refused reader is sent to
+       the front page, which has a heading of its own (`data/theRealAnswer.test.tsx` writes out what
+       reading one cost). */
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /Strahinja Vukićević/ }),
+    ).toBeVisible()
+    expect(router.state.location.pathname).toBe(where)
+  }, SLOW)
+
+  it('leaves a name on a list as a way in', async () => {
+    const { user } = await visit('/sr/takmicari')
+
+    /* Words while nobody is signed in, and a way in once somebody is. Both read off the same card,
+       so a screen that never drew him cannot satisfy either half. */
+    expect((await screen.findByText('Strahinja Vukićević')).closest('a')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'prijavi nalog bez člana' }))
+
+    expect(screen.getByText('Strahinja Vukićević').closest('a')).not.toBeNull()
   }, SLOW)
 })
 
