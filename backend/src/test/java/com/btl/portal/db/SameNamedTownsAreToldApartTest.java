@@ -48,14 +48,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  * file, which has no coordinates; {@link #theOwnersExamplesCarryTheNamesHeGave()} asks it for the
  * handful of towns where the owner named the answer, and the whole of it is read by a person ("preostalih
  * 27 i svih 44 iz regiona lige se pregledaju rucno");
- * <li>a town that keeps its bare name is the BEST RANKED of its pair, and the only one that does: the
- * owner's rule about a town of five thousand keeping its bare name changes how many do, never which.
+ * <li>a town that keeps its bare name is the BEST RANKED of its pair, and the only one that does. The
+ * owner decided (02.10.2026) that every namesake carries a label, a town of fifteen thousand as much as a
+ * village, so a bare name survives only where no label can be worked out: San José, the capital of Costa
+ * Rica, which nothing in its country is bigger than, and two towns of China the GeoNames file has no row
+ * for. That is fewer than one pair in a hundred, and it is what tells his decision from the other one he
+ * was asked about, that the real town of a pair keeps its name: that would leave six pairs in ten with a
+ * bare member.
  * </ul>
  *
  * <p>A label is accepted when it is the name of that bigger town or its English name. The codebook calls
- * the Slovenian town of Kocevje "Opcina Kocevje" and gives "Kocevje" as its English name, and the owner
- * approved the second as the label (02.10.2026): the English name is where the codebook says what the
- * town is called, so asking for it is not a loophole.
+ * the Slovenian town of Kocevje "Opcina Kocevje" and gives "Kocevje" as its English name, and the second
+ * was approved as the label (02.10.2026): the English name is where the codebook says what the town is
+ * called, so asking for it is not a loophole.
  */
 class SameNamedTownsAreToldApartTest extends DatabaseTest {
 
@@ -73,9 +78,8 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 	 * The six towns whose labels the owner named, or whose label he could read in his own example.
 	 *
 	 * <p>Every one of them is a village (between 784 and 1801 inhabitants in the GeoNames file the labels
-	 * were worked out from), so it carries brackets whichever way the owner decides whether a town of five
-	 * thousand keeps its bare name. That is why they are here and a town like Bijelo Polje is not: these
-	 * six hold under both readings, and Bijelo Polje is the question.
+	 * were worked out from). They are the towns whose labels the owner named or could read in his own
+	 * example; the rest of the labels are read by a person, and the lists are in the pull request.
 	 *
 	 * <p>Held by MARK, because the name is what is being asserted. Two villages of one name differ only in
 	 * which label each carries, so a label given to the wrong one of the two satisfies the key and every
@@ -185,6 +189,7 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 				.collect(Collectors.groupingBy(town -> new Pair(town.country(), town.name())));
 		List<String> offences = new ArrayList<>();
 		int pairsRead = 0;
+		int barePairs = 0;
 
 		for (Map.Entry<Pair, List<Town>> pair : pairs.entrySet()) {
 			if (pair.getValue().size() < 2) {
@@ -205,10 +210,19 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 				offences.add(pair.getKey().name() + " [" + pair.getKey().country() + "]: the bare name stayed with "
 						+ bare.getFirst().mark() + " and the best ranked town of the pair is " + best.mark());
 			}
+
+			if (bare.size() == 1) {
+				barePairs++;
+			}
 		}
 
 		assertThat(pairsRead).as("V3 held no pair, so nothing was asked").isPositive();
 		assertThat(offences).as("a bare name kept by a smaller town, or by more than one").isEmpty();
+		assertThat(barePairs * 100)
+				.as("a bare member in one pair in a hundred or more: the owner decided that every namesake is"
+						+ " labelled, and a codebook in which the real town of each pair kept its name is the"
+						+ " reading he did not choose")
+				.isLessThan(pairsRead);
 	}
 
 	// ------------------------------------------------------------------ reading the two migrations

@@ -401,10 +401,11 @@ class DeltaMigrationAppliesTest extends DatabaseTest {
 	 * The town the case below takes out, named the way the refusal has to name it,
 	 * and read off the codebook rather than written here: a literal would be a
 	 * second copy of the codebook and would go on passing the day GeoNames recuts
-	 * it. The mark is in it because the name alone is not an identity - one
-	 * thousand six hundred and sixteen name and country pairs occur more than once
-	 * (A16) - and because a refusal that leaves somebody guessing which Plymouth is
-	 * half a refusal.
+	 * it. The mark is in it because it is what a town is: a name does not hold
+	 * that for good, since a label in it moves when GeoNames does, and until
+	 * 02.10.2026 one thousand six hundred and sixteen name and country pairs
+	 * occurred more than once (A16). And because a refusal that leaves somebody
+	 * guessing which Plymouth is half a refusal.
 	 */
 	private static String lastTownOfTheCodebook() {
 		ArrayNode towns = (ArrayNode) JSON.readTree(repositoryRoot().resolve(PLACES));

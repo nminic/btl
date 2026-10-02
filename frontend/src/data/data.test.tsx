@@ -411,11 +411,12 @@ describe('the generated data', () => {
        the database, so a town written down anywhere still means that town after
        the codebook is rebuilt from a newer export.
 
-       Nothing else in a row can do that job, and this says so from the file
-       rather than from the decision: name and country repeat, so a mark that
-       repeated would leave two towns indistinguishable and a reference to either
-       of them meaning both. Held over the shipped file, because the fault would
-       be the generator's and a fixture agrees with whoever wrote it. */
+       Nothing else in a row can do that job for good, and this says so from the
+       file rather than from the decision: name and country tell towns apart
+       since 02.10.2026, but a label in a name moves when GeoNames does, so a mark
+       that repeated would leave two towns indistinguishable and a reference to
+       either of them meaning both. Held over the shipped file, because the fault
+       would be the generator's and a fixture agrees with whoever wrote it. */
     const places = await loadResource<Place[]>('places')
     const marks = places.map(([mark]) => mark)
 
