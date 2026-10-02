@@ -526,4 +526,58 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.as("a member was not told that the form is not complete for a body that cannot be read")
 				.isEmpty();
 	}
+
+	/**
+	 * ONLY THE ACCOUNT THAT NAMES NO MEMBER CHANGES: A MEMBER THE ROUTE SENDS AWAY IS STILL TOLD ABOUT HIS
+	 * BODY FIRST.
+	 *
+	 * <p>{@code POST /api/teams} is the one route with a question about WHO between „has he a member" and
+	 * the form: {@code JoiningATeam} sends away a member who is in a team already or who asks outside the
+	 * window. Its body was bound before any of that, so such a member was told 400 for a body that cannot
+	 * be read and is told 400 now, on the day the window is shut and on the day it is open. Folded into the
+	 * form questions below the member question, as one more way for the form to be empty, the same body would
+	 * be 404 for him - a change nobody asked for, in the one answer this increment is not about.
+	 *
+	 * <p>The member really is sent away, which is what the valid body proves: it is the 404 of the
+	 * question about who, and the unreadable body is told something else. He stands in a team from the
+	 * league's first season with no end, which refuses him on every day there is.
+	 */
+	@Test
+	void aMemberTheRouteSendsAwayIsToldTheFormIsNotCompleteBeforeAnythingAboutWho() throws Exception {
+		String slug = "b205-tim";
+
+		db.sql("insert into team (slug, name, bio, link, place_id, city, country_id, logo_id,"
+						+ " first_season, admin_id) values (?, ?, '', '', (select id from place"
+						+ " where rank = 1), null, null, null, 2027,"
+						+ " (select id from competitor where member_number = ?))")
+				.params(slug, slug, THE_MEMBERS_NUMBER).update();
+		db.sql("insert into team_membership (competitor_id, team_id, season_from)"
+						+ " values ((select id from competitor where member_number = ?),"
+						+ " (select id from team where slug = ?), 2027)")
+				.params(THE_MEMBERS_NUMBER, slug).update();
+
+		try {
+			Route proposing = routes().stream().filter(one -> one.toString().equals("POST /api/teams"))
+					.findFirst().orElseThrow();
+
+			assertThat(firstLine(answerTo(proposing.verb(), proposing.address(), A_MEMBER, proposing.body())))
+					.as("a member who stands in a team was not sent away by the question about who, so"
+							+ " the case below is about a member nothing turns away")
+					.isEqualTo("HTTP/1.1 404 ");
+
+			for (String body : BODIES_THAT_ARE_NOT_THE_FORM) {
+				String answer = answerTo(proposing.verb(), proposing.address(), A_MEMBER, body);
+
+				assertThat(answer)
+						.as("body [%s] as a member the route sends away: the form is not told to be"
+								+ " incomplete before anything about who, as it was when the body was an"
+								+ " argument", body)
+						.startsWith("HTTP/1.1 400 ")
+						.contains("\"reason\":\"theFormIsNotComplete\"");
+			}
+		}
+		finally {
+			db.sql("delete from team where slug = ?").param(slug).update();
+		}
+	}
 }
