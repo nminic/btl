@@ -32,8 +32,8 @@
  * country. A key over the name alone would refuse the second Boston, and it would also refuse every other
  * name the codebook carries in more than one country, of which there are hundreds. The names are compared
  * letter for letter, which is what the database means by equal: `name` is collated by sr_latn and V1 made
- * that collation deterministic, so there is no case or accent folding under this key that a reader could be
- * surprised by.
+ * that collation deterministic, so this key folds neither case nor marks. What that leaves open is said under
+ * WHAT THE KEY DOES NOT REFUSE, AND WHO DOES, and it is a decision and not an oversight.
  *
  *
  * DEFERRABLE INITIALLY IMMEDIATE, AS place_rank_unique BESIDE IT, AND THE REASON IS NOT AN ORDER
@@ -68,6 +68,28 @@
  * A town is pointed at by its mark, which is plain (place_geonames_id_unique), and the portal does not send a
  * town by its name to be resolved to a row: the name travels as typed text and country, and no statement on
  * the server compares a place name.
+ *
+ *
+ * WHAT THE KEY DOES NOT REFUSE, AND WHO DOES
+ * ------------------------------------------
+ * Two names that differ only in case, "Dolenja vas" and "Dolenja Vas" in Slovenia, are two names to this key
+ * and one name to a reader. The review of the pull request that carries this file asked that they be told
+ * apart as well (02.10.2026), and the key stays over the exact name: the delta before this file labels them
+ * like any other pair, and two floors over the source file refuse a codebook that does not,
+ * ReferenceDataMatchesCodebookTest in the backend and the contract test over places.json in the frontend.
+ * Marks are not folded by either, so "Münster" and "Munster" stay two names, as they are in the key.
+ *
+ * Measured on postgres:18 the same day, so that nothing here claims more than it knows. A unique INDEX over
+ * lower(name) cannot be made deferrable (syntax error at "deferrable"), and a unique CONSTRAINT takes columns
+ * and not expressions (syntax error at the opening bracket), so neither can stand beside the exchange of two
+ * towns' names inside one UPDATE that the section above is about. An EXCLUDE constraint over
+ * (country_id with =, lower(name) with =) can be created deferrable initially immediate, refuses a second
+ * spelling of a name ("conflicting key value violates exclusion constraint") and lets the exchange through in
+ * one statement, which the same constraint without the deferral refuses. It is not part of this change: it
+ * would move this half from the floors into the database, with one more index to carry, and that is its own
+ * decision. lower() under the column's collation gives the same text as str.lower() in the labelling tool,
+ * toLowerCase() in the portal and toLowerCase(Locale.ROOT) in the tests, over all 47,678 distinct names of the
+ * codebook.
  *
  *
  * WHAT THE INDEX IS FOR, AND WHAT IT IS NOT

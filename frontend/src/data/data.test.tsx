@@ -322,6 +322,35 @@ describe('dataOr and failed', () => {
   })
 })
 
+/**
+ * The towns that share a name with an earlier town of their country, as „name
+ * (country)".
+ *
+ * The name is compared without regard to case and with regard to marks (review of
+ * PR 464, answered 02.10.2026): „Dolenja vas" and „Dolenja Vas" are one name to a
+ * reader, and „Münster" and „Munster" are not. The pair is written as JSON rather
+ * than joined by a separator, because a name may carry any character a separator
+ * could be. `toLowerCase()` gives the same text as `str.lower()` in the tool that
+ * labels the file and as `toLowerCase(Locale.ROOT)` in the tests over it, which
+ * was measured over every name of the codebook.
+ */
+function sharingAName(places: Place[]): string[] {
+  const seen = new Set<string>()
+  const repeated: string[] = []
+
+  for (const [, name, country] of places) {
+    const pair = JSON.stringify([country, name.toLowerCase()])
+
+    if (seen.has(pair)) {
+      repeated.push(`${name} (${country})`)
+    }
+
+    seen.add(pair)
+  }
+
+  return repeated
+}
+
 describe('the generated data', () => {
   it('gives every member in the list a member number, and nobody else one', async () => {
     /* The list of members is keyed by the number and read by every public screen
@@ -436,22 +465,49 @@ describe('the generated data', () => {
        file `napravi-mesta.py` writes carries every namesake bare, and a codebook
        rebuilt from a newer export that skips the labelling step fails here and not
        in a member's profile. The pair is written as JSON rather than joined by a
-       separator, because a name may carry any character a separator could be. */
+       separator, because a name may carry any character a separator could be.
+
+       Without regard to case since the review of PR 464: two spellings of one
+       name that differ only in capitals were two names to the key in the database
+       and one name to a member, and the key is the exact one, so this floor and
+       its twin over the source in the backend are what hold the case. */
     const places = await loadResource<Place[]>('places')
-    const seen = new Set<string>()
-    const repeated: string[] = []
 
-    for (const [, name, country] of places) {
-      const pair = JSON.stringify([country, name])
+    expect(sharingAName(places)).toEqual([])
+  })
 
-      if (seen.has(pair)) {
-        repeated.push(`${name} (${country})`)
-      }
-
-      seen.add(pair)
-    }
-
-    expect(repeated).toEqual([])
+  it('sees two towns of one country whose names differ only in case, and not two whose names differ in a mark', () => {
+    /* The floor above, asked of rows it can be wrong about. Over the shipped file
+       it passes whether the pair is compared exactly or without regard to case,
+       once the labels have been given, so the shipped file cannot show that it
+       was weakened. These are the two real pairs the review found, Dolenja vas in
+       Slovenia and C.A. Rosetti in Romania. */
+    expect(
+      sharingAName([
+        [3201849, 'Dolenja vas', 'SI'],
+        [8986894, 'Dolenja Vas', 'SI'],
+      ]),
+    ).toEqual(['Dolenja Vas (SI)'])
+    expect(
+      sharingAName([
+        [682679, 'C.A. Rosetti', 'RO'],
+        [682680, 'C.a. Rosetti', 'RO'],
+      ]),
+    ).toEqual(['C.a. Rosetti (RO)'])
+    /* A mark is not a capital: Münster and Munster are two names, as they are in
+       the key. And one name in two countries is not a pair. */
+    expect(
+      sharingAName([
+        [2867543, 'Münster', 'DE'],
+        [2867542, 'Munster', 'DE'],
+      ]),
+    ).toEqual([])
+    expect(
+      sharingAName([
+        [4930956, 'Boston', 'US'],
+        [2655138, 'Boston', 'GB'],
+      ]),
+    ).toEqual([])
   })
 
   it('carries a codebook in which every name that ends in a bracket is one the field can read back', async () => {

@@ -276,7 +276,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 					-955843776),
 
 			/* V51. Towns of one country that carried one name are renamed, and each carries the nearest
-			   bigger town in brackets (owner, 02.10.2026). Data only: 4090 rows, one UPDATE, the rank, the
+			   bigger town in brackets (owner, 02.10.2026). Data only: 4094 rows, one UPDATE, the rank, the
 			   country and the English name of every one of them untouched. Written by
 			   `generate_reference_migrations.py --delta` out of the codebook that
 			   btl-produkt/istorijski-podaci/oznaci-istoimena-mesta.py labelled, and it is the first delta
@@ -288,7 +288,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			   Pinned LAST, when the file was final. Regenerating it, which the generator does freely for a
 			   migration main does not carry yet, moves this number, and so does a labelling that changes. */
-			new Applied("51", "V51__reference_data_update.sql", -480456980),
+			new Applied("51", "V51__reference_data_update.sql", 503069300),
 
 			/* V52. The key that refuses two towns of one country under one name, deferrable initially
 			   immediate like the order key beside it, and it runs after V51 and only then: over V3 alone it
@@ -300,7 +300,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   its algorithm (CRC32 over the lines, with line breaks and a BOM left out), which reproduced
 			   four numbers pinned above to the digit before it was trusted for these two, and this list is
 			   what confirms it on the gate. */
-			new Applied("52", "V52__a_town_is_told_apart_from_its_namesakes.sql", -2044012803));
+			new Applied("52", "V52__a_town_is_told_apart_from_its_namesakes.sql", -358289886));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

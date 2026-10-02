@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -40,7 +41,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <li>"Istoimena mesta u istoj drzavi": only towns of a pair that V3 held more than once are renamed, and
  * the owner said so himself when asked (02.10.2026): „Isključivo DUPLIRANI nazivi dobijaju u zagradi veći
  * mesto. Svi ostali nemaju." A city and a village alike, and a town that is the only one of its name
- * never;
+ * never. A pair is a country and a name compared without regard to case and with regard to marks (review
+ * of PR 464, answered 02.10.2026, the coordinator's reading and not the owner's): "Dolenja vas" and
+ * "Dolenja Vas" are one name to a reader, "Münster" and "Munster" are not;
  * <li>"dobijaju u zagradi": the new name is the old one with a bracketed label and nothing else changed,
  * not the rank, not the country, not the English name;
  * <li>"najblize vece mesto": the label is the name of another town of the same country that stands higher
@@ -112,15 +115,44 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 	 */
 	private static final Set<Long> THE_THREE_WITH_NO_LABEL = Set.of(3_621_849L, 2_037_643L, 1_791_351L);
 
+	/**
+	 * THE TWO LABELS A PERSON WROTE INSTEAD OF THE RULE'S, by GeoNames mark, and why each one is here.
+	 *
+	 * <p>Dolga Vas (3201809) and Dolenja vas (3201849) are two villages of Slovenia whose nearest bigger
+	 * town is Kočevje. The codebook calls that town "Općina Kočevje", because the Croatian alternate name
+	 * GeoNames holds for it is the name of the municipality, and gives "Kočevje" as its English name. The
+	 * rule therefore gives "Općina Kočevje" and a person would write the town. Dolga Vas was approved on
+	 * 02.10.2026 as a manual correction, and Dolenja vas the same day in the review of PR 464, derived from
+	 * it: the same label town and the same fault. Both approvals are the coordinator's and neither is the
+	 * owner's, whose sentence says nothing about municipalities.
+	 *
+	 * <p><b>Why they need a pin of their own.</b> A label is accepted when it is the name of the bigger town
+	 * or its English name, so the rule's own output would pass every question in this class: "Općina Kočevje"
+	 * is the name of that town and "Kočevje" is its English name. Held by MARK, since the name is what is
+	 * asserted, and the way to remove an entry from {@code MANUAL_LABELS} in the tool is to change this list
+	 * in the same commit.
+	 */
+	private static final Map<Long, String> THE_MANUAL_LABELS = Map.of(
+			3_201_809L, "Dolga Vas (Kočevje)",
+			3_201_849L, "Dolenja vas (Kočevje)");
+
 	@Test
 	void theOwnersExamplesCarryTheNamesHeGave() {
-		String marks = THE_OWNERS_EXAMPLES.keySet().stream().map(String::valueOf).collect(Collectors.joining(", "));
-		Map<Long, String> carried = db
-				.sql("select geonames_id, name from place where geonames_id in (" + marks + ")")
+		assertThat(namesOf(THE_OWNERS_EXAMPLES.keySet())).containsExactlyInAnyOrderEntriesOf(THE_OWNERS_EXAMPLES);
+	}
+
+	@Test
+	void theTwoManualLabelsCarryTheNamesThatWereApproved() {
+		assertThat(namesOf(THE_MANUAL_LABELS.keySet())).containsExactlyInAnyOrderEntriesOf(THE_MANUAL_LABELS);
+	}
+
+	/** What the database holds as the name of each of these towns. */
+	private Map<Long, String> namesOf(Set<Long> marks) {
+		String list = marks.stream().map(String::valueOf).collect(Collectors.joining(", "));
+
+		return db.sql("select geonames_id, name from place where geonames_id in (" + list + ")")
 				.query((rs, row) -> Map.entry(rs.getLong("geonames_id"), rs.getString("name")))
 				.list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-		assertThat(carried).containsExactlyInAnyOrderEntriesOf(THE_OWNERS_EXAMPLES);
 	}
 
 	@Test
@@ -129,7 +161,7 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 		List<Town> renamed = renamedByTheDelta();
 		Map<Pair, Integer> carried = new HashMap<>();
 
-		before.values().forEach(town -> carried.merge(new Pair(town.country(), town.name()), 1, Integer::sum));
+		before.values().forEach(town -> carried.merge(pairOf(town.country(), town.name()), 1, Integer::sum));
 
 		assertThat(renamed).as("a delta that renames nothing would leave every question below true").isNotEmpty();
 
@@ -143,7 +175,7 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 				continue;
 			}
 
-			if (carried.get(new Pair(was.country(), was.name())) < 2) {
+			if (carried.get(pairOf(was.country(), was.name())) < 2) {
 				offences.add(was.name() + " [" + was.country() + "] was the only town of its name and is renamed");
 			}
 
@@ -185,7 +217,7 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 
 			boolean named = ofACountry.get(was.country()).stream()
 					.anyMatch(bigger -> bigger.rank() < was.rank()
-							&& !bigger.name().equals(was.name())
+							&& !sameWithoutCase(bigger.name(), was.name())
 							&& (bigger.name().equals(label) || label.equals(bigger.english())));
 
 			labelled++;
@@ -205,7 +237,7 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 		Map<Long, Town> before = byMark(loadedByV3());
 		Set<Long> renamed = renamedByTheDelta().stream().map(Town::mark).collect(Collectors.toSet());
 		Map<Pair, List<Town>> pairs = before.values().stream()
-				.collect(Collectors.groupingBy(town -> new Pair(town.country(), town.name())));
+				.collect(Collectors.groupingBy(town -> pairOf(town.country(), town.name())));
 		List<String> offences = new ArrayList<>();
 		int pairsRead = 0;
 
@@ -238,13 +270,13 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 	void theTownsOfAPairThatKeepTheirBareNameAreExactlyTheThreeNoLabelCouldBeWorkedOutFor() {
 		Map<Long, Town> before = byMark(loadedByV3());
 		Map<Pair, Long> carried = before.values().stream()
-				.collect(Collectors.groupingBy(town -> new Pair(town.country(), town.name()), Collectors.counting()));
+				.collect(Collectors.groupingBy(town -> pairOf(town.country(), town.name()), Collectors.counting()));
 		Map<Long, String> now = db.sql("select geonames_id, name from place")
 				.query((rs, row) -> Map.entry(rs.getLong("geonames_id"), rs.getString("name")))
 				.list().stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
 		Set<Long> bare = before.values().stream()
-				.filter(town -> carried.get(new Pair(town.country(), town.name())) > 1)
+				.filter(town -> carried.get(pairOf(town.country(), town.name())) > 1)
 				.filter(town -> town.name().equals(now.get(town.mark())))
 				.map(Town::mark)
 				.collect(Collectors.toSet());
@@ -257,7 +289,23 @@ class SameNamedTownsAreToldApartTest extends DatabaseTest {
 
 	// ------------------------------------------------------------------ reading the two migrations
 
+	/** A name in a country, the name already folded: see {@link #pairOf(String, String)}. */
 	private record Pair(String country, String name) {
+	}
+
+	/**
+	 * The pair two towns are told apart as: the country and the name WITHOUT regard to case and WITH regard
+	 * to marks (review of PR 464, answered 02.10.2026). "Dolenja vas" and "Dolenja Vas" are one name to a
+	 * reader and "Münster" and "Munster" are not. {@code toLowerCase(Locale.ROOT)} is what
+	 * {@code oznaci-istoimena-mesta.py} does with {@code str.lower()}, and the two were measured to give the
+	 * same text over every name of the codebook.
+	 */
+	private static Pair pairOf(String country, String name) {
+		return new Pair(country, name.toLowerCase(Locale.ROOT));
+	}
+
+	private static boolean sameWithoutCase(String one, String other) {
+		return one.toLowerCase(Locale.ROOT).equals(other.toLowerCase(Locale.ROOT));
 	}
 
 	private static Map<Long, Town> byMark(List<Town> towns) {

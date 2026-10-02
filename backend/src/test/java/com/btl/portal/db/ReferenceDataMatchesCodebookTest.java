@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -150,31 +151,63 @@ class ReferenceDataMatchesCodebookTest extends DatabaseTest {
 	 * {@code oznaci-istoimena-mesta.py} does, and this names it. A mutation of the file that gives one
 	 * town the name of another town of its country fails here and not only in the row comparison.
 	 *
-	 * <p>The pair is the country and the name compared letter for letter, which is what the database
-	 * means by equal: the collation is deterministic (V1).
+	 * <p><b>The pair is the country and the name compared WITHOUT regard to case and WITH regard to
+	 * marks</b> (review of PR 464, answered 02.10.2026): "Dolenja vas" and "Dolenja Vas" are one name to a
+	 * reader and "Münster" and "Munster" are not. The key in the database is over the EXACT name, so it
+	 * is this floor, and its twin over the same file in the frontend ({@code data.test.tsx}), that hold
+	 * the case. {@code toLowerCase(Locale.ROOT)} gives the same text as {@code str.lower()} in the tool that
+	 * labels the file and as {@code toLowerCase()} in the portal, which was measured over every name of the
+	 * codebook, 47,678 of them, and gives the same text as {@code lower()} in PostgreSQL under the column's
+	 * collation as well.
 	 */
 	@Test
 	void noTwoTownsOfOneCountryCarryOneName() {
 		JsonNode file = read("frontend/src/test/mock/places.json");
-		Map<NameInACountry, List<Long>> carried = new LinkedHashMap<>();
 
-		for (JsonNode place : file) {
-			carried.computeIfAbsent(new NameInACountry(place.get(2).stringValue(), place.get(1).stringValue()),
-					pair -> new ArrayList<>()).add(place.get(0).longValue());
-		}
-
-		List<String> repeated = carried.entrySet().stream()
-				.filter(pair -> pair.getValue().size() > 1)
-				.limit(SHOWN_ON_FAILURE)
-				.map(pair -> "%s in %s: towns %s".formatted(pair.getKey().name(), pair.getKey().country(),
-						pair.getValue()))
-				.toList();
-
-		assertThat(repeated)
+		assertThat(townsUnderOneName(file).stream().limit(SHOWN_ON_FAILURE).toList())
 				.as("towns of one country under one name: run btl-produkt/istorijski-podaci/oznaci-istoimena-mesta.py"
 						+ " over the codebook, then --delta, before this file is committed")
 				.isEmpty();
 		assertThat(file.size()).as("a source that quietly shrank would have nothing to repeat").isGreaterThan(40_000);
+	}
+
+	/**
+	 * THE FLOOR ABOVE SEES TWO NAMES THAT DIFFER ONLY IN CASE, AND NOT TWO THAT DIFFER IN A MARK.
+	 *
+	 * <p>Asked of rows it can be wrong about, because the shipped file cannot show it: once the labels are
+	 * given the floor passes whether it compares the name exactly or without regard to case, so a floor
+	 * weakened back to the exact name would stay green over the file it is for. The two pairs are the real
+	 * ones the review of PR 464 found, Dolenja vas in Slovenia and C.A. Rosetti in Romania; a mark is not a
+	 * capital, so Münster and Munster are two names here as they are in the key, and one name in two
+	 * countries is not a pair.
+	 */
+	@Test
+	void theFloorSeesTwoNamesThatDifferOnlyInCaseAndNotTwoThatDifferInAMark() {
+		assertThat(townsUnderOneName(JSON.readTree("[[3201849,\"Dolenja vas\",\"SI\"],[8986894,\"Dolenja Vas\",\"SI\"]]")))
+				.containsExactly("dolenja vas in SI: towns [3201849, 8986894]");
+		assertThat(townsUnderOneName(JSON.readTree("[[682679,\"C.A. Rosetti\",\"RO\"],[682680,\"C.a. Rosetti\",\"RO\"]]")))
+				.containsExactly("c.a. rosetti in RO: towns [682679, 682680]");
+		assertThat(townsUnderOneName(JSON.readTree("[[2867543,\"Münster\",\"DE\"],[2867542,\"Munster\",\"DE\"]]")))
+				.isEmpty();
+		assertThat(townsUnderOneName(JSON.readTree("[[4930956,\"Boston\",\"US\"],[2655138,\"Boston\",\"GB\"]]")))
+				.isEmpty();
+	}
+
+	/** Every name of a country that more than one town of it carries, as "name in COUNTRY: towns [marks]". */
+	private static List<String> townsUnderOneName(JsonNode places) {
+		Map<NameInACountry, List<Long>> carried = new LinkedHashMap<>();
+
+		for (JsonNode place : places) {
+			carried.computeIfAbsent(
+					new NameInACountry(place.get(2).stringValue(), place.get(1).stringValue().toLowerCase(Locale.ROOT)),
+					pair -> new ArrayList<>()).add(place.get(0).longValue());
+		}
+
+		return carried.entrySet().stream()
+				.filter(pair -> pair.getValue().size() > 1)
+				.map(pair -> "%s in %s: towns %s".formatted(pair.getKey().name(), pair.getKey().country(),
+						pair.getValue()))
+				.toList();
 	}
 
 	/**
