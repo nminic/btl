@@ -412,18 +412,21 @@ describe('a moderator signs in behind a visitor', () => {
 })
 
 describe('the header of somebody who has just signed in', () => {
-  /* **THE ONE READER THAT MOUNTS IN THE SAME COMMIT AS THE CHANGE OF READER, which is what makes
-     this the guard of the mechanism and not only of its outcome** (review of 02.10.2026, round 2).
-     `AccountMenu` exists only while somebody is signed in, so it is mounted by the very render a
-     sign in causes, and it reads `competitors` while it renders. The session drops the two names
-     WHILE IT RENDERS, so what it finds is an empty cache and it names the member by his number
-     until his own record comes. Dropped in an effect instead, it would find the answer the visitor
-     was given: with the drop in `useEffect` it keeps that answer for good (its own effect, a
-     child's, runs before the provider's and takes the cached promise), and with it in
-     `useLayoutEffect` it draws the visitor's record, without the picture, until a new answer
-     arrives. Every other screen is mounted by the router a render later, after either effect has
-     run, so nothing else on the portal tells the three apart - which is how the first two rounds of
-     this fix passed with the drop in an effect (PDL P28f: the picture is in the header). */
+  /* **THE ONE READER THAT MOUNTS IN THE SAME COMMIT AS THE CHANGE OF READER, which is what makes this
+     the guard of the mechanism and not only of its outcome** (review of 02.10.2026, round 2).
+     `AccountMenu` exists only while somebody is signed in, so the render a sign in causes is the one
+     that mounts it, and it reads `competitors` while it renders. The session drops the two names
+     WHILE IT RENDERS, so what the header finds is an empty cache and it names the member by his
+     number („02") until his own record comes.
+
+     **Measured with the same drop moved into an effect of the provider**, as two mutations (the
+     other 117 cases of this file and of `session/` pass under either; only this case and the one on
+     the cache in `session/theCachesFollowTheReader.test.tsx` fail). In `useEffect` the header reads
+     the visitor's cached answer at its first render, takes the cached promise in its own effect (a
+     child's runs before the provider's), and draws the visitor's record, initials „SS" and no
+     picture, and it was still drawing it two seconds after the answer to the new ask had come. In
+     `useLayoutEffect` it draws that same record until the answer arrives and the picture only then.
+     PDL P28f puts the picture in the header from the moment it is approved. */
   it('names him by his number while the list of members is on its way, and draws his picture when it comes', async () => {
     aServerThatAnswersBySession(
       { signsInAs: 'member', member: HIDDEN },
