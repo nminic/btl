@@ -1,4 +1,6 @@
 import { isoDate } from '../../forms/dateField'
+import { trka } from '../../forms/definitions'
+import { isWhole, parseNumber } from '../../forms/numberField'
 import { categoryOf } from '../../data/raceCategory'
 import { raceKind } from '../../data/raceKind'
 import type { Race, RaceKind } from '../../data/types'
@@ -213,22 +215,53 @@ export function asksLimit(row: Pick<RaceRow, 'kind'>): boolean {
  *
  * Both questions have one home each, and every reader asks through them: the save
  * (`whatIsMissing`), the marking of a refused cell (`isWrong`), what the control
- * itself announces, required and floor and ceiling (`EventRaces.tsx`), and what the
- * record is written with (`storedRow`, which zeroes the measure the kind does not
- * fix). They were three separate readings once and drifted; then a fourth was added
- * and drifted again, announcing a floor on a cell nothing checks.
+ * itself announces as required (`EventRaces.tsx`), and what the record is written with
+ * (`storedRow`, which zeroes the measure the kind does not fix). They were three separate
+ * readings once and drifted; then a fourth was added and drifted again, announcing a
+ * floor on a cell nothing checks. ~~The control announced the floor and the ceiling as
+ * well~~, through `min` and `max`, until 02.10.2026: the cell became a text box that day
+ * so it could take a comma, and on a text box those two announce nothing to anybody.
  */
 export function isBounded(row: Pick<RaceRow, 'kind'>, field: keyof typeof BOUNDS): boolean {
   return field === 'ascentM' || field === 'descentM' || asksFor(row, field)
 }
 
+/**
+ * What a cell of this table holds, as a number: read the way every number box on the portal is
+ * read (`forms/numberField.ts`), which takes the comma Serbian writes a decimal with (owner,
+ * 02.10.2026: „Polje za broj prima i zarez i tacku, a portal salje tacku"). Not a number at
+ * all is `NaN`, as `Number()` made it, so every bound refuses it.
+ */
+function read(said: string): number {
+  return parseNumber(said) ?? Number.NaN
+}
+
+/**
+ * Whether the server keeps this measure as a WHOLE number, read off the race's own definition
+ * and not written here: `admin-trka.form.json` says so of the climb and the fall
+ * (`"integer": true`), and `forms/wholeNumbers.test.ts` holds that to `RaceWriteApi`. The limit
+ * has no field there, because it is typed in hours with decimals on purpose and stored as whole
+ * seconds (`storedRow`), so it is not whole.
+ *
+ * <p>Asked by the refusal below and by the keyboard the cell offers (`EventRaces.tsx`), so the
+ * two cannot disagree about which cells take a separator.
+ */
+export function keptWhole(field: keyof typeof BOUNDS): boolean {
+  return trka.fields.some((one) => one.name === field && one.integer === true)
+}
+
 /** Whether a measurement is inside what a race can be. An empty climb or fall is
- *  nought and is inside it; an empty length is not a length. */
+ *  nought and is inside it; an empty length is not a length.
+ *
+ *  And a measure the server keeps whole takes no separator, asked of the writing: „1.200"
+ *  metres is twelve hundred as often as it is one point two (`forms/numberField.ts`,
+ *  `isWhole`). The coordinator's reasoning, not the owner's words. */
 function withinBounds(said: string, field: keyof typeof BOUNDS): boolean {
   const { least, most } = BOUNDS[field]
-  const number = said === '' && field !== 'distanceKm' ? 0 : Number(said)
+  const number = said === '' && field !== 'distanceKm' ? 0 : read(said)
+  const whole = !keptWhole(field) || said === '' || isWhole(said)
 
-  return Number.isFinite(number) && number >= least && number <= most
+  return whole && Number.isFinite(number) && number >= least && number <= most
 }
 
 /**
@@ -361,7 +394,10 @@ export type StoredRace = {
 }
 
 export function storedRow(row: RaceRow, eventId: string): StoredRace {
-  const distanceKm = Number(row.distanceKm)
+  /* Every measure through `read`, so a cell typed with a comma is written as the number it
+     is, with the dot the server reads: this is the one door a row of this table leaves by,
+     the way `storedNumbers` is the door a form leaves by (owner, 02.10.2026). */
+  const distanceKm = read(row.distanceKm)
 
   return {
     eventId,
@@ -389,13 +425,13 @@ export function storedRow(row: RaceRow, eventId: string): StoredRace {
        because the save asks `allFinished` first and a limit outside its bounds is
        what that refuses. A fallback would be a second answer to a question that has
        one, and nothing could ever fell it. */
-    limitSeconds: asksLimit(row) ? String(Math.round(Number(row.limitHours) * 3600)) : '0',
+    limitSeconds: asksLimit(row) ? String(Math.round(read(row.limitHours) * 3600)) : '0',
     /* And the same the other way: a length belongs to a race that fixes one, so a
        race turned into a timed one does not carry the kilometres somebody typed
        before they changed their mind. */
     distanceKm: asksLength(row) ? String(distanceKm) : '0',
-    ascentM: String(Number(row.ascentM === '' ? 0 : row.ascentM)),
-    descentM: String(Number(row.descentM === '' ? 0 : row.descentM)),
+    ascentM: String(row.ascentM === '' ? 0 : read(row.ascentM)),
+    descentM: String(row.descentM === '' ? 0 : read(row.descentM)),
     category: categoryOf(asksLength(row) ? distanceKm : 0),
   }
 }
