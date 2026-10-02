@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFilterParams } from '../app/useFilterParams'
 import { registracija } from '../forms/definitions'
 import { FormRenderer } from '../forms/FormRenderer'
@@ -130,6 +130,23 @@ function theBody(values: FormValues, agreeing: FormValues, referral: string | nu
   }
 }
 
+/**
+ * THE REFUSALS `POST /api/email-confirmation/resend` CAN NAME, AND THERE ARE NONE.
+ *
+ * <p><b>Read off the route rather than remembered.</b> `EmailConfirmationApi.resend` ends
+ * `ResponseEntity.noContent()` on every path - an address nobody holds, one already confirmed and
+ * one waiting on exactly this message are all 204, on purpose - and returns no `Refused` body. The
+ * one reason that class declares, `THE_LINK_IS_NOT_VALID`, belongs to the OTHER route
+ * (`POST /api/email-confirmation`, `WHEN_CONFIRMING_AN_ADDRESS`). What can come back from this one
+ * is therefore a number and no reason: a 403 for the token, a 400 for a body Spring cannot read, a
+ * 5xx, or nothing at all, and `ServerSaid` says each of them.
+ *
+ * <p>Named as a constant rather than written `{}` at the call site, so that the day the route does
+ * name one there is a place for its sentence to go, and so that the reason it is empty is written
+ * once beside the emptiness instead of being a puzzle at the call site.
+ */
+const WHEN_ASKING_FOR_THE_LINK_AGAIN: Record<string, string> = {}
+
 /* The form itself is the JSON definition; this screen only decides what happens with the
  * values. ~~Until the backend exists, it carries two of them on the confirmation's own
  * entry in the history, long enough to say where the letter of confirmation went.~~
@@ -160,7 +177,30 @@ export function Registration() {
       ? { email: where, referred: Reflect.get(Object(said), 'referred') === true }
       : null
   const confirm = useSend()
+  /* Whether the SERVER has answered a request for the letter again. Not whether the button was
+     pressed: until 02.10.2026 this was set on the press and nothing was sent at all (PENDING
+     stavka 26), so the sentence below it told a member the confirmation had gone out again over a
+     request nobody had made. */
   const [resent, setResent] = useState(false)
+  /* A request for the letter again is out, and what the server said where it said anything that
+     is not „done". The two answer one question each: the first draws „being asked" and tells the
+     button off, the second is a sentence the reader is owed. */
+  const [resending, setResending] = useState(false)
+  const [resendRefusal, setResendRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  /* A ref and not the state beside it, for the reason `outstanding` below gives: two presses that
+     arrive before a redraw both read `resending` as false, and each of them asks the mail relay
+     for a letter. */
+  const asking = useRef(false)
+  /* Where the keyboard goes when the button is replaced by the sentence it was pressed for. A
+     control that is taken out of the document under the focus drops the reader to the top of the
+     page, and the sentence is exactly where he was looking. */
+  const resentSentence = useRef<HTMLParagraphElement>(null)
+
+  useEffect(() => {
+    if (resent) {
+      resentSentence.current?.focus()
+    }
+  }, [resent])
   /* What the server answered, where it has answered anything that is not „done". A
      registration that succeeded leaves this screen altogether, so the only answer this
      ever holds is one the reader is owed a sentence about. */
@@ -230,19 +270,55 @@ export function Registration() {
         {/* Asking again says so and stays where it is. It used to empty `sent`,
             which unmounted this confirmation and handed back a blank form:
             nothing said the letter had gone out again, and everything typed was
-            gone. A control has to do what it is called. */}
+            gone. A control has to do what it is called.
+
+            **And it did not do it for a second time, until 02.10.2026**: the press set a flag
+            and sent nothing, and the sentence under it said the confirmation had gone out. It
+            asks the server now (`POST /api/email-confirmation/resend`, with the address this
+            confirmation names, which is the only one this screen holds), and the sentence is
+            drawn only once the server has answered.
+
+            **What the server answers is the same for every address**
+            (`EmailConfirmationApi.resend`: 204 whether the address belongs to nobody, to
+            somebody already confirmed or to somebody waiting on exactly this message, so the
+            route is no oracle for which addresses are members). A 204 therefore says „received"
+            and not „sent", and the sentence says what that is worth: IF this address is still
+            waiting, a message went out. It is `forgottenPassword.done`'s shape for the same
+            reason, and its words are the coordinator's proposal, not the owner's.
+
+            Asked once: the sentence replaces the button, which is what keeps one member from
+            asking a mail relay for a letter per press. A refusal does not replace it, because
+            the letter has not gone and the one way to get it is to ask. */}
         {resent ? (
-          <p className="registration-done__resent" role="status">
+          <p
+            ref={resentSentence}
+            tabIndex={-1}
+            className="registration-done__resent"
+            role="status"
+          >
             {t('registration.resent')}
           </p>
         ) : (
-          <button
-            type="button"
-            className="button button--secondary"
-            onClick={() => setResent(true)}
-          >
-            {t('registration.resend')}
-          </button>
+          <>
+            {/* Told off rather than switched off while a request is out, which is
+                `member/ProfilePicture.tsx`'s own reason: `disabled` takes the control out of the
+                tab order and the browser drops a keyboard reader to the top of the page. The press
+                is refused in the handler. */}
+            <button
+              type="button"
+              className="button button--secondary"
+              aria-disabled={resending ? true : undefined}
+              onClick={() => {
+                void askAgain(sent.email)
+              }}
+            >
+              {t('registration.resend')}
+            </button>
+            {resending && <p role="status">{t('registration.resending')}</p>}
+            {resendRefusal !== null && (
+              <ServerSaid answer={resendRefusal} refusals={WHEN_ASKING_FOR_THE_LINK_AGAIN} />
+            )}
+          </>
         )}
       </div>
     )
@@ -288,6 +364,39 @@ export function Registration() {
     }
 
     setRefusal(answer)
+  }
+
+  /**
+   * Asks for the confirmation message again, and says what came back.
+   *
+   * <p><b>Nothing is drawn as sent until the server has answered</b>, and a refusal leaves the
+   * button where it was: the letter has not gone, and asking is the way to get it. The last
+   * refusal goes while the next request is out, for the reason `send` gives about its own.
+   *
+   * @param email the address the confirmation names, which is the one the first letter went to
+   */
+  async function askAgain(email: string): Promise<void> {
+    if (asking.current) {
+      return
+    }
+
+    /* Turned before the first `await`, so the next press finds it already turned. */
+    asking.current = true
+    setResending(true)
+    setResendRefusal(null)
+
+    const answer = await askTheServer('/api/email-confirmation/resend', { email })
+
+    asking.current = false
+    setResending(false)
+
+    if (answer.got === 'done') {
+      setResent(true)
+
+      return
+    }
+
+    setResendRefusal(answer)
   }
 
   /* Who brought this member, taken off the link they arrived by and kept with

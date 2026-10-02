@@ -68,18 +68,33 @@ const A_DIFFERENT_PASSWORD = `${PASSWORD}-nije-ista`
  * answer say so by installing their own. */
 let server: { asked: Asked[]; stop: () => void } | null = null
 
+/** What `POST /api/email-confirmation/resend` answers in this case, which is „done" unless a case
+ *  says otherwise: the button is only on the screen after a registration was taken. */
+let resendAnswer: (init: RequestInit | undefined) => Response | Promise<Response> = () => did()
+
 function registrationAnswered(
   answer: (init: RequestInit | undefined) => Response | Promise<Response>,
 ): void {
   server?.stop()
   /* Null for everything else, which hands the request back to the disc reader: the
      codebook of towns is read that way, and these cases type into a place field. */
-  server = serverThat((path, init) => (path === '/api/registration' ? answer(init) : null))
+  server = serverThat((path, init) => {
+    if (path === '/api/registration') {
+      return answer(init)
+    }
+
+    return path === '/api/email-confirmation/resend' ? resendAnswer(init) : null
+  })
 }
 
 /** The one registration this case sent, and nothing else that went over the wire. */
 function whatWasSent(): Asked[] {
   return (server?.asked ?? []).filter((one) => one.path === '/api/registration')
+}
+
+/** Every time the letter was asked for again, in the order it was asked. */
+function resendsSent(): Asked[] {
+  return (server?.asked ?? []).filter((one) => one.path === '/api/email-confirmation/resend')
 }
 
 /** The body of that registration, as the server would parse it. */
@@ -90,6 +105,7 @@ function theBodySent(): unknown {
 }
 
 beforeEach(() => {
+  resendAnswer = () => did()
   forgetEveryCookie()
   /* The token already in the jar, so no case here spends a request being handed one.
      That the portal really can be handed one, and echoes it unchanged, is measured
@@ -585,11 +601,179 @@ describe('Registration once it is open', () => {
 
     /* Asking for the letter again says so and stays where it is. It used to
        empty the confirmation and hand back a blank form, so nothing said the
-       letter had gone out and everything typed was lost. */
+       letter had gone out and everything typed was lost. What it says, and that it
+       says it only once the server has answered, is the next block's. */
     await user.click(screen.getByRole('button', { name: 'Pošalji potvrdu ponovo' }))
-    expect(screen.getByText(/poslata ponovo/)).toBeVisible()
+    expect(await screen.findByText(sr.registration.resent)).toBeVisible()
     expect(screen.getByText(/vladan@primer\.rs/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Pošalji prijavu' })).not.toBeInTheDocument()
+  }, SLOW)
+})
+
+/**
+ * THE LETTER ASKED FOR AGAIN, WHICH THE BUTTON SAID IT HAD SENT AND HAD NOT (PENDING stavka 26).
+ *
+ * <p>The button used to do `setResent(true)` and nothing else: the sentence under it told a member
+ * that the confirmation had gone out again while no request had been made, and the case that held
+ * the button (`says what happens next ...` above) only looked for that sentence, so it passed on
+ * the lie. <b>What is measured here is what CROSSES THE WIRE</b>, which is the half that case
+ * could not see: the request is recorded by the server the cases stand in front of, and its path,
+ * its verb and its body are read back out of that record.
+ *
+ * <p><b>What the server answers is the same for every address</b> (`EmailConfirmationApi.resend`:
+ * 204 whether the address belongs to nobody, to somebody already confirmed or to somebody waiting
+ * on exactly this message, so that the route is no oracle for which addresses are members). A 204
+ * therefore says „received", not „sent", and the sentence under the button says what that is worth:
+ * <b>if</b> the address is still waiting, a message went out. The shape is `forgottenPassword.done`'s
+ * for the same reason, and the words are the coordinator's proposal and not the owner's.
+ *
+ * <p><b>The address sent is the one the letter went to</b>, which is the only address this screen
+ * holds: the form that took it is gone, replaced in the history by this confirmation
+ * (`useSend`), and the entry carries two facts and the address is one of them.
+ */
+describe('the letter asked for again', () => {
+  async function registered(user: ReturnType<typeof setupUser>) {
+    await fillEverythingExceptBirthDate(user)
+    await user.type(screen.getByLabelText(/Datum rođenja/), '12041985')
+    await user.click(screen.getByRole('button', { name: 'Pošalji prijavu' }))
+    await screen.findByRole('heading', { name: 'Prijava je zabeležena' })
+  }
+
+  const ASK = { name: 'Pošalji potvrdu ponovo' }
+
+  it('is asked of the server, with the address the letter went to, as a POST', async () => {
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+
+    expect(resendsSent(), 'asking happened before the button was pressed').toHaveLength(0)
+
+    await user.click(screen.getByRole('button', ASK))
+
+    expect(await screen.findByText(sr.registration.resent)).toBeVisible()
+
+    const sent = must(resendsSent()[0], 'the request that asks for the letter again')
+
+    expect(resendsSent()).toHaveLength(1)
+    expect(sent.init?.method).toBe('POST')
+    /* The whole body and not the key that is expected in it: `ResendTyped` has one component, and a
+       second key sent beside it is a key nothing reads, which is the shape the registration body
+       is written out name by name to make impossible. */
+    expect(JSON.parse(String(sent.init?.body))).toEqual({ email: 'vladan@primer.rs' })
+  }, SLOW)
+
+  it('says nothing is sent until the server has answered, and says it is being asked', async () => {
+    const holding: { answer: ((response: Response) => void) | null } = { answer: null }
+
+    resendAnswer = () =>
+      new Promise<Response>((resolve) => {
+        holding.answer = resolve
+      })
+
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+    await user.click(screen.getByRole('button', ASK))
+
+    /* While the request is out, which is the only moment the old behaviour is visible: it drew
+       the sentence on the press. */
+    expect(await screen.findByText(sr.registration.resending)).toBeVisible()
+    expect(screen.queryByText(sr.registration.resent)).toBeNull()
+    expect(screen.getByRole('button', ASK)).toHaveAttribute('aria-disabled', 'true')
+
+    must(holding.answer, 'the answer the server was holding')(did())
+
+    expect(await screen.findByText(sr.registration.resent)).toBeVisible()
+    expect(screen.queryByText(sr.registration.resending)).toBeNull()
+    /* And it goes once, like the registration: the sentence replaces the button, which is what
+       keeps one member from asking the mail relay for a letter per press. */
+    expect(screen.queryByRole('button', ASK)).toBeNull()
+  }, SLOW)
+
+  it('sends one request however many times the button is pressed while it is out', async () => {
+    /* The ref and not the state, for the reason the registration carries: two presses that arrive
+       before a redraw both read the state as not sending. The ordinary double press is what is
+       measured, and that the guard lets go once the answer is here is the case below. */
+    const holding: { answer: ((response: Response) => void) | null } = { answer: null }
+
+    resendAnswer = () =>
+      new Promise<Response>((resolve) => {
+        holding.answer = resolve
+      })
+
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+    await user.click(screen.getByRole('button', ASK))
+    await user.click(screen.getByRole('button', ASK))
+    await user.click(screen.getByRole('button', ASK))
+
+    expect(resendsSent()).toHaveLength(1)
+
+    must(holding.answer, 'the answer the server was holding')(did())
+    await screen.findByText(sr.registration.resent)
+  }, SLOW)
+
+  it.each([
+    ['a bare 400', () => answeredWith(400), sr.server.malformed],
+    ['a 403, which is the token the server did not recognise', () => answeredWith(403), sr.server.rejected],
+    ['a 500', () => answeredWith(500), sr.server.wrong.replace('{status}', '500')],
+    [
+      'no answer at all',
+      () => {
+        throw new TypeError('Failed to fetch')
+      },
+      sr.server.nothing,
+    ],
+  ])('says what came back, and not that the letter went, on %s', async (_what, answer, words) => {
+    resendAnswer = answer
+
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+    await user.click(screen.getByRole('button', ASK))
+
+    expect(await screen.findByText(words)).toBeVisible()
+    expect(screen.queryByText(sr.registration.resent)).toBeNull()
+    /* The button stays, because the letter has not gone and the one way to get it is to ask. */
+    expect(screen.getByRole('button', ASK)).toBeVisible()
+    expect(screen.getByRole('button', ASK)).not.toHaveAttribute('aria-disabled', 'true')
+  }, SLOW)
+
+  it('puts the keyboard on the sentence when the sentence replaces the button', async () => {
+    /* A control taken out of the document under the focus drops a keyboard reader to the top of
+       the page, and the sentence is where he was looking (WCAG 2.2 SC 2.4.3). */
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+    await user.click(screen.getByRole('button', ASK))
+
+    expect(await screen.findByText(sr.registration.resent)).toHaveFocus()
+  }, SLOW)
+
+  it('lets the next press through after a refusal, and then says it', async () => {
+    resendAnswer = () => answeredWith(500)
+
+    const user = setupUser()
+    renderForm()
+
+    await registered(user)
+    await user.click(screen.getByRole('button', ASK))
+    await screen.findByText(sr.server.wrong.replace('{status}', '500'))
+
+    resendAnswer = () => did()
+    await user.click(screen.getByRole('button', ASK))
+
+    expect(await screen.findByText(sr.registration.resent)).toBeVisible()
+    /* The refusal is gone with the press that followed it, and not left standing under a sentence
+       that says the opposite. */
+    expect(screen.queryByText(sr.server.wrong.replace('{status}', '500'))).toBeNull()
+    expect(resendsSent()).toHaveLength(2)
   }, SLOW)
 })
 
