@@ -345,9 +345,24 @@
   min-block-size: auto;
 }
 
-.field__control[type='checkbox'] {
-  width: 1.15rem;
-  height: 1.15rem;
+/* A tick and a radio are ONE SIZE, said in one rule. Owner, 02.10.2026 („Odluke iz ciscenja
+   nalaza"): „Kucica i radio dugme na Podesavanjima su iste velicine, 18px". Only the tick was
+   given a size until then, so the radio was whatever the browser draws one as: measured on the
+   settings at 1280, the tick 18,4px square and the radio 13. 1.125rem is the eighteen pixels at
+   the size text starts at, kept in `rem` like the size the tick already had, so a reader who
+   enlarges the text gets larger marks with it. The rule is shared, so it reaches every screen
+   that draws a mark in a field: the settings, the membership's two categories and the
+   registration's confirmation (`forms/formStyle.test.ts`).
+ *
+   AND IT DOES NOT GIVE WAY, which a width alone did not say. A mark stands in a flex row
+   beside its words (`.field__confirm`), and a flex item shrinks: measured 02.10.2026 at 360,
+   the confirmation on the registration, whose sentence is long, squeezed its tick to 13px
+   wide and 18,4 tall. Eighteen square is a size only if nothing beside it can take it away. */
+.field__control[type='checkbox'],
+.field__control[type='radio'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
   padding: 0;
   align-self: flex-start;
 }
@@ -511,13 +526,33 @@
    added to it, which is what „changes nothing but paint when an option is taken" measures
    (`forms/choiceControl.test.tsx`).
 
-   `grid-auto-flow: column` and auto columns rather than
-   `repeat(2, ...)`: the renderer draws as many buttons as the definition names,
-   and a number written here would be a second copy of that count. */
+   ~~`grid-auto-flow: column` and auto columns~~ rather than `repeat(2, ...)`: the
+   renderer draws as many buttons as the definition names, and a number written here
+   would be a second copy of that count. `auto-fit` keeps that: it makes as many
+   tracks as there are buttons to put in them.
+ *
+   AND THE BUTTONS GO ONE UNDER THE OTHER WHERE TWO WOULD NOT HOLD THEIR WORDS, still
+   equal, each as wide as the field. Columns that only ever shared one line put
+   „Početnička" (155,92px at 200% text) into a button of 140px on a telephone of 360,
+   and the word stood 9px past both of its edges; measured 02.10.2026 in Chrome, and
+   1,6px at 1280 in a third of 324px (stavka 293.N1, a review of PR 424). Before that
+   the buttons wrapped and were not equal, which the owner asked against; letting a word
+   break inside its button was measured too, and at 200% it broke „Muški" into two
+   lines and „Početnička" into three, because the padding takes the button.
+ *
+   So every track is `1fr` and the buttons are equal BY CONSTRUCTION in either layout;
+   what changes is only how many share a line. The floor is 7em, which is the widest
+   option the portal has, „Početnička", in its button: 77,97px of word, two paddings
+   of a rem and two borders at 16px, so 112px. In `em`, so it grows with the text and
+   the buttons stack exactly when the words would no longer fit. `min(100%, ...)` so a
+   field narrower than the floor is one button wide and never wider than itself.
+ *
+   THE BOUNDARY, written rather than left to be found: the floor is read off today's
+   words. An option longer than „Početnička" would want a larger floor, and jsdom lays
+   nothing out, so no case can measure that; the browser can, at 360 and 200%. */
 .choice {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7em), 1fr));
   gap: var(--space-8);
 }
 

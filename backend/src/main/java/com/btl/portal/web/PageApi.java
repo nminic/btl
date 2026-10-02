@@ -128,10 +128,16 @@ class PageApi {
 	/**
 	 * One written page: its own address, its own text, and the pages it takes in.
 	 *
-	 * @param slug     the address a human typed, and the one identity this schema still
-	 *                 checks for being taken (ADL A4d, „identitet i dalje kuca čovek:
-	 *                 adresa statične strane") - every other identity in this portal
-	 *                 is constructed and this one is not. NOT translated: PDL P18
+	 * @param slug     the address this page is served under. It is written by hand, in the
+	 *                 migration that inserts the page, and the schema alone holds it unique
+	 *                 ({@code static_page_slug_unique}, V24): no route writes a written page,
+	 *                 and none will, because the owner chose on 18.09.2026, among three
+	 *                 outcomes offered, that no written page is edited in the portal (ADL, the
+	 *                 entry on static pages). So no form asks a person to type an address
+	 *                 and none checks that one is taken. ADL A4d used to name this address as
+	 *                 the one identity a person still types, and the one place such a check
+	 *                 was kept; that sentence was struck out on 27.09.2026 and is not the
+	 *                 rule. NOT translated: PDL P18
 	 *                 gives the addresses as {@code /sr/kalendar} and {@code /en/kalendar},
 	 *                 so the language is a prefix and the path itself stays Serbian
 	 * @param language the language the words of THIS page are really in, which is not

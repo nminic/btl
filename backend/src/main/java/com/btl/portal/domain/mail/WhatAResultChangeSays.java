@@ -268,10 +268,22 @@ public final class WhatAResultChangeSays {
 	 * category is the stored value and is not this class's business at all.
 	 */
 	static String inWords(Run run) {
-		return run.raceName() + ", " + run.day().format(A_DAY) + ", "
+		return run.raceName() + ", " + asADay(run.day()) + ", "
 				+ twoDecimals(run.distanceKm()) + " km, uspon " + run.ascentM()
 				+ " m, spust " + run.descentM() + " m, vreme " + asAClock(run.seconds())
 				+ ", " + twoDecimals(run.points()) + " bodova";
+	}
+
+	/**
+	 * „05.05.2027", THE ONE WAY THE PORTAL WRITES A DAY THAT A PERSON READS, and public because the
+	 * notice that tells a member his beginners' category has closed names the day of the run that
+	 * closed it, and a second formatter in the web layer would be a second home for this pattern.
+	 * The letter about the approval and the line in the inbox about its consequence are written
+	 * in the same moment about the same run, and they cannot spell its day two ways if both go
+	 * through this.
+	 */
+	public static String asADay(LocalDate day) {
+		return day.format(A_DAY);
 	}
 
 	/**

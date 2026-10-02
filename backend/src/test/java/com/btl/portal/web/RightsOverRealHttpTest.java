@@ -779,6 +779,60 @@ class RightsOverRealHttpTest {
 	}
 
 	/**
+	 * AND A KEY THAT IS NOT A NUMBER NAMES NO ITEM, SO IT IS ANSWERED AS AN ADDRESS THAT IS NOT
+	 * THERE TO EVERYBODY WHO IS SIGNED IN - THE ONE WHO MAY MODERATE THE TAB INCLUDED.
+	 *
+	 * <p><b>Measured on this socket on 02.10.2026, before the fix, and it is the finding of the
+	 * case above one step earlier.</b> The three writes took the key as a {@code long}, and Spring
+	 * binds a path variable BEFORE the handler runs, so the door that is written inside the handler
+	 * ({@code itemHeMayModerate}) was never asked. For a word in the key's place every signed-in
+	 * asker - a competitor holding nothing, a moderator holding another tab, the moderator holding
+	 * this one, the superadmin - got <b>400 in 432 bytes from all three writes</b>, against 404 in
+	 * 421 for a number, and 400 in 442 for twenty digits. That is the oracle ADL A8 forbids: the
+	 * owner's own words in that section, of 30.07.2026, are „Ne treba ni da budu svesni moderatori
+	 * da postoje akcije koje im nisu dodeljene.", and on 13.09.2026 he gave as the reason that the
+	 * server need not give away even that an address exists. One request with a word in it, and a
+	 * plain competitor knows an administrative action lives at that address.
+	 * Not signed in, every one of them is 401 in 262 bytes, the same as for the twin, so nothing
+	 * there leaks.
+	 *
+	 * <p><b>The moderator who HOLDS the tab is asked too, and that is a decision of mine and not of
+	 * the owner's:</b> a key that is not a number names no item, so he is told what he is told about
+	 * an item that is not there - 404 - and not a sentence about his form, because there is no form
+	 * to explain. It is also the only way the answer can be one thing for everybody, which is what a
+	 * comparison against the twin measures.
+	 *
+	 * <p><b>Two shapes of "not a number", and the second is what keeps the bound honest.</b> A word,
+	 * and digits that do not fit a {@code long}: nineteen nines is larger than the largest one, so
+	 * a bound written one digit too wide parses it and throws, which is a 500 and not a 404.
+	 * Twenty digits is the length the first measurement used. The anchor is the same as the case
+	 * above: the moderator holding this tab can really take a hold on the real item, so every
+	 * comparison below is between two addresses that are both there for him and a twin that is not.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {A_COMPETITOR, HOLDS_THE_TICK, WITHOUT_THE_TICK, HOLDS_THE_PROFILES_TAB,
+			THE_SUPERADMIN})
+	void aKeyThatIsNotANumberIsAnItemThatIsNotThereToEverybodyWhoIsSignedIn(String asking)
+			throws Exception {
+		assertThat(answerTo("POST", THE_QUEUE_ITEM.formatted(waitingItem) + "/hold",
+				HOLDS_THE_PROFILES_TAB, A_TOKEN))
+				.as("the moderator who holds this row's tab cannot take it either, so every"
+						+ " comparison below is between two addresses that are simply missing")
+				.startsWith("HTTP/1.1 200");
+
+		String json = "Content-Type: application/json\r\n";
+
+		for (String key : List.of("nije-kljuc", "9999999999999999999", "99999999999999999999")) {
+			String item = "/api/verification/" + key;
+
+			answersTheSameWay("POST", item + "/hold", twinOf(item + "/hold"), asking);
+			answersTheSameWay("DELETE", item + "/hold", twinOf(item + "/hold"), asking);
+			answersTheSameWay("POST", item + "/decision", twinOf(item + "/decision"), asking,
+					A_TOKEN, json, "{}");
+		}
+	}
+
+	/**
 	 * AND A RESOURCE THAT REFUSES AN ACCOUNT WITH NO MEMBER ANSWERS LIKE AN ADDRESS THAT
 	 * IS NOT THERE.
 	 *

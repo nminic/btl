@@ -1043,10 +1043,19 @@ export function AdminEvents() {
                         .map((row) => isoDate(row.date))
                         .filter((day) => day !== '')
                         .sort()[0]
+                      /* THE EVENT'S OWN DAY READ OFF EITHER SHAPE, AND THE FOLD WRITTEN IN THE
+                         RECORD'S. This is asked twice: over what was typed, by the rule that
+                         refuses a clash, and over what the form hands over, which since
+                         02.10.2026 keeps its day the way a record does (`forms/records.ts`,
+                         `storedDates`). Folded into the typed shape, the second asking put
+                         dd/mm/gggg on the wire; the first only measures an address, and
+                         `eventSlug` reads both. */
+                      const asTyped = isoDate(String(values.date))
+                      const own = asTyped === '' ? String(values.date) : asTyped
 
-                      return first === undefined || first === isoDate(String(values.date))
+                      return first === undefined || first === own
                         ? values
-                        : { ...values, date: fieldDate(first) }
+                        : { ...values, date: first }
                     }}
                     onCreated={setJustMade}
                     onDone={() => {

@@ -576,6 +576,99 @@ describe('Rankings', () => {
     expect(link.className).toContain('rankings__member-name')
     expect(number.className).toContain('rankings__member-number')
   })
+
+  /**
+   * THE CIRCLE IS A WAY INTO THE PROFILE TOO, AS ON THE OTHER THREE SCREENS THAT DRAW IT.
+   *
+   * <p>`PDL.md`, „Odluke iz ciscenja nalaza" (02.10.2026, stavka 114): a press on the circle opens
+   * the profile on the standing of a competition and on the top boards and did not here, which is
+   * the plate standing outside the link while the link stood inside it.
+   *
+   * <p><b>It is a SECOND link, and not one link around the whole plate as on those three screens,
+   * because the member number stands in the plate and must stay out of every link</b> (the case
+   * above, PR 412). So the circle gets a link of its own to the same place, which is out of the
+   * accessibility tree and out of the tab order: a keyboard and a screen reader meet the name's link
+   * and only that one, and a finger or a mouse meets a larger target. Each half is its own case,
+   * because each is one attribute and taking away either leaves the rest green.
+   *
+   * <p><b>Every row is asked and not the first</b>: a circle that led everywhere to the first row's
+   * profile satisfies a case that reads the first row.
+   */
+  describe('the circle in the row', () => {
+    async function theRows() {
+      const user = setupUser()
+      const { router } = renderAt('/sr/tabela?sezona=2020')
+      const rows = within(await screen.findByRole('table')).getAllByRole('row').slice(1)
+
+      return {
+        user,
+        router,
+        plates: rows.map((row) => {
+          const cell = at(within(row).getAllByRole('cell'), 1)
+
+          return {
+            cell,
+            /* `hidden: true`, because the circle's link is out of the accessibility tree on purpose
+               and the default reading would not find it. In the order of the page: the circle first. */
+            links: within(cell).getAllByRole('link', { hidden: true }),
+          }
+        }),
+      }
+    }
+
+    it('is one more link in the row, and the name keeps the other', async () => {
+      const { plates } = await theRows()
+
+      expect(plates.length).toBeGreaterThan(1)
+
+      for (const { cell, links } of plates) {
+        expect(links, 'the circle and the name').toHaveLength(2)
+        expect(at(links, 0).contains(must(cell.querySelector('.portrait'), 'the circle'))).toBe(true)
+        expect(at(links, 1).contains(at(links, 0))).toBe(false)
+      }
+    }, SLOW)
+
+    it('opens the profile when it is pressed', async () => {
+      const { user, router, plates } = await theRows()
+      const { cell, links } = must(first(plates), 'the first row')
+
+      await user.click(must(cell.querySelector('.portrait'), 'the circle'))
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(at(links, 1).getAttribute('href'))
+      })
+    }, SLOW)
+
+    it('leads to the profile the name leads to, in every row', async () => {
+      const { plates } = await theRows()
+
+      for (const { links } of plates) {
+        expect(at(links, 0).getAttribute('href')).toBe(at(links, 1).getAttribute('href'))
+      }
+    }, SLOW)
+
+    it('leaves exactly one link in the row to a screen reader', async () => {
+      const { plates } = await theRows()
+
+      for (const { cell } of plates) {
+        expect(within(cell).getAllByRole('link')).toHaveLength(1)
+      }
+    }, SLOW)
+
+    it('is not a stop of the Tab key, which goes to the name', async () => {
+      const { user, plates } = await theRows()
+      const { cell, links } = must(first(plates), 'the first row')
+
+      /* Walked to rather than aimed at: the circle comes first in the row, so a circle that could be
+         tabbed to is the first thing the walk meets in it. Bounded, so a row nobody can reach fails
+         this case and does not end it by running out of the time it is given. */
+      for (let pressed = 0; pressed < 80 && !cell.contains(document.activeElement); pressed++) {
+        await user.tab()
+      }
+
+      expect(document.activeElement).toBe(at(links, 1))
+    }, SLOW)
+  })
 })
 
 /* The words on the row of filters, and the count under it (owner, 05.08.2026).

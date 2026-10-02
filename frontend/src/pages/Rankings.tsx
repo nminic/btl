@@ -21,6 +21,7 @@ import { useI18n } from '../i18n/useI18n'
 import { podiumClass } from '../components/podium'
 import { mineClass, rowClass } from '../components/mine'
 import { useSession } from '../session/useSession'
+import { useProfileLink } from './profile/useProfileLink'
 import './Rankings.css'
 import { useFilterParams } from '../app/useFilterParams'
 
@@ -50,6 +51,9 @@ function Standing({
   /* Whoever is reading, so their own row is marked (owner, 05.08.2026). Null for
      a visitor, and then no row is anybody's. */
   const { memberNumber: mine } = useSession()
+  /* The same door the name goes through (`components/CompetitorName.tsx`), asked once for the whole
+     table: it is what gives the circle its address, or none where the profile cannot be reached. */
+  const linkTo = useProfileLink()
 
   const seasons = useMemo(() => seasonsWithResults(results), [results])
 
@@ -256,6 +260,16 @@ function Standing({
                         is still only the name and a screen reader is never asked to read a name and a
                         digit string as one word.
 
+                        **And the circle is a way in of its own since 02.10.2026** (`PDL.md`, „Odluke
+                        iz ciscenja nalaza", stavka 114: a press on it opens the profile, as on the
+                        other screens that draw it). It could not be one link around the whole plate as
+                        there, because that would put the number inside the link and the paragraph
+                        above would stop being true; so `NamePlate` gives the circle a second link to
+                        the same address (`faceTo`), out of the tab order and out of the accessibility
+                        tree. A keyboard and a screen reader still meet one link, and its name is still
+                        only the name. Where the profile cannot be reached there is no address and so
+                        neither link, and the circle and the name stay (`pages/profilePrivacy.test.tsx`).
+
                         **And on a telephone the circle is not drawn at all**, which is the owner's
                         own answer of 07.09.2026, given with the measurement in front of him: „Krug
                         se ne crta ispod 700px." The circle took about thirty four pixels of a
@@ -263,9 +277,12 @@ function Standing({
                         nine of seventeen names ran to two lines where one did before, and the row
                         grew from 75 to 100 pixels. This is one of the four screens he expects to
                         be easiest on a telephone (PDL P24), so the circle is the half that gives
-                        way. The rule is in `Rankings.css` and is held, with the class it hangs
-                        off, by `styles/leagueLayout.test.ts`. */}
-                    <NamePlate competitors={[row.competitor]}>
+                        way. **From 745px up since 02.10.2026, and not from 700** (`PDL.md`, „Odluke
+                        iz ciscenja nalaza", stavka 260): just above 700 the circle stood beside a
+                        name on two lines in nine of the seventeen rows, and `Rankings.css` has the
+                        measurement. The rule is in `Rankings.css` and is held, with the class it
+                        hangs off, by `styles/leagueLayout.test.ts`. */}
+                    <NamePlate competitors={[row.competitor]} faceTo={linkTo(row.competitor)}>
                       <CompetitorName competitor={row.competitor} className="rankings__member-name" />
                       <span className="table__member-number rankings__member-number">
                         {row.competitor.memberNumber}

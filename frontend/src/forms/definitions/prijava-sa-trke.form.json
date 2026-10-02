@@ -9,7 +9,8 @@
       "labelKey": "newResult.hours",
       "required": true,
       "min": 0,
-      "max": 200
+      "max": 200,
+      "integer": true
     },
     {
       "name": "minutes",
@@ -17,7 +18,8 @@
       "labelKey": "newResult.minutes",
       "required": true,
       "min": 0,
-      "max": 59
+      "max": 59,
+      "integer": true
     },
     {
       "name": "seconds",
@@ -25,7 +27,8 @@
       "labelKey": "newResult.seconds",
       "required": true,
       "min": 0,
-      "max": 59
+      "max": 59,
+      "integer": true
     },
     {
       "name": "link",
