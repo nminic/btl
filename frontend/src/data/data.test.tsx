@@ -9,7 +9,7 @@ import { eventSlug } from '../pages/admin/entityForms'
 import { loadResource, type ResourceName } from './client'
 import { commentFrom } from './comment'
 import countries from './countries.json'
-import { plainly, type Place } from './places'
+import { nameBeforeItsBracket, plainly, type Place } from './places'
 import { EVENT_KINDS, ITEM_KINDS, RACE_KINDS } from './types'
 import type { BtlEvent, Competitor, EventComment, PendingItem, Result } from './types'
 import {
@@ -322,6 +322,35 @@ describe('dataOr and failed', () => {
   })
 })
 
+/**
+ * The towns that share a name with an earlier town of their country, as „name
+ * (country)".
+ *
+ * The name is compared without regard to case and with regard to marks (review of
+ * PR 464, answered 02.10.2026): „Dolenja vas" and „Dolenja Vas" are one name to a
+ * reader, and „Münster" and „Munster" are not. The pair is written as JSON rather
+ * than joined by a separator, because a name may carry any character a separator
+ * could be. `toLowerCase()` gives the same text as `str.lower()` in the tool that
+ * labels the file and as `toLowerCase(Locale.ROOT)` in the tests over it, which
+ * was measured over every name of the codebook.
+ */
+function sharingAName(places: Place[]): string[] {
+  const seen = new Set<string>()
+  const repeated: string[] = []
+
+  for (const [, name, country] of places) {
+    const pair = JSON.stringify([country, name.toLowerCase()])
+
+    if (seen.has(pair)) {
+      repeated.push(`${name} (${country})`)
+    }
+
+    seen.add(pair)
+  }
+
+  return repeated
+}
+
 describe('the generated data', () => {
   it('gives every member in the list a member number, and nobody else one', async () => {
     /* The list of members is keyed by the number and read by every public screen
@@ -364,7 +393,7 @@ describe('the generated data', () => {
   })
 
   it('carries a codebook of towns every one of which can be typed', async () => {
-    /* The codebook is 1200 KB nobody in this repository wrote, read by a search
+    /* The codebook is 1300 KB nobody in this repository wrote, read by a search
        that folds a letter with a mark above it onto the letter (`plainly`). A
        letter that fold does not know is a town that is in the codebook and
        cannot be reached: seventy eight towns in Poland were, Wrocław among
@@ -411,23 +440,94 @@ describe('the generated data', () => {
        the database, so a town written down anywhere still means that town after
        the codebook is rebuilt from a newer export.
 
-       Nothing else in a row can do that job, and this says so from the file
-       rather than from the decision: name and country repeat, so a mark that
-       repeated would leave two towns indistinguishable and a reference to either
-       of them meaning both. Held over the shipped file, because the fault would
-       be the generator's and a fixture agrees with whoever wrote it. */
+       Nothing else in a row can do that job for good, and this says so from the
+       file rather than from the decision: name and country tell towns apart
+       since 02.10.2026, but a label in a name moves when GeoNames does, so a mark
+       that repeated would leave two towns indistinguishable and a reference to
+       either of them meaning both. Held over the shipped file, because the fault
+       would be the generator's and a fixture agrees with whoever wrote it. */
     const places = await loadResource<Place[]>('places')
     const marks = places.map(([mark]) => mark)
 
     expect(marks.every((mark) => Number.isInteger(mark) && mark > 0)).toBe(true)
     expect(new Set(marks).size).toBe(places.length)
+  })
 
-    /* And the floor under that, measured on the same file: the pair everything
-       used before the mark arrived does repeat, so the assertion above is one
-       this codebook could have failed. */
-    const pairs = places.map(([, name, country]) => `${name}|${country}`)
+  it('carries a codebook in which no two towns of one country share a name', async () => {
+    /* Owner, 02.10.2026, PDL "Odluke iz ciscenja nalaza (02.10.2026, vlasnik)", the
+       entry that begins „Istoimena mesta u istoj drzavi dobijaju u zagradi": towns
+       that were called alike carry the nearest bigger town in brackets, and the
+       database refuses a second one. Until that day the pair repeated, and the
+       floor under the mark's test above asserted that it did; a member from
+       Belotic was stored as "Belotic" without saying which one.
 
-    expect(new Set(pairs).size).toBeLessThan(places.length)
+       Held over the shipped file, because the fault would be the generator's: the
+       file `napravi-mesta.py` writes carries every namesake bare, and a codebook
+       rebuilt from a newer export that skips the labelling step fails here and not
+       in a member's profile. The pair is written as JSON rather than joined by a
+       separator, because a name may carry any character a separator could be.
+
+       Without regard to case since the review of PR 464: two spellings of one
+       name that differ only in capitals were two names to the key in the database
+       and one name to a member, and the key is the exact one, so this floor and
+       its twin over the source in the backend are what hold the case. */
+    const places = await loadResource<Place[]>('places')
+
+    expect(sharingAName(places)).toEqual([])
+  })
+
+  it('sees two towns of one country whose names differ only in case, and not two whose names differ in a mark', () => {
+    /* The floor above, asked of rows it can be wrong about. Over the shipped file
+       it passes whether the pair is compared exactly or without regard to case,
+       once the labels have been given, so the shipped file cannot show that it
+       was weakened. These are the two real pairs the review found, Dolenja vas in
+       Slovenia and C.A. Rosetti in Romania. */
+    expect(
+      sharingAName([
+        [3201849, 'Dolenja vas', 'SI'],
+        [8986894, 'Dolenja Vas', 'SI'],
+      ]),
+    ).toEqual(['Dolenja Vas (SI)'])
+    expect(
+      sharingAName([
+        [682679, 'C.A. Rosetti', 'RO'],
+        [682680, 'C.a. Rosetti', 'RO'],
+      ]),
+    ).toEqual(['C.a. Rosetti (RO)'])
+    /* A mark is not a capital: Münster and Munster are two names, as they are in
+       the key. And one name in two countries is not a pair. */
+    expect(
+      sharingAName([
+        [2867543, 'Münster', 'DE'],
+        [2867542, 'Munster', 'DE'],
+      ]),
+    ).toEqual([])
+    expect(
+      sharingAName([
+        [4930956, 'Boston', 'US'],
+        [2655138, 'Boston', 'GB'],
+      ]),
+    ).toEqual([])
+  })
+
+  it('carries a codebook in which every name that ends in a bracket is one the field can read back', async () => {
+    /* `countriesByName` reads a label as the last bracket group of a name, with a
+       space before it and no bracket inside it (data/places.ts). A name that ends
+       in a closing bracket and is not of that shape, say a town labelled with a
+       town that has a bracket of its own, is not read: the namesakes it belongs to
+       lose the country their bare name closes on, and no test of the field
+       notices, because the field is tested on fixtures.
+
+       Held over the shipped file, since the fault would be the generator's, and
+       asked of the function rather than written out here a second time, so that
+       this cannot disagree with what the field does. When it fails the way to go
+       is a decision about that label, and not a looser reading. */
+    const places = await loadResource<Place[]>('places')
+    const unreadable = places
+      .filter(([, name]) => name.endsWith(')') && nameBeforeItsBracket(name) === undefined)
+      .map(([, name, country]) => `${name} (${country})`)
+
+    expect(unreadable).toEqual([])
   })
 
   it('names every country its towns stand in, and puts Kosovo in Serbia', async () => {

@@ -56,7 +56,7 @@ const TOKEN_HEADER = 'X-XSRF-TOKEN'
  *
  * One of `ApiSecurity.READ_BY_ANYBODY`, so it needs nobody signed in, and one of the
  * small ones on purpose. Deliberately not `/api/places`, which is the codebook of
- * every town in the world and around 1.2 MB of it (`data/client.ts`): a megabyte
+ * every town in the world and around 1.3 MB of it (`data/client.ts`): a megabyte
  * fetched to be handed a cookie is a screen that arrives late for no reason.
  */
 const A_READ_THAT_HANDS_OUT_THE_TOKEN = '/api/countries'
