@@ -342,6 +342,33 @@ class MePasswordApi {
 			return no(THE_OLD_PASSWORD_IS_WRONG);
 		}
 
+		/* THE COUNT AND THE LOCK ARE CLEARED HERE, THE MOMENT THE OLD PASSWORD IS PROVED, AND
+		   NOT ONLY WHEN A NEW ONE IS STORED.
+
+		   `SignInApi` says why in one line about its own door: „they count guesses at an
+		   account, and somebody who has just signed in was not guessing." Typing the old
+		   password right is that same proof. Until this was moved, the forgetting rode on the
+		   statement that stores the new password, so a member who proved his old one and then
+		   chose a password the policy refuses - leaked, or too short - was answered 400 with his
+		   count untouched: measured, nine misses stayed nine, and he was one slip from the lock
+		   his own proof should have cleared. Both refusals of the policy, and not only the leaked
+		   one, because the reason is the proof and not the refusal.
+
+		   NEITHER HALF OPENS A DOOR THAT WAS SHUT. `SignIn.decide` above answers anything but
+		   `WELCOME` with `THE_OLD_PASSWORD_IS_WRONG` before this line runs, so a lock that has
+		   not yet run out ends the request there and this statement is never reached
+		   (`anAccountThatIsShutStaysShutEvenForTheRightOldPassword`). What IS reached is a lock
+		   that already ran out on its own, left standing on the row together with the count
+		   that put it there, and both go, so the next miss starts from nought rather than from
+		   somebody else's guessing (`changingThePasswordEndsALockSomebodyElseCaused`).
+
+		   WRITTEN FROM INSIDE THE TRANSACTION AND KEPT on a refusal below, for the reason the
+		   miss above is kept: `TransactionTemplate` rolls back on an exception and not on a
+		   returned value. */
+		db.sql("update account set failed_sign_ins = 0, locked_until = null where id = ?")
+				.param(account)
+				.update();
+
 		PasswordPolicy.Verdict verdict = passwords.judge(typed.password());
 
 		if (verdict == PasswordPolicy.Verdict.TOO_SHORT) {
@@ -351,19 +378,7 @@ class MePasswordApi {
 			return no(THE_PASSWORD_HAS_LEAKED);
 		}
 
-		/* THE COUNT AND THE LOCK ARE BOTH CLEARED HERE, AND NEITHER LINE OPENS A DOOR THAT
-		   WAS SHUT. A security review on 25.09.2026 found this comment claiming the opposite
-		   - that a member who just typed his old password was let through a STANDING lock -
-		   and the portal never did that: `SignIn.decide` above already answers anything but
-		   `WELCOME` with `THE_OLD_PASSWORD_IS_WRONG` before this line runs, so a lock that
-		   has not yet run out ends the request there and this statement is never reached
-		   (`anAccountThatIsShutStaysShutEvenForTheRightOldPassword`). What IS reached is a
-		   lock that already ran out on its own, left standing on the row together with the
-		   count that put it there; a successful change is what finally clears both, so the
-		   next miss starts from nought rather than from somebody else's guessing
-		   (`changingThePasswordEndsALockSomebodyElseCaused`). */
-		db.sql("update account set password_hash = ?, failed_sign_ins = 0, locked_until = null"
-						+ " where id = ?")
+		db.sql("update account set password_hash = ? where id = ?")
 				.params(keeping.of(typed.password()), account)
 				.update();
 
