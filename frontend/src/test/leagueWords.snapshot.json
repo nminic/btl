@@ -33,7 +33,7 @@
     },
     "competitors": {
       "title": "BTL takmičari",
-      "description": "Svi članovi lige sa kategorijom, brojem trka i osvojenim bodovima, i veza ka profilu svakog od njih."
+      "description": "Svi članovi lige sa kategorijom i veza ka profilu svakog od njih."
     },
     "teams": {
       "title": "BTL timovi",
