@@ -659,6 +659,7 @@
     "going": "Who is going",
     "goingOn": "I am going to this event",
     "goingNobody": "Nobody has said so yet.",
+    "goingRunAlready": "This event has already taken place, so coming to it can no longer be announced.",
     "writeTo": "Write to {name}",
     "writeSubject": "Arrangements for {event}",
     "writeSend": "Send the message",

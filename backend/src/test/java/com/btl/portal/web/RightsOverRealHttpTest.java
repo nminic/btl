@@ -954,14 +954,22 @@ class RightsOverRealHttpTest {
 	 * assertion every other pair here is caught by.
 	 */
 	@ParameterizedTest
-	/* THE LIST OF WHO IS GOING AND THE TWO WAYS TO BE ON IT JOINED ON 03.10.2026 (b212).
-	   Asked as A_COMPETITOR, an account that races for nobody and is not the administration,
-	   which is exactly who the owner's sentence of that day leaves out: „aktivni članovi
-	   (važeća članarina), a spisak vidi i administracija". A member whose fee has lapsed is
-	   refused down the very same line in both classes, so this pair is his too. */
+	/* THE LIST OF WHO IS GOING JOINED ON 03.10.2026 (b212). Asked as A_COMPETITOR, an account
+	   that races for nobody and is not the administration, which is exactly who the owner's
+	   sentence of that day leaves out: „aktivni članovi (važeća članarina), a spisak vidi i
+	   administracija". A member whose fee has lapsed is refused down the very same line, so
+	   this pair is his too.
+
+	   AND THE TWO WRITES OF THAT LIST ARE NOT HERE, ON PURPOSE AND MEASURED. Their key is the
+	   LAST segment of the address, so `twinOf` turns `/api/attendance/1` into
+	   `/api/attendance/z` - which is the same route with a word for a key, not an address that
+	   maps nothing, and both sides then come out of one handler. Written here, the pair stayed
+	   green with that handler's refusal turned into a status written onto the response. What
+	   holds their refusal is AWordInAKeyOverRealHttpTest, whose twin changes a literal segment
+	   and whose callers include the moderator who races for nobody; it fails on that same
+	   mutation. */
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "PUT /api/me",
-			"POST /api/inbox/{id}/read", "GET /api/attendance", "PUT /api/attendance/{id}",
-			"DELETE /api/attendance/{id}"})
+			"POST /api/inbox/{id}/read", "GET /api/attendance"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way
