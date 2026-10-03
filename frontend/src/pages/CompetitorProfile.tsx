@@ -11,6 +11,8 @@ import { Loader } from '../components/Loader'
 import { Resource } from '../components/Resource'
 import { MEMBERS, TEAMS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
+import { isActiveMemberOrAdministration } from '../roles/activeMemberOrAdministration'
+import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
 import { profileFor } from './profile/visible'
 import { useGrowing } from '../components/growing'
@@ -441,7 +443,8 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
   const params = useParams()
   const { search } = useLocation()
   const memberNumber = given ?? memberNumberIn(params.memberNumber)
-  const { signedIn, theServerHasAnswered, pairsMade, pairsBroken } = useSession()
+  const { memberNumber: readerNumber, theServerHasAnswered, pairsMade, pairsBroken } = useSession()
+  const { role } = useRole()
   const overlay = useOverlay()
   const state = combineFour(useCompetitors(), useResults(), useTeams(), usePairs())
 
@@ -456,9 +459,13 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
            had just joined it that they were in no club at all (review, same day). */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
         const teams = recordsOf(TEAMS, allTeams, overlay)
-        /* Whether anybody is signed in and not which member, so administration, which races for
-           nobody, reads a hidden profile as the server already lets it (`profile/visible.ts`). */
-        const readable = profileFor(competitors, memberNumber, signedIn !== null, theServerHasAnswered)
+        /* Whether THIS reader may read a hidden profile, as the server already answers it: an active
+           member (his number is on the list the server serves, which is the list drawn here) or the
+           administration, which races for nobody and reads all the same (`profile/visible.ts`,
+           `roles/activeMemberOrAdministration.ts`). A free account and a member whose fee has lapsed
+           are signed in and are read as a visitor is. */
+        const readsHiddenProfiles = isActiveMemberOrAdministration(role, readerNumber, everybody)
+        const readable = profileFor(competitors, memberNumber, readsHiddenProfiles, theServerHasAnswered)
 
         if (readable.kind === 'waiting') {
           /* **Not sent away yet, because nobody has said who is reading** (`profile/visible.ts`,
