@@ -368,6 +368,13 @@ describe('an event whose races wait', () => {
 
     await leftWhileWaiting(user)
     await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+
+    /* Nothing of the form that went away is held over this one: its fields are open and no
+       list of refused races is drawn. Asked before anything is typed, so a field left held
+       is said here as what it is, rather than as a save that never comes. */
+    expect(screen.getByLabelText(/^Naziv događaja/)).not.toHaveAttribute('aria-disabled')
+    expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
+
     await user.type(screen.getByLabelText(/^Naziv događaja/), 'BBKT posle')
     await user.type(screen.getByLabelText(/^Datum/), '11012027')
     await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
@@ -396,7 +403,11 @@ describe('an event whose races wait', () => {
 
     await user.type(search, other.name)
     await user.click(await screen.findByRole('button', { name: `Otvori: ${other.name}` }))
-    await user.type(await screen.findByLabelText(/^Opis događaja/), ' i još')
+
+    /* Open, as the new form above is, and for the same reason. */
+    expect(await screen.findByLabelText(/^Opis događaja/)).not.toHaveAttribute('aria-disabled')
+
+    await user.type(screen.getByLabelText(/^Opis događaja/), ' i još')
 
     const before = watching.asked.length
 
