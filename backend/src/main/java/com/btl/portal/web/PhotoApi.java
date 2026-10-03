@@ -111,7 +111,8 @@ import java.util.regex.Pattern;
  * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od ostalih
  * clanova, jer bi time nestao smisao zajednickog rangiranja", and until 03.10.2026 this route read
  * „ulogovanih" as „anybody with a session". The owner chose otherwise between offered outcomes
- * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad prema aktivnom članu"):
+ * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"):
  * a free account and a member whose fee has lapsed are refused the bytes as a visitor is.
  * So the question is asked of WHO IS READING and of nothing finer: not whose portrait it is,
  * and not what right the caller holds. {@link ActiveMemberOrAdministration} answers it, and a
@@ -517,7 +518,8 @@ class PhotoApi {
 				/* WHETHER THE CALLER MAY READ A HIDDEN PROFILE, which since 03.10.2026 is
 				   `ActiveMemberOrAdministration` and no longer „is there a session" (PDL P23,
 				   03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
-				   administracija, nikad prema aktivnom članu"). The class reads the administration off the role the request
+				   administracija,
+				   nikad prema aktivnom članu"). The class reads the administration off the role the request
 				   carries, so an account that races for nobody and is a moderator still reads,
 				   and a member's fee off `competitor.active`, so a free account and a member
 				   whose fee has lapsed are refused the bytes exactly as a visitor is. It is

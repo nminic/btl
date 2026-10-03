@@ -626,7 +626,8 @@ class MeWriteApi {
 	 * @param profileHidden whether readers who are neither active members nor the administration
 	 *                      may reach his profile page (a visitor, a free account and a member whose
 	 *                      fee has lapsed: PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
-	 *                      nije aktivan član ni administracija, nikad prema aktivnom članu"). Null leaves it alone
+	 *                      nije aktivan član ni administracija,
+	 *                      nikad prema aktivnom članu"). Null leaves it alone
 	 * @param firstName     his own name, which is not the name on the account (PDL P21)
 	 * @param lastName      his own surname, the same
 	 * @param address       where a shirt and a medal are sent, and the address of residence

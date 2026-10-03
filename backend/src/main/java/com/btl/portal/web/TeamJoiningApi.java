@@ -62,7 +62,8 @@ import java.util.List;
  * <p><b>THIS SERVES OTHER PEOPLE'S MEMBER NUMBERS, AND {@code profile_hidden} IS
  * DELIBERATELY NOT ASKED ABOUT.</b> That column hides a member from everybody who is neither an
  * active member nor the administration (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
- * nije aktivan član ni administracija, nikad prema aktivnom članu"), and every caller here is one of the two by construction:
+ * nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"), and every caller here is one of the two by construction:
  * whoever leads a team is read through {@link TeamApi#WHO_STANDS_IN_A_TEAM}, which asks
  * {@code c.active}, and the administration is asked through {@link WhatHeMayDo}. That is the
  * condition {@link CompetitorApi} serves its list by

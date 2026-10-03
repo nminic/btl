@@ -257,7 +257,8 @@ import java.util.stream.Collectors;
  * outcomes: the link from a hidden member's record to his team is withheld from a reader who
  * may not read a hidden profile (a visitor, and since 03.10.2026 equally a free account and a
  * member whose fee has lapsed: PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan
- * član ni administracija, nikad prema aktivnom članu"), the same as the biography and the photograph - and the owner's own words on it
+ * član ni administracija,
+ * nikad prema aktivnom članu"), the same as the biography and the photograph - and the owner's own words on it
  * the same day, „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se
  * vidi u timu i bodovi koje je doneo." The team's page and the table of teams are built out of
  * that link, so with
@@ -629,7 +630,8 @@ class TeamApi {
 		   `ActiveMemberOrAdministration`, the same class and so the same answer as there: an
 		   active member and the administration read it, and a visitor, a free account and a member
 		   whose fee has lapsed do not (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
-		   nije aktivan član ni administracija, nikad prema aktivnom članu"). Asked here in the SAME words as on the record,
+		   nije aktivan član ni administracija,
+		   nikad prema aktivnom članu"). Asked here in the SAME words as on the record,
 		   because a reader the record answers the link to must not be told it again on the team,
 		   and one the record withholds it from must be: the two doors would otherwise name one link
 		   twice, or none. A visitor arrives as a null `member` and the class answers him no. */

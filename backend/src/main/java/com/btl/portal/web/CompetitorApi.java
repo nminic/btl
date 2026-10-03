@@ -271,7 +271,8 @@ import java.util.List;
  * nobody else.</b> The owner's own limit was „Takmicar od ulogovanih kolega ne moze da sakrije
  * profil" (PDL, 06.09.2026), and until 03.10.2026 this resource read „ulogovanih" as „anybody
  * with a session". The owner chose otherwise between offered outcomes (PDL P23, 03.10.2026,
- * „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad prema aktivnom članu"): the other member is a
+ * „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"): the other member is a
  * member activated for the season, and the administration, so a free account and a member
  * whose fee has lapsed are answered what a visitor is. The reason in the published policy -
  * „ali ne i od ostalih clanova, jer bi time nestao smisao zajednickog rangiranja" - is about
@@ -384,7 +385,8 @@ class CompetitorApi {
 	 * <p><b>WHO MAY READ IT IS DECIDED BY {@link ActiveMemberOrAdministration} AND NOT BY THIS
 	 * TEXT, and it is bound as a boolean.</b> Since 03.10.2026 the owner's „drugi clan" is a member
 	 * activated for the season, and the administration (PDL P23, 03.10.2026, „Skrivanje deluje prema
-	 * svakome ko nije aktivan član ni administracija, nikad prema aktivnom članu"). It used to be „anybody with a session",
+	 * svakome ko nije aktivan član ni administracija,
+	 * nikad prema aktivnom članu"). It used to be „anybody with a session",
 	 * which was this resource's own reading (PDL 02.10.2026, since overturned: „Skriven profil vidi
 	 * svako ko je prijavljen, i administrativni nalog koji ne trci"), and a free account and a member
 	 * whose fee has lapsed read it by it. The administration is read off the role the REQUEST
@@ -612,7 +614,8 @@ class CompetitorApi {
 		   `THE_PROFILE_IS_OPEN_TO_THE_CALLER`, which is the one place the question is written.
 
 		   SINCE 03.10.2026 THE ANSWER IS NOT „IS THERE A SESSION". PDL P23, 03.10.2026,
-		   „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad prema aktivnom članu": an active
+		   „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+		   nikad prema aktivnom članu": an active
 		   member and the administration read it, and a free account or a member whose fee has
 		   lapsed is answered what a visitor is. That is `ActiveMemberOrAdministration`, which
 		   reads the role off the REQUEST and the fee off `competitor.active`, and answers no
