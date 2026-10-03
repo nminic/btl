@@ -3,6 +3,35 @@ import { liga } from '../../forms/definitions'
 import { limitOf } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
 import type { LeagueWords } from '../admin/leagueWrites'
+import { addressesIn } from './addressesIn'
+
+/**
+ * The words as written, with every address in them drawn as a link to somebody else's page.
+ *
+ * `target="_blank"` and `rel="noreferrer noopener"` are the shape of the link to an outside page
+ * that the event's page already draws (`pages/EventDetail.tsx`): a reader in the middle of a list
+ * of competitions keeps their place, the other end is not told which page they came from, and the
+ * page that opens cannot reach back through `window.opener`. Written out, and not left to what a
+ * browser does for `_blank`, for the reason the guard of the event's link gives
+ * (`pages/details.test.tsx`): a rule that depends on a default is a rule nobody can read.
+ *
+ * **Every run that is not an address is a string, and a string in a child position is a text
+ * node**, so nothing an administrator typed is ever read as markup. The terms of a competition are
+ * not moderated (PDL, 01.09.2026: „Administratorova reč stoji"), which is the reason that matters
+ * here: what a reader sees has to be exactly what was typed. A text with no address draws as the one
+ * text node it always did.
+ */
+function drawn(text: string): ReactNode {
+  return addressesIn(text).map((piece, at) =>
+    piece.href === null ? (
+      piece.text
+    ) : (
+      <a key={at} href={piece.href} target="_blank" rel="noreferrer noopener">
+        {piece.text}
+      </a>
+    ),
+  )
+}
 
 /**
  * A piece of what an organiser has written about a competition, read where it is written.
@@ -26,6 +55,17 @@ import type { LeagueWords } from '../admin/leagueWrites'
  * edit it now that the page it lived on no longer has it, the owner chose the same place it is
  * read (07.09.2026). A screen that shows one thing and changes it somewhere else is a screen
  * where the two can disagree, and the person who spots the mistake is the one who cannot fix it.
+ *
+ * **An address in the text is a link, since 03.10.2026** (PDL P15, chosen among the options
+ * offered): „Adresa u Propozicijama i Nagradama svake lige postaje veza. Svaka adresa koja počinje
+ * sa `www.` ili `https://` otvara se u novom prozoru, sa vidljivim domenom, isto kao veza uz opis
+ * događaja (27.08.2026)." The paragraph of the terms of the RunTrace league has to carry
+ * `www.runtrace.net` and open that portal. Which words are addresses is `addressesIn`'s to say.
+ * What a link says is the address as it was typed, and that is what makes the domain visible: no
+ * second element repeats it beside the link, as the event's page did on that day for the words of
+ * its own link, which say nothing about where a press leads. Both boxes draw it the same way,
+ * because both are this component, and the box that is being edited shows the text as it was typed
+ * and not as it is drawn.
  *
  * Hides itself while nobody has written it and nobody may.
  */
@@ -124,7 +164,7 @@ export function EditableText({
           onBlur={(event) => void keep(event.target.value)}
         />
       ) : (
-        <p className="profile__text">{value === '' ? t('leagues.notWritten') : value}</p>
+        <p className="profile__text">{value === '' ? t('leagues.notWritten') : drawn(value)}</p>
       )}
 
       {canEdit && !editing && (

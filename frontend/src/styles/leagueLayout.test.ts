@@ -515,4 +515,38 @@ describe('the list of competitions', () => {
 
     expect([...sheets].some((one) => one.endsWith(join('pages', 'Rankings.css')))).toBe(true)
   })
+
+  it('breaks a word of what an organiser wrote that would not fit, and caps no line of it', () => {
+    /* The terms and the prizes may now carry an address (owner, 03.10.2026, PDL P15), and an address
+       is one long word, which is the single input that pushes a page sideways. Measured in a browser
+       on 03.10.2026, before the declaration was written: a text with one unbroken word scrolled the
+       whole list sideways at 360 and at 768, and the same with a long `http://` address, which is
+       drawn as words and not as a link, so the rule is on the paragraph and not on the link. Measured
+       after: nought, at the three widths and on both palettes (`Leagues.css` has the figures).
+
+       Two declarations and the absence of a third, as for the description of an event
+       (`pages/eventTableStyle.test.ts`). A measure stood there for an afternoon and came off: the
+       owner asked on 12.08.2026 for prose to run the full width of the page, and what sets the length
+       of a line here is the card. */
+    const said = ruleFor(readFileSync(LEAGUES, 'utf-8'), '.leagues__item .profile__text', 'Leagues.css')
+
+    expect(said.getPropertyValue('overflow-wrap')).toBe('anywhere')
+    expect(
+      said.getPropertyValue('max-inline-size'),
+      'the words of an organiser are capped, and the portal caps no prose',
+    ).toBe('')
+    expect(
+      said.getPropertyValue('max-width'),
+      'the words of an organiser are capped, and the portal caps no prose',
+    ).toBe('')
+  })
+
+  it('reaches the sheet that holds that rule', () => {
+    /* A rule in a sheet no screen asks for is a rule the bundle may leave out, and the portal has
+       been bitten by exactly that (`styles/outsideHost.test.ts`): with the import taken out of the
+       screen the declaration above stays in the file and leaves the page. */
+    const screen = join(SRC, 'pages/Leagues.tsx')
+
+    expect([...sheetsOf(screen, readFileSync(screen, 'utf-8'))]).toContain(LEAGUES)
+  })
 })
