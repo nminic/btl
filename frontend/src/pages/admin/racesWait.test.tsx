@@ -662,6 +662,27 @@ describe('an event whose races wait', () => {
     expect(screen.queryByRole('list', { name: sr.admin.race.wrong.list })).toBeNull()
   }, SLOW)
 
+  it('opens a new form, and not the form of the event a copy has just made, after that copy was saved and went away with its address', async () => {
+    /* The first of the five things a form holds (`forgetTheForm`): the event it has just made,
+       which a form that makes an event is drawn UNDER while it stands. Measured before the change,
+       with nothing refused anywhere: a copy that went through, left by a link to this list, and
+       „Novi događaj" opened the copy's own form, titled „Izmena događaja", so the first thing
+       typed into it would have been written over the event the copy had made. */
+    const user = setupUser()
+    const { router } = renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+    await act(async () => {
+      await router.navigate('/sr/administracija/dogadjaji')
+    })
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+
+    expect(screen.getByRole('form', { name: sr.admin.form.new.events })).toBeVisible()
+    expect(screen.queryByRole('form', { name: sr.admin.form.edit.events })).toBeNull()
+  }, SLOW)
+
   /**
    * A REFUSED DELETION THAT IS NOT THE FIRST, AND EVERYTHING THE PRESS STILL HAS TO SEND AFTER IT
    * (review of PR 483, round 1).
