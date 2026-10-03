@@ -504,9 +504,13 @@ describe('the switch that says you are going', () => {
 
     await user.click(button)
 
-    await waitFor(() => expect(theSwitch()).toHaveAttribute('aria-pressed', 'true'))
-    /* THE VERB OF A MEMBER WHO IS NOT ON THIS LIST: a PUT. */
+    /* THE VERB OF A MEMBER WHO IS NOT ON THIS LIST: a PUT. Asked before the switch is waited
+       on, so that a DELETE sent here is reported as the verb it is and not as a switch that
+       never came on. */
+    await waitFor(() => expect(presses()).toHaveLength(1))
     expect(presses()).toEqual([`PUT /api/attendance/${String(event.id)}`])
+
+    await waitFor(() => expect(theSwitch()).toHaveAttribute('aria-pressed', 'true'))
     expect(rows()).toHaveLength(going.length + 1)
   })
 
