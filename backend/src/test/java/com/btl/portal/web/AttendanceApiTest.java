@@ -433,9 +433,10 @@ class AttendanceApiTest {
 	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE LIST IS NOT THERE, AND A ROW OF MEMBERSHIP DOES
 	 * NOT MAKE HIM ACTIVE.
 	 *
-	 * <p>Owner, 03.10.2026: „spisak najavljenih vide aktivni članovi (važeća članarina)". Refused
-	 * as an address that maps nothing is refused (ADL A8). The anchor is a member in good
-	 * standing who holds no membership row at all and IS served, so what tells the two apart is
+	 * <p>PDL, 03.10.2026, recording the owner's choice between offered outcomes: „spisak
+	 * najavljenih vide aktivni članovi (važeća članarina)". Refused as an address that maps
+	 * nothing is refused (ADL A8). The anchor is a member in good standing who holds no
+	 * membership row at all and IS served, so what tells the two apart is
 	 * {@code competitor.active} and not whether a season's row exists.
 	 */
 	@Test
@@ -488,10 +489,11 @@ class AttendanceApiTest {
 	 * THE ADMINISTRATION IS SERVED THE LIST WHETHER OR NOT IT RACES, AND WHETHER OR NOT ITS OWN
 	 * FEE STANDS.
 	 *
-	 * <p>Owner, 03.10.2026: „a spisak vidi i administracija", and PDL section 18 of the same day
-	 * names who that is: „administracija (moderatori i superadmin)". A moderator with no box
-	 * ticked is a moderator. The one whose own fee has lapsed is the reader who tells the two
-	 * questions apart: refused as a member, served as the administration.
+	 * <p>PDL, 03.10.2026, recording the owner's choice: „a spisak vidi i administracija", and
+	 * section 18, supplemented the same day, names who that is: „administracija (moderatori i
+	 * superadmin)". A moderator with no box ticked is a moderator. The one whose own fee has
+	 * lapsed is the reader who tells the two questions apart: refused as a member, served as the
+	 * administration.
 	 */
 	@Test
 	void theAdministrationIsServedTheListWhetherOrNotItRaces() throws Exception {

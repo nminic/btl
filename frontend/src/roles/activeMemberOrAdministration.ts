@@ -6,9 +6,10 @@ import { isStaff, type Role } from './context'
  * OWN, ASKED IN ONE PLACE.
  *
  * <p>The owner chose it on 03.10.2026, between offered outcomes, for the list of who is going
- * to an event: „Najavu dolaska daju i spisak najavljenih vide aktivni članovi (važeća
- * članarina), a spisak vidi i administracija; isto kao za skriven profil (P23, odeljak 18)." The
- * same reader is therefore asked about by the hidden profile as well, and this module is where
+ * to an event, and PDL records the choice as „Najavu dolaska daju i spisak najavljenih vide
+ * aktivni članovi (važeća članarina), a spisak vidi i administracija; isto kao za skriven profil
+ * (P23, odeljak 18)." (the record's sentence, not his own words). The same reader is therefore
+ * asked about by the hidden profile as well, and this module is where
  * both screens read the question from. Only the list of who is going asks it today
  * (`event/GoingToEvent.tsx`); the hidden profile is its own increment.
  *
@@ -43,8 +44,8 @@ export function isActiveMember(memberNumber: string | null, served: readonly Com
  * Whether this reader is a member whose fee is standing, or the administration.
  *
  * <p>The administration is `isStaff` (`roles/context.ts`): a moderator, ticked or not, and the
- * superadmin, which is the owner's own list - „administracija (moderatori i superadmin)", PDL
- * section 18, supplemented on 03.10.2026. The server reads the same people off `role.rights_mode`.
+ * superadmin, which is the list PDL section 18 gives, supplemented on 03.10.2026: „administracija
+ * (moderatori i superadmin)". The server reads the same people off `role.rights_mode`.
  */
 export function isActiveMemberOrAdministration(
   role: Role,

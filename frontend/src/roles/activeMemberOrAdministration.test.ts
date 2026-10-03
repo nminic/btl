@@ -50,7 +50,7 @@ describe('an active member, or the administration', () => {
     expect(isActiveMemberOrAdministration('competitor', null, served)).toBe(false)
 
     /* The administration: a moderator who races for nobody, one whose own fee has lapsed, and
-       the superadmin. The owner's list, „administracija (moderatori i superadmin)". */
+       the superadmin. PDL section 18's list, „administracija (moderatori i superadmin)". */
     expect(isActiveMemberOrAdministration('moderator', null, served)).toBe(true)
     expect(isActiveMemberOrAdministration('moderator', LAPSED, served)).toBe(true)
     expect(isActiveMemberOrAdministration('superadmin', null, served)).toBe(true)

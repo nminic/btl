@@ -19,9 +19,10 @@ import java.util.List;
  *
  * <p><b>Read by active members and by the administration, and by nobody else, since
  * 03.10.2026.</b> The owner, 11.08.2026: „Tu listu ko je prijavljen takođe vide samo ulogovani
- * članovi" (PDL P6, „Spisak najavljenih vide samo prijavljeni"), narrowed by his choice of
- * 03.10.2026 between offered outcomes: „Najavu dolaska daju i spisak najavljenih vide aktivni
- * članovi (važeća članarina), a spisak vidi i administracija". A visitor sees the calendar and its
+ * članovi" (PDL P6, „Spisak najavljenih vide samo prijavljeni"), narrowed on 03.10.2026 by his
+ * choice between offered outcomes, which PDL records as „Najavu dolaska daju i spisak
+ * najavljenih vide aktivni članovi (važeća članarina), a spisak vidi i administracija" (the
+ * record's sentence, not his own words). A visitor sees the calendar and its
  * results; who plans to be at one of them he does not, and since that day neither does somebody
  * whose fee has lapsed, somebody who registered and never paid, or an account that races for
  * nobody unless it is the administration.

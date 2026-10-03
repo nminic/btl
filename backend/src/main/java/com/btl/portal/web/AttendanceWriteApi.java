@@ -43,11 +43,12 @@ import java.util.function.BiConsumer;
  * could be forgotten - the reason {@code RightsAtTheDoorTest} gives for {@code GET
  * /api/me/membership}. The key is an {@link AKey}, so a word where it goes is the key no row has.
  *
- * <p><b>WHO MAY SAY IT: AN ACTIVE MEMBER, AND NOBODY ELSE.</b> The owner chose it on 03.10.2026:
- * „Najavu dolaska daju i spisak najavljenih vide aktivni članovi (važeća članarina), a spisak vidi
- * i administracija". The administration is in the second half and not the first, so a moderator
- * who races for nobody reads the list and says nothing on it, and one whose own fee has lapsed
- * reads it as the administration and is refused as a member. Anybody signed in who is not an
+ * <p><b>WHO MAY SAY IT: AN ACTIVE MEMBER, AND NOBODY ELSE.</b> The owner chose it between
+ * offered outcomes on 03.10.2026, and PDL records the choice as „Najavu dolaska daju i spisak
+ * najavljenih vide aktivni članovi (važeća članarina), a spisak vidi i administracija" (the
+ * record's sentence, not his own words). The administration is in the second half and not the
+ * first, so a moderator who races for nobody reads the list and says nothing on it, and one
+ * whose own fee has lapsed reads it as the administration and is refused as a member. Anybody signed in who is not an
  * active member is answered 404, the answer an address that maps nothing gives (ADL A8,
  * „prijavljen kome pravo nedostaje dobija 404"), and a visitor is answered 401 by the chain before
  * this class runs: the address is not on {@link ApiSecurity#READ_BY_ANYBODY}.

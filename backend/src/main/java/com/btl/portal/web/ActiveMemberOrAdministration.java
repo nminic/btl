@@ -9,12 +9,14 @@ import java.util.Optional;
  * AN ACTIVE MEMBER, OR THE ADMINISTRATION: THE ONE RULE FOR WHO READS WHAT THE LEAGUE KEEPS
  * FOR ITS OWN, ASKED IN ONE PLACE.
  *
- * <p><b>Where the rule comes from, word for word.</b> The owner chose it between offered
- * outcomes on 03.10.2026 for the list of who is going to an event: „Najavu dolaska daju i
- * spisak najavljenih vide aktivni članovi (važeća članarina), a spisak vidi i administracija;
- * isto kao za skriven profil (P23, odeljak 18)." And the section it points at, supplemented the
- * same day, names who the administration is: „skriven profil vide samo clanovi aktivirani za
- * sezonu i administracija (moderatori i superadmin)". So the same reader is asked about on two
+ * <p><b>Where the rule comes from, in the words of the record.</b> The owner chose it between
+ * offered outcomes on 03.10.2026, for the list of who is going to an event, and PDL records the
+ * choice as: „Najavu dolaska daju i spisak najavljenih vide aktivni članovi (važeća članarina), a
+ * spisak vidi i administracija; isto kao za skriven profil (P23, odeljak 18)." The section it
+ * points at, supplemented the same day by a choice of the same kind, names who the
+ * administration is: „skriven profil vide samo clanovi aktivirani za sezonu i administracija
+ * (moderatori i superadmin)". Both are PDL's sentences and not the owner's own words; the
+ * choices are his. So the same reader is asked about on two
  * resources, and this class is written as the home both of them read, rather than as a
  * condition inside the first of them that the second would have to copy. Only the list of who
  * is going reads it today ({@link AttendanceApi}, {@link AttendanceWriteApi}); the hidden
@@ -42,7 +44,7 @@ import java.util.Optional;
  * {@link WhoIsAsking} decided.</b> V5 gives every role a mode, {@code none} for the visitor and
  * the competitor, {@code granted} for the moderator and {@code all} for the superadmin, so
  * „a role that can hold a right at all" is exactly „moderatori i superadmin" - a moderator with
- * no box ticked included, because the owner named the people and not their boxes. Read as
+ * no box ticked included, because the record names the people and not their boxes. Read as
  * the two role names it would be a second home for which roles those are, which is the reason
  * {@link OnlyTheSuperadmin} gives for reading the mode as well. And the role comes off the
  * principal and never off {@code account.role_id}: the superadmin may be named by an address

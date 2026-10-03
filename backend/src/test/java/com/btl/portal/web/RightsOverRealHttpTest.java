@@ -956,9 +956,9 @@ class RightsOverRealHttpTest {
 	@ParameterizedTest
 	/* THE LIST OF WHO IS GOING JOINED ON 03.10.2026 (b212). Asked as A_COMPETITOR, an account
 	   that races for nobody and is not the administration, which is exactly who the owner's
-	   sentence of that day leaves out: „aktivni članovi (važeća članarina), a spisak vidi i
-	   administracija". A member whose fee has lapsed is refused down the very same line, so
-	   this pair is his too.
+	   choice of that day leaves out, in the words PDL records it in: „aktivni članovi (važeća
+	   članarina), a spisak vidi i administracija". A member whose fee has lapsed is refused
+	   down the very same line, so this pair is his too.
 
 	   AND THE TWO WRITES OF THAT LIST ARE NOT HERE, ON PURPOSE AND MEASURED. Their key is the
 	   LAST segment of the address, so `twinOf` turns `/api/attendance/1` into

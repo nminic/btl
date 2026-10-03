@@ -439,9 +439,10 @@ class AttendanceWriteApiTest {
 	 * A MEMBER WHOSE FEE HAS LAPSED SAYS NOTHING EITHER WAY, AND A ROW OF MEMBERSHIP DOES NOT
 	 * MAKE HIM ACTIVE.
 	 *
-	 * <p>Owner, 03.10.2026: „Najavu dolaska daju ... aktivni članovi (važeća članarina)". Answered
-	 * as an address that maps nothing (ADL A8). His announcement from before stays as it was:
-	 * the list does not show it while his fee is lapsed, and he may not touch it.
+	 * <p>PDL, 03.10.2026, recording the owner's choice between offered outcomes: „Najavu dolaska
+	 * daju ... aktivni članovi (važeća članarina)". Answered as an address that maps nothing
+	 * (ADL A8). His announcement from before stays as it was: the list does not show it while
+	 * his fee is lapsed, and he may not touch it.
 	 */
 	@Test
 	void aMemberWhoseFeeHasLapsedSaysNothingEitherWay() throws Exception {

@@ -31,9 +31,9 @@ import './GoingToEvent.css'
  *
  * **For active members and the administration, since 03.10.2026.** The button and
  * the list were the members' from 11.08.2026, and the owner narrowed both that
- * day, choosing between offered outcomes: „Najavu dolaska daju i spisak
- * najavljenih vide aktivni članovi (važeća članarina), a spisak vidi i
- * administracija". So a visitor sees nothing here, and neither does anybody
+ * day, choosing between offered outcomes; PDL records the choice as „Najavu
+ * dolaska daju i spisak najavljenih vide aktivni članovi (važeća članarina), a
+ * spisak vidi i administracija". So a visitor sees nothing here, and neither does anybody
  * signed in whose fee is not standing; a moderator and the superadmin read the
  * list; and the switch is a member's in good standing, a moderator's included
  * where he races. Asked of `roles/activeMemberOrAdministration.ts`, the one home
@@ -157,7 +157,8 @@ function Going({
   attendance: Attending[]
   competitors: Competitor[]
   /** Who is reading, where that is somebody with a number of their own. A
-   *  moderator has none, reads the list, and has nothing to say about going. */
+   *  moderator who races for nobody has none, reads the list, and has nothing to
+   *  say about going. */
   me: string | null
   /** Whether the reader is a member whose fee is standing, and so may say he is
    *  going: the administration reads the list without being one. */

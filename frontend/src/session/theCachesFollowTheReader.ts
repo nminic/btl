@@ -24,8 +24,8 @@ import { clearResourceCache, type ResourceName } from '../data/client'
  *
  * <p><b>`attendance` answers by refusing rather than by shape, since 03.10.2026.</b> Who is going
  * to an event is served to an active member and to the administration and refused 404 to anybody
- * else signed in (owner, that day: „spisak najavljenih vide aktivni članovi (važeća članarina), a
- * spisak vidi i administracija"). A failure is never cached (`data/client.ts`), so what this
+ * else signed in (the owner's choice that day, in the words PDL records it in: „spisak
+ * najavljenih vide aktivni članovi (važeća članarina), a spisak vidi i administracija"). A failure is never cached (`data/client.ts`), so what this
  * drop protects is the other direction: a list a member was answered, kept in this visit after
  * he has signed out, where the next reader's screens would find it without the server having
  * been asked.

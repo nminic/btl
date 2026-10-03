@@ -854,7 +854,8 @@ describe('writing to somebody else who is going', () => {
        WHAT THIS CASE IS ABOUT CHANGED TWICE, AND BOTH ARE WORTH SAYING. Until 28.09.2026
        the screen worked the sender's name out of that list; from then until 03.10.2026 it
        held that such a writer's note went out the same as anybody's. On 03.10.2026 the
-       owner gave the list to „aktivni članovi (važeća članarina)" and the administration,
+       owner's choice gave the list, in the words PDL records it in, to „aktivni članovi
+       (važeća članarina)" and the administration,
        and the screen learns that a reader is a member in good standing from that very list
        of members - so a number the list does not carry is not drawn the list, and with it
        no envelope. What the note carries is still held, by „sends three fields" below, for
@@ -1473,8 +1474,8 @@ describe('a name the list cannot lead to', () => {
   it('is drawn neither the list nor the switch to a member whose fee has lapsed, and asks nothing for him', async () => {
     /* THIS CASE SAID THE OPPOSITE UNTIL 03.10.2026: signed in as one of the strangers, the
        switch said „you are going" so that it agreed with the row the list drew for him. The
-       owner decided that day that the list and the switch are „aktivni članovi (važeća
-       članarina)" and the administration's, so a member whose fee has lapsed is drawn
+       owner chose that day, in the words PDL records it in, that the list and the switch are
+       „aktivni članovi (važeća članarina)" and the administration's, so a member whose fee has lapsed is drawn
        neither - the server refuses him the list 404 and the screen does not ask. He is on
        the event in the file, which is what makes his absence here a statement about him and
        not about an empty event. */

@@ -104,10 +104,10 @@ class RightsAtTheDoorTest {
 	 * and a visitor is refused before this door is ever asked; and reading who is going is not
 	 * a moderator's action, so there is no box to tick for it. <b>Since 03.10.2026 „every signed
 	 * in account reads it" is not true of it, the way it is not true of {@code /api/inbox}:</b>
-	 * the owner narrowed it to „aktivni članovi (važeća članarina), a spisak vidi i
-	 * administracija", which is a fact about the member's fee and about the role, not a box, so
-	 * the controller asks it ({@code ActiveMemberOrAdministration}) and answers anybody else
-	 * signed in 404. {@code AttendanceApiTest} holds both halves, because this file only
+	 * the owner narrowed it, by a choice between offered outcomes that PDL records as „aktivni
+	 * članovi (važeća članarina), a spisak vidi i administracija", which is a fact about the
+	 * member's fee and about the role, not a box, so the controller asks it
+	 * ({@code ActiveMemberOrAdministration}) and answers anybody else signed in 404. {@code AttendanceApiTest} holds both halves, because this file only
 	 * measures what a route DECLARES.
 	 *
 	 * <p><b>AND {@code /api/verification} IS THE SIXTH, AND IT IS HERE FOR A REASON
@@ -384,9 +384,10 @@ class RightsAtTheDoorTest {
 			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
 					"GET /api/comments", "GET /api/attendance",
 					/* SAYING YOU ARE GOING, AND TAKING IT BACK, ADDED 03.10.2026 WITH B212. Not a
-					   moderator's action and no box a superadmin could tick: the owner gave it to
-					   „aktivni članovi (važeća članarina)" by name, and the administration as such
-					   is not one - so a right could only shut it to the people it is for. The
+					   moderator's action and no box a superadmin could tick: the owner's choice, as
+					   PDL records it, gives it to „aktivni članovi (važeća članarina)" by name, and
+					   the administration as such is not one - so a right could only shut it to the
+					   people it is for. The
 					   address names the event and nothing names the member, who is read off the
 					   session, so „his own" is the only thing it can express. Anybody signed in who
 					   is not an active member is answered 404 by AttendanceWriteApi, a visitor 401
