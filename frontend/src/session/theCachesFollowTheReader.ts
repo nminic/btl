@@ -5,14 +5,15 @@ import { clearResourceCache, type ResourceName } from '../data/client'
  * THE NAMES WHOSE ANSWER DEPENDS ON WHO IS ASKING, and that nothing else drops when the
  * person asking changes.
  *
- * <p><b>Two names, and the other two that depend on the reader are not here on purpose.</b>
- * The backend answers four cached names by asking the caller (`CompetitorApi`, `TeamApi`,
- * `InboxApi`, `MyApplicationsApi` take the principal; no other route behind a cached name
- * does, which `session/everyNameThatDependsOnTheReader.test.ts` reads out of the Java source
- * rather than taking from this sentence). `inbox` and `me/applications` are dropped by their
- * own hooks, keyed by the member number the screen hands them (`data/useResource.ts`,
- * `theInboxNowBelongsTo` and `theWaitingNowBelongsTo`). These two are not asked for a member
- * number by anybody: twenty-two components read them, and a visitor reads them too.
+ * <p><b>Three names, and the other two that depend on the reader are not here on purpose.</b>
+ * The backend answers five cached names by asking the caller (`CompetitorApi`, `TeamApi`,
+ * `AttendanceApi`, `InboxApi`, `MyApplicationsApi` take the principal; no other route behind a
+ * cached name does, which `session/everyNameThatDependsOnTheReader.test.ts` reads out of the
+ * Java source rather than taking from this sentence). `inbox` and `me/applications` are dropped
+ * by their own hooks, keyed by the member number the screen hands them (`data/useResource.ts`,
+ * `theInboxNowBelongsTo` and `theWaitingNowBelongsTo`). The three here are not asked for a
+ * member number by anybody: `competitors` and `teams` are read by twenty-two components and by
+ * a visitor too, and `attendance` is read by the event's page for whoever is signed in.
  *
  * <p><b>What they answer differently, and to whom.</b> PDL, section 16 (owner, 27.09.2026):
  * a member who hides his profile loses his team, his picture and his biography to a reader
@@ -20,8 +21,16 @@ import { clearResourceCache, type ResourceName } from '../data/client'
  * answers a visitor, anybody signed in and the administration in three shapes, and the two
  * halves of one screen (the roster, the head count, the sum of a team, the control a founder
  * sees) are put together out of both names.
+ *
+ * <p><b>`attendance` answers by refusing rather than by shape, since 03.10.2026.</b> Who is going
+ * to an event is served to an active member and to the administration and refused 404 to anybody
+ * else signed in (the owner's choice that day, in the words PDL records it in: „spisak
+ * najavljenih vide aktivni članovi (važeća članarina), a spisak vidi i administracija"). A failure is never cached (`data/client.ts`), so what this
+ * drop protects is the other direction: a list a member was answered, kept in this visit after
+ * he has signed out, where the next reader's screens would find it without the server having
+ * been asked.
  */
-export const ANSWERED_TO_THE_READER = ['competitors', 'teams'] as const satisfies readonly ResourceName[]
+export const ANSWERED_TO_THE_READER = ['competitors', 'teams', 'attendance'] as const satisfies readonly ResourceName[]
 
 /**
  * WHO IS ASKING, as one word, or nobody.

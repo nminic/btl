@@ -27,27 +27,60 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.StringJoiner;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
- * WHO SAID THEY ARE COMING, read by members and by nobody else.
+ * WHO SAID THEY ARE COMING, read by active members and by the administration, and by nobody
+ * else.
  *
- * <p>Closed the same way {@link CommentApiTest} closes {@code /api/comments}: this
- * file measures that a visitor is refused and a signed in member is not, plus the two
- * questions that are this resource's own: only a FUTURE event answers, and only a
- * member in good standing does.
+ * <p>A visitor is refused by the chain, the way {@link CommentApiTest} measures it for
+ * {@code /api/comments}; somebody signed in who is neither an active member nor the
+ * administration is refused by the route itself (owner, 03.10.2026). Beside who reads, the two
+ * questions that are this resource's own: only a FUTURE event answers, and only a member in good
+ * standing does.
+ *
+ * <p><b>The superadmin named by an address is in the settings of this file on purpose.</b> His
+ * row says {@code competitor}, so the one case about him tells the role {@link WhoIsAsking}
+ * decided from the role the row carries.
  */
-@SpringBootTest
+@SpringBootTest(properties = "btl.superadmin.email=" + AttendanceApiTest.NAMED_BY_AN_ADDRESS)
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class AttendanceApiTest {
 
+	/** An active member who has announced nothing, so that who reads is never one of the rows. */
 	private static final String A_MEMBER = "takmicar@primer.rs";
+
+	private static final String READING_MEMBER = "000060";
+
+	/** The lapsed member of the fixture, signed in as himself. */
+	private static final String LAPSED_READER = "istekla-clanarina@primer.rs";
+
+	/** Somebody who registered and has never paid: a competitor with no number, never active. */
+	private static final String NEVER_PAID = "nikad-placeno@primer.rs";
+
+	/** A competitor's account that races for nobody, which V23 allows. */
+	private static final String NAMES_NO_MEMBER = "bez-clana@primer.rs";
+
+	/** A moderator with no box ticked and no member behind him. */
+	private static final String MODERATOR = "moderator@primer.rs";
+
+	/** A moderator whose own membership has lapsed. */
+	private static final String MODERATOR_LAPSED = "moderator-istekla@primer.rs";
+
+	private static final String MODERATORS_LAPSED_NUMBER = "000070";
+
+	private static final String SUPERADMIN = "superadmin@primer.rs";
+
+	/** Named superadmin by the settings above, and a competitor by his row. */
+	static final String NAMED_BY_AN_ADDRESS = "b212-imenovani@primer.rs";
 
 	private static final String ACTIVE_ONE = "000010";
 
@@ -106,7 +139,8 @@ class AttendanceApiTest {
 	@Autowired
 	private JdbcClient db;
 
-	private SecretToken session;
+	/** Every reader of the fixture, by address. */
+	private final Map<String, SecretToken> sessions = new LinkedHashMap<>();
 
 	/** Feeds the sixteen lowercase hexadecimal characters {@code referral_code} needs
 	 *  (V7's shape check), the same generator {@code CommentApiTest} uses on
@@ -114,7 +148,8 @@ class AttendanceApiTest {
 	private int issued;
 
 	/**
-	 * FIVE EVENTS, FOUR MEMBERS, SEVEN ANNOUNCEMENTS, AND ONLY FOUR OF THEM ANSWER.
+	 * FIVE EVENTS, FOUR MEMBERS WHO ANNOUNCE, SEVEN ANNOUNCEMENTS, AND ONLY FOUR OF THEM ANSWER;
+	 * AND EIGHT READERS.
 	 *
 	 * <p>Each list below says which wrong answer it refuses:
 	 *
@@ -137,12 +172,19 @@ class AttendanceApiTest {
 	 * <li><b>The order the rows were written is not the order the answer comes back
 	 * in.</b> Written scrambled on purpose, so a query with no {@code order by} would
 	 * answer in a different order than the one the cases below check for.
+	 * <li><b>Who reads is two facts and not one, so the readers are a grid.</b> Whether
+	 * somebody is the administration and whether he is a member in good standing are asked
+	 * apart (owner, 03.10.2026), so there is a member who is not the administration, a
+	 * moderator who races for nobody, and a moderator whose own fee has lapsed - the one
+	 * reader who is the administration and not an active member, which no single question
+	 * could tell apart from either of the other two.
+	 * <li><b>A row of {@code membership} is not the fact being asked.</b> The lapsed reader
+	 * holds one for 2027 and the reading member holds none at all, so reading „has he a
+	 * membership row", for any season, answers both of them the wrong way round.
 	 * </ul>
 	 */
 	@BeforeEach
 	void fiveEventsFourMembersSevenAnnouncements() {
-		account(A_MEMBER);
-
 		event("prosli-dogadjaj", CLEARLY_PAST);
 		event("juce-u-beogradu", BELGRADE_YESTERDAY);
 		event("danasnji-dogadjaj", BELGRADE_TODAY);
@@ -166,13 +208,41 @@ class AttendanceApiTest {
 		   yesterday: if this one is missing from the answer, the date filter cannot be
 		   why. */
 		attending("buduci-dogadjaj-jedan", LAPSED);
+
+		/* THE READERS, and none of them is a row of the answer except the lapsed one, whose
+		   row is filtered out for everybody. */
+		member(READING_MEMBER, "Petar", "Citalac", "M", true);
+		account(A_MEMBER, "competitor");
+		belongsTo(A_MEMBER, READING_MEMBER);
+
+		account(LAPSED_READER, "competitor");
+		belongsTo(LAPSED_READER, LAPSED);
+		exemptFor(LAPSED, 2027);
+
+		long unpaid = neverPaid("Nikad", "Placeno");
+		account(NEVER_PAID, "competitor");
+		db.sql("update account set competitor_id = ? where email = ?").params(unpaid, NEVER_PAID)
+				.update();
+
+		account(NAMES_NO_MEMBER, "competitor");
+		account(MODERATOR, "moderator");
+
+		member(MODERATORS_LAPSED_NUMBER, "Mira", "Moderatorka", "F", false);
+		account(MODERATOR_LAPSED, "moderator");
+		belongsTo(MODERATOR_LAPSED, MODERATORS_LAPSED_NUMBER);
+
+		account(SUPERADMIN, "superadmin");
+
+		account(NAMED_BY_AN_ADDRESS, "competitor");
+		db.sql("update account set email_confirmed_at = ? where email = ?")
+				.params(Timestamp.from(Instant.now()), NAMED_BY_AN_ADDRESS).update();
 	}
 
-	private void account(String email) {
+	private void account(String email, String role) {
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', ?,"
-				+ " (select id from role where code = 'competitor'))").param(email).update();
+				+ " (select id from role where code = ?))").params(email, role).update();
 
-		session = SecretToken.fresh();
+		SecretToken session = SecretToken.fresh();
 		Instant issuedAt = Instant.now();
 
 		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
@@ -180,6 +250,56 @@ class AttendanceApiTest {
 				.params(email, session.hash(), Timestamp.from(issuedAt.minus(Duration.ofDays(1))),
 						Timestamp.from(issuedAt), Timestamp.from(issuedAt.plus(SessionLife.LASTS)))
 				.update();
+
+		sessions.put(email, session);
+	}
+
+	/** Ties an account to the member it races as (V23). */
+	private void belongsTo(String email, String memberNumber) {
+		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
+				+ " where email = ?").params(memberNumber, email).update();
+	}
+
+	/** A membership row for one season, given free of the fee, which needs no payment to name. */
+	private void exemptFor(String memberNumber, int season) {
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values ((select id from competitor where member_number = ?), ?, 'feeExempt',"
+						+ " 'Probni Probic', timestamptz '2026-09-01 10:00:00+00')")
+				.params(memberNumber, season).update();
+	}
+
+	/** Somebody who registered and has not paid: no number, and never active (V16). */
+	private long neverPaid(String first, String last) {
+		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " father_name, address, shirt_size, health_statement_at)"
+						+ " values (null, ?, ?, 'F', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, false, 'payment',"
+						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(first, last, String.format("%016x", ++issued))
+				.query(Long.class)
+				.single();
+	}
+
+	/** What the list answers this reader, by status alone. */
+	private int statusFor(String email) throws Exception {
+		return http.perform(get("/api/attendance")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse().getStatus();
+	}
+
+	/** The rows this reader is served, in the order they came. */
+	private List<Row> rowsFor(String email) throws Exception {
+		String whole = http.perform(get("/api/attendance")
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse().getContentAsString();
+		List<Row> out = new ArrayList<>();
+		for (JsonNode one : new ObjectMapper().readTree(whole)) {
+			out.add(new Row(one.path("eventId").asLong(), one.path("memberNumber").asString()));
+		}
+		return out;
 	}
 
 	private void event(String slug, String day) {
@@ -242,7 +362,8 @@ class AttendanceApiTest {
 	}
 
 	private MockHttpServletRequestBuilder asking() {
-		return get("/api/attendance").cookie(new Cookie(SessionCookie.NAME, session.secret()));
+		return get("/api/attendance")
+				.cookie(new Cookie(SessionCookie.NAME, sessions.get(A_MEMBER).secret()));
 	}
 
 	private JsonNode answer() throws Exception {
@@ -306,6 +427,138 @@ class AttendanceApiTest {
 				.as("a signed in member was refused the list, so the refusal above is not about who"
 						+ " is asking")
 				.isEqualTo(200);
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE LIST IS NOT THERE, AND A ROW OF MEMBERSHIP DOES
+	 * NOT MAKE HIM ACTIVE.
+	 *
+	 * <p>PDL, 03.10.2026, recording the owner's choice between offered outcomes: „spisak
+	 * najavljenih vide aktivni članovi (važeća članarina)". Refused as an address that maps
+	 * nothing is refused (ADL A8). The anchor is a member in good standing who holds no
+	 * membership row at all and IS served, so what tells the two apart is
+	 * {@code competitor.active} and not whether a season's row exists.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsToldTheListIsNotThere() throws Exception {
+		assertThat(db.sql("select c.active, (select count(*) from membership m"
+								+ " where m.competitor_id = c.id) from competitor c"
+								+ " where c.member_number = ?")
+						.param(LAPSED)
+						.query((row, one) -> !row.getBoolean(1) && row.getInt(2) == 1).single())
+				.as("the lapsed reader is not lapsed, or holds no membership row, so this case cannot"
+						+ " tell the flag from the row")
+				.isTrue();
+		assertThat(db.sql("select c.active, (select count(*) from membership m"
+								+ " where m.competitor_id = c.id) from competitor c"
+								+ " where c.member_number = ?")
+						.param(READING_MEMBER)
+						.query((row, one) -> row.getBoolean(1) && row.getInt(2) == 0).single())
+				.as("the reading member is not active, or holds a membership row, so the anchor below"
+						+ " cannot tell the flag from the row")
+				.isTrue();
+
+		assertThat(statusFor(LAPSED_READER))
+				.as("a member whose fee has lapsed was served who is going, and the owner decided on"
+						+ " 03.10.2026 that the list is for active members and the administration")
+				.isEqualTo(404);
+		assertThat(statusFor(A_MEMBER))
+				.as("a member in good standing with no membership row was refused, so the refusal"
+						+ " above is about a row and not about the fee")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * SOMEBODY WHO REGISTERED AND NEVER PAID IS TOLD THE LIST IS NOT THERE, AND SO IS AN ACCOUNT
+	 * THAT RACES FOR NOBODY UNLESS IT IS THE ADMINISTRATION.
+	 *
+	 * <p>Both are signed in, both are competitors by role, and neither is a member in good
+	 * standing: one has a record and no number, the other has no record at all (V23).
+	 */
+	@Test
+	void somebodyWhoIsSignedInButNoActiveMemberIsToldTheListIsNotThere() throws Exception {
+		assertThat(statusFor(NEVER_PAID))
+				.as("somebody who registered and never paid was served who is going")
+				.isEqualTo(404);
+		assertThat(statusFor(NAMES_NO_MEMBER))
+				.as("a competitor's account that names no member was served who is going")
+				.isEqualTo(404);
+	}
+
+	/**
+	 * THE ADMINISTRATION IS SERVED THE LIST WHETHER OR NOT IT RACES, AND WHETHER OR NOT ITS OWN
+	 * FEE STANDS.
+	 *
+	 * <p>PDL, 03.10.2026, recording the owner's choice: „a spisak vidi i administracija", and
+	 * section 18, supplemented the same day, names who that is: „administracija (moderatori i
+	 * superadmin)". A moderator with no box ticked is a moderator. The one whose own fee has
+	 * lapsed is the reader who tells the two questions apart: refused as a member, served as the
+	 * administration.
+	 */
+	@Test
+	void theAdministrationIsServedTheListWhetherOrNotItRaces() throws Exception {
+		assertThat(db.sql("select count(*) from account_admin_right r join account a"
+						+ " on a.id = r.account_id where a.email in (?, ?)")
+				.params(MODERATOR, MODERATOR_LAPSED).query(Integer.class).single())
+				.as("a moderator of the fixture holds a box, so this would not be about the role")
+				.isZero();
+
+		assertThat(statusFor(MODERATOR))
+				.as("a moderator who races for nobody was refused the list")
+				.isEqualTo(200);
+		assertThat(statusFor(MODERATOR_LAPSED))
+				.as("a moderator whose own fee has lapsed was refused the list, so it was read as a"
+						+ " member's right and not the administration's")
+				.isEqualTo(200);
+		assertThat(statusFor(SUPERADMIN))
+				.as("the superadmin was refused the list")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * A SUPERADMIN NAMED BY AN ADDRESS IN THE SETTINGS IS SERVED THE LIST, THOUGH HIS ROW SAYS
+	 * COMPETITOR AND NAMES NO MEMBER.
+	 *
+	 * <p>The role is the one {@link WhoIsAsking} decided for the request, never the one the
+	 * account's row carries: the owner is named by an address and not by anything the portal
+	 * writes (PDL P21, 14.09.2026). Read off the row, he would be a competitor with no member
+	 * and would be told the list is not there.
+	 */
+	@Test
+	void aSuperadminNamedByAnAddressIsServedTheListThoughHisRowSaysCompetitor() throws Exception {
+		assertThat(db.sql("select r.code = 'competitor' and a.competitor_id is null"
+								+ " and a.email_confirmed_at is not null"
+								+ " from account a join role r on r.id = a.role_id where a.email = ?")
+						.param(NAMED_BY_AN_ADDRESS).query(Boolean.class).single())
+				.as("the named superadmin's row is not a confirmed competitor with no member, so this"
+						+ " case cannot tell the decided role from the row's")
+				.isTrue();
+
+		assertThat(statusFor(NAMED_BY_AN_ADDRESS))
+				.as("the superadmin named by the settings was refused, so the role was read off his"
+						+ " row and not off the request")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * AND WHAT THE ADMINISTRATION IS SERVED IS THE LIST A MEMBER IS SERVED, ROW FOR ROW.
+	 *
+	 * <p>Who may read differs by reader; what is read does not, so the lapsed member's
+	 * announcement is withheld from a moderator exactly as from a member. Compared as a whole,
+	 * and over a fixture where that list is not empty.
+	 */
+	@Test
+	void theAdministrationIsServedTheSameListAMemberIs() throws Exception {
+		List<Row> member = rowsFor(A_MEMBER);
+
+		assertThat(member).as("the member is served nothing, so the comparison below compares"
+				+ " two empty lists").isNotEmpty();
+		assertThat(rowsFor(MODERATOR))
+				.as("a moderator is served another list than a member is")
+				.isEqualTo(member);
+		assertThat(rowsFor(SUPERADMIN))
+				.as("the superadmin is served another list than a member is")
+				.isEqualTo(member);
 	}
 
 	/**

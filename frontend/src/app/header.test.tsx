@@ -496,8 +496,6 @@ function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNum
     applications: [],
     apply: vi.fn(),
     answer: vi.fn(),
-    going: {},
-    setGoing: vi.fn(),
     markRead: vi.fn(),
     notify: vi.fn(),
     edits: {},

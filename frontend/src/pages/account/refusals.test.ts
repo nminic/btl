@@ -7,6 +7,7 @@ import {
   WHEN_PROPOSING_A_TEAM,
   WHEN_RATING_AN_EVENT,
   WHEN_REGISTERING,
+  WHEN_SAYING_YOU_ARE_GOING,
   WHEN_SETTING_A_PASSWORD,
   WHEN_WRITING_TO_A_MEMBER,
 } from './refusals'
@@ -467,6 +468,12 @@ describe('the reasons the server can name', () => {
        every name be answered - and the choice between borrowing a sentence and
        writing one is the screen's, not this file's. */
     ['InboxWriteApi.java', [WHEN_WRITING_TO_A_MEMBER], 2],
+    /* ADDED 03.10.2026 WITH THE SWITCH ON AN EVENT'S PAGE GOING TO THE SERVER (b212). One
+       constant, a real refusal of `PUT` and `DELETE /api/attendance/{id}`, and reachable from
+       the screen: the page offers the switch by its day in UTC and the server refuses by its
+       day in Belgrade, so for an hour or two after midnight the two disagree about yesterday's
+       event (`WHEN_SAYING_YOU_ARE_GOING` gives the arithmetic). */
+    ['AttendanceWriteApi.java', [WHEN_SAYING_YOU_ARE_GOING], 1],
     /* The two the calendar writes through, added 28.09.2026 when `admin/AdminEvents.tsx`
        and `event/EventActions.tsx` stopped writing into the session and began to send.
        Eleven and twelve, and four names appear in both under two different keys: the

@@ -120,7 +120,6 @@ export function SessionProvider({
      picture itself, so putting one here as well drew the member twice on one queue
      (`context.ts#pictureSent`). */
   const [pictureSent, setPictureSent] = useState<PictureSent | null>(null)
-  const [going, setGoingAll] = useState<Record<string, boolean>>({})
   const [published, setPublished] = useState<{ from: string; comment: EventComment }[]>([])
 
   const submit = useCallback(
@@ -401,10 +400,6 @@ export function SessionProvider({
     setMessages((current) => current.map((one) => (one.id === id ? { ...one, read: true } : one)))
   }, [])
 
-  const setGoing = useCallback((eventId: string, going: boolean) => {
-    setGoingAll((current) => ({ ...current, [eventId]: going }))
-  }, [])
-
   /* The applications waiting for an answer. Kept as a list of what is open rather than as
      a list of everything ever sent with a decision beside it: an application that has been
      answered, refused or taken back is over, and nothing on the portal asks about it
@@ -678,8 +673,6 @@ export function SessionProvider({
       pairsBroken,
       makePair,
       breakPair,
-      going,
-      setGoing,
       markRead,
       notify,
       edits,
@@ -724,8 +717,6 @@ export function SessionProvider({
       theServerSignedMeIn,
       theServerHasAnswered,
       theServerAnswered,
-      going,
-      setGoing,
       submissions,
       corrected,
       submit,
