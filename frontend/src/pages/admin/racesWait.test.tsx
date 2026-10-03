@@ -716,7 +716,9 @@ describe('an event whose races wait', () => {
       { name: 'Četvrta trka', km: '5', day: '14012027' },
     ])
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await screen.findByText(sr.admin.eventSavedRacesRefused)
+    /* Waited for as the alert and compared as text, so a press that said the sentence of an event
+       with no table fails on what it said and not by running out of time for the other. */
+    expect((await screen.findByRole('alert')).textContent).toBe(sr.admin.eventSavedRacesRefused)
 
     /* The fourth is the only one the first press did not make. */
     expect(notSaved()).toEqual([
