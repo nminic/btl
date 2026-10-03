@@ -32,7 +32,7 @@ describe('a text with no address in it', () => {
     'a trailing one ',
     'Prvi red\nDrugi red\n\nTreći red posle praznog.',
     'tab\there',
-    'blank that does not break',
+    'blank\u00a0that does not break',
     'line\r\nbreak',
     '   \n ',
   ]
@@ -279,8 +279,8 @@ describe('what stands in front of an address', () => {
 
 describe('an address that the gate beneath refuses', () => {
   it.each([
-    'https://primer.rs​/lige',
-    'https://primer­.rs/lige',
+    'https://primer.rs\u200b/lige',
+    'https://primer\u00ad.rs/lige',
     'https://[::1',
     'www.primer.rs:99999/lige',
     'https://prim%er.rs/lige',
@@ -292,8 +292,8 @@ describe('an address that the gate beneath refuses', () => {
 
   it('takes the brackets around it with it, so what is shown is what was written', () => {
     expect(addressesIn('Vidi (https://[::1) i dalje.')).toEqual([words('Vidi (https://[::1) i dalje.')])
-    expect(addressesIn('Vidi „www.primer.rs​“ i dalje.')).toEqual([
-      words('Vidi „www.primer.rs​“ i dalje.'),
+    expect(addressesIn('Vidi „www.primer.rs\u200b“ i dalje.')).toEqual([
+      words('Vidi „www.primer.rs\u200b“ i dalje.'),
     ])
   })
 
@@ -368,8 +368,8 @@ describe('the blanks around an address', () => {
     ],
     [
       'a blank that does not break',
-      'Vidi www.runtrace.net i dalje',
-      [words('Vidi '), www('www.runtrace.net'), words(' i dalje')],
+      'Vidi\u00a0www.runtrace.net\u00a0i dalje',
+      [words('Vidi\u00a0'), www('www.runtrace.net'), words('\u00a0i dalje')],
     ],
     [
       'two blanks',
@@ -427,8 +427,8 @@ describe('the runs of any text', () => {
     '>',
     '|',
     '@',
-    '​',
-    '­',
+    '\u200b',
+    '\u00ad',
     'č',
     'ž',
     '😀',
