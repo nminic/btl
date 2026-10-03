@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { useI18n } from '../../i18n/useI18n'
 import type { TranslateParams } from '../../i18n/translate'
 import type { Answer } from './askTheServer'
-import { whatABareNumberSays } from './serverWords'
+import { wordsFor } from './serverWords'
 
 /**
  * WHAT CAME BACK, AS A SENTENCE, AND NEVER A SENTENCE OF OUR OWN OVER ONE THE SERVER
@@ -52,40 +52,12 @@ export function ServerSaid({
 }) {
   const { locale, t } = useI18n()
 
-  const said = (): string => {
-    if (answer.got === 'refused') {
-      /* `Object.hasOwn` and never `refusals[reason]` on its own, because the word comes
-         off the wire: a server answering `constructor`, `toString`, `valueOf` or
-         `hasOwnProperty` is handed something every object has, and what comes back is a
-         FUNCTION rather than `undefined`. The branch below then reads it as a name of a
-         sentence, `translate` is given a function where it expects a string, and the
-         reader loses the whole panel to `ErrorBoundary` instead of being told what the
-         server said. The same question is asked the same way in `refusals.test.ts`,
-         which is where this shape is already written down. */
-      const known = Object.hasOwn(refusals, answer.reason) ? refusals[answer.reason] : undefined
-
-      return known === undefined ? t('server.refused', { reason: answer.reason }) : t(known, params)
-    }
-
-    if (answer.got === 'rejected') {
-      return t('server.rejected')
-    }
-
-    if (answer.got === 'wrong') {
-      /* THE ROUTE'S OWN MEANING FIRST, and found the way a reason is found above (`Object.hasOwn`,
-         because the number is the wire's and a table is an object). A number the route did not
-         name falls to the general sentences, and WHICH OF THOSE TWO is not decided here: a 400
-         that named no reason is the portal's own fault and says so, any other number keeps the
-         advice to wait (`serverWords.ts`, which also says why this is one function). */
-      const own = Object.hasOwn(numbers, answer.status) ? numbers[answer.status] : undefined
-
-      return own === undefined
-        ? t(whatABareNumberSays(answer.status), { status: answer.status })
-        : t(own, params)
-    }
-
-    return t('server.nothing')
-  }
+  /* THE SENTENCE IS WORKED OUT IN `serverWords.ts` (`wordsFor`), and this only draws it as an
+     alert. It was worked out here until 03.10.2026; it moved, rather than being copied, because
+     the list of races an event's press did not save names each refusal beside its race and must
+     not raise an alert per race (`admin/EventRaces.tsx`). One home for the words, two ways of
+     drawing them. */
+  const said = (): string => wordsFor(answer, refusals, t, numbers, params)
 
   /* The way to a fresh link is offered beside the one refusal a fresh link answers,
      and it is the way the messages themselves already point: „Ako veza istekne,
