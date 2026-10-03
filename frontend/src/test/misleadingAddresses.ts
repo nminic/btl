@@ -53,9 +53,10 @@ const NOTHING_FORMS: [string, number, string][] = [
 /**
  * What a reader takes for `www.runtrace.net` and a browser does not.
  *
- * Each way is written in both forms the owner's sentence names (`www.` and `https://`), because a
- * rule that is applied to one of the two forms only is a rule that half of the table cannot tell
- * from the right one.
+ * Each way is written in both forms the owner's sentence names (`www.` and `https://`) wherever
+ * both exist, because a rule that is applied to one of the two forms only is a rule that half of the
+ * table cannot tell from the right one. The slashes that a browser skips stand behind a scheme, so
+ * the three ways that use them are in the `https://` form only.
  */
 export const MISLEADING: readonly Misleading[] = [
   { typed: 'www.runtrace.net@zlo.example', how: 'a user part, with www.', opens: 'zlo.example' },
@@ -126,6 +127,11 @@ export const MISLEADING: readonly Misleading[] = [
   {
     typed: 'www.runtrace.net%E3%85%A4zlo.example',
     how: 'the escape of U+3164, with www.',
+    opens: 'www.runtrace.netzlo.example',
+  },
+  {
+    typed: 'https://www.runtrace.net%E3%85%A4zlo.example',
+    how: 'the escape of U+3164, with https://',
     opens: 'www.runtrace.netzlo.example',
   },
   {

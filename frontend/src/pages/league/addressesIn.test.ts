@@ -391,8 +391,9 @@ describe('the host that opens, asked of the parser for every address that become
    * **The number is the one answer that is allowed, and it is written down as such**: `addressIn`
    * says why, and the case before this one holds what a number opens.
    *
-   * Everything is ASCII on purpose: what is outside ASCII is asked of every character Unicode has
-   * in `addressesInAlone.test.ts`, where no gate can be the reason for a refusal.
+   * Every host is ASCII on purpose (a path may hold a letter outside it, and one of the endings
+   * does): what is outside ASCII in a host is asked of every character Unicode has in
+   * `addressesInAlone.test.ts`, where no gate can be the reason for a refusal.
    */
   const FRONTS = ['www.', 'https://', 'https:///']
 

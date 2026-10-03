@@ -184,7 +184,7 @@ describe('the part of an address that is asked about, found by walking and not b
 
       /* One form for each character, and the other for the next: a character that gets through in one
          form only is a different fault from the one asked about here, and the table above holds both
-         forms of every way that was measured. */
+         forms of every way that was measured, wherever both exist. */
       const typed =
         point % 2 === 0
           ? `www.runtrace${fromPoint(point)}net`
