@@ -4,9 +4,10 @@ import { must } from '../../test/at'
 import { clearResourceCache } from '../../data/client'
 import { fakeQueue } from '../../test/fakeQueue'
 import { renderAt } from '../../test/render'
-import { refused, serverThat } from '../../test/serverAnswers'
+import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { Saved } from '../../test/saved'
+import { typeATownTheCodebookKnows } from '../../test/town'
 import { setupUser } from '../../test/user'
 import type { Asked } from '../../test/serverAnswers'
 
@@ -233,8 +234,7 @@ describe('the way to propose a team', () => {
 describe('a proposal a member sends', () => {
   const fill = async (user: ReturnType<typeof setupUser>, name: string) => {
     await user.type(await screen.findByLabelText(/Naziv tima/), name)
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
   }
@@ -302,13 +302,26 @@ describe('a proposal a member sends', () => {
   })
 
   it('refuses to send without the three things it asks for', async () => {
+    /* THE THREE ARE THE NAME, THE TOWN AND THE COUNTRY, AND ONLY TWO OF THEM ARE TOLD
+       OFF. The country is the other half of the town since 03.10.2026 (`forms/PlaceField.tsx`,
+       one field and two controls), so an empty form says „Ovo polje je obavezno." under the
+       name and under the town and says nothing about a country: the answer to a town nobody
+       has typed is to type it, and a sentence about the other control sent whoever read it
+       to the wrong box (WCAG 2.2 SC 3.3.1; `Registration.test.tsx`, „says the town is
+       missing, and not that a country was not chosen"). This used to count three, one for
+       each box, and the number is the whole of what changed. */
     const user = setupUser()
     renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.click(await screen.findByRole('button', { name: 'Pošalji predlog' }))
 
     expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
-    expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(3)
+    expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(2)
+    expect(screen.queryByText('Izaberi državu uz mesto.')).toBeNull()
+    /* And the one pointed at is the town, which is what the cursor and a screen reader
+       are sent to. */
+    expect(screen.getByLabelText(/^Mesto/)).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByLabelText(/^Država/)).toHaveAttribute('aria-invalid', 'false')
   })
 
   it('says why when the server refuses a proposal, and changes nothing on the screen', async () => {
@@ -362,8 +375,7 @@ describe('a proposal a member sends', () => {
       renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
       await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-      await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
 
       const send = screen.getByRole('button', { name: 'Pošalji predlog' })
 
@@ -376,6 +388,352 @@ describe('a proposal a member sends', () => {
       expect(
         server.asked.filter((one) => one.path === '/api/teams' && one.init?.method === 'POST'),
       ).toHaveLength(1)
+    } finally {
+      server.stop()
+    }
+  })
+})
+
+describe('the town a member proposes a team in', () => {
+  /* ONE FIELD AND TWO CONTROLS, SINCE 03.10.2026. Owner, after testing: „Na strani Predlog
+     tima, potrebno je da se Država automatski popunjava kucanjem u mestu, kao što radi na
+     drugim mestima." The proposal asked for the town in a box and for the country in a list
+     of its own, so a member who had typed Kranj was then asked which country Kranj is in.
+     It is `forms/PlaceField.tsx` now, the control the registration, the result and the event
+     already use (PDL, 11.08.2026: „Jedna kontrola i jedno pravilo za ceo portal, ne dva
+     slična").
+   *
+     WHAT IS HELD HERE IS WHERE THE COUNTRY CAME FROM, because there are two sources of it and
+     a case that cannot tell them apart measures neither: the codebook, which writes it
+     beside a town it recognises, and the member's hand, which answers for a town it does not.
+     EVERY CASE BELOW SENDS A COUNTRY THAT IS NOT SERBIA, on purpose. Twenty of the twenty one
+     cases that only fill the form in end on RS (`test/town.ts`), so a request that said RS
+     whatever the town was would have passed all of those.
+   *
+     The town goes by NAME and COUNTRY and never by the codebook's mark (`placeId`), which is
+     what `Registration.tsx` decided for the same control and what PDL, 02.10.2026, says in
+     as many words: „Slanje oznake mesta sa ekrana time nije potrebno i ne radi se". The cases
+     that press a row are the ones that could send it, since a row is the only place the mark
+     is in reach, so the keys of the request are read there. */
+  const send = async (user: ReturnType<typeof setupUser>) => {
+    await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
+  }
+
+  /** The proposal this case sent, as the fake server was handed it. By the verb as well as
+   *  the path, since `GET /api/teams` is asked for the name check and lands in the same list. */
+  const proposalSent = (): { city: string; country: string; name: string } => {
+    const sent = must(
+      must(queue, 'the fake server').asked.find(
+        (one) => one.path === '/api/teams' && one.init?.method === 'POST',
+      ),
+      'the proposal this case sent',
+    )
+
+    return JSON.parse(String(sent.init?.body))
+  }
+
+  /** The keys of that proposal, which is what a mark smuggled in beside the name would be. */
+  const keysSent = (): string[] => Object.keys(proposalSent()).sort()
+
+  /**
+   * The list of towns, once the codebook has answered, and given three seconds and not the
+   * twenty `test/setup.ts` gives a `findBy`. A list that never comes is a case that would
+   * then be reported as one that timed out at five, which is what a starved runner reports
+   * too; bounded under the case's own clock it says „Unable to find role=listbox" instead.
+   */
+  const theListOfTowns = (name: string) => screen.findByRole('listbox', { name }, { timeout: 3000 })
+
+  it('takes the country from a town the codebook knows, holds it there, and sends both', async () => {
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
+    await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+
+    /* Held and not merely filled in: a country the codebook brought with the town is not a
+       question any more, and a control that let it be contradicted would file a team from
+       Kranj in Croatia (PDL, 11.08.2026, „ukoliko se mesto prepozna, država se ne može
+       promeniti"). */
+    expect(screen.getByLabelText(/^Država/)).toBeDisabled()
+
+    await send(user)
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(proposalSent()).toMatchObject({ city: 'Kranj', country: 'SI' })
+  })
+
+  it('takes the country of the row that was pressed for a name two countries share', async () => {
+    /* London is British and Canadian, and the British one is first in the codebook. The row
+       that was pressed is what says which, so the country is the Canadian row's and not the
+       first London there is (PDL, 11.08.2026: „Izabran London sa spiska jeste prepoznat, jer
+       je red koji je pritisnut rekao koji je"). */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Londonski trkači')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Londo')
+    await user.click(
+      within(await theListOfTowns('Ponuđena mesta')).getByRole('option', {
+        name: /^London \(Kanada\)/,
+      }),
+    )
+
+    expect(screen.getByLabelText(/^Mesto/)).toHaveValue('London')
+    expect(screen.getByLabelText(/^Država/)).toHaveValue('CA')
+
+    await send(user)
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(proposalSent()).toMatchObject({ city: 'London', country: 'CA' })
+    expect(keysSent()).toEqual(['bio', 'city', 'country', 'link', 'name', 'note'])
+  })
+
+  it('leaves the country to be chosen for a name two countries share, typed out in full', async () => {
+    /* Typed, „London" says nothing: the codebook can mean either of two towns by it, and
+       choosing for the member is how a team ends up in the wrong country with nothing on
+       the screen saying so. The list is waited for because it is the proof that the
+       codebook has arrived: a country still empty before that proves nothing. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Londonski trkači')
+    await user.type(screen.getByLabelText(/^Mesto/), 'London')
+    await theListOfTowns('Ponuđena mesta')
+
+    const country = screen.getByLabelText(/^Država/)
+
+    expect(country).toBeEnabled()
+    expect(country).toHaveValue('')
+
+    await send(user)
+
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+
+    await user.selectOptions(country, 'CA')
+    await send(user)
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(proposalSent()).toMatchObject({ city: 'London', country: 'CA' })
+  })
+
+  it('writes the name of the row that was pressed and not the letters that were typed, brackets and all', async () => {
+    /* Two Romes in the United States carry the nearest bigger town in brackets since
+       02.10.2026 (PDL, „Odluke iz ciscenja nalaza"), and what a member who presses one has
+       typed is „Rome". The town that is sent is the row's, which is the name that tells it
+       from its namesake, and the country is the row's too: the bare name stands in Italy
+       as well, so it cannot say which it is. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Marijete')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Rome')
+    await user.click(
+      within(await theListOfTowns('Ponuđena mesta')).getByRole('option', {
+        name: /^Rome \(Marietta\)/,
+      }),
+    )
+
+    expect(screen.getByLabelText(/^Mesto/)).toHaveValue('Rome (Marietta)')
+    expect(screen.getByLabelText(/^Država/)).toHaveValue('US')
+
+    await send(user)
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(proposalSent()).toMatchObject({ city: 'Rome (Marietta)', country: 'US' })
+    expect(keysSent()).toEqual(['bio', 'city', 'country', 'link', 'name', 'note'])
+  })
+
+  it.each([
+    {
+      page: 'the Serbian one',
+      path: '/sr/novi-tim',
+      team: /Naziv tima/,
+      town: /^Mesto/,
+      country: /^Država/,
+      list: 'Ponuđena mesta',
+      send: 'Pošalji predlog',
+      done: 'Predlog je poslat',
+      typed: 'Bukur',
+      row: /^Bukurešt/,
+      written: 'Bukurešt',
+    },
+    {
+      page: 'the English one',
+      path: '/en/novi-tim',
+      team: /Team name/,
+      town: /^Town/,
+      country: /^Country/,
+      list: 'Suggested towns',
+      send: 'Send the proposal',
+      done: 'The proposal has been sent',
+      typed: 'Buchar',
+      row: /^Bucharest/,
+      written: 'Bucharest',
+    },
+  ])('writes the town the way $page writes it', async (words) => {
+    /* The name of the row is the page's own: Bukurešt on the Serbian portal and Bucharest on
+       the English one, and Novi Sad on both because Novi Sad is not called anything else
+       (owner, 11.08.2026, `data/places.ts`). Both pages, because a name taken from the wrong
+       column is right on one of them and wrong on the other. The country is Romania's on both,
+       and it is the row's: on the English page the letters typed on the way spell towns of
+       other countries (Buc, then Bucha), so a country left over from them would say so. */
+    const user = setupUser()
+    renderAt(words.path, 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(words.team), 'Trkači Dunava')
+    await user.type(screen.getByLabelText(words.town), words.typed)
+    await user.click(
+      within(await theListOfTowns(words.list)).getByRole('option', { name: words.row }),
+    )
+
+    expect(screen.getByLabelText(words.town)).toHaveValue(words.written)
+    expect(screen.getByLabelText(words.country)).toHaveValue('RO')
+
+    await user.click(screen.getByRole('button', { name: words.send }))
+    await screen.findByRole('heading', { name: words.done })
+
+    expect(proposalSent()).toMatchObject({ city: words.written, country: 'RO' })
+  })
+
+  it('takes a town the codebook has never heard of, with the country chosen beside it by hand', async () => {
+    /* A hamlet of two hundred people, which is exactly what the field is allowed to take. The
+       country is the member's answer here and the only one there is, and it is Bosnia's so
+       that a request which said Serbia whatever was chosen would not pass. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači sa brda')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Zaseok pod brdom')
+
+    const country = screen.getByLabelText(/^Država/)
+
+    expect(country).toBeEnabled()
+
+    await user.selectOptions(country, 'BA')
+    await send(user)
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(proposalSent()).toMatchObject({ city: 'Zaseok pod brdom', country: 'BA' })
+  })
+
+  it('refuses a town typed by hand with no country chosen, and points at the country', async () => {
+    /* The rule that used to stand on a country field of its own and now stands on the town
+       (`forms/validate.ts`): a town the codebook does not know leaves the country as the
+       form opened it, which is empty, and a team founded in no country at all is what the
+       server refuses with `theFormIsNotComplete`. Said at the door, and said on the control
+       that has to be answered. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači sa brda')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Zaseok pod brdom')
+    await send(user)
+
+    const country = screen.getByLabelText(/^Država/)
+
+    expect(screen.getByText('Izaberi državu uz mesto.')).toBeVisible()
+    expect(country).toHaveAttribute('aria-invalid', 'true')
+    /* And the town is no longer the one being blamed for it. */
+    expect(screen.getByLabelText(/^Mesto/)).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.queryByRole('heading', { name: 'Predlog je poslat' })).toBeNull()
+
+    await user.selectOptions(country, 'BA')
+    await send(user)
+
+    expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
+    expect(proposalSent()).toMatchObject({ city: 'Zaseok pod brdom', country: 'BA' })
+  })
+
+  it('lets a town the codebook knows overrule a country that was chosen by hand before it', async () => {
+    /* The order the two are answered in is the member's and not the form's. A country chosen
+       while there was no town is a guess about a town not typed yet, and the codebook's word
+       about the town that then is typed is the one that stands (PDL, 11.08.2026). Chosen
+       the other way round the country would be Bosnia's and the team's town Kranj's. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
+
+    const country = screen.getByLabelText(/^Država/)
+
+    await user.selectOptions(country, 'BA')
+
+    expect(country).toHaveValue('BA')
+
+    await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+
+    expect(country).toBeDisabled()
+
+    await send(user)
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(proposalSent()).toMatchObject({ city: 'Kranj', country: 'SI' })
+  })
+
+  it('leaves the country standing when the town is typed over by one the codebook does not know', async () => {
+    /* Left as it was, and on the screen, and open to be changed (owner, 11.08.2026): it used
+       to be cleared back when it was written and never shown, and what stands there now is
+       what will be sent. The other way to read this form is a country that empties itself
+       under a member who is correcting a typo. */
+    const user = setupUser()
+    renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+    await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači sa brda')
+    await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+
+    const town = screen.getByLabelText(/^Mesto/)
+
+    await user.clear(town)
+    await user.type(town, 'Zaseok pod brdom')
+
+    const country = screen.getByLabelText(/^Država/)
+
+    expect(country).toHaveValue('SI')
+    expect(country).toBeEnabled()
+
+    await user.selectOptions(country, 'BA')
+    await send(user)
+    await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+    expect(proposalSent()).toMatchObject({ city: 'Zaseok pod brdom', country: 'BA' })
+  })
+
+  it('goes on when the codebook cannot be fetched, the town a plain box and the country chosen by hand', async () => {
+    /* PDL, 03.10.2026, answered by the owner out of the options he was shown, on whether
+       the towns count as a list that has to say it cannot be loaded: „Mesta: NE ... kad
+       sifarnik ne stigne, polje ostaje obicno polje za tekst koje i dalje prima ukucano
+       mesto, pa clan nije zaglavljen". So nothing is said and nothing is offered, and the
+       country is the hand's: Croatia's here, so that it cannot be mistaken for anything the
+       town said. */
+    const server = serverThat((path) => (path === '/api/places' ? answeredWith(500) : null))
+
+    try {
+      const user = setupUser()
+      renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
+
+      await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
+      /* The request goes out on the second letter, so seeing it asked for is seeing the
+         refusal on its way, and nothing the answer could bring is left to arrive later. */
+      await waitFor(
+        () => {
+          expect(server.asked.some((one) => one.path === '/api/places')).toBe(true)
+        },
+        { timeout: 3000 },
+      )
+
+      const country = screen.getByLabelText(/^Država/)
+
+      /* Named, because the language menu in the header is a listbox as well. */
+      expect(screen.queryByRole('listbox', { name: 'Ponuđena mesta' })).toBeNull()
+      expect(country).toBeEnabled()
+      expect(country).toHaveValue('')
+
+      await user.selectOptions(country, 'HR')
+      await send(user)
+      await screen.findByRole('heading', { name: 'Predlog je poslat' })
+
+      expect(proposalSent()).toMatchObject({ city: 'Čačak', country: 'HR' })
     } finally {
       server.stop()
     }
@@ -398,8 +756,7 @@ describe('a member who founds a team', () => {
     const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY, <Saved />)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
@@ -439,8 +796,7 @@ describe('a member who founds a team', () => {
 describe('a member who has founded one team', () => {
   const found = async (user: ReturnType<typeof setupUser>, name: string) => {
     await user.type(await screen.findByLabelText(/Naziv tima/), name)
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
     asIfNewlyLoaded()
@@ -720,8 +1076,7 @@ describe('what the screen promises a member', () => {
 
     await router.navigate('/sr/novi-tim')
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
@@ -737,8 +1092,7 @@ describe('what the screen promises a member', () => {
     const { router } = renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
@@ -761,8 +1115,7 @@ describe('a name a team in the league already answers to', () => {
        already holds as "Dunavski trkači": the check is on the address the name
        makes, so neither of those two is a different team. */
     await user.type(await screen.findByLabelText(/Naziv tima/), 'dunavski TRKACI')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     /* Including the sentence that says why this counts as the same name. Told
@@ -780,8 +1133,7 @@ describe('a name a team in the league already answers to', () => {
     renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Дунавски тркачи')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Novi Sad')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Novi Sad', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     expect(screen.getByText(/ćirilica i latinica su isto pismo/)).toBeVisible()
@@ -798,8 +1150,7 @@ describe('a name that makes no address at all', () => {
     renderAt('/sr/novi-tim', 'competitor', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), '???')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Niš', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     expect(screen.getByText(/ne može napraviti adresa strane tima/)).toBeVisible()
@@ -820,8 +1171,7 @@ describe('a proposal from somebody the member list does not hold', () => {
     const { router } = renderAt('/sr/novi-tim', 'superadmin', '999999', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     expect(await screen.findByRole('heading', { name: 'Predlog je poslat' })).toBeVisible()
@@ -844,8 +1194,7 @@ describe('the queue of new teams', () => {
     const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -881,14 +1230,15 @@ describe('the queue of new teams', () => {
        from countries.json, which holds two hundred and fifty two, so a team from
        Slovenia reached the moderator as the words `country.SI` (countryName).
 
-       Slovenia rather than Serbia on purpose: every other flow here picks RS,
-       which the five happened to hold, so all of them passed either way. */
+       Slovenia rather than Serbia on purpose: every other flow here ends on RS,
+       which the five happened to hold, so all of them passed either way. The
+       country is the one the codebook writes beside Kranj and nobody chooses it
+       any more (PDL, 03.10.2026), so the case waits for it and does not pick it. */
     const user = setupUser()
     const { router } = renderAt('/sr/novi-tim', 'superadmin', '000002', undefined, DAY)
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Kranjski tekači')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Kranj')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'SI')
+    await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo Julijske Alpe.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
@@ -936,8 +1286,7 @@ describe('the queue of new teams', () => {
 
     await router.navigate('/sr/novi-tim')
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
@@ -955,8 +1304,7 @@ describe('a proposal a moderator accepts', () => {
      and that member is told in the inbox. */
   const propose = async (user: ReturnType<typeof setupUser>, name: string) => {
     await user.type(await screen.findByLabelText(/Naziv tima/), name)
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
     asIfNewlyLoaded()
@@ -1436,8 +1784,7 @@ describe('what a moderator may do before accepting a proposal', () => {
     await router.navigate('/sr/novi-tim')
     await screen.findByRole('button', { name: 'Pošalji predlog' })
     await user.type(screen.getByLabelText(/Naziv tima/), 'Timočka trkačka družina')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Zaječar')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Zaječar', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
     expect(screen.getByText(/već postoji u ligi/)).toBeVisible()

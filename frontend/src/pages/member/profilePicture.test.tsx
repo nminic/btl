@@ -9,6 +9,7 @@ import { measurePicture } from '../../test/picture'
 import { renderAt } from '../../test/render'
 import { type Asked, did, refused, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
+import { typeATownTheCodebookKnows } from '../../test/town'
 import { setupUser } from '../../test/user'
 import { AS_FINE_AS_THE_COLUMN } from './photoWrites'
 
@@ -367,8 +368,7 @@ describe('the picture on a profile, changed later', () => {
     const { router } = renderAt('/sr/novi-tim', 'competitor', '000002', undefined, '2026-10-15')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
     await screen.findByRole('heading', { name: 'Predlog je poslat' })
 
