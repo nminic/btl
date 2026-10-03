@@ -260,8 +260,12 @@ describe('a sentence with a value put into it', () => {
       '? (SendBack.tsx)',
       /* The refusal a route named, looked up by the word the server sent rather than by
          a name written out here: `refusals[answer.reason]`. Which sentence that is
-         cannot be read off the call at all, which is the case this row stands for. */
-      '? (ServerSaid.tsx)',
+         cannot be read off the call at all, which is the case this row stands for.
+         It stood under `ServerSaid.tsx` until 03.10.2026, when the working out of the
+         sentence moved, unchanged, into `wordsFor` in this file, so the list of races an
+         event's press did not save can say it without an alert per race
+         (`admin/EventRaces.tsx`); `ServerSaid` calls it and has no such call left. */
+      '? (serverWords.ts)',
       /* „Izbaci trku {race} iz lige": the race is named by `raceLabel`, which writes the
          race's own name and adds what parts it from the races beside it. No case to be
          wrong in - it stands after „trku" as the thing being named, and a proper name in
@@ -287,6 +291,12 @@ describe('a sentence with a value put into it', () => {
          number: a year written in figures has no case to be wrong in. */
       'admin.noEventsOfSeason',
       'admin.ofMany',
+      /* „Trka {name} ({date}) nije obrisana", said under the table of races for a race an
+         event's press meant to take away and the route kept (owner, 03.10.2026, „Događaj
+         ostaje, trke čekaju"). The name is the race's own and stands as the subject, in the
+         nominative its name is written in, so it has no case to be wrong in; and the day is
+         written in figures, inside the brackets, with no word for the month. */
+      'admin.race.notDeleted <- formatShortDate',
       'admin.racesOf',
       'admin.referralOpen',
       'admin.referralRunning',
@@ -416,7 +426,7 @@ describe('a sentence with a value put into it', () => {
          cannot be written into the words. The number of an answer that is not one of the
          shapes the portal reads is the same kind of value, and its sentence is chosen at
          run time (`pages/account/serverWords.ts`), so it stands under the two files that
-         ask for it, `? (ServerSaid.tsx)` and `? (PendingQueue.tsx)`, and not under a name
+         ask for it, `? (serverWords.ts)` and `? (PendingQueue.tsx)`, and not under a name
          of its own: `server.wrong` stood here until 02.10.2026, when the last screen that
          wrote its key into a call went through that function instead. */
       'server.refused',

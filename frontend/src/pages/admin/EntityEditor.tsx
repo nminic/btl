@@ -60,6 +60,7 @@ export function EntityEditor({
   titleKey,
   save,
   form: drawn,
+  fixed,
 }: {
   entity: EntityDef
   editing: Editing
@@ -162,6 +163,19 @@ export function EntityEditor({
    * is not asked stays as it was.
    */
   form?: FormDef
+  /**
+   * FIELDS THE READER MAY NOT CHANGE RIGHT NOW, handed through to the form as they are
+   * (`FormRenderer`'s own `fixed`, whose one reader until 03.10.2026 was the correction of a
+   * result, „sve osim trke").
+   *
+   * <p>One screen hands any: the events, while an event is already saved and some of its races
+   * still wait (owner, 03.10.2026, „Događaj ostaje, trke čekaju": a press after that sends only
+   * the races). A field left open then would take a change that no press sends, and lose it
+   * without a word, so every field of the event is held where it was saved. Left out, nothing
+   * about the other four entities this editor draws moves, which is the condition `save`
+   * above was written under as well.
+   */
+  fixed?: string[]
 }) {
   const { t } = useI18n()
   const { creations, create, editRecord } = useSession()
@@ -370,6 +384,7 @@ export function EntityEditor({
         beneath={beneath}
         alsoRefuses={alsoRefuses}
         steps={steps}
+        fixed={fixed}
         onSubmit={(values) => void handleSubmit(values)}
       />
 

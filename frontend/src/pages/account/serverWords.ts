@@ -1,3 +1,7 @@
+import type { Translate } from '../../i18n/context'
+import type { TranslateParams } from '../../i18n/translate'
+import type { Answer } from './askTheServer'
+
 /**
  * WHICH SENTENCE AN ANSWER THAT CARRIED A NUMBER AND NO REASON GETS, DECIDED IN ONE PLACE.
  *
@@ -39,4 +43,58 @@
  */
 export function whatABareNumberSays(status: number): 'server.malformed' | 'server.wrong' {
   return status === 400 ? 'server.malformed' : 'server.wrong'
+}
+
+/**
+ * WHAT AN ANSWER THAT WAS NOT „IT WAS DONE" SAYS, AS ONE SENTENCE AND NOTHING AROUND IT.
+ *
+ * <p>The whole of what `ServerSaid` used to work out inside itself, moved here on 03.10.2026 and
+ * not copied: `ServerSaid` calls this and draws the sentence as an alert, and the list of races
+ * that were not saved (`admin/EventRaces.tsx`) calls it and draws each sentence as one item of a
+ * list. That list is why it moved. After one press can refuse several races (owner, 03.10.2026,
+ * „Događaj ostaje, trke čekaju"), each refusal is named beside its race, and an alert per race
+ * would be read out as many times as there are races, over the one sentence that says the event
+ * is saved. The reasons below are the ones `ServerSaid` gave, unchanged.
+ *
+ * <p><b>`Object.hasOwn` and never `refusals[reason]` on its own</b>, because the word comes off
+ * the wire: a server answering `constructor`, `toString`, `valueOf` or `hasOwnProperty` is handed
+ * something every object has, and what comes back is a FUNCTION rather than `undefined`. Handed
+ * to `translate`, that takes the reader's whole panel down to `ErrorBoundary` instead of telling
+ * him what the server said. `refusals.test.ts` asks the same question the same way.
+ *
+ * <p><b>A route's own meaning for a bare number comes first</b>, found the same way, and a number
+ * the route did not name falls to `whatABareNumberSays` above.
+ *
+ * @param answer   everything but „done": a screen that succeeded draws its own words
+ * @param refusals the reasons the screen's own route can name, each to a key in the dictionary
+ * @param t        the reader's dictionary
+ * @param numbers  the bare numbers the route gives a meaning to, each to a key
+ * @param params   what those sentences interpolate, where they interpolate anything
+ */
+export function wordsFor(
+  answer: Exclude<Answer, { got: 'done' }>,
+  refusals: Record<string, string>,
+  t: Translate,
+  numbers: Record<number, string> = {},
+  params: TranslateParams = {},
+): string {
+  if (answer.got === 'refused') {
+    const known = Object.hasOwn(refusals, answer.reason) ? refusals[answer.reason] : undefined
+
+    return known === undefined ? t('server.refused', { reason: answer.reason }) : t(known, params)
+  }
+
+  if (answer.got === 'rejected') {
+    return t('server.rejected')
+  }
+
+  if (answer.got === 'wrong') {
+    const own = Object.hasOwn(numbers, answer.status) ? numbers[answer.status] : undefined
+
+    return own === undefined
+      ? t(whatABareNumberSays(answer.status), { status: answer.status })
+      : t(own, params)
+  }
+
+  return t('server.nothing')
 }

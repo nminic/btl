@@ -1178,7 +1178,9 @@
         },
         "notWhole": "Upiši ceo broj bez tačke i zareza: 1200, a ne 1.200.",
         "outOfBounds": "Dozvoljene su vrednosti od {least} do {most}."
-      }
+      },
+      "notSaved": "Trke koje nisu sačuvane",
+      "notDeleted": "Trka {name} ({date}) nije obrisana"
     },
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
@@ -1355,7 +1357,8 @@
     },
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
     "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
-    "eventSavedRacesRefused": "Događaj je sačuvan, ali jedna njegova trka nije. Otvori događaj pa proveri trke.",
+    "eventSavedRacesRefused": "Događaj je sačuvan. Trke koje nisu sačuvane označene su ispod tabele; ispravi ih pa pritisni Sačuvaj. Šalju se samo trke.",
+    "eventSavedRacesKept": "Događaj je sačuvan. Trke koje nisu obrisane navedene su ispod polja događaja; pritisni Sačuvaj da se brisanje pokuša ponovo. Šalju se samo trke.",
     "eventDeleteTakes": {
       "one": "Ovim brišeš i {count} rezultat.",
       "few": "Ovim brišeš i {count} rezultata.",
