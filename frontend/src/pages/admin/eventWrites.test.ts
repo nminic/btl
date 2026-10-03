@@ -106,8 +106,13 @@ describe('what a race being written carries', () => {
     const timed = raceUpsertFrom({ ...row, kind: 'time', limitHours: '24' }, '77')
 
     expect(timed.limitSeconds).toBe(86_400)
-    /* And nought where the race is not run against a limit at all. */
-    expect(raceUpsertFrom(row, '77').limitSeconds).toBe(0)
+    /* And NOTHING where the race is not run against a limit at all, and the same for a length
+       on a race that does not fix one. This said nought until 03.10.2026, and nought is what
+       the route refuses: a race of a length sent with `"limitSeconds": 0` is answered
+       `theLimitBelongsToATimedRace`, which is the 400 the owner met on QA. The record still
+       carries nought, and the route is what writes it there. */
+    expect(raceUpsertFrom(row, '77').limitSeconds).toBeNull()
+    expect(timed.distanceKm).toBeNull()
   })
 })
 
