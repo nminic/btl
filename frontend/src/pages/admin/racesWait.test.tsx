@@ -930,4 +930,603 @@ describe('an event whose races wait', () => {
       [],
     )
   }, SLOW)
+
+  /**
+   * AN EVENT OPENED FROM THE LIST HOLDS ITS RACES AS THEY ARE FILED AND MARKS NO ROW OF ITS OWN, after
+   * a form that went away with its address (review of PR 483, round 2, finding V2).
+   *
+   * <p>Round 1 made `onNew` and `onOpen` forget what the form before them held (`forgetTheForm`), and
+   * its cases asked it of `onNew` only. Putting `onOpen` back to forgetting the wait and the list
+   * alone left all 107 cases green, and what it left standing was two of the five things: the table
+   * the form held, and the sign that its last press was refused over a row.
+   *
+   * <p>Both cases open the SAME kind of form the reader came from, an event with races, because the
+   * table is held by the event it was lined up under: the first opens the very event whose table was
+   * changed (`held.of` is that event's identity, so a table left standing is read as the event's
+   * own), and the second opens another one.
+   */
+  it('opens the event again from the list with its races as they are filed, after a form that took one of them off its table went away with its address', async () => {
+    const { event, races } = await aServedEventWithRaces()
+    const user = setupUser()
+
+    /* Read before the press: a save that takes a race away waits for the results (`alsoRefuses`), and
+       this case is about what is opened afterwards and not about that wait. */
+    await loadResource(RESULTS)
+
+    const { router } = renderAt(
+      `/sr/administracija/dogadjaji?izmena=${String(event.id)}`,
+      'superadmin',
+    )
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Obriši 1. trku' }))
+    expect(screen.getAllByLabelText(/^Dužina/)).toHaveLength(races.length - 1)
+    await act(async () => {
+      await router.navigate('/sr/administracija/dogadjaji')
+    })
+    await openTheRowOf(user, event)
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    expect(screen.getAllByLabelText(/^Dužina/)).toHaveLength(races.length)
+
+    await user.type(screen.getByLabelText(/^Opis događaja/), ' i još')
+
+    const before = watching.asked.length
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    /* The press that follows changes the event and writes every race over itself, and takes none away:
+       a table left as the form that went away held it would have deleted the race it had taken off. */
+    expect(writtenSince(before).filter((one) => one.startsWith('DELETE'))).toEqual([])
+  }, SLOW)
+
+  it('marks no row of an event opened from the list after a form whose last press was refused over a row went away with its address', async () => {
+    const { event } = await aServedEventWithRaces()
+    const events = await loadResource<BtlEvent[]>('events')
+    const other = must(
+      events.find((one) => one.kind === 'race' && one.id !== event.id),
+      'a second event of a race',
+    )
+    const user = setupUser()
+    const { router } = renderAt(
+      `/sr/administracija/dogadjaji?izmena=${String(event.id)}`,
+      'superadmin',
+    )
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByText(sr.admin.form.racesRefused)
+    await act(async () => {
+      await router.navigate('/sr/administracija/dogadjaji')
+    })
+    await openTheRowOf(user, other)
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    /* The row is merely unfinished, which is the ordinary state of one somebody is typing into. */
+    expect(must(screen.getAllByLabelText(/^Dužina/).at(-1), 'the new row')).toHaveAttribute(
+      'aria-invalid',
+      'false',
+    )
+  }, SLOW)
+
+  /** Opens the row of an event of the list by pressing its own button, found by its name AND its day,
+   *  because one race is run in many seasons and the name alone is many rows. */
+  async function openTheRowOf(user: Pressing, event: BtlEvent): Promise<void> {
+    const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+    await user.clear(search)
+    await user.type(search, event.name)
+
+    const row = must(
+      within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        .find((one) => (one.textContent ?? '').includes(formatShortDate(event.date, 'sr-Latn'))),
+      `the row of ${event.name} on ${event.date}`,
+    )
+
+    await user.click(within(row).getByRole('button', { name: `Otvori: ${event.name}` }))
+  }
+
+  /**
+   * A PRESS THAT IS STILL OUT WHEN THE READER LEAVES ITS FORM, AND WHAT IT MAY WRITE WHEN THE ANSWER
+   * COMES (review of PR 483, round 2, finding V1; owner, 03.10.2026: „ponovni pokušaj šalje samo trke,
+   * nikad drugi događaj").
+   *
+   * <p>Nothing stops the reader leaving while a press is out - „Nazad na spisak" is open, nothing says
+   * the press is out, and the request has no deadline - so an answer can come after he has gone back to
+   * the list, opened another form and begun to type into it. Every place the press writes after an
+   * answer asks the code whether the form it began in is still the one on the screen (`visits`,
+   * `AdminEvents.tsx`). Three things are held, and each case names the ones it holds:
+   *
+   * <ul>
+   * <li>(i) nothing the answer says is written into the form that is on the screen now: not the wait
+   * (the fields held, and a press that sends only races under another event), not the list of what was
+   * not saved, not the table, not the event it made;</li>
+   * <li>(ii) what the server TOOK is still written into this screen's list, because that is true of
+   * the server whoever is looking: the event, and the races made, taken away and changed;</li>
+   * <li>(iii) a press that was begun is finished: the requests after the one the answer is for are
+   * still sent, because stopping there would leave an event saved with some of its races, which is
+   * the very report this branch answers.</li>
+   * </ul>
+   *
+   * <p><b>The press is left both ways a form goes away</b> (the button, and the address), and the next
+   * form is opened every way there is: „Novi događaj", „Otvori" on another event and on the very
+   * event that was left, and the address. What is out is the event or a race; what comes back is a
+   * refusal of a race, a refusal of a deletion, a refusal of the event and every race taken.
+   *
+   * <p><b>The setups keep apart what a wrong answer would share.</b> The copy's event, its two races
+   * and the event a new form makes each have an identity of their own (9401, 9301, 9302, 9402), so a
+   * request sent under the wrong event is told by its address and its body; and the copy is given a
+   * name of its own, so it is found in the list and not confused with the event it was copied from.
+   * An answer that comes late is waited for to its end (`comesBack`), which is the one wait these
+   * cases need: a guard that works writes nothing, and nothing cannot be waited for.
+   */
+  describe('a press that is still out when the reader leaves its form', () => {
+    const THE_COPY = 'BBKT kopija u letu'
+    const COPY_EVENT = 9401
+    const COPY_FIRST = 9301
+    const COPY_SECOND = 9302
+    const NEW_EVENT = 9402
+
+    const eventTaken = (id: number): Response =>
+      new Response(JSON.stringify({ id, slug: `bbkt-${String(id)}` }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+
+    /**
+     * What a request that is out is answered with, and everything the press does afterwards, waited
+     * for to its end.
+     *
+     * <p>A chain of promises runs to its end before the next turn of the event loop begins, and what a
+     * press does after an answer is nothing else, so a few turns are more than it needs. Inside `act`,
+     * because what it writes is state.
+     */
+    async function comesBack(
+      release: ((one: Response) => void) | undefined,
+      one: Response,
+    ): Promise<void> {
+      await act(async () => {
+        must(release, 'a request is out')(one)
+
+        for (let turn = 0; turn < 8; turn += 1) {
+          await new Promise((done) => setTimeout(done, 0))
+        }
+      })
+    }
+
+    /** What the list of events says about the races of the event called this, on the day if given. */
+    async function racesListedFor(user: Pressing, name: string): Promise<string | null> {
+      const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+      await user.clear(search)
+      await user.type(search, name)
+
+      const row = within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        .slice(1)
+        .find((one) => (one.textContent ?? '').includes(name))
+
+      return within(must(row, `the row of ${name}`)).getAllByRole('cell')[3]?.textContent ?? null
+    }
+
+    async function openCalled(user: Pressing, name: string): Promise<void> {
+      const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+      await user.clear(search)
+      await user.type(search, name)
+      await user.click(await screen.findByRole('button', { name: `Otvori: ${name}` }))
+    }
+
+    /**
+     * A copy of event 32, given a name of its own and pressed, with ONE request of that press out, and
+     * the reader gone from its form.
+     *
+     * <p>Event 32 carries two races, so the press makes the event and then its races one after the
+     * other: what is out is either the write of the event or the second of the two races, and the
+     * copy's first race, where the press has got that far, is taken under an identity of its own.
+     * The events the press makes are answered 9401 (the copy) and 9402 (whatever form comes after),
+     * and `afterwards` is what a case says about the requests that come after the copy's own.
+     */
+    async function aCopyStillOut(
+      user: Pressing,
+      how: {
+        out: 'event' | 'second race'
+        leave: 'button' | 'address'
+        afterwards?: (path: string, init: RequestInit | undefined) => Response | null
+      },
+    ): Promise<{
+      router: ReturnType<typeof renderAt>['router']
+      answer: (one: Response) => Promise<void>
+    }> {
+      let release: ((one: Response) => void) | undefined
+      let eventPosts = 0
+      let racePosts = 0
+
+      answering = (path, init) => {
+        if (init?.method !== 'POST') {
+          return null
+        }
+
+        if (path === '/api/events') {
+          eventPosts += 1
+
+          return how.out === 'event' && eventPosts === 1
+            ? new Promise<Response>((done) => {
+                release = done
+              })
+            : eventTaken(eventPosts === 1 ? COPY_EVENT : NEW_EVENT)
+        }
+
+        if (path === '/api/races' && racePosts < 2) {
+          racePosts += 1
+
+          if (racePosts === 1) {
+            return takenAs(COPY_FIRST)
+          }
+
+          return how.out === 'second race'
+            ? new Promise<Response>((done) => {
+                release = done
+              })
+            : takenAs(COPY_SECOND)
+        }
+
+        return how.afterwards?.(path, init) ?? null
+      }
+
+      const { router } = renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      const name = screen.getByLabelText(/^Naziv događaja/)
+
+      await user.clear(name)
+      await user.type(name, THE_COPY)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(release).toBeDefined()
+      })
+
+      if (how.leave === 'button') {
+        await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      } else {
+        await act(async () => {
+          await router.navigate('/sr/administracija/dogadjaji')
+        })
+      }
+
+      return { router, answer: (one) => comesBack(release, one) }
+    }
+
+    it('does not hold a new form by the refusal that comes for the press of a copy the reader left, and the form makes its own event (i)', async () => {
+      const user = setupUser()
+      const out = await aCopyStillOut(user, { out: 'second race', leave: 'button' })
+
+      await aNewEventWith(user, 'BBKT nov u letu', [{ name: 'Prva trka', km: '10' }])
+      await out.answer(refused('theDistanceIsNotKeptExactly'))
+
+      /* Asked before anything is pressed, so a form held by that answer is said here as what it is
+         and not as a press that sends the wrong thing. */
+      expect(screen.getByLabelText(/^Naziv događaja/)).not.toHaveAttribute('aria-disabled')
+      expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      /* Its own event and its own race, under it. Held by the copy's wait, the press sent only races
+         under the COPY's event, took the copy's first race away and made no event at all, and the
+         screen said „Sačuvano". */
+      expect(writtenSince(before)).toEqual(['POST /api/events', 'POST /api/races'])
+      expect(must(whatWasSent(watching.asked.slice(before))[1], 'the race')).toContain(
+        `eventId=${String(NEW_EVENT)}`,
+      )
+    }, SLOW)
+
+    it('presses an event opened while the press of a copy was out as itself, with the change typed into it, though the copy was refused after it was opened (i)', async () => {
+      const user = setupUser()
+      const { event: other } = await aServedEventWithRaces()
+      const out = await aCopyStillOut(user, { out: 'second race', leave: 'button' })
+
+      await openTheRowOf(user, other)
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      await user.type(screen.getByLabelText(/^Opis događaja/), ' i još')
+      await out.answer(refused('theDistanceIsNotKeptExactly'))
+
+      expect(screen.getByLabelText(/^Opis događaja/)).not.toHaveAttribute('aria-disabled')
+      expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      const wrote = writtenSince(before)
+      const sent = whatWasSent(watching.asked.slice(before))
+
+      /* Its own event first, with what was typed into it: held by the copy's wait, the press sent
+         only races, so the typed words were lost, and sent them under the copy's event. */
+      expect(wrote[0]).toBe(`PUT /api/events/${String(other.id)}`)
+      expect(must(sent[0], 'the event')).toContain(`description=${other.description} i još`)
+      expect(sent.join('\n')).not.toContain(`eventId=${String(COPY_EVENT)}`)
+      expect(wrote.filter((one) => one.startsWith('DELETE'))).toEqual([])
+    }, SLOW)
+
+    it('presses the event a copy made, opened again from the list, as itself, though the copy was refused after it was opened again (i)', async () => {
+      /* The very event the press was for, which is the one reading of „the wait is for this form" that
+         is true and is still wrong: the form is another visit, and what it typed was never sent. */
+      const user = setupUser()
+      const out = await aCopyStillOut(user, { out: 'second race', leave: 'button' })
+
+      await openCalled(user, THE_COPY)
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      await user.type(screen.getByLabelText(/^Opis događaja/), 'opis iz druge posete')
+      await out.answer(refused('theDistanceIsNotKeptExactly'))
+
+      expect(screen.getByLabelText(/^Opis događaja/)).not.toHaveAttribute('aria-disabled')
+      expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      /* The event, with what was typed, and the one race that was made: the second was refused, so
+         it is not in the table. */
+      expect(writtenSince(before)).toEqual([
+        `PUT /api/events/${String(COPY_EVENT)}`,
+        `PUT /api/races/${String(COPY_FIRST)}`,
+      ])
+      expect(must(whatWasSent(watching.asked.slice(before))[0], 'the event')).toContain(
+        'opis iz druge posete',
+      )
+    }, SLOW)
+
+    it('keeps a new form waiting for its own races when the press of a copy the reader left comes back with every race taken (i)', async () => {
+      const user = setupUser()
+      let own = 0
+      const out = await aCopyStillOut(user, {
+        out: 'second race',
+        leave: 'button',
+        /* The new form's race is the third the portal sends: refused the first time, taken the next. */
+        afterwards: (path, init) => {
+          if (path !== '/api/races' || init?.method !== 'POST') {
+            return null
+          }
+
+          own += 1
+
+          return own === 1 ? refused('theDistanceIsNotKeptExactly') : takenAs(9303)
+        },
+      })
+
+      await aNewEventWith(user, 'BBKT nov u letu', [{ name: 'Prva trka', km: '10' }])
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByText(sr.admin.eventSavedRacesRefused)
+
+      const itsWait = [
+        `1. trka (Prva trka): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}`,
+      ]
+
+      expect(notSaved()).toEqual(itsWait)
+
+      await out.answer(takenAs(COPY_SECOND))
+
+      /* Still the new form, still waiting for its own race, and naming that one row and no other: the
+         copy's last race coming back taken ended the COPY's wait and nobody else's. */
+      expect(screen.getByRole('form', { name: sr.admin.form.new.events })).toBeVisible()
+      expect(screen.getByLabelText(/^Naziv događaja/)).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getAllByLabelText(/^Dužina/)).toHaveLength(1)
+      expect(notSaved()).toEqual(itsWait)
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      /* Only its race, and made as a new one: not a second event, and not written over the copy's
+         second race, whose identity the copy's answer carried. */
+      expect(writtenSince(before)).toEqual(['POST /api/races'])
+      expect(must(whatWasSent(watching.asked.slice(before))[0], 'the race')).toContain(
+        `eventId=${String(NEW_EVENT)}`,
+      )
+
+      /* (ii) And the copy is in the list with both its races, though the second came back after the
+         reader had left: what the route took is true of the route. */
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      expect(await racesListedFor(user, THE_COPY)).toBe('2')
+    }, SLOW)
+
+    it('gives a new form none of the rows of a copy whose event was still being written when the reader left, and leaves the copy in the list (i, ii, iii)', async () => {
+      const user = setupUser()
+      const out = await aCopyStillOut(user, { out: 'event', leave: 'button' })
+
+      await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+      expect(screen.queryAllByLabelText(/^Dužina/)).toHaveLength(0)
+      await out.answer(eventTaken(COPY_EVENT))
+
+      /* (iii) The press went on past the answer, and sent both races of the copy. */
+      expect(writtenSince(0)).toEqual(['POST /api/events', 'POST /api/races', 'POST /api/races'])
+
+      /* (i) And wrote none of it into the form that is open: no row of the copy, no held field, and
+         not the copy's own form, which a form that had made an event is drawn as. */
+      expect(screen.queryAllByLabelText(/^Dužina/)).toHaveLength(0)
+      expect(screen.getByLabelText(/^Naziv događaja/)).not.toHaveAttribute('aria-disabled')
+      expect(screen.getByRole('form', { name: sr.admin.form.new.events })).toBeVisible()
+
+      await user.type(screen.getByLabelText(/^Naziv događaja/), 'BBKT nov posle kopije')
+      await user.type(screen.getByLabelText(/^Datum/), '11012027')
+      await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      /* One event, on the day that was typed, and no race: a row of the copy is written under THIS
+         event, and the event follows the earliest race it has. */
+      expect(writtenSince(before)).toEqual(['POST /api/events'])
+      expect(whatWasSent(watching.asked.slice(before)).join('\n')).toContain('date=2027-01-11')
+
+      /* (ii) The copy is in the list once, though the route answered after the reader had left. */
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      expect(await rowsCalled(user, THE_COPY)).toBe(1)
+    }, SLOW)
+
+    it('names no race in a new form for a deletion the route kept after the reader left the press that asked for it, and counts the ones it took (i, ii)', async () => {
+      const { event } = await aServedEventWithRaces()
+
+      /* Read before the press: a save that takes races away waits for the results (`alsoRefuses`). */
+      await loadResource(RESULTS)
+
+      let release: ((one: Response) => void) | undefined
+      let deletions = 0
+
+      answering = (path, init) => {
+        if (init?.method !== 'DELETE' || !path.startsWith('/api/races/')) {
+          return null
+        }
+
+        deletions += 1
+
+        /* The first deletion of the press is out, and the others are answered at once. */
+        return deletions === 1
+          ? new Promise<Response>((done) => {
+              release = done
+            })
+          : null
+      }
+
+      const user = setupUser()
+
+      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      await openTheRowOf(user, event)
+      await user.selectOptions(
+        await screen.findByLabelText(/^Vrsta događaja/),
+        sr.event.kind.gathering,
+      )
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(release).toBeDefined()
+      })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      await aNewEventWith(user, 'BBKT nov u letu', [{ name: 'Prva trka', km: '10' }])
+      await comesBack(release, refused('theRaceCountsInALeagueOfItsSeason', 409))
+
+      /* A race the route kept is named by its own name and day, in whichever form is drawn, so a
+         press that was left must not name it in a form that is not its own. */
+      expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
+      expect(screen.getByLabelText(/^Naziv događaja/)).not.toHaveAttribute('aria-disabled')
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      expect(writtenSince(before)).toEqual(['POST /api/events', 'POST /api/races'])
+
+      /* (ii) The races the route did take are gone from the list of the event, and the one it kept
+         is not: one race, whatever number the event had. */
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      expect(await racesListedFor(user, event.name)).toBe('1')
+    }, SLOW)
+
+    it('goes on with the races of a press the reader left, writes what the route took into the list, and does not hold the event opened again meanwhile (ii, iii)', async () => {
+      const { event, races } = await aServedEventWithRaces()
+      const first = must(races[0], 'the first race')
+      const second = must(races[1], 'the second race')
+      let release: ((one: Response) => void) | undefined
+
+      /* The first write of the first race is the one that is out, and the press after it is not. */
+      answering = (path, init) =>
+        path === `/api/races/${String(first.id)}` && init?.method === 'PUT' && release === undefined
+          ? new Promise<Response>((done) => {
+              release = done
+            })
+          : null
+
+      const user = setupUser()
+
+      renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      const called = screen.getByLabelText('Trka, 1. trka')
+
+      await user.clear(called)
+      await user.type(called, 'Preimenovana trka')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(release).toBeDefined()
+      })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      await openTheRowOf(user, event)
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      await comesBack(release, answeredWith(204))
+
+      /* (iii) The second race was sent after the reader had left, and (ii) the name the route took for
+         the first is in the table of the event he opened again, which read it off this screen's list. */
+      expect(writtenSince(0)).toContain(`PUT /api/races/${String(second.id)}`)
+      expect(screen.getByLabelText('Trka, 1. trka')).toHaveValue('Preimenovana trka')
+      expect(screen.getByLabelText(/^Opis događaja/)).not.toHaveAttribute('aria-disabled')
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      expect(writtenSince(before)[0]).toBe(`PUT /api/events/${String(event.id)}`)
+    }, SLOW)
+
+    it('does not hold an event opened by its address after the press of a copy was left by an address and was refused in between (i)', async () => {
+      /* Left by the address, so no handler of this screen ran: the form went away and called nothing,
+         and the answer comes while the list is drawn, before anything is opened. */
+      const user = setupUser()
+      const { event: other } = await aServedEventWithRaces()
+      const out = await aCopyStillOut(user, { out: 'second race', leave: 'address' })
+
+      await out.answer(refused('theDistanceIsNotKeptExactly'))
+      await act(async () => {
+        await out.router.navigate(`/sr/administracija/dogadjaji?izmena=${String(other.id)}`)
+      })
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      expect(screen.getByLabelText(/^Opis događaja/)).not.toHaveAttribute('aria-disabled')
+      expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      expect(writtenSince(before)[0]).toBe(`PUT /api/events/${String(other.id)}`)
+    }, SLOW)
+
+    it('says nothing in the form that is open when the event of a press the reader left is refused after he left (i)', async () => {
+      /* The one answer that has nothing to write beyond a sentence, which goes back to the form that
+         asked and not to this screen. It holds that it stays so. */
+      const user = setupUser()
+      const { event: other } = await aServedEventWithRaces()
+      const out = await aCopyStillOut(user, { out: 'event', leave: 'button' })
+
+      await openTheRowOf(user, other)
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+      await out.answer(refused('theAddressIsTaken', 409))
+
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(screen.getByLabelText(/^Opis događaja/)).not.toHaveAttribute('aria-disabled')
+      expect(writtenSince(0)).toEqual(['POST /api/events'])
+
+      const before = watching.asked.length
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+
+      expect(writtenSince(before)[0]).toBe(`PUT /api/events/${String(other.id)}`)
+    }, SLOW)
+  })
 })
