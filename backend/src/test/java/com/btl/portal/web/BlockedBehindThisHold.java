@@ -55,12 +55,39 @@ final class BlockedBehindThisHold {
 	 * know which of its two requests stops on what. The closure is the shape of the queue rather
 	 * than a guess at its depth: whatever chain leads back here is counted, and nothing else can.
 	 *
-	 * <p><b>Nothing is read off {@code state} or {@code query}, and that is not a preference.</b>
-	 * Measured the same day: a backend really stopped on a row lock reports {@code state =
-	 * 'idle'} through PgJDBC's extended protocol, with {@code query} still showing its
-	 * connection's setup statement rather than the statement that is blocked. A condition
-	 * written against either never saw the two and timed out with both futures un-done. The
-	 * lock manager has no such second version of the truth.
+	 * <p><b>THE VIEW IS TAKEN AFRESH ON EVERY ASK, and the first line of the method is what makes
+	 * the rest of it true.</b> {@code pg_stat_activity} is read once per TRANSACTION: the first
+	 * statement that touches it freezes the list of backends and what each one says about itself,
+	 * and every later statement of that transaction is answered from the frozen copy. This count
+	 * always runs inside the transaction that holds the row, so without {@code
+	 * pg_stat_clear_snapshot()} it sees only the backends that already stood there at its FIRST
+	 * call, the floor each caller asserts before anything is submitted. A request that needs a
+	 * connection the pool has not opened yet is served by a backend born AFTER that call, which no
+	 * later call can list, and the lock manager is asked about the frozen pids only, so it is
+	 * never asked about that one. The count then stays short for as long as anybody waits.
+	 * Measured 03.10.2026 on {@code postgres:18.6}: a transaction that reads the view, has a new
+	 * connection opened beside it and reads again lists the same ten backends twice; after {@code
+	 * pg_stat_clear_snapshot()} it lists eleven, and so does a statement outside any transaction.
+	 *
+	 * <p><b>That, and not a deadline that was too short, is what failed five CI runs on
+	 * 03.10.2026</b>, every one in {@code FreeingTwiceAtOneInstantTest}: the one case whose
+	 * context, and so whose pool, is built fresh, and which therefore starts its first race while
+	 * the pool is still opening connections. Raising the ten seconds would have made the same
+	 * failure last longer. Reproduced by emptying the pool before every round of the same race:
+	 * without the line the first round never sees the second request, and with it forty rounds in
+	 * a row take about 130 ms each. {@code BlockedBehindThisHoldTest} holds the line in place with
+	 * two backends that cannot have existed at the first count.
+	 *
+	 * <p><b>Nothing is read off {@code state} or {@code query}, and the frozen copy is the reason,
+	 * not a quirk of the driver.</b> A backend that was idle when the transaction first read the
+	 * view and blocked on the row afterwards is listed as {@code idle}, with the text of its
+	 * connection's setup statement as its {@code query} and {@code Lock} as its wait event, all in
+	 * one row: the first two come from the copy and the third is current. Until 03.10.2026 that
+	 * row was put down to PgJDBC's extended protocol. Measured that day, the same two backends
+	 * read from outside any transaction say {@code active} and carry the statement they are
+	 * blocked on. A condition written against {@code state} or {@code query} is therefore wrong
+	 * in exactly the way the count was, and the lock manager is the one source with no frozen
+	 * copy in front of it.
 	 *
 	 * <p><b>AND THE LIMIT, measured 22.09.2026 rather than argued.</b> Put the old seed back -
 	 * every backend with {@code wait_event_type = 'Lock'} that is not this one - and the forced
@@ -76,6 +103,8 @@ final class BlockedBehindThisHold {
 	 * @param holding the client the case took its lock through, called inside that transaction
 	 */
 	static int count(JdbcClient holding) {
+		holding.sql("select pg_stat_clear_snapshot()::text").query(String.class).single();
+
 		return holding.sql("with recursive behind_this_hold(pid) as ("
 						+ " select a.pid from pg_stat_activity a"
 						+ " where pg_backend_pid() = any(pg_blocking_pids(a.pid))"
