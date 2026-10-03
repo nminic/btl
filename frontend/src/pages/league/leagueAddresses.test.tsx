@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { screen, within } from '@testing-library/react'
-import { onTestFinished, vi } from 'vitest'
+import { afterEach, beforeEach, onTestFinished, vi } from 'vitest'
 import type { League } from '../../data/types'
 import { at, must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -55,6 +55,35 @@ const LEAGUES = [
   league(2, 'Proba Planinska', '', PLANINSKA_PRIZES),
   league(3, 'Proba Brdska', BRDSKA_RULES, BRDSKA_PRIZES),
 ]
+
+/**
+ * WHAT REACT SAYS ABOUT THE KEYS OF WHAT WAS DRAWN, heard in every case of this file and not in one
+ * of them.
+ *
+ * **Measured with a mutation on 03.10.2026, and it is why this is not inside the case about the
+ * same address twice.** React gives the warning „Each child in a list should have a unique "key"
+ * prop" once for a component and then goes quiet about it for the rest of the file, so a watch put
+ * in a case that comes late hears nothing: the links of the cases before it had used the warning
+ * up. With the key taken off the link every case stayed green. Heard from the first case on, the
+ * first link that is drawn is where it is said.
+ */
+const SAID_BY_REACT: unknown[][] = []
+
+beforeEach(() => {
+  SAID_BY_REACT.length = 0
+  vi.spyOn(console, 'error').mockImplementation((...said: unknown[]) => {
+    SAID_BY_REACT.push(said)
+  })
+})
+
+afterEach(() => {
+  vi.mocked(console.error).mockRestore()
+
+  expect(
+    SAID_BY_REACT.filter(([first]) => String(first).includes('key')),
+    'React spoke about the keys of what was drawn',
+  ).toEqual([])
+})
 
 /**
  * A server in front of the disc reader that answers `GET /api/leagues` with the competitions it is
@@ -190,18 +219,16 @@ describe('an address in the terms or in the prizes of a competition', () => {
     }
   }, SLOW)
 
-  it('draws the same address twice as two links, with no warning from React about their keys', async () => {
-    const warned = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-
-    onTestFinished(() => warned.mockRestore())
+  it('draws the same address twice as two links', async () => {
     serving([league(1, 'Proba Dupla', 'www.runtrace.net pa opet www.runtrace.net', 'Nista.')])
     renderAt('/sr/lige?sezona=2027')
 
     const rules = sectionOf(await boxOf(/Proba Dupla/), 'Propozicije')
 
+    /* Two links with the same words and the same `href`. A key taken from the address would be the
+       same twice, and React says so in the warning that is heard after every case above. */
     expect(rules.getAllByRole('link')).toHaveLength(2)
-    /* A key taken from the address would have been the same twice, and a list with none says so too. */
-    expect(warned.mock.calls.filter(([first]) => String(first).includes('key'))).toEqual([])
+    expect(rules.getAllByRole('link', { name: 'www.runtrace.net' })).toHaveLength(2)
   }, SLOW)
 
   it('is drawn from what stands in the box and not from what was served, and the box being written holds the typed words', async () => {
@@ -225,9 +252,16 @@ describe('an address in the terms or in the prizes of a competition', () => {
     await user.type(typing, 'Sad pogledajte www.nova.example.')
     await user.tab()
 
+    /* Waited for the thing that says the write is over, and not for the link itself: a link that
+       never comes would be waited for until the case ran out of time, and a case that ends by
+       running out of time says nothing about what was wrong. With the box drawn from what was
+       served and not from what stands in it, the note arrives all the same and the link below is
+       asked for at once, and not there. */
+    await rules.findByRole('status')
+
     /* Another address, so that "the link it was served with" and "the link it now has" are two
        different answers, and the old one is gone. */
-    const now = await rules.findByRole('link', { name: 'www.nova.example' })
+    const now = rules.getByRole('link', { name: 'www.nova.example' })
 
     expect(now).toHaveAttribute('href', 'https://www.nova.example')
     expect(rules.queryByRole('link', { name: 'www.runtrace.net' })).toBeNull()
