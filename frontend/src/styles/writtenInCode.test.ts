@@ -249,7 +249,7 @@ describe('what a screen says in its own voice', () => {
        thinking harder about it, so it is not the list that is held here but the
        whole of what it is a list of.
 
-       Fifty eight names carry a value written out today, over nineteen hundred
+       Fifty nine names carry a value written out today, over nineteen hundred
        and ninety values (1997 on 02.10.2026, a number that moves with every
        screen), and none of them is one a reader meets. The list was sixty
        names until that day: `min`, `max` and `step` were written nowhere but
@@ -290,6 +290,13 @@ describe('what a screen says in its own voice', () => {
       'd',
       'decoding',
       'describedBy',
+      /* A DIRECTION, 03.10.2026, and it is machinery rather than speech. It carries the word
+         "ltr", which a reader never meets: what he meets is an address drawn in the order it was
+         typed. The portal's first one, and `pages/league/EditableText.tsx` is the only thing that
+         writes it, on the link it draws for an address in the terms or the prizes of a competition
+         (`pages/league/linkDirection.test.tsx` holds that every such link carries it). Same kind
+         of name as `aria-modal` above and `role` below. */
+      'dir',
       'field',
       'fill',
       'focusable',
