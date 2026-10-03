@@ -326,7 +326,9 @@ export function AdminEvents() {
    * refused, which the review measured on `main` as well.
    *
    * <p><b>What a reader who leaves gives up</b> is what waited, and none of it is handed to the
-   * next form, whichever way he left.
+   * next form, whichever way he left. The one thing this does not do is forget on the way OUT, so
+   * the browser's Back to the very address he left by finds the form as he left it (`saveOne`
+   * says what that is).
    */
   function forgetTheForm(): void {
     setJustMade(null)
@@ -763,9 +765,18 @@ export function AdminEvents() {
              * <p><b>And what a reader who leaves loses, written down rather than guarded:</b> the
              * races that were still waiting. The event stays and they do not, and nothing warns
              * him on the way out; the owner has not decided anything about leaving, so nothing new
-             * is drawn for it (coordinator, 03.10.2026). What IS guarded is that they are lost and
-             * not carried: no form opened afterwards from this list, new or an event's own, is
-             * handed any of it, whichever way he left (`forgetTheForm`).
+             * is drawn for it (coordinator, 03.10.2026). What IS guarded is that they are not
+             * carried: no form opened afterwards from this list, new or an event's own, is handed
+             * any of it, whichever way he left (`forgetTheForm`).
+             *
+             * <p><b>What is NOT guarded, measured and not assumed (review of PR 483, round 1):</b>
+             * the one way back to the very address he left by. A form opened from the address and
+             * left by it (a link to this list), then returned to by the browser's Back, is drawn
+             * again from its address, and nothing forgot on the way out: the fields are held, the
+             * table and the list of what was not saved are as he left them, and the sentence over
+             * the form is gone, because that lives in the form that was drawn. A press there sends
+             * only races, as it did. So „loses" holds for every way into ANOTHER form and not for
+             * this one.
              *
              * <p><b>The portal has no precedent for this and that is measured, not assumed.</b>
              * The one other screen that writes a record and its children in one press is
