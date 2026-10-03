@@ -1083,12 +1083,28 @@ describe('an event whose races wait', () => {
       })
 
     /**
-     * What a request that is out is answered with, and everything the press does afterwards, waited
-     * for to its end.
+     * A few turns of the event loop, which is every turn the rest of a press needs.
      *
      * <p>A chain of promises runs to its end before the next turn of the event loop begins, and what a
-     * press does after an answer is nothing else, so a few turns are more than it needs. Inside `act`,
-     * because what it writes is state.
+     * press does after an answer is nothing else, so a few turns are more than it needs.
+     */
+    async function turns(): Promise<void> {
+      for (let turn = 0; turn < 8; turn += 1) {
+        await new Promise((done) => setTimeout(done, 0))
+      }
+    }
+
+    /** What a press does while nothing is waited for, said to the end, inside `act` because what it
+     *  writes is state. For the cases that ask with `getBy` and never wait with `findBy`. */
+    async function settled(): Promise<void> {
+      await act(async () => {
+        await turns()
+      })
+    }
+
+    /**
+     * What a request that is out is answered with, and everything the press does afterwards, waited
+     * for to its end.
      */
     async function comesBack(
       release: ((one: Response) => void) | undefined,
@@ -1096,10 +1112,7 @@ describe('an event whose races wait', () => {
     ): Promise<void> {
       await act(async () => {
         must(release, 'a request is out')(one)
-
-        for (let turn = 0; turn < 8; turn += 1) {
-          await new Promise((done) => setTimeout(done, 0))
-        }
+        await turns()
       })
     }
 
@@ -1207,6 +1220,43 @@ describe('an event whose races wait', () => {
 
       return { router, answer: (one) => comesBack(release, one) }
     }
+
+    it('holds and confirms as it always did the press of a form opened after another one was left, which is a press in its own visit (the ordinary press)', async () => {
+      /* The number the press takes is not nought by now: a form was opened and left first. Waited for by
+         turns and asked with `getBy`, never `findBy`: a press that took itself for one that had been left
+         would say nothing at all, and waiting for it to say something is a case that ends by running out of
+         time and not by failing on what it saw. */
+      let racePosts = 0
+
+      answering = (path, init) => {
+        if (path !== '/api/races' || init?.method !== 'POST') {
+          return null
+        }
+
+        racePosts += 1
+
+        return racePosts === 1 ? refused('theDistanceIsNotKeptExactly') : null
+      }
+
+      const user = setupUser()
+
+      renderAt('/sr/administracija/dogadjaji', 'superadmin')
+      await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      await aNewEventWith(user, 'BBKT druga poseta', [{ name: 'Prva trka', km: '10' }])
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await settled()
+
+      expect(screen.getByLabelText(/^Naziv događaja/)).toHaveAttribute('aria-disabled', 'true')
+      expect(notSaved()).toEqual([
+        `1. trka (Prva trka): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}`,
+      ])
+
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await settled()
+
+      expect(screen.getByRole('status', { name: 'Sačuvano' })).toBeVisible()
+    }, SLOW)
 
     it('does not hold a new form by the refusal that comes for the press of a copy the reader left, and the form makes its own event (i)', async () => {
       const user = setupUser()

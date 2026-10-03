@@ -329,20 +329,30 @@ export function AdminEvents() {
    * begins (`saveOne`) and asks whether it has moved (`left`) before each write it makes after an
    * answer; where it has, it writes NOTHING into any form.
    *
-   * <p><b>Three things are written whatever the number says, and each for its own reason.</b> What
-   * the server TOOK goes into this screen's list (`setWritten`: the event, and the races made, taken
-   * away and changed), and the cache is dropped (`forgetWhatWasRead`), because that is true of the
-   * server whoever is looking: a guard on those would lose an event the route has, and the reader
-   * would enter it again and be told its address is taken by itself. A refusal or a confirmation
-   * goes back to the editor that ASKED, which is the form of this press and, where it has left, gone
-   * with nobody to read it. And the row of a race the press has just made learns its identity only
-   * if it is found among the rows held (`held`), by the row's own object, which is its own guard: a
-   * table that is not this press's does not contain it.
+   * <p><b>Four writes are made whatever the number says, and none of them reaches another form.</b>
+   * What the server TOOK goes into this screen's list (`setWritten`: the event, and the races made,
+   * taken away and changed), and the cache is dropped (`forgetWhatWasRead`): that is true of the
+   * server whoever is looking, and a guard on it would lose an event the route has, so the reader
+   * would enter it again and be told its address is taken by itself. A refusal or a confirmation goes
+   * back to the editor that ASKED, which is the form of this press and, where it has left, gone with
+   * nobody to read it. And the row of a race the press has just made learns its identity only if it
+   * is found among the rows held (`held`), by the row's own object, which is its own guard: a table
+   * that is not this press's does not contain it.
    *
    * <p><b>What a press that has been left does NOT do is stop.</b> It goes on to send what it had
    * begun to send, because stopping at the next request would leave an event saved with some of its
    * races, which is the very report the owner made on 03.10.2026. It is derived and not decided: the
    * owner has said nothing about leaving.
+   *
+   * <p><b>What this does not settle, measured on `main` as well.</b> Two presses that write the races
+   * of ONE event at once: a press that is making a race while the reader opens the same event again
+   * from the list and touches its table. The next press takes that race away, because its table never
+   * held it (`PUT` of the event, `DELETE` of the race the first press had just made, then `PUT` of the
+   * rest: the same writes on `main` and here). The cures are a table that remembers which races it was
+   * lined up with, or a „Nazad" that waits for the press, and neither is decided. And a form's address
+   * changed straight into another form's address, with no list between, is not the end of a visit,
+   * because the form does not follow the address at all (the first event's values stay under the
+   * second event's address, also measured on `main`): a fault of its own and no press's.
    */
   const visits = useRef(0)
 
