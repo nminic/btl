@@ -2,6 +2,8 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
+import { dogadjaj } from '../../forms/definitions'
+import { formatShortDate } from '../../i18n/format'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
@@ -67,11 +69,12 @@ describe('an event whose races wait', () => {
   /** The writes of a press, from the moment it was pressed. */
   const writtenSince = (from: number) => whereItWrote(watching.asked.slice(from))
 
-  /** A new event of a race, with a row of its own for every race given, each named by hand. */
+  /** A new event of a race, with a row of its own for every race given, each named by hand and,
+   *  where `day` is given (digits only, as typed into the box), run on a day of its own. */
   async function aNewEventWith(
     user: Pressing,
     name: string,
-    races: { name: string; km: string }[],
+    races: { name: string; km: string; day?: string }[],
   ): Promise<void> {
     await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
     await user.type(screen.getByLabelText(/^Naziv događaja/), name)
@@ -89,6 +92,13 @@ describe('an event whose races wait', () => {
         must(screen.getAllByLabelText(/^Dužina/).at(-1), `the length of ${race.name}`),
         race.km,
       )
+
+      if (race.day !== undefined) {
+        const day = screen.getByLabelText(`Datum, ${String(at + 1)}. trka`)
+
+        await user.clear(day)
+        await user.type(day, race.day)
+      }
     }
   }
 
@@ -456,6 +466,254 @@ describe('an event whose races wait', () => {
 
     expect(reads(), 'the races read before the press were handed out again after it').toBeGreaterThan(
       before,
+    )
+  }, SLOW)
+
+  /**
+   * A REFUSED DELETION THAT IS NOT THE FIRST, AND EVERYTHING THE PRESS STILL HAS TO SEND AFTER IT
+   * (review of PR 483, round 1).
+   *
+   * <p>The loop that takes races away and the loop that writes the rows both used to stop at the
+   * first refusal (`return answer`). Since 03.10.2026 each goes on, and the one case that held the
+   * deletions refused a single deletion, the FIRST, and read no request after it, so the branch
+   * could be put back to the old stop with every case green.
+   *
+   * <p><b>The setup keeps apart what a wrong answer would share.</b> Three races are taken away
+   * and the route refuses the SECOND of them, so the refused race is neither the first nor the
+   * last of the three (the name could otherwise be read off either end); a row is kept, so there
+   * is a write that must still go after the refusal; and every race has a name and a day of its
+   * own, so a sentence about the wrong race says the wrong name and the wrong day.
+   *
+   * <p>The races are made by the first press, which refuses the fourth, so that the form is
+   * already waiting when the reader takes three of them off the table.
+   */
+  it('goes on past a refused deletion that is not the first: the rest are taken away, the rows are written, and the race the route kept is the one named', async () => {
+    const made = { first: 9101, second: 9102, third: 9103, fourth: 9104 }
+    const takenAs = (id: number) =>
+      new Response(JSON.stringify({ id, eventDate: '', eventSlug: '' }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      })
+    const firstThree = [made.first, made.second, made.third]
+    let racePosts = 0
+
+    answering = (path, init) => {
+      if (path === '/api/races' && init?.method === 'POST') {
+        racePosts += 1
+
+        /* The first three races of the first press are taken under identities chosen here, so the
+           deletions of the next press can be told apart by name; the fourth is refused; and the
+           one written again at the next press is taken. */
+        const id = firstThree[racePosts - 1]
+
+        if (id !== undefined) {
+          return takenAs(id)
+        }
+
+        return racePosts === 4 ? refused('theDistanceIsNotKeptExactly') : takenAs(made.fourth)
+      }
+
+      return path === `/api/races/${String(made.second)}` && init?.method === 'DELETE'
+        ? refused('theRaceCountsInALeagueOfItsSeason', 409)
+        : null
+    }
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    await aNewEventWith(user, 'BBKT brisanje', [
+      { name: 'Prva trka', km: '10', day: '11012027' },
+      { name: 'Druga trka', km: '15', day: '12012027' },
+      { name: 'Treća trka', km: '21,1', day: '13012027' },
+      { name: 'Četvrta trka', km: '5', day: '14012027' },
+    ])
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByText(sr.admin.eventSavedRacesRefused)
+
+    /* The fourth is the only one the first press did not make. */
+    expect(notSaved()).toEqual([
+      `4. trka (Četvrta trka): ${sr.admin.raceSaveRefused.theDistanceIsNotKeptExactly}`,
+    ])
+
+    /* The three the press made are taken off the table, which is three deletions at the next
+       press, and the fourth stays, which is the one row it has to write. */
+    for (let removed = 0; removed < 3; removed += 1) {
+      await user.click(screen.getByRole('button', { name: 'Obriši 1. trku' }))
+    }
+
+    const before = watching.asked.length
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await waitFor(() => {
+      expect(writtenSince(before).length).toBeGreaterThanOrEqual(4)
+    })
+    await screen.findByText(sr.admin.eventSavedRacesRefused)
+
+    /* The refusal of the second deletion stopped nothing: the third was taken away after it and
+       the row was written after both, in the order the press sends them. */
+    expect(writtenSince(before)).toEqual([
+      `DELETE /api/races/${String(made.first)}`,
+      `DELETE /api/races/${String(made.second)}`,
+      `DELETE /api/races/${String(made.third)}`,
+      'POST /api/races',
+    ])
+    /* And the race the route kept is named by its own name and day: not the first of the three
+       taken away, not the last, and not the row that stayed. */
+    expect(notSaved()).toEqual([
+      `Trka Druga trka (${formatShortDate('2027-01-12', 'sr-Latn')}) nije obrisana: ${sr.admin.raceSaveRefused.theRaceCountsInALeagueOfItsSeason}`,
+    ])
+  }, SLOW)
+
+  /**
+   * THE FIELDS OF THE EVENT ARE HELD, ALL OF THEM AND NOTHING BUT THEM (review of PR 483, round 1).
+   *
+   * <p>Held where they were saved while the event's races wait, because a press then sends the
+   * races and nothing else (owner, 03.10.2026): a field left open takes a change no press sends.
+   * The two cases that held it asked about two fields, the name and the description, and four
+   * mutations went through them: the kind out of the held set, the town, the day, and the one
+   * token that draws the held set from the copy's narrower form for every event. Left open, the
+   * kind turns the retry into one that takes every race away from an event that stays a race.
+   *
+   * <p><b>The question is put to the form and not to a list.</b> What the form draws is asked of
+   * the form (`elements`, which is the platform's own answer, so a field added tomorrow or a
+   * control a field draws beside itself is in it without anybody remembering it), and what is held
+   * is asked of the controls (`aria-disabled`). A list of names written here would be a second
+   * answer to a question the form already has, and the day it fell short, this would be as short
+   * as the code.
+   *
+   * <p>Three things are held against each other: that the wait is what holds them (some control is
+   * open before anything waits, so a form that held everything always would not pass), that the
+   * same controls are drawn while it does (so the held set cannot match the drawn set by the form
+   * drawing less), and that every one of them is held and no control of the table of races is,
+   * because the rows are what the retry sends. And, where the form is the whole definition, that
+   * it draws a control for every field the definition has, so a set that is empty or short does
+   * not pass for a set that is whole.
+   *
+   * <p>Not that NOTHING is held before: the country beside a town the portal knows is held by a
+   * rule of its own (`forms/PlaceField.tsx`, the town carries it), wait or no wait.
+   */
+  function controlsOf(title: string): { event: HTMLElement[]; races: HTMLElement[] } {
+    const named = screen.getByRole('form', { name: title })
+    /* Looked at and not asserted into a shape (ADL A14): a `form` role on anything but a form
+       would answer no controls here, and that is a failure this says out loud. */
+    const form = must(named instanceof HTMLFormElement ? named : null, `a form called ${title}`)
+    const table = screen.getByRole('region', { name: /^Trke na događaju/ })
+    const every = Array.from(form.elements).filter(
+      (one): one is HTMLElement => one instanceof HTMLElement,
+    )
+
+    return {
+      event: every.filter(
+        (one) =>
+          !table.contains(one) && !(one instanceof HTMLButtonElement && one.type === 'submit'),
+      ),
+      races: every.filter((one) => table.contains(one)),
+    }
+  }
+
+  const describing = (control: HTMLElement): string =>
+    `${control.tagName.toLowerCase()} ${control.getAttribute('name') ?? control.getAttribute('aria-label') ?? control.id}`
+
+  const isHeld = (control: HTMLElement): boolean => control.getAttribute('aria-disabled') === 'true'
+
+  async function holdsExactlyWhatTheEventDraws(
+    title: string,
+    makeRacesWait: () => Promise<void>,
+    fields: readonly string[],
+  ): Promise<void> {
+    const open = controlsOf(title)
+    const drawn = open.event.map(describing)
+
+    expect(drawn.length, 'the form draws no control, so nothing below measures anything').toBeGreaterThan(0)
+    expect(
+      open.event.map((one) => one.getAttribute('name')),
+      'the form does not draw a control for every field of its definition',
+    ).toEqual(expect.arrayContaining([...fields]))
+    expect(
+      open.event.filter((one) => !isHeld(one)).length,
+      'every control is held before anything waits, so the wait is not what holds them',
+    ).toBeGreaterThan(0)
+
+    await makeRacesWait()
+
+    const waiting = controlsOf(title)
+
+    expect(
+      waiting.event.map(describing),
+      'the form draws other controls while races wait, so the held set could match it by drawing less',
+    ).toEqual(drawn)
+    expect(
+      waiting.event.filter(isHeld).map(describing),
+      'the controls held while races wait are not the controls the form draws',
+    ).toEqual(drawn)
+    expect(waiting.races.length, 'the table of races has no control').toBeGreaterThan(0)
+    expect(
+      waiting.races.filter(isHeld).map(describing),
+      'a control of the races is held, and the rows are what the next press sends',
+    ).toEqual([])
+  }
+
+  it('holds every control of a new event while its races wait, and no control of its races', async () => {
+    answering = (path, init) =>
+      path === '/api/races' && init?.method === 'POST'
+        ? refused('theDistanceIsNotKeptExactly')
+        : null
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji', 'superadmin')
+    await aNewEventWith(user, 'BBKT zakljucan', [{ name: 'Prva trka', km: '10' }])
+    await holdsExactlyWhatTheEventDraws(
+      sr.admin.form.new.events,
+      async () => {
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+        await screen.findByText(sr.admin.eventSavedRacesRefused)
+      },
+      dogadjaj.fields.map((one) => one.name),
+    )
+  }, SLOW)
+
+  it('holds every control of an event that stands while its races wait, and no control of its races', async () => {
+    const { event } = await aServedEventWithRaces()
+
+    answering = (path, init) =>
+      path.startsWith('/api/races/') && init?.method === 'PUT'
+        ? refused('theAddressIsTaken', 409)
+        : null
+
+    const user = setupUser()
+
+    renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await holdsExactlyWhatTheEventDraws(
+      sr.admin.form.edit.events,
+      async () => {
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+        await screen.findByText(sr.admin.eventSavedRacesRefused)
+      },
+      dogadjaj.fields.map((one) => one.name),
+    )
+  }, SLOW)
+
+  it('holds every control of a copy while its races wait, and no control of its races', async () => {
+    /* The copy's form is narrower (no town, no country, no kind: owner, 23.08.2026), so it has
+       no definition of its own to be asked for fields; what it draws is what it holds. */
+    answering = (path, init) =>
+      path === '/api/races' && init?.method === 'POST'
+        ? refused('theDistanceIsNotKeptExactly')
+        : null
+
+    const user = setupUser()
+
+    renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await holdsExactlyWhatTheEventDraws(
+      sr.admin.form.copying,
+      async () => {
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+        await screen.findByText(sr.admin.eventSavedRacesRefused)
+      },
+      [],
     )
   }, SLOW)
 })
