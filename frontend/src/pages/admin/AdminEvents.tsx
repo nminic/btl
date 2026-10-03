@@ -304,6 +304,38 @@ export function AdminEvents() {
     setRacesWait(event !== null)
   }
 
+  /**
+   * EVERYTHING A FORM LEAVES BEHIND ON THIS SCREEN, forgotten in the one place, so that no way into
+   * the next form can forget less than another.
+   *
+   * <p>A form holds five things that belong to its visit and to no other: the event it has just
+   * made (`justMade`), the table of races it holds (`held`), whether its last press was refused
+   * over a row (`refused`), whether its event is saved and its races wait (`waitFor`), and what its
+   * last press did not save (`notSaved`). A form opened from the address (`?kopija=`, `?izmena=`)
+   * goes away with the address - the browser's Back, a link to this list - and calls nothing of its
+   * own, so the way OUT is not where the next form can be given a clean start; the way IN is.
+   * `onDone`, `onNew` and `onOpen` are every way into or out of a form on this screen, and each
+   * calls this.
+   *
+   * <p><b>Review of PR 483, round 1, finding V2.</b> `onNew` and `onOpen` forgot two of the five,
+   * the table and the sign that the last press was refused: a new form opened after a copy whose
+   * races waited held the copy's rows, wrote them under the NEW event, and the event followed the
+   * day of the first of them (an event entered for 2027 stood on the day of a race of 2015, and
+   * the screen said „Sačuvano"). A copy and a new event are both the table `nov`, which is why the
+   * table was taken. The same held where the copy's first race had been taken and the second
+   * refused, which the review measured on `main` as well.
+   *
+   * <p><b>What a reader who leaves gives up</b> is what waited, and none of it is handed to the
+   * next form, whichever way he left.
+   */
+  function forgetTheForm(): void {
+    setJustMade(null)
+    setHeld({ of: '', rows: [] })
+    setRefused(false)
+    waitFor(null)
+    setNotSaved([])
+  }
+
   /** What just happened, for whoever is not watching the list. */
   const [said, setSaid] = useState('')
 
@@ -731,7 +763,9 @@ export function AdminEvents() {
              * <p><b>And what a reader who leaves loses, written down rather than guarded:</b> the
              * races that were still waiting. The event stays and they do not, and nothing warns
              * him on the way out; the owner has not decided anything about leaving, so nothing new
-             * is drawn for it (coordinator, 03.10.2026).
+             * is drawn for it (coordinator, 03.10.2026). What IS guarded is that they are lost and
+             * not carried: no form opened afterwards from this list, new or an event's own, is
+             * handed any of it, whichever way he left (`forgetTheForm`).
              *
              * <p><b>The portal has no precedent for this and that is measured, not assumed.</b>
              * The one other screen that writes a record and its children in one press is
@@ -859,6 +893,12 @@ export function AdminEvents() {
              * refused, the event waits under its own identity, the sentence over the form says
              * the event is saved and the races are not, and the list under the table names every
              * race that was refused and why.
+             *
+             * <p><b>Where the event draws no table, the same list stands under its fields</b> and
+             * the sentence is another one (review of PR 483, round 1, finding V1). A gathering or
+             * a training has races to take away and no table to name them in, and the sentence
+             * that sends the reader „ispod tabele" sent him nowhere. The two are told apart by the
+             * question the table itself is drawn by (`hasRaces`, in `beneath`).
              */
             async function theRacesOf(values: FormValues, event: number): Promise<Saving> {
               const refusals = await writeTheRaces(values, String(event))
@@ -870,7 +910,11 @@ export function AdminEvents() {
                 return {
                   said: (
                     <p className="field__error" role="alert">
-                      {t('admin.eventSavedRacesRefused')}
+                      {t(
+                        kindOf(values) === 'race'
+                          ? 'admin.eventSavedRacesRefused'
+                          : 'admin.eventSavedRacesKept',
+                      )}
                     </p>
                   ),
                 }
@@ -1023,10 +1067,12 @@ export function AdminEvents() {
                         onRows={setCurrent}
                         refused={refused}
                         /* Handed the kind rather than left off the screen when it is
-                           not a race: it draws nothing either way, but kept here it
+                           not a race: it draws no table either way, but kept here it
                            goes on remembering the day the rows were lined up with.
                            Taken off, it forgets, and the rows stop following the
-                           event as soon as somebody touches the kind. */
+                           event as soon as somebody touches the kind. What it draws
+                           without a table is the races the route would not take away
+                           (`notSaved`, below), which have nowhere else to be named. */
                         hasRaces={kindOf(values) === 'race'}
                         notSaved={{ rows: refusedRows, kept: keptRaces }}
                       />
@@ -1207,22 +1253,18 @@ export function AdminEvents() {
                     onCreated={setJustMade}
                     onDone={() => {
                       setChosen(null)
-                      setJustMade(null)
-                      setHeld({ of: '', rows: [] })
-                      setRefused(false)
                       /* And the address forgets it, so leaving the form and coming
                          back to this screen does not open it again. */
                       setParams({}, { replace: true })
-                      /* AND THE EVENT WHOSE RACES WAITED IS FORGOTTEN HERE TOO, not only
-                         what the form held, with what its last press did not save. Left
-                         standing, it would answer for a form that has nothing to do with it:
-                         the next event opened or entered would send only races, under the
-                         wrong event, which is the shape the ref this replaced (`madeHere`)
-                         was measured to have before leaving the form cleared it. What a
-                         reader who leaves gives up is the races that still waited - a
-                         boundary written down in `saveOne` and not guarded. */
-                      waitFor(null)
-                      setNotSaved([])
+                      /* AND WHAT THE FORM HELD IS FORGOTTEN WITH IT, all five things, by the one
+                         function every way into or out of a form calls. Left standing, the event
+                         whose races waited would answer for a form that has nothing to do with it:
+                         the next event opened or entered would send only races, under the wrong
+                         event, which is the shape the ref this replaced (`madeHere`) was measured
+                         to have before leaving the form cleared it. What a reader who leaves gives
+                         up is the races that still waited, and none of it is handed to the next
+                         form (`forgetTheForm`). */
+                      forgetTheForm()
                     }}
                   />
                 )}
@@ -1289,12 +1331,13 @@ export function AdminEvents() {
                 entity={EVENTS}
                 onNew={() => {
                   /* Same reason as `onDone`, and reachable without it: a form opened from
-                     the address (`?izmena=`) goes away when the address does - the browser's
-                     Back, a link to this list - and `onDone` is never called. A fresh "new"
-                     editor must then not inherit the event whose races waited, or its first
-                     press would send only races, under that event, and make nothing. */
-                  waitFor(null)
-                  setNotSaved([])
+                     the address (`?kopija=`, `?izmena=`) goes away when the address does - the
+                     browser's Back, a link to this list - and `onDone` is never called. A fresh
+                     "new" editor must then inherit nothing of it: not the event whose races
+                     waited, or its first press would send only races, under that event, and make
+                     nothing; and not the table the form held, or it would write the rows of a
+                     copy under the new event. */
+                  forgetTheForm()
                   setChosen({ mode: 'new' })
                 }}
               >
@@ -1372,11 +1415,10 @@ export function AdminEvents() {
                             name={one.name}
                             onOpen={() => {
                               /* Same reason as `onNew`: opening a served event must not
-                                 inherit the event whose races waited on a form that went
-                                 away without `onDone`, or its first press sends only
-                                 races, under THAT event, and never writes this one. */
-                              waitFor(null)
-                              setNotSaved([])
+                                 inherit anything of a form that went away without `onDone`,
+                                 or its first press sends only races, under THAT event, and
+                                 never writes this one. */
+                              forgetTheForm()
                               setChosen({ mode: 'one', record: one })
                             }}
                             asksWith={goingWith(one)}

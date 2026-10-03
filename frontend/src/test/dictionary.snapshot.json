@@ -1358,6 +1358,7 @@
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
     "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
     "eventSavedRacesRefused": "Događaj je sačuvan. Trke koje nisu sačuvane označene su ispod tabele; ispravi ih pa pritisni Sačuvaj. Šalju se samo trke.",
+    "eventSavedRacesKept": "Događaj je sačuvan. Trke koje nisu obrisane navedene su ispod polja događaja; pritisni Sačuvaj da se brisanje pokuša ponovo. Šalju se samo trke.",
     "eventDeleteTakes": {
       "one": "Ovim brišeš i {count} rezultat.",
       "few": "Ovim brišeš i {count} rezultata.",

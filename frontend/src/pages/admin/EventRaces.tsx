@@ -94,7 +94,8 @@ export function EventRaces({
    * Whether the event this stands under is one that has races at all.
    *
    * A gathering and a training have none (owner, 23.08.2026), so nothing of this is
-   * drawn for them. Handed in rather than left to the screen above to draw or not,
+   * drawn for them, except the list of races the route would not take away when the
+   * kind was changed (`refusals`). Handed in rather than left to the screen above to draw or not,
    * because this component remembers the day the rows were last lined up with, and
    * a component that is taken off the screen forgets: measured by a round, a date
    * changed while the table was away left every row where it was, so the same two
@@ -292,11 +293,52 @@ export function EventRaces({
     )
   }
 
+  /**
+   * WHAT THE LAST PRESS DID NOT SAVE, each race with the route's own reason (owner, 03.10.2026: the
+   * form stays open „sa trkama i jasnom porukom šta nije prošlo"), or nothing where the press
+   * saved everything.
+   *
+   * <p>Under the table like the list of cell problems above it, and drawn the same way, because
+   * both answer the same question about the same rows: what is still wrong. The one sentence that
+   * says the event IS saved is an alert over the form (`AdminEvents.tsx`); these are plain items,
+   * so a press that refused three races is read out once and not four times. A row is named by its
+   * place and by its name together, which is what tells „2. trka" from a row the reader has since
+   * moved; a race the press meant to take away and the route kept has no row left, and is named by
+   * its own name and day.
+   *
+   * <p><b>Worked out here, before the table is, because an event that draws no table has it
+   * too</b> (review of PR 483, round 1, finding V1). Saving an event of a race as a gathering or a
+   * training takes every race it had away (owner, 23.08.2026), the route may keep any of them, and
+   * where this list stood under the table a refusal of that kind was named nowhere: the reason was
+   * not on the screen, and the sentence over the form sent the reader to a table that was not
+   * there.
+   */
+  const refusals =
+    refusedHere.length === 0 && notSaved.kept.length === 0 ? null : (
+      <ul className="races__problems" aria-label={t('admin.race.notSaved')}>
+        {refusedHere.map(({ at, row, words }) => (
+          <li key={`refused-${String(at)}`}>
+            <span>
+              {t('admin.form.raceNumber', { which: String(at + 1) })} ({row.name}):{' '}
+            </span>
+            <span id={refusalId(at)}>{words}</span>
+          </li>
+        ))}
+        {notSaved.kept.map(({ named, words }, at) => (
+          <li key={`kept-${String(at)}`}>
+            <span>{named}: </span>
+            <span>{words}</span>
+          </li>
+        ))}
+      </ul>
+    )
+
   /* Nothing on the screen for an event that has no races, and yet still here: the
      hooks above go on running, so the rows keep following the event while the table
-     is away and are found as they were when the kind comes back. */
+     is away and are found as they were when the kind comes back. Except the races the
+     route would not take away, which have no table to be named in (`refusals`). */
   if (!hasRaces) {
-    return null
+    return refusals === null ? null : <div className="entity-races">{refusals}</div>
   }
 
   return (
@@ -479,34 +521,9 @@ export function EventRaces({
         </ul>
       )}
 
-      {/* WHAT THE LAST PRESS DID NOT SAVE, each race with the route's own reason (owner,
-          03.10.2026: the form stays open „sa trkama i jasnom porukom šta nije prošlo").
-
-          Under the table like the list above, and drawn the same way, because both answer the
-          same question about the same rows: what is still wrong. The one sentence that says the
-          event IS saved is an alert over the form (`AdminEvents.tsx`); these are plain items, so
-          a press that refused three races is read out once and not four times. A row is named
-          by its place and by its name together, which is what tells „2. trka" from a row the
-          reader has since moved; a race the press meant to take away and the route kept has no
-          row left, and is named by its own name and day. */}
-      {(refusedHere.length > 0 || notSaved.kept.length > 0) && (
-        <ul className="races__problems" aria-label={t('admin.race.notSaved')}>
-          {refusedHere.map(({ at, row, words }) => (
-            <li key={`refused-${String(at)}`}>
-              <span>
-                {t('admin.form.raceNumber', { which: String(at + 1) })} ({row.name}):{' '}
-              </span>
-              <span id={refusalId(at)}>{words}</span>
-            </li>
-          ))}
-          {notSaved.kept.map(({ named, words }, at) => (
-            <li key={`kept-${String(at)}`}>
-              <span>{named}: </span>
-              <span>{words}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* What the last press did not save, under the table like the list above (`refusals`,
+          worked out before the table is, because an event with no table has it too). */}
+      {refusals}
 
       {/* Opens a row rather than a form (owner, 23.08.2026: „klik na Nova trka
           otvara novi red u tabeli"), on the day the event above is showing.

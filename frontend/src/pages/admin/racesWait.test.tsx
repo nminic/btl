@@ -2,13 +2,14 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
+import { RESULTS } from '../../data/useResource'
 import { dogadjaj } from '../../forms/definitions'
 import { formatShortDate } from '../../i18n/format'
 import sr from '../../i18n/sr.json'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, refused, serverThat } from '../../test/serverAnswers'
-import { whereItWrote } from '../../test/sent'
+import { whatWasSent, whereItWrote } from '../../test/sent'
 import { SLOW } from '../../test/slow'
 import { setupUser, type Pressing } from '../../test/user'
 
@@ -68,6 +69,14 @@ describe('an event whose races wait', () => {
 
   /** The writes of a press, from the moment it was pressed. */
   const writtenSince = (from: number) => whereItWrote(watching.asked.slice(from))
+
+  /** A race the route took, under an identity the case chose, so the writes that follow can be
+   *  told apart by their address. */
+  const takenAs = (id: number): Response =>
+    new Response(JSON.stringify({ id, eventDate: '', eventSlug: '' }), {
+      status: 201,
+      headers: { 'content-type': 'application/json' },
+    })
 
   /** A new event of a race, with a row of its own for every race given, each named by hand and,
    *  where `day` is given (digits only, as typed into the box), run on a day of its own. */
@@ -470,6 +479,158 @@ describe('an event whose races wait', () => {
   }, SLOW)
 
   /**
+   * AN EVENT THAT HAS NO RACES CAN STILL BE HOLDING SOME THE ROUTE WOULD NOT TAKE AWAY (review of
+   * PR 483, round 1, finding V1).
+   *
+   * <p>A gathering and a training have no table (owner, 23.08.2026), and „u to čuvanje spada i
+   * brisanje svih trka koje su bile povezane": saving an event of a race as a gathering takes every
+   * race it had away. The list of what the press did not save was drawn under the table, so where
+   * there is no table a refused deletion was named nowhere, and the sentence over the form still
+   * sent the reader to „ispod tabele". On `main` the reason was said, by the alert of the first
+   * refusal; so this was a loss of what the reader was told, not only a missing list.
+   *
+   * <p>The first race is refused by a number with no reason in it and every other by a reason, so
+   * the reason beside each race is the reason it was refused for. The kind is changed on the open
+   * event, which is the one way a press has races to take away and a form that draws no table.
+   */
+  it('names every race the route would not take away from an event that has no races, and does not send the reader to a table that is not there', async () => {
+    const { event } = await aServedEventWithRaces()
+    const served = (await loadResource<Race[]>('races')).filter((one) => one.eventId === event.id)
+    const firstServed = must(served[0], 'the first race of the event')
+
+    /* The largest file the portal has, read before the press: a save that takes races away waits
+       for it (`alsoRefuses`), and this case is about what comes after the wait. */
+    await loadResource(RESULTS)
+    answering = (path, init) => {
+      if (!path.startsWith('/api/races/') || init?.method !== 'DELETE') {
+        return null
+      }
+
+      return path === `/api/races/${String(firstServed.id)}`
+        ? answeredWith(500)
+        : refused('theRaceCountsInALeagueOfItsSeason', 409)
+    }
+
+    const user = setupUser()
+
+    renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
+    await user.selectOptions(
+      await screen.findByLabelText(/^Vrsta događaja/),
+      sr.event.kind.gathering,
+    )
+    expect(
+      screen.queryByRole('region', { name: /^Trke na događaju/ }),
+      'a gathering draws a table of races',
+    ).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* The sentence says the event is saved and what to do, and points at no table. Waited for as
+       the alert and compared as text, so a press that said the other sentence fails on what it
+       said and not by running out of time for the one it never will. */
+    expect((await screen.findByRole('alert')).textContent).toBe(sr.admin.eventSavedRacesKept)
+    expect(sr.admin.eventSavedRacesKept).not.toContain('tabel')
+
+    /* Every race is named, beside its own reason, in the order they were sent. */
+    expect(notSaved()).toEqual(
+      served.map(
+        (race) =>
+          `Trka ${race.name} (${formatShortDate(race.date, 'sr-Latn')}) nije obrisana: ${
+            race.id === firstServed.id
+              ? sr.server.wrong.replace('{status}', '500')
+              : sr.admin.raceSaveRefused.theRaceCountsInALeagueOfItsSeason
+          }`,
+      ),
+    )
+
+    /* And the press that follows sends the races and nothing else: the same deletions, again. */
+    const before = watching.asked.length
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('alert')
+
+    expect(writtenSince(before).sort()).toEqual(
+      served.map((race) => `DELETE /api/races/${String(race.id)}`).sort(),
+    )
+  }, SLOW)
+
+  /**
+   * A NEW FORM OPENED AFTER A COPY WHOSE RACES WAITED WENT AWAY WITH ITS ADDRESS holds nothing of
+   * the copy (review of PR 483, round 1, finding V2).
+   *
+   * <p>The way out that calls nothing - the browser's Back, a link to this list - leaves the table
+   * the copy held where it was, and a copy and a new event are both the table „nov", so the next
+   * new form was handed the copy's rows. Saved, it wrote them under the NEW event, and the event
+   * followed the day of the first of them: the owner would have found an event entered for 2027 on
+   * the day of a race of 2015, and the screen said „Sačuvano".
+   *
+   * <p>Two copies of the same exit, because the table is held at two different moments: before
+   * anything is accepted, and when the first race of the press has been (the second is the one
+   * the reviewer found older than this PR). What the new form is asked is what it must NOT have
+   * and what it must send: no row, open fields, the event on the day that was typed, and no race.
+   */
+  async function leftACopyWhileWaiting(user: Pressing, firstTaken: boolean): Promise<void> {
+    let racePosts = 0
+
+    answering = (path, init) => {
+      if (path !== '/api/races' || init?.method !== 'POST') {
+        return null
+      }
+
+      racePosts += 1
+
+      return firstTaken && racePosts === 1
+        ? takenAs(9201)
+        : refused('theDistanceIsNotKeptExactly')
+    }
+
+    const { router } = renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByText(sr.admin.eventSavedRacesRefused)
+    await act(async () => {
+      await router.navigate('/sr/administracija/dogadjaji')
+    })
+    answering = () => null
+  }
+
+  async function aNewFormHoldsNothingOfThatCopy(firstTaken: boolean): Promise<void> {
+    const user = setupUser()
+
+    await leftACopyWhileWaiting(user, firstTaken)
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+
+    expect(
+      screen.queryAllByLabelText(/^Dužina/),
+      'the new form opened holding rows of the copy',
+    ).toHaveLength(0)
+    expect(screen.getByLabelText(/^Naziv događaja/)).not.toHaveAttribute('aria-disabled')
+    expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
+
+    await user.type(screen.getByLabelText(/^Naziv događaja/), 'BBKT posle kopije')
+    await user.type(screen.getByLabelText(/^Datum/), '11012027')
+    await user.type(screen.getByLabelText(/^Mesto/), 'Niš')
+
+    const before = watching.asked.length
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByRole('status', { name: 'Sačuvano' })
+
+    /* One event and not one race, on the day that was typed: a row inherited from the copy is
+       written under this event, and the event follows the earliest race it has. */
+    expect(writtenSince(before)).toEqual(['POST /api/events'])
+    expect(whatWasSent(watching.asked.slice(before)).join('\n')).toContain('date=2027-01-11')
+  }
+
+  it('opens a new form empty after a copy whose races waited went away with its address', async () => {
+    await aNewFormHoldsNothingOfThatCopy(false)
+  }, SLOW)
+
+  it('opens a new form empty after a copy whose first race was taken and whose second waited went away with its address', async () => {
+    await aNewFormHoldsNothingOfThatCopy(true)
+  }, SLOW)
+
+  /**
    * A REFUSED DELETION THAT IS NOT THE FIRST, AND EVERYTHING THE PRESS STILL HAS TO SEND AFTER IT
    * (review of PR 483, round 1).
    *
@@ -489,11 +650,6 @@ describe('an event whose races wait', () => {
    */
   it('goes on past a refused deletion that is not the first: the rest are taken away, the rows are written, and the race the route kept is the one named', async () => {
     const made = { first: 9101, second: 9102, third: 9103, fourth: 9104 }
-    const takenAs = (id: number) =>
-      new Response(JSON.stringify({ id, eventDate: '', eventSlug: '' }), {
-        status: 201,
-        headers: { 'content-type': 'application/json' },
-      })
     const firstThree = [made.first, made.second, made.third]
     let racePosts = 0
 
