@@ -33,11 +33,11 @@ import static org.assertj.core.api.Assertions.assertThat;
  * transaction that holds a row, and that view is frozen at the first read of a transaction. The
  * cases that ask the question assert that the answer is nought and only then submit their
  * requests, so every backend a request is served by must have existed at that first read, which
- * is true while the pool is full and false on the run where it is not: five CI runs of
- * 03.10.2026 lost ten seconds each to it, in the one case whose context is built fresh. No case
- * that goes through the pool can make that run happen on purpose, because it does not decide how
- * many connections the pool has opened. This one does, by giving its two waiters connections of
- * their own.
+ * is true while the pool is full and false on the run where it is not: the CI attempts of
+ * 03.10.2026 that failed lost ten seconds each to it, in the one case whose context is built
+ * fresh. No case that goes through the pool can make that run happen on purpose, because it does
+ * not decide how many connections the pool has opened. This one does, by giving its two waiters
+ * connections of their own.
  *
  * <p><b>THE PREMISE IS ASSERTED AND NOT LEFT TO THE ORDER OF THE LINES.</b> The pids of the two
  * waiters are read and compared with the ones the view held at the first count, so a later change

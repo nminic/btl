@@ -69,8 +69,8 @@ final class BlockedBehindThisHold {
 	 * connection opened beside it and reads again lists the same ten backends twice; after {@code
 	 * pg_stat_clear_snapshot()} it lists eleven, and so does a statement outside any transaction.
 	 *
-	 * <p><b>That, and not a deadline that was too short, is what failed five CI runs on
-	 * 03.10.2026</b>, every one in {@code FreeingTwiceAtOneInstantTest}: the one case whose
+	 * <p><b>That, and not a deadline that was too short, is what failed CI over and over on
+	 * 03.10.2026</b>, every time in {@code FreeingTwiceAtOneInstantTest}: the one case whose
 	 * context, and so whose pool, is built fresh, and which therefore starts its first race while
 	 * the pool is still opening connections. Raising the ten seconds would have made the same
 	 * failure last longer. Reproduced by emptying the pool before every round of the same race:
