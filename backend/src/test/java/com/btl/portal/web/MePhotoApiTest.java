@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.TheEndOfTheTransaction;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.photo.WhatAPictureIs;
 import com.btl.portal.domain.token.SecretToken;
@@ -485,8 +486,23 @@ class MePhotoApiTest {
 				.param(theQueueRowOf(memberNumber)).query(Long.class).single();
 	}
 
+	/**
+	 * How long the table is AT THE END of the transaction the door ran in. A {@code photo} row that
+	 * nothing holds any more is the database's to delete (V54), at that end, and this class rolls
+	 * back and never reaches one, so it is brought forward before the table is read.
+	 */
 	private long howManyPhotoRows() {
+		TheEndOfTheTransaction.broughtForward(db);
+
 		return db.sql("select count(*) from photo").query(Long.class).single();
+	}
+
+	/** Whether this one picture has a row at the end of the transaction, the same way. */
+	private long howManyRowsHasThePhoto(long photo) {
+		TheEndOfTheTransaction.broughtForward(db);
+
+		return db.sql("select count(*) from photo where id = ?").param(photo)
+				.query(Long.class).single();
 	}
 
 	/**
@@ -694,7 +710,7 @@ class MePhotoApiTest {
 		assertThat(howManyRowsInTheQueue())
 				.as("something that is not a picture reached a moderator's tab")
 				.isEqualTo(before);
-		assertThat(db.sql("select count(*) from photo").query(Long.class).single())
+		assertThat(howManyPhotoRows())
 				.as("a row was written for a file that was refused")
 				.isEqualTo(6 + 2);
 	}
@@ -812,8 +828,7 @@ class MePhotoApiTest {
 		assertThat(sending(WHOSE_PICTURE_WAITS, aJpeg("nova slika preko stare")).getStatus())
 				.isEqualTo(200);
 
-		assertThat(db.sql("select count(*) from photo where id = ?").param(overwritten)
-						.query(Long.class).single())
+		assertThat(howManyRowsHasThePhoto(overwritten))
 				.as("the picture that was overwritten still has a row, which nothing points at and"
 						+ " nothing will ever serve")
 				.isZero();
@@ -1292,8 +1307,7 @@ class MePhotoApiTest {
 		assertThat(howManyRowsInTheQueue())
 				.as("a moderator was asked to approve a removal")
 				.isEqualTo(before);
-		assertThat(db.sql("select count(*) from photo where id = ?").param(photo)
-				.query(Long.class).single())
+		assertThat(howManyRowsHasThePhoto(photo))
 				.as("the row of the removed picture is still in the table, so PhotoApi could"
 						+ " still be asked for it by another holder")
 				.isZero();
@@ -1317,7 +1331,7 @@ class MePhotoApiTest {
 				.as("the first member by key lost his picture to somebody else's request")
 				.isNotNull();
 		assertThat(digestStandingOn(SOMEONE_ELSE)).isNotNull();
-		assertThat(db.sql("select count(*) from photo").query(Long.class).single())
+		assertThat(howManyPhotoRows())
 				.as("more than one picture row was deleted")
 				.isEqualTo(6 + 2 - 1);
 	}

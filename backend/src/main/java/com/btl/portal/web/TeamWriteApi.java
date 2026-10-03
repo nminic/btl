@@ -786,9 +786,10 @@ class TeamWriteApi {
 	 * {@code anyRequest().authenticated()} this route never reaches: {@code READ_BY_ANYBODY}
 	 * holds whole addresses and opens {@code /api/teams} for reading alone.
 	 *
-	 * <p><b>WHAT GOING MEANS IS NOT DECIDED HERE.</b> The row, its mark's row and its mark's
-	 * file are {@link ATeamGoesWithItsLastMember}'s, which already held that act for the two
-	 * roads a team can empty by; this is the third caller of one home. What the SCHEMA then
+	 * <p><b>WHAT GOING MEANS IS NOT DECIDED HERE.</b> The row and its mark's file are
+	 * {@link ATeamGoesWithItsLastMember}'s, which already held that act for the two roads a
+	 * team can empty by, and the mark's own row is the database's (V54); this is the third
+	 * caller of one home. What the SCHEMA then
 	 * does is the rest of the owner's sentence and is measured rather than restated: the
 	 * memberships cascade (V11), so the team's total for the season being run goes with them
 	 * because it is derived from them and is materialised nowhere; the frozen season does not
@@ -820,8 +821,9 @@ class TeamWriteApi {
 	}
 
 	/**
-	 * THE REMOVING, IN ONE TRANSACTION, because the team's row and its mark's row are two
-	 * statements saying one thing.
+	 * THE REMOVING, IN ONE TRANSACTION, because the team's row and its mark are one act: the
+	 * mark's row is taken by the database at the end of this same transaction (V54), and its
+	 * file here.
 	 *
 	 * <p>Stopped between them, a mark would be left standing that nothing in the schema
 	 * points at any more, which is the leak the review of PR 367 measured on the other road

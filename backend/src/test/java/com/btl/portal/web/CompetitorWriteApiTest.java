@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.TheEndOfTheTransaction;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
@@ -544,10 +545,12 @@ class CompetitorWriteApiTest {
 	 * other way round, so nothing in the schema's own cascades ever touches the row or the file
 	 * a deleted member's portrait leaves behind - a probe found the row still there,
 	 * {@code select count(*) from photo} answering one where it should answer zero. PDL P21:
-	 * „jedina fotografija clana je njegova profilna, koja odlazi sa profilom."
+	 * „jedina fotografija clana je njegova profilna, koja odlazi sa profilom." The row is the
+	 * database's since V54 and is read here at the end of the transaction, brought forward
+	 * ({@link #photoRowExists}); the file is the route's.
 	 *
 	 * <p><b>Three members and three photos: a file actually on disk, no file at all, and a file
-	 * that cannot be removed</b>, because {@code takeAwayThePhoto} has three ways through it -
+	 * that cannot be removed</b>, because {@code takeAwayTheFileOf} has three ways through it -
 	 * the ordinary one where the file is there and goes, the one where it is already gone and
 	 * only a warning is logged, and the one where removing it throws and is caught and logged
 	 * instead of stopping the deletion. A fixture missing any one of the three leaves that line
@@ -602,9 +605,10 @@ class CompetitorWriteApiTest {
 	/**
 	 * THE EMPTIED TEAM'S LOGO GOES WITH IT, ROW AND FILE, AND THE TEAM THAT STAYS KEEPS ITS OWN.
 	 *
-	 * <p>This is {@link ATeamGoesWithItsLastMember}'s own reasoning rather than a decision - no
-	 * entry in either journal names a team's logo - and it is measured here through the same
-	 * door {@link #theTeamHeWasTheLastOfGoesAndTheOthersStay} already proves empties
+	 * <p>This began as {@link ATeamGoesWithItsLastMember}'s own reasoning rather than a decision -
+	 * no entry in either journal named a team's logo - and is the owner's since ADL A68,
+	 * 03.10.2026 (the row is the database's, the file is the class's). It is measured here through
+	 * the same door {@link #theTeamHeWasTheLastOfGoesAndTheOthersStay} already proves empties
 	 * {@link #TEAM_THAT_EMPTIES} and keeps {@link #TEAM_KEPT_BY_AN_OPEN_ROW} standing.
 	 *
 	 * <p><b>Two teams and two logos</b>, so „the logo that went" is never „the only logo" and a
@@ -1258,7 +1262,14 @@ class CompetitorWriteApiTest {
 				.single();
 	}
 
+	/**
+	 * Whether the row is still there AT THE END of the transaction the door ran in. The row of a
+	 * picture nobody holds any more is the database's to delete (V54), at that end, and this class
+	 * rolls back and never reaches one, so it is brought forward before the table is read.
+	 */
 	private boolean photoRowExists(long photo) {
+		TheEndOfTheTransaction.broughtForward(db);
+
 		return db.sql("select exists(select 1 from photo where id = ?)").param(photo)
 				.query(Boolean.class).single();
 	}

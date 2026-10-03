@@ -117,18 +117,20 @@ import java.util.concurrent.TimeUnit;
  * files of later uploads strays in THAT database, so they go within the hour; they are files
  * nothing points at there.
  *
- * <p><b>WHAT IT DOES NOT DO.</b> It looks at files and never at rows: a {@code photo} row that
- * nothing holds is not swept, and neither is its file, because the file has a row. By V9's
- * foreign keys and by what {@link CompetitorWriteApi} deletes, one such row is made when a
- * member is deleted while a picture of his waits in the queue (measured on 02.10.2026 through
- * the route's own door: after the deletion the {@code photo} row is still there and no queue row
- * points at it): the queue row goes with him and the {@code photo} row does not. That is a
- * different leftover, and it goes against a recorded decision: P21 says that where a member is
- * the subject of a picture („Ako je član predmet slike") „slika se uklanja". It is reported, not
- * handled here. <b>When it is handled, the route has to delete only the ROW</b> of each picture
- * waiting in his queue rows, in the same transaction: the file then has no row, this sweep
- * deletes it once it is older than ten minutes, and the route carries no deletion of a file of
- * its own for it and no second rule about the disk.
+ * <p><b>WHAT IT DOES NOT DO.</b> It looks at files and never at rows: it deletes no
+ * {@code photo} row, and a file whose row stands is a file it keeps. A row that nothing holds
+ * used to be left by three doors - a member deleted while a picture of his waits in the queue,
+ * a refusal, and an approval over a portrait that stands (each measured through the route's own
+ * door and held by {@code APictureGoesWithItsLastHolderTest}: before V54 the {@code photo} row
+ * was still there and no column pointed at it) - and its file stayed with it for ever, which
+ * went against a recorded decision: P21 says that where a member is the subject of a picture
+ * („Ako je član predmet slike") „slika se uklanja".
+ * <b>That is handled by the database, and neither by a route nor here</b>: since V54 (ADL A68,
+ * 03.10.2026, „Na kraju svake transakcije baza brise zapis slike koji vise ne drzi nijedna od
+ * cetiri kolone") a row nobody holds is deleted at the end of the transaction that let go of
+ * it, which leaves its file with no row, and this sweep deletes the file once it is older than
+ * ten minutes, at its next hourly pass. A row that nobody ever held is still deleted by
+ * nothing, because nothing let go of it.
  *
  * <p><b>IT IS NOT IN {@link MePhotoApi}</b>, whose class note says that sweeping „would be one
  * route carrying a rule about the whole disk". It is a fifth reader of the setting the four

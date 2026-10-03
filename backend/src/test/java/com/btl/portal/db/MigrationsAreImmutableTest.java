@@ -314,7 +314,22 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   worked out with the copy of its algorithm the rows above describe (CRC32 over the lines, line
 			   breaks and a BOM left out), which reproduced V9, V50 and V52 to the digit before it was
 			   trusted here, and this list is what confirms it on the gate. */
-			new Applied("53", "V53__one_text_of_a_member_waits_at_a_time.sql", -191224091));
+			new Applied("53", "V53__one_text_of_a_member_waits_at_a_time.sql", -191224091),
+
+			/* V54. A photo row that no holder points at is deleted by the database at the end of the
+			   transaction that let go of it: four deferred constraint triggers, one on each table that
+			   can hold a picture, one function that asks once, and one statement over the rows already
+			   there (ADL A68, 03.10.2026). It deletes data on QA, once, which the owner approved.
+
+			   54 because it is the number N1 was given in A68, and it is MEASURED to be free: every
+			   local and remote ref and every worktree was searched on 03.10.2026 and only this branch
+			   holds V54 or above, and origin/main stands at V53.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   worked out with a copy of its algorithm (CRC32 over the lines, line breaks and a BOM left
+			   out), which reproduced V40, V46, V52 and V53 to the digit before it was trusted here, and
+			   this list is what confirms it on the gate. */
+			new Applied("54", "V54__a_photo_goes_with_its_last_holder.sql", -971747939));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

@@ -40,8 +40,9 @@ import java.util.Optional;
  * THAN WHAT IT DOES.</b> {@link #goIfEmpty} is the rule the name describes; {@link #takeAway}
  * is a team deleted on purpose, by whoever administers it or by the administration (PDL
  * P13b, 25.09.2026). They are here together because „a team going" is ONE act whatever
- * started it - the question in somebody else's inbox, then the row, then the mark's row,
- * then the mark's file, in that order - and that act is exactly what had two homes the first
+ * started it - the question in somebody else's inbox, then the row, then the mark's file, in
+ * that order, with the mark's own row taken by the database at the end of the transaction
+ * (V54) - and that act is exactly what had two homes the first
  * time round. The name is left alone rather than widened because a merged file is read by its
  * history as much as by its title, and renaming it would take the owner's decision of
  * 25.09.2026 out of the first line somebody reads.
@@ -119,18 +120,20 @@ import java.util.Optional;
  * it was - which is the other half of his sentence, „Prethodne sezone su zamrznute i ne
  * diraju se".
  *
- * <p><b>AND THE TEAM'S LOGO GOES WITH IT, ROW AND FILE, WHICH IS MINE TO REASON ABOUT RATHER
- * THAN THE OWNER'S TO HAVE DECIDED.</b> Nothing in either journal names a team's logo when the
- * team itself disappears - the closest is PDL P21 on a MEMBER'S own picture, „jedina
- * fotografija clana je njegova profilna, koja odlazi sa profilom" - so this is this class's own
- * reasoning and not a decision, and it is said out loud as one rather than left to look like a
- * quote. The reasoning: a logo left standing would be a {@code photo} row and a file that
- * nothing in the schema points at any more the moment {@code team.logo_id} goes with the row it
- * was on, and nothing scans for such a thing: {@link ThePicturesFolderIsSwept} reads files and
- * never rows, so a {@code photo} row nothing holds keeps its file, and neither of them is ever
- * taken. {@link MePhotoApi#remove} is the portal's own precedent for taking a picture down at
- * all, and its shape is copied together with its guard:
- * „THE ROW AND THE FILE BOTH GO, and the order is the row first".
+ * <p><b>AND THE TEAM'S LOGO GOES WITH IT, THE ROW BY THE DATABASE AND THE FILE HERE.</b> Nothing
+ * in either journal names a team's logo when the team itself disappears - the closest is PDL
+ * P21 on a MEMBER'S own picture, „jedina fotografija clana je njegova profilna, koja odlazi sa
+ * profilom" - and this class once reasoned that a logo left standing would be a {@code photo}
+ * row and a file that nothing in the schema points at any more the moment {@code team.logo_id}
+ * goes with the row it was on, which nothing scanned for. That reasoning was this class's own
+ * and not a decision, and it is now the owner's: ADL A68, 03.10.2026, „Na kraju svake
+ * transakcije baza brise zapis slike koji vise ne drzi nijedna od cetiri kolone", held for
+ * {@code team.logo_id} as for the other three columns. <b>So the ROW is no longer deleted
+ * here</b>: deleting the team is the event the database reacts to, and „pravilo zivi u bazi, ne
+ * u Java kodu". <b>The FILE is</b>, read before the team goes and deleted at once, the way
+ * {@link MePhotoApi#remove} deletes a member's own picture; {@link ThePicturesFolderIsSwept}
+ * would take it at its next hourly pass, and this class has always taken it at once, which is
+ * kept.
  */
 @Component
 class ATeamGoesWithItsLastMember {
@@ -223,7 +226,7 @@ class ATeamGoesWithItsLastMember {
 	 * carries must not be here, and it is the only difference between the two.
 	 *
 	 * <p><b>Why it lives in this class rather than in the route that calls it.</b> „A team's
-	 * row and its mark go together, the row first" is one fact with, as of this method, three
+	 * row and its mark's file go together, the row first" is one fact with, as of this method, three
 	 * callers, and the class note above gives the reason a second home for it would be the
 	 * one nobody remembers to change. {@link TeamWriteApi#remove} decides WHETHER a team
 	 * goes; what going means is decided here.
@@ -299,25 +302,26 @@ class ATeamGoesWithItsLastMember {
 		   this member ever touched". It is asked of {@link #takeAway} too, where what it
 		   catches is a team that was not there at all. */
 		if (gone > 0) {
-			logo.ifPresent(this::takeAwayThePhoto);
+			logo.ifPresent(this::takeAwayTheFileOf);
 		}
 	}
 
 	/**
-	 * A LOGO'S ROW AND ITS FILE, BOTH GONE, THE SAME SHAPE {@link MePhotoApi#remove} KEEPS FOR
-	 * A MEMBER'S OWN PICTURE.
+	 * A LOGO'S FILE, GONE AT ONCE, THE SAME WAY {@link MePhotoApi#remove} DELETES A MEMBER'S OWN
+	 * PICTURE.
 	 *
-	 * <p>The row first, then the file: the pointer that named this row is already gone with the
-	 * team's own row by the time this runs, so nothing more is emptied here. A fault in the
-	 * file's removal is logged and swallowed rather than thrown, for the same reason
+	 * <p>The ROW is not deleted here: the team's own row going is what lets go of the logo, and
+	 * the database deletes a {@code photo} row that nobody holds at the end of this transaction
+	 * (V54; ADL A68, 03.10.2026, „Na kraju svake transakcije baza brise zapis slike koji vise ne
+	 * drzi nijedna od cetiri kolone"). There is nothing to empty either: the pointer that named
+	 * the row is already gone with the team's own row by the time this runs. A fault in the file's
+	 * removal is logged and swallowed rather than thrown, for the same reason
 	 * {@link CompetitorWriteApi} swallows it - the team going is the act the owner decided
 	 * (PDL P13a, 25.09.2026), and a stray file nobody will ever serve again is a leftover
 	 * {@link PhotoApi} already answers nothing for and {@link ThePicturesFolderIsSwept} deletes
 	 * once it is older than ten minutes, not a reason to leave the team standing.
 	 */
-	private void takeAwayThePhoto(long photo) {
-		db.sql("delete from photo where id = ?").param(photo).update();
-
+	private void takeAwayTheFileOf(long photo) {
 		try {
 			if (!Files.deleteIfExists(folder.resolve(String.valueOf(photo)))) {
 				LOG.warn("the file of photo {} was already gone when its team was deleted", photo);
