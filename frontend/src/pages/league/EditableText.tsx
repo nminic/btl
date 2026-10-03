@@ -15,6 +15,24 @@ import { addressesIn } from './addressesIn'
  * browser does for `_blank`, for the reason the guard of the event's link gives
  * (`pages/details.test.tsx`): a rule that depends on a default is a rule nobody can read.
  *
+ * **`dir="ltr"` on every link, since 03.10.2026** (review of PR 484, measured in Chrome 154). The
+ * words of a link are the address as it was typed, and the words beside it were typed by the same
+ * hand: a right-to-left override or embedding in a neighbouring word (U+202E, U+202B, U+2067)
+ * reorders the characters of the link as they are drawn. Typed as
+ * `https://zlo.example/#/ten.ecartnur.www//:sptth`, the link was drawn as
+ * `https://www.runtrace.net/#/elpmaxe.olz//:sptth` and opened `zlo.example`. Neither `addressesIn`
+ * nor the gate beneath it can see that, because the control is not in the address but in the word
+ * before it. The attribute makes the link an isolate with a direction of its own, so what is drawn
+ * is what was typed, in the order it was typed, which is what its accessible name always was. It is
+ * an attribute on the link itself, so it goes wherever the link is drawn, and it changes nothing
+ * about which words are a link. **Derived from PDL P15 ("sa vidljivim domenom", "domen je sama
+ * otkucana adresa") and not the owner's word.** What it does not do, said here and not left to be
+ * found: the words around a link are drawn as their author typed them, so an override in them still
+ * reorders them; and the isolation is the browser's own rule for the attribute, which a rule of a
+ * sheet that sets `unicode-bidi` on links would beat (measured). None does, and the value on the
+ * built sheet is `isolate`. `pages/league/linkDirection.test.tsx` holds that every link carries the
+ * attribute and that nothing which draws one from `addressesIn` goes without a case.
+ *
  * **Every run that is not an address is a string, and a string in a child position is a text
  * node**, so nothing an administrator typed is ever read as markup. The terms of a competition are
  * not moderated (PDL, 01.09.2026: „Administratorova reč stoji"), which is the reason that matters
@@ -26,7 +44,7 @@ function drawn(text: string): ReactNode {
     piece.href === null ? (
       piece.text
     ) : (
-      <a key={at} href={piece.href} target="_blank" rel="noreferrer noopener">
+      <a key={at} href={piece.href} target="_blank" rel="noreferrer noopener" dir="ltr">
         {piece.text}
       </a>
     ),
