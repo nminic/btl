@@ -1066,8 +1066,9 @@ describe('an event whose races wait', () => {
    * and the event a new form makes each have an identity of their own (9401, 9301, 9302, 9402), so a
    * request sent under the wrong event is told by its address and its body; and the copy is given a
    * name of its own, so it is found in the list and not confused with the event it was copied from.
-   * An answer that comes late is waited for to its end (`comesBack`), which is the one wait these
-   * cases need: a guard that works writes nothing, and nothing cannot be waited for.
+   * An answer that comes late is waited for to its end (`comesBack`, and `settled` where nothing is
+   * released), which is the one kind of wait these cases need: a guard that works writes nothing, and
+   * nothing cannot be waited for with `findBy`.
    */
   describe('a press that is still out when the reader leaves its form', () => {
     const THE_COPY = 'BBKT kopija u letu'
