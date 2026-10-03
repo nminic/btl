@@ -292,13 +292,45 @@ describe('who is going to a race', () => {
     clearResourceCache('attendance')
     const asked = readsOfTheList()
 
-    renderAt(`/sr/kalendar/${event.slug}`, 'visitor', null, undefined, day)
+    /* AND THE LIST OF MEMBERS HELD BACK, which is the moment a part that waits for it would
+       be drawn as waiting: the page itself waits only for the calendar, so its heading is up
+       while the members are still on their way. A visitor is told nothing about this part,
+       not even that it is loading. */
+    let letTheMembersAnswer = (): void => {}
+    const theMembersAnswer = new Promise<void>((resolve) => {
+      letTheMembersAnswer = resolve
+    })
+    const members = serverThat((path) =>
+      path === '/api/competitors'
+        ? theMembersAnswer.then(
+            () =>
+              new Response(
+                readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'competitors.json'), 'utf-8'),
+                { status: 200, headers: { 'content-type': 'application/json' } },
+              ),
+          )
+        : null,
+    )
 
-    await screen.findByRole('heading', { level: 1, name: event.name })
-    expect(screen.queryByRole('heading', { name: 'Ko ide' })).toBeNull()
-    /* AND NOTHING IS ASKED FOR HIM. The server answers a visitor 401 at that address, so a
-       list fetched for somebody nobody draws it for is a request that can only fail. */
-    expect(readsOfTheList()).toBe(asked)
+    try {
+      renderAt(`/sr/kalendar/${event.slug}`, 'visitor', null, undefined, day)
+
+      await screen.findByRole('heading', { level: 1, name: event.name })
+      expect(screen.queryByText(/Ko ide/)).toBeNull()
+
+      letTheMembersAnswer()
+      await act(async () => {
+        await loadResource<Competitor[]>('competitors')
+      })
+
+      expect(screen.queryByRole('heading', { name: 'Ko ide' })).toBeNull()
+      /* AND NOTHING IS ASKED FOR HIM. The server answers a visitor 401 at that address, so a
+         list fetched for somebody nobody draws it for is a request that can only fail. */
+      expect(readsOfTheList()).toBe(asked)
+    } finally {
+      letTheMembersAnswer()
+      members.stop()
+    }
   })
 
   it('lists everybody who has said so, to a member', async () => {
@@ -394,7 +426,9 @@ describe('the switch that says you are going', () => {
        one the SERVED list calls for, not the one a fresh page would guess. */
     const user = setupUser()
     const { event, going, day } = await upcoming()
-    const already = must(going[0], 'somebody the server has going')
+    /* NOT THE FIRST OF THEM, so that a page comparing the reader with the first row of the
+       list rather than with himself would be about somebody else here. */
+    const already = must(going[2], 'somebody the server has going, and not first')
     const competitors = await loadResource<Competitor[]>('competitors')
     const who = must(
       competitors.find((one) => one.memberNumber === already.memberNumber),
@@ -533,6 +567,9 @@ describe('the switch that says you are going', () => {
 
     expect(await screen.findByText('Šalje se')).toBeVisible()
     expect(presses()).toHaveLength(1)
+    /* And nothing on the switch moves while it is out: what it shows is the server's answer,
+       and there is none yet. */
+    expect(theSwitch()).toHaveAttribute('aria-pressed', 'false')
 
     letItAnswer()
 
@@ -1455,6 +1492,20 @@ describe('a name the list cannot lead to', () => {
     expect(screen.queryByRole('heading', { name: 'Ko ide' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
     expect(readsOfTheList()).toBe(asked)
+  })
+
+  it('is read by a moderator whose own fee has lapsed, who has no switch', async () => {
+    /* THE READER WHO TELLS THE TWO QUESTIONS APART. The list is the administration's as well
+       as the active members' (owner, 03.10.2026), so he reads it as a moderator; the switch is
+       a member's in good standing, and he is not one. A page that asked „has he a number"
+       for the switch would hand him one. */
+    const { event } = await withStrangers()
+    const him = must(lapsed[0], 'a member whose fee has lapsed')
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'moderator', him, undefined, '2026-08-01')
+
+    expect(await screen.findByRole('list', { name: 'Ko ide' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Idem na ovaj događaj' })).toBeNull()
   })
 
   it('is read by the superadmin, who has nothing to say about going', async () => {
