@@ -106,12 +106,16 @@ import java.util.regex.Pattern;
  * would get the bytes. Withheld in one place and served in the other, the rule would have
  * hidden a capability instead of refusing access.
  *
- * <p><b>Hidden from a caller who is NOT SIGNED IN, and from nobody else</b>, which is the
- * owner's own sentence: „Takmicar od ulogovanih kolega ne moze da sakrije profil" (PDL,
- * 06.09.2026), with the reason in the published policy - „ali ne i od ostalih clanova, jer bi
- * time nestao smisao zajednickog rangiranja". So the question is asked of the SESSION and of
- * nothing finer: not whose portrait it is, and not what the caller may do. A caller with a
- * session is answered exactly what was answered before this paragraph existed.
+ * <p><b>Hidden from everybody who is NEITHER AN ACTIVE MEMBER NOR THE ADMINISTRATION, and from
+ * nobody else.</b> The owner's own sentence was „Takmicar od ulogovanih kolega ne moze da sakrije
+ * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od ostalih
+ * clanova, jer bi time nestao smisao zajednickog rangiranja", and until 03.10.2026 this route read
+ * „ulogovanih" as „anybody with a session". The owner chose otherwise between offered outcomes
+ * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija"):
+ * a free account and a member whose fee has lapsed are refused the bytes as a visitor is.
+ * So the question is asked of WHO IS READING and of nothing finer: not whose portrait it is,
+ * and not what right the caller holds. {@link ActiveMemberOrAdministration} answers it, and a
+ * reader it lets in is answered exactly what he was answered before this paragraph existed.
  *
  * <p><b>The refusal is INSIDE the lookup and not a branch after it, and that is what keeps
  * the guarantee this class is built on.</b> A hidden member's portrait fails the same
@@ -123,8 +127,10 @@ import java.util.regex.Pattern;
  * on the wire (measured 13.09.2026). It also opens no new branch, so it adds nothing to the
  * timing difference this class records further down.
  *
- * <p><b>THE FEE IS NOT PART OF THIS RULE, said here rather than left to be found.</b> A
- * member whose fee has lapsed still has his portrait answered to anybody holding the digest.
+ * <p><b>THE FEE OF THE MEMBER WHOSE PORTRAIT IT IS IS NOT PART OF THIS RULE, said here rather
+ * than left to be found</b> (the fee of the READER is, since 03.10.2026). A
+ * member whose fee has lapsed still has his portrait answered to a reader who may read hidden
+ * profiles and holds the digest.
  * The digest cannot be got from {@link CompetitorApi} - such a member is not on that list at
  * all (PDL P11, owner 13.09.2026) - so nothing hands it out; and no decision covers the case,
  * so no condition is invented for it. It is a boundary and not a protection.
@@ -364,7 +370,7 @@ class PhotoApi {
 	private static final String THE_PICTURE_A_DIGEST_NAMES =
 			"select p.id, p.media_type from photo p where p.digest = :digest"
 			+ " and (exists (select 1 from competitor his where his.photo_id = p.id"
-			+ "  and (cast(:signedIn as boolean) or not his.profile_hidden))"
+			+ "  and (cast(:readsHiddenProfiles as boolean) or not his.profile_hidden))"
 			+ " or exists (select 1 from team its where its.logo_id = p.id))"
 			+ " order by p.id limit 1";
 
@@ -441,23 +447,28 @@ class PhotoApi {
 
 	private final WhatHeMayDo mayHe;
 
+	private final ActiveMemberOrAdministration readers;
+
 	/**
-	 * @param folder where the files are, which is a setting because QA and production are
-	 *               two installations of one portal and neither is this machine. ADL A43, 2,
-	 *               11.09.2026: „Imenovan Docker volumen uz bazu, montiran samo u bekend."
-	 *               Its default is a developer's temporary folder, and what that means is
-	 *               an empty one: on a machine nobody has uploaded to, every picture is an
-	 *               address that is not there, which is the true answer
-	 * @param mayHe  the one place „may he" is answered (ADL A8, „Odgovara jedno mesto"),
-	 *               asked by {@link #waitingOn} and by nothing else here. {@link #photo}
-	 *               does not touch it: what that route asks is whether there is a session
-	 *               at all, which is a different question and is already answered by
-	 *               whether the principal is there
+	 * @param folder  where the files are, which is a setting because QA and production are
+	 *                two installations of one portal and neither is this machine. ADL A43, 2,
+	 *                11.09.2026: „Imenovan Docker volumen uz bazu, montiran samo u bekend."
+	 *                Its default is a developer's temporary folder, and what that means is
+	 *                an empty one: on a machine nobody has uploaded to, every picture is an
+	 *                address that is not there, which is the true answer
+	 * @param mayHe   the one place „may he" is answered about a RIGHT (ADL A8, „Odgovara jedno
+	 *                mesto"), asked by {@link #waitingOn} and by nothing else here
+	 * @param readers the one place „may he read what the league keeps for its own" is answered,
+	 *                asked by {@link #photo} and by nothing else here. Since 03.10.2026 that
+	 *                route asks who is reading rather than only whether there is a session, and
+	 *                the answer is not a right: an active member reads without holding one
 	 */
-	PhotoApi(JdbcClient db, @Value("${btl.photos.folder}") String folder, WhatHeMayDo mayHe) {
+	PhotoApi(JdbcClient db, @Value("${btl.photos.folder}") String folder, WhatHeMayDo mayHe,
+			ActiveMemberOrAdministration readers) {
 		this.db = db;
 		this.folder = Path.of(folder);
 		this.mayHe = mayHe;
+		this.readers = readers;
 	}
 
 	/** The two things the row decides: where the file is, and what it is. */
@@ -484,7 +495,9 @@ class PhotoApi {
 	 *                 out. <b>It is read for one thing only</b>: whether a member who hides
 	 *                 his profile has his portrait answered. Nothing here asks whose portrait
 	 *                 it is or what the caller may do, because the rule is about a reader who
-	 *                 is not signed in and about nothing finer
+	 *                 is neither an active member nor the administration and about nothing
+	 *                 finer; {@link ActiveMemberOrAdministration} answers it, and answers no
+	 *                 for the null of a visitor
 	 * @param response asked for so that every refusal goes down the same road an address
 	 *                 that is not there takes, exactly as {@link InboxApi#inbox} and
 	 *                 {@link VerificationApi#verification} do
@@ -501,13 +514,17 @@ class PhotoApi {
 		Optional<Kept> kept = db
 				.sql(THE_PICTURE_A_DIGEST_NAMES)
 				.param("digest", name)
-				/* WHETHER ANYBODY IS ASKING AT ALL, and it is the ACCOUNT that is asked about
-				   rather than the member behind it. An account that does not race has no member
-				   (V23, owner 14.09.2026), so `memberOfAccount` would answer nothing for a
-				   signed in moderator and a hidden member's portrait would be refused to a
-				   caller the rule was never about. This route does not know that class and does
-				   not need to: „is there a session" is the whole question. */
-				.param("signedIn", member != null)
+				/* WHETHER THE CALLER MAY READ A HIDDEN PROFILE, which since 03.10.2026 is
+				   `ActiveMemberOrAdministration` and no longer „is there a session" (PDL P23,
+				   03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
+				   administracija"). The class reads the administration off the role the request
+				   carries, so an account that races for nobody and is a moderator still reads,
+				   and a member's fee off `competitor.active`, so a free account and a member
+				   whose fee has lapsed are refused the bytes exactly as a visitor is. It is
+				   asked HERE, in the same breath as the list asks it, because the digest is the
+				   whole permission: handed to a reader the list withholds it from, it would be a
+				   capability and not an access. */
+				.param("readsHiddenProfiles", readers.includes(member))
 				.query((row, one) -> new Kept(row.getLong(1), row.getString(2)))
 				.optional();
 

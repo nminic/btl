@@ -116,7 +116,8 @@ import java.util.List;
  * endpoint koji trazi prijavu, i nikad u odgovor koji vidi posetilac."
  *
  * <p><b>What that buys, and it is a claim this resource could not make while they
- * were here:</b> a signed in member is answered what a visitor is, to the byte.
+ * were here:</b> a signed in member is answered what a visitor is, to the byte, apart from what
+ * hiding moves for a reader who may read a hidden profile (below).
  * {@code theVisitorsAnswerHasNotMoved} used to cut two fields out before comparing;
  * it now compares whole answers, and the cut is gone rather than adjusted.
  *
@@ -244,8 +245,9 @@ import java.util.List;
  * of the two columns would otherwise pass.
  *
  * <p><b>A hidden profile is still in this list, and what hiding takes off its record - from a
- * reader who is not signed in - is what a profile page would have shown: the portrait since
- * 26.09.2026, the biography since 27.09.2026 and the link to his team since 02.10.2026.</b>
+ * reader who is neither an active member nor the administration - is what a profile page would
+ * have shown: the portrait since 26.09.2026, the biography since 27.09.2026 and the link to his
+ * team since 02.10.2026.</b>
  * Each of the three has its own decision and its own paragraph below. Hiding a profile is about the
  * profile PAGE (PDL P23); the member number and the name stay public (Article
  * 73), and the portal needs the flag in order to know what to draw. Deleting a
@@ -258,23 +260,30 @@ import java.util.List;
  * tretira kao javan bez obzira na `profile_hidden`" - and named what would close it: „Prvi
  * resurs koji ga objavi mora u istom potezu da donese pravilo o skrivenom profilu, inace
  * granica pada tog dana." This is that resource. <b>[ODLUKA 26.09.2026, owner]</b>, chosen
- * between three offered: the digest is withheld from a caller who is not signed in, AND
- * {@link PhotoApi} refuses such a portrait to the same caller. The two offers refused were
+ * between three offered: the digest is withheld from a caller who may not read a hidden profile,
+ * AND {@link PhotoApi} refuses such a portrait to the same caller. The two offers refused were
  * to call the digest public outright, and to withhold it here alone - the second on the
  * measurement that the digest IS the whole permission, because {@link PhotoApi} asked nobody
  * who was calling, so a member could pass the address on and any visitor would get the
  * bytes. PDL, 06.09.2026 already puts the photograph among what hiding hides.
  *
- * <p><b>Hidden from a caller who is NOT SIGNED IN, and from nobody else</b>, which is the
- * owner's own limit: „Takmicar od ulogovanih kolega ne moze da sakrije profil" (PDL,
- * 06.09.2026), with the reason in the published policy - „ali ne i od ostalih clanova, jer bi
- * time nestao smisao zajednickog rangiranja". {@code frontend/src/profile/visible.ts} is the
- * one home of the same sentence on the other side.
+ * <p><b>Hidden from everybody who is NEITHER AN ACTIVE MEMBER NOR THE ADMINISTRATION, and from
+ * nobody else.</b> The owner's own limit was „Takmicar od ulogovanih kolega ne moze da sakrije
+ * profil" (PDL, 06.09.2026), and until 03.10.2026 this resource read „ulogovanih" as „anybody
+ * with a session". The owner chose otherwise between offered outcomes (PDL P23, 03.10.2026,
+ * „Skrivanje deluje prema svakome ko nije aktivan član ni administracija"): the other member is a
+ * member activated for the season, and the administration, so a free account and a member
+ * whose fee has lapsed are answered what a visitor is. The reason in the published policy -
+ * „ali ne i od ostalih clanova, jer bi time nestao smisao zajednickog rangiranja" - is about
+ * members, and they are not. {@code frontend/src/pages/profile/visible.ts} is the one home of
+ * the same sentence on the other side, and {@link ActiveMemberOrAdministration} is where it is
+ * asked on this one.
  *
- * <p><b>What that does NOT cover, named rather than left to be found.</b> The fee is not part
- * of this rule: {@link PhotoApi} goes on answering the portrait of a member whose fee has
- * lapsed to anybody holding the digest. It cannot be got from here - such a member is not on
- * this list at all - and no decision covers it, so nothing is invented for it.
+ * <p><b>What that does NOT cover, named rather than left to be found.</b> The fee of the one
+ * ASKING is part of this rule since 03.10.2026; the fee of the member whose portrait it is, is
+ * not: {@link PhotoApi} goes on answering the portrait of a member whose fee has lapsed to a
+ * reader who may read hidden profiles and holds the digest. It cannot be got from here - such a
+ * member is not on this list at all - and no decision covers it, so nothing is invented for it.
  *
  * <p><b>AND SINCE THIS INCREMENT THE BIOGRAPHY IS WITHHELD BY THE SAME RULE, in its own PR so
  * that the portrait's guard did not grow past the change it was measuring</b> (rule of
@@ -286,12 +295,12 @@ import java.util.List;
  *
  * <p><b>THE MECHANISM IS NOT THE PORTRAIT'S, and that is the schema's doing rather than a
  * second choice made here.</b> {@code photo}/{@code crop} come off a JOINED row, so the join's
- * own condition is where „no session, hidden" and „no picture at all" become one shape without
- * a {@code case} anywhere. {@code bio} is a column of {@code competitor} itself (V7), the FROM
- * table, which never fails to match - there is no join to carry the condition, so it stands on
+ * own condition is where „may not read it, hidden" and „no picture at all" become one shape
+ * without a {@code case} anywhere. {@code bio} is a column of {@code competitor} itself (V7), the
+ * FROM table, which never fails to match - there is no join to carry the condition, so it stands on
  * the SELECT expression instead, the shape {@code membershipBasis} already uses two names below
  * for a different question (whether the CALLER is the administration, rather than whether
- * anybody is signed in at all). See the note on {@code bio} in {@link Competitor} for the one
+ * he may read a hidden profile at all). See the note on {@code bio} in {@link Competitor} for the one
  * way this still differs from the portrait: there is no "member with none" state to borrow the
  * null from.
  *
@@ -301,7 +310,8 @@ import java.util.List;
  * same as the biography and the photograph - and the owner's own words on it the same day: „Samo
  * da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i bodovi
  * koje je doneo." So {@code teamId} and {@code teamSince} leave his record for a
- * reader who is not signed in, and the team does NOT lose him: his points go into the team's sum
+ * reader who may not read a hidden profile (a visitor, and since 03.10.2026 equally a free account
+ * and a member whose fee has lapsed), and the team does NOT lose him: his points go into the team's sum
  * and his name onto its page. The reasoning written under the decision says why that half carries
  * weight: his points are part of the team's sum, so taking him off the team would change the
  * arithmetic of the league and not only a page.
@@ -371,19 +381,25 @@ class CompetitorApi {
 	 * decides, and {@link TeamApi} has to ask the same question with the answer turned over, so a
 	 * spelling per use would have been four homes of one sentence.
 	 *
-	 * <p><b>Read off the SESSION and never off the member</b>, for the reason written over
-	 * {@code signedIn} in {@link #competitors}: an account that races for nobody is signed in
-	 * (owner, 14.09.2026, and PDL 02.10.2026: „Skriven profil vidi svako ko je prijavljen, i
-	 * administrativni nalog koji ne trci").
+	 * <p><b>WHO MAY READ IT IS DECIDED BY {@link ActiveMemberOrAdministration} AND NOT BY THIS
+	 * TEXT, and it is bound as a boolean.</b> Since 03.10.2026 the owner's „drugi clan" is a member
+	 * activated for the season, and the administration (PDL P23, 03.10.2026, „Skrivanje deluje prema
+	 * svakome ko nije aktivan član ni administracija"). It used to be „anybody with a session",
+	 * which was this resource's own reading (PDL 02.10.2026, since overturned: „Skriven profil vidi
+	 * svako ko je prijavljen, i administrativni nalog koji ne trci"), and a free account and a member
+	 * whose fee has lapsed read it by it. The administration is read off the role the REQUEST
+	 * carries and a member's fee off {@code competitor.active}, so an account that races for
+	 * nobody and is the administration still reads it, and one that races for nobody and is not
+	 * does not.
 	 *
 	 * <p><b>A fragment rather than a query</b>: it needs the member aliased {@code c} and
-	 * {@code :signedIn} bound, which is the price {@link TeamApi#WHO_STANDS_IN_A_TEAM} names for the
-	 * same shape. The parameter is CAST because it stands alone as an operand of {@code or}, with
-	 * nothing beside it to take a type from, and PostgreSQL refuses the statement rather than
-	 * guessing („could not determine data type of parameter").
+	 * {@code :readsHiddenProfiles} bound, which is the price {@link TeamApi#WHO_STANDS_IN_A_TEAM}
+	 * names for the same shape. The parameter is CAST because it stands alone as an operand of
+	 * {@code or}, with nothing beside it to take a type from, and PostgreSQL refuses the statement
+	 * rather than guessing („could not determine data type of parameter").
 	 */
 	static final String THE_PROFILE_IS_OPEN_TO_THE_CALLER =
-			"(cast(:signedIn as boolean) or not c.profile_hidden)";
+			"(cast(:readsHiddenProfiles as boolean) or not c.profile_hidden)";
 
 	private final JdbcClient db;
 
@@ -391,18 +407,24 @@ class CompetitorApi {
 
 	private final Clock clock;
 
+	private final ActiveMemberOrAdministration readers;
+
 	/**
-	 * <b>{@code MemberOfAccount} was the fourth of these until 25.09.2026 and is gone with
-	 * the question it answered.</b> This route asked WHICH MEMBER the caller is, for the
-	 * two fields his own row carried; P26a took both off the answer, so the only thing
-	 * left to ask about the caller is whether he is the administration - and that is a
-	 * question about the ACCOUNT. A resource that no longer needs to know who anybody is
-	 * should not be holding the thing that tells it.
+	 * <b>{@code MemberOfAccount} left this constructor on 25.09.2026 with the question it
+	 * answered, and the question is back since 03.10.2026 through the one class that owns it.</b>
+	 * This route asked WHICH MEMBER the caller is, for the two fields his own row carried; P26a
+	 * took both off the answer, so for a week the only thing left to ask about the caller was
+	 * whether he is the administration. The hidden profile asks one more: whether he is a member
+	 * whose fee is standing, which is a question about his MEMBER and not only about his account.
+	 * It is not asked here but of {@link ActiveMemberOrAdministration}, so that this route does not
+	 * hold a second spelling of who reads what the league keeps for its own.
 	 */
-	CompetitorApi(JdbcClient db, WhatHeMayDo mayHe, Clock clock) {
+	CompetitorApi(JdbcClient db, WhatHeMayDo mayHe, Clock clock,
+			ActiveMemberOrAdministration readers) {
 		this.db = db;
 		this.mayHe = mayHe;
 		this.clock = clock;
+		this.readers = readers;
 	}
 
 	/**
@@ -469,8 +491,8 @@ class CompetitorApi {
 
 	/**
 	 * @param photo          where this member's portrait is asked for, or NULL for a member
-	 *                       who has none - and for a member who hides his profile when
-	 *                       nobody is signed in, which is the same shape on purpose. PDL,
+	 *                       who has none - and for a member who hides his profile when the
+	 *                       reader may not read it, which is the same shape on purpose. PDL,
 	 *                       06.09.2026 requires that „Oba slucaja dobijaju isti ishod": told
 	 *                       apart, the absence would say „this member has a picture and I am
 	 *                       not showing it to you", which names him as one of the members who
@@ -479,19 +501,19 @@ class CompetitorApi {
 	 *                       portrait in this answer. The other half of {@code photo} and
 	 *                       never answered without it
 	 * @param bio            what the member wrote about himself, or NULL for a member who
-	 *                       hides his profile when nobody is signed in - the same shape as
+	 *                       hides his profile when the reader may not read it - the same shape as
 	 *                       {@code photo} and for the same reason (PDL, 06.09.2026 names both
 	 *                       among what hiding hides). UNLIKE {@code photo}, there is no
 	 *                       "member with none" state to borrow the shape from: the column is
 	 *                       NOT NULL and may be empty (V7), so a member who has written
 	 *                       nothing already reads as {@code ""} to everybody, hiding or not,
-	 *                       and only hiding from a reader with no session answers
+	 *                       and only hiding from a reader who may not read it answers
 	 *                       {@code null}. Withheld on the SELECT expression rather than on a
 	 *                       join, because this column stands on {@code competitor} itself,
 	 *                       the FROM table, which never fails to match
 	 * @param teamId         the team of the membership that has NOT ENDED, or NULL for a
 	 *                       member who is in none - and, since 02.10.2026, for a member who
-	 *                       hides his profile when nobody is signed in, which is the same
+	 *                       hides his profile when the reader may not read it, which is the same
 	 *                       shape on purpose: the portrait's decision says „Oblik je null,
 	 *                       nikad odsutan kljuc ... skriven clan se cita tacno kao clan koji
 	 *                       sliku nema" (PDL, 26.09.2026), and this is the same withholding
@@ -550,9 +572,9 @@ class CompetitorApi {
 	 *               those two existed.
 	 *               <p><b>AND SINCE 26.09.2026 IT HOLDS OF EVERY FIELD BUT THOSE HIDING
 	 *               MOVES, which is said here rather than left for the case to carry
-	 *               alone.</b> A session decides, for a member who hides his profile, whether
-	 *               his portrait is answered and whether his biography is [ODLUKA 26.09.2026,
-	 *               owner, twice], and since 02.10.2026 whether the link to his team is
+	 *               alone.</b> Who the reader is decides, for a member who hides his profile,
+	 *               whether his portrait is answered and whether his biography is [ODLUKA
+	 *               26.09.2026, owner, twice], and since 02.10.2026 whether the link to his team is
 	 *               [ODLUKA 27.09.2026, owner] (see the note on this class). So the two
 	 *               answers are equal on every OTHER name the portal reads, and the case
 	 *               NAMES the fields it excuses rather than discovering them by what it
@@ -562,20 +584,20 @@ class CompetitorApi {
 	 *               spot). It first requires that the answers really DO differ before
 	 *               excusing anything, so naming them cannot become the thing that makes the
 	 *               case pass
+	 *               <p><b>AND SINCE 03.10.2026 A FREE ACCOUNT AND A MEMBER WHOSE FEE HAS LAPSED
+	 *               ARE ANSWERED WHAT A VISITOR IS, WHOLE</b>: not a field of the two answers
+	 *               differs, hiding's included, because they are readers who may not read a
+	 *               hidden profile. {@code TheSameReadersReadAHiddenProfileOnEveryDoorTest}
+	 *               compares them text for text, with nothing named as excused.
 	 */
 	@GetMapping("/api/competitors")
 	List<Competitor> competitors(@AuthenticationPrincipal WhoIsAsking.Member member) {
-		/* WHO IS ASKING IS ONE QUESTION HERE AND IT WAS TWO UNTIL 25.09.2026.
+		/* WHO IS ASKING IS TWO QUESTIONS HERE, AND THE FIRST IS ABOUT THE BASIS.
 
-		   „Which member is the caller" used to be asked as well, for the two fields his
-		   own row carried. P26a took both off this answer, so the only thing left to ask
-		   is whether he is the administration - and this route no longer needs to know
-		   which member anybody is. `MemberOfAccount` left the constructor with the
-		   question.
-
-		   IT IS ASKED OF THE ACCOUNT AND NEVER OF THE MEMBER: a moderator who does not
-		   race has no member at all (V23), so reading it off a member would refuse the
-		   ordinary case outright.
+		   Whether the caller is the administration over the members decides one field of the
+		   answer, `membershipBasis`, and nothing else. IT IS ASKED OF THE ACCOUNT AND NEVER OF
+		   THE MEMBER: a moderator who does not race has no member at all (V23), so reading it
+		   off a member would refuse the ordinary case outright.
 
 		   `member != null` is not a nicety here. This is the first route to ask „may
 		   he" while standing on `ApiSecurity.READ_BY_ANYBODY`, so the principal of a
@@ -583,25 +605,27 @@ class CompetitorApi {
 		   than reaching for the context, and its own note says what that is for. */
 		boolean administration = member != null && mayHe.may(member, OVER_THE_MEMBERS);
 
-		/* AND WHETHER ANYBODY IS ASKING AT ALL, which is a second question and not the one
+		/* AND WHETHER HE MAY READ A HIDDEN PROFILE, which is a second question and not the one
 		   above. It decides what a hidden member's record gives a reader, and since 02.10.2026
 		   that is three things: his portrait, his biography and the link to his team (PDL P23,
 		   the decisions of 26.09.2026 and 27.09.2026). All three are asked through
 		   `THE_PROFILE_IS_OPEN_TO_THE_CALLER`, which is the one place the question is written.
 
-		   IT IS READ OFF THE ACCOUNT, and that is the same trap the line above avoids rather
-		   than a repetition of it. An account that does not race has no member at all (V23,
-		   owner 14.09.2026), so a condition asked of the caller's MEMBER would hide a hidden
-		   member's portrait from a signed in caller - and the rule is about a reader who is
-		   NOT signed in, which he is. This route stopped asking which member anybody is on
-		   25.09.2026 (P26a) and it does not start again: „is there a session" is the whole
-		   question, and `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` walks an
-		   account with no member of its own for exactly that reason.
+		   SINCE 03.10.2026 THE ANSWER IS NOT „IS THERE A SESSION". PDL P23, 03.10.2026,
+		   „Skrivanje deluje prema svakome ko nije aktivan član ni administracija": an active
+		   member and the administration read it, and a free account or a member whose fee has
+		   lapsed is answered what a visitor is. That is `ActiveMemberOrAdministration`, which
+		   reads the role off the REQUEST and the fee off `competitor.active`, and answers no
+		   for a request with no session (`member` is null for a visitor and the class takes
+		   it), so an account that races for nobody and is the administration still reads it.
 
-		   IT IS NOT `!administration` EITHER: the portal's word is „ne i od ostalih clanova,
-		   jer bi time nestao smisao zajednickog rangiranja", so every member sees it and not
-		   only the administration. */
-		boolean signedIn = member != null;
+		   IT IS NOT `administration` EITHER, which is the sibling mistake and a live one: the
+		   administration reads it, and so does every member whose fee is standing, so the
+		   condition written as `:administration` would stop an active member seeing a hiding
+		   colleague's biography.
+		   `TheSameReadersReadAHiddenProfileOnEveryDoorTest` walks ten kinds of reader for
+		   exactly that reason. */
+		boolean readsHiddenProfiles = readers.includes(member);
 
 		/* AND THE SEASON THE BANDS BELOW ARE WORKED OUT FOR, read ONCE for the whole
 		   answer rather than per row. Two members with the same year of birth must come
@@ -623,16 +647,18 @@ class CompetitorApi {
 						   same TEXT: `THE_PROFILE_IS_OPEN_TO_THE_CALLER`, one sentence of the
 						   owner's asked of three things. Written as `:administration` instead -
 						   the mistake `membership_basis` two names below makes on purpose for a
-						   different question - a signed in member would stop seeing a hiding
-						   colleague's biography although PDL, 06.09.2026 requires that he still
-						   does; `aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn` is
-						   written to catch exactly that swap. */
+						   different question - an active member would stop seeing a hiding
+						   colleague's biography although PDL P23, 03.10.2026 requires that he
+						   still does; the case
+						   `aHiddenProfilesBiographyLeavesToAnActiveMemberAndToTheAdministration`
+						   is written to catch exactly that swap. */
 						+ " case when " + THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						+ "  then c.bio end as bio,"
 						/* AND THE TEAM HE IS IN, WITHHELD BY THE SAME CONDITION SINCE 02.10.2026.
 						   PDL, odeljak 16 [ODLUKA 27.09.2026, owner]: chosen between offered
-						   outcomes, the team is withheld from a visitor the same as the biography
-						   and the photograph - and the owner's own words on it the same day:
+						   outcomes, the team is withheld from a reader who may not read a hidden
+						   profile, the same as the biography and the photograph - and the
+						   owner's own words on it the same day:
 						   „mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu
 						   i bodovi koje je doneo." So what goes is the LINK FROM HIS RECORD, both
 						   halves of it, and nothing about the team.
@@ -760,7 +786,7 @@ class CompetitorApi {
 						   joins at most one row and a member still comes back once.
 
 						   AND THE CONDITION IS ON THE JOIN, WHICH IS WHAT MAKES IT ONE RULE. For
-						   a member who hides his profile and a caller who is not signed in the
+						   a member who hides his profile and a caller who may not read it the
 						   row simply does not join, so the digest is never read, the square is
 						   never read, and the answer is byte for byte the answer of a member who
 						   has no portrait at all - which is what PDL, 06.09.2026 requires („Oba
@@ -781,7 +807,7 @@ class CompetitorApi {
 						+ " where c.active"
 						+ " order by c.member_number")
 				.param("administration", administration)
-				.param("signedIn", signedIn)
+				.param("readsHiddenProfiles", readsHiddenProfiles)
 				.query((row, one) -> {
 					/* Exact decimal all the way out, never a double, which is `TeamApi`'s own
 					   sentence about the same three numbers: V21 chose `numeric(9, 8)` because
@@ -790,7 +816,7 @@ class CompetitorApi {
 
 					   EVERY COLUMN OF `photo` IS NOT NULL (V8), so each of these two is null
 					   exactly when no row joined - which is a member with no portrait, or a
-					   member hiding his profile from a caller who is not signed in. They are
+					   member hiding his profile from a caller who may not read it. They are
 					   read side by side rather than one from the other so that the answer says
 					   what the row says. */
 					String portrait = row.getString(15);

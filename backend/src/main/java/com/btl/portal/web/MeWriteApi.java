@@ -623,8 +623,10 @@ class MeWriteApi {
 	 * @param bio           what the member would say about himself. A text goes to a
 	 *                      moderator and not to the profile; BLANK removes what stands
 	 *                      there, at once; null leaves it alone
-	 * @param profileHidden whether visitors who are not signed in may reach his profile
-	 *                      page. Null leaves it alone
+	 * @param profileHidden whether readers who are neither active members nor the administration
+	 *                      may reach his profile page (a visitor, a free account and a member whose
+	 *                      fee has lapsed: PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
+	 *                      nije aktivan član ni administracija"). Null leaves it alone
 	 * @param firstName     his own name, which is not the name on the account (PDL P21)
 	 * @param lastName      his own surname, the same
 	 * @param address       where a shirt and a medal are sent, and the address of residence

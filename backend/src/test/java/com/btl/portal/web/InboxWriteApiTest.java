@@ -492,20 +492,22 @@ class InboxWriteApiTest {
 	}
 
 	/**
-	 * AND A MEMBER HIDDEN FROM VISITORS IS NOT THAT, WHICH IS THE OTHER SIDE OF THE SAME
+	 * AND A MEMBER WHO HIDES HIS PROFILE IS NOT THAT, WHICH IS THE OTHER SIDE OF THE SAME
 	 * RULE.
 	 *
-	 * <p>{@code pages/profile/visible.ts}: {@code active && !(profileHidden && reader ===
-	 * null)}. Whoever reaches this route is signed in, so a hidden profile is one he sees
-	 * and one he may write to. Read as a single „is he hidden" the two members below give
-	 * one answer, and this case is what tells them apart.
+	 * <p>{@code pages/profile/visible.ts}: a profile is there when the member is {@code active}
+	 * and does not hide it from a reader who may not read a hidden profile. Only the first half
+	 * is asked on this route, and it does not ask the SENDER's half at all: the number he writes
+	 * to is on the public list whatever the member hides (PDL P23, 06.09.2026, „Podaci na spisku
+	 * ostaju kako jesu; odlazi samo veza"). Read as a single „is he hidden" the two members below
+	 * give one answer, and this case is what tells them apart.
 	 */
 	@Test
-	void aMemberHiddenFromVisitorsMayStillBeWrittenTo() throws Exception {
+	void aMemberWhoHidesHisProfileMayStillBeWrittenTo() throws Exception {
 		long written = idIn(writing(SENDER_SIGNS_IN, HIDDEN, A_TITLE, A_TEXT));
 
 		assertThat(rowOf(written).get("to_id"))
-				.as("a member hidden from visitors but shown to a signed in reader could not be"
+				.as("a member who hides his profile but is on the public list could not be"
 						+ " written to, so `profile_hidden` is being read as `active`")
 				.isEqualTo(keyOf(HIDDEN));
 	}

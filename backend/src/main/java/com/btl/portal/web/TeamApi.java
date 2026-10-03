@@ -254,8 +254,10 @@ import java.util.stream.Collectors;
  *
  * <p><b>SINCE 02.10.2026 ONE MEMBER IS, TO ONE READER, AND IT IS THE SAME ONE HOME RATHER
  * THAN A SECOND.</b> PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between offered
- * outcomes: the link from a hidden member's record to his team is withheld from a reader who is
- * not signed in, the same as the biography and the photograph - and the owner's own words on it
+ * outcomes: the link from a hidden member's record to his team is withheld from a reader who
+ * may not read a hidden profile (a visitor, and since 03.10.2026 equally a free account and a
+ * member whose fee has lapsed: PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan
+ * član ni administracija"), the same as the biography and the photograph - and the owner's own words on it
  * the same day, „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se
  * vidi u timu i bodovi koje je doneo." The team's page and the table of teams are built out of
  * that link, so with
@@ -298,8 +300,8 @@ import java.util.stream.Collectors;
  * somebody answers the same fact under another one. It still asks exactly that of
  * everybody the paragraph above does not name - the visitor, the member, and a
  * signed in moderator who does not hold {@link #OVER_THE_TEAMS} - with ONE exception
- * since 02.10.2026, and it is named rather than cut: the visitor's answer carries the
- * numbers {@code alsoInTheTeam} owes him, inside that field and nowhere else. Of the
+ * since 02.10.2026, and it is named rather than cut: the answer of a reader who may not read a
+ * hidden profile carries the numbers {@code alsoInTheTeam} owes him, inside that field and nowhere else. Of the
  * administration it asks the one thing that is now true instead: the numbers it may
  * read are the seats and no others, so every member number that is in no team's seat
  * is still absent from its answer. The roster is the door that stays shut in both -
@@ -336,7 +338,7 @@ import java.util.stream.Collectors;
  * boundary A60 left open - a member's portrait counts as public whatever
  * {@code profile_hidden} says - is shut since 26.09.2026, and no longer by nobody
  * publishing a portrait's digest: {@link CompetitorApi} does, and a condition on
- * ITS OWN join is what shuts it for a caller who is not signed in. What
+ * ITS OWN join is what shuts it for a caller who may not read a hidden profile. What
  * {@code noPartOfAnybodysProfilePictureLeavesWithATeam} holds, unmoved, is narrower
  * and still true here: no part of that picture leaks through THIS resource's join,
  * over the whole text rather than over a field name.
@@ -487,10 +489,16 @@ class TeamApi {
 
 	private final WhatHeMayDo mayHe;
 
-	TeamApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe) {
+	/** Who may read a hidden profile, asked once per request for the members {@code alsoInTheTeam}
+	 *  names (see the note on this class). */
+	private final ActiveMemberOrAdministration readers;
+
+	TeamApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe,
+			ActiveMemberOrAdministration readers) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.mayHe = mayHe;
+		this.readers = readers;
 	}
 
 	/**
@@ -528,10 +536,12 @@ class TeamApi {
 	 * @param alsoInTheTeam the members of this team whose own record on
 	 *                    {@code /api/competitors} does not name it to the one asking, in
 	 *                    member number order - which since 02.10.2026 is a member who hides
-	 *                    his profile, read by somebody who is not signed in, and nobody
-	 *                    else. EMPTY, and never absent, for every other reader and every team
-	 *                    without such a member: a signed in reader is told every link on the
-	 *                    records themselves, so there is nothing to tell him here. See the
+	 *                    his profile, read by somebody who may not read it (a visitor, and
+	 *                    since 03.10.2026 a free account and a member whose fee has lapsed), and
+	 *                    nobody else. EMPTY, and never absent, for every other reader and every
+	 *                    team without such a member: an active member and the administration are
+	 *                    told every link on the records themselves, so there is nothing to tell
+	 *                    them here. See the
 	 *                    note on this class for why this is the other half of one condition
 	 *                    rather than a second home
 	 * @param foundedByMe whether the one asking is the member this team's seat names,
@@ -614,17 +624,20 @@ class TeamApi {
 		   taking the guard away fails both. */
 		boolean administration = member != null && mayHe.may(member, OVER_THE_TEAMS);
 
-		/* AND WHETHER ANYBODY IS ASKING AT ALL, which is a third question and the one
-		   `CompetitorApi` asks of a hidden member's record. Read off the ACCOUNT, never off `me`:
-		   an account that races for nobody has no member and is signed in all the same (owner,
-		   14.09.2026; PDL 02.10.2026, „i administrativni nalog koji ne trci"). Asked of `me`, he
-		   would be told on the team what his own answer of `/api/competitors` already tells him on
-		   the record, and the two doors would name one link twice. */
-		boolean signedIn = member != null;
+		/* AND WHETHER HE MAY READ A HIDDEN PROFILE, which is a third question and the one
+		   `CompetitorApi` asks of a hidden member's record. It is answered by
+		   `ActiveMemberOrAdministration`, the same class and so the same answer as there: an
+		   active member and the administration read it, and a visitor, a free account and a member
+		   whose fee has lapsed do not (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
+		   nije aktivan član ni administracija"). Asked here in the SAME words as on the record,
+		   because a reader the record answers the link to must not be told it again on the team,
+		   and one the record withholds it from must be: the two doors would otherwise name one link
+		   twice, or none. A visitor arrives as a null `member` and the class answers him no. */
+		boolean readsHiddenProfiles = readers.includes(member);
 
 		/* THE MEMBERS OF EACH TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THIS CALLER, and only
 		   those. PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: the link leaves a hidden member's
-		   record for a reader who is not signed in - and „mozda on sakrije profil, ali ako je deo
+		   record for a reader who may not read a hidden profile - and „mozda on sakrije profil, ali ako je deo
 		   tima, njegovo ime se vidi u timu i bodovi koje je doneo". So the team says what the
 		   record no longer does.
 
@@ -653,7 +666,7 @@ class TeamApi {
 						+ " where m.season_to is null and c.active"
 						+ " and not " + CompetitorApi.THE_PROFILE_IS_OPEN_TO_THE_CALLER
 						+ " order by c.member_number, c.id")
-				.param("signedIn", signedIn)
+				.param("readsHiddenProfiles", readsHiddenProfiles)
 				.query((row, one) -> Map.entry(row.getLong(1),
 						new AlsoInTheTeam(row.getString(2), row.getInt(3))))
 				.list().stream()
