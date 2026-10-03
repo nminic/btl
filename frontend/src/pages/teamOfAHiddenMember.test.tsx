@@ -14,7 +14,8 @@ import { aCompetitor, aTeam } from '../test/theAnswer'
  * signed in, the same as the biography and the photograph - so `/api/competitors` answers his
  * `teamId` and `teamSince` as null to a visitor. (Since 03.10.2026 that reader is anybody who is
  * neither an active member nor the administration, PDL P23, 03.10.2026, „Skrivanje deluje prema
- * svakome ko nije aktivan član ni administracija"; a visitor is still the first of them, and the
+ * svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"; a visitor is still the first of them, and the
  * one these cases are read as.) And the owner's own words on it the same day:
  * „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i
  * bodovi koje je doneo." So `/api/teams` names him on his team instead (`alsoInTheTeam`), to exactly

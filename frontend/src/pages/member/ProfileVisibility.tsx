@@ -20,7 +20,8 @@ import { THE_ACCOUNT_GOES_TO, WHEN_CHANGING_MY_DATA, hiddenIn } from './myAccoun
  * rather than striking the sentence. Since 03.10.2026 the readers it hides from are every one
  * who is neither an active member nor the administration, a free account and a member whose fee
  * has lapsed among them (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan
- * član ni administracija"); the words next to the box and in the policy still name only the
+ * član ni administracija,
+ * nikad prema aktivnom članu"); the words next to the box and in the policy still name only the
  * visitors who are not signed in, which understates it and is a named boundary rather than a
  * decision to leave it so.
  *

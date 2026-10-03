@@ -223,7 +223,8 @@ export type Competitor = {
   /**
    * Whether this member has hidden their profile from readers who are neither an active member nor
    * the administration (a visitor, a free account and a member whose fee has lapsed: PDL P23,
-   * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija").
+   * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+   * nikad prema aktivnom članu").
    *
    * The published privacy policy has promised this since it was written: „U podešavanjima
    * možete sakriti profil od posetilaca koji nisu prijavljeni, ali ne i od ostalih članova,
@@ -331,7 +332,8 @@ export type Competitor = {
    * above, for the same reason and by the same sentence.
    *
    * **Who that is measured against is the KIND OF READER** (PDL P23, 03.10.2026, „Skrivanje
-   * deluje prema svakome ko nije aktivan član ni administracija"): an active member and the
+   * deluje prema svakome ko nije aktivan član ni administracija,
+   * nikad prema aktivnom članu"): an active member and the
    * administration read a hidden profile, and a visitor, a free account and a member whose fee has
    * lapsed do not. It was „anybody with a session" until that day (PDL, 27.09.2026, point 17, which
    * the owner's choice overturned for everybody but the administration). The hiding runs one way
@@ -667,7 +669,8 @@ export type Team = {
    *
    * Since 02.10.2026 that is a member who hides his profile, read by somebody who may not read
    * it (a visitor, and since 03.10.2026 a free account and a member whose fee has lapsed, PDL P23,
-   * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija"):
+   * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+   * nikad prema aktivnom članu"):
    * `/api/competitors` answers his `teamId` as null to that reader (PDL, odeljak 16, [ODLUKA
    * 27.09.2026, owner]), and the owner's own limit on the same decision is that the team keeps
    * him - „mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i bodovi koje

@@ -127,7 +127,8 @@ const anAccountThatRacesForNobody = { role: 'moderator', account: 1 }
 
 /** And the two readers the owner's choice of 03.10.2026 keeps a hidden profile from while they are
  *  signed in (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
- *  administracija"): a member whose fee has lapsed, who has a number the list the stand-in serves does
+ *  administracija,
+ *  nikad prema aktivnom članu"): a member whose fee has lapsed, who has a number the list the stand-in serves does
  *  not carry (the file flags 000032 `active: false`, and `competitorsServed` leaves him out as the
  *  server does), and an account that is not the administration and names no member at all. */
 const aMemberWhoseFeeHasLapsed = { role: 'competitor', account: 1, member: { memberNumber: '000032' } }

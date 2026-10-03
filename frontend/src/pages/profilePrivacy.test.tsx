@@ -17,7 +17,8 @@ import { MEMBERS } from './admin/entityForms'
  * profile from readers who are not signed in, and showing the birthday only by choice. (The words
  * are the policy's. Since 03.10.2026 the rule the portal keeps is wider than they say: a profile
  * is hidden from everybody who is neither an active member nor the administration, PDL P23,
- * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija"; the policy's
+ * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"; the policy's
  * own text has not moved, and what to do about it is a question for the owner.) Nothing
  * in the code answered for either until 06.09.2026, when the owner asked for the controls
  * rather than for the sentences to go.
@@ -610,7 +611,8 @@ describe('hiding a profile from readers who may not read it', () => {
 /**
  * THE ADMINISTRATION READS A HIDDEN PROFILE WHETHER OR NOT IT RACES.
  *
- * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija":
+ * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu":
  * moderators and the superadmin read it, and they have no member number at all (PDL P21). A screen
  * that asked only whether the reader is a MEMBER would send them to the front page while the server
  * served them a hidden member's biography and portrait. That is the fault this case was written for
@@ -718,7 +720,8 @@ function theServerAnswersWithItsMembers(): { lapsed: () => string[] } {
  * A HIDDEN PROFILE IS NOT READ BY SOMEBODY SIGNED IN WHO IS NEITHER AN ACTIVE MEMBER NOR THE
  * ADMINISTRATION.
  *
- * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija",
+ * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu",
  * chosen between offered outcomes with its price shown: a free account and a member whose fee has
  * lapsed meet a hidden profile as a visitor does, and a member who does not renew stops seeing hidden
  * profiles until he pays. Until that day the screens, and the server, asked whether anybody was signed
@@ -997,7 +1000,8 @@ describe('a hidden profile is reachable from nowhere', () => {
  * <p>The walk above reads every address as a visitor, and says so: a screen that leads to a hidden
  * profile only below a sign in is outside it. Since 03.10.2026 a member whose fee has lapsed is
  * signed in and is read as a visitor is (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
- * nije aktivan član ni administracija"), so the same table is walked as him, under the headings
+ * nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"), so the same table is walked as him, under the headings
  * the screens carry once somebody is signed in. What this holds is the property and not a reader
  * kind: one way in that stays on for a signed in reader, however it is written, is a way in.
  */

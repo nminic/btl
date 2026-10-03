@@ -78,7 +78,8 @@ export type Readable =
  * So what is left here is the hiding, and it is one sentence: a member who has hidden their
  * profile is unreachable to a reader who is neither an active member nor the administration, and
  * to nobody else (`PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
- * administracija"`). The published policy gives the reason in the same sentence as the promise: „ali
+ * administracija,
+ * nikad prema aktivnom članu"`). The published policy gives the reason in the same sentence as the promise: „ali
  * ne i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja."
  *
  * **THE SECOND ARGUMENT IS WHETHER THIS READER MAY READ A HIDDEN PROFILE, AND SINCE 03.10.2026 IT IS
