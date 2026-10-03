@@ -1439,6 +1439,64 @@ describe('an event whose races wait', () => {
       expect(await racesListedFor(user, event.name)).toBe('1')
     }, SLOW)
 
+    it('writes into the list the event the route took, drops what was read, and goes on with its races, when the answer comes while the list is drawn (ii, iii)', async () => {
+      /* The commonest way a press is left: the reader goes back to the list and the press ends there,
+         with no form opened. The event written is a standing one, so what the route took is a CHANGE
+         of a row the list already has, which is not the write a new event makes. */
+      const { event, races } = await aServedEventWithRaces()
+      let release: ((one: Response) => void) | undefined
+
+      answering = (path, init) =>
+        path === `/api/events/${String(event.id)}` && init?.method === 'PUT' && release === undefined
+          ? new Promise<Response>((done) => {
+              release = done
+            })
+          : null
+
+      const user = setupUser()
+
+      renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      const called = screen.getByLabelText(/^Naziv događaja/)
+
+      await user.clear(called)
+      await user.type(called, 'Preimenovan događaj')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(release).toBeDefined()
+      })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+      /* Read once before the answer, so that dropping it is the only thing that can make the next read
+         go to the server. */
+      await loadResource<BtlEvent[]>('events')
+
+      const reads = () =>
+        watching.asked.filter(
+          (one) => one.path === '/api/events' && (one.init?.method ?? 'GET') === 'GET',
+        ).length
+      const before = reads()
+
+      await comesBack(
+        release,
+        new Response(JSON.stringify({ id: event.id, slug: 'preimenovan-dogadjaj' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      await loadResource<BtlEvent[]>('events')
+
+      expect(reads(), 'what was read before the answer was handed out again after it').toBeGreaterThan(
+        before,
+      )
+      /* (iii) Every race of the event was written after the answer, and (ii) the new name is in the list. */
+      expect(
+        writtenSince(0).filter((one) => one.startsWith('PUT /api/races/')),
+      ).toHaveLength(races.length)
+      expect(await rowsCalled(user, 'Preimenovan događaj')).toBe(1)
+    }, SLOW)
+
     it('goes on with the races of a press the reader left, writes what the route took into the list, and does not hold the event opened again meanwhile (ii, iii)', async () => {
       const { event, races } = await aServedEventWithRaces()
       const first = must(races[0], 'the first race')
