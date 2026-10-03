@@ -399,6 +399,11 @@ class VerificationConstraintsTest extends DatabaseTest {
 				.query(String.class)
 				.list();
 
+		/* V54's trigger on this table deletes a photo row that nobody holds and never refuses, so
+		   there is no row that breaks it. It is taken away by the function it runs, and the
+		   exemption has its own floor in APhotoNobodyHoldsGoesTest. */
+		declared = withoutTheConstraintTriggersThatAct(declared);
+
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
 
 		assertThat(declared).isNotEmpty();

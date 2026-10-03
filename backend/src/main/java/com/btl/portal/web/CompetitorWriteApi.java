@@ -102,18 +102,22 @@ import java.util.regex.Pattern;
  * same act.
  * <li><b>A team he was the last of has to go with him</b>, which is
  * {@link ATeamGoesWithItsLastMember} and the owner's decision of 25.09.2026.
- * <li><b>His own picture has to go with him, row and file, which the schema cannot reach
- * either.</b> {@code competitor_photo_fk} (V8) is a key on the WRONG side for a cascade to help
- * here: it says what happens to {@code competitor.photo_id} when a {@code photo} ROW is
- * deleted, and says nothing about the other direction. Deleting the competitor therefore left
- * his {@code photo} row, and the file beside it, standing for ever with nothing pointing at
- * them any more - measured 25.09.2026 by a probe that deleted a member with a portrait and read
+ * <li><b>His own picture has to go with him, row and file, and the two have different homes.</b>
+ * {@code competitor_photo_fk} (V8) is a key on the WRONG side for a cascade to help here: it says
+ * what happens to {@code competitor.photo_id} when a {@code photo} ROW is deleted, and says
+ * nothing about the other direction. Deleting the competitor therefore left his {@code photo}
+ * row, and the file beside it, standing for ever with nothing pointing at them any more -
+ * measured 25.09.2026 by a probe that deleted a member with a portrait and read
  * {@code select count(*) from photo} back at one. PDL P21 (11.08.2026 and 24.09.2026 together):
  * a deletion „obrisan zauvek sa svim svojim profilom", and „jedina fotografija clana je njegova
  * profilna, koja odlazi sa profilom" - a survivor is exactly the „sakriveno, ne obrisano" P23
- * refuses. {@link MePhotoApi#remove} is the portal's own precedent for taking a picture down at
- * all and its shape is copied here together with its guard: the row goes first and the file
- * after it.
+ * refuses. <b>The ROW is the database's since V54</b> (ADL A68, 03.10.2026, „Na kraju svake
+ * transakcije baza brise zapis slike koji vise ne drzi nijedna od cetiri kolone"): the member's
+ * own deletion is the event it reacts to, and so is the cascade that takes the pictures that wait
+ * in his queue rows, which nothing in this class ever deleted. <b>The FILE is still this class's</b>
+ * for his portrait, read before the member goes and deleted at once, as {@link MePhotoApi#remove}
+ * deletes it; the files of the pictures that were waiting are left to
+ * {@link ThePicturesFolderIsSwept}.
  * </ul>
  *
  * <p><b>AND ONE THING THE CASCADE DOES BADLY, WHICH V33 FIXES RATHER THAN THIS CLASS.</b>
@@ -379,7 +383,7 @@ class CompetitorWriteApi {
 		db.sql("delete from competitor where id = ?").param(gone).update();
 
 		emptyTeams.goIfEmpty(teams);
-		photo.ifPresent(this::takeAwayThePhoto);
+		photo.ifPresent(this::takeAwayTheFileOf);
 
 		return ResponseEntity.noContent().build();
 	}
@@ -389,7 +393,7 @@ class CompetitorWriteApi {
 	 * read it off.
 	 *
 	 * <p>Answered as an id and not joined against {@code photo} here, for
-	 * {@link #memberNumbered}'s own reason: what {@link #takeAwayThePhoto} needs next is the
+	 * {@link #memberNumbered}'s own reason: what {@link #takeAwayTheFileOf} needs next is the
 	 * key, and reading it back off a row that may already be gone would be the wrong table to
 	 * ask twice.
 	 */
@@ -401,24 +405,26 @@ class CompetitorWriteApi {
 	}
 
 	/**
-	 * HIS PICTURE'S ROW AND ITS FILE, BOTH GONE, THE SAME SHAPE {@link MePhotoApi#remove} KEEPS.
+	 * THE FILE OF HIS PICTURE, GONE AT ONCE, THE SAME WAY {@link MePhotoApi#remove} DELETES IT.
 	 *
-	 * <p>The row first, then the file, matching that route's own order: „THE ROW AND THE FILE
-	 * BOTH GO, and the order is the row first". Nothing here empties {@code competitor.photo_id}
-	 * the way that route empties it explicitly, because the row it stood on is already gone by
-	 * the time this runs - there is no column left to leave pointing at anything.
+	 * <p>The ROW is not deleted here. Deleting the competitor above is what lets go of the
+	 * picture, and the database deletes a {@code photo} row that nobody holds at the end of this
+	 * transaction (V54; ADL A68, 03.10.2026, „Na kraju svake transakcije baza brise zapis slike
+	 * koji vise ne drzi nijedna od cetiri kolone"), so this class does not say it a second time.
+	 * It used to, and the file followed the row. What a database cannot do is delete the file,
+	 * and a member's deletion is immediate, so the file goes here and now. Nothing here empties
+	 * {@code competitor.photo_id} either: the row it stood on is already gone, and there is no
+	 * column left to leave pointing at anything.
 	 *
 	 * <p><b>A fault taking the file off the disk is logged and swallowed, not thrown.</b> The
 	 * member's deletion is the act PDL P23 calls immediate and final, and a stray file
 	 * {@link PhotoApi} will never serve again - because nothing in {@code photo} points at it
-	 * once its row is gone below - is a leftover that class already answers nothing for and that
-	 * {@link ThePicturesFolderIsSwept} deletes once it is older than ten minutes, not a reason to
-	 * leave a deleted member's account and pairs standing while an administrator is told a disk
-	 * fault instead of a completed deletion.
+	 * once the commit has taken the row - is a leftover that class already answers nothing for
+	 * and that {@link ThePicturesFolderIsSwept} deletes once it is older than ten minutes, not a
+	 * reason to leave a deleted member's account and pairs standing while an administrator is
+	 * told a disk fault instead of a completed deletion.
 	 */
-	private void takeAwayThePhoto(long photo) {
-		db.sql("delete from photo where id = ?").param(photo).update();
-
+	private void takeAwayTheFileOf(long photo) {
 		try {
 			if (!Files.deleteIfExists(folder.resolve(String.valueOf(photo)))) {
 				LOG.warn("the file of photo {} was already gone when its member was deleted", photo);

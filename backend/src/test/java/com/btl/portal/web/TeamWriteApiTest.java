@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.TheEndOfTheTransaction;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.team.Membership;
@@ -447,7 +448,14 @@ class TeamWriteApiTest {
 				.single();
 	}
 
+	/**
+	 * Whether the row is still there AT THE END of the transaction the door ran in. The row of a
+	 * logo nobody holds any more is the database's to delete (V54), at that end, and this class
+	 * rolls back and never reaches one, so it is brought forward before the table is read.
+	 */
 	private boolean photoRowExists(long photo) {
+		TheEndOfTheTransaction.broughtForward(db);
+
 		return db.sql("select exists(select 1 from photo where id = ?)").param(photo)
 				.query(Boolean.class).single();
 	}
@@ -1563,7 +1571,7 @@ class TeamWriteApiTest {
 
 	/**
 	 * AND THE LOGO'S ROW IS STILL REMOVED WHEN ITS FILE WILL NOT LEAVE THE DISK, THE THIRD WAY
-	 * {@code takeAwayThePhoto} CAN GO.
+	 * {@code takeAwayTheFileOf} CAN GO.
 	 *
 	 * <p>A member and a team of his own, self-contained rather than reusing {@link #HIS_TEAM} -
 	 * that team is spent by {@link #theTeamsLogoGoesWithItWhenTheLastMembershipIsRemoved}
