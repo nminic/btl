@@ -919,7 +919,7 @@ class RightsOverRealHttpTest {
 	 * <p>The twin is a sibling of the real address by {@link #twinOf}, so no list of
 	 * prefixes is needed and nothing has to be kept equal by hand.
 	 *
-	 * <p><b>The five pairs below are written by hand, and that boundary is a decision and
+	 * <p><b>The pairs below are written by hand, and that boundary is a decision and
 	 * not an oversight (found on review, recorded rather than left for the next reader to
 	 * question).</b> A floor over WHICH pairs belong on this list would have to track a
 	 * value through the code to answer "does this route refuse a member-less account", the
@@ -954,8 +954,22 @@ class RightsOverRealHttpTest {
 	 * assertion every other pair here is caught by.
 	 */
 	@ParameterizedTest
+	/* THE LIST OF WHO IS GOING JOINED ON 03.10.2026 (b212). Asked as A_COMPETITOR, an account
+	   that races for nobody and is not the administration, which is exactly who the owner's
+	   choice of that day leaves out, in the words PDL records it in: „aktivni članovi (važeća
+	   članarina), a spisak vidi i administracija". A member whose fee has lapsed is refused
+	   down the very same line, so this pair is his too.
+
+	   AND THE TWO WRITES OF THAT LIST ARE NOT HERE, ON PURPOSE AND MEASURED. Their key is the
+	   LAST segment of the address, so `twinOf` turns `/api/attendance/1` into
+	   `/api/attendance/z` - which is the same route with a word for a key, not an address that
+	   maps nothing, and both sides then come out of one handler. Written here, the pair stayed
+	   green with that handler's refusal turned into a status written onto the response. What
+	   holds their refusal is AWordInAKeyOverRealHttpTest, whose twin changes a literal segment
+	   and whose callers include the moderator who races for nobody; it fails on that same
+	   mutation. */
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "PUT /api/me",
-			"POST /api/inbox/{id}/read"})
+			"POST /api/inbox/{id}/read", "GET /api/attendance"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way

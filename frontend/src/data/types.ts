@@ -1369,9 +1369,9 @@ export type ServedMessage = {
    * `message.id`, a number.
    *
    * The address of one message is text (`useParams`), so whoever compares the two puts
-   * this through `String` rather than the other way about - the same shape
-   * `event/GoingToEvent.tsx` and `useLive` already use for a key that is a number on one
-   * side of a comparison and text on the other.
+   * this through `String` rather than the other way about - the same shape `useLive`
+   * already uses for a key that is a number on one side of a comparison and text on the
+   * other.
    */
   id: number
   /**
