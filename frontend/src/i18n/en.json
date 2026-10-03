@@ -19,7 +19,7 @@
     },
     "competitors": {
       "title": "BTL competitors",
-      "description": "Every member of the League with a category, a number of races and the points won, and a link to each profile."
+      "description": "Every member of the League with a category and a link to each profile."
     },
     "teams": {
       "title": "BTL teams",

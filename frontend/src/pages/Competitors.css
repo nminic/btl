@@ -1,6 +1,24 @@
-/* Competitor cards. Built around the picture: the face takes the top third of
-   the card and keeps its size on every width, because it is the thing a person
-   recognises before they read anything (PDL P28a). */
+/* Competitor cards. Built around the picture: the face is the largest thing on the
+   card and keeps its size on every width, because it is the thing a person
+   recognises before they read anything (PDL P28a).
+
+   **A card ends at the town, and its height is what its content makes it.** The count of
+   races and the points that stood under it went on 03.10.2026, with the rules that dressed
+   them (owner: „Na strani Takmičari, na pločici takmičara ceo donji deo nije potreban da se
+   vidi. Dakle bez Trke i bodova, visina pločice treba da bude kraća, više nalik kvadratu.").
+
+   **Measured in a browser that day, one card, width by height, before and after:** 360: 328 x
+   316, now 328 x 242; 768: 353 x 316, now 353 x 242; 1280: 256 x 316, now 256 x 241. The card is
+   lower on every width, and nearer to a square only where it was taller than it was wide, which
+   is the four across of a desktop. On a phone and a tablet it was already a square or wider,
+   and it is wider now.
+
+   **It is NOT made a square with `aspect-ratio`, and that is deliberate.** A square on those two
+   widths is 328 x 328 and 353 x 353, TALLER than the card was, which is the opposite of „kraća";
+   and a name that wraps (the longest, 000031, does at 1280) would run out of the bottom of a box
+   that cannot grow. What the card says is held by `pages/publicScreens.test.tsx`, and a rule
+   that outlives its block by „styles nothing that a card does not draw" in the same file. No
+   case holds the height: jsdom lays nothing out (ADL A33), so it is measured in a browser. */
 
 .cards {
   list-style: none;
@@ -109,32 +127,4 @@
 .card__city {
   color: var(--text-muted);
   font-size: 0.82rem;
-}
-
-.card__figures {
-  display: flex;
-  gap: var(--space-24);
-  margin-top: var(--space-12);
-  padding-top: var(--space-12);
-  border-top: 1px solid var(--border);
-  width: 100%;
-  justify-content: center;
-}
-
-.card__figure {
-  display: grid;
-  gap: var(--space-2);
-}
-
-.card__value {
-  font-weight: 800;
-  font-size: 1.05rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.card__label {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
