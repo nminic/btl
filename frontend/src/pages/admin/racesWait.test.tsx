@@ -1032,8 +1032,13 @@ describe('an event whose races wait', () => {
 
   /**
    * A PRESS THAT IS STILL OUT WHEN THE READER LEAVES ITS FORM, AND WHAT IT MAY WRITE WHEN THE ANSWER
-   * COMES (review of PR 483, round 2, finding V1; owner, 03.10.2026: „ponovni pokušaj šalje samo trke,
-   * nikad drugi događaj").
+   * COMES (review of PR 483, round 2, finding V1).
+   *
+   * <p>The decision these cases keep is the owner's choice of 03.10.2026 between offered outcomes
+   * („Događaj ostaje, trke čekaju", the heading it carries in the PDL): a retry sends only races and
+   * never another event. It is a rule about the retry of ONE form. A press that wrote its wait into
+   * another form made THAT form behave as the retry: it sent only races, under an event that was not
+   * its own, and sent no event of its own at all.
    *
    * <p>Nothing stops the reader leaving while a press is out - „Nazad na spisak" is open, nothing says
    * the press is out, and the request has no deadline - so an answer can come after he has gone back to
@@ -1098,7 +1103,7 @@ describe('an event whose races wait', () => {
       })
     }
 
-    /** What the list of events says about the races of the event called this, on the day if given. */
+    /** What the list of events counts as the races of the one event called this (the fourth cell). */
     async function racesListedFor(user: Pressing, name: string): Promise<string | null> {
       const search = await screen.findByPlaceholderText('Naziv ili mesto')
 
@@ -1109,8 +1114,9 @@ describe('an event whose races wait', () => {
         .getAllByRole('row')
         .slice(1)
         .find((one) => (one.textContent ?? '').includes(name))
+      const cells = within(must(row, `the row of ${name}`)).getAllByRole('cell')
 
-      return within(must(row, `the row of ${name}`)).getAllByRole('cell')[3]?.textContent ?? null
+      return must(cells[3], 'the cell that counts the races').textContent
     }
 
     async function openCalled(user: Pressing, name: string): Promise<void> {

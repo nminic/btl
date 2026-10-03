@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useRef, useState } from 'react'
 import { useToday } from '../../clock/useClock'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
 import { copyOf } from '../event/copyOf'
@@ -20,6 +20,7 @@ import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { wordsFor } from '../account/serverWords'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
+import { EndsTheVisit } from './EndsTheVisit'
 import {
   EVENTS,
   RACES,
@@ -133,28 +134,6 @@ function racesUnder(all: Record<string, unknown>[], event: string): RaceOfRow[] 
       descentM: Number(one.descentM),
       category: categoryOf(Number(one.distanceKm)),
     }))
-}
-
-/**
- * THE END OF A VISIT, said by the form leaving the screen, whichever way it goes.
- *
- * <p>Drawn beside the editor and for exactly as long as it is, so what it does when this screen takes
- * the form off - the button, a link to this list, the browser's Back - is the one moment a form can be
- * said to be over. It moves a number and says nothing else (`visits`, in `AdminEvents`, says what the
- * number is for).
- *
- * <p>The number rides in a ref handed down rather than in state: nothing is drawn from it, and a state
- * set while the form is being taken away would draw this screen once more for nothing.
- */
-function EndsTheVisit({ visits }: { visits: RefObject<number> }) {
-  useEffect(
-    () => () => {
-      visits.current += 1
-    },
-    [visits],
-  )
-
-  return null
 }
 
 /* The calendar from the other side. Between 15 and 30 September this is the
