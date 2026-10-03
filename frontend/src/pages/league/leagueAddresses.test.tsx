@@ -4,6 +4,7 @@ import { screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, onTestFinished, vi } from 'vitest'
 import type { League } from '../../data/types'
 import { at, must } from '../../test/at'
+import { MISLEADING } from '../../test/misleadingAddresses'
 import { renderAt } from '../../test/render'
 import { answeredWith, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
@@ -235,6 +236,34 @@ describe('an address in the terms or in the prizes of a competition', () => {
        same twice, and React says so in the warning that is heard after every case above. */
     expect(rules.getAllByRole('link')).toHaveLength(2)
     expect(rules.getAllByRole('link', { name: 'www.runtrace.net' })).toHaveLength(2)
+  }, SLOW)
+
+  it('draws an address that reads as one host and opens another as the words it was typed as', async () => {
+    const typed = MISLEADING.map((one) => one.typed)
+    /* The real address stands first and alone among them, so that what is measured is the refusal of
+       the others and not a box that links nothing; the same words stand in brackets in the prizes. */
+    const written = `www.runtrace.net ${typed.join(' ')}`
+    const bracketed = typed.map((one) => `(${one})`).join(' ')
+
+    serving([league(1, 'Proba Lazna', written, bracketed)])
+    renderAt('/sr/lige?sezona=2027')
+
+    const box = await boxOf(/Proba Lazna/)
+    const rules = sectionOf(box, 'Propozicije')
+    const prizes = sectionOf(box, 'Nagrade')
+
+    /* Every address of the table is one that the gate accepts (`pages/league/addressesIn.test.ts`
+       holds it), and not one of them is a link: the one that is, is the real one. The floor is under
+       the table, since a table that lost its rows would pass every line below it. */
+    expect(typed.length).toBeGreaterThan(20)
+    expect(rules.getAllByRole('link')).toHaveLength(1)
+    expect(rules.getByRole('link')).toHaveAccessibleName('www.runtrace.net')
+    expect(rules.getByRole('link')).toHaveAttribute('href', 'https://www.runtrace.net')
+    expect(rules.getByRole('paragraph').textContent).toBe(written)
+
+    expect(prizes.queryAllByRole('link')).toEqual([])
+    expect(prizes.getByRole('paragraph').textContent).toBe(bracketed)
+    expect(prizes.getByRole('paragraph').childNodes).toHaveLength(1)
   }, SLOW)
 
   it('is drawn from what stands in the box and not from what was served, and the box being written holds the typed words', async () => {
