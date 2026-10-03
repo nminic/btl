@@ -456,6 +456,60 @@ describe('the switch that says you are going', () => {
     expect(presses()).toEqual([`DELETE /api/attendance/${String(event.id)}`])
   })
 
+  it('is off for a member who is going to another event and not to this one, and his first press puts him on', async () => {
+    /* PDL P6, owner 11.08.2026: „to dugme ostaje uključeno na nivou događaja". The switch is
+       about ONE event, so what it says is read off the rows of this event alone. Review of PR
+       479, HIGH: nothing held that. Read off the rows of every event, a member who had said he
+       was going to any race was drawn as going to all of them, and his first press on another
+       one was a DELETE for a row that was not there.
+     *
+       THE SECOND SOURCE OF THE SAME VALUE IS PUT IN THE DATA, AND IT IS ANOTHER EVENT. In the
+       file every member who reads this list and is going anywhere is going to the event
+       `upcoming()` picks as well (000001 to 000005 all are), so the rows of this event and the
+       rows of every event held the same names for every reader there was, and a switch asked of
+       the wrong rows answered exactly as one asked of the right ones. The reader is therefore
+       put on another event that other members are going to, and last in the table: his row
+       there is neither the only one of that event nor the first of the list. */
+    const user = setupUser()
+    const { event, going, day } = await upcoming()
+    const events = await loadResource<BtlEvent[]>('events')
+    const attendance = await loadResource<Attending[]>('attendance')
+    const crowd = (id: number) => attendance.filter((one) => one.eventId === id).length
+    /* The busiest of the other events that are still ahead of the day this is read on. */
+    const elsewhere = must(
+      events
+        .filter((one) => one.id !== event.id && one.date > day)
+        .sort((left, right) => crowd(right.id) - crowd(left.id))[0],
+      'another event, ahead of us, that somebody is going to',
+    )
+
+    /* The setting, asked before it is used: he is on no row of the file, and the other event
+       has people on it besides him. */
+    expect(going.some((one) => one.memberNumber === ME)).toBe(false)
+    expect(attendance.some((one) => one.memberNumber === ME)).toBe(false)
+    expect(crowd(elsewhere.id)).toBeGreaterThan(1)
+
+    kept = [...kept, { eventId: elsewhere.id, memberNumber: ME }]
+    /* What the page reads is what the server holds now, and not what this case read a moment
+       ago. */
+    clearResourceCache('attendance')
+
+    renderAt(`/sr/kalendar/${event.slug}`, 'competitor', ME, undefined, day)
+
+    const button = await screen.findByRole('button', { name: 'Idem na ovaj događaj' })
+
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    /* And the list is this event's alone: his row on the other event is not drawn here. */
+    expect(rows()).toHaveLength(going.length)
+
+    await user.click(button)
+
+    await waitFor(() => expect(theSwitch()).toHaveAttribute('aria-pressed', 'true'))
+    /* THE VERB OF A MEMBER WHO IS NOT ON THIS LIST: a PUT. */
+    expect(presses()).toEqual([`PUT /api/attendance/${String(event.id)}`])
+    expect(rows()).toHaveLength(going.length + 1)
+  })
+
   it('is still on when the page is opened again, because the server kept it', async () => {
     /* THE OWNER'S OWN SENTENCE, 03.10.2026, after testing: „Prijavim se da idem na ovaj
        događaj i kad osvežim stranu moja prijava nestane. Mora da se zapamti!" A fresh render
@@ -936,7 +990,7 @@ describe('writing to somebody else who is going', () => {
     expect(wrote['to']).not.toBe(bystander.memberNumber)
   })
 
-  it('sends three fields, and lets the server name the writer and the moment', async () => {
+  it('sends three fields and says what each holds, and lets the server name the writer and the moment', async () => {
     /* `InboxWriteApi.Written` takes `to`, `subject` and `body` and says why there is no
        fourth: „There is no `from`, no `date` and no `read`: each of the three is the
        server's or the database's, and a field for one of them would be a value the
@@ -947,6 +1001,7 @@ describe('writing to somebody else who is going', () => {
        Asked over the WHOLE object rather than over the three names, so that a fourth
        field added here fails this rather than going unnoticed: unknown fields are
        dropped on the way in, so the server would never say a word about it. */
+    const typed = 'Krećem u šest ujutru.'
     const user = setupUser()
     const { event, going, day } = await upcoming()
     const competitors = await loadResource<Competitor[]>('competitors')
@@ -969,7 +1024,7 @@ describe('writing to somebody else who is going', () => {
     )
     await user.type(
       screen.getByRole('textbox', { name: `Piši članu ${them.firstName} ${them.lastName}` }),
-      'Krećem u šest ujutru.',
+      typed,
     )
     await user.click(screen.getByRole('button', { name: 'Pošalji poruku' }))
 
@@ -980,6 +1035,24 @@ describe('writing to somebody else who is going', () => {
     expect(Object.keys(wrote).sort()).toEqual(['body', 'subject', 'to'])
     expect(wrote).not.toHaveProperty('from')
     expect(wrote).not.toHaveProperty('date')
+
+    /* AND WHAT EACH OF THE THREE HOLDS, which the names above do not say. Review of PR 479,
+       HIGH: held by its names alone, the subject could be built from any value this screen
+       has to hand and this file stayed green - a swap of `event.name` for `event.slug`
+       survived all 33 of its cases. On `main` the one case here that spelled the subject out
+       was the one about a writer the list of members does not carry, and it went with that
+       writer's note.
+     *
+       The subject is spelled out here and not asked of the dictionary, so that what is
+       compared is the sentence the member's inbox shows and not whatever `t` returns for the
+       same arguments; and the event's name and its slug are first asked to be two different
+       strings, which is what lets the line below tell the one from the other. */
+    expect(event.name).not.toBe(event.slug)
+    expect(wrote).toEqual({
+      to: them.memberNumber,
+      subject: `Dogovor za ${event.name}`,
+      body: typed,
+    })
   })
 
   it('reaches the member it was addressed to, under the name the server put on it', async () => {

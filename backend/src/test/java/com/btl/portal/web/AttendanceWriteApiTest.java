@@ -483,6 +483,51 @@ class AttendanceWriteApiTest {
 	}
 
 	/**
+	 * NOBODY THIS ADDRESS IS NOT FOR LEARNS THAT AN EVENT HAS BEEN RUN, WHICHEVER VERB HE SENDS.
+	 *
+	 * <p>The class note puts the member before the day „so somebody this address is not for learns
+	 * nothing about any event from it", and until this case nothing held the order: the two cases
+	 * above ask the people it is not for only about events still ahead, where the day passes
+	 * whichever question comes first and the two orders answer alike. With the event and its day
+	 * asked before the member, all twelve cases of this class were green (review of PR 479, HIGH),
+	 * and a member whose fee had lapsed was told {@code theEventHasBeenRun} by an address that has
+	 * nothing to tell him.
+	 *
+	 * <p>Here the same six accounts the two cases above keep ask about the two events that have
+	 * been run: the one run long ago, and the one run yesterday in Belgrade that a clock read in UTC
+	 * would still call today. The answer is always the 404 of an address that maps nothing, and
+	 * never the 400 that names the day. The anchor stands first, so that a 404 cannot mean „no such
+	 * event": the same two events, asked by an active member, are the 400.
+	 */
+	@Test
+	void nobodyTheAddressIsNotForLearnsThatAnEventHasBeenRun() throws Exception {
+		List<String> before = everyRow();
+
+		for (String run : List.of(PAST, BELGRADE_YESTERDAY)) {
+			assertThat(going(THE_ASKER, run).getStatus())
+					.as("an active member said he is going to %s, so it is not an event that has been"
+							+ " run", run)
+					.isEqualTo(400);
+			assertThat(notGoing(THE_ASKER, run).getStatus())
+					.as("an active member took one back from %s, so it is not an event that has been"
+							+ " run", run)
+					.isEqualTo(400);
+
+			for (String email : List.of(THE_LAPSED, NEVER_PAID, NAMES_NO_MEMBER, MODERATOR,
+					MODERATOR_LAPSED, SUPERADMIN)) {
+				assertThat(going(email, run).getStatus())
+						.as("%s said he is going to %s and was told about its day", email, run)
+						.isEqualTo(404);
+				assertThat(notGoing(email, run).getStatus())
+						.as("%s took one back from %s and was told about its day", email, run)
+						.isEqualTo(404);
+			}
+		}
+
+		assertThat(everyRow()).isEqualTo(before);
+	}
+
+	/**
 	 * A MODERATOR WHOSE MEMBER IS IN GOOD STANDING SAYS IT AS THAT MEMBER.
 	 *
 	 * <p>The anchor of the case above: being the administration takes nothing away either.
