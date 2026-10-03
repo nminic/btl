@@ -630,6 +630,38 @@ describe('an event whose races wait', () => {
     await aNewFormHoldsNothingOfThatCopy(true)
   }, SLOW)
 
+  it('marks no row of a new form after a form whose last press was refused over a row went away with its address', async () => {
+    /* The fifth thing a form holds, beside the table (`forgetTheForm`): whether its last press was
+       refused over a row, which is when the rows start saying what is missing. Handed to the next
+       form it marks a row nobody has touched, and the first thing a reader of a new form would
+       see is a list of what is wrong with a race he has not yet begun to enter. */
+    const { event } = await aServedEventWithRaces()
+    const user = setupUser()
+    const { router } = renderAt(
+      `/sr/administracija/dogadjaji?izmena=${String(event.id)}`,
+      'superadmin',
+    )
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    /* Refused over the row that has no length, so nothing is sent and the rows are marked. */
+    await screen.findByText(sr.admin.form.racesRefused)
+    expect(screen.getByRole('list', { name: sr.admin.race.wrong.list })).toBeVisible()
+    expect(writtenSince(0)).toEqual([])
+    await act(async () => {
+      await router.navigate('/sr/administracija/dogadjaji')
+    })
+
+    await user.click(await screen.findByRole('button', { name: 'Novi događaj' }))
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    /* The row is merely unfinished, which is the ordinary state of one somebody is typing into. */
+    expect(screen.getByLabelText(/^Dužina/)).toHaveAttribute('aria-invalid', 'false')
+    expect(screen.queryByRole('list', { name: sr.admin.race.wrong.list })).toBeNull()
+  }, SLOW)
+
   /**
    * A REFUSED DELETION THAT IS NOT THE FIRST, AND EVERYTHING THE PRESS STILL HAS TO SEND AFTER IT
    * (review of PR 483, round 1).
@@ -719,6 +751,8 @@ describe('an event whose races wait', () => {
     expect(notSaved()).toEqual([
       `Trka Druga trka (${formatShortDate('2027-01-12', 'sr-Latn')}) nije obrisana: ${sr.admin.raceSaveRefused.theRaceCountsInALeagueOfItsSeason}`,
     ])
+    /* And the sentence over the form is the one that points at the table, which is drawn here. */
+    expect(screen.getByRole('alert').textContent).toBe(sr.admin.eventSavedRacesRefused)
   }, SLOW)
 
   /**
