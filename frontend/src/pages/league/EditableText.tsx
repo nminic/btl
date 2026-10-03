@@ -24,12 +24,14 @@ import { addressesIn } from './addressesIn'
  * nor the gate beneath it can see that, because the control is not in the address but in the word
  * before it. The attribute makes the link an isolate with a direction of its own, so what is drawn
  * is what was typed, in the order it was typed, which is what its accessible name always was. It is
- * an attribute and not a rule of a sheet so that no change to a sheet can take it away, and it
- * changes nothing about which words are a link. **Derived from PDL P15 ("sa vidljivim domenom",
- * "domen je sama otkucana adresa") and not the owner's word.** What it does not do, said here and
- * not left to be found: the words around a link are drawn as their author typed them, so an
- * override in them still reorders them. `pages/league/linkDirection.test.tsx` holds that every link
- * carries the attribute and that nothing which draws one from `addressesIn` goes without a case.
+ * an attribute on the link itself, so it goes wherever the link is drawn, and it changes nothing
+ * about which words are a link. **Derived from PDL P15 ("sa vidljivim domenom", "domen je sama
+ * otkucana adresa") and not the owner's word.** What it does not do, said here and not left to be
+ * found: the words around a link are drawn as their author typed them, so an override in them still
+ * reorders them; and the isolation is the browser's own rule for the attribute, which a rule of a
+ * sheet that sets `unicode-bidi` on links would beat (measured). None does, and the value on the
+ * built sheet is `isolate`. `pages/league/linkDirection.test.tsx` holds that every link carries the
+ * attribute and that nothing which draws one from `addressesIn` goes without a case.
  *
  * **Every run that is not an address is a string, and a string in a child position is a text
  * node**, so nothing an administrator typed is ever read as markup. The terms of a competition are

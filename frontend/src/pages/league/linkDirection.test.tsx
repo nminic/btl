@@ -21,9 +21,10 @@ import { EditableText } from './EditableText'
  *   - after U+202B, with U+05D0 in the path: `www.runtrace.net/<U+05D0>/https://zlo.example`
  *   - after U+2067, with U+05D0 in the path: the same
  *
- * With `dir="ltr"` on the link all three are drawn as they were typed, at all three widths; the same
- * address with no control beside it is drawn as typed with the attribute and without it, and the
- * boxes of the links and the sideways scroll of the page are the same with it and without it.
+ * With `dir="ltr"` on the link all three are drawn as they were typed, at all three widths. The same
+ * address with no control beside it is drawn as typed with the attribute and without it, and for every
+ * text with no control in it the boxes of the links and the sideways scroll of the page are the same
+ * with the attribute and without it.
  *
  * **What this file can hold, and what it cannot.** jsdom lays nothing out, so no case here can see a
  * reordering. What is held is the thing that prevents it, as structure: every link carries the
@@ -32,12 +33,15 @@ import { EditableText } from './EditableText'
  *
  * - `dir="ltr"` on the paragraph protects nothing, since the override stands inside the paragraph.
  *   All three rows above are drawn reordered with it, so it is not accepted in place of the link's own.
- * - `dir="rtl"` on the link protects the first row only, and only because everything in it is Latin;
- *   the two rows with a letter of a right-to-left script are drawn reordered.
- * - `unicode-bidi: isolate` on the link, and a `<span dir="ltr">` around it, protect as the attribute
- *   does. The first is a rule of a sheet, which the attribute is written not to be; the second is
- *   refused on purpose, because what is asked is what the link carries, and a second shape of the
- *   answer is a second thing to hold.
+ * - `dir="rtl"` on the link protects the first row and not the other two, the ones with a letter of a
+ *   right-to-left script in the path.
+ * - `unicode-bidi: isolate` on the link, a `<span dir="ltr">` around it and one inside it all protect
+ *   as the attribute does, and none is accepted in its place: what is asked is what the link
+ *   carries, and a second shape of the answer is a second thing to hold.
+ * - A rule of a sheet that sets `unicode-bidi` on links beats the attribute, which is only the
+ *   browser's own rule for it: with `dir="ltr"` still on the link, all three rows are drawn
+ *   reordered. No sheet of the portal sets it, and the value measured on the built sheet is
+ *   `isolate`. Nothing here holds that, because jsdom computes no cascade (ADL A18).
  *
  * **WHY THE FLOOR ASKS THE IMPORT GRAPH, AND NOT THE NAME OF THE FUNCTION OR A LIST OF SCREENS.** The
  * seats below are written by hand, and each of them has a floor: which modules draw a link out of
@@ -47,7 +51,7 @@ import { EditableText } from './EditableText'
  * `export ... from` and `import(...)`. A module that imports it and has no seat fails here, and so does
  * a seat for a module that no longer does. Asked by name it would be a different question: there is a
  * function called `addressesIn` in `pages/admin/teamProposal.ts` too, read by four screens, which
- * answers which teams have which address and draws nothing.
+ * answers which addresses the teams already have and draws no link.
  *
  * **Where this is narrower than it looks, said here and not left to be found.** The floor names the
  * modules that IMPORT the function, so a module that re-exports it is named in its place and its own
@@ -68,11 +72,11 @@ function named(path: string): string {
 }
 
 /** Enough of the project's own settings for a specifier to be resolved the way the bundler resolves
- *  it: `tsconfig.app.json` turns `allowImportingTsExtensions` on, so `'./addressesIn.ts'` is a
- *  spelling somebody may write tomorrow. */
+ *  it. `allowImportingTsExtensions`, which `tsconfig.app.json` turns on, is left out on purpose: it
+ *  only permits writing the extension, and a module that imports `'./addressesIn.ts'` is found with
+ *  the option turned off as well (measured on 03.10.2026). */
 const AS_THE_BUNDLER_DOES: ts.CompilerOptions = {
   moduleResolution: ts.ModuleResolutionKind.Bundler,
-  allowImportingTsExtensions: true,
 }
 
 /**
