@@ -244,7 +244,8 @@ export function TeamDetail() {
             listedTeams.some((each) => each.id === one.teamId),
         )
         /* Off BOTH doors the server names a member of this team on, since 02.10.2026: his
-           record, and - for a member who hides his profile, read by a visitor - the team's own
+           record, and - for a member who hides his profile, read by somebody who may not read
+           it - the team's own
            answer (PDL, odeljak 16: „ako je deo tima, njegovo ime se vidi u timu i bodovi koje je
            doneo"). `membersOf` is the one place the two are put together. */
         const everMembers = membersOf(team, listedMembers)

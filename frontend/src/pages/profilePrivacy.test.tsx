@@ -2,9 +2,11 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { DAY, PUBLIC } from '../test/addresses'
 import { renderAt } from '../test/render'
-import { serverThat } from '../test/serverAnswers'
+import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 import { setupUser } from '../test/user'
+import type { Role } from '../roles/context'
+import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
 import { recordKey } from '../session/context'
 import { MEMBERS } from './admin/entityForms'
@@ -12,7 +14,12 @@ import { MEMBERS } from './admin/entityForms'
 /* What a member chooses to show, and to whom.
  *
  * The published privacy policy has promised both of these since it was written: hiding the
- * profile from readers who are not signed in, and showing the birthday only by choice. Nothing
+ * profile from readers who are not signed in, and showing the birthday only by choice. (The words
+ * are the policy's. Since 03.10.2026 the rule the portal keeps is wider than they say: a profile
+ * is hidden from everybody who is neither an active member nor the administration, PDL P23,
+ * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"; the policy's
+ * own text has not moved, and what to do about it is a question for the owner.) Nothing
  * in the code answered for either until 06.09.2026, when the owner asked for the controls
  * rather than for the sentences to go.
  *
@@ -51,25 +58,39 @@ async function becomes(user: ReturnType<typeof setupUser>, who: string): Promise
 }
 
 /**
- * Somebody is signed in whom the league has given NO member number: administration, which has no
- * competitor record at all (PDL P21), and anybody who has registered and is not a member yet.
+ * Somebody is signed in, as the server's answer to `GET /api/me` says he is: a role and, for a
+ * member, the number the league has given him. With NO number it is administration, which has no
+ * competitor record at all (PDL P21), and anybody who has registered and is not a member yet; with
+ * one it is a member, whose fee may or may not be standing.
  *
- * The same call `member/SignIn.tsx` and `session/useTheServersSession.ts` make with the answer of
- * `GET /api/me`, written the way the four cases that sign somebody in during a visit write it
- * (`member/profileVisibility.test.tsx`), with the one field that is the point of this probe left
- * empty. It is the third state of the reader and the only one the member number cannot tell from a
- * visitor: both read `null` there.
+ * **Both writes `session/useTheServersSession.ts` makes with that answer, in one handler**
+ * (`become` and `theServerSignedMeIn`), because since 03.10.2026 what a reader may read depends
+ * on the ROLE as well as on the member number: the role names the administration and the number
+ * is looked up on the list the server serves. A probe that wrote the account and left the role
+ * where the visit started would sign in a reader the real portal cannot produce. Written the way
+ * the four cases that sign somebody in during a visit write it
+ * (`member/profileVisibility.test.tsx`).
  */
-function SignInAsAnAccount() {
+function SignInAs({
+  role,
+  memberNumber,
+  label,
+}: {
+  role: Role
+  memberNumber: string | null
+  label: string
+}) {
   const { theServerSignedMeIn } = useSession()
+  const { become } = useRole()
 
   return (
     <button
       type="button"
       onClick={() => {
+        become(role)
         theServerSignedMeIn({
           account: 2,
-          memberNumber: null,
+          memberNumber,
           country: null,
           firstSeason: null,
           teamId: null,
@@ -79,7 +100,7 @@ function SignInAsAnAccount() {
         })
       }}
     >
-      prijavi nalog bez člana
+      {label}
     </button>
   )
 }
@@ -247,7 +268,7 @@ const NAMES: Record<string, string> = {
    the case then failed on a mechanism that worked. */
 const HIM = '/sr/takmicar/000007-strahinja-vukicevic'
 
-describe('hiding a profile from readers who are not signed in', () => {
+describe('hiding a profile from readers who may not read it', () => {
   it('is offered in the settings and answered by the profile', async () => {
     const user = setupUser()
     const { router } = renderAt('/sr/podesavanja', 'competitor', '000007', undefined, undefined, <SignOut />)
@@ -327,8 +348,8 @@ describe('hiding a profile from readers who are not signed in', () => {
 
   it('leaves the circle and the name in the main standing, with no way in from either', async () => {
     /* The circle there is a link of its own to the same profile as the name (`pages/Rankings.tsx`),
-       so a hidden member has two ways in to take away and a reader who is not signed in must be
-       left with neither: the sweep below asks every address the portal has whether any of them
+       so a hidden member has two ways in to take away and a reader who may not read a hidden
+       profile must be left with neither: the sweep below asks every address the portal has whether any of them
        leads to the member, and says nothing about the screen going on to draw the person. A row
        that lost its circle with its link would satisfy that sweep exactly as well, and it would be
        the member's face taken off a table the owner asked it be on (PDL P23: hiding is about
@@ -479,7 +500,7 @@ describe('hiding a profile from readers who are not signed in', () => {
     }
   }, SLOW)
 
-  it('gives the way in back to a reader who is signed in', async () => {
+  it('gives the way in back to an active member', async () => {
     const user = setupUser()
     const { router } = renderAt(
       '/sr/podesavanja',
@@ -495,8 +516,9 @@ describe('hiding a profile from readers who are not signed in', () => {
 
     await hide(user)
 
-    /* Another member, not the one who is hiding: hiding is from readers who are not signed in and
-       from nobody else, so a member reading somebody else's list sees the way in (P23). */
+    /* Another member, not the one who is hiding: hiding is from readers who are neither active
+       members nor the administration and from nobody else, so an active member reading somebody
+       else's list sees the way in (P23, 03.10.2026). */
     await becomes(user, '000002')
     await router.navigate('/sr/takmicari')
 
@@ -521,7 +543,9 @@ describe('hiding a profile from readers who are not signed in', () => {
     /* Every case here read a member's own profile, so „signed in" and „it is me" were the same
        reader and the condition could be narrowed to the owner with nothing falling (review,
        06.09.2026). The policy gives the reason for the other half in the same sentence: „ali ne
-       i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja." */
+       i od ostalih članova, jer bi time nestao smisao zajedničkog rangiranja." The other member
+       is an ACTIVE one, since 03.10.2026 (`000012` is on the list the server serves): the case
+       that turns a member whose fee has lapsed away is further down. */
     const user = setupUser()
     const { router } = renderAt(
       '/sr/podesavanja',
@@ -585,40 +609,40 @@ describe('hiding a profile from readers who are not signed in', () => {
 })
 
 /**
- * SOMEBODY SIGNED IN WHO RACES FOR NOBODY READS A HIDDEN PROFILE.
+ * THE ADMINISTRATION READS A HIDDEN PROFILE WHETHER OR NOT IT RACES.
  *
- * <p>The rule is about whether ANYBODY is signed in: „za sve posetioce koji nisu ulogovani"
- * (owner, 06.09.2026), and the server asks exactly that (`CompetitorApi`, `signedIn` is „is there a
- * session", with a note saying why it is not asked of the member). The screens asked something
- * narrower, whether the reader is a MEMBER, and the two answers part for exactly one reader: an
- * account the league has given no number, which is administration (PDL P21). The server served such
- * an account a hidden member's biography and portrait, and the screens sent it to the front page.
- * Recorded as derived, not asked, in `PDL.md` under „Odluke iz ciscenja nalaza" (02.10.2026).
+ * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu":
+ * moderators and the superadmin read it, and they have no member number at all (PDL P21). A screen
+ * that asked only whether the reader is a MEMBER would send them to the front page while the server
+ * served them a hidden member's biography and portrait. That is the fault this case was written for
+ * on 02.10.2026, when the rule was „is anybody signed in" and the two answers parted for exactly this
+ * reader; it is the same reader under a different sentence, which is why it stays.
  *
  * <p>**Each of the three screens that ask has a case of its own**, because the fault is one
  * expression on each and restoring it on one leaves the other two green: measured as three
- * separate mutations, `memberNumber` in place of `signedIn` at each call site.
+ * separate mutations, one at each call site.
  *
  * <p>**Each case is one visit with the reader as the only thing that changes.** The same hidden
  * member, first for a reader nobody has signed in, who is turned away, and then for the account.
  * Read the other way round, the case would pass for a screen that lets everybody in, and the first
  * half of it passes for a screen that turns everybody away only until the second half is asked.
  */
-describe('a hidden profile, read by somebody signed in who races for nobody', () => {
-  /** The member is hidden and the reader is the administration, in a visit that has not signed
-   *  anybody in yet. The role is the moderator's because that is what the account is on the portal,
-   *  and the session has no number, which is the state under test. */
+describe('a hidden profile, read by the administration, which races for nobody', () => {
+  /** The member is hidden and the reader is a visitor, in a visit that has not signed anybody in
+   *  yet. What signs in is the moderator's account: the role is the moderator's and the session
+   *  has no number, which is the state under test. */
   async function visit(where: string) {
     const user = setupUser()
     const { router } = renderAt(
       where,
-      'moderator',
+      'visitor',
       null,
       undefined,
       DAY,
       <>
         <Hide who="000007" />
-        <SignInAsAnAccount />
+        <SignInAs role="moderator" memberNumber={null} label="prijavi nalog bez člana" />
       </>,
     )
 
@@ -663,6 +687,120 @@ describe('a hidden profile, read by somebody signed in who races for nobody', ()
     await user.click(screen.getByRole('button', { name: 'prijavi nalog bez člana' }))
 
     expect(screen.getByText('Strahinja Vukićević').closest('a')).not.toBeNull()
+  }, SLOW)
+})
+
+/**
+ * THE MEMBERS `/api/competitors` REALLY ANSWERS WITH, for every case of the `describe` that calls this.
+ *
+ * <p>Since 03.10.2026 a screen reads „is this reader an active member" off that list, and the file
+ * `test/setup.ts` answers out of still carries members whose fee has lapsed, flagged `active:
+ * false`, which the server never serves (`test/serverAnswers.ts`, `membersAsServed`). A case about a
+ * member whose fee has lapsed that left the file as it is would be about a member the list names, so
+ * it would be let in for the very reason it is meant to be turned away.
+ *
+ * @returns the numbers the answer leaves out, asked after the case has started
+ */
+function theServerAnswersWithItsMembers(): { lapsed: () => string[] } {
+  let served: ReturnType<typeof membersAsServed> | null = null
+
+  beforeEach(() => {
+    served = membersAsServed()
+  })
+
+  afterEach(() => {
+    served?.stop()
+    served = null
+  })
+
+  return { lapsed: () => must(served, 'answer the server is giving').lapsed }
+}
+
+/**
+ * A HIDDEN PROFILE IS NOT READ BY SOMEBODY SIGNED IN WHO IS NEITHER AN ACTIVE MEMBER NOR THE
+ * ADMINISTRATION.
+ *
+ * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu",
+ * chosen between offered outcomes with its price shown: a free account and a member whose fee has
+ * lapsed meet a hidden profile as a visitor does, and a member who does not renew stops seeing hidden
+ * profiles until he pays. Until that day the screens, and the server, asked whether anybody was signed
+ * in, and these two were let in.
+ *
+ * <p>**Two readers, because the two ways of not being let in are different facts.** An account with
+ * no member behind it (somebody who registered and has not paid, or any account that is not the
+ * administration) has no number the list could carry; a member WITH a number whose fee has run out is
+ * simply not on the list the server serves (`test/mock/competitors.json`, 000032). A reader read by
+ * `memberNumber !== null` lets the second one in.
+ *
+ * <p>**Each of the three screens that ask has a case of its own**, and each is one visit with the
+ * reader as the only thing that changes: turned away as a visitor, signed in, and turned away still.
+ * The mirror of this is the case above, where the SAME sign in is let in by the role: without it, a
+ * screen that turned everybody away would pass here.
+ */
+describe.each([
+  ['an account with no member behind it', 'competitor', null],
+  ['a member whose fee has lapsed', 'competitor', '000032'],
+] as const)('a hidden profile, read by %s', (_who, role, number) => {
+  const served = theServerAnswersWithItsMembers()
+
+  async function visit(where: string) {
+    if (number !== null) {
+      expect(served.lapsed(), 'the answer really leaves him out').toContain(number)
+    }
+
+    const user = setupUser()
+    const { router } = renderAt(
+      where,
+      'visitor',
+      null,
+      undefined,
+      DAY,
+      <>
+        <Hide who="000007" />
+        <SignInAs role={role} memberNumber={number} label="prijavi čitaoca" />
+      </>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+
+    return { user, router }
+  }
+
+  it.each([
+    ['the profile', HIM],
+    ['the page of awards', `${HIM}/priznanja`],
+  ])('does not open %s', async (_what, where) => {
+    const { user, router } = await visit('/sr')
+
+    await router.navigate(where)
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'prijavi čitaoca' }))
+    await router.navigate(where)
+
+    /* Sent away still, and to the same place: the front page, read by the address, because a refused
+       reader lands on a page with a heading of its own. */
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/sr')
+    })
+    expect(screen.queryByRole('heading', { level: 1, name: /Strahinja Vukićević/ })).toBeNull()
+  }, SLOW)
+
+  it('leaves a name on a list as words', async () => {
+    const { user } = await visit('/sr/takmicari')
+
+    expect((await screen.findByText('Strahinja Vukićević')).closest('a')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'prijavi čitaoca' }))
+
+    /* Read off the same card after the sign in, so a screen that stopped drawing him cannot satisfy
+       this: he is drawn, and he is still not a way in. */
+    expect(await screen.findByText('Strahinja Vukićević')).toBeVisible()
+    expect(screen.getByText('Strahinja Vukićević').closest('a')).toBeNull()
   }, SLOW)
 })
 
@@ -763,8 +901,9 @@ describe('what the settings show back', () => {
  * **What this cannot say**, written down rather than left to be found: it sweeps the addresses the
  * portal answers **outside administration**, as a visitor. Administration is behind a right and is
  * not a place a visitor reaches at all, which is what P23 is about („za sve posetioce koji nisu
- * ulogovani"). A screen that leads to a hidden profile only for a signed-in member is outside this
- * and outside the rule.
+ * ulogovani", read since 03.10.2026 as: for every reader who is neither an active member nor the
+ * administration). A screen that leads to a hidden profile only for an active member or the
+ * administration is outside this and outside the rule.
  */
 describe('the partner named on a pair line', () => {
   it('is a way in until they hide, and words after', async () => {
@@ -836,6 +975,70 @@ describe('a hidden profile is reachable from nowhere', () => {
        asked of them is that they lead into neither of these two. Which addresses do draw somebody
        is the walk's business, and it names five of them. */
     await screen.findByRole('heading', { level: 1, name: asVisitor })
+
+    let seen = -1
+
+    await waitFor(() => {
+      const now = waysIn().length
+      const done = now === seen
+
+      seen = now
+
+      expect(done, `${where}: ekran se još crta`).toBe(true)
+    })
+
+    expect(
+      waysIn().filter((href) => href.includes('/takmicar/000007')),
+      where,
+    ).toEqual([])
+  }, SLOW)
+})
+
+/**
+ * AND IT IS REACHABLE FROM NOWHERE TO A MEMBER WHOSE FEE HAS LAPSED, WHO IS SIGNED IN.
+ *
+ * <p>The walk above reads every address as a visitor, and says so: a screen that leads to a hidden
+ * profile only below a sign in is outside it. Since 03.10.2026 a member whose fee has lapsed is
+ * signed in and is read as a visitor is (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
+ * nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"), so the same table is walked as him, under the headings
+ * the screens carry once somebody is signed in. What this holds is the property and not a reader
+ * kind: one way in that stays on for a signed in reader, however it is written, is a way in.
+ */
+describe('a hidden profile is reachable from nowhere, not even to a member whose fee has lapsed', () => {
+  const served = theServerAnswersWithItsMembers()
+
+  /* THE TWO ADDRESSES THAT DRAW SOMETHING ELSE FOR HIM, named rather than skipped. The heading is
+     only the signal that the screen has been drawn, and two screens are not the member's own for
+     somebody the list does not carry: the page of ratings says who rates an event, and his own
+     profile has no member to open, so it sends him to the front page (read off both on
+     03.10.2026, with the list the server really serves). Both are still walked. */
+  const WHAT_HE_MEETS_INSTEAD = new Map([
+    ['/sr/kalendar/fruskogorski-maraton-2010/ocena', 'Ovaj događaj ocenjuju oni koji su ga istrčali'],
+    ['/sr/moj-profil', 'Balkanska trkačka liga'],
+  ])
+
+  it.each(PUBLIC)('is not reached from %s', async (where, _asVisitor, asMember) => {
+    expect(served.lapsed(), 'the answer really leaves him out').toContain('000032')
+
+    const user = setupUser()
+
+    renderAt(
+      where,
+      'competitor',
+      '000032',
+      undefined,
+      DAY,
+      <>
+        <Hide who="000007" />
+        <Pair a="000001" b="000007" season={Number(DAY.slice(0, 4)) + 1} />
+      </>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'sakrij 000007' }))
+    await user.click(screen.getByRole('button', { name: 'upari 000001 i 000007' }))
+
+    await screen.findByRole('heading', { level: 1, name: WHAT_HE_MEETS_INSTEAD.get(where) ?? asMember })
 
     let seen = -1
 

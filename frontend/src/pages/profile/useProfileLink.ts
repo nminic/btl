@@ -1,6 +1,9 @@
 import { useCallback } from 'react'
+import { dataOr, useCompetitors } from '../../data/useResource'
 import { applyChanges } from '../../forms/records'
 import { useI18n } from '../../i18n/useI18n'
+import { isActiveMemberOrAdministration } from '../../roles/activeMemberOrAdministration'
+import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { recordKey } from '../../session/context'
 import { MEMBERS } from '../admin/entityForms'
@@ -18,7 +21,9 @@ import type { Competitor } from '../../data/types'
  *
  * Nothing is taken away from the reader when the answer is nothing: the name stays, as plain
  * text. The owner's rule, 06.09.2026: „sva njegova pojavljivanja na portalu u tabelama i rang
- * listama postaju tekst umesto link za sve posetioce koji nisu ulogovani." The data on those
+ * listama postaju tekst umesto link za sve posetioce koji nisu ulogovani." (Read since 03.10.2026
+ * as: for every reader who is neither an active member nor the administration, a free account and
+ * a member whose fee has lapsed among them; `profile/visible.ts` says why.) The data on those
  * lists is not touched either — hiding is about reaching the profile, not about what a list says.
  *
  * **Not exported**, so a screen cannot reach for it and build an address without coming through
@@ -41,10 +46,10 @@ import type { Competitor } from '../../data/types'
  */
 function profileLinkFor(
   competitor: Competitor,
-  signedIn: boolean,
+  readsHiddenProfiles: boolean,
   locale: string,
 ): string | undefined {
-  return reachable(competitor, signedIn) ? profilePath(competitor, locale) : undefined
+  return reachable(competitor, readsHiddenProfiles) ? profilePath(competitor, locale) : undefined
 }
 
 /**
@@ -78,21 +83,28 @@ function profileLinkFor(
  * plain text.
  */
 export function useProfileLink(): (competitor: Competitor) => string | undefined {
-  const { signedIn: who, edits } = useSession()
+  const { memberNumber, edits } = useSession()
+  const { role } = useRole()
   const { locale } = useI18n()
-  /* **WHETHER ANYBODY IS SIGNED IN, NOT WHICH MEMBER** (02.10.2026, `profile/visible.ts` says why),
-     and read out as a boolean here rather than handed on as the session's own object: that object
-     is a new one whenever anything in the session changes, so it would rebuild this callback, and
-     every board memoised over it, on every change of the session. */
-  const signedIn = who !== null
+  /* **WHETHER THIS READER MAY READ A HIDDEN PROFILE** (since 03.10.2026; `profile/visible.ts` says
+     why it is not „is anybody signed in"), worked out from the role, the member number and the list
+     the server serves, exactly as the two profile pages work it out. The list is read the way every
+     list on this portal is, through the same cache, so a page that drew these names has already
+     asked for it; until it has arrived the reader is read as nobody who may, which draws the name as
+     plain text for a moment (a refusal that can only be lifted, never an admission), and the link
+     appears when the list does. Read out as a boolean here rather than handed on as the session's
+     own object: that object is a new one whenever anything in the session changes, so it would
+     rebuild this callback, and every board memoised over it, on every change of the session. */
+  const served = dataOr(useCompetitors(), [])
+  const readsHiddenProfiles = isActiveMemberOrAdministration(role, memberNumber, served)
 
   return useCallback(
     (competitor: Competitor) =>
       profileLinkFor(
         applyChanges(competitor, edits[recordKey(MEMBERS.id, competitor.memberNumber)]),
-        signedIn,
+        readsHiddenProfiles,
         locale,
       ),
-    [edits, signedIn, locale],
+    [edits, readsHiddenProfiles, locale],
   )
 }

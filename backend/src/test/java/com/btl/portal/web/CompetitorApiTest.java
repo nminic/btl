@@ -1012,7 +1012,8 @@ class CompetitorApiTest {
 	 * A MEMBER WHO HIDES HIS PROFILE IS STILL ON THE LIST, because the list is not the
 	 * page.
 	 *
-	 * <p>PDL P23 hides the profile PAGE from a visitor who is not signed in. The member
+	 * <p>PDL P23 hides the profile PAGE from a reader who is neither an active member nor the
+	 * administration. The member
 	 * number, the name and the standing stay public (Article 73), and the portal needs
 	 * the flag in order to know what to draw. Taking him off here would empty a league
 	 * table instead of hiding a page.
@@ -1227,7 +1228,9 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * A HIDDEN PROFILE'S PORTRAIT DOES NOT LEAVE TO A CALLER WHO IS NOT SIGNED IN.
+	 * A HIDDEN PROFILE'S PORTRAIT DOES NOT LEAVE TO A VISITOR, WHO IS THE FIRST OF THE READERS THE
+	 * RULE KEEPS IT FROM (the others are walked in
+	 * {@code TheSameReadersReadAHiddenProfileOnEveryDoorTest}).
 	 *
 	 * <p><b>[ODLUKA 26.09.2026, owner]</b>, chosen between three offered. ADL A60 held this
 	 * boundary open with one sentence - „otisak PORTRETA ne objavljuje nijedan resurs" - and
@@ -1292,38 +1295,41 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * AND IT DOES LEAVE TO EVERYBODY WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION.
+	 * AND IT DOES LEAVE TO AN ACTIVE MEMBER AND TO THE ADMINISTRATION, WHICH IS THE OTHER DIRECTION.
 	 *
 	 * <p>The owner's own limit on the rule: „Takmicar od ulogovanih kolega ne moze da sakrije
 	 * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od ostalih
-	 * clanova, jer bi time nestao smisao zajednickog rangiranja". A rule written in one
+	 * clanova, jer bi time nestao smisao zajednickog rangiranja", read since 03.10.2026 as a
+	 * member whose fee is standing and the administration. A rule written in one
 	 * direction only would pass on a resource that answered nobody a portrait at all.
 	 *
 	 * <p><b>{@code RACES_FOR_NOBODY} is in this list and he is the reason it is a list.</b> V23
 	 * leaves {@code account.competitor_id} empty for an account that does not race, so a
-	 * condition written against the caller's MEMBER rather than against his account refuses him,
-	 * and he is signed in - so that would be the rule applied to a reader it was never about.
-	 * The superadmin is the same shape and is here for the same reason.
+	 * condition written against the caller's MEMBER rather than against his role refuses him,
+	 * and he is the administration - so that would be the rule applied to a reader it was never
+	 * about. The superadmin is the same shape and is here for the same reason, and the moderator
+	 * over the members is the administration whose own member's fee has lapsed. The readers who
+	 * are NOT let in are walked in {@code TheSameReadersReadAHiddenProfileOnEveryDoorTest}.
 	 */
 	@Test
-	void aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn() throws Exception {
+	void aHiddenProfilesPortraitLeavesToAnActiveMemberAndToTheAdministration() throws Exception {
 		for (String asking : List.of(HER_OWN_ACCOUNT, THE_OTHER_MEMBER, RACES_FOR_NOBODY,
 				THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN)) {
 
 			JsonNode his = recordOf(asking, "000007");
 
 			assertThat(his.path(THE_PORTRAIT).asString())
-					.as("%s is signed in and was not answered the portrait of a member who hides"
-							+ " his profile; hiding is from a reader who is not signed in and from"
-							+ " nobody else", asking)
+					.as("%s may read a hidden profile and was not answered the portrait of a member"
+							+ " who hides his; hiding is from a reader who is neither an active"
+							+ " member nor the administration, and from nobody else", asking)
 					.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + THE_PORTRAIT_OF_THE_ONE_WHO_HIDES);
 			theSquareIsThatPicturesOwn(his, THE_PORTRAIT_OF_THE_ONE_WHO_HIDES, asking);
 		}
 	}
 
 	/**
-	 * A HIDDEN PROFILE'S BIOGRAPHY DOES NOT LEAVE TO A CALLER WHO IS NOT SIGNED IN, THE SAME
-	 * RULE AS THE PORTRAIT AND ITS OWN [ODLUKA 26.09.2026, owner].
+	 * A HIDDEN PROFILE'S BIOGRAPHY DOES NOT LEAVE TO A VISITOR, THE SAME RULE AS THE PORTRAIT
+	 * AND ITS OWN [ODLUKA 26.09.2026, owner].
 	 *
 	 * <p>PDL, 06.09.2026 names the biography beside the photograph among what hiding hides, and
 	 * the note on {@link CompetitorApi} says why this is its own increment rather than a line
@@ -1378,27 +1384,29 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * AND IT DOES LEAVE TO EVERYBODY WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION - THE SAME
-	 * FIVE CALLERS {@link #aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn} WALKS, FOR THE
+	 * AND IT DOES LEAVE TO AN ACTIVE MEMBER AND TO THE ADMINISTRATION, WHICH IS THE OTHER
+	 * DIRECTION - THE SAME CALLERS
+	 * {@link #aHiddenProfilesPortraitLeavesToAnActiveMemberAndToTheAdministration} WALKS, FOR THE
 	 * SAME REASON.
 	 *
-	 * <p>{@code RACES_FOR_NOBODY} is exactly the state that would catch the sibling mistake
-	 * named on {@link CompetitorApi}: swapping {@code :signedIn} for {@code :administration} in
-	 * the biography's condition. {@code administration} is false for him - he holds
-	 * {@code entity:events}, not {@code entity:members} - while {@code signedIn} is true, which
-	 * is the one combination that tells the two conditions apart.
+	 * <p>The two members and {@code RACES_FOR_NOBODY} are exactly the states that would catch the
+	 * sibling mistake named on {@link CompetitorApi}: swapping {@code :readsHiddenProfiles} for
+	 * {@code :administration} in the biography's condition. {@code administration} is false for
+	 * all three - the members hold no right, and he holds {@code entity:events}, not
+	 * {@code entity:members} - while the reader fact is true for all three, which is the one
+	 * combination that tells the two conditions apart.
 	 */
 	@Test
-	void aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn() throws Exception {
+	void aHiddenProfilesBiographyLeavesToAnActiveMemberAndToTheAdministration() throws Exception {
 		hisBiographyIs("000007", THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES);
 
 		for (String asking : List.of(HER_OWN_ACCOUNT, THE_OTHER_MEMBER, RACES_FOR_NOBODY,
 				THE_MODERATOR_OVER_THE_MEMBERS, THE_SUPERADMIN)) {
 
 			assertThat(recordOf(asking, "000007").path("bio").asString())
-					.as("%s is signed in and was not answered the biography of a member who hides"
-							+ " his profile; hiding is from a reader who is not signed in and from"
-							+ " nobody else", asking)
+					.as("%s may read a hidden profile and was not answered the biography of a member"
+							+ " who hides his; hiding is from a reader who is neither an active"
+							+ " member nor the administration, and from nobody else", asking)
 					.isEqualTo(THE_BIOGRAPHY_OF_THE_ONE_WHO_HIDES);
 		}
 	}
@@ -1506,13 +1514,13 @@ class CompetitorApiTest {
 	 * season; 000007 left a team and joined none, so it would give him a club he is not
 	 * in. The list of members in no team is checked as a whole for that second half.
 	 *
-	 * <p><b>ASKED AS A SIGNED IN MEMBER SINCE 02.10.2026, and that is what keeps the second half
-	 * measuring anything.</b> 000007 hides his profile, and a visitor is now answered no team on
+	 * <p><b>ASKED AS AN ACTIVE MEMBER SINCE 02.10.2026 (a signed in one, until 03.10.2026 asked for
+	 * more), and that is what keeps the second half measuring anything.</b> 000007 hides his profile, and a visitor is now answered no team on
 	 * his record whatever his memberships say ([ODLUKA 27.09.2026, owner]). Read off the visitor's
 	 * answer, „he left the team and joined none" and „his team is withheld" would both arrive as
 	 * null, so dropping {@code season_to is null} would give him a club and this case would still
-	 * see nobody's - one value with two sources. A signed in reader is told every link there is,
-	 * so to him the null can come from the ended membership alone.
+	 * see nobody's - one value with two sources. A reader who may read a hidden profile is told
+	 * every link there is, so to him the null can come from the ended membership alone.
 	 */
 	@Test
 	void theTeamIsTheOneTheMembershipHasNotEnded() throws Exception {
@@ -1566,7 +1574,8 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * A HIDDEN PROFILE'S TEAM DOES NOT LEAVE ON HIS RECORD TO A CALLER WHO IS NOT SIGNED IN.
+	 * A HIDDEN PROFILE'S TEAM DOES NOT LEAVE ON HIS RECORD TO A VISITOR, WHO IS THE FIRST OF THE
+	 * READERS THE RULE KEEPS IT FROM.
 	 *
 	 * <p>PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between three offered outcomes: the
 	 * team is withheld from a visitor the same as the biography and the photograph. Both halves of
@@ -1633,25 +1642,29 @@ class CompetitorApiTest {
 	}
 
 	/**
-	 * AND IT DOES LEAVE TO EVERYBODY WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION.
+	 * AND IT DOES LEAVE TO AN ACTIVE MEMBER AND TO THE ADMINISTRATION, WHICH IS THE OTHER DIRECTION.
 	 *
 	 * <p>PDL, odeljak 18 (27.09.2026), owner: „Clan koji je aktiviran za sezonu ne moze sakriti svoje
 	 * rezultate niti profil od drugih clanova ... Moze sakriti samo od neulogovanih posetilaca
-	 * profil." And PDL, 02.10.2026, of the account that races for nobody: „Skriven profil vidi svako
-	 * ko je prijavljen, i administrativni nalog koji ne trci."
+	 * profil." Read since 03.10.2026 (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije
+	 * aktivan član ni administracija,
+	 * nikad prema aktivnom članu") as a member whose fee is standing and the administration,
+	 * the administrative account that races for nobody among them.
 	 *
 	 * <p><b>Every account in the fixture, read off the two lists the fixture is split by</b>, so an
-	 * account added tomorrow is walked by arriving. {@code RACES_FOR_NOBODY} and the superadmin are
-	 * the two that catch a condition asked of the caller's MEMBER rather than of his session, and
-	 * {@code RACES_FOR_NOBODY} the one that catches {@code :administration} in place of
-	 * {@code :signedIn}.
+	 * account added tomorrow is walked by arriving. Every one of them is a reader the rule lets in:
+	 * the two members are active and the other four are the administration. {@code RACES_FOR_NOBODY}
+	 * and the superadmin are the two that catch a condition asked of the caller's MEMBER rather than
+	 * of his role, and {@code RACES_FOR_NOBODY} the one that catches {@code :administration} in
+	 * place of the reader fact. The readers who are NOT let in are walked in
+	 * {@code TheSameReadersReadAHiddenProfileOnEveryDoorTest}.
 	 *
 	 * <p><b>The values are the STANDING membership's</b>: {@code drugi-tim} from 2029, which no
 	 * other source in the fixture holds (see {@link #hisStandingMembershipIs}). The team he left is
 	 * another key and its season another year.
 	 */
 	@Test
-	void aHiddenProfilesTeamLeavesOnHisRecordToEverybodyWhoIsSignedIn() throws Exception {
+	void aHiddenProfilesTeamLeavesOnHisRecordToAnActiveMemberAndToTheAdministration() throws Exception {
 		hisStandingMembershipIs("000007", "drugi-tim", 2029);
 
 		List<String> signedIn = EVERY_KIND_OF_CALLER.stream().filter(one -> one != null).toList();
@@ -1663,9 +1676,9 @@ class CompetitorApiTest {
 			JsonNode his = recordOf(asking, "000007");
 
 			assertThat(his.path(THE_TEAM).asLong())
-					.as("%s is signed in and was not answered the team of a member who hides his"
-							+ " profile; hiding is from a reader who is not signed in and from nobody"
-							+ " else", asking)
+					.as("%s may read a hidden profile and was not answered the team of a member who"
+							+ " hides his; hiding is from a reader who is neither an active member"
+							+ " nor the administration, and from nobody else", asking)
 					.isEqualTo(teamIdOf("drugi-tim"));
 			assertThat(his.path(THE_SEASON_OF_THE_TEAM).asInt())
 					.as("%s was answered a season other than the one his standing membership began"
@@ -1723,9 +1736,9 @@ class CompetitorApiTest {
 	 * match it zero times and the comparison would still pass). {@link #WHAT_HIDING_MAY_WITHHOLD}
 	 * names the two, and each has its own case proving its VALUE for a hiding member and a
 	 * visitor: {@link #aHiddenProfilesPortraitDoesNotLeaveToAVisitor},
-	 * {@link #aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn},
+	 * {@link #aHiddenProfilesPortraitLeavesToAnActiveMemberAndToTheAdministration},
 	 * {@link #aHiddenProfilesBiographyDoesNotLeaveToAVisitor} and
-	 * {@link #aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn}. What is left for THIS
+	 * {@link #aHiddenProfilesBiographyLeavesToAnActiveMemberAndToTheAdministration}. What is left for THIS
 	 * case to require is that every OTHER field of every record reads the same to both - by
 	 * VALUE, through the parsed answer and never through a second serialisation:
 	 * {@code TeamApiTest} writes out why a square's exact scale would not survive that trip,
@@ -1734,7 +1747,7 @@ class CompetitorApiTest {
 	 * <p><b>AND SINCE 02.10.2026 THE TWO HALVES OF THE LINK TO HIS TEAM</b> ([ODLUKA 27.09.2026,
 	 * owner], PDL odeljak 16), excused on the same row and nowhere else, with their own cases:
 	 * {@link #aHiddenProfilesTeamDoesNotLeaveOnHisRecordToAVisitor} and
-	 * {@link #aHiddenProfilesTeamLeavesOnHisRecordToEverybodyWhoIsSignedIn}. In {@code fiveMembers}
+	 * {@link #aHiddenProfilesTeamLeavesOnHisRecordToAnActiveMemberAndToTheAdministration}. In {@code fiveMembers}
 	 * the one member who hides is in no team at all, so the excuse changes nothing in the cases that
 	 * stand on it - the same state {@code bio} is in, whose fixture text is {@code ""}; the two cases
 	 * that need a standing membership write one themselves.
@@ -1847,10 +1860,11 @@ class CompetitorApiTest {
 
 		/* AND SOME THINGS DO CHANGE SINCE 26.09.2026, SO THEY ARE NAMED RATHER THAN THE
 		   COMPARISON LOOSENED. A member who hides his profile is answered his portrait and his
-		   biography to anybody with a session and null to a visitor, twice [ODLUKA 26.09.2026,
-		   owner], and since 02.10.2026 the link to his team the same way [ODLUKA 27.09.2026,
-		   owner]. The sentence below would fail without naming them and the resource would be
-		   behaving exactly as decided. In this fixture it is the portrait that makes the two
+		   biography to an active member and to the administration, and null to everybody else a
+		   visitor is answered as, twice [ODLUKA 26.09.2026, owner; since 03.10.2026 that reader
+		   is the two and not anybody with a session], and since 02.10.2026 the link to his team the
+		   same way [ODLUKA 27.09.2026, owner]. The sentence below would fail without naming them
+		   and the resource would be behaving exactly as decided. In this fixture it is the portrait that makes the two
 		   answers differ: the member who hides has no standing team here. */
 		assertThat(whole(HER_OWN_ACCOUNT))
 				.as("the member's answer and the visitor's are already identical, so this case"
@@ -1978,10 +1992,11 @@ class CompetitorApiTest {
 		/* AND THE PORTRAIT AND THE BIOGRAPHY ARE THE ONLY THINGS HE IS ANSWERED MORE THAN A
 		   VISITOR SINCE 26.09.2026 - and that is the point rather than an exception. He has no
 		   member at all, so a rule written against the caller's MEMBER would refuse him a hidden
-		   member's portrait or biography although he is signed in, and the rule is about a
-		   reader with no session. `aHiddenProfilesPortraitLeavesToEverybodyWhoIsSignedIn` and
-		   `aHiddenProfilesBiographyLeavesToEverybodyWhoIsSignedIn` walk him by name for exactly
-		   that reason; here what is measured is that NOTHING ELSE moved. */
+		   member's portrait or biography although he is the administration, and the rule lets the
+		   administration in whether or not it races.
+		   `aHiddenProfilesPortraitLeavesToAnActiveMemberAndToTheAdministration` and
+		   `aHiddenProfilesBiographyLeavesToAnActiveMemberAndToTheAdministration` walk him by name for
+		   exactly that reason; here what is measured is that NOTHING ELSE moved. */
 		/* AND HIS ANSWER NAMES THE SAME RECORDS IN THE SAME ORDER AS THE VISITOR'S, for the
 		   same reason given on `theVisitorsAnswerHasNotMoved`: the loop below is keyed by the
 		   visitor's numbers and looks each one up on his side by number, so it cannot see a

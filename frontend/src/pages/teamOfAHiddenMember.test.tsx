@@ -12,7 +12,11 @@ import { aCompetitor, aTeam } from '../test/theAnswer'
  * **What changed on the server, since 02.10.2026.** PDL, odeljak 16, [ODLUKA 27.09.2026, owner],
  * chosen between offered outcomes: the team leaves a hidden member's record for a reader who is not
  * signed in, the same as the biography and the photograph - so `/api/competitors` answers his
- * `teamId` and `teamSince` as null to a visitor - and the owner's own words on it the same day:
+ * `teamId` and `teamSince` as null to a visitor. (Since 03.10.2026 that reader is anybody who is
+ * neither an active member nor the administration, PDL P23, 03.10.2026, „Skrivanje deluje prema
+ * svakome ko nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"; a visitor is still the first of them, and the
+ * one these cases are read as.) And the owner's own words on it the same day:
  * „Samo da se razumemo, mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i
  * bodovi koje je doneo." So `/api/teams` names him on his team instead (`alsoInTheTeam`), to exactly
  * that reader.
@@ -28,8 +32,8 @@ import { aCompetitor, aTeam } from '../test/theAnswer'
  * are built off the records the server declares (`test/theAnswer.ts`), not written field by field.
  *
  * **Every case is read as a visitor**, because the roster does not ask who is reading: what differs
- * between a visitor and somebody signed in is the SHAPE of the two answers, and the case that
- * matters is that both shapes draw one team.
+ * between a visitor and somebody who may read a hidden profile is the SHAPE of the two answers, and
+ * the case that matters is that both shapes draw one team.
  */
 
 const THE_TEAM = 41

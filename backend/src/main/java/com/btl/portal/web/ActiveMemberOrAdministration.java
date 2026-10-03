@@ -17,10 +17,12 @@ import java.util.Optional;
  * administration is: „skriven profil vide samo clanovi aktivirani za sezonu i administracija
  * (moderatori i superadmin)". Both are PDL's sentences and not the owner's own words; the
  * choices are his. So the same reader is asked about on two
- * resources, and this class is written as the home both of them read, rather than as a
- * condition inside the first of them that the second would have to copy. Only the list of who
- * is going reads it today ({@link AttendanceApi}, {@link AttendanceWriteApi}); the hidden
- * profile is its own increment and is not touched by the one that wrote this.
+ * subjects, and this class is written as the home both of them read, rather than as a
+ * condition inside the first of them that the second would have to copy. The list of who is
+ * going reads it ({@link AttendanceApi}, {@link AttendanceWriteApi}), and since 03.10.2026 so
+ * does the hidden profile: {@link CompetitorApi} asks it for the biography, the portrait and the
+ * link to the team of a member who hides his profile, {@link TeamApi} asks it with the answer
+ * turned over, and {@link PhotoApi} asks it for the bytes of that portrait.
  *
  * <p><b>THE TWO HALVES ARE TWO QUESTIONS, AND A ROUTE MAY NEED ONLY ONE OF THEM.</b> Reading the
  * list is granted to either; SAYING that you are going is granted to the first alone, because
@@ -67,10 +69,21 @@ class ActiveMemberOrAdministration {
 	 * Whether whoever is asking is either: a member whose fee is standing, or the
 	 * administration.
 	 *
-	 * @param asking read off the session, never off anything the caller sent
+	 * <p><b>Nobody is a reader who is neither, and is answered no.</b> The hidden profile is
+	 * asked about on routes open to anybody ({@code ApiSecurity.READ_BY_ANYBODY} and its sibling for
+	 * pictures), where Spring hands a parameter of this type nothing when the principal is the
+	 * anonymous token, so a visitor arrives here as {@code null}. Left to the two questions below,
+	 * {@code null} would be a {@link NullPointerException} on {@code asking.role()} and the visitor
+	 * would be answered 500 rather than what he is answered today. The two routes that ask about
+	 * who is going stand behind a session and never meet it. It is guarded here and not at the
+	 * three new call sites so that the guard has one home, and the visitor's case on each of the
+	 * three routes is what holds it.
+	 *
+	 * @param asking read off the session, never off anything the caller sent; {@code null} for
+	 *               a request that carries none
 	 */
 	boolean includes(WhoIsAsking.Member asking) {
-		return isTheAdministration(asking) || activeMember(asking).isPresent();
+		return asking != null && (isTheAdministration(asking) || activeMember(asking).isPresent());
 	}
 
 	/**

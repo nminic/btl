@@ -12,7 +12,7 @@ import { Portrait } from '../../components/Portrait'
  * Whether there is anywhere to go is not asked here. `ProfileLink` asks it, for this board and
  * for every other list on the portal, and the reasons are its own to keep: a member whose fee has
  * run out has no profile to link to (PDL P11), and one who has hidden theirs has none for a
- * reader who is not signed in (P23).
+ * reader who is neither an active member nor the administration (P23).
  *
  * The name is on the link rather than under it (owner, 31.07.2026, with the old
  * widget in front of him): the board is faces and numbers and nothing else. A

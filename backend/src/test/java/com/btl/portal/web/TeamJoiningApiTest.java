@@ -145,9 +145,10 @@ class TeamJoiningApiTest {
 	/**
 	 * HIS PROFILE IS HIDDEN AND HIS APPLICATION IS LISTED ALL THE SAME.
 	 *
-	 * <p>{@code profile_hidden} hides a member from a VISITOR, and every caller of this
-	 * resource is signed in by construction. Hidden from the one team that has to answer him,
-	 * a member could apply and never be read.
+	 * <p>{@code profile_hidden} hides a member from everybody who is neither an active member
+	 * nor the administration, and every caller of this resource is one of the two by
+	 * construction ({@code TeamJoiningApi} says why). Hidden from the one team that has to
+	 * answer him, a member could apply and never be read.
 	 */
 	private static final String HIDDEN_PROFILE = "001000";
 
@@ -619,8 +620,12 @@ class TeamJoiningApiTest {
 	/**
 	 * AND A HIDDEN PROFILE IS NAMED, which is the opposite direction of the same axis.
 	 *
-	 * <p>{@code profile_hidden} hides a member from a VISITOR and every caller here is signed
-	 * in. Read as „hidden from everybody", a team would never learn who applied to it.
+	 * <p>{@code profile_hidden} hides a member from everybody who is neither an active member nor
+	 * the administration (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član
+	 * ni administracija,
+	 * nikad prema aktivnom članu"), and every caller here is one of the two: whoever leads a team is a member
+	 * whose fee is standing, and the administration is the administration. Read as „hidden from
+	 * everybody", a team would never learn who applied to it.
 	 */
 	@Test
 	void aHiddenProfileIsNamedToTheTeamHeAppliedTo() throws Exception {

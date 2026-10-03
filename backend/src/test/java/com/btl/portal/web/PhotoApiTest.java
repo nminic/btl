@@ -155,7 +155,8 @@ class PhotoApiTest {
 	 * <p>Like the two pictures that wait for a moderator, everything else about it is in
 	 * order: the row is there, the file is on disk, the digest is the shape V8 gives one, and
 	 * the holder is the one holder the portal calls public. The only thing that refuses it is
-	 * the member's own choice, and only for a caller with no session.
+	 * the member's own choice, and only for a caller who is neither an active member nor the
+	 * administration.
 	 */
 	private static final Written A_HIDDEN_MEMBERS = new Written("29".repeat(32), "image/jpeg",
 			new byte[] {'h', 'i', 'd', 'd', 'e', 'n', (byte) 0xD8, (byte) 0xFF});
@@ -163,7 +164,12 @@ class PhotoApiTest {
 	/** The shape of a digest, belonging to no row at all. */
 	private static final String NOBODY_WROTE = "f6".repeat(32);
 
-	/** Signed in, so that „who is asking" has two states and not one. */
+	/**
+	 * Signed in AS A MEMBER WHOSE FEE IS STANDING, so that „who is asking" has two states and not
+	 * one. Since 03.10.2026 that is a fact of the account's member and not of the session alone
+	 * (see {@link #anActiveMemberWhoHoldsNothing}); the readers the rule lets in and the ones it
+	 * does not are walked in {@code TheSameReadersReadAHiddenProfileOnEveryDoorTest}.
+	 */
 	private static final String A_MEMBER = "clan@primer.rs";
 
 	private static final Path FOLDER = aFolderOfItsOwn();
@@ -269,6 +275,31 @@ class PhotoApiTest {
 		proposalHolding(PROPOSED);
 
 		account(A_MEMBER);
+		anActiveMemberWhoHoldsNothing("000907");
+	}
+
+	/**
+	 * THE MEMBER {@link #A_MEMBER} IS, since 03.10.2026: a member whose fee is standing who holds no
+	 * picture, so that nothing about what he is shown is about what he holds. Without one the account
+	 * names no member, and an account that names no member and is not the administration is read as a
+	 * visitor (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
+	 * administracija, nikad prema aktivnom članu").
+	 */
+	private void anActiveMemberWhoHoldsNothing(String number) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name,"
+						+ " address, shirt_size, health_statement_at)"
+						+ " values (?, 'Ime', 'Prezime', 'F', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, String.format("%016x", ++issued))
+				.update();
+		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
+						+ " where email = ?")
+				.params(number, A_MEMBER)
+				.update();
 	}
 
 	/** Files outlive a rolled back transaction, so they are taken away by hand. */
@@ -775,8 +806,8 @@ class PhotoApiTest {
 	 *
 	 * <p><b>SINCE 26.09.2026 THE FIRST ENTRY IS TRUE OF A MEMBER WHO IS NOT HIDING, and this
 	 * list is read as the answer a VISITOR gets.</b> A portrait is public while its member
-	 * keeps his profile open and is refused to a caller with no session otherwise ([ODLUKA
-	 * 26.09.2026, owner]; see {@link PhotoApi}). {@code JPEG}'s holder is written
+	 * keeps his profile open and is refused to a caller who may not read a hidden profile
+	 * otherwise ([ODLUKA 26.09.2026, owner]; see {@link PhotoApi}). {@code JPEG}'s holder is written
 	 * {@code IN_THE_OPEN} for exactly that reason, so the 200 here is the ordinary case and
 	 * not an accident. The other state is its own picture and its own pair of cases, because a
 	 * fifth entry here would make the floor over {@code pg_constraint} compare five names
@@ -991,13 +1022,16 @@ class PhotoApiTest {
 	}
 
 	/**
-	 * AND IT IS SERVED WHOLE TO A CALLER WHO IS SIGNED IN, WHICH IS THE OTHER DIRECTION.
+	 * AND IT IS SERVED WHOLE TO AN ACTIVE MEMBER, WHICH IS THE OTHER DIRECTION.
 	 *
 	 * <p>The owner's own limit on the rule: „Takmicar od ulogovanih kolega ne moze da sakrije
 	 * profil" (PDL, 06.09.2026), with the reason in the published policy - „ali ne i od
-	 * ostalih clanova, jer bi time nestao smisao zajednickog rangiranja". Written in one
+	 * ostalih clanova, jer bi time nestao smisao zajednickog rangiranja", read since 03.10.2026
+	 * as a member whose fee is standing and the administration. Written in one
 	 * direction only, the rule would pass on a route that refused this portrait to everybody,
-	 * which is a picture the portal could never draw.
+	 * which is a picture the portal could never draw. The readers who are NOT let in, and the
+	 * administration, are walked beside the other two doors in
+	 * {@code TheSameReadersReadAHiddenProfileOnEveryDoorTest}.
 	 *
 	 * <p><b>The bytes are compared and not only the status</b>, because the decoy is in the
 	 * folder: a 200 alone would be satisfied by a server that resolved the address as a path.
@@ -1007,14 +1041,14 @@ class PhotoApiTest {
 	 * the condition rather than of two different requests.
 	 */
 	@Test
-	void aHiddenMembersPortraitIsServedToACallerWhoIsSignedIn() throws Exception {
+	void aHiddenMembersPortraitIsServedToAnActiveMember() throws Exception {
 		MockHttpServletResponse answer = http
 				.perform(asking(A_HIDDEN_MEMBERS.digest(), A_MEMBER)).andReturn().getResponse();
 
 		assertThat(answer.getStatus())
-				.as("a caller with a session was refused the portrait of a member who hides his"
-						+ " profile; hiding is from a reader who is not signed in and from"
-						+ " nobody else")
+				.as("an active member was refused the portrait of a member who hides his"
+						+ " profile; hiding is from a reader who is neither an active member"
+						+ " nor the administration, and from nobody else")
 				.isEqualTo(200);
 		assertThat(answer.getContentType())
 				.as("the type answered is not the one this picture's row carries")

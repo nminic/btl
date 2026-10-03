@@ -90,8 +90,9 @@ export function ProfileBio({ me }: { me: Competitor }) {
    * view of a hidden member: „Oba slucaja dobijaju isti ishod". In practice this screen
    * never actually meets null - a member is never hidden from himself
    * (`profile/visible.ts`'s `reachable`, and `CompetitorApi`'s condition on `bio` is always
-   * true for the CALLER's own row, hidden or not, since it asks whether HE is signed in and
-   * he must be to be here at all) - so this is a guard against the two conditions drifting
+   * true for the CALLER's own row, hidden or not, since it asks whether HE may read a hidden
+   * profile and a member whose fee is standing, which he must be to have this row on the list
+   * and to be here at all, may) - so this is a guard against the two conditions drifting
    * apart rather than a state a real visit produces, matched by `profileBio.test.tsx`'s own
    * case for it (rule of 14.09.2026: a guard nothing exercises is a branch nothing checks).
    *
