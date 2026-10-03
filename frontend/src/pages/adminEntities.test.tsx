@@ -261,8 +261,12 @@ describe('the races of an event', () => {
     const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
 
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    /* NULL AND NOT NOUGHT, since 03.10.2026. This read `limitSeconds=0` until then, which is
+       the RECORD's shape and not the request's: the route refuses any limit sent beside a race
+       of a length, nought included (`theLimitBelongsToATimedRace`), so this case was holding
+       the screen to the very body that left the owner's event on QA with no races at all. */
     expect(first(written), 'a race of a length was written carrying a limit').toContain(
-      'limitSeconds=0',
+      'limitSeconds=null',
     )
     /* And it kept the length it always had, so this is not passing because the save
        wrote nothing. */
@@ -291,7 +295,11 @@ describe('the races of an event', () => {
     const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
 
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
-    expect(first(written), 'a timed race was written carrying a length').toContain('distanceKm=0')
+    /* Null and not nought, for the reason the case above gives: the route refuses a length
+       sent beside a timed race (`theDistanceBelongsToARaceOfALength`), nought included. */
+    expect(first(written), 'a timed race was written carrying a length').toContain(
+      'distanceKm=null',
+    )
     /* AND THE CATEGORY IS NOT SENT AT ALL, which is a change of home rather than of
        rule. The record kept one because the session overlay was the whole database, and
        `raceRows.storedRow` still works it out for the row this screen draws; the route

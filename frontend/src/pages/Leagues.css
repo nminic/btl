@@ -59,8 +59,26 @@
   color: var(--text-muted);
 }
 
+/* The words an organiser wrote, which may hold an address (`pages/league/EditableText.tsx`).
+
+   `overflow-wrap` because one unbroken word is the single input that pushes a page sideways, which
+   this portal never does, and an address is exactly such a word. Measured in a browser on
+   03.10.2026, before this line: a competition whose text held one word of 150 characters scrolled
+   the whole list sideways by 792px at 360, by 384px at 768 and not at all at 1280; a long `http://`
+   address by 1023px, 614px and 199px; a long `https://` or `www.` address by 1209px, 801px and
+   387px. The cards share one column of the grid, so one long word in one of them widens every card.
+   Measured after: nought at 360, 768 and 1280, on the light palette and on the dark one, for each of
+   those texts and for the sentence the owner is writing (`www.runtrace.net` among words).
+
+   On the paragraph and not on the link: an `http://` address is not drawn as a link, the owner's
+   sentence names two forms, and it is as long as any other.
+
+   No measure on it, and none to be added. The owner asked on 12.08.2026 that prose run the full
+   width of the page (`.event__said` in `Profile.css` says the same), so what sets the length of a
+   line here is the card. */
 .leagues__item .profile__text {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 /* The box that folds: which events and races the competition counts (owner, 13.09.2026).

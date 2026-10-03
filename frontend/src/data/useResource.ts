@@ -561,7 +561,15 @@ export function useComments(): ResourceState<EventComment[]> {
 
 export const useCompetitors = () => useResource<Competitor[]>('competitors')
 export const useEvents = () => useLive(useResource<BtlEvent[]>('events'), 'events', 'id')
-export const useAttendance = () => useResource<Attending[]>('attendance')
+/**
+ * Who has said they are going, as the server keeps it.
+ *
+ * @param revision bumped by the one screen that writes it (`event/GoingToEvent.tsx`) once the
+ *   server has said yes, beside dropping the cache, so the list it is drawing asks again: the
+ *   shape `HowToRead.revision` was written for, and `theInboxHasChanged` keeps for the inbox.
+ */
+export const useAttendance = (revision?: number) =>
+  useResource<Attending[]>('attendance', { revision })
 export const useLeagues = () => useResource<League[]>('leagues')
 export const useModerators = () => useResource<Moderator[]>('moderators')
 /**
@@ -817,9 +825,11 @@ function theInboxRevisionNow(): number {
 /**
  * THE INBOX: WHAT THE SERVER HAS KEPT, AND THEN WHAT HAS BEEN SAID DURING THIS VISIT.
  *
- * **The shape is `event/GoingToEvent.tsx`'s, word for word - „what the file says, and then
+ * **The shape was `event/GoingToEvent.tsx`'s, word for word - „what the file says, and then
  * what has been said during this visit" - and it is here rather than there because three
- * screens read it.** The server is the source: seven places in six classes under
+ * screens read it.** That screen gave its own half up on 03.10.2026, when the switch it drew
+ * went to the server whole (`AttendanceWriteApi`), so the shape is named after a screen that
+ * no longer has it. The server is the source: seven places in six classes under
  * `backend/src/main` write into `message`, and until today not one of their rows was ever
  * drawn. The eight screens that call `notify` still write nowhere but the browser, so leaving
  * them out would take a team's invitation, a pair's invitation and a moderator's reason off

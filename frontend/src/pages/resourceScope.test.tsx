@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { arrivedResource, type ResourceName } from '../data/client'
 import { must } from '../test/at'
 import { renderAt } from '../test/render'
+import { serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
 
 /* A screen must wait only on the data it actually shows.
@@ -371,6 +372,40 @@ describe('a screen waits only on the data it shows', () => {
 
     expect(await screen.findByRole('list')).toBeVisible()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('draws the competitor cards when the results cannot be loaded', async () => {
+    /* The cards carried a count of races and the points until 03.10.2026, worked out of the
+       results, so a results file that failed turned the whole page into an error message. They say
+       who a member is and where from now, and that is all the page reads. */
+    restore = breakResource('results')
+    renderAt('/sr/takmicari')
+
+    expect(await screen.findByRole('list')).toBeVisible()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('draws the competitor cards while the results have not arrived', async () => {
+    const stalled = stallResource('results')
+    restore = stalled.restore
+    renderAt('/sr/takmicari')
+
+    expect(await screen.findByRole('list')).toBeVisible()
+    expect(document.querySelector('.loader:not(.loader--inline)')).toBeNull()
+  })
+
+  it('does not ask for the results at all', async () => {
+    /* The two cases above cannot tell a screen that has stopped reading the results from one that
+       still reads them and throws the answer away: both draw the cards when the file fails or
+       does not come. This asks the question itself. The members are asked for in the same case,
+       so that an absence is the absence of a request from a screen that did make one. */
+    const server = serverThat(() => null)
+    restore = server.stop
+    renderAt('/sr/takmicari')
+
+    expect(await screen.findByRole('list')).toBeVisible()
+    expect(server.asked.some((one) => one.path === '/api/competitors')).toBe(true)
+    expect(server.asked.filter((one) => one.path.startsWith('/api/results'))).toEqual([])
   })
 
   it('names a competition when the races cannot be loaded', async () => {

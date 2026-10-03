@@ -73,7 +73,7 @@ function AScreenThatMountsWithTheSignIn() {
 }
 
 function Probe() {
-  const { theServerAnswered, theServerSignedMeIn, signOut, setGoing, signedIn } = useSession()
+  const { theServerAnswered, theServerSignedMeIn, signOut, markRead, signedIn } = useSession()
 
   return (
     <>
@@ -109,7 +109,10 @@ function Probe() {
       <button type="button" onClick={signOut}>
         signs out
       </button>
-      <button type="button" onClick={() => setGoing('1', true)}>
+      {/* Marking read a message nobody holds hands the provider a new list all the same, so it
+          renders again with the reader exactly as he was (`setGoing` did this until 03.10.2026,
+          when the switch it set went to the server). */}
+      <button type="button" onClick={() => markRead('nobody holds this one')}>
         something else changes
       </button>
     </>
@@ -131,19 +134,27 @@ async function warm(): Promise<void> {
       : null,
   )
 
-  await Promise.all([loadResource('competitors'), loadResource('teams'), loadResource('events')])
+  await Promise.all([
+    loadResource('competitors'),
+    loadResource('teams'),
+    loadResource('attendance'),
+    loadResource('events'),
+  ])
 }
 
 function held() {
   return {
     competitors: arrivedResource('competitors') !== undefined,
     teams: arrivedResource('teams') !== undefined,
+    attendance: arrivedResource('attendance') !== undefined,
     events: arrivedResource('events') !== undefined,
   }
 }
 
-const ALL_HELD = { competitors: true, teams: true, events: true }
-const THE_TWO_ARE_GONE = { competitors: false, teams: false, events: true }
+const ALL_HELD = { competitors: true, teams: true, attendance: true, events: true }
+/* Three since 03.10.2026: who is going to an event is answered to an active member and to the
+   administration and refused to anybody else, so it is a reader's answer like the two before it. */
+const THE_READERS_ANSWERS_ARE_GONE = { competitors: false, teams: false, attendance: false, events: true }
 
 function visit(initialMemberNumber: string | null = null) {
   render(
@@ -179,7 +190,7 @@ describe('the first answer of a visit', () => {
     await user.click(screen.getByRole('button', { name: 'server answered nobody' }))
     await user.click(screen.getByRole('button', { name: 'member signs in' }))
 
-    expect(held()).toEqual(THE_TWO_ARE_GONE)
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
   })
 })
 
@@ -191,7 +202,7 @@ describe('somebody signing in', () => {
     await warm()
     await user.click(screen.getByRole('button', { name: 'member signs in' }))
 
-    expect(held()).toEqual(THE_TWO_ARE_GONE)
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
   })
 
   it('does so for an account the league has given no number, which is a reader of its own', async () => {
@@ -204,7 +215,7 @@ describe('somebody signing in', () => {
     await warm()
     await user.click(screen.getByRole('button', { name: 'moderator signs in' }))
 
-    expect(held()).toEqual(THE_TWO_ARE_GONE)
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
   })
 })
 
@@ -248,7 +259,7 @@ describe('somebody signing out', () => {
     await warm()
     await user.click(screen.getByRole('button', { name: 'signs out' }))
 
-    expect(held()).toEqual(THE_TWO_ARE_GONE)
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
   })
 
   it('does so for an account that races for nobody as well', async () => {
@@ -259,7 +270,7 @@ describe('somebody signing out', () => {
     await warm()
     await user.click(screen.getByRole('button', { name: 'signs out' }))
 
-    expect(held()).toEqual(THE_TWO_ARE_GONE)
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
   })
 
   it('does so for a member the portal was TOLD about before the server had answered', async () => {
@@ -272,7 +283,7 @@ describe('somebody signing out', () => {
     await warm()
     await user.click(screen.getByRole('button', { name: 'signs out' }))
 
-    expect(held()).toEqual(THE_TWO_ARE_GONE)
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
   })
 
   it('and the answer that then names the same member changes nothing', async () => {
@@ -293,7 +304,7 @@ describe('somebody else signing in behind a member', () => {
     await warm()
     await user.click(screen.getByRole('button', { name: 'another member signs in' }))
 
-    expect(held()).toEqual(THE_TWO_ARE_GONE)
+    expect(held()).toEqual(THE_READERS_ANSWERS_ARE_GONE)
   })
 })
 

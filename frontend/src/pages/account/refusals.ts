@@ -172,3 +172,23 @@ export const WHEN_WRITING_TO_A_MEMBER: Record<string, string> = {
   theFormIsNotComplete: 'event.writeFormIncomplete',
   theMemberIsNotKnown: 'event.writeMemberUnknown',
 }
+
+/**
+ * `AttendanceWriteApi`, which names one, and answers the switch that says a member is going to
+ * an event (`event/GoingToEvent.tsx`, PDL P6).
+ *
+ * <p><b>IT IS REACHABLE FROM THE SCREEN, AND THAT IS WHY IT HAS A SENTENCE.</b> The page hides
+ * the switch once the event is past by its own day, and its day is the one in UTC
+ * (`clock/context.ts`, `realToday`), while the server's is the one in Belgrade: for the first
+ * hour of a Belgrade day in winter and the first two in summer the switch is still drawn on the
+ * event of the day before, and a press meets `theEventHasBeenRun`. The sentence says what
+ * happened and what is true of the event, and asks nothing of the reader he could change.
+ *
+ * <p><b>Somebody the server does not let say it is not here, on purpose.</b> A member whose fee
+ * has lapsed, or an account that races for nobody, is answered 404, the answer of an address
+ * that maps nothing (ADL A8), and that is no reason with a name; the general sentence for a bare
+ * number is what such a reader is shown, if a lapse lands between the drawing and the press.
+ */
+export const WHEN_SAYING_YOU_ARE_GOING: Record<string, string> = {
+  theEventHasBeenRun: 'event.goingRunAlready',
+}
