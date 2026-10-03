@@ -41,6 +41,18 @@ const IZMENA_TIMA = {
  * what an approval does at the other end: a proposal makes a record, a change
  * writes into the one that is already there (`admin/PendingQueue.tsx`).
  *
+ * **So it changed with the proposal on 03.10.2026.** The owner named the page of
+ * the proposal („Na strani Predlog tima, potrebno je da se Država automatski
+ * popunjava kucanjem u mestu"), and the town became a place there
+ * (`forms/PlaceField.tsx`); this form is that definition, and „Jedna kontrola i
+ * jedno pravilo za ceo portal, ne dva slična" (PDL, 11.08.2026) is why it was not
+ * split into a second one that keeps the country in a list of its own. What it
+ * costs, and it is written here so that it is not found by a member: a team
+ * recorded in another country than the one the codebook gives its town is opened
+ * with the record's country standing and its select switched off, because the
+ * town is one the codebook recognises, and the country moves only once the town
+ * has been typed over (`pages/member/editTeam.test.tsx`).
+ *
  * **The note starts empty on purpose.** Everything else is what the team says
  * about itself today, so the member changes a word rather than typing it all
  * again; the note is why *this* change should be allowed, and last time's reason
@@ -200,6 +212,11 @@ export function EditTeam() {
               initial={{
                 name: team.name,
                 city: team.city,
+                /* Not a field of this form but the other half of the town: seeded from the
+                   record, and left as the record says until the town is touched. Seeded empty,
+                   the codebook would write its own country into a team nobody has been near
+                   (`editTeam.test.tsx`, „is not rewritten by the codebook while nobody has
+                   touched the town"). */
                 country: team.country,
                 note: '',
               }}

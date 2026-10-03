@@ -6,6 +6,7 @@ import { renderAt } from '../test/render'
 import { BACK_CASES } from '../test/backCases'
 import { sources } from '../test/sources'
 import { SLOW } from '../test/slow'
+import { typeATownTheCodebookKnows } from '../test/town'
 import { setupUser } from '../test/user'
 
 /* Where the browser's own way back leads from a screen that says something was sent.
@@ -143,8 +144,7 @@ describe('the way back from a confirmation', () => {
     const form = router.state.location.pathname
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 

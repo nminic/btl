@@ -1114,6 +1114,22 @@ class TeamWriteApiTest {
 	 * 201 with a queue card that had nothing on it: Jackson drops a field nothing is named
 	 * for. A sentence claiming a file says something is worth exactly as much as whatever
 	 * reads the file.
+	 *
+	 * <p><b>A TOWN IS ONE CONTROL AND TWO VALUES.</b> A field of type {@code place} writes
+	 * its own value and {@code country} beside it ({@code forms/types.ts}), so a form that
+	 * asks for its town that way has no field called {@code country}: it left this file on
+	 * 03.10.2026, when {@code city} became a place (owner: „Na strani Predlog tima, potrebno
+	 * je da se Drzava automatski popunjava kucanjem u mestu, kao sto radi na drugim
+	 * mestima"). Read as the file spells its names, the route then takes a {@code country}
+	 * that is neither on the form nor excused, and this case failed on exactly that name
+	 * with the request unchanged - measured on the branch that moved the form, before the
+	 * line below existed. The place counts as both of its values, which is the difference
+	 * {@code GroupEntryTest} already names for the registration: the form has ONE control
+	 * for the town and the request carries more keys for it. Asked of the field's TYPE and
+	 * not of a list of forms. What this case does NOT see is a {@code country} that went
+	 * back into the file beside the place, which would only make it count the name twice:
+	 * that is a second control for a value the first one writes, and the frontend's own
+	 * sweep refuses it ({@code forms/definitions.test.ts}).
 	 */
 	@Test
 	void everyFieldTheFormDefinesIsOneThisRouteUnderstands() throws Exception {
@@ -1121,6 +1137,10 @@ class TeamWriteApiTest {
 
 		for (JsonNode field : mapper.readTree(Files.readString(THE_MEMBERS_FORM)).path("fields")) {
 			onTheForm.add(field.path("name").asString());
+
+			if ("place".equals(field.path("type").asString())) {
+				onTheForm.add("country");
+			}
 		}
 
 		assertThat(onTheForm)
