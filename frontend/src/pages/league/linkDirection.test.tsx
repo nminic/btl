@@ -145,6 +145,11 @@ const ALEF = String.fromCodePoint(0x5d0)
  * path. And one text of ordinary addresses of both forms, so that a link which carries the attribute
  * only when it is the first, or only when it is of one form, is found without it.
  *
+ * **These are examples and not a classification of what could be typed**, so the table has no floor
+ * and is not asked to be complete: what is asked of every link is the same whatever stands beside it.
+ * What it cannot catch is a component that gives the attribute to some texts and not to others; the
+ * ordinary text and the three shapes are four of the texts such a component would have to get right.
+ *
  * The names are kept short enough for Vitest to print them whole: it cut the first draft of them.
  */
 const TEXTS: { shape: string; text: string; links: string[] }[] = [
