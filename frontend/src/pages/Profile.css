@@ -125,21 +125,19 @@
 
 /* The table shape. */
 @media (min-width: 51.25em) {
-  /* A table of fixed layout, as wide as half of its box and as wide as what may not
-     be broken, whichever is more. */
+  /* A table of fixed layout, as wide as half of its box and as wide as its columns add
+     up to, whichever is more. A fixed table is the greater of its own width and its
+     columns', so the floors widen it where they decide, and so the way in, which is a
+     column of its own width, comes on top of the half and not out of it: the others
+     do not move when it comes, „Ko nije prijavljen vidi jednu manje, iste širine kao
+     kad ih ima najviše, dakle tabela se ne razvlači preko oslobođenog mesta" (PDL,
+     23.08.2026). Nothing here is conditional on the way in, and nothing may be: a
+     width that changed with it is the fault that was measured on 23.08.2026. */
   .table.table--races {
     --event-races-twelfth: calc(100cqi / 12);
     display: table;
     table-layout: fixed;
     inline-size: calc(6 * var(--event-races-twelfth));
-  }
-
-  /* The way in is a column on top of the half and not a part of it, so the others do
-     not move when it comes: „Ko nije prijavljen vidi jednu manje, iste širine kao
-     kad ih ima najviše, dakle tabela se ne razvlači preko oslobođenog mesta" (PDL,
-     23.08.2026). */
-  .table.table--races:has(.event-races__way-in) {
-    inline-size: calc(6 * var(--event-races-twelfth) + 8.25rem);
   }
 
   .table--races thead {

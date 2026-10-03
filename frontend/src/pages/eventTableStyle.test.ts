@@ -44,7 +44,6 @@ function plain(selector: string): CSSStyleDeclaration {
 }
 
 const THE_TABLE = '.table.table--races'
-const WITH_WAY_IN = '.table.table--races:has(.event-races__way-in)'
 const NAME = '.table--races .event-races__name'
 const NAME_WITH_DAY = '.table--races:has(.event-races__day) .event-races__name'
 const DAY = '.table--races .event-races__day'
@@ -85,15 +84,6 @@ function rem(written: string, what: string): number {
   return Number(must(read?.[1], `the rem of ${what}`))
 }
 
-/** What the table itself asks for: some twelfths of the box and, where the way in is drawn, some rem on top. */
-function asked(written: string, what: string): { twelfths: number; rem: number } {
-  const read = /^calc\((\d+) \* var\(--event-races-twelfth\)(?: \+ ([\d.]+)rem)?\)$/.exec(squash(written))
-
-  expect(read, `${what} reads \`${written}\`, which is not twelfths of the box and perhaps some rem`).not.toBeNull()
-
-  return { twelfths: Number(must(read?.[1], `the twelfths of ${what}`)), rem: Number(read?.[2] ?? 0) }
-}
-
 type Reading = { day: boolean; wayIn: boolean }
 
 /**
@@ -107,8 +97,7 @@ function sheet() {
     dayFloor: floor(wide(DAY).getPropertyValue('inline-size'), 'the day'),
     figureFloor: floor(wide(FIGURES).getPropertyValue('inline-size'), 'a figure'),
     wayIn: rem(wide(WAY_IN).getPropertyValue('inline-size'), 'the way in'),
-    table: asked(wide(THE_TABLE).getPropertyValue('inline-size'), 'the table'),
-    tableWithWayIn: asked(wide(WITH_WAY_IN).getPropertyValue('inline-size'), 'the table with the way in'),
+    table: share(wide(THE_TABLE).getPropertyValue('inline-size'), 'the table'),
   }
 }
 
@@ -123,9 +112,8 @@ function columns(made: ReturnType<typeof sheet>, { day, wayIn }: Reading, box: n
   const dayWidth = day ? Math.max(twelfth, made.dayFloor * root) : 0
   const figure = Math.max(twelfth, made.figureFloor * root)
   const way = wayIn ? made.wayIn * root : 0
-  const wanted = wayIn ? made.tableWithWayIn : made.table
   const sum = name + dayWidth + 3 * figure + way
-  const half = wanted.twelfths * twelfth + wanted.rem * root
+  const half = made.table * twelfth
 
   return { name, day: dayWidth, figure, way, sum, half, table: Math.max(half, sum) }
 }
@@ -296,6 +284,17 @@ describe('the table of races on an event', () => {
        measured on 23.08.2026: the first column moved by up to 35,59px between a visitor and a member. */
     const read = sheet()
     const way = read.wayIn * 16
+
+    /* Nothing in the sheet is conditional on the way in. The widths above are read by the selectors the
+       model knows, so a rule that narrows the name where a way in is drawn would be a rule the model never
+       reads; asked of every rule instead, wherever it stands, so there is none to read. A fixed table is
+       the greater of its own width and its columns', so the way in comes on top of the half without being
+       told to. */
+    const conditional = everyRule(profile, 'Profile.css')
+      .filter((rule) => /:has\(\s*\.event-races__way-in\s*\)/.test(rule.selectorText))
+      .map((rule) => squash(rule.selectorText))
+
+    expect(conditional, 'a rule of the table changes with the way in').toEqual([])
 
     for (const day of [false, true]) {
       for (const box of [771, 977, 1068, 1100, 2400]) {
