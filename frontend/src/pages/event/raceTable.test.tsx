@@ -205,7 +205,12 @@ describe('the table of races on an event, as it is written', () => {
        is not an error but a share of the WINDOW, so the widths would be drawn and be wrong, and jsdom
        lays nothing out and sees no difference (`rankingsLayout.test.tsx` asks the same of the circle).
        `inline-size` and nothing else: `size` contains the height as well, and a table's box has none
-       of its own to give. */
+       of its own to give.
+
+       The NEAREST one is what a `cqi` is a share of, so it is the nearest that has to be the box right
+       around the table. Another container further up is harmless and is not asked about; one standing
+       between the table and its box would be the box the widths are measured against, and the first
+       of them is what this finds. */
     for (let up = table.parentElement; up !== null; up = up.parentElement) {
       const candidate = up
 
@@ -219,8 +224,8 @@ describe('the table of races on an event, as it is written', () => {
       }
     }
 
-    expect(boxes, 'no box above the table is a container').toHaveLength(1)
-    expect(boxes[0], 'and it is the box right around the table, which the table is wide in').toBe(
+    expect(boxes.length, 'no box above the table is a container').toBeGreaterThan(0)
+    expect(boxes[0], 'the nearest container is not the box right around the table').toBe(
       must(table.parentElement, 'the box around the table'),
     )
   }, SLOW)

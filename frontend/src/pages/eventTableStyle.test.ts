@@ -205,6 +205,13 @@ describe('the table of races on an event', () => {
     expect(wide('.table--races tbody').getPropertyValue('display')).toBe('table-row-group')
     expect(wide('.table--races tbody tr').getPropertyValue('display')).toBe('table-row')
     expect(wide('.table.table--races td').getPropertyValue('display')).toBe('table-cell')
+
+    /* And no width is written for the blocks: a track of the row is what sizes a figure there, and a
+       width on a cell is a width the table shape has to take off again. */
+    expect(
+      written.filter((rule) => rule.style.getPropertyValue('inline-size') !== '').map((rule) => squash(rule.selectorText)),
+      'a block is given a width of its own',
+    ).toEqual([])
   })
 
   it('puts the name over the row, the day beside it and the three figures in a row under them', () => {
@@ -230,6 +237,23 @@ describe('the table of races on an event', () => {
       .map((rule) => squash(rule.selectorText))
 
     expect(moved, 'a cell is drawn out of the order it is read in').toEqual([])
+
+    /* An empty cell costs nothing. A race that has not been run has an empty cell for the way in, and an
+       empty cell has to be a row of no height: so the distance between the rows of a block is a margin on
+       what is in them (the figures, and the way in where it has a button) and never a gap of the row,
+       which is charged for a row with nothing in it all the same. */
+    const row = plain('.table--races tbody tr')
+
+    expect(row.getPropertyValue('row-gap'), 'the rows of a block are a gap apart').toBe('')
+    expect(row.getPropertyValue('gap'), 'the rows of a block are a gap apart').toBe('')
+    expect(
+      plain('.table--races .event-races__way-in:not(:empty)').getPropertyValue('margin-block-start'),
+      'a way in with a button stands no distance from the figures',
+    ).not.toBe('')
+    expect(
+      plain(WAY_IN).getPropertyValue('margin-block-start'),
+      'an empty way in is given a distance, which is a row of its own',
+    ).toBe('')
   })
 
   it('is a quarter of its box for the name and a twelfth for each figure, which ends at the middle of it', () => {

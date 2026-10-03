@@ -9,9 +9,10 @@
    has one, the length, the climb and the fall in a row of three, and the way into
    the form under them. From the wide layout up (51.25em, `styles/tokens.css`) the
    same elements are a table, with the name a quarter of the box and the three
-   figures a twelfth each, so that all of it ends at the middle of the box; with
+   figures a twelfth each, so that they end at about the middle of the box; with
    the day, „prve dve dvanaestine naziv, pa jedna datum", which is the same
-   quarter.
+   quarter. „Recimo" is the owner's word for that half, and what holds where a
+   twelfth is narrower than a value is under the widths.
 
    THE PHONE SHAPE IS WRITTEN PLAINLY AND THE TABLE COMES BACK BEHIND ONE QUERY, as
    the rights matrix does it (`pages/admin/Rights.css`, the one precedent this
@@ -164,7 +165,31 @@
     display: none;
   }
 
-  /* The widths. A share of the box, and never less than what may not be broken. */
+  /* THE WIDTHS: a share of the box, and never less than what may not be broken.
+
+     A twelfth is 64px in the narrowest box this shape has (773px at a screen of 820)
+     and 89px in the widest (1068px, from a screen of about 1115 up). What may not be
+     broken was measured in Chrome 152 on Windows at a 16px root, with the 8px a cell
+     keeps either side, which is 1rem of a column and holds at every text size because
+     both are `rem`:
+
+     - „31. 12. 2022.", the widest date, needs 104,18px: 6,75rem, the floor this table
+       already had under its dates;
+     - „100,00 km", the widest distance under a thousand kilometres, needs 88,72px:
+       5,75rem. A hundred kilometres and more is 81 of the 1612 races in the file, and
+       5,25rem breaks every one of them under a screen of about 1110px;
+     - „Unesi rezultat" on one line needs 130,75px: 8,25rem.
+
+     So the floors decide at every width, 92px against a twelfth of at most 89 for the
+     figures, and the table is only about half of its box, and not exactly: 469px of 773
+     at 820 for a visitor to an event of one morning (60,7%), 543px of 1068 at 1280
+     (50,8%), and the way in on top of both. A value broken in two is what the floors
+     are for (ADL A26), and a table that is not exactly half is what „recimo" allows.
+
+     What it does not hold: at 200% text a member's table is wider than its box wherever
+     this shape is drawn at all, 39px at an event of one morning and 169px at a weekend,
+     inside the box and with the page still, which PDL P24 allows at that size; the table
+     this replaced scrolled 44px and 260px. */
   .table--races .event-races__name {
     inline-size: calc(3 * var(--event-races-twelfth));
   }
