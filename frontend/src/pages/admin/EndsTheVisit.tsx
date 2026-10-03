@@ -9,10 +9,13 @@ import { useLayoutEffect, type RefObject } from 'react'
  * it is held (`visits`, in `AdminEvents.tsx`).
  *
  * <p><b>A layout effect, so the number moves in the very commit that takes the form off.</b> The
- * cleanup of a passive effect runs a task after the commit, and an answer that came in between would
- * still find its visit open. `DeleteRecord` (`EntityEditor.tsx`) is a layout effect for the same kind
- * of reason, one component along: what must be true in the commit that changes the screen is made
- * true in it. Nothing is read off the page here, so there is nothing a layout effect could cost.
+ * cleanup of a passive effect is run by React after the commit and not in it, and an answer that came
+ * in between would still find its visit open. That gap is reasoned from how React schedules passive
+ * effects and is not measured, because no case can put an answer into it; what is measured is the
+ * ORDER (`EndsTheVisit.test.tsx`, the third case). `DeleteRecord` (`EntityEditor.tsx`) is a layout
+ * effect for the same kind of reason, one component along: what must be true in the commit that
+ * changes the screen is made true in it. Nothing is read off the page here, so there is nothing a
+ * layout effect could cost.
  *
  * <p>The number rides in a ref that is handed down and not in state: nothing is drawn from it, and a
  * state set while the form is being taken off would draw the screen once more for nothing.
