@@ -1116,18 +1116,33 @@ describe('an event whose races wait', () => {
       })
     }
 
-    /** What the list of events counts as the races of the one event called this (the fourth cell). */
-    async function racesListedFor(user: Pressing, name: string): Promise<string | null> {
+    /**
+     * What the list of events counts as the races of the event named this (the fourth cell), on the
+     * day if one is given.
+     *
+     * <p>A race is run in many seasons, so a served event's name is many rows and only its day tells
+     * them apart: a count read off the first row of that name is a count of whichever year came first.
+     * The copy is given a name of its own and needs no day.
+     */
+    async function racesListedFor(
+      user: Pressing,
+      which: { name: string; date?: string },
+    ): Promise<string | null> {
       const search = await screen.findByPlaceholderText('Naziv ili mesto')
 
       await user.clear(search)
-      await user.type(search, name)
+      await user.type(search, which.name)
 
       const row = within(await screen.findByRole('table', { name: 'Događaji' }))
         .getAllByRole('row')
         .slice(1)
-        .find((one) => (one.textContent ?? '').includes(name))
-      const cells = within(must(row, `the row of ${name}`)).getAllByRole('cell')
+        .find(
+          (one) =>
+            (one.textContent ?? '').includes(which.name) &&
+            (which.date === undefined ||
+              (one.textContent ?? '').includes(formatShortDate(which.date, 'sr-Latn'))),
+        )
+      const cells = within(must(row, `the row of ${which.name}`)).getAllByRole('cell')
 
       return must(cells[3], 'the cell that counts the races').textContent
     }
@@ -1398,7 +1413,7 @@ describe('an event whose races wait', () => {
       /* (ii) And the copy is in the list with both its races, though the second came back after the
          reader had left: what the route took is true of the route. */
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-      expect(await racesListedFor(user, THE_COPY)).toBe('2')
+      expect(await racesListedFor(user, { name: THE_COPY })).toBe('2')
     }, SLOW)
 
     it('gives a new form none of the rows of a copy whose event was still being written when the reader left, and leaves the copy in the list (i, ii, iii)', async () => {
@@ -1438,7 +1453,7 @@ describe('an event whose races wait', () => {
     }, SLOW)
 
     it('names no race in a new form for a deletion the route kept after the reader left the press that asked for it, and counts the ones it took (i, ii)', async () => {
-      const { event } = await aServedEventWithRaces()
+      const { event, races } = await aServedEventWithRaces()
 
       /* Read before the press: a save that takes races away waits for the results (`alsoRefuses`). */
       await loadResource(RESULTS)
@@ -1477,6 +1492,12 @@ describe('an event whose races wait', () => {
       await aNewEventWith(user, 'BBKT nov u letu', [{ name: 'Prva trka', km: '10' }])
       await comesBack(release, refused('theRaceCountsInALeagueOfItsSeason', 409))
 
+      /* (iii) Every race of the event was asked to be taken away, the second and the rest after the
+         reader had left. */
+      expect(writtenSince(0).filter((one) => one.startsWith('DELETE /api/races/'))).toHaveLength(
+        races.length,
+      )
+
       /* A race the route kept is named by its own name and day, in whichever form is drawn, so a
          press that was left must not name it in a form that is not its own. */
       expect(screen.queryByRole('list', { name: NOT_SAVED })).toBeNull()
@@ -1492,7 +1513,7 @@ describe('an event whose races wait', () => {
       /* (ii) The races the route did take are gone from the list of the event, and the one it kept
          is not: one race, whatever number the event had. */
       await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
-      expect(await racesListedFor(user, event.name)).toBe('1')
+      expect(await racesListedFor(user, event)).toBe('1')
     }, SLOW)
 
     it('writes into the list the event the route took, drops what was read, and goes on with its races, when the answer comes while the list is drawn (ii, iii)', async () => {
