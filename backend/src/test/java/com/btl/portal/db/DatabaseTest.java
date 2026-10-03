@@ -17,7 +17,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -77,6 +79,41 @@ abstract class DatabaseTest {
 				.param(flywayTable())
 				.query(String.class)
 				.list();
+	}
+
+	/**
+	 * The constraint triggers that ACT instead of refusing: the four V54 puts on the tables that can
+	 * hold a picture, each of which deletes the {@code photo} row that nobody holds any more. Asked
+	 * of the catalogue by the function they run, and never by a name written out here.
+	 *
+	 * <p><b>Why anybody has to ask.</b> A constraint trigger is a row in {@code pg_constraint}
+	 * ({@code contype = 't'}), so the floors that read EVERY constraint of a table and ask each one
+	 * for a row that breaks it ({@link AxisConstraintsTest}, {@link VerificationConstraintsTest},
+	 * {@link TeamConstraintsTest}) meet these four, and for a trigger that never refuses there is
+	 * no such row. V29's two do refuse, and have theirs. Those floors take this set away from what
+	 * they declare through {@link #withoutTheConstraintTriggersThatAct}.
+	 *
+	 * <p><b>The exemption has a floor of its own</b>, {@code APhotoNobodyHoldsGoesTest}: this set
+	 * is exactly the four triggers on the four tables, each deferred, so it is not a place to put
+	 * anything that is merely awkward. A constraint trigger that REFUSES something runs another
+	 * function and is not taken away, so the floors still ask it for its row.
+	 */
+	Set<String> constraintTriggersThatAct() {
+		return new HashSet<>(db
+				.sql("select t.tgname from pg_trigger t"
+						+ " join pg_proc p on p.oid = t.tgfoid"
+						+ " join pg_namespace n on n.oid = p.pronamespace"
+						+ " where t.tgconstraint <> 0 and p.proname = 'a_photo_nobody_holds_goes'"
+						+ " and n.nspname = current_schema()")
+				.query(String.class)
+				.list());
+	}
+
+	/** What a floor declared, less the constraint triggers that act instead of refusing. */
+	List<String> withoutTheConstraintTriggersThatAct(List<String> declared) {
+		Set<String> acting = constraintTriggersThatAct();
+
+		return declared.stream().filter(name -> !acting.contains(name)).toList();
 	}
 
 	/**
