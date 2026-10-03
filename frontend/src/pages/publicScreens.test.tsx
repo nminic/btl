@@ -2,9 +2,11 @@ import { SLOW } from '../test/slow'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, waitFor, within } from '@testing-library/react'
+import { categoryLabel } from '../data/categories'
 import { loadResource } from '../data/client'
 import {
   categoriesOf,
+  categoryOfMember,
   rankingFor,
   topByCategory,
   topByKilometers,
@@ -20,7 +22,8 @@ import { sep } from 'node:path'
 import { sources } from '../test/sources'
 import { at, first, htmlElement, last, must, selectElement } from '../test/at'
 import { renderAt } from '../test/render'
-import { membersAsServed } from '../test/serverAnswers'
+import { membersAsServed, serverThat } from '../test/serverAnswers'
+import { everyRule } from '../test/stylesheet'
 import { setupUser } from '../test/user'
 import type { Competitor, Result } from '../data/types'
 
@@ -1638,19 +1641,141 @@ describe('TopBoards', () => {
   })
 })
 
+/**
+ * What is written on a competitor's card, apart from the letters in its circle: the name, the
+ * number, the category and the town, in the order the card has them.
+ *
+ * **Built out of the record that was served and not read off the card**, so that the card has
+ * something to disagree with. The category is the one part that is worked out and not copied, and
+ * it is worked out by the two functions the screen itself uses: nothing here is a claim about the
+ * category, only about what else a card says. The two words of a beginner's band are the
+ * dictionary's own.
+ */
+function whatTheCardSays(one: Competitor): string {
+  const asTheDictionaryHasIt = (key: string): string =>
+    key === 'category.rookieMale' ? sr.category.rookieMale : sr.category.rookieFemale
+
+  return `${one.firstName} ${one.lastName}${one.memberNumber}${categoryLabel(categoryOfMember(one), asTheDictionaryHasIt)}${one.city}`
+}
+
+/** The letters in the circle of a card, or nothing where the circle is a photograph. */
+function circleOf(card: HTMLElement): string {
+  return must(card.querySelector('.portrait'), 'the circle of a card').textContent ?? ''
+}
+
 describe('Competitors', () => {
   /* Cards rather than a table (PDL P28a): the league is about people, and a row
      does not show a person. */
-  it('gives everyone a card with their face, their races and their points', async () => {
+  it('gives everyone a card that says who they are and where from, and nothing under it', async () => {
+    /* Owner, 03.10.2026: „Na strani Takmičari, na pločici takmičara ceo donji deo nije potreban da
+       se vidi. Dakle bez Trke i bodova, visina pločice treba da bude kraća, više nalik kvadratu."
+       This case used to hold the opposite, and of the first card only: that it said „Trke" and
+       „Bodovi".
+
+       **The whole text of EVERY card, and not two words missing from one.** An absence is
+       satisfied by a card that is not drawn at all, and the first card is satisfied by a figure
+       that is drawn only for the others: for a member who has run, say, which the first one has
+       and 000031 has not. So each card is held against the record it was drawn from, and the two
+       states the count of races used to stand on are asked of the data and not assumed of it. */
     renderAt('/sr/takmicari')
 
-    const cards = within(await screen.findByRole('list')).getAllByRole('listitem')
-    expect(cards.length).toBeGreaterThan(20)
+    const everybody = await loadResource<Competitor[]>('competitors')
+    const ran = new Set((await loadResource<Result[]>('results')).map((one) => one.memberNumber))
 
-    const card = within(first(cards))
-    expect(card.getByRole('link')).toBeVisible()
-    expect(card.getByText('Trke')).toBeVisible()
-    expect(card.getByText('Bodovi')).toBeVisible()
+    expect(
+      everybody.some((one) => ran.has(one.memberNumber)),
+      'nobody has run, so the card of a member who has is not asked',
+    ).toBe(true)
+    expect(
+      everybody.some((one) => !ran.has(one.memberNumber)),
+      'everybody has run, so the card of a member who has not is not asked',
+    ).toBe(true)
+
+    const cards = within(await screen.findByRole('list')).getAllByRole('listitem')
+
+    expect(cards).toHaveLength(everybody.length)
+
+    everybody.forEach((one, index) => {
+      const card = at(cards, index)
+
+      expect(card.textContent, `the card of ${one.memberNumber}`).toBe(
+        `${circleOf(card)}${whatTheCardSays(one)}`,
+      )
+      /* The way in is named by what the card says and by nothing else: the circle is decoration
+         (`components/Portrait.tsx`), so its letters are not part of the name. */
+      expect(within(card).getByRole('link')).toHaveAccessibleName(whatTheCardSays(one))
+    })
+  })
+
+  it('draws a member who hides his profile as the very same card, with no way in', async () => {
+    /* Hiding takes the way in and nothing else (owner, 06.09.2026: „podaci kako jesu"), so his
+       card must neither lose a line the others have nor gain one. Read against the members who do
+       NOT hide in the same list, because „no link" is also what a screen that drew no cards at
+       all would say. The server answers him no picture (`data/types.ts`, `photo`), so the letters
+       of his circle stand in for it.
+
+       The members are read off the disc and not through `loadResource`: that remembers what it
+       was asked, so a list read before the server below stands in front of the portal is a list
+       the screen would be handed from memory, and the members who hide would never reach it. */
+    const everybody: Competitor[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
+    )
+    const hiding = ['000002', '000007']
+    const served = everybody.map((one) =>
+      hiding.includes(one.memberNumber)
+        ? { ...one, profileHidden: true, photo: null, crop: null, bio: null }
+        : one,
+    )
+    const server = serverThat((path) =>
+      path === '/api/competitors'
+        ? new Response(JSON.stringify(served), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderAt('/sr/takmicari')
+
+      const cards = within(await screen.findByRole('list')).getAllByRole('listitem')
+
+      served.forEach((one, index) => {
+        const card = at(cards, index)
+
+        expect(card.textContent, `the card of ${one.memberNumber}`).toBe(
+          `${circleOf(card)}${whatTheCardSays(one)}`,
+        )
+        expect(
+          within(card).queryByRole('link') === null,
+          `${one.memberNumber} has no way in`,
+        ).toBe(hiding.includes(one.memberNumber))
+      })
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('styles nothing that a card does not draw', async () => {
+    /* The rules of a block of the card that has gone must go with it: a class the stylesheet
+       dresses and no screen wears is the overturned decision kept alive, and the next reader puts
+       the block back to give it something to dress (03.10.2026, the count of races and the points).
+       Asked of the stylesheet through the browser's own parser and of the page as it is drawn, so
+       that no class is named here and the next one to go is held without anybody remembering it. */
+    const css = readFileSync(join(process.cwd(), 'src/pages/Competitors.css'), 'utf-8')
+    const dressed = [
+      ...new Set(
+        everyRule(css, 'Competitors.css').flatMap((rule) => rule.selectorText.match(/\.[\w-]+/g) ?? []),
+      ),
+    ]
+
+    renderAt('/sr/takmicari')
+    await screen.findByRole('list')
+
+    expect(dressed, 'the parser found no class at all, so nothing was asked').toContain('.card')
+    for (const selector of dressed) {
+      expect(document.querySelector(selector), `${selector} is dressed and drawn nowhere`).not.toBeNull()
+    }
   })
 
   it('draws each competitor’s own picture on their card, never the first competitor’s', async () => {
@@ -2910,8 +3035,9 @@ Redovna trening okupljanja članova lige. Ne boduju se i ne ulaze ni u jednu tab
        sentence a visitor reads when `leagues.json` fails is the portal speaking about a
        competition as much as anything else on the page. No seat above is in that state,
        and the one case that draws it matches by substring, so the overturned rule
-       appended to `data.error` passed the whole gate (review, 01.09.2026). Four words,
-       held whole. */
+       appended to `data.error` passed the whole gate (review, 01.09.2026). Five words,
+       held whole: the fifth is `data.retry`, the word of the button that asks again for a list
+       that could not be read (02.10.2026, PENDING stavka 368). */
     expect(sr.data).toEqual(words.data)
 
     /* **The whole of `seo`, not the four names about competitions.** Held as four, the

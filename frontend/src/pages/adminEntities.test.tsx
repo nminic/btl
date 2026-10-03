@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
+import sr from '../i18n/sr.json'
 import { RoleProvider } from '../roles/RoleProvider'
 import { SessionProvider } from '../session/SessionProvider'
 import { useSession } from '../session/useSession'
@@ -142,7 +143,7 @@ describe('the races of an event', () => {
     )
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByText(/Svaka trka mora da ima naziv i dan/)).toBeVisible()
+    expect(await screen.findByText(/Trke nisu sačuvane/)).toBeVisible()
     expect(
       inputElement(screen.getAllByLabelText(/^Ograničenje \(h\),/)[0]),
       'the limit of a timed race is not marked as the thing that is missing',
@@ -260,8 +261,12 @@ describe('the races of an event', () => {
     const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
 
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
+    /* NULL AND NOT NOUGHT, since 03.10.2026. This read `limitSeconds=0` until then, which is
+       the RECORD's shape and not the request's: the route refuses any limit sent beside a race
+       of a length, nought included (`theLimitBelongsToATimedRace`), so this case was holding
+       the screen to the very body that left the owner's event on QA with no races at all. */
     expect(first(written), 'a race of a length was written carrying a limit').toContain(
-      'limitSeconds=0',
+      'limitSeconds=null',
     )
     /* And it kept the length it always had, so this is not passing because the save
        wrote nothing. */
@@ -290,7 +295,11 @@ describe('the races of an event', () => {
     const written = whatWasSent(watching.asked).filter((one) => one.includes('limitSeconds='))
 
     expect(written.length, 'no race was written at all').toBeGreaterThan(0)
-    expect(first(written), 'a timed race was written carrying a length').toContain('distanceKm=0')
+    /* Null and not nought, for the reason the case above gives: the route refuses a length
+       sent beside a timed race (`theDistanceBelongsToARaceOfALength`), nought included. */
+    expect(first(written), 'a timed race was written carrying a length').toContain(
+      'distanceKm=null',
+    )
     /* AND THE CATEGORY IS NOT SENT AT ALL, which is a change of home rather than of
        rule. The record kept one because the session overlay was the whole database, and
        `raceRows.storedRow` still works it out for the row this screen draws; the route
@@ -865,9 +874,161 @@ describe('the races of an event', () => {
     await user.type(fall, '-900')
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    expect(await screen.findByText(/Svaka trka mora da ima/)).toBeVisible()
+    expect(await screen.findByText(sr.admin.form.racesRefused)).toBeVisible()
     expect(climb).toHaveAttribute('aria-invalid', 'true')
     expect(fall, 'the second wrong cell says it is fine').toHaveAttribute('aria-invalid', 'true')
+  })
+
+  /**
+   * A REFUSED CELL SAYS WHAT IS WRONG WITH IT, IN WORDS THAT STAND BESIDE THE CELL AND NOT ONLY
+   * OVER THE TABLE (PENDING, review of PR 463; WCAG 2.2 SC 3.3.1 and 3.3.3, ADL A7).
+   *
+   * <p>The table refused „1.200" in the climb and said, in the one sentence it had, that the climb
+   * and the fall may stay empty and are then read as nought. An administrator who obeyed it
+   * emptied the cell and saved a climb of nought over the number he had typed. Now every marked
+   * cell is described by a sentence that names the cell, says what is wrong and what to type, and
+   * stands under the table where the narrow columns cannot squeeze it; the cell points at it with
+   * `aria-describedby`, and the measure that is wrong is the one named.
+   *
+   * <p><b>Nothing is said before the first refused press.</b> A cell somebody is typing into is
+   * merely unfinished, and a sentence under every half-typed number would be noise.
+   */
+  it('says what is wrong with a climb written with a separator, and what to type instead', async () => {
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const climb = must(screen.getAllByLabelText(/^Uspon/)[0], 'the climb of the first race')
+    const fall = must(screen.getAllByLabelText(/^Spust/)[0], 'the fall of the first race')
+
+    await user.clear(climb)
+    await user.type(climb, '1.200')
+
+    expect(screen.queryByText(sr.admin.race.wrong.notWhole), 'said before any press').toBeNull()
+    expect(climb).not.toHaveAttribute('aria-describedby')
+
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(sr.admin.race.wrong.notWhole)).toBeVisible()
+    expect(climb).toHaveAttribute('aria-invalid', 'true')
+    expect(climb).toHaveAccessibleDescription(sr.admin.race.wrong.notWhole)
+    /* And the cell beside it, which is fine, is not described: a description on every cell of the
+       row would be noise, and one that named the wrong cell would send a reader to fix nothing. */
+    expect(fall).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('describes each cell by its own sentence, whichever row it is in', async () => {
+    /* THE SAME COLUMN IN TWO ROWS, with two different things wrong in it. The length of the first
+       race is not a number and the length of the new one is empty, so a description that belonged
+       to the column and not to the cell, or a row number that came out the same for both, gives one
+       of the two cells the other's sentence. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const first = must(screen.getAllByLabelText(/^Dužina \(km\)/)[0], 'the length of the first race')
+    const last = lastRow().getByLabelText(/^Dužina \(km\)/)
+
+    await user.clear(first)
+    await user.type(first, 'sto')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(sr.admin.race.wrong.notANumber.decimal)).toBeVisible()
+    expect(first).toHaveAccessibleDescription(sr.admin.race.wrong.notANumber.decimal)
+    expect(last).toHaveAccessibleDescription(sr.admin.race.wrong.missing)
+  })
+
+  it('names the cell it is about by its column and its row, in a list under the table', async () => {
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const first = must(screen.getAllByLabelText(/^Dužina \(km\)/)[0], 'the length of the first race')
+
+    await user.clear(first)
+    await user.type(first, 'sto')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    const said = within(await screen.findByRole('list', { name: sr.admin.race.wrong.list }))
+
+    expect(said.getAllByRole('listitem').map((one) => one.textContent)).toEqual([
+      `Dužina (km), 1. trka: ${sr.admin.race.wrong.notANumber.decimal}`,
+      `Dužina (km), 2. trka: ${sr.admin.race.wrong.missing}`,
+    ])
+  })
+
+  it('describes the name and the day of a row by their own sentences too', async () => {
+    /* The two cells that are not measures have one sentence each, and the day is drawn by the
+       calendar control and not by the box the others are, which takes the pointer to the sentence
+       through a prop of its own (`DatePicker.tsx`, `describedBy`). Both are asked, because a
+       description wired into the plain box alone leaves the day marked and silent. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+    await user.click(screen.getByRole('button', { name: 'Nova trka' }))
+
+    const row = lastRow()
+    const name = row.getByLabelText(/^Trka, /)
+    const day = row.getByLabelText(/^Datum, /)
+
+    await user.clear(name)
+    await user.clear(day)
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(await screen.findByText(sr.admin.race.wrong.name)).toBeVisible()
+    expect(name).toHaveAccessibleDescription(sr.admin.race.wrong.name)
+    expect(day).toHaveAccessibleDescription(sr.admin.race.wrong.date)
+  })
+
+  it('takes the sentence away with the mistake', async () => {
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const climb = must(screen.getAllByLabelText(/^Uspon/)[0], 'the climb of the first race')
+
+    await user.clear(climb)
+    await user.type(climb, '1.200')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await screen.findByText(sr.admin.race.wrong.notWhole)
+
+    await user.clear(climb)
+    await user.type(climb, '1200')
+
+    expect(screen.queryByText(sr.admin.race.wrong.notWhole)).toBeNull()
+    expect(screen.queryByRole('list', { name: sr.admin.race.wrong.list })).toBeNull()
+    expect(climb).not.toHaveAttribute('aria-describedby')
+    expect(climb).toHaveAttribute('aria-invalid', 'false')
+  })
+
+  it('says the bounds of the cell it is about, and not of another', async () => {
+    /* Two cells of one row with two different ranges: the climb tops out at 30000 and the length
+       starts at a tenth. A sentence that took its numbers from the wrong cell says the right words
+       over the wrong numbers, which is a refusal that sends a reader to type a value the save will
+       refuse again. */
+    const user = await openFirstEvent()
+
+    await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+    const climb = must(screen.getAllByLabelText(/^Uspon/)[0], 'the climb of the first race')
+    const length = must(screen.getAllByLabelText(/^Dužina \(km\)/)[0], 'the length of the first race')
+
+    await user.clear(climb)
+    await user.type(climb, '30001')
+    await user.clear(length)
+    await user.type(length, '0,05')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    await screen.findByText(sr.admin.form.racesRefused)
+
+    expect(climb).toHaveAccessibleDescription(
+      sr.admin.race.wrong.outOfBounds.replace('{least}', '0').replace('{most}', '30000'),
+    )
+    expect(length).toHaveAccessibleDescription(
+      sr.admin.race.wrong.outOfBounds.replace('{least}', '0,1').replace('{most}', '1000'),
+    )
   })
 
   it('will not save while a row is missing its day or its length', async () => {
@@ -888,11 +1049,14 @@ describe('the races of an event', () => {
        earlier half that named a length every race must have stand while two of the
        three kinds had stopped fixing one. Both directions fall here. */
     expect(
-      must(await screen.findByText(/Svaka trka mora da ima naziv i dan/), 'the refusal')
-        .textContent,
+      must(await screen.findByText(/Trke nisu sačuvane/), 'the refusal').textContent,
     ).toBe(
-      'Svaka trka mora da ima naziv i dan; obeležena polja pokazuju šta još nedostaje. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.',
+      'Trke nisu sačuvane. Ispravi obeležena polja; ispod tabele piše šta je pogrešno u svakom od njih.',
     )
+    /* AND IT NO LONGER TELLS THE CLIMB AND THE FALL TO BE LEFT EMPTY, which it did until
+       02.10.2026 and which sent an administrator who obeyed it to save a climb of nought over the
+       number he had typed (review of PR 463). The words are the whole of the text and not a piece
+       of it, so the half that was taken out cannot come back in a different sentence. */
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
     await fill(user, lastRow(), { km: '12' })

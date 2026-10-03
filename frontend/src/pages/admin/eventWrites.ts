@@ -1,5 +1,5 @@
 import type { RaceRow } from './raceRows'
-import { storedRow } from './raceRows'
+import { asksLength, asksLimit, storedRow } from './raceRows'
 
 /**
  * WHAT THE TWO SCREENS THAT WRITE AN EVENT SEND, AND WHAT EVERY REFUSAL OF IT IS CALLED.
@@ -114,6 +114,14 @@ export function upsertFrom(values: Record<string, string | boolean>): Upsert {
  * <p>Beside the event's own rather than in a module of its own, because the one press that
  * saves an event saves its mornings with it (owner, 23.08.2026) and the two bodies are
  * built in the same breath.
+ *
+ * <p><b>The limit and the length are NULL where the kind does not fix them, and never
+ * nought.</b> The route takes each of the two exactly where the kind calls for it and
+ * refuses it anywhere else (`RaceWriteApi.whatIsWrongWith`, V7's pair of checks said from
+ * the request's side), and nought is a value sent rather than one left out: a race of a
+ * length carrying `"limitSeconds": 0` is refused with `theLimitBelongsToATimedRace`. The
+ * RECORD still carries nought for both (PDL, 30.08.2026: a race that fixes no length
+ * carries nought), and the route is what writes it there (`RaceWriteApi.checked`).
  */
 export type RaceUpsert = {
   eventId: number
@@ -121,8 +129,10 @@ export type RaceUpsert = {
   renamed: boolean
   date: string
   kind: string
-  limitSeconds: number
-  distanceKm: number
+  /** In seconds, on a timed race only. */
+  limitSeconds: number | null
+  /** On a race of a length only. */
+  distanceKm: number | null
   ascentM: number
   descentM: number
 }
@@ -130,13 +140,25 @@ export type RaceUpsert = {
 /**
  * One row of the table of mornings, in the shape the route takes.
  *
- * <p><b>Built on `storedRow` rather than beside it</b>, which is the one thing that keeps
- * this honest: `storedRow` is what the session write used, and it already answers the two
- * questions a row cannot answer for itself - a limit belongs only to a race run against
- * one, and a race that fixes no length carries nought. Written out again here, the two
- * would be two rules and the day they disagreed the wire would carry the wrong one.
+ * <p><b>Built on `storedRow` rather than beside it</b>, because `storedRow` is the one door
+ * a row leaves by: it reads the comma, turns hours into seconds and works out the day. What
+ * it hands back is the RECORD, and the record carries nought for the measure a kind does
+ * not fix.
  *
- * <p>What it hands back is text, because the overlay keeps every value as text
+ * <p><b>THE WIRE IS NOT THE RECORD, and taking one for the other is what the owner met on QA
+ * on 03.10.2026.</b> This sent the record's nought until then, so every race of a length went
+ * over with a limit of nought and every timed race with a length of nought, and the route
+ * refused all of them: `POST /api/events` answered 201, the first `POST /api/races` answered
+ * 400, and an event the owner had just entered with its races stood with none. Nothing on
+ * this side could see it, because `test/setup.ts` answers `/api/races` with a stub that
+ * takes any body; `racesOnTheWire.json` is now what this function sends for one race of
+ * each kind, and `RaceWriteApiTest` replays it against the real route.
+ *
+ * <p><b>Whether the kind fixes a measure is asked of `asksLimit` and `asksLength`</b>, the one
+ * home that question has in `raceRows.ts`, and never of what the cell still holds: a reader
+ * may type a limit, change the kind and save, and the cell keeps the hours he typed.
+ *
+ * <p>What `storedRow` hands back is text, because the overlay keeps every value as text
  * (`session/context.ts`); the route takes numbers and a flag, so they are read back out
  * here and nowhere else.
  */
@@ -153,8 +175,8 @@ export function raceUpsertFrom(row: RaceRow, eventId: string): RaceUpsert {
     renamed: stored.renamed === 'true',
     date: stored.date,
     kind: stored.kind,
-    limitSeconds: Number(stored.limitSeconds),
-    distanceKm: Number(stored.distanceKm),
+    limitSeconds: asksLimit(row) ? Number(stored.limitSeconds) : null,
+    distanceKm: asksLength(row) ? Number(stored.distanceKm) : null,
     ascentM: Number(stored.ascentM),
     descentM: Number(stored.descentM),
   }

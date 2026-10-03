@@ -24,6 +24,7 @@ import {
   readAsPrice,
   readAsPair,
   readAsTeam,
+  readAsTeamToAVisitor,
   readAsTeamWithNoMark,
   readAsVisitorsMember,
 } from '../test/theAnswer'
@@ -592,6 +593,11 @@ describe('the answer the backend gives', () => {
     expect(readAsTeamWithNoMark.logo).toBeNull()
     expect(readAsTeamWithNoMark.crop).toBeNull()
     expect(readAsTeamWithNoMark.foundedByMe).toBe(false)
+    /* The members a visitor is owed on a team, empty to everybody signed in and naming a member
+       who hides his profile to a visitor (`TeamApi`, since 02.10.2026). Both states, because the
+       compiler can hold the shape of an entry only where a sample has one. */
+    expect(readAsTeam.alsoInTheTeam).toEqual([])
+    expect(readAsTeamToAVisitor.alsoInTheTeam).toEqual([{ memberNumber: '000009', since: 2027 }])
     expect(readAsPair.memberNumbers).toHaveLength(2)
     /* **The races a competition counts, read through the type** since 01.10.2026. Taking the field
        off `League` fails the build on this line and taking it off the sample fails the case, and

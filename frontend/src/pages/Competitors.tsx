@@ -3,12 +3,11 @@ import { categoryLabel } from '../data/categories'
 import { useMemo } from 'react'
 import { Portrait } from '../components/Portrait'
 import { Resource } from '../components/Resource'
-import { categoryOfMember, EMPTY_TOTALS, totalsByMember } from '../data/derive'
-import type { Competitor, Result } from '../data/types'
-import { combinePair, useCompetitors, useResults } from '../data/useResource'
+import { categoryOfMember } from '../data/derive'
+import type { Competitor } from '../data/types'
+import { useCompetitors } from '../data/useResource'
 import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
-import { formatNumber, formatPoints } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import './Rankings.css'
 import './Competitors.css'
@@ -19,20 +18,25 @@ import { useFilterParams } from '../app/useFilterParams'
  * layout is built around it, and since 26.09.2026 it really is a picture for
  * every member who has sent one and had it approved (PDL P28f). The initials
  * stand in the same space for everybody else, which is most of the league and
- * is not a state waiting to end. */
+ * is not a state waiting to end.
+ *
+ * **A card ends at the town since 03.10.2026.** What stood under it, the count of
+ * races and the points, went with the data that fed it. Owner: „Na strani
+ * Takmičari, na pločici takmičara ceo donji deo nije potreban da se vidi. Dakle
+ * bez Trke i bodova, visina pločice treba da bude kraća, više nalik kvadratu."
+ * It went from every card and not from some of them, since all of them are the
+ * same card (PDL P28, 31.07.2026), and the stylesheet says what the height is
+ * now (`Competitors.css`). */
 function CompetitorCards({
   competitors,
-  results,
   search,
   onSearch,
 }: {
   competitors: Competitor[]
-  results: Result[]
   search: string
   onSearch: (value: string) => void
 }) {
-  const { locale, t } = useI18n()
-  const totals = useMemo(() => totalsByMember(results), [results])
+  const { t } = useI18n()
 
   const cards = useMemo(() => {
     const needle = search.trim().toLowerCase()
@@ -46,17 +50,12 @@ function CompetitorCards({
        identity: a member whose fee has lapsed is not in this list to be filtered
        out of (owner, 13.09.2026). A function that answers everything it is asked
        is a sentence dressed as a guard, so the sentence is written here. */
-    return competitors
-      .filter((competitor) =>
-        `${competitor.firstName} ${competitor.lastName} ${competitor.memberNumber} ${competitor.city}`
-          .toLowerCase()
-          .includes(needle),
-      )
-      .map((competitor) => ({
-        competitor,
-        totals: totals.get(competitor.memberNumber) ?? EMPTY_TOTALS,
-      }))
-  }, [competitors, totals, search])
+    return competitors.filter((competitor) =>
+      `${competitor.firstName} ${competitor.lastName} ${competitor.memberNumber} ${competitor.city}`
+        .toLowerCase()
+        .includes(needle),
+    )
+  }, [competitors, search])
 
   return (
     <>
@@ -76,7 +75,7 @@ function CompetitorCards({
         <p className="rankings__empty">{t('competitors.empty')}</p>
       ) : (
         <ul className="cards">
-          {cards.map(({ competitor, totals: own }) => (
+          {cards.map((competitor) => (
             <li key={competitor.memberNumber} className="cards__item">
               <ProfileLink competitor={competitor} className="card">
                 {/* The same circle every other screen draws, since 27.09.2026. This card kept
@@ -100,22 +99,6 @@ function CompetitorCards({
                   <span className="card__chip">{categoryLabel(categoryOfMember(competitor), t)}</span>
                   <span className="card__city">{competitor.city}</span>
                 </span>
-
-                {/* The word above the number, never after it. Serbian declines
-                    the noun by the number in front of it (1 trka, 3 trke, 5 trka),
-                    so a label glued to the end of a figure is wrong for most
-                    values. Above it, the label is a heading and stays in the
-                    nominative (owner, 30.07.2026). */}
-                <span className="card__figures">
-                  <span className="card__figure">
-                    <span className="card__label">{t('competitors.columns.races')}</span>
-                    <span className="card__value">{formatNumber(own.races, locale)}</span>
-                  </span>
-                  <span className="card__figure">
-                    <span className="card__label">{t('competitors.columns.points')}</span>
-                    <span className="card__value">{formatPoints(own.points, locale)}</span>
-                  </span>
-                </span>
               </ProfileLink>
             </li>
           ))}
@@ -129,10 +112,12 @@ export function Competitors() {
   const { t } = useI18n()
   const [params, setParams] = useFilterParams()
   const search = params.get('trazi') ?? ''
-  /* Only what the cards show. Waiting on the teams as well meant the whole page
-   * turned into an error message if that one file failed, over data no card on
-   * it has ever read. */
-  const state = combinePair(useCompetitors(), useResults())
+  /* Only what the cards show, which is the members. Waiting on the teams as well
+   * meant the whole page turned into an error message if that one file failed,
+   * over data no card on it has ever read, and the results went the same way on
+   * 03.10.2026: the count of races and the points were the one thing this page
+   * read them for (`pages/resourceScope.test.tsx` holds both). */
+  const state = useCompetitors()
   /* Through the overlay, like the profile page and the message that carries an invitation: a
      member who ticked „sakrij moj profil" a moment ago lives there and nowhere else, so read off
      the file this list would go on offering the way in that the profile itself refuses. */
@@ -143,10 +128,9 @@ export function Competitors() {
       <h1>{t('competitors.title')}</h1>
 
       <Resource state={state}>
-        {([everybody, results]) => (
+        {(everybody) => (
           <CompetitorCards
             competitors={recordsOf(MEMBERS, everybody, overlay)}
-            results={results}
             search={search}
             onSearch={(value) => setParams(value === '' ? {} : { trazi: value })}
           />

@@ -119,8 +119,6 @@ function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionV
     applications: [],
     apply: vi.fn(),
     answer: vi.fn(),
-    going: {},
-    setGoing: vi.fn(),
     markRead: vi.fn(),
     notify: vi.fn(),
     edits: {},

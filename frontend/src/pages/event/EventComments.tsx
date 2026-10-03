@@ -62,11 +62,12 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
      under a race they had just read about was a red alarm, on the one screen that
      had already decided to tell them nothing.
    *
-     The two screens beside this one ask the same question in the same place and
-     have all along (GoingToEvent.tsx, OverallMark.tsx), both of them predicting
-     in as many words that the endpoint would have to refuse an unauthenticated
-     caller „the same way the one for comments must". This is that sentence
-     carried out on the third of the three.
+     The two screens beside this one asked the same question in the same place
+     (GoingToEvent.tsx, OverallMark.tsx), both of them predicting in as many words
+     that the endpoint would have to refuse an unauthenticated caller „the same way
+     the one for comments must". This is that sentence carried out on the third of
+     the three. GoingToEvent.tsx asks a question of its own since 03.10.2026, „an
+     active member or the administration", still before it reads anything.
    *
      Nothing here needs the data to be able to say it, which is why the whole
      answer to a visitor is settled above without reading `state` at all.

@@ -791,21 +791,14 @@ export type SessionValue = {
   amend: (id: string, changes: Amendment) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
-  /**
-   * The events whoever is signed in has said they are going to, by id.
-   *
-   * A switch and not a one-way press (owner, 11.08.2026): pressing it again
-   * takes them off the list. What the file carries is who said so before this
-   * visit; this is what has been said during it, and the two are read together
-   * (data/useResource.ts, `useAttendance`).
-   *
-   * Held as a map of id to whether, rather than as a list, so that turning it
-   * off is a value and not an absence: a member who takes their name off has
-   * said something, and a file that still carries them said something else.
-   */
-  going: Record<string, boolean>
-  /** Says whether they are going, or no longer going. */
-  setGoing: (eventId: string, going: boolean) => void
+  /* WHO IS GOING TO AN EVENT IS NOT HELD HERE ANY MORE, SINCE 03.10.2026, and a reader who
+     comes looking for `going` and `setGoing` should find this rather than silence. They held
+     the switch on an event's page for one visit and nowhere else, so the owner pressed it,
+     refreshed the page and lost it: „Prijavim se da idem na ovaj događaj i kad osvežim stranu
+     moja prijava nestane. Mora da se zapamti!" The switch is the server's now
+     (`PUT` and `DELETE /api/attendance/{id}`, `AttendanceWriteApi`), and the screen draws it
+     from `GET /api/attendance` alone (`event/GoingToEvent.tsx`). A copy kept here as well
+     would be a second answer to the same question, and the one a reload throws away. */
 
   /** Everything written to whoever is signed in, plus everything written to the
    *  whole league. Not the whole store: see Message.to. */

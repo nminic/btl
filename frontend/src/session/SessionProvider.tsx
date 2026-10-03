@@ -26,6 +26,7 @@ import {
   type SubmissionStatus,
   type Amendment,
 } from './context'
+import { readerOf, useTheCachesFollowTheReader } from './theCachesFollowTheReader'
 
 export function SessionProvider({
   initialMemberNumber = null,
@@ -60,6 +61,12 @@ export function SessionProvider({
   const theServerAnswered = useCallback(() => {
     setTheServerHasAnswered(true)
   }, [])
+  /* THE TWO CACHES THAT ANSWER DIFFERENTLY TO DIFFERENT READERS FOLLOW WHO IS SIGNED IN
+     (02.10.2026). Worked out here, from the two facts this provider already holds and while
+     it renders, because it is the one place that renders before every screen under it and
+     the one place every change of reader passes through; `session/theCachesFollowTheReader.ts`
+     says why neither an effect nor a drop written beside each caller would do. */
+  useTheCachesFollowTheReader(readerOf(memberNumber, account), theServerHasAnswered)
   /* Beside the account and never apart from it, which is the rule this provider
      already keeps for the account and its role: the two arrive in one answer
      (`GET /api/me`) and a screen that had one without the other would be reading half
@@ -113,7 +120,6 @@ export function SessionProvider({
      picture itself, so putting one here as well drew the member twice on one queue
      (`context.ts#pictureSent`). */
   const [pictureSent, setPictureSent] = useState<PictureSent | null>(null)
-  const [going, setGoingAll] = useState<Record<string, boolean>>({})
   const [published, setPublished] = useState<{ from: string; comment: EventComment }[]>([])
 
   const submit = useCallback(
@@ -394,10 +400,6 @@ export function SessionProvider({
     setMessages((current) => current.map((one) => (one.id === id ? { ...one, read: true } : one)))
   }, [])
 
-  const setGoing = useCallback((eventId: string, going: boolean) => {
-    setGoingAll((current) => ({ ...current, [eventId]: going }))
-  }, [])
-
   /* The applications waiting for an answer. Kept as a list of what is open rather than as
      a list of everything ever sent with a decision beside it: an application that has been
      answered, refused or taken back is over, and nothing on the portal asks about it
@@ -671,8 +673,6 @@ export function SessionProvider({
       pairsBroken,
       makePair,
       breakPair,
-      going,
-      setGoing,
       markRead,
       notify,
       edits,
@@ -717,8 +717,6 @@ export function SessionProvider({
       theServerSignedMeIn,
       theServerHasAnswered,
       theServerAnswered,
-      going,
-      setGoing,
       submissions,
       corrected,
       submit,

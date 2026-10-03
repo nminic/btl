@@ -1,0 +1,35 @@
+{
+  "length": {
+    "eventId": 713,
+    "name": "BBKT",
+    "renamed": false,
+    "date": "2027-01-10",
+    "kind": "length",
+    "limitSeconds": null,
+    "distanceKm": 21.1,
+    "ascentM": 0,
+    "descentM": 0
+  },
+  "time": {
+    "eventId": 713,
+    "name": "BBKT 6 h",
+    "renamed": true,
+    "date": "2027-01-10",
+    "kind": "time",
+    "limitSeconds": 21600,
+    "distanceKm": null,
+    "ascentM": 0,
+    "descentM": 0
+  },
+  "free": {
+    "eventId": 713,
+    "name": "BBKT slobodna",
+    "renamed": true,
+    "date": "2027-01-11",
+    "kind": "free",
+    "limitSeconds": null,
+    "distanceKm": null,
+    "ascentM": 120,
+    "descentM": 120
+  }
+}

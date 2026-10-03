@@ -609,11 +609,70 @@
   text-align: center;
 }
 
+/* THE PANELS HANG FROM THE BAR AND NOT FROM THE BUTTON, UNDER THE WIDTH WHERE THE
+   NAVIGATION UNFOLDS.
+
+   Above it the tools stand in one row at the right, so a panel measured from its
+   own button with the right edges together lies inside the screen: that is the
+   rule further up, and it is untouched. Under it the row of tools can wrap onto a
+   row of its own against the LEFT edge, and a panel 20rem wide measured from the
+   right edge of a button 110px from the left edge of the screen began 163px off
+   it. Measured in Chrome on 02.10.2026, and in all three panels (messages,
+   account, language): at every width from 360 to 640 in production (whole from
+   700), at 360 and 400 in QA (whole from 560), and at 360 with the text at 200%.
+   What was cut off could not be scrolled to, and the page did not scroll sideways
+   either, so nothing on the screen said there was anything missing.
+
+   Where the buttons stand is not something a stylesheet can know: it moves with
+   the language, with the words on the menu button, with the development controls
+   and with the size of the text. So the panels stop depending on it, which is the
+   shape `forms/FieldHint.css` found for the same fault in August: the button is
+   not positioned, and what the panel is measured from is a box that cannot leave
+   the page because the page cannot. The bar is that box here, and
+   `app/headerPanelsStyle.test.ts` holds both halves, since one without the other
+   is the fault again.
+
+   `top: auto` is the static position, which is the line under the button that
+   opened the panel; the gap under it is the same `--space-8` the rule above gives
+   it from the button's own box. The gutter is the bar's own `padding-inline`, so
+   the right edge of a panel is the right edge of the controls in the row. Both
+   widths are counted from the bar (`100%`) and not from the window (`100vw`),
+   which on a screen with a scrollbar is wider than the bar by the scrollbar.
+
+   `width: min-content` is what keeps the width the panels always had. Measured
+   from a button 38px wide, the room a panel was offered was nothing, so it was as
+   wide as its `min-width` and as its longest word, and no wider. Measured from
+   the bar the room is the whole row, and an `auto` width grows to the longest
+   line of the longest subject: 736px on a tablet, laid over the picture at the
+   other end of the bar. Asked for outright, it is what it was. */
 @media (max-width: 51.24875em) {
+  .shell__bar {
+    position: relative;
+  }
+
+  .lang,
+  .account,
+  .inbox {
+    position: static;
+  }
+
+  .lang__menu,
   .account__panel,
   .inbox__panel {
-    right: -0.5rem;
-    min-width: min(20rem, calc(100vw - 2rem));
+    top: auto;
+    right: var(--space-16);
+    margin-top: var(--space-8);
+    width: min-content;
+    max-width: calc(100% - 2 * var(--space-16));
+  }
+
+  .account__panel,
+  .inbox__panel {
+    min-width: min(20rem, calc(100% - 2 * var(--space-16)));
+  }
+
+  .lang__menu {
+    min-width: min(11rem, calc(100% - 2 * var(--space-16)));
   }
 }
 

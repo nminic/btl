@@ -19,7 +19,7 @@
     },
     "competitors": {
       "title": "BTL takmičari",
-      "description": "Svi članovi lige sa kategorijom, brojem trka i osvojenim bodovima, i veza ka profilu svakog od njih."
+      "description": "Svi članovi lige sa kategorijom i veza ka profilu svakog od njih."
     },
     "teams": {
       "title": "BTL timovi",
@@ -212,6 +212,7 @@
       "other": "{count} nepročitanih"
     },
     "noMessages": "Nema poruka.",
+    "messagesUnreadable": "Poruke se ne mogu učitati.",
     "allMessages": "Sve poruke",
     "account": "Nalog",
     "accountNumber": "Nalog {number}",
@@ -326,6 +327,7 @@
     "loading": "Učitavanje",
     "loadingPart": "Učitavanje: {part}",
     "error": "Podaci se ne mogu učitati.",
+    "retry": "Pokušaj ponovo",
     "empty": "Ovde još nema ničega."
   },
   "form": {
@@ -406,7 +408,8 @@
     "doneTitle": "Prijava je zabeležena",
     "checkSpam": "Ako poruka ne stigne u roku od nekoliko minuta, pogledaj i neželjenu poštu.",
     "resend": "Pošalji potvrdu ponovo",
-    "resent": "Potvrda je poslata ponovo. Ako ni sada ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
+    "resent": "Ako ova adresa još čeka potvrdu, nova poruka je poslata. Ako ni sada ne stigne za nekoliko minuta, javi nam se na info@balkanskatrkackaliga.net.",
+    "resending": "Tražimo da se potvrda pošalje ponovo...",
     "doneText": "Poslali smo poruku na {email}. Otvori je i potvrdi adresu, jer se nalog aktivira tek tada.",
     "sending": "Šaljemo prijavu...",
     "formIsNotComplete": "Server nije prihvatio prijavu, jer neki odgovor nije potpun ili ga ne prepoznaje. Proveri odgovore, posebno mesto i državu, pa pošalji ponovo.",
@@ -513,6 +516,9 @@
     "answerRefused": {
       "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa trkački par nije napravljen. Osveži stranicu i pokušaj ponovo.",
       "thePairWouldNotBeMixed": "Trkački par mora da ima jednog muškarca i jednu ženu, pa ovaj par nije napravljen."
+    },
+    "breakRefused": {
+      "notHeld": "Ovaj trkački par ne može da se raskine odavde: već je raskinut ili je prestao da važi. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
     }
   },
   "topBoards": {
@@ -653,6 +659,7 @@
     "going": "Ko ide",
     "goingOn": "Idem na ovaj događaj",
     "goingNobody": "Još se niko nije prijavio.",
+    "goingRunAlready": "Ovaj događaj je već održan, pa se najava dolaska više ne prima.",
     "writeTo": "Piši članu {name}",
     "writeSubject": "Dogovor za {event}",
     "writeSend": "Pošalji poruku",
@@ -848,6 +855,8 @@
     "inviteAccept": "Prihvati",
     "inviteRefuse": "Odbij",
     "inviteSent": "Poslati pozivi",
+    "applicationsUnreadable": "Spisak prijava se ne može učitati, pa se ne zna da li neko čeka odgovor tima.",
+    "invitationsUnreadable": "Spisak poslatih poziva se ne može učitati, pa se ne zna koji pozivi još čekaju.",
     "inviteWithdraw": "Povuci poziv",
     "inviteWithdrawNamed": "Povuci poziv: {name}",
     "inviteLapsed": "Član kome je članarina istekla",
@@ -954,6 +963,7 @@
     "refused": "Server je odbio zahtev uz razlog {reason}, koji ovaj ekran ne prepoznaje.",
     "rejected": "Portal nije uspeo da dokaže serveru da zahtev dolazi sa ove strane. Osveži stranu i pokušaj ponovo.",
     "wrong": "Server je odgovorio brojem {status} i ništa nije promenjeno. Pokušaj ponovo za koji minut.",
+    "malformed": "Portal je poslao podatak u obliku koji server ne razume. Ništa nije promenjeno. Ovo je greška portala, javi nam.",
     "nothing": "Portal nije uspeo da dođe do servera. Proveri vezu i pokušaj ponovo.",
     "named": "sa servera"
   },
@@ -978,7 +988,7 @@
     "note": "Rezultat ulazi u rang liste tek kad ga administrator odobri. Dok čeka, vidiš ga samo ti.",
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
     "changing": "Menjaš rezultat koji još čeka proveru. Kad ga pošalješ, vraća se na kraj reda.",
-    "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok se izmena ne odobri, on izlazi iz poretka, i uz nju mora da ide nov dokaz.",
+    "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok se izmena ne odobri, u poretku ostaje stari rezultat, a odbijena izmena ništa ne menja. Uz izmenu mora da ide nov dokaz.",
     "needsProof": "Uz izmenu uračunatog rezultata mora da ide link ka zvaničnim rezultatima ili slika kao dokaz.",
     "needsTime": "Vreme mora da bude uneto. Sati, minuti i sekunde ne mogu svi biti nula.",
     "pointsNotFinal": "Račun nije konačan. Liga ga potvrđuje pri verifikaciji, i broj se može promeniti.",
@@ -1156,6 +1166,20 @@
     "eventTaken": "Događaj sa tim nazivom već postoji te godine. Promenite naziv ili godinu: adresa se pravi od naziva i godine.",
     "racesOf": "Trke na događaju {event}",
     "noRaces": "Ovaj događaj još nema nijednu trku.",
+    "race": {
+      "wrong": {
+        "list": "Šta je pogrešno u trkama",
+        "name": "Upiši naziv trke.",
+        "date": "Izaberi dan trke ili ga upiši kao dd/mm/gggg.",
+        "missing": "Ovo polje je obavezno.",
+        "notANumber": {
+          "decimal": "Upiši broj, na primer 21,1.",
+          "whole": "Upiši ceo broj, na primer 1200."
+        },
+        "notWhole": "Upiši ceo broj bez tačke i zareza: 1200, a ne 1.200.",
+        "outOfBounds": "Dozvoljene su vrednosti od {least} do {most}."
+      }
+    },
     "searchEvents": "Naziv ili mesto",
     "showing": "Prikazano: {count}",
     "waitingForResults": "Brisanje čeka rezultate",
@@ -1207,7 +1231,7 @@
       "raceNumber": "{which}. trka",
       "nextSeason": "Isto mesto u kalendaru naredne godine",
       "nextWeek": "Tačno sedam dana posle kopiranog događaja",
-      "racesRefused": "Svaka trka mora da ima naziv i dan; obeležena polja pokazuju šta još nedostaje. Uspon i spust mogu da ostanu prazni; tada se čitaju kao 0.",
+      "racesRefused": "Trke nisu sačuvane. Ispravi obeležena polja; ispod tabele piše šta je pogrešno u svakom od njih.",
       "deleteNamed": "Obriši: {name}",
       "deleteSure": "Sigurno?",
       "deleteSureNamed": "Potvrdi brisanje: {name}",

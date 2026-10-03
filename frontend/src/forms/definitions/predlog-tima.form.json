@@ -12,16 +12,10 @@
     },
     {
       "name": "city",
-      "type": "text",
+      "type": "place",
       "labelKey": "admin.field.city",
       "required": true,
       "maxLength": 80
-    },
-    {
-      "name": "country",
-      "type": "country",
-      "labelKey": "admin.field.country",
-      "required": true
     },
     {
       "name": "note",

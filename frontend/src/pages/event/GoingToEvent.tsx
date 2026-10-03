@@ -2,16 +2,22 @@ import { ProfileLink } from '../profile/ProfileLink'
 import { useEffect, useRef, useState } from 'react'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
-import { combinePair, useAttendance, useCompetitors } from '../../data/useResource'
-import type { BtlEvent, Competitor } from '../../data/types'
+import { clearResourceCache } from '../../data/client'
+import { useAttendance, useCompetitors } from '../../data/useResource'
+import type { Attending, BtlEvent, Competitor } from '../../data/types'
 import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
 import { useI18n } from '../../i18n/useI18n'
 import { limitOf } from '../../forms/records'
 import type { FormDef } from '../../forms/types'
-import { useReadsComments } from './readsComments'
+import { isMember, type Role } from '../../roles/context'
+import {
+  isActiveMember,
+  isActiveMemberOrAdministration,
+} from '../../roles/activeMemberOrAdministration'
+import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
-import { WHEN_WRITING_TO_A_MEMBER } from '../account/refusals'
+import { WHEN_SAYING_YOU_ARE_GOING, WHEN_WRITING_TO_A_MEMBER } from '../account/refusals'
 import { ServerSaid } from '../account/ServerSaid'
 import './GoingToEvent.css'
 
@@ -23,36 +29,96 @@ import './GoingToEvent.css'
  * this is for is the other half of that decision, the one the inbox exists for:
  * two members going to the same race in another town share a car.
  *
- * **Only for members, both halves.** The button is theirs and so is the list
- * (owner, 11.08.2026): a visitor sees a race and its results, not who is going
- * to it. Names of people and a way to write to them are not a public directory.
+ * **For active members and the administration, since 03.10.2026.** The button and
+ * the list were the members' from 11.08.2026, and the owner narrowed both that
+ * day, choosing between offered outcomes; PDL records the choice as „Najavu
+ * dolaska daju i spisak najavljenih vide aktivni članovi (važeća članarina), a
+ * spisak vidi i administracija". So a visitor sees nothing here, and neither does anybody
+ * signed in whose fee is not standing; a moderator and the superadmin read the
+ * list; and the switch is a member's in good standing, a moderator's included
+ * where he races. Asked of `roles/activeMemberOrAdministration.ts`, the one home
+ * of that question on the screen, and never of the rule the comments keep
+ * (`useReadsComments`), which the owner left as it was.
  *
- * Who counts as a member is the same question the comments ask, and it is asked
- * in the same words (`useReadsComments`): a moderator and the superadmin have no
- * member number of their own, and a rule written here as „has a number" would
- * have hidden the list from them while the comments beside it stayed open. What
- * a number is needed for is saying that you are going, which is the half below.
+ * **THE SERVER KEEPS IT, AND THE SCREEN DRAWS ONLY WHAT THE SERVER SAYS.** Until
+ * 03.10.2026 the switch wrote into this visit's session and nowhere else, and the
+ * owner, testing: „Prijavim se da idem na ovaj događaj i kad osvežim stranu moja
+ * prijava nestane. Mora da se zapamti!" A press now goes to
+ * `PUT` or `DELETE /api/attendance/{id}`, and what the switch and the list show
+ * is read back from `GET /api/attendance` once the server has said yes - never
+ * the press itself, so a write the server refused or did not keep cannot be drawn
+ * as one that happened.
  *
  * **Only ahead of the race.** Saying you are going to something that has already
  * been run is not an intention, it is a memory, and the portal has results for
- * that.
+ * that. The day this page asks by is the browser's day in UTC and the server's is
+ * Belgrade's, so for an hour or two after midnight the switch is still drawn on
+ * the event of the day before and a press is refused in words
+ * (`WHEN_SAYING_YOU_ARE_GOING`); the clock is shared by every screen, so that
+ * boundary is named here rather than moved.
  */
 export function GoingToEvent({ event }: { event: BtlEvent }) {
-  const { t } = useI18n()
   const today = useToday()
+  const { role } = useRole()
   const { memberNumber } = useSession()
-  const reads = useReadsComments()
-  const state = combinePair(useAttendance(), useCompetitors())
 
-  /* A screen and not a lock, and this file is the one that most needs saying so:
-     it names which member is going to which race. The fetch above happens before
-     this line, so a visitor's browser holds it too. That is what a mock layer
-     is: one static file served to everybody. When the API arrives (plan F5) the
-     endpoint that serves attendance must refuse an unauthenticated caller, the
-     same way the one for comments must (EventComments.tsx). */
-  if (!reads || event.date < today) {
+  /* Nobody signed in, and a race that has been run: nothing at all, and nothing is
+     asked of the server either. A visitor used to fetch the list he was never shown,
+     which the server answers 401; now nothing is asked that nobody draws. */
+  if (!isMember(role) || event.date < today) {
     return null
   }
+
+  return <ForAReader event={event} role={role} me={memberNumber} />
+}
+
+/**
+ * Somebody signed in, before it is known whether he reads the list.
+ *
+ * The administration reads it whatever its own fee; a member reads it when his
+ * fee is standing, which the screen learns from the list of members the server
+ * serves (`isActiveMember`). That list is what names everybody below anyway, so
+ * the question costs no request of its own, and the list of who is going is not
+ * asked for until the answer is yes.
+ */
+function ForAReader({ event, role, me }: { event: BtlEvent; role: Role; me: string | null }) {
+  const { t } = useI18n()
+  const competitors = useCompetitors()
+
+  return (
+    <Resource state={competitors} inline label={t('event.going')}>
+      {(served) =>
+        isActiveMemberOrAdministration(role, me, served) ? (
+          <TheList event={event} competitors={served} me={me} mayGo={isActiveMember(me, served)} />
+        ) : null
+      }
+    </Resource>
+  )
+}
+
+/**
+ * The section itself, for somebody who reads it.
+ *
+ * It asks for the list, and asks again whenever a press has been answered yes:
+ * the cache is dropped and the revision bumped in one breath, because either
+ * alone is a half - dropped without the bump nothing re-reads, bumped without the
+ * drop the read is handed the very answer that was true before the press
+ * (`theInboxHasChanged` gives the same reason for the inbox).
+ */
+function TheList({
+  event,
+  competitors,
+  me,
+  mayGo,
+}: {
+  event: BtlEvent
+  competitors: Competitor[]
+  me: string | null
+  mayGo: boolean
+}) {
+  const { t } = useI18n()
+  const [revision, setRevision] = useState(0)
+  const attendance = useAttendance(revision)
 
   return (
     <section className="going" aria-labelledby="going-title">
@@ -60,13 +126,18 @@ export function GoingToEvent({ event }: { event: BtlEvent }) {
         {t('event.going')}
       </h2>
 
-      <Resource state={state} inline label={t('event.going')}>
-        {([attendance, competitors]) => (
+      <Resource state={attendance} inline label={t('event.going')}>
+        {(answered) => (
           <Going
             event={event}
-            attendance={attendance}
+            attendance={answered}
             competitors={competitors}
-            me={memberNumber}
+            me={me}
+            mayGo={mayGo}
+            onChanged={() => {
+              clearResourceCache('attendance')
+              setRevision((was) => was + 1)
+            }}
           />
         )}
       </Resource>
@@ -79,34 +150,45 @@ function Going({
   attendance,
   competitors,
   me,
+  mayGo,
+  onChanged,
 }: {
   event: BtlEvent
-  attendance: { eventId: number; memberNumber: string }[]
+  attendance: Attending[]
   competitors: Competitor[]
   /** Who is reading, where that is somebody with a number of their own. A
-   *  moderator has none, reads the list, and has nothing to say about going. */
+   *  moderator who races for nobody has none, reads the list, and has nothing to
+   *  say about going. */
   me: string | null
+  /** Whether the reader is a member whose fee is standing, and so may say he is
+   *  going: the administration reads the list without being one. */
+  mayGo: boolean
+  /** Said once the server has answered a press with yes, so the list is asked
+   *  for again. */
+  onChanged: () => void
 }) {
   const { locale, t } = useI18n()
-  const { going, setGoing } = useSession()
   /* Who this visit is writing to, or nobody. The person and not their number:
      the envelope is pressed on a row that already holds them, so looking them up
      again afterwards would be a lookup that cannot fail and a branch nothing can
      reach. One at a time: the box is a conversation with one person about one
      race. */
   const [writingTo, setWritingTo] = useState<Competitor | null>(null)
+  /** While a press is out, which is what the line under the switch says. */
+  const [saying, setSaying] = useState(false)
+  /** What the server answered a press, where it answered anything but yes. */
+  const [refusal, setRefusal] = useState<Exclude<Answer, { got: 'done' }> | null>(null)
+  /** A second press while the first is still out is not sent: the two would cross on
+   *  the way, and the verb of the second would be chosen from an answer the first is
+   *  about to make untrue. Held in a ref and not in the state beside it, for the reason
+   *  `WriteTo` below gives: a ref is read and written in the same tick, and a redraw
+   *  cannot land between two presses that arrive before one answer does. */
+  const outstanding = useRef(false)
 
-  /* What the file says, and then what has been said during this visit. The
-     switch is a value rather than an absence (session/context.ts), so a member
-     who takes their name off is taken off a list the file still carries. */
-  const said = going[String(event.id)]
-  const fromFile = attendance
+  /* What the server says, and nothing else: who is going to THIS event. */
+  const numbers = attendance
     .filter((one) => one.eventId === event.id)
     .map((one) => one.memberNumber)
-  const numbers = [
-    ...fromFile.filter((one) => one !== me || said !== false),
-    ...(said === true && me !== null && !fromFile.includes(me) ? [me] : []),
-  ]
   /* Named, and in the order the league lists people.
    *
    * Everybody is drawn, including whoever has no record left and whoever is no
@@ -135,7 +217,49 @@ function Going({
         (left.who?.lastName ?? '').localeCompare(right.who?.lastName ?? '', locale)
       )
     })
-  const iAmGoing = named.some((one) => one.number === me)
+  const iAmGoing = numbers.some((one) => one === me)
+
+  /**
+   * Says it to the server, and lets the list say what came of it.
+   *
+   * <p><b>The verb is the served list's</b>: on it, the press takes the name off;
+   * off it, the press puts it on. Chosen at the press and never from a count of
+   * presses kept here, so a member who was already going when the page opened
+   * takes his name off with his first press.
+   *
+   * <p><b>Nothing on the screen moves until the server has answered</b>, and then
+   * only through the list read again (`onChanged`). Refused, the switch stays as
+   * it was and the reason stands under it.
+   */
+  async function say(): Promise<void> {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setSaying(true)
+    /* And the last refusal goes while this one is out, the reason `WriteTo` gives:
+       a reader who presses again should not be reading the old sentence over a
+       request that is still in flight. */
+    setRefusal(null)
+
+    const answer = await askTheServer(
+      `/api/attendance/${String(event.id)}`,
+      {},
+      iAmGoing ? 'DELETE' : 'PUT',
+    )
+
+    outstanding.current = false
+    setSaying(false)
+
+    if (answer.got === 'done') {
+      onChanged()
+
+      return
+    }
+
+    setRefusal(answer)
+  }
 
   return (
     <>
@@ -143,15 +267,17 @@ function Going({
           (owner, 11.08.2026). `aria-pressed` is what says which of the two it is
           in, because the words on it change and a reader who cannot see it
           hears only the words. */}
-      {/* And only for somebody who can be on the list. A moderator reads it,
-          because the same question decides that as decides the comments, but a
-          moderator has no member number and so nothing to say about going. */}
-      {me !== null && (
+      {/* And only for a member whose fee is standing. The administration reads the
+          list, because the owner gave the list to it, but saying you are going is a
+          member's (03.10.2026), so a moderator who races for nobody has no switch. */}
+      {mayGo && (
       <button
         type="button"
         className={iAmGoing ? 'button button--primary' : 'button button--secondary'}
         aria-pressed={iAmGoing}
-        onClick={() => setGoing(String(event.id), !iAmGoing)}
+        onClick={() => {
+          void say()
+        }}
       >
         {/* One name whichever way it is switched, because `aria-pressed` is
             already saying which: a label that changes as well is the state read
@@ -159,6 +285,14 @@ function Going({
         {t('event.goingOn')}
       </button>
       )}
+
+      {/* Said out loud while it is out, the same words and the same reasoning as the
+          note's own line below (WCAG 2.2, 4.1.3). */}
+      {saying && <p role="status">{t('event.commentSending')}</p>}
+
+      {/* And what the server said, where it said anything but yes, under the switch
+          it is about. */}
+      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_SAYING_YOU_ARE_GOING} />}
 
       {named.length === 0 ? (
         <p className="profile__empty">{t('event.goingNobody')}</p>
@@ -214,7 +348,13 @@ function Going({
           form a member opened stayed on screen after they signed out of that same
           visit, under the full name of whoever's envelope they had pressed - to
           somebody no longer signed in at all. Proven by a case that opens the form and
-          then signs out from a live session. */}
+          then signs out from a live session.
+
+          **Since 03.10.2026 the section is drawn only for an active member or the
+          administration (`ForAReader`)**, so a member whose number drops to null is no
+          longer a reader and `Going` goes with him. The guard stays for a reader who is
+          still drawn the section with no number of his own, and that reader is the
+          administration. */}
       {writingTo !== null && me !== null && (
         <WriteTo
           /* Keyed by whoever is being written to, so pressing another envelope

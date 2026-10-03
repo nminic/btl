@@ -4,8 +4,29 @@ import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateFiel
 import { useI18n } from '../../i18n/useI18n'
 import { RACE_KINDS } from '../../data/types'
 import { raceKind } from '../../data/raceKind'
-import { asksFor, BOUNDS, isWrong, keptWhole, newRaceRow, type RaceRow } from './raceRows'
+import {
+  asksFor,
+  BOUNDS,
+  boundsOf,
+  keptWhole,
+  newRaceRow,
+  RACE_CELLS,
+  sentenceFor,
+  whyWrong,
+  type RaceCell,
+  type RaceRow,
+} from './raceRows'
 import './Entity.css'
+
+/**
+ * The id of the sentence that says what is wrong with ONE cell, which that cell is described by.
+ *
+ * <p>Built from the row's place in the table and the cell's own name, and never from the cell
+ * alone: the same column stands in every row, so an id that left the row out would give two cells
+ * of one column the first one's sentence (`adminEntities.test.tsx` asks it of the length of two
+ * rows). The place and not the race's own number, because a row being entered has none.
+ */
+const problemId = (at: number, field: RaceCell) => `race-${String(at)}-${field}-problem`
 
 /**
  * The races of one event, entered in the table itself.
@@ -57,7 +78,7 @@ export function EventRaces({
    */
   hasRaces: boolean
 }) {
-  const { t } = useI18n()
+  const { locale, t } = useI18n()
   /* The day the form was showing when these rows were last lined up with it. */
   const wasOn = useRef(eventDate)
 
@@ -132,6 +153,42 @@ export function EventRaces({
     onRows(rows.map((row, index) => (index === at ? { ...row, ...over } : row)))
   }
 
+  /**
+   * What a cell is called, by its column and its row: „Uspon (m), 2. trka".
+   *
+   * <p>One home for what three places used to write out, because the name has to be the SAME
+   * words in the control's own label and in the sentence about it: a reader who hears the cell and
+   * then looks for it in the list under the table finds it by that name. A column is „Dužina"
+   * twenty times over, and a row number is what tells the twenty apart.
+   */
+  const cellName = (field: RaceCell, at: number) =>
+    `${t(
+      field === 'name'
+        ? 'admin.field.raceName'
+        : field === 'date'
+          ? 'admin.field.raceDate'
+          : `admin.field.${field}`,
+    )}, ${t('admin.form.raceNumber', { which: String(at + 1) })}`
+
+  /**
+   * WHAT IS WRONG WITH ONE CELL, once a press has been refused and not before.
+   *
+   * <p>Before that a cell is merely unfinished, which is the ordinary state of one somebody is
+   * typing into, and a sentence under every half-typed number would be noise. After it, the cell
+   * is marked, described, and named in the list under the table (WCAG 2.2 SC 3.3.1 and 3.3.3).
+   */
+  const why = (row: RaceRow, field: RaceCell) => (refused ? whyWrong(row, field) : undefined)
+
+  /** Every marked cell of the table and why, in the order the table is read: row by row, and the
+   *  cells of one row in the order they are drawn. */
+  const problems = rows.flatMap((row, at) =>
+    RACE_CELLS.flatMap((field) => {
+      const reason = why(row, field)
+
+      return reason === undefined ? [] : [{ at, field, reason }]
+    }),
+  )
+
   /** One measurement of one race, in its own cell. Labelled by row and column,
    *  because „Dužina" twenty times over is twenty controls a screen reader cannot
    *  tell apart. */
@@ -145,7 +202,7 @@ export function EventRaces({
        hundred is as wrong as the fall of minus nine hundred beside it, and a cell
        that says it is fine sends a reader looking somewhere else
        (WCAG 2.2 SC 3.3.1). */
-    const wrong = refused && isWrong(row, field)
+    const wrong = why(row, field) !== undefined
 
     return (
       <input
@@ -170,11 +227,12 @@ export function EventRaces({
         /* Named by its row as well as its column. „Dužina" twenty times over is
            twenty controls a screen reader cannot tell apart, and the table has no
            row heading to read it with. */
-        aria-label={`${t(`admin.field.${field}`)}, ${t('admin.form.raceNumber', {
-          which: String(at + 1),
-        })}`}
+        aria-label={cellName(field, at)}
         aria-required={asked}
         aria-invalid={wrong}
+        /* Described by the sentence under the table that is about THIS cell, and only while it is
+           marked: a description on a cell that is fine would be read out beside nothing wrong. */
+        aria-describedby={wrong ? problemId(at, field) : undefined}
         onChange={(event) => change(at, { [field]: event.target.value })}
       />
     )
@@ -261,11 +319,12 @@ export function EventRaces({
                       value={row.name}
                       /* Named by its row as well as its column, like every other
                          control of this table. */
-                      aria-label={`${t('admin.field.raceName')}, ${t('admin.form.raceNumber', {
-                        which: String(at + 1),
-                      })}`}
+                      aria-label={cellName('name', at)}
                       aria-required="true"
-                      aria-invalid={refused && isWrong(row, 'name')}
+                      aria-invalid={why(row, 'name') !== undefined}
+                      aria-describedby={
+                        why(row, 'name') === undefined ? undefined : problemId(at, 'name')
+                      }
                       /* The column's own explanation, said again for every box in
                          it: a heading is not read out with the control on every
                          reader, and a hint nobody is pointed at is a hint nobody
@@ -281,12 +340,12 @@ export function EventRaces({
                       id={`race-date-${String(at)}`}
                       name={`race-date-${String(at)}`}
                       value={row.date}
-                      label={`${t('admin.field.raceDate')}, ${t('admin.form.raceNumber', {
-                        which: String(at + 1),
-                      })}`}
+                      label={cellName('date', at)}
                       required
-                      invalid={refused && isWrong(row, 'date')}
-                      describedBy={undefined}
+                      invalid={why(row, 'date') !== undefined}
+                      describedBy={
+                        why(row, 'date') === undefined ? undefined : problemId(at, 'date')
+                      }
                       onChange={(next) => change(at, { date: next })}
                     />
                   </td>
@@ -343,6 +402,29 @@ export function EventRaces({
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* WHAT IS WRONG WITH EACH MARKED CELL, in words, once a press has been refused (PENDING,
+          review of PR 463; WCAG 2.2 SC 3.3.1 and 3.3.3).
+
+          UNDER THE TABLE AND NOT IN THE CELLS, because the columns are narrow on purpose and a
+          sentence of eighty letters in a cell of five rem is a cell a dozen lines tall (the table
+          scrolls inside its box, owner 23.08.2026). Each one names its cell by column and row, so
+          it can be found without the colour, and each cell is described by its own
+          (`aria-describedby`), so a reader who lands on the cell hears what is wrong with it
+          without having to go and look. The sentence over the table says only that nothing was
+          saved. */}
+      {problems.length > 0 && (
+        <ul className="races__problems" aria-label={t('admin.race.wrong.list')}>
+          {problems.map(({ at, field, reason }) => (
+            <li key={`${String(at)}-${field}`}>
+              <span>{cellName(field, at)}: </span>
+              <span id={problemId(at, field)}>
+                {t(sentenceFor(field, reason), boundsOf(field, locale))}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
 
       {/* Opens a row rather than a form (owner, 23.08.2026: „klik na Nova trka

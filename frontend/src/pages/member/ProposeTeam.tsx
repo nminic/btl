@@ -51,6 +51,14 @@ import './Member.css'
  * which is a question for whoever approves it and not for whoever asks. What is
  * asked here is what a member knows, the name, the town and the country, plus
  * room to say why in their own words.
+ *
+ * The town and the country are ONE field since 03.10.2026 (owner: „Na strani
+ * Predlog tima, potrebno je da se Država automatski popunjava kucanjem u mestu,
+ * kao što radi na drugim mestima"): the control the registration, the result and
+ * the event already use, so a town the codebook knows brings its country with it
+ * and a town it does not know has its country chosen beside it
+ * (`forms/PlaceField.tsx`). `EditTeam.tsx` draws the same definition and changes
+ * with it.
  */
 export function ProposeTeam() {
   const { locale, t } = useI18n()
@@ -189,6 +197,13 @@ export function ProposeTeam() {
                    missing from the body at all. */
                 bio: '',
                 link: '',
+                /* THE TOWN GOES BY NAME AND COUNTRY, AND `placeId` IS NOT SENT: `PlaceField`
+                   writes the town's name and its country code and has no codebook mark to give,
+                   which is what `Registration.tsx` decided for the same control (PDL, 02.10.2026:
+                   „Slanje oznake mesta sa ekrana time nije potrebno i ne radi se"). `country`
+                   is not a field of this form since 03.10.2026 but the other half of the town:
+                   `emptyValues` holds it beside `city`, and it is written by the codebook where
+                   the town is recognised and by the member where it is not. */
                 city: String(values.city),
                 country: String(values.country),
               },

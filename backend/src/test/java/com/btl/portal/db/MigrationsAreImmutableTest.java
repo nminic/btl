@@ -300,7 +300,21 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   its algorithm (CRC32 over the lines, with line breaks and a BOM left out), which reproduced
 			   four numbers pinned above to the digit before it was trusted for these two, and this list is
 			   what confirms it on the gate. */
-			new Applied("52", "V52__a_town_is_told_apart_from_its_namesakes.sql", -358289886));
+			new Applied("52", "V52__a_town_is_told_apart_from_its_namesakes.sql", -358289886),
+
+			/* V53. One text of one member waits for a moderator at a time: a partial unique index on the
+			   queue, under the condition MeWriteApi already asked in Java (PDL, „Nov tekst o sebi se ODBIJA
+			   dok prethodni ceka odluku moderatora", 19.09.2026). No data.
+
+			   53 because it is the next free number, and that was MEASURED rather than taken: every local
+			   and remote ref was searched on 02.10.2026 after PR 468 merged, origin/main stands at V52, and
+			   no branch but this one holds V53 or above.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   worked out with the copy of its algorithm the rows above describe (CRC32 over the lines, line
+			   breaks and a BOM left out), which reproduced V9, V50 and V52 to the digit before it was
+			   trusted here, and this list is what confirms it on the gate. */
+			new Applied("53", "V53__one_text_of_a_member_waits_at_a_time.sql", -191224091));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

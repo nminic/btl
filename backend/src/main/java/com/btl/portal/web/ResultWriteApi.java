@@ -24,10 +24,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -306,11 +306,19 @@ class ResultWriteApi {
 	 */
 	@PostMapping(path = "/api/results", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> report(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@RequestBody Ran typed) {
+			WhatWasSent<Ran> sent) throws IOException {
 		Long me = memberOfAccount.competitorId(asking.account());
 
+		/* AN ACCOUNT THAT NAMES NO MEMBER, and his body is not read: it is read below, after this
+		   question, and not bound as an argument (register 166). */
 		if (me == null) {
 			return awayAtAnOpenAddress();
+		}
+
+		Ran typed = sent.read();
+
+		if (typed == null) {
+			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
 		ResponseEntity<?> proof = whatIsWrongWithTheProof(typed.link(), typed.comment());
@@ -344,11 +352,17 @@ class ResultWriteApi {
 	 */
 	@PutMapping(path = "/api/results/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@PathVariable AKey id, @RequestBody Correction typed) {
+			@PathVariable AKey id, WhatWasSent<Correction> sent) throws IOException {
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		if (me == null) {
 			throw nothingIsHere();
+		}
+
+		Correction typed = sent.read();
+
+		if (typed == null) {
+			return no(THE_FORM_IS_NOT_COMPLETE);
 		}
 
 		Optional<Counted> standing = his(id.value(), me);

@@ -318,8 +318,23 @@ class MembershipWriteApi {
 	private ResponseEntity<?> write(Grant typed, GrantingAMembership.Ground ground,
 			WhoIsAsking.Member asking) {
 
+		/* FOR UPDATE, AND IT IS WHAT MAKES THE HARMLESS REPEAT HARMLESS WHEN THE TWO PRESSES ARRIVE
+		   TOGETHER. `ALREADY_GRANTED_ON_THIS_GROUND` answers a second press 200 and writes nothing,
+		   and it can only do that if the second press SEES the first one's row. Without the lock two
+		   presses that arrived at once both read that no membership stood, both decided to grant,
+		   and the second lost to `membership_pk`: a 500 for the very press the repeat was written for
+		   (measured, `FreeingTwiceAtOneInstantTest`, before this line existed). Held here, the second
+		   press waits for the first to commit and then reads its membership and its number.
+
+		   THE MEMBER'S OWN ROW, the shape `SignInApi` and `MePasswordApi` already put on the account
+		   they decide about. And it reaches past this route: every other door that writes a season
+		   for him - a payment, a line in his book, his own activation - names this row by a foreign
+		   key, and inserting such a row takes `FOR KEY SHARE` on it, which `FOR UPDATE` stops. That
+		   is the mechanism `VerificationDecisionConcurrencyTest` measured on 22.09.2026 for
+		   `verification_lock` and its parent; here it is read off the same rule rather than measured
+		   again, and nothing in this route depends on it. */
 		Optional<CompetitorRow> competitor = db.sql(
-						"select id, member_number from competitor where id = ?")
+						"select id, member_number from competitor where id = ? for update")
 				.param(typed.competitorId())
 				.query((row, i) -> new CompetitorRow(row.getLong(1), row.getString(2)))
 				.optional();
@@ -374,7 +389,9 @@ class MembershipWriteApi {
 			   second member number - the sequence only counts up, so the first would be gone for
 			   good. The number answered is the one he already has, which on this branch is never
 			   null: a season held on either of these two grounds was granted by this route, and
-			   this route numbers him in the same transaction. */
+			   this route numbers him in the same transaction. The two clicks may also arrive
+			   TOGETHER, and the `for update` at the top of this method is what still brings the
+			   second one here: it waits for the first to commit and then reads its row. */
 			case ALREADY_GRANTED_ON_THIS_GROUND -> ResponseEntity.ok(new Granted(competitor.get().id(),
 					season, competitor.get().memberNumber()));
 			case THE_FEE_IS_ALREADY_RECORDED -> no(HttpStatus.CONFLICT, THE_FEE_IS_ALREADY_RECORDED);
@@ -463,29 +480,10 @@ class MembershipWriteApi {
 	private ResponseEntity<?> grant(int season, CompetitorRow competitor, WhoIsAsking.Member asking,
 			String basis, Balance.Money offTheBook) {
 
-		MemberNumber number = competitor.memberNumber() == null
-				? numbers.draw()
-				: new MemberNumber(competitor.memberNumber());
-
 		String enteredByName = db.sql("select first_name || ' ' || last_name from account where id = ?")
 				.param(asking.account()).query(String.class).single();
 
 		boolean freeOfTheFee = FEE_EXEMPT.equals(basis);
-
-		/* THE NUMBER AND THE FLAG, AND THE SECOND HOME OF THE BASIS ONLY WHERE IT CAN HOLD THE
-		   WORD. `active` is what every public reader ends on (`where c.active`, ten of them), and
-		   PDL:3417 says an activation shows „odmah" exactly as a booked payment does. Both are
-		   written whether or not a number was drawn, so the facts cannot come apart. See point 1 on
-		   this method for why the third column is written on one ground and not the other. */
-		if (freeOfTheFee) {
-			db.sql("update competitor set member_number = ?, active = true, membership_basis = ?"
-							+ " where id = ?")
-					.params(number.written(), FEE_EXEMPT, competitor.id()).update();
-		}
-		else {
-			db.sql("update competitor set member_number = ?, active = true where id = ?")
-					.params(number.written(), competitor.id()).update();
-		}
 
 		/* THE LINE IN THE BOOK BEFORE THE MEMBERSHIP THAT NAMES IT, for the reason point 3 gives.
 		   `spentOnAMembership` is where the sign lives, so what is handed over is money he HAS and
@@ -524,6 +522,36 @@ class MembershipWriteApi {
 		   transaction this route already opens, so the entry and the membership stand or fall
 		   together. */
 		book.aReferralWasActivated(competitor.id(), asking.account(), enteredByName);
+
+		/* AND ONLY NOW IS A NUMBER DRAWN, AFTER EVERY ROW THE DATABASE COULD STILL REFUSE, which is
+		   the order the two other doors to the same fact already keep: `PaymentApi.recordIt` draws
+		   last and `MyMembershipWriteApi.letHimIn` draws after its own `insert into membership`.
+		   `member_number_seq` is not transactional, so a number drawn ahead of a booking the
+		   database then refuses is spent for good, and the owner's rule is „Clanski broj se nikad ne
+		   dodeljuje dvaput" (PDL 31.07.2026). `MemberNumbers` used to record why this route alone
+		   drew first, and the reason it gave - that no case could fail on the move - is answered by
+		   `FreeingTwiceAtOneInstantTest.aBookingTheDatabaseRefusesDrawsNoNumber`.
+
+		   THE NUMBER AND THE FLAG, AND THE SECOND HOME OF THE BASIS ONLY WHERE IT CAN HOLD THE WORD.
+		   `active` is what every public reader ends on (`where c.active`, ten of them), and PDL:3417
+		   says an activation shows „odmah" exactly as a booked payment does. Both are written whether
+		   or not a number was drawn, so the facts cannot come apart. See point 1 on this method for
+		   why the third column is written on one ground and not the other. Nothing written above
+		   reads any of the three: the book and the referral touch `balance_entry`, and the only
+		   column of `competitor` they read is `referred_by`. */
+		MemberNumber number = competitor.memberNumber() == null
+				? numbers.draw()
+				: new MemberNumber(competitor.memberNumber());
+
+		if (freeOfTheFee) {
+			db.sql("update competitor set member_number = ?, active = true, membership_basis = ?"
+							+ " where id = ?")
+					.params(number.written(), FEE_EXEMPT, competitor.id()).update();
+		}
+		else {
+			db.sql("update competitor set member_number = ?, active = true where id = ?")
+					.params(number.written(), competitor.id()).update();
+		}
 
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(new Granted(competitor.id(), season, number.written()));

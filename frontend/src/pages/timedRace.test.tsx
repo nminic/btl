@@ -178,7 +178,7 @@ describe('a race that fixes no length', () => {
       await screen.findByRole('table', { name: /^Trke/ })
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-      expect(await screen.findByText(/Svaka trka mora da ima naziv i dan/)).toBeVisible()
+      expect(await screen.findByText(/Trke nisu sačuvane/)).toBeVisible()
     } finally {
       globalThis.fetch = real
     }
@@ -238,7 +238,7 @@ describe('a race that fixes no length', () => {
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(
-        screen.queryByText(/Svaka trka mora da ima naziv i dan/),
+        screen.queryByText(/Trke nisu sačuvane/),
         'the event is refused over a length its races do not fix',
       ).toBeNull()
       expect(await screen.findByText('Sačuvano')).toBeVisible()
@@ -276,7 +276,7 @@ describe('a race that fixes no length', () => {
       await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
       expect(
-        await screen.findByText(/Svaka trka mora da ima naziv i dan/),
+        await screen.findByText(/Trke nisu sačuvane/),
         'nothing was refused, so there is no marking to measure',
       ).toBeVisible()
 

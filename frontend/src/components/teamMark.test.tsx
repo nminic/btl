@@ -25,6 +25,7 @@ const aTeam = (over: Partial<Team> = {}): Team => ({
   crop: { x: 0.5, y: 0.5, size: 1 },
   bio: '',
   logo: null,
+  alsoInTheTeam: [],
   ...over,
 })
 

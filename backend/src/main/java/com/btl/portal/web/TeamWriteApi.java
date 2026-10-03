@@ -14,10 +14,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.time.Clock;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -166,11 +166,17 @@ import java.util.Set;
  * ({@link TeamApi}).
  * <li><b>A town out of the world codebook.</b> V11 lets a team's town be either a row of
  * {@code place} or a name typed with its country, and this route collects only the second.
- * Both team forms the portal has send a typed town - {@code predlog-tima.form.json} and
- * {@code admin-tim.form.json} carry {@code city} as text and {@code country} as the two
- * letter code - and nothing offers a place picker for a team. So {@code place_id} is null
- * on every row this writes, which is a shape the schema's pair of checks calls a town, and
- * the day a picker arrives it is this record that gains the field.
+ * Both team forms the portal has send a town by NAME and country code and never by the
+ * codebook's mark. {@code predlog-tima.form.json} has offered the codebook's picker since
+ * 03.10.2026 (owner: „Na strani Predlog tima, potrebno je da se Drzava automatski
+ * popunjava kucanjem u mestu, kao sto radi na drugim mestima"), and the picker writes the
+ * town's name and its country, which is what the registration already sends from the same
+ * control; {@code admin-tim.form.json} carries {@code city} as text and {@code country} as
+ * the two letter code. So this route cannot tell a town that was chosen from the list from
+ * one that was typed, and does not need to: {@code place_id} is null on every row this
+ * writes, which is a shape the schema's pair of checks calls a town, and PDL, 02.10.2026,
+ * says a mark is not sent from the screen („Slanje oznake mesta sa ekrana time nije
+ * potrebno i ne radi se"). The day one is, it is this record that gains the field.
  * <li><b>A second proposal from the same member.</b> Nothing here refuses one, because
  * nothing decided that it should be refused: PDL P13 says a member may not FOUND a second
  * team while he is in one, and a proposal is not a team. Two of his waiting at once is a
@@ -431,10 +437,13 @@ class TeamWriteApi {
 	 * sources disagree about what a proposal carries and a round measured what pretending
 	 * otherwise costs.
 	 *
-	 * <p><b>Four of these are {@code predlog-tima.form.json}'s own names</b> -
-	 * {@code name}, {@code city}, {@code country} and {@code note} - and
-	 * {@link #ASKED_FOR_BEFORE_THE_FORM_ASKS} is the floor that keeps that true in both
-	 * directions.
+	 * <p><b>Four of these are {@code predlog-tima.form.json}'s own values</b> - the fields
+	 * {@code name}, {@code city} and {@code note}, and the {@code country} the town writes
+	 * beside itself: {@code city} is a {@code place} field since 03.10.2026, and a place
+	 * writes two values, its own and {@code country}, so the file has no field of that name
+	 * any more. {@link #ASKED_FOR_BEFORE_THE_FORM_ASKS} is the floor that keeps that true in
+	 * both directions, and {@code TeamWriteApiTest} counts the country a place writes as one
+	 * of the form's.
 	 *
 	 * <p><b>{@code note} IS NOT THE TEAM'S DESCRIPTION, AND CONFUSING THE TWO IS THE
 	 * MISTAKE THIS PARAGRAPH EXISTS TO NOT MAKE.</b> Its label is {@code teams.proposeNote},
@@ -454,14 +463,18 @@ class TeamWriteApi {
 	 * left to look like fields that went missing.
 	 *
 	 * <p>There is no {@code teamId}, no {@code firstSeason} and no {@code logo}, each for
-	 * its own reason given above; and no {@code placeId}, because the town arrives typed.
+	 * its own reason given above; and no {@code placeId}, because the town arrives by name
+	 * and country whether it was typed or chosen from the codebook's list (the entry above on
+	 * a town out of the world codebook).
 	 *
 	 * @param note    why this team, in the member's own words, for whoever decides. Empty
 	 *                where he wrote none, and then the card draws the name and the town
 	 * @param bio     what the team would say about itself, which may be empty - the same
 	 *                shape {@code competitor.bio} and {@code btl_event.description} have
 	 * @param link    the team's own page, optional and empty where there is none
-	 * @param city    the town, typed by hand, which then names its country
+	 * @param city    the town's name, as typed or as the row chosen from the codebook's list
+	 *                gives it (this route cannot tell which, and does not need to), which
+	 *                then names its country
 	 * @param country the code of that country, {@code RS}, never its key - the same
 	 *                spelling {@link TeamApi} answers with
 	 */
@@ -484,15 +497,27 @@ class TeamWriteApi {
 
 	@PostMapping(path = "/api/teams", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> propose(@AuthenticationPrincipal WhoIsAsking.Member asking,
-			@RequestBody Proposed typed) {
+			WhatWasSent<Proposed> sent) throws IOException {
 
 		Long me = memberOfAccount.competitorId(asking.account());
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race. There is nobody to file a proposal under, and the
-		   answer is the one InboxApi and InboxWriteApi already give him. */
+		   answer is the one InboxApi and InboxWriteApi already give him - and his body is not
+		   read: it is read below, after this question, and not bound as an argument
+		   (register 166). */
 		if (me == null) {
 			return awayAtAnOpenAddress();
+		}
+
+		Proposed typed = sent.read();
+
+		/* A BODY THAT CANNOT BE READ IS THE FORM NOT BEING FILLED IN, and it is answered HERE and
+		   not among the form questions further down. It was bound before anything else while it
+		   was an argument, so a member the window shuts or a member already in a team was told
+		   400 for it and goes on being told so: only the account that names no member changes. */
+		if (typed == null) {
+			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
 		/* AND THE TWO QUESTIONS JoiningATeam ALREADY ANSWERS, asked before anything about

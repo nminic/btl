@@ -73,9 +73,10 @@ describe('the list of resources', () => {
          say: that answer carries `teamInvitationId` and no team at all, while
          `PUT /api/teams/{id}/invitations/{invitation}` needs both, so until this name a
          member could be sent an invitation through the portal and had no way on the portal
-         to answer it. It is also the SECOND name whose answer differs per caller, after
-         `inbox`, and it is dropped from the cache the same way and for the same reason
-         (`data/useResource.ts`, `theWaitingNowBelongsTo`). */
+         to answer it. It is also the SECOND name a hook drops from the cache when the caller
+         changes, after `inbox`, for the same reason (`data/useResource.ts`,
+         `theWaitingNowBelongsTo`); `competitors` and `teams` depend on the caller as well and
+         are dropped by the session (`session/theCachesFollowTheReader.ts`). */
       'me/applications',
       'moderators',
       'pages',

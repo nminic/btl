@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
@@ -97,14 +98,17 @@ class RightsAtTheDoorTest {
 	 * visitor really is refused - is {@code CommentApiTest}, because this file measures what a
 	 * route DECLARES and not what the chain in front of it does.
 	 *
-	 * <p><b>And {@code /api/attendance} joins it, closed the identical way and for the
-	 * identical reason.</b> It is neither public nor administrative either: „Tu listu ko je
-	 * prijavljen takođe vide samo ulogovani članovi" (owner, 11.08.2026), so it is absent from
-	 * {@code READ_BY_ANYBODY} and a visitor is refused before this door is ever asked; and
-	 * reading who is going is not a moderator's action, so there is no box to tick for it and
-	 * every signed in account reads it, a plain competitor included. {@code AttendanceApiTest}
-	 * holds the other half, that a visitor really is refused, because this file only measures
-	 * what a route DECLARES.
+	 * <p><b>And {@code /api/attendance} joins it, closed toward a visitor the identical way.</b>
+	 * It is neither public nor administrative either: „Tu listu ko je prijavljen takođe vide
+	 * samo ulogovani članovi" (owner, 11.08.2026), so it is absent from {@code READ_BY_ANYBODY}
+	 * and a visitor is refused before this door is ever asked; and reading who is going is not
+	 * a moderator's action, so there is no box to tick for it. <b>Since 03.10.2026 „every signed
+	 * in account reads it" is not true of it, the way it is not true of {@code /api/inbox}:</b>
+	 * the owner narrowed it, by a choice between offered outcomes that PDL records as „aktivni
+	 * članovi (važeća članarina), a spisak vidi i administracija", which is a fact about the
+	 * member's fee and about the role, not a box, so the controller asks it
+	 * ({@code ActiveMemberOrAdministration}) and answers anybody else signed in 404. {@code AttendanceApiTest} holds both halves, because this file only
+	 * measures what a route DECLARES.
 	 *
 	 * <p><b>AND {@code /api/verification} IS THE SIXTH, AND IT IS HERE FOR A REASON
 	 * NEITHER OF THE OTHER TWO HAS: THE PRIVILEGE IS DECIDED BY THE ROW AND NOT BY THE
@@ -141,9 +145,9 @@ class RightsAtTheDoorTest {
 	 * MAKES THIS FLOOR ASSERT LESS THAN ITS NAME SUGGESTS.</b> A message may be private to
 	 * one member (V13: „empty means everybody", so a named addressee means somebody in
 	 * particular), so it is absent from {@code READ_BY_ANYBODY} and a visitor is refused
-	 * before this door runs at all. But unlike {@code /api/comments} and
-	 * {@code /api/attendance}, „every signed in account reads it" is not quite true here
-	 * either: an account naming no member - a moderator who does not race - is refused 404
+	 * before this door runs at all. But unlike {@code /api/comments}, „every signed in
+	 * account reads it" is not quite true here either: an account naming no member - a
+	 * moderator who does not race - is refused 404
 	 * by the controller itself, the identical shape {@code /api/verification} already has
 	 * for a moderator with no queue ticked. There is no box to tick for having an inbox at
 	 * all; it is not a privilege a superadmin grants, it is a consequence of being a member,
@@ -168,8 +172,8 @@ class RightsAtTheDoorTest {
 	 * floor - so the floor now looks at everything the portal's controllers map, and
 	 * anything meant to answer without a right is named here with its reason.
 	 *
-	 * <p><b>AND {@code /api/me/applications} IS THE EIGHTH, CLOSED THE IDENTICAL WAY AND
-	 * FOR THE IDENTICAL REASON {@code /api/attendance} IS.</b> ADL P-javno keeps it off
+	 * <p><b>AND {@code /api/me/applications} IS THE EIGHTH, CLOSED TOWARD A VISITOR THE WAY
+	 * {@code /api/comments} IS.</b> ADL P-javno keeps it off
 	 * {@code READ_BY_ANYBODY} - it answers nobody but the one competitor it is about, so a
 	 * visitor is refused 401 before this door is ever asked - and reading what you yourself
 	 * are waiting on is not a moderator's action, so there is no box to tick for it and
@@ -378,7 +382,19 @@ class RightsAtTheDoorTest {
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
-					"GET /api/comments", "GET /api/attendance", "GET /api/verification",
+					"GET /api/comments", "GET /api/attendance",
+					/* SAYING YOU ARE GOING, AND TAKING IT BACK, ADDED 03.10.2026 WITH B212. Not a
+					   moderator's action and no box a superadmin could tick: the owner's choice, as
+					   PDL records it, gives it to „aktivni članovi (važeća članarina)" by name, and
+					   the administration as such is not one - so a right could only shut it to the
+					   people it is for. The
+					   address names the event and nothing names the member, who is read off the
+					   session, so „his own" is the only thing it can express. Anybody signed in who
+					   is not an active member is answered 404 by AttendanceWriteApi, a visitor 401
+					   by the chain; AttendanceWriteApiTest holds both, and the second is the case
+					   ADL A8 asks of every name on this list. */
+					"PUT /api/attendance/{id}", "DELETE /api/attendance/{id}",
+					"GET /api/verification",
 					"POST /api/registration", "GET /api/inbox", "POST /api/inbox",
 					/* MARKING A MESSAGE READ, ADDED 27.09.2026 WITH B142, PDL SECTION 27a. Its
 					   own entry rather than a third verb sharing GET/POST /api/inbox above -
@@ -1165,6 +1181,65 @@ class RightsAtTheDoorTest {
 			return method.getBeanType().getSimpleName() + "#" + method.getMethod().getName()
 					+ " takes its key as " + type.getSimpleName();
 		}
+	}
+
+	/**
+	 * NO CLASS THAT ASKS WHICH MEMBER IS ASKING BINDS A BODY AS AN ARGUMENT, EXCEPT WHERE THE DOOR
+	 * DECIDES THE ROUTE.
+	 *
+	 * <p><b>This is the floor under {@code WhatWasSent}, and the other half of
+	 * {@code ABodyIsReadAfterTheDoorOverRealHttpTest}.</b> A body bound with {@code @RequestBody} is read
+	 * while the arguments are resolved, which is before the first line of the handler, so a handler that
+	 * asks „has this account a member" has been told 400 for a body that is not JSON by the time it asks:
+	 * a moderator who races for nobody learnt that a write lives at the address (ADL A8, owner,
+	 * 13.09.2026: the server need not give away even that an address exists; register 166, nine routes,
+	 * measured over a socket by PR 466). The socket case measures what a route ANSWERS; this holds the way
+	 * a route is WRITTEN, so a tenth route with the same fault is caught on the day it is mapped, whatever
+	 * its author remembers and with no list.
+	 *
+	 * <p><b>"Asks which member" is the type system answering</b>: {@link MemberOfAccount} is the one home
+	 * of that question, so a class that holds one asks it. {@code MePasswordApi} is not such a class and is
+	 * not named: a password belongs to the account and not to a member, so there is no question for a body
+	 * to be read in front of, and every signed in account is entitled to be told 400 there.
+	 *
+	 * <p><b>The routes the door decides are asked the opposite question, which is why this has two
+	 * halves.</b> A route a right guards is refused by the door, in {@code preHandle}, before any argument
+	 * is resolved, so a body bound there is bound only for somebody the door let through. {@code
+	 * PaymentApi}'s confirmation is one: its class asks which member, and it binds its body, and that is
+	 * right. Each half is not empty, because a floor that found nothing to ask about would be true of every
+	 * portal.
+	 */
+	@Test
+	void noClassThatAsksWhichMemberIsAskingBindsABodyAsAnArgumentUnlessTheDoorDecidesTheRoute() {
+		List<HandlerMethod> inClassesThatAsk = mappings.getHandlerMethods().values().stream().distinct()
+				.filter(method -> Stream.of(method.getBeanType().getDeclaredFields())
+						.anyMatch(field -> field.getType() == MemberOfAccount.class))
+				.toList();
+
+		assertThat(inClassesThatAsk.stream().filter(method -> !theDoorDecides(method))
+				.filter(method -> TheBodyOf.type(method).isPresent())
+				.filter(method -> Stream.of(method.getMethodParameters())
+						.anyMatch(one -> one.getParameterType() == WhatWasSent.class)).count())
+				.as("no route in a class that asks which member reads its body after the question, so the"
+						+ " first half asks about nothing")
+				.isPositive();
+		assertThat(inClassesThatAsk.stream().filter(method -> theDoorDecides(method))
+				.filter(method -> Stream.of(method.getMethodParameters())
+						.anyMatch(one -> one.hasParameterAnnotation(RequestBody.class))).count())
+				.as("no route the door decides binds its body in a class that asks which member, so the"
+						+ " exception below is an exception to nothing")
+				.isPositive();
+
+		assertThat(inClassesThatAsk.stream().filter(method -> !theDoorDecides(method))
+				.filter(method -> Stream.of(method.getMethodParameters())
+						.anyMatch(one -> one.hasParameterAnnotation(RequestBody.class)))
+				.map(method -> method.getBeanType().getSimpleName() + "#" + method.getMethod().getName())
+				.toList())
+				.as("a route in a class that asks which member binds its body as an argument, so the body"
+						+ " is read before the question and an account that names no member is told 400 for"
+						+ " a body that is not JSON while a body that reads is told 404; it takes a"
+						+ " WhatWasSent and reads it after the question")
+				.isEmpty();
 	}
 
 	/**

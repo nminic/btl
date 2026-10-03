@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -140,10 +141,20 @@ import java.util.function.Function;
  * netaknut" - and his reason is the portal's own:
  * {@code pages/member/ProfileBio.tsx} draws no button while one stands, „a second ask gives
  * a moderator two texts of one person and no question to answer", and the same file names
- * the hole it could not close from a browser. The rule therefore lives twice on purpose,
+ * the hole it could not close from a browser. The rule therefore lives on this side as well,
  * exactly as {@link com.btl.portal.domain.registration.WhatRegistrationAsksFor} says of its
  * own: „the form is JavaScript in somebody else's browser: a registration can arrive
  * without ever having passed through it".
+ *
+ * <p><b>AND ON THIS SIDE IT IS TWO THINGS SINCE V53, EACH FOR ITS OWN CASE.</b> The route asks
+ * {@link #theTextThatWaits} before anything is written, which answers one request at a time
+ * and answers it ahead of every other write the request carries. But a question asked and
+ * then a row written are two statements, and two requests that both asked before either wrote
+ * were both told yes - a member pressing „Posalji" twice was enough, measured by
+ * {@code ATextSentTwiceAtOnceTest} before the index existed. So the database says it too:
+ * {@code verification_one_text_waits_per_member} is the one thing both requests meet, and
+ * {@link #queued} meets it with {@code on conflict do nothing}, so the loser is answered the
+ * owner's 409 rather than a fault, and goes back whole.
  *
  * <ul>
  * <li><b>Refused:</b> a member whose text is standing in the queue undecided, sending
@@ -158,13 +169,13 @@ import java.util.function.Function;
  * (PDL P28a, 06.08.2026), and a picture waiting is not a text waiting: „razlikuje se samo
  * sta moderator pise, jer se slika menja po instrukciji a tekst se pise ponovo".
  * {@code photo_id} is what the SCHEMA offers to tell the two apart, and it is what is
- * asked here. <b>The boundary, written down because it is real:</b> the portal's own
- * screens tell them apart by a {@code kind} that has no column at all - {@link
- * VerificationApi} names it first among the twelve fields the file carries and the schema
- * does not - and nothing on this server writes a picture into this queue yet. The day
- * something does, it either fills {@code photo_id}, which V9 calls „the picture, while
- * there still is one" and which a moderator must have in order to judge one, and this
- * guard goes on being right; or it invents a mark, and this is the sentence to read then.
+ * asked here, and V53 asks it in the same words. <b>The boundary, written down because it is
+ * real:</b> the portal's own screens tell them apart by a {@code kind} that has no column at
+ * all - {@link VerificationApi} names it first among the twelve fields the file carries and
+ * the schema does not. What writes a picture into this queue is {@link MePhotoApi}, and it
+ * fills {@code photo_id}, which V9 calls „the picture, while there still is one" and which a
+ * moderator must have in order to judge one, so this guard and the index go on being right.
+ * A writer that invented a mark of its own instead is the day this sentence is to be read.
  * <li><b>AND A DELETION IS NOT A SECOND TEXT.</b> Since the owner's decision of the same
  * day, a blank {@code bio} removes what stands, at once. Asked as „{@code bio} was sent"
  * this guard would answer 409 to a member asking for his own words to come down because a
@@ -293,11 +304,17 @@ import java.util.function.Function;
  * statement succeeds and whose second does not.
  * </ul>
  *
- * <p><b>AND EVERY REFUSAL HAPPENS BEFORE THE FIRST WRITE.</b>
- * {@code TransactionTemplate.execute} rolls back on an exception and not on a returned
- * value, so a 409 decided after the switch had been written would be a refusal reported
- * over a change that was kept. The conflict is therefore asked before anything is written,
- * inside the same transaction that would write it.
+ * <p><b>AND EVERY REFUSAL HAPPENS BEFORE THE FIRST WRITE, BUT ONE, AND THAT ONE GOES BACK
+ * WHOLE.</b> {@code TransactionTemplate.execute} rolls back on an exception and not on a
+ * returned value, so a 409 decided after the switch had been written would be a refusal
+ * reported over a change that was kept. The conflict is therefore asked before anything is
+ * written, inside the same transaction that would write it. The one refusal that cannot be
+ * asked first is the race V53 exists for: a request that asked while another's text was not
+ * yet committed learns it only when its own row meets the index, after its name, town or
+ * switch is written. So {@link #write} asks the transaction to roll back before it answers
+ * 409, which is {@code CompetitorWriteApi}'s way of returning a refusal with a body from a
+ * transaction that must keep nothing; {@code ATextSentTwiceAtOnceTest} measures it with two
+ * requests whose names differ.
  */
 @RestController
 class MeWriteApi {
@@ -815,7 +832,7 @@ class MeWriteApi {
 		}
 
 		return inOneTransaction.execute(
-				committing -> write(me, asking.account(), typed, town.orElse(null)));
+				committing -> write(me, asking.account(), typed, town.orElse(null), committing));
 	}
 
 	/**
@@ -1031,6 +1048,21 @@ class MeWriteApi {
 	 * commits whatever has already been written, so a refusal decided after the switch had
 	 * moved would be a 409 reported over a change that was kept.
 	 *
+	 * <p><b>AND ASKED FIRST IT STILL ANSWERS SOMETHING THE INDEX DOES NOT, measured on the
+	 * branch that added V53.</b> The index refuses the same second text, but only when the row
+	 * is written, which is after everything else this request carries. A request that also
+	 * carries something only the database would refuse - a name with a NUL character in it,
+	 * which {@code text} cannot hold - is answered 409 with this question in place and a server
+	 * fault without it: the update meets the fault before the insert meets the index.
+	 * {@code MeWriteApiTest.aTextThatWaitsIsToldBeforeAFieldOnlyTheDatabaseWouldRefuse} holds
+	 * that difference, and it is the reason this question was not folded into the index.
+	 *
+	 * <p><b>THE RACE IS THE INDEX'S, AND IT IS ANSWERED THE SAME WAY.</b> Two requests that both
+	 * asked here before either wrote both pass; the one whose row then meets
+	 * {@code verification_one_text_waits_per_member} gets no row back from {@link #queued}, and
+	 * this method asks the transaction to roll back before answering 409, so the name, town and
+	 * switch it wrote on the way go back with it.
+	 *
 	 * <p><b>THE CONFLICT IS ABOUT A TEXT AND NOT ABOUT THE FIELD, WHICH IS WHAT THE OWNER'S
 	 * DECISION OF 19.09.2026 CHANGED.</b> A blank {@code bio} is now a DELETION, and
 	 * deleting is „pravo clana nad sopstvenim podatkom, ne predlog" (PDL P11). Asked as
@@ -1062,7 +1094,9 @@ class MeWriteApi {
 	 * TheSwitchAndTheTextAreOneThingTest} measures, is this statement together with the queue
 	 * row, where a lever does exist.
 	 */
-	private ResponseEntity<?> write(long me, long account, Change typed, Town town) {
+	private ResponseEntity<?> write(long me, long account, Change typed, Town town,
+			TransactionStatus committing) {
+
 		boolean removing = typed.bio() != null && typed.bio().isBlank();
 
 		if (typed.bio() != null && !removing && theTextThatWaits(me).isPresent()) {
@@ -1182,8 +1216,16 @@ class MeWriteApi {
 			}
 		}
 
-		if (typed.bio() != null && !removing) {
-			queued(me, typed.bio().strip());
+		/* A TEXT THAT ANOTHER REQUEST GOT IN FIRST, which is the race the question at the top of
+		   this method cannot see: both asked before either wrote. `queued` hands back no row when
+		   V53's index already holds his waiting text, and what this request wrote on the way - a
+		   name, a town, a switch - must not outlive the refusal, so the transaction is told to go
+		   back before the 409 is returned (`CompetitorWriteApi.writeAll` returns a refusal with a
+		   body the same way). */
+		if (typed.bio() != null && !removing && queued(me, typed.bio().strip()).isEmpty()) {
+			committing.setRollbackOnly();
+
+			return no(HttpStatus.CONFLICT, A_TEXT_ALREADY_WAITS);
 		}
 
 		return ResponseEntity.ok(whatStandsFor(me));
@@ -1220,13 +1262,28 @@ class MeWriteApi {
 	 * {@code right_code} is generated from the tab, so the row cannot stand where nobody
 	 * may moderate it. {@code photo_id} is left null, which is this route saying it brings
 	 * no picture; see decision 2 at the head of this class for what that null also does.
+	 *
+	 * <p><b>AND IT MEETS V53 WITH {@code on conflict do nothing}, SO A LOST RACE IS AN ANSWER
+	 * AND NOT A FAULT.</b> {@code verification_one_text_waits_per_member} holds one waiting text
+	 * per member, and a second request that got past {@link #theTextThatWaits} because the first
+	 * had not committed yet waits here for it, and then writes nothing. The conflict is named by
+	 * its column and the index's own condition, which is how PostgreSQL is told which index is
+	 * meant, so a refusal by any OTHER key stays a fault rather than being read as „a text
+	 * waits". The precedent is {@code CompetitorWriteApi.accountFor}, which meets the address
+	 * index the same way and reads the row back with {@code returning}.
+	 *
+	 * @return the key of the row written, or nothing when his text already waits
 	 */
-	private void queued(long me, String text) {
-		db.sql("insert into verification (queue, competitor_id, subject, body)"
+	private Optional<Long> queued(long me, String text) {
+		return db.sql("insert into verification (queue, competitor_id, subject, body)"
 						+ " select ?, c.id, c.first_name || ' ' || c.last_name, ?"
-						+ " from competitor c where c.id = ?")
+						+ " from competitor c where c.id = ?"
+						+ " on conflict (competitor_id)"
+						+ " where queue = 'profiles' and state = 'waiting' and photo_id is null"
+						+ " do nothing returning id")
 				.params(THE_PROFILES_TAB, text, me)
-				.update();
+				.query(Long.class)
+				.optional();
 	}
 
 	/**
@@ -1248,10 +1305,16 @@ class MeWriteApi {
 	 * written out.
 	 *
 	 * <p><b>Oldest first with the key last, and {@code limit 1}.</b> V9 indexes the queue
-	 * that way and {@link VerificationApi} reads it that way. The guard above means this
-	 * route can never leave two, but a row written by anything else would otherwise turn
-	 * this answer into a fault rather than into an answer, and „which of them" would depend
-	 * on the order the table happens to hold them in.
+	 * that way and {@link VerificationApi} reads it that way. Since V53 the table itself cannot
+	 * hold two waiting texts of one member - the guard above could not promise that, because two
+	 * requests both asked it before either wrote - but the order stays, so the answer never
+	 * depends on the order the table happens to hold rows in.
+	 *
+	 * <p><b>The same condition as {@code verification_one_text_waits_per_member}, word for
+	 * word</b>, and the two are held to each other by behaviour rather than by a comparison of
+	 * strings: a condition here narrower than the index's would let {@link #queued} meet a
+	 * conflict this question never saw, and one wider would refuse a text the index lets in, and
+	 * each of those has its case in {@code MeWriteApiTest}.
 	 */
 	private Optional<Long> theTextThatWaits(long me) {
 		return db.sql("select id from verification where competitor_id = ? and queue = ?"

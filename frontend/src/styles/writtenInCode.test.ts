@@ -249,7 +249,7 @@ describe('what a screen says in its own voice', () => {
        thinking harder about it, so it is not the list that is held here but the
        whole of what it is a list of.
 
-       Fifty seven names carry a value written out today, over nineteen hundred
+       Fifty eight names carry a value written out today, over nineteen hundred
        and ninety values (1997 on 02.10.2026, a number that moves with every
        screen), and none of them is one a reader meets. The list was sixty
        names until that day: `min`, `max` and `step` were written nowhere but
@@ -299,6 +299,12 @@ describe('what a screen says in its own voice', () => {
       'htmlFor',
       'id',
       'inputMode',
+      /* REACT'S OWN, 02.10.2026, and it is machinery: it never reaches the document, so there is
+         nothing a reader could meet. The portal's first literal one: the two sentences of
+         `components/Unreadable.tsx` each carry the name of the state they stand for, so that React
+         draws the second failure as a new element and not as the first one with its role turned
+         back. A key built out of the data of a row is not a value written out and is not counted. */
+      'key',
       'leftId',
       'loading',
       'look',
