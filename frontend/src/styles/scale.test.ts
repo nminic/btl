@@ -203,16 +203,6 @@ const IN_PIXELS = new Map([
        and the surname was cut. */
     'shrinks the circle so the name in the frozen column keeps its letters',
   ],
-  [
-    'pages/Profile.css 700',
-    /* In pixels because it has to be the other half of a pixel query. The table
-       of races is given equal columns and a width worked out from how many it
-       draws, and two of them are hidden under 700px by `table__hide-phone`
-       (styles/table.css, a pixel query). In `em` the two would agree only at the
-       default text size: a reader at 200% would get the columns back at one
-       window width and the arithmetic about them at another. */
-    'gives the table of races equal columns, and has to fire where `table__hide-phone` hands two of them back',
-  ],
 ])
 
 describe('space and corners are chosen from the scale, not typed', () => {
@@ -357,8 +347,11 @@ describe('space and corners are chosen from the scale, not typed', () => {
       // A telephone stops being a telephone. Its other half, so the two do not
       // both fire on the pixel where they meet.
       559.98, 560,
-      // A narrow window, where a table gives up its columns. Same, and its half.
-      620, 699.98, 700,
+      // A narrow window, where a table gives up its columns, and its half. The
+      // other half, 700, went on 03.10.2026 with the one query that was written
+      // against it: the table of races is drawn in two shapes at the wide layout
+      // now, and nothing else on the portal asks about 700.
+      620, 699.98,
       // The wide layout, and the navigation stops folding away, with its half.
       780, 819.98, 820,
       // Set by their own content, each said where it is written: the front page
@@ -424,6 +417,10 @@ describe('space and corners are chosen from the scale, not typed', () => {
       ['pages/admin/Verification.css .member:not(:has(.pending__card--open .field__required)) .pending__legend',
         'the line saying what the star means, on a screen where every card is folded and no star is drawn'],
       ['pages/Profile.css .profile__length-full', 'the long name of a length, swapped for the short one; both are in the accessible name, so nothing is lost to anybody'],
+      [
+        'pages/Profile.css .table--races .event-races__label',
+        'the word over a figure of a race, which is the only name the figure has on a telephone and is taken off from the wide layout up, where the head of the table is drawn over the column and says the same word. It is real text in the cell and not generated content, so on a telephone it is read with the figure; and the head is not drawn there (`display: none`, written outside every query), so the two are never both exposed (`pages/event/raceTable.test.tsx`, `pages/eventTableStyle.test.ts`)',
+      ],
       [
         'pages/Calendar.css .chip--continues .chip__name, .chip--runs-on .chip__lengths',
         'one name and one row of dots for a whole multi-day bar, at its two ends (owner, 22.09.2026: „naziv pise preko cele strafte, dok su tacke skroz na desnom kraju iste"), so the name is out of sight on every piece that does not OPEN the run and the dots on every piece that does not END it. MOVED OUT OF SIGHT and not taken away: these are the declarations `.visually-hidden` itself carries, which is what `ADL.md` A7 prescribes for hiding by width, so both stay in the accessibility tree at every width and a case holds that they really are those rules (pages/calendarStyle.test.ts). Each is still drawn once, in the same row and a column or two away, and this is the only width at which the days stand side by side for that to be true. It said `visibility: hidden` until 22.09.2026, which IS removal, and that left 26 tiles on a telephone that nobody could tap and no screen reader could find',

@@ -111,11 +111,15 @@ export function outsideLink(said: string): string | undefined {
  * `rel="noreferrer noopener"` keeps the attacker's page from learning anything;
  * what it cannot do is tell the moderator where the press leads.
  *
- * Drawn on the event's page for a reason of the same size but a different shape:
- * there the words of the link are the portal's own („Strana organizatora"), so
- * they cannot lie, and precisely because they cannot, they say nothing at all
- * about where the press lands. A reader deciding whether to leave this site for
- * somebody else's is entitled to know whose it is before pressing, not after.
+ * Drawn on the event's page too from 27.08.2026, for a reason of the same size but
+ * a different shape: there the words of the link are the portal's own („Strana
+ * organizatora"), so they cannot lie, and precisely because they cannot, they say
+ * nothing at all about where the press lands. A reader deciding whether to leave
+ * this site for somebody else's is entitled to know whose it is before pressing,
+ * not after. **Taken off that link on 03.10.2026, on the owner's word** („Nije
+ * potrebno da postoji i ispisan link organizatora, dovoljno je da postoji linkovan
+ * tekst „Strana organizatora"."): the reasoning above stands for the moderator's
+ * queue and is no longer the portal's rule for the organiser's page.
  *
  * The host and not the whole address, because the host is the part that decides
  * where a press lands and the rest is noise on a narrow screen. Read through the

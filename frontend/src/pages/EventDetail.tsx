@@ -21,14 +21,13 @@ import { useI18n } from '../i18n/useI18n'
 import { mineClass } from '../components/mine'
 import { memberOf } from '../data/derive'
 import { raceLabel, raceMeasure } from '../data/raceLabel'
-import { outsideHost, outsideLink } from '../data/outsideLink'
+import { outsideLink } from '../data/outsideLink'
 import type { Race, BtlEvent } from '../data/types'
 import { useSession } from '../session/useSession'
 import { EventActions } from './event/EventActions'
 import { GoingToEvent } from './event/GoingToEvent'
 import { OverallMark } from './event/OverallMark'
 import { EventComments } from './event/EventComments'
-import '../styles/outsideLink.css'
 import './Profile.css'
 
 /* The races load separately from the event on purpose: the name of the event is
@@ -65,48 +64,29 @@ function RaceTable({ event }: { event: BtlEvent }) {
            empty cells would say the opposite. */
         const canEnter = (race: Race) => memberNumber !== null && race.date <= today
         const options = mine.some(canEnter)
-        /* Four that are always there: the name, the length, the climb and the fall.
-           The day is a fifth on an event that runs over more than one morning, and the
-           way in a sixth for somebody who may report a result.
-
-           It was five for a few hours, when the name arrived and the category was
-           still here, and a round measured what a seventh column costs this table:
-           the floor that keeps a date unbroken is 6,75rem, so seven of them ask for
-           756px of a box that is 653 at 700px and 721 at 768. The column that fell
-           outside was the one holding „Unesi rezultat", and nothing on the screen said
-           it was cut. The owner's answer was to take the category out here (23.08.2026),
-           which this table can afford: the length stands beside it and the category is
-           read off the length. The same column goes from the administration too, but
-           in its own delivery; this one is only about the public page.
-
-           Written by hand three lines from the headings it counts, and that too was
-           measured: with the two disagreeing the table drew five columns in the width
-           of four and ended 253px short of the edge. */
-        const columns = (overDays ? 1 : 0) + 4 + (options ? 1 : 0)
-        /* How many the fullest reading of this same event would have, which is what a
-           column's share of the box is worked out from: „tabela ostaje kraća za tu
-           kolonu, pa se prethodne četiri završavaju gde i kad ih ima 5" (owner,
-           23.08.2026).
-
-           The share used to be a fifth written into the stylesheet, and a round
-           measured what that cost once the count could reach six: on an event over two
-           mornings the visitor's five columns and the member's six were both the whole
-           box, so nothing stayed where it was and the first column moved by up to
-           35,59px. Worked out here, beside the count it belongs to, there is one place
-           that knows how many columns this table can have. */
-        const full = (overDays ? 1 : 0) + 5
 
         return (
-          <div className="table-scroll">
-            {/* Five columns of one width, and four of that same width where the
-                last one is not drawn (owner, 23.08.2026: „a treba da ima 5 kolona
-                jednake sirine", and without the options „tabela ostaje kraca za
-                tu kolonu"). The count rides on the element because only the
-                render knows it; the sheet turns it into a width (Profile.css). */}
-            <table
-              className="table table--races"
-              style={{ '--race-columns': columns, '--race-full': full }}
-            >
+          /* One markup and two shapes (owner, 03.10.2026): „kad se otvara na
+             mobilnom želim da bude Naziv trke a ispod nje tri podatka, pa onda naziv
+             nove trke pa ispod nje njena tri podatka". A telephone gets a block per
+             race, and from the wide layout up the same elements are a table with the
+             name wider than the figures. `Profile.css` says how, and why it is one
+             markup and not two: a second copy of every figure would be a second copy
+             in the accessibility tree.
+
+             What the table has is read off the table and counted nowhere. The day is
+             a column only on an event that runs over more than one morning, and the
+             way in only for somebody who may report a result, and the sheet asks
+             whether those cells are in the table (`:has`), so each of the two facts
+             has one home, which is the cell. They were a number written beside the
+             headings it counted until 03.10.2026, and the two were measured
+             disagreeing on 23.08.2026: five columns drawn in the width of four, 253px
+             short of the edge.
+
+             The box is a container, `event-races`, because the width of every column
+             is a share of it. */
+          <div className="table-scroll event-races">
+            <table className="table table--races">
               {/* Named, like every other table on the portal. Two tables stand on
                   this screen once anybody has run the event, and a screen reader
                   offered two unnamed ones cannot say which is which.
@@ -117,18 +97,24 @@ function RaceTable({ event }: { event: BtlEvent }) {
               <caption className="visually-hidden">{t('event.races')}</caption>
               <thead>
                 <tr>
-                  {/* The day, drawn only where the event runs over more than one
-                      (owner, 10.08.2026). A column of one repeated date under a
-                      heading that already says the day is a column that says
-                      nothing. */}
                   {/* The name first, because it is what a race is read by since
                       isporuka 121: „u opisu događaja gde su izlistane trke nedostaje
                       naziv trke u prvoj koloni" (owner, 23.08.2026). Every race in
                       the file is named after its event, so this column repeats the
                       heading above it until somebody renames one, which is exactly
                       what the name is for. */}
-                  <th scope="col">{t('event.raceName')}</th>
-                  {overDays && <th scope="col">{t('event.raceDay')}</th>}
+                  <th scope="col" className="event-races__name">
+                    {t('event.raceName')}
+                  </th>
+                  {/* The day, drawn only where the event runs over more than one
+                      (owner, 10.08.2026). A column of one repeated date under a
+                      heading that already says the day is a column that says
+                      nothing. */}
+                  {overDays && (
+                    <th scope="col" className="event-races__day">
+                      {t('event.raceDay')}
+                    </th>
+                  )}
                   {/* „Mera" and not „Dužina" since 30.08.2026, on the owner's word:
                       a race of a length is measured by its length, a timed race by
                       how long it lasts, and a free race by nothing until somebody
@@ -140,44 +126,81 @@ function RaceTable({ event }: { event: BtlEvent }) {
 
                       Only this table. The table of results below is a table of runs
                       that happened, and every one of those has a length, so the word
-                      there stays what it was. */}
-                  <th scope="col">{t('event.measure')}</th>
-                  <th scope="col" className="table__hide-phone">
+                      there stays what it was.
+
+                      The climb and the fall stay on a telephone since 03.10.2026
+                      (they carried `table__hide-phone` before): the owner asked for
+                      three figures under the name. */}
+                  <th scope="col" className="event-races__measure">
+                    {t('event.measure')}
+                  </th>
+                  <th scope="col" className="event-races__ascent">
                     {t('event.ascent')}
                   </th>
-                  <th scope="col" className="table__hide-phone">
+                  <th scope="col" className="event-races__descent">
                     {t('event.descent')}
                   </th>
-                  {options && <th scope="col">{t('event.options')}</th>}
+                  {options && (
+                    <th scope="col" className="event-races__way-in">
+                      {t('event.options')}
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {mine.map((race) => (
+                {mine.map((race) => {
+                  /* What the race is measured by, from the one place that
+                     answers that (`data/raceLabel.ts`): its length, how long
+                     it lasts, or nothing at all.
+
+                     Empty for a free race and not „0,00". The grid of a
+                     competition settled that shape on 31.07.2026: a race
+                     somebody did not run is an empty cell and not a nought,
+                     „jer nula tvrdi da je trčao i osvojio nula". A nought here
+                     says the same untrue thing, that somebody measured this
+                     course and it came to nothing.
+
+                     Two decimals, which is finer than the name of a race
+                     writes. That difference is not decoration: `raceLabel`
+                     parts two races of one name on one morning by the finer
+                     reading and says so, and it says so about this table. */
+                  const measure = raceMeasure(race, locale, 2)
+
+                  return (
                     <tr key={race.id}>
-                      <td>{race.name}</td>
-                      {overDays && <td>{formatShortDate(race.date, locale)}</td>}
-                      {/* What the race is measured by, from the one place that
-                          answers that (`data/raceLabel.ts`): its length, how long
-                          it lasts, or nothing at all.
+                      <td className="event-races__name">{race.name}</td>
+                      {overDays && (
+                        <td className="event-races__day">{formatShortDate(race.date, locale)}</td>
+                      )}
+                      {/* The words over a figure, which is how a figure is told on
+                          a telephone, where the head of the table is not drawn
+                          (`Profile.css`). The same three words as the head, so the
+                          dictionary has nothing new in it; they are not in the
+                          owner's sentence, and are what the head said before it
+                          stopped being drawn there, so that a figure under a name is
+                          not a bare number.
 
-                          Empty for a free race and not „0,00". The grid of a
-                          competition settled that shape on 31.07.2026: a race
-                          somebody did not run is an empty cell and not a nought,
-                          „jer nula tvrdi da je trčao i osvojio nula". A nought here
-                          says the same untrue thing, that somebody measured this
-                          course and it came to nothing.
-
-                          Two decimals, which is finer than the name of a race
-                          writes. That difference is not decoration: `raceLabel`
-                          parts two races of one name on one morning by the finer
-                          reading and says so, and it says so about this table. */}
-                      <td>
-                        {raceMeasure(race, locale, 2)}
+                          Real text and not generated content: it is the only name
+                          the figure has on a telephone, and content a stylesheet
+                          generates is not text of the page (WCAG failure technique
+                          F87). Not over a measure that is not there: a free race has
+                          none, and a word over an empty cell is a label on nothing. */}
+                      <td className="event-races__measure">
+                        {measure !== '' && (
+                          <span className="event-races__label">{t('event.measure')}</span>
+                        )}
+                        {measure}
                       </td>
-                      <td className="table__hide-phone">{formatNumber(race.ascentM, locale)}</td>
-                      <td className="table__hide-phone">{formatNumber(race.descentM, locale)}</td>
+                      <td className="event-races__ascent">
+                        <span className="event-races__label">{t('event.ascent')}</span>
+                        {formatNumber(race.ascentM, locale)}
+                      </td>
+                      <td className="event-races__descent">
+                        <span className="event-races__label">{t('event.descent')}</span>
+                        {formatNumber(race.descentM, locale)}
+                      </td>
                       {options && (
-                        <td>
+                        <td className="event-races__way-in">
                           {canEnter(race) && (
                             /* A link and not a button, like everything else on
                                the portal that leads somewhere. The race rides in
@@ -204,7 +227,8 @@ function RaceTable({ event }: { event: BtlEvent }) {
                         </td>
                       )}
                     </tr>
-                  ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -465,10 +489,16 @@ export function EventDetail() {
                   willing to hand a browser draws nothing, exactly as an event that
                   carries none does: a repaired address is one nobody wrote.
 
-                  The host beside the words, because the words here are the
-                  portal's own and so say nothing about where the press lands, and
-                  because this link leaves the site. Inside the anchor, so it is
-                  read with the link rather than after it. */}
+                  The words and nothing beside them (owner, 03.10.2026: „Nije
+                  potrebno da postoji i ispisan link organizatora, dovoljno je da
+                  postoji linkovan tekst „Strana organizatora"."). Until that day the
+                  host of the address stood under the words, inside the anchor, on
+                  the reasoning that words which are the portal's own say nothing
+                  about where the press lands; for this link that reasoning is
+                  taken off, and the moderator's queue is the one screen that still
+                  draws a host (`styles/outsideLink.css`). `rel` and `target` stay,
+                  and so does the question above: what decides whether there is a
+                  link at all is still `outsideLink`. */}
               {outsideLink(event.link) !== undefined && (
                 <p className="event__where">
                   <a
@@ -477,7 +507,6 @@ export function EventDetail() {
                     target="_blank"
                   >
                     {t('event.organiserPage')}
-                    <span className="outside-host">{outsideHost(event.link)}</span>
                   </a>
                 </p>
               )}

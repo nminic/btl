@@ -238,8 +238,8 @@ export function everyRule(css: string, named: string): CSSStyleRule[] {
  * `unconditionalRules` above deliberately refuses these, because a rule wrapped in
  * `@media print` is a rule that does not apply and a guard over the text of a sheet
  * cannot tell the two apart (ADL A18). Some rules, though, are meant to be
- * conditional: a table that is given equal columns only where every column is drawn
- * says so in a query, and holding it means naming the query it is in.
+ * conditional: a table that is a table only from the wide layout up, and blocks
+ * before it, says so in a query, and holding it means naming the query it is in.
  *
  * The condition is matched as written, so a rule moved into another query fails
  * here rather than being found under a condition nobody asked about.
