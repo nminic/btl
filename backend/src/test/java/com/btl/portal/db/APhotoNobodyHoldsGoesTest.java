@@ -328,6 +328,15 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 				.as("the picture was deleted although the member holds it when the transaction ends")
 				.isTrue();
 		assertThat(pointer(Holder.COMPETITOR, member)).isEqualTo(photo);
+
+		/* AND THE CONTROL: the picture that stood goes when the member lets go too. */
+		emptied(Holder.COMPETITOR, member);
+		TheEndOfTheTransaction.broughtForward(db);
+
+		assertThat(theRowStands(photo))
+				.as("the member let go of the picture and its row is still there, so the triggers"
+						+ " never fired and the statement above that it stood says nothing")
+				.isFalse();
 	}
 
 	/**
@@ -378,6 +387,15 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 
 		assertThat(theRowStands(photo)).as("the row still holds the photo").isTrue();
 		assertThat(pointer(holder, row)).isEqualTo(photo);
+
+		/* AND THE CONTROL: the photo that stood goes when the row really lets go. */
+		emptied(holder, row);
+		TheEndOfTheTransaction.broughtForward(db);
+
+		assertThat(theRowStands(photo))
+				.as("the row let go of the photo and it is still there, so the trigger never fired"
+						+ " and the statement above that it stood says nothing")
+				.isFalse();
 	}
 
 	/**
@@ -398,6 +416,14 @@ class APhotoNobodyHoldsGoesTest extends DatabaseTest {
 		TheEndOfTheTransaction.broughtForward(db);
 
 		assertThat(theRowStands(bystander)).as("a photo somebody holds").isTrue();
+
+		/* AND THE CONTROL: the triggers are live, and the bystander goes when its holder does. */
+		db.sql("delete from competitor where photo_id = ?").param(bystander).update();
+		TheEndOfTheTransaction.broughtForward(db);
+
+		assertThat(theRowStands(bystander))
+				.as("its holder was deleted and the photo is still there, so the triggers never fired")
+				.isFalse();
 	}
 
 	/**

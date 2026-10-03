@@ -705,6 +705,16 @@ class APictureGoesWithItsLastHolderTest {
 			assertThat(standingPicturesOf(ANOTHER))
 					.as("the member lost the portrait he had just been given")
 					.containsExactly(picture);
+
+			/* AND THE CONTROL, in the same body: the picture that stood while the member held it
+			   goes the moment he lets go. Without it „it stood" would be true of a database with
+			   no trigger at all, which deletes nothing. */
+			db.sql("update competitor set photo_id = null where id = ?").param(another).update();
+
+			assertThat(theRowStands(picture))
+					.as("the member let go of the picture and its row is still there, so the trigger"
+							+ " never fired and the statement above that it stood says nothing")
+					.isFalse();
 		}
 		finally {
 			pool.shutdownNow();
