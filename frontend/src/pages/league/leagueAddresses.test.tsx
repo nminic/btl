@@ -79,9 +79,10 @@ beforeEach(() => {
 afterEach(() => {
   vi.mocked(console.error).mockRestore()
 
-  /* `soft`, because a hook that throws stops the hooks after it, and the one after it is the clean-up
-     of the screen: the next case then drew into a page that still held the last one, and ran out of
-     its twenty seconds (measured with the mutation that takes the key off the link). */
+  /* `soft`, because with a plain `expect` here the case after a failing one ran out of its twenty
+     seconds: measured with the mutation that takes the key off the link, 24 seconds and two failures
+     against 4 seconds and one. The likely reason, not measured, is that a hook that throws stops the
+     hooks after it, and the clean-up of the screen is one of them. */
   expect
     .soft(
       SAID_BY_REACT.filter(([first]) => String(first).includes('key')),
