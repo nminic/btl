@@ -544,10 +544,11 @@ describe('an event whose races wait', () => {
     const before = watching.asked.length
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await waitFor(() => {
-      expect(writtenSince(before).length).toBeGreaterThanOrEqual(4)
-    })
-    await screen.findByText(sr.admin.eventSavedRacesRefused)
+    /* The press is over when the list names the race the route kept, which is said only at its
+       end: the list stood before it with the refused row alone. Waited for by that and not by the
+       number of requests, so a press that stops early fails on what it wrote and not by running
+       out of time for requests it was never going to send. */
+    await screen.findByText(/nije obrisana/)
 
     /* The refusal of the second deletion stopped nothing: the third was taken away after it and
        the row was written after both, in the order the press sends them. */
