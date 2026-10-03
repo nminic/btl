@@ -559,13 +559,16 @@ export function AdminEvents() {
                   ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
                   : new Set<string>()
 
-              /* THE TABLE IS HELD AS THE ROWS THIS PRESS WALKS, before anything is sent. A refusal
-                 is found again by the row's OBJECT (`EventRaces.tsx`, `NotSaved`), and `current`
-                 is worked out afresh on every drawing until `held` holds it: a copy opens on rows
-                 nobody has touched (`copiedRows`), and an event that stands opens on rows read off
-                 its races, and both are new objects at every drawing. Where no race of the press
-                 was accepted, nothing below would ever hold them, and the list of what was not
-                 saved would look for objects no drawing has any more and name nothing. */
+              /* THE TABLE IS HELD AS THE ROWS THIS PRESS WALKS, before anything is sent. Two things
+                 find a row again by its OBJECT afterwards: a refusal (`EventRaces.tsx`, `NotSaved`),
+                 and a race this press made, whose identity is written back onto its row below.
+                 `current` is worked out afresh on every drawing until `held` holds it: a copy opens
+                 on rows nobody has touched (`copiedRows`), and an event that stands opens on rows
+                 read off its races, and both are new objects at every drawing. Held here, the
+                 objects this loop walks are the ones every later drawing has. Not held, the list
+                 of what was not saved named nothing where no race was accepted - measured by a
+                 mutation - and the row of a race a copy's first press made never learned its
+                 identity, which a fallback inside the loop used to answer for that one case. */
               setHeld((before) => (before.of === under ? before : { of: under, rows: current }))
 
               for (const race of was) {
@@ -665,29 +668,25 @@ export function AdminEvents() {
                        found by IDENTITY is simply absent once that happens, and `map`
                        leaves every row exactly as it was.
 
-                       AND WHEN `held` HAS NOT CAUGHT UP TO `current` AT ALL, which is what
-                       a copy meets on its very first press. A copy opens this table
-                       already holding new rows nobody has touched (`copiedRows`), so
-                       `held` is still what this screen mounted with - `{ of: '', rows: [] }`
-                       - and `before.of !== under`. Matched against `before.rows` there,
-                       `row` is an object no array on screen holds: the map ran over an
-                       EMPTY array, the identity this race was just given never reached
-                       anywhere, and a retry after a later row's refusal read the row's own
-                       key as still blank and DELETEd the very race this press had just made
-                       (nezavisna recenzija, 28.09.2026, visok nalaz). `row` is an element of
-                       `current` whichever way `held` stands, because that is the array this
-                       loop is walking - so falling back to it is what lets the first write
-                       of a visit find itself, and `of` is written down in the same update so
-                       every row after this one in the same press, and a retry after it,
-                       agree on which table they are correcting. */
-                    setHeld((before) => {
-                      const rows = before.of === under ? before.rows : current
-
-                      return {
-                        of: under,
-                        rows: rows.map((each) => (each === row ? { ...each, id: String(made) } : each)),
-                      }
-                    })
+                       AND `held` ALREADY HOLDS THE ROWS THIS LOOP WALKS, because the press
+                       held them before it sent anything (the top of this function). Until
+                       03.10.2026 it was held HERE, by a fallback to `current` where `held` had
+                       not caught up: a copy opens on rows nobody has touched (`copiedRows`),
+                       so on its first press `held` was still `{ of: '', rows: [] }`, the map
+                       ran over an empty array, the identity this race was given reached
+                       nothing, and a retry after a later row's refusal DELETEd the race this
+                       press had just made (nezavisna recenzija, 28.09.2026, visok nalaz).
+                       Held at the top for every press, that fallback was a branch nothing
+                       could take any more - the coverage floor named it - and it is gone
+                       rather than kept beside the hold that replaced it. So nothing here
+                       writes `of`: where `held` has moved on to another table, or to none,
+                       this row is simply not in it. */
+                    setHeld((before) => ({
+                      ...before,
+                      rows: before.rows.map((each) =>
+                        each === row ? { ...each, id: String(made) } : each,
+                      ),
+                    }))
                   }
                 } else {
                   setWritten((before) => ({
