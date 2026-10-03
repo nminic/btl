@@ -15,8 +15,13 @@ import { ruleFor, sheetsOf } from '../test/stylesheet'
  * without the last case below nothing would notice, because what would be lost is
  * a size and jsdom measures none (ADL A18).
  *
+ * The event's page stopped drawing one on 03.10.2026, on the owner's word, so the
+ * rule has one screen again. It stays where the move put it: moving it back is a
+ * change nobody asked for, and the sheet being reached by every screen that writes
+ * its name is exactly what this file exists to hold, however many that is.
+ *
  * Nothing here is about layout. What is asked is that the rule exists and applies,
- * that both screens that write its name really reach the sheet that defines it,
+ * that every screen that writes its name really reaches the sheet that defines it,
  * and that nothing is left on the name it used to have.
  */
 const SRC = join(process.cwd(), 'src')
@@ -77,8 +82,15 @@ describe('the host beside a link that leaves the portal', () => {
     }
   })
 
-  it('is written by both screens that draw such a link, and by no other name', () => {
-    expect(drawing()).toEqual(['src/pages/EventDetail.tsx', 'src/pages/admin/ReviewQueue.tsx'])
+  it('is written by the one screen that draws such a link, and by no other name', () => {
+    /* One since 03.10.2026. The event's page drew a host beside the organiser's link from
+       27.08.2026, and the owner took it off that day: „Nije potrebno da postoji i ispisan
+       link organizatora, dovoljno je da postoji linkovan tekst „Strana organizatora"." The
+       list is exact and not „contains the queue", so a host drawn there again, under this
+       class or moved into another span of the same anchor, is a screen this file has to be
+       told about. That the anchor itself carries nothing beside its words is asked of the
+       page (`pages/details.test.tsx`). */
+    expect(drawing()).toEqual(['src/pages/admin/ReviewQueue.tsx'])
   })
 
   it('leaves nothing behind on the name it had before the move', () => {

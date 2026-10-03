@@ -1,71 +1,131 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { must } from '../test/at'
-import { ruleFor, ruleInMedia, rulesInMedia, unconditionalRules } from '../test/stylesheet'
+import { LOCALES, type Locale } from '../i18n/config'
+import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
+import { at, must } from '../test/at'
+import {
+  everyRule,
+  ruleAt,
+  ruleFor,
+  rulesInContainer,
+  rulesInMedia,
+  unconditionalRules,
+  unremarked,
+} from '../test/stylesheet'
 
 /**
- * Two arrangements that no rendered test can see, both found by an independent
- * round on 23.08.2026 and both measured in Chrome rather than argued.
+ * Arrangements that no rendered test can see, each found by an independent round and each
+ * measured in Chrome rather than argued: the table of races on an event, the head of a
+ * competitor, and the words an organiser writes under the name of an event.
  *
- * jsdom lays nothing out and applies no stylesheet (ADL A18), so what is asked here
- * is that the rules are written and declare what they are meant to declare. Whether
- * they win is a question for a browser, and the numbers each comment carries are
- * what was measured there.
+ * jsdom lays nothing out and applies no stylesheet (ADL A18), so what is asked here is that the
+ * rules are written and declare what they are meant to declare. Whether they win is a question
+ * for a browser, and the numbers each comment carries are what was measured there.
  */
 const profile = readFileSync(join(process.cwd(), 'src/pages/Profile.css'), 'utf-8')
+const shared = readFileSync(join(process.cwd(), 'src/styles/table.css'), 'utf-8')
 
-/**
- * The two numbers the width of the race table is made of, read out of the rule
- * rather than written here a second time.
- *
- * Anchored at both ends on purpose. Held as „the value contains `min(100%` and
- * contains `7.5rem`" for one day, and a round put back exactly the fault the rule
- * was written for: `min(100%, calc(var(--race-columns) * 7.5rem))` carries both of
- * those strings, turns the floor into a second ceiling, and left this file green
- * while the button „Unesi rezultat" stood 70,78px outside its cell at 200% text.
- * A rule of any other shape does not match here, and the failure says so.
- */
-const SHAPE =
-  /^max\( min\(100%, calc\(var\(--race-columns\) \* 100% \/ var\(--race-full\)\)\), calc\(var\(--race-columns\) \* ([\d.]+)rem\) \)$/
+/** Spaces and line breaks of a value or a selector, as one space: a sheet is laid out by whoever wrote it. */
+const squash = (text: string) => text.replace(/\s+/g, ' ').trim()
 
-/**
- * The share of the box one column takes while the ceiling wins, and the width a
- * column may never fall under, in `rem`.
- *
- * The share is no longer a number in the sheet. It was a fifth written by hand, and
- * a round measured what that cost once the count could reach six: on an event over
- * two mornings the visitor's five columns and the member's six were both the whole
- * box, so nothing stayed where it was and the first column moved by up to 35,59px.
- * How many columns the fullest reading has is now worked out beside the count itself
- * (`EventDetail.tsx`), so what is read here is the **relationship**: one column is
- * one part of however many parts there are.
- */
-function knobs(): { share: number; floor: number } {
-  /* In the query that says every column is drawn, and named as such: under 700px
-     the climb and the descent are hidden (styles/table.css), so a width worked out
-     from the count of columns would describe a table that is not there. */
-  const races = ruleInMedia(profile, '(min-width: 700px)', '.table.table--races', 'Profile.css')
-  const written = races.getPropertyValue('inline-size').replace(/\s+/g, ' ').trim()
-  const read = SHAPE.exec(written)
+/** The one query the table's wide shape is written behind: the wide layout (`styles/tokens.css`, 820px). */
+const WIDE = '(min-width: 51.25em)'
 
-  expect(read, `the width reads \`${written}\`, which is not a shape this guard knows`).not.toBeNull()
+/** Every rule of the sheet that is about the table of races, wherever it is written. */
+const aboutTheTable = (rule: CSSStyleRule) => /event-races|table--races/.test(rule.selectorText)
 
-  const [, floor] = must(read, 'the width of the race table')
+/** The rule of the wide shape written for exactly this selector, and a failure naming it where there is
+ *  none or more than one. */
+function wide(selector: string): CSSStyleDeclaration {
+  const found = rulesInMedia(profile, WIDE, 'Profile.css').filter((rule) => squash(rule.selectorText) === selector)
 
-  /* One part of however many the fullest reading has. Six is what `EventDetail.tsx`
-     hands over for an event that runs over more than one morning, which is the widest
-     this table ever gets. */
-  return { share: 100 / 6, floor: Number(floor) }
+  expect(found.length, `${selector} is not one rule of ${WIDE} in Profile.css`).toBe(1)
+
+  return must(found[0], `the rule ${selector}`).style
 }
 
-/** What that rule works out to, in px, for a box of `box` px at a root of `root`. */
-function widthOf(
-  { share, floor }: { share: number; floor: number },
-  columns: number,
-  box: number,
-  root: number,
-): number {
-  return Math.max(Math.min(box, (columns * share * box) / 100), columns * floor * root)
+/** The one unconditional rule for this selector, spaces aside. */
+function plain(selector: string): CSSStyleDeclaration {
+  const found = unconditionalRules(profile, 'Profile.css').filter((rule) => squash(rule.selectorText) === selector)
+
+  expect(found.length, `${selector} is not one unconditional rule of Profile.css`).toBe(1)
+
+  return must(found[0], `the rule ${selector}`).style
+}
+
+const THE_TABLE = '.table.table--races'
+const NAME = '.table--races .event-races__name'
+const NAME_WITH_DAY = '.table--races:has(.event-races__day) .event-races__name'
+const DAY = '.table--races .event-races__day'
+const FIGURES =
+  '.table--races .event-races__measure, .table--races .event-races__ascent, .table--races .event-races__descent'
+const WAY_IN = '.table--races .event-races__way-in'
+
+/* The widths are read out of the sheet in the three shapes it writes them, and a width of any other
+   shape does not match, so the failure says so instead of the arithmetic going on with a number read
+   wrong. Anchored at both ends on purpose: held as „the value contains `max(`" for a day on this table's
+   predecessor, a round put back a rule of another shape that carried the string and was a second ceiling
+   where a floor had been meant, and left the file green. */
+
+/** A number of twelfths of the box: `calc(3 * var(--event-races-twelfth))` is 3. */
+function share(written: string, what: string): number {
+  const read = /^calc\((\d+) \* var\(--event-races-twelfth\)\)$/.exec(squash(written))
+
+  expect(read, `${what} reads \`${written}\`, which is not a number of twelfths of the box`).not.toBeNull()
+
+  return Number(must(read?.[1], `the twelfths of ${what}`))
+}
+
+/** A twelfth of the box and never less than a floor in `rem`: the floor. */
+function floor(written: string, what: string): number {
+  const read = /^max\(var\(--event-races-twelfth\), ([\d.]+)rem\)$/.exec(squash(written))
+
+  expect(read, `${what} reads \`${written}\`, which is not a twelfth with a floor in rem`).not.toBeNull()
+
+  return Number(must(read?.[1], `the floor of ${what}`))
+}
+
+/** A width in `rem`. */
+function rem(written: string, what: string): number {
+  const read = /^([\d.]+)rem$/.exec(squash(written))
+
+  expect(read, `${what} reads \`${written}\`, which is not a width in rem`).not.toBeNull()
+
+  return Number(must(read?.[1], `the rem of ${what}`))
+}
+
+type Reading = { day: boolean; wayIn: boolean }
+
+/**
+ * Every number the wide shape is made of, read out of the sheet once. Read once and not at every sum:
+ * each reading of a rule is a parse of the whole sheet, and the sweep below asks four thousand times.
+ */
+function sheet() {
+  return {
+    name: share(wide(NAME).getPropertyValue('inline-size'), 'the name'),
+    nameWithDay: share(wide(NAME_WITH_DAY).getPropertyValue('inline-size'), 'the name beside a day'),
+    dayFloor: floor(wide(DAY).getPropertyValue('inline-size'), 'the day'),
+    figureFloor: floor(wide(FIGURES).getPropertyValue('inline-size'), 'a figure'),
+    wayIn: rem(wide(WAY_IN).getPropertyValue('inline-size'), 'the way in'),
+    table: share(wide(THE_TABLE).getPropertyValue('inline-size'), 'the table'),
+  }
+}
+
+/**
+ * What the sheet makes of a table of this reading in a box of `box` px at a root of `root` px, worked
+ * out the way a fixed table works it out: every column is its own width, and the table is as wide as
+ * the greater of what it asks for and what its columns add up to.
+ */
+function columns(made: ReturnType<typeof sheet>, { day, wayIn }: Reading, box: number, root: number) {
+  const twelfth = box / 12
+  const name = (day ? made.nameWithDay : made.name) * twelfth
+  const dayWidth = day ? Math.max(twelfth, made.dayFloor * root) : 0
+  const figure = Math.max(twelfth, made.figureFloor * root)
+  const way = wayIn ? made.wayIn * root : 0
+  const sum = name + dayWidth + 3 * figure + way
+  const half = made.table * twelfth
+
+  return { name, day: dayWidth, figure, way, sum, half, table: Math.max(half, sum) }
 }
 
 /**
@@ -97,88 +157,549 @@ function shellBox(): { padding: number; ceiling: number } {
   return { padding: Number(step[1]) * 16 * 2, ceiling: Number(ceiling[1]) }
 }
 
+/** Every reading the render can produce: the day is a column on an event of more than one morning, the way in
+ *  for somebody who may report a result. */
+const READINGS: Reading[] = [
+  { day: false, wayIn: false },
+  { day: false, wayIn: true },
+  { day: true, wayIn: false },
+  { day: true, wayIn: true },
+]
+
+/** A value written as a step of the scale, `var(--space-8)`, in `rem`. */
+function step(written: string, what: string): number {
+  const named = /^var\((--[\w-]+)\)$/.exec(squash(written))
+
+  expect(named, `${what} reads \`${written}\`, which is not a step of the scale`).not.toBeNull()
+
+  const token = must(named?.[1], `the name of the step of ${what}`)
+  const found = new RegExp(`${token}:\\s*([\\d.]+)rem`).exec(
+    readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8'),
+  )
+
+  return Number(must(found?.[1], `the token ${token}`))
+}
+
+/**
+ * What a third of a block holds, each kind of it as the widest there is, in px as one line of text in the cell that
+ * draws it. Measured in Chrome 154 on Windows, Segoe UI, a 16px root; `rem` is that over 16 and holds at every text
+ * size, because all of it is `rem`.
+ *
+ * **A figure and a date are both held WHOLE.** A measure parted from its unit by a break at the space is a cut too, so
+ * the number goes with its unit; and a date that breaks beside the name is a date on two lines, at its spaces on /sr
+ * („25. 11." over „2017.") and in the middle of its digits on /en, which has no space to break at. Where it would, the
+ * owner has the day go under the name (03.10.2026, the review of PR 482), so the whole date is what has to fit in a
+ * third, and holding it by its widest word („2022.") was holding what a date breaks into and not the date. A number or
+ * a date is read by its SHAPE, each digit a nought, because the digits are tabular (`index.css`): „12/31/2022" and
+ * „25. 11. 2017." are two shapes and each stands for every date of its own. A label is measured as it is drawn: upper
+ * case, bold, 0,7rem and letter-spaced.
+ *
+ * **This list has its floor in the case below it**, which asks the dictionary and the data what a third holds and
+ * refuses a thing that is not here, and a measurement of a thing nobody holds.
+ */
+const MEASURED: Record<string, number> = {
+  /* The labels, in both languages. */
+  MERA: 34.11,
+  USPON: 41.41,
+  SPUST: 36.91,
+  MEASURE: 56.3,
+  ASCENT: 45.88,
+  DESCENT: 52.78,
+  /* A distance of a hundred kilometres or more with its unit, and a climb or a fall of a thousand metres or more. */
+  '000,00 km': 72.72,
+  '000.00 km': 72.72,
+  '0.000': 37.97,
+  '0,000': 37.97,
+  /* The widest date of each language, whole: /en has no space to break at, and /sr has three of them and is the wider.
+     Measured in the cell that draws the day, and „31. 12. 2022." is as wide (the floors of the table shape hold it at
+     88,18 from Chrome 152, below). */
+  '00/00/0000': 81.47,
+  '00. 00. 0000.': 88.17,
+}
+
+type Race = { date: string; distanceKm: number; ascentM: number; descentM: number }
+
+const races: Race[] = JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'))
+
+/** The shape of a text: every digit a nought. */
+const shapeOf = (text: string) => text.replace(/\d/g, '0')
+
+/** The longest of these, as its shape. Within one kind a longer one is a wider one: its characters are the digits and
+ *  the marks the format puts between them, and the digits are tabular. */
+const widest = (texts: string[]) => shapeOf(texts.reduce((sofar, one) => (one.length > sofar.length ? one : sofar)))
+
+/**
+ * What a third of a block holds in this language. The figures are in every race: the three words over them as they
+ * are drawn, and the widest distance and the widest climb or fall that the races of the file write. The days are in
+ * the events that run more than one morning: the widest date, whole.
+ */
+function held(locale: Locale): { figures: string[]; days: string[] } {
+  const dictionary: { event: Record<string, string> } = JSON.parse(
+    readFileSync(join(process.cwd(), 'src', 'i18n', `${locale}.json`), 'utf-8'),
+  )
+
+  return {
+    figures: [
+      ...['measure', 'ascent', 'descent'].map((key) =>
+        must(dictionary.event[key], `event.${key} in ${locale}`).toUpperCase(),
+      ),
+      widest(races.map((one) => formatDistance(one.distanceKm, locale, 2))),
+      widest(races.flatMap((one) => [formatNumber(one.ascentM, locale), formatNumber(one.descentM, locale)])),
+    ],
+    days: [widest(races.map((one) => formatShortDate(one.date, locale)))],
+  }
+}
+
+const ROW = '.table--races tbody tr'
+const ROW_WITH_DAY = '.table--races:has(.event-races__day) tbody tr'
+
+type NarrowBox = { condition: string; limit: number; rules: CSSStyleRule[] }
+
+/**
+ * The two container queries the sheet writes, each with its condition as written, its limit in `rem` and the rules in
+ * it: the box of a race block too narrow to hold three figures in a row, and the wider one that an event with a day
+ * needs (`Profile.css`, under the rule of the label). Told apart by what they write and not by the order they stand
+ * in, and a sheet that writes more or fewer than these two fails here.
+ */
+function narrowBoxes(): { figures: NarrowBox; days: NarrowBox } {
+  const conditions = [...unremarked(profile).matchAll(/@container\s*([^{]*)\{/g)].map((one) =>
+    squash(must(one[1], 'the condition of a container query')),
+  )
+
+  expect(conditions, 'the sheet writes no container query, or not the two there are meant to be').toHaveLength(2)
+
+  const boxes = conditions.map((condition) => {
+    const reading = /^\(max-width: ([\d.]+)rem\)$/.exec(condition)
+
+    expect(reading, `a query reads \`${condition}\`, which is not a width of the box in rem`).not.toBeNull()
+
+    return {
+      condition,
+      limit: Number(must(reading?.[1], 'the width of a query')),
+      rules: rulesInContainer(profile, condition, 'Profile.css'),
+    }
+  })
+  const writes = (box: NarrowBox, selector: string) => box.rules.some((rule) => squash(rule.selectorText) === selector)
+
+  return {
+    figures: must(
+      boxes.find((box) => writes(box, ROW)),
+      'the query of the figures',
+    ),
+    days: must(
+      boxes.find((box) => writes(box, ROW_WITH_DAY)),
+      'the query of the events with a day',
+    ),
+  }
+}
+
 describe('the table of races on an event', () => {
-  it('is laid out in columns of one width', () => {
+  it('is drawn as blocks first and as a table from the wide layout up, behind one query', () => {
+    /* Owner, 03.10.2026: a block per race on a telephone, and from the wide layout up a table with
+       the name wider than the figures. The phone shape is the plain one and the table comes back
+       behind a query, which is what „mobile-first" means here and how the rights matrix does it
+       (`pages/admin/Rights.css`).
+
+       Asked two ways, because either alone is satisfied by a table that is the other way round:
+       every rule about this table is written plainly or behind that one query, so none stands behind
+       a `max-width` one, which is a second shape written against the first; and the plain ones are
+       the blocks. The width is the one the portal calls the wide layout (`styles/tokens.css`), which
+       the owner's „desktop" is taken to be.
+
+       **There are two other queries, and they are not a second shape.** The telephone shape is refined
+       where its box cannot hold three figures in a row, and where an event with a day cannot hold a date
+       beside its name (owner, 03.10.2026, the case under this one), and a refinement of the blocks is not
+       the table the way a `max-width` query would be: every rule in them is counted here, so a third
+       query fails this count instead of being waved through. */
+    const everything = everyRule(profile, 'Profile.css').filter(aboutTheTable)
+    const written = unconditionalRules(profile, 'Profile.css').filter(aboutTheTable)
+    const behind = rulesInMedia(profile, WIDE, 'Profile.css').filter(aboutTheTable)
+    const narrow = Object.values(narrowBoxes())
+      .flatMap((box) => box.rules)
+      .filter(aboutTheTable)
+
+    expect(written.length, 'nothing about the table is written plainly').toBeGreaterThan(0)
+    expect(behind.length, 'nothing about the table is written behind the wide layout').toBeGreaterThan(0)
+    expect(narrow.length, 'nothing about the table is written behind the narrow box').toBeGreaterThan(0)
     expect(
-      ruleInMedia(profile, '(min-width: 700px)', '.table.table--races', 'Profile.css')
-        .getPropertyValue('table-layout'),
-    ).toBe('fixed')
+      everything.length,
+      'a rule about the table stands behind a query that is neither the wide layout nor the narrow box',
+    ).toBe(written.length + behind.length + narrow.length)
+
+    expect(plain('.table--races').getPropertyValue('display')).toBe('block')
+    expect(plain('.table--races thead').getPropertyValue('display'), 'the head is drawn on a telephone').toBe('none')
+    expect(plain('.table--races tbody').getPropertyValue('display')).toBe('block')
+    expect(plain('.table--races tbody tr').getPropertyValue('display')).toBe('grid')
+    expect(plain('.table.table--races td').getPropertyValue('display')).toBe('block')
+
+    /* And everything it changed comes back, or the table shape is the blocks with columns written over
+       them. `fixed` is what makes the widths widths: without it a table is as wide as its content and
+       every number below is a suggestion. */
+    expect(wide(THE_TABLE).getPropertyValue('display')).toBe('table')
+    expect(wide(THE_TABLE).getPropertyValue('table-layout')).toBe('fixed')
+    expect(wide('.table--races thead').getPropertyValue('display')).toBe('table-header-group')
+    expect(wide('.table--races tbody').getPropertyValue('display')).toBe('table-row-group')
+    expect(wide('.table--races tbody tr').getPropertyValue('display')).toBe('table-row')
+    expect(wide('.table.table--races td').getPropertyValue('display')).toBe('table-cell')
+
+    /* And no width is written for the blocks: a track of the row is what sizes a figure there, and a
+       width on a cell is a width the table shape has to take off again. */
+    expect(
+      written.filter((rule) => rule.style.getPropertyValue('inline-size') !== '').map((rule) => squash(rule.selectorText)),
+      'a block is given a width of its own',
+    ).toEqual([])
   })
 
-  it('gives a column the same width whether or not the way in is drawn', () => {
-    /* Owner, 23.08.2026: „tabela ostaje kraca za tu kolonu, pa se prethodne cetiri
-       zavrsavaju gde i kad ih ima 5". A column takes one part of however many parts
-       the fullest reading of that event has, so the table simply stops short of the
-       box when a column is missing rather than spreading the rest over it.
-
-       Asked of both readings the portal can draw. An event of one morning goes from
-       four to five, and one of more than one from five to six; a round measured that
-       asking only about the first hides the second, because a share written as one
-       fifth is right for the one and wrong for the other, and on the two-morning
-       event the first column moved by up to 35,59px. */
-    const read = knobs()
-
-    /* To within a rounding step, because a sixth of a thousand is not a number that
-       ends: what is asked is that the width per column is the same, not that two
-       floating point sums are the same bits. */
-    expect(widthOf(read, 5, 1000, 16) / 5, 'a column of five is not a column of six').toBeCloseTo(
-      widthOf(read, 6, 1000, 16) / 6,
-      9,
+  it('puts the name over the row, the day beside it and the three figures in a row under them', () => {
+    /* „Na mobilnom u prvom redu naziv i datum, u drugom ova tri podatka. Dugme u redu pored na
+       Desktopu, a ispod podataka svake trke na mobilnom." Three tracks of one width: the name takes
+       all of them, or two where there is a day, and the day takes the third. The figures follow in
+       the order they are read, a track each, and the way in has the row after them to itself. That is
+       the plain rule and so the ordinary text size; where the box cannot hold three of the widest
+       thing a third holds it is one column, which the case under this one holds. */
+    expect(squash(plain('.table--races tbody tr').getPropertyValue('grid-template-columns'))).toBe(
+      'repeat(3, minmax(0, 1fr))',
     )
-    expect(widthOf(read, 4, 1000, 16) / 4).toBeCloseTo(widthOf(read, 5, 1000, 16) / 5, 9)
-    /* And the fullest reading fills the box exactly: six parts of six. */
-    expect(widthOf(read, 6, 1000, 16), 'the fullest table does not fill its box').toBe(1000)
+    expect(squash(plain(NAME).getPropertyValue('grid-column'))).toBe('1 / -1')
+    expect(squash(plain(NAME_WITH_DAY).getPropertyValue('grid-column'))).toBe('1 / span 2')
+    expect(squash(plain('.table--races .event-races__day').getPropertyValue('grid-column'))).toBe('3')
+    expect(squash(plain(WAY_IN).getPropertyValue('grid-column'))).toBe('1 / -1')
+
+    /* Nothing is placed out of the order it is read in, which is what a keyboard and a screen reader
+       follow (WCAG 2.2 SC 1.3.2 and 2.4.3): no `order`, no row of its own, no areas, and no `dense`
+       flow, which puts a later cell into an earlier hole. */
+    const reordering = ['order', 'grid-row', 'grid-area', 'grid-template-areas', 'grid-auto-flow']
+    const moved = everyRule(profile, 'Profile.css')
+      .filter(aboutTheTable)
+      .filter((rule) => reordering.some((property) => rule.style.getPropertyValue(property) !== ''))
+      .map((rule) => squash(rule.selectorText))
+
+    expect(moved, 'a cell is drawn out of the order it is read in').toEqual([])
+
+    /* An empty cell costs nothing. A race that has not been run has an empty cell for the way in, and an
+       empty cell has to be a row of no height: so the distance between the rows of a block is a margin on
+       what is in them (the figures, and the way in where it has a button) and never a gap of the row,
+       which is charged for a row with nothing in it all the same. */
+    const row = plain('.table--races tbody tr')
+
+    expect(row.getPropertyValue('row-gap'), 'the rows of a block are a gap apart').toBe('')
+    expect(row.getPropertyValue('gap'), 'the rows of a block are a gap apart').toBe('')
+    expect(
+      plain('.table--races .event-races__way-in:not(:empty)').getPropertyValue('margin-block-start'),
+      'a way in with a button stands no distance from the figures',
+    ).not.toBe('')
+    expect(
+      plain(WAY_IN).getPropertyValue('margin-block-start'),
+      'an empty way in is given a distance, which is a row of its own',
+    ).toBe('')
+  })
+
+  it('is one column where a third of its box cannot hold the widest thing a third holds, and three tracks everywhere else', () => {
+    /* Owner, 03.10.2026, chosen among the ways he was offered and with the assistant's recommendation (PDL,
+       „Izmene posle testiranja (03.10.2026, vlasnik)", point 4, and „Odgovori vlasnika na pitanja iz prepisa i
+       iz recenzija (03.10.2026, uveče)", the item on the table of races at an enlarged text): where the three
+       figures do not fit in a row on a telephone at an enlarged text they go one under another, and where the
+       day of an event of more than one morning would break beside the name it goes under it; at the ordinary
+       size they stay in the second row. What was measured, and why the numbers are what they are, is under the
+       queries in `Profile.css`. Held here: that the two queries are there, that they write where the parts
+       stand and nothing else, and that each number is the arithmetic the measurements give. The floor of each
+       is the widest thing a third holds in the boxes it covers, the date of the second whole, and the ceiling of
+       both is the ordinary text size on the narrowest screen the portal promises, 360px, which has to stay
+       three tracks.
+
+       Worked out and not rendered, because jsdom lays nothing out (ADL A18), against widths measured in
+       Chrome (`MEASURED`, and the case under this one for its floor). The box is asked in `rem` and not in
+       `px`: the words grow with the text and the box does not, so a width in `px` is right at one size of text
+       and wrong at every other. The circle of the standing is in `px` on purpose, since that one is about
+       room (`pages/Rankings.css`). */
+    const { figures, days } = narrowBoxes()
+    const written = (box: NarrowBox) => new Map(box.rules.map((rule) => [squash(rule.selectorText), rule.style]))
+    const ofTheFigures = written(figures)
+    const ofTheDays = written(days)
+
+    /* What they write: where the parts stand and nothing else, so that nothing is taken off the screen and
+       nothing is reordered. The first writes the row and nothing more. The one track is allowed to be narrower
+       than its content, which is what `minmax(0, …)` says, or a word longer than the row stretches the track
+       and slides the box. */
+    const allowed = ['grid-template-columns', 'grid-column', 'margin-block-start']
+
+    expect(
+      [...figures.rules, ...days.rules].flatMap((rule) => [...rule.style]).filter((one) => !allowed.includes(one)),
+      'a query writes more than where the parts stand',
+    ).toEqual([])
+    expect([...ofTheFigures.keys()], 'the query of the figures writes more than the row').toEqual([ROW])
+    expect(
+      squash(must(ofTheFigures.get(ROW), 'the rule of the row').getPropertyValue('grid-template-columns')),
+      'the row of every race is not one track that may shrink',
+    ).toBe('minmax(0, 1fr)')
+    expect(
+      squash(must(ofTheDays.get(ROW_WITH_DAY), 'the rule of the row of an event with a day').getPropertyValue('grid-template-columns')),
+      'the row of an event with a day is not one track that may shrink',
+    ).toBe('minmax(0, 1fr)')
+
+    /* Everything the plain sheet places by a track number goes back to „the whole row", derived from the
+       sheet and not listed here: a track number past the last track is a track that is made. It is the query
+       of the events with a day that says so, because only they have a day, and it has to cover every box the
+       first one does, or a row of one track meets a day placed in the third. */
+    const placed = unconditionalRules(profile, 'Profile.css')
+      .filter(aboutTheTable)
+      .filter((rule) => !['', '1 / -1'].includes(squash(rule.style.getPropertyValue('grid-column'))))
+      .map((rule) => squash(rule.selectorText))
+
+    expect(placed.length, 'nothing is placed by a track number, so there is nothing to give back').toBeGreaterThan(0)
+
+    for (const selector of placed) {
+      expect(
+        squash(must(ofTheDays.get(selector), `a rule giving ${selector} the whole row`).getPropertyValue('grid-column')),
+        `${selector} is not given the whole row`,
+      ).toBe('1 / -1')
+    }
+
+    expect(
+      days.limit,
+      'the query of the events with a day stops before the query of the figures, which would leave a day placed in a third track that is not there',
+    ).toBeGreaterThanOrEqual(figures.limit)
+
+    /* And the queries are written AFTER the rules they give back. They weigh the same, so what decides is
+       which comes last in the sheet, and a query moved above them is one that does nothing, which no rule
+       read by the parser can show: the parser answers what a sheet says and not in what order a browser reads it. */
+    const queryAt = unremarked(profile).indexOf('@container')
+
+    for (const selector of [ROW, ...placed]) {
+      const plainAt = ruleAt(profile, selector)
+
+      expect(plainAt, `${selector} is not written plainly`).toBeGreaterThan(-1)
+      expect(plainAt, `a query is written above ${selector}, which then wins`).toBeLessThan(queryAt)
+    }
+
+    /* A third of the box where a query stops applying, which is the narrowest a third is that is not one
+       column: the box less the room a row keeps, which is its padding either side and the two gaps between
+       three tracks, all of them steps of the scale and so `rem`, read from the row and not written here. */
+    const row = plain(ROW)
+    const room =
+      2 * step(at(squash(row.getPropertyValue('padding')).split(' '), 1), 'the padding of a block') +
+      2 * step(row.getPropertyValue('column-gap'), 'the gap of a block')
+    const need = (things: string[]) => Math.max(...things.map((one) => must(MEASURED[one], `a measurement of ${one}`))) / 16
+    const everywhere = LOCALES.map(held)
+    const widestFigure = need(everywhere.flatMap((one) => one.figures))
+    const widestWithADay = need(everywhere.flatMap((one) => [...one.figures, ...one.days]))
+
+    for (const [what, box, needed] of [
+      ['a figure', figures, widestFigure],
+      ['a figure or a date', days, widestWithADay],
+    ] as const) {
+      const third = (box.limit - room) / 3
+
+      expect(
+        third,
+        `a third of a box of ${box.limit}rem holds ${third}rem, and the widest thing ${what} is ${needed}rem`,
+      ).toBeGreaterThanOrEqual(needed)
+
+      /* And not much over it. A number is the measurement and a margin, and a margin that grows is a query that
+         draws as one column a block that still fits, which is what two queries in place of one were written to
+         stop: one number for every event was the date's, and made 98% of them one column at 125% text for the
+         sake of 2%. Six percent is the margins that are written (2% and 4%) and a little more. */
+      expect(
+        third,
+        `a third of a box of ${box.limit}rem holds ${third}rem, more than 6% over the widest thing ${what} (${needed}rem)`,
+      ).toBeLessThanOrEqual(needed * 1.06)
+
+      /* And the other way: the ordinary text size on a 360px screen is three tracks and not one. The box is
+         the screen less the padding of the shell, which is read from it, in `rem` at a 16px root. */
+      expect(box.limit, `a 360px telephone at the ordinary text size is drawn as one column (${what})`).toBeLessThan(
+        (360 - shellBox().padding) / 16,
+      )
+    }
+  })
+
+  it('has a measurement for the widest thing of every kind that a third of a block holds, and for nothing else', () => {
+    /* The floor under `MEASURED`. A list of widths written by hand is the shape of a guard that is finished
+       by the next string nobody thought of, so what a third holds is asked of what writes it: the dictionary,
+       for the three words over the figures in every language the portal has, and the races of the file, for
+       the widest distance, climb and fall and the widest date that each language writes of them.
+       A thing with no measurement fails here, and so does a measurement of a thing nobody holds.
+
+       **What it does not hold, said here and not left to be found.** The widths are Segoe UI in Chrome 154,
+       and a telephone draws its own font (`--sans`), a few percent wider or narrower; the queries are written
+       2% and 4% over the widest of them for that and no other font was measured. The limit of a timed race is
+       not in the file (the longest it can write is „299 h 49' 43''", whose words are narrower than a date, and
+       which breaks at its spaces), and a name longer than the whole row breaks by design (`overflow-wrap`). */
+    const needed = LOCALES.flatMap((one) => Object.values(held(one)).flat())
+
+    expect(needed.filter((one) => !(one in MEASURED)), 'a third holds a thing nobody has measured').toEqual([])
+    expect(
+      Object.keys(MEASURED).filter((one) => !needed.includes(one)),
+      'a width is measured of a thing nobody holds',
+    ).toEqual([])
+
+    /* The labels were measured as they are drawn, so they are held to the look they were measured in. */
+    const label = plain('.table--races .event-races__label')
+
+    expect(
+      ['font-size', 'font-weight', 'letter-spacing', 'text-transform'].map((property) => label.getPropertyValue(property)),
+      'the label is not drawn as it was measured',
+    ).toEqual(['0.7rem', '700', '0.05em', 'uppercase'])
+  })
+
+  it('is a quarter of its box for the name and a twelfth for each figure, which ends at the middle of it', () => {
+    /* „Naziv trke četvrtina, ove tri kolonice po dvanaestina": a quarter and three twelfths, which
+       is the half the owner asked for, and with a day „prve dve dvanaestine naziv, pa jedna datum",
+       which is the same quarter between two columns. „Recimo" is his word, and what holds where the
+       twelfths cannot be kept is the case on floors below.
+
+       Worked out in a box where no floor decides (a twelfth of 200px, over what any floor asks at a
+       16px root), so that what is held here is the share and nothing else. */
+    const roomy = 12 * 200
+    const read = sheet()
+
+    for (const day of [false, true]) {
+      const made = columns(read, { day, wayIn: false }, roomy, 16)
+
+      expect(made.name + made.day + 3 * made.figure, `the columns do not add up to the half, with the day ${day}`).toBeCloseTo(
+        roomy / 2,
+        6,
+      )
+      expect(made.table, `the table does not end at the middle of its box, with the day ${day}`).toBeCloseTo(roomy / 2, 6)
+      expect(made.figure).toBeCloseTo(roomy / 12, 6)
+      expect(made.name + made.day, 'the name and the day are not a quarter between them').toBeCloseTo(roomy / 4, 6)
+    }
+
+    expect(columns(read, { day: false, wayIn: false }, roomy, 16).name, 'the name is not a quarter').toBeCloseTo(
+      roomy / 4,
+      6,
+    )
+    expect(columns(read, { day: true, wayIn: false }, roomy, 16).day, 'the day is not a twelfth').toBeCloseTo(
+      roomy / 12,
+      6,
+    )
+  })
+
+  it('moves no column when the way in comes, which is a column on top of the half and not a part of it', () => {
+    /* „Ko nije prijavljen vidi jednu manje, iste širine kao kad ih ima najviše, dakle tabela se ne
+       razvlači preko oslobođenog mesta" (PDL, 23.08.2026). Asked in boxes where a floor decides and in
+       ones where a share does, because a column that moves only in one of them is the fault that was
+       measured on 23.08.2026: the first column moved by up to 35,59px between a visitor and a member. */
+    const read = sheet()
+    const way = read.wayIn * 16
+
+    /* Nothing in the sheet is conditional on the way in. The widths above are read by the selectors the
+       model knows, so a rule that narrows the name where a way in is drawn would be a rule the model never
+       reads; asked of every rule instead, wherever it stands, so there is none to read. A fixed table is
+       the greater of its own width and its columns', so the way in comes on top of the half without being
+       told to. */
+    const conditional = everyRule(profile, 'Profile.css')
+      .filter((rule) => /:has\(\s*\.event-races__way-in\s*\)/.test(rule.selectorText))
+      .map((rule) => squash(rule.selectorText))
+
+    expect(conditional, 'a rule of the table changes with the way in').toEqual([])
+
+    for (const day of [false, true]) {
+      for (const box of [771, 977, 1068, 1100, 2400]) {
+        const without = columns(read, { day, wayIn: false }, box, 16)
+        const given = columns(read, { day, wayIn: true }, box, 16)
+
+        expect(
+          [given.name, given.day, given.figure],
+          `a column moves when the way in comes, in a box of ${box}px with the day ${day}`,
+        ).toEqual([without.name, without.day, without.figure])
+        expect(given.table - without.table, 'the way in is not the width it is written as').toBeCloseTo(way, 6)
+      }
+    }
+  })
+
+  it('holds one width for the three figures, which the owner called three identical columns', () => {
+    /* One rule gives all three their width, so there is no way to widen one of them: a second rule
+       for any of them is the day the three stop being identical. */
+    const widths = rulesInMedia(profile, WIDE, 'Profile.css')
+      .filter(
+        (rule) =>
+          /event-races__(measure|ascent|descent)/.test(rule.selectorText) &&
+          rule.style.getPropertyValue('inline-size') !== '',
+      )
+      .map((rule) => squash(rule.selectorText))
+
+    expect(widths, 'the figures are given their widths by more than one rule').toEqual([FIGURES])
+  })
+
+  it('keeps what may not be broken whole wherever a floor is what decides', () => {
+    /* Measured in Chrome 152 on Windows, Segoe UI at a 16px root, in a blank page and again in this
+       table, and all of it is `rem`, so one measurement at 16px holds at every text size:
+
+       - „31. 12. 2022.", the widest date, is 88,18px of type;
+       - „100,00 km", and „529,93 km", the longest distance in the file, are 72,72px: every distance under
+         a thousand kilometres is as wide, because the digits are tabular;
+       - „Unesi rezultat" on one line is 114,75px.
+
+       The cell keeps var(--space-8) either side, which is 1rem of the column. A twelfth of the widest box
+       the page ever has is 89px (1068 of it), so the date never fits in one, „100,00 km" fits in one only
+       from a screen of about 1110px up and „21,10 km" from about 1010px; that is what the floors are for,
+       and the table is wider than half of its box wherever they decide. „1.000,00 km" is 84,81px of type
+       and needs 100,81 with its cell, which no floor here holds and no race in the file asks of one (the
+       longest is 529,93 km, and 81 of the 1612 are a hundred or more): it would break at its space rather
+       than leave the box.
+
+       The floor for the figures is 5,75rem and not 5,25: a distance of a hundred kilometres or more needs
+       5,545rem, and 5,25rem, the first number it was rounded up to, breaks every one of them wherever a
+       twelfth is narrower than that, which is every screen under about 1110px. 5,75rem is 92px, 3px more
+       than a twelfth of the widest box, so the floor decides at every width and the table is never exactly
+       half: at 1280px it is 543px of 1068 and not 534. */
+    const CELL = 16
+    const DATE = 88.18
+    const DISTANCE = 72.72
+    const BUTTON = 114.75
+
+    expect(
+      floor(wide(DAY).getPropertyValue('inline-size'), 'the day') * 16 - CELL,
+      'a column of days at its floor breaks the widest date in two',
+    ).toBeGreaterThanOrEqual(DATE)
+    expect(
+      floor(wide(FIGURES).getPropertyValue('inline-size'), 'a figure') * 16 - CELL,
+      'a column of figures at its floor breaks a distance of a hundred kilometres in two',
+    ).toBeGreaterThanOrEqual(DISTANCE)
+    expect(
+      rem(wide(WAY_IN).getPropertyValue('inline-size'), 'the way in') * 16 - CELL,
+      'the way in is narrower than the button in it',
+    ).toBeGreaterThanOrEqual(BUTTON)
   })
 
   it('stays inside its box at the ordinary text size', () => {
-    /* The fault a round measured on 23.08.2026 and the reason the floor is not a
-       number picked to be safe: at 7,5rem, an event over two mornings read by a
-       signed-in member is six columns of 120px, which is 720px of table against
-       668px of box at a screen of 700. 55px of it stood outside, the „Unesi
-       rezultat" button was what stood there, and the page did not scroll, so
-       nothing on the screen said anything had been cut.
+    /* The fault a round measured on 23.08.2026 on this table's predecessor and the reason a floor is
+       not a number picked to be safe: a table wider than its box scrolls inside it, and PDL P24 allows
+       that at an enlarged text and nowhere else. Nothing on the screen says a button was cut.
 
-       Worked out rather than rendered, because jsdom lays nothing out (ADL A18)
-       and a browser shows one width at a time. The arithmetic is `max`/`min`/`calc`
-       and nothing else, and it was held against Chrome on this branch at both ends
-       of the range: 668px of table in 668px of box at 700, and 1068 in 1068 at
-       1280. Both agreed to the pixel.
+       Worked out rather than rendered, because jsdom lays nothing out (ADL A18) and a browser shows one
+       width at a time. The arithmetic is `max` and `calc` and nothing else, and it was held against
+       Chrome on this branch: 469,3px of table in a box of 773 at a screen of 820 (a visitor, one
+       morning), 543 in 1068 at 1280, and 644,8 in 773 at 820 for a member at a weekend, which is the
+       widest reading in the narrowest box.
 
-       Every count of columns the render can produce (EventDetail.tsx: four, five or
-       six) and every box from the narrowest the query covers up to a wide desk.
+       Every reading the render can produce and every box from the narrowest the wide layout covers
+       up to a wide desk. The box is the screen less the shell's padding and less the scrollbar, 17 and
+       not the 15 that Chrome on Windows draws, because the widest classic scrollbar among the engines is
+       what makes this hold everywhere (`index.css` sets `scrollbar-gutter: stable`, so the room is
+       reserved whether or not the page is long enough to need it). The padding and the ceiling are read
+       from the shell and not written here.
 
-       The box is the screen less the shell's padding **and less the scrollbar**.
-       `index.css` sets `scrollbar-gutter: stable` on the root, so the room is
-       reserved whether or not the page is long enough to need it, and a round
-       measured on 23.08.2026 what leaving it out costs: with the box read as
-       `screen − 32`, a floor of 6,9rem passed this guard and put 9,39px of the
-       table outside its box at a screen of 700 on the ordinary text size, with the
-       „Unesi rezultat" button cut. Measured in Chrome on Windows: 653px of box at
-       a screen of 700, 721 at 768, 1068 at 1280, none of them `screen − 32`.
-
-       17 and not the 15 that Chrome on Windows draws, because the widest classic
-       scrollbar among the engines is what makes this hold everywhere; a browser
-       with overlay scrollbars reserves nothing and has more room than this asks
-       for, never less.
-
-       The padding and the ceiling are **read from the shell** rather than written
-       here. Held as a bare 32 for a day, and a round measured what that costs on
-       23.08.2026: widen `.shell__main` by one step of the scale and the table stands
-       11px outside its box at a screen of 700 on the ordinary text size, with this
-       guard silent. The ceiling matters at the other end: past 1132px the column
-       stops growing, so a screen of 1920 has the room of 1100 and no more. */
-    const read = knobs()
+       **What it does not hold, said here and not left to be found.** At 200% text the table of a member
+       is wider than its box wherever the wide layout is drawn at all: measured in Chrome with the
+       default font size of the profile at 32px, 39px for a member at an event of one morning and 169px
+       for one at a weekend, inside the box, with the page itself still. The reader's text size moves the
+       layout in `em` and a box is in pixels. The table scrolls in its own box there, as PDL P24 asks of
+       every table at that size, and the one it replaced scrolled 44px and 260px, and on a telephone 163
+       and 269. */
     const GUTTER = 17
+    const FROM = 51.25 * 16
     const shell = shellBox()
+    const read = sheet()
     const room = (screen: number) => Math.min(screen - GUTTER, shell.ceiling) - shell.padding
-    const tooWide = []
+    const tooWide: string[] = []
 
-    for (const columns of [4, 5, 6]) {
-      for (let screen = 700; screen <= 1920; screen += 1) {
+    for (const reading of READINGS) {
+      for (let screen = FROM; screen <= 1920; screen += 1) {
         const box = room(screen)
 
-        if (widthOf(read, columns, box, 16) > box) {
-          tooWide.push(`${columns} columns at ${screen}px`)
+        if (columns(read, reading, box, 16).table > box) {
+          tooWide.push(`${JSON.stringify(reading)} at ${screen}px`)
         }
       }
     }
@@ -186,80 +707,110 @@ describe('the table of races on an event', () => {
     expect(tooWide).toEqual([])
   })
 
-  it('holds the widest date unbroken wherever the floor wins', () => {
-    /* What the floor is for. Both sides of it are `rem`, so one measurement at a
-       16px root holds at every text size: „31. 12. 2022." is 88,17px of type, and
-       the cell keeps var(--space-8) either side, which is 1rem of the column. */
-    const DATE = 88.17 / 16
-    const CELL = 1
+  it('works a twelfth out in the unit of its box and in no other', () => {
+    /* `cqi` is a hundredth of the box the table stands in (`.event-races`, below), and a `cqi` with no
+       box above it is a hundredth of the window instead: the same number of pixels on one screen and
+       the wrong ones on the next. A width of this table in `%` would be a share of the TABLE, which is
+       narrower than its box, and in `vw` a share of the window, so neither is written, and what is
+       written is the one reading of „a twelfth". */
+    expect(wide(THE_TABLE).getPropertyValue('--event-races-twelfth').replace(/\s+/g, '')).toBe('calc(100cqi/12)')
 
-    expect(knobs().floor - CELL, 'a column at the floor breaks the date in two').toBeGreaterThanOrEqual(
-      DATE,
+    const widths = everyRule(profile, 'Profile.css')
+      .filter(aboutTheTable)
+      .map((rule) => rule.style.getPropertyValue('inline-size'))
+      .filter((one) => one !== '')
+
+    expect(widths.length, 'the table is given no width at all').toBeGreaterThan(5)
+    expect(widths.filter((one) => /%|[sld]?v[wi]|cq[whb]/.test(one)), 'a width is a share of something else').toEqual([])
+  })
+
+  it('stands in a box that is a container of its width and of nothing else', () => {
+    /* `inline-size` and not `size`: the box has no height of its own to give, and containing it would
+       collapse it. That the box is really above the table is asked of the rendered tree
+       (`pages/event/raceTable.test.tsx`). */
+    expect(plain('.event-races').getPropertyValue('container-type')).toBe('inline-size')
+  })
+
+  it('puts the word of a column over its figure in the look of the heading, and takes it off where the head is drawn', () => {
+    /* The head of the table is not drawn on a telephone, so the words that would stand over each
+       column stand over each figure instead: real text in the cell, the three words the head already
+       says (`pages/EventDetail.tsx`). Where the head is drawn, from the wide layout up, they are not,
+       so a reader is never told twice (`styles/scale.test.ts` lists the one place that hides them).
+
+       In the look of the heading and read from it: the heading is `.table th` in `styles/table.css`, and
+       a word that is tuned beside it and not with it is two sizes for one thing. */
+    const word = plain('.table--races .event-races__label')
+    const heading = ruleFor(shared, '.table th', 'table.css')
+
+    expect(word.getPropertyValue('display')).toBe('block')
+    expect(wide('.table--races .event-races__label').getPropertyValue('display')).toBe('none')
+
+    for (const property of ['font-size', 'letter-spacing', 'text-transform', 'font-weight', 'color']) {
+      expect(
+        word.getPropertyValue(property),
+        `${property} of the word over a figure is not the heading's`,
+      ).toBe(heading.getPropertyValue(property))
+    }
+
+    /* And it does not break: „USPO" over „N" is worse than a word that does not fit. What keeps a word from
+       not fitting is not this declaration but the query that makes a race one column where a third of the
+       box is narrower than the widest thing a third holds (the two cases above), and a word that leaned into
+       the gap beside it, which is what this said until 03.10.2026, ran 19,25px into its neighbour on /en. */
+    expect(word.getPropertyValue('white-space')).toBe('nowrap')
+  })
+
+  it('gives a cell in the table shape what a block took from it, and no other', () => {
+    /* A cell of the shared table has a padding and a line under it (`styles/table.css`), and neither
+       belongs to a figure in a block, where the line is the row's. The table shape puts both back, and
+       they are written a second time to do it, so the two homes are read and required to agree. */
+    const cell = ruleFor(shared, '.table td', 'table.css')
+    const block = plain('.table.table--races td')
+    const back = wide('.table.table--races td')
+    const row = plain('.table--races tbody tr')
+    const line = cell.getPropertyValue('border-bottom')
+
+    /* Nought, however the parser writes it: it hands `0` back as `0px`. */
+    const nought = /^0(px)?$/
+
+    expect(block.getPropertyValue('padding'), 'a figure in a block keeps a padding').toMatch(nought)
+    expect(block.getPropertyValue('border-bottom-width'), 'a figure in a block keeps a line').toMatch(nought)
+    expect(squash(back.getPropertyValue('padding'))).toBe(squash(cell.getPropertyValue('padding')))
+    expect(back.getPropertyValue('border-bottom-width')).toBe(must(line.split(' ')[0], 'the width of the shared line'))
+
+    /* The line under a block is the same line, on the row: and in the table shape it is under the cells
+       and not twice. */
+    expect(row.getPropertyValue('border-bottom')).toBe(line)
+    expect(wide('.table--races tbody tr').getPropertyValue('border-bottom-width')).toMatch(nought)
+  })
+
+  it('lets a word break rather than leave the box, in both shapes', () => {
+    /* In a block nothing grows for a word, and in a fixed table a column cannot, so a name of forty
+       letters with no space in it is the one input that pushes a page sideways (WCAG 2.2 SC 1.4.10). It
+       is written plainly and not behind the query, so a telephone has it too: it was behind the query
+       while the telephone's table grew for its content instead, and that is the table that is gone. */
+    const found = unconditionalRules(profile, 'Profile.css').filter(
+      (rule) => squash(rule.selectorText) === '.table.table--races th, .table.table--races td',
     )
+
+    expect(found, 'the cells break their words in no shape, or in one only').toHaveLength(1)
+    expect(must(found[0], 'the rule').style.getPropertyValue('overflow-wrap')).toBe('anywhere')
   })
 
-  it('is narrower than the button in it, which is why the button folds', () => {
-    /* The two rules are one arrangement and this is the seam between them. „Unesi
-       rezultat" on one line is 114,75px at a 16px root, more than a column at the
-       floor has to give, so the button has to fold; folded it needs 76,86px and
-       fits. Raising the floor to hold it unbroken is the other way out and it is
-       the wrong one: 8,17rem puts six columns at 785px against 668px of box, which
-       is the scroll the test above refuses.
-
-       The fold is written outside the query, because under 700px the table is laid
-       out by its content instead and the column grows for the button rather than
-       cutting it. It grows the table with it: measured on a 360px screen, the box
-       scrolled 41px with the button on one line and 3px with it folded. */
-    const BUTTON = 114.75 / 16
-    const FOLDED = 76.86 / 16
-    const CELL = 1
-    const { floor } = knobs()
-    const button = ruleFor(profile, '.table--races .button--compact', 'Profile.css')
-
-    expect(floor - CELL).toBeLessThan(BUTTON)
-    expect(floor - CELL).toBeGreaterThanOrEqual(FOLDED)
-    expect(button.getPropertyValue('white-space'), 'the button cannot fold').toBe('normal')
-    /* And a height that grows with the second line. `.button--compact` is 2,4rem
-       tall exactly, and left alone the two lines write themselves over the border
-       of their own button. */
-    expect(button.getPropertyValue('block-size'), 'the second line has nowhere to go').toBe('auto')
-    expect(button.getPropertyValue('min-block-size')).toBe('2.4rem')
-  })
-
-  it('folds its headings on a phone as well, where the table grows instead', () => {
-    /* Written inside the query for one day, and a round measured what that cost:
-       at 360px „KATEGORIJA TRKE" on one line took 121,33px of a table 331px wide
-       in a box of 313, so 18px stood outside and what was cut was the „Unesi
-       rezultat" button. PDL P24 forbids a table that scrolls sideways on a phone
-       at the ordinary text size. Measured after: 313 in 313.
-
-       Held as „unconditional", which is the whole of the change: `ruleFor` refuses
-       a rule that lives inside a query (test/stylesheet.ts), so putting it back
-       under `min-width: 700px` fails here. */
-    expect(ruleFor(profile, '.table.table--races th', 'Profile.css').getPropertyValue('white-space'))
-      .toBe('normal')
-  })
-
-  it('lets the cells keep their words whole under 700px', () => {
-    /* The other half of it, and the reason breaking is not the answer on a phone:
-       a fixed column above 700px cannot grow, so a word longer than it has to
-       break; under 700px the table grows and the box scrolls instead, which is
-       what every table on the portal does above the ordinary text size. Measured
-       with the cells breaking there too: at 200% the date „14. 3. 2022." came
-       apart into ten pieces to make the table fit. */
-    const breaking = (rules: { selectorText: string }[]) =>
-      rules
-        .map((rule) => rule.selectorText.replace(/\s+/g, ' '))
-        .filter((one) => one.includes('.table.table--races td'))
-
+  it('reads words from the left and figures from the right, the same for all three figures', () => {
+    /* The portal reads the first three columns of a table from the left, because in every other table
+       those are words (`styles/table.css`), and that rule goes by position: on this table it made the
+       climb read from the left without a day and from the right with one. The three figures are
+       identical columns and are not placed by where they happen to stand, so the side is the column's. */
     expect(
-      breaking(rulesInMedia(profile, '(min-width: 700px)', 'Profile.css')),
-      'the cells no longer break their words even where a column cannot grow',
-    ).toEqual(['.table.table--races th, .table.table--races td'])
+      wide('.table.table--races .event-races__name, .table.table--races .event-races__day').getPropertyValue(
+        'text-align',
+      ),
+    ).toBe('left')
     expect(
-      breaking(unconditionalRules(profile, 'Profile.css')),
-      'the cells break their words everywhere, dates on a phone included',
-    ).toEqual([])
+      wide(
+        '.table.table--races .event-races__measure, .table.table--races .event-races__ascent, .table.table--races .event-races__descent, .table.table--races .event-races__way-in',
+      ).getPropertyValue('text-align'),
+    ).toBe('right')
   })
 })
 
