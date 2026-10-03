@@ -1,11 +1,14 @@
 /* Where a link that leaves this portal actually leads, beside the words of it.
  *
- * Two screens draw such a link and both need this: the moderator's queue, where
- * the words are a name the member wrote and so may say anything at all, and the
- * event's page, where the words are the portal's own and so say nothing about
- * where the press lands. Opposite reasons, one need, so one rule: written twice
- * it is a fact with two homes, and the day one of them is tuned the two screens
- * quietly disagree about how loudly a host is announced.
+ * One screen draws such a link: the moderator's queue, where the words are a name
+ * the member wrote and so may say anything at all. The event's page drew one too
+ * from 27.08.2026 to 03.10.2026, where the words are the portal's own and so say
+ * nothing about where the press lands; the owner took the host off that link
+ * („Nije potrebno da postoji i ispisan link organizatora, dovoljno je da postoji
+ * linkovan tekst „Strana organizatora"."). The rule stays in this sheet and not in
+ * the queue's own: it was moved out for two screens, and a screen that wants a host
+ * again finds it here rather than writing a second one, which would be a fact with
+ * two homes (`styles/outsideHost.test.ts` holds which screens write the name).
  *
  * A round measured on 23.08.2026 what its absence costs: a result named
  * „Zvanicni rezultati BTL 2026" pointing at `btl-rezultati.zlo.example` put the
