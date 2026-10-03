@@ -12,8 +12,8 @@ import { addressesIn } from './addressesIn'
  * that the event's page already draws (`pages/EventDetail.tsx`): a reader in the middle of a list
  * of competitions keeps their place, the other end is not told which page they came from, and the
  * page that opens cannot reach back through `window.opener`. Written out, and not left to what a
- * browser does for `_blank`, for the reason the event's page gives: a rule that depends on a
- * default is a rule nobody can read.
+ * browser does for `_blank`, for the reason the guard of the event's link gives
+ * (`pages/details.test.tsx`): a rule that depends on a default is a rule nobody can read.
  *
  * **Every run that is not an address is a string, and a string in a child position is a text
  * node**, so nothing an administrator typed is ever read as markup. The terms of a competition are
@@ -62,9 +62,10 @@ function drawn(text: string): ReactNode {
  * događaja (27.08.2026)." The paragraph of the terms of the RunTrace league has to carry
  * `www.runtrace.net` and open that portal. Which words are addresses is `addressesIn`'s to say.
  * What a link says is the address as it was typed, and that is what makes the domain visible: no
- * second element repeats it beside the link the way the event's page does. Both boxes draw it the
- * same way, because both are this component, and the box that is being edited shows the text as it
- * was typed and not as it is drawn.
+ * second element repeats it beside the link, as the event's page did on that day for the words of
+ * its own link, which say nothing about where a press leads. Both boxes draw it the same way,
+ * because both are this component, and the box that is being edited shows the text as it was typed
+ * and not as it is drawn.
  *
  * Hides itself while nobody has written it and nobody may.
  */

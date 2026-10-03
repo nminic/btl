@@ -75,8 +75,8 @@ function addressIn(word: string): Found | null {
   }
 
   /* Where the address stops: after the last character that is not closing punctuation, but never
-     inside the prefix. The full stop of `www.` is itself closing punctuation, so without this a
-     bare `www.` would be taken apart and its remainder judged as if it were an address. */
+     inside the prefix. The full stop of `www.` is itself closing punctuation, so without the floor
+     a bare `www.` would be cut back to `www`, which is shorter than its own prefix. */
   const length = Math.max(rest.findLastIndex((one) => !CLOSING.test(one)) + 1, prefix)
 
   if (length === prefix) {
@@ -85,8 +85,8 @@ function addressIn(word: string): Found | null {
 
   const core = rest.slice(0, length).join('')
   /* The scheme is written in front of `www.` here and nowhere else, so what the browser is given is
-     the address as it was typed with a scheme the owner chose (https) and the text on the screen is
-     still what was typed. */
+     the address with `https` in front of it, the scheme the owner's other form already names, and
+     what is drawn on the screen is still what was typed. */
   const href = outsideLink(prefix === HTTPS.length ? core : `${HTTPS}${core}`)
 
   /* Nothing rather than a repaired address, which is the rule of the gate and holds here too: an
