@@ -79,10 +79,15 @@ beforeEach(() => {
 afterEach(() => {
   vi.mocked(console.error).mockRestore()
 
-  expect(
-    SAID_BY_REACT.filter(([first]) => String(first).includes('key')),
-    'React spoke about the keys of what was drawn',
-  ).toEqual([])
+  /* `soft`, because a hook that throws stops the hooks after it, and the one after it is the clean-up
+     of the screen: the next case then drew into a page that still held the last one, and ran out of
+     its twenty seconds (measured with the mutation that takes the key off the link). */
+  expect
+    .soft(
+      SAID_BY_REACT.filter(([first]) => String(first).includes('key')),
+      'React spoke about the keys of what was drawn',
+    )
+    .toEqual([])
 })
 
 /**
