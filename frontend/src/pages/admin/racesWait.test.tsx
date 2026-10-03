@@ -1249,10 +1249,13 @@ describe('an event whose races wait', () => {
       const wrote = writtenSince(before)
       const sent = whatWasSent(watching.asked.slice(before))
 
-      /* Its own event first, with what was typed into it: held by the copy's wait, the press sent
-         only races, so the typed words were lost, and sent them under the copy's event. */
+      /* Its own event first, with what was typed into it (the form trims what it sends): held by the
+         copy's wait, the press sent only races, so the typed words were lost, and sent them under the
+         copy's event. */
       expect(wrote[0]).toBe(`PUT /api/events/${String(other.id)}`)
-      expect(must(sent[0], 'the event')).toContain(`description=${other.description} i još`)
+      expect(must(sent[0], 'the event')).toContain(
+        `description=${`${other.description} i još`.trim()}`,
+      )
       expect(sent.join('\n')).not.toContain(`eventId=${String(COPY_EVENT)}`)
       expect(wrote.filter((one) => one.startsWith('DELETE'))).toEqual([])
     }, SLOW)
