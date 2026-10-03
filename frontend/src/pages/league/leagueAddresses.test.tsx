@@ -28,7 +28,9 @@ import { setupUser } from '../../test/user'
  */
 const RUNTRACE_RULES = 'Vreme na svim trkama meri portal www.runtrace.net i na kojima se boduje.'
 const RUNTRACE_PRIZES = 'Detalji: https://nagrade.example/runtrace.'
-const PLANINSKA_PRIZES = '(www.planina.example/nagrade)'
+/* In brackets, and between blanks that are part of what was typed: the terms of a competition are
+   typed into a box that keeps what is put in it, and what is drawn must not be a trimmed copy. */
+const PLANINSKA_PRIZES = '  (www.planina.example/nagrade)\n'
 /* Words that look like addresses to somebody in a hurry and are none of them: `http://` is not one
    of the two forms, a bracket nobody closed is an address a browser refuses, and `javascript:` is
    what the gate exists to keep off an `href`. */
@@ -113,7 +115,7 @@ describe('an address in the terms or in the prizes of a competition', () => {
       expect(prizes.getByRole('link')).toHaveAttribute('href', 'https://nagrade.example/runtrace')
       expect(prizes.getByRole('paragraph').textContent).toBe(RUNTRACE_PRIZES)
 
-      /* The second competition, whose terms are empty and whose prizes sit in brackets. */
+      /* The second competition, whose terms are empty and whose prizes sit in brackets and blanks. */
       const planinska = await boxOf(/Proba Planinska/)
       const bracketed = sectionOf(planinska, 'Nagrade')
 
