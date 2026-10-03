@@ -212,9 +212,11 @@ import java.util.Optional;
  * branch.
  * <li><b>The file leaving the disk when a moderator decides.</b> ADL A12a, 1 asks for it and
  * V9 says the schema can only carry half of it - „that the FILE leaves the disk with it is
- * the deleting code's to do". That code is the decision's, not this route's, and it is not
- * written yet: this class deletes a file in exactly one case, the one where the member takes
- * his own standing picture down.
+ * the deleting code's to do". Neither this route nor the decision does it. Since V54 the
+ * database deletes the {@code photo} row of a picture that a decision, or anything else, leaves
+ * with no holder, and {@link ThePicturesFolderIsSwept} deletes the file of a row that is gone
+ * at its next hourly pass. This class deletes a file itself in two cases only, both of them a
+ * member's own act: he takes his standing picture down, and he overwrites one that waits.
  * <li><b>A SIZE IN PIXELS, AND IT IS A REAL DECISION OF THE OWNER'S THAT THIS ROUTE DOES NOT
  * ENFORCE.</b> PDL, 27.08.2026, between three measured candidates: „Poslusacu preporuku 240."
  * So a picture whose shorter edge is under 240 real pixels is refused and a circle may not be
@@ -625,17 +627,23 @@ class MePhotoApi {
 		Files.write(folder.resolve(String.valueOf(photo)), bytes, StandardOpenOption.CREATE_NEW,
 				StandardOpenOption.WRITE);
 
-		/* AND ONLY NOW DOES THE PICTURE THAT WAS OVERWRITTEN GO. The order is not a preference
-		   and it was measured in both directions on a real PostgreSQL:
+		/* AND ONLY NOW DOES THE FILE OF THE PICTURE THAT WAS OVERWRITTEN GO, and its ROW goes by
+		   itself. The repoint above is what let go of that picture, and the database deletes a
+		   `photo` row that nobody holds at the end of this transaction (V54; ADL A68, 03.10.2026,
+		   „Na kraju svake transakcije baza brise zapis slike koji vise ne drzi nijedna od cetiri
+		   kolone"), so this route no longer deletes the row. It used to, and the order it kept was
+		   measured in both directions on a real PostgreSQL:
 
-		     - THE POINTER MOVES FIRST, ALWAYS. Deleting the `photo` row while the queue row still
-		       pointed at it is not refused - `verification_photo_fk` is ON DELETE SET NULL (V9) -
-		       and what it leaves behind is worse than a refusal would be. The row SURVIVES as
+		     - THE POINTER MOVES FIRST, ALWAYS, and it still does, because it is the event the
+		       database reacts to. Deleting the `photo` row while the queue row still pointed at it
+		       was not refused - `verification_photo_fk` is ON DELETE SET NULL (V9) - and what it
+		       left behind was worse than a refusal would have been. The row SURVIVED as
 		       `state = 'waiting', photo_id = null`, which is exactly the shape of a BIOGRAPHY item
 		       (`MeWriteApi.theTextThatWaits` asks for `photo_id is null`). Measured: after such a
-		       delete this class's own query answers 0 rows and `MeWriteApi`'s answers 1. So the
-		       moderator gets a card proposing a text that is empty, and the member's biography is
-		       locked behind `MeWriteApi`'s own 409 by a row nobody meant to write.
+		       delete this class's own query answered 0 rows and `MeWriteApi`'s answered 1. So the
+		       moderator got a card proposing a text that is empty, and the member's biography was
+		       locked behind `MeWriteApi`'s own 409 by a row nobody meant to write. The database
+		       deletes only a photo that no column points at, so it cannot make that row.
 		     - AND THE FILE GOES AFTER THE NEW ONE IS WRITTEN, which is why this is below
 		       `Files.write` and not above it. Written first, a disk that then refused the new file
 		       would roll the rows back onto a picture whose bytes had already gone.
@@ -646,8 +654,8 @@ class MePhotoApi {
 		   same reasoning, and `PhotoApi` answers it exactly as it answers a digest nobody wrote
 		   and logs the fault for whoever runs the server.
 
-		   AND THE ROW IS DELETED WITHOUT ASKING WHETHER ANYTHING ELSE HOLDS IT, which is a
-		   boundary and not an oversight. A waiting picture is held by its queue row alone: every
+		   AND THE FILE IS DELETED WITHOUT ASKING WHETHER ANYTHING ELSE HOLDS THE PICTURE, which is
+		   a boundary and not an oversight. A waiting picture is held by its queue row alone: every
 		   send INSERTS its own `photo` row, and an approval moves the picture onto
 		   `competitor.photo_id` while emptying the queue row's pointer
 		   (`VerificationWriteApi.approve`), so the two pointers never name one row. The pointer
@@ -656,8 +664,6 @@ class MePhotoApi {
 		   case could enter, which the gate's hundred per cent of branches refuses. */
 		if (waits.isPresent()) {
 			long overwritten = waits.orElseThrow().photo();
-
-			db.sql("delete from photo where id = ?").param(overwritten).update();
 
 			/* deleteIfExists AND NOT delete, for `remove`'s own reason: a row whose file has
 			   already gone is a state `PhotoApi` names and serves nothing for, and refusing to
@@ -671,7 +677,7 @@ class MePhotoApi {
 			   mapping says `rollbackFor = IOException.class` for a file that cannot be WRITTEN, so a
 			   file that could not be DELETED rolled back a send whose new picture was already on the
 			   disk, answered the member 500, and left that file with no row. The rollback stays for
-			   the write above; this line is after the row it belonged to is gone. */
+			   the write above; this line is after the pointer that named the old picture has moved. */
 			try {
 				if (!Files.deleteIfExists(folder.resolve(String.valueOf(overwritten)))) {
 					LOG.warn("the file of photo {} was already gone when its member overwrote it",
@@ -793,14 +799,18 @@ class MePhotoApi {
 	 * is still waiting, so a screen says so instead of pretending the profile is now empty
 	 * for good.
 	 *
-	 * <p><b>THE ROW AND THE FILE BOTH GO, and the order is the row first.</b> V8 points
-	 * {@code competitor.photo_id} at the row with {@code on delete set null}, so deleting the
-	 * row empties the pointer by itself - and the pointer is emptied in its own statement
-	 * first anyway, because a route that leaned on a cascade to do the thing it was asked to
-	 * do would be a route whose subject is a foreign key rather than a member. The file is
-	 * deleted after the row, outside nothing: a file removed before the transaction commits
-	 * and a transaction that then rolls back would leave a row pointing at a picture that is
-	 * gone, which is the one state {@link PhotoApi} has to log a fault for.
+	 * <p><b>THE ROW GOES BY ITSELF AND THE FILE GOES HERE.</b> Emptying the pointer is what
+	 * lets go of the picture, and the database deletes a {@code photo} row that nobody holds at
+	 * the end of the transaction (V54; ADL A68, 03.10.2026, „Na kraju svake transakcije baza
+	 * brise zapis slike koji vise ne drzi nijedna od cetiri kolone"). This route used to
+	 * delete the row too, and no longer does: written here it would be a second home for a
+	 * rule that lives in the database, and the owner chose „pravilo zivi u bazi, ne u Java
+	 * kodu". The pointer is still emptied in its own statement, because a route that leaned on
+	 * {@code on delete set null} to do the thing it was asked to do would be a route whose
+	 * subject is a foreign key rather than a member. The FILE is what a database cannot
+	 * delete, so it is deleted here, at once, which is what the sentence above asks. A
+	 * transaction that then rolls back would leave a row pointing at a picture that is gone,
+	 * which is the one state {@link PhotoApi} has to log a fault for.
 	 *
 	 * <p><b>A FILE THAT WILL NOT LEAVE THE DISK IS THE OPERATOR'S AND NEVER THE MEMBER'S.</b> PDL
 	 * P28e, 25.09.2026: he chose, among the outcomes offered and with my recommendation beside
@@ -830,10 +840,9 @@ class MePhotoApi {
 			long photo = standing.orElseThrow();
 
 			db.sql("update competitor set photo_id = null where id = ?").param(me).update();
-			db.sql("delete from photo where id = ?").param(photo).update();
 
 			/* deleteIfExists AND NOT delete: a row whose file has already gone is a state
-			   `PhotoApi` names and serves nothing for, and refusing to take the row down
+			   `PhotoApi` names and serves nothing for, and refusing to take the picture down
 			   because of it would leave the member unable to remove a picture nobody can see
 			   anyway. The fault is told to the operator and not to him.
 

@@ -821,6 +821,12 @@ class AxisConstraintsTest extends DatabaseTest {
 				.query(String.class)
 				.list();
 
+		/* V54's trigger on `competitor` deletes a photo row that nobody holds and never refuses,
+		   so there is no row that breaks it, unlike V29's two, which refuse and have theirs. It is
+		   taken away by the function it runs, and the exemption has its own floor in
+		   APhotoNobodyHoldsGoesTest. */
+		declared = withoutTheConstraintTriggersThatAct(declared);
+
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
 		Set<String> answeredFor = new HashSet<>(covered);
 		answeredFor.addAll(KEYS_THAT_ONLY_EXIST_AS_A_TARGET);

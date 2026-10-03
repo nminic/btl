@@ -349,6 +349,11 @@ class TeamConstraintsTest extends DatabaseTest {
 				.query(String.class)
 				.list();
 
+		/* V54's two triggers on these tables delete a photo row that nobody holds and never
+		   refuse, so there is no row that breaks them. They are taken away by the function they
+		   run, and the exemption has its own floor in APhotoNobodyHoldsGoesTest. */
+		declared = withoutTheConstraintTriggersThatAct(declared);
+
 		Set<String> covered = violations().stream().map(Violation::constraint).collect(Collectors.toSet());
 
 		assertThat(declared).isNotEmpty();
