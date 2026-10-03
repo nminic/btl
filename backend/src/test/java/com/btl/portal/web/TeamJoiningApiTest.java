@@ -622,7 +622,7 @@ class TeamJoiningApiTest {
 	 *
 	 * <p>{@code profile_hidden} hides a member from everybody who is neither an active member nor
 	 * the administration (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član
-	 * ni administracija"), and every caller here is one of the two: whoever leads a team is a member
+	 * ni administracija, nikad prema aktivnom članu"), and every caller here is one of the two: whoever leads a team is a member
 	 * whose fee is standing, and the administration is the administration. Read as „hidden from
 	 * everybody", a team would never learn who applied to it.
 	 */

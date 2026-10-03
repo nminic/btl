@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * WHO READS A HIDDEN PROFILE, ASKED ON EVERY DOOR ONE FACT OF IT OPENS, OVER ONE FIXTURE.
  *
- * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija":
+ * <p>PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad prema aktivnom članu":
  * a profile its member hides is read by a member whose fee is standing and by the administration,
  * and a free account and a member whose fee has lapsed are answered what a visitor is. It
  * replaced a rule that read „anybody with a session", written four times over (the three

@@ -1647,7 +1647,7 @@ class CompetitorApiTest {
 	 * <p>PDL, odeljak 18 (27.09.2026), owner: „Clan koji je aktiviran za sezonu ne moze sakriti svoje
 	 * rezultate niti profil od drugih clanova ... Moze sakriti samo od neulogovanih posetilaca
 	 * profil." Read since 03.10.2026 (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije
-	 * aktivan član ni administracija") as a member whose fee is standing and the administration,
+	 * aktivan član ni administracija, nikad prema aktivnom članu") as a member whose fee is standing and the administration,
 	 * the administrative account that races for nobody among them.
 	 *
 	 * <p><b>Every account in the fixture, read off the two lists the fixture is split by</b>, so an

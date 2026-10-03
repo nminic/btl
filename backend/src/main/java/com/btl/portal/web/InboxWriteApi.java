@@ -96,7 +96,7 @@ import java.util.Optional;
  * asked, and the sender is not necessarily a reader who would pass it</b>: he is anybody signed
  * in with a member behind the account, and nothing here reads that member's fee, so a member
  * whose fee has lapsed may write (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije
- * aktivan član ni administracija", is about what he READS, not about whom he may address).
+ * aktivan član ni administracija, nikad prema aktivnom članu", is about what he READS, not about whom he may address).
  * Writing to a number does not open the profile: what hiding takes away is the way in to the
  * profile page, and the name and the number stay on the public list (PDL P23, 06.09.2026,
  * „Podaci na spisku ostaju kako jesu; odlazi samo veza"). So a member whose profile is hidden

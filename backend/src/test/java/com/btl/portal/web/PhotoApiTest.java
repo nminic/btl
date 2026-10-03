@@ -283,7 +283,7 @@ class PhotoApiTest {
 	 * picture, so that nothing about what he is shown is about what he holds. Without one the account
 	 * names no member, and an account that names no member and is not the administration is read as a
 	 * visitor (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
-	 * administracija").
+	 * administracija, nikad prema aktivnom članu").
 	 */
 	private void anActiveMemberWhoHoldsNothing(String number) {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"

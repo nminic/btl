@@ -207,7 +207,7 @@ class TeamApiTest {
 	/**
 	 * THE SIGNED IN READERS WHO ARE OWED WHAT A VISITOR IS, since 03.10.2026: the two whose fee has
 	 * lapsed (000003 and 000009). PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije
-	 * aktivan član ni administracija": a member whose fee has lapsed reads a hidden profile as a
+	 * aktivan član ni administracija, nikad prema aktivnom članu": a member whose fee has lapsed reads a hidden profile as a
 	 * visitor does, so the team names a hidden member to him as it does to a visitor. Every other
 	 * signed in account of this fixture is an active member or the administration, and the case
 	 * {@code onlyTheReadersTheRuleKeepsItFromAreOwedAnybodyHere} asks the database whether that is so.
@@ -768,7 +768,7 @@ class TeamApiTest {
 	/**
 	 * THE SAME FOR ANY READER THE RULE KEEPS A HIDDEN PROFILE FROM, since 03.10.2026: a member
 	 * whose fee has lapsed is owed on the teams exactly what a visitor is (PDL P23, 03.10.2026,
-	 * „Skrivanje deluje prema svakome ko nije aktivan član ni administracija"), so his answer
+	 * „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad prema aktivnom članu"), so his answer
 	 * stands on the same exact-text excuse and no other.
 	 *
 	 * @param email null for the visitor, which is the same request without the cookie
@@ -1270,7 +1270,7 @@ class TeamApiTest {
 	 * SAY IT, WHILE A MEMBER WHOSE FEE HAS LAPSED IS OWED WHAT A VISITOR IS.
 	 *
 	 * <p>PDL, odeljak 18 (27.09.2026): hiding is from „neulogovanih posetilaca", and since 03.10.2026
-	 * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija")
+	 * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad prema aktivnom članu")
 	 * from everybody who is neither an active member nor the administration. So to an active member
 	 * and to the administration {@code /api/competitors} answers every link on the record, and told
 	 * here as well the same link would stand on two doors; to a member whose fee has lapsed it

@@ -338,7 +338,7 @@ class VerificationPhotoApiTest {
 	 * not a sentence in a comment.</b> Two independent reasons say it must be absent: every
 	 * caller of this route is the administration, which reads a hidden profile whoever hides it
 	 * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
-	 * administracija"); and a picture waiting for a decision is not on the profile yet, so there
+	 * administracija, nikad prema aktivnom članu"); and a picture waiting for a decision is not on the profile yet, so there
 	 * is no profile field for hiding to cover. Somebody who copied {@code PhotoApi.photo}'s
 	 * condition across would break this, and nothing else would notice.
 	 */
