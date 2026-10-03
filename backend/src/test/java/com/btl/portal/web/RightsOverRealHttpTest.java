@@ -919,7 +919,7 @@ class RightsOverRealHttpTest {
 	 * <p>The twin is a sibling of the real address by {@link #twinOf}, so no list of
 	 * prefixes is needed and nothing has to be kept equal by hand.
 	 *
-	 * <p><b>The five pairs below are written by hand, and that boundary is a decision and
+	 * <p><b>The pairs below are written by hand, and that boundary is a decision and
 	 * not an oversight (found on review, recorded rather than left for the next reader to
 	 * question).</b> A floor over WHICH pairs belong on this list would have to track a
 	 * value through the code to answer "does this route refuse a member-less account", the
@@ -954,8 +954,14 @@ class RightsOverRealHttpTest {
 	 * assertion every other pair here is caught by.
 	 */
 	@ParameterizedTest
+	/* THE LIST OF WHO IS GOING AND THE TWO WAYS TO BE ON IT JOINED ON 03.10.2026 (b212).
+	   Asked as A_COMPETITOR, an account that races for nobody and is not the administration,
+	   which is exactly who the owner's sentence of that day leaves out: „aktivni članovi
+	   (važeća članarina), a spisak vidi i administracija". A member whose fee has lapsed is
+	   refused down the very same line in both classes, so this pair is his too. */
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "PUT /api/me",
-			"POST /api/inbox/{id}/read"})
+			"POST /api/inbox/{id}/read", "GET /api/attendance", "PUT /api/attendance/{id}",
+			"DELETE /api/attendance/{id}"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way

@@ -98,14 +98,17 @@ class RightsAtTheDoorTest {
 	 * visitor really is refused - is {@code CommentApiTest}, because this file measures what a
 	 * route DECLARES and not what the chain in front of it does.
 	 *
-	 * <p><b>And {@code /api/attendance} joins it, closed the identical way and for the
-	 * identical reason.</b> It is neither public nor administrative either: „Tu listu ko je
-	 * prijavljen takođe vide samo ulogovani članovi" (owner, 11.08.2026), so it is absent from
-	 * {@code READ_BY_ANYBODY} and a visitor is refused before this door is ever asked; and
-	 * reading who is going is not a moderator's action, so there is no box to tick for it and
-	 * every signed in account reads it, a plain competitor included. {@code AttendanceApiTest}
-	 * holds the other half, that a visitor really is refused, because this file only measures
-	 * what a route DECLARES.
+	 * <p><b>And {@code /api/attendance} joins it, closed toward a visitor the identical way.</b>
+	 * It is neither public nor administrative either: „Tu listu ko je prijavljen takođe vide
+	 * samo ulogovani članovi" (owner, 11.08.2026), so it is absent from {@code READ_BY_ANYBODY}
+	 * and a visitor is refused before this door is ever asked; and reading who is going is not
+	 * a moderator's action, so there is no box to tick for it. <b>Since 03.10.2026 „every signed
+	 * in account reads it" is not true of it, the way it is not true of {@code /api/inbox}:</b>
+	 * the owner narrowed it to „aktivni članovi (važeća članarina), a spisak vidi i
+	 * administracija", which is a fact about the member's fee and about the role, not a box, so
+	 * the controller asks it ({@code ActiveMemberOrAdministration}) and answers anybody else
+	 * signed in 404. {@code AttendanceApiTest} holds both halves, because this file only
+	 * measures what a route DECLARES.
 	 *
 	 * <p><b>AND {@code /api/verification} IS THE SIXTH, AND IT IS HERE FOR A REASON
 	 * NEITHER OF THE OTHER TWO HAS: THE PRIVILEGE IS DECIDED BY THE ROW AND NOT BY THE
@@ -142,9 +145,9 @@ class RightsAtTheDoorTest {
 	 * MAKES THIS FLOOR ASSERT LESS THAN ITS NAME SUGGESTS.</b> A message may be private to
 	 * one member (V13: „empty means everybody", so a named addressee means somebody in
 	 * particular), so it is absent from {@code READ_BY_ANYBODY} and a visitor is refused
-	 * before this door runs at all. But unlike {@code /api/comments} and
-	 * {@code /api/attendance}, „every signed in account reads it" is not quite true here
-	 * either: an account naming no member - a moderator who does not race - is refused 404
+	 * before this door runs at all. But unlike {@code /api/comments}, „every signed in
+	 * account reads it" is not quite true here either: an account naming no member - a
+	 * moderator who does not race - is refused 404
 	 * by the controller itself, the identical shape {@code /api/verification} already has
 	 * for a moderator with no queue ticked. There is no box to tick for having an inbox at
 	 * all; it is not a privilege a superadmin grants, it is a consequence of being a member,
@@ -169,8 +172,8 @@ class RightsAtTheDoorTest {
 	 * floor - so the floor now looks at everything the portal's controllers map, and
 	 * anything meant to answer without a right is named here with its reason.
 	 *
-	 * <p><b>AND {@code /api/me/applications} IS THE EIGHTH, CLOSED THE IDENTICAL WAY AND
-	 * FOR THE IDENTICAL REASON {@code /api/attendance} IS.</b> ADL P-javno keeps it off
+	 * <p><b>AND {@code /api/me/applications} IS THE EIGHTH, CLOSED TOWARD A VISITOR THE WAY
+	 * {@code /api/comments} IS.</b> ADL P-javno keeps it off
 	 * {@code READ_BY_ANYBODY} - it answers nobody but the one competitor it is about, so a
 	 * visitor is refused 401 before this door is ever asked - and reading what you yourself
 	 * are waiting on is not a moderator's action, so there is no box to tick for it and
@@ -379,7 +382,18 @@ class RightsAtTheDoorTest {
 	 */
 	private static final Set<String> ANSWERS_WITHOUT_A_RIGHT =
 			Set.of("GET /api/me", "PUT /api/me", "POST /api/sign-in", "POST /api/sign-out",
-					"GET /api/comments", "GET /api/attendance", "GET /api/verification",
+					"GET /api/comments", "GET /api/attendance",
+					/* SAYING YOU ARE GOING, AND TAKING IT BACK, ADDED 03.10.2026 WITH B212. Not a
+					   moderator's action and no box a superadmin could tick: the owner gave it to
+					   „aktivni članovi (važeća članarina)" by name, and the administration as such
+					   is not one - so a right could only shut it to the people it is for. The
+					   address names the event and nothing names the member, who is read off the
+					   session, so „his own" is the only thing it can express. Anybody signed in who
+					   is not an active member is answered 404 by AttendanceWriteApi, a visitor 401
+					   by the chain; AttendanceWriteApiTest holds both, and the second is the case
+					   ADL A8 asks of every name on this list. */
+					"PUT /api/attendance/{id}", "DELETE /api/attendance/{id}",
+					"GET /api/verification",
 					"POST /api/registration", "GET /api/inbox", "POST /api/inbox",
 					/* MARKING A MESSAGE READ, ADDED 27.09.2026 WITH B142, PDL SECTION 27a. Its
 					   own entry rather than a third verb sharing GET/POST /api/inbox above -
