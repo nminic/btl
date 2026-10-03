@@ -73,7 +73,7 @@ const AT_FIRST = 50
  * no reason the reader can see.
  *
  * <p><b>`text` may be null since 26.09.2026, and reads exactly like `''`.</b> The server
- * answers null for a member who hides their profile from a reader with no session
+ * answers null for a member who hides their profile from a reader who may not read it
  * (`data/types.ts`'s note on `bio`), and PDL, 06.09.2026 requires that hiding read like
  * having nothing rather than like a fourth, different state: „Oba slucaja dobijaju isti
  * ishod" is the same sentence the portrait already keeps. In practice this page never

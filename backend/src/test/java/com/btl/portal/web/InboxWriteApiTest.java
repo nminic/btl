@@ -92,7 +92,11 @@ class InboxWriteApiTest {
 	/** A member whose fee has lapsed: {@code active} is false, so the portal shows him nowhere. */
 	private static final String LAPSED = "000044";
 
-	/** Hidden from a VISITOR and shown to a signed in reader ({@code visible.ts}). */
+	/**
+	 * Hidden from everybody who is neither an active member nor the administration, a visitor
+	 * among them ({@code visible.ts}); a member may still be written to, because his number is
+	 * public.
+	 */
 	private static final String HIDDEN = "000055";
 
 	/** A member number of the right shape that belongs to nobody. */

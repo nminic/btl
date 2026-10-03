@@ -21,7 +21,9 @@ import type { Competitor } from '../../data/types'
  *
  * Nothing is taken away from the reader when the answer is nothing: the name stays, as plain
  * text. The owner's rule, 06.09.2026: „sva njegova pojavljivanja na portalu u tabelama i rang
- * listama postaju tekst umesto link za sve posetioce koji nisu ulogovani." The data on those
+ * listama postaju tekst umesto link za sve posetioce koji nisu ulogovani." (Read since 03.10.2026
+ * as: for every reader who is neither an active member nor the administration, a free account and
+ * a member whose fee has lapsed among them; `profile/visible.ts` says why.) The data on those
  * lists is not touched either — hiding is about reaching the profile, not about what a list says.
  *
  * **Not exported**, so a screen cannot reach for it and build an address without coming through

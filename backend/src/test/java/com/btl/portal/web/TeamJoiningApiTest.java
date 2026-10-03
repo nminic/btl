@@ -145,9 +145,10 @@ class TeamJoiningApiTest {
 	/**
 	 * HIS PROFILE IS HIDDEN AND HIS APPLICATION IS LISTED ALL THE SAME.
 	 *
-	 * <p>{@code profile_hidden} hides a member from a VISITOR, and every caller of this
-	 * resource is signed in by construction. Hidden from the one team that has to answer him,
-	 * a member could apply and never be read.
+	 * <p>{@code profile_hidden} hides a member from everybody who is neither an active member
+	 * nor the administration, and every caller of this resource is one of the two by
+	 * construction ({@code TeamJoiningApi} says why). Hidden from the one team that has to
+	 * answer him, a member could apply and never be read.
 	 */
 	private static final String HIDDEN_PROFILE = "001000";
 

@@ -521,7 +521,8 @@ export type InTheTeam = { competitor: Competitor; since: number | null }
  *
  * **Why there are two doors, and since when.** Until 02.10.2026 a member's team reached the
  * portal on his record alone (`Competitor.teamId`). PDL, odeljak 16, [ODLUKA 27.09.2026, owner]
- * takes it off the record of a member who hides his profile when the reader is not signed in -
+ * takes it off the record of a member who hides his profile when the reader may not read a hidden
+ * profile (a visitor, and since 03.10.2026 a free account and a member whose fee has lapsed) -
  * and keeps him on the team: „mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u
  * timu i bodovi koje je doneo." So the server names such a member on the team instead
  * (`Team.alsoInTheTeam`), and to every reader each standing membership is on exactly one of the
@@ -579,8 +580,8 @@ export function membersOf(team: Team, competitors: Competitor[]): InTheTeam[] {
  *
  * **It is asked of a member of a team (`membersOf`) and not of a record**, since
  * 02.10.2026: a member who hides his profile carries no season on his record for a
- * reader who is not signed in, and his team carries it instead. One rule, whichever
- * door named him.
+ * reader who may not read a hidden profile, and his team carries it instead. One rule,
+ * whichever door named him.
  *
  * What it cannot express is the member who left cleanly on 1 January and keeps
  * their earlier contribution. Nothing in the data names that person's old team,

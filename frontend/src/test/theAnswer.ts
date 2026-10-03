@@ -74,7 +74,7 @@ export const aCompetitor = {
  * written down beside the row above rather than inferred from it.
  *
  * **It is two facts wearing one shape and that is the decision**: a member who has sent
- * nothing, and a member who hides his profile read by somebody with no session. Owner,
+ * nothing, and a member who hides his profile read by somebody who may not read it. Owner,
  * 26.09.2026 (PDL P28f), requires „Oba slucaja dobijaju isti ishod", because an answer that
  * told them apart would name him as one of the members who hide. So there is no third sample
  * to write: the portal cannot see a difference and neither can this.
@@ -153,7 +153,7 @@ export const aTeam = {
  * other state of `alsoInTheTeam`, written down because the row above can only show it empty.
  *
  * Since 02.10.2026 `/api/competitors` answers such a member's `teamId` and `teamSince` as null
- * to a reader who is not signed in, and this resource names him on his team instead, with the
+ * to a reader who may not read a hidden profile, and this resource names him on his team instead, with the
  * season he is in it from (PDL, odeljak 16, [ODLUKA 27.09.2026, owner]). No seat, because a
  * visitor is told nobody's. Built from the record the server declares and not read off QA: no
  * member there hides his profile while standing in a team.

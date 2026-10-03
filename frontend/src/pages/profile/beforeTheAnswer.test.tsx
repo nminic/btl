@@ -50,6 +50,13 @@ const NOBODY = '/sr/takmicar/000999-niko-nikic'
  * Served and not hidden through the overlay, because a hard load has no overlay: the first paint of
  * the profile is the whole visit, and nobody has pressed a box in the settings. The flag is the
  * one `CompetitorApi` selects on every row (`data/types.ts`, `profileHidden`).
+ *
+ * <p><b>Without the members whose fee has lapsed, which is what the server serves.</b> The file
+ * still carries them, flagged `active: false`, and `/api/competitors` ends `where c.active`, so a
+ * member whose fee has run out is on no list the server answers (`test/serverAnswers.ts`,
+ * `membersAsServed`, says why a case has to build this and cannot read it). It matters here since
+ * 03.10.2026: the list is where a screen reads „is this reader an active member", so a stand-in that
+ * served him would make a member whose fee has lapsed look like one whose fee stands.
  */
 function competitorsServed(hidden: string[]): Response {
   const file: Record<string, unknown>[] = JSON.parse(
@@ -58,7 +65,9 @@ function competitorsServed(hidden: string[]): Response {
 
   return new Response(
     JSON.stringify(
-      file.map((one) => (hidden.includes(String(one.memberNumber)) ? { ...one, profileHidden: true } : one)),
+      file
+        .filter((one) => one.active === true)
+        .map((one) => (hidden.includes(String(one.memberNumber)) ? { ...one, profileHidden: true } : one)),
     ),
     { status: 200, headers: { 'content-type': 'application/json' } },
   )
@@ -115,6 +124,14 @@ function aServerThatHasNotSaidWho(hidden: string[]): {
  *  none (`session/theServer.ts`, „Absent rather than null"). */
 const aMember = { role: 'competitor', account: 1, member: { memberNumber: '000002' } }
 const anAccountThatRacesForNobody = { role: 'moderator', account: 1 }
+
+/** And the two readers the owner's choice of 03.10.2026 keeps a hidden profile from while they are
+ *  signed in (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
+ *  administracija"): a member whose fee has lapsed, who has a number the list the stand-in serves does
+ *  not carry (the file flags 000032 `active: false`, and `competitorsServed` leaves him out as the
+ *  server does), and an account that is not the administration and names no member at all. */
+const aMemberWhoseFeeHasLapsed = { role: 'competitor', account: 1, member: { memberNumber: '000032' } }
+const aFreeAccount = { role: 'competitor', account: 1 }
 
 /** The announced places on the page that say „waiting" this instant, by role AND by word: the page
  *  title keeps a `role="status"` of its own over every screen (`app/Shell.tsx`). */
@@ -330,6 +347,28 @@ describe.each([
       watch.stop()
     }
   }), SLOW)
+
+  it.each([
+    ['a member whose fee has lapsed', aMemberWhoseFeeHasLapsed],
+    ['an account that is not the administration and names no member', aFreeAccount],
+  ])('sends %s to the front page once the server has said who he is, as it sends a visitor', (_who, reader) => withTheClockStopped(async () => {
+    /* SIGNED IN AND STILL TURNED AWAY, which is what 03.10.2026 added: the answer names somebody,
+       and for these two the answer is the same as for nobody. Asked on the stopped clock for the
+       reason on `withTheClockStopped`, so that the front page can only have come from the answer,
+       and „never draws him first" is asked of every heading the document ever carried. */
+    const watch = watchingEveryHeading()
+
+    try {
+      const { router, server: held } = await loadedWhileItWaits(HIM)
+
+      await held.arrivesAs(reader)
+      await sentToTheFrontPageByTheAnswer(router)
+
+      expect(watch.seen().filter((name) => name.includes('Strahinja'))).toEqual([])
+    } finally {
+      watch.stop()
+    }
+  })(), SLOW)
 
   it('sends away the reader whose answer the portal cannot read at all, the same way', withTheClockStopped(async () => {
     /* The way to be nobody furthest from a refusal. It has to END the waiting as a 401 does, or the

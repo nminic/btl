@@ -1514,13 +1514,13 @@ class CompetitorApiTest {
 	 * season; 000007 left a team and joined none, so it would give him a club he is not
 	 * in. The list of members in no team is checked as a whole for that second half.
 	 *
-	 * <p><b>ASKED AS A SIGNED IN MEMBER SINCE 02.10.2026, and that is what keeps the second half
-	 * measuring anything.</b> 000007 hides his profile, and a visitor is now answered no team on
+	 * <p><b>ASKED AS AN ACTIVE MEMBER SINCE 02.10.2026 (a signed in one, until 03.10.2026 asked for
+	 * more), and that is what keeps the second half measuring anything.</b> 000007 hides his profile, and a visitor is now answered no team on
 	 * his record whatever his memberships say ([ODLUKA 27.09.2026, owner]). Read off the visitor's
 	 * answer, „he left the team and joined none" and „his team is withheld" would both arrive as
 	 * null, so dropping {@code season_to is null} would give him a club and this case would still
-	 * see nobody's - one value with two sources. A signed in reader is told every link there is,
-	 * so to him the null can come from the ended membership alone.
+	 * see nobody's - one value with two sources. A reader who may read a hidden profile is told
+	 * every link there is, so to him the null can come from the ended membership alone.
 	 */
 	@Test
 	void theTeamIsTheOneTheMembershipHasNotEnded() throws Exception {
@@ -1859,10 +1859,11 @@ class CompetitorApiTest {
 
 		/* AND SOME THINGS DO CHANGE SINCE 26.09.2026, SO THEY ARE NAMED RATHER THAN THE
 		   COMPARISON LOOSENED. A member who hides his profile is answered his portrait and his
-		   biography to anybody with a session and null to a visitor, twice [ODLUKA 26.09.2026,
-		   owner], and since 02.10.2026 the link to his team the same way [ODLUKA 27.09.2026,
-		   owner]. The sentence below would fail without naming them and the resource would be
-		   behaving exactly as decided. In this fixture it is the portrait that makes the two
+		   biography to an active member and to the administration, and null to everybody else a
+		   visitor is answered as, twice [ODLUKA 26.09.2026, owner; since 03.10.2026 that reader
+		   is the two and not anybody with a session], and since 02.10.2026 the link to his team the
+		   same way [ODLUKA 27.09.2026, owner]. The sentence below would fail without naming them
+		   and the resource would be behaving exactly as decided. In this fixture it is the portrait that makes the two
 		   answers differ: the member who hides has no standing team here. */
 		assertThat(whole(HER_OWN_ACCOUNT))
 				.as("the member's answer and the visitor's are already identical, so this case"

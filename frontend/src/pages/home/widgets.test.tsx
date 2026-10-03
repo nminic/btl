@@ -13,6 +13,7 @@ import { CATEGORIES } from '../../data/derive'
 import { FIRST, NEXT } from './rotation'
 import { addressOf } from '../profileAddress'
 import { TopByCategory } from './TopByCategory'
+import { RoleProvider } from '../../roles/RoleProvider'
 import { SessionProvider } from '../../session/SessionProvider'
 import { TopTen } from './TopTen'
 import { Counters } from './Counters'
@@ -20,18 +21,31 @@ import { ColumnChart } from '../../components/ColumnChart'
 import type { NewsItem, SponsorEntry } from './content'
 
 /* **Inside a session, since 06.09.2026.** Whether a name may lead to a profile now depends on
-   who is reading: a member hiding from readers who are not signed in is drawn as plain text to
-   them and as a link to everybody else (`profile/visible.ts`). A widget drawn outside a session
+   who is reading: a member hiding from readers who may not read a hidden profile is drawn as plain
+   text to them and as a link to everybody else (`profile/visible.ts`). A widget drawn outside a session
    cannot answer that, so the harness answers it: nobody signed in, which is the reading these
-   cases have always been written for. */
-function renderWidget(ui: React.ReactNode, memberNumber: string | null = null) {
-  return render(
+   cases have always been written for.
+
+   **And inside a role, since 03.10.2026**, because the reading is asked of the role as well as of
+   the number (the administration is a role, an active member is a number on the list the server
+   serves): `app/App.tsx` mounts `RoleProvider` above everything, as a visitor until the server says
+   who is reading, and this harness mounts it the same way. A case that renders the same widget
+   again with new numbers goes through the same tree (`inAVisit`), because a tree of another shape
+   would mount the widget afresh instead of giving it the numbers. */
+function inAVisit(ui: React.ReactNode, memberNumber: string | null = null) {
+  return (
     <I18nProvider locale="sr">
       <MemoryRouter>
-        <SessionProvider initialMemberNumber={memberNumber}>{ui}</SessionProvider>
+        <RoleProvider>
+          <SessionProvider initialMemberNumber={memberNumber}>{ui}</SessionProvider>
+        </RoleProvider>
       </MemoryRouter>
-    </I18nProvider>,
+    </I18nProvider>
   )
+}
+
+function renderWidget(ui: React.ReactNode, memberNumber: string | null = null) {
+  return render(inAVisit(ui, memberNumber))
 }
 
 const competitor = (memberNumber: string): Competitor => ({
@@ -397,8 +411,8 @@ describe('TopByCategory', () => {
        This used to be walked by a member whose fee had run out. `/api/competitors` does
        not answer for such a member at all (owner, 13.09.2026), so they take no bar and
        there is nothing here to hang a query off. Hiding is the reason that is left, and it
-       is the one that leaves the bar standing: read by somebody who is not signed in, a
-       hidden profile is unreachable and the name beside the bar is words (P23).
+       is the one that leaves the bar standing: read by somebody who may not read a hidden
+       profile, it is unreachable and the name beside the bar is words (P23).
 
        Read against a second bar that IS a link, or „nothing is a link" would pass for
        „this one is not". */
@@ -758,13 +772,7 @@ describe('TopByCategory', () => {
     const opening = screen.getByText(/^Najviše/).textContent
 
     rerender(
-      <I18nProvider locale="sr">
-        <MemoryRouter>
-          <SessionProvider initialMemberNumber={null}>
-            <TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />
-          </SessionProvider>
-        </MemoryRouter>
-      </I18nProvider>,
+      inAVisit(<TopByCategory competitors={competitors} results={one} season={2027} turnMs={20} />),
     )
 
     /* Gone from the page, and with it the focus: nothing announced it and

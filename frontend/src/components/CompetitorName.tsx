@@ -28,8 +28,9 @@ export function CompetitorName({
   const to = linkTo(competitor)
 
   /* **Two reasons for one answer, and neither is asked here.** A member whose fee has run out has
-     no profile to open (P11), and a member who has hidden theirs has none for a reader who is not
-     signed in (P23, 06.09.2026). Which of the two it is belongs to `profile/visible.ts`; what
+     no profile to open (P11), and a member who has hidden theirs has none for a reader who is
+     neither an active member nor the administration (P23, 06.09.2026 and 03.10.2026). Which of the
+     two it is belongs to `profile/visible.ts`; what
      belongs here is that the name stays either way. */
   if (to === undefined) {
     return <span className={className}>{name}</span>

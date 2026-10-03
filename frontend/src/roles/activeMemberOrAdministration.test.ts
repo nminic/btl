@@ -6,7 +6,8 @@ import { must } from '../test/at'
 import { isActiveMember, isActiveMemberOrAdministration } from './activeMemberOrAdministration'
 
 /**
- * WHO THE SCREEN DRAWS THE LIST OF WHO IS GOING FOR: AN ACTIVE MEMBER, OR THE ADMINISTRATION.
+ * WHO THE SCREEN DRAWS THE LIST OF WHO IS GOING FOR, AND SINCE 03.10.2026 WHO IT LETS INTO A
+ * HIDDEN PROFILE: AN ACTIVE MEMBER, OR THE ADMINISTRATION.
  *
  * <p>The two halves are two facts, so they are asked as a grid rather than one at a time: a
  * reader who is the administration and not a member in good standing is the one who tells them
