@@ -1,4 +1,14 @@
-import { outsideLink } from '../../data/outsideLink'
+import { outsideHost, outsideLink } from '../../data/outsideLink'
+import { at, must } from '../../test/at'
+import {
+  MISLEADING,
+  ONLY_THE_GATE_REFUSES,
+  SHOWN,
+  STAYS_A_LINK,
+  fromPoint,
+  hrefOf,
+} from '../../test/misleadingAddresses'
+import { SLOW } from '../../test/slow'
 import { addressesIn, type Piece } from './addressesIn'
 
 /**
@@ -278,23 +288,23 @@ describe('what stands in front of an address', () => {
 })
 
 describe('an address that the gate beneath refuses', () => {
-  it.each([
-    'https://primer.rs\u200b/lige',
-    'https://primer\u00ad.rs/lige',
-    'https://[::1',
-    'www.primer.rs:99999/lige',
-    'https://prim%er.rs/lige',
-    'www.primer.rs|lige',
-    'www.primer]rs',
-  ])('stays words, the whole word of it: %j', (word) => {
+  /**
+   * **Every one of these is an address that `addressesIn` itself lets through** (`addressesInAlone.test.ts`
+   * holds it, under a gate that accepts everything), so what makes it words here is the gate and
+   * nothing above it. Three that stood here until 03.10.2026 (evening) are gone from this list for
+   * that reason: a zero width space, a soft hyphen and a `%` in a host are refused by `addressesIn`
+   * as well since then, and a case about them proves nothing about the gate. They are held in the
+   * file with the permissive gate, where the refusal can only be the function's.
+   */
+  it.each(ONLY_THE_GATE_REFUSES)('stays words, the whole word of it: %j', (word) => {
     expect(addressesIn(`Vidi ${word} i dalje.`)).toEqual([words(`Vidi ${word} i dalje.`)])
   })
 
   it('takes the brackets around it with it, so what is shown is what was written', () => {
+    const control = `www.primer.rs${fromPoint(1)}`
+
     expect(addressesIn('Vidi (https://[::1) i dalje.')).toEqual([words('Vidi (https://[::1) i dalje.')])
-    expect(addressesIn('Vidi „www.primer.rs\u200b“ i dalje.')).toEqual([
-      words('Vidi „www.primer.rs\u200b“ i dalje.'),
-    ])
+    expect(addressesIn(`Vidi „${control}“ i dalje.`)).toEqual([words(`Vidi „${control}“ i dalje.`)])
   })
 
   it('is judged on its own: the address beside it is still a link', () => {
@@ -313,6 +323,193 @@ describe('an address that the gate beneath refuses', () => {
     expect(outsideLink('https://www.runtrace.net)')).toBe('https://www.runtrace.net)')
     expect(outsideLink('HTTPS://primer.rs')).toBeUndefined()
   })
+})
+
+describe('an address that the gate accepts and whose host a browser reads as another', () => {
+  /**
+   * Measured on 03.10.2026 by the review of the change that made these words links (and completed
+   * the same day with the ways to the same hosts that the review did not try), and held here so that
+   * the sentences of `addressesIn.ts` about what the gate lets through are the gate's own behaviour
+   * and not a memory of it. The host of each row is the one `outsideHost` answers, which is the one a
+   * browser opens: read by the parser of this test environment (jsdom's) and by Node's, which agree
+   * on every row.
+   *
+   * `addressesInAlone.test.ts` holds that the refusal is `addressesIn`'s own, under a gate that
+   * accepts everything; what is held here is that the gate does accept them, and that the function
+   * refuses them end to end all the same.
+   */
+  it.each(MISLEADING)(
+    'is accepted by the gate, and a browser opens $opens for it: $how',
+    ({ typed, opens }) => {
+      const href = hrefOf(typed)
+
+      expect(outsideLink(href)).toBe(href)
+      expect(outsideHost(href)).toBe(opens)
+      expect(outsideHost(href)).not.toBe(SHOWN)
+    },
+  )
+
+  it.each(MISLEADING)('is words all the same, the whole word of it: $how', ({ typed }) => {
+    expect(addressesIn(`Vidi ${typed} i dalje.`)).toEqual([words(`Vidi ${typed} i dalje.`)])
+  })
+
+  it.each(STAYS_A_LINK)('stays a link, end to end: $why', ({ typed }) => {
+    const href = hrefOf(typed)
+
+    expect(outsideLink(href)).toBe(href)
+    expect(addressesIn(`Vidi ${typed} i dalje.`)).toEqual([
+      words('Vidi '),
+      link(typed, href),
+      words(' i dalje.'),
+    ])
+  })
+
+  it('opens another address than the one a number is written as, which is the boundary written down at addressIn', () => {
+    /* Held, so that the sentence in `addressesIn.ts` that says what these numbers open is the
+       parser's own answer. Nothing here is a reason to refuse them: what stands in the words is
+       digits, and nobody reads digits as the name of a site. */
+    expect(outsideHost('https://0x7f.1/')).toBe('127.0.0.1')
+    expect(outsideHost('https://127.1/')).toBe('127.0.0.1')
+    expect(outsideHost('https://3232235777/')).toBe('192.168.1.1')
+  })
+})
+
+describe('the host that opens, asked of the parser for every address that becomes a link', () => {
+  /**
+   * THE FLOOR UNDER THE RULE OF `addressIn`, and not a second copy of it.
+   *
+   * The rule is a short class (`@`, `%`, a backslash, anything outside ASCII), and every member of
+   * it was found by measurement. A class that is found by measuring is a class that can be short by
+   * one, so this asks the parser, which is the source of truth, a question that does not name any
+   * member: **for every address the function turns into a link, is the host that opens the host that
+   * was typed?** A sweep of three million typed hosts per form, run on 03.10.2026 outside the
+   * repository, found exactly three kinds of answer „no" (a user part, a percent escape, a number) and
+   * no fourth. The same question is asked here of thirty thousand each time the suite runs, so the
+   * fourth kind, the day a parser or a browser reads something else in a new way, fails here and
+   * asks for a decision, and does not wait for a review to find it.
+   *
+   * **The number is the one answer that is allowed, and it is written down as such**: `addressIn`
+   * says why, and the case before this one holds what a number opens.
+   *
+   * Every host is ASCII on purpose (a path may hold a letter outside it, and one of the endings
+   * does): what is outside ASCII in a host is asked of every character Unicode has in
+   * `addressesInAlone.test.ts`, where no gate can be the reason for a refusal.
+   */
+  const FRONTS = ['www.', 'https://', 'https:///']
+
+  /** What stands behind the host: nothing, and each of the three that end it. The first is only
+   *  used when the host ends in a letter or a digit, since a full stop at the very end of an
+   *  address is taken off as the full stop of a sentence and then is not part of it. */
+  const BACKS = ['', '/p', '?q', '#f', `/Ni${fromPoint(0x161)}`, '/@x%']
+
+  /** Printable ASCII, minus the three characters that end a host: every character that a keyboard
+   *  types without a modifier of its own. */
+  const PRINTABLE = Array.from({ length: 94 }, (_one, place) => String.fromCharCode(33 + place)).filter(
+    (one) => !'/?#'.includes(one),
+  )
+
+  /** What a host is built from. The escapes and the user part are written whole, since a `%` that
+   *  does not stand in front of two hexadecimal digits is refused by the gate before anything else
+   *  is asked, and the sweep would reach the escapes one time in a thousand. */
+  const PIECES = [
+    ...'abcxz017f..--_'.split(''),
+    ':',
+    ':80',
+    ':443',
+    '@',
+    '%41',
+    '%2e',
+    '%E2%88%95',
+    '%E3%85%A4',
+    '%D0%B0',
+    'xn--',
+    '0x7f',
+    '127',
+    '[::1]',
+    ...PRINTABLE,
+  ]
+
+  /** A seeded generator, so a failing address is the same address on every run and every machine. */
+  function samples(count: number): { front: string; region: string; back: string }[] {
+    let seed = 20261003
+
+    const next = (below: number): number => {
+      seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff
+
+      return seed % below
+    }
+
+    const pick = (list: readonly string[]): string => at(list, next(list.length))
+
+    return Array.from({ length: count }, () => {
+      const region = Array.from({ length: 1 + next(5) }, () => pick(PIECES)).join('')
+
+      return {
+        front: pick(FRONTS),
+        region,
+        back: pick(/[0-9a-z]$/i.test(region) ? BACKS : BACKS.slice(1)),
+      }
+    })
+  }
+
+  /** The host with its port taken off, which is what a reader reads as the host. */
+  const withoutPort = (host: string): string => host.replace(/:\d*$/, '')
+
+  /** A host that a browser reads as a number: the last of its labels is one. */
+  const NUMBER = /(^|\.)(\d+|0x[0-9a-f]*)\.?$/i
+
+  it('is the host that was typed, in every address that becomes a link, but for a number', () => {
+    const differ: string[] = []
+    let links = 0
+    let numbers = 0
+    let refused = 0
+
+    for (const { front, region, back } of samples(30_000)) {
+      const typed = `${front}${region}${back}`
+      const link = addressesIn(typed).find((piece) => piece.href !== null)
+
+      if (link === undefined) {
+        /* An address that the gate accepts and the function does not make a link of: what stands in
+           front of it is the function, and nothing else. */
+        if (outsideLink(hrefOf(typed)) !== undefined) {
+          refused += 1
+        }
+
+        continue
+      }
+
+      links += 1
+
+      /* The host as it was typed, the way a reader finds it: behind `https:` and every slash and
+         backslash that a browser skips after it (in front of `www.` it skips nothing), up to the
+         first `/`, `?` or `#`. A reader does not end it at a backslash, and a browser does. */
+      const written = withoutPort(
+        typed.replace(/^https:[/\\]*/, '').replace(/[/?#].*/su, ''),
+      ).toLowerCase()
+      const opened = withoutPort(
+        must(outsideHost(must(link.href, 'the address of a link')), `the host of ${typed}`),
+      )
+
+      if (written === opened) {
+        continue
+      }
+
+      if (NUMBER.test(written)) {
+        numbers += 1
+      } else {
+        differ.push(`${typed} opens ${opened}`)
+      }
+    }
+
+    /* Floors under the sweep, so that an answer of „nothing found" is not the answer of a sweep that
+       reached nothing: addresses that became links, numbers that were let through on purpose, and
+       addresses that the gate accepts and only the function stood in front of. */
+    expect(links).toBeGreaterThan(9_000)
+    expect(numbers).toBeGreaterThan(300)
+    expect(refused).toBeGreaterThan(3_000)
+
+    expect(differ.slice(0, 10)).toEqual([])
+  }, SLOW)
 })
 
 describe('more than one address', () => {

@@ -985,7 +985,7 @@ describe('the description of an event and the organiser’s page', () => {
       renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
 
       const said = await screen.findByText(SAID)
-      const link = screen.getByRole('link', { name: /^Strana organizatora/ })
+      const link = screen.getByRole('link', { name: 'Strana organizatora' })
 
       expect(said).toBeVisible()
       expect(link).toBeVisible()
@@ -1015,7 +1015,10 @@ describe('the description of an event and the organiser’s page', () => {
     try {
       renderAt(`/sr/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
 
-      const link = await screen.findByRole('link', { name: /^Strana organizatora/ })
+      /* Named by the words and by nothing else: asked as a string, which matches the
+         whole of the name, and not as a pattern that starts at the first letter, which
+         is satisfied just as well by the words with a host written after them. */
+      const link = await screen.findByRole('link', { name: 'Strana organizatora' })
 
       expect(link).toHaveAttribute('href', 'https://organizator.example/trka')
       /* `noreferrer` so the address of this page does not travel to a host
@@ -1024,10 +1027,32 @@ describe('the description of an event and the organiser’s page', () => {
          depends on a default is a rule nobody can read. */
       expect(link).toHaveAttribute('rel', 'noreferrer noopener')
       expect(link).toHaveAttribute('target', '_blank')
-      /* And the host, inside the link so it is read with it. The words of this
-         link are the portal's own and so cannot lie; precisely because they
-         cannot, they say nothing about where the press lands. */
-      expect(within(link).getByText('organizator.example')).toBeVisible()
+      /* And no host beside the words, in the link or anywhere on the page (owner,
+         03.10.2026: „Nije potrebno da postoji i ispisan link organizatora, dovoljno
+         je da postoji linkovan tekst „Strana organizatora"."). The host stood inside
+         this anchor until that day, so it was read with the link; asked of the page
+         as well as of the link, because a host moved out of the anchor is still the
+         thing the owner took off. */
+      expect(screen.queryByText('organizator.example'), 'the host is drawn beside the words').toBeNull()
+      expect(link).toHaveTextContent(/^Strana organizatora$/)
+    } finally {
+      restore()
+    }
+  })
+
+  it('says the same in English, and still draws no host', async () => {
+    /* The words are the dictionary's and the host was drawn in every language, so a
+       reading that is only ever made in Serbian leaves the other half of the
+       decision unmeasured. */
+    const restore = eventCarrying(SAID, 'https://organizator.example/trka')
+
+    try {
+      renderAt(`/en/kalendar/${SLUG}`, 'visitor', null, undefined, '2026-12-01')
+
+      const link = await screen.findByRole('link', { name: "The organiser's page" })
+
+      expect(link).toHaveAttribute('href', 'https://organizator.example/trka')
+      expect(screen.queryByText('organizator.example'), 'the host is drawn beside the words').toBeNull()
     } finally {
       restore()
     }
@@ -1107,7 +1132,7 @@ describe('the description of an event and the organiser’s page', () => {
       renderAt(`/sr/kalendar/${GATHERING}`, 'visitor', null, undefined, '2026-12-01')
 
       expect(await screen.findByText(SAID)).toBeVisible()
-      expect(screen.getByRole('link', { name: /^Strana organizatora/ })).toBeVisible()
+      expect(screen.getByRole('link', { name: 'Strana organizatora' })).toBeVisible()
       /* And still no table, which is the other half of the same sentence. */
       expect(screen.queryByRole('table', { name: 'Trke' })).toBeNull()
     } finally {
