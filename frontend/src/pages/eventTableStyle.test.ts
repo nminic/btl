@@ -1,7 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { must } from '../test/at'
-import { everyRule, ruleFor, rulesInMedia, unconditionalRules } from '../test/stylesheet'
+import { LOCALES, type Locale } from '../i18n/config'
+import { formatDistance, formatNumber, formatShortDate } from '../i18n/format'
+import { at, must } from '../test/at'
+import {
+  everyRule,
+  ruleAt,
+  ruleFor,
+  rulesInContainer,
+  rulesInMedia,
+  unconditionalRules,
+  unremarked,
+} from '../test/stylesheet'
 
 /**
  * Arrangements that no rendered test can see, each found by an independent round and each
@@ -156,6 +166,132 @@ const READINGS: Reading[] = [
   { day: true, wayIn: true },
 ]
 
+/** A value written as a step of the scale, `var(--space-8)`, in `rem`. */
+function step(written: string, what: string): number {
+  const named = /^var\((--[\w-]+)\)$/.exec(squash(written))
+
+  expect(named, `${what} reads \`${written}\`, which is not a step of the scale`).not.toBeNull()
+
+  const token = must(named?.[1], `the name of the step of ${what}`)
+  const found = new RegExp(`${token}:\\s*([\\d.]+)rem`).exec(
+    readFileSync(join(process.cwd(), 'src/styles/tokens.css'), 'utf-8'),
+  )
+
+  return Number(must(found?.[1], `the token ${token}`))
+}
+
+/**
+ * What a third of a block holds, each kind of it as the widest there is, in px as one line of text in the cell that
+ * draws it. Measured in Chrome 154 on Windows, Segoe UI, a 16px root; `rem` is that over 16 and holds at every text
+ * size, because all of it is `rem`.
+ *
+ * **A figure is held WHOLE and a date by its widest WORD.** A measure parted from its unit by a break at the space
+ * is a cut too, so the number goes with its unit; a date written with spaces (/sr) breaks at them as it does on
+ * every other screen, and one written without (/en) has nowhere to break and is cut in two, so it is the word that
+ * has to fit. A number or a date is read by its SHAPE, each digit a nought, because the digits are tabular
+ * (`index.css`): „12/31/2022" stands for every date of its shape. A label is measured as it is drawn: upper case,
+ * bold, 0,7rem and letter-spaced.
+ *
+ * **This list has its floor in the case below it**, which asks the dictionary and the data what a third holds and
+ * refuses a thing that is not here, and a measurement of a thing nobody holds.
+ */
+const MEASURED: Record<string, number> = {
+  /* The labels, in both languages. */
+  MERA: 34.11,
+  USPON: 41.41,
+  SPUST: 36.91,
+  MEASURE: 56.3,
+  ASCENT: 45.88,
+  DESCENT: 52.78,
+  /* A distance of a hundred kilometres or more with its unit, and a climb or a fall of a thousand metres or more. */
+  '000,00 km': 72.72,
+  '000.00 km': 72.72,
+  '0.000': 37.97,
+  '0,000': 37.97,
+  /* The widest word of a date: the whole of it on /en, and the year with its full stop on /sr. */
+  '00/00/0000': 81.47,
+  '0000.': 37.97,
+}
+
+type Race = { date: string; distanceKm: number; ascentM: number; descentM: number }
+
+const races: Race[] = JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'))
+
+/** The shape of a word: every digit a nought. */
+const shapeOf = (word: string) => word.replace(/\d/g, '0')
+
+/** The longest of these, as its shape. Within one kind a longer one is a wider one: its characters are the digits and
+ *  the one or two marks the format puts between them, and the digits are tabular. */
+const widest = (texts: string[]) => shapeOf(texts.reduce((sofar, one) => (one.length > sofar.length ? one : sofar)))
+
+/** The longest WORD of any of these, as its shape. */
+const widestWord = (texts: string[]) => widest(texts.flatMap((one) => one.split(/\s+/)))
+
+/**
+ * What a third of a block holds in this language. The figures are in every race: the three words over them as they
+ * are drawn, and the widest distance and the widest climb or fall that the races of the file write. The days are in
+ * the events that run more than one morning: the widest word of a date.
+ */
+function held(locale: Locale): { figures: string[]; days: string[] } {
+  const dictionary: { event: Record<string, string> } = JSON.parse(
+    readFileSync(join(process.cwd(), 'src', 'i18n', `${locale}.json`), 'utf-8'),
+  )
+
+  return {
+    figures: [
+      ...['measure', 'ascent', 'descent'].map((key) =>
+        must(dictionary.event[key], `event.${key} in ${locale}`).toUpperCase(),
+      ),
+      widest(races.map((one) => formatDistance(one.distanceKm, locale, 2))),
+      widest(races.flatMap((one) => [formatNumber(one.ascentM, locale), formatNumber(one.descentM, locale)])),
+    ],
+    days: [widestWord(races.map((one) => formatShortDate(one.date, locale)))],
+  }
+}
+
+const ROW = '.table--races tbody tr'
+const ROW_WITH_DAY = '.table--races:has(.event-races__day) tbody tr'
+
+type NarrowBox = { condition: string; limit: number; rules: CSSStyleRule[] }
+
+/**
+ * The two container queries the sheet writes, each with its condition as written, its limit in `rem` and the rules in
+ * it: the box of a race block too narrow to hold three figures in a row, and the wider one that an event with a day
+ * needs (`Profile.css`, under the rule of the label). Told apart by what they write and not by the order they stand
+ * in, and a sheet that writes more or fewer than these two fails here.
+ */
+function narrowBoxes(): { figures: NarrowBox; days: NarrowBox } {
+  const conditions = [...unremarked(profile).matchAll(/@container\s*([^{]*)\{/g)].map((one) =>
+    squash(must(one[1], 'the condition of a container query')),
+  )
+
+  expect(conditions, 'the sheet writes no container query, or not the two there are meant to be').toHaveLength(2)
+
+  const boxes = conditions.map((condition) => {
+    const reading = /^\(max-width: ([\d.]+)rem\)$/.exec(condition)
+
+    expect(reading, `a query reads \`${condition}\`, which is not a width of the box in rem`).not.toBeNull()
+
+    return {
+      condition,
+      limit: Number(must(reading?.[1], 'the width of a query')),
+      rules: rulesInContainer(profile, condition, 'Profile.css'),
+    }
+  })
+  const writes = (box: NarrowBox, selector: string) => box.rules.some((rule) => squash(rule.selectorText) === selector)
+
+  return {
+    figures: must(
+      boxes.find((box) => writes(box, ROW)),
+      'the query of the figures',
+    ),
+    days: must(
+      boxes.find((box) => writes(box, ROW_WITH_DAY)),
+      'the query of the events with a day',
+    ),
+  }
+}
+
 describe('the table of races on an event', () => {
   it('is drawn as blocks first and as a table from the wide layout up, behind one query', () => {
     /* Owner, 03.10.2026: a block per race on a telephone, and from the wide layout up a table with
@@ -167,16 +303,27 @@ describe('the table of races on an event', () => {
        every rule about this table is written plainly or behind that one query, so none stands behind
        a `max-width` one, which is a second shape written against the first; and the plain ones are
        the blocks. The width is the one the portal calls the wide layout (`styles/tokens.css`), which
-       the owner's „desktop" is taken to be. */
+       the owner's „desktop" is taken to be.
+
+       **There are two other queries, and they are not a second shape.** The telephone shape is refined
+       where its box cannot hold three figures in a row, and where an event with a day cannot hold a date
+       beside its name (owner, 03.10.2026, the case under this one), and a refinement of the blocks is not
+       the table the way a `max-width` query would be: every rule in them is counted here, so a third
+       query fails this count instead of being waved through. */
     const everything = everyRule(profile, 'Profile.css').filter(aboutTheTable)
     const written = unconditionalRules(profile, 'Profile.css').filter(aboutTheTable)
     const behind = rulesInMedia(profile, WIDE, 'Profile.css').filter(aboutTheTable)
+    const narrow = Object.values(narrowBoxes())
+      .flatMap((box) => box.rules)
+      .filter(aboutTheTable)
 
     expect(written.length, 'nothing about the table is written plainly').toBeGreaterThan(0)
     expect(behind.length, 'nothing about the table is written behind the wide layout').toBeGreaterThan(0)
-    expect(everything.length, 'a rule about the table stands behind a query that is not the wide layout').toBe(
-      written.length + behind.length,
-    )
+    expect(narrow.length, 'nothing about the table is written behind the narrow box').toBeGreaterThan(0)
+    expect(
+      everything.length,
+      'a rule about the table stands behind a query that is neither the wide layout nor the narrow box',
+    ).toBe(written.length + behind.length + narrow.length)
 
     expect(plain('.table--races').getPropertyValue('display')).toBe('block')
     expect(plain('.table--races thead').getPropertyValue('display'), 'the head is drawn on a telephone').toBe('none')
@@ -206,7 +353,9 @@ describe('the table of races on an event', () => {
     /* „Na mobilnom u prvom redu naziv i datum, u drugom ova tri podatka. Dugme u redu pored na
        Desktopu, a ispod podataka svake trke na mobilnom." Three tracks of one width: the name takes
        all of them, or two where there is a day, and the day takes the third. The figures follow in
-       the order they are read, a track each, and the way in has the row after them to itself. */
+       the order they are read, a track each, and the way in has the row after them to itself. That is
+       the plain rule and so the ordinary text size; where the box cannot hold three of the widest
+       thing a third holds it is one column, which the case under this one holds. */
     expect(squash(plain('.table--races tbody tr').getPropertyValue('grid-template-columns'))).toBe(
       'repeat(3, minmax(0, 1fr))',
     )
@@ -242,6 +391,150 @@ describe('the table of races on an event', () => {
       plain(WAY_IN).getPropertyValue('margin-block-start'),
       'an empty way in is given a distance, which is a row of its own',
     ).toBe('')
+  })
+
+  it('is one column where a third of its box cannot hold the widest thing a third holds, and three tracks everywhere else', () => {
+    /* Owner, 03.10.2026, chosen among the ways he was offered and with the assistant's recommendation (PDL,
+       „Izmene posle testiranja (03.10.2026, vlasnik)", point 4): where the three figures do not fit in a row
+       on a telephone at an enlarged text they go one under another, and at the ordinary size they stay in the
+       second row. What was measured, and why the numbers are what they are, is under the queries in
+       `Profile.css`. Held here: that the two queries are there, that they write where the parts stand and
+       nothing else, and that each number is the arithmetic the measurements give. The floor of each is the
+       widest thing a third holds in the boxes it covers, and the ceiling of both is the ordinary text size on
+       the narrowest screen the portal promises, 360px, which has to stay three tracks.
+
+       Worked out and not rendered, because jsdom lays nothing out (ADL A18), against widths measured in
+       Chrome (`MEASURED`, and the case under this one for its floor). The box is asked in `rem` and not in
+       `px`: the words grow with the text and the box does not, so a width in `px` is right at one size of text
+       and wrong at every other. The circle of the standing is in `px` on purpose, since that one is about
+       room (`pages/Rankings.css`). */
+    const { figures, days } = narrowBoxes()
+    const written = (box: NarrowBox) => new Map(box.rules.map((rule) => [squash(rule.selectorText), rule.style]))
+    const ofTheFigures = written(figures)
+    const ofTheDays = written(days)
+
+    /* What they write: where the parts stand and nothing else, so that nothing is taken off the screen and
+       nothing is reordered. The first writes the row and nothing more. The one track is allowed to be narrower
+       than its content, which is what `minmax(0, …)` says, or a word longer than the row stretches the track
+       and slides the box. */
+    const allowed = ['grid-template-columns', 'grid-column', 'margin-block-start']
+
+    expect(
+      [...figures.rules, ...days.rules].flatMap((rule) => [...rule.style]).filter((one) => !allowed.includes(one)),
+      'a query writes more than where the parts stand',
+    ).toEqual([])
+    expect([...ofTheFigures.keys()], 'the query of the figures writes more than the row').toEqual([ROW])
+    expect(
+      squash(must(ofTheFigures.get(ROW), 'the rule of the row').getPropertyValue('grid-template-columns')),
+      'the row of every race is not one track that may shrink',
+    ).toBe('minmax(0, 1fr)')
+    expect(
+      squash(must(ofTheDays.get(ROW_WITH_DAY), 'the rule of the row of an event with a day').getPropertyValue('grid-template-columns')),
+      'the row of an event with a day is not one track that may shrink',
+    ).toBe('minmax(0, 1fr)')
+
+    /* Everything the plain sheet places by a track number goes back to „the whole row", derived from the
+       sheet and not listed here: a track number past the last track is a track that is made. It is the query
+       of the events with a day that says so, because only they have a day, and it has to cover every box the
+       first one does, or a row of one track meets a day placed in the third. */
+    const placed = unconditionalRules(profile, 'Profile.css')
+      .filter(aboutTheTable)
+      .filter((rule) => !['', '1 / -1'].includes(squash(rule.style.getPropertyValue('grid-column'))))
+      .map((rule) => squash(rule.selectorText))
+
+    expect(placed.length, 'nothing is placed by a track number, so there is nothing to give back').toBeGreaterThan(0)
+
+    for (const selector of placed) {
+      expect(
+        squash(must(ofTheDays.get(selector), `a rule giving ${selector} the whole row`).getPropertyValue('grid-column')),
+        `${selector} is not given the whole row`,
+      ).toBe('1 / -1')
+    }
+
+    expect(
+      days.limit,
+      'the query of the events with a day stops before the query of the figures, which would leave a day placed in a third track that is not there',
+    ).toBeGreaterThanOrEqual(figures.limit)
+
+    /* And the queries are written AFTER the rules they give back. They weigh the same, so what decides is
+       which comes last in the sheet, and a query moved above them is one that does nothing, which no rule
+       read by the parser can show: the parser answers what a sheet says and not in what order a browser reads it. */
+    const queryAt = unremarked(profile).indexOf('@container')
+
+    for (const selector of [ROW, ...placed]) {
+      const plainAt = ruleAt(profile, selector)
+
+      expect(plainAt, `${selector} is not written plainly`).toBeGreaterThan(-1)
+      expect(plainAt, `a query is written above ${selector}, which then wins`).toBeLessThan(queryAt)
+    }
+
+    /* A third of the box where a query stops applying, which is the narrowest a third is that is not one
+       column: the box less the room a row keeps, which is its padding either side and the two gaps between
+       three tracks, all of them steps of the scale and so `rem`, read from the row and not written here. */
+    const row = plain(ROW)
+    const room =
+      2 * step(at(squash(row.getPropertyValue('padding')).split(' '), 1), 'the padding of a block') +
+      2 * step(row.getPropertyValue('column-gap'), 'the gap of a block')
+    const need = (things: string[]) => Math.max(...things.map((one) => must(MEASURED[one], `a measurement of ${one}`))) / 16
+    const everywhere = LOCALES.map(held)
+    const widestFigure = need(everywhere.flatMap((one) => one.figures))
+    const widestWithADay = need(everywhere.flatMap((one) => [...one.figures, ...one.days]))
+
+    for (const [what, box, needed] of [
+      ['a figure', figures, widestFigure],
+      ['a figure or a date', days, widestWithADay],
+    ] as const) {
+      const third = (box.limit - room) / 3
+
+      expect(
+        third,
+        `a third of a box of ${box.limit}rem holds ${third}rem, and the widest thing ${what} is ${needed}rem`,
+      ).toBeGreaterThanOrEqual(needed)
+
+      /* And not much over it. A number is the measurement and a margin, and a margin that grows is a query that
+         draws as one column a block that still fits, which is what two queries in place of one were written to
+         stop: one number for every event was the date's, and made 98% of them one column at 125% text for the
+         sake of 2%. Six percent is the margins that are written (2% and 4%) and a little more. */
+      expect(
+        third,
+        `a third of a box of ${box.limit}rem holds ${third}rem, more than 6% over the widest thing ${what} (${needed}rem)`,
+      ).toBeLessThanOrEqual(needed * 1.06)
+
+      /* And the other way: the ordinary text size on a 360px screen is three tracks and not one. The box is
+         the screen less the padding of the shell, which is read from it, in `rem` at a 16px root. */
+      expect(box.limit, `a 360px telephone at the ordinary text size is drawn as one column (${what})`).toBeLessThan(
+        (360 - shellBox().padding) / 16,
+      )
+    }
+  })
+
+  it('has a measurement for the widest thing of every kind that a third of a block holds, and for nothing else', () => {
+    /* The floor under `MEASURED`. A list of widths written by hand is the shape of a guard that is finished
+       by the next string nobody thought of, so what a third holds is asked of what writes it: the dictionary,
+       for the three words over the figures in every language the portal has, and the races of the file, for
+       the widest distance, climb and fall and the widest word of a date that each language writes of them.
+       A thing with no measurement fails here, and so does a measurement of a thing nobody holds.
+
+       **What it does not hold, said here and not left to be found.** The widths are Segoe UI in Chrome 154,
+       and a telephone draws its own font (`--sans`), a few percent wider or narrower; the queries are written
+       2% and 4% over the widest of them for that and no other font was measured. The limit of a timed race is
+       not in the file (the longest it can write is „299 h 49' 43''", whose words are narrower than a date, and
+       which breaks at its spaces), and a name longer than the whole row breaks by design (`overflow-wrap`). */
+    const needed = LOCALES.flatMap((one) => Object.values(held(one)).flat())
+
+    expect(needed.filter((one) => !(one in MEASURED)), 'a third holds a thing nobody has measured').toEqual([])
+    expect(
+      Object.keys(MEASURED).filter((one) => !needed.includes(one)),
+      'a width is measured of a thing nobody holds',
+    ).toEqual([])
+
+    /* The labels were measured as they are drawn, so they are held to the look they were measured in. */
+    const label = plain('.table--races .event-races__label')
+
+    expect(
+      ['font-size', 'font-weight', 'letter-spacing', 'text-transform'].map((property) => label.getPropertyValue(property)),
+      'the label is not drawn as it was measured',
+    ).toEqual(['0.7rem', '700', '0.05em', 'uppercase'])
   })
 
   it('is a quarter of its box for the name and a twelfth for each figure, which ends at the middle of it', () => {
@@ -455,8 +748,10 @@ describe('the table of races on an event', () => {
       ).toBe(heading.getPropertyValue(property))
     }
 
-    /* And it does not break: at 200% a word of its own is wider than a track long before the figure under
-       it is, and „USPO" over „N" is worse than a word that leans into the gap beside it. */
+    /* And it does not break: „USPO" over „N" is worse than a word that does not fit. What keeps a word from
+       not fitting is not this declaration but the query that makes a race one column where a third of the
+       box is narrower than the widest thing a third holds (the two cases above), and a word that leaned into
+       the gap beside it, which is what this said until 03.10.2026, ran 19,25px into its neighbour on /en. */
     expect(word.getPropertyValue('white-space')).toBe('nowrap')
   })
 

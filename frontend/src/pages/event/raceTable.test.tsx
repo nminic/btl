@@ -150,6 +150,13 @@ describe('the table of races on an event, as it is written', () => {
         const word = within(cell).getByText(at(heads, index))
 
         expect(cell.firstChild, 'the word stands after the figure and not over it').toBe(word)
+        /* In every one of the three, and not once in the table: the class is how the sheet gives the word its
+           look and takes it off where the head is drawn, and the set of names asked of the table below is
+           satisfied by one cell wearing it. Measured by the review of PR 482: the class off one word, and
+           the whole package green. */
+        expect(word, 'the word over a figure does not wear the class the sheet styles it by').toHaveClass(
+          'event-races__label',
+        )
         /* Not hidden from a reader: on a telephone, where the head is not drawn, it is the only name
            the figure has (`pages/EventDetail.tsx`). */
         expect(word, 'the only name a figure has on a telephone is hidden from it').not.toHaveAttribute(
@@ -233,20 +240,49 @@ describe('the table of races on an event, as it is written', () => {
   it('writes every name the sheet selects, and selects every name it writes', async () => {
     /* A class is written in markup and selected in a sheet, and it takes both ends to do anything; a name
        with one end is dead or broken, and which of the two hardly matters (`styles/hooks.test.ts`, which
-       says the same of the ducats). The fullest reading, so the day and the way in are both there. */
+       says the same of the ducats). The fullest reading, so the day and the way in are both there.
+
+       **Every class the sheet names in a rule about the table, and the table itself counted.** This asked
+       of the names that begin with `event-races` and of what stands UNDER the table, so a table that lost
+       either of its own two classes, `table` or `table--races`, was a name nobody asked about: the sheet
+       then drew a telephone with an ordinary table in it, 438,8px in a box of 328 at 360px, and the whole
+       package stayed green (measured in Chrome, review of PR 482). */
     const table = await openTable(TWO_DAYS, 'competitor', MEMBER, '2021-09-17')
-    const named = /event-races(?:__[a-z-]+)?/g
+    const box = must(table.parentElement, 'the box around the table')
+    const rules = everyRule(PROFILE, 'Profile.css').filter((rule) => /event-races|table--races/.test(rule.selectorText))
     const selected = new Set(
-      everyRule(PROFILE, 'Profile.css').flatMap((rule) => rule.selectorText.match(named) ?? []),
+      rules.flatMap((rule) => [...rule.selectorText.matchAll(/\.([\w-]+)/g)].map((one) => must(one[1], 'a class'))),
     )
-    const written = new Set(
-      [table.parentElement, ...table.querySelectorAll('*')].flatMap((one) => [...(one?.classList ?? [])]).filter(
-        (one) => one.startsWith('event-races'),
+    const written = new Set([box, table, ...table.querySelectorAll('*')].flatMap((one) => [...one.classList]))
+
+    expect(written.size, 'the table writes no name of this family').toBeGreaterThan(5)
+    expect([...selected].filter((one) => !written.has(one)), 'selected and never written').toEqual([])
+    expect(
+      [...written].filter((one) => (one.startsWith('event-races') || one === 'table--races') && !selected.has(one)),
+      'written and never selected',
+    ).toEqual([])
+
+    /* And on WHICH element. The two sets above are satisfied by a class on the wrapper of the table in place
+       of the table, and the sheet then styles a `div` as a table. So the first compound of every selector,
+       which is the element the rule begins at, is held to the element it is about. Three of them are written
+       out, and a fourth fails here until somebody says which element it is. */
+    const about = new Map([
+      ['.event-races', box],
+      ['.table--races', table],
+      ['.table.table--races', table],
+    ])
+    const heads = new Set(
+      rules.flatMap((rule) =>
+        rule.selectorText.split(',').map((one) => at(one.trim().replace(/:(?:has|not)\([^)]*\)/g, '').split(/\s+/), 0)),
       ),
     )
 
-    expect(written.size, 'the table writes no name of this family').toBeGreaterThan(5)
-    expect([...written].filter((one) => !selected.has(one)), 'written and never selected').toEqual([])
-    expect([...selected].filter((one) => !written.has(one)), 'selected and never written').toEqual([])
+    expect([...heads].sort(), 'a rule begins at an element nobody has said which it is, or none begins at one that is listed').toEqual(
+      [...about.keys()].sort(),
+    )
+
+    for (const [head, element] of about) {
+      expect(element.matches(head), `${head} is not on the element it is about`).toBe(true)
+    }
   }, SLOW)
 })
