@@ -465,11 +465,12 @@ describe('the switch that says you are going', () => {
      *
        THE SECOND SOURCE OF THE SAME VALUE IS PUT IN THE DATA, AND IT IS ANOTHER EVENT. In the
        file every member who reads this list and is going anywhere is going to the event
-       `upcoming()` picks as well (000001 to 000005 all are), so the rows of this event and the
-       rows of every event held the same names for every reader there was, and a switch asked of
-       the wrong rows answered exactly as one asked of the right ones. The reader is therefore
-       put on another event that other members are going to, and last in the table: his row
-       there is neither the only one of that event nor the first of the list. */
+       `upcoming()` picks as well (000001 to 000005 all are), so asking whether a reader is on
+       the rows of this event or on the rows of every event gave the same answer for every
+       reader there was, and a switch asked of the wrong rows answered exactly as one asked of
+       the right ones. The reader is therefore put on another event that other members are
+       going to, and last in the table: his row there is neither the only one of that event nor
+       the first of the list. */
     const user = setupUser()
     const { event, going, day } = await upcoming()
     const events = await loadResource<BtlEvent[]>('events')

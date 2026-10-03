@@ -503,23 +503,23 @@ class AttendanceWriteApiTest {
 	void nobodyTheAddressIsNotForLearnsThatAnEventHasBeenRun() throws Exception {
 		List<String> before = everyRow();
 
-		for (String run : List.of(PAST, BELGRADE_YESTERDAY)) {
-			assertThat(going(THE_ASKER, run).getStatus())
-					.as("an active member said he is going to %s, so it is not an event that has been"
-							+ " run", run)
+		for (String slug : List.of(PAST, BELGRADE_YESTERDAY)) {
+			assertThat(going(THE_ASKER, slug).getStatus())
+					.as("an active member saying he is going to %s was not told it has been run, so"
+							+ " the 404s below would say nothing about who is asking", slug)
 					.isEqualTo(400);
-			assertThat(notGoing(THE_ASKER, run).getStatus())
-					.as("an active member took one back from %s, so it is not an event that has been"
-							+ " run", run)
+			assertThat(notGoing(THE_ASKER, slug).getStatus())
+					.as("an active member taking one back from %s was not told it has been run, so"
+							+ " the 404s below would say nothing about who is asking", slug)
 					.isEqualTo(400);
 
 			for (String email : List.of(THE_LAPSED, NEVER_PAID, NAMES_NO_MEMBER, MODERATOR,
 					MODERATOR_LAPSED, SUPERADMIN)) {
-				assertThat(going(email, run).getStatus())
-						.as("%s said he is going to %s and was told about its day", email, run)
+				assertThat(going(email, slug).getStatus())
+						.as("%s said he is going to %s and was told about its day", email, slug)
 						.isEqualTo(404);
-				assertThat(notGoing(email, run).getStatus())
-						.as("%s took one back from %s and was told about its day", email, run)
+				assertThat(notGoing(email, slug).getStatus())
+						.as("%s took one back from %s and was told about its day", email, slug)
 						.isEqualTo(404);
 			}
 		}
