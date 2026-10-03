@@ -1,4 +1,4 @@
-import { cleanup, screen, within } from '@testing-library/react'
+import { cleanup, getNodeText, screen, within } from '@testing-library/react'
 import { SLOW } from '../test/slow'
 import { clearResourceCache, loadResource } from '../data/client'
 import { btlPoints } from '../data/scoring'
@@ -137,13 +137,32 @@ describe('a race that fixes no length', () => {
          can pass on a table that had stopped drawing anything. */
       expect(first(cells).textContent).not.toBe('')
 
-      return must(cells[at], 'the measure of the first race').textContent
+      const cell = must(cells[at], 'the measure of the first race')
+
+      /* What the cell says and what it holds. The word of its column stands in the cell
+         over the figure, for a telephone, where the head is not drawn (`pages/EventDetail.tsx`),
+         so the whole of the text is that word and then the figure, and the figure is the
+         part the cell has of its own. */
+      return { said: getNodeText(cell), whole: cell.textContent }
     }
 
     try {
-      expect(await measureCell(asTimed)).toBe('24 h')
-      expect(await measureCell((one) => ({ ...one, kind: 'free', distanceKm: 0 }))).toBe('')
-      expect(await measureCell((one) => ({ ...one, distanceKm: 33.3 }))).toBe('33,30 km')
+      const timed = await measureCell(asTimed)
+
+      expect(timed.said).toBe('24 h')
+      expect(timed.whole, 'the word over the measure is not the head of its column').toBe('Mera24 h')
+
+      /* No word over it either: a word over an empty cell is a label on nothing, and a free
+         race has no measure to put one over. */
+      const free = await measureCell((one) => ({ ...one, kind: 'free', distanceKm: 0 }))
+
+      expect(free.said).toBe('')
+      expect(free.whole, 'a word is drawn over a measure that is not there').toBe('')
+
+      const length = await measureCell((one) => ({ ...one, distanceKm: 33.3 }))
+
+      expect(length.said).toBe('33,30 km')
+      expect(length.whole).toBe('Mera33,30 km')
     } finally {
       globalThis.fetch = real
     }
@@ -523,7 +542,7 @@ describe('a race that fixes no length', () => {
         .map((one) => one.textContent)
       const row = must(within(table).getAllByRole('row')[1], 'the first race of the event')
       const cells = within(row).getAllByRole('cell')
-      const said = must(cells[heads.indexOf('Mera')], 'the measure of the first race').textContent
+      const said = getNodeText(must(cells[heads.indexOf('Mera')], 'the measure of the first race'))
 
       /* The cell writes two decimals and the name writes one, so the two are not
          compared as strings; what is asked is that both of them say a length at all.

@@ -2,128 +2,204 @@
 @import '../styles/counter.css';
 @import '../styles/table.css';
 
-/* The table of races on an event: five columns of one width, and four of that
-   same width when the fifth is not drawn (owner, 23.08.2026).
+/* The table of races on an event, in two shapes drawn from one markup (owner,
+   03.10.2026).
 
-   `table-layout: fixed` is what makes them equal: with it and no width on any
-   column, a table divides itself evenly, and without it every column is as wide
-   as its own longest cell. The count of columns rides on the element, because
-   only the render knows whether the day is drawn and whether the reader may
-   enter a result, and the width follows from it: five twentieths is the whole
-   width, four is four fifths of it, which is „tabela ostaje kraca za tu kolonu,
-   pa se prethodne cetiri zavrsavaju gde i kad ih ima 5".
+   A telephone gets a block per race: the name, the day beside it where the event
+   has one, the length, the climb and the fall in a row of three, and the way into
+   the form under them. From the wide layout up (51.25em, `styles/tokens.css`) the
+   same elements are a table, with the name a quarter of the box and the three
+   figures a twelfth each, so that all of it ends at the middle of the box; with
+   the day, „prve dve dvanaestine naziv, pa jedna datum", which is the same
+   quarter.
 
-   `min()` because the count can reach six, on an event that runs over two
-   mornings with a reader signed in: six twentieths is more than there is, and a
-   table wider than the screen scrolls the page sideways (WCAG 2.2 SC 1.4.10). At
-   six the columns are equal at a sixth each, which is the same rule under a
-   ceiling rather than a second arrangement.
+   THE PHONE SHAPE IS WRITTEN PLAINLY AND THE TABLE COMES BACK BEHIND ONE QUERY, as
+   the rights matrix does it (`pages/admin/Rights.css`, the one precedent this
+   portal has for a table that turns into blocks) and for the reason it gives:
+   one markup. Drawing the figures twice and hiding one half would put a second
+   copy of every one of them into the accessibility tree. Nothing is reordered
+   either: the cells stand in the order they are read, so a keyboard and a screen
+   reader meet them where the eye does (WCAG 2.2 SC 1.3.2, 2.4.3). */
 
-   Only where every column is drawn. Under 700px the climb and the descent are
-   hidden (styles/table.css), so the count on the element and the columns on the
-   screen stop agreeing, and a width worked out from the count would leave the
-   table short by two columns it is not drawing. */
-@media (min-width: 700px) {
-  /* Both classes, and that is not decoration: `.table` sets `width: 100%` in
-     styles/table.css, which weighs exactly what a single class weighs, so the
-     two would be settled by whichever sheet the bundle put last. Measured in the
-     browser with one class here: `table-layout: fixed` took and the width did
-     not, so the table stayed the full width with four columns spread across it,
-     and the rule looked as though it worked. */
+/* The box the widths are shares of. A container and nothing else, and `inline-size`
+   and not `size`: the box has no height of its own to give, and containing the
+   height would collapse it. The widths below are written in `cqi`, and a `cqi` with
+   no container above it is not an error but a share of the window, so that the box
+   is real is asked of the rendered tree (`pages/event/raceTable.test.tsx`). */
+.event-races {
+  container-type: inline-size;
+}
+
+/* The phone shape. */
+.table--races {
+  display: block;
+}
+
+/* The head has nothing to head here: the words that would stand over a column
+   stand over each figure instead (`.event-races__label`). */
+.table--races thead {
+  display: none;
+}
+
+.table--races tbody {
+  display: block;
+}
+
+/* A race: three tracks of one width. The line under it is the row's and not the
+   cells', which would draw one under every figure. */
+.table--races tbody tr {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--space-8);
+  padding: var(--space-12) var(--space-8);
+  border-bottom: 1px solid var(--border);
+}
+
+/* Two classes, so this outweighs `.table td` on weight and not on which sheet the
+   bundle put last (ADL A24). A cell of the shared table has a padding and a line of
+   its own, and neither belongs to a figure in a block; the table shape puts both
+   back. */
+.table.table--races td {
+  display: block;
+  padding: 0;
+  border-bottom-width: 0;
+  text-align: left;
+}
+
+/* A word longer than the room it has breaks rather than leaving the box, in both
+   shapes: in a block nothing grows for it, and in a fixed table a column cannot. */
+.table.table--races th,
+.table.table--races td {
+  overflow-wrap: anywhere;
+}
+
+/* The name has the row, and gives a third of it to the day where there is one. */
+.table--races .event-races__name {
+  grid-column: 1 / -1;
+}
+
+.table--races:has(.event-races__day) .event-races__name {
+  grid-column: 1 / span 2;
+}
+
+.table--races .event-races__day {
+  grid-column: 3;
+}
+
+/* The figures take the next row, a track each. The distance above them is a margin
+   on the figure and not a gap of the row, because a row with nothing in it is a row
+   of no height and a gap would still be charged for it. */
+.table--races .event-races__measure,
+.table--races .event-races__ascent,
+.table--races .event-races__descent {
+  margin-block-start: var(--space-8);
+}
+
+/* The way into the form has a row of its own, and none at all where there is no
+   button: a race that has not been run gets an empty cell, and an empty cell is
+   nothing. */
+.table--races .event-races__way-in {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.table--races .event-races__way-in:not(:empty) {
+  margin-block-start: var(--space-8);
+}
+
+/* The words over a figure, in the look of the heading they stand in for. They do not
+   break: a track is a third of a row, so at enlarged text a word of its own is wider
+   than the track long before the figure under it is, and a word cut in two in the
+   middle („USPO" over „N") is worse than a word that leans a few pixels into the
+   gap beside it. */
+.table--races .event-races__label {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* The table shape. */
+@media (min-width: 51.25em) {
+  /* A table of fixed layout, as wide as half of its box and as wide as what may not
+     be broken, whichever is more. */
   .table.table--races {
+    --event-races-twelfth: calc(100cqi / 12);
+    display: table;
     table-layout: fixed;
-    /* Equal columns, and never narrower than what may not be broken. The ceiling
-       alone was measured wrong on 23.08.2026: a fixed column cannot grow, so at
-       200% text „Ultramaraton" wrote itself 14px over „324,00" at 1280 and 83px
-       over it at 700. The floor is in `rem`, so it grows with the reader's text
-       exactly as the content does; when it wins, the table is wider than its box
-       and the box scrolls, which is what PDL P24 asks of every table here.
-
-       6,75rem, and both ends of the window that number sits in are measured
-       (Chrome, on „Danube maraton" of March 2022, which runs over four mornings):
-
-       - a column has to hold „31. 12. 2022." unbroken, and that is 88,17px of type
-         beside 16px of cell at a 16px root, so the floor is at least 6,51rem;
-       - six columns have to fit the narrowest box the query covers, 668px at a
-         screen of 700, so the floor is at most 6,96rem.
-
-       7,5rem was outside that window on the high side, and a round measured what
-       it cost: an event over two mornings, read by a signed-in member between 700
-       and 751px, put 55px of the table outside its box at the **ordinary** text
-       size, and what stood over the edge was the „Unesi rezultat" button. The page
-       did not scroll, so nothing on the screen said so. Sized the other way, for
-       the button unbroken, the floor would be 8,17rem and the table 785px against
-       668px of box, which is the same fault twice over. The button folds instead;
-       see the rule under this one. */
-    inline-size: max(
-      min(100%, calc(var(--race-columns) * 100% / var(--race-full))),
-      calc(var(--race-columns) * 6.75rem)
-    );
+    inline-size: calc(6 * var(--event-races-twelfth));
   }
 
-  /* And a word longer than its column breaks rather than leaving it. A fixed
-     layout has no other way out: the column will not grow for it. */
-  .table.table--races th,
+  /* The way in is a column on top of the half and not a part of it, so the others do
+     not move when it comes: „Ko nije prijavljen vidi jednu manje, iste širine kao
+     kad ih ima najviše, dakle tabela se ne razvlači preko oslobođenog mesta" (PDL,
+     23.08.2026). */
+  .table.table--races:has(.event-races__way-in) {
+    inline-size: calc(6 * var(--event-races-twelfth) + 8.25rem);
+  }
+
+  .table--races thead {
+    display: table-header-group;
+  }
+
+  .table--races tbody {
+    display: table-row-group;
+  }
+
+  .table--races tbody tr {
+    display: table-row;
+    border-bottom-width: 0;
+  }
+
   .table.table--races td {
-    overflow-wrap: anywhere;
+    display: table-cell;
+    padding: var(--space-12) var(--space-8);
+    border-bottom-width: 1px;
   }
 
-}
+  .table--races .event-races__label {
+    display: none;
+  }
 
-/* And the headings of this table fold rather than run out of their cells.
- * `.table th` is `nowrap` everywhere else, and both arrangements of this one need
- * the opposite, for two different reasons.
- *
- * Above 700px the layout is fixed, so a column cannot grow for its heading.
- * Measured at 200% text: „KATEGORIJA TRKE" needs 227px against a column of 202px
- * at 1024 and 137px at 700, and wrote itself over „DUŽINA" beside it.
- *
- * Under 700px the table grows for its content instead, and the heading is what it
- * grew by: at 360px „KATEGORIJA TRKE" on one line took 121,33px of a table 331px
- * wide in a box of 313, so 18px of it stood outside and what was cut was the
- * „Unesi rezultat" button. PDL P24 forbids exactly that: a table on a phone does
- * not scroll sideways at the ordinary text size, and the reader has no way of
- * knowing the button is longer than the row. Measured after: 313px of table in
- * 313px of box, nothing cut. Held out of the query for that second reason, and
- * measured on the box a real browser gives, which is 15px narrower than the screen
- * minus the padding (`scrollbar-gutter: stable`, index.css).
- *
- * Only the heading folds under 700px, and the cells do not: `overflow-wrap:
- * anywhere` stays inside the query above. Above it a fixed column has no other way
- * out; here the table may grow and the box may scroll, which is what every table on
- * the portal does above the ordinary text size. Measured with the cells breaking
- * too: at 200% the date „14. 3. 2022." came apart into ten pieces to make the table
- * fit, and a date in ten pieces is worse than a box that scrolls. */
-.table.table--races th {
-  white-space: normal;
-}
+  /* The widths. A share of the box, and never less than what may not be broken. */
+  .table--races .event-races__name {
+    inline-size: calc(3 * var(--event-races-twelfth));
+  }
 
-/* And the button folds rather than pushing its column wider than the table has.
- * `.button--compact` is one line 2,4rem tall everywhere else, where a button has a
- * row to itself and room in it.
- *
- * Outside the query above, because the two arrangements need it for two different
- * reasons and both were measured on 23.08.2026 in Chrome. Above 700px the table is
- * laid out fixed, a column is a sixth of the box, and „Unesi rezultat" unbroken is
- * 114,75px against 92,86px of column at a screen of 700: it would stand outside its
- * own cell. Under 700px the table is laid out by its content and the column grows
- * for the button instead, so nothing leaves a cell, but the table grows with it:
- * on a 360px screen the box scrolled 41px with the button on one line and 3px with
- * it folded, and what stood over that edge was the button itself.
- *
- * Folded it needs 76,86px, which leaves 15px to spare in a column at the floor.
- *
- * `.table--races` and not `.table.table--races`, because what is outweighed here is
- * `.button--compact`, and that is a single class in a single sheet (ADL A24). */
-.table--races .button--compact {
-  white-space: normal;
-  block-size: auto;
-  min-block-size: 2.4rem;
-  /* Room for the second line, and a gap between the two. The height is a floor now
-     rather than a measurement, so the padding has to say what the fixed height used
-     to say by itself. */
-  padding-block: var(--space-6);
-  line-height: 1.2;
+  .table--races:has(.event-races__day) .event-races__name {
+    inline-size: calc(2 * var(--event-races-twelfth));
+  }
+
+  .table--races .event-races__day {
+    inline-size: max(var(--event-races-twelfth), 6.75rem);
+  }
+
+  .table--races .event-races__measure,
+  .table--races .event-races__ascent,
+  .table--races .event-races__descent {
+    inline-size: max(var(--event-races-twelfth), 5.75rem);
+  }
+
+  .table--races .event-races__way-in {
+    inline-size: 8.25rem;
+  }
+
+  /* Words read from the left and figures from the right, the same for all three
+     figures. */
+  .table.table--races .event-races__name,
+  .table.table--races .event-races__day {
+    text-align: left;
+  }
+
+  .table.table--races .event-races__measure,
+  .table.table--races .event-races__ascent,
+  .table.table--races .event-races__descent,
+  .table.table--races .event-races__way-in {
+    text-align: right;
+  }
 }
 
 /* The head of a competitor's profile, and of no other screen with this class.

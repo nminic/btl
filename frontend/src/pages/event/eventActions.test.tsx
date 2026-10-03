@@ -37,8 +37,7 @@ const SEVERAL_SCREENS = SLOW * 2
 /** An event with races on it, by the address the calendar links to. */
 const EVENT = '/sr/kalendar/maraton-maratona-2015'
 /** The same event, named for what it is where that matters, and one that runs over
- *  two mornings. The second is what the day column is drawn for, and the only
- *  reading in which the count of columns has a part for it. */
+ *  two mornings. The second is what the day column is drawn for. */
 const ONE_DAY = EVENT
 const TWO_DAYS = '/sr/kalendar/balkansko-prvenstvo-veterana-2021'
 /** Four mornings and the same length on each of them, which is the only shape in
@@ -144,56 +143,6 @@ describe('who is offered what on an event', () => {
     expect(screen.queryByRole('link', { name: 'Prijavi rezultat' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Brisanje' })).toBeNull()
   })
-
-  it('counts the columns it says it has, with the way in and without it', async () => {
-    /* The count rides on the element and the sheet turns it into a width
-       (Profile.css). It is written by hand three lines from the headings it
-       counts, and measured on 23.08.2026: changing the four to a three left the
-       whole suite green while the table drew five columns in the width of four and
-       ended 253px short of the edge the owner asked for.
-
-       Both readings, because the count is what changes between them: five for
-       somebody who may enter a result, four for a visitor. */
-    /* Three readings and not two, because the count has three parts and one of
-       them was uncovered until 23.08.2026: dropping `overDays` from the sum left
-       all 2073 tests green while a visitor to an event of two mornings got a table
-       213px short of where the owner asked it to end. An event that runs over one
-       morning cannot say anything about the part that counts the second. */
-    for (const [who, where, member] of [
-      ['a member', ONE_DAY, '000007'],
-      ['a visitor', ONE_DAY, null],
-      ['a visitor of a weekend', TWO_DAYS, null],
-    ] as const) {
-      await openEvent(who === 'a member' ? 'competitor' : 'visitor', member, undefined, where)
-
-      const table = races()
-      const headings = within(table).getAllByRole('columnheader')
-
-      expect(
-        table.style.getPropertyValue('--race-columns'),
-        `the table shown to ${who} counts itself wrong`,
-      ).toBe(String(headings.length))
-
-      /* And how many the fullest reading of this same event would have, which is what
-         a column's share of the box is worked out from: „tabela ostaje kraća za tu
-         kolonu, pa se prethodne završavaju gde i kad ih ima više" (owner,
-         23.08.2026). The fullest reading is this one plus the way in, where the way
-         in is not drawn.
-
-         Asked because a round measured what its absence costs: with the part that
-         counts the second morning left out of that sum, all 2157 tests stayed green
-         while the first column of a weekend event moved 35,59px between a visitor and
-         a member, which is exactly the fault the sum was added to remove. */
-      const wayIn = headings.some((one) => one.textContent === 'Opcije')
-
-      expect(
-        table.style.getPropertyValue('--race-full'),
-        `the table shown to ${who} does not know how wide it can get`,
-      ).toBe(String(headings.length + (wayIn ? 0 : 1)))
-
-      cleanup()
-    }
-  }, SEVERAL_SCREENS)
 
   it('draws no control box at all where there is nothing to press', async () => {
     /* Being signed in stopped being enough on 23.08.2026, when the report moved
