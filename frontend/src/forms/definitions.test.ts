@@ -175,6 +175,45 @@ describe('every form definition in the portal', () => {
     expect(clashes).toEqual([])
   })
 
+  it('never asks for a town and for its country as two fields, because the town writes its own', () => {
+    /* A `place` field writes two values, its own and `country` (`forms/types.ts`), and the
+       country is no longer a field of the form when one is on it. One that stays is a second
+       control for a value the first already writes: the renderer draws both, `emptyValues`
+       holds one, and whichever was touched last decides what is sent. The team proposal asked
+       for exactly that until 03.10.2026, a town in a box and a country in a list, and nothing
+       stood against putting the list back beside the picker.
+
+       Derived from the files rather than from a list of forms: the forms that ask for a town
+       are found by their type, so a fifth one is swept on the day it is written. */
+    const withATown = FORMS.filter(({ form }) => form.fields.some((one) => one.type === 'place'))
+
+    /* So the sweep cannot pass over nothing: the registration, the result, the event and the
+       proposal of a team ask for a town today, and four is what is held rather than "some". */
+    expect(withATown.length).toBeGreaterThan(3)
+
+    const doubled = withATown.flatMap(({ name, form }) =>
+      form.fields.filter((one) => one.name === 'country').map((one) => `${name}: ${one.name}`),
+    )
+
+    expect(doubled).toEqual([])
+  })
+
+  it('asks for the town of a proposed team the way the registration, the result and the event ask for theirs', () => {
+    /* Owner, 03.10.2026: „Na strani Predlog tima, potrebno je da se Država automatski
+       popunjava kucanjem u mestu, kao što radi na drugim mestima." What „kao što radi na
+       drugim mestima" is, in a definition, is the type of the field: a town typed into a box
+       of type `text` fills in nothing, whatever stands beside it. */
+    const field = must(
+      must(
+        FORMS.find(({ name }) => name === 'predlog-tima.form.json'),
+        'the form a team is proposed on',
+      ).form.fields.find((one) => one.name === 'city'),
+      'the field that asks for its town',
+    )
+
+    expect(field.type).toBe('place')
+  })
+
   it('asks a competitor for a result the same way on both roads to one', () => {
     /* Two forms reach the same queue: the one on a member's own profile and the
        one on the page of an event. The owner asked for a picture and a comment,
