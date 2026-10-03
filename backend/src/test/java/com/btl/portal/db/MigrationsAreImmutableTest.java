@@ -329,7 +329,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   worked out with a copy of its algorithm (CRC32 over the lines, line breaks and a BOM left
 			   out), which reproduced V40, V46, V52 and V53 to the digit before it was trusted here, and
 			   this list is what confirms it on the gate. */
-			new Applied("54", "V54__a_photo_goes_with_its_last_holder.sql", 1079443765));
+			new Applied("54", "V54__a_photo_goes_with_its_last_holder.sql", -971747939));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

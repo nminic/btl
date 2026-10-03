@@ -1,13 +1,13 @@
 /*
  * A photo goes with its last holder, and it is the database that sees to it.
  *
- * ADL A68, 03.10.2026, which the owner chose between the outcomes offered, with my recommendation
- * beside the one he took: „odlozeni okidaci u migraciji V54". What it closes is a `photo` row that
+ * ADL A68, 03.10.2026, which records the decision as „izabrao izmedju ponudjenih, uz moju
+ * preporuku": „odlozeni okidaci u migraciji V54". What it closes is a `photo` row that
  * no column points at any more. Three doors left one behind - deleting a member (the picture that
  * was waiting for approval stayed), refusing a picture (the refused picture stayed) and approving a
  * new one over a portrait that stands (the old portrait stayed) - and the FILE of such a row stayed
  * on the disk for ever, because the sweep (ADL A66) deletes only files that have no row. The shape
- * the owner chose, which is what this file is: „Na kraju svake transakcije baza brise zapis slike
+ * A68 gives it, which is what this file is: „Na kraju svake transakcije baza brise zapis slike
  * koji vise ne drzi nijedna od cetiri kolone", and it holds for „Vazi i za svaku buducu radnju nad
  * tim kolonama". The four columns are competitor.photo_id (V8), verification.photo_id (V9),
  * team.logo_id and team_proposal.logo_id (V11), and PhotoApiTest asks the catalogue that there are
@@ -16,9 +16,9 @@
  *
  * WHAT IS THE OWNER'S AND WHAT IS DERIVED
  * ---------------------------------------
- * The owner's: the rule lives in the database, it is deferred to the end of the transaction, it is
- * about those four columns and every action on them, and the row nobody holds on QA is deleted by
- * this same migration.
+ * The owner's, as A68 records his choice: the rule lives in the database, it is deferred to the end
+ * of the transaction, it is about those four columns and every action on them, and the row nobody
+ * holds on QA is deleted by this same migration.
  *
  * DERIVED from his words, not a sentence of his: „koji vise ne drzi" says the row held something and
  * does not any more, so the rule fires when a HOLDER lets go - an UPDATE of the pointer, or a DELETE
@@ -86,9 +86,10 @@
  * WHAT IT DOES TO THE ROWS THAT ARE ALREADY THERE
  * -----------------------------------------------
  * The last statement deletes every photo row that nobody holds at the moment it runs. The owner
- * approved that for QA in as many words, „Zatecen zapis na QA se brise": measured there on
- * 02.10.2026, two photo rows and one that nobody holds, and he was told it is a change of data on
- * QA that cannot be undone. The file of that row is picked up by the sweep afterwards.
+ * approved that for QA, which A68 records (ODOBRENJE, 03.10.2026) as „Zatecen zapis na QA se
+ * brise": measured there on 02.10.2026, two photo rows and one that nobody holds, and he was told
+ * it is a change of data on QA that cannot be undone. The file of that row is picked up by the
+ * sweep afterwards.
  *
  * This is the one place a migration deletes data, and ADL A59 says historical data does not go into
  * one („Sifarnik sme, domenska tabela ne sme"). A59 is about loading rows into tables the whole
@@ -107,10 +108,11 @@
  * ------------------------------------------------------
  * Four doors took a picture away and deleted its row in the same breath: MePhotoApi.remove, the
  * overwrite in MePhotoApi.send, CompetitorWriteApi for a member's own portrait and
- * ATeamGoesWithItsLastMember for a team's mark. Three doors did not. A68 offered „kod u svakoj
- * radnji" and the owner did not take it - every door to come would have to remember, and „bas tako
- * su nastale ove tri rupe" - he took „pravilo zivi u bazi, ne u Java kodu". So the four no longer
- * delete the row; the pointer they empty, or the row they delete, is the event this file reacts to.
+ * ATeamGoesWithItsLastMember for a team's mark. Three doors did not. A68 lists „kod u svakoj
+ * radnji" as offered and not chosen - every door to come would have to remember, and „bas tako su
+ * nastale ove tri rupe" - and records the accepted cost as „pravilo zivi u bazi, ne u Java kodu".
+ * So the four no longer delete the row; the pointer they empty, or the row they delete, is the
+ * event this file reacts to.
  *
  * They still delete the FILE at once, which a database cannot do, so a member who takes his portrait
  * down is not served it a moment longer (PDL, 24.09.2026, „Brisanje slike stupa odmah, bez
@@ -136,9 +138,13 @@
  *   four doors above delete the FILE whether or not another holder is left, so in that state the row
  *   would outlive its file, and PhotoApi answers a row with no file as it answers a digest nobody
  *   wrote.
- * - The lock is taken after the lock on the row that held the picture, which is the order every
- *   door has. Two transactions that let go of the same two pictures in opposite orders could
- *   deadlock, and PostgreSQL ends one of them after deadlock_timeout.
+ * - The lock on the photo row is taken at the end of the transaction, after the statement that
+ *   wrote the row that held the picture: holder first, photo second. The two statements of the main
+ *   code that write `photo` keep that order (the insert makes a row nobody else can name yet, and
+ *   the crop update in MePhotoApi.send comes after the `for update` on the queue row), and no
+ *   `for update` there reads `photo` (searched 03.10.2026). A door that took a photo row first and
+ *   a holder second would meet this trigger the wrong way round, and PostgreSQL ends one of the two
+ *   after deadlock_timeout.
  *
  * There is no `when` clause and no „did the value change" branch. An UPDATE that names the pointer
  * without changing it still holds the picture, so the question answers for it, and a branch that no

@@ -804,13 +804,14 @@ class MePhotoApi {
 	 * the end of the transaction (V54; ADL A68, 03.10.2026, „Na kraju svake transakcije baza
 	 * brise zapis slike koji vise ne drzi nijedna od cetiri kolone"). This route used to
 	 * delete the row too, and no longer does: written here it would be a second home for a
-	 * rule that lives in the database, and the owner chose „pravilo zivi u bazi, ne u Java
-	 * kodu". The pointer is still emptied in its own statement, because a route that leaned on
-	 * {@code on delete set null} to do the thing it was asked to do would be a route whose
-	 * subject is a foreign key rather than a member. The FILE is what a database cannot
-	 * delete, so it is deleted here, at once, which is what the sentence above asks. A
-	 * transaction that then rolls back would leave a row pointing at a picture that is gone,
-	 * which is the one state {@link PhotoApi} has to log a fault for.
+	 * rule that lives in the database, and A68 records the accepted cost as „pravilo zivi u
+	 * bazi, ne u Java kodu". The pointer is still emptied in its own statement, because a
+	 * route that leaned on {@code on delete set null} to do the thing it was asked to do would
+	 * be a route whose subject is a foreign key rather than a member. The FILE is what a
+	 * database cannot delete, so it is deleted here, at once, which is what PDL P28b 3, quoted
+	 * at the top, asks; and it is deleted after the statements, because a file removed before
+	 * the transaction commits and a transaction that then rolls back would leave a row pointing
+	 * at a picture that is gone, which is the one state {@link PhotoApi} has to log a fault for.
 	 *
 	 * <p><b>A FILE THAT WILL NOT LEAVE THE DISK IS THE OPERATOR'S AND NEVER THE MEMBER'S.</b> PDL
 	 * P28e, 25.09.2026: he chose, among the outcomes offered and with my recommendation beside

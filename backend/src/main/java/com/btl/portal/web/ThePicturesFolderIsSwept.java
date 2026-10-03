@@ -120,10 +120,11 @@ import java.util.concurrent.TimeUnit;
  * <p><b>WHAT IT DOES NOT DO.</b> It looks at files and never at rows: it deletes no
  * {@code photo} row, and a file whose row stands is a file it keeps. A row that nothing holds
  * used to be left by three doors - a member deleted while a picture of his waits in the queue,
- * a refusal, and an approval over a portrait that stands (measured on 02.10.2026 through the
- * routes' own doors: the {@code photo} row is still there and no column points at it) - and its
- * file stayed with it for ever, which went against a recorded decision: P21 says that where a
- * member is the subject of a picture („Ako je član predmet slike") „slika se uklanja".
+ * a refusal, and an approval over a portrait that stands (each measured through the route's own
+ * door and held by {@code APictureGoesWithItsLastHolderTest}: before V54 the {@code photo} row
+ * was still there and no column pointed at it) - and its file stayed with it for ever, which
+ * went against a recorded decision: P21 says that where a member is the subject of a picture
+ * („Ako je član predmet slike") „slika se uklanja".
  * <b>That is handled by the database, and neither by a route nor here</b>: since V54 (ADL A68,
  * 03.10.2026, „Na kraju svake transakcije baza brise zapis slike koji vise ne drzi nijedna od
  * cetiri kolone") a row nobody holds is deleted at the end of the transaction that let go of
