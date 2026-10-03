@@ -1,8 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { did, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
+import { typeATownTheCodebookKnows } from '../../test/town'
 import { setupUser } from '../../test/user'
 
 /* A team changed by the member who administers it, and decided on like a new one.
@@ -147,6 +150,102 @@ describe('the form a team is changed on', () => {
     expect(screen.getByLabelText(/^Država/)).toHaveValue('RS')
     expect(screen.getByLabelText(/Zašto ovaj tim/)).toHaveValue('')
   })
+
+  /**
+   * THE TEAMS AS THEY ARE SERVED, WITH THE TOWN OF DUNAVSKI TRKAČI PUT WHERE THE CASE WANTS IT.
+   *
+   * <p>No team in the file is recorded in a different country from the one the codebook gives
+   * its town (measured over all four, 03.10.2026), and that disagreement is exactly what the two
+   * cases below are about, so it is made rather than hoped for. Read off the same file the
+   * portal's own reader reads, and changed in nothing but the two words.
+   */
+  const teamsWithDunavAt = (city: string, country: string): Response => {
+    const teams: { slug: string; city: string; country: string }[] = JSON.parse(
+      readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'teams.json'), 'utf-8'),
+    )
+
+    return new Response(
+      JSON.stringify(
+        teams.map((one) => (one.slug === 'dunavski-trkaci' ? { ...one, city, country } : one)),
+      ),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    )
+  }
+
+  it('is not rewritten by the codebook while nobody has touched the town', async () => {
+    /* A RECORD OPENED FOR EDITING IS LEFT EXACTLY AS IT WAS WRITTEN (`forms/PlaceField.tsx`),
+       and this form is one since 03.10.2026: it is the proposal's own, seeded, so it draws the
+       town as a place and the codebook speaks to it. A form that quietly rewrites a field
+       nobody has been near saves something other than what it was opened on, and the card the
+       moderator reads would show a country nobody chose.
+
+       The record says Kranj and Croatia, and the codebook says Kranj is in Slovenia. The
+       select is switched off the moment the codebook has arrived (it recognises the town),
+       which is the proof that it HAS spoken; and what stands in it is still the record's
+       word, and it is what the moderator is sent. */
+    const server = serverThat((path, init) =>
+      path === '/api/teams' && init?.method === undefined ? teamsWithDunavAt('Kranj', 'HR') : null,
+    )
+
+    try {
+      const user = setupUser()
+      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+      expect(await screen.findByLabelText(/^Mesto/)).toHaveValue('Kranj')
+
+      const country = screen.getByLabelText(/^Država/)
+
+      await waitFor(
+        () => {
+          expect(country).toBeDisabled()
+        },
+        { timeout: 3000 },
+      )
+
+      expect(country).toHaveValue('HR')
+
+      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+      await router.navigate('/sr/administracija/verifikacija/timovi')
+
+      const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+      const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+      expect(card.getByLabelText('Mesto')).toHaveValue('Kranj')
+      expect(card.getByLabelText(/^Država/)).toHaveValue('HR')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('takes the country the codebook gives once the town of the record has been typed over', async () => {
+    /* The other half of the case above, which is what keeps it from being a form that never
+       lets the codebook speak: the moment the town is touched, the codebook's word about the
+       town that is typed is the one that stands (PDL, 11.08.2026), and a record seeded with
+       Croatia then goes to the moderator with the Slovenia the typed town is in. */
+    const server = serverThat((path, init) =>
+      path === '/api/teams' && init?.method === undefined ? teamsWithDunavAt('Kranj', 'HR') : null,
+    )
+
+    try {
+      const user = setupUser()
+      const { router } = renderAt('/sr/tim/dunavski-trkaci/izmena', 'superadmin', '000001')
+
+      await user.clear(await screen.findByLabelText(/^Mesto/))
+      await typeATownTheCodebookKnows(user, 'Kranj', 'SI')
+      await user.click(screen.getByRole('button', { name: 'Pošalji izmenu' }))
+      await screen.findByRole('heading', { name: 'Izmena je poslata' })
+      await router.navigate('/sr/administracija/verifikacija/timovi')
+
+      const heading = await screen.findByRole('heading', { name: 'Dunavski trkači' })
+      const card = within(must(heading.closest('li'), 'the card the heading stands in'))
+
+      expect(card.getByLabelText('Mesto')).toHaveValue('Kranj')
+      expect(card.getByLabelText(/^Država/)).toHaveValue('SI')
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
 
   it('does not refuse the team its own name', async () => {
     /* The name is taken, by the very team being changed. Compared against every

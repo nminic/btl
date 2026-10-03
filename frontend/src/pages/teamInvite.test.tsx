@@ -5,6 +5,7 @@ import { fakeQueue } from '../test/fakeQueue'
 import { renderAt } from '../test/render'
 import { theCookieNames } from '../test/setup'
 import { SLOW } from '../test/slow'
+import { typeATownTheCodebookKnows } from '../test/town'
 import { setupUser } from '../test/user'
 import { useClock } from '../clock/useClock'
 import { recordKey } from '../session/context'
@@ -694,8 +695,7 @@ describe('the third door writes the season the other two write', () => {
     )
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
@@ -834,8 +834,7 @@ describe('the day the notice carries, on the other two doors', () => {
     await router.navigate('/sr/novi-tim')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
@@ -893,8 +892,7 @@ describe('the third door, and the team that was joined', () => {
     await router.navigate('/sr/novi-tim')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
@@ -957,8 +955,7 @@ describe('the third door, and the team that was joined', () => {
     await router.navigate('/sr/novi-tim')
 
     await user.type(await screen.findByLabelText(/Naziv tima/), 'Trkači Morave')
-    await user.type(screen.getByLabelText(/^Mesto/), 'Čačak')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+    await typeATownTheCodebookKnows(user, 'Čačak', 'RS')
     await user.type(screen.getByLabelText(/Zašto ovaj tim/), 'Trčimo zajedno već tri godine.')
     await user.click(screen.getByRole('button', { name: 'Pošalji predlog' }))
 
