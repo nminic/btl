@@ -23,8 +23,13 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -32,6 +37,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -1649,5 +1655,106 @@ class RaceWriteApiTest {
 				.as("a race could not be moved into the past")
 				.isEqualTo(200);
 		assertThat(dayOf(acted)).isEqualTo("2018-05-05");
+	}
+
+	/**
+	 * WHERE THE EVENT SCREEN'S OWN BODIES ARE: one race of each kind, byte for byte what it
+	 * sends.
+	 *
+	 * <p>Written by hand and held from the screen's side by {@code racesOnTheWire.test.ts},
+	 * which fails the day the screen sends anything else. So what is replayed below is what the
+	 * screen sends, and not what this file believes it sends.
+	 */
+	private static final Path THE_SCREEN_SENDS =
+			Path.of("..", "frontend", "src", "pages", "admin", "racesOnTheWire.json");
+
+	/**
+	 * A RACE THE EVENT SCREEN ENTERS IS ONE THIS ROUTE TAKES, WHICHEVER KIND IT IS.
+	 *
+	 * <p><b>Measured on QA on 03.10.2026, and the owner met it.</b> He entered an event with its
+	 * races: {@code POST /api/events} answered 201, the first {@code POST /api/races} answered
+	 * 400, and the event stood with no race at all. Every case above sends a body written for it
+	 * here, so none of them could see what the screen sends; and every case on the screen's side
+	 * answers {@code /api/races} from a stub that takes any body ({@code test/setup.ts}). Both
+	 * halves were measured, and what joins them by nobody.
+	 *
+	 * <p>{@link #THE_SCREEN_SENDS} is the join, replayed through both doors the screen uses:
+	 * {@code POST} for a row that is not a race yet (this case), {@code PUT} for one that is
+	 * (the case below). The one field replaced is {@code eventId}, which the database hands out
+	 * and no file can know.
+	 */
+	@ParameterizedTest
+	@MethodSource("theKindsTheScreenSends")
+	void aRaceTheEventScreenEntersIsTaken(String kind) throws Exception {
+		MockHttpServletResponse answer = addSending(theScreenSends(kind, acted));
+
+		assertThat(answer.getStatus())
+				.as("the %s race the event screen sends was refused on entry: %s", kind,
+						answer.getContentAsString())
+				.isEqualTo(201);
+	}
+
+	/**
+	 * AND THE SAME BODY OVER A RACE THAT ALREADY STANDS, which is what saving an event that has
+	 * races sends for every row of its table.
+	 */
+	@ParameterizedTest
+	@MethodSource("theKindsTheScreenSends")
+	void aRaceTheEventScreenChangesIsTaken(String kind) throws Exception {
+		MockHttpServletResponse answer = changeSending(theMiddleRace, theScreenSends(kind, acted));
+
+		assertThat(answer.getStatus())
+				.as("the %s race the event screen sends was refused as a change: %s", kind,
+						answer.getContentAsString())
+				.isEqualTo(200);
+	}
+
+	/**
+	 * AND THE FILE CARRIES ONE BODY FOR EVERY KIND THIS ROUTE KNOWS, AND NONE BESIDES.
+	 *
+	 * <p>The floor under the two cases above, read off {@link WhatARaceCarries#KINDS} rather than
+	 * listed: a fourth kind arrives here as a red gate, and the screen's side holds the same file
+	 * to its own list of kinds, so the two lists cannot part through it.
+	 */
+	@Test
+	void theScreensBodiesCoverEveryKindThisRouteKnows() {
+		assertThat(theKindsTheScreenSends())
+				.as("the file of what the event screen sends and the kinds a race can be have parted")
+				.containsExactlyInAnyOrderElementsOf(WhatARaceCarries.KINDS);
+	}
+
+	private static List<String> theKindsTheScreenSends() {
+		return whatTheScreenSends().propertyStream().map(Map.Entry::getKey).toList();
+	}
+
+	private static JsonNode whatTheScreenSends() {
+		assertThat(THE_SCREEN_SENDS)
+				.as("the file of what the event screen sends is not where this expects it, so"
+						+ " nothing is being replayed")
+				.exists();
+
+		try {
+			return new ObjectMapper().readTree(
+					Files.readString(THE_SCREEN_SENDS, StandardCharsets.UTF_8));
+		} catch (IOException failed) {
+			throw new UncheckedIOException(failed);
+		}
+	}
+
+	/** One body of the file, under the event a case acts on. */
+	private static String theScreenSends(String kind, long under) {
+		ObjectNode body = (ObjectNode) whatTheScreenSends().get(kind).deepCopy();
+
+		body.put("eventId", under);
+
+		return body.toString();
+	}
+
+	/** The entry request, with a body handed over as it stands rather than as a form. */
+	private MockHttpServletResponse addSending(String body) throws Exception {
+		return http.perform(post("/api/races").with(csrf())
+						.contentType(MediaType.APPLICATION_JSON).content(body)
+						.cookie(new Cookie(SessionCookie.NAME, session)))
+				.andReturn().getResponse();
 	}
 }
