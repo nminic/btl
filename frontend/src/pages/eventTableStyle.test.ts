@@ -185,12 +185,14 @@ function step(written: string, what: string): number {
  * draws it. Measured in Chrome 154 on Windows, Segoe UI, a 16px root; `rem` is that over 16 and holds at every text
  * size, because all of it is `rem`.
  *
- * **A figure is held WHOLE and a date by its widest WORD.** A measure parted from its unit by a break at the space
- * is a cut too, so the number goes with its unit; a date written with spaces (/sr) breaks at them as it does on
- * every other screen, and one written without (/en) has nowhere to break and is cut in two, so it is the word that
- * has to fit. A number or a date is read by its SHAPE, each digit a nought, because the digits are tabular
- * (`index.css`): „12/31/2022" stands for every date of its shape. A label is measured as it is drawn: upper case,
- * bold, 0,7rem and letter-spaced.
+ * **A figure and a date are both held WHOLE.** A measure parted from its unit by a break at the space is a cut too, so
+ * the number goes with its unit; and a date that breaks beside the name is a date on two lines, at its spaces on /sr
+ * („25. 11." over „2017.") and in the middle of its digits on /en, which has no space to break at. Where it would, the
+ * owner has the day go under the name (03.10.2026, the review of PR 482), so the whole date is what has to fit in a
+ * third, and holding it by its widest word („2022.") was holding what a date breaks into and not the date. A number or
+ * a date is read by its SHAPE, each digit a nought, because the digits are tabular (`index.css`): „12/31/2022" and
+ * „25. 11. 2017." are two shapes and each stands for every date of its own. A label is measured as it is drawn: upper
+ * case, bold, 0,7rem and letter-spaced.
  *
  * **This list has its floor in the case below it**, which asks the dictionary and the data what a third holds and
  * refuses a thing that is not here, and a measurement of a thing nobody holds.
@@ -208,29 +210,28 @@ const MEASURED: Record<string, number> = {
   '000.00 km': 72.72,
   '0.000': 37.97,
   '0,000': 37.97,
-  /* The widest word of a date: the whole of it on /en, and the year with its full stop on /sr. */
+  /* The widest date of each language, whole: /en has no space to break at, and /sr has three of them and is the wider.
+     Measured in the cell that draws the day, and „31. 12. 2022." is as wide (the floors of the table shape hold it at
+     88,18 from Chrome 152, below). */
   '00/00/0000': 81.47,
-  '0000.': 37.97,
+  '00. 00. 0000.': 88.17,
 }
 
 type Race = { date: string; distanceKm: number; ascentM: number; descentM: number }
 
 const races: Race[] = JSON.parse(readFileSync(join(process.cwd(), 'src/test/mock/races.json'), 'utf-8'))
 
-/** The shape of a word: every digit a nought. */
-const shapeOf = (word: string) => word.replace(/\d/g, '0')
+/** The shape of a text: every digit a nought. */
+const shapeOf = (text: string) => text.replace(/\d/g, '0')
 
 /** The longest of these, as its shape. Within one kind a longer one is a wider one: its characters are the digits and
- *  the one or two marks the format puts between them, and the digits are tabular. */
+ *  the marks the format puts between them, and the digits are tabular. */
 const widest = (texts: string[]) => shapeOf(texts.reduce((sofar, one) => (one.length > sofar.length ? one : sofar)))
-
-/** The longest WORD of any of these, as its shape. */
-const widestWord = (texts: string[]) => widest(texts.flatMap((one) => one.split(/\s+/)))
 
 /**
  * What a third of a block holds in this language. The figures are in every race: the three words over them as they
  * are drawn, and the widest distance and the widest climb or fall that the races of the file write. The days are in
- * the events that run more than one morning: the widest word of a date.
+ * the events that run more than one morning: the widest date, whole.
  */
 function held(locale: Locale): { figures: string[]; days: string[] } {
   const dictionary: { event: Record<string, string> } = JSON.parse(
@@ -245,7 +246,7 @@ function held(locale: Locale): { figures: string[]; days: string[] } {
       widest(races.map((one) => formatDistance(one.distanceKm, locale, 2))),
       widest(races.flatMap((one) => [formatNumber(one.ascentM, locale), formatNumber(one.descentM, locale)])),
     ],
-    days: [widestWord(races.map((one) => formatShortDate(one.date, locale)))],
+    days: [widest(races.map((one) => formatShortDate(one.date, locale)))],
   }
 }
 
@@ -395,13 +396,16 @@ describe('the table of races on an event', () => {
 
   it('is one column where a third of its box cannot hold the widest thing a third holds, and three tracks everywhere else', () => {
     /* Owner, 03.10.2026, chosen among the ways he was offered and with the assistant's recommendation (PDL,
-       „Izmene posle testiranja (03.10.2026, vlasnik)", point 4): where the three figures do not fit in a row
-       on a telephone at an enlarged text they go one under another, and at the ordinary size they stay in the
-       second row. What was measured, and why the numbers are what they are, is under the queries in
-       `Profile.css`. Held here: that the two queries are there, that they write where the parts stand and
-       nothing else, and that each number is the arithmetic the measurements give. The floor of each is the
-       widest thing a third holds in the boxes it covers, and the ceiling of both is the ordinary text size on
-       the narrowest screen the portal promises, 360px, which has to stay three tracks.
+       „Izmene posle testiranja (03.10.2026, vlasnik)", point 4, and „Odgovori vlasnika na pitanja iz prepisa i
+       iz recenzija (03.10.2026, uveče)", the item on the table of races at an enlarged text): where the three
+       figures do not fit in a row on a telephone at an enlarged text they go one under another, and where the
+       day of an event of more than one morning would break beside the name it goes under it; at the ordinary
+       size they stay in the second row. What was measured, and why the numbers are what they are, is under the
+       queries in `Profile.css`. Held here: that the two queries are there, that they write where the parts
+       stand and nothing else, and that each number is the arithmetic the measurements give. The floor of each
+       is the widest thing a third holds in the boxes it covers, the date of the second whole, and the ceiling of
+       both is the ordinary text size on the narrowest screen the portal promises, 360px, which has to stay
+       three tracks.
 
        Worked out and not rendered, because jsdom lays nothing out (ADL A18), against widths measured in
        Chrome (`MEASURED`, and the case under this one for its floor). The box is asked in `rem` and not in
@@ -512,7 +516,7 @@ describe('the table of races on an event', () => {
     /* The floor under `MEASURED`. A list of widths written by hand is the shape of a guard that is finished
        by the next string nobody thought of, so what a third holds is asked of what writes it: the dictionary,
        for the three words over the figures in every language the portal has, and the races of the file, for
-       the widest distance, climb and fall and the widest word of a date that each language writes of them.
+       the widest distance, climb and fall and the widest date that each language writes of them.
        A thing with no measurement fails here, and so does a measurement of a thing nobody holds.
 
        **What it does not hold, said here and not left to be found.** The widths are Segoe UI in Chrome 154,

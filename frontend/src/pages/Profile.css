@@ -8,7 +8,8 @@
    A telephone gets a block per race: the name, the day beside it where the event
    has one, the length, the climb and the fall in a row of three, and the way into
    the form under them; and where the box is too narrow for a third of it to hold
-   what a third has to hold, which is an enlarged text on a telephone, the same block
+   what a third has to hold, which is an enlarged text on a telephone (and, for an
+   event with a day, a screen of up to 339px at the ordinary size), the same block
    is one column, every part under the one before (the two queries under the label
    rule below).
    From the wide layout up (51.25em, `styles/tokens.css`) the
@@ -133,12 +134,15 @@
    WITH A DAY NEEDS MORE ROOM THAN ONE WITHOUT.
 
    Owner, 03.10.2026, on the review of PR 482, chosen among the ways he was offered and with
-   the assistant's recommendation, so the sentence is the journal's and not his (PDL, „Izmene
-   posle testiranja (03.10.2026, vlasnik)", point 4): where the three figures do not fit in a
-   row on a telephone at an enlarged text, they go one under another, nothing breaks and
-   nothing slides; at the ordinary size they stay in the second row, as he said it: „Na
-   mobilnom u prvom redu naziv i datum, u drugom ova tri podatka". The two ways he did not
-   take were a word broken in two and a column that grows and scrolls sideways.
+   the assistant's recommendation, so the sentences are the journal's and not his (PDL, „Izmene
+   posle testiranja (03.10.2026, vlasnik)", point 4, and „Odgovori vlasnika na pitanja iz
+   prepisa i iz recenzija (03.10.2026, uveče)", the item on the table of races at an enlarged
+   text): where the three figures do not fit in a row on a telephone at an enlarged text, they
+   go one under another, nothing breaks and nothing slides, and on an event of more than one
+   day the day goes under the name where it would break beside it; at the ordinary size they
+   stay in the second row, as he said it: „Na mobilnom u prvom redu naziv i datum, u drugom
+   ova tri podatka". The two ways he did not take for the figures were a word broken in two
+   and a column that grows and scrolls sideways.
 
    What three tracks at every size did, measured in Chrome 154 on Windows at 200% text on a
    360px screen: on /en „MEASURE" ran 19,25px into „ASCENT" and the box slid 12px; on both
@@ -151,27 +155,31 @@
      races are a hundred kilometres or more), 4,55rem, because a measure is not parted from
      its unit by a break at the space; a climb or a fall of a thousand metres, 2,37rem;
    - and where the event runs more than one morning, which is 22 of the 1163 events with a
-     race in the file, the date in the third track: „12/31/2022", the widest with no space in
-     it to break at (/en), 5,09rem; on /sr „31. 12. 2022." breaks at its spaces, so what it
-     holds whole is „2022.", 2,37rem.
+     race in the file, the date in the third track, whole as well, because where it would break
+     beside the name it goes under it: „25. 11. 2017." on /sr, the widest the format writes,
+     88,17px, 5,51rem, which breaks at its spaces („25. 11." over „2017."); and „12/31/2022"
+     on /en, which has no space to break at and was cut in two, 81,47px, 5,09rem.
 
    A third is a third of the box less the room a row keeps: its padding and its two gaps, 2rem
    of `--space-8`, which grows with the text as the type does. Three of the widest figure and
-   the room are 15,64rem, and the first query asks for 16: 2% over. Three of the date and the
-   room are 17,28rem, and the second asks for 18: 4% over, and for the events that have a day
-   only, because one number for all of them would be the date's and would make 98% of the
-   events one column at 125% text for the sake of 2%. The margin is the thinner where what goes
-   wrong is a break at a space (a measure over its unit) and the thicker where it is a word cut
-   in two (a date), and both are the order of what the other floors of this sheet keep over a
-   measurement (1% to 4%). At 125% text a 360px screen has 16,0rem, so an event of one morning
-   is still three tracks there and a weekend is one column; at 150% every telephone is one
-   column; and a tablet of 768px is three tracks at every text size. In `rem` and not in `px`
-   because it is about type: the circle of the standing (`pages/Rankings.css`) is in `px` on
-   purpose, since that one is about room, and the words here grow with the text while the box
-   does not. The box is `.event-races`, the container the widths of the wide layout are shares
-   of, and the nearest one (`pages/event/raceTable.test.tsx` asks the rendered tree). The two
-   numbers are held to the measurements, and to the ordinary text size, in
-   `pages/eventTableStyle.test.ts`.
+   the room are 15,64rem, and the first query asks for 16: 2% over. Three of the whole date and
+   the room are 18,53rem, and the second asks for 19,2: a third of it is 5,73rem, 4% over the
+   date. It asks it of the events that have a day only, because one number for all of them would
+   be the date's and would make 98% of the events one column at 125% text for the sake of 2%.
+   The margins are the order of what the other floors of this sheet keep over a measurement (1%
+   to 4%). The second asked for 18 before, worked out from the widest word of the date and not
+   from the date: a third of 5,33rem for a date of 5,51rem, which stood as „25. 11." over „2017."
+   beside the name on /sr. Now the day goes under the name on a screen of up to 339px at the
+   ordinary size and of up to 424, 508, 593 and 678px at 125%, 150%, 175% and 200% text (Chrome
+   154), and a 360px screen at the ordinary size, which has 20,5rem, keeps it beside the name.
+   At 125% text a 360px screen has 16,0rem, so an event of one morning is still three tracks
+   there and a weekend is one column; at 150% every telephone is one column; and a tablet of
+   768px is three tracks at every text size. In `rem` and not in `px` because it is about type:
+   the circle of the standing (`pages/Rankings.css`) is in `px` on purpose, since that one is
+   about room, and the words here grow with the text while the box does not. The box is
+   `.event-races`, the container the widths of the wide layout are shares of, and the nearest
+   one (`pages/event/raceTable.test.tsx` asks the rendered tree). The two numbers are held to
+   the measurements, and to the ordinary text size, in `pages/eventTableStyle.test.ts`.
 
    WHAT THEY DO: one track, and every part takes it. The name beside a day and the day were
    placed by a track number („1 / span 2" and „3"), and a number past the last track is a track
@@ -192,7 +200,7 @@
   }
 }
 
-@container (max-width: 17.98rem) {
+@container (max-width: 19.2rem) {
   .table--races:has(.event-races__day) tbody tr {
     grid-template-columns: minmax(0, 1fr);
   }
