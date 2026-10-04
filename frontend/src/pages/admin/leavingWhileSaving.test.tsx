@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join, sep } from 'node:path'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { CONTACT_ADDRESS } from '../../app/routes'
@@ -168,6 +170,17 @@ describe('an event whose save is out cannot be left', () => {
       })
       await screen.findByRole('heading', { name: /^Trke na događaju/ })
     }
+
+    /* THE ROUTER'S REFUSAL IS REGISTERED BY TWO PASSES OF EFFECTS after the form is drawn (`useBlocker`
+       makes its own key in the first and gives the router its function in the second), and `findBy`
+       returns as soon as the heading is in the document. A press and a way out in one tick, which is
+       the case of that name, would find the router open if that were not waited for. A person cannot
+       press Save in the frame the form is drawn in, so this is the fixture and not the portal. Measured
+       by running that case alone: eight runs of eight failed without this wait, and eight of eight
+       passed with it. */
+    await act(async () => {
+      await Promise.resolve()
+    })
 
     return { user, router }
   }
@@ -398,6 +411,32 @@ describe('an event whose save is out cannot be left', () => {
       await user.click(screen.getByRole('link', { name: 'Kalendar' }))
       expect(where(router)).toBe('/sr/kalendar')
     }, SLOW)
+  })
+
+  describe('the one place the portal asks the router to refuse', () => {
+    /** Every source file of the portal that is not a test, found by walking the folder and not by a list. */
+    function sourcesUnder(folder: string): string[] {
+      return readdirSync(folder).flatMap((name) => {
+        const path = join(folder, name)
+
+        if (statSync(path).isDirectory()) {
+          return sourcesUnder(path)
+        }
+
+        return /\.(ts|tsx)$/.test(name) && !/\.test\.(ts|tsx)$/.test(name) ? [path] : []
+      })
+    }
+
+    it('is `BlocksLeaving`, because a router keeps one blocker at a time and answers to the last it was given', () => {
+      /* A second `useBlocker` anywhere would silently replace this one while a form of an event is open,
+         and every case above would go on passing for the roads it did not touch. So the question is
+         asked of the sources: who calls it. */
+      const callers = sourcesUnder(join(process.cwd(), 'src'))
+        .filter((path) => /\buseBlocker\s*\(/.test(readFileSync(path, 'utf-8')))
+        .map((path) => path.split(sep).join('/').replace(/^.*\/src\//, 'src/'))
+
+      expect(callers).toEqual(['src/pages/admin/BlocksLeaving.tsx'])
+    })
   })
 
   describe('until the last answer, and not before', () => {

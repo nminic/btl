@@ -20,7 +20,6 @@ import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
 import { wordsFor } from '../account/serverWords'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
-import { EndsTheVisit } from './EndsTheVisit'
 import {
   EVENTS,
   RACES,
@@ -51,15 +50,6 @@ import { useFilterParams } from '../../app/useFilterParams'
 
 /** An overlay holding nothing, which is what this screen starts every visit with. */
 const NOTHING_YET: Overlay = { edits: {}, creations: {}, deletions: {} }
-
-/**
- * WHAT A PRESS ENDS IN WHEN THE FORM IT BEGAN IN HAS LEFT THE SCREEN: no sentence and no confirmation.
- *
- * <p>An editor that is handed „written" tells the screen it made an event (`onCreated`), which is the
- * one thing a form that has left must not say; and a sentence is for a form somebody is reading
- * (`theRacesOf`).
- */
-const NOTHING_SAID: Saving = { said: null }
 
 /**
  * ONE RACE A PRESS DID NOT SAVE, AND THE ANSWER THAT SAID SO.
@@ -307,55 +297,6 @@ export function AdminEvents() {
   const [racesWait, setRacesWait] = useState(false)
   /** What the last press did not save, row by row, for the list under the table. */
   const [notSaved, setNotSaved] = useState<RaceRefusal[]>([])
-  /**
-   * WHICH VISIT A PRESS BEGAN IN, as a number that moves each time a form leaves the screen.
-   *
-   * <p><b>A form has a visit, and a press that is still out when its form is taken off the screen
-   * must not write into the next one</b> (review of PR 483, round 2, finding V1). The five things a
-   * form holds (`forgetTheForm`) and the wait (`waitingFor`) live on THIS screen, which outlives every
-   * form on it, so what a press writes after the server has answered goes into whatever form is
-   * drawn when the answer comes. Nothing stops the reader leaving while a press is out („Nazad na
-   * spisak" is open, nothing says the press is out, and the request has no deadline), so the answer
-   * can come after he has opened another form and typed into it. Measured on `7a4e77f7`, with the
-   * press of a copy refused after the reader had opened another event: every field of that event
-   * was held, and its first press sent only races, under the COPY's event, took the copy's first
-   * race away, never sent the words he had typed, and said „Događaj je sačuvan". The same answer
-   * into a new form made it send a race under the copy's event and never its own event, and the
-   * screen said „Sačuvano".
-   *
-   * <p><b>The visit ends when `EndsTheVisit` leaves the screen with the form, and not when a handler
-   * runs.</b> `forgetTheForm` is called on the way IN, so it can say nothing about an answer that comes
-   * after it, and a form left by its address calls no handler at all. A press takes the number as it
-   * begins (`saveOne`) and asks whether it has moved (`left`) before each write it makes after an
-   * answer; where it has, it writes NOTHING into any form.
-   *
-   * <p><b>Four writes are made whatever the number says, and none of them reaches another form.</b>
-   * What the server TOOK goes into this screen's list (`setWritten`: the event, and the races made,
-   * taken away and changed), and the cache is dropped (`forgetWhatWasRead`): that is true of the
-   * server whoever is looking, and a guard on it would lose an event the route has, so the reader
-   * would enter it again and be told its address is taken by itself. A refusal or a confirmation goes
-   * back to the editor that ASKED, which is the form of this press and, where it has left, gone with
-   * nobody to read it. And the row of a race the press has just made learns its identity only if it
-   * is found among the rows held (`held`), by the row's own object, which is its own guard: a table
-   * that is not this press's does not contain it.
-   *
-   * <p><b>What a press that has been left does NOT do is stop.</b> It goes on to send what it had
-   * begun to send, because stopping at the next request would leave an event saved with some of its
-   * races, which is the very report the owner made on 03.10.2026. It is derived and not decided: the
-   * owner has said nothing about leaving.
-   *
-   * <p><b>What this does not settle, measured on `main` as well.</b> Two presses that write the races
-   * of ONE event at once: a press that is making a race while the reader opens the same event again
-   * from the list and touches its table. The next press takes that race away, because its table never
-   * held it (`PUT` of the event, `DELETE` of the race the first press had just made, then `PUT` of the
-   * rest: the same writes on `main` and here). The cures are a table that remembers which races it was
-   * lined up with, or a „Nazad" that waits for the press, and neither is decided. And a form's address
-   * changed straight into another form's address, with no list between, is not the end of a visit,
-   * because the form does not follow the address at all (the first event's values stay under the
-   * second event's address, also measured on `main`): a fault of its own and no press's.
-   */
-  const visits = useRef(0)
-
   /** The one place the event's waiting is set and cleared, so the press and the drawing agree. */
   function waitFor(event: number | null): void {
     waitingFor.current = event
@@ -388,9 +329,14 @@ export function AdminEvents() {
    * the browser's Back to the very address he left by finds the form as he left it (`saveOne`
    * says what that is).
    *
-   * <p><b>This is what the NEXT form inherits, and it cannot answer for what a press that is still
-   * out writes LATER</b> (review of PR 483, round 2, finding V1): that comes after the next form is
-   * open, and is asked of the press itself at every place it writes (`visits`).
+   * <p><b>A press never writes into the NEXT form</b> (review of PR 483, round 2, finding V1, and the
+   * owner's choice of 04.10.2026 that answers it): the reader cannot leave a form while a press is out
+   * (`holdsWhileSaving` below), so what a press writes after an answer lands in the form it began in. Left
+   * to be answered write by write, the next form had a new road found into it by every round of review.
+   * A form's address changed straight into another form's address, with no list between, is not a way
+   * into a form this answers for either: the form does not follow the address at all (the first event's
+   * values stay under the second event's address, measured on `main` as well), and no link of the portal
+   * builds one (read, not measured).
    */
   function forgetTheForm(): void {
     setJustMade(null)
@@ -641,20 +587,14 @@ export function AdminEvents() {
              * sent at all, and the sentence said „jedna njegova trka nije" over a press in which
              * none had been saved.
              *
-             * <p><b>It goes on whether or not the reader has left</b> (`visits`), and what it writes into
-             * a FORM it writes only while he has not: the table below. What the server took it
-             * writes into this screen's list either way, which is true of the server whoever is
-             * looking.
+             * <p><b>The reader cannot leave while it runs</b> (`holdsWhileSaving`, owner, 04.10.2026), so
+             * everything below is written into the form the press began in, and what the server took goes
+             * into this screen's list as it is taken.
              *
-             * @param left whether the form this press began in has left the screen since
              * @returns every race the route refused, in the order they were sent; nothing where
              *          every one went through
              */
-            async function writeTheRaces(
-              values: FormValues,
-              eventId: string,
-              left: () => boolean,
-            ): Promise<RaceRefusal[]> {
+            async function writeTheRaces(values: FormValues, eventId: string): Promise<RaceRefusal[]> {
               const refusals: RaceRefusal[] = []
               const was = allRaces.filter((one) => String(one.eventId) === eventId)
               const kept =
@@ -671,16 +611,8 @@ export function AdminEvents() {
                  objects this loop walks are the ones every later drawing has. Not held, the list
                  of what was not saved named nothing where no race was accepted - measured by a
                  mutation - and the row of a race a copy's first press made never learned its
-                 identity, which a fallback inside the loop used to answer for that one case.
-
-                 AND ONLY WHILE THE FORM IS STILL THE ONE THIS PRESS BEGAN IN. A press that writes the
-                 event first reaches this line AFTER the answer, and the reader may have gone back and
-                 opened a new form by then: a new form and a copy are both the table „nov", so both rows
-                 of the copy were handed to it, and the event it made was sent on the day of the first of
-                 them (2015-03-15) and not on the day that was typed (measured, `7a4e77f7`). */
-              if (!left()) {
-                setHeld((before) => (before.of === under ? before : { of: under, rows: current }))
-              }
+                 identity, which a fallback inside the loop used to answer for that one case. */
+              setHeld((before) => (before.of === under ? before : { of: under, rows: current }))
 
               for (const race of was) {
                 if (!kept.has(String(race.id))) {
@@ -772,12 +704,13 @@ export function AdminEvents() {
                        Matched by the row's own OBJECT, the same way `EventRaces.tsx`'s
                        own `change` corrects one row - never by position. This answer
                        comes back after a wait, and `held` can have moved on by then: the
-                       reader left for the list (`onDone` empties it) or reopened this
-                       table after touching a different event's. A row found by INDEX
-                       would then correct whatever happens to occupy that index in
-                       whatever `held` holds now, which is nothing this press wrote. A row
-                       found by IDENTITY is simply absent once that happens, and `map`
-                       leaves every row exactly as it was.
+                       reader cannot leave while the press is out (`holdsWhileSaving`), but
+                       he can still type, and a row typed into is another object from then
+                       on (`EventRaces.tsx`, `change`). A row found by INDEX would then
+                       correct whatever happens to occupy that index in whatever `held`
+                       holds now, which is nothing this press wrote. A row found by
+                       IDENTITY is simply absent once that happens, and `map` leaves every
+                       row exactly as it was.
 
                        AND `held` ALREADY HOLDS THE ROWS THIS LOOP WALKS, because the press
                        held them before it sent anything (the top of this function). Until
@@ -790,19 +723,7 @@ export function AdminEvents() {
                        Held at the top for every press, that fallback was a branch nothing
                        could take any more - the coverage floor named it - and it is gone
                        rather than kept beside the hold that replaced it. So nothing here
-                       writes `of`: where `held` has moved on to another table, or to none,
-                       this row is simply not in it.
-
-                       NOT ASKED OF THE VISIT (`left`), AND THAT IS DELIBERATE. Of everything this
-                       press writes into the form after an answer this is the one write that cannot
-                       reach another form: the row it looks for is the object this press walks, and no
-                       table but this press's own holds it. Asked of the visit as well it would do
-                       harm where the same table is found again - the browser's Back to the very
-                       address the form was left by - because the row of a race the route had taken
-                       would never learn it, and the next press would make that race a second time
-                       (reasoned, not measured). Held against the one way it could reach another form,
-                       a row matched by anything but its object, by the case in which a copy's last
-                       race comes back taken while a new form waits (`racesWait.test.tsx`). */
+                       writes `of`. */
                     setHeld((before) => ({
                       ...before,
                       rows: before.rows.map((each) =>
@@ -850,12 +771,12 @@ export function AdminEvents() {
              * through, so he found nothing, entered it again, and was told by the route that its
              * address is taken - a refusal about a collision with himself.
              *
-             * <p><b>And what a reader who leaves loses, written down rather than guarded:</b> the
-             * races that were still waiting. The event stays and they do not, and nothing warns
-             * him on the way out; the owner has not decided anything about leaving, so nothing new
-             * is drawn for it (coordinator, 03.10.2026). What IS guarded is that they are not
-             * carried: no form opened afterwards from this list, new or an event's own, is handed
-             * any of it, whichever way he left (`forgetTheForm`).
+             * <p><b>And what a reader who leaves AFTER the press has ended loses, written down rather
+             * than guarded:</b> the races that were still waiting. The event stays and they do not, and
+             * nothing warns him on the way out; the owner decided nothing about leaving once the press
+             * is over, so nothing new is drawn for it (coordinator, 03.10.2026). What IS guarded is that
+             * they are not carried: no form opened afterwards from this list, new or an event's own, is
+             * handed any of it, whichever way he left (`forgetTheForm`).
              *
              * <p><b>What is NOT guarded, measured and not assumed (review of PR 483, round 1):</b>
              * the one way back to the very address he left by. A form opened from the address and
@@ -866,14 +787,18 @@ export function AdminEvents() {
              * only races, as it did. So „loses" holds for every way into ANOTHER form and not for
              * this one.
              *
-             * <p><b>A press that is still out when he leaves is asked about its visit, and that is
-             * measured too (review of PR 483, round 2, finding V1).</b> Everything above is what the
-             * NEXT form is handed on the way in; an answer that comes after he has opened another
-             * form wrote the wait into THAT form, and its first press then sent only races, under the
-             * event of a press he had left. The press takes the number of its visit as it begins
-             * (`visits`) and asks `left` before every write it makes into a form after an answer. It
-             * goes on to send what it began to send, writes into this screen's list what the server
-             * took, and writes nothing else.
+             * <p><b>A press that is out cannot be left</b> (owner, 04.10.2026, chosen between offered
+             * outcomes; PDL, P6, „Dok čuvanje događaja traje"): every way out of the form waits for the
+             * last answer of the press (`holdsWhileSaving`), so a press always ends in the form it began
+             * in and writes into no other. That replaced a question asked of the press before every write
+             * it made into a form - had the form been left? - which three rounds of review of this PR
+             * answered one road at a time (an answer that came after the reader had opened another form
+             * wrote the wait into that form, and its first press then sent only races, under the event
+             * of a press he had left). What is NOT held, and was chosen so: signing out and, on QA,
+             * changing the role (owner, the same day) - whoever signs out in the middle of a save is not
+             * told what was saved, and the answer that comes late is written into a screen that is gone.
+             * And there is no deadline: a request that never answers holds the form until the page is
+             * refreshed.
              *
              * <p><b>The portal has no precedent for this and that is measured, not assumed.</b>
              * The one other screen that writes a record and its children in one press is
@@ -887,11 +812,6 @@ export function AdminEvents() {
               values: FormValues,
               text: Record<string, string>,
             ): Promise<Saving> {
-              /* THE VISIT THIS PRESS BEGAN IN, taken before anything is sent, and the question every
-                 write after an answer asks of it (`visits`). */
-              const began = visits.current
-              const left = (): boolean => visits.current !== began
-
               setNotSaved([])
 
               /* WHILE RACES WAIT, A PRESS SENDS THE RACES AND NOTHING ELSE: „ponovni pokušaj
@@ -902,7 +822,7 @@ export function AdminEvents() {
               if (saved !== null) {
                 forgetWhatWasRead()
 
-                return theRacesOf(values, saved, left)
+                return theRacesOf(values, saved)
               }
 
               /* THE RECORD THE FORM IS OPEN ON, or nothing for a form that makes one. A ref
@@ -994,7 +914,7 @@ export function AdminEvents() {
                     },
               )
 
-              return theRacesOf(values, made.id, left)
+              return theRacesOf(values, made.id)
             }
 
             /**
@@ -1013,30 +933,14 @@ export function AdminEvents() {
              * that sends the reader „ispod tabele" sent him nowhere. The two are told apart by the
              * question the table itself is drawn by (`hasRaces`, in `beneath`).
              *
-             * <p><b>Where the form this press began in has left the screen, the end of the press
-             * writes nothing and says nothing</b> (review of PR 483, round 2, finding V1). The end
-             * of a press is four writes into whatever form is drawn when the last answer comes: the
-             * list of what was not saved and the wait (a refusal), the end of the wait (every race
-             * through), and the identity of the event the screen is told to draw the form under
-             * (`{ written }`, which the editor hands to `onCreated`). The first two were measured on
-             * `7a4e77f7`: a refusal that came after the reader had opened another form held that
-             * form. The other two are the same write seen from the other answer, and each has a case
-             * of its own in which a copy comes back with every race taken. What is returned instead
-             * is `NOTHING_SAID`, the one answer that makes an editor that is still there do nothing
-             * and tell the screen nothing.
-             *
-             * @param left whether the form this press began in has left the screen since
+             * <p>The end of a press is four writes into the form it began in: the list of what was not
+             * saved and the wait (a refusal), the end of the wait (every race through), and the identity
+             * of the event the screen is told to draw the form under (`{ written }`, which the editor
+             * hands to `onCreated`). They are made without asking where the reader is, because he cannot
+             * have left (`holdsWhileSaving`).
              */
-            async function theRacesOf(
-              values: FormValues,
-              event: number,
-              left: () => boolean,
-            ): Promise<Saving> {
-              const refusals = await writeTheRaces(values, String(event), left)
-
-              if (left()) {
-                return NOTHING_SAID
-              }
+            async function theRacesOf(values: FormValues, event: number): Promise<Saving> {
+              const refusals = await writeTheRaces(values, String(event))
 
               if (refusals.length > 0) {
                 setNotSaved(refusals)
@@ -1161,9 +1065,6 @@ export function AdminEvents() {
 
             return (
               <>
-                {/* DRAWN FOR EXACTLY AS LONG AS THE EDITOR, so the visit of the form ends when the form
-                    does, by whichever road (`visits`). */}
-                <EndsTheVisit visits={visits} />
                 {(
                   <EntityEditor
                     entity={EVENTS}

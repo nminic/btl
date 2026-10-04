@@ -1029,4 +1029,115 @@ describe('an event whose races wait', () => {
 
     await user.click(within(row).getByRole('button', { name: `Otvori: ${event.name}` }))
   }
+  /**
+   * WHAT THE SERVER TOOK GOES INTO THIS SCREEN'S LIST AS IT IS TAKEN (round 3 of the review of PR 483;
+   * PDL, P6, „Dok čuvanje događaja traje").
+   *
+   * <p>Round 2 held these writes with cases in which the reader left a form while a press was out and
+   * the writes were still made. He cannot leave any more, so the cases are the ordinary ones: a press that
+   * ends, and the list he goes back to. One case for each write a press makes into the list (the event
+   * changed, the races made, changed and taken away), so a mutation that drops one falls on the case about
+   * that one and not on the one beside it. The event made is held by the case above that goes back while
+   * its races wait.
+   */
+  describe('what the server took', () => {
+    /** The cell that counts the races of the row of an event, on the day if one is given. */
+    async function racesCellOf(
+      user: Pressing,
+      which: { name: string; date?: string },
+    ): Promise<string | null> {
+      const search = await screen.findByPlaceholderText('Naziv ili mesto')
+
+      await user.clear(search)
+      await user.type(search, which.name)
+
+      const row = within(await screen.findByRole('table', { name: 'Događaji' }))
+        .getAllByRole('row')
+        .slice(1)
+        .find(
+          (one) =>
+            (one.textContent ?? '').includes(which.name) &&
+            (which.date === undefined ||
+              (one.textContent ?? '').includes(formatShortDate(which.date, 'sr-Latn'))),
+        )
+
+      return must(
+        within(must(row, `the row of ${which.name}`)).getAllByRole('cell')[3],
+        'the cell that counts the races',
+      ).textContent
+    }
+
+    it('counts both races of a copy in the list the reader goes back to', async () => {
+      const user = setupUser()
+
+      renderAt('/sr/administracija/dogadjaji?kopija=32', 'superadmin')
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      const name = screen.getByLabelText(/^Naziv događaja/)
+
+      await user.clear(name)
+      await user.type(name, 'BBKT u spisku')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+      expect(await racesCellOf(user, { name: 'BBKT u spisku' })).toBe('2')
+    }, SLOW)
+
+    it('shows an event that was renamed under its new name', async () => {
+      const { event } = await aServedEventWithRaces()
+      const user = setupUser()
+
+      renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
+
+      const name = await screen.findByLabelText(/^Naziv događaja/)
+
+      await user.clear(name)
+      await user.type(name, 'Preimenovan u spisku')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+      expect(await rowsCalled(user, 'Preimenovan u spisku')).toBe(1)
+    }, SLOW)
+
+    it('gives the event opened again the name the route took for a race that was changed', async () => {
+      const { event } = await aServedEventWithRaces()
+      const user = setupUser()
+
+      renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
+
+      const called = await screen.findByLabelText('Trka, 1. trka')
+
+      await user.clear(called)
+      await user.type(called, 'Preimenovana u spisku')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+      await openTheRowOf(user, event)
+      await screen.findByRole('heading', { name: /^Trke na događaju/ })
+
+      expect(screen.getByLabelText('Trka, 1. trka')).toHaveValue('Preimenovana u spisku')
+    }, SLOW)
+
+    it('counts no race for an event saved as a gathering, whose races the route took away', async () => {
+      const { event } = await aServedEventWithRaces()
+
+      /* Read before the press: a save that takes races away waits for the results (`alsoRefuses`). */
+      await loadResource(RESULTS)
+
+      const user = setupUser()
+
+      renderAt(`/sr/administracija/dogadjaji?izmena=${String(event.id)}`, 'superadmin')
+      await user.selectOptions(
+        await screen.findByLabelText(/^Vrsta događaja/),
+        sr.event.kind.gathering,
+      )
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      await user.click(screen.getByRole('button', { name: 'Nazad na spisak' }))
+
+      expect(await racesCellOf(user, { name: event.name, date: event.date })).toBe('0')
+    }, SLOW)
+  })
 })

@@ -185,10 +185,10 @@ export function EntityEditor({
    * wording was offered to him and the choice is his): while the save of an event lasts, the form
    * cannot be left in any way. While a press is out „Nazad na spisak" is told off and refuses in its
    * handler, the router refuses every navigation (`BlocksLeaving`), and the portal's own sentence for a
-   * request that is out is said under the form. All three end with the last answer, whatever it is, and
-   * the form is left as it was by whoever pressed again after reading what came back. There is no
-   * deadline (owner, the same day): a request that never answers holds the form until the page is
-   * refreshed, which the browser always allows.
+   * request that is out is said under the form. All three end with the last answer, whatever it is: a
+   * refusal leaves the form as it was, with everything typed, and the reader may then leave it or press
+   * again. There is no deadline (owner, the same day): a request that never answers holds the form
+   * until the page is refreshed, which the browser always allows.
    *
    * <p><b>Only the events pass it</b> (owner, the same day: „blokada važi samo za obrazac događaja").
    * What it closes is a press that writes into whatever form is drawn when its answer comes, and that
