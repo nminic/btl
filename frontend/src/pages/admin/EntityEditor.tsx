@@ -140,9 +140,18 @@ export function EntityEditor({
    * list, find the event they had just made, and open it again.
    */
   onCreated?: (id: string) => void
-  /** What the screen draws between the fields and the button that sends them,
-   *  and what it refuses that no field of the form can (FormRenderer.tsx). */
-  beneath?: (values: FormValues) => ReactNode
+  /**
+   * What the screen draws between the fields and the button that sends them, and what it
+   * refuses that no field of the form can (FormRenderer.tsx).
+   *
+   * <p><b>It is told, as its second argument, whether the reader is being held on the form</b>
+   * (`holdsWhileSaving`): true for as long as the screen's own save is out, and always false for a
+   * screen that does not ask to hold him. The fields of the form are held by this editor; what a
+   * screen draws BENEATH them is drawn by that screen and can only be held by it, so it is handed
+   * the same fact, read off the same state, instead of keeping a second copy of it (the events draw
+   * their table of races here and hold every cell of it).
+   */
+  beneath?: (values: FormValues, held: boolean) => ReactNode
   alsoRefuses?: (values: FormValues) => string | undefined
   /** Days the date field offers beside its calendar; only the copy of an event
    *  has any (FormRenderer.tsx). */
@@ -189,6 +198,20 @@ export function EntityEditor({
    * refusal leaves the form as it was, with everything typed, and the reader may then leave it or press
    * again. There is no deadline (owner, the same day): a request that never answers holds the form
    * until the page is refreshed, which the browser always allows.
+   *
+   * <p><b>And the fields are held for exactly as long</b> (owner, 04.10.2026, chosen between offered
+   * outcomes; PDL, P6, „Dok čuvanje događaja traje", the decision after the scope; the wording was offered
+   * to him and the choice is his; the cause is measured: a word typed into a row or into the name while a
+   * request is out replaces the row the identity of a race made by that very press is written back onto,
+   * so the retry deletes the race the press had just made and makes it again). Held the way the portal
+   * holds every control that cannot act and is not switched off: `aria-disabled`, `readOnly` where a box
+   * takes typing, the dress of a held control, and a refusal in the handler as well, because the
+   * attribute stops nothing by itself. The field stays in the order of focus and stays readable, which
+   * is what a reader who pressed Enter in it needs: the focus is still where he left it, and a screen
+   * reader says it is unavailable (`forms/held.ts`, and `FormRenderer`'s `fixed`, which is the one road
+   * a field is held by). <b>Every field the form draws</b> is held through `fixed`; <b>what the screen
+   * draws beneath the form</b> is held by the screen, which is told so (`beneath`'s second argument).
+   * The button that sends is not a field and is not held: a second press is refused above, off the ref.
    *
    * <p><b>Only the events pass it</b> (owner, the same day: „blokada važi samo za obrazac događaja").
    * What it closes is a press that writes into whatever form is drawn when its answer comes, and that
@@ -439,11 +462,17 @@ export function EntityEditor({
         openAt={openAt}
         /* What the screen draws between the fields and the button, and what it
            refuses that no field of the form can (forms/FormRenderer.tsx). The
-           races of an event are entered there and saved with it. */
-        beneath={beneath}
+           races of an event are entered there and saved with it. Handed whether
+           the reader is held, because what it draws is the screen's to hold. */
+        beneath={beneath === undefined ? undefined : (values) => beneath(values, holding)}
         alsoRefuses={alsoRefuses}
         steps={steps}
-        fixed={fixed}
+        /* EVERY FIELD OF THE FORM THAT IS DRAWN, WHILE THE SAVE IS OUT, beside whatever the screen
+           holds for a reason of its own (the events hold theirs while races wait). Asked of the form
+           that is drawn and not of the entity: a copy is drawn without three of the fields, and a
+           name that no control carries holds nothing. `holding` is false wherever the screen did
+           not ask to hold the reader, so for the other four entities this is `fixed` as it was. */
+        fixed={holding ? [...(fixed ?? []), ...form.fields.map((one) => one.name)] : fixed}
         onSubmit={(values) => void handleSubmit(values)}
       />
 

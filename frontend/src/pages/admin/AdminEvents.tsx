@@ -703,14 +703,20 @@ export function AdminEvents() {
 
                        Matched by the row's own OBJECT, the same way `EventRaces.tsx`'s
                        own `change` corrects one row - never by position. This answer
-                       comes back after a wait, and `held` can have moved on by then: the
-                       reader cannot leave while the press is out (`holdsWhileSaving`), but
-                       he can still type, and a row typed into is another object from then
-                       on (`EventRaces.tsx`, `change`). A row found by INDEX would then
-                       correct whatever happens to occupy that index in whatever `held`
-                       holds now, which is nothing this press wrote. A row found by
-                       IDENTITY is simply absent once that happens, and `map` leaves every
-                       row exactly as it was.
+                       comes back after a wait, and `held` could have moved on by then: a row
+                       typed into is another object from then on (`EventRaces.tsx`, `change`).
+                       A row found by INDEX would then correct whatever happens to occupy
+                       that index in whatever `held` holds now, which is nothing this press
+                       wrote. A row found by IDENTITY is simply absent once that happens, and
+                       `map` leaves every row exactly as it was.
+
+                       THE READER CAN NEITHER LEAVE NOR TYPE WHILE THE PRESS IS OUT
+                       (`holdsWhileSaving`; owner, 04.10.2026, chosen between offered outcomes,
+                       PDL, P6, „Dok čuvanje događaja traje"): every field of the form and
+                       every control of the table is held, so nothing moves `held` under the
+                       press but the press itself. The match by object is left as it was
+                       written and is no longer the only thing between a typed word and a race
+                       made twice: it is the second line, and the first is the hold.
 
                        AND `held` ALREADY HOLDS THE ROWS THIS LOOP WALKS, because the press
                        held them before it sent anything (the top of this function). Until
@@ -1096,8 +1102,14 @@ export function AdminEvents() {
 
                        So this hides and the save deletes, and the two are not the
                        same moment. */
-                    beneath={(values) => (
+                    beneath={(values, whileSaving) => (
                       <EventRaces
+                        /* HELD WHILE THE SAVE IS OUT, every cell and both buttons, for the reason `locked`
+                           gives in `EventRaces.tsx`: the press writes the identity of a race it has made
+                           back onto the row it walked, and a table that changes under it loses it. The
+                           editor says so (`holdsWhileSaving`); it is not asked of anything else here.
+                           Not held while races WAIT: the rows are what the next press sends. */
+                        locked={whileSaving}
                         eventName={
                           String(values.name) === '' ? t('admin.events') : String(values.name)
                         }
@@ -1248,7 +1260,9 @@ export function AdminEvents() {
                     save={saveOne}
                     /* THE READER IS HELD ON THIS FORM WHILE ITS SAVE IS OUT (owner, 04.10.2026, chosen
                        between offered outcomes: PDL, P6, „Dok čuvanje događaja traje"), so a press
-                       ends in the form it began in. Only this screen passes it (`EntityEditor`). */
+                       ends in the form it began in, and with the form it began in: its fields and the
+                       table of races are held as well, so nothing is typed into what the press is
+                       walking. Only this screen passes it (`EntityEditor`). */
                     holdsWhileSaving
                     /**
                      * The event follows its first morning (owner, 10.08.2026): its

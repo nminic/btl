@@ -153,10 +153,12 @@ type Props = {
    * lock decided by the caller instead, for a form that is one thing on one
    * screen and another on the next.
    *
-   * One reader today. Correcting a result may change everything about it except
+   * Two callers hand any. Correcting a result may change everything about it except
    * which race it was run in (owner, 27.08.2026: „sve osim trke"), because a
    * correction keeps the identity of the submission a moderator has already seen;
-   * whoever picked the wrong race deletes it and enters another.
+   * whoever picked the wrong race deletes it and enters another. And the editor of an
+   * event holds every field of it while its races wait and while its save is out
+   * (`pages/admin/EntityEditor.tsx`, `fixed` and `holdsWhileSaving`).
    */
   fixed?: string[]
   /**

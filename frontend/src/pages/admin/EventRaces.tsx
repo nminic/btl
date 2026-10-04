@@ -1,6 +1,7 @@
 import { DatePicker } from '../../forms/DatePicker'
 import { useEffect, useRef } from 'react'
 import { daysBetween, fieldDate, isoDate, shiftDate } from '../../forms/dateField'
+import { heldControl } from '../../forms/held'
 import { useI18n } from '../../i18n/useI18n'
 import { RACE_KINDS } from '../../data/types'
 import { raceKind } from '../../data/raceKind'
@@ -76,6 +77,7 @@ export function EventRaces({
   refused,
   hasRaces,
   notSaved = NOTHING_REFUSED,
+  locked = false,
 }: {
   eventName: string
   /** The day the form above is showing, which is what a new row opens on: „dan
@@ -106,6 +108,36 @@ export function EventRaces({
   hasRaces: boolean
   /** What the server refused at the last press, if anything (`NotSaved` above). */
   notSaved?: NotSaved
+  /**
+   * WHETHER EVERY CONTROL OF THE TABLE IS HELD, which is while the save of the event is out (owner,
+   * 04.10.2026, chosen between offered outcomes; PDL, P6, „Dok čuvanje događaja traje"; the wording
+   * was offered to him and the choice is his).
+   *
+   * <p><b>Every control and not the cells that were measured.</b> The cause is that a row is
+   * replaced by a new object whenever anything about it changes, and the press writes the identity
+   * of a race it has made back onto the row it walked, found by that object (`AdminEvents.tsx`,
+   * `writeTheRaces`). A row typed into while its request is out is no longer that object, so the
+   * identity reaches nothing and the next press deletes the race this one made and makes it again.
+   * Measured on `main` before this, with the request of the second of three races out: a word typed
+   * into the name, the length or the day of that row made the next press write a `DELETE` of the
+   * race the first press had made and then make it again; taking the row away made it write that
+   * `DELETE`; adding a row, or changing a row's kind to one that asks for more, left a row nobody
+   * had finished, and the next press wrote nothing until somebody did. Every road to a changed table
+   * is therefore closed together: the four boxes of a measure, the name, the day with its calendar,
+   * the kind, and the two buttons, the one that takes a row away and the one that adds one (the two
+   * buttons are this change's reading of „polja" and not the owner's word).
+   *
+   * <p>Held the way every control that cannot act is on this portal and the way the fields of the
+   * form above are (`FormRenderer`, `fixed`; `forms/held.ts`): `aria-disabled`, `readOnly` where a box
+   * takes typing, the dress of a held control, and the refusal in the handler too, because the
+   * attribute stops nothing by itself. Told off and not switched off: `disabled` would take the box
+   * the reader pressed Enter in out of the order of focus.
+   *
+   * <p><b>The two effects that follow the event are not refused</b>, the days and the name: they
+   * answer a change of the event's own fields, which are held at the same moment and for the same
+   * reason, so they have nothing to follow while the lock stands.
+   */
+  locked?: boolean
 }) {
   const { locale, t } = useI18n()
   /* The day the form was showing when these rows were last lined up with it. */
@@ -179,6 +211,13 @@ export function EventRaces({
   }, [eventName, onRows, rows])
 
   const change = (at: number, over: Partial<RaceRow>) => {
+    /* A held table takes no change, whichever control asked for it. `readOnly` says it for a box,
+       and a select, a calendar and a button have no such attribute, so the refusal is written once
+       here for every cell, which is the way `FormRenderer` refuses for a field it holds. */
+    if (locked) {
+      return
+    }
+
     onRows(rows.map((row, index) => (index === at ? { ...row, ...over } : row)))
   }
 
@@ -261,7 +300,10 @@ export function EventRaces({
 
     return (
       <input
-        className="field__control"
+        className={heldControl(locked)}
+        /* Held, not switched off, like every control that cannot act (`locked` above). */
+        aria-disabled={locked ? true : undefined}
+        readOnly={locked ? true : undefined}
         /* A TEXT BOX WITH A NUMERIC KEYBOARD, and not `type="number"`, since 02.10.2026.
            A number box in a Serbian browser refuses the comma Serbian writes a decimal
            with and reports it as empty, so „21,1" typed into the length of a race read
@@ -410,7 +452,9 @@ export function EventRaces({
                 <tr key={row.id === '' ? `nova-${String(at)}` : row.id}>
                   <td>
                     <input
-                      className="field__control"
+                      className={heldControl(locked)}
+                      aria-disabled={locked ? true : undefined}
+                      readOnly={locked ? true : undefined}
                       type="text"
                       value={row.name}
                       /* Named by its row as well as its column, like every other
@@ -436,6 +480,7 @@ export function EventRaces({
                       value={row.date}
                       label={cellName('date', at)}
                       required
+                      locked={locked}
                       invalid={why(row, 'date') !== undefined}
                       describedBy={
                         why(row, 'date') === undefined ? undefined : problemId(at, 'date')
@@ -445,7 +490,8 @@ export function EventRaces({
                   </td>
                   <td className="races__kind">
                     <select
-                      className="field__control"
+                      className={heldControl(locked)}
+                      aria-disabled={locked ? true : undefined}
                       value={row.kind}
                       /* Named by its row as well as its column, like every other
                          control in this table: „Vrsta" twenty times over is twenty
@@ -486,7 +532,16 @@ export function EventRaces({
                       aria-label={t('admin.form.removeRow', {
                         which: String(at + 1),
                       })}
-                      onClick={() => onRows(rows.filter((_, index) => index !== at))}
+                      /* Told off while the save is out, and refused in the handler as well:
+                         `aria-disabled` stops nothing by itself (`locked` above). */
+                      aria-disabled={locked ? true : undefined}
+                      onClick={() => {
+                        if (locked) {
+                          return
+                        }
+
+                        onRows(rows.filter((_, index) => index !== at))
+                      }}
                     >
                       {t('admin.form.delete')}
                     </button>
@@ -532,7 +587,14 @@ export function EventRaces({
       <button
         type="button"
         className="button button--secondary"
-        onClick={() => onRows([...rows, newRaceRow(eventName, eventDate)])}
+        aria-disabled={locked ? true : undefined}
+        onClick={() => {
+          if (locked) {
+            return
+          }
+
+          onRows([...rows, newRaceRow(eventName, eventDate)])
+        }}
       >
         {t('admin.form.new.races')}
       </button>
