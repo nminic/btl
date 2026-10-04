@@ -1345,6 +1345,10 @@ export function AdminEvents() {
                           )
                     }
                     save={saveOne}
+                    /* THE READER IS HELD ON THIS FORM WHILE ITS SAVE IS OUT (owner, 04.10.2026, chosen
+                       between offered outcomes: PDL, P6, „Dok čuvanje događaja traje"), so a press
+                       ends in the form it began in. Only this screen passes it (`EntityEditor`). */
+                    holdsWhileSaving
                     /**
                      * The event follows its first morning (owner, 10.08.2026): its
                      * date is the day it begins, so a race entered on an earlier

@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { clearResourceCache } from '../../data/client'
 import { moderatorWith, renderAt } from '../../test/render'
 import {
@@ -299,6 +299,51 @@ describe('a competition made, changed and taken away', () => {
 
       expect(writes(server.asked).filter((one) => one.how === 'POST')).toHaveLength(1)
 
+      server.stop()
+    }, SLOW)
+
+  it('leaves the form of a competition open to be left while its save is out: only the events hold the reader',
+    async () => {
+      /* Owner, 04.10.2026 (PDL, P6, „Dok čuvanje događaja traje", and the scope he chose in the same
+         breath: „blokada važi samo za obrazac događaja"). What the hold closes is a press writing
+         into a form it was not begun in, and that needs a screen that outlives its forms with
+         something beside them to write into: the events have one, a competition has not. So this
+         form goes on doing what it did, and this case holds that it does - a hold that reached every
+         editor would fail here, on the button, on the sentence and on the way to the list. */
+      let answer = (): void => {}
+      const held = new Promise<Response>((settle) => {
+        answer = () =>
+          settle(
+            new Response(JSON.stringify({ id: 4212, slug: 'vojvodjanska-2027' }), {
+              status: 201,
+              headers: { 'content-type': 'application/json' },
+            }),
+          )
+      })
+      const server = serving(() => held)
+      const user = setupUser()
+
+      renderAt('/sr/administracija/lige', 'superadmin')
+
+      await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+      await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
+      await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
+      await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(writes(server.asked)).toHaveLength(1)
+      })
+
+      /* The request is out and nothing says the reader is held: the button is not told off, no
+         sentence says the save is on its way, and the button leaves for the list. */
+      const back = screen.getByRole('button', { name: 'Nazad na spisak' })
+
+      expect(back).not.toHaveAttribute('aria-disabled')
+      expect(screen.queryByText('Šalje se')).toBeNull()
+      await user.click(back)
+      expect(await screen.findByRole('table', { name: 'Lige' })).toBeVisible()
+
+      answer()
       server.stop()
     }, SLOW)
 

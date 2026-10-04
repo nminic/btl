@@ -1,7 +1,7 @@
 import { SLOW } from '../test/slow'
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import sr from '../i18n/sr.json'
@@ -3546,18 +3546,23 @@ describe('an event that is deleted', () => {
     expect(its.length).toBeGreaterThan(0)
     expect(scored.length).toBeGreaterThan(0)
 
+    /* A DATA ROUTER, as the portal has (`app/App.tsx`), and no longer a plain one: the form of an event
+       holds the reader while its save is out, and what holds him is the router's own refusal, which
+       only a data router has (`admin/BlocksLeaving.tsx`). The other two mounts of this screen in this
+       file never open the form, so they keep the plain one they had. */
     render(
       <ClockProvider>
         <I18nProvider locale="sr">
-          <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
-            <RoleProvider initialRole="superadmin" initialModerator={null}>
-              <SessionProvider>
-                <Routes>
-                  <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
-                </Routes>
-              </SessionProvider>
-            </RoleProvider>
-          </MemoryRouter>
+          <RoleProvider initialRole="superadmin" initialModerator={null}>
+            <SessionProvider>
+              <RouterProvider
+                router={createMemoryRouter(
+                  [{ path: '/sr/administracija/dogadjaji', element: <AdminEvents /> }],
+                  { initialEntries: ['/sr/administracija/dogadjaji'] },
+                )}
+              />
+            </SessionProvider>
+          </RoleProvider>
         </I18nProvider>
       </ClockProvider>,
     )
