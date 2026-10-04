@@ -616,45 +616,117 @@ describe('an event whose save is out holds its fields', () => {
 })
 
 describe('what is not held', () => {
-  it('leaves the fields of a competition open while its save is out: only the events hold them', async () => {
-    /* Owner, 04.10.2026 (PDL, P6, „Dok čuvanje događaja traje", and the scope he chose in the same
-       breath: „blokada važi samo za obrazac događaja", which this change is a part of). What holding
-       the fields closes is a press writing into a table that changed under it, and only the events
-       have a table: a competition has nothing a typed word could take away from the press that is
-       out. So this form goes on doing what it did, and a hold that reached every editor would fail
-       here, on every control of it. */
-    let answer = (): void => {}
-    const held = new Promise<Response>((settle) => {
-      answer = () => settle(json(201, { id: 4212, slug: 'vojvodjanska-2027' }))
-    })
-    const server = serverThat((path, init) =>
-      path === '/api/leagues' && init?.method === 'POST' ? held : null,
-    )
-    const user = setupUser()
+  /** One of the three other screens that send their save to a route: how it is opened on a form with
+   *  a box in it, what its save is, and what the route answers when it took it. */
+  type Other = {
+    which: string
+    title: string
+    box: RegExp
+    save: { how: string; path: string }
+    took: Response
+    open: (user: Pressing) => Promise<void>
+  }
 
-    renderAt('/sr/administracija/lige', 'superadmin')
-    await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
-    await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
-    await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
-    await user.type(screen.getByLabelText(/^Sezona/), '2027')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-    await waitFor(() => {
-      expect(whereItWrote(server.asked)).toEqual(['POST /api/leagues'])
-    })
+  const OTHERS: Other[] = [
+    {
+      which: 'a competition',
+      title: sr.admin.form.new.leagues,
+      box: /^Naziv lige/,
+      save: { how: 'POST', path: '/api/leagues' },
+      took: json(201, { id: 4212, slug: 'vojvodjanska-2027' }),
+      open: async (user) => {
+        renderAt('/sr/administracija/lige', 'superadmin')
+        await user.click(await screen.findByRole('button', { name: 'Nova liga' }))
+        await user.type(screen.getByLabelText(/^Naziv lige/), 'Vojvođanska liga 2027')
+        await user.type(screen.getByLabelText(/^Adresa/), 'vojvodjanska-2027')
+        await user.type(screen.getByLabelText(/^Sezona/), '2027')
+      },
+    },
+    {
+      which: 'a moderator',
+      title: sr.admin.form.new.moderators,
+      box: /^Ime/,
+      save: { how: 'POST', path: '/api/moderators' },
+      took: json(201, { id: 501, email: 'novi.moderator@primer.rs' }),
+      open: async (user) => {
+        renderAt('/sr/administracija/moderatori', 'superadmin')
+        await user.click(await screen.findByRole('button', { name: 'Nov moderator' }))
+        await user.type(screen.getByLabelText(/^Ime/), 'Novi')
+        await user.type(screen.getByLabelText(/^Prezime/), 'Moderator')
+        await user.type(
+          screen.getByLabelText(/^Adresa elektronske pošte/),
+          'novi.moderator@primer.rs',
+        )
+      },
+    },
+    {
+      which: 'a price',
+      title: sr.admin.form.edit.pricing,
+      box: /Iznos u evrima/,
+      save: { how: 'PUT', path: '/api/pricing/early' },
+      took: json(200, { key: 'early', eur: 33, rsd: 4200 }),
+      open: async (user) => {
+        renderAt('/sr/administracija/cenovnik', 'superadmin')
+        await screen.findByRole('table', { name: 'Cenovnik' })
+        await user.click(screen.getByRole('button', { name: 'Otvori: 15. do 31. oktobra' }))
 
-    /* The request is out. Nothing is held, and the box takes what is typed into it. */
-    const named = screen.getByRole('form', { name: sr.admin.form.new.leagues })
-    const controls = Array.from(
-      must(named instanceof HTMLFormElement ? named : null, 'the form of a competition').elements,
-    ).filter((one): one is HTMLElement => one instanceof HTMLElement)
+        const eur = screen.getByLabelText(/Iznos u evrima/)
 
-    expect(controls.length, 'the form draws no control, so nothing here measures anything').toBeGreaterThan(0)
-    expect(controls.filter(isHeld).map(describing)).toEqual([])
-    expect(boxesOf(controls).filter((one) => one.readOnly)).toEqual([])
-    await user.type(screen.getByLabelText(/^Naziv lige/), ' x')
-    expect(screen.getByLabelText(/^Naziv lige/)).toHaveValue('Vojvođanska liga 2027 x')
+        await user.clear(eur)
+        await user.type(eur, '33')
+      },
+    },
+  ]
 
-    answer()
-    server.stop()
-  }, SLOW)
+  it.each(OTHERS)(
+    'leaves the fields of $which open while its save is out: only the events hold them',
+    async ({ title, box, save, took, open }) => {
+      /* Owner, 04.10.2026 (PDL, P6, „Dok čuvanje događaja traje", and the scope he chose in the same
+         breath: „blokada važi samo za obrazac događaja", which this change is a part of). What holding
+         the fields closes is a press writing into a table that changed under it, and only the events
+         have a table: these have nothing a typed word could take away from the press that is out. So
+         these forms go on doing what they did, and a hold that reached every editor, or one screen
+         more than the events, would fail here on every control of it. */
+      let answer = (): void => {}
+      const held = new Promise<Response>((settle) => {
+        answer = () => settle(took)
+      })
+      const server = serverThat((path, init) =>
+        path === save.path && init?.method === save.how ? held : null,
+      )
+      const user = setupUser()
+
+      await open(user)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+      await waitFor(() => {
+        expect(whereItWrote(server.asked)).toEqual([`${save.how} ${save.path}`])
+      })
+
+      /* The request is out. Nothing is held, and the box takes what is typed into it. */
+      const named = screen.getByRole('form', { name: title })
+      const controls = Array.from(
+        must(named instanceof HTMLFormElement ? named : null, `the form ${title}`).elements,
+      ).filter((one): one is HTMLElement => one instanceof HTMLElement)
+
+      expect(controls.length, 'the form draws no control, so nothing here measures anything').toBeGreaterThan(0)
+      expect(controls.filter(isHeld).map(describing)).toEqual([])
+      expect(boxesOf(controls).filter((one) => one.readOnly).map(describing)).toEqual([])
+
+      const before = screen.getByLabelText(box)
+
+      if (!(before instanceof HTMLInputElement)) {
+        throw new Error('the box is not an input')
+      }
+
+      const was = before.value
+
+      await user.type(before, '1')
+      expect(screen.getByLabelText(box)).toHaveValue(`${was}1`)
+
+      answer()
+      await screen.findByRole('status', { name: 'Sačuvano' })
+      server.stop()
+    },
+    SLOW,
+  )
 })
