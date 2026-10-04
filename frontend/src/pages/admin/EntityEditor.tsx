@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { plainWords } from '../../forms/worded'
 import { useSession } from '../../session/useSession'
 import { recordKey } from '../../session/context'
+import { BlocksLeaving } from './BlocksLeaving'
 import {
   addressField,
   fieldValues,
@@ -60,6 +61,8 @@ export function EntityEditor({
   titleKey,
   save,
   form: drawn,
+  fixed,
+  holdsWhileSaving = false,
 }: {
   entity: EntityDef
   editing: Editing
@@ -162,6 +165,39 @@ export function EntityEditor({
    * is not asked stays as it was.
    */
   form?: FormDef
+  /**
+   * FIELDS THE READER MAY NOT CHANGE RIGHT NOW, handed through to the form as they are
+   * (`FormRenderer`'s own `fixed`, whose one reader until 03.10.2026 was the correction of a
+   * result, „sve osim trke").
+   *
+   * <p>One screen hands any: the events, while an event is already saved and some of its races
+   * still wait (owner, 03.10.2026, „Događaj ostaje, trke čekaju": a press after that sends only
+   * the races). A field left open then would take a change that no press sends, and lose it
+   * without a word, so every field of the event is held where it was saved. Left out, nothing
+   * about the other four entities this editor draws moves, which is the condition `save`
+   * above was written under as well.
+   */
+  fixed?: string[]
+  /**
+   * WHETHER THE READER IS HELD ON THIS FORM FOR AS LONG AS ITS SAVE IS OUT (`save`).
+   *
+   * <p>Owner, 04.10.2026, chosen between offered outcomes (PDL, P6, „Dok čuvanje događaja traje"; the
+   * wording was offered to him and the choice is his): while the save of an event lasts, the form
+   * cannot be left in any way. While a press is out „Nazad na spisak" is told off and refuses in its
+   * handler, the router refuses every navigation (`BlocksLeaving`), and the portal's own sentence for a
+   * request that is out is said under the form. All three end with the last answer, whatever it is: a
+   * refusal leaves the form as it was, with everything typed, and the reader may then leave it or press
+   * again. There is no deadline (owner, the same day): a request that never answers holds the form
+   * until the page is refreshed, which the browser always allows.
+   *
+   * <p><b>Only the events pass it</b> (owner, the same day: „blokada važi samo za obrazac događaja").
+   * What it closes is a press that writes into whatever form is drawn when its answer comes, and that
+   * needs a screen that outlives its forms and holds something beside them: the events do (the wait, the
+   * table, the list of what was not saved). The other screens that send a request (leagues, moderators,
+   * prices) write only what the server took, and the teams write into the session. Left out, nothing
+   * about them moves, which is the condition `save` and `fixed` were written under as well.
+   */
+  holdsWhileSaving?: boolean
 }) {
   const { t } = useI18n()
   const { creations, create, editRecord } = useSession()
@@ -170,9 +206,16 @@ export function EntityEditor({
   const [said, setSaid] = useState<ReactNode>(null)
   /* A press that is still out, held in a ref and not in state. Two presses inside one
      tick would both read a `false` that React has not re-rendered yet, and the second
-     would send the same record again and answer this reader about it. The session path
+     would send the same record again and answer this reader about it. The same ref is what
+     refuses a way out while it is true (`BlocksLeaving`, and the button below), for the same
+     reason: a state would be true only after the render the press causes. The session path
      cannot get here: it writes and confirms inside the press. */
   const asking = useRef(false)
+  /* AND THE SAME FACT AS A RENDER CAN SEE IT, for the button that is told off and the sentence that
+     says why. Set and cleared beside `asking`, in the press, and nowhere else. */
+  const [working, setWorking] = useState(false)
+  /* Held only where the screen asked for it, and only while a press is out. */
+  const holding = holdsWhileSaving && working
   const done = useRef<HTMLDivElement>(null)
   /* What the screen asked for, or what the entity holds. A copy is drawn without
      the three fields it does not put in question (see `form` above). */
@@ -234,11 +277,20 @@ export function EntityEditor({
       }
 
       asking.current = true
+      setWorking(true)
       setSaid(null)
 
-      const outcome = await save(values, text)
+      let outcome: Saving
 
-      asking.current = false
+      /* LET GO IN A `finally`, WHATEVER THE SAVE ENDS IN. A press that held the reader and was never
+         let go would hold him until he refreshed the page (`holdsWhileSaving`), and an answer is not
+         the only way a press can end: one that throws ends too. */
+      try {
+        outcome = await save(values, text)
+      } finally {
+        asking.current = false
+        setWorking(false)
+      }
 
       /* Nothing is confirmed and the form stays as it was, so whoever pressed still
          has everything he typed and can press again after reading why. */
@@ -329,7 +381,28 @@ export function EntityEditor({
 
   return (
     <div className="entity-editor">
-      <button type="button" className="button button--secondary" onClick={onDone}>
+      {/* Drawn only where the screen asked to hold the reader, and for as long as this form is: the
+          router's refusal is gone in the same commit as the form (`holdsWhileSaving`). */}
+      {holdsWhileSaving && <BlocksLeaving out={asking} />}
+
+      {/* TOLD OFF AND NOT SWITCHED OFF while a save the screen holds the reader for is out, the way
+          every control that cannot act is on this portal (`DeleteRecord` below): the focus is on the
+          button that was pressed to save, and `disabled` would take this one out of the order of
+          focus along with the sentence saying why. `aria-disabled` stops nothing by itself, so the
+          press is refused in the handler as well, off the ref: a press that comes in the tick the
+          save began in finds the render not drawn yet. */}
+      <button
+        type="button"
+        className="button button--secondary"
+        aria-disabled={holding ? true : undefined}
+        onClick={() => {
+          if (holdsWhileSaving && asking.current) {
+            return
+          }
+
+          onDone()
+        }}
+      >
         {t('admin.form.back')}
       </button>
 
@@ -370,8 +443,16 @@ export function EntityEditor({
         beneath={beneath}
         alsoRefuses={alsoRefuses}
         steps={steps}
+        fixed={fixed}
         onSubmit={(values) => void handleSubmit(values)}
       />
+
+      {/* SAID OUT LOUD WHILE THE SAVE IS OUT, in the portal's own sentence for a request that is out
+          (`results.sending`, and four others of the same words, so nothing new was written), under the
+          form like the two forms that send a result (`member/NewResult.tsx`): the reader pressed the
+          button at the foot of it, and a button that looks unpressed is not an answer (WCAG 2.2 AA,
+          4.1.3). It is what the controls that wait are waiting for. */}
+      {holding && <p role="status">{t('results.sending')}</p>}
 
       {/* What the screen's own save said instead of a confirmation, beneath the form
           the reader is still looking at. Its own element rather than the form's own

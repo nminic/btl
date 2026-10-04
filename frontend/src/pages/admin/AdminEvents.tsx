@@ -18,6 +18,7 @@ import { formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
+import { wordsFor } from '../account/serverWords'
 import { EntityBar, EntityEditor, RowActions, type Saving } from './EntityEditor'
 import {
   EVENTS,
@@ -49,6 +50,17 @@ import { useFilterParams } from '../../app/useFilterParams'
 
 /** An overlay holding nothing, which is what this screen starts every visit with. */
 const NOTHING_YET: Overlay = { edits: {}, creations: {}, deletions: {} }
+
+/**
+ * ONE RACE A PRESS DID NOT SAVE, AND THE ANSWER THAT SAID SO.
+ *
+ * <p>Either a row of the table that the press tried to make or change a race out of, found again
+ * later by its OBJECT (`EventRaces.tsx`, `NotSaved`), or a race the press tried to take away,
+ * which has no row left and is named by its own name and day.
+ */
+type RaceRefusal =
+  | { row: RaceRow; answer: Exclude<Answer, { got: 'done' }> }
+  | { race: { name: string; date: string }; answer: Exclude<Answer, { got: 'done' }> }
 
 /**
  * The event form as a copy is asked it: without the town, the country and the
@@ -261,21 +273,78 @@ export function AdminEvents() {
    */
   const changedId = params.get('izmena')
   /**
-   * THE EVENT THIS EDITOR HAS ALREADY MADE ON THE SERVER, so a second press changes it
-   * rather than making another one.
+   * THE EVENT THIS EDITOR HAS ALREADY SAVED WHILE SOME OF ITS RACES STILL WAIT, so the next press
+   * sends the races and nothing else.
    *
-   * <p><b>A press can end without the form closing, and that is new.</b> The session write
-   * could not fail, so „pressed twice" meant nothing; a route can accept the event and then
-   * refuse one of its mornings, and the editor stays open with everything still typed so the
-   * reader can put the race right and press again. Without this, that second press would
-   * `POST` a second event - at the same address, so the route would answer
-   * `theAddressIsTaken` and the reader would be told his event is a duplicate of itself.
+   * <p><b>Owner, 03.10.2026, chosen between offered outcomes:</b> „Događaj ostaje, trke čekaju:
+   * kad čuvanje trka ne uspe, događaj ostaje sačuvan, a obrazac ostaje otvoren sa trkama i
+   * jasnom porukom šta nije prošlo; ponovni pokušaj šalje samo trke, nikad drugi događaj."
    *
-   * <p>A ref and not state, for the same reason `EntityEditor`'s own `asking` is one: it is
-   * read inside the press that is running, and a value React has not re-rendered yet is a
-   * value the next press reads as it was.
+   * <p><b>It replaced `madeHere`, which answered a different question.</b> That ref remembered the
+   * event a NEW form had made, so a second press could `PUT` it instead of `POST`ing a second
+   * one; for an event that already stood it was never set, and the second press `PUT` the event
+   * again. Under the owner's sentence the second press sends no event at all, new or standing,
+   * so the question is no longer „which event do I write" but „is the event already written",
+   * and this is set for both. `madeHere` is gone rather than kept beside it: two refs answering
+   * nearly the same question are the shape in which one is updated and the other is not.
+   *
+   * <p>A ref and not state, for the reason `madeHere` was one and `EntityEditor`'s `asking` is
+   * one: it is read inside the press that is running, and a value React has not drawn yet is a
+   * value the next press would read as it was. `racesWait` below is the same fact for DRAWING
+   * (the locked fields), and the two are set in one place only, `waitFor`.
    */
-  const madeHere = useRef<number | null>(null)
+  const waitingFor = useRef<number | null>(null)
+  const [racesWait, setRacesWait] = useState(false)
+  /** What the last press did not save, row by row, for the list under the table. */
+  const [notSaved, setNotSaved] = useState<RaceRefusal[]>([])
+  /** The one place the event's waiting is set and cleared, so the press and the drawing agree. */
+  function waitFor(event: number | null): void {
+    waitingFor.current = event
+    setRacesWait(event !== null)
+  }
+
+  /**
+   * EVERYTHING A FORM LEAVES BEHIND ON THIS SCREEN, forgotten in the one place, so that no way into
+   * the next form can forget less than another.
+   *
+   * <p>A form holds five things that belong to its visit and to no other: the event it has just
+   * made (`justMade`), the table of races it holds (`held`), whether its last press was refused
+   * over a row (`refused`), whether its event is saved and its races wait (`waitFor`), and what its
+   * last press did not save (`notSaved`). A form opened from the address (`?kopija=`, `?izmena=`)
+   * goes away with the address - the browser's Back, a link to this list - and calls nothing of its
+   * own, so the way OUT is not where the next form can be given a clean start; the way IN is.
+   * `onDone`, `onNew` and `onOpen` are every way into or out of a form on this screen, and each
+   * calls this.
+   *
+   * <p><b>Review of PR 483, round 1, finding V2.</b> `onNew` and `onOpen` forgot two of the five,
+   * the table and the sign that the last press was refused: a new form opened after a copy whose
+   * races waited held the copy's rows, wrote them under the NEW event, and the event followed the
+   * day of the first of them (an event entered for 2027 stood on the day of a race of 2015, and
+   * the screen said „Sačuvano"). A copy and a new event are both the table `nov`, which is why the
+   * table was taken. The same held where the copy's first race had been taken and the second
+   * refused, which the review measured on `main` as well.
+   *
+   * <p><b>What a reader who leaves gives up</b> is what waited, and none of it is handed to the
+   * next form, whichever way he left. The one thing this does not do is forget on the way OUT, so
+   * the browser's Back to the very address he left by finds the form as he left it (`saveOne`
+   * says what that is).
+   *
+   * <p><b>A press never writes into the NEXT form</b> (review of PR 483, round 2, finding V1, and the
+   * owner's choice of 04.10.2026 that answers it): the reader cannot leave a form while a press is out
+   * (`holdsWhileSaving` below), so what a press writes after an answer lands in the form it began in. Left
+   * to be answered write by write, the next form had a new road found into it by every round of review.
+   * A form's address changed straight into another form's address, with no list between, is not a way
+   * into a form this answers for either: the form does not follow the address at all (the first event's
+   * values stay under the second event's address, measured on `main` as well), and no link of the portal
+   * builds one (read, not measured).
+   */
+  function forgetTheForm(): void {
+    setJustMade(null)
+    setHeld({ of: '', rows: [] })
+    setRefused(false)
+    waitFor(null)
+    setNotSaved([])
+  }
 
   /** What just happened, for whoever is not watching the list. */
   const [said, setSaid] = useState('')
@@ -509,25 +578,53 @@ export function AdminEvents() {
              * čuvanje spada i brisanje svih trka koje su bile povezane." So the rows stay on
              * the screen, `kept` is empty, and every filed race is deleted.
              *
-             * @returns the answer that refused one of them, or null where every one went
-             *          through
+             * <p><b>A refused race does not stop the press, since 03.10.2026.</b> Every race is
+             * judged by the route on its own, so the rest are sent all the same and every
+             * refusal comes back, each beside the race it is about (owner, that day: the form
+             * stays open „sa trkama i jasnom porukom šta nije prošlo"; coordinator, the same day,
+             * on the question whether to stop or go on: go on and report every refused row).
+             * Until then the first refusal ended the press, so the races after it were never
+             * sent at all, and the sentence said „jedna njegova trka nije" over a press in which
+             * none had been saved.
+             *
+             * <p><b>The reader cannot leave while it runs</b> (`holdsWhileSaving`, owner, 04.10.2026), so
+             * everything below is written into the form the press began in, and what the server took goes
+             * into this screen's list as it is taken.
+             *
+             * @returns every race the route refused, in the order they were sent; nothing where
+             *          every one went through
              */
-            async function writeTheRaces(
-              values: FormValues,
-              eventId: string,
-            ): Promise<Exclude<Answer, { got: 'done' }> | null> {
+            async function writeTheRaces(values: FormValues, eventId: string): Promise<RaceRefusal[]> {
+              const refusals: RaceRefusal[] = []
               const was = allRaces.filter((one) => String(one.eventId) === eventId)
               const kept =
                 kindOf(values) === 'race'
                   ? new Set(current.filter((row) => row.id !== '').map((row) => row.id))
                   : new Set<string>()
 
+              /* THE TABLE IS HELD AS THE ROWS THIS PRESS WALKS, before anything is sent. Two things
+                 find a row again by its OBJECT afterwards: a refusal (`EventRaces.tsx`, `NotSaved`),
+                 and a race this press made, whose identity is written back onto its row below.
+                 `current` is worked out afresh on every drawing until `held` holds it: a copy opens
+                 on rows nobody has touched (`copiedRows`), and an event that stands opens on rows
+                 read off its races, and both are new objects at every drawing. Held here, the
+                 objects this loop walks are the ones every later drawing has. Not held, the list
+                 of what was not saved named nothing where no race was accepted - measured by a
+                 mutation - and the row of a race a copy's first press made never learned its
+                 identity, which a fallback inside the loop used to answer for that one case. */
+              setHeld((before) => (before.of === under ? before : { of: under, rows: current }))
+
               for (const race of was) {
                 if (!kept.has(String(race.id))) {
                   const answer = await askTheServer(`/api/races/${String(race.id)}`, {}, 'DELETE')
 
                   if (answer.got !== 'done') {
-                    return answer
+                    refusals.push({
+                      race: { name: String(race.name), date: String(race.date) },
+                      answer,
+                    })
+
+                    continue
                   }
 
                   setWritten((before) => ({
@@ -563,7 +660,9 @@ export function AdminEvents() {
                       )
 
                 if (answer.got !== 'done') {
-                  return answer
+                  refusals.push({ row, answer })
+
+                  continue
                 }
 
                 /* WHAT WAS WRITTEN GOES INTO THE OVERLAY BESIDE THE EVENT, and leaving it
@@ -605,36 +704,32 @@ export function AdminEvents() {
                        Matched by the row's own OBJECT, the same way `EventRaces.tsx`'s
                        own `change` corrects one row - never by position. This answer
                        comes back after a wait, and `held` can have moved on by then: the
-                       reader left for the list (`onDone` empties it) or reopened this
-                       table after touching a different event's. A row found by INDEX
-                       would then correct whatever happens to occupy that index in
-                       whatever `held` holds now, which is nothing this press wrote. A row
-                       found by IDENTITY is simply absent once that happens, and `map`
-                       leaves every row exactly as it was.
+                       reader cannot leave while the press is out (`holdsWhileSaving`), but
+                       he can still type, and a row typed into is another object from then
+                       on (`EventRaces.tsx`, `change`). A row found by INDEX would then
+                       correct whatever happens to occupy that index in whatever `held`
+                       holds now, which is nothing this press wrote. A row found by
+                       IDENTITY is simply absent once that happens, and `map` leaves every
+                       row exactly as it was.
 
-                       AND WHEN `held` HAS NOT CAUGHT UP TO `current` AT ALL, which is what
-                       a copy meets on its very first press. A copy opens this table
-                       already holding new rows nobody has touched (`copiedRows`), so
-                       `held` is still what this screen mounted with - `{ of: '', rows: [] }`
-                       - and `before.of !== under`. Matched against `before.rows` there,
-                       `row` is an object no array on screen holds: the map ran over an
-                       EMPTY array, the identity this race was just given never reached
-                       anywhere, and a retry after a later row's refusal read the row's own
-                       key as still blank and DELETEd the very race this press had just made
-                       (nezavisna recenzija, 28.09.2026, visok nalaz). `row` is an element of
-                       `current` whichever way `held` stands, because that is the array this
-                       loop is walking - so falling back to it is what lets the first write
-                       of a visit find itself, and `of` is written down in the same update so
-                       every row after this one in the same press, and a retry after it,
-                       agree on which table they are correcting. */
-                    setHeld((before) => {
-                      const rows = before.of === under ? before.rows : current
-
-                      return {
-                        of: under,
-                        rows: rows.map((each) => (each === row ? { ...each, id: String(made) } : each)),
-                      }
-                    })
+                       AND `held` ALREADY HOLDS THE ROWS THIS LOOP WALKS, because the press
+                       held them before it sent anything (the top of this function). Until
+                       03.10.2026 it was held HERE, by a fallback to `current` where `held` had
+                       not caught up: a copy opens on rows nobody has touched (`copiedRows`),
+                       so on its first press `held` was still `{ of: '', rows: [] }`, the map
+                       ran over an empty array, the identity this race was given reached
+                       nothing, and a retry after a later row's refusal DELETEd the race this
+                       press had just made (nezavisna recenzija, 28.09.2026, visok nalaz).
+                       Held at the top for every press, that fallback was a branch nothing
+                       could take any more - the coverage floor named it - and it is gone
+                       rather than kept beside the hold that replaced it. So nothing here
+                       writes `of`. */
+                    setHeld((before) => ({
+                      ...before,
+                      rows: before.rows.map((each) =>
+                        each === row ? { ...each, id: String(made) } : each,
+                      ),
+                    }))
                   }
                 } else {
                   setWritten((before) => ({
@@ -647,7 +742,7 @@ export function AdminEvents() {
                 }
               }
 
-              return null
+              return refusals
             }
 
             /**
@@ -658,14 +753,52 @@ export function AdminEvents() {
              * rather than worked out here. This portal knows the address rule and so does the
              * server (`eventWrites.ts`, `writtenIn`); the route is the one that decides.
              *
-             * <p><b>WHAT HAPPENS WHEN THE EVENT GOES THROUGH AND A RACE DOES NOT, which is the
-             * one thing this press must never lie about.</b> The event is on the server at that
-             * point. Answering „it was not saved" would send the reader to enter it again, onto
-             * its own address, and the route would tell him it is taken. So the refusal that
-             * comes back says the truth in one sentence - the event is saved, a race is not -
-             * and the form stays open with everything he typed, so he can put the row right and
-             * press again. `madeHere` is what makes that second press a change rather than a
-             * second event.
+             * <p><b>WHAT HAPPENS WHEN THE EVENT GOES THROUGH AND A RACE DOES NOT, which the owner
+             * decided on 03.10.2026 between offered outcomes:</b> „Događaj ostaje, trke čekaju:
+             * kad čuvanje trka ne uspe, događaj ostaje sačuvan, a obrazac ostaje otvoren sa trkama
+             * i jasnom porukom šta nije prošlo; ponovni pokušaj šalje samo trke, nikad drugi
+             * događaj." So the event is not taken back; one sentence says it is saved and the
+             * races wait, and the list under the table names every race that was refused and why
+             * (`EventRaces.tsx`); the form stays open with every row; and from then on a press sends
+             * the races and nothing else (`waitingFor`). The event's own fields are held where they
+             * were saved while that lasts, because a change typed into one would be a change no
+             * press sends (coordinator, 03.10.2026, reasoning from the owner's sentence).
+             *
+             * <p><b>The event goes into this screen's list the moment the route takes it, and not
+             * after its races</b> (the coordinator's reasoning from the same sentence, not the
+             * owner's words). A reader who leaves the form while races wait must find the event he
+             * saved: until 03.10.2026 it was written into the list only once every race had gone
+             * through, so he found nothing, entered it again, and was told by the route that its
+             * address is taken - a refusal about a collision with himself.
+             *
+             * <p><b>And what a reader who leaves AFTER the press has ended loses, written down rather
+             * than guarded:</b> the races that were still waiting. The event stays and they do not, and
+             * nothing warns him on the way out; the owner decided nothing about leaving once the press
+             * is over, so nothing new is drawn for it (coordinator, 03.10.2026). What IS guarded is that
+             * they are not carried: no form opened afterwards from this list, new or an event's own, is
+             * handed any of it, whichever way he left (`forgetTheForm`).
+             *
+             * <p><b>What is NOT guarded, measured and not assumed (review of PR 483, round 1):</b>
+             * the one way back to the very address he left by. A form opened from the address and
+             * left by it (a link to this list), then returned to by the browser's Back, is drawn
+             * again from its address, and nothing forgot on the way out: the fields are held, the
+             * table and the list of what was not saved are as he left them, and the sentence over
+             * the form is gone, because that lives in the form that was drawn. A press there sends
+             * only races, as it did. So „loses" holds for every way into ANOTHER form and not for
+             * this one.
+             *
+             * <p><b>A press that is out cannot be left</b> (owner, 04.10.2026, chosen between offered
+             * outcomes; PDL, P6, „Dok čuvanje događaja traje"): every way out of the form waits for the
+             * last answer of the press (`holdsWhileSaving`), so a press always ends in the form it began
+             * in and writes into no other. That replaced a question asked of the press before every write
+             * it made into a form - had the form been left? - which three rounds of review of this PR
+             * answered one road at a time (an answer that came after the reader had opened another form
+             * wrote the wait into that form, and its first press then sent only races, under the event
+             * of a press he had left). What is NOT held, and was chosen so: signing out and, on QA,
+             * changing the role (owner, the same day) - whoever signs out in the middle of a save is not
+             * told what was saved, and the answer that comes late is written into a screen that is gone.
+             * And there is no deadline: a request that never answers holds the form until the page is
+             * refreshed.
              *
              * <p><b>The portal has no precedent for this and that is measured, not assumed.</b>
              * The one other screen that writes a record and its children in one press is
@@ -679,19 +812,27 @@ export function AdminEvents() {
               values: FormValues,
               text: Record<string, string>,
             ): Promise<Saving> {
-              /* THE RECORD THE FORM IS OPEN ON WINS OVER THE REF, where there is one.
-                 Found by a nezavisna recenzija: read as `madeHere.current ?? …`, the ref
-                 answered first and `editing.record` was only ever reached on a session
-                 that had made nothing yet, so a ref left standing by an EARLIER session
-                 outranked the record plainly on screen - a served event opened after a
-                 new one was entered saved onto the new one's address instead of its own.
-                 `editing.record` is the truth about which single record this is; the ref
-                 is only ever needed where there is no record at all to ask, a "new" form
-                 that has already written one and is being pressed again. */
+              setNotSaved([])
+
+              /* WHILE RACES WAIT, A PRESS SENDS THE RACES AND NOTHING ELSE: „ponovni pokušaj
+                 šalje samo trke, nikad drugi događaj" (owner, 03.10.2026). Asked of the ref,
+                 which is current inside the press that is running. */
+              const saved = waitingFor.current
+
+              if (saved !== null) {
+                forgetWhatWasRead()
+
+                return theRacesOf(values, saved)
+              }
+
+              /* THE RECORD THE FORM IS OPEN ON, or nothing for a form that makes one. A ref
+                 used to stand in for the second half - `madeHere`, the event a new form had
+                 already made - so that a second press would change it rather than make another;
+                 a second press sends no event any more (above), so a new form only ever posts. */
               const standing =
                 editing !== null && editing.mode === 'one'
                   ? Number(editing.record[EVENTS.idField])
-                  : madeHere.current
+                  : null
               const answer = await askTheServer(
                 standing === null ? '/api/events' : `/api/events/${String(standing)}`,
                 upsertFrom(values),
@@ -702,14 +843,7 @@ export function AdminEvents() {
                 return { said: saying(answer, WHEN_WRITING_AN_EVENT) }
               }
 
-              /* THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER. All three
-                 names, because one press moves all three: the event, its races, and the
-                 results the database takes down with a race that goes. Cleared before the
-                 races are written rather than after, so a press that fails half way still
-                 leaves the next mount reading what really stands. */
-              clearResourceCache('events')
-              clearResourceCache('races')
-              clearResourceCache(RESULTS)
+              forgetWhatWasRead()
 
               const made = writtenIn(answer.body)
 
@@ -719,23 +853,6 @@ export function AdminEvents() {
                     <p className="field__error" role="alert">
                       {t('admin.eventSavedUnseen')}
                     </p>
-                  ),
-                }
-              }
-
-              madeHere.current = made.id
-
-              const refusedRace = await writeTheRaces(values, String(made.id))
-
-              if (refusedRace !== null) {
-                return {
-                  said: (
-                    <>
-                      <p className="field__error" role="alert">
-                        {t('admin.eventSavedRacesRefused')}
-                      </p>
-                      {saying(refusedRace, WHEN_WRITING_A_RACE)}
-                    </>
                   ),
                 }
               }
@@ -761,6 +878,11 @@ export function AdminEvents() {
                *
                * <p>The form's own answers win wherever it asked, which is every other save on
                * this screen.
+               *
+               * <p><b>Written here, the moment the route has taken the event, and before a single
+               * race is sent</b> - see `saveOne`'s own note on what a reader who leaves would
+               * otherwise find. Written ONCE: a press while races wait never reaches this line,
+               * because it sends no event.
                */
               const sent = upsertFrom(values)
               const filed = {
@@ -792,7 +914,69 @@ export function AdminEvents() {
                     },
               )
 
-              return { written: String(made.id) }
+              return theRacesOf(values, made.id)
+            }
+
+            /**
+             * THE RACES OF AN EVENT THAT IS ALREADY SAVED, AND WHAT THE PRESS ENDS IN.
+             *
+             * <p>Reached by both kinds of press: the one that has just written the event, and
+             * every press after it while races wait, which writes nothing else. Where every race
+             * went through, the event is confirmed and nothing waits any more. Where any was
+             * refused, the event waits under its own identity, the sentence over the form says
+             * the event is saved and the races are not, and the list under the table names every
+             * race that was refused and why.
+             *
+             * <p><b>Where the event draws no table, the same list stands under its fields</b> and
+             * the sentence is another one (review of PR 483, round 1, finding V1). A gathering or
+             * a training has races to take away and no table to name them in, and the sentence
+             * that sends the reader „ispod tabele" sent him nowhere. The two are told apart by the
+             * question the table itself is drawn by (`hasRaces`, in `beneath`).
+             *
+             * <p>The end of a press is four writes into the form it began in: the list of what was not
+             * saved and the wait (a refusal), the end of the wait (every race through), and the identity
+             * of the event the screen is told to draw the form under (`{ written }`, which the editor
+             * hands to `onCreated`). They are made without asking where the reader is, because he cannot
+             * have left (`holdsWhileSaving`).
+             */
+            async function theRacesOf(values: FormValues, event: number): Promise<Saving> {
+              const refusals = await writeTheRaces(values, String(event))
+
+              if (refusals.length > 0) {
+                setNotSaved(refusals)
+                waitFor(event)
+
+                return {
+                  said: (
+                    <p className="field__error" role="alert">
+                      {t(
+                        kindOf(values) === 'race'
+                          ? 'admin.eventSavedRacesRefused'
+                          : 'admin.eventSavedRacesKept',
+                      )}
+                    </p>
+                  ),
+                }
+              }
+
+              waitFor(null)
+
+              return { written: String(event) }
+            }
+
+            /**
+             * THE NEXT MOUNT READS THE SERVER AND NOT THIS VISIT'S FIRST ANSWER. All three
+             * names, because one press moves all three: the event, its races, and the results
+             * the database takes down with a race that goes. Asked the moment the event is
+             * written, before its races, so a press that fails half way still leaves the next
+             * mount reading what really stands; and by a press that sends only races, before it
+             * sends them, because a race moves its event's day and something may have read all
+             * three again since the press before.
+             */
+            function forgetWhatWasRead(): void {
+              clearResourceCache('events')
+              clearResourceCache('races')
+              clearResourceCache(RESULTS)
             }
 
             /**
@@ -855,6 +1039,30 @@ export function AdminEvents() {
                cannot answer, and a fallback would be a branch nothing could reach. */
             const kindOf = (values: FormValues): string => String(values.kind)
 
+            /* WHAT THE LAST PRESS DID NOT SAVE, in the shape the table draws it: the words for
+               every refused row, by the row that was sent, and every race the press meant to take
+               away and the route kept, named by its own name and day. The words are the ones
+               `ServerSaid` says (`wordsFor`), worked out here because the table draws them as
+               items of a list and not as an alert each. */
+            const refusedRows = new Map<RaceRow, string>()
+            const keptRaces: { named: string; words: string }[] = []
+
+            for (const one of notSaved) {
+              const words = wordsFor(one.answer, WHEN_WRITING_A_RACE, t)
+
+              if ('row' in one) {
+                refusedRows.set(one.row, words)
+              } else {
+                keptRaces.push({
+                  named: t('admin.race.notDeleted', {
+                    name: one.race.name,
+                    date: formatShortDate(one.race.date, locale),
+                  }),
+                  words,
+                })
+              }
+            }
+
             return (
               <>
                 {(
@@ -866,6 +1074,17 @@ export function AdminEvents() {
                        fields it carries, so what is not asked stays as it was. */
                     form={copying ? copyOfEvent : undefined}
                     titleKey={copying ? 'admin.form.copying' : undefined}
+                    /* EVERY FIELD OF THE EVENT IS HELD WHILE ITS RACES WAIT. A press then sends
+                       the races and nothing else (owner, 03.10.2026: „ponovni pokušaj šalje samo
+                       trke"), so a change typed into the event would be a change no press sends;
+                       held, it cannot be typed at all (coordinator, the same day, reasoning from
+                       the owner's sentence). Every field of the form that is DRAWN, which for a
+                       copy is the narrower one. */
+                    fixed={
+                      racesWait
+                        ? (copying ? copyOfEvent : EVENTS.form).fields.map((one) => one.name)
+                        : undefined
+                    }
                     /* And nothing at all beneath a gathering or a training, which
                        have no races (owner, 23.08.2026). The rows are kept where
                        they are rather than thrown away, because the owner said in
@@ -887,11 +1106,14 @@ export function AdminEvents() {
                         onRows={setCurrent}
                         refused={refused}
                         /* Handed the kind rather than left off the screen when it is
-                           not a race: it draws nothing either way, but kept here it
+                           not a race: it draws no table either way, but kept here it
                            goes on remembering the day the rows were lined up with.
                            Taken off, it forgets, and the rows stop following the
-                           event as soon as somebody touches the kind. */
+                           event as soon as somebody touches the kind. What it draws
+                           without a table is the races the route would not take away
+                           (`notSaved`, below), which have nowhere else to be named. */
                         hasRaces={kindOf(values) === 'race'}
+                        notSaved={{ rows: refusedRows, kept: keptRaces }}
                       />
                     )}
                     /* One press writes the event and every one of its mornings, so
@@ -992,28 +1214,42 @@ export function AdminEvents() {
                        without changing the date wrote a second event at the first
                        one's address, and everything that joins to an event by
                        address then meant both: deleting either took the other's
-                       results with it (entityForms.ts, `eventClash`). */
+                       results with it (entityForms.ts, `eventClash`).
+
+                       AND NOT WHILE ITS RACES WAIT, which is the coordinator's reasoning
+                       from the owner's sentence of 03.10.2026 and not his words. A press
+                       then sends no event, so there is no address being written to ask
+                       about; and a NEW event is in this screen's list by then under the
+                       very address its form shows (`saveOne`), so asked anyway, the event
+                       would be refused for colliding with itself and its races could
+                       never be sent. Asked of the ref, like the press itself. */
                     also={(values) =>
-                      eventClash(
-                        values,
-                        all
-                          .filter(
-                            (each) =>
-                              String(each.id) !==
-                              (editing.mode === 'one'
-                                ? String(editing.record[EVENTS.idField])
-                                : ''),
+                      waitingFor.current !== null
+                        ? {}
+                        : eventClash(
+                            values,
+                            all
+                              .filter(
+                                (each) =>
+                                  String(each.id) !==
+                                  (editing.mode === 'one'
+                                    ? String(editing.record[EVENTS.idField])
+                                    : ''),
+                              )
+                              .map((each) => each.slug),
+                            /* The same record the editor was handed, so the address
+                               the clash is tested against is the address the save
+                               will write. Undefined where a new event is being
+                               entered, which is what says there is nothing to
+                               keep. */
+                            openEvent,
                           )
-                          .map((each) => each.slug),
-                        /* The same record the editor was handed, so the address
-                           the clash is tested against is the address the save
-                           will write. Undefined where a new event is being
-                           entered, which is what says there is nothing to
-                           keep. */
-                        openEvent,
-                      )
                     }
                     save={saveOne}
+                    /* THE READER IS HELD ON THIS FORM WHILE ITS SAVE IS OUT (owner, 04.10.2026, chosen
+                       between offered outcomes: PDL, P6, „Dok čuvanje događaja traje"), so a press
+                       ends in the form it began in. Only this screen passes it (`EntityEditor`). */
+                    holdsWhileSaving
                     /**
                      * The event follows its first morning (owner, 10.08.2026): its
                      * date is the day it begins, so a race entered on an earlier
@@ -1060,19 +1296,18 @@ export function AdminEvents() {
                     onCreated={setJustMade}
                     onDone={() => {
                       setChosen(null)
-                      setJustMade(null)
-                      setHeld({ of: '', rows: [] })
-                      setRefused(false)
                       /* And the address forgets it, so leaving the form and coming
                          back to this screen does not open it again. */
                       setParams({}, { replace: true })
-                      /* AND THE EVENT THIS SESSION MADE IS FORGOTTEN HERE TOO, not only
-                         what the form held. Left standing, `madeHere` answered for a
-                         session that had not made anything: two events entered one
-                         after another sent the second's save as a change to the first
-                         (`saveOne`, `standing`), because leaving the form was never
-                         where the identity it remembers was cleared. */
-                      madeHere.current = null
+                      /* AND WHAT THE FORM HELD IS FORGOTTEN WITH IT, all five things, by the one
+                         function every way into or out of a form calls. Left standing, the event
+                         whose races waited would answer for a form that has nothing to do with it:
+                         the next event opened or entered would send only races, under the wrong
+                         event, which is the shape the ref this replaced (`madeHere`) was measured
+                         to have before leaving the form cleared it. What a reader who leaves gives
+                         up is the races that still waited, and none of it is handed to the next
+                         form (`forgetTheForm`). */
+                      forgetTheForm()
                     }}
                   />
                 )}
@@ -1138,10 +1373,14 @@ export function AdminEvents() {
               <EntityBar
                 entity={EVENTS}
                 onNew={() => {
-                  /* Same reason as `onDone`: a fresh "new" editor must never read the
-                     event a PAST session made off `madeHere`, or its first press
-                     changes that one instead of making its own. */
-                  madeHere.current = null
+                  /* Same reason as `onDone`, and reachable without it: a form opened from
+                     the address (`?kopija=`, `?izmena=`) goes away when the address does - the
+                     browser's Back, a link to this list - and `onDone` is never called. A fresh
+                     "new" editor must then inherit nothing of it: not the event whose races
+                     waited, or its first press would send only races, under that event, and make
+                     nothing; and not the table the form held, or it would write the rows of a
+                     copy under the new event. */
+                  forgetTheForm()
                   setChosen({ mode: 'new' })
                 }}
               >
@@ -1219,10 +1458,10 @@ export function AdminEvents() {
                             name={one.name}
                             onOpen={() => {
                               /* Same reason as `onNew`: opening a served event must not
-                                 inherit a ref a session that made a DIFFERENT one left
-                                 behind, or its first press changes that one instead of
-                                 the record just opened. */
-                              madeHere.current = null
+                                 inherit anything of a form that went away without `onDone`,
+                                 or its first press sends only races, under THAT event, and
+                                 never writes this one. */
+                              forgetTheForm()
                               setChosen({ mode: 'one', record: one })
                             }}
                             asksWith={goingWith(one)}

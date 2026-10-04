@@ -28,6 +28,31 @@ import './Entity.css'
  */
 const problemId = (at: number, field: RaceCell) => `race-${String(at)}-${field}-problem`
 
+/** The id of the sentence that says why the server did not take one row, built the same way. */
+const refusalId = (at: number) => `race-${String(at)}-refused`
+
+/**
+ * WHAT THE LAST PRESS DID NOT SAVE, as the screen above hands it in.
+ *
+ * <p>Owner, 03.10.2026, „Događaj ostaje, trke čekaju": when saving the races fails, the event stays
+ * saved and the form stays open with the races and a clear message of what did not go through. So
+ * every race the route refused is named here, beside the row it was, with the route's own reason.
+ *
+ * <p><b>A row is found by its OBJECT and never by its place</b>, which is how `AdminEvents.tsx`
+ * already finds the row a race was just made from. The table can gain and lose rows after a
+ * press; a refusal kept by position would then be read out beside whatever row came to stand
+ * there. Found by its object, a refusal belongs to the row as it was SENT: a row changed since
+ * is a different row, and its old refusal goes with the change.
+ */
+export type NotSaved = {
+  /** The words for every row the route refused, by the row that was sent. */
+  rows: ReadonlyMap<RaceRow, string>
+  /** And the races the press meant to take away and the route kept, already named. */
+  kept: readonly { named: string; words: string }[]
+}
+
+const NOTHING_REFUSED: NotSaved = { rows: new Map(), kept: [] }
+
 /**
  * The races of one event, entered in the table itself.
  *
@@ -50,6 +75,7 @@ export function EventRaces({
   onRows,
   refused,
   hasRaces,
+  notSaved = NOTHING_REFUSED,
 }: {
   eventName: string
   /** The day the form above is showing, which is what a new row opens on: „dan
@@ -68,7 +94,8 @@ export function EventRaces({
    * Whether the event this stands under is one that has races at all.
    *
    * A gathering and a training have none (owner, 23.08.2026), so nothing of this is
-   * drawn for them. Handed in rather than left to the screen above to draw or not,
+   * drawn for them, except the list of races the route would not take away when the
+   * kind was changed (`refusals`). Handed in rather than left to the screen above to draw or not,
    * because this component remembers the day the rows were last lined up with, and
    * a component that is taken off the screen forgets: measured by a round, a date
    * changed while the table was away left every row where it was, so the same two
@@ -77,6 +104,8 @@ export function EventRaces({
    * the owner asked on 10.08.2026.
    */
   hasRaces: boolean
+  /** What the server refused at the last press, if anything (`NotSaved` above). */
+  notSaved?: NotSaved
 }) {
   const { locale, t } = useI18n()
   /* The day the form was showing when these rows were last lined up with it. */
@@ -189,6 +218,32 @@ export function EventRaces({
     }),
   )
 
+  /** Every row the route refused at the last press, in the order the table is read. Walked over
+   *  the rows and asked of the map, so a row that has changed since is simply not found. */
+  const refusedHere = rows.flatMap((row, at) => {
+    const words = notSaved.rows.get(row)
+
+    return words === undefined ? [] : [{ at, row, words }]
+  })
+
+  /**
+   * What the name of a row is described by: the sentence about its own name, where that is
+   * marked, and the sentence about why the server did not take the row, where it did not.
+   *
+   * <p>The name and not every cell, because a refusal is about the RACE: the route names one
+   * reason for the whole row, and which cell it is about is not always one cell (a limit beside
+   * a race of a length is the kind and the limit at once). The name is the cell the row is read
+   * by (owner, 23.08.2026), so a reader who lands on it hears why the race was not saved.
+   */
+  const nameDescribedBy = (row: RaceRow, at: number): string | undefined => {
+    const ids = [
+      ...(why(row, 'name') === undefined ? [] : [problemId(at, 'name')]),
+      ...(notSaved.rows.has(row) ? [refusalId(at)] : []),
+    ]
+
+    return ids.length === 0 ? undefined : ids.join(' ')
+  }
+
   /** One measurement of one race, in its own cell. Labelled by row and column,
    *  because „Dužina" twenty times over is twenty controls a screen reader cannot
    *  tell apart. */
@@ -238,11 +293,52 @@ export function EventRaces({
     )
   }
 
+  /**
+   * WHAT THE LAST PRESS DID NOT SAVE, each race with the route's own reason (owner, 03.10.2026: the
+   * form stays open „sa trkama i jasnom porukom šta nije prošlo"), or nothing where the press
+   * saved everything.
+   *
+   * <p>Under the table like the list of cell problems above it, and drawn the same way, because
+   * both answer the same question about the same rows: what is still wrong. The one sentence that
+   * says the event IS saved is an alert over the form (`AdminEvents.tsx`); these are plain items,
+   * so a press that refused three races is read out once and not four times. A row is named by its
+   * place and by its name together, which is what tells „2. trka" from a row the reader has since
+   * moved; a race the press meant to take away and the route kept has no row left, and is named by
+   * its own name and day.
+   *
+   * <p><b>Worked out here, before the table is, because an event that draws no table has it
+   * too</b> (review of PR 483, round 1, finding V1). Saving an event of a race as a gathering or a
+   * training takes every race it had away (owner, 23.08.2026), the route may keep any of them, and
+   * where this list stood under the table a refusal of that kind was named nowhere: the reason was
+   * not on the screen, and the sentence over the form sent the reader to a table that was not
+   * there.
+   */
+  const refusals =
+    refusedHere.length === 0 && notSaved.kept.length === 0 ? null : (
+      <ul className="races__problems" aria-label={t('admin.race.notSaved')}>
+        {refusedHere.map(({ at, row, words }) => (
+          <li key={`refused-${String(at)}`}>
+            <span>
+              {t('admin.form.raceNumber', { which: String(at + 1) })} ({row.name}):{' '}
+            </span>
+            <span id={refusalId(at)}>{words}</span>
+          </li>
+        ))}
+        {notSaved.kept.map(({ named, words }, at) => (
+          <li key={`kept-${String(at)}`}>
+            <span>{named}: </span>
+            <span>{words}</span>
+          </li>
+        ))}
+      </ul>
+    )
+
   /* Nothing on the screen for an event that has no races, and yet still here: the
      hooks above go on running, so the rows keep following the event while the table
-     is away and are found as they were when the kind comes back. */
+     is away and are found as they were when the kind comes back. Except the races the
+     route would not take away, which have no table to be named in (`refusals`). */
   if (!hasRaces) {
-    return null
+    return refusals === null ? null : <div className="entity-races">{refusals}</div>
   }
 
   return (
@@ -322,9 +418,7 @@ export function EventRaces({
                       aria-label={cellName('name', at)}
                       aria-required="true"
                       aria-invalid={why(row, 'name') !== undefined}
-                      aria-describedby={
-                        why(row, 'name') === undefined ? undefined : problemId(at, 'name')
-                      }
+                      aria-describedby={nameDescribedBy(row, at)}
                       /* The column's own explanation, said again for every box in
                          it: a heading is not read out with the control on every
                          reader, and a hint nobody is pointed at is a hint nobody
@@ -426,6 +520,10 @@ export function EventRaces({
           ))}
         </ul>
       )}
+
+      {/* What the last press did not save, under the table like the list above (`refusals`,
+          worked out before the table is, because an event with no table has it too). */}
+      {refusals}
 
       {/* Opens a row rather than a form (owner, 23.08.2026: „klik na Nova trka
           otvara novi red u tabeli"), on the day the event above is showing.

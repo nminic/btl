@@ -1178,7 +1178,9 @@
         },
         "notWhole": "Enter a whole number without a dot or a comma: 1200, not 1.200.",
         "outOfBounds": "The allowed values are from {least} to {most}."
-      }
+      },
+      "notSaved": "Races that were not saved",
+      "notDeleted": "The race {name} ({date}) was not deleted"
     },
     "searchEvents": "A name or a town",
     "showing": "Showing: {count}",
@@ -1355,7 +1357,8 @@
     },
     "eventGone": "The event has been deleted, with its races and its results.",
     "eventSavedUnseen": "The event was saved, but the portal cannot show it in this list. Reload the page.",
-    "eventSavedRacesRefused": "The event was saved, but one of its races was not. Open the event and check its races.",
+    "eventSavedRacesRefused": "The event is saved. The races that were not saved are listed under the table; correct them and press Save. Only the races are sent.",
+    "eventSavedRacesKept": "The event is saved. The races that were not deleted are listed under the fields of the event; press Save to try deleting them again. Only the races are sent.",
     "eventDeleteTakes": {
       "one": "This deletes {count} result as well.",
       "few": "This deletes {count} results as well.",

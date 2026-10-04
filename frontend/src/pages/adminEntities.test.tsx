@@ -1,7 +1,7 @@
 import { SLOW } from '../test/slow'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { MemoryRouter, Route, Routes } from 'react-router'
+import { createMemoryRouter, MemoryRouter, Route, RouterProvider, Routes } from 'react-router'
 import { ClockProvider } from '../clock/ClockProvider'
 import { I18nProvider } from '../i18n/I18nProvider'
 import sr from '../i18n/sr.json'
@@ -1476,9 +1476,11 @@ describe('the races of an event', () => {
      * send the reader to enter the event again, onto its own address, where the route
      * would tell him it is taken - a refusal about a collision with himself.
      *
-     * <p>So the reader is told the truth in one sentence: the event is saved, a race is
-     * not. The form stays open with everything he typed, and `madeHere` makes his second
-     * press a change rather than a second event, which the case below measures.
+     * <p>So the reader is told the truth: the event is saved, and the races that were not are
+     * named under the table with the route's reason. The form stays open with everything he
+     * typed, and his second press sends the races and nothing else (owner, 03.10.2026:
+     * „ponovni pokušaj šalje samo trke, nikad drugi događaj"). Until that day it changed the
+     * event a second time, and this case held it to doing so.
      */
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
@@ -1523,9 +1525,11 @@ describe('the races of an event', () => {
 
     /* It says the event IS saved, which is true, and that a race is not. */
     expect(words).toContain('Događaj je sačuvan')
-    /* And it names what the route refused, in the reader s own language rather than
-       as a code he cannot read. */
-    expect(words).toContain('Dužina nije upisana u obliku koji portal čuva.')
+    /* And it names what the route refused, in the reader's own language rather than as a
+       code he cannot read - under the table, beside the race, and not as a second alert. */
+    expect(screen.getByRole('list', { name: 'Trke koje nisu sačuvane' })).toHaveTextContent(
+      'Dužina nije upisana u obliku koji portal čuva.',
+    )
 
     /* No confirmation, so nothing tells him the mornings are filed. */
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
@@ -1533,14 +1537,22 @@ describe('the races of an event', () => {
     expect(screen.getByRole('button', { name: 'Sačuvaj' })).toBeVisible()
     expect(screen.getByLabelText(/^Opis događaja/)).toHaveValue('jedna rečenica')
 
-    /* The event was written once and only once: pressing again after reading why must
-       change it rather than file a second one at the same address. */
+    /* The event was written once and only once: pressing again after reading why sends the
+       races and nothing else. Counted AFTER the second press has sent every race, so a write
+       of the event still on its way cannot pass for one that never went. */
+    const ofItsRaces = races.filter((race) => race.eventId === mine.id).length
+    const raceWrites = () =>
+      whereItWrote(watching.asked).filter((one) => one.includes('/api/races')).length
+
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+    await waitFor(() => {
+      expect(raceWrites()).toBe(2 * ofItsRaces)
+    })
 
     expect(
       whereItWrote(watching.asked).filter((one) => one.includes('/api/events')),
-      'the second press made a second event instead of changing the first',
-    ).toEqual([`PUT /api/events/${String(mine.id)}`, `PUT /api/events/${String(mine.id)}`])
+      'the second press wrote the event again instead of sending only its races',
+    ).toEqual([`PUT /api/events/${String(mine.id)}`])
   }, SLOW)
 
   it('drops the cache when a save goes through, so the next read asks the server', async () => {
@@ -1688,13 +1700,27 @@ describe('the races of an event', () => {
     await screen.findByRole('heading', { name: /^Trke na događaju/ })
 
     const rows = screen.getAllByRole('button', { name: /^Obriši \d+\. trku$/ })
+    /* The race the first row stands for, in the order the table draws them: by the day, and
+       by the distance inside one day (`raceRows.rowsOf`). It has no row left once it is taken
+       off, so it is named by its own name and day. */
+    const first = must(
+      races
+        .filter((race) => race.eventId === mine.id)
+        .sort((left, right) => left.date.localeCompare(right.date) || left.distanceKm - right.distanceKm)[0],
+      'the race of the first row',
+    )
 
     await user.click(must(rows[0], 'the first race row'))
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     const said = (await screen.findAllByRole('alert')).map((one) => one.textContent ?? '').join(' ')
 
-    expect(said).toContain('Ova trka se broji u ligi svoje sezone')
+    expect(said).toContain('Događaj je sačuvan')
+    /* The race the route kept is named, with the route's reason, under the table: a deletion
+       refused is a race that is still there, and the reader must be told which. */
+    expect(screen.getByRole('list', { name: 'Trke koje nisu sačuvane' })).toHaveTextContent(
+      `Trka ${first.name} (${formatShortDate(first.date, 'sr-Latn')}) nije obrisana: Ova trka se broji u ligi svoje sezone`,
+    )
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
   }, SLOW)
 
@@ -1776,13 +1802,14 @@ describe('the races of an event', () => {
 
   it('makes two events when Novi događaj is pressed twice, not one and a change to it', async () => {
     /**
-     * `madeHere` IS A REF ON THE WHOLE SCREEN, NOT ON ONE VISIT TO THE FORM, and a
+     * `madeHere` WAS A REF ON THE WHOLE SCREEN, NOT ON ONE VISIT TO THE FORM, and a
      * nezavisna recenzija found that `onDone` cleared `chosen`, `justMade`, `held`
      * and `refused` and left it standing. The second „Novi događaj" then read the
      * FIRST event's identity off it, and `standing` (`saveOne`) preferred that ref
-     * over the plain fact that this is a NEW record - so the second press `PUT`s
-     * the first event instead of making a second one, and the second event is
-     * never made at all.
+     * over the plain fact that this is a NEW record - so the second press `PUT` the
+     * first event instead of making a second one, and the second event was never
+     * made at all. The ref is `waitingFor` since 03.10.2026, set only while an
+     * event's races wait, and the same question still has to come out the same way.
      */
     const user = setupUser()
 
@@ -1816,7 +1843,7 @@ describe('the races of an event', () => {
      * new one left behind names: `standing` read `madeHere.current` before it
      * read `editing.record` at all, so the new event's identity outranked the
      * record the form was plainly open on, and the served event was never
-     * touched.
+     * touched. (`madeHere` is `waitingFor` since 03.10.2026; the question stands.)
      */
     const user = setupUser()
     const events = await loadResource<BtlEvent[]>('events')
@@ -1887,10 +1914,13 @@ describe('the races of an event', () => {
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
     /* The partial failure: the event and the first race went through, the second
-       did not, and the form stays open rather than confirming. */
-    const said = (await screen.findAllByRole('alert')).map((one) => one.textContent ?? '').join(' ')
+       did not, and the form stays open rather than confirming. The reason stands under
+       the table, beside the race (owner, 03.10.2026). */
+    await screen.findAllByRole('alert')
 
-    expect(said).toContain('Dužina nije upisana u obliku koji portal čuva.')
+    expect(screen.getByRole('list', { name: 'Trke koje nisu sačuvane' })).toHaveTextContent(
+      'Dužina nije upisana u obliku koji portal čuva.',
+    )
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
     const beforeRetry = watching.asked.length
@@ -1964,9 +1994,12 @@ describe('the races of an event', () => {
 
     await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
 
-    const said = (await screen.findAllByRole('alert')).map((one) => one.textContent ?? '').join(' ')
+    /* The reason stands under the table, beside the race (owner, 03.10.2026). */
+    await screen.findAllByRole('alert')
 
-    expect(said).toContain('Dužina nije upisana u obliku koji portal čuva.')
+    expect(screen.getByRole('list', { name: 'Trke koje nisu sačuvane' })).toHaveTextContent(
+      'Dužina nije upisana u obliku koji portal čuva.',
+    )
     expect(screen.queryByRole('status', { name: 'Sačuvano' })).toBeNull()
 
     const beforeRetry = watching.asked.length
@@ -3513,18 +3546,23 @@ describe('an event that is deleted', () => {
     expect(its.length).toBeGreaterThan(0)
     expect(scored.length).toBeGreaterThan(0)
 
+    /* A DATA ROUTER, as the portal has (`app/App.tsx`), and no longer a plain one: the form of an event
+       holds the reader while its save is out, and what holds him is the router's own refusal, which
+       only a data router has (`admin/BlocksLeaving.tsx`). The other two mounts of this screen in this
+       file never open the form, so they keep the plain one they had. */
     render(
       <ClockProvider>
         <I18nProvider locale="sr">
-          <MemoryRouter initialEntries={['/sr/administracija/dogadjaji']}>
-            <RoleProvider initialRole="superadmin" initialModerator={null}>
-              <SessionProvider>
-                <Routes>
-                  <Route path="/sr/administracija/dogadjaji" element={<AdminEvents />} />
-                </Routes>
-              </SessionProvider>
-            </RoleProvider>
-          </MemoryRouter>
+          <RoleProvider initialRole="superadmin" initialModerator={null}>
+            <SessionProvider>
+              <RouterProvider
+                router={createMemoryRouter(
+                  [{ path: '/sr/administracija/dogadjaji', element: <AdminEvents /> }],
+                  { initialEntries: ['/sr/administracija/dogadjaji'] },
+                )}
+              />
+            </SessionProvider>
+          </RoleProvider>
         </I18nProvider>
       </ClockProvider>,
     )
