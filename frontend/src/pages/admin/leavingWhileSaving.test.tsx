@@ -227,14 +227,20 @@ describe('an event whose save is out cannot be left', () => {
   }
 
   /** And the other half, for a form that stays after the save ends: the button is not told off, the
-   *  sign is gone, and the button leaves for the list. */
-  async function expectLetGo(user: Pressing): Promise<void> {
+   *  sign is gone, and the button leaves for the list. The address is asked of the router straight
+   *  after the press and not waited for, so a refusal that is never let go fails on what it says and
+   *  not by running out of time for a list that will not come. */
+  async function expectLetGo(user: Pressing, router: Router): Promise<void> {
     const back = screen.getByRole('button', { name: 'Nazad na spisak' })
 
     expect(back).not.toHaveAttribute('aria-disabled')
     expect(screen.queryByText(sr.results.sending)).toBeNull()
 
     await user.click(back)
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(where(router), 'the button did not leave the form').toBe(THE_LIST)
     expect(await screen.findByRole('table', { name: 'Događaji' })).toBeVisible()
   }
 
@@ -476,7 +482,7 @@ describe('an event whose save is out cannot be left', () => {
       await screen.findByText(sr.admin.eventSavedRacesRefused)
 
       expectOnTheForm(router)
-      await expectLetGo(user)
+      await expectLetGo(user, router)
     }, SLOW)
 
     it('is let go when the event itself is refused, and the form stays with its sentence', async () => {
@@ -488,7 +494,7 @@ describe('an event whose save is out cannot be left', () => {
       await screen.findByText(sr.admin.eventSaveRefused.theAddressIsTaken)
 
       expectOnTheForm(router)
-      await expectLetGo(user)
+      await expectLetGo(user, router)
     }, SLOW)
 
     it('holds the press that sends only races, which is a press of its own, and lets go of it at its last answer', async () => {
