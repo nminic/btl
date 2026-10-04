@@ -221,7 +221,10 @@ export type Competitor = {
    * instead of adding them back.
    */
   /**
-   * Whether this member has hidden their profile from readers who are not signed in.
+   * Whether this member has hidden their profile from readers who are neither an active member nor
+   * the administration (a visitor, a free account and a member whose fee has lapsed: PDL P23,
+   * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+   * nikad prema aktivnom članu").
    *
    * The published privacy policy has promised this since it was written: „U podešavanjima
    * možete sakriti profil od posetilaca koji nisu prijavljeni, ali ne i od ostalih članova,
@@ -266,7 +269,7 @@ export type Competitor = {
   birthdayShown: BirthdayShown
   /**
    * The team of the membership that has not ended, or null for a member in none - AND, since
-   * 02.10.2026, for a member who hides his profile when the reader has no session.
+   * 02.10.2026, for a member who hides his profile when the reader may not read a hidden profile.
    *
    * PDL, odeljak 16, [ODLUKA 27.09.2026, owner], chosen between offered outcomes: the team is
    * withheld from a visitor the same as the biography and the photograph, and it reads exactly like
@@ -289,7 +292,7 @@ export type Competitor = {
   teamSince: number | null
   /**
    * The racing biography, as published, or null for a member who hides their profile when
-   * the reader has no session.
+   * the reader may not read a hidden profile.
    *
    * Written by the member, and approved as written or refused with a reason and
    * handed back (PDL P11, P22, 06.08.2026), so what is here is what the member
@@ -319,7 +322,7 @@ export type Competitor = {
    * how many pictures the portal holds (`PhotoApi`). A screen that assembled the address
    * would be a second home for that decision, and the one of the two that knows least.
    *
-   * **Null ALSO for a member who hides his profile from a reader with no session, and that
+   * **Null ALSO for a member who hides his profile from a reader who may not read it, and that
    * collision is the decision rather than a looseness.** Owner, 26.09.2026 (PDL P28f): the
    * digest „se zadrzava od neprijavljenog", and `PhotoApi` refuses the same portrait to the
    * same caller, because the digest IS the whole permission - it asked nobody who they
@@ -328,10 +331,14 @@ export type Competitor = {
    * as one of the members who hide. So `photo` and `crop` carry the same shape as `bio`
    * above, for the same reason and by the same sentence.
    *
-   * **Who that is measured against is the ACCOUNT and not the membership** (PDL, 27.09.2026,
-   * point 17), and the hiding runs one way only: toward a reader with no session. Owner, the
-   * same day: „Prema clanu se ne krije nista." A signed in member sees every other member's
-   * portrait whatever either of them chose.
+   * **Who that is measured against is the KIND OF READER** (PDL P23, 03.10.2026, „Skrivanje
+   * deluje prema svakome ko nije aktivan član ni administracija,
+   * nikad prema aktivnom članu"): an active member and the
+   * administration read a hidden profile, and a visitor, a free account and a member whose fee has
+   * lapsed do not. It was „anybody with a session" until that day (PDL, 27.09.2026, point 17, which
+   * the owner's choice overturned for everybody but the administration). The hiding runs one way
+   * only: toward a reader who is not an active member. Owner, 27.09.2026: „Prema clanu se ne krije
+   * nista." An active member sees every other member's portrait whatever either of them chose.
    *
    * Null and never the empty path, the same reasoning `Team.logo` carries below: a member
    * who has none is not a member whose portrait is the empty address.
@@ -660,14 +667,18 @@ export type Team = {
    * THE MEMBERS OF THIS TEAM WHOSE OWN RECORD DOES NOT NAME IT TO THE ONE READING, with the
    * season each is in it from.
    *
-   * Since 02.10.2026 that is a member who hides his profile, read by somebody who is not signed
-   * in: `/api/competitors` answers his `teamId` as null to that reader (PDL, odeljak 16, [ODLUKA
+   * Since 02.10.2026 that is a member who hides his profile, read by somebody who may not read
+   * it (a visitor, and since 03.10.2026 a free account and a member whose fee has lapsed, PDL P23,
+   * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+   * nikad prema aktivnom članu"):
+   * `/api/competitors` answers his `teamId` as null to that reader (PDL, odeljak 16, [ODLUKA
    * 27.09.2026, owner]), and the owner's own limit on the same decision is that the team keeps
    * him - „mozda on sakrije profil, ali ako je deo tima, njegovo ime se vidi u timu i bodovi koje
    * je doneo." His record is still on the list; only its link to this team is here instead.
    *
-   * **Empty for everybody who is signed in, and never absent**: to them the records carry every
-   * link, so the two never name the same member. `data/derive.ts` (`membersOf`) reads both and is
+   * **Empty for an active member and for the administration, and never absent**: to them the
+   * records carry every link, so the two never name the same member. `data/derive.ts`
+   * (`membersOf`) reads both and is
    * the one place that does. `since` is the `teamSince` his record would have carried, and the
    * season rule reads it the same way (`inTeamIn`).
    */

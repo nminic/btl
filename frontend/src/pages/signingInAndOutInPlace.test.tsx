@@ -30,8 +30,10 @@ import { setupUser } from '../test/user'
  * that team had no „Izmeni" on its page.
  *
  * <p><b>The server answers by SESSION, the way the real one does</b>, and not by what a case
- * asked for: a visitor's answers and a signed in reader's answers are two shapes, the session
- * decides which, and `/api/sign-in` and `/api/sign-out` are what move it. So a screen that
+ * asked for: a visitor's answers and an active member's answers are two shapes, the session
+ * decides which (the readers of this file are active members and a moderator, so for them a
+ * session is the whole of the difference), and `/api/sign-in` and `/api/sign-out` are what move it.
+ * So a screen that
  * reads a list it already held shows a reader the answer the OTHER reader was given, which is
  * exactly the fault; and a cache that drops the right names at the right moment shows the
  * right one. Each case names its other end: signing in straight from the address bar is the
@@ -87,7 +89,7 @@ function aMember(
 /**
  * The members, as a reader is answered them.
  *
- * <p>The one who hides has the team and the picture on his record for anybody signed in and has
+ * <p>The one who hides has the team and the picture on his record for an active member and has
  * neither for a visitor (PDL, odeljak 16, and P28f): that is the whole difference between the
  * two shapes, and a picture is what makes it visible on a page that draws no link to him.
  */
@@ -113,8 +115,8 @@ function aTeamNaming(
 /**
  * The teams, as a reader is answered them.
  *
- * <p>A visitor is told the member who hides ON THE TEAM, and nobody's seat. Anybody signed in is
- * told it on the member's own record instead, so the team names nobody, and a MEMBER is told
+ * <p>A visitor is told the member who hides ON THE TEAM, and nobody's seat. An active member and
+ * the administration are told it on the member's own record instead, so the team names nobody, and a MEMBER is told
  * whether he founded it.
  */
 function teamsTo(session: Session) {
@@ -469,7 +471,7 @@ describe('the header of somebody who has just signed in', () => {
 describe('somebody signs out without the page being reloaded', () => {
   it('is a visitor on the next screens, who is not shown a picture or a team he was not answered', async () => {
     /* A member who does not hide, reading the table of teams and then the cards of the members. He
-       is answered the portrait of the member who hides, as everybody signed in is; the visitor who
+       is answered the portrait of the member who hides, as every active member is; the visitor who
        uses the same tab next is not, and the PICTURE is what tells the two answers apart on a card
        that links nowhere for either of them. The table of teams is read as well, so that BOTH
        names are held in his shape when he goes: dropped one without the other, his team loses the

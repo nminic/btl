@@ -110,8 +110,9 @@ export const RESOURCE_NAMES = [
 
      **THIS SAID „THE ONE NAME", AND IT WAS NOT THE ONLY ONE THAT DEPENDS ON WHO IS ASKING
      (02.10.2026).** `competitors` and `teams` do as well: a member who hides his profile is
-     answered to a visitor without his team and his picture and to anybody signed in with both
-     (PDL, section 16), and a team tells a member whether he founded it. Nobody hands those two a
+     answered to a reader who may not read a hidden profile without his team and his picture and to
+     an active member or the administration with both (PDL, section 16; PDL P23, 03.10.2026), and a
+     team tells a member whether he founded it. Nobody hands those two a
      member, so no hook of theirs could drop them; the session does, when the reader changes
      (`session/theCachesFollowTheReader.ts`). Which names depend on the caller is read out of the
      backend rather than out of this sentence, by `session/everyNameThatDependsOnTheReader.test.ts`. */

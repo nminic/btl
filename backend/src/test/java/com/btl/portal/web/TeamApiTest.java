@@ -204,6 +204,18 @@ class TeamApiTest {
 	private static final List<String> THE_ADMINISTRATION =
 			List.of(FOUNDED_THE_FIRST_TEAM_AND_ADMINISTERS_THEM, THE_SUPERADMIN);
 
+	/**
+	 * THE SIGNED IN READERS WHO ARE OWED WHAT A VISITOR IS, since 03.10.2026: the two whose fee has
+	 * lapsed (000003 and 000009). PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije
+	 * aktivan član ni administracija,
+	 * nikad prema aktivnom članu": a member whose fee has lapsed reads a hidden profile as a
+	 * visitor does, so the team names a hidden member to him as it does to a visitor. Every other
+	 * signed in account of this fixture is an active member or the administration, and the case
+	 * {@code onlyTheReadersTheRuleKeepsItFromAreOwedAnybodyHere} asks the database whether that is so.
+	 */
+	private static final List<String> OWED_WHAT_A_VISITOR_IS =
+			List.of(FOUNDED_THE_SECOND_TEAM, IN_THE_TEAM_LONGEST_AND_HAS_NOT_PAID);
+
 	/** What a team whose seat names nobody answers the administration with (V11). */
 	private static final String NOBODY_IS_NAMED_TO_THIS_SEAT = "";
 
@@ -739,11 +751,11 @@ class TeamApiTest {
 	}
 
 	/**
-	 * THE VISITOR'S ANSWER WITH WHAT HE IS OWED ON THE TEAMS SET BACK TO WHAT A SIGNED IN READER IS
-	 * TOLD THERE, which is nothing, because the records tell him.
+	 * THE VISITOR'S ANSWER WITH WHAT HE IS OWED ON THE TEAMS SET BACK TO WHAT A READER WHO MAY READ A
+	 * HIDDEN PROFILE IS TOLD THERE, which is nothing, because the records tell him.
 	 *
-	 * <p><b>This is the one thing a session changes in this answer for a reader who is not the
-	 * administration, and it is named rather than cut by a pattern</b> (rule of 14.09.2026: what a
+	 * <p><b>This is the one thing that being such a reader changes in this answer for one who is not
+	 * the administration, and it is named rather than cut by a pattern</b> (rule of 14.09.2026: what a
 	 * comparison has to ignore to pass is often exactly what it should be measuring). So the
 	 * excuse is EXACT: every team's value is built from the database, it has to be found in the
 	 * visitor's text once and only once, and only then is it emptied. A visitor told one member too
@@ -751,7 +763,20 @@ class TeamApiTest {
 	 * proves the VALUE, team by team, is {@link #aMemberWhoHidesHisProfileIsNamedOnHisTeamToAVisitor}.
 	 */
 	private String theVisitorsAnswerWithWhatHeIsOwedEmptied() throws Exception {
-		String visitor = whole(null);
+		return theAnswerWithWhatHeIsOwedEmptied(null);
+	}
+
+	/**
+	 * THE SAME FOR ANY READER THE RULE KEEPS A HIDDEN PROFILE FROM, since 03.10.2026: a member
+	 * whose fee has lapsed is owed on the teams exactly what a visitor is (PDL P23, 03.10.2026,
+	 * „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+	 * nikad prema aktivnom članu"), so his answer
+	 * stands on the same exact-text excuse and no other.
+	 *
+	 * @param email null for the visitor, which is the same request without the cookie
+	 */
+	private String theAnswerWithWhatHeIsOwedEmptied(String email) throws Exception {
+		String visitor = whole(email);
 		Map<String, String> owed = whatAVisitorIsOwedOnEachTeam();
 
 		assertThat(owed).as("nobody in the fixture hides his profile while standing in a team, so"
@@ -848,8 +873,10 @@ class TeamApiTest {
 	 * 27.09.2026, owner]). Those numbers leave inside {@code alsoInTheTeam} and nowhere else, so
 	 * they are emptied out of the visitor's answer by their exact text, read off the database
 	 * ({@link #theVisitorsAnswerWithWhatHeIsOwedEmptied}), and what is left is asked exactly
-	 * what it was asked before: no member number at all. Every signed in reader is asked it of
-	 * his whole answer, untouched, because he is owed nothing here.
+	 * what it was asked before: no member number at all. Every active member is asked it of his
+	 * whole answer, untouched, because he is owed nothing here; a member whose fee has lapsed is
+	 * owed what a visitor is since 03.10.2026 and stands on the same exact-text excuse
+	 * ({@link #theAnswerWithWhatHeIsOwedEmptied}).
 	 */
 	@Test
 	void noMemberNumberLeavesTheServer() throws Exception {
@@ -863,7 +890,8 @@ class TeamApiTest {
 				+ " assert nothing").hasSize(9);
 
 		for (String nobody : NOBODY_WHO_MAY_SEE_THE_SEAT) {
-			String whole = nobody == null ? theVisitorsAnswerWithWhatHeIsOwedEmptied() : whole(nobody);
+			String whole = nobody == null || OWED_WHAT_A_VISITOR_IS.contains(nobody)
+					? theAnswerWithWhatHeIsOwedEmptied(nobody) : whole(nobody);
 
 			assertThat(whole).as("the answer to %s carries nothing at all, so it says nothing"
 							+ " about what it leaves out", nobody)
@@ -1240,18 +1268,48 @@ class TeamApiTest {
 	}
 
 	/**
-	 * AND NOBODY WHO IS SIGNED IN IS OWED ANYBODY HERE, BECAUSE HIS RECORDS ALREADY SAY IT.
+	 * AND AN ACTIVE MEMBER AND THE ADMINISTRATION ARE OWED NOBODY HERE, BECAUSE THEIR RECORDS ALREADY
+	 * SAY IT, WHILE A MEMBER WHOSE FEE HAS LAPSED IS OWED WHAT A VISITOR IS.
 	 *
-	 * <p>PDL, odeljak 18 (27.09.2026): hiding is from „neulogovanih posetilaca" and from nobody
-	 * else, so to a signed in reader {@code /api/competitors} answers every link on the record. Told
-	 * here as well, the same link would stand on two doors. Every account the fixture has is walked,
+	 * <p>PDL, odeljak 18 (27.09.2026): hiding is from „neulogovanih posetilaca", and since 03.10.2026
+	 * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija,
+	 * nikad prema aktivnom članu")
+	 * from everybody who is neither an active member nor the administration. So to an active member
+	 * and to the administration {@code /api/competitors} answers every link on the record, and told
+	 * here as well the same link would stand on two doors; to a member whose fee has lapsed it
+	 * answers none of the hidden ones, so the team has to. Every account the fixture has is walked,
 	 * read off the two lists the fixture is split by, and the two that race for nobody are the ones
-	 * that catch a condition asked of the caller's member rather than of his session.
+	 * that catch a condition asked of the caller's member rather than of his role.
+	 *
+	 * <p><b>The line is asked of the database and not left to the list that names it</b>: the
+	 * accounts that are neither an active member nor a moderator or the superadmin are exactly
+	 * {@link #OWED_WHAT_A_VISITOR_IS}, so a sixth account added tomorrow is put on a side rather
+	 * than walked as the wrong kind. And the visitor really is owed something, so „equal to the
+	 * visitor's" cannot be two empty lists.
 	 */
 	@Test
-	void nobodyWhoIsSignedInIsOwedAnybodyHere() throws Exception {
+	void onlyTheReadersTheRuleKeepsItFromAreOwedAnybodyHere() throws Exception {
 		List<String> signedIn = new ArrayList<>(THE_ADMINISTRATION);
 		NOBODY_WHO_MAY_SEE_THE_SEAT.stream().filter(one -> one != null).forEach(signedIn::add);
+
+		assertThat(db.sql("select a.email from account a join role r on r.id = a.role_id"
+						+ " left join competitor c on c.id = a.competitor_id"
+						+ " where not (coalesce(c.active, false) or r.rights_mode <> 'none')")
+				.query(String.class).list())
+				.as("the signed in accounts of the fixture who are neither an active member nor the"
+						+ " administration are not the ones this case calls owed what a visitor is")
+				.containsExactlyInAnyOrderElementsOf(OWED_WHAT_A_VISITOR_IS);
+
+		Map<String, String> owedToAVisitor = new LinkedHashMap<>();
+
+		for (JsonNode one : new ObjectMapper().readTree(whole(null))) {
+			owedToAVisitor.put(one.path("slug").asString(), one.path(ALSO_IN_THE_TEAM).toString());
+		}
+
+		assertThat(owedToAVisitor.values())
+				.as("a visitor is owed nobody on any team, so what is compared below is two empty"
+						+ " lists")
+				.anyMatch(one -> !one.equals("[]"));
 
 		for (String asking : signedIn) {
 			for (JsonNode one : new ObjectMapper().readTree(whole(asking))) {
@@ -1259,10 +1317,19 @@ class TeamApiTest {
 						.as("%s was answered no list of the members owed on %s; empty is a value and"
 								+ " the key is never absent", asking, one.path("slug").asString())
 						.isTrue();
-				assertThat(one.path(ALSO_IN_THE_TEAM).size())
-						.as("%s is signed in and was told on %s a member his own records already name,"
-								+ " so one link stands on two doors", asking, one.path("slug").asString())
-						.isZero();
+
+				if (OWED_WHAT_A_VISITOR_IS.contains(asking)) {
+					assertThat(one.path(ALSO_IN_THE_TEAM).toString())
+							.as("%s is a member whose fee has lapsed and was told on %s something other"
+									+ " than what a visitor is", asking, one.path("slug").asString())
+							.isEqualTo(owedToAVisitor.get(one.path("slug").asString()));
+				} else {
+					assertThat(one.path(ALSO_IN_THE_TEAM).size())
+							.as("%s may read a hidden profile and was told on %s a member his own records"
+									+ " already name, so one link stands on two doors", asking,
+									one.path("slug").asString())
+							.isZero();
+				}
 			}
 		}
 	}
@@ -1295,7 +1362,7 @@ class TeamApiTest {
 	 * <p><b>Asked as a list and compared with its multiplicity</b>, so it holds both halves at once:
 	 * every standing membership in the database is named (nothing is lost - the team does not lose
 	 * a member who hides) and none is named twice (no link has two homes). It fails for a team side
-	 * that forgets the {@code not}, a session read off {@code me} rather than off the account, a
+	 * that forgets the {@code not}, a reader fact read off {@code me} rather than off the request, a
 	 * row clause dropped on either side, and a record that stops withholding.
 	 *
 	 * <p><b>The rows are read out of the database</b>, and they include the one with no member
@@ -1374,14 +1441,26 @@ class TeamApiTest {
 		}
 
 		/* AND THE VISITOR'S SIDE HAS WHAT HE IS OWED ON THE TEAMS EMPTIED, since 02.10.2026:
-		   the one thing a session changes here besides the member's own two fields, emptied by
+		   the one thing being a reader who may read a hidden profile changes here besides the
+		   member's own two fields, emptied by
 		   its exact value and not by a pattern (`theVisitorsAnswerWithWhatHeIsOwedEmptied` says
 		   how, and the case that proves the value is
 		   `aMemberWhoHidesHisProfileIsNamedOnHisTeamToAVisitor`). */
-		assertThat(withoutTheMembersOwnTwo(whole(FOUNDED_THE_SECOND_TEAM)))
-				.as("signing in changed something other than the two fields it was allowed to and"
-						+ " the members a visitor is owed on the teams")
+		assertThat(withoutTheMembersOwnTwo(whole(IN_A_TEAM_AND_NOT_IN_ITS_SEAT)))
+				.as("signing in as an active member changed something other than the two fields it was"
+						+ " allowed to and the members a visitor is owed on the teams")
 				.isEqualTo(theVisitorsAnswerWithWhatHeIsOwedEmptied());
+
+		/* AND A MEMBER WHOSE FEE HAS LAPSED IS ANSWERED WHAT A VISITOR IS, with nothing emptied:
+		   since 03.10.2026 he is a reader the rule about a hidden profile keeps it from, so the
+		   team names the hidden member to him as it does to a visitor. The founder of the SECOND
+		   team is that reader (000003), so the seat is still measured on a record that is not the
+		   first one. */
+		assertThat(withoutTheMembersOwnTwo(whole(FOUNDED_THE_SECOND_TEAM)))
+				.as("signing in as a member whose fee has lapsed changed something other than the two"
+						+ " fields it was allowed to, which means he was answered something other than"
+						+ " what a visitor is")
+				.isEqualTo(whole(null));
 	}
 
 	/**

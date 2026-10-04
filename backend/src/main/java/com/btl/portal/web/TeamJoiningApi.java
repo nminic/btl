@@ -60,12 +60,16 @@ import java.util.List;
  * {@link ApiSecurity#READ_BY_ANYBODY}, so the chain answers 401 first.
  *
  * <p><b>THIS SERVES OTHER PEOPLE'S MEMBER NUMBERS, AND {@code profile_hidden} IS
- * DELIBERATELY NOT ASKED ABOUT.</b> That column hides a member from a VISITOR, and every
- * caller here is signed in by construction - the reason {@link TeamJoiningWriteApi}'s own
- * {@code memberShown} gives in as many words, and the condition {@link CompetitorApi} serves
- * its list by ({@code cast(:signedIn as boolean) or not c.profile_hidden}). A condition on it
- * here would hide an applicant from the one team that has to answer him, which is not what
- * hiding a profile means.
+ * DELIBERATELY NOT ASKED ABOUT.</b> That column hides a member from everybody who is neither an
+ * active member nor the administration (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko
+ * nije aktivan član ni administracija,
+ * nikad prema aktivnom članu"), and every caller here is one of the two by construction:
+ * whoever leads a team is read through {@link TeamApi#WHO_STANDS_IN_A_TEAM}, which asks
+ * {@code c.active}, and the administration is asked through {@link WhatHeMayDo}. That is the
+ * condition {@link CompetitorApi} serves its list by
+ * ({@code cast(:readsHiddenProfiles as boolean) or not c.profile_hidden}), so every caller here
+ * is a reader it would let in. A condition on it here would hide an applicant from the one team
+ * that has to answer him, which is not what hiding a profile means.
  *
  * <p><b>THE FEE IS ASKED ABOUT, AND THE TWO LISTS ANSWER IT DIFFERENTLY BECAUSE THEIR WRITE
  * ROUTES DO.</b> This is the one place the two halves are not symmetric, so it is written out

@@ -17,8 +17,9 @@ import { clearResourceCache, type ResourceName } from '../data/client'
  *
  * <p><b>What they answer differently, and to whom.</b> PDL, section 16 (owner, 27.09.2026):
  * a member who hides his profile loses his team, his picture and his biography to a reader
- * with no session, and his team names him instead (`Team.alsoInTheTeam`). So the SAME address
- * answers a visitor, anybody signed in and the administration in three shapes, and the two
+ * who may not read a hidden profile (a visitor, and since 03.10.2026 a free account and a member
+ * whose fee has lapsed), and his team names him instead (`Team.alsoInTheTeam`). So the SAME address
+ * answers a visitor, an active member and the administration in three shapes, and the two
  * halves of one screen (the roster, the head count, the sum of a team, the control a founder
  * sees) are put together out of both names.
  *

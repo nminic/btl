@@ -593,8 +593,9 @@ describe('the answer the backend gives', () => {
     expect(readAsTeamWithNoMark.logo).toBeNull()
     expect(readAsTeamWithNoMark.crop).toBeNull()
     expect(readAsTeamWithNoMark.foundedByMe).toBe(false)
-    /* The members a visitor is owed on a team, empty to everybody signed in and naming a member
-       who hides his profile to a visitor (`TeamApi`, since 02.10.2026). Both states, because the
+    /* The members a visitor is owed on a team, empty to an active member and to the administration
+       and naming a member who hides his profile to a visitor (`TeamApi`, since 02.10.2026; since
+       03.10.2026 equally to a free account and a member whose fee has lapsed). Both states, because the
        compiler can hold the shape of an entry only where a sample has one. */
     expect(readAsTeam.alsoInTheTeam).toEqual([])
     expect(readAsTeamToAVisitor.alsoInTheTeam).toEqual([{ memberNumber: '000009', since: 2027 }])

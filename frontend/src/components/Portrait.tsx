@@ -34,7 +34,7 @@ import './Portrait.css'
  * placeholder waiting to be deleted: it is the other half of this component, for good.
  *
  * **Null is TWO facts wearing one shape, deliberately** (`data/types.ts`, `photo`): a member
- * who has no portrait, and a member who hides his profile read by somebody with no session.
+ * who has no portrait, and a member who hides his profile read by somebody who may not read it.
  * PDL requires „Oba slucaja dobijaju isti ishod", so this draws a monogram for both and
  * cannot tell them apart - which is the requirement and not a shortcoming. Nothing here
  * composes an address out of a member number: the whole path arrives on the record, and the

@@ -335,12 +335,13 @@ class VerificationPhotoApiTest {
 	 * A MEMBER WHO HIDES HIS PROFILE STILL HAS HIS WAITING PICTURE SHOWN TO ITS MODERATOR.
 	 *
 	 * <p><b>This pins a condition that is deliberately ABSENT, which is why it is a case and
-	 * not a sentence in a comment.</b> Two independent reasons say it must be absent: ADL A60
-	 * closes the hiding rule with „Od koga se krije: samo od neprijavljenog", and every caller
-	 * of this route is signed in by the chain; and a picture waiting for a decision is not on
-	 * the profile yet, so there is no profile field for hiding to cover. Somebody who copied
-	 * {@code PhotoApi.photo}'s condition across would break this, and nothing else would
-	 * notice.
+	 * not a sentence in a comment.</b> Two independent reasons say it must be absent: every
+	 * caller of this route is the administration, which reads a hidden profile whoever hides it
+	 * (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni
+	 * administracija,
+	 * nikad prema aktivnom članu"); and a picture waiting for a decision is not on the profile yet, so there
+	 * is no profile field for hiding to cover. Somebody who copied {@code PhotoApi.photo}'s
+	 * condition across would break this, and nothing else would notice.
 	 */
 	@Test
 	void aWaitingPictureOfAHiddenMemberIsStillAnsweredToItsModerator() throws Exception {
@@ -354,8 +355,8 @@ class VerificationPhotoApiTest {
 
 		assertThat(answer.getStatus())
 				.as("a hidden member's WAITING picture was refused to the moderator deciding"
-						+ " about it, so PhotoApi's rule about visitors has been copied onto a"
-						+ " route where every caller is signed in and nothing is on a profile")
+						+ " about it, so PhotoApi's rule about hidden profiles has been copied onto a"
+						+ " route where every caller is the administration and nothing is on a profile")
 				.isEqualTo(200);
 		assertThat(answer.getContentAsByteArray())
 				.as("the status was right and the bytes are somebody else's")
