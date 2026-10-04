@@ -30,10 +30,12 @@ import { setupUser, type Pressing } from '../../test/user'
  * <li>(b) nothing the reader can try changes anything, whatever kind of control he tries it on;</li>
  * <li>(c) what that closes: the press that follows writes what the first left and nothing else;</li>
  * <li>(d) it is held until the LAST answer and not before, and let go of at it, whatever it is: the
- * event refused, the last race refused, everything taken, and the press that sends only races;</li>
+ * event refused, the last race refused, everything taken, and the press that sends only races, which
+ * is held again at its first write and let go of at its own last answer, taken or refused;</li>
  * <li>(e) for a new event, for one that stands and for a copy;</li>
- * <li>(f) and the forms of the other screens are not held (owner, 04.10.2026: „blokada važi samo za
- * obrazac događaja" is his scope for the whole of P6, and this is a case of it).</li>
+ * <li>(f) and the forms of the other screens are not held: the scope the same block gives („Obim" in
+ * PDL, P6; the record's wording, not the owner's quote) is the form of an event only, and these are
+ * the three other screens that send their save to a route.</li>
  * </ul>
  *
  * <p><b>Derived from the page and not from a list.</b> The controls are what the form's own
@@ -506,8 +508,9 @@ describe('an event whose save is out holds its fields', () => {
   })
 
   describe('what holding them closes', () => {
-    /** What a reader does with the second of three races out, one way each. Every one of them moved
-     *  something on `main` before this, and the retry wrote four requests or none (measured). */
+    /** What a reader does with the second of three races out, one way each. Every one of them changed
+     *  the form on `main` before this, and the next press then wrote something other than the three
+     *  requests it should: four of them, three with a `DELETE` among them, or none at all (measured). */
     const TRIES: { what: string; tried: (user: Pressing) => Promise<void> }[] = [
       {
         what: 'a word is typed into the name of the event',
@@ -591,6 +594,34 @@ describe('an event whose save is out holds its fields', () => {
 
       /* The rows are what the next press sends, so they are open; the event is held by the wait, which
          is the other reason it has to be held and is not this one (`racesWait.test.tsx`). */
+      expectTableLetGo(sr.admin.form.copying)
+      expect(controlsOf(sr.admin.form.copying).event.every(isHeld)).toBe(true)
+      expect(stuckKinds(sr.admin.form.copying, 'the table'), 'a kind of control stayed held').toEqual([])
+    }, SLOW)
+
+    it('lets go of the table again when the press that sends only races is refused again', async () => {
+      /* The press that follows a refusal is a press of its own: held again at its first write, and, when
+         it ends in a refusal as well, let go of at its own last answer and not kept from the first. */
+      const user = await theCopyWithThreeRaces()
+      const open = expectOpen(sr.admin.form.copying)
+
+      await untilTheSecondRaceIsOut(user)
+      await answer(null, 'another write')
+      await answer(refused('theDistanceIsNotKeptExactly'), 'the end')
+      await screen.findByText(sr.admin.eventSavedRacesRefused)
+      expectTableLetGo(sr.admin.form.copying)
+
+      await press(user)
+      expectHeld(sr.admin.form.copying, open)
+      await answer(null, 'another write')
+      expectHeld(sr.admin.form.copying, open)
+      await answer(null, 'another write')
+      expectHeld(sr.admin.form.copying, open)
+      await answer(refused('theDistanceIsNotKeptExactly'), 'the end')
+      await waitFor(() => {
+        expect(screen.queryByText(sr.results.sending)).toBeNull()
+      })
+
       expectTableLetGo(sr.admin.form.copying)
       expect(controlsOf(sr.admin.form.copying).event.every(isHeld)).toBe(true)
       expect(stuckKinds(sr.admin.form.copying, 'the table'), 'a kind of control stayed held').toEqual([])
@@ -681,12 +712,12 @@ describe('what is not held', () => {
   it.each(OTHERS)(
     'leaves the fields of $which open while its save is out: only the events hold them',
     async ({ title, box, save, took, open }) => {
-      /* Owner, 04.10.2026 (PDL, P6, „Dok čuvanje događaja traje", and the scope he chose in the same
-         breath: „blokada važi samo za obrazac događaja", which this change is a part of). What holding
-         the fields closes is a press writing into a table that changed under it, and only the events
-         have a table: these have nothing a typed word could take away from the press that is out. So
-         these forms go on doing what they did, and a hold that reached every editor, or one screen
-         more than the events, would fail here on every control of it. */
+      /* The scope the same block of the PDL gives (P6, „Obim": the form of an event only; the record's
+         wording, not the owner's quote). What holding the fields closes is a press writing into a table
+         that changed under it, and only the events have a table: these have nothing a typed word could
+         take away from the press that is out. So these forms go on doing what they did, and a hold that
+         reached every editor, or one screen more than the events, would fail here on every control of
+         it. */
       let answer = (): void => {}
       const held = new Promise<Response>((settle) => {
         answer = () => settle(took)
@@ -694,38 +725,43 @@ describe('what is not held', () => {
       const server = serverThat((path, init) =>
         path === save.path && init?.method === save.how ? held : null,
       )
-      const user = setupUser()
 
-      await open(user)
-      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
-      await waitFor(() => {
-        expect(whereItWrote(server.asked)).toEqual([`${save.how} ${save.path}`])
-      })
+      try {
+        const user = setupUser()
 
-      /* The request is out. Nothing is held, and the box takes what is typed into it. */
-      const named = screen.getByRole('form', { name: title })
-      const controls = Array.from(
-        must(named instanceof HTMLFormElement ? named : null, `the form ${title}`).elements,
-      ).filter((one): one is HTMLElement => one instanceof HTMLElement)
+        await open(user)
+        await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+        await waitFor(() => {
+          expect(whereItWrote(server.asked)).toEqual([`${save.how} ${save.path}`])
+        })
 
-      expect(controls.length, 'the form draws no control, so nothing here measures anything').toBeGreaterThan(0)
-      expect(controls.filter(isHeld).map(describing)).toEqual([])
-      expect(boxesOf(controls).filter((one) => one.readOnly).map(describing)).toEqual([])
+        /* The request is out. Nothing is held, and the box takes what is typed into it. */
+        const named = screen.getByRole('form', { name: title })
+        const controls = Array.from(
+          must(named instanceof HTMLFormElement ? named : null, `the form ${title}`).elements,
+        ).filter((one): one is HTMLElement => one instanceof HTMLElement)
 
-      const before = screen.getByLabelText(box)
+        expect(controls.length, 'the form draws no control, so nothing here measures anything').toBeGreaterThan(0)
+        expect(controls.filter(isHeld).map(describing)).toEqual([])
+        expect(boxesOf(controls).filter((one) => one.readOnly).map(describing)).toEqual([])
 
-      if (!(before instanceof HTMLInputElement)) {
-        throw new Error('the box is not an input')
+        const before = screen.getByLabelText(box)
+
+        if (!(before instanceof HTMLInputElement)) {
+          throw new Error('the box is not an input')
+        }
+
+        const was = before.value
+
+        await user.type(before, '1')
+        expect(screen.getByLabelText(box)).toHaveValue(`${was}1`)
+
+        answer()
+        await screen.findByRole('status', { name: 'Sačuvano' })
+      } finally {
+        /* Put back whatever happened, so a case that fails does not leave the next one without a `fetch`. */
+        server.stop()
       }
-
-      const was = before.value
-
-      await user.type(before, '1')
-      expect(screen.getByLabelText(box)).toHaveValue(`${was}1`)
-
-      answer()
-      await screen.findByRole('status', { name: 'Sačuvano' })
-      server.stop()
     },
     SLOW,
   )

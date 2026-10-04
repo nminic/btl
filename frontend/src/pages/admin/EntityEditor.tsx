@@ -211,7 +211,9 @@ export function EntityEditor({
    * reader says it is unavailable (`forms/held.ts`, and `FormRenderer`'s `fixed`, which is the one road
    * a field is held by). <b>Every field the form draws</b> is held through `fixed`; <b>what the screen
    * draws beneath the form</b> is held by the screen, which is told so (`beneath`'s second argument).
-   * The button that sends is not a field and is not held: a second press is refused above, off the ref.
+   * The button that sends is not a field and is not held: a second press sends nothing, because it is
+   * refused above off the ref. It still runs the form's own checks first, which is measured and not
+   * changed here: on a new event whose event has just been taken, they can say the address is taken.
    *
    * <p><b>Only the events pass it</b> (owner, the same day: „blokada važi samo za obrazac događaja").
    * What it closes is a press that writes into whatever form is drawn when its answer comes, and that
@@ -469,9 +471,10 @@ export function EntityEditor({
         steps={steps}
         /* EVERY FIELD OF THE FORM THAT IS DRAWN, WHILE THE SAVE IS OUT, beside whatever the screen
            holds for a reason of its own (the events hold theirs while races wait). Asked of the form
-           that is drawn and not of the entity: a copy is drawn without three of the fields, and a
-           name that no control carries holds nothing. `holding` is false wherever the screen did
-           not ask to hold the reader, so for the other four entities this is `fixed` as it was. */
+           that is drawn and not of the entity: a copy is drawn without two of the fields (the town and
+           the kind; the country is written by the town), and a name that no control carries holds
+           nothing. `holding` is false wherever the screen did not ask to hold the reader, so for the
+           other four entities this is `fixed` as it was. */
         fixed={holding ? [...(fixed ?? []), ...form.fields.map((one) => one.name)] : fixed}
         onSubmit={(values) => void handleSubmit(values)}
       />
