@@ -10,14 +10,20 @@ import { MEMBERS } from '../admin/entityForms'
 import { THE_ACCOUNT_GOES_TO, WHEN_CHANGING_MY_DATA, hiddenIn } from './myAccount'
 
 /**
- * HIDING A PROFILE FROM READERS WHO ARE NOT SIGNED IN, AND SINCE 28.09.2026 THE CHOICE
- * REACHES THE SERVER.
+ * HIDING A PROFILE FROM READERS WHO ARE NEITHER ACTIVE MEMBERS NOR THE ADMINISTRATION, AND
+ * SINCE 28.09.2026 THE CHOICE REACHES THE SERVER.
  *
  * <p>PDL P23 (owner, 06.09.2026): „Profil je vidljiv i neprijavljenom posetiocu. Član sme da
  * sakrije profil od posetilaca koji nisu članovi; od drugih članova ne sme." The published
  * privacy policy has promised the control since it was written („U podešavanjima možete
  * sakriti profil od posetilaca koji nisu prijavljeni"), and the owner chose the control
- * rather than striking the sentence.
+ * rather than striking the sentence. Since 03.10.2026 the readers it hides from are every one
+ * who is neither an active member nor the administration, a free account and a member whose fee
+ * has lapsed among them (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan
+ * član ni administracija,
+ * nikad prema aktivnom članu"); the words next to the box and in the policy still name only the
+ * visitors who are not signed in, which understates it and is a named boundary rather than a
+ * decision to leave it so.
  *
  * <p><b>WHAT WAS WRONG WITH IT UNTIL TODAY, and it is the worst shape a control can have.</b>
  * The box wrote into the session overlay and stopped there ({@code Settings.tsx}, {@code

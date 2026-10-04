@@ -10,8 +10,9 @@ import { isStaff, type Role } from './context'
  * aktivni članovi (važeća članarina), a spisak vidi i administracija; isto kao za skriven profil
  * (P23, odeljak 18)." (the record's sentence, not his own words). The same reader is therefore
  * asked about by the hidden profile as well, and this module is where
- * both screens read the question from. Only the list of who is going asks it today
- * (`event/GoingToEvent.tsx`); the hidden profile is its own increment.
+ * both screens read the question from: the list of who is going (`event/GoingToEvent.tsx`) and,
+ * since 03.10.2026, the hidden profile (`pages/profile/visible.ts`, through the two profile
+ * pages and `pages/profile/useProfileLink.ts`).
  *
  * <p><b>The server decides, and this is the screen's copy of the decision.</b>
  * `ActiveMemberOrAdministration.java` answers it on every request and refuses anybody else 404,

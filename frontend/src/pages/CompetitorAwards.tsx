@@ -13,6 +13,8 @@ import { earnedDucats } from '../data/ducatEarned'
 import { unitFor, type Ducat } from '../data/ducatRule'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
+import { isActiveMemberOrAdministration } from '../roles/activeMemberOrAdministration'
+import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
 import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
@@ -55,7 +57,8 @@ function AwardsBody({
   part: string | undefined
 }) {
   const { locale } = useI18n()
-  const { signedIn, theServerHasAnswered } = useSession()
+  const { memberNumber: readerNumber, theServerHasAnswered } = useSession()
+  const { role } = useRole()
   const overlay = useOverlay()
   const state = combinePair(
     combineResources(useCompetitors(), useResults(), useTeams()),
@@ -69,7 +72,8 @@ function AwardsBody({
            same overlay: this page draws the same head from the same record, and a check written
            on one of the two is a check on neither. */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
-        const readable = profileFor(competitors, memberNumber, signedIn !== null, theServerHasAnswered)
+        const readsHiddenProfiles = isActiveMemberOrAdministration(role, readerNumber, everybody)
+        const readable = profileFor(competitors, memberNumber, readsHiddenProfiles, theServerHasAnswered)
 
         if (readable.kind === 'waiting') {
           /* The same wait as the profile's, from the same place and for the same reason

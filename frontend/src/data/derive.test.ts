@@ -758,7 +758,7 @@ describe('rankTeams', () => {
 
   it('counts a member his team names in place of his record, from the season it gives with him', () => {
     /* PDL, odeljak 16, [ODLUKA 27.09.2026, owner]: a member who hides his profile has no team
-       on his record for a reader who is not signed in, and „ako je deo tima, njegovo ime se vidi
+       on his record for a reader who may not read a hidden profile, and „ako je deo tima, njegovo ime se vidi
        u timu i bodovi koje je doneo". The server names him on the team instead
        (`Team.alsoInTheTeam`), so the sum and the head count have to read it.
 

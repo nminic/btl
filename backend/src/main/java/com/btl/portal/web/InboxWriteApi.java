@@ -88,15 +88,22 @@ import java.util.Optional;
  * got it by guessing.
  *
  * <p><b>WHICH MEMBERS, AND IT IS THE PORTAL'S OWN RULE ABOUT WHOM IT SHOWS rather than a
- * new one.</b> {@code frontend/src/pages/profile/visible.ts}: a profile is there when
- * {@code competitor.active && !(competitor.profileHidden && reader === null)}. Whoever
- * reaches this line is signed in by construction, so the second half is satisfied and what
- * is left is {@code active} - which is also exactly the list {@link CompetitorApi} serves
- * („where c.active", the owner's choice of 13.09.2026: „a member whose fee has lapsed is not
- * on this list at all"). So a member whose profile is hidden from visitors MAY be written to
- * by another member, and one whose membership has lapsed may not. PDL P22: „Skriven profil,
- * jer clanstvo nije aktivno. Rezultati i istorijske tabele ostaju netaknuti, profil se ne
- * prikazuje."
+ * new one - in its first half.</b> {@code frontend/src/pages/profile/visible.ts}: a profile is
+ * there when {@code competitor.active} and the member does not hide it from a reader who may
+ * not read a hidden profile. Only the first half is asked here, and it is exactly the list
+ * {@link CompetitorApi} serves („where c.active", the owner's choice of 13.09.2026: „a member
+ * whose fee has lapsed is not on this list at all"). <b>The second half is deliberately NOT
+ * asked, and the sender is not necessarily a reader who would pass it</b>: he is anybody signed
+ * in with a member behind the account, and nothing here reads that member's fee, so a member
+ * whose fee has lapsed may write (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome ko nije
+ * aktivan član ni administracija,
+ * nikad prema aktivnom članu", is about what he READS, not about whom he may address).
+ * Writing to a number does not open the profile: what hiding takes away is the way in to the
+ * profile page, and the name and the number stay on the public list (PDL P23, 06.09.2026,
+ * „Podaci na spisku ostaju kako jesu; odlazi samo veza"). So a member whose profile is hidden
+ * MAY be written to by another member, and one whose membership has lapsed may not. PDL P22:
+ * „Skriven profil, jer clanstvo nije aktivno. Rezultati i istorijske tabele ostaju netaknuti,
+ * profil se ne prikazuje."
  *
  * <p><b>And a lapsed member and a member who never existed are refused by ONE answer, which
  * is a decision and not a tidiness.</b> PDL P11: „Preusmerenje mora da se ponasa isto i za
@@ -510,10 +517,13 @@ class InboxWriteApi {
 	/**
 	 * THE MEMBER THIS NUMBER NAMES, IF THE PORTAL SHOWS HIM TO WHOEVER IS ASKING.
 	 *
-	 * <p>{@code active} and nothing else, which is {@code pages/profile/visible.ts} read
-	 * for a signed in reader and the same condition {@link CompetitorApi} serves its list
-	 * by. {@code profile_hidden} is deliberately NOT asked about: it hides a member from a
-	 * VISITOR, and the caller here is signed in by construction.
+	 * <p>{@code active} and nothing else, which is the first half of
+	 * {@code pages/profile/visible.ts} and the same condition {@link CompetitorApi} serves its
+	 * list by. {@code profile_hidden} is deliberately NOT asked about: it takes away the way in
+	 * to a profile page from a reader who may not read a hidden profile, and the caller here is
+	 * not necessarily one (he is anybody signed in with a member behind the account), but the
+	 * number he writes to is on the public list whatever the member hides, so this route opens
+	 * nothing that hiding keeps shut.
 	 *
 	 * <p>A row whose {@code member_number} is empty - somebody who registered and has not
 	 * paid (V16) - cannot match an equality against it, so „is he a member at all" needs no

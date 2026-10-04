@@ -267,6 +267,12 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     why: 'OPEN: waits for the owner\'s answer to whether the list of suggestions in a field of a form is a list in the sense of decision 368 (PENDING stavka 368, review of PR 469). What it says today: the road in with `?ispravka=` waits through `<Resource>`, which says it and offers to ask again.',
     calls: [{ shape: 'condition', call: "results.status === 'ready' ? results.data : []" }],
   },
+  {
+    file: 'pages/profile/useProfileLink.ts',
+    how: 'boundary',
+    why: 'MY REASONING: a BOOLEAN and not a list. The call asks only whether the reader\'s number is on the list the server serves, to decide whether a name is a link or plain text, so a read that failed leaves the reader read as nobody who may read a hidden profile: a refusal that lifts when the list arrives, never an admission. The list is not drawn from this call: every caller hands in a `Competitor`, a record of that same list, so a failure of it is already the caller\'s to say. Written 04.10.2026 with the reader fact (PDL P23).',
+    calls: [{ shape: 'dataOr', call: 'dataOr(useCompetitors(), [])' }],
+  },
 ]
 
 /**
