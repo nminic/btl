@@ -71,6 +71,11 @@ type Out = { path: string; how: string; done: (one: Response) => void }
 /** The controls of a form, told apart by where they stand: in the table of races or outside it. */
 type Controls = { event: HTMLElement[]; races: HTMLElement[] }
 
+/** The controls as they were before any save was out, and which of them the browser's own attribute
+ *  had switched off by then. Written down at that moment and not asked again, because the same
+ *  elements asked later answer for the way they are later, which is no comparison at all. */
+type Before = Controls & { off: boolean[] }
+
 const json = (status: number, body: unknown): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
@@ -321,7 +326,7 @@ describe('an event whose save is out holds its fields', () => {
 
   /** Before the press: the table holds nothing, some control of the event is open, and the form
    *  draws something. The three floors every case below stands on. */
-  function expectOpen(title: string): Controls {
+  function expectOpen(title: string): Before {
     const open = controlsOf(title)
 
     expect(open.races.length, 'the table draws no control, so nothing below measures it').toBeGreaterThan(0)
@@ -334,11 +339,11 @@ describe('an event whose save is out holds its fields', () => {
       'every control of the event is held before any save is out, so the save is not what holds them',
     ).toBeGreaterThan(0)
 
-    return open
+    return { ...open, off: [...open.races, ...open.event].map(isSwitchedOff) }
   }
 
   /** Everything the sentence says is true now, asked of the controls and not of a list. */
-  function expectHeld(title: string, open: Controls): void {
+  function expectHeld(title: string, open: Before): void {
     const now = controlsOf(title)
     const all = [...now.races, ...now.event]
 
@@ -363,9 +368,12 @@ describe('an event whose save is out holds its fields', () => {
         .map(describing),
       'a held control is dressed as a live one',
     ).toEqual([])
-    /* Told off and not switched off: whatever the browser's own attribute switched off before the
-       press is what it has switched off now. */
-    expect(all.map(isSwitchedOff)).toEqual([...open.races, ...open.event].map(isSwitchedOff))
+    /* Told off and not switched off: whatever the browser's own attribute had switched off before the
+       press is what it has switched off now, as it was written down then. */
+    expect(
+      all.map(isSwitchedOff),
+      'a control was switched off by the save, which takes it out of the order of focus',
+    ).toEqual(open.off)
     expect(screen.getByText(sr.results.sending)).toHaveAttribute('role', 'status')
   }
 
