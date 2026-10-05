@@ -5,6 +5,8 @@ import { must } from '../test/at'
 import { renderWithI18n } from '../test/render'
 import { ruleFor } from '../test/stylesheet'
 import { bare } from '../test/sources'
+import { EventRaces } from '../pages/admin/EventRaces'
+import { newRaceRow } from '../pages/admin/raceRows'
 import { FormRenderer } from './FormRenderer'
 import { heldControl } from './held'
 import type { FieldType, FormDef } from './types'
@@ -302,6 +304,61 @@ describe('what a held control wears', () => {
       const live = getComputedStyle(screen.getByLabelText(/proba.dopisano/))
 
       expect(live.cursor).not.toBe('default')
+    } finally {
+      style.remove()
+    }
+  })
+
+  it('still dresses every held cell of the table of races, whatever else the sheets say', () => {
+    /* The table of an event is the second place the portal draws held boxes outside the renderer
+       (04.10.2026: while the save of an event is out, every cell of it is held, `EventRaces.tsx`).
+       It stands under `.entity-races`, whose rules reach a `.field__control` by an ancestor and
+       outweigh the dress (0,2,0 and more against 0,1,0): `.entity-races .field__control` is one,
+       and today it sets a width and nothing else. The cascade case above measures the controls the
+       renderer draws and cannot see these, so a rule of that ancestor that painted a ground or a
+       cursor would leave every cell of a held table looking live while the markup said otherwise.
+
+       The cells the table draws, in the elements it puts around them, with every sheet laid over
+       them and the worst order: the sheet the dress lives in first and every other after it. Asked
+       of the browser's own cascade as far as jsdom has one, which is the way the case above asks it
+       and leaves out the same things (`@media` and `@container`, which `npm run appearance` asks). */
+    const own = join('src', 'forms', 'FormRenderer.css')
+    const sheets = [own, ...globSync('src/**/*.css').filter((file) => file !== own)]
+    const style = document.createElement('style')
+
+    style.textContent = sheets
+      .map((file) => readFileSync(join(process.cwd(), file), 'utf-8'))
+      .join(NEWLINE)
+    document.head.append(style)
+
+    renderWithI18n(
+      <EventRaces
+        eventName="Probna trka"
+        eventDate="19/04/2027"
+        rows={[newRaceRow('Probna trka', '19/04/2027')]}
+        onRows={() => undefined}
+        refused={false}
+        hasRaces
+        locked
+      />,
+    )
+
+    try {
+      const cells = [...document.querySelectorAll<HTMLElement>('.entity-races .field__control')]
+
+      /* The floor, and it says what was measured: the name, the day, the kind and the four measures
+         of the one row. A table that draws fewer is a table this case is no longer asking about. */
+      expect(cells.length, 'the table draws fewer cells than a row has').toBe(7)
+
+      for (const cell of cells) {
+        const seen = getComputedStyle(cell)
+
+        expect(cell, `${cell.id || cell.getAttribute('aria-label')} is not wearing the dress`).toHaveClass(NAME)
+        expect(seen.cursor, `${cell.getAttribute('aria-label')} lost its cursor to another rule`).toBe('default')
+        expect(seen.background, `${cell.getAttribute('aria-label')} lost its ground to another rule`).toBe(
+          'var(--surface-hover)',
+        )
+      }
     } finally {
       style.remove()
     }
