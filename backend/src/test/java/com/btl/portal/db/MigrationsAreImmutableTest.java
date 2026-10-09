@@ -345,7 +345,27 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   file, worked out with the copy of its algorithm the rows above describe (CRC32 over the
 			   lines, line breaks and a BOM left out), which reproduced V9, V50, V52, V53 and V54 to the
 			   digit before it was trusted here, and this list is what confirms it on the gate. */
-			new Applied("55", "V55__one_picture_of_a_member_waits_at_a_time.sql", 16641354));
+			new Applied("55", "V55__one_picture_of_a_member_waits_at_a_time.sql", 16641354),
+
+			/* V56. A membership held on a balance carries its trail whole or not at all: one check
+			   constraint, scoped to the basis by name, and the three column comments V35 wrote replaced
+			   because they spoke of an exemption alone (the owner's decision of 03.10.2026, chosen among
+			   the options put to him: PDL P8, the entry „Trag (ko je odobrio i kada) ide uz svaku radnju
+			   koja prasta novac"; ADL, the entries of 03.10.2026 and 09.10.2026). No column and no data.
+
+			   56 because it is the number this branch was given on 09.10.2026 (ADL, the entry of that day
+			   under the decision of 03.10.2026), and it is MEASURED to be free: all 1378 refs, local and
+			   remote, and all 324 worktrees were searched that day and none held a migration at V56 or
+			   above, and origin/main stands at V55. It is not V57 because this branch merges before the
+			   one that removes competitor.active, and Flyway refuses a lower version after a higher one;
+			   that branch takes the next free number when it starts.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   worked out with the copy of its algorithm the rows above describe (CRC32 over the lines,
+			   line breaks and a BOM left out), which reproduced V54 and V55 to the digit before it was
+			   trusted here, and this list is what confirms it on the gate. */
+			new Applied("56", "V56__a_membership_on_a_balance_carries_its_trail_whole_or_not_at_all.sql",
+					559365428));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {
