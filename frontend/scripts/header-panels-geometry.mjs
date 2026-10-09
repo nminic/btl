@@ -27,11 +27,12 @@
  *
  * `--table` prints every measurement and not only the ones that failed; `--widths 360,390`,
  * `--texts 100` (or 200) and `--states messages,language` (names, as printed) narrow a run while
- * a stylesheet is being worked on, and `--shots <folder>` keeps a picture of the top of the page
- * for each measurement. The exit code is 0 where every panel is where it should be, 1 where one
- * is not, and 2 where nothing could be measured, which is not a pass: a browser that did not
- * start, a portal that did not draw the header of the person it was asked about, a text size the
- * browser did not take.
+ * a stylesheet is being worked on, `--widths 320-1300:5` is every fifth width from 320 to 1300 (a
+ * sweep, for „on every width" asked of more than seven of them), and `--shots <folder>` keeps a
+ * picture of the top of the page for each measurement. The exit code is 0 where every panel is
+ * where it should be, 1 where one is not, and 2 where nothing could be measured, which is not a
+ * pass: a browser that did not start, a portal that did not draw the header of the person it was
+ * asked about, a text size the browser did not take.
  *
  * Chrome is taken from `CHROME_PATH`, falling back to the usual Windows install; on Linux
  * and macOS that variable has to be given. No port is fixed: Chrome is asked for any free
@@ -133,12 +134,20 @@
  *   in either build, at either size of text, and the left edge of the menu is the gutter (16 at 360,
  *   390 and 640, and for a visitor at 768 and 819, production) or the right edge of its button less
  *   its own 176 (372.3 at 768 and 423.3 at 819 for a member, production). From 820 up, at the text
- *   the browser starts with, nothing moved.
+ *   the browser starts with, nothing moved. A sweep of every fifth width from 320 to 1300
+ *   (`--widths 320-1300:5`, both language menus, both sizes of text: 788 measurements) holds all
+ *   788 on the production build and all 788 on the QA build; over `origin/main` it fails 554 of
+ *   788 on the production build, every one of them for not being under its button and none for
+ *   leaving the screen.
  * - *A browser that does not know anchor positioning* (older than Chrome 125, Safari 26 or
  *   Firefox 147) reads none of the block the menu is hung from, and keeps the shape of the repair of
- *   02.10.2026: whole on the screen and far from its button. The Chrome this drives has the feature,
- *   so that shape is not measured here by a flag; it is measured by a build whose `@supports` asks
- *   for something no browser has, which is how it was held at the time of the change.
+ *   02.10.2026: whole on the screen and far from its button. The Chrome this drives has the feature
+ *   and has no flag that turns it off (measured: `--disable-blink-features=CSSAnchorPositioning`
+ *   changes nothing), so that shape is measured by a build whose `@supports` asks for something no
+ *   browser has. Of the 32 panels it holds there (the messages, the account and the language menus
+ *   of both headers, at 360, 768, 819 and 1280 and at both sizes of text) 12 fail, every one a
+ *   language menu and only for not being under its button; none runs off an edge, scrolls the page
+ *   sideways or cannot be reached.
  * - *Which panel is on top of which, and what is under the header,* when two are open or when
  *   the navigation is: the panels close on a press outside them, so two are never open, and
  *   the navigation is not measured with a panel over it.
@@ -196,9 +205,28 @@ const TABLE = flags.get('table') === true
 const SHOTS = typeof flags.get('shots') === 'string' ? resolve(String(flags.get('shots'))) : null
 
 const ALL_WIDTHS = [360, 390, 640, 768, 819, 820, 1280]
+
+/** `--widths 360,768` names widths, and `--widths 320-1300:5` is every fifth from 320 to 1300: a
+ *  sweep, for the question „on every width" asked of more than the seven the run reads by default.
+ *  The two can be mixed, `--widths 360,500-700:10`. A word that is neither is `NaN`, which stops the
+ *  run before it starts. */
 const widths =
   typeof flags.get('widths') === 'string'
-    ? String(flags.get('widths')).split(',').map(Number)
+    ? String(flags.get('widths'))
+        .split(',')
+        .flatMap((word) => {
+          const range = /^(\d+)-(\d+):(\d+)$/.exec(word)
+
+          if (range === null) {
+            return [Number(word)]
+          }
+
+          const [from, to, step] = [Number(range[1]), Number(range[2]), Number(range[3])]
+
+          return step > 0 && from <= to
+            ? Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, at) => from + at * step)
+            : [Number.NaN]
+        })
     : ALL_WIDTHS
 
 /** The sizes of text a run reads every width at, in per cent of the browser's own: both by
@@ -840,10 +868,10 @@ function judge(found) {
   return wrong
 }
 
-/** How far a panel stands from its button sideways, and nothing if the two overlap: the owner's own
- *  measure (03.10.2026, „izmereno između 348 i 552 piksela"), printed for every panel. It is held for
- *  the language menu (it is nothing there) and only printed for the other two, which hang from the
- *  bar and are not asked to be under their buttons. */
+/** How far a panel stands from its button sideways, and nothing if the two overlap: the measure the
+ *  owner was shown when he decided (03.10.2026, `ADL.md` A63: between 348 and 552 pixels), printed
+ *  for every panel. It is held for the language menu (it is nothing there) and only printed for the
+ *  other two, which hang from the bar and are not asked to be under their buttons. */
 const awayFrom = (found) =>
   Math.max(0, found.panel.left - found.button.right, found.button.left - found.panel.right)
 
@@ -887,11 +915,18 @@ function shutDown() {
   server.close()
 }
 
-const watchdog = setTimeout(() => {
-  console.error('watchdog: the run took longer than ten minutes, stopping it')
-  shutDown()
-  process.exit(2)
-}, 10 * 60 * 1000)
+/** Ten minutes, and more where the run is longer than the default one: forty measurements a minute
+ *  is what a busy machine gives, and a sweep of widths is a thousand of them. */
+const MINUTES = Math.max(10, Math.ceil((widths.length * wanted.length * texts.length) / 40))
+
+const watchdog = setTimeout(
+  () => {
+    console.error(`watchdog: the run took longer than ${MINUTES} minutes, stopping it`)
+    shutDown()
+    process.exit(2)
+  },
+  MINUTES * 60 * 1000,
+)
 
 try {
   /* The browser as it comes for every width, and a second one with the text at 200% for every
