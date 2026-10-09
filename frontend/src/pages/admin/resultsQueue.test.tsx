@@ -13,7 +13,7 @@ import { Decided, Inbox } from '../../test/decided'
 import { renderAt } from '../../test/render'
 import { refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
-import { setupUser } from '../../test/user'
+import { setupUser, type Pressing } from '../../test/user'
 import { figuresAsked } from './amendFields'
 import { QUEUE } from './queues'
 
@@ -262,16 +262,24 @@ async function untilItHasAnswered(): Promise<void> {
   })
 }
 
-/** A decision the route holds until the case lets it answer, and then takes; each request gets an
- *  answer of its own, so a second one sent by mistake is counted rather than broken. */
-function heldDecision(): { decided: () => Promise<Response>; release: () => void } {
+/** A decision the route holds until the case lets it answer, and then answers with `answer`, which
+ *  takes it unless a case says otherwise; each request gets an answer of its own, so a second one
+ *  sent by mistake is counted rather than broken. */
+function heldDecision(answer: () => Response = taken): {
+  decided: () => Promise<Response>
+  release: () => void
+} {
   let release: () => void = () => undefined
   const gate = new Promise<void>((resolve) => {
     release = resolve
   })
 
-  return { decided: () => gate.then(taken), release: () => release() }
+  return { decided: () => gate.then(answer), release: () => release() }
 }
+
+/** The sentence that says a request is out, wherever on the page it was drawn. */
+const sending = () =>
+  screen.queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)
 
 function openTheQueue(probe = <Decided />) {
   return renderAt(PATH, 'superadmin', RUNNER, undefined, null, probe)
@@ -848,6 +856,72 @@ describe('the figures the moderator sets', () => {
     }
   })
 
+  /**
+   * THE RUN THE PANEL WAS OPENED ON IS THE RUN THE APPROVAL GOES TO, wherever in the queue it stands
+   * (the review of this branch, 09.10.2026).
+   *
+   * <p><b>What the cases above could not say.</b> The panel finds its run again by the identity it was
+   * opened on (`fixingRow`), and the cases above either open it on the first run in the queue or read
+   * only what the request carries. A panel that asked for the FIRST waiting run instead approved the
+   * first member's result at the figures typed for the member the panel was opened on, and left that
+   * member's own run waiting: the body is the one the case expects, the panel goes away as it should,
+   * and an approval cannot be taken back.
+   *
+   * <p>One case per run the panel can be opened on, so a run read from any one fixed place in the queue
+   * is the wrong run on two of the three. What is asked of each is what the body cannot say: WHERE the
+   * request went, that THIS run left the queue, and that every other run, the first among them, is
+   * still waiting.
+   */
+  const AMENDABLE = [
+    { name: 'first run', member: RUNNER, id: 701, amended: { seconds: 3300 } },
+    {
+      name: 'second run',
+      member: '000020',
+      id: 702,
+      amended: { distanceKm: 52.4, ascentM: 640, descentM: 610 },
+    },
+    {
+      name: 'third run',
+      member: '000030',
+      id: 703,
+      amended: { distanceKm: 14.35, ascentM: 780, descentM: 210, seconds: 7200 },
+    },
+  ]
+
+  it.each(AMENDABLE)(
+    'approves the $name where the panel was opened on it, and leaves every other run waiting',
+    async ({ member, id, amended }) => {
+      const user = setupUser()
+      const server = serverWith(RUNS)
+
+      try {
+        openTheQueue()
+
+        await user.click((await rowOf(member)).getByRole('button', { name: sr.review.amend }))
+        await user.click(panel().getByRole('button', { name: sr.review.amendSave }))
+        await untilItHasAnswered()
+
+        expect(decisionsIn(server.asked).map((one) => one.path)).toEqual([
+          `/api/verification/${id}/decision`,
+        ])
+        expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({ approved: true, reason: '', amended })
+        expect(screen.queryByText(member)).toBeNull()
+        expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull()
+
+        for (const other of [RUNNER, '000020', '000030', '000040', '000050'].filter((one) => one !== member)) {
+          expect(screen.getByText(other)).toBeVisible()
+        }
+
+        expect(decidedIn().getAllByRole('listitem').map((one) => one.textContent?.split(' | ')[0])).toEqual([
+          String(id),
+        ])
+      } finally {
+        server.stop()
+      }
+    },
+    SLOW,
+  )
+
   it('refuses a box the member’s own form would refuse, says which, and sends nothing', async () => {
     const user = setupUser()
     const server = serverWith(RUNS)
@@ -949,6 +1023,326 @@ describe('the figures the moderator sets', () => {
     } finally {
       server.stop()
     }
+  })
+})
+
+/**
+ * A DECISION THAT IS OUT WITH THE ROUTE, ASKED OF THE TWO BOXES THAT CAN SEND ONE (owner, 02.10.2026,
+ * choosing between three outcomes he was priced; PDL, „Odluke iz ciscenja nalaza", first item: „Ne",
+ * „Odustani" and Escape are onemoguceni while the request travels, with the state said in words, and the
+ * question is closed by whoever asked it when the answer arrives. It holds for ALL the screens with a
+ * confirmation, and „vracanje sa razlogom" is named among them in the second item, „Odbijanje zatvara
+ * pitanje kao i uspeh": „na svaki odgovor servera pitanje se zatvara, a razlog odbijanja stoji uz dugme").
+ *
+ * <p><b>What the two boxes did until the review of 09.10.2026, measured.</b> „Odustani" put either box
+ * away over a request that went on, so a refusal that arrived afterwards was read against nothing and
+ * the typed reason had gone with the box; and neither said in words that a request was out. The queue of
+ * cards (`verificationDecision.test.tsx`, „a refusal that is out with the route") and the box they share
+ * (`SendBack.test.tsx`) have had both rules since 02.10.2026. This queue sent nothing to the server until
+ * R1, so the rules had nothing to hold for here, and the rewrite onto the route carried neither.
+ *
+ * <p><b>Escape.</b> Neither box handles Escape, so there is no key of theirs to refuse
+ * (`admin/EntityEditor.tsx`, `DeleteRecord`, says the same of itself). The case that presses it while a
+ * request is out holds that a handler added to either box one day has to ask the same question.
+ *
+ * <p><b>The decision is HELD</b>, a promise that has not come back (`test/serverAnswers.ts` says why it
+ * is the only way to measure a screen while it waits), so every case can press and inspect the box before
+ * the route says anything. Every box is opened on the SECOND run of the queue, so the run a decision is
+ * out for is not the first one the queue draws.
+ */
+type Box = {
+  /** What a failure calls it. */
+  name: string
+  /** The box as a reader meets it, and nothing where none is open. */
+  group: () => HTMLElement | null
+  /** The button that sends what the box holds. */
+  send: () => HTMLElement
+  /** The button that puts the box away. */
+  cancel: () => HTMLElement
+  /** The box opened over the run of this member, with something typed in it that closing it would lose. */
+  openOver: (user: Pressing, member: string) => Promise<void>
+  /** Where that is typed. */
+  typed: () => HTMLElement
+  /** What it says. */
+  said: string
+  /** What the route is sent for the second run of the queue. */
+  body: unknown
+  /** What the session records once the route has taken the decision about the second run. */
+  recorded: RegExp
+}
+
+const BOXES: Box[] = [
+  {
+    name: 'the reason for a refusal',
+    group: () => screen.queryByRole('group', { name: sr.review.sendBack }),
+    send: () => screen.getByRole('button', { name: sr.review.confirmSendBack }),
+    cancel: () => screen.getByRole('button', { name: sr.review.cancel }),
+    openOver: async (user, member) => {
+      await user.click((await rowOf(member)).getByRole('button', { name: sr.review.sendBack }))
+      await user.type(screen.getByLabelText(sr.review.reason), 'Vreme se ne poklapa.')
+    },
+    typed: () => screen.getByLabelText(sr.review.reason),
+    said: 'Vreme se ne poklapa.',
+    body: { approved: false, reason: 'Vreme se ne poklapa.' },
+    recorded: /^702 \| rejected \| Vreme se ne poklapa\./,
+  },
+  {
+    name: 'the figures of the moderator',
+    group: () => screen.queryByRole('group', { name: sr.review.amendTitle }),
+    send: () => screen.getByRole('button', { name: sr.review.amendSave }),
+    cancel: () => screen.getByRole('button', { name: sr.review.amendCancel }),
+    openOver: async (user, member) => {
+      await user.click((await rowOf(member)).getByRole('button', { name: sr.review.amend }))
+      await user.clear(screen.getByLabelText(sr.newResult.distanceKm))
+      await user.type(screen.getByLabelText(sr.newResult.distanceKm), '53,1')
+    },
+    typed: () => screen.getByLabelText(sr.newResult.distanceKm),
+    said: '53,1',
+    body: { approved: true, reason: '', amended: { distanceKm: 53.1, ascentM: 640, descentM: 610 } },
+    recorded: /^702 \| approved/,
+  },
+]
+
+/** The member of the second run of the queue, which is the one every box here is opened over. */
+const SECOND = '000020'
+
+describe('a decision that is out with the route', () => {
+  describe.each(BOXES)('over $name', (box) => {
+    it('puts the box away on „Odustani" while nothing is out, and sends nothing', async () => {
+      const user = setupUser()
+      const server = serverWith(RUNS)
+
+      try {
+        openTheQueue()
+
+        await box.openOver(user, SECOND)
+
+        /* Told off by nothing, so what follows is the box's own state and not a leftover. */
+        expect(box.cancel()).not.toHaveAttribute('aria-disabled', 'true')
+        expect(sending()).toHaveLength(0)
+
+        await user.click(box.cancel())
+        await untilItHasAnswered()
+
+        expect(box.group()).toBeNull()
+        expect(decisionsIn(server.asked)).toHaveLength(0)
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('tells „Odustani" off while the decision is out, and keeps the box with what was typed in it', async () => {
+      const user = setupUser()
+      const decision = heldDecision()
+      const server = serverWith(RUNS, decision.decided)
+
+      try {
+        openTheQueue()
+
+        await box.openOver(user, SECOND)
+        await user.click(box.send())
+
+        const keep = box.cancel()
+
+        /* TOLD OFF AND NOT SWITCHED OFF: the control that was pressed has the focus, and a native
+           `disabled` would drop it to the top of the document (`SendBack.tsx` says the same). */
+        expect(keep).toHaveAttribute('aria-disabled', 'true')
+        expect(keep).not.toBeDisabled()
+
+        await user.click(keep)
+
+        /* THE BOX IS STILL THERE, with what was typed in it: put away, it took the moderator's words
+           with it, and a refusal that arrived afterwards was drawn above buttons with nothing to be
+           read against. */
+        expect(box.group()).not.toBeNull()
+        expect(box.typed()).toHaveValue(box.said)
+
+        decision.release()
+
+        /* AND THE ANSWER CLOSES THE BOX, which „Odustani" could not: nobody pressed anything to close
+           it (the owner's „list se zatvara sam kad stigne odgovor"). */
+        await waitFor(() => {
+          expect(box.group()).toBeNull()
+        })
+        await untilItHasAnswered()
+
+        expect(decisionsIn(server.asked).map((one) => one.path)).toEqual(['/api/verification/702/decision'])
+        expect(bodyOf(decisionsIn(server.asked)[0])).toEqual(box.body)
+        expect(decidedIn().getByText(box.recorded)).toBeInTheDocument()
+        expect(screen.queryByText(SECOND)).toBeNull()
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('says that it is sending, only while it is', async () => {
+      const user = setupUser()
+      const decision = heldDecision()
+      const server = serverWith(RUNS, decision.decided)
+
+      try {
+        openTheQueue()
+
+        await box.openOver(user, SECOND)
+
+        expect(sending()).toHaveLength(0)
+
+        await user.click(box.send())
+
+        expect(sending()).toHaveLength(1)
+        /* IN THE BOX AND NOT BESIDE IT, so it is said where the buttons that cannot act are. */
+        expect(within(must(box.group(), 'the box')).getByRole('status')).toHaveTextContent(sr.results.sending)
+
+        decision.release()
+        await waitFor(() => {
+          expect(box.group()).toBeNull()
+        })
+
+        expect(sending()).toHaveLength(0)
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('is not put away by Escape while the decision is out', async () => {
+      const user = setupUser()
+      const decision = heldDecision()
+      const server = serverWith(RUNS, decision.decided)
+
+      try {
+        openTheQueue()
+
+        await box.openOver(user, SECOND)
+        await user.click(box.send())
+
+        /* PRESSED WHERE THE MODERATOR'S HANDS ARE: the button he just pressed has the focus, and it is
+           inside the box. A press made with the focus on the page behind it would pass whatever a
+           handler on the box did. */
+        expect(box.send()).toHaveFocus()
+
+        await user.keyboard('{Escape}')
+
+        expect(box.group()).not.toBeNull()
+        expect(box.typed()).toHaveValue(box.said)
+
+        decision.release()
+        await waitFor(() => {
+          expect(box.group()).toBeNull()
+        })
+        await untilItHasAnswered()
+
+        expect(decisionsIn(server.asked)).toHaveLength(1)
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('closes by itself when the route refuses, and leaves the sentence on the run’s row', async () => {
+      /* THE OWNER'S RULE OF 02.10.2026 (PDL, „Odbijanje zatvara pitanje kao i uspeh"): „na svaki odgovor
+         servera pitanje se zatvara, a razlog odbijanja stoji uz dugme". Nobody pressed „Odustani", so a
+         box that is gone is one the ANSWER closed; the sentence is the one the route named, drawn on
+         the row it is about where this screen has always drawn it. */
+      const user = setupUser()
+      const decision = heldDecision(() => refused('O stavci je već odlučeno.', 409))
+      const server = serverWith(RUNS, decision.decided)
+
+      try {
+        openTheQueue()
+
+        await box.openOver(user, SECOND)
+        await user.click(box.send())
+
+        decision.release()
+        await waitFor(() => {
+          expect(box.group()).toBeNull()
+        })
+        await untilItHasAnswered()
+
+        expect(sending()).toHaveLength(0)
+        expect(screen.getAllByRole('alert')).toHaveLength(1)
+        expect((await rowOf(SECOND)).getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+        /* And nothing was recorded, which is what a refusal is: the run is still waiting. */
+        expect(decidedIn().queryAllByRole('listitem')).toHaveLength(0)
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('can be opened again after a refusal, with nothing of the first attempt left on it', async () => {
+      /* WHAT THE FIRST ATTEMPT RAISED IS LET GO OF: a flag left standing after the answer would tell
+         the second box off and make it say it is sending before anything was pressed, beside a button
+         that looks live. */
+      const user = setupUser()
+      const decision = heldDecision(() => refused('O stavci je već odlučeno.', 409))
+      const server = serverWith(RUNS, decision.decided)
+
+      try {
+        openTheQueue()
+
+        await box.openOver(user, SECOND)
+        await user.click(box.send())
+
+        decision.release()
+        await waitFor(() => {
+          expect(box.group()).toBeNull()
+        })
+        await untilItHasAnswered()
+
+        await box.openOver(user, SECOND)
+
+        expect(box.cancel()).not.toHaveAttribute('aria-disabled', 'true')
+        expect(sending()).toHaveLength(0)
+
+        /* AND IT SENDS WHAT IT IS PRESSED FOR, which the attributes cannot say: the second asking
+           reaches the route. */
+        await user.click(box.send())
+        await waitFor(() => {
+          expect(decisionsIn(server.asked)).toHaveLength(2)
+        })
+        await waitFor(() => {
+          expect(box.group()).toBeNull()
+        })
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
+
+    it('does not tell the box off for a decision about another run, and puts it away', async () => {
+      /* A SOURCE REPLACEMENT, ASKED AS A CASE: „a request is out for THIS run" against „a request is
+         out". `deciding` is true for any decision on the tab, and a box opened over another run while
+         one is held has nothing of its own out - its buttons that cannot act are the ones that would
+         SEND (`aria-disabled={deciding}`, one decision at a time over the whole tab), and it must not
+         say a request is out that is not its own (the same fault the review of 02.10.2026 measured on
+         the queue of cards, `verificationDecision.test.tsx`). */
+      const user = setupUser()
+      const decision = heldDecision()
+      const server = serverWith(RUNS, (id) => (id === '701' ? decision.decided() : taken()))
+
+      try {
+        openTheQueue()
+
+        await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+        await waitFor(() => {
+          expect(decisionsIn(server.asked)).toHaveLength(1)
+        })
+
+        await box.openOver(user, SECOND)
+
+        expect(box.cancel()).not.toHaveAttribute('aria-disabled', 'true')
+        expect(sending()).toHaveLength(0)
+
+        await user.click(box.cancel())
+
+        expect(box.group()).toBeNull()
+
+        decision.release()
+        await untilItHasAnswered()
+
+        expect(decisionsIn(server.asked).map((one) => one.path)).toEqual(['/api/verification/701/decision'])
+      } finally {
+        server.stop()
+      }
+    }, SLOW)
   })
 })
 

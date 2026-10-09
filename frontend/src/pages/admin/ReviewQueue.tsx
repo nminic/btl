@@ -142,6 +142,34 @@ export function ReviewQueue() {
    */
   const outstanding = useRef(false)
   const [deciding, setDeciding] = useState(false)
+  /**
+   * THE RUN WHOSE SINGLE DECISION IS OUT WITH THE ROUTE, or nothing where none is: which of the two
+   * boxes is waiting for an answer, which `deciding` above cannot say.
+   *
+   * <p><b>„Ne", „Odustani" i Escape dok zahtev još putuje ka serveru su onemogućeni, uz vidljivo
+   * stanje rada</b> (owner, 02.10.2026, choosing between three outcomes he was priced; PDL, „Odluke iz
+   * ciscenja nalaza"), and the second item of the same day names the reason box among the screens it
+   * holds for (anchor „Odbijanje zatvara pitanje kao i uspeh": „vraćanje sa razlogom"). A box put away
+   * over a request that goes on is a box whose answer arrives to nothing: the reason typed in it is
+   * gone, and a refusal that comes back is read against no words. So the box over the run of a
+   * decision that is out tells „Odustani" off and says in words that it is sending (`SendBack.tsx`,
+   * `working`, is the precedent, and so is the queue of cards), and the answer closes it
+   * (`closeOver`), whichever answer it is.
+   *
+   * <p><b>The run and not the flag</b>, for the reason the queue of cards gives (`PendingQueue.tsx`,
+   * `handingBack`): `deciding` is true for any decision on the tab, a sweep among them, and a box
+   * opened over ANOTHER run has nothing of its own out. Told off for work that is not its own it would
+   * say a request is out that is not, and its „Odustani" would refuse the moderator who opened it to
+   * think.
+   *
+   * <p><b>What this does not cover, written down rather than left to be found.</b> The sweep: it asks the
+   * route about one run after another and closes the boxes over the runs it settled when it is done
+   * (`closeOver`), so a box over the run it is asking about is not told off meanwhile. And a box that
+   * is REPLACED: the buttons that open a box are never told off (opening decides nothing), so a
+   * moderator can open one over another run while a request is out, as he can on the queue of cards;
+   * the request goes on, and its answer settles its own run.
+   */
+  const [outFor, setOutFor] = useState<string | null>(null)
 
   /** Both panels close over a row once its answer is in, whichever answer it was: the owner's
    *  choice of 02.10.2026 among the outcomes offered, in the record's wording (PDL „Odbijanje
@@ -198,6 +226,7 @@ export function ReviewQueue() {
 
     outstanding.current = true
     setDeciding(true)
+    setOutFor(one.id)
 
     try {
       if (await sendOne(one, answered)) {
@@ -213,6 +242,7 @@ export function ReviewQueue() {
     } finally {
       outstanding.current = false
       setDeciding(false)
+      setOutFor(null)
     }
   }
 
@@ -268,6 +298,11 @@ export function ReviewQueue() {
       setDeciding(false)
     }
   }
+
+  /* Whether the decision that is out is about the run each box is open over, which is all that
+     „working" means to the two of them (`outFor` says why it is the run and not `deciding`). */
+  const reasonIsWorking = open !== null && open.id === outFor
+  const panelIsWorking = fixing !== null && fixing.id === outFor
 
   return (
     <div className="member">
@@ -507,6 +542,7 @@ export function ReviewQueue() {
                 <AmendPanel
                   fixing={fixing}
                   deciding={deciding}
+                  working={panelIsWorking}
                   onChange={setFixing}
                   onApprove={(amended) => {
                     void decide(fixingRow, anApprovalWith(amended))
@@ -564,10 +600,38 @@ export function ReviewQueue() {
                     >
                       {t('review.confirmSendBack')}
                     </button>
-                    <button type="button" className="button button--secondary" onClick={() => setOpen(null)}>
+                    {/* Told off, not switched off, and refused in its own handler as well, exactly
+                        as `SendBack.tsx` has it: while the refusal this box sent is out, putting the
+                        box away would close it over a request that goes on and take the reason with
+                        it (owner, 02.10.2026: „Ne", „Odustani" i Escape dok zahtev još putuje ka
+                        serveru su onemogućeni). Nothing here handles Escape, so there is no key to
+                        refuse (`DeleteRecord` says the same of itself). */}
+                    <button
+                      type="button"
+                      className="button button--secondary"
+                      aria-disabled={reasonIsWorking ? true : undefined}
+                      onClick={() => {
+                        if (reasonIsWorking) {
+                          return
+                        }
+
+                        setOpen(null)
+                      }}
+                    >
                       {t('review.cancel')}
                     </button>
                   </div>
+
+                  {/* SAID IN WORDS, ONLY WHILE IT IS TRUE (WCAG 2.2 AA, 4.1.3), in the portal's own
+                      sentence for a request that is out (`results.sending`, as `SendBack.tsx` draws
+                      it). It stands beside the line under it only if the moderator empties the field
+                      while the request is out, which changes nothing about a request already sent:
+                      the field is not locked, as it is not in `SendBack.tsx`. */}
+                  {reasonIsWorking && (
+                    <p className="rate__hint" role="status">
+                      {t('results.sending')}
+                    </p>
+                  )}
 
                   {/* Why it will not go yet, said where it can be read rather than left to a
                       button that is simply dead. */}
@@ -603,12 +667,26 @@ export function ReviewQueue() {
 function AmendPanel({
   fixing,
   deciding,
+  working,
   onChange,
   onApprove,
   onCancel,
 }: {
   fixing: Fixing
   deciding: boolean
+  /**
+   * Whether the decision about the run this panel is open over is out with the route.
+   *
+   * <p><b>While it is, „Odustani" answers nothing</b> (owner, 02.10.2026: „Ne", „Odustani" i Escape
+   * dok zahtev još putuje ka serveru su onemogućeni, uz vidljivo stanje rada): putting the panel away
+   * would close it over an approval that goes on, with the figures the moderator typed gone while
+   * the approval they belong to is still on its way. It says so with `aria-disabled`, is refused in its
+   * handler as well, and the portal's own sentence for a request that is out is said under the
+   * buttons. The caller closes the panel when the answer arrives, whichever answer it is. Not
+   * `deciding`: that is true for any decision on the tab, and a panel open over another run has
+   * nothing of its own out (`outFor` in `ReviewQueue` says why).
+   */
+  working: boolean
   onChange: (next: Fixing) => void
   onApprove: (amended: { distanceKm?: number; ascentM?: number; descentM?: number; seconds?: number }) => void
   onCancel: () => void
@@ -686,10 +764,30 @@ function AmendPanel({
         >
           {t('review.amendSave')}
         </button>
-        <button type="button" className="button button--secondary" onClick={onCancel}>
+        <button
+          type="button"
+          className="button button--secondary"
+          aria-disabled={working ? true : undefined}
+          onClick={() => {
+            /* PUT AWAY ONLY WHEN NOTHING IS OUT, for the reason `working` gives. */
+            if (working) {
+              return
+            }
+
+            onCancel()
+          }}
+        >
           {t('review.amendCancel')}
         </button>
       </div>
+
+      {/* SAID IN WORDS, ONLY WHILE IT IS TRUE (WCAG 2.2 AA, 4.1.3), in the portal's own sentence for
+          a request that is out (`results.sending`), under the buttons that cannot act. */}
+      {working && (
+        <p className="rate__hint" role="status">
+          {t('results.sending')}
+        </p>
+      )}
 
       {/* And why it will not go, said rather than left to be guessed. */}
       {waits && (
