@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
@@ -47,11 +47,25 @@ import { setupUser, type Pressing } from '../../test/user'
  * be told from a press after it by anything a reader sees, because the refused press sends nothing
  * either way, the editor's own guard being there.
  *
+ * <p><b>No case here ends by running out of its own time</b> (review of PR 492, finding on the three
+ * other screens): a case that fails by its clock says nothing about what it was asked, and a series of
+ * mutations that counted it as caught was counting a race between two equal timers. What the form says in
+ * a press, and what the button wears after it, is on the screen when the press returns, so it is asked at
+ * once; what has to be waited for (a write that goes out after the token) is waited for in half of the
+ * time a case has, so that the case fails with the assertion's own words, and the floor at the foot of the
+ * file holds that the half is still half.
+ *
  * <p><b>What is not asked here, and why.</b> The look of the held button is a stylesheet, which jsdom
  * does not apply, and it is held where the others are (`forms/formStyle.test.ts`). The window in which
  * the ref is already let go of and the render is not yet is a tick long and nothing a reader can enter;
  * it is asked by hand beside the other.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS (see above). The global is `SLOW` for both
+   (`test/setup.ts`), and two equal timers decide by which fires first: a wait that never succeeds ended
+   in „Unable to find" on one run and in „Test timed out in 20000ms" on the next. Set here, and so for this
+   file alone: every file has a configuration of its own. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const THE_LIST = '/sr/administracija/dogadjaji'
 
@@ -127,17 +141,24 @@ describe('the button that sends, while the save of an event is out', () => {
     }
   }
 
-  /** Presses Save, and waits until the first write of the press is out. Given half the time a case has,
-   *  so that a press that was refused, and so sent nothing, fails on what it says (that no write is out)
-   *  and not by running out of time for one that will not come. */
+  /** Presses Save, and waits until the first write of the press is out. */
   async function press(user: Pressing): Promise<void> {
     await user.click(save())
-    await waitFor(
-      () => {
-        expect(out).toHaveLength(1)
-      },
-      { timeout: SLOW / 2 },
-    )
+    await waitFor(() => {
+      expect(out).toHaveLength(1)
+    })
+  }
+
+  /** A press that follows the end of another one, when the button is live and the press is meant to be
+   *  accepted. An accepted press tells so in the tick it is made in: the button is told off and the sign
+   *  is up. A press that was refused leaves both as they were, so it fails here, on that, and not after
+   *  waiting for a write that is never made. */
+  async function pressAgain(user: Pressing): Promise<void> {
+    await user.click(save())
+    expectHeld()
+    await waitFor(() => {
+      expect(out).toHaveLength(1)
+    })
   }
 
   /** Everything the sentence says is true now: the button is told off and not switched off, it is
@@ -371,8 +392,7 @@ describe('the button that sends, while the save of an event is out', () => {
       expectLetGo()
 
       /* A press of its own: the first race is written over by its identity and the second is made. */
-      await press(user)
-      expectHeld()
+      await pressAgain(user)
       await answer(null, 'another write')
       expectHeld()
       await answer(null, 'the end')
@@ -394,8 +414,7 @@ describe('the button that sends, while the save of an event is out', () => {
 
       expectLetGo()
 
-      await press(user)
-      expectHeld()
+      await pressAgain(user)
       expect(whereItWrote(watching.asked)).toEqual(['POST /api/events', 'POST /api/events'])
 
       await answer(null, 'another write')
@@ -519,11 +538,21 @@ describe('what is not held', () => {
         expect(screen.queryByText('Ovo polje je obavezno.')).toBeNull()
 
         /* The box is emptied and the button pressed again: the form asks what it asks, and says the box
-           is demanded. A press that waited would say nothing. */
+           is demanded. A press that waited would say nothing.
+
+           ASKED AT ONCE AND NOT WAITED FOR (review of PR 492, the high finding). The form says it in the
+           press, so it is on the screen when the press returns, and a press that was refused is told by
+           the sentence being missing NOW. Waited for, a refusal was told only by the clock running out:
+           `findByText` and the case both had twenty seconds, and which of the two fired first was
+           the whole verdict. */
         await user.clear(screen.getByLabelText(box))
         await user.click(save())
 
-        expect(await screen.findByText('Ovo polje je obavezno.')).toBeVisible()
+        expect(
+          screen.queryByText('Ovo polje je obavezno.'),
+          'the second press was not asked what it always asks: the empty box was not said to be demanded',
+        ).not.toBeNull()
+        expect(screen.getByText('Ovo polje je obavezno.')).toBeVisible()
         expect(screen.getByLabelText(box)).toHaveAttribute('aria-invalid', 'true')
 
         /* And the first request, which was never in question, is answered and confirmed. */
@@ -538,4 +567,15 @@ describe('what is not held', () => {
     },
     SLOW,
   )
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the paragraph in the header. Every case is given `SLOW`, and every wait is given
+       half of it by the `configure` at the head of the file. Take that line away and both are `SLOW`
+       again (`test/setup.ts`): a refusal that is waited for is then told by whichever of two equal
+       timers fires first, and a series of mutations counts that as caught. Asked of the number that
+       decides and not of the text of the file. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })
