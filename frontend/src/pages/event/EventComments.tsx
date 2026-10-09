@@ -88,9 +88,12 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
        still on its way; this one is about a sentence that needs no data.
 
        **The same sentence for everybody who does not read them**, a visitor and
-       an account whose fee is not standing alike: the owner's choice is that the
-       second is „isto kao" the first, and a screen that told them apart would be
-       saying, to a reader who sees nothing, which of the two he is. */
+       an account whose fee is not standing alike. That is this screen's reasoning
+       and not a recorded decision: PDL says only that an account without a
+       standing fee does not see them, and the hidden profile, which the same
+       line names as the model, answers such an account as it answers a visitor.
+       A screen that told the two apart would be saying, to a reader who is shown
+       nothing, which of the two he is. */
     return date > today ? null : (
       <>
         <h2 className="profile__section" id="comments">

@@ -865,9 +865,11 @@ class CommentApiTest {
 	/**
 	 * A READER WHOSE FEE LAPSES IS REFUSED AT ONCE, AND SERVED AGAIN WHEN IT IS RESTORED.
 	 *
-	 * <p>The price the owner was shown and accepted for the same reader on the hidden profile (PDL
-	 * P23, 03.10.2026): a member who does not renew stops seeing what is for members until he
-	 * pays. One session cookie throughout and one column changed between the requests, so what
+	 * <p>The record says it in so many words: „nalog bez važeće članarine ih ne vidi" (PDL P6,
+	 * 03.10.2026, „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"), and
+	 * the price the owner was shown and accepted for the same reader on the hidden profile (PDL
+	 * P23, 03.10.2026) is that a member who does not renew stops seeing what is for members until
+	 * he pays. One session cookie throughout and one column changed between the requests, so what
 	 * answers differently is the fact and not the account, the cookie or a session somebody kept:
 	 * every request asks {@code competitor.active} afresh.
 	 */
