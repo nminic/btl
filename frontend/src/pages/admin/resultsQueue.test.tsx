@@ -293,9 +293,9 @@ describe('the queue of results as the server answers it', () => {
 
       expect(within(table).getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
         sr.newResult.date,
-        sr.review.sentOn,
         sr.competitors.columns.member,
         sr.profile.columns.race,
+        sr.review.sentOn,
         sr.profile.columns.distance,
         sr.rankings.columns.ascent,
         sr.rankings.columns.descent,
@@ -307,10 +307,11 @@ describe('the queue of results as the server answers it', () => {
       const cells = row.getAllByRole('cell').map((one) => one.textContent)
 
       /* Two days and never one: the day it was run (6 March) and the day it was sent (8 March),
-         so a column fed from the other's value is a different row (owner, 18.09.2026). */
+         so a column fed from the other's value is a different row (owner, 18.09.2026). The race
+         stays among the first three columns, the ones the shared table reads from the left. */
       expect(cells[0]).toBe(formatShortDate('2027-03-06', 'sr'))
-      expect(cells[1]).toBe(formatShortDate('2027-03-08', 'sr'))
-      expect(cells[2]).toBe(RUNNER)
+      expect(cells[1]).toBe(RUNNER)
+      expect(cells[3]).toBe(formatShortDate('2027-03-08', 'sr'))
       /* The race by the name the server answers, which is its name today, as an address the
          moderator can follow; and the member's own words on a line of their own. */
       expect(row.getByRole('link', { name: /Beogradska desetka/ })).toHaveAttribute(

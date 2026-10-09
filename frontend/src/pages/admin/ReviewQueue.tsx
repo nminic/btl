@@ -339,16 +339,20 @@ export function ReviewQueue() {
                     <thead>
                       <tr>
                         <th scope="col">{t('newResult.date')}</th>
-                        {/* The day it was sent, beside the day it was run and never in its
-                            place (owner, 18.09.2026: „Odnosno verifikator vidi kad je
-                            rezultat poslat"). Two days in one column would be read as one. */}
-                        <th scope="col" className="table__hide-phone">
-                          {t('review.sentOn')}
-                        </th>
                         <th scope="col">{t('competitors.columns.member')}</th>
                         {/* „Trka" and not „Događaj": what stands in this column is the race
                             (owner, 23.08.2026). */}
                         <th scope="col">{t('profile.columns.race')}</th>
+                        {/* The day it was sent, in a column of its own and never in place of
+                            the day it was run (owner, 18.09.2026: „Odnosno verifikator vidi kad
+                            je rezultat poslat"): two days in one column would be read as one.
+                            Fourth and not second, because the shared table reads its first
+                            three columns from the left by position (`styles/table.css`), and
+                            the race is words: placed second, this column pushed the race to
+                            the fourth place and right-aligned it, measured at 360 and 1280. */}
+                        <th scope="col" className="table__hide-phone">
+                          {t('review.sentOn')}
+                        </th>
                         <th scope="col" className="table__hide-phone">
                           {t('profile.columns.distance')}
                         </th>
@@ -372,7 +376,6 @@ export function ReviewQueue() {
                         return (
                           <tr key={one.id}>
                             <td>{one.raceDate === null ? '' : formatShortDate(one.raceDate, locale)}</td>
-                            <td className="table__hide-phone">{formatShortDate(one.date, locale)}</td>
                             <td>{one.memberNumber}</td>
                             <td>
                               {/* That the calendar does not hold this race, said in the corner
@@ -419,6 +422,7 @@ export function ReviewQueue() {
                                   was, and became an address made of his sentence. */}
                               {one.body !== '' && <span className="review__said">{one.body}</span>}
                             </td>
+                            <td className="table__hide-phone">{formatShortDate(one.date, locale)}</td>
                             <td className="table__hide-phone">
                               {counted === null ? '' : formatNumber(counted.distanceKm, locale, 2)}
                             </td>
