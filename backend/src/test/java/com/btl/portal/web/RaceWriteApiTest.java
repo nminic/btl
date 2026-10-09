@@ -747,11 +747,12 @@ class RaceWriteApiTest {
 
 	/**
 	 * PDL P10b AGAIN, NOW WITH THE RACE'S OWN DAY AND THE EVENT'S DAY IN DIFFERENT YEARS -
-	 * THE CASE {@code currentDateOfTheRace} EXISTS FOR, AND THE CASE ABOVE CANNOT REACH.
+	 * THE CASE {@code theRaceAsItStands} READS THE RACE'S OWN DAY FOR, AND THE CASE ABOVE
+	 * CANNOT REACH.
 	 *
 	 * <p>„Duga" is the earliest race of {@link #acted}, so its own day and the event's are
-	 * the same value; moving it, however far, cannot tell a server reading
-	 * {@code currentDateOfTheRace(id)} apart from one reading {@code event.get().date()}
+	 * the same value; moving it, however far, cannot tell a server reading the race's own day
+	 * ({@code theRaceAsItStands(id).day()}) apart from one reading {@code event.get().date()}
 	 * instead, since the two read the same day. This event has two races instead, and the
 	 * one moved is the LATER of them, so the two days are two different values.
 	 *
