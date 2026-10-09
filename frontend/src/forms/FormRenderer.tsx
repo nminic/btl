@@ -1237,9 +1237,10 @@ export function FormRenderer({
 
     /* A PRESS THAT WAITS IS NOT ASKED ANYTHING (`sendIsOut`). Refused here, above the rules of the
        definition, the screen's `check` and `alsoRefuses`, and below the line that keeps the browser
-       from sending the form itself: the answer to a question asked of a form whose send is out is
-       about a record the send is making. Read off the ref, which is already true in the tick the send
-       began in, and not off `sendIsHeld`, which is still false until the render that follows it. */
+       from sending the form itself. Whatever it asked would be answered about the record the send in
+       flight is making: the event just taken is in the screen's list under the address the form
+       shows. Read off the ref, which is already true in the tick the send began in, and not off
+       `sendIsHeld`, which is still false until the render that follows it. */
     if (sendIsOut?.current === true) {
       return
     }

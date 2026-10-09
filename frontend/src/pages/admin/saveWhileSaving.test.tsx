@@ -42,14 +42,15 @@ import { setupUser, type Pressing } from '../../test/user'
  * </ul>
  *
  * <p><b>The refusal is read off a ref and not off the render</b>, like the refusal of „Nazad na
- * spisak": that is held where the renderer is, with a ref the test sets by hand
- * (`forms/FormRenderer.test.tsx`, „the button that sends"), because a press and the start of a send in
- * one tick cannot be told from a press after it by anything a reader sees.
+ * spisak". That half is asked where the renderer is, with a ref the test sets by hand
+ * (`forms/FormRenderer.test.tsx`, „the button that sends"): a press in the tick the send began in cannot
+ * be told from a press after it by anything a reader sees, because the refused press sends nothing
+ * either way, the editor's own guard being there.
  *
  * <p><b>What is not asked here, and why.</b> The look of the held button is a stylesheet, which jsdom
  * does not apply, and it is held where the others are (`forms/formStyle.test.ts`). The window in which
- * the first press has ended and the form has not yet been drawn again is a tick long and nothing a
- * reader can enter.
+ * the ref is already let go of and the render is not yet is a tick long and nothing a reader can enter;
+ * it is asked by hand beside the other.
  */
 
 const THE_LIST = '/sr/administracija/dogadjaji'
@@ -272,9 +273,9 @@ describe('the button that sends, while the save of an event is out', () => {
 
     it('says it, as the same form, when the address really is taken: the sentence the cases above keep out', async () => {
       /* THE FLOOR OF THE CASES ABOVE. They ask that a sentence is NOT there, and a sentence nobody can
-         ever draw would let them pass for ever. This is the same form, with nothing out, told that the
-         address it shows is the address of an event it has just made: it says the sentence under the
-         date and takes the cursor there, which is exactly what a press that waits must not do. */
+         ever draw would let them pass for ever. This is the same form with nothing out, and the address
+         it shows is the address of an event it has just made: it says the sentence under the date and
+         takes the cursor there, which is exactly what a press that waits must not do. */
       const user = await aNewEventOfOneRace()
 
       await press(user)
