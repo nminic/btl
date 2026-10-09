@@ -37,15 +37,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 /**
  * THE RUNS ONE MEMBER SENT IN AND NOBODY HAS COUNTED, against a real database.
  *
- * <p><b>NOBODY AND NOTHING HERE IS THE ONLY ONE OF ITS KIND, on every axis an assertion reads
- * a value along.</b> The rule the repository holds itself to since 06.09.2026, applied one axis
- * at a time:
+ * <p><b>NOBODY AND NOTHING HERE IS THE ONLY ONE OF ITS KIND, on each axis listed below.</b> The
+ * rule the repository holds itself to since 06.09.2026, applied one axis at a time and to these
+ * axes only: the list is what this fixture holds apart, and not a claim that nothing else in it
+ * runs in step. Two pairs of keys that do are named after the list, because a review measured
+ * them.
  *
  * <ul>
  * <li><b>Whose.</b> Four members and the one asking is written third, neither first nor last;
  * a member written before him and one written after him have runs too, and the OTHER member
  * has a run in every state the asker has one in, on the very race the asker ran, so „mine" and
- * „every run in this state" and „every run on this race" are three different answers.</li>
+ * „every run in this state" and „every run on this race" are three different answers. <b>His
+ * account is written under a key that is not his member's</b> ({@link #MY_ACCOUNT_KEY}), so the
+ * number this route is handed off the session and the number it must answer from are two
+ * numbers; {@link #theTwoKeysThatCouldBeConfusedAreDifferentNumbers} reads both out of the
+ * database.</li>
  * <li><b>Which state.</b> The asker has runs waiting and runs sent back, which are served, and a
  * run approved, which is not: so „mine" is never „every run of mine".</li>
  * <li><b>Which kind of run.</b> Fresh runs and corrections of a counted result, each both waiting
@@ -68,9 +74,20 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * different lists.</li>
  * </ul>
  *
- * <p>{@link #theFixtureHoldsApartEveryPairThisFileComparesAcross} asserts each of those, so a
- * fixture that stops separating one of them fails by its own name rather than leaving a case
- * green over two values that agree.
+ * <p><b>TWO PAIRS OF KEYS ARE NOT HELD APART, and nothing here claims they are.</b> The key of a
+ * run against the key of the queue row it waits behind ({@code result_submission.id} against
+ * {@code verification.id}), and the key of an event against the key of its race
+ * ({@code btl_event.id} against {@code race.id}, the {@code race_id} a run carries). Written
+ * alone, this fixture gives both keys of each pair the same number, because it writes one queue
+ * row for every run and one race for every event, so a reading that took the wrong key of either
+ * pair would answer here exactly as the right one does (found in review, PR 506, 09.10.2026).
+ * That is a separate job of its own: no case in this file measures it, and a case that reads one
+ * of those four keys says nothing about which of its pair it was handed.
+ *
+ * <p>{@link #theFixtureHoldsApartEveryPairThisFileComparesAcross} and
+ * {@link #theTwoKeysThatCouldBeConfusedAreDifferentNumbers} assert each of those, so a fixture
+ * that stops separating one of them fails by its own name rather than leaving a case green over
+ * two values that agree.
  *
  * <p><b>No mail server of its own.</b> Nothing here sends anything; the one case that sends a run
  * through {@link ResultWriteApi} meets whatever the default relay address answers, and that route
@@ -97,6 +114,21 @@ class MyResultSubmissionsApiTest {
 	private static final String LAST_WRITTEN = "000400";
 
 	private static final String MY_ADDRESS = "vera@primer.rs";
+
+	/**
+	 * THE ASKER'S ACCOUNT KEY, forced far above anything {@code account_id_seq} hands out in a run:
+	 * the device {@code ModeratorApiTest.HER_COMPETITOR_ID} uses for the same pair (there it is the
+	 * member's key that is forced) and {@code CommentApiTest} for its comment keys. This route is
+	 * handed {@code account.id} off the session and must answer from
+	 * {@code competitor.id}; both are {@code bigserial}s out of independent sequences, and a
+	 * fixture that lets both come from the sequences puts the asker at the same offset in each, so
+	 * a route that kept the key it was handed answered his runs correctly by accident (found in
+	 * review, PR 506, 09.10.2026: the account's key put where the member's belongs left every case
+	 * green). The sequence is left where it was, so nothing written afterwards collides with this
+	 * key, and {@link #theTwoKeysThatCouldBeConfusedAreDifferentNumbers} reads both keys out of
+	 * the database rather than trusting this number.
+	 */
+	private static final long MY_ACCOUNT_KEY = 900301;
 
 	private static final String MODERATOR_WHO_DOES_NOT_RACE = "moderator@primer.rs";
 
@@ -153,7 +185,7 @@ class MyResultSubmissionsApiTest {
 
 		account("ana@primer.rs", FIRST_WRITTEN);
 		account("bojan@primer.rs", SOMEONE_ELSE);
-		account(MY_ADDRESS, ME);
+		accountAtKey(MY_ACCOUNT_KEY, MY_ADDRESS, ME);
 		moderatorWithNoCompetitor(MODERATOR_WHO_DOES_NOT_RACE);
 
 		/* THREE RACES OF THREE KINDS, as they stood on the day the runs were sent. Two are in a
@@ -525,6 +557,27 @@ class MyResultSubmissionsApiTest {
 	 */
 
 	/**
+	 * THE TWO KEYS THAT COULD BE CONFUSED ARE DIFFERENT NUMBERS, and both are read out of the
+	 * database rather than trusted from {@link #MY_ACCOUNT_KEY}: the floor {@code MeApiTest} keeps
+	 * under the same pair, with the same name.
+	 *
+	 * <p>What this route is handed is {@code account.id} and what it must answer from is
+	 * {@code competitor.id}. Nothing makes those two disagree on their own, so every case that
+	 * asks as the asker is green on any fixture that puts him at the same offset in both tables,
+	 * whichever of the two keys the route used. If this ever goes red, no case that asks as him is
+	 * measuring which one it was, and {@link #MY_ACCOUNT_KEY} wants looking at rather than this
+	 * case relaxing.
+	 */
+	@Test
+	void theTwoKeysThatCouldBeConfusedAreDifferentNumbers() {
+		assertThat(competitorIdOf(ME))
+				.as("the asker's member and his account carry the same key, so a route handed the"
+						+ " account's key where the member's belongs answers his runs correctly by"
+						+ " accident and no case that asks as him says which of the two it used")
+				.isNotEqualTo(accountIdOf(MY_ADDRESS));
+	}
+
+	/**
 	 * THE FIXTURE HOLDS APART EVERY PAIR THIS FILE COMPARES ACROSS, said by the database rather
 	 * than by the comments above it.
 	 */
@@ -733,6 +786,19 @@ class MyResultSubmissionsApiTest {
 		openSession(email);
 	}
 
+	/**
+	 * The ASKER'S account, written under a key chosen here and not under the sequence's next one;
+	 * see {@link #MY_ACCOUNT_KEY} for why.
+	 */
+	private void accountAtKey(long key, String email, String memberNumber) {
+		db.sql("insert into account (id, first_name, last_name, email, role_id, competitor_id) values"
+						+ " (?, 'Probni', 'Probic', ?, (select id from role where code = 'competitor'),"
+						+ " (select id from competitor where member_number = ?))")
+				.params(key, email, memberNumber).update();
+
+		openSession(email);
+	}
+
 	private void moderatorWithNoCompetitor(String email) {
 		db.sql("insert into account (first_name, last_name, email, role_id) values"
 						+ " ('Moderator', 'Bezimeni', ?,"
@@ -829,6 +895,16 @@ class MyResultSubmissionsApiTest {
 		return db.sql("select c.code from place p join country c on c.id = p.country_id"
 						+ " where p.rank = ?")
 				.param(rank).query(String.class).single();
+	}
+
+	private long competitorIdOf(String memberNumber) {
+		return db.sql("select id from competitor where member_number = ?").param(memberNumber)
+				.query(Long.class).single();
+	}
+
+	private long accountIdOf(String email) {
+		return db.sql("select id from account where email = ?").param(email)
+				.query(Long.class).single();
 	}
 
 	private String subjectOf(long submission) {
