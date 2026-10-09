@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
 import java.time.Clock;
-import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 /**
@@ -430,51 +430,6 @@ class CompetitorApi {
 	}
 
 	/**
-	 * THE SEASON THE BAND IS WORKED OUT FOR, which is the one that is RUNNING and never
-	 * earlier than the first the league has.
-	 *
-	 * <p><b>One season and never a band per season, and that is a measurement rather
-	 * than a simplification.</b> PDL, 13.09.2026: a map of band-by-season „vraća tačnu
-	 * godinu rođenja" for 25 of the 32 members, because a member who crosses a boundary
-	 * narrows the candidate years to one. „Iz jednog pojasa za tekuću sezonu ne vraća se
-	 * ni za jednog, jer je najuži skup kandidata širok petnaest godina." So the year is
-	 * private BECAUSE only one season is answered, and answering a second would hand
-	 * back the very field this resource was written to withhold. The cost is written
-	 * down in the same place and accepted: a screen drawing a category for an earlier
-	 * season draws today's band.
-	 *
-	 * <p><b>Read off the {@link Clock} bean and in the league's own zone</b>, for the
-	 * reason {@code ResultApi} writes beside its own: a server kept in UTC, as
-	 * containers are, would still be calling it last year for the first hour of every
-	 * New Year in Belgrade, and that hour is a boundary this field moves on.
-	 *
-	 * <p><b>And it is NOT {@code SeasonClock.seasonBeingPaidFor}.</b> That one answers
-	 * from 15 October with NEXT year, which would move every member's band forward a
-	 * season in the autumn without a single birthday - and the band moves once, on 1
-	 * January, which is the whole of PDL P7 („uzrast se utvrđuje jednom, na 1. januar
-	 * sezone"). {@code aBandDoesNotMoveWhenTheNextSeasonGoesOnSale} refuses it.
-	 *
-	 * <p><b>The floor under the plain calendar year is the league's first season</b>,
-	 * the same {@code Math.max} shape {@code frontend/src/data/season.ts} uses: through
-	 * 2026 the calendar answers 2026 and there is no season 2026 (PDL P2), so a band
-	 * worked out for it is a band for a season that does not exist.
-	 *
-	 * <p><b>WHAT IS NOT DECIDED HERE, written down rather than left to be found.</b>
-	 * From 1 January 2028 this answer and the served file part company: the generator
-	 * that wrote {@code competitors.json} holds {@code SEZONA = 2027} as a literal
-	 * ({@code btl-produkt/istorijski-podaci/napravi-mock.py}), so it answers 2027 for
-	 * ever while this follows the running season. This is the reading PDL P7 gives - the
-	 * age is settled on 1 January OF THE SEASON, so a new season settles it again - and
-	 * the file's constant is an artefact of a mock built for a 2027 demo rather than a
-	 * decision. It is named here because the two agree until then and a disagreement
-	 * that starts on a date nobody is watching is the kind that gets found by a member.
-	 */
-	private int theBandsSeason() {
-		return Math.max(SeasonClock.FIRST_SEASON,
-				LocalDate.now(clock.withZone(SeasonClock.ZONE)).getYear());
-	}
-
-	/**
 	 * Which circle of the portrait is drawn, as three fractions between 0 and 1.
 	 *
 	 * <p>The same three numbers and the same names {@link TeamApi.Crop} answers for a team's
@@ -634,8 +589,9 @@ class CompetitorApi {
 		   answer rather than per row. Two members with the same year of birth must come
 		   back in the same band, and a clock read inside the mapper can cross midnight
 		   on 1 January between two rows of one list - which is the one night of the year
-		   this field moves on. `theBandsSeason` says which season it is and why. */
-		int season = theBandsSeason();
+		   this field moves on. `SeasonClock.seasonTheBandIsWorkedOutFor` says which season
+		   it is and why. */
+		int season = SeasonClock.seasonTheBandIsWorkedOutFor(ZonedDateTime.now(clock));
 
 		return db.sql("select c.member_number, c.first_name, c.last_name, c.gender,"
 						+ " coalesce(town.name, c.city) as city,"
