@@ -1,7 +1,11 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.season.SeasonClock;
+import com.btl.portal.domain.token.SecretToken;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,16 +17,25 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,6 +80,17 @@ class ResultApiTest {
 	 * window, in January and in June, where the two functions agree.
 	 */
 	private static final Instant INSIDE_THE_TRANSFER_WINDOW = Instant.parse("2028-10-15T12:00:00Z");
+
+	/**
+	 * THE AUTUMN OF 2026, WHEN NO SEASON IS RUNNING AT ALL.
+	 *
+	 * <p>The league begins in 2027 (PDL P2), so the plain calendar year on this day names a
+	 * season the portal does not have. It is the one moment where {@code theSeasonRunning} (the
+	 * plain year, which is what is WITHHELD) and the season a band is worked out for (lifted to
+	 * the first season there is, which is what is ANSWERED) are different numbers, so the cases
+	 * that tell the two apart stand here.
+	 */
+	private static final Instant AUTUMN_2026 = Instant.parse("2026-09-21T10:00:00Z");
 
 	@Autowired
 	private MockMvc http;
@@ -193,9 +217,172 @@ class ResultApiTest {
 				.toList();
 	}
 
+	/** The sessions of the accounts a case opens, by address. */
+	private final Map<String, SecretToken> sessions = new HashMap<>();
+
+	/**
+	 * THE RUNNER, as a case reads it: the five names the answer carries about him and nothing
+	 * else, so that two of them compare as values.
+	 */
+	private record TheRunner(String firstName, String lastName, String gender, String ageBand,
+			boolean firstSeason2027) {
+	}
+
+	/** The runner of one row of this answer. */
+	private static TheRunner runnerOf(JsonNode row) {
+		return fiveNamesIn(row.path("runner"));
+	}
+
+	/**
+	 * THE FIVE NAMES OF ONE RECORD, wherever it comes from: the runner of a result here and a
+	 * member of the list {@code /api/competitors} answers, which carries the same five under the
+	 * same keys, so that the two doors can be compared as values.
+	 */
+	private static TheRunner fiveNamesIn(JsonNode record) {
+		return new TheRunner(record.path("firstName").asString(), record.path("lastName").asString(),
+				record.path("gender").asString(), record.path("ageBand").asString(),
+				record.path("firstSeason2027").asBoolean());
+	}
+
+	/** The whole answer as text, which is what a name or a year is looked for in. */
+	private String whole() throws Exception {
+		return http.perform(get("/api/results")).andReturn().getResponse()
+				.getContentAsString(StandardCharsets.UTF_8);
+	}
+
+	private List<JsonNode> served() throws Exception {
+		return StreamSupport.stream(answer().spliterator(), false).toList();
+	}
+
+	/** Every row of the answer that is about this member, in the order the answer carries them. */
+	private List<JsonNode> rowsOf(String memberNumber) throws Exception {
+		return served().stream()
+				.filter(one -> one.path("memberNumber").asString().equals(memberNumber))
+				.toList();
+	}
+
+	private static long timesIn(String text, String word) {
+		return Pattern.compile(Pattern.quote(word)).matcher(text).results().count();
+	}
+
+	/**
+	 * A MEMBER WHO IS NOT ONE OF THE THREE THE HISTORY IS WRITTEN FOR, written inside the case
+	 * that needs him and not in the fixture, so that {@code theHistoryComesBackInTheOrderItWasRun}
+	 * and the cases about the lapsed member go on standing on the rows they were written for.
+	 *
+	 * <p>His referral code is built from his number so that two of them cannot collide, which
+	 * the schema refuses outright.
+	 */
+	private void aMember(String number, String first, String last, String gender, String born,
+			boolean feeStanding) {
+		member(number, first, last, gender, born, "0011223344" + number, feeStanding);
+	}
+
+	/** The beginners' category, which is a flag on the record and not something worked out. */
+	private void heRunsAsABeginner(String number) {
+		db.sql("update competitor set first_season_2027 = true where member_number = ?")
+				.param(number).update();
+	}
+
+	/**
+	 * SOMEBODY WHO REGISTERED AND HAS NO MEMBER NUMBER, which V16 allows and which is what an
+	 * applicant is until the first payment is recorded. He is not a member (V16: a member is a row
+	 * whose number is there), and he has a result because the owner opens the profiles of earlier
+	 * years by hand for people who never paid (V23). His fee does not stand, so his result is
+	 * served only for a season that is not the one running.
+	 */
+	private void anApplicantWithNoMemberNumber(String first, String last, String gender,
+			String born) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, city, country_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
+						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
+						+ " values (null, ?, ?, ?, date '" + born + "',"
+						+ " (select id from place where rank = 1), null, null, 2027, false, false,"
+						+ " 'payment', '00112233440000ab', null, '', false, 'none', 'Otac', 'Ulica 1',"
+						+ " 'M', timestamptz '2026-09-01 10:00:00+00')")
+				.params(first, last, gender).update();
+	}
+
+	/** A run of the applicant above, who is the only competitor in the table with no number. */
+	private void theApplicantRuns(String raceName, String day, double km, int up, int down,
+			int seconds, double points) {
+		db.sql("insert into result (competitor_id, race_id, race_date, distance_km, ascent_m,"
+						+ " descent_m, seconds, points)"
+						+ " values ((select id from competitor where member_number is null),"
+						+ " (select id from race where name = ?), date '" + day + "', ?, ?, ?, ?, ?)")
+				.params(raceName, km, up, down, seconds, points).update();
+	}
+
+	/**
+	 * An account, signed in, whose own name is not the name of the member it belongs to.
+	 *
+	 * <p>The session is written at the moment the clock stands at, and not at the real one: the
+	 * cases here move the clock years ahead, and a session that was only ever valid at the real
+	 * moment would be a cookie some other part of the chain might decline.
+	 */
+	private void anAccount(String email, String role, String first, String last) {
+		db.sql("insert into account (first_name, last_name, email, role_id)"
+						+ " values (?, ?, ?, (select id from role where code = ?))")
+				.params(first, last, email, role).update();
+
+		SecretToken session = SecretToken.fresh();
+		Instant now = clock.standingAt();
+
+		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
+						+ " expires_at) values ((select id from account where email = ?), ?, ?, ?, ?)")
+				.params(email, session.hash(), Timestamp.from(now.minus(Duration.ofDays(1))),
+						Timestamp.from(now), Timestamp.from(now.plus(SessionLife.LASTS)))
+				.update();
+
+		sessions.put(email, session);
+	}
+
+	/** The link V23 wrote down: this account IS that member. */
+	private void belongsTo(String email, String memberNumber) {
+		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
+				+ " where email = ?").params(memberNumber, email).update();
+	}
+
+	/** @param email null for the visitor, which is the same request without the cookie */
+	private String wholeFor(String email) throws Exception {
+		MockHttpServletRequestBuilder asks = get("/api/results");
+
+		return http.perform(email == null ? asks
+						: asks.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+				.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+	}
+
+	/**
+	 * THE FLOOR UNDER EVERY CASE ABOUT THE LAPSED MEMBER: he ran on the last day of a season he
+	 * was a member in and on the first day of the one that follows, so that "he is named on the
+	 * old one" and "he is named on the new one" are two different rows. Read out of the database
+	 * rather than remembered, so a fixture that stopped setting the case up says so instead of
+	 * passing.
+	 */
+	private void theLapsedMemberStillRanOnBothSidesOfTheNewYear() {
+		assertThat(db.sql("select to_char(r.race_date, 'YYYY-MM-DD') from result r"
+						+ " join competitor c on c.id = r.competitor_id"
+						+ " where c.member_number = ? and not c.active order by r.race_date")
+						.param(THE_LAPSED_MEMBER).query(String.class).list())
+				.as("the fixture no longer gives the member whose fee has lapsed one run in the"
+						+ " season that is running and one in a season before it, so this case"
+						+ " measures nothing")
+				.containsExactly(NEW_YEARS_EVE, NEW_YEARS_DAY);
+	}
+
+	/**
+	 * <b>{@code runner} IS THE ONE NAME THE SERVER ANSWERS WITH AND THE PORTAL DOES NOT READ
+	 * YET</b>, and it is named here with its reason, as the floor asks: the served file has no
+	 * such name, and the screens that will draw a lapsed member's name out of it are the next
+	 * increment. Naming it is what lets this one ship first. It is checked both ways, so renaming
+	 * it on the server fails here, and so does the served file starting to carry it while this
+	 * line stays.
+	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
-		Answers.everyFieldThePortalReadsIsAnswered("/api/results", answer(), "results.json");
+		Answers.everyFieldThePortalReadsIsAnswered("/api/results", answer(), "results.json",
+				Set.of("runner"));
 	}
 
 	@Test
@@ -411,6 +598,537 @@ class ResultApiTest {
 	}
 
 	/**
+	 * EVERY RESULT NAMES THE MEMBER WHOSE RUN IT IS.
+	 *
+	 * <p>Four members whose runners differ on EVERY axis the answer carries about them: no two share
+	 * a first name or a last name, both sexes are there, three of the four bands the league has are
+	 * there, and exactly one of them is a beginner. A name answered from a constant, from the wrong
+	 * member, or from the account instead of the record is a different list; so is a sex or a
+	 * beginner's mark answered from a constant. The values are WRITTEN OUT and not worked out by
+	 * asking the server's own arithmetic: asking {@code Category} for them would compare the
+	 * server with itself and pass whatever it became.
+	 *
+	 * <p><b>The first member has an account, and the account carries ANOTHER name.</b> V23 holds
+	 * them as two facts about two things, so a version that read the name off the account passes
+	 * for every member without a login and fails for this one. The other direction is already in
+	 * the fixture: three members with no account at all.
+	 *
+	 * <p>The floor comes first, because a list of served rows that lost a member would make every
+	 * comparison below a comparison of what is left.
+	 */
+	@Test
+	void everyResultNamesTheMemberWhoseRunItIs() throws Exception {
+		aMember("000004", "Cetvrta", "Pocetnica", "F", "2005-03-03", true);
+		heRunsAsABeginner("000004");
+		run("000004", "Maraton", "2027-05-05", 42.20, 90, 95, 15000, 99.99);
+
+		anAccount("prvi@primer.rs", "competitor", "Tudje", "Ime");
+		belongsTo("prvi@primer.rs", "000001");
+
+		Map<String, TheRunner> theyAre = Map.of(
+				"000001", new TheRunner("Prvi", "Clan", "M", "25-39", false),
+				"000002", new TheRunner("Druga", "Clanica", "F", "40-54", false),
+				"000003", new TheRunner("Treci", "Neclan", "M", "40-54", false),
+				"000004", new TheRunner("Cetvrta", "Pocetnica", "F", "24-", true));
+
+		List<JsonNode> served = served();
+
+		assertThat(served.stream().map(one -> one.path("memberNumber").asString()).distinct().toList())
+				.as("the fixture no longer serves a run of each of the four members, so a comparison"
+						+ " below would be a comparison of what is left")
+				.containsExactlyInAnyOrder("000001", "000002", "000003", "000004");
+
+		for (JsonNode row : served) {
+			String number = row.path("memberNumber").asString();
+
+			assertThat(row.path("runner").isObject())
+					.as("the run of %s came back with no runner", number)
+					.isTrue();
+			assertThat(runnerOf(row))
+					.as("the run of %s names somebody other than %s, or him with another sex, band or"
+							+ " beginner's mark", number, number)
+					.isEqualTo(theyAre.get(number));
+		}
+	}
+
+	/**
+	 * THE RUNNER IS FIVE NAMES AND NOTHING ELSE.
+	 *
+	 * <p>The names are the first name, the last name, the sex, the age band and whether he runs
+	 * as a beginner (PDL P11, 03.10.2026, and the note on {@code ResultApi}). A sixth would be a
+	 * fact about a member answered to everybody because nobody was asked: the year of birth
+	 * (Article 74), whether his fee stands (PDL P34 took {@code active} off the public list for
+	 * being a fact about somebody else's payment), or one of the three things a profile page
+	 * carries that hiding takes away (portrait, biography, team).
+	 *
+	 * <p><b>Compared as a set, in every row</b>, and not a count of the names: a sixth name and a
+	 * renamed one both fail it, and a first row that was the only one checked would let the
+	 * second kind of member through. The answer has more than one row so the loop is a loop.
+	 */
+	@Test
+	void theRunnerIsFiveNamesAndNothingElse() throws Exception {
+		List<JsonNode> served = served();
+
+		assertThat(served).as("the answer has one row or none, so the loop below checks nothing")
+				.hasSizeGreaterThan(1);
+
+		for (JsonNode row : served) {
+			assertThat(Answers.fieldsOf(row.path("runner")))
+					.as("the runner of %s carries other names than the five it is allowed",
+							row.path("memberNumber").asString())
+					.containsExactlyInAnyOrder("firstName", "lastName", "gender", "ageBand",
+							"firstSeason2027");
+		}
+	}
+
+	/**
+	 * NO YEAR OF BIRTH LEAVES THE SERVER, and nobody's date of it either.
+	 *
+	 * <p>Article 74: „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku." The
+	 * year is read here to be turned into a band, so it passes through the one place that could
+	 * let it out, and the band is the only thing that is allowed to come of it.
+	 *
+	 * <p><b>The answer is read as TEXT and the things to look for are read out of the table</b>,
+	 * so the case refuses the year however it is spelt and whatever the field it leaks through is
+	 * called, and so a member added tomorrow is looked for without anybody remembering this file.
+	 * Each is matched on its own, with no digit before or after it, so that a run of 12000 seconds
+	 * is not a birth in 2000. The applicant with no member number is in the table too, because the
+	 * place a year would leak most easily is the row that has no runner to put it in.
+	 */
+	@Test
+	void noYearOfBirthLeavesTheServer() throws Exception {
+		aMember("000004", "Cetvrta", "Pocetnica", "F", "2005-03-03", true);
+		run("000004", "Maraton", "2027-05-05", 42.20, 90, 95, 15000, 99.99);
+		anApplicantWithNoMemberNumber("Bez", "Broja", "M", "1992-04-04");
+		theApplicantRuns("Maraton", "2027-05-05", 42.20, 10, 12, 20000, 70.00);
+
+		List<String> whatMustNotBeThere = db.sql("select birth_year::text from competitor"
+						+ " union select to_char(birth_date, 'YYYY-MM-DD') from competitor")
+				.query(String.class).list();
+
+		assertThat(whatMustNotBeThere)
+				.as("the table no longer holds the five birth years and the five birth dates this case"
+						+ " looks for, so it measures nothing")
+				.hasSize(10);
+
+		String text = whole();
+
+		for (String secret : whatMustNotBeThere) {
+			assertThat(Pattern.compile("(?<![0-9])" + Pattern.quote(secret) + "(?![0-9])")
+					.matcher(text).find())
+					.as("%s is in the answer, and it is somebody's year or day of birth", secret)
+					.isFalse();
+		}
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS NAMED ON THE SEASONS HE WAS A MEMBER IN, AND ONLY ON THEM.
+	 *
+	 * <p>PDL P11, 03.10.2026: the result of a season he was a member in carries the name, as plain
+	 * text; and 13.09.2026, in the owner's words, the running season of a member whose fee has
+	 * lapsed „ne prikazuje ni u listi članova, niti logično u rezultatima". The first is the row
+	 * that comes back with a name, the second is the row that does not come back at all, and one
+	 * member has one of each, a day apart, so that neither half can be satisfied by the other.
+	 *
+	 * <p><b>The name is counted in the TEXT of the answer</b> and not only read off his row: it
+	 * occurs exactly as often as he has rows in it. A version that answered the name on the row
+	 * that is withheld, or beside the list, or anywhere else, would have it appear more often than
+	 * the rows he has.
+	 *
+	 * <p><b>All three states of the clock</b>, which are the ones the case about the withheld
+	 * season stands on: the night the season turns, a year on when both rows are history, and the
+	 * autumn when the next season is already being paid for. In the third the running season is
+	 * still the plain calendar year, so his run of New Year's Day stays withheld and his name goes
+	 * on being answered with the other one.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsNamedOnTheSeasonsHeWasAMemberIn() throws Exception {
+		theLapsedMemberStillRanOnBothSidesOfTheNewYear();
+
+		TheRunner he = new TheRunner("Treci", "Neclan", "M", "40-54", false);
+
+		List<JsonNode> his = rowsOf(THE_LAPSED_MEMBER);
+
+		assertThat(his.stream().map(one -> one.path("date").asString()).toList())
+				.as("the member whose fee has lapsed is not served exactly the run of the season he was"
+						+ " a member in, so what he is named on is not what this case is about")
+				.containsExactly(NEW_YEARS_EVE);
+		assertThat(runnerOf(his.get(0)))
+				.as("the run he was a member for came back without his name, or with somebody else's")
+				.isEqualTo(he);
+
+		String text = whole();
+
+		assertThat(timesIn(text, "Neclan"))
+				.as("his last name is in the answer more often than he has rows in it")
+				.isEqualTo(his.size());
+		assertThat(timesIn(text, "Treci"))
+				.as("his first name is in the answer more often than he has rows in it")
+				.isEqualTo(his.size());
+
+		clock.moveTo(A_YEAR_LATER);
+
+		assertThat(rowsOf(THE_LAPSED_MEMBER))
+				.as("a year on, both his runs are history and both are named")
+				.hasSize(2)
+				.allSatisfy(one -> assertThat(runnerOf(one)).isEqualTo(he));
+		assertThat(timesIn(whole(), "Neclan")).isEqualTo(2);
+
+		clock.moveTo(INSIDE_THE_TRANSFER_WINDOW);
+
+		assertThat(rowsOf(THE_LAPSED_MEMBER))
+				.as("in the autumn his run of the season that is still running is withheld and the one"
+						+ " before it is named")
+				.hasSize(1)
+				.allSatisfy(one -> assertThat(runnerOf(one)).isEqualTo(he));
+		assertThat(timesIn(whole(), "Neclan")).isEqualTo(1);
+	}
+
+	/**
+	 * A MEMBER WHO HIDES HIS PROFILE IS NAMED LIKE ANY OTHER.
+	 *
+	 * <p>PDL P23, 06.09.2026, derived from the policy and not asked: „Ime ostaje u javnim
+	 * tabelama" - „skriva se profilna strana, ne mesto u poretku". Two members hide, and they are
+	 * the two that matter: one whose fee stands and one whose fee has lapsed, because a condition
+	 * written against hiding and one written against the fee would each pass for the other if
+	 * only one of them were in the fixture. A third, who hides nothing, is the contrast.
+	 */
+	@Test
+	void aMemberWhoHidesHisProfileIsNamedLikeAnyOther() throws Exception {
+		db.sql("update competitor set profile_hidden = true where member_number in (?, ?)")
+				.params("000001", THE_LAPSED_MEMBER).update();
+
+		assertThat(db.sql("select count(*) from competitor where profile_hidden")
+				.query(Long.class).single())
+				.as("the fixture no longer has exactly the two members who hide, so this case"
+						+ " measures nothing")
+				.isEqualTo(2L);
+
+		assertThat(rowsOf("000001")).hasSize(1)
+				.allSatisfy(one -> assertThat(runnerOf(one))
+						.as("a member whose fee stands and who hides his profile was not named like"
+								+ " the others")
+						.isEqualTo(new TheRunner("Prvi", "Clan", "M", "25-39", false)));
+		assertThat(rowsOf(THE_LAPSED_MEMBER)).hasSize(1)
+				.allSatisfy(one -> assertThat(runnerOf(one))
+						.as("a member whose fee has lapsed and who hides his profile was not named like"
+								+ " the others")
+						.isEqualTo(new TheRunner("Treci", "Neclan", "M", "40-54", false)));
+		assertThat(rowsOf("000002")).hasSize(3)
+				.allSatisfy(one -> assertThat(runnerOf(one))
+						.isEqualTo(new TheRunner("Druga", "Clanica", "F", "40-54", false)));
+	}
+
+	/**
+	 * A RESULT OF SOMEBODY WITH NO MEMBER NUMBER CARRIES NO RUNNER, AND NOTHING ELSE ABOUT HIM.
+	 *
+	 * <p>Article 73 makes the name and the number of a MEMBER public, and an applicant is not one
+	 * (V16). The owner's measure for what is not clear is PDL 13.09.2026: „Kad je sporno, polje se
+	 * izostavlja i izostavljanje se imenuje sa razlogom, pa se vlasniku javi". So the key is there
+	 * and the value is null, and the name is in the answer nowhere else.
+	 *
+	 * <p><b>Both sides, in one answer.</b> The applicant's row has no runner, and every row that
+	 * HAS a number has one: a version that built the runner whatever the number is would name him,
+	 * and a version that left it out for everybody would not name the rest. The key is asked for
+	 * by presence as well as by value, since an absent key is a shape the next change fills in.
+	 */
+	@Test
+	void aResultOfSomebodyWithNoMemberNumberCarriesNoRunner() throws Exception {
+		anApplicantWithNoMemberNumber("Bez", "Broja", "M", "1992-04-04");
+		theApplicantRuns("Maraton", "2027-05-05", 42.20, 10, 12, 20000, 70.00);
+
+		List<JsonNode> served = served();
+		List<JsonNode> his = served.stream().filter(one -> one.path("memberNumber").isNull()).toList();
+
+		assertThat(his)
+				.as("the applicant's run is not served, or he has more than one, so this case measures"
+						+ " nothing")
+				.hasSize(1);
+		assertThat(his.get(0).has("runner"))
+				.as("the key is absent for a result with no member number, which is a shape the next"
+						+ " change fills in")
+				.isTrue();
+		assertThat(his.get(0).path("runner").isNull())
+				.as("a result with no member number came back with a runner")
+				.isTrue();
+
+		assertThat(whole())
+				.as("the applicant's name is in the answer, though he is not a member")
+				.doesNotContain("Bez")
+				.doesNotContain("Broja");
+
+		assertThat(served.stream().filter(one -> !one.path("memberNumber").isNull()).toList())
+				.as("a result with a member number came back with no runner")
+				.isNotEmpty()
+				.allSatisfy(one -> assertThat(one.path("runner").isObject()).isTrue());
+	}
+
+	/**
+	 * THE BAND TURNS WITH THE LEAGUE'S NEW YEAR, AND NOT WITH THE DAY THE RESULT WAS RUN.
+	 *
+	 * <p>It stands on the night the season turns, half past midnight in Belgrade and half an hour
+	 * BEFORE it in UTC, which is the shape of a container's clock. The member was born in 1988,
+	 * so he is thirty nine in 2027 and forty in 2028: a version that reads the year in UTC works
+	 * the band out for 2027 and answers {@code 25-39}.
+	 *
+	 * <p><b>And he has two results, one run in each of the two years</b>, because a band of the
+	 * season the result was run in is the map of band by season that gives back the exact year of
+	 * birth (PDL 13.09.2026, see {@code SeasonClock}). On the 2027 result that version would
+	 * answer {@code 25-39} and on the 2028 one {@code 40-54}; the two results of one member must
+	 * come back in one band, and it is today's.
+	 *
+	 * <p>The floors ask the domain and the clock rather than remembering where the boundary
+	 * is: moved off it, this case would pass for every version above.
+	 */
+	@Test
+	void theBandTurnsWithTheLeaguesNewYearAndNotWithTheDayTheResultWasRun() throws Exception {
+		aMember("000005", "Peti", "Granicni", "M", "1988-06-01", true);
+		run("000005", "Maraton", "2027-05-05", 42.20, 5, 5, 16000, 80.00);
+		run("000005", "Novogodisnja trka", NEW_YEARS_DAY, 5.00, 5, 5, 1500, 18.00);
+
+		assertThat(Category.ageBandFor(1988, 2027))
+				.as("born in 1988 he is no longer on the boundary between 2027 and 2028, so the case"
+						+ " measures nothing")
+				.isNotEqualTo(Category.ageBandFor(1988, 2028));
+		assertThat(NEW_YEARS_NIGHT.atZone(ZoneOffset.UTC).getYear())
+				.as("the moment already reads as 2028 in UTC, so a version reading UTC is not a season"
+						+ " late and the case measures nothing")
+				.isNotEqualTo(NEW_YEARS_NIGHT.atZone(SeasonClock.ZONE).getYear());
+
+		assertThat(rowsOf("000005"))
+				.as("the fixture no longer gives him a run in each of the two years")
+				.hasSize(2)
+				.allSatisfy(one -> assertThat(runnerOf(one).ageBand())
+						.as("the band was worked out for 2027, read in UTC or taken from the year of the"
+								+ " result, instead of for the season the league is in")
+						.isEqualTo("40-54"));
+	}
+
+	/**
+	 * A BAND IS NEVER WORKED OUT FOR A SEASON THE LEAGUE DOES NOT HAVE.
+	 *
+	 * <p>The league begins in 2027 (PDL P2) and in the autumn of 2026 the plain calendar year
+	 * names a season that does not exist. This is the one moment where {@code theSeasonRunning}
+	 * (the plain year, which is what is WITHHELD) and the season a band is worked out for (lifted
+	 * to the first season there is, which is what is ANSWERED) are different numbers, so it is
+	 * where a band taken from the first of them is told from the second. Born in 1987 he is thirty
+	 * nine in 2026 and forty in 2027, one on each side of a boundary, so dropping the lift is a
+	 * different band and not a different number.
+	 */
+	@Test
+	void aBandIsNeverWorkedOutForASeasonTheLeagueDoesNotHave() throws Exception {
+		clock.moveTo(AUTUMN_2026);
+
+		aMember("000006", "Sesti", "Podni", "M", "1987-06-01", true);
+		run("000006", "Maraton", "2027-05-05", 42.20, 5, 5, 16500, 79.00);
+
+		assertThat(SeasonClock.FIRST_SEASON)
+				.as("the league's first season moved, so the clock no longer stands before it and the"
+						+ " case measures nothing")
+				.isGreaterThan(AUTUMN_2026.atZone(SeasonClock.ZONE).getYear());
+		assertThat(Category.ageBandFor(1987, 2026))
+				.as("born in 1987 he is no longer on the boundary between 2026 and 2027, so the case"
+						+ " measures nothing")
+				.isNotEqualTo(Category.ageBandFor(1987, 2027));
+
+		assertThat(runnerOf(rowsOf("000006").get(0)).ageBand())
+				.as("the band was worked out for the calendar year 2026, a season the league does not"
+						+ " have, instead of for its first")
+				.isEqualTo("40-54");
+	}
+
+	/**
+	 * AND A BAND DOES NOT MOVE WHEN THE NEXT SEASON GOES ON SALE.
+	 *
+	 * <p>From 15 October a payment buys NEXT year and {@code SeasonClock.seasonBeingPaidFor}
+	 * answers with it; the band moves once, on 1 January (PDL P7). The two agree for nine months
+	 * of the year, so a case standing on any other day passes whichever of them the runner used.
+	 * Born in 1989 he is thirty nine in 2028 and forty in 2029.
+	 */
+	@Test
+	void aBandDoesNotMoveWhenTheNextSeasonGoesOnSale() throws Exception {
+		ZonedDateTime inTheAutumn = INSIDE_THE_TRANSFER_WINDOW.atZone(SeasonClock.ZONE);
+
+		assertThat(SeasonClock.seasonBeingPaidFor(inTheAutumn))
+				.as("the season being paid for is the calendar year at this moment, so the band and"
+						+ " the sale cannot be told apart and the case measures nothing")
+				.isNotEqualTo(inTheAutumn.getYear());
+
+		clock.moveTo(INSIDE_THE_TRANSFER_WINDOW);
+
+		aMember("000007", "Sedmi", "Prodajni", "M", "1989-06-01", true);
+		run("000007", "Maraton", "2027-05-05", 42.20, 5, 5, 17000, 78.00);
+
+		assertThat(Category.ageBandFor(1989, 2028))
+				.as("born in 1989 he is no longer on the boundary between 2028 and 2029, so the case"
+						+ " measures nothing")
+				.isNotEqualTo(Category.ageBandFor(1989, 2029));
+
+		assertThat(runnerOf(rowsOf("000007").get(0)).ageBand())
+				.as("the band moved because the NEXT season went on sale, without a single birthday")
+				.isEqualTo("25-39");
+	}
+
+	/**
+	 * A RUNNER'S BAND IS THE BAND THE LIST GIVES HIM, and so is every other name he has.
+	 *
+	 * <p>This is the join between two public answers that say the same thing about the same member
+	 * and are written in two classes: {@code /api/competitors} and the runner of a result. They are
+	 * asked at the same moment and compared as values, on three moments that tell the sources of a
+	 * season apart (the night the year turns, the autumn of 2026 before the league has begun, and
+	 * the autumn of 2028 when the next season is on sale), with members who are on a boundary of
+	 * each. A runner that agrees with the list on one of them and parts from it on another is the
+	 * fault this exists to catch, and it is a different one from the three cases above, each of
+	 * which holds the runner to the CLOCK. Here it is held to the other reader of the clock.
+	 *
+	 * <p>The member whose fee has lapsed is not on the list, by the decision of 13.09.2026 that
+	 * this increment leaves alone, so he is not compared: nothing to compare him with is the very
+	 * reason the runner exists. The floors ask that more than one band is compared, since a list
+	 * and a runner that both answered one constant would agree on everything.
+	 */
+	@Test
+	void aRunnersBandIsTheBandTheListGivesHim() throws Exception {
+		aMember("000005", "Peti", "Granicni", "M", "1988-06-01", true);
+		aMember("000006", "Sesti", "Podni", "F", "1987-06-01", true);
+		aMember("000007", "Sedmi", "Prodajni", "F", "1989-06-01", true);
+		heRunsAsABeginner("000007");
+		run("000005", "Maraton", "2027-05-05", 42.20, 5, 5, 16000, 80.00);
+		run("000006", "Maraton", "2027-05-05", 42.20, 5, 5, 16500, 79.00);
+		run("000007", "Maraton", "2027-05-05", 42.20, 5, 5, 17000, 78.00);
+
+		for (Instant at : List.of(NEW_YEARS_NIGHT, AUTUMN_2026, INSIDE_THE_TRANSFER_WINDOW)) {
+			clock.moveTo(at);
+
+			Map<String, TheRunner> theList = new HashMap<>();
+
+			for (JsonNode one : new ObjectMapper().readTree(http.perform(get("/api/competitors"))
+					.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8))) {
+				theList.put(one.path("memberNumber").asString(), fiveNamesIn(one));
+			}
+
+			int compared = 0;
+			Set<String> bandsCompared = new HashSet<>();
+
+			for (JsonNode row : served()) {
+				TheRunner onTheList = theList.get(row.path("memberNumber").asString());
+
+				if (onTheList == null) {
+					continue;
+				}
+
+				assertThat(runnerOf(row))
+						.as("at %s the runner of %s is not the member the list gives", at,
+								row.path("memberNumber").asString())
+						.isEqualTo(onTheList);
+				compared++;
+				bandsCompared.add(onTheList.ageBand());
+			}
+
+			assertThat(compared)
+					.as("at %s fewer results than the fixture writes for members on the list were"
+							+ " compared, so the case measures less than it says", at)
+					.isEqualTo(7);
+			assertThat(bandsCompared)
+					.as("at %s every member compared is in one band, so a constant would satisfy the"
+							+ " comparison", at)
+					.hasSizeGreaterThan(1);
+		}
+	}
+
+	/**
+	 * THE ANSWER IS THE SAME TO EVERY READER, to the byte.
+	 *
+	 * <p>Article 73 makes the record public, and the runner is part of it; nothing in it depends on
+	 * who asks (PDL P11, 03.10.2026: plain text for everybody, and a link only for the reader who
+	 * may follow one is the screen's business and is decided on the screen). The readers are the
+	 * visitor, a member whose fee stands, the member whose fee has lapsed (who reads as a visitor
+	 * does), an account that is no member at all, and the administration. None of them takes a
+	 * different answer, and {@code everyNameThatDependsOnTheReader.test.ts} holds the other half:
+	 * that this route never takes the caller.
+	 *
+	 * <p><b>The floor is that the sessions are real.</b> A cookie nobody recognised would be
+	 * answered as a visitor is, and the comparison would hold for the wrong reason; each of the
+	 * four accounts is shown to be signed in by the one route that refuses a visitor.
+	 */
+	@Test
+	void theAnswerIsTheSameToEveryReader() throws Exception {
+		anAccount("clan@primer.rs", "competitor", "Ime", "Clana");
+		belongsTo("clan@primer.rs", "000001");
+		anAccount("istekao@primer.rs", "competitor", "Ime", "Isteklog");
+		belongsTo("istekao@primer.rs", THE_LAPSED_MEMBER);
+		anAccount("slobodan@primer.rs", "competitor", "Ime", "Slobodnog");
+		anAccount("uprava@primer.rs", "superadmin", "Ime", "Uprave");
+
+		assertThat(http.perform(get("/api/me")).andReturn().getResponse().getStatus())
+				.as("a visitor was let into the route that is for members, so it cannot show who is"
+						+ " signed in")
+				.isEqualTo(401);
+
+		for (String email : sessions.keySet()) {
+			assertThat(http.perform(get("/api/me")
+					.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret())))
+					.andReturn().getResponse().getStatus())
+					.as("%s is not signed in, so the comparison below would hold for the wrong reason", email)
+					.isEqualTo(200);
+		}
+
+		String theVisitors = wholeFor(null);
+
+		assertThat(theVisitors)
+				.as("the visitor's answer does not name the member whose fee has lapsed, so the readers"
+						+ " below are compared on less than the case says")
+				.contains("Neclan");
+
+		for (String email : sessions.keySet()) {
+			assertThat(wholeFor(email))
+					.as("%s is answered something other than a visitor is", email)
+					.isEqualTo(theVisitors);
+		}
+	}
+
+	/**
+	 * THE CLOCK IS NOT ASKED AGAIN FOR EACH ROW OF THE ANSWER.
+	 *
+	 * <p>The season a band is worked out for is read once for the whole answer. Two results of
+	 * one member must come back in the same band, and a clock read inside the mapper can cross
+	 * midnight on 1 January between two rows of one list, which is the one night of the year the
+	 * band moves on. It is measured as the thing it is: the number of times the server asked what
+	 * time it is, which must not grow with the number of rows.
+	 *
+	 * <p><b>It does not say one.</b> The count is compared between a short answer and a longer one
+	 * and not with a number written down, so a second question asked once per request (the
+	 * increment that makes the fee a derived fact will want the moment too) is for that increment
+	 * to decide, and the one thing this refuses is a question asked per row. The floors are that
+	 * the server asks at all and that the second answer really is longer.
+	 */
+	@Test
+	void theClockIsNotAskedAgainForEachRowOfTheAnswer() throws Exception {
+		clock.forgetBeingAsked();
+
+		int fewRows = served().size();
+		int askedForFew = clock.timesAsked();
+
+		run("000001", "Polumaraton", "2027-03-01", 21.10, 1, 1, 6000, 30.00);
+		run("000001", "Docek trka", NEW_YEARS_EVE, 25.00, 1, 1, 7000, 40.00);
+		run("000002", "Desetka", "2027-03-01", 10.00, 1, 1, 2500, 44.00);
+
+		clock.forgetBeingAsked();
+
+		int manyRows = served().size();
+
+		assertThat(askedForFew)
+				.as("the server never asked what time it is, so the season is not read from the clock")
+				.isGreaterThanOrEqualTo(1);
+		assertThat(manyRows)
+				.as("the second answer is not longer than the first, so the case measures nothing")
+				.isGreaterThan(fewRows);
+		assertThat(clock.timesAsked())
+				.as("the server asked what time it is more often for a longer answer, which is the clock"
+						+ " read once per row")
+				.isEqualTo(askedForFew);
+	}
+
+	/**
 	 * A CLOCK THE CASE MOVES, because the question is about a boundary in time.
 	 *
 	 * <p>It reports UTC as its zone on purpose: whoever asks what season it is has to
@@ -421,6 +1139,9 @@ class ResultApiTest {
 
 		private Instant now;
 
+		/** How many times the server has asked what time it is since a case last forgot. */
+		private int asked;
+
 		private AClockTheCaseMoves(Instant now) {
 			this.now = now;
 		}
@@ -429,8 +1150,23 @@ class ResultApiTest {
 			this.now = when;
 		}
 
+		/** Where the clock stands, asked by a CASE and so not counted as the server asking. */
+		Instant standingAt() {
+			return now;
+		}
+
+		int timesAsked() {
+			return asked;
+		}
+
+		void forgetBeingAsked() {
+			asked = 0;
+		}
+
 		@Override
 		public Instant instant() {
+			asked++;
+
 			return now;
 		}
 
