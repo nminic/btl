@@ -2,6 +2,8 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.event.EventAddress;
+import com.btl.portal.domain.event.WhatARaceCarries;
+import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
@@ -108,6 +110,27 @@ import java.util.Set;
  *
  * <p><b>{@code payments} is the one still refused</b>, and for the reason it always was: it
  * waits on the increment that lets a member reach that tab at all.
+ *
+ * <p><b>A RESULT IS APPROVED AS IT WILL BE COUNTED, AND THE MODERATOR MAY SET THE RUNNER'S
+ * FIGURES HIMSELF.</b> Three things decide what an approved run is worth, and each has one
+ * home:
+ *
+ * <ul>
+ * <li><b>The race, as it stands now.</b> A figure the race fixes is read off the race at the
+ * moment of approval, through {@link WhatARaceCarries#figuresOf} - the same function the
+ * member's own report and correction are counted by and the same one
+ * {@link VerificationApi} shows the moderator his queue through, so the screen and the
+ * standings cannot disagree about it.
+ * <li><b>The moderator's own figures, where he sets any</b> ({@link Answered#amended}). PDL
+ * P9 lets the administration change „samo činjenične podatke (vreme, dužina, uspon, spust,
+ * trka, link), nikad bodove direktno" (the record's wording of a decision that carries no
+ * date), and the owner's decision of 30.08.2026 is that a change made at verification is
+ * explained once, in the rulebook, and not beside each run. So the figures travel and the
+ * points never do. On a race in the calendar the race and its kind are not his to change
+ * here - only what the race leaves to the runner, which is all
+ * {@link WhatARaceCarries#figuresOf} reads off the amendment.
+ * <li><b>Whether the race has been run at all</b> (see {@link #whyTheRunCannotBeCounted}).
+ * </ul>
  *
  * <p><b>THE CONTRADICTION BESIDE {@code comments} IS SETTLED, NOT STILL OPEN.</b> PDL („ne
  * odbija nego brise, a napomena je neobavezna") and V9's {@code verification_refusal_says_why}
@@ -272,6 +295,21 @@ class VerificationWriteApi {
 	private static final String THE_ITEM_CARRIES_NO_RUN =
 			"Stavka ne nosi prijavljen rezultat.";
 
+	/**
+	 * A RUN ON A RACE THAT HAS NOT BEEN RUN YET, which the calendar can make of a run that was
+	 * sent on the right day by moving the race afterwards (see {@link #whyTheRunCannotBeCounted}).
+	 * 409, because the moderator can see the row and what he asked for cannot happen now.
+	 */
+	private static final String THE_RACE_HAS_NOT_BEEN_RUN_YET =
+			"Trka još nije održana, pa rezultat ne može da se odobri.";
+
+	/**
+	 * FIGURES OF THE MODERATOR'S OWN, SENT WHERE NOTHING COUNTS THEM: beside a refusal, or on a
+	 * tab whose items are not runs. A form fault and not a state, so 400.
+	 */
+	private static final String AN_AMENDMENT_GOES_WITH_AN_APPROVED_RUN =
+			"Izmena vrednosti ide samo uz odobrenje rezultata.";
+
 	/* PDL P10b, owner 22.09.2026: an event with a result already written may not be moved
 	   across 1 January on the race that result was run at. This route asked that question
 	   of its own approvals, over a schedule proposal's move, from V30 until PDL P10a,
@@ -367,8 +405,32 @@ class VerificationWriteApi {
 	 * @param reason   what he typed, which only a refusal uses and which
 	 *                 {@link DecidingOnASubmission#reasonAsItGoesIn} rather than this route
 	 *                 decides the fate of
+	 * @param amended  the figures the moderator puts in place of the runner's, on an approved
+	 *                 run and nowhere else. <b>Left out, it means „do not touch": the run is
+	 *                 counted at the figures it was sent with.</b> It never means „put them
+	 *                 back to anything" (ADL A8, 19.09.2026: „Izostavljeno polje nikad ne sme
+	 *                 tiho da promeni vrednost", and a route has to say which of the two
+	 *                 readings its omission has - this is that sentence for this field)
 	 */
-	record Answered(Boolean approved, String reason) {
+	record Answered(Boolean approved, String reason, Amended amended) {
+	}
+
+	/**
+	 * THE FOUR FIGURES OF A RUN AS THE MODERATOR SETS THEM, in the shape and under the names
+	 * the member's own correction carries them ({@code ResultWriteApi.Correction}).
+	 *
+	 * <p><b>All four may travel, and the ones the race fixes are not read</b>, which is that
+	 * same route's rule and its reason: which figures a race fixes is
+	 * {@link WhatARaceCarries#figuresOf}'s answer and not the caller's, so the screen sends what
+	 * it holds and one place decides. A figure the race leaves to the runner and the amendment
+	 * leaves out is not a figure at all, and the approval is refused as a form not filled in
+	 * rather than counted with nothing in it.
+	 */
+	record Amended(BigDecimal distanceKm, Integer ascentM, Integer descentM, Integer seconds) {
+
+		Figures figures() {
+			return new Figures(distanceKm, ascentM, descentM, seconds);
+		}
 	}
 
 	/**
@@ -579,11 +641,19 @@ class VerificationWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
+		/* FIGURES OF HIS OWN TRAVEL WITH AN APPROVED RUN AND WITH NOTHING ELSE. On a refusal they
+		   would be figures nobody counts, and on another tab figures for a thing that has none;
+		   taken and quietly dropped, either would tell the moderator his numbers were kept, which
+		   is the reason `EventWriteApi` refuses a country beside a codebook town rather than
+		   dropping it. */
+		if (typed.amended() != null && !(typed.approved() && RESULTS.equals(item.queue()))) {
+			return no(HttpStatus.BAD_REQUEST, AN_AMENDMENT_GOES_WITH_AN_APPROVED_RUN);
+		}
+
 		/* WHETHER THIS ROUTE CAN CARRY THE ANSWER OUT AT ALL, asked before anything about
-		   the answer itself. The two tabs it still cannot, {@code payments} and
-		   {@code results}, are refused rather than recorded; the note at the head of this
-		   class says what recording them would cost and which of the two is not merely
-		   unbuilt but undecided. */
+		   the answer itself. The one tab it still cannot, {@code payments}, is refused rather
+		   than recorded; the note at the head of this class says why. {@code results} stood
+		   beside it until the owner's choice of 21.09.2026 settled what an approval writes. */
 		if (!CARRIED_OUT_HERE.contains(item.queue())) {
 			return no(HttpStatus.CONFLICT, NOT_DECIDED_ON_THIS_PORTAL_YET);
 		}
@@ -607,7 +677,8 @@ class VerificationWriteApi {
 			case ALREADY_DECIDED -> no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY);
 			case A_REFUSAL_NEEDS_A_REASON -> no(HttpStatus.BAD_REQUEST, A_REFUSAL_NEEDS_A_REASON);
 			case APPROVE_IT, REJECT_IT -> {
-				Carried carried = inOneTransaction.execute(committing -> write(item, answer, asking));
+				Carried carried = inOneTransaction.execute(committing -> write(item, answer,
+						asking, typed.amended()));
 
 				/* AND THE POST GOES AFTER THE TRANSACTION HAS COMMITTED, never inside it.
 				   ADL A36, the owner's choice of 21.09.2026 for this very tab, among three outcomes
@@ -660,7 +731,7 @@ class VerificationWriteApi {
 	 * enforce, „koja je gde napisana i merena" on the portal's own side.
 	 */
 	private Carried write(Item item, DecidingOnASubmission.Answer answer,
-			WhoIsAsking.Member asking) {
+			WhoIsAsking.Member asking, Amended amended) {
 
 		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. It has to be
 		   settled before the row is claimed: asked afterwards it would need the transaction
@@ -700,11 +771,28 @@ class VerificationWriteApi {
 		   answered and unfulfilled. Asked of the QUEUE and not of `sent`, because `sent` is
 		   empty for two different reasons - a row in another tab, and a results row naming no
 		   submission - and only the second is a refusal. */
+		Figures counted = null;
+
 		if (answer.yes() && RESULTS.equals(item.queue())) {
-			Optional<ResponseEntity<?>> refused = whyTheRunCannotBeCounted(sent);
+			Optional<ResponseEntity<?>> refused = whyTheRunCannotBeCounted(sent, today());
 
 			if (refused.isPresent()) {
 				return new Carried(refused.get(), null, null);
+			}
+
+			/* WHAT IS COUNTED, WORKED OUT ONCE AND BEFORE THE ROW IS CLAIMED. The race is asked as
+			   it stands now and the runner's figures are the moderator's where he set any (see
+			   `countTheResult`). Judged by the same three checks the member's own report is judged
+			   by, because these numbers go into the same columns; a figure the race leaves to the
+			   runner and the amendment leaves out fails them as a form not filled in. */
+			counted = WhatARaceCarries.figuresOf(sent.race(),
+					amended == null ? sent.figures() : amended.figures());
+
+			if (ResultWriteApi.notADistance(counted.distanceKm())
+					|| ResultWriteApi.notAClimb(counted.ascentM())
+					|| ResultWriteApi.notAClimb(counted.descentM())
+					|| ResultWriteApi.notATime(counted.seconds())) {
+				return new Carried(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE), null, null);
 			}
 		}
 
@@ -723,8 +811,9 @@ class VerificationWriteApi {
 		   `decided_at` is the DATABASE's `now()`, which is V9's own default for `raised_at`
 		   and the same sentence: a moment read off this server would be a second home for
 		   what time it is. The Clock bean above decides nothing about when a decision was
-		   made; it decides only whether a fifteen minute spell has run out, which is a
-		   question a case has to be able to move. */
+		   made; it decides whether a fifteen minute spell has run out, which season a team
+		   starts in and whether a race has been run yet, which are questions a case has to be
+		   able to move. */
 		/* AND THE CONDITION ON THE STATE IS THE WHOLE OF WHAT MAKES THIS ONE DECISION.
 		 *
 		 * Measured on 21.09.2026 over real sockets, two moderators released by a barrier:
@@ -783,7 +872,7 @@ class VerificationWriteApi {
 			} else if (COMMENTS.equals(item.queue())) {
 				publishTheComment(item);
 			} else if (RESULTS.equals(item.queue())) {
-				said = countTheResult(item, sent);
+				said = countTheResult(item, sent, counted);
 			} else {
 				publishTheProfile(item);
 			}
@@ -916,32 +1005,56 @@ class VerificationWriteApi {
 	 * composite key {@code (race_id, race_date)} with {@code on update cascade} is what makes
 	 * the two the same fact: the database refuses a day that is not that race's and rewrites
 	 * the submission the moment a race moves.
+	 *
+	 * <p><b>The race's own figures are read as well, as it stands NOW.</b> The figures a race
+	 * fixes were copied into the submission on the day it was sent, and a race corrected since
+	 * is the race the run is counted on ({@link WhatARaceCarries#figuresOf} says why); the copy
+	 * is what the RUNNER sent, and the race is what the race says today. Nothing for a race the
+	 * calendar does not hold, and on that road nothing here is read.
 	 */
 	private Submission submissionBehind(Item item) {
-		return db.sql("select rs.race_id, rs.race_date, ra.name, rs.distance_km, rs.ascent_m,"
-						+ " rs.descent_m, rs.seconds, rs.amends_result_id"
+		return db.sql("select rs.id, rs.race_id, rs.race_date, ra.name, rs.distance_km,"
+						+ " rs.ascent_m, rs.descent_m, rs.seconds, rs.amends_result_id, ra.kind,"
+						+ " ra.distance_km, ra.ascent_m, ra.descent_m, ra.limit_seconds"
 						+ " from result_submission rs"
 						+ " left join race ra on ra.id = rs.race_id"
 						+ " where rs.id = ?")
 				.param(item.resultSubmissionId())
-				.query((row, one) -> new Submission(row.getObject(1, Long.class),
-						row.getDate(2).toLocalDate(), row.getString(3), row.getBigDecimal(4),
-						row.getInt(5), row.getInt(6), row.getInt(7), row.getObject(8, Long.class)))
+				.query((row, one) -> new Submission(row.getLong(1), row.getObject(2, Long.class),
+						row.getDate(3).toLocalDate(), row.getString(4),
+						new Figures(row.getBigDecimal(5), row.getInt(6), row.getInt(7),
+								row.getInt(8)),
+						row.getObject(9, Long.class),
+						row.getString(10) == null ? null
+								: new WhatARaceCarries.ARace(row.getString(10), row.getBigDecimal(11),
+										row.getInt(12), row.getInt(13), row.getInt(14))))
 				.single();
 	}
 
 	/**
-	 * THE TWO THINGS THAT REFUSE AN APPROVED RESULT, ASKED WITHOUT WRITING ANYTHING.
+	 * THE THREE THINGS THAT REFUSE AN APPROVED RESULT, ASKED WITHOUT WRITING ANYTHING.
 	 *
-	 * <p>Both are states the schema permits and this route cannot carry out, and both are
+	 * <p>All three are states the schema permits and this route cannot carry out, and all are
 	 * settled before the queue row is claimed for the reason {@link #whyTheTeamCannotBeMade}
 	 * gives from its own side: asked afterwards they would need the transaction rolled back,
 	 * and a rollback inside a test-managed transaction poisons the outer one instead.
 	 *
-	 * @param sent what the row names, or empty where it names nothing
+	 * <p><b>The third is a race that has not been run yet, and it is reachable.</b> PDL P9,
+	 * owner, 11.08.2026: „Ne sme, ne može biti rezultata u budućnosti." {@code ResultWriteApi}
+	 * refuses such a run when it is sent, but a race may be moved after that - the
+	 * administration moves it through {@code EventWriteApi} and {@code RaceWriteApi}, and V10's
+	 * {@code on update cascade} carries the waiting run's day along - so a run sent on the right
+	 * day can stand in the queue on a day still to come. Asking it
+	 * here as well is my reading of that decision, carried to the moment the run would become a
+	 * result, and not a sentence of the owner's about approvals. The day of the race itself
+	 * counts as run, exactly as it does on the member's side.
+	 *
+	 * @param sent  what the row names, or empty where it names nothing
+	 * @param today the day in the league's own zone
 	 * @return the refusal, or nothing where there is none
 	 */
-	private static Optional<ResponseEntity<?>> whyTheRunCannotBeCounted(Submission sent) {
+	private static Optional<ResponseEntity<?>> whyTheRunCannotBeCounted(Submission sent,
+			LocalDate today) {
 		if (sent == null) {
 			return Optional.of(no(HttpStatus.CONFLICT, THE_ITEM_CARRIES_NO_RUN));
 		}
@@ -950,7 +1063,18 @@ class VerificationWriteApi {
 			return Optional.of(no(HttpStatus.CONFLICT, THE_RACE_IS_NOT_IN_THE_CALENDAR));
 		}
 
+		if (sent.raceDate().isAfter(today)) {
+			return Optional.of(no(HttpStatus.CONFLICT, THE_RACE_HAS_NOT_BEEN_RUN_YET));
+		}
+
 		return Optional.empty();
+	}
+
+	/** Today in the league's own zone and never the machine's, {@code ResultWriteApi}'s own
+	 *  reading of the same question: a server kept in UTC would call a race run this morning
+	 *  in Belgrade a race still to come for the first hour of the day. */
+	private LocalDate today() {
+		return LocalDate.now(clock.withZone(SeasonClock.ZONE));
 	}
 
 	/**
@@ -997,9 +1121,23 @@ class VerificationWriteApi {
 	 * stopped being true, {@code result.competitor_id not null} refuses the insert loudly
 	 * rather than writing a result belonging to nobody.
 	 *
+	 * <p><b>WHAT IS COUNTED IS {@code counted}, NOT WHAT WAS SENT, and the two part company in
+	 * two ways.</b> A figure the race fixes is the race's as it stands now, and a figure the
+	 * runner gives is the moderator's where he set one at approval. The second is the owner's
+	 * decision of 30.08.2026, in the journal's wording: verification changes what the member
+	 * reported, and that is explained once, in the rulebook, „a ne beleška uz svaku izmenjenu
+	 * prijavu i ne čuvanje poslate vrednosti pored upisane". So nothing beside the result says
+	 * what was sent, and <b>the decided submission is written over with what was counted</b>:
+	 * left as it was, the database would keep the value sent beside the value written, which is
+	 * the outcome that decision was not. The member keeps what he sent where the record of it
+	 * belongs, in the letter and the line in his inbox written when he sent it. That last step
+	 * is my reading of the decision, not a sentence of the owner's.
+	 *
+	 * @param counted the four figures as they are counted, worked out and checked by
+	 *                {@link #write} before the row was claimed
 	 * @return what the member is told by post once this has committed
 	 */
-	private Said countTheResult(Item item, Submission sent) {
+	private Said countTheResult(Item item, Submission sent, Figures counted) {
 
 		/* WAS THE BEGINNERS' CATEGORY STILL OPEN TO HIM, ASKED BEFORE THE ROW EXISTS.
 		 *
@@ -1018,35 +1156,45 @@ class VerificationWriteApi {
 		int theSeasonAfterTheRun = sent.raceDate().getYear() + 1;
 		boolean wasOpen = beginnersCategoryIsOpenFor(item.competitorId(), theSeasonAfterTheRun);
 
-		BigDecimal points = BtlScoreCalculator.calculate(sent.distanceKm().doubleValue(),
-				sent.ascentM(), sent.descentM(), sent.seconds());
+		BigDecimal points = BtlScoreCalculator.calculate(counted.distanceKm().doubleValue(),
+				counted.ascentM(), counted.descentM(), counted.seconds());
 
 		/* THE RUN AS IT IS APPROVED, BUILT ONCE. The letter about this approval and the line in his
 		   inbox about what it did to his category are two messages about one run, and they cannot
 		   name two different runs if both are written from this one value. */
-		Run counted = new Run(sent.raceName(), sent.raceDate(), sent.distanceKm(), sent.ascentM(),
-				sent.descentM(), sent.seconds(), points);
+		Run run = new Run(sent.raceName(), sent.raceDate(), counted.distanceKm(), counted.ascentM(),
+				counted.descentM(), counted.seconds(), points);
 
 		if (sent.amendsResultId() == null) {
 			db.sql("insert into result (competitor_id, race_id, race_date, distance_km,"
 							+ " ascent_m, descent_m, seconds, points)"
 							+ " values (?, ?, ?, ?, ?, ?, ?, ?)")
-					.params(item.competitorId(), sent.raceId(), sent.raceDate(), sent.distanceKm(),
-							sent.ascentM(), sent.descentM(), sent.seconds(), points)
+					.params(item.competitorId(), sent.raceId(), sent.raceDate(),
+							counted.distanceKm(), counted.ascentM(), counted.descentM(),
+							counted.seconds(), points)
 					.update();
 		} else {
 			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?,"
 							+ " points = ? where id = ?")
-					.params(sent.distanceKm(), sent.ascentM(), sent.descentM(), sent.seconds(),
-							points, sent.amendsResultId())
+					.params(counted.distanceKm(), counted.ascentM(), counted.descentM(),
+							counted.seconds(), points, sent.amendsResultId())
 					.update();
 		}
 
+		/* AND THE DECIDED SUBMISSION SAYS WHAT WAS COUNTED (see the note on this method). After
+		   the claim and never before it, so a moderator who lost the race to decide this row
+		   writes nothing here either. */
+		db.sql("update result_submission set distance_km = ?, ascent_m = ?, descent_m = ?,"
+						+ " seconds = ? where id = ?")
+				.params(counted.distanceKm(), counted.ascentM(), counted.descentM(),
+						counted.seconds(), sent.id())
+				.update();
+
 		if (wasOpen && !beginnersCategoryIsOpenFor(item.competitorId(), theSeasonAfterTheRun)) {
-			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, counted);
+			tellHimHisCategoryMoved(item.competitorId(), theSeasonAfterTheRun, run);
 		}
 
-		return WhatAResultChangeSays.approved(counted);
+		return WhatAResultChangeSays.approved(run);
 	}
 
 	/**
@@ -1315,16 +1463,22 @@ class VerificationWriteApi {
 	/**
 	 * A RUN WAITING TO BE JUDGED, AND WHAT IT IS A CORRECTION OF.
 	 *
+	 * @param id            the submission's own key, which an approval writes what it counted
+	 *                      back into
 	 * @param raceId        the calendar's race, or empty where the member described one
 	 *                      instead; an approval of the second is refused
 	 * @param raceName      the race's own name, and empty for exactly the rows that are
 	 *                      refused, so every road that reads it found its row
+	 * @param figures       the four figures as they were SENT
 	 * @param amendsResultId the result this replaces, or empty where it is a first report.
 	 *                       V32 chose a nullable pointer over a flag beside one, „there or
 	 *                       not, rather than a flag and a pointer that have to agree"
+	 * @param race          what the race answers for as it stands now, and empty where the
+	 *                      calendar does not hold it - which is a road refused before this is
+	 *                      read
 	 */
-	private record Submission(Long raceId, LocalDate raceDate, String raceName,
-			BigDecimal distanceKm, int ascentM, int descentM, int seconds, Long amendsResultId) {
+	private record Submission(long id, Long raceId, LocalDate raceDate, String raceName,
+			Figures figures, Long amendsResultId, WhatARaceCarries.ARace race) {
 	}
 
 	/**

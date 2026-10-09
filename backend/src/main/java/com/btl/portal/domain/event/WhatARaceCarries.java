@@ -5,7 +5,8 @@ import java.util.Set;
 
 /**
  * THE TWO THINGS A RACE CARRIES THAT ARE SPELT OUT RATHER THAN MEASURED: which kinds
- * there are, and how exactly a distance is kept.
+ * there are, and how exactly a distance is kept - and the one answer to which of a run's
+ * figures a race of each kind fixes ({@link #figuresOf}).
  *
  * <p>The sibling of {@link WhatAnEventCarries}, written in its shape and for its reason.
  * Both are lists written by hand, and what stands under them is
@@ -120,5 +121,90 @@ public final class WhatARaceCarries {
 	/** And the scale, for the same floor. */
 	public static int digitsKeptAfterThePoint() {
 		return DIGITS_KEPT_AFTER_THE_POINT;
+	}
+
+	/**
+	 * THE FOUR FIGURES A RUN IS SCORED ON, in the types a request carries them in: a figure
+	 * may be absent, which is exactly what a form that did not ask for it sends.
+	 */
+	public record Figures(BigDecimal distanceKm, Integer ascentM, Integer descentM,
+			Integer seconds) {
+	}
+
+	/**
+	 * WHAT A RACE IN THE CALENDAR ANSWERS FOR ITSELF, AS IT STANDS AT THE MOMENT IT IS ASKED.
+	 *
+	 * @param kind         one of {@link #KINDS}
+	 * @param limitSeconds what a race to a limit runs to, and nought on the other two kinds
+	 *                     ({@code race_only_a_timed_race_has_a_limit}, V7)
+	 */
+	public record ARace(String kind, BigDecimal distanceKm, int ascentM, int descentM,
+			int limitSeconds) {
+	}
+
+	/**
+	 * Whether a race of this kind answers for the distance, the climb and the fall itself.
+	 *
+	 * <p>PDL P9, the record of the owner's decision of 03.08.2026, in the journal's wording and
+	 * not in a sentence of his: the three are taken off the race chosen, „to su zvanični podaci
+	 * i moderator ih ispravlja na trci, gde ispravka stiže svima koji su je istrčali, a ne na
+	 * jednoj prijavi". True of a race of a length, and of no other kind.
+	 */
+	public static boolean fixesTheCourse(String kind) {
+		return OF_A_LENGTH.equals(kind);
+	}
+
+	/**
+	 * Whether a race of this kind answers for the time itself.
+	 *
+	 * <p>PDL P9, the owner's decision of 29.08.2026 among the outcomes offered, in the
+	 * journal's wording: „Na vremenskoj trci vreme ne unosi, jer je zadato trkom" - the race's
+	 * own limit, the same for everyone who finished it.
+	 */
+	public static boolean fixesTheTime(String kind) {
+		return TO_A_LIMIT.equals(kind);
+	}
+
+	/**
+	 * WHICH FOUR FIGURES A RUN CARRIES, ASKED OF THE RACE IN ONE PLACE FOR EVERY ROAD A RUN
+	 * TAKES.
+	 *
+	 * <p>A race of a length gives the three it measured; a race to a limit gives the time,
+	 * because on such a race the time is the same for everyone who finished and it is what the
+	 * formula scores it against; a free race gives neither, so every figure is the runner's own
+	 * (owner, 29.08.2026). Whatever the request carries for a figure the race fixes is not read.
+	 *
+	 * <p><b>Four roads ask it, and that is why it is here and not in any one of them.</b> A
+	 * member reporting a run and a member correcting a counted one
+	 * ({@code ResultWriteApi}); a moderator approving a run, with or without figures of his own
+	 * put in place of the runner's ({@code VerificationWriteApi}); and the queue showing the
+	 * moderator what that approval would count ({@code VerificationApi}). Answered four ways it
+	 * would come to answer „whose figure is this" differently on the screen and in the
+	 * standings, so the moderator would approve numbers he was never shown.
+	 *
+	 * <p><b>The race is asked as it stands NOW, never as it stood when the run was sent.</b>
+	 * The record of 03.08.2026 above has a figure the race fixes corrected on the race, where
+	 * the correction reaches everyone who ran it; a run still waiting is one of those, so a
+	 * figure copied off the race on the day it was sent is not the figure it is counted at.
+	 * That reading is mine, carried from the record to the moment of approval, and not a
+	 * sentence of the owner's about approvals.
+	 *
+	 * <p><b>THE RACE'S SIDE IS BOXED BY HAND, AND THAT IS NOT STYLE - IT WAS A 500.</b> Written
+	 * {@code course ? race.ascentM() : typed.ascentM()}, with an {@code int} on one side and
+	 * an {@code Integer} on the other, Java promotes: the conditional UNBOXES the typed value
+	 * before anything looks at it, so a form with no climb in it threw a NullPointerException
+	 * here, before the guard after this call could answer 400. Measured on three of the four
+	 * figures at once ({@code ResultWriteApiTest.everyWayARunOnAFreeRaceCanFailToHoldTogether});
+	 * the length was safe only because both of its sides are already {@code BigDecimal}.
+	 */
+	public static Figures figuresOf(ARace race, Figures typed) {
+		boolean course = fixesTheCourse(race.kind());
+		boolean time = fixesTheTime(race.kind());
+
+		return new Figures(
+				course ? race.distanceKm() : typed.distanceKm(),
+				course ? Integer.valueOf(race.ascentM()) : typed.ascentM(),
+				course ? Integer.valueOf(race.descentM()) : typed.descentM(),
+				time ? Integer.valueOf(race.limitSeconds()) : typed.seconds());
 	}
 }
