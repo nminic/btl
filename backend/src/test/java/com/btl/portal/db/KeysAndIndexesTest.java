@@ -516,7 +516,14 @@ class KeysAndIndexesTest extends DatabaseTest {
 			   so two requests that both asked before either wrote cannot both be told yes. */
 			new Index("verification_one_text_waits_per_member",
 					"one text of one member waits for a moderator at a time; a partial index because a"
-							+ " unique constraint takes no WHERE"));
+							+ " unique constraint takes no WHERE"),
+			/* V55. The owner's „Red ostaje jedan" for a picture said by the database: the floor under
+			   the turn MePhotoApi makes the sends of one member take, so a writer that does not take it
+			   meets a unique violation and not a second picture of one member waiting. */
+			new Index("verification_one_picture_waits_per_member",
+					"one picture of one member waits for a moderator at a time; the complement of the"
+							+ " text index above, told apart by photo_id, and a partial index for the"
+							+ " same reason"));
 
 	/**
 	 * Every primary key and unique key in the schema, with what the catalogue says

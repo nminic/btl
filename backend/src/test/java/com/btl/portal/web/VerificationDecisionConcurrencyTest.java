@@ -146,6 +146,17 @@ class VerificationDecisionConcurrencyTest {
 
 	private long profileItem;
 
+	/* THE RUN OF THE ONE CASE ABOUT THE RESULTS TAB, and what makes it one: an event, a race and
+	   the submission behind the queue row. Nought until that case makes them, so the cleanup
+	   below deletes nothing for the cases that do not. */
+	private long theEvent;
+
+	private long theRace;
+
+	private long theRun;
+
+	private long runItem;
+
 	private final java.util.Map<String, String> sessions = new java.util.HashMap<>();
 
 	@BeforeEach
@@ -190,9 +201,14 @@ class VerificationDecisionConcurrencyTest {
 		db.sql("delete from team_membership where competitor_id = ?").param(founder).update();
 		db.sql("delete from team where slug = ?").param(THE_SLUG).update();
 		db.sql("delete from message where to_id = ?").param(founder).update();
-		db.sql("delete from verification_lock where verification_id in (?, ?)")
-				.params(teamItem, profileItem).update();
-		db.sql("delete from verification where id in (?, ?)").params(teamItem, profileItem).update();
+		db.sql("delete from verification_lock where verification_id in (?, ?, ?)")
+				.params(teamItem, profileItem, runItem).update();
+		db.sql("delete from verification where id in (?, ?, ?)")
+				.params(teamItem, profileItem, runItem).update();
+		db.sql("delete from result where competitor_id = ?").param(founder).update();
+		db.sql("delete from result_submission where id = ?").param(theRun).update();
+		db.sql("delete from race where id = ?").param(theRace).update();
+		db.sql("delete from btl_event where id = ?").param(theEvent).update();
 		db.sql("delete from team_proposal where id = ?").param(proposal).update();
 		db.sql("delete from competitor where id = ?").param(founder).update();
 
@@ -499,6 +515,136 @@ class VerificationDecisionConcurrencyTest {
 		}
 	}
 
+	/**
+	 * TWO APPROVALS OF ONE RUN, EACH WITH FIGURES OF ITS OWN, COUNT IT ONCE AND AT THE WINNER'S
+	 * FIGURES, IN THE STANDINGS AND IN THE SUBMISSION ALIKE.
+	 *
+	 * <p><b>Why the results tab needs a forced case of its own.</b> Approving a run writes two
+	 * rows after the claim: the result, and the submission it was decided from, written over with
+	 * what was counted. Both must come AFTER the claim, and no sequential case can say whether
+	 * they do: the second of two approvals meets a row already decided outside any transaction
+	 * and never reaches either statement. Here both requests are inside the update together,
+	 * stopped by this connection exactly as in
+	 * {@link #theLoserMeetsARowAlreadyClaimedEveryTimeAndNotOnlyWhenTheSchedulerRaces}, so a
+	 * statement moved in front of the claim is one the loser runs as well - a second result, or
+	 * the loser's figures in the submission beside the winner's in the standings.
+	 *
+	 * <p><b>The two moderators set different figures and both differ from what was sent, in every
+	 * one of the four</b>, so „the result and the submission agree" cannot be met by both still
+	 * holding the copy that was sent, and „they are the winner's" cannot be met by the loser's.
+	 */
+	@Test
+	void twoApprovalsOfOneRunWithFiguresOfTheirOwnCountItOnceAndAtTheWinnersFigures()
+			throws Exception {
+		aRunWaitsInTheResultsTab();
+
+		String oneSets = "21.0000 310 120 6000";
+		String theOtherSets = "23.5000 450 90 7000";
+
+		ExecutorService pool = Executors.newFixedThreadPool(2);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			Callable<MockHttpServletResponse> one = () -> answerWith(ONE_MODERATOR, runItem,
+					"{\"approved\":true,\"amended\":{\"distanceKm\":21.0,\"ascentM\":310,"
+							+ "\"descentM\":120,\"seconds\":6000}}");
+			Callable<MockHttpServletResponse> theOther = () -> answerWith(THE_OTHER_MODERATOR,
+					runItem, "{\"approved\":true,\"amended\":{\"distanceKm\":23.5,\"ascentM\":450,"
+							+ "\"descentM\":90,\"seconds\":7000}}");
+
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update")
+						.param(runItem).query(Integer.class).single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the row is locked and nothing has been submitted yet, so a count of"
+								+ " backends held up by this connection that is not nought is"
+								+ " counting something other than the two requests below")
+						.isZero();
+
+				submitted.add(pool.submit(one));
+				submitted.add(pool.submit(theOther));
+
+				try {
+					BlockedBehindThisHold.untilBothArrive(db, submitted);
+				} catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				assertThat(submitted)
+						.as("a request that is not held up by this hold was refused before it"
+								+ " reached the claim, which is the branch this case is written to"
+								+ " keep away from")
+						.hasSize(2).noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			MockHttpServletResponse first = submitted.get(0).get(30, TimeUnit.SECONDS);
+			MockHttpServletResponse second = submitted.get(1).get(30, TimeUnit.SECONDS);
+
+			assertThat(List.of(first.getStatus(), second.getStatus()).stream().sorted().toList())
+					.containsExactly(200, 409);
+
+			String winners = first.getStatus() == 200 ? oneSets : theOtherSets;
+
+			assertThat(db.sql("select distance_km || ' ' || ascent_m || ' ' || descent_m || ' '"
+							+ " || seconds from result where competitor_id = ?")
+					.param(founder).query(String.class).list())
+					.as("the run was counted twice, or at the figures of the moderator who was"
+							+ " refused")
+					.containsExactly(winners);
+			assertThat(db.sql("select distance_km || ' ' || ascent_m || ' ' || descent_m || ' '"
+							+ " || seconds from result_submission where id = ?")
+					.param(theRun).query(String.class).single())
+					.as("the submission says something other than what the standings counted, so"
+							+ " the moderator who was refused wrote into it")
+					.isEqualTo(winners);
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * A RUN OF THE FOUNDER'S WAITING IN THE RESULTS TAB, AT A FREE RACE ALREADY RUN.
+	 *
+	 * <p>Free, so all four figures are the runner's and every one a moderator sets is counted;
+	 * run on a day this clock - the real one - has long passed. Sent at 20 km, 200 m up, 100 m
+	 * down and 1:50:00, which neither moderator above sets.
+	 */
+	private void aRunWaitsInTheResultsTab() {
+		theEvent = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+						+ " description, link) values ('istovremena-odluka-trka', 'Istovremena trka',"
+						+ " date '2026-09-05', " + A_TOWN + ", 'race', false, '', '') returning id")
+				.query(Long.class).single();
+
+		theRace = db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, 'Slobodna trka', false,"
+						+ " date '2026-09-05', 'free', 0, 0, 0, 0) returning id")
+				.param(theEvent).query(Long.class).single();
+
+		theRun = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " distance_km, ascent_m, descent_m, seconds, link, comment) values (?, ?,"
+						+ " date '2026-09-05', 20.0000, 200, 100, 6600, 'https://primer.rs/rezultati',"
+						+ " '') returning id")
+				.params(founder, theRace).query(Long.class).single();
+
+		runItem = db.sql("insert into verification (queue, competitor_id, subject, body,"
+						+ " result_submission_id) values ('results', ?, 'Slobodna trka', '', ?)"
+						+ " returning id")
+				.params(founder, theRun).query(Long.class).single();
+	}
+
+	/** The same call {@link #answer} makes, with the body written out whole. */
+	private MockHttpServletResponse answerWith(String email, long id, String body)
+			throws Exception {
+		return http.perform(post("/api/verification/" + id + "/decision").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, sessions.get(email)))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(body))
+				.andReturn().getResponse();
+	}
+
 	/** Two calls released together, in the order they were given. */
 	private List<MockHttpServletResponse> atTheSameInstant(
 			Callable<MockHttpServletResponse> one, Callable<MockHttpServletResponse> other)
@@ -552,7 +698,7 @@ class VerificationDecisionConcurrencyTest {
 						+ " ('Probni', 'Probic', ?, (select id from role where code = 'moderator'))")
 				.param(email).update();
 
-		for (String right : List.of("queue:teams", "queue:profiles")) {
+		for (String right : List.of("queue:teams", "queue:profiles", "queue:results")) {
 			db.sql("insert into account_admin_right (account_id, right_code)"
 							+ " values ((select id from account where email = ?), ?)")
 					.params(email, right).update();
