@@ -470,10 +470,11 @@ class VerificationWriteApi {
 	 * @param newRace  the event and the race an approval writes into the calendar, on a run
 	 *                 whose race the calendar does not hold. Left out, nothing is written into
 	 *                 the calendar at all: see {@link #THE_RACE_IS_NOT_IN_THE_CALENDAR}
-	 * @param raceId   the race of the calendar such a run is counted on instead, chosen by the
-	 *                 moderator from the list the member's own form offers (PDL P9, owner,
-	 *                 30.08.2026: „kad odem da verifikujem drugom članu mogu da zamenim njegov
-	 *                 naziv događaja i izbor trke autocompletom sad već postojeće trke"). Never
+	 * @param raceId   the race of the calendar such a run is counted on instead, named by its
+	 *                 key (PDL P9, owner, 30.08.2026: „kad odem da verifikujem drugom članu mogu
+	 *                 da zamenim njegov naziv događaja i izbor trke autocompletom sad već
+	 *                 postojeće trke"). How the races to choose from are offered is the screen's
+	 *                 to settle, not this route's: the route takes a key and answers for it. Never
 	 *                 beside {@code newRace}: a run is counted on one race
 	 */
 	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId) {
@@ -491,8 +492,8 @@ class VerificationWriteApi {
 	 *
 	 * <p><b>All three are asked for, and none of them falls back on what the member typed.</b> A
 	 * blank one is a form not filled in. A default here would be the second meaning of an omitted
-	 * field that ADL A8 forbids, „vrati na podrazumevano", and the screen that sends this is the
-	 * one place that knows what the moderator saw: it seeds the boxes with what the member typed.
+	 * field that ADL A8 forbids, „vrati na podrazumevano". What the moderator is offered to start
+	 * from is the screen's to show, because the screen is the one place that knows what he saw.
 	 *
 	 * @param raceKind one of {@link WhatARaceCarries#KINDS}: the member's choice was a hint, and
 	 *                 this is the decision (PDL P9, 30.08.2026, „član nagoveštava vrstu,
