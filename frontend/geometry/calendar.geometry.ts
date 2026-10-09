@@ -30,9 +30,9 @@ import type { At } from './support/harness.ts'
  *
  * **The month is written here and not taken from the served file**, so every record a claim is
  * about is one this file names: a bar of two days with the longest name the form allows
- * (`forms/definitions/admin-dogadjaj.form.json`), an unrelated event two days after it in the same
- * row, a bar of three days whose name fits it, a bar that crosses a week (the Sunday closes one run
- * and the Monday opens the next) and a bar of four days. Every event is entered under the 1st,
+ * (`forms/definitions/admin-dogadjaj.form.json`), an unrelated event on the day after it in the
+ * same row, a bar of three days whose name fits it, a bar that crosses a week (the Sunday closes
+ * one run and the Monday opens the next) and a bar of four days. Every event is entered under the 1st,
  * a day none of its races is run on, as `pages/calendarScale.test.tsx` does: the range is derived
  * from the races, and an event entered on its first race would let either source draw it.
  *
@@ -123,8 +123,9 @@ const ANSWERS = {
     /* Monday and Tuesday: a bar of two days, ending on the 6th. */
     aRace(11, 1, 5),
     aRace(12, 1, 6, 'half'),
-    /* Thursday: two days after the bar ends, in the same row. */
-    aRace(21, 2, 8),
+    /* Wednesday: the day after the bar ends, in the same row, so a name that runs even one day
+       too far is over this tile (one day too many measured 8,94px into the next tile, round 5). */
+    aRace(21, 2, 7),
     /* Monday to Wednesday of the next row: a bar its name fits in. */
     aRace(31, 3, 12),
     aRace(32, 3, 13),
