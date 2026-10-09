@@ -644,7 +644,26 @@
    wide as its `min-width` and as its longest word, and no wider. Measured from
    the bar the room is the whole row, and an `auto` width grows to the longest
    line of the longest subject: 736px on a tablet, laid over the picture at the
-   other end of the bar. Asked for outright, it is what it was. */
+   other end of the bar. Asked for outright, it is what it was.
+
+   **The language menu hangs from its own button on top of all that, wherever the
+   browser can anchor it** (owner, 03.10.2026, `ADL.md` A63: the menu opens under
+   its button). Hung from the bar it stood where the gutter is and not where its
+   button is: 28px from the button at 768 in a member's header, and 348, 476, 527
+   and 552px from it where the row of tools had wrapped onto a row of its own against
+   the left edge (Chrome, 09.10.2026, `origin/main` 45e3a86a: a member at 640, a
+   visitor at 768 and at 819, a member at 1280 with the text at 200%). The two other
+   panels keep hanging from the bar, as the repair above left them: the owner decided
+   it for the language menu alone, and their geometry is measured unchanged.
+
+   The block at the end of this query gives the menu back the shape it has above the
+   query, that its right edge is the right edge of its button, and keeps what the bar
+   was there for, that it cannot leave the screen. `anchor(right)` is the right edge
+   of the button wherever the row has put it, `justify-self: safe end` puts the right
+   edge of the menu on it, and where that would begin the menu left of the gutter,
+   `safe` begins it AT the gutter instead. Both ends of the menu stay inside the
+   gutters of the bar and the button is under it at every width. No width is asked
+   about, so it adds none to the list in `styles/scale.test.ts`. */
 @media (max-width: 51.24875em) {
   .shell__bar {
     position: relative;
@@ -673,6 +692,26 @@
 
   .lang__menu {
     min-width: min(11rem, calc(100% - 2 * var(--space-16)));
+  }
+
+  /* Only where the browser knows anchor positioning, and all of it or none: the name on
+     the button, the name on the menu and the offsets that read the anchor are one
+     thing. Where the browser cannot read them the rules above stand as they are,
+     whole on the screen and only far from the button. */
+  @supports (anchor-name: --lang-button) {
+    .lang__btn {
+      anchor-name: --lang-button;
+    }
+
+    .lang__menu {
+      position-anchor: --lang-button;
+      /* The room the menu may stand in: from the gutter at the left to the right edge of
+         the button. */
+      inset-inline: var(--space-16) anchor(right);
+      /* Against the right end of that room, and against its left end where the menu is
+         wider than the room. */
+      justify-self: safe end;
+    }
   }
 }
 
