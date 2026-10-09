@@ -130,6 +130,17 @@ import java.util.Optional;
  * portal-wide decision by itself, in one of many places it would need to be enforced;
  * flagged rather than built, since building it here and nowhere else would be a boundary
  * that looks decided and is not.
+ *
+ * <p><b>The paragraph above is stale about READING and not about writing.</b> Since
+ * 03.10.2026 {@link CommentApi} reads {@code competitor.active}, through
+ * {@link ActiveMemberOrAdministration}, to decide who is shown the list (PDL P6, 03.10.2026,
+ * „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"), as do the routes
+ * that write who is going. WRITING a rating is as it was: the owner's choice speaks of who SEES
+ * the comments and of nothing else, so this class still asks only for a member. What the journal
+ * records beside it, that writing is the stronger act than reading, is the assistant's reasoning
+ * for the {@code not null} of {@code comment_submission.competitor_id} and not a decision about
+ * this route; a member whose fee has lapsed can therefore still send a rating he can no longer
+ * read, and the moderator's queue is the gate that stands between it and the page.
  * </ul>
  *
  * <p><b>THE SUBJECT IS READ LIVE, IN THE SAME STATEMENT THAT WRITES IT, NEVER CAPTURED

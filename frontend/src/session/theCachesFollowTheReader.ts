@@ -5,15 +5,16 @@ import { clearResourceCache, type ResourceName } from '../data/client'
  * THE NAMES WHOSE ANSWER DEPENDS ON WHO IS ASKING, and that nothing else drops when the
  * person asking changes.
  *
- * <p><b>Three names, and the other two that depend on the reader are not here on purpose.</b>
- * The backend answers five cached names by asking the caller (`CompetitorApi`, `TeamApi`,
- * `AttendanceApi`, `InboxApi`, `MyApplicationsApi` take the principal; no other route behind a
- * cached name does, which `session/everyNameThatDependsOnTheReader.test.ts` reads out of the
- * Java source rather than taking from this sentence). `inbox` and `me/applications` are dropped
- * by their own hooks, keyed by the member number the screen hands them (`data/useResource.ts`,
- * `theInboxNowBelongsTo` and `theWaitingNowBelongsTo`). The three here are not asked for a
- * member number by anybody: `competitors` and `teams` are read by twenty-two components and by
- * a visitor too, and `attendance` is read by the event's page for whoever is signed in.
+ * <p><b>Four names, and the other two that depend on the reader are not here on purpose.</b>
+ * The backend answers six cached names by asking the caller (`CompetitorApi`, `TeamApi`,
+ * `AttendanceApi`, `CommentApi`, `InboxApi`, `MyApplicationsApi` take the principal; no other
+ * route behind a cached name does, which `session/everyNameThatDependsOnTheReader.test.ts` reads
+ * out of the Java source rather than taking from this sentence). `inbox` and `me/applications`
+ * are dropped by their own hooks, keyed by the member number the screen hands them
+ * (`data/useResource.ts`, `theInboxNowBelongsTo` and `theWaitingNowBelongsTo`). The four here are
+ * not asked for a member number by anybody: `competitors` and `teams` are read by twenty-two
+ * components and by a visitor too, and `attendance` and `comments` are read by the event's page
+ * for whoever is signed in.
  *
  * <p><b>What they answer differently, and to whom.</b> PDL, section 16 (owner, 27.09.2026):
  * a member who hides his profile loses his team, his picture and his biography to a reader
@@ -30,8 +31,23 @@ import { clearResourceCache, type ResourceName } from '../data/client'
  * drop protects is the other direction: a list a member was answered, kept in this visit after
  * he has signed out, where the next reader's screens would find it without the server having
  * been asked.
+ *
+ * <p><b>`comments` answers the same way, since 03.10.2026, and for the same reason.</b> Every
+ * comment of every event is served to an active member and to the administration and refused
+ * 404 to anybody else signed in (PDL P6, 03.10.2026, „Komentare vide aktivni članovi i
+ * administracija, isto kao najava dolaska"; the record's sentence, not the owner's words), and a
+ * visitor is refused 401 by the chain. Before that day any account that was signed in was served
+ * the whole list, so the answer was one thing for everybody who got it and nothing here had to
+ * drop it. Now a list a member was answered, kept in this visit after he has signed out, is a list
+ * a free account would find on the next screen without the server having been asked, with the
+ * name and the member number of every author in it.
  */
-export const ANSWERED_TO_THE_READER = ['competitors', 'teams', 'attendance'] as const satisfies readonly ResourceName[]
+export const ANSWERED_TO_THE_READER = [
+  'competitors',
+  'teams',
+  'attendance',
+  'comments',
+] as const satisfies readonly ResourceName[]
 
 /**
  * WHO IS ASKING, as one word, or nobody.

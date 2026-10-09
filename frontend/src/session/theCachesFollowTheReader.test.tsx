@@ -18,9 +18,14 @@ import { useSession } from './useSession'
  * are still held at the moment a case looks, so a mutation of the rule fails here by name
  * before it fails there by symptom.
  *
- * <p><b>Three names are warmed and only two may go</b>, because „both were dropped" is
+ * <p><b>Five names are warmed and only four may go</b>, because „all were dropped" is
  * satisfied by a rule that empties the whole cache, and that is a request more for every
  * screen of every visit for nothing. `events` is the one that must stay.
+ *
+ * <p><b>`comments` is the fourth that goes, since 03.10.2026</b>: every comment of every event is
+ * answered to an active member and to the administration and refused to anybody else signed in
+ * (PDL P6, 03.10.2026, „Komentare vide aktivni članovi i administracija, isto kao najava
+ * dolaska"), so a list a member was answered may not be found by the next reader of the visit.
  */
 
 const A_MEMBER = {
@@ -126,7 +131,7 @@ afterEach(() => {
   server = null
 })
 
-/** Three names read and arrived, so there is something for each case to find held or gone. */
+/** Five names read and arrived, so there is something for each case to find held or gone. */
 async function warm(): Promise<void> {
   server = serverThat((path) =>
     isResource(path)
@@ -138,6 +143,7 @@ async function warm(): Promise<void> {
     loadResource('competitors'),
     loadResource('teams'),
     loadResource('attendance'),
+    loadResource('comments'),
     loadResource('events'),
   ])
 }
@@ -147,14 +153,22 @@ function held() {
     competitors: arrivedResource('competitors') !== undefined,
     teams: arrivedResource('teams') !== undefined,
     attendance: arrivedResource('attendance') !== undefined,
+    comments: arrivedResource('comments') !== undefined,
     events: arrivedResource('events') !== undefined,
   }
 }
 
-const ALL_HELD = { competitors: true, teams: true, attendance: true, events: true }
-/* Three since 03.10.2026: who is going to an event is answered to an active member and to the
-   administration and refused to anybody else, so it is a reader's answer like the two before it. */
-const THE_READERS_ANSWERS_ARE_GONE = { competitors: false, teams: false, attendance: false, events: true }
+const ALL_HELD = { competitors: true, teams: true, attendance: true, comments: true, events: true }
+/* Four since 03.10.2026: who is going to an event and every comment on one are answered to an
+   active member and to the administration and refused to anybody else, so they are a reader's
+   answers like the two before them. */
+const THE_READERS_ANSWERS_ARE_GONE = {
+  competitors: false,
+  teams: false,
+  attendance: false,
+  comments: false,
+  events: true,
+}
 
 function visit(initialMemberNumber: string | null = null) {
   render(
