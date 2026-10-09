@@ -7,6 +7,7 @@ import {
   useState,
   type FormEvent,
   type ReactNode,
+  type RefObject,
 } from 'react'
 import { useTodayDate } from '../clock/useClock'
 import { useI18n } from '../i18n/useI18n'
@@ -27,6 +28,7 @@ import type {
   FormDef,
   FormValues,
   Suggestion,
+  UnreadableList,
 } from './types'
 import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
@@ -143,8 +145,20 @@ type Props = {
    * from: this is what the portal already holds, offered while somebody types
    * something they may also type freely. Choosing an entry fills the fields it
    * names and locks them; typing again breaks that and hands them back.
+   *
+   * <p><b>A field's list is its rows, or the way it failed to come</b> (decision of 03.10.2026,
+   * `forms/types.ts`, `UnreadableList`): a list that could not be read is not handed in as an empty
+   * one, because an empty list looks like a calendar with nothing in it. The field then says so
+   * under its box, with a button that asks again, and goes on taking whatever is typed into it.
+   * One prop and not two, so a field cannot be given both and the box is the same box on either
+   * side of the failure: it is not replaced, and the keyboard on it is not lost, when the list
+   * comes.
+   *
+   * <p><b>A held box says nothing</b> (`fixed`): nothing is typed into it, so a list is of no use to
+   * it and a button that asks for one would offer something that cannot be used. That is the
+   * coordinator's reading and not a recorded decision.
    */
-  suggests?: Record<string, Suggestion[]>
+  suggests?: Record<string, Suggestion[] | UnreadableList>
   /**
    * Fields this form must not let anybody change, whatever they do.
    *
@@ -161,6 +175,42 @@ type Props = {
    * (`pages/admin/EntityEditor.tsx`, `fixed` and `holdsWhileSaving`).
    */
   fixed?: string[]
+  /**
+   * WHETHER THE BUTTON THAT SENDS IS HELD, as a render can see it: a send of the screen's own is out
+   * and the press waits for it.
+   *
+   * <p>Owner, 05.10.2026, chosen between offered outcomes (PDL, P6, „Dok čuvanje događaja traje", the
+   * last decision of the block; the wording was offered to him and the choice is his): the button that
+   * sends waits while the save lasts, the way „Nazad na spisak" and the buttons of 02.10.2026 do. Held
+   * the way the portal holds every control that cannot act and is not switched off: `aria-disabled`, the
+   * dress of a held control (`FormRenderer.css`), and a refusal in the handler as well (`sendIsOut`),
+   * because the attribute stops nothing by itself. It stays in the order of focus: switched off, it would
+   * take with it the focus the press gave it.
+   *
+   * <p><b>`undefined` and not `false` when it is not held</b>, so a button that waits for nothing carries
+   * no such word at all. The sentence that says why is the screen's (`results.sending`, under the form).
+   *
+   * <p><b>Only the events hold it today, and left out nothing about any other form moves</b>, which is
+   * the condition `fixed` was written under as well: every other form draws this button as it always did.
+   */
+  sendIsHeld?: boolean
+  /**
+   * AND THE SAME FACT AS A PRESS CAN SEE IT: a ref the screen sets in the tick its send begins and
+   * clears in the tick its last answer comes, whatever the answer is.
+   *
+   * <p><b>Read at the press and never at the render.</b> A press in the very tick the send began in finds
+   * the render not drawn yet, so `sendIsHeld` is still false and the attribute is not there; the ref is
+   * already true. The press is refused above everything the form asks (its rules, the screen's `check`,
+   * `alsoRefuses`), which is the point: an event that has just been taken is in the screen's list by the
+   * time its races are on the way, and a second press that asked whether the event's address is free
+   * answered „Događaj sa tim nazivom već postoji te godine" over a request that was going well, and took
+   * the cursor to the date (measured, PDL P6, 05.10.2026). A press that waits is not asked anything.
+   *
+   * <p>Given together with `sendIsHeld`, from the same two facts the screen already keeps for its other
+   * controls (`EntityEditor`'s `asking` and `working`): this is the ref and that is the state, and the
+   * two are cleared in one place.
+   */
+  sendIsOut?: RefObject<boolean>
   /**
    * A rule the definition cannot describe, checked when the form is submitted
    * and returned in the same shape as the rules that can: errors by field name.
@@ -390,6 +440,8 @@ const Field = memo(function Field({
    *  what is typed and what is chosen (forms/Suggesting.tsx). */
   suggesting?: {
     list: readonly Suggestion[]
+    /** Present only where the list could not be read (see `suggests` on the form). */
+    unreadable?: UnreadableList
     onType: (next: string) => void
     onChoose: (one: Suggestion) => void
   }
@@ -848,6 +900,8 @@ const Field = memo(function Field({
           shared={shared}
           value={String(value)}
           suggestions={suggesting.list}
+          /* A held box is not typed into, so it says nothing about a list it cannot use. */
+          unreadable={locked ? undefined : suggesting.unreadable}
           onType={suggesting.onType}
           onChoose={suggesting.onChoose}
         />
@@ -884,6 +938,8 @@ export function FormRenderer({
   options = {},
   suggests = {},
   fixed = [],
+  sendIsHeld = false,
+  sendIsOut,
   check,
   derived,
   was,
@@ -1195,6 +1251,17 @@ export function FormRenderer({
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
+
+    /* A PRESS THAT WAITS IS NOT ASKED ANYTHING (`sendIsOut`). Refused here, above the rules of the
+       definition, the screen's `check` and `alsoRefuses`, and below the line that keeps the browser
+       from sending the form itself. Whatever it asked would be answered about the record the send in
+       flight is making: the event just taken is in the screen's list under the address the form
+       shows. Read off the ref, which is already true in the tick the send began in, and not off
+       `sendIsHeld`, which is still false until the render that follows it. */
+    if (sendIsOut?.current === true) {
+      return
+    }
+
     /* The rules in the definition win over the handed in check: a field that is
        empty is empty before it is anything else. The one exception is the rule
        about the country beside a town, which is the last resort: a caller with
@@ -1318,7 +1385,8 @@ export function FormRenderer({
     }
 
     return {
-      list,
+      list: Array.isArray(list) ? list : [],
+      unreadable: Array.isArray(list) ? undefined : list,
       onType: (next: string) => {
         /* The link breaks the moment the name is edited (owner, 23.08.2026):
            what was filled from the chosen entry is emptied and handed back, so a
@@ -1488,7 +1556,15 @@ export function FormRenderer({
           showing, whether or not that day has been saved yet. */}
       {beneath?.(filled)}
 
-      <button type="submit" className="form__submit">
+      {/* TOLD OFF AND NOT SWITCHED OFF while a send the screen holds the reader for is out
+          (`sendIsHeld`), like every control that cannot act on this portal: `disabled` would take it
+          out of the order of focus along with the focus the press gave it. The press itself is
+          refused in `handleSubmit`, because the attribute stops nothing. */}
+      <button
+        type="submit"
+        className="form__submit"
+        aria-disabled={sendIsHeld ? true : undefined}
+      >
         {t(form.submitKey)}
       </button>
     </form>

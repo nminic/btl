@@ -1262,7 +1262,9 @@ export function AdminEvents() {
                        between offered outcomes: PDL, P6, „Dok čuvanje događaja traje"), so a press
                        ends in the form it began in, and with the form it began in: its fields and the
                        table of races are held as well, so nothing is typed into what the press is
-                       walking. Only this screen passes it (`EntityEditor`). */
+                       walking, and so is the button that sends (owner, 05.10.2026, the same block),
+                       so a second press is not asked whether the address of the event just taken is
+                       free. Only this screen passes it (`EntityEditor`). */
                     holdsWhileSaving
                     /**
                      * The event follows its first morning (owner, 10.08.2026): its

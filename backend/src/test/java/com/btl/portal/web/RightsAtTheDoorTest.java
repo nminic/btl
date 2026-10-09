@@ -92,11 +92,20 @@ class RightsAtTheDoorTest {
 	 * portal that is neither public nor administrative. „Komentare vide samo prijavljeni
 	 * clanovi BTL. Drugim (posetiocima) se ne prikazuju" (owner, 11.08.2026), so it is not on
 	 * {@code READ_BY_ANYBODY} and the chain answers a visitor 401; and reading a comment is
-	 * not a moderator's action, so there is no box to tick for it and EVERY signed in account
-	 * reads it, a plain competitor included. That is the sentence the assertion below asks
-	 * somebody to write down, and it is written down here. What holds the other half - that a
-	 * visitor really is refused - is {@code CommentApiTest}, because this file measures what a
-	 * route DECLARES and not what the chain in front of it does.
+	 * not a moderator's action, so there is no box to tick for it. <b>Until 03.10.2026 that also
+	 * meant EVERY signed in account read it, a plain competitor included, and that half of the
+	 * sentence is gone:</b> the owner narrowed it by a choice between offered outcomes that PDL
+	 * records as „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"
+	 * (PDL P6, 03.10.2026), which is a fact about the member's fee and about the role, not a
+	 * box, so the controller asks it ({@code ActiveMemberOrAdministration}) and answers anybody
+	 * else signed in 404, the way {@code /api/attendance} below it has since the same day. The
+	 * name stays on this list for the same reason that one does: this snapshot says that the DOOR
+	 * asks for no right, and the floor under it compares EXACTLY, so the route could only leave
+	 * it by being decided at the door or by being opened to a visitor, and it is neither.
+	 * What holds the other halves - that a visitor really is refused, and that an account that is
+	 * neither an active member nor the administration is told the address is not there - is
+	 * {@code CommentApiTest}, because this file measures what a route DECLARES and not what
+	 * the chain in front of it does.
 	 *
 	 * <p><b>And {@code /api/attendance} joins it, closed toward a visitor the identical way.</b>
 	 * It is neither public nor administrative either: „Tu listu ko je prijavljen takođe vide
@@ -145,8 +154,8 @@ class RightsAtTheDoorTest {
 	 * MAKES THIS FLOOR ASSERT LESS THAN ITS NAME SUGGESTS.</b> A message may be private to
 	 * one member (V13: „empty means everybody", so a named addressee means somebody in
 	 * particular), so it is absent from {@code READ_BY_ANYBODY} and a visitor is refused
-	 * before this door runs at all. But unlike {@code /api/comments}, „every signed in
-	 * account reads it" is not quite true here either: an account naming no member - a
+	 * before this door runs at all. But like {@code /api/comments} since 03.10.2026,
+	 * „every signed in account reads it" is not quite true here either: an account naming no member - a
 	 * moderator who does not race - is refused 404
 	 * by the controller itself, the identical shape {@code /api/verification} already has
 	 * for a moderator with no queue ticked. There is no box to tick for having an inbox at

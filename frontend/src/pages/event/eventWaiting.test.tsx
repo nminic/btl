@@ -1,8 +1,10 @@
 import { screen } from '@testing-library/react'
 import type { ResourceState } from '../../data/useResource'
 import type { EventComment, Result } from '../../data/types'
+import { first } from '../../test/at'
 import { aFailedRead } from '../../test/failedRead'
 import { renderAt } from '../../test/render'
+import { membersAsServed } from '../../test/serverAnswers'
 
 /**
  * What the foot of an event does while its two lower parts are not there yet.
@@ -185,11 +187,32 @@ describe('a part of an event that a visitor was never going to be shown', () => 
        would keep the alarm away too, and would take the owner's own sentence with
        it (`rateEvent.test.tsx` holds that sentence from the other side, on a screen
        where nothing is broken). */
-    expect(await screen.findByText('Komentare vide prijavljeni članovi.')).toBeVisible()
+    expect(await screen.findByText('Komentare vide članovi sa važećom članarinom.')).toBeVisible()
     /* And the part beside it, drawn and still on its way: the foot of the event was
        reached, so the absence below is an absence of an alarm and not of a page. */
     expect(await screen.findByText(RESULTS[1])).toBeVisible()
 
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('is not reported to a member whose fee has lapsed either, who is given the same sentence', async () => {
+    /* Since 03.10.2026 the server refuses him 404 where it refuses a visitor 401 (PDL P6,
+       03.10.2026, „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"),
+       so a part that is in error for him is in error for the same reason it is for a visitor.
+       He is signed in, so the list of members is what says he is not a reader, and it is the
+       list the server really serves that says it (`membersAsServed`). */
+    onlyTheCommentsAreBroken()
+    const { lapsed, stop } = membersAsServed()
+
+    try {
+      renderAt(`/sr/kalendar/${RAN}`, 'competitor', first(lapsed), undefined, BEFORE)
+
+      expect(await screen.findByText('Komentare vide članovi sa važećom članarinom.')).toBeVisible()
+      expect(await screen.findByText(RESULTS[1])).toBeVisible()
+
+      expect(screen.queryByRole('alert')).toBeNull()
+    } finally {
+      stop()
+    }
   })
 })

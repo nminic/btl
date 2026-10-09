@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
+import { Unreadable } from '../components/Unreadable'
 import { useI18n } from '../i18n/useI18n'
-import type { Suggestion } from './types'
+import type { Suggestion, UnreadableList } from './types'
 import './Suggesting.css'
 
 /** How many letters before the list opens (owner, 23.08.2026: „posle dva slova
@@ -58,11 +59,21 @@ function matching(value: string, all: readonly Suggestion[]): Suggestion[] {
  * so a list left open while the cursor walks past it holds the fields under it a
  * screen's worth of rows further down than where they were read. It closes on the
  * way out rather than on the way in.
+ *
+ * **A list that could not be read says so, under the box, and the box stays a box.**
+ * Decision of 03.10.2026 (`forms/types.ts`, `UnreadableList`): a list that did not come
+ * must not look like a list with nothing in it, because a reader who types a name the
+ * calendar holds and is offered nothing concludes that the calendar does not hold it. The
+ * sentence and the button that asks again are the portal's one component for that
+ * (`components/Unreadable.tsx`); what this adds is the box above them, which goes on taking
+ * whatever is typed, and the keyboard, which goes back to the box when the button that had
+ * it goes because the asking worked.
  */
 export function Suggesting({
   value,
   shared,
   suggestions,
+  unreadable,
   onType,
   onChoose,
 }: {
@@ -71,6 +82,10 @@ export function Suggesting({
    *  rule and what describes it (FormRenderer.tsx). */
   shared: Record<string, unknown>
   suggestions: readonly Suggestion[]
+  /** Present only where the list could not be read; the box then says so and offers to ask
+   *  again. `suggestions` is then empty, and `FormRenderer` makes it so: a list that did not come
+   *  has no rows. */
+  unreadable?: UnreadableList
   onType: (next: string) => void
   onChoose: (one: Suggestion) => void
 }) {
@@ -87,7 +102,14 @@ export function Suggesting({
    *
      Only the keyboard ever gets there. A press with the pointer never moves the
      focus at all, because `mousedown` is cancelled on the list below; put back on
-     the box either way, which is where the pointer had left it too. */
+     the box either way, which is where the pointer had left it too.
+   *
+     **And the same for the button that asks again for a list that could not be read**
+     (below): it is taken out in the stroke in which the asking works, with the cursor on
+     it, and the box above is where the reader was working. `Unreadable` says that it
+     left with the cursor on it and only then (a reader who moved on while it asked, or a
+     press that never focused the button, is not followed), and this is the one place that
+     can put it back on the box. */
   const putBack = useRef(false)
   const found = matching(value, suggestions)
   const showing = shut ? [] : found
@@ -129,6 +151,22 @@ export function Suggesting({
           }
         }}
       />
+
+      {/* A LIST THAT COULD NOT BE READ, under the box it is about and not above the form: a
+          sentence at the top of the form is about the form, and this one is about the list a
+          reader is typing against. After the box and before the live region and the list, so
+          the order in the document is the order on the screen. */}
+      {unreadable !== undefined && (
+        <Unreadable
+          said={unreadable.said}
+          named={unreadable.named}
+          reading={unreadable.read.reading}
+          onRetry={unreadable.read.readAgain}
+          onLeaveWithFocus={() => {
+            putBack.current = true
+          }}
+        />
+      )}
 
       {/* That the list opened, and how long it is, for a reader who cannot see it
           appear. The region stands whether or not it has anything to say, because
