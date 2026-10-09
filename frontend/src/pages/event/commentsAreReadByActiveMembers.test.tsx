@@ -299,6 +299,23 @@ describe('a reader whose fee is not known yet', () => {
     })
   })
 
+  it('asks for the comments at once for a moderator whose own member is the one the list does not carry', async () => {
+    /* The administration is a yes whatever it has for a number, so the list of members is not
+       waited for even when its own number is a number that list leaves out: a moderator whose
+       fee has lapsed is the administration all the same. */
+    await withTheListHeldBack(async () => {
+      renderAt(`/sr/kalendar/${RAN}`, 'moderator', LAPSED)
+
+      await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })
+
+      expect(await screen.findByText('Učitavanje: Komentari')).toBeVisible()
+      expect(
+        askedForTheComments(),
+        'a moderator with a number waited for the list of members before he asked for the comments',
+      ).toBeGreaterThan(0)
+    })
+  })
+
   it('is told the part could not be read, and not that the comments are not for him, when the list does not come', async () => {
     const broken = serverThat((path) => (path === '/api/competitors' ? answeredWith(500) : null))
 
