@@ -349,9 +349,9 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 
 			/* V56. A membership held on a balance carries its trail whole or not at all: one check
 			   constraint, scoped to the basis by name, and the three column comments V35 wrote replaced
-			   because they spoke of an exemption alone (owner, 03.10.2026, PDL P8, „Trag (ko je odobrio
-			   i kada) ide uz svaku radnju koja prasta novac"; ADL, the entries of 03.10.2026 and
-			   09.10.2026). No column and no data.
+			   because they spoke of an exemption alone (the owner's decision of 03.10.2026, chosen among
+			   the options put to him: PDL P8, the entry „Trag (ko je odobrio i kada) ide uz svaku radnju
+			   koja prasta novac"; ADL, the entries of 03.10.2026 and 09.10.2026). No column and no data.
 
 			   56 because it is the number this branch was given on 09.10.2026 (ADL, the entry of that day
 			   under the decision of 03.10.2026), and it is MEASURED to be free: all 1378 refs, local and
@@ -365,7 +365,7 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   line breaks and a BOM left out), which reproduced V54 and V55 to the digit before it was
 			   trusted here, and this list is what confirms it on the gate. */
 			new Applied("56", "V56__a_membership_on_a_balance_carries_its_trail_whole_or_not_at_all.sql",
-					-1212718962));
+					559365428));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

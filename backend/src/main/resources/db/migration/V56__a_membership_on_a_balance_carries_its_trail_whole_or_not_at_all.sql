@@ -1,12 +1,13 @@
 /* A membership held on a balance carries its trail whole, or not at all.
  *
- * Owner, 03.10.2026 (PDL P8, „Trag (ko je odobrio i kada) ide uz svaku radnju koja prasta novac";
- * ADL, the entry of the same day): the trail of who entered an act, and when, goes with EVERY act
- * that forgives money. Two acts on a membership do. An exemption from the fee, which V35 gave its
- * trail, and a membership granted on a balance that fell short of the fee, „Odobri umanjen iznos iz
- * balansa", which had none. „Odobri iz balansa" for the whole fee forgives nothing and goes without
- * one. From this file on MembershipWriteApi writes the trail on a short balance, in the three columns
- * V35 added; this file adds no column and moves no row.
+ * The owner's decision of 03.10.2026, chosen among the options put to him (PDL P8, the entry „Trag
+ * (ko je odobrio i kada) ide uz svaku radnju koja prasta novac"; ADL, the entry of the same day): the
+ * trail of who entered an act, and when, goes with EVERY act that forgives money. Two acts on a
+ * membership do. An exemption from the fee, which V35 gave its trail, and a membership granted on a
+ * balance that fell short of the fee, „Odobri umanjen iznos iz balansa", which had none. „Odobri iz
+ * balansa" for the whole fee forgives nothing and goes without one. From this file on
+ * MembershipWriteApi writes the trail on a short balance, in the three columns V35 added; this file
+ * adds no column and moves no row.
  *
  *
  * WHAT THE CONSTRAINT SAYS

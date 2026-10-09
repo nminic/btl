@@ -955,10 +955,11 @@ class MembershipWriteApiTest {
 	 * A REDUCED AMOUNT LEAVES THE TRAIL OF WHO APPROVED IT, which is the short side of the boundary
 	 * the owner's decision draws and the half this route did not carry out until 09.10.2026.
 	 *
-	 * <p>Owner, 03.10.2026 (PDL P8): „Trag (ko je odobrio i kada) ide uz svaku radnju koja prasta
-	 * novac", and the two acts he names are the exemption and „Odobri umanjen iznos iz balansa". A
-	 * balance of 25 against a fee of 40 is the second: all of it is spent, fifteen is forgiven, and
-	 * the row says who pressed the button and when.
+	 * <p>The owner's decision of 03.10.2026, chosen among the options put to him (PDL P8, the entry
+	 * „Trag (ko je odobrio i kada) ide uz svaku radnju koja prasta novac"), names two acts: the
+	 * exemption and „Odobri umanjen iznos iz balansa". A balance of 25 against a fee of 40 is the
+	 * second: all of it is spent, fifteen is forgiven, and the row says who pressed the button and
+	 * when.
 	 *
 	 * <p><b>The three columns are read as ONE value</b> ({@link Trail}) and the account is the
 	 * CASHIER's: three accounts stand in every case of this file, and a fourth in the ones that are
@@ -1096,7 +1097,7 @@ class MembershipWriteApiTest {
 	/**
 	 * THE TRAIL NAMES WHOEVER PRESSED THE BUTTON, AND NOT THE MEMBER OR THE ACCOUNT THAT IS HIS.
 	 *
-	 * <p>The owner's sentence is „ko je odobrio", and the one who approved is the moderator whose
+	 * <p>The decision's words are „ko je odobrio", and the one who approved is the moderator whose
 	 * session the request arrived in. Three other candidates are in reach of the route and each is a
 	 * way to be wrong that the fixture makes DIFFERENT from the right answer: the member's own row
 	 * (name „Probni Takmicar"), the account that belongs to him ({@code anAccountOf}, „Clan

@@ -398,9 +398,9 @@ class MembershipWriteApi {
 
 		/* WHETHER THIS ACT FORGIVES MONEY, which is what decides whether a trail is written, and it is
 		   worked out from the SAME settlement the amount comes off the book from, so that the two
-		   cannot be two readings of one balance. Owner, 03.10.2026: the trail goes with every act that
-		   forgives money - „Odobri umanjen iznos iz balansa" and the exemption - and „Odobri iz
-		   balansa" for the whole fee „ne prasta nista i ide bez traga".
+		   cannot be two readings of one balance. The owner's decision of 03.10.2026 (PDL P8): the trail
+		   goes with every act that forgives money - „Odobri umanjen iznos iz balansa" and the
+		   exemption - and „Odobri iz balansa" for the whole fee forgives nothing and goes without one.
 
 		   AN EXEMPTION forgives the whole fee by definition. A BALANCE forgives what it falls short
 		   of, and `coveredByTheBalance` is true at EQUALITY (`Balance` says why: a man whose balance is
@@ -494,10 +494,11 @@ class MembershipWriteApi {
 	 * {@code competitor.active} and moves both homes and all their readers at once.
 	 *
 	 * <p><b>2. THE TRAIL OF WHO DECIDED IT IS WRITTEN FOR EVERY ACT THAT FORGIVES MONEY, AND ON A
-	 * SHORT BALANCE IT STANDS IN TWO PLACES.</b> Owner, 03.10.2026: „Trag (ko je odobrio i kada) ide
-	 * uz svaku radnju koja prasta novac" - an exemption from the fee, and „Odobri umanjen iznos iz
-	 * balansa"; „Odobri iz balansa" for the whole fee forgives nothing and goes without one. So the
-	 * three columns {@code V35} added ({@code decided_by}, {@code decided_by_name},
+	 * SHORT BALANCE IT STANDS IN TWO PLACES.</b> The owner's decision of 03.10.2026, chosen among the
+	 * options put to him (PDL P8, the entry „Trag (ko je odobrio i kada) ide uz svaku radnju koja
+	 * prasta novac"): an exemption from the fee, and „Odobri umanjen iznos iz balansa"; „Odobri iz
+	 * balansa" for the whole fee forgives nothing and goes without one. So the three columns
+	 * {@code V35} added ({@code decided_by}, {@code decided_by_name},
 	 * {@code decided_at}) are written when the ground is the fee being waived AND when the ground is
 	 * the balance and it did not cover the fee ({@code forgivesMoney}, worked out in {@code write}),
 	 * and are left empty otherwise. {@code membership_on_a_balance_carries_its_trail_whole_or_not_at_all}
