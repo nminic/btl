@@ -13,7 +13,8 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * <p>The one question that decision left open, whether the list of suggestions in a field of a form is
  * such a list, was answered on 03.10.2026 (chosen between the outcomes offered, in the words of the PDL's
  * record of it and not the owner's): the races on the form a result is entered on, yes
- * (`pages/member/NewResult.tsx`, below); the towns, no (the last bullet of what this does not see).
+ * (`pages/member/NewResult.tsx`, below); the towns, no (the bullet about `data/places.ts` in what this does
+ * not see).
  *
  * <p><b>TWO QUESTIONS ARE ASKED HERE AND THEY ARE NOT THE SAME KIND.</b> The first has a floor and
  * the second does not, and an earlier version of this file claimed the second was the first (the
@@ -551,14 +552,15 @@ describe('a read that failed', () => {
  * THE FORMS THAT ARE HANDED A LIST TO TYPE AGAINST ARE COUNTED BY THE SYNTAX TREE AND NOT BY MEMORY
  * (decision of 03.10.2026, chosen between the outcomes offered, in the words of the PDL's record of it
  * and not the owner's: „Kad spisak trka na formi za rezultat ne može da se učita, uz polje stoji da ne
- * može, uz „Pokušaj ponovo"." The towns are the boundary, in the last bullet of the header).
+ * može, uz „Pokušaj ponovo"." The towns are the boundary, in the bullet about `data/places.ts` in the header).
  *
  * <p>There is one today, `pages/member/NewResult.tsx`: the list of races under the name of a race. It
  * is a list made from a read, so it can fail, and what a form does when it does is the decision above.
  * The floor of the first question catches a second one only if the file that hands it down also opens a
  * state; a list that reaches a form through a prop would pass it. So the set is derived here and held in
  * both directions, and a second form with a list to type against is a decision the day it is written:
- * which of the two things its list does when it cannot be read (`UnreadableList`, `forms/types.ts`).
+ * whether its list says it cannot be read, as the races do, or is a boundary, as the towns are
+ * (`UnreadableList`, `forms/types.ts`).
  */
 describe('a form that is handed a list to type against', () => {
   it('is one of these, and no other: a second one is a decision, not a thing that happens', () => {

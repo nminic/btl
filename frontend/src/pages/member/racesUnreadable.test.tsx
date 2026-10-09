@@ -167,7 +167,7 @@ describe('the list of races under the name of a race, on the form a result is en
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
 
-    expect((await screen.findAllByRole('button', { name: /Maraton maratona/ })).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('button', { name: /Maraton maratona/ }, SOON)).length).toBeGreaterThan(0)
     expect(screen.queryByRole('alert')).toBeNull()
     expect(retryButtons()).toHaveLength(0)
   }, SLOW)
@@ -241,7 +241,7 @@ describe('the list of races, asked for again', () => {
 
     await user.type(nameBox(), 'Maraton maratona')
 
-    expect((await screen.findAllByRole('button', { name: /Maraton maratona/ })).length).toBeGreaterThan(0)
+    expect((await screen.findAllByRole('button', { name: /Maraton maratona/ }, SOON)).length).toBeGreaterThan(0)
   }, SLOW)
 
   it('asks again for every file that failed with ONE press', async () => {
