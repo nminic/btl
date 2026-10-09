@@ -257,6 +257,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     why: 'THE FILE\'S OWN: a single figure in the head of the page, silent because a box that resolves into nothing moves the name of the race under the reader\'s eye, and an alert about a mark is noise about a figure nobody asked for. Not a list.',
   },
   {
+    file: 'pages/event/readsComments.ts',
+    how: 'hands on',
+    why: 'MY REASONING: the list of members that failed, or is still on its way, is handed on as it is, as the state of the answer to „does this reader read the comments", to the two screens that read it and say it (`EventComments.tsx` through `<Resource>`, `OverallMark.tsx` by drawing nothing, for the reason its own row gives). It is never turned into a no: a reader whose list did not come is not read as somebody who may not read, he is told the part could not be read, with the button that asks again. Written with the reader fact (PDL P6, 03.10.2026).',
+  },
+  {
     file: 'pages/EventDetail.tsx',
     how: 'open',
     why: 'OPEN: PENDING stavka 372, a separate PR (D). The block of actions is drawn only when the races AND the results are both ready, so a failed read of either takes the buttons away without a word. (The part for the results is silent for an event still to be run for the reason `pages/event/EventComments.tsx` gives, held by `pages/event/eventWaiting.test.tsx`.)',
