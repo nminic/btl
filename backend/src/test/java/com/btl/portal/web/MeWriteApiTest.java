@@ -361,7 +361,7 @@ class MeWriteApiTest {
 	 */
 	private String change(String bio, Boolean profileHidden) {
 		return mapper.writeValueAsString(new MeWriteApi.Change(bio, profileHidden, null, null,
-				null, null, null, null, null));
+				null, null, null, null, null, null));
 	}
 
 	/**
@@ -1442,6 +1442,34 @@ class MeWriteApiTest {
 		return named;
 	}
 
+	private List<String> missingIn(MockHttpServletResponse answer) throws Exception {
+		List<String> named = new ArrayList<>();
+
+		for (JsonNode one : answerIn(answer).path("missing")) {
+			named.add(one.asString());
+		}
+
+		return named;
+	}
+
+	/**
+	 * Gives one member a size of his own.
+	 *
+	 * <p>The fixture writes {@code 'M'} on every row, so a case about the size first moves the
+	 * rows it reads to sizes that differ from each other and from {@code 'M'}: otherwise „the
+	 * column was not touched", „it went back to what everybody has" and „somebody else's row
+	 * moved" are one value.
+	 */
+	private void wearing(String memberNumber, String size) {
+		db.sql("update competitor set shirt_size = ? where member_number = ?")
+				.params(size, memberNumber).update();
+	}
+
+	private String shirtOf(String memberNumber) {
+		return db.sql("select shirt_size from competitor where member_number = ?")
+				.param(memberNumber).query(String.class).single();
+	}
+
 	/**
 	 * A NAME, AN ADDRESS AND A TELEPHONE MOVE THE MOMENT THEY ARE SENT, AND NOTHING IS
 	 * QUEUED FOR THEM.
@@ -1545,11 +1573,21 @@ class MeWriteApiTest {
 	 * member would read his old date of birth back with no sentence anywhere saying why. The
 	 * mutation that proves this line is alive is taking the name off
 	 * {@link MeWriteApi#ONLY_AN_ADMINISTRATOR_CHANGES}: the request then succeeds.
+	 *
+	 * <p><b>The father's name is the third since the owner chose, on the same day, that only an
+	 * administrator changes it</b> (PDL, „Ime oca je pravni podatak istog reda kao datum
+	 * rođenja"). Sent alone it would be answered {@code theFormIsNotComplete} if it were not
+	 * named here, because nothing else in the body is a field this route takes - so the
+	 * mutation taking it off the list fails this case on the reason as well as on the status.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = { "birthDate", "gender" })
+	@ValueSource(strings = { "birthDate", "gender", "fatherName" })
 	void whatOnlyAnAdministratorMovesIsRefusedRatherThanIgnored(String field) throws Exception {
-		Object value = "birthDate".equals(field) ? "1980-05-05" : "M";
+		Object value = switch (field) {
+			case "birthDate" -> "1980-05-05";
+			case "gender" -> "M";
+			default -> "Milorad";
+		};
 
 		MockHttpServletResponse answer = changeAs(ME, changing(field, value));
 
@@ -1560,10 +1598,11 @@ class MeWriteApiTest {
 						+ " take his own form apart to find it")
 				.containsExactly(field);
 
-		assertThat(db.sql("select birth_date::text || ' ' || gender from competitor"
-						+ " where member_number = ?").param(ME).query(String.class).single())
+		assertThat(db.sql("select birth_date::text || ' ' || gender || ' ' || father_name"
+						+ " from competitor where member_number = ?").param(ME).query(String.class)
+						.single())
 				.as("the row moved although the request was refused")
-				.isEqualTo("1990-01-01 F");
+				.isEqualTo("1990-01-01 F Otac");
 	}
 
 	/**
@@ -1698,6 +1737,202 @@ class MeWriteApiTest {
 				.isEqualTo(200);
 	}
 
+	/* ------------------------------------------------------------------------------------
+	   THE SHIRT SIZE, WHICH THE MEMBER CHANGES HIMSELF - THE OWNER'S CHOICE OF 24.09.2026.
+	   ------------------------------------------------------------------------------------ */
+
+	/**
+	 * A SIZE MOVES THE MOMENT IT IS SENT, ON HIS ROW AND ON NOBODY ELSE'S.
+	 *
+	 * <p>PDL, the entry of 24.09.2026 that also gives the father's name to the administration
+	 * („Ime oca je pravni podatak istog reda kao datum rođenja"), gives the size to the member;
+	 * that it waits for nobody follows from „Odobrenje čeka samo ono što javnost vidi kao
+	 * sadržaj", which a size is not.
+	 *
+	 * <p><b>Sent alone</b>, so a request naming nothing but the size has to be one this route
+	 * acts on - a size left out of {@code nothingWasNamed} or out of the condition that runs
+	 * the statement answers 400 or writes nothing. <b>Three rows are read</b>: his, the first
+	 * one written (which a statement that lost {@code where id = ?} would reach), and one that
+	 * already holds the size sent, so „somebody now has S" is not the claim.
+	 */
+	@Test
+	void aShirtSizeTakesEffectAtOnceOnTheCallersRowAndNobodyElses() throws Exception {
+		wearing(ME, "L");
+		wearing(SOMEONE_ELSE, "S");
+		long before = howManyRowsInTheQueue();
+
+		MockHttpServletResponse answer = changeAs(ME, changing("shirtSize", "S"));
+
+		assertThat(answer.getStatus())
+				.as("a request naming nothing but the size was not acted on")
+				.isEqualTo(200);
+		assertThat(shirtOf(ME))
+				.as("the size the member sent did not reach his own row")
+				.isEqualTo("S");
+		assertThat(shirtOf(FIRST_WRITTEN))
+				.as("the first member by key had his size changed by somebody else's request")
+				.isEqualTo("M");
+		assertThat(shirtOf(SOMEONE_ELSE)).isEqualTo("S");
+		assertThat(howManyRowsInTheQueue())
+				.as("a moderator was given a shirt size to judge, which is not content the public"
+						+ " sees")
+				.isEqualTo(before);
+		assertThat(profileOf(ME))
+				.as("the biography or the switch moved with the size")
+				.isEqualTo(List.of(THE_TEXT_ON_MY_PROFILE, false));
+		assertThat(answerIn(answer).path("shirtSize").asString()).isEqualTo("S");
+	}
+
+	/**
+	 * A REQUEST THAT NAMES NO SIZE LEAVES IT, AND IS TOLD THE ONE THAT STANDS.
+	 *
+	 * <p>ADL A54, the meaning this route gives every field: left out is „do not touch", never
+	 * „back to the default". <b>The size he wears is neither the fixture's nor a default</b>,
+	 * so a statement that wrote one would be seen. And the answer is read off the row (decision
+	 * 3 at the head of {@link MeWriteApi}): a request that sent no size and was answered one
+	 * can only have read it there, while an answer built off the request would carry none.
+	 */
+	@Test
+	void aRequestThatNamesNoShirtSizeLeavesItAndIsToldTheOneThatStands() throws Exception {
+		wearing(ME, "XL");
+
+		MockHttpServletResponse answer = changeAs(ME, changing("firstName", "Iva"));
+
+		assertThat(answer.getStatus()).isEqualTo(200);
+		assertThat(personalOf(ME).get(0))
+				.as("the statement did not run, so nothing below says anything about it")
+				.isEqualTo("Iva");
+		assertThat(shirtOf(ME))
+				.as("a request that never named the size moved it, which is the silent change ADL"
+						+ " A54 refuses")
+				.isEqualTo("XL");
+		assertThat(answerIn(answer).path("shirtSize").asString())
+				.as("the answer did not carry the size the row holds, so a screen that has no other"
+						+ " way to learn it is told nothing true")
+				.isEqualTo("XL");
+	}
+
+	/**
+	 * A BLANK SIZE IS REFUSED BEFORE ANYTHING IS WRITTEN, AND THE ANSWER SAYS WHICH FIELD.
+	 *
+	 * <p>V8 holds the column {@code NOT NULL} and {@code competitor_shirt_size_known} takes
+	 * nothing but the seven, so the database would refuse it anyway - as a 500 that takes the
+	 * rest of the request down with it. The word is the one this route already answers for a
+	 * name or an address emptied, {@link MeWriteApi#A_FIELD_IS_BLANK}, and no new word is
+	 * added: no screen sends a size that is not chosen out of a list.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "", "   " })
+	void aBlankShirtSizeIsRefusedBeforeAnythingIsWritten(String nothing) throws Exception {
+		wearing(ME, "L");
+
+		MockHttpServletResponse answer = changeAs(ME, changing("shirtSize", nothing,
+				"phone", "0611"));
+
+		assertThat(answer.getStatus())
+				.as("a blank size came back as something other than a refusal the member can act"
+						+ " on, which is what the constraint would look like")
+				.isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.A_FIELD_IS_BLANK);
+		assertThat(fieldsIn(answer)).containsExactly("shirtSize");
+		assertThat(shirtOf(ME)).isEqualTo("L");
+		assertThat(personalOf(ME).get(3))
+				.as("the rest of the request was written although it was refused")
+				.isEqualTo("null");
+	}
+
+	/**
+	 * A SIZE THAT IS NOT ONE OF THE SEVEN IS REFUSED THE WAY THE REGISTRATION REFUSES IT.
+	 *
+	 * <p>{@code RegistrationApi.whatHeFilledIn} counts a size
+	 * {@code WhatAFieldMeans.theShirtSize} does not know as a field not filled in, and this
+	 * route answers it with the same word and that one name, rather than with a word of its own
+	 * that no screen could draw. <b>Spelt exactly</b>, as the registration reads it: a lower
+	 * case letter and a size with spaces around it are not sizes either.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = { "XXXXL", "m", " M " })
+	void aSizeThatIsNotOneOfTheSevenIsRefusedTheWayTheRegistrationRefusesIt(String size)
+			throws Exception {
+
+		wearing(ME, "L");
+
+		MockHttpServletResponse answer = changeAs(ME, changing("shirtSize", size,
+				"phone", "0611"));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.THE_FORM_IS_NOT_COMPLETE);
+		assertThat(missingIn(answer))
+				.as("the refusal does not name the size, so it reads like a body the portal could"
+						+ " not read at all")
+				.containsExactly("shirtSize");
+		assertThat(shirtOf(ME)).isEqualTo("L");
+		assertThat(personalOf(ME).get(3))
+				.as("the rest of the request was written although it was refused")
+				.isEqualTo("null");
+	}
+
+	/**
+	 * A SIZE SENT BESIDE THE FATHER'S NAME IS NOT WRITTEN EITHER.
+	 *
+	 * <p>The father's name is refused before anything else is looked at, so the size that is
+	 * the member's to send must not be written „while we are here": he would be told 400 over
+	 * a change that was kept. {@code aRequestThatMixesTheForbiddenWithTheAllowedWritesNeither}
+	 * asks the same of the gender; this asks it of the field and the value this change added.
+	 */
+	@Test
+	void aShirtSizeBesideTheFathersNameWritesNeither() throws Exception {
+		wearing(ME, "L");
+
+		MockHttpServletResponse answer = changeAs(ME, changing("shirtSize", "XS",
+				"fatherName", "Milorad"));
+
+		assertThat(answer.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.NOT_YOURS_TO_CHANGE);
+		assertThat(fieldsIn(answer)).containsExactly("fatherName");
+		assertThat(shirtOf(ME))
+				.as("the size was written by a request the portal answered 400")
+				.isEqualTo("L");
+		assertThat(db.sql("select father_name from competitor where member_number = ?")
+				.param(ME).query(String.class).single())
+				.isEqualTo("Otac");
+	}
+
+	/**
+	 * EVERY SIZE THE MEMBER'S OWN FORM OFFERS IS ONE THIS ROUTE TAKES, read off the file.
+	 *
+	 * <p>The form offers the sizes and {@code WhatAFieldMeans} decides which the server takes,
+	 * so the two are the join between what a screen can send and what this route keeps. A
+	 * size the form gained tomorrow that the server does not know would be a choice the member
+	 * is offered and refused for; this case fails on that day rather than the member finding
+	 * it.
+	 */
+	@Test
+	void everySizeTheMembersFormOffersIsOneThisRouteTakes() throws Exception {
+		List<String> offered = new ArrayList<>();
+
+		for (JsonNode field : mapper.readTree(Files.readString(THE_FORM_HIS_ACCOUNT_IS_ON))
+				.path("fields")) {
+
+			if ("shirtSize".equals(field.path("name").asString())) {
+				for (JsonNode option : field.path("options")) {
+					offered.add(option.path("value").asString());
+				}
+			}
+		}
+
+		assertThat(offered)
+				.as("the member's form offers no sizes at all, so this asks nothing")
+				.hasSizeGreaterThan(1);
+
+		for (String size : offered) {
+			assertThat(changeAs(ME, changing("shirtSize", size)).getStatus())
+					.as("the member's form offers %s and this route refused it", size)
+					.isEqualTo(200);
+			assertThat(shirtOf(ME)).isEqualTo(size);
+		}
+	}
+
 	/**
 	 * AND EVERY ONE OF THOSE NUMBERS IS THE FORM'S OWN, READ OFF THE FILE.
 	 *
@@ -1777,16 +2012,16 @@ class MeWriteApiTest {
 	 */
 	@Test
 	void everyFieldOfTheMembersFormIsTakenRefusedOrNamedAsLivingElsewhere() throws Exception {
-		/* NOT ON THIS ROUTE AT ALL, each with the reason it is not. */
+		/* NOT ON THIS ROUTE AT ALL, each with the reason it is not.
+
+		   `fatherName` and `shirtSize` stood here until the owner's choice of 24.09.2026 - „Ime
+		   oca je pravni podatak istog reda kao datum rođenja" is that entry's own sentence - with
+		   reasons saying both waited for him. He had answered: the size is the member's own and
+		   is TAKEN, the father's name is an administrator's and is REFUSED, so neither is
+		   „somewhere else" any more, and the check after the sweep below is what stops an
+		   answered entry from staying here as an excuse. */
 		Map<String, String> elsewhere = new LinkedHashMap<>();
 
-		elsewhere.put("fatherName", "in the register of members the law on sport prescribes"
-				+ " (PDL P32); never drawn on a screen and not named among the personal data"
-				+ " the owner freed on 24.09.2026, so it waits for him rather than being"
-				+ " decided here");
-		elsewhere.put("shirtSize", "the same: not among the five he named, and a shirt already"
-				+ " sent is not a field a member may change afterwards without somebody"
-				+ " deciding what that means");
 		elsewhere.put("firstSeason2027", "decides the CATEGORY exactly as the date of birth"
 				+ " does (PDL P5), and the owner's reason for refusing those two covers it");
 		elsewhere.put("email", "PDL P28b, 2: changed by the member himself but only against a"
@@ -1846,6 +2081,18 @@ class MeWriteApiTest {
 
 		assertThat(MeWriteApi.WHAT_THIS_ROUTE_TAKES)
 				.as("a field cannot be both taken and refused")
+				.doesNotContainAnyElementsOf(MeWriteApi.ONLY_AN_ADMINISTRATOR_CHANGES);
+
+		/* AND A FIELD THIS ROUTE TAKES OR REFUSES IS NOT ALSO EXCUSED AS LIVING ELSEWHERE.
+		   Without this the sweep above is satisfied by either list at once, so an excuse whose
+		   question has been answered can stay here for good, saying the field waits for a
+		   decision the route has already carried out - which is how the two entries removed
+		   above outlived the owner's answer of 24.09.2026. */
+		assertThat(elsewhere.keySet())
+				.as("a field is excused as living somewhere else although this route takes it")
+				.doesNotContainAnyElementsOf(MeWriteApi.WHAT_THIS_ROUTE_TAKES);
+		assertThat(elsewhere.keySet())
+				.as("a field is excused as living somewhere else although this route refuses it")
 				.doesNotContainAnyElementsOf(MeWriteApi.ONLY_AN_ADMINISTRATOR_CHANGES);
 	}
 

@@ -1,6 +1,7 @@
 import ts from 'typescript'
 import { join, relative, sep } from 'node:path'
 import sr from '../../i18n/sr.json'
+import { SLOW } from '../../test/slow'
 import { bare, sources, WHOLE_PORTAL } from '../../test/sources'
 
 /**
@@ -205,6 +206,37 @@ function sweep(): { walked: number; sending: string[]; writingAFigure: string[] 
   }
 }
 
+/**
+ * THE THREE CASES THAT SWEEP THE WHOLE PORTAL CARRY THE CLOCK A SWEEP NEEDS (`test/slow.ts`).
+ *
+ * **Measured, not assumed.** A sweep reads all 277 production files (09.10.2026) and works out
+ * what each one imports and says. That is computation with nothing in it to wait for, so what
+ * Vitest's five seconds measure here is how fast the runner is. In the first pass of the gate
+ * (`npm run test:coverage`, coverage on), over the 61 runs between 03.10.2026 and 09.10.2026:
+ *
+ * - `is written by no screen that sends one in` took a median of 4343 ms, 4885 at the 90th
+ *   percentile and 5316 at the slowest, and it ran out of its five seconds three times on
+ *   09.10.2026 (5316, 5042 and 5081 ms) on branches that do not touch this file.
+ * - `finds a figure by the formatter and by the word, and neither alone` took a median of 3741
+ *   (slowest 4545) and `is asked of both roads, and there are two of them` 3649 (slowest 4420).
+ *   They sweep the same portal the same way, and in the run that took the first one out they
+ *   stood at 4107 and 4160. They have passed on luck, not on margin.
+ * - The other four cases take 1 to 21 ms and keep the default. The second pass of the gate
+ *   (another day, no coverage) took no sweep past 1606.
+ *
+ * On the machine this was written on, ten runs of this file with coverage on (alone, and beside
+ * a parallel pass of 71 other files on six workers) took 1788 to 3857 ms for the first case,
+ * 1641 to 2937 for the second and 1713 to 2658 for the fifth: over the two seconds that
+ * `test/slow.ts` takes as the edge in six or seven of the ten, and the spread is what else the
+ * machine was doing, the code being the same. Without coverage, two runs took 761 to 1494.
+ *
+ * **What the clock does.** Nothing that is asserted moves, only the clock the case is measured
+ * against. A synchronous case cannot be interrupted: Vitest compares its time with the clock
+ * when the case returns, so the 5042 in the log is how long the sweep really took and not a
+ * hang. A longer clock cures that. It does not cure starvation (`vite.config.ts`), and the
+ * price (ADL A2) is that a sweep dearer than today's is noticed at twenty seconds, 4.6 times the
+ * median above, instead of five.
+ */
 describe('what a result is worth, while it is being entered', () => {
   it('is written by no screen that sends one in', () => {
     const { walked, sending, writingAFigure } = sweep()
@@ -226,7 +258,7 @@ describe('what a result is worth, while it is being entered', () => {
       sending.filter((one) => writingAFigure.includes(one)),
       'a screen that sends a result in has begun to write what it is worth',
     ).toEqual([])
-  })
+  }, SLOW)
 
   it('finds a figure by the formatter and by the word, and neither alone', () => {
     /* `MyResults.tsx` above does BOTH - it takes the formatter and names the unit - so it
@@ -245,7 +277,7 @@ describe('what a result is worth, while it is being entered', () => {
     expect(writingAFigure, 'nothing is found by the word alone').toContain(
       'pages/home/Counters.tsx',
     )
-  })
+  }, SLOW)
 
   it('reads an import by what the other module calls it, and not by the local name', () => {
     /* Nothing in the portal renames either import today, so the whole of this reading would
@@ -289,7 +321,7 @@ describe('what a result is worth, while it is being entered', () => {
        specifier spelt in a way the resolver does not follow, a screen that stopped importing
        the writer - empties the set silently, and the claim above then holds over nothing. */
     expect(sweep().sending).toEqual(['pages/event/ReportResult.tsx', 'pages/member/NewResult.tsx'])
-  })
+  }, SLOW)
 
   it('stands on two exports that the writer really has', () => {
     /* `SENDS` is the one thing here written out of somebody's head. If either name is renamed
