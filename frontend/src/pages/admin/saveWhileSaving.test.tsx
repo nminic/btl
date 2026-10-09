@@ -509,6 +509,14 @@ describe('what is not held', () => {
         /* The request is out and the button is not told off. */
         expect(save()).not.toHaveAttribute('aria-disabled')
 
+        /* A second press with the form as it was: the form asks its questions, finds nothing wrong, and
+           the editor's own guard against a second send refuses it. That guard is the only thing between
+           this request and a second one on these screens, and the events no longer reach it (their
+           button waits above it), so this is where it is asked. */
+        await user.click(save())
+        expect(whereItWrote(server.asked)).toEqual([`${sending.how} ${sending.path}`])
+        expect(screen.queryByText('Ovo polje je obavezno.')).toBeNull()
+
         /* The box is emptied and the button pressed again: the form asks what it asks, and says the box
            is demanded. A press that waited would say nothing. */
         await user.clear(screen.getByLabelText(box))
