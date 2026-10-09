@@ -228,6 +228,16 @@ export function countriesByName(places: Place[]): Map<string, Set<string>> {
  * what it was before this existed. Nothing is said about it: the person is
  * typing a town they already know how to spell, and an error under the cursor
  * would be noise about somebody else's problem.
+ *
+ * **That is a decision of the owner's now, and the one exception to a list that
+ * cannot be read saying so** (03.10.2026, chosen between the outcomes offered, in
+ * the words of the PDL's record of it and not the owner's: „Za mesta: NE; kad
+ * šifarnik mesta ne stigne, polje ostaje obično polje za tekst koje i dalje prima
+ * ukucano mesto, pa član nije zaglavljen."). The races on the form a result is
+ * entered on do say it (`pages/member/NewResult.tsx`); the towns do not, and this
+ * is where. Held by what the field does, on the form a result is entered on
+ * (`pages/member/racesUnreadable.test.tsx`), the proposal of a team and the field
+ * alone: no sentence, no button, and the town that is typed is taken.
  */
 export function usePlaces(wanted: boolean): Place[] {
   const [places, setPlaces] = useState<Place[]>([])
