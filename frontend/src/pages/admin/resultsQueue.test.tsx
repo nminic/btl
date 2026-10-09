@@ -1160,12 +1160,12 @@ describe('a decision that is out with the route', () => {
         decision.release()
 
         /* AND THE ANSWER CLOSES THE BOX, which „Odustani" could not: nobody pressed anything to close
-           it (the owner's „list se zatvara sam kad stigne odgovor"). */
-        await waitFor(() => {
-          expect(box.group()).toBeNull()
-        })
+           it (the owner's „list se zatvara sam kad stigne odgovor"). Waited for the answer, which
+           comes whatever the box does, and then read for the box, so a box that stays fails on being
+           there and not on the clock. */
         await untilItHasAnswered()
 
+        expect(box.group()).toBeNull()
         expect(decisionsIn(server.asked).map((one) => one.path)).toEqual(['/api/verification/702/decision'])
         expect(bodyOf(decisionsIn(server.asked)[0])).toEqual(box.body)
         expect(decidedIn().getByText(box.recorded)).toBeInTheDocument()
@@ -1194,9 +1194,7 @@ describe('a decision that is out with the route', () => {
         expect(within(must(box.group(), 'the box')).getByRole('status')).toHaveTextContent(sr.results.sending)
 
         decision.release()
-        await waitFor(() => {
-          expect(box.group()).toBeNull()
-        })
+        await untilItHasAnswered()
 
         expect(sending()).toHaveLength(0)
       } finally {
@@ -1226,9 +1224,6 @@ describe('a decision that is out with the route', () => {
         expect(box.typed()).toHaveValue(box.said)
 
         decision.release()
-        await waitFor(() => {
-          expect(box.group()).toBeNull()
-        })
         await untilItHasAnswered()
 
         expect(decisionsIn(server.asked)).toHaveLength(1)
@@ -1253,11 +1248,9 @@ describe('a decision that is out with the route', () => {
         await user.click(box.send())
 
         decision.release()
-        await waitFor(() => {
-          expect(box.group()).toBeNull()
-        })
         await untilItHasAnswered()
 
+        expect(box.group()).toBeNull()
         expect(sending()).toHaveLength(0)
         expect(screen.getAllByRole('alert')).toHaveLength(1)
         expect((await rowOf(SECOND)).getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
@@ -1283,10 +1276,9 @@ describe('a decision that is out with the route', () => {
         await user.click(box.send())
 
         decision.release()
-        await waitFor(() => {
-          expect(box.group()).toBeNull()
-        })
         await untilItHasAnswered()
+
+        expect(box.group()).toBeNull()
 
         await box.openOver(user, SECOND)
 
@@ -1294,14 +1286,12 @@ describe('a decision that is out with the route', () => {
         expect(sending()).toHaveLength(0)
 
         /* AND IT SENDS WHAT IT IS PRESSED FOR, which the attributes cannot say: the second asking
-           reaches the route. */
+           reaches the route, and the answer to it closes the box again. */
         await user.click(box.send())
-        await waitFor(() => {
-          expect(decisionsIn(server.asked)).toHaveLength(2)
-        })
-        await waitFor(() => {
-          expect(box.group()).toBeNull()
-        })
+        await untilItHasAnswered()
+
+        expect(decisionsIn(server.asked)).toHaveLength(2)
+        expect(box.group()).toBeNull()
       } finally {
         server.stop()
       }
