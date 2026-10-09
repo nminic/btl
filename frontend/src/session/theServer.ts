@@ -1,7 +1,16 @@
 import { askTheServer, type Answer } from '../pages/account/askTheServer'
 import { SIGNED_IN_ROLES, type SignedInRole } from '../roles/context'
+import { AGE_BANDS, type AgeBand } from '../data/categories'
 import { REFERRAL_CODE } from '../data/pricing'
-import { MEMBERSHIP_BASES, type MembershipBasis } from '../data/types'
+import {
+  BIRTHDAY_SHOWN,
+  MEMBERSHIP_BASES,
+  type BirthdayShown,
+  type Competitor,
+  type Crop,
+  type Gender,
+  type MembershipBasis,
+} from '../data/types'
 
 /**
  * THE THREE THINGS THE PORTAL SAYS TO THE SERVER ABOUT BEING SIGNED IN.
@@ -14,6 +23,12 @@ import { MEMBERSHIP_BASES, type MembershipBasis } from '../data/types'
  * no list of them - no name of it is in `RESOURCE_NAMES` and nothing here goes through
  * the cache in `data/client.ts`. That is the same ground `pages/account` stood on from
  * 19.09.2026.
+ *
+ * <p><b>THE SECOND OF THE THREE IS READ TWICE SINCE 10.10.2026</b>: once for who is asking
+ * ({@link whoTheServerSaysIAm}, which the session believes) and once for the page of the member
+ * himself ({@link whatTheServerSaysOfMyProfile}, which one screen asks for when the page is his
+ * own and the public list does not carry him). They share the request and nothing it returns,
+ * so that a fault in the second can never sign him out of the first.
  *
  * <p><b>The token is asked of `askTheServer` rather than copied out of it.</b> That
  * file warns the next reader off IMPORTING AND WIDENING it, and nothing here widens it:
@@ -230,21 +245,21 @@ export async function signOutOfTheServer(): Promise<Answer> {
 }
 
 /**
- * Who the portal is signed in as, straight from the server, or nobody.
+ * What `GET /api/me` answered, as an object, or nothing at all.
  *
- * <p><b>This is the only place a role comes from once somebody has signed in.</b> Not
- * the form, which asks for an address and a password and is told nothing back; not the
- * answer to the sign in, which is 204 and empty. `MeApi` is behind the chain like every
- * other route, so nobody signed in is 401 rather than a body saying so, and 401 here is
- * simply nobody.
+ * <p><b>The one place the question is asked, and the only thing the two readers below SHARE.</b>
+ * {@link whoTheServerSaysIAm} reads the answer for who is asking and
+ * {@link whatTheServerSaysOfMyProfile} reads the same answer for his page, and they are two
+ * readers on purpose: a member's identity must never be lost to a fault in the part of the
+ * answer that draws his profile. What they share is this network step and nothing it returns -
+ * each narrows the object for itself, so a field one of them cannot believe is a field the
+ * other never looks at.
  *
- * <p>A plain `fetch` and no token, because a read needs none: `ApiSecurity` protects
- * what changes something, and `askTheServer` would fetch a cookie this call does not
- * want. Cookies go with it because the address is our own and that is what
- * `credentials: 'same-origin'` means, which is the default and is why it is not written
- * out here.
+ * <p>Nothing is said out loud for any of the ways it can fail. No server to talk to, a refusal,
+ * a body that is not JSON and a body that is not an object are all `null`, which is what a
+ * visitor sees, and the callers decide what `null` means to them.
  */
-export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null> {
+async function whatTheServerAnswersMe(): Promise<object | null> {
   let answer: Response
 
   try {
@@ -267,7 +282,28 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     return null
   }
 
-  if (typeof body !== 'object' || body === null) {
+  return typeof body !== 'object' || body === null ? null : body
+}
+
+/**
+ * Who the portal is signed in as, straight from the server, or nobody.
+ *
+ * <p><b>This is the only place a role comes from once somebody has signed in.</b> Not
+ * the form, which asks for an address and a password and is told nothing back; not the
+ * answer to the sign in, which is 204 and empty. `MeApi` is behind the chain like every
+ * other route, so nobody signed in is 401 rather than a body saying so, and 401 here is
+ * simply nobody.
+ *
+ * <p>A plain `fetch` and no token, because a read needs none: `ApiSecurity` protects
+ * what changes something, and `askTheServer` would fetch a cookie this call does not
+ * want. Cookies go with it because the address is our own and that is what
+ * `credentials: 'same-origin'` means, which is the default and is why it is not written
+ * out here.
+ */
+export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null> {
+  const body = await whatTheServerAnswersMe()
+
+  if (body === null) {
     return null
   }
 
@@ -302,6 +338,42 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
     referralCode: codeIn(mine),
     referredCount: wholeIn(mine, 'referredCount'),
   }
+}
+
+/**
+ * THE PAGE OF THE CALLER HIMSELF, as `GET /api/me` answers it, or nothing: the record his own
+ * profile is drawn from.
+ *
+ * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a member
+ * whose fee has lapsed is on no row of the public list, so his name, his town, his category,
+ * his biography and his portrait reach the screen through this answer and no other
+ * (`MeApi.MyOwnRecord`, which says why that is the right door).
+ *
+ * <p><b>IT IS READ APART FROM {@link whoTheServerSaysIAm}, AND THAT IS THE CONDITION IT EXISTS
+ * UNDER.</b> That function answers `null` for every fault, and the session treats `null` as
+ * nobody: a portrait or a gender the portal cannot believe, read there, would sign a member
+ * out of every screen of the portal because of a fault in the part of the answer that draws one
+ * page. Here the same fault is `null` for THIS page only, which the profile says out loud
+ * („Podaci se ne mogu učitati.", with the way to ask again), and the member stays signed in. What
+ * the two share is the request and nothing it returned ({@link whatTheServerAnswersMe}).
+ *
+ * <p><b>Looked for and never asserted</b>, field by field, as everything off this answer is
+ * (ADL A14). The facts a page cannot be drawn without - the number, the name, the town, the
+ * gender, the category, the season he started in, the biography, the two choices he made about
+ * his page - make the whole answer `null` when one of them is missing or of a kind the portal
+ * does not know. The two that may honestly be absent (the club and its year, the portrait and
+ * its square) are `null` on the record, which is how the public list says it as well.
+ *
+ * <p>It returns a {@link Competitor} and not a shape of its own, so the screen that draws a
+ * member draws him the same way whichever door he came through. The one field of that record it
+ * leaves out is the basis of his membership, which is optional there, is the administration's to
+ * read on the public list, and is read by the page about his fee off the session
+ * (`pages/member/Membership.tsx`) and by nothing that draws a profile.
+ */
+export async function whatTheServerSaysOfMyProfile(): Promise<Competitor | null> {
+  const body = await whatTheServerAnswersMe()
+
+  return body === null ? null : profileIn(recordIn(body))
 }
 
 /**
@@ -458,7 +530,10 @@ function countryIn(mine: object | null): string | null {
  * it is written where each is declared rather than here: no balance was mentioned, no
  * season was mentioned, and - for the team - no team, which is ordinary.
  */
-function wholeIn(mine: object | null, name: 'firstSeason' | 'teamId' | 'referredCount'): number | null {
+function wholeIn(
+  mine: object | null,
+  name: 'firstSeason' | 'teamId' | 'teamSince' | 'referredCount',
+): number | null {
   if (mine === null) {
     return null
   }
@@ -466,4 +541,153 @@ function wholeIn(mine: object | null, name: 'firstSeason' | 'teamId' | 'referred
   const said: unknown = Reflect.get(mine, name)
 
   return typeof said === 'number' && Number.isInteger(said) && said >= 0 ? said : null
+}
+
+/**
+ * THE RECORD OF HIS OWN PAGE out of the caller's record, or nothing (see
+ * {@link whatTheServerSaysOfMyProfile}, which says why this is read apart from who he is).
+ *
+ * <p>Every fact a page needs is asked for under the name `CompetitorApi` answers it under, and
+ * the ones the page cannot be drawn without end the whole reading when they are missing:
+ * a page with no name is not a page, and a page drawn with a category the portal made up is a
+ * lie about a member to the member himself. The two pairs that may honestly be absent are
+ * `teamId` with `teamSince`, and `photo` with `crop`.
+ *
+ * <p><b>The portrait and its square travel together, here as on the server</b>: one of the two
+ * without the other is read as no portrait at all, which draws the monogram - a circle that is
+ * wrong in a corner is better than a profile that is not drawn because of its decoration.
+ */
+function profileIn(mine: object | null): Competitor | null {
+  if (mine === null) {
+    return null
+  }
+
+  const memberNumber = numberIn(mine)
+  const firstName = nameIn(mine, 'firstName')
+  const lastName = nameIn(mine, 'lastName')
+  const gender = genderIn(mine)
+  const city = nameIn(mine, 'city')
+  const country = countryIn(mine)
+  const ageBand = ageBandIn(mine)
+  const firstSeason = wholeIn(mine, 'firstSeason')
+  const firstSeason2027 = flagIn(mine, 'firstSeason2027')
+  const bio = textIn(mine, 'bio')
+  const profileHidden = flagIn(mine, 'profileHidden')
+  const birthdayShown = birthdayShownIn(mine)
+
+  if (
+    memberNumber === null ||
+    firstName === null ||
+    lastName === null ||
+    gender === null ||
+    city === null ||
+    country === null ||
+    ageBand === null ||
+    firstSeason === null ||
+    firstSeason2027 === null ||
+    bio === null ||
+    profileHidden === null ||
+    birthdayShown === null
+  ) {
+    return null
+  }
+
+  const photo = photoIn(mine)
+  const crop = squareIn(mine)
+
+  return {
+    memberNumber,
+    firstName,
+    lastName,
+    gender,
+    city,
+    country,
+    ageBand,
+    firstSeason2027,
+    firstSeason,
+    profileHidden,
+    birthdayShown,
+    teamId: wholeIn(mine, 'teamId'),
+    teamSince: wholeIn(mine, 'teamSince'),
+    bio,
+    photo: crop === null ? null : photo,
+    crop: photo === null ? null : crop,
+  }
+}
+
+/** A name or a town: text that says something. A blank one is a server saying nothing. */
+function nameIn(mine: object, name: 'firstName' | 'lastName' | 'city'): string | null {
+  const said: unknown = Reflect.get(mine, name)
+
+  return typeof said === 'string' && said.trim() !== '' ? said : null
+}
+
+/** Text that may be empty: what a member has written about himself, when he has written nothing. */
+function textIn(mine: object, name: 'bio'): string | null {
+  const said: unknown = Reflect.get(mine, name)
+
+  return typeof said === 'string' ? said : null
+}
+
+/** One of the two words the schema allows, looked for and never asserted. */
+function genderIn(mine: object): Gender | null {
+  const said: unknown = Reflect.get(mine, 'gender')
+
+  return said === 'M' || said === 'F' ? said : null
+}
+
+/** The band the server worked out, looked for among the bands the portal knows. */
+function ageBandIn(mine: object): AgeBand | null {
+  const said: unknown = Reflect.get(mine, 'ageBand')
+
+  return AGE_BANDS.find((one) => one === said) ?? null
+}
+
+/** What he chose to show of his birthday, looked for among the three words there are. */
+function birthdayShownIn(mine: object): BirthdayShown | null {
+  const said: unknown = Reflect.get(mine, 'birthdayShown')
+
+  return BIRTHDAY_SHOWN.find((one) => one === said) ?? null
+}
+
+/** A yes or a no, and nothing that merely reads as one. */
+function flagIn(mine: object, name: 'firstSeason2027' | 'profileHidden'): boolean | null {
+  const said: unknown = Reflect.get(mine, name)
+
+  return typeof said === 'boolean' ? said : null
+}
+
+/**
+ * Where his approved portrait is asked for, or nothing.
+ *
+ * <p>The whole address as the server gives it, and only an address under the portal's own
+ * `/api/photos/`: it goes into an `img`, so the question is where the string goes next, as
+ * `codeIn` asks of a code (my reasoning, not a recorded decision). Anything else is „no portrait".
+ */
+function photoIn(mine: object): string | null {
+  const said: unknown = Reflect.get(mine, 'photo')
+
+  return typeof said === 'string' && said.startsWith('/api/photos/') ? said : null
+}
+
+/** The square of the portrait: three finite numbers, or nothing. */
+function squareIn(mine: object): Crop | null {
+  const said: unknown = Reflect.get(mine, 'crop')
+
+  if (typeof said !== 'object' || said === null) {
+    return null
+  }
+
+  const x: unknown = Reflect.get(said, 'x')
+  const y: unknown = Reflect.get(said, 'y')
+  const size: unknown = Reflect.get(said, 'size')
+
+  return typeof x === 'number' &&
+    typeof y === 'number' &&
+    typeof size === 'number' &&
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    Number.isFinite(size)
+    ? { x, y, size }
+    : null
 }

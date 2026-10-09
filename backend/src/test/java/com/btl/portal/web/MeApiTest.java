@@ -920,9 +920,9 @@ class MeApiTest {
 	 * A MEMBER IS HANDED THE PROFILE HIS OWN PAGE IS DRAWN FROM, EACH FACT COMPARED WITH WHAT
 	 * THE DATABASE HAS FOR HIM.
 	 *
-	 * <p>PDL P8a, 25.09.2026, "Treba da moze da otvori svoj profil dokle god postoji, odnosno
-	 * dok ga admin ne obrise." A page headed by a name needs the name, and none of these reached
-	 * a member who is on no row of the public list.
+	 * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a
+	 * page headed by a name needs the name, none of which reached a member who is on no row of
+	 * the public list.
 	 *
 	 * <p><b>Every expectation is read out of the database or is a constant defined once above</b>,
 	 * and every one is a value no other row here carries (the class note, and the sweep in
@@ -1043,10 +1043,11 @@ class MeApiTest {
 	 *
 	 * <p>{@link CompetitorApi} holds a hidden profile's biography, portrait and link to its team
 	 * back from a reader who is neither an active member nor the administration, and a member
-	 * whose fee has lapsed is such a reader (PDL P23, 03.10.2026, "Skrivanje deluje prema svakome
+	 * whose fee has lapsed is such a reader (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome
 	 * ko nije aktivan član ni administracija, nikad prema aktivnom članu"). Of his OWN page he is
-	 * not: PDL P8a, 25.09.2026, "Treba da moze da otvori svoj profil dokle god postoji, odnosno
-	 * dok ga admin ne obrise." A route that carried that withholding in, as
+	 * not: PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - the
+	 * record gives the reason in its own sentence, that when a member looks at himself nothing
+	 * about himself is hidden from him. A route that carried that withholding in, as
 	 * {@code case when THE_PROFILE_IS_OPEN_TO_THE_CALLER then c.bio end}, would answer him the
 	 * empty profile of a stranger.
 	 *
@@ -1127,6 +1128,37 @@ class MeApiTest {
 						+ " circle that will never draw", address)
 				.isInstanceOfSatisfying(HandlerMethod.class,
 						one -> assertThat(one.getBeanType()).isEqualTo(PhotoApi.class));
+	}
+
+	/**
+	 * A PICTURE THAT IS STILL WAITING FOR A MODERATOR IS NOT HIS PORTRAIT, and does not replace
+	 * the one he has.
+	 *
+	 * <p>It is the second source of the same value: a member's portrait is {@code competitor.photo_id}
+	 * once a moderator has approved it, and until then the picture sits in {@code verification}
+	 * (ADL A60 makes only the first public). A query that read the queue's column, or took the
+	 * queue's when the member's own was empty, would answer HER a portrait nobody has looked at
+	 * and would answer HIM the wrong one. <b>Both members have a picture waiting here</b>: she has
+	 * no portrait and so must be answered none, and he has one and so must be answered that one.
+	 */
+	@Test
+	void aPictureThatWaitsIsNotHisPortraitAndDoesNotReplaceTheOneHeHas() throws Exception {
+		isHavingModerated(ABROAD, aPortrait("ef".repeat(32), "0.50000000", "0.50000000", "0.50000000"));
+		isHavingModerated(ME, aPortrait("ba".repeat(32), "0.75000000", "0.75000000", "0.25000000"));
+
+		JsonNode hers = answerFor(HER_ACCOUNT).path("member");
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(hers.path("memberNumber").asString())
+				.as("this is not her record at all, so the missing portrait says nothing")
+				.isEqualTo(ABROAD);
+		assertThat(hers.has("photo")).as("a picture nobody has approved was answered as her portrait")
+				.isFalse();
+		assertThat(hers.has("crop")).as("and its square with it").isFalse();
+		assertThat(mine.path("photo").asString())
+				.as("the picture that waits replaced the portrait a moderator approved")
+				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HIS_PORTRAIT);
+		assertThat(new BigDecimal(mine.path("crop").path("x").asString())).isEqualByComparingTo("0.125");
 	}
 
 	/**
@@ -1376,6 +1408,19 @@ class MeApiTest {
 						+ " birthday_shown = 'full', birth_date = date '" + HIS_DATE_OF_BIRTH + "',"
 						+ " photo_id = ? where member_number = ?")
 				.params(HIS_BIOGRAPHY, portrait, ME).update();
+	}
+
+	/**
+	 * A picture SENT AND NOT YET DECIDED, which is the only state a picture in the queue can be
+	 * in: V9's {@code verification_decided_keeps_no_photo} refuses a decided row that still holds
+	 * one. The queue is {@code profiles} and the subject is the member's own name, which is what
+	 * {@code MePhotoApi} writes when a member really sends one.
+	 */
+	private void isHavingModerated(String memberNumber, long photo) {
+		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id, state)"
+						+ " select 'profiles', c.id, c.first_name || ' ' || c.last_name, '', ?,"
+						+ " 'waiting' from competitor c where c.member_number = ?")
+				.params(photo, memberNumber).update();
 	}
 
 	/** A picture a moderator has APPROVED is a {@code photo} row; the member's column names it. */

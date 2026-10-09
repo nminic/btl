@@ -1,3 +1,4 @@
+import { HisOwnRecord } from './profile/HisOwnRecord'
 import { InviteToTeam } from './profile/InviteToTeam'
 import { InviteToPair } from './profile/InviteToPair'
 import { RacingPairLine } from './profile/RacingPairLine'
@@ -437,6 +438,14 @@ function emptyText(
  * Nothing here read that flag, so the profile of somebody who had left was
  * public, which is the sort of thing that is nobody's fault and everybody's
  * problem. It is the same answer as a number nobody has.
+ *
+ * **EXCEPT TO THE MEMBER HIMSELF, since 25.09.2026 and carried out on 10.10.2026.** PDL P8a,
+ * 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and this page sent such a
+ * member to the front page even when the profile was his own, which was the portal turning a man
+ * away from the page he had to pass to reach his own fee. He is on no
+ * row of the list this page is drawn from (it ends where the fee does not), so his record is asked
+ * for separately (`profile/HisOwnRecord.tsx`) and the page is drawn from it exactly as it is from a
+ * row of the list: `profile/visible.ts` says when, and what it says is `his`.
  */
 export function CompetitorProfile({ memberNumber: given }: { memberNumber?: string } = {}) {
   const { locale, t } = useI18n()
@@ -465,7 +474,13 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
            `roles/activeMemberOrAdministration.ts`). A free account and a member whose fee has lapsed
            are signed in and are read as a visitor is. */
         const readsHiddenProfiles = isActiveMemberOrAdministration(role, readerNumber, everybody)
-        const readable = profileFor(competitors, memberNumber, readsHiddenProfiles, theServerHasAnswered)
+        const readable = profileFor(
+          competitors,
+          memberNumber,
+          readsHiddenProfiles,
+          theServerHasAnswered,
+          readerNumber,
+        )
 
         if (readable.kind === 'waiting') {
           /* **Not sent away yet, because nobody has said who is reading** (`profile/visible.ts`,
@@ -489,54 +504,70 @@ export function CompetitorProfile({ memberNumber: given }: { memberNumber?: stri
           return <Navigate to={`/${locale}`} replace />
         }
 
-        const { competitor } = readable
-        const name = `${competitor.firstName} ${competitor.lastName}`
+        /* THE PAGE, DRAWN FROM A RECORD, whichever way the record came: a row of the list the
+           server serves, or the member's own record asked for separately when it is his own page
+           and the list does not carry him (`his`). One function for both, so that the two cannot
+           be drawn differently - the canonical address, the tab and the body are the same page. */
+        const drawn = (competitor: Competitor) => {
+          const name = `${competitor.firstName} ${competitor.lastName}`
 
-        /* One address and no alias (PDL P11): a reader who arrived by the
-           number alone, or by a bookmark made before the name was in the
-           address, is moved to the one this profile lives at rather than being
-           left on a second one. In place, so the way back is not doubled.
-         *
-           Not inside „moj profil", where the address belongs to the member area
-           and names no competitor at all. */
-        const elsewhere =
-          given === undefined ? redirectTo(competitor, params.memberNumber, locale) : null
+          /* One address and no alias (PDL P11): a reader who arrived by the
+             number alone, or by a bookmark made before the name was in the
+             address, is moved to the one this profile lives at rather than being
+             left on a second one. In place, so the way back is not doubled.
+           *
+             Not inside „moj profil", where the address belongs to the member area
+             and names no competitor at all. */
+          const elsewhere =
+            given === undefined ? redirectTo(competitor, params.memberNumber, locale) : null
 
-        if (elsewhere !== null) {
-          return <Navigate to={`${elsewhere}${search}`} replace />
+          if (elsewhere !== null) {
+            return <Navigate to={`${elsewhere}${search}`} replace />
+          }
+
+          return (
+            <>
+              {/* The profile is the most shared page on the portal, so the tab, the
+                  search result and the shared link carry the person rather than
+                  the words "profil takmičara". Profiles are indexed unless the
+                  member says otherwise (PDL P29); the date of birth is not part of
+                  any of this, because it is never shown (PDL P23).
+
+                  Not when the profile is the one inside "moj profil": there the
+                  address belongs to the member area, and its own name fits the tab
+                  better than the member's own name does. */}
+              {given === undefined && (
+                <PageMeta
+                  title={t('seo.competitor.recordTitle', {
+                    name,
+                    city: competitor.city,
+                  })}
+                  description={t('seo.competitor.recordDescription', { name })}
+                />
+              )}
+
+              <ProfileBody
+                competitor={competitor}
+                competitors={competitors}
+                results={results}
+                team={teams.find((one) => one.id === competitor.teamId)}
+                teams={teams}
+                pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
+              />
+            </>
+          )
         }
 
-        return (
-          <>
-            {/* The profile is the most shared page on the portal, so the tab, the
-                search result and the shared link carry the person rather than
-                the words "profil takmičara". Profiles are indexed unless the
-                member says otherwise (PDL P29); the date of birth is not part of
-                any of this, because it is never shown (PDL P23).
+        if (readable.kind === 'his') {
+          /* **HIS OWN PAGE, AND THE LIST DOES NOT CARRY HIM** (`profile/visible.ts`, `Readable`).
+             Not sent anywhere: the redirect above is for a profile nobody may reach, and this is
+             the one profile the reader himself may. What he is shown is whatever the server says
+             of him when it is asked with his own cookie, so nothing here admits anybody by the
+             number alone. */
+          return <HisOwnRecord memberNumber={readable.memberNumber}>{drawn}</HisOwnRecord>
+        }
 
-                Not when the profile is the one inside "moj profil": there the
-                address belongs to the member area, and its own name fits the tab
-                better than the member's own name does. */}
-            {given === undefined && (
-              <PageMeta
-                title={t('seo.competitor.recordTitle', {
-                  name,
-                  city: competitor.city,
-                })}
-                description={t('seo.competitor.recordDescription', { name })}
-              />
-            )}
-
-            <ProfileBody
-              competitor={competitor}
-              competitors={competitors}
-              results={results}
-              team={teams.find((one) => one.id === competitor.teamId)}
-              teams={teams}
-              pairs={pairsNow(fromFile, pairsMade, pairsBroken)}
-            />
-          </>
-        )
+        return drawn(readable.competitor)
       }}
     </Resource>
   )

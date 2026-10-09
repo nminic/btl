@@ -48,10 +48,22 @@ import type { Competitor } from '../../data/types'
  * **A kind and not a flag beside the answer, so that a screen cannot forget it**: a screen that
  * handled only `none` and then read `readable.competitor` does not compile, so a fourth screen
  * written tomorrow meets the question instead of inheriting the old fault.
+ *
+ * **AND A FOURTH KIND, since 10.10.2026: `his`.** It says the profile asked for is the reader's
+ * own and the public list does not carry him, which is a member whose fee has lapsed (that list
+ * is the members whose fee is standing). It is not an answer about the member and carries no
+ * record: the record is what the screen has to ask for, and `profile/HisOwnRecord.tsx` does. The
+ * owner, PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". The
+ * record of that decision gives the reason for the order below, in
+ * words that are the record's and not the owner's: the redirect of a hidden profile exists
+ * because a visitor must not tell a hidden profile from one that does not exist (P23), "taj razlog
+ * je o tuđem profilu", and when a member looks at himself nothing about himself is hidden from
+ * him, so the condition for the redirect "se zato pita tek kad profil nije njegov".
  */
 export type Readable =
   | { kind: 'none' }
   | { kind: 'waiting' }
+  | { kind: 'his'; memberNumber: string }
   | { kind: 'shown'; competitor: Competitor }
 
 /**
@@ -66,9 +78,10 @@ export type Readable =
  * `competitor.active && !(competitor.profileHidden && reader === null)`, and the first half is
  * the one the whole switch to `/api` turned on: a member whose fee has run out is not on
  * `/api/competitors` at all (owner, 13.09.2026), so there is no record here to ask. The fee is
- * answered by `profileFor` below, which finds nobody - and that answer was already the right one,
- * because P23 requires that a profile nobody may reach and a profile that does not exist read
- * alike.
+ * answered by `profileFor` below, which finds nobody - and that answer is the right one for
+ * everybody except the member himself, because P23 requires that a profile nobody may reach and a
+ * profile that does not exist read alike, and that requirement is about somebody else's profile
+ * (`his`, on `Readable`, is the member looking at his own: since 25.09.2026 he is not turned away).
  *
  * **Left as it stood it would have hidden every profile on the portal, the owner's included.**
  * `/api/competitors` does not carry the field, so `competitor.active` is `undefined`, and
@@ -118,6 +131,11 @@ export function profileFor(
      `theServerHasAnswered`). Not „is anybody signed in": that is the argument above, and the
      difference between the two is the whole of why this one exists. */
   theServerHasAnswered: boolean,
+  /* The member number the session names for whoever is reading, or nothing for a visitor and for an
+     account that races for nobody (`session/context.ts`, `memberNumber`). It is asked only to say
+     whether the profile on the page is HIS: what he is shown of it is not decided by it but by the
+     server, which is asked for his record (`profile/HisOwnRecord.tsx`) with his own cookie. */
+  reader: string | null,
 ): Readable {
   const competitor = competitors.find((one) => one.memberNumber === memberNumber)
 
@@ -126,6 +144,21 @@ export function profileFor(
      admission. */
   if (competitor !== undefined && reachable(competitor, readsHiddenProfiles)) {
     return { kind: 'shown', competitor }
+  }
+
+  /* HIS OWN PAGE IS ASKED BEFORE THE REDIRECT AND NOT AFTER IT (see `Readable`). The redirect
+     below is for a profile nobody may reach and one that does not exist, and a member's own is
+     neither: this is the one place a member whose fee has lapsed is let through, because he is on
+     no row of the list and the first line could never have found him.
+
+     It is asked of a NUMBER the session names, so a visitor, an account that races for nobody and
+     a reader who has not been told yet (`reader` is empty until `GET /api/me` has come back) are
+     all NOT him, and fall to the line after this one exactly as they did. The administration is
+     not him either, and is not asked about here at all: `isStaff` has no bearing on whose page it
+     is. And it admits nothing by itself - it only says WHICH record to ask the server for, and the
+     server answers with the record of the cookie, whatever this says. */
+  if (memberNumber !== undefined && memberNumber === reader) {
+    return { kind: 'his', memberNumber }
   }
 
   /* A number nobody has, a member who is not active, and a member hiding from a reader who may

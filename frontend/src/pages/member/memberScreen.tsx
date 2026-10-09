@@ -82,9 +82,16 @@ import { SignedOut } from './SignedOut'
  * the first draft of this paragraph called all three damage. Walking the same three as an
  * ACTIVE member showed otherwise: „novi-tim" answers HIM with the front page too, so that
  * is the portal's ordinary answer to somebody who may not do the thing rather than
- * anything about a lapsed fee. What is really his alone is <b>his own profile</b>, which
- * an active member opens and he is redirected away from - and the redirect cannot be
- * anything else there, because the profile is his by definition.
+ * anything about a lapsed fee. What was really his alone was <b>his own profile</b>, which
+ * an active member opened and he was redirected away from.
+ *
+ * <p><b>THIS SAID THE REDIRECT „CANNOT BE ANYTHING ELSE THERE, BECAUSE THE PROFILE IS HIS BY
+ * DEFINITION", AND THAT WAS THE OPPOSITE OF WHAT THE OWNER DECIDED.</b> PDL P8a, 25.09.2026,
+ * „Treba da moze da otvori svoj profil dokle god postoji": the redirect belongs to a profile
+ * nobody may reach, and a member's own is not one, so it is exactly what the redirect cannot
+ * be there. Corrected rather than deleted, because a sentence saying a redirect cannot be
+ * anything else is an instruction to the next reader to put it back. Since 10.10.2026 his own
+ * profile opens, drawn from his own record (`pages/profile/visible.ts`, `his`).
  *
  * <p><b>Why that page in particular, and it is not a typo anywhere.</b> It looks the
  * caller up in `/api/competitors`, which ends `where c.active` and therefore does not
@@ -95,16 +102,16 @@ import { SignedOut } from './SignedOut'
  * record onto `/api/me` too, the same day, so the boundary this paragraph used to name
  * here is closed and he can renew (`Membership.tsx`; measured on `memberFlows.test.tsx`'s
  * „draws the whole renewal for the member the public list does not carry"). His own
- * profile is the one left turning him away.
+ * profile was the one left turning him away until 10.10.2026.
  *
  * <p><b>What he had before 24.09.2026 and what he has now, counted rather than
  * summarised.</b> Before: the same sentence on all eleven, with a way home. Now, since
- * „Moja članarina" closed the gap named above (25.09.2026, PDL P8a): <b>six</b> screens
- * that really work and <b>none</b> left that merely fail to strand him, one that turns him
- * away in silence (his own profile), and four that answer him the way they answer anybody
- * not entitled to them. This paragraph has been tightened four times now, and each time by
- * a measurement rather than by rereading it - which is the whole reason the sentence at the
- * top of it was wrong in the first place.
+ * his own profile opened (10.10.2026, PDL P8a): <b>seven</b> screens that really work, his
+ * own profile among them, <b>none</b> left that merely fail to strand him or turn him away
+ * in silence, and four that answer him the way they answer anybody not entitled to them.
+ * It was six, one and four from 25.09.2026 until that day. This paragraph has been tightened
+ * five times now, and each time by a measurement rather than by rereading it - which is the
+ * whole reason the sentence at the top of it was wrong in the first place.
  *
  * <p><b>What it must NOT say is that nobody is signed in</b>, which is what those eleven
  * screens said. Somebody is: the cookie is in the browser, the header knows their number

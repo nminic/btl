@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { DAY, PUBLIC } from '../test/addresses'
+import { hisPageAsServed } from '../test/hisPage'
 import { renderAt } from '../test/render'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
@@ -1008,14 +1009,31 @@ describe('a hidden profile is reachable from nowhere', () => {
 describe('a hidden profile is reachable from nowhere, not even to a member whose fee has lapsed', () => {
   const served = theServerAnswersWithItsMembers()
 
+  /* THE SERVER'S ANSWER TO „WHO AM I" FOR HIM, in front of the list above. His own profile is drawn
+     from the record that answer carries (`profile/HisOwnRecord.tsx`), because the list does not
+     have him; the harness answers the generated row, and the stand-in is the answer the server
+     really gives a member whose fee has lapsed (`test/hisPage.ts`). */
+  let me: { stop: () => void } | null = null
+
+  beforeEach(() => {
+    me = hisPageAsServed()
+  })
+
+  afterEach(() => {
+    me?.stop()
+    me = null
+  })
+
   /* THE TWO ADDRESSES THAT DRAW SOMETHING ELSE FOR HIM, named rather than skipped. The heading is
      only the signal that the screen has been drawn, and two screens are not the member's own for
      somebody the list does not carry: the page of ratings says who rates an event, and his own
-     profile has no member to open, so it sends him to the front page (read off both on
-     03.10.2026, with the list the server really serves). Both are still walked. */
+     profile is HIS OWN - headed by his name, drawn from his own record. It sent him to the front
+     page until 10.10.2026 and this map said so (PDL P8a, 25.09.2026, „Treba da moze da otvori svoj
+     profil dokle god postoji"; review of PR 488, who found that this case held the opposite of the
+     decision). Both are still walked. */
   const WHAT_HE_MEETS_INSTEAD = new Map([
     ['/sr/kalendar/fruskogorski-maraton-2010/ocena', 'Ovaj događaj ocenjuju oni koji su ga istrčali'],
-    ['/sr/moj-profil', 'Balkanska trkačka liga'],
+    ['/sr/moj-profil', 'Vojislav Antonijević'],
   ])
 
   it.each(PUBLIC)('is not reached from %s', async (where, _asVisitor, asMember) => {

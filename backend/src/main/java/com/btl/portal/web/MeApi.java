@@ -118,10 +118,10 @@ import java.math.BigDecimal;
  * the debt the paragraph about a lapsed fee names.</b> {@link CompetitorApi}'s own javadoc
  * says the profile of a member whose fee has lapsed "need a resource that knows them, and it
  * is not this one", and that paragraph answers that this one is. The owner then said what that
- * profile is for (PDL P8a, 25.09.2026, "Treba da moze da otvori svoj profil dokle god postoji,
- * odnosno dok ga admin ne obrise."), and a profile cannot be drawn from seven facts about a
- * fee: it is headed by a name and stands on a town, a category, a biography and a portrait,
- * none of which reached a member who is on no row of the public list.
+ * profile is for (PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
+ * postoji"), and a profile cannot be drawn from seven facts about a fee: it is headed by a
+ * name and stands on a town, a category, a biography and a portrait, none of which reached a
+ * member who is on no row of the public list.
  *
  * <p><b>The names are {@link CompetitorApi.Competitor}'s, for the same facts, on purpose</b>,
  * so that the portal reads one vocabulary for a member whichever door answered him. What
@@ -132,7 +132,7 @@ import java.math.BigDecimal;
  * <p><b>NOTHING IS WITHHELD FROM HIM, and that is the one place the two doors differ on
  * purpose.</b> {@link CompetitorApi} holds a hidden profile's biography, portrait and link to
  * its team back from a reader who is neither an active member nor the administration (PDL P23,
- * 03.10.2026, "Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad
+ * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad
  * prema aktivnom članu"), and a member whose fee has lapsed is such a reader of everybody's
  * page. He is not one of his own: the record of the decision gives the reason in as many
  * words (the record's sentence, not the owner's) - when a member looks at himself nothing about
