@@ -50,10 +50,12 @@ import { setupUser, type Pressing } from '../../test/user'
  * ignores `readOnly` altogether, which is what `fireEvent.change` is, and a press on a button that
  * says it is told off. `aria-disabled` stops nothing by itself.
  *
- * <p><b>What this does not ask, and why.</b> The button that sends is not a control of the fields
- * and is not held: a second press is refused off the ref (`EntityEditor`). A checkbox and a radio
- * are not drawn by this form, and the way a held field is made one is the renderer's and not the
- * editor's (`forms/FormRenderer.test.tsx`, „is locked whatever kind of control it is drawn as").
+ * <p><b>What this does not ask, and why.</b> The button that sends is not a control of the fields, so
+ * `controlsOf` leaves it out of the event's controls and nothing below tries to press it. It is held
+ * as well (owner, 05.10.2026, PDL, P6, the last decision of the block) and that has a file of its own
+ * (`saveWhileSaving.test.tsx`). A checkbox and a radio are not drawn by this form, and the way a held
+ * field is made one is the renderer's and not the editor's (`forms/FormRenderer.test.tsx`, „is locked
+ * whatever kind of control it is drawn as").
  */
 
 const THE_LIST = '/sr/administracija/dogadjaji'

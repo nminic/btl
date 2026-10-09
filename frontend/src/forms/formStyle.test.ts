@@ -173,6 +173,52 @@ describe('the calendar button that will not answer', () => {
   })
 })
 
+describe('the button that sends, while the send it started is still out', () => {
+  /* Owner, 05.10.2026, PDL P6, „Dok čuvanje događaja traje": the button waits, the way „Nazad na
+     spisak" and the buttons of 02.10.2026 do. Those are dressed by the rule the shared button keeps
+     (`pages/Home.css`, `.button[aria-disabled='true']`) or by one of their own
+     (`pages/admin/Entity.css`); this button is neither, it is `.form__submit`, and it is told off by
+     `aria-disabled` alone until a rule says what that looks like. Without one it stayed the blue
+     button of a live form under a sentence that says it is sending, which is a word for a reader who
+     is listening and nothing for one who is looking.
+
+     jsdom applies no stylesheet and lays nothing out (ADL A18), so what is asked here is that the
+     rules are written and what they declare. Who wins is a question for a browser, and the
+     browser check in `scripts/refused-control-appearance.mjs` does not draw this button yet. */
+  it('looks held, and not only says so', () => {
+    const held = ruleFor(fields, ".form__submit[aria-disabled='true']", 'FormRenderer.css')
+
+    expect(held.background).toBe('transparent')
+    expect(held.color).toBe('var(--text-muted)')
+    expect(held.borderColor).toBe('var(--border)')
+    expect(held.cursor).toBe('not-allowed')
+    /* Colours and never `opacity`, which dims the focus ring along with everything else on a button
+       that is deliberately still in the order of focus (WCAG 2.2 SC 1.4.11). */
+    expect(held.opacity).toBe('')
+  })
+
+  it('does not light up under a pointer it is going to refuse', () => {
+    const hovered = ruleFor(
+      fields,
+      ".form__submit[aria-disabled='true']:hover",
+      'FormRenderer.css',
+    )
+
+    expect(hovered.background).toBe('transparent')
+    expect(hovered.borderColor).toBe('var(--border)')
+  })
+
+  it('is written more tightly than the plain hover it has to beat', () => {
+    /* Not a claim about the cascade, only that both rules exist, that both apply unconditionally, and
+       that the refusal names the attribute the plain hover does not. */
+    const hovers = everyRule(fields, 'FormRenderer.css')
+      .map((rule) => rule.selectorText)
+      .filter((selector) => selector.includes('.form__submit') && selector.includes(':hover'))
+
+    expect(hovers).toEqual(['.form__submit:hover', ".form__submit[aria-disabled='true']:hover"])
+  })
+})
+
 /**
  * THE TOWN AND THE COUNTRY, WHERE A ROW IS IN COLUMNS.
  *
