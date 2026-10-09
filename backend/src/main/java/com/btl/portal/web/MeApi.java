@@ -1,5 +1,7 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -7,6 +9,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.ZonedDateTime;
 
 /**
  * WHO THE PORTAL THINKS IS ASKING, AND WHAT IT HAS ON HIM, said back to whoever
@@ -181,9 +185,12 @@ class MeApi {
 
 	private final MemberOfAccount memberOfAccount;
 
-	MeApi(JdbcClient db, MemberOfAccount memberOfAccount) {
+	private final Clock clock;
+
+	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.clock = clock;
 	}
 
 	/**
@@ -285,7 +292,7 @@ class MeApi {
 	 *                     worth showing („you have brought in six people"), and the money has one
 	 *                     home and it is the book
 	 *
-	 * <p><b>THE ELEVEN THAT FOLLOW ARE THE PROFILE, since 10.10.2026</b>, and each is the
+	 * <p><b>THE TWELVE THAT FOLLOW ARE THE PROFILE, since 10.10.2026</b>, and each is the
 	 * fact {@link CompetitorApi.Competitor} answers under the same name, WITHOUT the withholding
 	 * that record applies to a hidden profile: this is his own page, and nothing about himself is
 	 * hidden from him (see the class). Every one is read off the row {@code recordOf} already
@@ -298,6 +305,16 @@ class MeApi {
 	 * @param city         the town's name out of the codebook when the town came from it, and the
 	 *                     typed one otherwise: the same {@code coalesce} {@link CompetitorApi}
 	 *                     reads, written where it is read for the reason the country is
+	 * @param ageBand      the band the rulebook puts him in for the season that is RUNNING
+	 *                     ({@code 24-}, {@code 25-39}, {@code 40-54} or {@code 55+}), which is
+	 *                     the category Article 74 makes public and the page is headed by. Never
+	 *                     absent: {@code birth_date} is NOT NULL (V8) and
+	 *                     {@code Category.ageBandFor} is total. <b>The season is
+	 *                     {@code SeasonClock.seasonTheBandIsWorkedOutFor}'s and nobody's else</b>,
+	 *                     the one home of the question, so that the two doors cannot name two
+	 *                     seasons for one member; {@code MeApiTest} holds them together at the
+	 *                     moments the band moves on. <b>The year it is worked out from is read
+	 *                     and leaves nowhere</b>, to him as to anybody
 	 * @param firstSeason2027 whether he runs in the beginners' category (PDL P7). Never absent:
 	 *                     the column is NOT NULL
 	 * @param teamSince    the season the membership that has NOT ENDED began in, and ABSENT
@@ -323,7 +340,7 @@ class MeApi {
 			String country, int firstSeason,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Long teamId,
 			String membershipBasis, String referralCode, int referredCount,
-			String firstName, String lastName, String gender, String city,
+			String firstName, String lastName, String gender, String city, String ageBand,
 			boolean firstSeason2027,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Integer teamSince,
 			String bio, boolean profileHidden, String birthdayShown,
@@ -354,6 +371,11 @@ class MeApi {
 	 * case here for none.
 	 */
 	private MyOwnRecord recordOf(long me) {
+		/* THE SEASON HIS BAND IS WORKED OUT FOR, asked of the one home of that question and read
+		   once for the whole answer, as `CompetitorApi` reads it once for a whole list: a clock
+		   read inside the mapper could cross midnight on 1 January in the middle of one row,
+		   which is the one night of the year this field moves on. */
+		int season = SeasonClock.seasonTheBandIsWorkedOutFor(ZonedDateTime.now(clock));
 
 		return db.sql("select c.member_number,"
 						/* The town's country when the town came out of the codebook, and the
@@ -397,7 +419,16 @@ class MeApi {
 						   they are present together or not at all. The digest is the address and
 						   `portrait.id` never is. */
 						+ " portrait.digest, portrait.crop_x, portrait.crop_y,"
-						+ " portrait.crop_diameter"
+						+ " portrait.crop_diameter,"
+						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE: the input the band is
+						   worked out from and the one field of this table the privacy policy is
+						   written about (Clan 74, „Datum rodjenja se nikada ne prikazuje, ni u punom
+						   ni u skracenom obliku"), taken LAST and turned into a band before anything
+						   is built out of the row, so it reaches a local and never a component. The
+						   year and not the date, for the reason `CompetitorApi` gives at the same
+						   place: the day is not part of the question. `noDateOfBirthLeavesHisOwnDoor`
+						   reads the whole answer as text, so it refuses the year however it is spelt. */
+						+ " c.birth_year"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
@@ -433,7 +464,12 @@ class MeApi {
 							row.getObject(4) == null ? null : row.getLong(4),
 							row.getString(5), row.getString(6), row.getInt(7),
 							row.getString(8), row.getString(9), row.getString(10),
-							row.getString(11), row.getBoolean(12),
+							row.getString(11),
+							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
+							   league's bands live and where the decision that age is settled on 1
+							   January rather than on the birthday is written down (PDL P7). */
+							Category.ageBandFor(row.getInt(21), season).code(),
+							row.getBoolean(12),
 							row.getObject(13) == null ? null : row.getInt(13),
 							row.getString(14), row.getBoolean(15), row.getString(16),
 							/* The digest and never the key, and never the empty path for a member

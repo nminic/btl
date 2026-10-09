@@ -2,14 +2,18 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -23,8 +27,11 @@ import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -99,10 +106,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * {@link #andNothingOfAnybodyElses} asks of every OTHER row whether it carries the very value
  * the caller was answered, and a letter or a boolean cannot differ on seven rows: so the fixture
  * writes him as the odd one of each, in one place ({@link #giveTheCallerWhatNoOtherRowHas}).
- * There is one woman here and it is he, one row in the beginners' category, one that hides its
- * profile, one that shows its whole birthday, one with a biography, one with a portrait, and one
- * who is in a team from 2028. Gender is not worked out from the given name: the names were chosen
- * for the other fields and this one needed exactly one of each.
+ * There is one woman here and it is he, one row in the oldest band, one row in the beginners'
+ * category, one that hides its profile, one that shows its whole birthday, one with a biography,
+ * one with a portrait, and one who is in a team from 2028. Gender is not worked out from the given
+ * name: the names were chosen for the other fields and this one needed exactly one of each.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -111,6 +118,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class MeApiTest {
 
 	private static final String PATH = "/api/me";
+
+	/**
+	 * AUTUMN 2026, WHICH IS A DAY WITH NO SEASON RUNNING AT ALL, and that is why the cases stand on
+	 * it by default: the league begins in 2027 (PDL P2), so the calendar answers a season the portal
+	 * does not have and every band below is answered through the floor and not around it. It is also
+	 * why the bands do not drift as the real years go by: a case that stood on the machine's own
+	 * clock would see the 1990 rows move into the next band in 2030.
+	 */
+	private static final Instant AUTUMN_2026 = Instant.parse("2026-09-21T10:00:00Z");
+
+	/** The first season the league has, while it is running. */
+	private static final Instant DURING_2027 = Instant.parse("2027-06-15T12:00:00Z");
+
+	/**
+	 * MID OCTOBER OF 2027, the one kind of moment where „which season" has two answers: from the
+	 * transfer window on, {@code seasonBeingPaidFor} answers NEXT year while the season being RUN is
+	 * still this one, and the band moves on the second and never on the first (PDL P7).
+	 */
+	private static final Instant MID_OCTOBER_2027 = Instant.parse("2027-10-15T12:00:00Z");
+
+	/**
+	 * The night the year turns, the instant {@code CompetitorApiTest} and {@code ResultApiTest} stand
+	 * on: the clock this fixture hands the server reports UTC, as a container's does, so a door that
+	 * reads the server's zone instead of the league's calls this night 2027 while Belgrade is already
+	 * in 2028.
+	 */
+	private static final Instant NEW_YEARS_NIGHT_INTO_2028 = Instant.parse("2027-12-31T23:30:00Z");
 
 	/**
 	 * THE CALLER. Second competitor written, first account written, so neither „the first
@@ -265,6 +299,9 @@ class MeApiTest {
 	@Autowired
 	private JdbcClient db;
 
+	@Autowired
+	private AClockTheCaseMoves clock;
+
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	private int issued;
@@ -290,6 +327,8 @@ class MeApiTest {
 	 */
 	@BeforeEach
 	void sevenCompetitorsAndEightAccounts() {
+		clock.moveTo(AUTUMN_2026);
+
 		/* Not the caller, and written first so that „the first row" is somebody else. Her
 		   town was TYPED and names its own country, which is the second of the two roads V7
 		   leaves open; the caller rides the first. */
@@ -948,6 +987,11 @@ class MeApiTest {
 				.as("the NAME of the town he lives in, out of the codebook, and not the empty typed"
 						+ " column beside it")
 				.isEqualTo(townOf(ME));
+		assertThat(mine.path("ageBand").asString())
+				.as("the band the rulebook puts him in for the season that is running: born in 1957 he"
+						+ " is the one row of the fixture that is 55 or more, and the year itself is not"
+						+ " an answer (the case on the year of birth)")
+				.isEqualTo("55+");
 		assertThat(mine.path("firstSeason2027").asBoolean())
 				.as("whether he runs in the beginners' category").isTrue();
 		assertThat(mine.path("teamSince").asInt())
@@ -1137,6 +1181,11 @@ class MeApiTest {
 				.isEqualTo(columnOf("last_name", LAPSED)).isEqualTo("Ilic");
 		assertThat(his.path("gender").asString()).as("his gender")
 				.isEqualTo(columnOf("gender", LAPSED)).isEqualTo("F");
+		assertThat(his.path("ageBand").asString())
+				.as("his band, which a lapsed fee does not take from him: born in 1990 he is in the band"
+						+ " every other row of the fixture is in, and the year a band is worked out from"
+						+ " is read off his row and not off the fee")
+				.isEqualTo("25-39");
 		assertThat(his.path("birthdayShown").asString()).as("what he chose about his birthday")
 				.isEqualTo("year");
 		assertThat(his.path("firstSeason2027").asBoolean())
@@ -1283,6 +1332,104 @@ class MeApiTest {
 	}
 
 	/**
+	 * THE BAND MOVES WITH THE SEASON THAT IS RUNNING, ON THIS DOOR AS ON THE OTHER, and at no other
+	 * moment.
+	 *
+	 * <p>The rulebook's bands are settled once, on 1 January of the season (PDL P7), and
+	 * {@code /api/competitors} and this route both answer one. They ask the same function for the
+	 * season ({@code SeasonClock.seasonTheBandIsWorkedOutFor}), and what holds them to it is this
+	 * case, which asks BOTH doors about the very same member at four moments and requires the answers
+	 * to be equal and to be the literal band the rulebook gives.
+	 *
+	 * <p><b>The three members are each one year short of a boundary at the start of 2027</b> (24, 39
+	 * and 54), so a season too many moves every one of them, a season too few moves none of them
+	 * back, and the year does not need to be known to see it. <b>The four moments are the four ways
+	 * a door can read the season wrongly</b>: before the league has a season at all (the floor), in
+	 * the middle of a season, in the autumn when next year's membership is on sale (the renewal
+	 * screen's question is not this one), and on the night the year turns (the league's zone and not
+	 * the server's). Each is a case the other three cannot tell from the right answer, which is why
+	 * none of them is dropped.
+	 *
+	 * <p><b>Both preconditions are asked of the code and not remembered</b>: the zones still disagree
+	 * on that night and the two seasons still disagree in that October. If either stops being true the
+	 * moment measures nothing, and the case says so instead of passing.
+	 */
+	@Test
+	void theBandMovesWithTheSeasonThatIsRunningAndIsTheSameOnBothDoors() throws Exception {
+		bornOn(ME, "2003-06-01");
+		bornOn(ABROAD, "1988-06-01");
+		bornOn(LAPSED, "1973-06-01");
+
+		assertThat(NEW_YEARS_NIGHT_INTO_2028.atZone(clock.getZone()).getYear())
+				.as("the server's clock already reads this moment in the league's own year, so the"
+						+ " answers below are the same whether a door re-reads the zone or not, and the"
+						+ " zone is not measured")
+				.isNotEqualTo(NEW_YEARS_NIGHT_INTO_2028.atZone(SeasonClock.ZONE).getYear());
+		assertThat(SeasonClock.seasonBeingPaidFor(MID_OCTOBER_2027.atZone(SeasonClock.ZONE)))
+				.as("the season being paid for and the season being run agree at this moment, so"
+						+ " swapping one for the other cannot be seen")
+				.isEqualTo(2028);
+
+		/* when, then the band he is in at that moment: born 2003, born 1988, born 1973 (the lapsed one). */
+		Object[][] moments = {
+				{"autumn 2026, before the league has a season", AUTUMN_2026, "24-", "25-39", "40-54"},
+				{"June 2027, the first season running", DURING_2027, "24-", "25-39", "40-54"},
+				{"mid October 2027, with next year on sale", MID_OCTOBER_2027, "24-", "25-39", "40-54"},
+				{"the night the year turns into 2028", NEW_YEARS_NIGHT_INTO_2028, "25-39", "40-54", "55+"},
+		};
+
+		for (Object[] moment : moments) {
+			String when = (String) moment[0];
+
+			clock.moveTo((Instant) moment[1]);
+
+			String his = answerFor(MY_ACCOUNT).path("member").path("ageBand").asString();
+			String hers = answerFor(HER_ACCOUNT).path("member").path("ageBand").asString();
+			String theLapsed = answerFor(THE_LAPSED_ACCOUNT).path("member").path("ageBand").asString();
+
+			assertThat(his).as("%s: the member born in 2003", when).isEqualTo(moment[2]);
+			assertThat(hers).as("%s: the member born in 1988", when).isEqualTo(moment[3]);
+			assertThat(theLapsed).as("%s: the member born in 1973, whose fee has lapsed", when)
+					.isEqualTo(moment[4]);
+			assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("ageBand").asString())
+					.as("%s: the two doors name two bands for the member born in 2003", when)
+					.isEqualTo(his);
+			assertThat(rowOnThePublicList(HER_ACCOUNT, ABROAD).path("ageBand").asString())
+					.as("%s: the two doors name two bands for the member born in 1988", when)
+					.isEqualTo(hers);
+		}
+	}
+
+	/**
+	 * BUT NEVER FOR A SEASON THE LEAGUE DOES NOT HAVE.
+	 *
+	 * <p>The calendar through 2026 answers 2026 and there is no season 2026 (PDL P2), so a band
+	 * worked out for it is a band for nothing. <b>The member is chosen so that the floor is the only
+	 * thing between two answers</b>: born in 2002 he is 24 in 2026 and 25 in 2027, one on each side of a
+	 * boundary, so a door without the floor does not name a different number, it names a different
+	 * band. Without him the case above passes either way (its three members are in the same band in
+	 * 2026 as in 2027), which is how a floor gets deleted in a tidy-up. The other door is asked as
+	 * well, because the floor is the one thing the two could stop sharing.
+	 */
+	@Test
+	void theBandIsNeverWorkedOutForASeasonTheLeagueDoesNotHave() throws Exception {
+		bornOn(ME, "2002-06-01");
+
+		assertThat(SeasonClock.FIRST_SEASON)
+				.as("the league's first season moved, so the clock below no longer stands before it and"
+						+ " this case measures nothing")
+				.isGreaterThan(AUTUMN_2026.atZone(SeasonClock.ZONE).getYear());
+
+		assertThat(answerFor(MY_ACCOUNT).path("member").path("ageBand").asString())
+				.as("the band was worked out for the calendar year 2026, a season the league does not"
+						+ " have, instead of for its first")
+				.isEqualTo("25-39");
+		assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("ageBand").asString())
+				.as("the other door names another band for the same member")
+				.isEqualTo("25-39");
+	}
+
+	/**
 	 * THE TWO DOORS ANSWER THE SAME MEMBER THE SAME WAY, name by name.
 	 *
 	 * <p>{@link CompetitorApi} and this route both say a member's name, town, biography and
@@ -1323,7 +1470,7 @@ class MeApiTest {
 		assertThat(shared)
 				.as("the two doors share almost nothing, so the comparison below is asked of a few"
 						+ " names and says little")
-				.contains("firstName", "lastName", "gender", "city", "firstSeason2027", "teamSince",
+				.contains("firstName", "lastName", "gender", "city", "ageBand", "firstSeason2027", "teamSince",
 						"bio", "profileHidden", "birthdayShown", "photo", "crop", "memberNumber",
 						"country", "firstSeason", "teamId");
 
@@ -1343,6 +1490,12 @@ class MeApiTest {
 	/** An answer's value, with „absent" and „null" being one: the two doors spell it differently. */
 	private static String valueOf(JsonNode node) {
 		return node.isMissingNode() || node.isNull() ? "null" : node.toString();
+	}
+
+	/** When he was born, which is the one datum a band is worked out from and no answer carries. */
+	private void bornOn(String memberNumber, String date) {
+		db.sql("update competitor set birth_date = date '" + date + "' where member_number = ?")
+				.param(memberNumber).update();
 	}
 
 	private String columnOf(String column, String memberNumber) {
@@ -1559,5 +1712,51 @@ class MeApiTest {
 						+ " left_reason) values (?, (select id from team where slug = ?), ?, "
 						+ to + ", " + leftReason + ")")
 				.params(competitor, slug, from).update();
+	}
+
+	/**
+	 * A CLOCK THE CASE MOVES, standing in for the server's own: copied in shape from
+	 * {@code CompetitorApiTest}, including the reason it reports UTC. Whoever asks what season it is
+	 * has to re-read the instant in the league's own time, and a door that reads this zone instead
+	 * answers 2027 on a night that is already 2028 in Belgrade.
+	 */
+	static final class AClockTheCaseMoves extends Clock {
+
+		private Instant now;
+
+		private AClockTheCaseMoves(Instant now) {
+			this.now = now;
+		}
+
+		void moveTo(Instant when) {
+			this.now = when;
+		}
+
+		@Override
+		public Instant instant() {
+			return now;
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return ZoneOffset.UTC;
+		}
+
+		@Override
+		public Clock withZone(ZoneId zone) {
+			return Clock.fixed(now, zone);
+		}
+	}
+
+	/** And it stands in for the server's own clock, which is the point of that bean. */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class TheClockTheseCasesUse {
+
+		@Bean
+		@Primary
+		AClockTheCaseMoves aClockTheCaseMoves() {
+			return new AClockTheCaseMoves(AUTUMN_2026);
+		}
+
 	}
 }
