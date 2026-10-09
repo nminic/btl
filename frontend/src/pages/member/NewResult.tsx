@@ -10,7 +10,13 @@ import { fieldDate } from '../../forms/dateField'
 import { categoryOf } from '../../data/raceCategory'
 import { raceKind } from '../../data/raceKind'
 import type { Result } from '../../data/types'
-import { useEvents, useRaces, useResults, type ResourceState } from '../../data/useResource'
+import {
+  combinePair,
+  useEvents,
+  useRaces,
+  useResults,
+  type ResourceState,
+} from '../../data/useResource'
 import { Resource } from '../../components/Resource'
 import { useToday } from '../../clock/useClock'
 import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
@@ -165,7 +171,9 @@ export function NewResult() {
   /* Built once for the data rather than on every letter typed: the list is the
      whole calendar read through one date, and it does not change while somebody
      is typing into the box above it. Empty until both files are here, which is
-     what the form shows for the first moment it is on screen. */
+     what the form shows for the first moment it is on screen, and empty for good
+     when one of them could not be read: that case is SAID (`offering` below) and
+     not left to look like a calendar with no race in it. */
   const offered = useMemo(
     () =>
       events.status === 'ready' && races.status === 'ready'
@@ -173,6 +181,13 @@ export function NewResult() {
         : [],
     [events, races, today, locale],
   )
+  /* **THE TWO FILES THE LIST IS MADE FROM, AS ONE READ.** A race is offered only with its event
+     (`racesToOffer`), so the list is as unreadable as the worse of the two, and one failure
+     asks again for every file that failed (`combinePair`, `theFailure`): a press that asked
+     for the races alone would leave the events saying they could not be read beside a list
+     that had just come. Only its failure is used here; what it reads when it is ready is
+     `offered`'s business. */
+  const offering = combinePair(events, races)
   const again = params.get('ponovo')
   /* The other way in: a result that has already been counted, which a member may
      change by sending it back through the queue with new proof (owner,
@@ -690,7 +705,32 @@ export function NewResult() {
                   ? 'newResult.needsTime'
                   : undefined
             }
-            suggests={{ raceName: offered }}
+            /* THE LIST OF RACES, OR THE WAY IT FAILED TO COME. A list that could not be read says so,
+               beside the box it is typed against, with the button that asks again (decision of
+               03.10.2026, chosen between the outcomes offered, in the words of the PDL's record of it
+               and not the owner's: „Kad spisak trka na formi za rezultat ne može da se učita, uz
+               polje stoji da ne može, uz „Pokušaj ponovo"."). The box stays a box that takes a name
+               typed into it, and the result then goes as a race the calendar does not hold; what a
+               reader must not be left with is an empty list that looks like a calendar without the
+               race he is typing.
+
+               **The words are the portal's one sentence for a read that failed and the name of the
+               list it is about, and nothing new**: `data.error` is what `Resource` says for every
+               screen and every part that goes through it, and `event.races` is what the page of an
+               event names its races by when they could not be read (`pages/EventDetail.tsx`). That
+               is the coordinator's reading of "stoji da ne može": the record fixes that it stands
+               beside the field and has the button, not its words. A sentence of its own would be
+               one key in each dictionary.
+
+               **Only where the name can be typed into.** The same form is opened to correct a waiting
+               result and a counted one, and both hold the name (`fixed` above), so the renderer says
+               nothing there: a list is of no use to a box nothing is typed into. */
+            suggests={{
+              raceName:
+                offering.status === 'error'
+                  ? { said: t('data.error'), named: t('event.races'), read: offering }
+                  : offered,
+            }}
             onSubmit={onSubmit}
           />
         )}

@@ -4,6 +4,8 @@
  * on purpose.
  */
 
+import type { FailedRead } from '../data/useResource'
+
 export type FieldType =
   | 'text'
   | 'email'
@@ -75,6 +77,29 @@ export type Suggestion = {
   said: string
   /** What choosing it writes into the other fields, by field name. */
   fills: Record<string, string>
+}
+
+/**
+ * A list a field is typed against that could not be read, and what the field says about it.
+ *
+ * <p>Decision of 03.10.2026 (`btl-produkt/PDL.md`, chosen between the outcomes offered), in the
+ * words of the PDL's record of it and not the owner's: „Kad spisak trka na formi za rezultat ne
+ * može da se učita, uz polje stoji da ne može, uz „Pokušaj ponovo"." It answers the question the
+ * general decision of 02.10.2026 left open (`data/aFailedReadIsSaid.test.ts`): whether the list of
+ * suggestions in a field of a form is a list that has to SAY it could not be read, and not look
+ * empty. For the races: yes. For the towns: no, and that boundary is `data/places.ts`.
+ *
+ * <p>Handed to the renderer AS the list of the field (`suggests`), in the place of the rows and not
+ * beside them, and the field goes on being a box that takes what is typed into it: it is the list that
+ * is missing, not the field, so a reader is never stuck behind a list that did not come.
+ */
+export type UnreadableList = {
+  /** The sentence about THIS list, in the words of the screen it stands on. */
+  said: string
+  /** What the list is called, so that the button can say which list it asks again for. */
+  named: string
+  /** The read that failed, which carries the way to ask again and whether an asking is out. */
+  read: FailedRead
 }
 
 export type FieldOption = {

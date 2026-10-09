@@ -1,38 +1,62 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.season.SeasonClock;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
 /**
- * WHAT MEMBERS WROTE ABOUT AN EVENT, and the first resource of this portal that
- * asks who is reading.
+ * WHAT MEMBERS WROTE ABOUT AN EVENT, the first resource of this portal that is not public, closed
+ * in two steps: a visitor by the chain, and anybody signed in who is neither an active member nor
+ * the administration by this class.
  *
- * <p><b>Comments are read by members and by nobody else.</b> The owner, 11.08.2026:
- * „komentare vide samo prijavljeni clanovi BTL. Drugim (posetiocima) se ne
- * prikazuju." A visitor sees the races and the results; what people said about a
- * running he does not. Nine resources came before this one and every one of them was
- * public, so this is also the first real load the layer of 13.09.2026 carries.
+ * <p><b>Comments are read by active members and by the administration, and by nobody else, since
+ * 03.10.2026.</b> The owner, 11.08.2026: „komentare vide samo prijavljeni clanovi BTL. Drugim
+ * (posetiocima) se ne prikazuju." Narrowed on 03.10.2026 by his choice between offered outcomes,
+ * which PDL records as „Komentare vide aktivni članovi i administracija, isto kao najava dolaska
+ * i skriven profil od 03.10.2026; nalog bez važeće članarine ih ne vidi" (PDL P6, 03.10.2026,
+ * „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"; the record's
+ * sentence and not his own words). A visitor sees the races and the results; what people said
+ * about a running he does not, and since that day neither does somebody who registered and never
+ * paid, a member whose fee has lapsed, or an account that races for nobody unless it is the
+ * administration. The reader is the one {@link AttendanceApi} and {@link CompetitorApi} already ask
+ * about, so the answer lives in {@link ActiveMemberOrAdministration} and is not written a third
+ * time here.
  *
- * <p><b>How that is enforced is by NOT being enforced here, and that is the whole
- * design of {@link ApiSecurity}.</b> Everything under {@code /api} is shut and a few
- * things are opened by name; this route is simply not among them, so the chain answers
- * 401 before any method here runs and no row is read to refuse anybody. There is no
- * condition in this class about who is asking, and there must not be one: a rule
- * written twice is a rule that can disagree with itself, and the half written here
- * would be the half that runs after the query.
+ * <p><b>The visitor is still the chain's.</b> Everything under {@code /api} is shut and a few
+ * things are opened by name; this route is simply not among them, so the chain answers 401 before
+ * any method here runs and no row is read to refuse a visitor. <b>The rest is asked here</b>, of
+ * {@link ActiveMemberOrAdministration}, and the refusal is the 404 an address that maps nothing
+ * answers, sent through {@code sendError} the way {@link InboxApi} refuses an account that names no
+ * member (ADL A8, 13.09.2026, „Server odbija moderatora bez privilegije sa 404"): over a real
+ * socket the two are told apart by nothing ({@code RightsOverRealHttpTest}), where a status
+ * written onto the response instead differs in length, and a length is an oracle for whether the
+ * address exists. It is asked BEFORE the query, so no row is read to refuse anybody.
  *
- * <p><b>And it needs no {@link RightIsNeeded}, which is a decision rather than an
- * omission.</b> That annotation carries the code of a box the superadmin ticks, and
- * reading a comment is not a moderator's action - EVERY signed in account reads these,
- * a plain competitor included. So this is the first route that is neither public nor
- * administrative, and it is named in {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT}
- * with that reason. That snapshot compares exactly, so the route could not have been
- * added quietly in either direction.
+ * <p><b>And it needs no {@link RightIsNeeded}.</b> That annotation carries the code of a box the
+ * superadmin ticks, and reading a comment is not a moderator's action: it comes with being a member
+ * in good standing, or with being the administration at all (a moderator with no box ticked
+ * included, because the record names the people and not their boxes). So it is named in
+ * {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT} beside {@code GET /api/attendance}, which the
+ * same choice narrowed the same day and which stays on that list for the same reason. <b>What that
+ * snapshot says is that the DOOR asks for no right; it does not say who reads.</b> Until
+ * 03.10.2026 its reason for this route was „every signed in account reads it", and that sentence
+ * is gone. The snapshot compares exactly, so the route could not have been added quietly in either
+ * direction, and the case ADL A8 asks of every name on it is
+ * {@code CommentApiTest.aVisitorWhoIsNotSignedInIsNotServedAComment}.
+ *
+ * <p><b>The answer is the same list to everybody who may read it, the administration included.</b>
+ * Who may read is the one thing that differs by reader; what they read does not, so the paragraph
+ * below about a lapsed author holds for a moderator too. That is this class's reasoning and not a
+ * recorded decision: nothing the owner said gives the administration a wider list, and a second
+ * shape of the same answer would be a second thing to keep right.
  *
  * <p><b>ONLY WHAT A MODERATOR LET OUT, and in this schema that is not a condition but a
  * table.</b> „Komentari idu kroz odobrenje pre objave" (PDL P18, „Komentari idu kroz odobrenje
@@ -100,6 +124,15 @@ import java.util.List;
  * rating} is what {@code CommentApiTest} refuses, against the file the portal serves rather than
  * against a list written here.
  *
+ * <p><b>And a mark that is worked out from this list goes where the list goes, which is why it has
+ * no door of its own.</b> PDL records it in the same entry as the owner's first sentence: „Zbirna
+ * ocena uz naslov je izvedena iz komentara, pa deli njihovu sudbinu" (PDL P6, 11.08.2026,
+ * „Komentare vide samo prijavljeni članovi"). Nothing else on this server serves a reader a mark
+ * - {@link VerificationApi} answers the rating of a submission that is still WAITING, to the
+ * moderator of that queue, who is the administration - so a reader this class refuses is left with
+ * nothing to add up. The screen asks the same question before it draws the figure
+ * ({@code pages/event/readsComments.ts}), and that is the screen's copy of this decision.
+ *
  * <p><b>THE DAY IS THE DAY IN BELGRADE.</b> V7 stores {@code published_at} as a
  * timestamptz and says why: the day a race is run is a DAY, and a comment going out is a
  * technical instant. „Held in UTC; which day that is in Belgrade is the backend's
@@ -130,8 +163,11 @@ class CommentApi {
 
 	private final JdbcClient db;
 
-	CommentApi(JdbcClient db) {
+	private final ActiveMemberOrAdministration readers;
+
+	CommentApi(JdbcClient db, ActiveMemberOrAdministration readers) {
 		this.db = db;
+		this.readers = readers;
 	}
 
 	/**
@@ -151,8 +187,24 @@ class CommentApi {
 	record Rating(int organisation, int value, int ambience) {
 	}
 
+	/**
+	 * @param asking   read off the session; whoever has none never reaches this, the chain answers
+	 *                 him 401
+	 * @param response asked for so a refusal goes down the road an address that is not there takes,
+	 *                 exactly as {@link AttendanceApi#attendance} does
+	 */
 	@GetMapping("/api/comments")
-	List<EventComment> comments() {
+	List<EventComment> comments(@AuthenticationPrincipal WhoIsAsking.Member asking,
+			HttpServletResponse response) throws IOException {
+		/* AN ACTIVE MEMBER OR THE ADMINISTRATION, and anybody else signed in is told the address
+		   is not there (owner, 03.10.2026; ADL A8). Asked before the query and answered through
+		   `sendError`, so no row is read to refuse a reader and the refusal is the one an address
+		   that maps nothing is given. */
+		if (!readers.includes(asking)) {
+			response.sendError(HttpStatus.NOT_FOUND.value());
+			return null;
+		}
+
 		return db.sql("select c.id, c.event_id,"
 						/* THE NUMBER ONLY WHILE THE PROFILE IS THERE TO READ. A left join and a
 						   CASE rather than a condition on the rows: the comment comes back either

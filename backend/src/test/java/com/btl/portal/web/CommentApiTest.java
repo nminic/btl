@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,30 +23,97 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
- * WHAT MEMBERS WROTE ABOUT AN EVENT, read by members and by nobody else.
+ * WHAT MEMBERS WROTE ABOUT AN EVENT, read by active members and by the administration, and by
+ * nobody else.
  *
- * <p>The first resource of this portal that is not public, so this file measures two
- * things no other resource's did: that a visitor is refused, and that what is still
+ * <p>The first resource of this portal that is not public, so this file measures what no other
+ * resource's did: that a visitor is refused by the chain, that somebody signed in who is neither an
+ * active member nor the administration is refused by the route itself (owner, 03.10.2026, the
+ * record's sentence: „Komentare vide aktivni članovi i administracija"), and that what is still
  * waiting for a moderator never leaves the server.
+ *
+ * <p><b>The shape of who reads is the precedent's</b> ({@link AttendanceApiTest} and
+ * {@link TheSameReadersReadAHiddenProfileOnEveryDoorTest}): a visitor and nine accounts that tell
+ * the two questions of {@link ActiveMemberOrAdministration} apart, so that taking the old rule back
+ * at this door is a failure of its own and not one hidden in a fixture that never had a reader the
+ * old rule and the new one answer differently.
+ *
+ * <p><b>The superadmin named by an address is in the settings of this file on purpose.</b> His
+ * row says {@code competitor}, so the one case about him tells the role {@link WhoIsAsking}
+ * decided from the role the row carries.
  */
-@SpringBootTest
+@SpringBootTest(properties = "btl.superadmin.email=" + CommentApiTest.NAMED_BY_AN_ADDRESS)
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
 @Transactional
 class CommentApiTest {
 
+	/**
+	 * An active member who wrote nothing here and holds no row of {@code membership}, so that who
+	 * reads is never one of the authors and the fact asked about is {@code competitor.active} and
+	 * not a row of another table.
+	 */
 	private static final String A_MEMBER = "takmicar@primer.rs";
+
+	private static final String READING_MEMBER = "000090";
+
+	/** The lapsed member of the fixture, signed in as himself, holding a row of {@code membership}. */
+	private static final String LAPSED_READER = "istekla-clanarina@primer.rs";
+
+	private static final String LAPSED_READERS_NUMBER = "000091";
+
+	/** Somebody who registered and has never paid: a record with no number, never active. */
+	private static final String NEVER_PAID = "nikad-placeno@primer.rs";
+
+	/** A competitor's account that races for nobody, which V23 allows. */
+	private static final String NAMES_NO_MEMBER = "bez-clana@primer.rs";
+
+	/** An active member who hides his profile, signed in as himself: a reader like any other. */
+	private static final String THE_ONE_WHO_HIDES = "skriveni@primer.rs";
+
+	/** A moderator with no box ticked and no member behind him. */
+	private static final String MODERATOR = "moderator@primer.rs";
+
+	/** A moderator whose own membership has lapsed. */
+	private static final String MODERATOR_LAPSED = "moderator-istekla@primer.rs";
+
+	private static final String MODERATORS_LAPSED_NUMBER = "000092";
+
+	private static final String SUPERADMIN = "superadmin@primer.rs";
+
+	/** Named superadmin by the settings above, and a competitor by his row. */
+	static final String NAMED_BY_AN_ADDRESS = "b223-imenovani@primer.rs";
+
+	/**
+	 * THE READERS THE RULE LETS IN, written out rather than derived, because what each account IS
+	 * is the thing the fixture decides and nothing can read it back. What IS derived is that the
+	 * two lists are complete: {@link #everyAccountOfTheFixtureIsOnOneSideOfTheLineOrTheOther} reads
+	 * every address out of {@code account}.
+	 */
+	private static final List<String> THOSE_WHO_READ = List.of(A_MEMBER, THE_ONE_WHO_HIDES, MODERATOR,
+			MODERATOR_LAPSED, SUPERADMIN, NAMED_BY_AN_ADDRESS);
+
+	/** And the ones it does not, the visitor first: {@code null} is the same request without a cookie. */
+	private static final List<String> THOSE_WHO_DO_NOT = Arrays.asList(null, NAMES_NO_MEMBER, NEVER_PAID,
+			LAPSED_READER);
+
+	private static final List<String> EVERY_KIND_OF_READER = Stream
+			.concat(THOSE_WHO_READ.stream(), THOSE_WHO_DO_NOT.stream()).toList();
 
 	/**
 	 * TEXT THAT IS IN THE QUEUE FOR APPROVAL AND MUST NEVER BE ANYWHERE ELSE.
@@ -109,7 +178,8 @@ class CommentApiTest {
 
 	private int issued;
 
-	private SecretToken session;
+	/** Every reader of the fixture, by address. */
+	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	/**
 	 * NINE PUBLISHED COMMENTS, AND NOT ONE OF THEM IS THE ONLY ONE OF ITS KIND.
@@ -173,11 +243,18 @@ class CommentApiTest {
 	 * field and no order, so every refusal of queue text stays green - what it changes is the
 	 * LENGTH, because the comment whose author matches two rows comes back twice. Nothing
 	 * about it is unusual: a member who wrote about two events has two comments waiting.
+	 *
+	 * <p><b>AND NINE ACCOUNTS WHO READ OR DO NOT, beside the visitor, none of them an author.</b>
+	 * Who reads is two facts and not one (owner, 03.10.2026), so the readers are a grid: an active
+	 * member who holds no row of {@code membership}, a lapsed one who holds a row, somebody who
+	 * registered and never paid, an account naming no member, an active member who hides his profile,
+	 * a moderator with no box and no member, a moderator whose own fee has lapsed, the superadmin,
+	 * and the superadmin the settings name by an address while his row says {@code competitor}. The
+	 * moderator whose own fee has lapsed is the one reader who is the administration and not an
+	 * active member, which no single question could tell apart from either of the other two.
 	 */
 	@BeforeEach
 	void nineThatWerePublishedAndFourThatAreNot() {
-		account(A_MEMBER);
-
 		event("fruskogorski-maraton-2010", "2010-05-08");
 		event("ironman-st-polten-2010", "2010-05-30");
 
@@ -232,19 +309,100 @@ class CommentApiTest {
 		decidedInTheQueue(SOMEBODY_ONLY_THE_QUEUE_KNOWS, APPROVED_BUT_NEVER_PUBLISHED);
 		/* AND A SECOND ROW FOR ONE OF THEM, which is what a bare join can be seen by. */
 		waitingInTheQueue("Vuk Maric", A_SECOND_ONE_STILL_WAITING);
+
+		/* THE READERS, TEN KINDS WITH THE VISITOR, and none of them is an author of the fixture, so
+		   who reads is never one of the rows. */
+		member("'" + READING_MEMBER + "'", "Petar", "Citalac", "M", true);
+		account(A_MEMBER, "competitor");
+		belongsTo(A_MEMBER, READING_MEMBER);
+
+		/* A ROW OF membership IS NOT THE FACT BEING ASKED: this reader holds one and is not active,
+		   and the reading member above holds none, so reading „has he a membership row", for any
+		   season, answers both of them the wrong way round. */
+		member("'" + LAPSED_READERS_NUMBER + "'", "Istekao", "Clanarinic", "M", false);
+		exemptFor(LAPSED_READERS_NUMBER, 2027);
+		account(LAPSED_READER, "competitor");
+		belongsTo(LAPSED_READER, LAPSED_READERS_NUMBER);
+
+		long unpaid = neverPaid("Nikad", "Placeno");
+		account(NEVER_PAID, "competitor");
+		db.sql("update account set competitor_id = ? where email = ?").params(unpaid, NEVER_PAID).update();
+
+		account(NAMES_NO_MEMBER, "competitor");
+
+		hidingMember("000093", "Skriveni", "Profilic");
+		account(THE_ONE_WHO_HIDES, "competitor");
+		belongsTo(THE_ONE_WHO_HIDES, "000093");
+
+		account(MODERATOR, "moderator");
+
+		member("'" + MODERATORS_LAPSED_NUMBER + "'", "Mira", "Moderatorka", "F", false);
+		account(MODERATOR_LAPSED, "moderator");
+		belongsTo(MODERATOR_LAPSED, MODERATORS_LAPSED_NUMBER);
+
+		account(SUPERADMIN, "superadmin");
+
+		account(NAMED_BY_AN_ADDRESS, "competitor");
+		db.sql("update account set email_confirmed_at = ? where email = ?")
+				.params(Timestamp.from(Instant.now()), NAMED_BY_AN_ADDRESS).update();
 	}
 
-	private void account(String email) {
+	private void account(String email, String role) {
 		db.sql("insert into account (first_name, last_name, email, role_id) values ('Probni', 'Probic', ?,"
-				+ " (select id from role where code = 'competitor'))").param(email).update();
+				+ " (select id from role where code = ?))").params(email, role).update();
 
-		session = SecretToken.fresh();
+		SecretToken session = SecretToken.fresh();
 		Instant now = Instant.now();
 
 		db.sql("insert into account_session (account_id, token_hash, created_at, last_used_at,"
 						+ " expires_at) values ((select id from account where email = ?), ?, ?, ?, ?)")
 				.params(email, session.hash(), Timestamp.from(now.minus(Duration.ofDays(1))),
 						Timestamp.from(now), Timestamp.from(now.plus(SessionLife.LASTS)))
+				.update();
+
+		sessions.put(email, session);
+	}
+
+	/** Ties an account to the member it races as (V23). */
+	private void belongsTo(String email, String memberNumber) {
+		db.sql("update account set competitor_id = (select id from competitor where member_number = ?)"
+				+ " where email = ?").params(memberNumber, email).update();
+	}
+
+	/** A membership row for one season, given free of the fee, which needs no payment to name. */
+	private void exemptFor(String memberNumber, int season) {
+		db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+						+ " values ((select id from competitor where member_number = ?), ?, 'feeExempt',"
+						+ " 'Probni Probic', timestamptz '2026-09-01 10:00:00+00')")
+				.params(memberNumber, season).update();
+	}
+
+	/** Somebody who registered and has not paid: no number, and never active (V16). */
+	private long neverPaid(String first, String last) {
+		return db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " father_name, address, shirt_size, health_statement_at)"
+						+ " values (null, ?, ?, 'F', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, false, 'payment',"
+						+ " ?, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00') returning id")
+				.params(first, last, String.format("%016x", ++issued))
+				.query(Long.class)
+				.single();
+	}
+
+	/** An active member whose profile is hidden: the subject of another rule, and here only a reader. */
+	private void hidingMember(String number, String first, String last) {
+		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
+						+ " place_id, first_season, first_season_2027, active, membership_basis,"
+						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
+						+ " shirt_size, health_statement_at)"
+						+ " values (?, ?, ?, 'M', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
+						+ " ?, 'Trcim skriveno.', true, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-09-01 10:00:00+00')")
+				.params(number, first, last, String.format("%016x", ++issued))
 				.update();
 	}
 
@@ -365,7 +523,23 @@ class CommentApiTest {
 	   on something this portal is not allowed to have. */
 
 	private MockHttpServletRequestBuilder asking() {
-		return get("/api/comments").cookie(new Cookie(SessionCookie.NAME, session.secret()));
+		return askingAs(A_MEMBER);
+	}
+
+	/** The request of one reader of the fixture; {@code null} is the same request without a cookie. */
+	private MockHttpServletRequestBuilder askingAs(String email) {
+		MockHttpServletRequestBuilder request = get("/api/comments");
+
+		return email == null ? request
+				: request.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret()));
+	}
+
+	private MockHttpServletResponse answerTo(String email) throws Exception {
+		return http.perform(askingAs(email)).andReturn().getResponse();
+	}
+
+	private static String who(String email) {
+		return email == null ? "a visitor" : email;
 	}
 
 	private JsonNode answer() throws Exception {
@@ -562,13 +736,282 @@ class CommentApiTest {
 	void aVisitorWhoIsNotSignedInIsNotServedAComment() throws Exception {
 		assertThat(http.perform(get("/api/comments")).andReturn().getResponse().getStatus())
 				.as("a visitor was served the comments, and the owner decided on 11.08.2026 that"
-						+ " they are for signed in members only")
+						+ " they are not for him")
 				.isEqualTo(401);
 
 		assertThat(http.perform(asking()).andReturn().getResponse().getStatus())
-				.as("a signed in member was refused the comments, so the refusal above is not about"
+				.as("an active member was refused the comments, so the refusal above is not about"
 						+ " who is asking")
 				.isEqualTo(200);
+	}
+
+	/**
+	 * EVERY ACCOUNT OF THE FIXTURE IS ON ONE SIDE OF THE LINE OR THE OTHER, and an eleventh one
+	 * written tomorrow has to be put on a side rather than quietly measured by nothing.
+	 */
+	@Test
+	void everyAccountOfTheFixtureIsOnOneSideOfTheLineOrTheOther() {
+		List<String> written = db.sql("select email from account order by email")
+				.query(String.class).list();
+		List<String> listed = EVERY_KIND_OF_READER.stream().filter(one -> one != null).sorted().toList();
+
+		assertThat(written)
+				.as("an account of the fixture is on neither list of readers, or a list names one the"
+						+ " fixture does not have")
+				.isEqualTo(listed);
+		assertThat(EVERY_KIND_OF_READER)
+				.as("a reader is on both sides of the line, or twice on one")
+				.doesNotHaveDuplicates()
+				.hasSize(10);
+	}
+
+	/**
+	 * THE READERS ARE WHAT THEY ARE CALLED, asked of the database and not of the lists above.
+	 *
+	 * <p>Every case below is about which side of the line a reader stands on, so a reader who is
+	 * not what his name says would make a case green for the wrong reason: the lapsed one holds a
+	 * row of {@code membership} and is not active, the reading member holds none and is, the
+	 * registrant has no number, the moderators hold no box, and the named superadmin is a
+	 * competitor by his row.
+	 */
+	@Test
+	void theReadersAreWhatTheyAreCalled() {
+		String rowAndFlag = "select c.active, (select count(*) from membership m where m.competitor_id = c.id)"
+				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?";
+
+		assertThat(facts(rowAndFlag, LAPSED_READER))
+				.as("the lapsed reader is active, or holds no membership row, so the fact and the row"
+						+ " cannot be told apart by him")
+				.isEqualTo("false 1");
+		assertThat(facts(rowAndFlag, A_MEMBER))
+				.as("the reading member is not active, or holds a membership row, so the lapsed"
+						+ " reader's row is not the only difference between the two")
+				.isEqualTo("true 0");
+		assertThat(facts("select c.member_number is null, c.active"
+				+ " from account a join competitor c on c.id = a.competitor_id where a.email = ?", NEVER_PAID))
+				.as("the registrant has a number or is active")
+				.isEqualTo("true false");
+		assertThat(facts("select a.competitor_id is null, r.code from account a join role r on r.id = a.role_id"
+				+ " where a.email = ?", NAMES_NO_MEMBER))
+				.as("the account that names no member names one, or is not a competitor's")
+				.isEqualTo("true competitor");
+		assertThat(facts("select count(*) from account_admin_right r join account a on a.id = r.account_id"
+				+ " where a.email in (?, ?)", MODERATOR, MODERATOR_LAPSED))
+				.as("a moderator of the fixture holds a box, so he would not be the administration for"
+						+ " being a moderator alone")
+				.isEqualTo("0");
+		assertThat(facts("select c.active from account a join competitor c on c.id = a.competitor_id"
+				+ " where a.email = ?", MODERATOR_LAPSED))
+				.as("the moderator whose fee has lapsed is active")
+				.isEqualTo("false");
+		assertThat(facts("select r.code = 'competitor' and a.competitor_id is null"
+				+ " and a.email_confirmed_at is not null from account a join role r on r.id = a.role_id"
+				+ " where a.email = ?", NAMED_BY_AN_ADDRESS))
+				.as("the named superadmin's row is not a confirmed competitor with no member, so the role"
+						+ " decided for the request cannot be told from the row's")
+				.isEqualTo("true");
+		assertThat(facts("select c.profile_hidden, c.active from account a join competitor c"
+				+ " on c.id = a.competitor_id where a.email = ?", THE_ONE_WHO_HIDES))
+				.as("the hiding reader does not hide, or is not active")
+				.isEqualTo("true true");
+	}
+
+	/**
+	 * SOMEBODY SIGNED IN WHO IS NOT AN ACTIVE MEMBER IS TOLD THE COMMENTS ARE NOT THERE, AND IS
+	 * GIVEN NOT ONE OF THEM.
+	 *
+	 * <p>PDL P6, 03.10.2026, the record's sentence and not the owner's words: „Komentare vide
+	 * aktivni članovi i administracija, isto kao najava dolaska i skriven profil od 03.10.2026;
+	 * nalog bez važeće članarine ih ne vidi." Three accounts are on this side of the line and each
+	 * is a different way of having no standing fee: a member whose fee has lapsed, somebody who
+	 * registered and never paid, and an account that races for nobody (V23).
+	 *
+	 * <p><b>The refusal is 404 and not 403, and the body carries nothing of what was written.</b>
+	 * ADL A8: „prijavljen kome pravo nedostaje dobija 404", and the second half is not a nicety:
+	 * a refusal sent with the list behind it would be the leak with a status in front of it. The
+	 * text is asked for as TEXT, over every comment of the fixture, after the case has asked the
+	 * database that the comments really are there to be withheld.
+	 *
+	 * <p><b>The anchor is an active member who holds no membership row</b> and is served, so what
+	 * tells the two sides apart is {@code competitor.active} and not whether a season's row exists.
+	 */
+	@Test
+	void somebodySignedInWhoIsNotAnActiveMemberIsToldTheCommentsAreNotThere() throws Exception {
+		assertThat(published())
+				.as("nothing is published in the fixture, so there is nothing to keep from a reader")
+				.isEqualTo(9);
+
+		for (String asking : List.of(LAPSED_READER, NEVER_PAID, NAMES_NO_MEMBER)) {
+			MockHttpServletResponse refused = answerTo(asking);
+
+			assertThat(refused.getStatus())
+					.as("%s was not told the comments are not there, and the owner decided on"
+							+ " 03.10.2026 that an account without a standing fee does not read them",
+							who(asking))
+					.isEqualTo(404);
+			assertThat(refused.getContentAsString())
+					.as("%s was refused and still handed the text of the comments", who(asking))
+					.doesNotContain("Staza je bila jasno obelezena.")
+					.doesNotContain("Predugacka staza i slaba organizacija.")
+					.doesNotContain("\"who\"");
+		}
+
+		assertThat(answerTo(A_MEMBER).getStatus())
+				.as("an active member with no membership row was refused, so the refusals above are"
+						+ " about a row and not about the fee")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * A READER WHOSE FEE LAPSES IS REFUSED AT ONCE, AND SERVED AGAIN WHEN IT IS RESTORED.
+	 *
+	 * <p>The record says it in so many words: „nalog bez važeće članarine ih ne vidi" (PDL P6,
+	 * 03.10.2026, „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"), and
+	 * the price the owner was shown and accepted for the same reader on the hidden profile (PDL
+	 * P23, 03.10.2026) is that a member who does not renew stops seeing what is for members until
+	 * he pays. One session cookie throughout and one column changed between the requests, so what
+	 * answers differently is the fact and not the account, the cookie or a session somebody kept:
+	 * every request asks {@code competitor.active} afresh.
+	 */
+	@Test
+	void aReaderWhoseFeeLapsesIsRefusedAtOnceAndServedAgainWhenItIsRestored() throws Exception {
+		assertThat(answerTo(A_MEMBER).getStatus())
+				.as("the member is refused while his fee stands")
+				.isEqualTo(200);
+
+		db.sql("update competitor set active = false where member_number = ?").param(READING_MEMBER).update();
+
+		assertThat(answerTo(A_MEMBER).getStatus())
+				.as("a member whose fee lapsed a moment ago is still served the comments")
+				.isEqualTo(404);
+
+		db.sql("update competitor set active = true where member_number = ?").param(READING_MEMBER).update();
+
+		assertThat(answerTo(A_MEMBER).getStatus())
+				.as("the member is not served the comments again once his fee stands")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * THE ADMINISTRATION IS SERVED THE COMMENTS WHETHER OR NOT IT RACES, AND WHETHER OR NOT ITS OWN
+	 * FEE STANDS.
+	 *
+	 * <p>PDL names the reader „aktivni članovi i administracija" and section 18 of the privacy
+	 * topic, supplemented on 03.10.2026, names who that is: „administracija (moderatori i
+	 * superadmin)". A moderator with no box ticked is a moderator. The one whose own fee has
+	 * lapsed is the reader who tells the two questions apart: refused as a member, served as the
+	 * administration.
+	 */
+	@Test
+	void theAdministrationIsServedTheCommentsWhetherOrNotItRaces() throws Exception {
+		assertThat(db.sql("select count(*) from account_admin_right r join account a"
+						+ " on a.id = r.account_id where a.email in (?, ?)")
+				.params(MODERATOR, MODERATOR_LAPSED).query(Integer.class).single())
+				.as("a moderator of the fixture holds a box, so this would not be about the role")
+				.isZero();
+
+		assertThat(answerTo(MODERATOR).getStatus())
+				.as("a moderator who races for nobody was refused the comments")
+				.isEqualTo(200);
+		assertThat(answerTo(MODERATOR_LAPSED).getStatus())
+				.as("a moderator whose own fee has lapsed was refused the comments, so it was read as"
+						+ " a member's right and not the administration's")
+				.isEqualTo(200);
+		assertThat(answerTo(SUPERADMIN).getStatus())
+				.as("the superadmin was refused the comments")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * A SUPERADMIN NAMED BY AN ADDRESS IN THE SETTINGS IS SERVED THE COMMENTS, THOUGH HIS ROW SAYS
+	 * COMPETITOR AND NAMES NO MEMBER.
+	 *
+	 * <p>The role is the one {@link WhoIsAsking} decided for the request, never the one the
+	 * account's row carries: the owner is named by an address and not by anything the portal
+	 * writes (PDL P21, 14.09.2026). Read off the row, he would be a competitor with no member
+	 * and would be told the comments are not there.
+	 */
+	@Test
+	void aSuperadminNamedByAnAddressIsServedTheCommentsThoughHisRowSaysCompetitor() throws Exception {
+		assertThat(answerTo(NAMED_BY_AN_ADDRESS).getStatus())
+				.as("the superadmin named by the settings was refused, so the role was read off his row"
+						+ " and not off the request")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * A MEMBER WHO HIDES HIS PROFILE READS THE COMMENTS LIKE ANY OTHER ACTIVE MEMBER.
+	 *
+	 * <p>Hiding is a rule about what is shown of HIM, and the rule here is about who READS: an active
+	 * member is a reader whatever he hides, and he is the one reader of the ten who is also the
+	 * subject of another rule, so a condition borrowed from that rule would refuse him here.
+	 */
+	@Test
+	void aMemberWhoHidesHisProfileReadsTheComments() throws Exception {
+		assertThat(answerTo(THE_ONE_WHO_HIDES).getStatus())
+				.as("an active member who hides his profile was refused the comments")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * WHAT THE ADMINISTRATION IS SERVED IS THE LIST A MEMBER IS SERVED, TO THE BYTE.
+	 *
+	 * <p>Who may read differs by reader; what is read does not, so the comment of a member whose fee
+	 * has lapsed comes back to a moderator exactly as to a member: without his number, under the
+	 * name it went out with. Compared as TEXT over every reader the rule lets in, and over a fixture
+	 * where that list is not empty.
+	 */
+	@Test
+	void everyoneWhoReadsIsServedTheSameListToTheByte() throws Exception {
+		String member = answerTo(A_MEMBER).getContentAsString();
+
+		assertThat(answer().size())
+				.as("the member is served nothing, so the comparison below compares two empty lists")
+				.isEqualTo(published());
+
+		for (String asking : THOSE_WHO_READ) {
+			assertThat(answerTo(asking).getContentAsString())
+					.as("%s was served another list than an active member is", who(asking))
+					.isEqualTo(member);
+		}
+	}
+
+	/**
+	 * NO ANSWER THAT DEPENDS ON WHO IS READING MAY BE KEPT BY A SHARED CACHE.
+	 *
+	 * <p>What this route answers now depends on whether the reader is an active member, so a shared
+	 * cache that kept one answer would hand it to a reader it was not made for. Asked of the answers
+	 * and not of the code, for all ten kinds of reader: the answer to every one of them, the
+	 * refusals included, carries a {@code Cache-Control} that no shared cache may keep. The
+	 * hidden profile's joint test asks the same of its three routes
+	 * ({@code TheSameReadersReadAHiddenProfileOnEveryDoorTest}).
+	 */
+	@Test
+	void noAnswerToAnyReaderMayBeKeptByASharedCache() throws Exception {
+		for (String asking : EVERY_KIND_OF_READER) {
+			String kept = answerTo(asking).getHeader(HttpHeaders.CACHE_CONTROL);
+
+			assertThat(kept)
+					.as("%s was answered the comments with no Cache-Control at all", who(asking))
+					.isNotNull();
+			assertThat(kept)
+					.as("%s was answered the comments in a way a shared cache may keep: %s", who(asking), kept)
+					.doesNotContain("public")
+					.matches(value -> value.contains("no-store") || value.contains("private"));
+		}
+	}
+
+	/** One row of one query as a single line, so that a case reads the facts it is built on. */
+	private String facts(String sql, Object... params) {
+		return db.sql(sql).params(params).query((row, one) -> {
+			List<String> cells = new ArrayList<>();
+
+			for (int at = 1; at <= row.getMetaData().getColumnCount(); at++) {
+				cells.add(String.valueOf(row.getObject(at)));
+			}
+
+			return String.join(" ", cells);
+		}).single();
 	}
 
 	/**

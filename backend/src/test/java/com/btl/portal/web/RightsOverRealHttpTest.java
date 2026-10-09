@@ -967,9 +967,17 @@ class RightsOverRealHttpTest {
 	   green with that handler's refusal turned into a status written onto the response. What
 	   holds their refusal is AWordInAKeyOverRealHttpTest, whose twin changes a literal segment
 	   and whose callers include the moderator who races for nobody; it fails on that same
-	   mutation. */
+	   mutation.
+
+	   THE COMMENTS JOINED ON THE SAME CHOICE (b223). Asked as A_COMPETITOR too, which is exactly
+	   who PDL P6, 03.10.2026 („Komentare vide aktivni članovi i administracija, isto kao najava
+	   dolaska") leaves out, and a member whose fee has lapsed is refused down the same line. It is
+	   the same line as the list of who is going on purpose: both go through
+	   `response.sendError(NOT_FOUND)`, and the status written onto the response instead differs in
+	   LENGTH over a real socket, which is an oracle for whether the address exists even when both
+	   say 404. */
 	@ValueSource(strings = {"GET /api/inbox", "POST /api/inbox", "PUT /api/me",
-			"POST /api/inbox/{id}/read", "GET /api/attendance"})
+			"POST /api/inbox/{id}/read", "GET /api/attendance", "GET /api/comments"})
 	void aResourceWithNoMemberBehindTheAccountAnswersLikeAnAddressThatIsNotThere(String pair)
 			throws Exception {
 		/* KEYED BY THE PAIR SINCE THIS BRANCH, not the bare path, the way

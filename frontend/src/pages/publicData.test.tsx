@@ -425,11 +425,17 @@ describe('what a browser downloads outside administration', () => {
 
   /* And that the waiting is long enough to see a screen's second wave: the
      comments under an event are read inside the `Resource` of the event, so
-     they are asked for only after it has arrived. */
+     they are asked for only after it has arrived.
+
+     As a member, since 03.10.2026: they are read by active members and by the
+     administration (PDL P6, 03.10.2026, „Komentare vide aktivni članovi i
+     administracija, isto kao najava dolaska"), and a screen asks for nothing it
+     will not draw, so a visitor's page no longer reads them at all
+     (`pages/event/commentsAreReadByActiveMembers.test.tsx` holds that). */
   it('waits long enough to see what a screen reads second', async () => {
     const asked = watch()
 
-    renderAt('/sr/kalendar/fruskogorski-maraton-2010')
+    renderAt('/sr/kalendar/fruskogorski-maraton-2010', 'competitor', ME, undefined, DAY)
 
     await quiet(asked)
 
