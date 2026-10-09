@@ -34,3 +34,56 @@
 export function devToolsEnabled(): boolean {
   return import.meta.env.DEV || import.meta.env.VITE_DEV_TOOLS === '1'
 }
+
+/**
+ * THE SAME ANSWER, FIXED WHEN THE BUNDLE IS BUILT, AND IT IS THE ONLY ONE OF THE TWO THE
+ * BUNDLER CAN DELETE WHAT STANDS BEHIND.
+ *
+ * <p><b>Measured 09.10.2026, on the production bundle of `9791aae4`:</b> both switches were
+ * in it, with their stylesheets and the name of the slot the day is kept in. Built with and
+ * without `VITE_DEV_TOOLS`, the two bundles were the same length and differed in ONE byte,
+ * the body of `devToolsEnabled` above (`return!1` against `return!0`). A function is not
+ * inlined into whoever calls it, so everything behind a call to it went to production
+ * switched off rather than left out - which is what ADL A15 (01.08.2026) refuses in as many
+ * words: „Gašenje nije isto što i brisanje ... ugašena kontrola je i dalje kod koji putuje u
+ * paketu skripti". A constant is inlined, and a branch behind `false` is dropped.
+ *
+ * <p><b>Spelt out again rather than written as a call to the function, and that is
+ * measured too:</b> written as `devToolsEnabled()` the constant is a call like any other
+ * and nothing behind it goes. The function stays because it is asked at the moment of
+ * drawing, which is what lets a case move the environment under a component already
+ * imported; the two are one rule, and `tools.test.ts` holds that they answer the same for
+ * every way a build can be asked.
+ */
+export const DEV_TOOLS_IN_THIS_BUILD: boolean =
+  import.meta.env.DEV || import.meta.env.VITE_DEV_TOOLS === '1'
+
+/**
+ * THE TWO DEVELOPMENT CONTROLS, FOR A BUILD THAT CARRIES THEM, AND NOTHING AT ALL FOR ONE
+ * THAT DOES NOT.
+ *
+ * <p><b>Written here, beside the constant, and not in `app/Shell.tsx` where they are drawn,
+ * because the bundler drops an `import()` only when the condition in front of it is known
+ * in the SAME module.</b> Measured 09.10.2026 on Vite 8.1.5: the identical condition written
+ * in the shell with the constant imported from here left the date switch's chunk and its
+ * stylesheet in the production bundle, to be fetched by nobody; written here, or with the
+ * condition spelt out in the shell itself, neither was there. Here it has one home.
+ *
+ * <p><b>Loaded rather than imported, because an import is a stylesheet as well.</b> A
+ * switch imported normally and drawn behind the constant loses its script in production
+ * and keeps its stylesheet: the import of `DateSwitch.css` is a side effect, and the bundler
+ * keeps side effects of everything that is imported. Measured the same day: drawn that way,
+ * the production stylesheet still named `date-switch` nine times.
+ *
+ * <p>What holds it is `productionPackage.test.ts`, which asks the bundler what it built.
+ */
+export const loadTheDevControls = DEV_TOOLS_IN_THIS_BUILD
+  ? async () => {
+      const [day, role] = await Promise.all([
+        import('../clock/DateSwitch'),
+        import('../roles/RoleSwitch'),
+      ])
+
+      return { DateSwitch: day.DateSwitch, RoleSwitch: role.RoleSwitch }
+    }
+  : null

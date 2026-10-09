@@ -1,12 +1,11 @@
 import { useRef, useState } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
-import { DateSwitch } from '../clock/DateSwitch'
 import { dataOr, usePaymentsDue } from '../data/useResource'
+import { loadTheDevControls } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePending } from '../pages/admin/pending'
 import { notMembersYetIn, totalWaiting } from '../pages/admin/queues'
-import { RoleSwitch } from '../roles/RoleSwitch'
 import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
 import { useTheServersSession } from '../session/useTheServersSession'
@@ -20,6 +19,15 @@ import { CONTACT_ADDRESS, FOOTER_ROUTES, navForRole, type NavSection } from './r
 import { useNewScreen } from './useNewScreen'
 import { useRouteChrome } from './useRouteChrome'
 import './Shell.css'
+
+/* THE TWO DEVELOPMENT CONTROLS, FOR A BUILD THAT CARRIES THEM (dev/tools.ts), AND NOTHING IN
+   ONE THAT DOES NOT: in the production bundle this line is `null`, and neither switch, nor its
+   stylesheet, nor the slot the moved day is kept in is in the package at all (ADL A15).
+
+   Awaited before this module is done rather than drawn lazily, because a control that
+   arrived after the first paint would shift the row of tools under the reader's pointer, and
+   on QA, the one place they are drawn, that row is the header of every screen. */
+const DEV_CONTROLS = loadTheDevControls === null ? null : await loadTheDevControls()
 
 function useRestOfPath(): string {
   const location = useLocation()
@@ -166,8 +174,12 @@ export function Shell() {
             {/* The two development controls, side by side and gone together in
                 production (src/dev/tools.ts): who is at the keyboard, and what
                 day the portal is being read as. */}
-            <RoleSwitch />
-            <DateSwitch />
+            {DEV_CONTROLS !== null && (
+              <>
+                <DEV_CONTROLS.RoleSwitch />
+                <DEV_CONTROLS.DateSwitch />
+              </>
+            )}
             <LanguageMenu restOfPath={rest} />
 
             {/* Signed in: the inbox, then the picture whose menu holds settings
