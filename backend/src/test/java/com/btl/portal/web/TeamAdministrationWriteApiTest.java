@@ -63,7 +63,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * today would collect from - so „left as it was" cannot be satisfied by an empty column.
  * <li><b>It stands on a row of the world codebook</b>, so the typed town a change writes is a
  * different shape from the one it replaces and „the town was written" is not „the town was
- * already there".
+ * already there". <b>One case starts from the other shape instead</b>, a team whose town is
+ * already typed, which is the shape a team the portal makes comes out with, so „the town was
+ * written" is not „the town was kept" either.
  * <li><b>Its seat is held by the member who joined LATER</b> ({@link #THE_SEAT}, from
  * {@link #A_SEASON_STILL_TO_COME}), while {@link #THE_LONGEST} has stood in it since
  * {@link #A_SEASON_ALREADY_RUNNING}. „The seat as it stands" and „the seat the standing rule
@@ -400,6 +402,40 @@ class TeamAdministrationWriteApiTest {
 	}
 
 	/**
+	 * A TOWN THAT WAS ALREADY TYPED IS REPLACED, AND ITS COUNTRY WITH IT, NOT KEPT BECAUSE IT IS
+	 * THERE.
+	 *
+	 * <p>Every other case changes a team that stands on a row of the codebook, with no typed town
+	 * and no country, so a statement that keeps what a column already holds
+	 * ({@code coalesce(city, ?)}, {@code coalesce(country_id, ?)}) writes the right value over
+	 * both of those empty columns, and no other case could tell it from the right statement. The
+	 * shape that matters is the other one {@code team_town_is_from_the_codebook_or_typed} allows,
+	 * and it is the shape a team the portal makes comes out with: {@link TeamWriteApi#propose}
+	 * writes the town of a proposal as typed, and the approval copies it into the team.
+	 *
+	 * <p>The town the team starts with, the town the request sends and the town the change waiting
+	 * in the queue carries are three different towns in three different countries, so whichever of
+	 * them a wrong statement writes is told from the right one. The form is the one the list's
+	 * cell sends, with the seat left out, so the town and its country are all that move.
+	 */
+	@Test
+	void aTownThatWasTypedIsReplacedAndItsCountryWithIt() throws Exception {
+		townTypedOf(THE_TEAM, "Banja Luka", "BA");
+
+		assertThat(theRowOf(theTeam()).subList(2, 5))
+				.as("the team was not given a typed town, so the change below replaces nothing")
+				.containsExactly("no place", "Banja Luka", "BA");
+
+		assertThat(changeAs(MODERATOR_OVER_TEAMS, theTeam(), form(THE_TEAMS_NAME, "Vukovar", "HR"))
+				.getStatus())
+				.isEqualTo(200);
+
+		assertThat(theRowOf(theTeam()).subList(2, 5))
+				.as("a town that was already typed was kept, or the country it stands in was")
+				.containsExactly("no place", "Vukovar", "HR");
+	}
+
+	/**
 	 * WHAT THE FORM DOES NOT ASK FOR IS LEFT AS IT WAS, AND THE MARK MOST OF ALL.
 	 *
 	 * <p>The class's own reasoning, marked there as reasoning and not a decision: a change sent
@@ -727,6 +763,16 @@ class TeamAdministrationWriteApiTest {
 
 	private void seatOf(String teamSlug, Long competitor) {
 		db.sql("update team set admin_id = ? where slug = ?").params(competitor, teamSlug).update();
+	}
+
+	/**
+	 * Gives a team a town of its own typing and no pointer into the codebook: the other shape
+	 * {@code team_town_is_from_the_codebook_or_typed} allows, besides the one the fixture writes.
+	 */
+	private void townTypedOf(String teamSlug, String city, String countryCode) {
+		db.sql("update team set place_id = null, city = ?,"
+						+ " country_id = (select id from country where code = ?) where slug = ?")
+				.params(city, countryCode, teamSlug).update();
 	}
 
 	/** A change of a team that exists, queued exactly the way V11 and V9 queue one together. */
