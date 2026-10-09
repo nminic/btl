@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.pricing.Currency;
+import com.btl.portal.domain.registration.WhatAFieldMeans;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -54,14 +55,22 @@ import java.util.function.Function;
  * SVAKOG polja", which is a queue card with nothing on it for a moderator to judge.
  * </ul>
  *
- * <p><b>AND TWO FIELDS OF THE MEMBER'S OWN FORM ARE REFUSED RATHER THAN IGNORED.</b> PDL
+ * <p><b>AND THREE FIELDS OF THE MEMBER'S OWN FORM ARE REFUSED RATHER THAN IGNORED.</b> PDL
  * P28b, 2, 24.09.2026: „Datum rodjenja i pol menja samo administrator, jer iz njih se
  * izvode kategorija i uzrasna grupa, pa bi slobodna izmena znacila da clan bira u kojoj
- * kategoriji trci i menja vec odigran poredak unazad." Refused and not dropped, and the
- * difference is ADL A54's: a field Jackson throws away is a field the member believes he
- * changed, and the next thing he reads is his old date of birth with no sentence anywhere
- * saying why. {@link #ONLY_AN_ADMINISTRATOR_CHANGES} carries them and
+ * kategoriji trci i menja vec odigran poredak unazad." The third is the father's name, by the
+ * entry of the same day in which the owner chose between offered outcomes, and PDL gives its
+ * reason as „Ime oca je pravni podatak istog reda kao datum rođenja". Refused and not
+ * dropped, and the difference is ADL A54's: a field Jackson throws away is a field the member
+ * believes he changed, and the next thing he reads is his old date of birth with no sentence
+ * anywhere saying why. {@link #ONLY_AN_ADMINISTRATOR_CHANGES} carries them and
  * {@link #NOT_YOURS_TO_CHANGE} is what he is told.
+ *
+ * <p><b>AND THE SHIRT SIZE IS HIS, AND IT TAKES EFFECT AT ONCE.</b> The same entry gives the
+ * size to the member himself. That it waits for nobody is derived rather than written there:
+ * PDL „Odobrenje čeka samo ono što javnost vidi kao sadržaj" puts only the biography and the
+ * picture in front of a moderator, and a size is neither, so it goes into the same statement
+ * as his name and his address. {@link #theSizeRefused} says what is refused about one.
  *
  * <p><b>A SEPARATE CLASS FROM {@link MeApi} AND NOT A SECOND METHOD ON IT</b>, which is
  * the split the portal already makes three times over - {@link TeamApi} and
@@ -330,6 +339,10 @@ class MeWriteApi {
 	 *
 	 * <p>It is NOT the answer to a blank {@code bio}: since the owner's decision of
 	 * 19.09.2026 that is a deletion and is carried out.
+	 *
+	 * <p><b>And it is also the answer to a shirt size that is not one of the seven</b>, with
+	 * that one name in the list beside it, which is how the registration reads the same
+	 * field: see {@link #theSizeRefused}.
 	 */
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
@@ -374,23 +387,32 @@ class MeWriteApi {
 	static final String THE_TOWN_IS_NOT_KNOWN = "theTownIsNotKnown";
 
 	/**
-	 * THE TWO FIELDS OF HIS OWN FORM A MEMBER MAY NOT MOVE, and the reason is one thing.
+	 * THE THREE FIELDS OF HIS OWN FORM A MEMBER MAY NOT MOVE, and the reason is two things.
 	 *
-	 * <p>PDL P28b, 2, 24.09.2026: both of them are read by the portal to work out which
+	 * <p>PDL P28b, 2, 24.09.2026: the first two are read by the portal to work out which
 	 * CATEGORY somebody races in (PDL P5, P12), so a member who could edit them could
 	 * choose his category and could change a table of a season already run. The owner gave
 	 * that reason himself and put the change where it already was: „Menja ih samo
 	 * administrator."
 	 *
+	 * <p><b>The father's name is the third, and its reason is not the category.</b> Nothing
+	 * the portal works out reads it; it stands in the register of members the law on sport
+	 * prescribes, and PDL gives it the rank of the date of birth: „Ime oca je pravni podatak
+	 * istog reda kao datum rođenja". Until this list named it, no list here did, so a body
+	 * carrying it beside a field this route takes was answered 200 and the father's name was
+	 * dropped in silence - the exact shape the head of this class refuses.
+	 *
 	 * <p><b>Spelt as the FORM spells them and not as the columns are spelt</b>, because
-	 * what arrives here is a body built by that form: {@code birthDate} and {@code gender},
-	 * which {@code registracija.form.json} carries and {@code competitor} holds as
-	 * {@code birth_date} and {@code gender}. The floor in {@code MeWriteApiTest} partitions
-	 * every field of that file into what this route takes, what it refuses here, and what
-	 * it carries nowhere - so a thirteenth field on the form tomorrow fails the build until
-	 * somebody says which of the three it is, instead of being dropped in silence.
+	 * what arrives here is a body built by that form: {@code birthDate}, {@code gender} and
+	 * {@code fatherName}, which {@code registracija.form.json} carries and {@code competitor}
+	 * holds as {@code birth_date}, {@code gender} and {@code father_name}. The floor in
+	 * {@code MeWriteApiTest} partitions every field of that file into what this route takes,
+	 * what it refuses here, and what it carries nowhere - so a thirteenth field on the form
+	 * tomorrow fails the build until somebody says which of the three it is, instead of being
+	 * dropped in silence.
 	 */
-	static final List<String> ONLY_AN_ADMINISTRATOR_CHANGES = List.of("birthDate", "gender");
+	static final List<String> ONLY_AN_ADMINISTRATOR_CHANGES = List.of("birthDate", "gender",
+			"fatherName");
 
 	/**
 	 * THE TAB THIS WAITS IN, and the only one it could wait in.
@@ -440,22 +462,23 @@ class MeWriteApi {
 	static final int AS_LONG_AS_THE_FORM_ALLOWS = 360;
 
 	/**
-	 * THE TWO NAMES THIS ROUTE TAKES, which is what a request naming neither of them is
-	 * told it left out.
+	 * THE NAMES THIS ROUTE TAKES, which is what a request naming none of them is told it
+	 * left out.
 	 *
 	 * <p>ADL A54's second half: „kad se forma odbije, kaze se sta fali". Here there is
-	 * exactly one way to fail it - a body naming neither field - so what is missing is
+	 * exactly one way to fail it - a body naming none of them - so what is missing is
 	 * everything this address accepts, and saying so is also the one place the portal tells
 	 * a caller what it takes.
 	 *
 	 * <p><b>Written out by hand with its floor in the same commit</b>, which is
 	 * {@link RaceWriteApi#NotComplete}'s own arrangement: {@code MeWriteApiTest} reads the
 	 * components of {@link Change} off the record itself and demands this be exactly them,
-	 * so a third field added to the request tomorrow fails the build until somebody decides
+	 * so a field added to the request tomorrow fails the build until somebody decides
 	 * whether leaving it out is a refusal.
 	 */
 	static final List<String> WHAT_THIS_ROUTE_TAKES = List.of("bio", "profileHidden",
-			"firstName", "lastName", "address", "phone", "placeId", "city", "country");
+			"firstName", "lastName", "address", "phone", "placeId", "city", "country",
+			"shirtSize");
 
 	/**
 	 * THE PERSONAL FIELDS, EACH WITH THE LENGTH OF THE MEMBER'S OWN BOX AND THE WAY OUT OF
@@ -467,13 +490,19 @@ class MeWriteApi {
 	 * form each box stands on and requires every number here to be that field's own
 	 * {@code maxLength}, and requires this map to hold an entry for every TEXT field of the
 	 * form this route takes. A box the owner moves stops the build until the server moves
-	 * with it, and a tenth field added to {@link Change} with no box behind it stops it too.
+	 * with it, and a field added to {@link Change} that the form bounds with a
+	 * {@code maxLength} and this map does not carry stops it too.
 	 *
 	 * <p><b>{@code country} is not here and that is not an omission.</b> It is a code out of
 	 * the codebook, not a box somebody types prose into: what bounds it is whether
 	 * {@code country} holds a row with that code, which is asked of the table rather than
 	 * of a number. {@code placeId} is a key and is bounded the same way. Both are refused
 	 * with {@link #THE_TOWN_IS_NOT_KNOWN} and neither can be „too long".
+	 *
+	 * <p><b>{@code shirtSize} is not here either, for the same kind of reason.</b> It is
+	 * chosen out of seven values rather than typed, and the form gives it no
+	 * {@code maxLength}: what bounds it is {@link WhatAFieldMeans#theShirtSize}, the one
+	 * home the registration already asks, and {@link #theSizeRefused} is where it is asked.
 	 *
 	 * <p><b>Counted in the units the box counts in</b>, for the same reason the biography is:
 	 * HTML's {@code maxlength} is a code-unit length, which is what {@link String#length()}
@@ -523,6 +552,12 @@ class MeWriteApi {
 	 * <p><b>{@code city} is not on either list</b>, because emptying it is not a fact about a
 	 * column but about the TOWN, which is three columns and one rule; see
 	 * {@link #theTownNamed}.
+	 *
+	 * <p><b>Nor is {@code shirtSize}, although it may never be emptied either.</b> This list
+	 * is of BOXES - {@link #boxesEmptied} reads each one through
+	 * {@link #EACH_BOX_ON_THE_FORM} - and a size is chosen rather than typed. V8's
+	 * {@code competitor_shirt_size_known} refuses anything but the seven, a blank included,
+	 * and {@link #theSizeRefused} answers it before anything is written.
 	 */
 	static final List<String> NEVER_EMPTIED = List.of("firstName", "lastName", "address");
 
@@ -605,12 +640,13 @@ class MeWriteApi {
 	 * ONLY ONE OF THEM HAS.</b> Null is „do not touch", a value is „make it this", and for
 	 * {@code phone} - and for {@code phone} alone among them - blank is „I have none", which
 	 * is V8's own reading of its column. A blank name or address is refused; see
-	 * {@link #NEVER_EMPTIED}.
+	 * {@link #NEVER_EMPTIED}. A blank shirt size is refused too, and so is any size that is
+	 * not one of the seven; see {@link #theSizeRefused}.
 	 *
-	 * <p>There is no member number, no date of birth, no gender and no birthday choice:
-	 * the two the member may not move are named in {@link #ONLY_AN_ADMINISTRATOR_CHANGES}
-	 * and refused rather than carried here, and this route changes the caller's own record
-	 * and reads who that is off the session.
+	 * <p>There is no member number, no date of birth, no gender, no father's name and no
+	 * birthday choice: the three the member may not move are named in
+	 * {@link #ONLY_AN_ADMINISTRATOR_CHANGES} and refused rather than carried here, and this
+	 * route changes the caller's own record and reads who that is off the session.
 	 *
 	 * <p><b>AND NO ADDRESS OF ELECTRONIC MAIL, which is a boundary rather than an
 	 * omission.</b> PDL P28b, 2, 24.09.2026: „Adresu elektronske poste clan menja sam, ali
@@ -639,9 +675,12 @@ class MeWriteApi {
 	 *                      sent beside it (owner, 11.08.2026)
 	 * @param city          a town typed by hand instead, which then names its country
 	 * @param country       the code of that country, {@code RS}, never its key
+	 * @param shirtSize     one of the seven sizes the registration offers, spelt exactly as
+	 *                      the form offers it. Null leaves it alone
 	 */
 	record Change(String bio, Boolean profileHidden, String firstName, String lastName,
-			String address, String phone, Long placeId, String city, String country) {
+			String address, String phone, Long placeId, String city, String country,
+			String shirtSize) {
 	}
 
 	/** Why a change could not be made. */
@@ -709,10 +748,14 @@ class MeWriteApi {
 	 * @param city          the town he typed, and null where it came out of the codebook
 	 * @param country       the code of that country, and null where the town is the
 	 *                      codebook's - which carries its own
+	 * @param shirtSize     his size as the row now holds it, which after a request carrying
+	 *                      one IS what was sent, and after a request naming none is the size
+	 *                      that was already there - never null, because V8 holds the column
+	 *                      NOT NULL
 	 */
 	record Changed(String bio, boolean profileHidden, Long waiting, String firstName,
 			String lastName, String address, String phone, Long placeId, String city,
-			String country) {
+			String country, String shirtSize) {
 	}
 
 	/**
@@ -780,9 +823,9 @@ class MeWriteApi {
 		/* WHAT IS NOT HIS TO MOVE IS ASKED OF THE BODY AS IT ARRIVED, AND BEFORE ANYTHING
 		   ELSE IS LOOKED AT.
 
-		   Of the TREE and not of `Change`, because the whole point is that these two names
-		   are NOT on that record: bound into it they would be two fields this route takes,
-		   and `WHAT_THIS_ROUTE_TAKES` - which its own floor reads off the record - would
+		   Of the TREE and not of `Change`, because the whole point is that these names are
+		   NOT on that record: bound into it they would be fields this route takes, and
+		   `WHAT_THIS_ROUTE_TAKES` - which its own floor reads off the record - would
 		   then tell every caller that the portal accepts a date of birth. Asked here, the
 		   record goes on describing exactly what this route writes, and the refusal is a
 		   sentence about the request rather than a field quietly ignored (ADL A54).
@@ -825,6 +868,12 @@ class MeWriteApi {
 			return ResponseEntity.badRequest().body(new NotAllowed(A_FIELD_IS_BLANK, emptied));
 		}
 
+		ResponseEntity<?> notASize = theSizeRefused(typed);
+
+		if (notASize != null) {
+			return notASize;
+		}
+
 		/* THE TOWN IS RESOLVED BEFORE THE TRANSACTION OPENS, so a town nothing maps is a
 		   refusal that has written nothing rather than one decided over a switch that was
 		   already moved - the same order every other refusal on this route keeps. */
@@ -860,14 +909,15 @@ class MeWriteApi {
 	/**
 	 * Whether the request named nothing this route could act on.
 	 *
-	 * <p>Written over {@link #WHAT_THIS_ROUTE_TAKES} through the record's own readers rather
-	 * than as nine comparisons, so the day a tenth field is added the only thing that has to
-	 * move is the record and the two lists whose floor already compares them.
+	 * <p>Written over {@link #WHAT_THIS_ROUTE_TAKES} through the record's own readers, one
+	 * comparison per component, so the day a field is added the record, the two lists whose
+	 * floor already compares them and this line are what has to move.
 	 */
 	private static boolean nothingWasNamed(Change typed) {
 		return typed.bio() == null && typed.profileHidden() == null && typed.firstName() == null
 				&& typed.lastName() == null && typed.address() == null && typed.phone() == null
-				&& typed.placeId() == null && typed.city() == null && typed.country() == null;
+				&& typed.placeId() == null && typed.city() == null && typed.country() == null
+				&& typed.shirtSize() == null;
 	}
 
 	/** The boxes whose contents would not fit the member's own form, oldest rule first. */
@@ -902,6 +952,45 @@ class MeWriteApi {
 		}
 
 		return blank;
+	}
+
+	/**
+	 * THE SHIRT SIZE, WHICH IS CHOSEN AND NOT TYPED, AND THE REFUSAL OF ONE THAT IS NOT A SIZE.
+	 *
+	 * <p>Null when there is nothing to refuse: a request that names no size, which leaves the
+	 * column alone (ADL A54), or one that names one of the seven.
+	 *
+	 * <p><b>Two refusals and no new word, and both are words this portal already says.</b> A
+	 * BLANK size is {@link #A_FIELD_IS_BLANK} naming it, which is that word's own sentence:
+	 * emptied, where V8 holds the column {@code NOT NULL}. Any OTHER size the seven do not
+	 * include is {@link #THE_FORM_IS_NOT_COMPLETE} naming it, because that is how the
+	 * registration reads the same field - {@code RegistrationApi.whatHeFilledIn} and
+	 * {@code CompetitorWriteApi.whatWasFilledIn} both count a size
+	 * {@link WhatAFieldMeans#theShirtSize} does not know as a size not filled in. No screen
+	 * sends either: the member's form offers the seven as a choice, so what reaches these
+	 * lines is a request that went round it, and a word of its own would be a sentence no
+	 * screen could draw.
+	 *
+	 * <p><b>Asked before the transaction opens</b>, like every refusal above it, so nothing a
+	 * refused request carried is written. V8's {@code competitor_shirt_size_known} would refuse
+	 * the row anyway, but as a 500 that takes the switch and the queue row down with it.
+	 *
+	 * <p><b>Spelt exactly and never stripped</b>, which is the registration's reading too: a
+	 * size is a value out of a list rather than prose somebody typed, so a space around one is
+	 * not a size.
+	 */
+	private static ResponseEntity<?> theSizeRefused(Change typed) {
+		if (typed.shirtSize() == null || WhatAFieldMeans.theShirtSize(typed.shirtSize()) != null) {
+			return null;
+		}
+
+		List<String> theSize = List.of("shirtSize");
+
+		if (typed.shirtSize().isBlank()) {
+			return ResponseEntity.badRequest().body(new NotAllowed(A_FIELD_IS_BLANK, theSize));
+		}
+
+		return ResponseEntity.badRequest().body(new NotComplete(THE_FORM_IS_NOT_COMPLETE, theSize));
 	}
 
 	/**
@@ -1115,7 +1204,7 @@ class MeWriteApi {
 
 		if (typed.profileHidden() != null || removing || phoneNamed || town != null
 				|| typed.firstName() != null || typed.lastName() != null
-				|| typed.address() != null) {
+				|| typed.address() != null || typed.shirtSize() != null) {
 
 			/* THE MEMBER THE SESSION NAMES AND NOBODY ELSE. `me` came from
 			   `MemberOfAccount`, which read `account.competitor_id` off the signed in
@@ -1148,6 +1237,7 @@ class MeWriteApi {
 							+ " first_name = coalesce(cast(? as text), first_name),"
 							+ " last_name = coalesce(cast(? as text), last_name),"
 							+ " address = coalesce(cast(? as text), address),"
+							+ " shirt_size = coalesce(cast(? as text), shirt_size),"
 							+ " phone = case when cast(? as boolean) then cast(? as text)"
 							+ "   else phone end,"
 							+ " place_id = case when cast(? as boolean) then cast(? as bigint)"
@@ -1159,7 +1249,7 @@ class MeWriteApi {
 							+ " where id = ?")
 					.params(removing ? "" : null, typed.profileHidden(),
 							strippedOrNull(typed.firstName()), strippedOrNull(typed.lastName()),
-							strippedOrNull(typed.address()),
+							strippedOrNull(typed.address()), typed.shirtSize(),
 							phoneNamed, phone,
 							town != null, town == null ? null : town.placeKey(),
 							town != null, town == null ? null : town.city(),
@@ -1352,7 +1442,7 @@ class MeWriteApi {
 		   record would be the one place in the portal where a member's own row hands back a
 		   number he could not have sent. */
 		Standing standing = db.sql("select c.bio, c.profile_hidden, c.first_name, c.last_name,"
-						+ " c.address, c.phone, p.geonames_id, c.city, k.code"
+						+ " c.address, c.phone, p.geonames_id, c.city, k.code, c.shirt_size"
 						+ " from competitor c"
 						+ " left join place p on p.id = c.place_id"
 						+ " left join country k on k.id = c.country_id"
@@ -1360,18 +1450,20 @@ class MeWriteApi {
 				.param(me)
 				.query((row, one) -> new Standing(row.getString(1), row.getBoolean(2),
 						row.getString(3), row.getString(4), row.getString(5), row.getString(6),
-						(Long) row.getObject(7), row.getString(8), row.getString(9)))
+						(Long) row.getObject(7), row.getString(8), row.getString(9),
+						row.getString(10)))
 				.single();
 
 		return new Changed(standing.bio(), standing.profileHidden(),
 				theTextThatWaits(me).orElse(null), standing.firstName(), standing.lastName(),
 				standing.address(), standing.phone(), standing.placeId(), standing.city(),
-				standing.country());
+				standing.country(), standing.shirtSize());
 	}
 
 	/** The member's own columns, before the queue is asked about anything. */
 	private record Standing(String bio, boolean profileHidden, String firstName, String lastName,
-			String address, String phone, Long placeId, String city, String country) {
+			String address, String phone, Long placeId, String city, String country,
+			String shirtSize) {
 	}
 
 	/**
