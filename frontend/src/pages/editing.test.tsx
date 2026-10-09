@@ -453,34 +453,12 @@ describe('the text of a competition', () => {
 })
 
 describe('the last few branches these screens have', () => {
-  it('cancels sending a result back', async () => {
-    const user = setupUser()
-    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
-
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-    await user.type(screen.getByLabelText('Mesto'), 'Niš')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-    await user.type(screen.getByLabelText(/Dužina/), '10')
-    await user.type(screen.getByLabelText(/Uspon/), '0')
-    await user.type(screen.getByLabelText(/Spust/), '0')
-    await user.type(screen.getByLabelText('Sati'), '0')
-    await user.type(screen.getByLabelText('Minuta'), '45')
-    await user.type(screen.getByLabelText('Sekundi'), '0')
-    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
-
-    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-    /* Straight to the queue: the sectors stand beside every administrative
-       screen now, so there is no road to a section to walk first. */
-    await user.click(await screen.findByRole('link', { name: /Rezultati/ }))
-    await user.click(await screen.findByRole('button', { name: 'Odbij' }))
-    await user.click(screen.getByRole('button', { name: 'Odustani' }))
-
-    // The result stays where it was, waiting.
-    expect(screen.queryByRole('button', { name: 'Odbij uz ovaj razlog' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Odbij' })).toBeVisible()
-  })
+  /* „CANCELS SENDING A RESULT BACK" STOOD HERE UNTIL R1 OF THE RESULTS FLOWS. It entered a result
+     through the form and found it on the moderator's queue, both inside this browser's session, then
+     opened the box that refuses it and gave the box up. The queue reads the server since R1 and the
+     form's copy never reaches it, so the walk found no row and ran out its five seconds (CI, PR 502).
+     What it measured, the box given up and nothing sent, is held in
+     `pages/admin/resultsQueue.test.tsx`, „closes when the moderator gives it up, and sends nothing". */
 
   it('leaves an already written competition text alone unless it is changed', async () => {
     const user = setupUser()
