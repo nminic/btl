@@ -961,9 +961,10 @@ class MembershipWriteApiTest {
 	 * the row says who pressed the button and when.
 	 *
 	 * <p><b>The three columns are read as ONE value</b> ({@link Trail}) and the account is the
-	 * CASHIER's: four accounts stand in this file's cases, so a trail that named the first account the
-	 * database holds, the superadmin or the member would be a different value and not a coincidence.
-	 * The moment is the clock these cases move and never the day they happen to run on.
+	 * CASHIER's: three accounts stand in every case of this file, and a fourth in the ones that are
+	 * about the member's own, so a trail that named the first account the database holds, the
+	 * superadmin or the member would be a different value and not a coincidence. The moment is the
+	 * clock these cases move and never the day they happen to run on.
 	 *
 	 * <p><b>The premise is asserted and not assumed.</b> The fee is the price list's, and a case about
 	 * „25 against 40" that went on passing after the list moved would be measuring something else.
@@ -988,7 +989,7 @@ class MembershipWriteApiTest {
 
 	/**
 	 * A BALANCE ABOVE THE FEE BUT BELOW THE FEE AND THE TAX TOGETHER IS A WHOLE FEE, AND THE ROW HAS NO
-	 * TRAIL: the long side of the boundary, and the one the screen gets wrong today.
+	 * TRAIL: the long side of the boundary, where what a member SENDS and what a balance PAYS part.
 	 *
 	 * <p>41 is above the fee (40) and below the fee plus the processing tax (43), which is the band in
 	 * which what a member SENDS and what a balance PAYS come apart. A membership paid out of a balance

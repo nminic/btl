@@ -475,10 +475,10 @@ class MembershipConstraintsTest extends DatabaseTest {
 	 * <p><b>The fixture takes away the migration's ONE change and names it.</b> V56 adds no column, so
 	 * the way the carried-over cases of V22 and V35 undo a migration - drop the columns it adds and let
 	 * {@code cascade} compute the rest - has nothing to drop; what V56 adds is one constraint, and a
-	 * list of one name is the change itself and not a list of its consequences. The row written next
-	 * could not be written with the constraint standing only if the constraint refused it, and it does
-	 * not, which is what a database holds before this file: a membership on a balance with all three
-	 * columns empty, because nothing ever wrote them there.
+	 * list of one name is the change itself and not a list of its consequences. The row written after
+	 * the undo is the only shape a database held before this file: a membership on a balance with all
+	 * three columns empty, because nothing ever wrote them there. The constraint would take it standing
+	 * as well; it is written after the undo because this case is about the migration meeting it.
 	 *
 	 * <p><b>Then THE MIGRATION ITSELF is executed</b> - the file Flyway applied
 	 * ({@link DatabaseTest#migrationSql}), not a copy of its statements - and the catalogue is asked
@@ -495,8 +495,7 @@ class MembershipConstraintsTest extends DatabaseTest {
 		jdbc.execute("alter table membership drop constraint " + THE_TRAIL_OF_A_BALANCE);
 
 		assertThat(db.sql(GOOD_OUT_OF_THE_BOOK).update())
-				.as("a membership on a balance with no trail could not be written, so the undo above"
-						+ " left something standing")
+				.as("the membership on a balance, with all three columns empty, could not be written")
 				.isOne();
 
 		jdbc.execute(migrationSql("56"));
