@@ -327,7 +327,7 @@ class MyResultSubmissionsApiTest {
 	@Test
 	void aRunOnARaceOfTheCalendarAnswersWithTheRaceAsItIsNowAndWhatAnApprovalWouldCount()
 			throws Exception {
-		List<JsonNode> mine = rows(MY_ADDRESS);
+		List<JsonNode> mine = mySix();
 
 		assertThat(mine.stream().map(one -> one.get("raceName").asString()).toList())
 				.as("a race is not named as it is called now")
@@ -352,7 +352,7 @@ class MyResultSubmissionsApiTest {
 	 */
 	@Test
 	void aDescribedRunAnswersWithWhatTheMemberSentBecauseThereIsNoRaceToAsk() throws Exception {
-		List<JsonNode> mine = rows(MY_ADDRESS);
+		List<JsonNode> mine = mySix();
 
 		assertThat(figuresOf(mine.get(0))).containsExactly("25", "600", "600", "9000");
 		assertThat(figuresOf(mine.get(4))).containsExactly("18", "900", "900", "8000");
@@ -378,7 +378,7 @@ class MyResultSubmissionsApiTest {
 	 */
 	@Test
 	void theKindAndTheTownAreTheRacesOnTheCalendarAndTheMembersOnADescribedRun() throws Exception {
-		List<JsonNode> mine = rows(MY_ADDRESS);
+		List<JsonNode> mine = mySix();
 		String first = nameOfTheBooksTown(1);
 		String second = nameOfTheBooksTown(2);
 
@@ -401,7 +401,7 @@ class MyResultSubmissionsApiTest {
 	 */
 	@Test
 	void aRunSentBackCarriesTheModeratorsReasonAndARunThatWaitsNone() throws Exception {
-		List<JsonNode> mine = rows(MY_ADDRESS);
+		List<JsonNode> mine = mySix();
 
 		assertThat(mine.stream().map(MyResultSubmissionsApiTest::reasonOf).toList())
 				.as("a reason is not the moderator's, or a run that waits carries one")
@@ -450,7 +450,7 @@ class MyResultSubmissionsApiTest {
 				.as("the answer carries a day a run was sent or decided on")
 				.doesNotContain("2026-06-");
 
-		assertThat(Answers.fieldsOf(rows(MY_ADDRESS).get(0)))
+		assertThat(Answers.fieldsOf(mySix().get(0)))
 				.as("the answer carries a name nobody decided it should, or lost one")
 				.containsExactlyInAnyOrder("id", "state", "raceId", "raceName", "raceDate",
 						"raceKind", "city", "country", "distanceKm", "ascentM", "descentM",
@@ -770,6 +770,21 @@ class MyResultSubmissionsApiTest {
 	private MockHttpServletResponse sent(MockHttpServletRequestBuilder asking, String email)
 			throws Exception {
 		return http.perform(asking.with(csrf()).cookie(cookieOf(email))).andReturn().getResponse();
+	}
+
+	/**
+	 * MY SIX RUNS, asserted to be six before any of them is read by its place: read by its place
+	 * out of a shorter list, a case would fall over on an index rather than fail on what it is
+	 * about, and a mutation it caught would read as an error instead of an assertion.
+	 */
+	private List<JsonNode> mySix() throws Exception {
+		List<JsonNode> mine = rows(MY_ADDRESS);
+
+		assertThat(mine)
+				.as("my answer is not my six runs, so no run of it can be read by its place")
+				.hasSize(6);
+
+		return mine;
 	}
 
 	private List<JsonNode> rows(String email) throws Exception {
