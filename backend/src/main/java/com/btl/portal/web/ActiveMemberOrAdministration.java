@@ -16,13 +16,20 @@ import java.util.Optional;
  * points at, supplemented the same day by a choice of the same kind, names who the
  * administration is: „skriven profil vide samo clanovi aktivirani za sezonu i administracija
  * (moderatori i superadmin)". Both are PDL's sentences and not the owner's own words; the
- * choices are his. So the same reader is asked about on two
- * subjects, and this class is written as the home both of them read, rather than as a
- * condition inside the first of them that the second would have to copy. The list of who is
+ * choices are his. So the same reader is asked about on three
+ * subjects, and this class is written as the home all of them read, rather than as a
+ * condition inside the first of them that the others would have to copy. The list of who is
  * going reads it ({@link AttendanceApi}, {@link AttendanceWriteApi}), and since 03.10.2026 so
  * does the hidden profile: {@link CompetitorApi} asks it for the biography, the portrait and the
  * link to the team of a member who hides his profile, {@link TeamApi} asks it with the answer
  * turned over, and {@link PhotoApi} asks it for the bytes of that portrait.
+ *
+ * <p><b>The comments on an event are the third subject, by the same entry of the record.</b> PDL
+ * names the reader in one line, „Komentare vide aktivni članovi i administracija, isto kao najava
+ * dolaska i skriven profil od 03.10.2026; nalog bez važeće članarine ih ne vidi" (PDL P6,
+ * 03.10.2026, „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"), and
+ * {@link CommentApi} asks this class for the whole list: the two halves of the question below are
+ * the same two it is asked on the other doors.
  *
  * <p><b>THE TWO HALVES ARE TWO QUESTIONS, AND A ROUTE MAY NEED ONLY ONE OF THEM.</b> Reading the
  * list is granted to either; SAYING that you are going is granted to the first alone, because
@@ -74,10 +81,10 @@ class ActiveMemberOrAdministration {
 	 * pictures), where Spring hands a parameter of this type nothing when the principal is the
 	 * anonymous token, so a visitor arrives here as {@code null}. Left to the two questions below,
 	 * {@code null} would be a {@link NullPointerException} on {@code asking.role()} and the visitor
-	 * would be answered 500 rather than what he is answered today. The two routes that ask about
-	 * who is going stand behind a session and never meet it. It is guarded here and not at the
-	 * three new call sites so that the guard has one home, and the visitor's case on each of the
-	 * three routes is what holds it.
+	 * would be answered 500 rather than what he is answered today. The routes that ask about who
+	 * is going and about the comments stand behind a session and never meet it. It is guarded here
+	 * and not at the three new call sites so that the guard has one home, and the visitor's case on
+	 * each of the three routes is what holds it.
 	 *
 	 * @param asking read off the session, never off anything the caller sent; {@code null} for
 	 *               a request that carries none

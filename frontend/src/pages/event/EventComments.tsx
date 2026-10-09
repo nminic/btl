@@ -47,35 +47,36 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
   const { t } = useI18n()
   const reads = useReadsComments()
   const today = useToday()
-  const state = combineResources(useComments(), useCompetitors(), useEvents())
 
-  /* **Only members read them (owner, 11.08.2026), and the question is asked HERE,
-     in front of the `Resource` below rather than inside it.**
+  /* **Active members and the administration read them (owner, 03.10.2026), and the question is
+     asked HERE, in front of everything that reads a comment and in front of the `Resource` that
+     says a failure.**
    *
-     Asked inside, it was never reached: `Resource` answers a fetch that failed
-     with `role="alert"` BEFORE it calls its children at all (components/
-     Resource.tsx), so the guard sat behind the very state it had to decide. That
-     is not a hypothetical since the portal moved to `/api`: `/api/comments` is not
-     in `ApiSecurity.READ_BY_ANYBODY`, so an unauthenticated caller is answered
-     401, `data/client.ts` throws on anything that is not `ok`, and the resource
-     is therefore in error for EVERY visitor on EVERY event. What a visitor met
-     under a race they had just read about was a red alarm, on the one screen that
-     had already decided to tell them nothing.
+     Asked inside, it was never reached: `Resource` answers a fetch that failed with
+     `role="alert"` BEFORE it calls its children at all (components/Resource.tsx), so the guard
+     sat behind the very state it had to decide. That is not a hypothetical since the portal
+     moved to `/api`: `/api/comments` is not in `ApiSecurity.READ_BY_ANYBODY`, so an
+     unauthenticated caller is answered 401, and since 03.10.2026 anybody else signed in who is
+     not an active member or the administration is answered 404 (`CommentApi`). `data/client.ts`
+     throws on anything that is not `ok`, so the resource is in error for EVERY one of them on
+     EVERY event. What a reader met under a race they had just read about was a red alarm, on the
+     one screen that had already decided to tell them nothing.
    *
-     The two screens beside this one asked the same question in the same place
-     (GoingToEvent.tsx, OverallMark.tsx), both of them predicting in as many words
-     that the endpoint would have to refuse an unauthenticated caller „the same way
-     the one for comments must". This is that sentence carried out on the third of
-     the three. GoingToEvent.tsx asks a question of its own since 03.10.2026, „an
-     active member or the administration", still before it reads anything.
+     So the comments are not even asked for here until the answer is yes, and that is what the
+     split below is for: `TheComments` holds the three reads, and it is only mounted for somebody
+     who reads. `GoingToEvent.tsx` asks the same question the same way and for the same reason
+     („nothing is asked that nobody draws"), and the question itself is the one it asks
+     (`useReadsComments`).
    *
-     Nothing here needs the data to be able to say it, which is why the whole
-     answer to a visitor is settled above without reading `state` at all.
+     A reader whose fee is not known yet (the list of members is on its way) holds a box open
+     like any other part, and one whose list did not come is told so with the button that asks
+     again. What is settled without the list is settled at once: a visitor is told the sentence in
+     the first paint.
    *
-     **This is a screen and not a lock, and it must not be mistaken for one.** The
-     server is what refuses. What this keeps is the page from promising what it
-     will not deliver, and now also from reporting that refusal as a fault. */
-  if (!reads) {
+     **This is a screen and not a lock, and it must not be mistaken for one.** The server is what
+     refuses. What this keeps is the page from promising what it will not deliver, and from
+     reporting that refusal as a fault. */
+  if (reads.status === 'ready' && !reads.data) {
     /* Nothing at all before the race, not even that the comments are for
        members. Said on a future event, the line appeared on exactly those whose
        earlier editions carry something and was missing from the rest: the
@@ -84,7 +85,15 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
 
        Its own condition and not folded into the guard below, because the two
        have different reasons. That one is about a box held open for data that is
-       still on its way; this one is about a sentence that needs no data. */
+       still on its way; this one is about a sentence that needs no data.
+
+       **The same sentence for everybody who does not read them**, a visitor and
+       an account whose fee is not standing alike. That is this screen's reasoning
+       and not a recorded decision: PDL says only that an account without a
+       standing fee does not see them, and the hidden profile, which the same
+       line names as the model, answers such an account as it answers a visitor.
+       A screen that told the two apart would be saying, to a reader who is shown
+       nothing, which of the two he is. */
     return date > today ? null : (
       <>
         <h2 className="profile__section" id="comments">
@@ -94,6 +103,36 @@ export function EventComments({ eventId, date }: { eventId: number; date: string
       </>
     )
   }
+
+  /* An event still to be run draws no section here at all, so while it is not known
+     whether this reader reads it, it must not hold a box open either: the reader would
+     watch a space that resolves into nothing, and on a broken connection an alert about
+     a section that was never going to be there. The results above say the same
+     thing the same way (EventDetail.tsx). */
+  if (date > today && reads.status !== 'ready') {
+    return null
+  }
+
+  return (
+    /* Inline for the reason the comments are: this is a part of a screen and not the
+       screen. It waits for the list of members to say whether this reader reads, and
+       then for the comments themselves, under the same name. */
+    <Resource state={reads} inline label={t('event.comments')}>
+      {() => <TheComments eventId={eventId} date={date} />}
+    </Resource>
+  )
+}
+
+/**
+ * The comments of an event, for somebody who reads them.
+ *
+ * Its own component so that nothing here is asked of the server for a reader who is not drawn
+ * the part: a hook cannot be called conditionally, and these three are the reads.
+ */
+function TheComments({ eventId, date }: { eventId: number; date: string }) {
+  const { t } = useI18n()
+  const today = useToday()
+  const state = combineResources(useComments(), useCompetitors(), useEvents())
 
   /* An event still to be run draws no section here at all, so while its data is
      on its way it must not hold a box open either: the reader would watch a

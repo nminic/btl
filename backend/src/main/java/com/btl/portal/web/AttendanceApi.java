@@ -30,7 +30,8 @@ import java.util.List;
  * <p><b>The visitor is still the chain's.</b> Everything under {@code /api} is shut and
  * {@link ApiSecurity#READ_BY_ANYBODY} opens a few things by name; this route is simply absent
  * from it, so the chain answers 401 before this class ever runs, which is how
- * {@link CommentApi} closes {@code /api/comments}. <b>The rest is asked here</b>, of
+ * {@link CommentApi} closes {@code /api/comments} toward a visitor (and, since 03.10.2026, it asks
+ * the rest of the same class, in the same words). <b>The rest is asked here</b>, of
  * {@link ActiveMemberOrAdministration}, and the refusal is the 404 an address that maps
  * nothing answers, sent through {@code sendError} the way {@link InboxApi} refuses an account
  * that names no member: ADL A8, „prijavljen kome pravo nedostaje dobija 404".

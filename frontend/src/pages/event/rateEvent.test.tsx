@@ -1679,7 +1679,7 @@ describe('the comments under an event', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect(await screen.findByText('Komentare vide prijavljeni članovi.')).toBeVisible()
+    expect(await screen.findByText('Komentare vide članovi sa važećom članarinom.')).toBeVisible()
     expect(screen.queryByRole('list', { name: 'Komentari' })).toBeNull()
     /* And neither is the mark they add up to, which is read out of them. */
     expect(document.querySelector('.comments__mark')).toBeNull()
@@ -1711,7 +1711,7 @@ describe('the comments under an event', () => {
 
     await screen.findByRole('heading', { level: 1 })
 
-    expect(screen.queryByText('Komentare vide prijavljeni članovi.')).toBeNull()
+    expect(screen.queryByText('Komentare vide članovi sa važećom članarinom.')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'Komentari' })).toBeNull()
   })
 
@@ -1725,9 +1725,10 @@ describe('the comments under an event', () => {
   })
 
   it('is read by a moderator, who has no member number of their own', async () => {
-    /* The rule is about visitors and not about member numbers: a queue that
-       publishes a comment leads straight to the event to look at it, and the
-       moderator who approved it has no number. */
+    /* The administration reads them whatever it has for a member number
+       (owner, 03.10.2026): a queue that publishes a comment leads straight to the
+       event to look at it, and the moderator who approved it has no number.
+       Who else reads, and who does not, is `commentsAreReadByActiveMembers.test.tsx`. */
     renderAt(`/sr/kalendar/${EVENT}`, 'superadmin')
 
     expect(await screen.findByRole('list', { name: 'Komentari' })).toBeVisible()
