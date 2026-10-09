@@ -48,8 +48,10 @@ import { setupUser, type Pressing } from '../../test/user'
  * either way, the editor's own guard being there.
  *
  * <p><b>No case here ends by running out of its own time</b> (review of PR 492, finding on the three
- * other screens): a case that fails by its clock says nothing about what it was asked, and a series of
- * mutations that counted it as caught was counting a race between two equal timers. What the form says in
+ * other screens): a case that fails by its clock says nothing about what it was asked. Under a mutation
+ * that refused the second press on those screens the case waited for a sentence that never came, with the
+ * same twenty seconds the case had, and ended by `Test timed out in 20000ms` three times of three; a series
+ * of mutations that did not tell a clock from an assertion counted that as caught. What the form says in
  * a press, and what the button wears after it, is on the screen when the press returns, so it is asked at
  * once; what has to be waited for (a write that goes out after the token) is waited for in half of the
  * time a case has, so that the case fails with the assertion's own words, and the floor at the foot of the
@@ -62,9 +64,10 @@ import { setupUser, type Pressing } from '../../test/user'
  */
 
 /* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS (see above). The global is `SLOW` for both
-   (`test/setup.ts`), and two equal timers decide by which fires first: a wait that never succeeds ended
-   in „Unable to find" on one run and in „Test timed out in 20000ms" on the next. Set here, and so for this
-   file alone: every file has a configuration of its own. */
+   (`test/setup.ts`), so a wait that never succeeds and the case that is waiting for it have the same
+   twenty seconds, and the clock of the case ended it (`Test timed out in 20000ms`, three cases of three
+   in the review of PR 492). Set here, and so for this file alone: every file has a configuration of its
+   own. */
 configure({ asyncUtilTimeout: SLOW / 2 })
 
 const THE_LIST = '/sr/administracija/dogadjaji'
@@ -542,9 +545,9 @@ describe('what is not held', () => {
 
            ASKED AT ONCE AND NOT WAITED FOR (review of PR 492, the high finding). The form says it in the
            press, so it is on the screen when the press returns, and a press that was refused is told by
-           the sentence being missing NOW. Waited for, a refusal was told only by the clock running out:
-           `findByText` and the case both had twenty seconds, and which of the two fired first was
-           the whole verdict. */
+           the sentence being missing NOW. Waited for, a refusal was told only by a clock: `findByText`
+           and the case both had twenty seconds, and the case ended first (`Test timed out in 20000ms`,
+           three of three). */
         await user.clear(screen.getByLabelText(box))
         await user.click(save())
 
@@ -573,9 +576,9 @@ describe('what a case of this file may end in', () => {
   it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
     /* The floor under the paragraph in the header. Every case is given `SLOW`, and every wait is given
        half of it by the `configure` at the head of the file. Take that line away and both are `SLOW`
-       again (`test/setup.ts`): a refusal that is waited for is then told by whichever of two equal
-       timers fires first, and a series of mutations counts that as caught. Asked of the number that
-       decides and not of the text of the file. */
+       again (`test/setup.ts`): a refusal that is waited for is then told by a clock and not by an
+       assertion, and a series of mutations that does not tell the two apart counts it as caught. Asked
+       of the number that decides and not of the text of the file. */
     expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
 })
