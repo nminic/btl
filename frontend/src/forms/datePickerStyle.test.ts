@@ -53,8 +53,14 @@ describe('the row of a picker that was handed days', () => {
     const { grow, shrink, basis } = flexOf(box)
 
     /* It may take the room that is left and give way, like the plain box. A basis alone
-       would be a box that cannot take a whole line when it has one to itself. */
-    expect([grow, shrink]).toEqual(['1', '1'])
+       would be a box that cannot take a whole line when it has one to itself. Read through
+       the parser, which drops a basis of a bare 0 and answers nothing for it: a box asked
+       for nothing is not a declaration this guard can read, and it fails here, which is
+       where it should (`flex: 1 1 0` is a real declaration and a basis of nothing). */
+    expect([grow, shrink], 'the box does not take and give room, or asks for a basis of nothing').toEqual([
+      '1',
+      '1',
+    ])
 
     /* In `rem`, which is what moves with the text: the date is as wide as its letters, and
        the buttons beside it are as wide as theirs. */
