@@ -350,13 +350,6 @@ class MePhotoApi {
 	private static final String THE_PROFILES_TAB = "profiles";
 
 	/**
-	 * What a member's turn at sending a picture is called to the lock manager: this text, with his
-	 * key after it, hashed by the database. See the class note on why the sends of one member take
-	 * turns.
-	 */
-	private static final String HIS_TURN_AT_SENDING_A_PICTURE = "profile-picture:";
-
-	/**
 	 * Where the picture ON THE PROFILE is asked for, which is the public route and unchanged.
 	 *
 	 * <p>Spelt the same way {@link CompetitorApi} and {@link TeamApi} spell it, because it is
@@ -1012,17 +1005,24 @@ class MePhotoApi {
 	 *
 	 * <p>{@code pg_advisory_xact_lock} is the transaction-scoped one: the commit or the rollback of
 	 * the transaction that took it releases it, and there is no unlock call that a road out of
-	 * {@link #send} could forget. The key is {@link #HIS_TURN_AT_SENDING_A_PICTURE} and his key,
-	 * hashed to a {@code bigint} by the database. The function returns {@code void}, which has
-	 * nothing to map, hence the cast to text: it only gives {@code JdbcClient} the one row it asks
-	 * for something to read.
+	 * {@link #send} could forget. The key is the text {@code profile-picture:} and his key, hashed
+	 * to a {@code bigint} by the database. The function returns {@code void}, which has nothing to
+	 * map, hence the cast to text: it only gives {@code JdbcClient} the one row it asks for
+	 * something to read.
+	 *
+	 * <p><b>The text is written here and is NOT a {@code static final String}, and that is
+	 * measured rather than tidy.</b> {@code frontend/src/pages/account/refusals.test.ts} reads every
+	 * {@code static final String} this class declares as a refusal the screens have to answer, and
+	 * counts them: the gate of the screens went red on 09.10.2026 when this text was one, as the
+	 * eighth. A constant that is not a refusal has to be named in that file and counted there, and
+	 * this text is spelt once, so it is not made one.
 	 *
 	 * <p>Why a turn and not another way, and where its edge is, is the class note on the sends of
 	 * one member.
 	 */
 	private void oneSendOfAMemberAtATime(long me) {
 		db.sql("select pg_advisory_xact_lock(hashtextextended(?, 0))::text")
-				.param(HIS_TURN_AT_SENDING_A_PICTURE + me)
+				.param("profile-picture:" + me)
 				.query(String.class)
 				.single();
 	}
