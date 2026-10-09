@@ -7,6 +7,7 @@ import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, membersAsServed, serverThat } from '../../test/serverAnswers'
 import type { Asked } from '../../test/serverAnswers'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import type { Role } from '../../roles/context'
 import { useSession } from '../../session/useSession'
@@ -41,6 +42,18 @@ import { useSession } from '../../session/useSession'
  */
 const SENTENCE = 'Komentare vide članovi sa važećom članarinom.'
 
+/**
+ * How long a case here is given, which is twice what a wait inside it is (`asyncUtilTimeout` is
+ * `SLOW`, `test/setup.ts`).
+ *
+ * <p>It keeps a miss readable, and that part is measured rather than reasoned
+ * (`pages/event/eventActions.test.tsx` found the same fault on the same clock): on the default five
+ * seconds a part that is owed to a reader and never drawn dies as a bare `Test timed out`, which reads
+ * exactly like a slow machine and names nothing; on this one the wait loses first and prints
+ * `Unable to find` with the words or the role that were owed.
+ */
+const LONGER_THAN_A_MISS = SLOW * 2
+
 /** An event that has been run and carries rated comments: the one whose list, mark and sentence are
  *  all there to be drawn or withheld. */
 const RAN = 'fruskogorski-maraton-2010'
@@ -56,8 +69,8 @@ type Reader = {
   /** What the kind of reader is called in a message. */
   name: string
   role: Role
-  /** His number, or nothing for somebody who has none. `LAPSED` is filled in by the case, because it is
-   *  read off the answer the server really gives (`membersAsServed`). */
+  /** His number, or nothing for somebody who has none. `LAPSED` is a constant, and the first case below
+   *  holds it against the answer the server really gives (`membersAsServed`). */
   number: string | null
   reads: boolean
 }
@@ -99,13 +112,21 @@ function askedForTheComments(): number {
 /** What the figure beside the name says it is out of, which is how it is found without a class. */
 const THE_MARK = /^iz \d+ ocen/
 
-async function aRatedComment(): Promise<EventComment> {
-  const events = await loadResource<BtlEvent[]>('events')
+/**
+ * A comment of RAN with words and marks, read off the disc and not through the portal's cache.
+ *
+ * <p>Read through `loadResource` it would warm the cache of `comments` and put a request for them
+ * into what the cases below count, and a case that asks "was anything asked for the comments"
+ * would then be answered by its own set-up.
+ */
+function aRatedComment(): EventComment {
+  const mock = (name: string): string => join(process.cwd(), 'src', 'test', 'mock', name)
+  const events: BtlEvent[] = JSON.parse(readFileSync(mock('events.json'), 'utf-8'))
   const ran = must(
     events.find((one) => one.slug === RAN),
     'the event that has been run',
   )
-  const comments = await loadResource<EventComment[]>('comments')
+  const comments: EventComment[] = JSON.parse(readFileSync(mock('comments.json'), 'utf-8'))
 
   return must(
     comments.find((one) => one.eventId === ran.id && one.body !== '' && one.rating.organisation > 0),
@@ -132,7 +153,7 @@ describe('the readers of this file', () => {
 describe('the comments under an event that has been run', () => {
   for (const reader of READERS) {
     it(`are ${reader.reads ? 'drawn to' : 'not drawn to'} ${reader.name}, and so is the figure beside the name`, async () => {
-      const comment = await aRatedComment()
+      const comment = aRatedComment()
 
       renderAt(`/sr/kalendar/${RAN}`, reader.role, reader.number)
 
@@ -170,7 +191,7 @@ describe('the comments under an event that has been run', () => {
       }
 
       expect(screen.queryByRole('alert'), `${reader.name} was shown an alarm`).toBeNull()
-    })
+    }, LONGER_THAN_A_MISS)
 
     it(`${reader.reads ? 'send' : 'send no'} request for the comments for ${reader.name}`, async () => {
       renderAt(`/sr/kalendar/${RAN}`, reader.role, reader.number)
@@ -191,7 +212,7 @@ describe('the comments under an event that has been run', () => {
           ? `nothing was asked of the server for ${reader.name}, who is drawn the comments`
           : `the comments were asked of the server for ${reader.name}, who is drawn nothing of them`,
       ).toBe(reader.reads)
-    })
+    }, LONGER_THAN_A_MISS)
   }
 })
 
@@ -211,7 +232,7 @@ describe('an event still to be run', () => {
       expect(screen.queryByText(SENTENCE), `${reader.name} was told who the comments are for`).toBeNull()
       expect(screen.queryByText(THE_MARK)).toBeNull()
       expect(screen.queryByRole('alert'), `${reader.name} was shown an alarm`).toBeNull()
-    })
+    }, LONGER_THAN_A_MISS)
   }
 })
 
@@ -224,8 +245,11 @@ describe('a reader whose fee is not known yet', () => {
    * still on their way. A visitor is told the sentence at once, because nothing the list could say
    * changes his answer; a member is not told anything yet, because it does; and the administration
    * is asked for the comments at once, because its own fee does not matter.
+   *
+   * @param whileHeld the case, handed the way to let the members answer; they are let answer in any
+   *                  case when it ends
    */
-  async function withTheListHeldBack<T>(whileHeld: () => Promise<T>): Promise<T> {
+  async function withTheListHeldBack<T>(whileHeld: (letTheMembersAnswer: () => void) => Promise<T>): Promise<T> {
     let letTheMembersAnswer = (): void => {}
     const theMembersAnswer = new Promise<void>((resolve) => {
       letTheMembersAnswer = resolve
@@ -243,7 +267,7 @@ describe('a reader whose fee is not known yet', () => {
     )
 
     try {
-      return await whileHeld()
+      return await whileHeld(letTheMembersAnswer)
     } finally {
       letTheMembersAnswer()
       members.stop()
@@ -251,7 +275,9 @@ describe('a reader whose fee is not known yet', () => {
   }
 
   it('holds a box open for a member and draws the list when the members arrive', async () => {
-    await withTheListHeldBack(async () => {
+    const comment = aRatedComment()
+
+    await withTheListHeldBack(async (letTheMembersAnswer) => {
       renderAt(`/sr/kalendar/${RAN}`, 'competitor', ACTIVE)
 
       await screen.findByRole('heading', { level: 1, name: 'Fruškogorski maraton' })
@@ -260,8 +286,16 @@ describe('a reader whose fee is not known yet', () => {
       expect(screen.queryByText(SENTENCE), 'a member was told the comments are not for him while it was not known').toBeNull()
       expect(screen.queryByText(THE_MARK)).toBeNull()
       expect(askedForTheComments(), 'the comments were asked for before it was known the reader reads them').toBe(0)
+
+      /* And when the members arrive he is drawn what he reads, so the wait ends in the list and not
+         in a box that stays open. */
+      letTheMembersAnswer()
+
+      expect(await screen.findByText(comment.body), 'the member was never drawn what was written').toBeVisible()
+      expect(await screen.findByText(THE_MARK)).toBeVisible()
+      expect(screen.queryByText(SENTENCE)).toBeNull()
     })
-  })
+  }, LONGER_THAN_A_MISS)
 
   it('tells a visitor the sentence at once, whatever the list of members is doing', async () => {
     await withTheListHeldBack(async () => {
@@ -272,7 +306,7 @@ describe('a reader whose fee is not known yet', () => {
       expect(await screen.findByText(SENTENCE)).toBeVisible()
       expect(askedForTheComments()).toBe(0)
     })
-  })
+  }, LONGER_THAN_A_MISS)
 
   it('tells somebody signed in with no number of his own the sentence at once too', async () => {
     await withTheListHeldBack(async () => {
@@ -283,7 +317,7 @@ describe('a reader whose fee is not known yet', () => {
       expect(await screen.findByText(SENTENCE)).toBeVisible()
       expect(askedForTheComments()).toBe(0)
     })
-  })
+  }, LONGER_THAN_A_MISS)
 
   it('asks the administration for the comments at once, for its own fee does not matter', async () => {
     await withTheListHeldBack(async () => {
@@ -297,7 +331,7 @@ describe('a reader whose fee is not known yet', () => {
         'the administration waited for the list of members before it asked for the comments',
       ).toBeGreaterThan(0)
     })
-  })
+  }, LONGER_THAN_A_MISS)
 
   it('asks for the comments at once for a moderator whose own member is the one the list does not carry', async () => {
     /* The administration is a yes whatever it has for a number, so the list of members is not
@@ -314,7 +348,7 @@ describe('a reader whose fee is not known yet', () => {
         'a moderator with a number waited for the list of members before he asked for the comments',
       ).toBeGreaterThan(0)
     })
-  })
+  }, LONGER_THAN_A_MISS)
 
   it('is told the part could not be read, and not that the comments are not for him, when the list does not come', async () => {
     const broken = serverThat((path) => (path === '/api/competitors' ? answeredWith(500) : null))
@@ -337,7 +371,7 @@ describe('a reader whose fee is not known yet', () => {
     } finally {
       broken.stop()
     }
-  })
+  }, LONGER_THAN_A_MISS)
 })
 
 /** The reader stops being signed in without leaving the visit, the way `AccountMenu` really does
@@ -368,7 +402,7 @@ function SignOut() {
  */
 describe('a member who stops being signed in on the page', () => {
   it('is drawn the sentence and not the list or the figure he was drawn a moment ago', async () => {
-    const comment = await aRatedComment()
+    const comment = aRatedComment()
     const user = setupUser()
 
     renderAt(`/sr/kalendar/${RAN}`, 'competitor', ACTIVE, undefined, null, <SignOut />)
@@ -381,5 +415,5 @@ describe('a member who stops being signed in on the page', () => {
     expect(await screen.findByText(SENTENCE)).toBeVisible()
     expect(screen.queryByText(comment.body), 'the comments outlived the member who read them').toBeNull()
     expect(screen.queryByText(THE_MARK), 'the figure outlived the member who read it').toBeNull()
-  })
+  }, LONGER_THAN_A_MISS)
 })
