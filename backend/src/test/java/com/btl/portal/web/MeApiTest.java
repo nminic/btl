@@ -1107,6 +1107,79 @@ class MeApiTest {
 	}
 
 	/**
+	 * AND THE OTHER POLARITY OF HIS TWO CHOICES, WITH EVERY NAME HE HAS, for the same member whose
+	 * fee has lapsed.
+	 *
+	 * <p>The case above writes him hiding his profile and outside the beginners' category, which
+	 * keeps a swap of the two flags wrong in a value. It cannot also tell a flag that was gated on
+	 * his standing fee from the flag itself: a gated {@code boolean} reads back as {@code false},
+	 * which is exactly the value that case gives him for the beginners' category, so right and wrong
+	 * are one number (the fault the lapsed member's COUNT had until 21.09.2026). So he is written
+	 * the other way round here - in the beginners' category and not hiding - with a birthday shown
+	 * to the year and the other gender than the one the fixture gives him, and asked the facts the
+	 * case above leaves unasked: his two names, his gender and his birthday. Each is a value a gate
+	 * on his standing fee would turn into nothing.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsHandedEveryNameAndBothChoicesOfHisProfileToo() throws Exception {
+		db.sql("update competitor set first_season_2027 = true, profile_hidden = false,"
+						+ " birthday_shown = 'year', gender = 'F' where member_number = ?")
+				.param(LAPSED).update();
+
+		JsonNode his = answerFor(THE_LAPSED_ACCOUNT).path("member");
+
+		assertThat(his.path("memberNumber").asString())
+				.as("this is not his record at all, so the profile below says nothing")
+				.isEqualTo(LAPSED);
+		assertThat(his.path("firstName").asString()).as("his given name")
+				.isEqualTo(columnOf("first_name", LAPSED)).isEqualTo("Nenad");
+		assertThat(his.path("lastName").asString()).as("his family name")
+				.isEqualTo(columnOf("last_name", LAPSED)).isEqualTo("Ilic");
+		assertThat(his.path("gender").asString()).as("his gender")
+				.isEqualTo(columnOf("gender", LAPSED)).isEqualTo("F");
+		assertThat(his.path("birthdayShown").asString()).as("what he chose about his birthday")
+				.isEqualTo("year");
+		assertThat(his.path("firstSeason2027").asBoolean())
+				.as("whether he runs in the beginners' category, which a lapsed fee does not take"
+						+ " from him")
+				.isTrue();
+		assertThat(his.path("profileHidden").asBoolean())
+				.as("he does not hide his page, and the answer must say it as a value of his own"
+						+ " and not as the absence of one")
+				.isFalse();
+	}
+
+	/**
+	 * A TEXT THAT IS STILL WAITING FOR A MODERATOR IS NOT HIS BIOGRAPHY, and does not replace the
+	 * one he has. The text twin of {@link #aPictureThatWaitsIsNotHisPortraitAndDoesNotReplaceTheOneHeHas}.
+	 *
+	 * <p>A member's biography is {@code competitor.bio} once a moderator has approved it, and until
+	 * then the text sits in {@code verification} (ADL A60 makes only the first public). A query that
+	 * read the queue's text, or took it when the member's own was empty, would answer HER words
+	 * nobody has looked at and would answer HIM the wrong ones. <b>Both members have a text waiting
+	 * here</b>: she has written nothing approved and so must be answered the empty text, and he has
+	 * a biography and so must be answered that one.
+	 */
+	@Test
+	void aBiographyThatWaitsIsNotHisBiographyAndDoesNotReplaceTheOneHeHas() throws Exception {
+		isWaitingWithText(ABROAD, "Ovo je tekst koji je poslala a koji niko nije odobrio.");
+		isWaitingWithText(ME, "Ovo je tekst koji ceka umesto onog koji je odobren.");
+
+		JsonNode hers = answerFor(HER_ACCOUNT).path("member");
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(hers.path("memberNumber").asString())
+				.as("this is not her record at all, so the empty text says nothing")
+				.isEqualTo(ABROAD);
+		assertThat(hers.path("bio").asString())
+				.as("a text nobody has approved was answered as her biography")
+				.isEmpty();
+		assertThat(mine.path("bio").asString())
+				.as("the text that waits replaced the biography a moderator approved")
+				.isEqualTo(HIS_BIOGRAPHY);
+	}
+
+	/**
 	 * THE ADDRESS OF HIS PORTRAIT REALLY REACHES THE ROUTE THAT SERVES A PICTURE.
 	 *
 	 * <p>{@code CompetitorApiTest} and {@code TeamApiTest} do the same for their copies of the
@@ -1421,6 +1494,18 @@ class MeApiTest {
 						+ " select 'profiles', c.id, c.first_name || ' ' || c.last_name, '', ?,"
 						+ " 'waiting' from competitor c where c.member_number = ?")
 				.params(photo, memberNumber).update();
+	}
+
+	/**
+	 * A text SENT AND NOT YET DECIDED: the same queue and the same subject as the picture above,
+	 * with the words in {@code body} and no picture, which is what {@code MeWriteApi} writes when a
+	 * member really sends one (V53 allows one such text per member at a time).
+	 */
+	private void isWaitingWithText(String memberNumber, String text) {
+		db.sql("insert into verification (queue, competitor_id, subject, body)"
+						+ " select 'profiles', c.id, c.first_name || ' ' || c.last_name, ?"
+						+ " from competitor c where c.member_number = ?")
+				.params(text, memberNumber).update();
 	}
 
 	/** A picture a moderator has APPROVED is a {@code photo} row; the member's column names it. */

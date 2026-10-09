@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, configure, getConfig, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { aLapsedMembersPage, aServerThatAnswersWhenTold } from '../../test/hisPage'
 import { SLOW } from '../../test/slow'
@@ -18,6 +18,14 @@ import { useHisOwnRecord } from './useHisOwnRecord'
  * (`test/hisPage.ts`, `aServerThatAnswersWhenTold`), because the order in which two answers arrive
  * is the thing two of these cases are about.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, so that a wait which never succeeds ends
+   the case with the assertion's own words and not with the case's clock. The global is `SLOW` for both
+   (`test/setup.ts`): a mutation that leaves a screen undrawn would then end as `Test timed out` or as
+   `Unable to find`, depending on which of two equal clocks ran out first, and a series of mutations
+   that cannot tell the two apart counts a clock as a catch. The arrangement is the one
+   `pages/admin/saveWhileSaving.test.tsx` found for itself, and it is set here for this file alone. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 let stop: (() => void) | null = null
 
@@ -205,4 +213,12 @@ describe('his own record', () => {
 
     expect(result.current.status).toBe('loading')
   }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the paragraph at the head of the file, asked of the number that decides and not
+       of the text of the file: take the `configure` away and both clocks are `SLOW` again. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })

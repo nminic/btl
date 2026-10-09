@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { useRole } from '../../roles/useRole'
 import { useSession } from '../../session/useSession'
 import { must } from '../../test/at'
@@ -39,6 +39,14 @@ import { setupUser } from '../../test/user'
  * both IN FRONT of the disc reader, so everything these cases do not name is answered as it always
  * was. The list never carries 000032: that is the whole of the state the cases are about.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, so that a wait which never succeeds ends
+   the case with the assertion's own words and not with the case's clock. The global is `SLOW` for both
+   (`test/setup.ts`): a mutation that leaves a screen undrawn would then end as `Test timed out` or as
+   `Unable to find`, depending on which of two equal clocks ran out first, and a series of mutations
+   that cannot tell the two apart counts a clock as a catch. The arrangement is the one
+   `pages/admin/saveWhileSaving.test.tsx` found for itself, and it is set here for this file alone. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const FILE: Record<string, unknown>[] = JSON.parse(
   readFileSync(join(process.cwd(), 'src/test/mock/competitors.json'), 'utf-8'),
@@ -576,4 +584,12 @@ describe('his own page, when the reader changes inside one visit', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Ana Anić' })).toBeVisible()
     expect(screen.queryByText(HIS_NAME)).toBeNull()
   }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the paragraph at the head of the file, asked of the number that decides and not
+       of the text of the file: take the `configure` away and both clocks are `SLOW` again. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })
