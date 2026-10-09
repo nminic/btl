@@ -65,10 +65,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * {@code VerificationConstraintsTest}, {@code KeysAndIndexesTest} and
  * {@code OnePictureWaitsCarriedOverTest}, and nothing in THIS file can see it go: with the turn and
  * without the index the cases below still leave one row (measured 09.10.2026). The turn is what
- * these cases hold, in two ways. The two cases about FIRST sends fail if the turn is taken out, or
- * taken after the question, or made to outlive its transaction. The others hold what the turn must
- * not do: hold up another member, stay held after a send that worked or one that failed, or take
- * from a send over a waiting picture the serialising it already had.
+ * these cases hold, in two ways. The three cases about FIRST sends at once (two, three, and the
+ * comparison with one after the other) fail if the turn is taken out or taken after the question
+ * (measured 09.10.2026); made session-scoped, the case that asks the lock manager fails at once and
+ * the forced cases after it fail behind the lock it leaves. The others hold what the turn must not
+ * do: hold up another member, stay held after a send that worked or one that failed, or take from a
+ * send over a waiting picture the serialising it already had.
  *
  * <p><b>NOT {@code @Transactional}</b>, for the reason {@code ATextSentTwiceAtOnceTest} gives: a
  * test-managed transaction is bound to the calling thread, so the requests below each get a

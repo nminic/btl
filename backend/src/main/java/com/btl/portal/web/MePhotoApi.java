@@ -184,11 +184,13 @@ import java.util.Optional;
  *
  * <p><b>Transaction-scoped and not session-scoped, and that is measured too.</b> A session lock
  * outlives the request that took it: it stays on the pooled connection, and the next send of that
- * member, on another connection, waits behind a request that has finished (the three forced cases
- * timed out when the lock was made session-scoped). A transaction lock leaves with the commit or
- * the rollback of the transaction that took it, whichever comes, with the session that took it
- * still connected (measured on PostgreSQL 18, both ways), so a send that fails at the disk
- * ({@code rollbackFor = IOException.class}) lets the next one through.
+ * member, on another connection, waits behind a request that has finished (made session-scoped,
+ * {@code APictureSentTwiceAtOnceTest} fails: at once in the case that asks the lock manager, and in
+ * the forced cases after it, which find the requests of the one before stuck behind the leaked
+ * lock). A transaction lock leaves with the commit or the rollback of the transaction that took it,
+ * whichever comes, with the session that took it still connected (measured on PostgreSQL 18, both
+ * ways), so a send that fails at the disk ({@code rollbackFor = IOException.class}) lets the next
+ * one through.
  *
  * <p><b>The boundary, named rather than left to be found.</b> The sends of one member wait for one
  * another, and each waiting request holds a connection of the pool, which is the default ten and is
