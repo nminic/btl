@@ -357,6 +357,27 @@ class PaymentApi {
 	/** {@code payment_reference_shape}, V16: digits and nothing else, off a bank statement. */
 	private static final Pattern A_REFERENCE = Pattern.compile("^[0-9]{7,}$");
 
+	/**
+	 * THE MOST DIGITS A REFERENCE MAY HAVE, and the limit is {@code payment_reference_unique}'s
+	 * and not {@code payment_reference_shape}'s.
+	 *
+	 * <p>The shape asks for seven digits at least and says nothing about the other end, and the
+	 * index has an end: a key longer than about a third of a page does not go into a B-tree,
+	 * PostgreSQL answers {@code index row size ... exceeds btree version 4 maximum} and, being an
+	 * error, aborts the transaction. Three thousand digits pass {@link #A_REFERENCE}, reach the
+	 * {@code insert} and come back to a moderator booking a payment as a 500, which is why the
+	 * answer for them is the sentence a misshapen reference already gets.
+	 *
+	 * <p><b>Derived from the schema and decided by nobody</b>, the same way and for the same
+	 * reasons as {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, which carries them at
+	 * length: below what the index holds, with a margin, the text being ASCII by the shape so a
+	 * digit is a byte, and the same bound for a text PostgreSQL could compress.
+	 * {@code WhatAnIndexHoldsTest} asks the database what the index holds and fails the day this
+	 * number rises above it. A reference as the bank prints it is the season and the member number
+	 * run together (V16), which is a handful of digits; this is a floor and not a description of one.
+	 */
+	static final int MOST_A_REFERENCE_CAN_BE = 2000;
+
 	private final JdbcClient db;
 
 	private final Clock clock;
@@ -538,7 +559,13 @@ class PaymentApi {
 
 		String reference = isNothing(typed.reference()) ? null : typed.reference().strip();
 
-		if (reference != null && !A_REFERENCE.matcher(reference).matches()) {
+		/* THE LENGTH OF WHAT IS KEPT, which is the reference with its spaces taken off, is asked
+		   before the shape and answered with the same sentence: a reference the index cannot hold
+		   is not one this route can book, and it is told so the way a misshapen one is.
+		   `MOST_A_REFERENCE_CAN_BE` says where the number comes from. */
+		if (reference != null && (reference.length() > MOST_A_REFERENCE_CAN_BE
+				|| !A_REFERENCE.matcher(reference).matches())) {
+
 			return no(HttpStatus.BAD_REQUEST, THE_REFERENCE_IS_NOT_SHAPED);
 		}
 

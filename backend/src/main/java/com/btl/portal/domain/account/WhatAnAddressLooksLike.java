@@ -39,8 +39,44 @@ import java.util.regex.Pattern;
  * internationalised address, and the refusal is loud rather than silent. The day the
  * league owes somebody an address in his own alphabet, that is a migration and a
  * decision, and this class moves with it.
+ *
+ * <p><b>THE ONE THING THE SHAPE DOES NOT SAY IS HOW LONG, AND THE INDEX DOES.</b>
+ * {@code account_email_shape} has no upper bound, but {@code account_email_unique} is a
+ * B-tree over {@code lower(email)}, and a key longer than about a third of a page does not
+ * go into one: PostgreSQL answers {@code index row size ... exceeds btree version 4
+ * maximum}, and being an error it aborts the transaction. So an address of three thousand
+ * characters passes the shape, reaches {@code INSERT}, and comes back to the person as a
+ * 500 - the very thing the shape is copied here to prevent. {@link #MOST_AN_ADDRESS_CAN_BE}
+ * is the bound that closes it, {@link #itDoes} applies it in the same breath as the shape,
+ * and {@code WhatAnIndexHoldsTest} is the floor under the number.
  */
 public final class WhatAnAddressLooksLike {
+
+	/**
+	 * THE MOST CHARACTERS AN ADDRESS MAY HAVE, and the limit is the INDEX'S: it is not the
+	 * shape's, and it is not what an address of electronic mail is allowed to be.
+	 *
+	 * <p><b>Derived from the schema, and decided by nobody.</b> It sits below what
+	 * {@code account_email_unique} can hold, with a margin, and {@code WhatAnIndexHoldsTest}
+	 * asks PostgreSQL what that is and fails the day this number rises above it. The margin
+	 * is deliberate and is a quarter of what the index holds, give or take: a later change to
+	 * the index (a second key column, another page size) has to be a large one before this
+	 * stops being true, and the test says so first.
+	 *
+	 * <p><b>The characters of an address are ASCII by the shape</b>, so a character here is
+	 * a byte in the index and the one number answers for both.
+	 *
+	 * <p><b>It is not a statement about electronic mail.</b> RFC 5321 gives 254 characters
+	 * for the address a message is sent to, and a bound that strict would be the portal
+	 * refusing addresses on a rule nobody has decided to apply. If the owner wants one it is
+	 * a different constant with his sentence on it, and it goes UNDER this one.
+	 *
+	 * <p><b>And the bound is the same for a text that could be compressed</b>, which is the
+	 * deliberately stricter half: PostgreSQL keeps a hundred thousand copies of one letter in
+	 * this index because it compresses them, so a limit measured on what the database
+	 * refuses would depend on what was typed. This one does not.
+	 */
+	public static final int MOST_AN_ADDRESS_CAN_BE = 2000;
 
 	/**
 	 * Exactly one {@code @}, with something a reader can see on either side.
@@ -58,10 +94,15 @@ public final class WhatAnAddressLooksLike {
 	/**
 	 * Whether this is an address the portal would store.
 	 *
+	 * <p>The length is asked before the shape, so that a text of a hundred thousand characters is
+	 * refused by a comparison and not read through by a pattern.
+	 *
 	 * @param address what somebody typed, which may be anything at all, null included
 	 */
 	public static boolean itDoes(String address) {
-		return address != null && ONE_AT_BETWEEN_VISIBLE_ASCII.matcher(address).matches();
+		return address != null
+				&& address.length() <= MOST_AN_ADDRESS_CAN_BE
+				&& ONE_AT_BETWEEN_VISIBLE_ASCII.matcher(address).matches();
 	}
 
 	/**

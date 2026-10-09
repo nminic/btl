@@ -150,6 +150,59 @@ class WhatAnAddressLooksLikeMatchesTheSchemaTest extends DatabaseTest {
 	}
 
 	/**
+	 * THE LENGTH IS THE ONE THING THE TWO COPIES DO NOT SHARE, and this is the side of it where
+	 * they still agree: the longest address the code takes is one the shape rule takes too.
+	 *
+	 * <p>Whether that address is also one the INDEX keeps is a different question with a
+	 * different answer, and it is asked of the database by {@code WhatAnIndexHoldsTest} in
+	 * {@code com.btl.portal.web}, for the reason that file gives. What is held here is only that
+	 * the bound did not cut into the shape: an address exactly as long as the bound, made of
+	 * nothing the shape refuses, is still an address.
+	 */
+	@Test
+	void theLongestAddressTheCodeTakesIsOneTheShapeRuleTakesToo() {
+		String longest = "a@" + "b".repeat(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE - 2);
+
+		assertThat(longest).hasSize(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+
+		bothAgreeThatItIs(longest, true);
+	}
+
+	/**
+	 * AND PAST THE BOUND THE CODE REFUSES WHAT THE SHAPE RULE ALONE WOULD TAKE, which is the whole
+	 * reason the bound is in the code and not left to the schema.
+	 *
+	 * <p>{@code account_email_shape} says what an address is made of and nothing about how long it
+	 * is, so it takes an address of any length; the thing that does not is
+	 * {@code account_email_unique}, and it refuses with an error, which on PostgreSQL aborts the
+	 * transaction. That is the 500 this bound turns into the refusal every misshapen address
+	 * already gets. The two values are one character past the bound and twice the bound, so the
+	 * rule is not merely "equal or less".
+	 *
+	 * <p><b>If the day comes that the shape rule carries a length of its own</b>, this case fails
+	 * and says so, and the right reading is not that the case is wrong: the bound then has a second
+	 * home in the schema, and the two are to be compared the way the shape is, by asking the
+	 * database.
+	 */
+	@Test
+	void theShapeRuleAloneTakesAnAddressOfAnyLengthWhichIsWhyTheCodeCarriesTheBound() {
+		for (int length : new int[] {WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE + 1,
+				2 * WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}) {
+
+			String tooLong = "a@" + "b".repeat(length - 2);
+
+			assertThat(WhatAnAddressLooksLike.itDoes(tooLong))
+					.as("the code took an address of %d characters, past the bound it carries", length)
+					.isFalse();
+			assertThat(theSchemaTakes(tooLong))
+					.as("the shape rule refused an address of %d characters by itself, so the length"
+							+ " has a second home in the schema and the bound is no longer the only"
+							+ " thing that keeps it from the INSERT", length)
+					.isTrue();
+		}
+	}
+
+	/**
 	 * AND TAKING THE SPACES OFF TURNS AN ADDRESS THE SCHEMA REFUSES INTO ONE IT STORES.
 	 *
 	 * <p>That is the whole justification for doing it, measured rather than argued: a

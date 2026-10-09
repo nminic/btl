@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.PasswordPolicy;
 import com.btl.portal.domain.account.StoredPassword;
+import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Message;
 import com.btl.portal.domain.member.ReferralCode;
 import com.btl.portal.domain.registration.Guardianship;
@@ -566,6 +567,113 @@ class RegistrationApiTest {
 							+ " again either", typedBack)
 					.isEqualTo(204);
 		}
+	}
+
+	/**
+	 * AN ADDRESS LONGER THAN THE INDEX CAN HOLD IS A FORM THAT IS NOT COMPLETE, AND NOTHING IS
+	 * WRITTEN OR SENT.
+	 *
+	 * <p>{@code account_email_shape} has no upper bound and {@code account_email_unique} has one:
+	 * an address of three thousand characters passes the shape, reaches the {@code insert} and
+	 * comes back as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the database where the
+	 * limit is). This route judges an address with {@code WhatAnAddressLooksLike.itDoes} and
+	 * answers a misshapen one with {@link RegistrationApi#THE_FORM_IS_NOT_COMPLETE}, so that is
+	 * the sentence a long one gets and no sentence is added.
+	 *
+	 * <p><b>Four texts, because the bound has three ways of being half done.</b> One character
+	 * past it, which the database would still keep and which only a bound written as a number
+	 * refuses. Twice the bound, which on the day of writing is past what the index keeps as well
+	 * (4000 against 2692), so the route answers instead of meeting the fault this was written
+	 * for. And the same two made of ONE repeated letter: PostgreSQL compresses an index key that
+	 * long, a hundred thousand copies of one letter go into the index (measured in
+	 * {@link WhatAnIndexHoldsTest}), and a route that refused only what the database refuses
+	 * would let them through. This one refuses them, on purpose, and is stricter than the
+	 * database for exactly that reason.
+	 *
+	 * <p><b>Three places are read afterwards</b>: no account, no member, and no message. The
+	 * message is the one this route sends after the commit, and a refusal that had gone on to
+	 * mail somebody would be an invitation to an address that cannot exist.
+	 */
+	@Test
+	void anAddressLongerThanTheIndexCanHoldIsRefusedAndNothingIsWrittenOrSent() throws Exception {
+		int most = WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE;
+		Map<String, String> tooLong = new LinkedHashMap<>();
+
+		tooLong.put("one character past the bound", WhatAnIndexHoldsTest.aMailAddressOf(most + 1));
+		tooLong.put("twice the bound", WhatAnIndexHoldsTest.aMailAddressOf(2 * most));
+		tooLong.put("one repeated letter, one past the bound", "a@" + "a".repeat(most - 1));
+		tooLong.put("a hundred thousand copies of one letter", "a@" + "a".repeat(100_000 - 2));
+
+		for (Map.Entry<String, String> one : tooLong.entrySet()) {
+			Map<String, Object> form = aGrownUp();
+
+			form.put("email", one.getValue());
+
+			MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> register(form));
+
+			assertThat(answer.getStatus())
+					.as("%s was taken as an address of electronic mail", one.getKey())
+					.isEqualTo(400);
+			assertThat(answer.getContentAsString())
+					.as("%s was refused with a sentence other than the one for a form that is not"
+							+ " complete", one.getKey())
+					.isEqualTo("{\"reason\":\"" + RegistrationApi.THE_FORM_IS_NOT_COMPLETE + "\"}");
+		}
+
+		assertThat(howMany("account")).as("an account was written for an address the route refused")
+				.isZero();
+		assertThat(howMany("competitor"))
+				.as("a member was written for an address the route refused")
+				.isZero();
+		assertThat(SMTP.getReceivedMessages())
+				.as("a message went out for a registration that was refused")
+				.isEmpty();
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE ROUTE TAKES IS WRITTEN WHOLE, measured after the spaces are
+	 * taken off.
+	 *
+	 * <p>This is the other half of the bound, and the one a bound set too high fails: the address
+	 * is noise (it does not compress), exactly as long as the bound allows, so if the number were
+	 * above what the index keeps this request would reach the {@code insert} and come back as a
+	 * fault instead of as a registration. {@link WhatAnIndexHoldsTest} is the file that says where
+	 * the index stops; this one says that the route's own largest address is on the right side of
+	 * it, through the whole route and not through a bare table.
+	 *
+	 * <p><b>It is typed with two spaces on each side</b>, so what the route is asked is longer than
+	 * the bound and what it keeps is not. {@code asItIsStored} takes the spaces off before the
+	 * shape is judged, and it is the stripped address that goes into the index, so it is the
+	 * stripped address that is measured: a bound read off what was typed would refuse an address
+	 * the index would have taken, and this is the case that says so.
+	 *
+	 * <p>Nothing is asserted about the message. A relay is not obliged to deliver to an address of
+	 * this length (RFC 5321 gives 254 characters for the address of a message), and what the portal
+	 * does when a relay does not take a message is {@code RegistrationApi#send}'s decision and
+	 * {@code RegistrationOverRealHttpTest}'s subject, not this bound's.
+	 */
+	@Test
+	void theLongestAddressTheRouteTakesIsWrittenWholeAndIsMeasuredAfterTheSpacesAreOff()
+			throws Exception {
+
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+		Map<String, Object> form = aGrownUp();
+
+		assertThat(longest).hasSize(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+
+		form.put("email", "  " + longest + "  ");
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> register(form));
+
+		assertThat(answer.getStatus())
+				.as("the longest address the route takes was refused: %s", answer.getContentAsString())
+				.isEqualTo(204);
+		assertThat(db.sql("select email from account").query(String.class).single())
+				.as("the address was not kept whole, or was kept with the spaces it was typed with")
+				.isEqualTo(longest);
+		assertThat(theCompetitorBehind(longest).get("first_name"))
+				.as("the account was written without the member it belongs to")
+				.isEqualTo("Petar");
 	}
 
 	/**

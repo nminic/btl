@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import com.btl.portal.domain.registration.WhatRegistrationAsksFor;
 import com.btl.portal.domain.token.SecretToken;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
@@ -655,6 +656,120 @@ class GroupEntryTest {
 						+ " the same answer as a box that is not there")
 				.containsExactly(Map.of("row", 1, "reason", "theFormIsNotComplete",
 						"missing", List.of("email")));
+	}
+
+	/**
+	 * AN ADDRESS LONGER THAN THE INDEX CAN HOLD IS THE SENTENCE FOR AN ADDRESS THAT IS NOT ONE,
+	 * NAMES THE ROW, AND THE WHOLE GROUP IS REFUSED.
+	 *
+	 * <p>{@code account_email_shape} has no upper bound and {@code account_email_unique} has one:
+	 * an address of three thousand characters passes the shape, reaches the {@code insert} and
+	 * comes back to the administration as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the
+	 * database where the limit is). This route judges a row's address with
+	 * {@code WhatAnAddressLooksLike.itDoes}, after the same fold {@code RegistrationApi} uses, and
+	 * answers a misshapen one with {@code theAddressIsNotShaped} naming the row, so that is what a
+	 * long one gets and no sentence is added.
+	 *
+	 * <p><b>Four texts, because the bound has three ways of being half done.</b> One character
+	 * past it, which the database would still keep and which only a bound written as a number
+	 * refuses. Twice the bound, which on the day of writing is past what the index keeps as well
+	 * (4000 against 2692), so the route answers instead of meeting the fault this was written
+	 * for. And the same two made of ONE repeated letter: PostgreSQL compresses an index key that
+	 * long, a hundred thousand copies of one letter go into the index (measured in
+	 * {@link WhatAnIndexHoldsTest}), and a route that refused only what the database refuses
+	 * would let them through. This one refuses them, on purpose, and is stricter than the
+	 * database for exactly that reason.
+	 *
+	 * <p><b>It is the SECOND row of three that carries it</b>, and everything else in the group
+	 * is fine, so "it stopped before the bad row", "it stopped after it" and "it refused the
+	 * wrong row" are three different answers. Nothing is written for the rows around it and no
+	 * invitation goes out: an invitation cannot be taken back.
+	 */
+	@Test
+	void anAddressLongerThanTheIndexCanHoldNamesTheRowAndRefusesTheWholeGroup() throws Exception {
+		int most = WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE;
+		Map<String, String> tooLong = new LinkedHashMap<>();
+
+		tooLong.put("one character past the bound", WhatAnIndexHoldsTest.aMailAddressOf(most + 1));
+		tooLong.put("twice the bound", WhatAnIndexHoldsTest.aMailAddressOf(2 * most));
+		tooLong.put("one repeated letter, one past the bound", "a@" + "a".repeat(most - 1));
+		tooLong.put("a hundred thousand copies of one letter", "a@" + "a".repeat(100_000 - 2));
+
+		for (Map.Entry<String, String> one : tooLong.entrySet()) {
+			List<Map<String, Object>> group = aGroupOfThree();
+
+			group.get(1).put("email", one.getValue());
+
+			MockHttpServletResponse answered = WhatAnIndexHoldsTest.answered(
+					() -> enter(group, EVERYTHING));
+
+			assertThat(answered.getStatus())
+					.as("%s was taken as an address of electronic mail", one.getKey())
+					.isEqualTo(400);
+			assertThat(rowsRefusedIn(answered))
+					.as("%s was refused with a sentence other than the one for an address that is"
+							+ " not one, or the wrong row was named", one.getKey())
+					.containsExactly(Map.of("row", 1, "reason", "theAddressIsNotShaped",
+							"missing", List.of()));
+		}
+
+		assertThat(howManyAccounts())
+				.as("a row was written although the group was refused")
+				.isEqualTo(6);
+		assertThat(howManyMembers()).isEqualTo(2);
+		assertThat(SMTP.getReceivedMessages())
+				.as("a letter went out for a group that was refused, and an invitation cannot be"
+						+ " taken back")
+				.isEmpty();
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE ROUTE TAKES IS ENTERED WHOLE, measured after the spaces are
+	 * taken off.
+	 *
+	 * <p>This is the other half of the bound, and the one a bound set too high fails: the address
+	 * is noise (it does not compress), exactly as long as the bound allows, so if the number were
+	 * above what the index keeps this request would reach the {@code insert} and come back as a
+	 * fault instead of as a group entered. {@link WhatAnIndexHoldsTest} is the file that says
+	 * where the index stops; this one says that the route's own largest address is on the right
+	 * side of it, through the whole route and not through a bare table.
+	 *
+	 * <p><b>It is typed with two spaces on each side</b>, so what the route is asked is longer than
+	 * the bound and what it keeps is not. {@code asItIsStored} takes the spaces off before the
+	 * shape is judged, and it is the stripped address that goes into the index, so it is the
+	 * stripped address that is measured: a bound read off what was typed would refuse an address
+	 * the index would have taken, and this is the case that says so.
+	 *
+	 * <p>Nothing is asserted about the invitation to that address. A relay is not obliged to
+	 * deliver to an address of this length (RFC 5321 gives 254 characters for the address of a
+	 * message), and what the portal does when a relay does not take a message is
+	 * {@code CompetitorWriteApi#send}'s decision, not this bound's.
+	 */
+	@Test
+	void theLongestAddressTheRouteTakesIsEnteredWholeAndIsMeasuredAfterTheSpacesAreOff()
+			throws Exception {
+
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+		List<Map<String, Object>> group = aGroupOfThree();
+
+		assertThat(longest).hasSize(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+
+		group.get(1).put("email", "  " + longest + "  ");
+
+		MockHttpServletResponse answered = WhatAnIndexHoldsTest.answered(
+				() -> enter(group, EVERYTHING));
+
+		assertThat(answered.getStatus())
+				.as("the longest address the route takes was refused: %s",
+						answered.getContentAsString())
+				.isEqualTo(201);
+		assertThat(accountNamed(longest))
+				.as("no account carries the address the second row was entered under")
+				.isPresent();
+		assertThat(memberBehind(longest).get("first_name"))
+				.as("the account was written without the member it belongs to")
+				.isEqualTo("Druga");
+		assertThat(howManyAccounts()).isEqualTo(9);
 	}
 
 	/** Every bad row is named, not only the first one the route met. */

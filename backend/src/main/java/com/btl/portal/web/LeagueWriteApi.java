@@ -129,6 +129,27 @@ class LeagueWriteApi {
 	 */
 	private static final Pattern AN_ADDRESS = Pattern.compile("^[a-z0-9]+(-[a-z0-9]+)*$");
 
+	/**
+	 * THE MOST CHARACTERS A TYPED ADDRESS MAY HAVE, and the limit is {@code league_slug_unique}'s
+	 * and not {@code league_slug_shape}'s.
+	 *
+	 * <p>The shape has no upper bound and the index has one: a key longer than about a third
+	 * of a page does not go into a B-tree, PostgreSQL answers {@code index row size ... exceeds
+	 * btree version 4 maximum} and, being an error, aborts the transaction. An address of three
+	 * thousand letters passes {@link #AN_ADDRESS}, reaches the {@code insert} and comes back to
+	 * the administrator as a 500, which is why the answer for it is the sentence a misshapen
+	 * address already gets.
+	 *
+	 * <p><b>Derived from the schema and decided by nobody</b>, the same way and for the same
+	 * reasons as {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, which carries them at
+	 * length: below what the index holds, with a margin, the text being ASCII by the shape so a
+	 * character is a byte, and the same bound for a text PostgreSQL could compress.
+	 * {@code WhatAnIndexHoldsTest} asks the database what the index holds and fails the day this
+	 * number rises above it. The form already stops an address at sixty characters
+	 * ({@code admin-liga.form.json}); this is the floor under it and not a replacement.
+	 */
+	static final int MOST_AN_ADDRESS_CAN_BE = 2000;
+
 	private final JdbcClient db;
 
 	/**
@@ -478,7 +499,12 @@ class LeagueWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE);
 		}
 
-		if (!AN_ADDRESS.matcher(typed.slug()).matches()) {
+		/* THE LENGTH IS ASKED BEFORE THE SHAPE and answered with the same sentence: an address
+		   the index cannot hold is not an address this route can write, and it is told so the
+		   way a misshapen one is. `MOST_AN_ADDRESS_CAN_BE` says where the number comes from. */
+		if (typed.slug().length() > MOST_AN_ADDRESS_CAN_BE
+				|| !AN_ADDRESS.matcher(typed.slug()).matches()) {
+
 			return no(HttpStatus.BAD_REQUEST, THE_ADDRESS_IS_NOT_SHAPED);
 		}
 

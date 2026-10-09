@@ -30,7 +30,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -357,6 +359,122 @@ class LeagueWriteApiTest {
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(answer.getContentAsString()).contains(LeagueWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
 		assertThat(howManyLeagues()).isEqualTo(4);
+	}
+
+	/**
+	 * AN ADDRESS LONGER THAN THE INDEX CAN HOLD IS REFUSED WITH THE SENTENCE FOR A MISSHAPEN
+	 * ONE, ON BOTH ROUTES THAT TAKE IT, AND NOTHING IS WRITTEN.
+	 *
+	 * <p>{@code league_slug_shape} has no upper bound and {@code league_slug_unique} has one:
+	 * an address of three thousand letters walks through {@code AN_ADDRESS}, reaches the
+	 * {@code insert} and comes back as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the
+	 * database where the limit is). The refusal is the one this route already gives for an
+	 * address that is not the right shape, so no sentence is added and no dictionary moves.
+	 *
+	 * <p><b>Four texts, because the bound has three ways of being half done.</b> One character
+	 * past it, which the database would still keep and which only a bound written as a number
+	 * refuses. Twice the bound, which on the day of writing is past what the index keeps as well
+	 * (4000 against 2692), so the route answers instead of meeting the fault this was written
+	 * for. And the same two made of ONE repeated letter: PostgreSQL compresses an index key that
+	 * long, a hundred thousand copies of one letter go into the index (measured in
+	 * {@link WhatAnIndexHoldsTest}), and a route that refused only what the database refuses
+	 * would let them through. This one refuses them, on purpose, and is stricter than the
+	 * database for exactly that reason.
+	 *
+	 * <p><b>Both routes, asked of the same texts.</b> The change is asked of {@link #acted}, a
+	 * league that is neither the first nor the only one of its season, and its row is read
+	 * afterwards: a route that answered 400 after it had written would leave the league renamed.
+	 */
+	@Test
+	void anAddressLongerThanTheIndexCanHoldIsRefusedOnBothRoutesAndNothingIsWritten()
+			throws Exception {
+
+		int most = LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE;
+		Map<String, String> tooLong = new LinkedHashMap<>();
+
+		tooLong.put("one character past the bound", WhatAnIndexHoldsTest.aSlugOf(most + 1));
+		tooLong.put("twice the bound", WhatAnIndexHoldsTest.aSlugOf(2 * most));
+		tooLong.put("one repeated letter, one past the bound", "a".repeat(most + 1));
+		tooLong.put("a hundred thousand copies of one letter", "a".repeat(100_000));
+
+		for (Map.Entry<String, String> one : tooLong.entrySet()) {
+			MockHttpServletResponse made = WhatAnIndexHoldsTest.answered(() -> add(
+					new LeagueWriteApi.Upsert("Predugacka liga", one.getValue(), RUNNING, "", "")));
+
+			assertThat(made.getStatus())
+					.as("%s was taken as an address by the route that makes a league", one.getKey())
+					.isEqualTo(400);
+			assertThat(made.getContentAsString())
+					.as("%s was refused with a sentence other than the one for a misshapen address",
+							one.getKey())
+					.contains(LeagueWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+
+			MockHttpServletResponse changed = WhatAnIndexHoldsTest.answered(() -> change(acted,
+					new LeagueWriteApi.Upsert("Preimenovana", one.getValue(), RUNNING, "", "")));
+
+			assertThat(changed.getStatus())
+					.as("%s was taken as an address by the route that changes a league",
+							one.getKey())
+					.isEqualTo(400);
+			assertThat(changed.getContentAsString())
+					.contains(LeagueWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+		}
+
+		assertThat(howManyLeagues())
+				.as("a league was written for an address the route had refused")
+				.isEqualTo(4);
+		assertThat(db.sql("select slug, name from league where id = ?").param(acted)
+				.query((row, one) -> List.of(row.getString(1), row.getString(2))).single())
+				.as("the league acted on was changed by a request the route had refused")
+				.containsExactly("druga-2028", "Druga liga 2028");
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE ROUTE TAKES IS WRITTEN WHOLE, on both routes.
+	 *
+	 * <p>This is the other half of the bound and the one a bound set too high fails: the
+	 * address is noise (it does not compress), exactly as long as the bound allows, so if the
+	 * number were above what the index keeps this request would reach the {@code insert} and
+	 * come back as a fault instead of as a league. {@link WhatAnIndexHoldsTest} is the file
+	 * that says where the index stops; this one says that the route's own largest address is
+	 * on the right side of it, through the whole route and not through a bare table.
+	 *
+	 * <p>The two routes are given two different addresses, because the second one would
+	 * otherwise meet the first as an address somebody already answers at. The row is read back
+	 * and compared with what was sent, whole, and not measured by its length.
+	 */
+	@Test
+	void theLongestAddressTheRouteTakesIsWrittenWholeOnBothRoutes() throws Exception {
+		int most = LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE;
+		String forTheNewOne = WhatAnIndexHoldsTest.aSlugOf(most);
+		String forTheOldOne = "b" + WhatAnIndexHoldsTest.aSlugOf(most - 1);
+
+		assertThat(forTheNewOne).as("the two addresses are the same one").isNotEqualTo(forTheOldOne);
+		assertThat(forTheNewOne).hasSize(most);
+		assertThat(forTheOldOne).hasSize(most);
+
+		MockHttpServletResponse made = WhatAnIndexHoldsTest.answered(() -> add(
+				new LeagueWriteApi.Upsert("Najduza liga", forTheNewOne, RUNNING, "", "")));
+
+		assertThat(made.getStatus())
+				.as("the longest address the route takes was refused: %s", made.getContentAsString())
+				.isEqualTo(201);
+		assertThat(db.sql("select count(*) from league where slug = ?").param(forTheNewOne)
+				.query(Long.class).single())
+				.as("the league was not written at the address it was made at")
+				.isEqualTo(1L);
+
+		MockHttpServletResponse changed = WhatAnIndexHoldsTest.answered(() -> change(acted,
+				new LeagueWriteApi.Upsert("Druga liga 2028", forTheOldOne, RUNNING, "", "")));
+
+		assertThat(changed.getStatus())
+				.as("the longest address the route takes was refused on a change: %s",
+						changed.getContentAsString())
+				.isEqualTo(200);
+		assertThat(db.sql("select slug from league where id = ?").param(acted)
+				.query(String.class).single())
+				.as("the league was not moved to the address it was changed to")
+				.isEqualTo(forTheOldOne);
 	}
 
 	/**
