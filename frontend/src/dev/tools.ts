@@ -75,6 +75,13 @@ export const DEV_TOOLS_IN_THIS_BUILD: boolean =
  * keeps side effects of everything that is imported. Measured the same day: drawn that way,
  * the production stylesheet still named `date-switch` nine times.
  *
+ * <p><b>And the place that draws them asks the constant as well as the loader's answer</b>
+ * (`app/Shell.tsx`). The answer is a variable, so the bundler cannot know it is `null` where it
+ * is read, and a branch behind it stays in the package with the names of both switches in it:
+ * the two properties read off it are not shortened. Measured the same day, by `grep -a -o -F`
+ * over the production `dist/`: `DateSwitch` once and `RoleSwitch` once until the constant stood
+ * in front of the answer, none of either after.
+ *
  * <p>What holds it is `productionPackage.test.ts`, which asks the bundler what it built.
  */
 export const loadTheDevControls = DEV_TOOLS_IN_THIS_BUILD

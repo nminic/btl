@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router'
 import { dataOr, usePaymentsDue } from '../data/useResource'
-import { loadTheDevControls } from '../dev/tools'
+import { DEV_TOOLS_IN_THIS_BUILD, loadTheDevControls } from '../dev/tools'
 import { useI18n } from '../i18n/useI18n'
 import { useMayOpen, usePermittedQueues } from '../pages/admin/mayOpen'
 import { usePending } from '../pages/admin/pending'
@@ -22,7 +22,9 @@ import './Shell.css'
 
 /* THE TWO DEVELOPMENT CONTROLS, FOR A BUILD THAT CARRIES THEM (dev/tools.ts), AND NOTHING IN
    ONE THAT DOES NOT: in the production bundle this line is `null`, and neither switch, nor its
-   stylesheet, nor the slot the moved day is kept in is in the package at all (ADL A15).
+   stylesheet, nor the slot the moved day is kept in, nor the name of either switch, is in the
+   package at all (ADL A15). The name is why the condition where they are drawn asks the
+   constant as well.
 
    Awaited before this module is done rather than drawn lazily, because a control that
    arrived after the first paint would shift the row of tools under the reader's pointer, and
@@ -173,8 +175,19 @@ export function Shell() {
           <div className="shell__tools">
             {/* The two development controls, side by side and gone together in
                 production (src/dev/tools.ts): who is at the keyboard, and what
-                day the portal is being read as. */}
-            {DEV_CONTROLS !== null && (
+                day the portal is being read as.
+
+                THE CONSTANT IS ASKED HERE AS WELL AS THE LOADER'S ANSWER, and it reads as one
+                question asked twice. It is two. `DEV_CONTROLS` is a variable, so the bundler
+                cannot know it is `null` where it is read, and the branch stayed in the
+                production package with the names of both switches in it: the two properties
+                read off the object are not shortened. Measured 09.10.2026 on Vite 8.1.5, by
+                `grep -a -o -F` over the production `dist/`: `DateSwitch` once and `RoleSwitch`
+                once with the loader's answer alone, and none of either with the constant in
+                front of it: the bundler knows the constant, so it drops the whole branch. A15
+                looks for exactly those words, and `dev/productionPackage.test.ts` counts
+                them. */}
+            {DEV_TOOLS_IN_THIS_BUILD && DEV_CONTROLS !== null && (
               <>
                 <DEV_CONTROLS.RoleSwitch />
                 <DEV_CONTROLS.DateSwitch />

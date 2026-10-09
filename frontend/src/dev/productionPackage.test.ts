@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { dirname, join, relative, sep } from 'node:path'
+import { basename, dirname, extname, join, relative, sep } from 'node:path'
 import ts from 'typescript'
 import { build, type Rollup } from 'vite'
 import { SLOW } from '../test/slow'
@@ -29,6 +29,17 @@ import { SLOW } from '../test/slow'
  * modules it put in each package. A word can be minified, renamed or shared; a module is in a
  * package or it is not. A switch's stylesheet is asked for the same way, because a stylesheet
  * is the part that stays when its script is dropped (measured, `dev/tools.ts`).
+ *
+ * <p><b>And by NAME as well, because a module that is gone does not take with it the places
+ * that still say its name.</b> Measured 09.10.2026, on this change as first reviewed: no
+ * module of either switch was in the production package, and `DateSwitch` and `RoleSwitch`
+ * still stood in it once each, as the two properties the shell read off the loader's answer in
+ * a branch the bundler could not prove dead (`app/Shell.tsx`; a bundler does not shorten a
+ * property name). Those are the words the `grep` of A15 looks for, and a check of modules
+ * cannot see them. A name is counted wherever it stands, as `grep` counts it, so a longer word
+ * that contains it is counted too. Each name is the file its switch is written in, taken from
+ * the same loader as the modules, so there is no list here to fall out of date, and each is
+ * first found in the QA package, for the reason given above.
  *
  * <p><b>What it does not see, written down rather than left to be found:</b> a development
  * control that is not loaded through `loadTheDevControls`, and anything under `public/`,
@@ -147,6 +158,12 @@ const THEIR_PARTS = CONTROLS.flatMap((control) => [
 ])
 
 /**
+ * What each switch is called: the name of the file it is written in, which is also the name the
+ * loader hands it out under and the shell reads it by (`dev/tools.ts`).
+ */
+const THEIR_NAMES = CONTROLS.map((control) => basename(control, extname(control)))
+
+/**
  * The name of the slot a moved day is kept in (`clock/ClockProvider.tsx`). It is not part
  * of either switch but of the clock every screen reads, which is in production by design, so
  * it is asked for as a word: the code that reads and writes it is what must not be there.
@@ -181,6 +198,16 @@ describe('the production package (ADL A15)', () => {
   it('carries no part of either switch, every one of which QA carries', () => {
     expect(THEIR_PARTS.filter((part) => !qa.modules.has(part))).toEqual([])
     expect(THEIR_PARTS.filter((part) => production.modules.has(part))).toEqual([])
+  })
+
+  it('carries the name of neither switch, which QA carries of both', () => {
+    const standingIn = (one: Package) =>
+      THEIR_NAMES.map((name) => ({ name, times: timesIn(one.text, name) }))
+
+    /* The floor first, as above: a name QA does not carry has gone out of date, and a count of
+       none in production would then be a count over nothing. */
+    expect(standingIn(qa).filter((one) => one.times === 0)).toEqual([])
+    expect(standingIn(production).filter((one) => one.times > 0)).toEqual([])
   })
 
   it('carries no code that reads or writes the slot a moved day is kept in', () => {
