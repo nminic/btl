@@ -55,6 +55,12 @@ function source(module: string): string {
   return readFileSync(join(SRC, module), 'utf-8')
 }
 
+/** How many times a word stands in a package: a count says what failed in one line, where the
+ *  package itself, printed by a failing match, is the better part of a megabyte. */
+function timesIn(text: string, word: string): number {
+  return text.split(word).length - 1
+}
+
 /** Every module a file imports, statically or with `import()`, resolved to its place. */
 function importsOf(module: string): string[] {
   const at = join(SRC, module)
@@ -178,17 +184,20 @@ describe('the production package (ADL A15)', () => {
   })
 
   it('carries no code that reads or writes the slot a moved day is kept in', () => {
-    expect(qa.text).toContain(THE_SLOT)
-    expect(production.text).not.toContain(THE_SLOT)
+    expect(timesIn(qa.text, THE_SLOT)).toBeGreaterThan(0)
+    expect(timesIn(production.text, THE_SLOT)).toBe(0)
   })
 
   it('says TREBA POPUNITI nowhere but where the renderer looks for it', () => {
     /* The exception has to stand where it says it stands, or it excuses nothing. */
     expect(source('components/Markdown.tsx')).toMatch(THE_RENDERER_LOOKING_FOR_THEM)
-    expect(production.text).toMatch(THE_RENDERER_LOOKING_FOR_THEM)
+    expect(THE_RENDERER_LOOKING_FOR_THEM.test(production.text)).toBe(true)
 
-    expect(
-      production.text.replace(new RegExp(THE_RENDERER_LOOKING_FOR_THEM.source, 'g'), ''),
-    ).not.toContain('TREBA POPUNITI')
+    const elsewhere = production.text.replace(
+      new RegExp(THE_RENDERER_LOOKING_FOR_THEM.source, 'g'),
+      '',
+    )
+
+    expect(timesIn(elsewhere, 'TREBA POPUNITI')).toBe(0)
   })
 })
