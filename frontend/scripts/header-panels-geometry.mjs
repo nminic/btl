@@ -12,9 +12,10 @@
  * where something is written, and which rule wins, what a query does and where a box
  * ends up are computed by the browser.
  *
- * Run by hand, not in the gate, because the browser the owner decided on in ADL A63
- * (22.09.2026) is not in the package yet and this is the stand-in until it is, in the
- * shape `scripts/refused-control-appearance.mjs` already has:
+ * Run by hand, not in the gate. The browser the owner decided on in ADL A63 (22.09.2026) is
+ * in the package now (`geometry/`, `npm run geometry`), and the panels of the header are not
+ * yet among its guards; until they are, this is their stand-in, in the shape
+ * `scripts/refused-control-appearance.mjs` already has:
  *
  *     npm run build
  *     npm run header-panels

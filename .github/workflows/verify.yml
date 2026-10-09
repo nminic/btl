@@ -46,3 +46,17 @@ jobs:
       - name: Testovi sa coverage pragom 100%
         run: npm run test:coverage
       - run: npm run build
+      # The guards that ask a real browser where things stand (ADL A63), over the build of the
+      # step above. Chrome is the one the runner image carries and nothing is downloaded
+      # (`channel: 'chrome'`, frontend/playwright.config.ts); the version is printed so a change
+      # of image is visible beside a change of outcome.
+      - name: Chrome na runneru
+        run: google-chrome --version
+      - name: Geometrija u pravom Chrome-u (ADL A63)
+        run: npx playwright test
+      - name: Sačuvaj ishod geometrije
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: frontend-geometry
+          path: frontend/test-results
