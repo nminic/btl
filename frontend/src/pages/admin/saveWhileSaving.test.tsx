@@ -27,8 +27,9 @@ import { setupUser, type Pressing } from '../../test/user'
  *
  * <ul>
  * <li>(a) a press on it does NOTHING while the save is out, by each road a press comes by (the mouse,
- * Enter in a field, Enter on the button itself): nothing is sent, the false sentence is not said and the
- * cursor stays where it was;</li>
+ * Enter in a field, Enter on the button itself), on a new event and on a copy, which are the two forms
+ * whose event is in the screen's list by the time its races are on the way: nothing is sent, the false
+ * sentence is not said and the cursor stays where it was;</li>
  * <li>(b) it is told off and not switched off, from the press to the last answer and not before it,
  * with the sign that says why under the form;</li>
  * <li>(c) it is let go of at the LAST answer, not the first and not never, whatever the answers are: the
@@ -125,12 +126,17 @@ describe('the button that sends, while the save of an event is out', () => {
     }
   }
 
-  /** Presses Save, and waits until the first write of the press is out. */
+  /** Presses Save, and waits until the first write of the press is out. Given half the time a case has,
+   *  so that a press that was refused, and so sent nothing, fails on what it says (that no write is out)
+   *  and not by running out of time for one that will not come. */
   async function press(user: Pressing): Promise<void> {
     await user.click(save())
-    await waitFor(() => {
-      expect(out).toHaveLength(1)
-    })
+    await waitFor(
+      () => {
+        expect(out).toHaveLength(1)
+      },
+      { timeout: SLOW / 2 },
+    )
   }
 
   /** Everything the sentence says is true now: the button is told off and not switched off, it is
@@ -183,6 +189,12 @@ describe('the button that sends, while the save of an event is out', () => {
       cursor: () => HTMLElement
     }
 
+    /** One kind of form in which the situation can be made, with the writes of its press that are
+     *  still to be answered once the event is taken and its first race is out. An event that stands is
+     *  not here: it is excluded from the addresses it is asked about, so it is never told its own is
+     *  taken, and a press on it that did nothing could not be told from one the editor refused. */
+    type Shape = { shape: string; open: () => Promise<Pressing>; thenAnswered: number }
+
     const ROADS: Road[] = [
       { which: 'a click of the mouse', press: (user) => user.click(save()), cursor: save },
       {
@@ -203,20 +215,36 @@ describe('the button that sends, while the save of an event is out', () => {
       },
     ]
 
-    it.each(ROADS)(
-      'is not asked anything by $which: nothing is sent, the address is not said to be taken and the cursor stays',
-      async ({ press: pressedBy, cursor }) => {
+    const SHAPES: Shape[] = [
+      { shape: 'a new event', open: aNewEventOfOneRace, thenAnswered: 0 },
+      { shape: 'a copy', open: theCopy, thenAnswered: 1 },
+    ]
+
+    const EVERY_ROAD_ON_EVERY_SHAPE = SHAPES.flatMap((one) =>
+      ROADS.map((road) => ({ ...road, ...one })),
+    )
+
+    it.each(EVERY_ROAD_ON_EVERY_SHAPE)(
+      'is not asked anything by $which on $shape: nothing is sent, the address is not said to be taken and the cursor stays',
+      async ({ press: pressedBy, cursor, open, thenAnswered }) => {
         /* THE SITUATION THE OWNER MEASURED: a new event, taken by the route, and its race still on the
            way. The event is in the list of the screen by now, under the address the form shows, so a
-           press that asked whether the address is free was told it is not. */
-        const user = await aNewEventOfOneRace()
+           press that asked whether the address is free was told it is not. A copy is a new record too
+           and is in the same situation. */
+        const user = await open()
 
         await press(user)
         await answer(null, 'another write')
-        expectHeld()
+
+        /* The event is taken and the first race is on its way, and that is the whole situation. */
+        expect(whereItWrote(watching.asked)).toEqual(['POST /api/events', 'POST /api/races'])
+        expect(out).toHaveLength(1)
 
         await pressedBy(user)
 
+        /* What the press did comes first, and that the button says it is held comes last: when the hold
+           is taken away the case must say what the owner measured, a sentence and a cursor, and not
+           only that an attribute is gone. */
         expect(
           screen.queryByText(sr.admin.eventTaken),
           'the press was asked whether the address of the event it has just made is free',
@@ -230,10 +258,14 @@ describe('the button that sends, while the save of an event is out', () => {
         expect(out, 'the press sent something').toHaveLength(1)
         expectHeld()
 
+        for (let answered = 0; answered < thenAnswered; answered += 1) {
+          await answer(null, 'another write')
+        }
+
         await answer(null, 'the end')
         await screen.findByRole('status', { name: 'Sačuvano' })
 
-        expect(whereItWrote(watching.asked)).toEqual(['POST /api/events', 'POST /api/races'])
+        expect(whereItWrote(watching.asked)).toHaveLength(2 + thenAnswered)
       },
       SLOW,
     )
