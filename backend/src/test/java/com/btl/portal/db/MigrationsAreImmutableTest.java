@@ -329,7 +329,23 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   worked out with a copy of its algorithm (CRC32 over the lines, line breaks and a BOM left
 			   out), which reproduced V40, V46, V52 and V53 to the digit before it was trusted here, and
 			   this list is what confirms it on the gate. */
-			new Applied("54", "V54__a_photo_goes_with_its_last_holder.sql", -971747939));
+			new Applied("54", "V54__a_photo_goes_with_its_last_holder.sql", -971747939),
+
+			/* V55. One picture of one member waits for a moderator at a time: a partial unique index on
+			   the queue, under the condition MePhotoApi already asks in Java (PDL, „Ponovno slanje
+			   pregazi red koji ceka, ne pravi drugi", 27.09.2026), as the floor under the turn that
+			   route makes the sends of one member take. No data.
+
+			   55 because it is the next free number, and that was MEASURED rather than taken: every
+			   local and remote branch, every one of the 306 worktrees and the three open pull
+			   requests were searched on 09.10.2026 and none held a migration at V55 or above, and
+			   origin/main stands at V54.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the
+			   file, worked out with the copy of its algorithm the rows above describe (CRC32 over the
+			   lines, line breaks and a BOM left out), which reproduced V9, V50, V52, V53 and V54 to the
+			   digit before it was trusted here, and this list is what confirms it on the gate. */
+			new Applied("55", "V55__one_picture_of_a_member_waits_at_a_time.sql", 16641354));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

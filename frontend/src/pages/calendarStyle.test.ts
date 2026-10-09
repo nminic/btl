@@ -288,9 +288,13 @@ describe('a bar across several days', () => {
        one term is a name over somebody else's tile again.
 
        `jsdom` lays nothing out, so what is asked here is that the declaration stands.
-       What it is worth was measured in a browser on 22.09.2026: at 1024px the name ends
-       71px inside its own bar, at 1440px on 200% text 145px inside it, and at 360, 390
-       and 768 there is no run at all and the rule does not apply.
+       What it is worth is asked of Chrome in the gate (`geometry/calendar.geometry.ts`):
+       the name ends before the dots of its own bar and a press 2, 5 and 20px inside the
+       next tile opens that tile, at 780, 1024 and 1440px and, on 200% text, at 1560 and
+       1920px; under those the days stand in one column and the rule does not apply. A
+       reader's 200% draws one column up to 1559px, which the gate asserts, so the „1440px
+       on 200% text" measured by hand on 22.09.2026 was read with the root doubled, the
+       emulation `ADL.md` A34 does not count.
 
        **Read with the spaces taken out, and that is not the same cost the floor under a
        day pays.** That one is compared as it is written because nobody but a person
@@ -346,7 +350,9 @@ describe('a bar across several days', () => {
 
     /* And drawn over the pieces rather than under them. A day is positioned with no
        z-index of its own, so it opens no stacking context, and a later day would paint
-       its ground over a name that came out of an earlier one. Measured in a browser. */
+       its ground over a name that came out of an earlier one. Measured in a browser, and
+       asked there in the gate: a point of the name inside the second day of its bar is the
+       name (`geometry/calendar.geometry.ts`). */
     expect(name.getPropertyValue('position')).toBe('relative')
     expect(Number(name.getPropertyValue('z-index'))).toBeGreaterThan(0)
   })
@@ -362,11 +368,13 @@ describe('a bar across several days', () => {
        P24 zabranjuje."
      *
        The name is bounded by its own bar now, so there is nothing left for a cut to
-       bound. Measured after taking it away, same screen and same month: page scroll 42px
-       and **no day out of reach**; at 1024px on 200% text, 295px of page scroll and no
-       day out of reach. What moves the page there is the floor under a day, which is
-       `PDL.md` P24's own entry: a month with no bar in it at all gives the same 1272px
-       of content in the same 1036px box, measured the same day.
+       bound. Whether a day is out of reach is asked of Chrome in the gate
+       (`geometry/calendar.geometry.ts`): at the reader's own text with no sideways scroll at
+       all, and on 200% text from 360 to 1920px, where every day has to be reached by
+       scrolling the page. What may move the page there is the floor under a day, which is
+       `PDL.md` P24's own entry. The figures measured by hand that day (42px of scroll at
+       1440px and 295px at 1024px, both on 200% text) were read with the root doubled
+       (`ADL.md` A34): a reader's 200% draws one column at both widths.
      *
        **Asked of the whole sheet and not of the one rule**, and the classes are read out
        of `test/stylesheet.ts` rather than typed here. A guard naming `overflow-x` would
@@ -429,9 +437,9 @@ describe('a bar across several days', () => {
        weight, fails here.
      *
        **Its boundary, written down rather than left to be found:** a rule in ANOTHER
-       sheet is not seen. `.chip__lengths` is written nowhere else today, and what a
-       browser resolves is a question for a browser; what this holds is that the sheet
-       the row is drawn by does not contradict itself. */
+       sheet is not seen here. That half is asked of Chrome in the gate, by where the dots
+       of every run land (`geometry/calendar.geometry.ts`); what this holds is that the
+       sheet the row is drawn by does not contradict itself. */
     const said = everyRule(calendar, 'Calendar.css')
       .filter((rule) => rule.selectorText.includes('.chip__lengths'))
       .flatMap((rule) => {
