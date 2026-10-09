@@ -229,8 +229,8 @@ export function countriesByName(places: Place[]): Map<string, Set<string>> {
  * typing a town they already know how to spell, and an error under the cursor
  * would be noise about somebody else's problem.
  *
- * **That is a decision of the owner's now, and the one exception to a list that
- * cannot be read saying so** (03.10.2026, chosen between the outcomes offered, in
+ * **That is a decision of the owner's now, and the exception he named to a list
+ * that cannot be read saying so** (03.10.2026, chosen between the outcomes offered, in
  * the words of the PDL's record of it and not the owner's: „Za mesta: NE; kad
  * šifarnik mesta ne stigne, polje ostaje obično polje za tekst koje i dalje prima
  * ukucano mesto, pa član nije zaglavljen."). The races on the form a result is
