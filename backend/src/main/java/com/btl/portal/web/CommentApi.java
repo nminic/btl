@@ -20,8 +20,8 @@ import java.util.List;
  * <p><b>Comments are read by active members and by the administration, and by nobody else, since
  * 03.10.2026.</b> The owner, 11.08.2026: „komentare vide samo prijavljeni clanovi BTL. Drugim
  * (posetiocima) se ne prikazuju." Narrowed on 03.10.2026 by his choice between offered outcomes,
- * which PDL records as „Komentare vide aktivni članovi i administracija, isto kao najava dolaska i
- * skriven profil od 03.10.2026; nalog bez važeće članarine ih ne vidi" (PDL P6, 03.10.2026,
+ * which PDL records as „Komentare vide aktivni članovi i administracija, isto kao najava dolaska
+ * i skriven profil od 03.10.2026; nalog bez važeće članarine ih ne vidi" (PDL P6, 03.10.2026,
  * „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"; the record's
  * sentence and not his own words). A visitor sees the races and the results; what people said
  * about a running he does not, and since that day neither does somebody who registered and never
@@ -35,10 +35,10 @@ import java.util.List;
  * any method here runs and no row is read to refuse a visitor. <b>The rest is asked here</b>, of
  * {@link ActiveMemberOrAdministration}, and the refusal is the 404 an address that maps nothing
  * answers, sent through {@code sendError} the way {@link InboxApi} refuses an account that names no
- * member (ADL A8, „prijavljen kome pravo nedostaje dobija 404"): over a real socket the two are
- * told apart by nothing ({@code RightsOverRealHttpTest}), where a status written onto the response
- * instead differs in length, and a length is an oracle for whether the address exists. It is asked
- * BEFORE the query, so no row is read to refuse anybody.
+ * member (ADL A8, 13.09.2026, „Server odbija moderatora bez privilegije sa 404"): over a real
+ * socket the two are told apart by nothing ({@code RightsOverRealHttpTest}), where a status
+ * written onto the response instead differs in length, and a length is an oracle for whether the
+ * address exists. It is asked BEFORE the query, so no row is read to refuse anybody.
  *
  * <p><b>And it needs no {@link RightIsNeeded}.</b> That annotation carries the code of a box the
  * superadmin ticks, and reading a comment is not a moderator's action: it comes with being a member
@@ -46,10 +46,11 @@ import java.util.List;
  * included, because the record names the people and not their boxes). So it is named in
  * {@code RightsAtTheDoorTest.ANSWERS_WITHOUT_A_RIGHT} beside {@code GET /api/attendance}, which the
  * same choice narrowed the same day and which stays on that list for the same reason. <b>What that
- * snapshot says is that the DOOR asks for no right; it does not say who reads.</b> Until 03.10.2026
- * its reason for this route was „every signed in account reads it", and that sentence is gone. The
- * snapshot compares exactly, so the route could not have been added quietly in either direction, and
- * the case ADL A8 asks of every name on it is {@code CommentApiTest.aVisitorWhoIsNotSignedInIsNotServedAComment}.
+ * snapshot says is that the DOOR asks for no right; it does not say who reads.</b> Until
+ * 03.10.2026 its reason for this route was „every signed in account reads it", and that sentence
+ * is gone. The snapshot compares exactly, so the route could not have been added quietly in either
+ * direction, and the case ADL A8 asks of every name on it is
+ * {@code CommentApiTest.aVisitorWhoIsNotSignedInIsNotServedAComment}.
  *
  * <p><b>The answer is the same list to everybody who may read it, the administration included.</b>
  * Who may read is the one thing that differs by reader; what they read does not, so the paragraph
