@@ -10,6 +10,12 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * „Spisak koji ne moze da se ucita KAZE to, umesto da izgleda prazan, uz dugme „Pokusaj ponovo".
  * Vazi za sve ekrane sa spiskom.").
  *
+ * <p>The one question that decision left open, whether the list of suggestions in a field of a form is
+ * such a list, was answered on 03.10.2026 (chosen between the outcomes offered, in the words of the PDL's
+ * record of it and not the owner's): the races on the form a result is entered on, yes
+ * (`pages/member/NewResult.tsx`, below); the towns, no (the bullet about `data/places.ts` in what this does
+ * not see).
+ *
  * <p><b>TWO QUESTIONS ARE ASKED HERE AND THEY ARE NOT THE SAME KIND.</b> The first has a floor and
  * the second does not, and an earlier version of this file claimed the second was the first (the
  * review of PR 469 measured it: of eight realistic ways to hide a failed read, six passed).
@@ -46,6 +52,15 @@ import { sources, WHOLE_PORTAL } from '../test/sources'
  * failure, not that no place can be added to it: such a place is seen only if it has one of the three
  * shapes of question 2, and every other way of hiding it there is for the review that reads the
  * file.</li>
+ * <li><b>One promise that is swallowed is a BOUNDARY BY DECISION and not a gap:</b> `data/places.ts`, the
+ * codebook of towns, where `usePlaces` lets the failure of `/api/places` go on purpose. Decision of
+ * 03.10.2026, in the words of the PDL's record of it and not the owner's: „Za mesta: NE; kad šifarnik mesta
+ * ne stigne, polje ostaje obično polje za tekst koje i dalje prima ukucano mesto, pa član nije
+ * zaglavljen." It is held by what the field DOES and not by a row here, because this file lists the places
+ * that open a state and that one opens none: on the form a result is entered on
+ * (`pages/member/racesUnreadable.test.tsx`), on the proposal of a team (`pages/member/proposeTeam.test.tsx`)
+ * and on the field alone (`forms/PlaceField.test.tsx`), each of which says nothing, offers nothing to ask
+ * again, and takes the town that is typed.</li>
  * <li>Whether a reason in a row is TRUE. The guard holds that there is one. A reason that is not
  * from a recorded decision says so in its first words (MY REASONING), and one that is the file's own
  * comment says that.</li>
@@ -166,6 +181,31 @@ function findingsIn(file: string, code: string): Finding[] {
 }
 
 /**
+ * Whether `code` hands a list to type against to a form: a `FormRenderer` element with a `suggests`
+ * attribute.
+ *
+ * <p>Asked of the syntax tree and by the name the form is drawn under, which is the only name it has
+ * (it is imported by name everywhere). It is a sample of one shape and says so: a list handed down
+ * through another component is seen where that component hands it to a `FormRenderer`.
+ */
+function handsAListToAForm(file: string, code: string): boolean {
+  const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  let handed = false
+
+  walk(source, (node) => {
+    if (
+      ts.isJsxOpeningLikeElement(node) &&
+      node.tagName.getText() === 'FormRenderer' &&
+      node.attributes.properties.some((one) => ts.isJsxAttribute(one) && one.name.getText() === 'suggests')
+    ) {
+      handed = true
+    }
+  })
+
+  return handed
+}
+
+/**
  * HOW EACH FILE THAT OPENS A READ THAT FAILED TREATS ONE, and why.
  *
  * <p>The files are the compiler's (`openingsIn` below), the reasons are the only part that could
@@ -207,6 +247,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     how: 'boundary',
     why: 'THE DEVELOPMENT SWITCH of roles, drawn only where the development controls are on (`dev/tools.ts`) and never in production: a list of moderators to be somebody else with, for whoever is building the portal.',
     calls: [{ shape: 'dataOr', call: 'dataOr(useModerators(), [])' }],
+  },
+  {
+    file: 'forms/Suggesting.tsx',
+    how: 'says',
+    why: 'THE FILE\'S OWN, and held by `forms/suggestingUnreadable.test.tsx`: it is handed a read that failed as the way a field\'s list failed to come (`UnreadableList`, the field\'s `suggests`), says so under the box through `Unreadable`, and reads `reading` and `readAgain` off it to draw the asking and to ask again. It never turns the failure into an empty list: the rows of a list that failed are empty because the caller has none, and the sentence is what says why.',
   },
   {
     file: 'pages/Leagues.tsx',
@@ -268,8 +313,8 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
   },
   {
     file: 'pages/member/NewResult.tsx',
-    how: 'open',
-    why: 'OPEN: waits for the owner\'s answer to whether the list of suggestions in a field of a form is a list in the sense of decision 368 (PENDING stavka 368, review of PR 469). What it says today: the road in with `?ispravka=` waits through `<Resource>`, which says it and offers to ask again.',
+    how: 'says',
+    why: 'THE FILE\'S OWN, and held by `pages/member/racesUnreadable.test.tsx` (the screen) and `forms/suggestingUnreadable.test.tsx` (the form): when either of the two files the list of races is made from could not be read, the name box says so beside itself, with the button that asks again, and goes on taking the name typed into it (decision of 03.10.2026, PDL: the races yes, the towns no). When either read failed, the list handed to the form for the field is that failure (`suggests`), and not the empty rows `offered` holds then. The road in with `?ispravka=` waits through `<Resource>`, which says it and offers to ask again. MY REASONING: the two roads that hold the name (`?ponovo=`, `?ispravka=`) say nothing about the list, because nothing is typed into a held box, and `behind` reads the same two files for hint fields of a record kept in the browser and draws nothing from them, so a failure there is not a list that looks empty.',
     calls: [{ shape: 'condition', call: "results.status === 'ready' ? results.data : []" }],
   },
   {
@@ -505,6 +550,40 @@ describe('a read that failed', () => {
     )
 
     expect(gone, 'a place that no longer stands in the code: delete it from the row').toEqual([])
+  })
+})
+
+/**
+ * THE FORMS THAT ARE HANDED A LIST TO TYPE AGAINST ARE COUNTED BY THE SYNTAX TREE AND NOT BY MEMORY
+ * (decision of 03.10.2026, chosen between the outcomes offered, in the words of the PDL's record of it
+ * and not the owner's: „Kad spisak trka na formi za rezultat ne može da se učita, uz polje stoji da ne
+ * može, uz „Pokušaj ponovo"." The towns are the boundary, in the bullet about `data/places.ts` in the header).
+ *
+ * <p>There is one today, `pages/member/NewResult.tsx`: the list of races under the name of a race. It
+ * is a list made from a read, so it can fail, and what a form does when it does is the decision above.
+ * The floor of the first question catches a second one only if the file that hands it down also opens a
+ * state; a list that reaches a form through a prop would pass it. So the set is derived here and held in
+ * both directions, and a second form with a list to type against is a decision the day it is written:
+ * whether its list says it cannot be read, as the races do, or is a boundary, as the towns are
+ * (`UnreadableList`, `forms/types.ts`).
+ */
+describe('a form that is handed a list to type against', () => {
+  it('is one of these, and no other: a second one is a decision, not a thing that happens', () => {
+    const handed = sources()
+      .filter(({ path, code }) => handsAListToAForm(named(path), code))
+      .map(({ path }) => named(path))
+      .sort()
+
+    expect(
+      handed,
+      'a form is handed a list to type against: say what it does when the list cannot be read (UnreadableList), then add it here',
+    ).toEqual(['pages/member/NewResult.tsx'])
+  })
+
+  it('sees a FormRenderer given a list, and nothing else', () => {
+    expect(handsAListToAForm('x.tsx', 'const A = () => <FormRenderer form={f} suggests={{ a: [] }} />')).toBe(true)
+    expect(handsAListToAForm('x.tsx', 'const A = () => <FormRenderer form={f} />')).toBe(false)
+    expect(handsAListToAForm('x.tsx', 'const A = () => <Other suggests={{ a: [] }} />')).toBe(false)
   })
 })
 
