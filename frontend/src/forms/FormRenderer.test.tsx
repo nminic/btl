@@ -1967,3 +1967,142 @@ describe('what a form hands over beside what it sends', () => {
     expect(onSubmit.mock.calls[0]?.[1]).toEqual({})
   })
 })
+
+/**
+ * THE BUTTON THAT SENDS, WHILE THE SCREEN SAYS A SEND OF ITS OWN IS OUT (`sendIsHeld` and `sendIsOut`;
+ * owner, 05.10.2026, chosen between offered outcomes; PDL, P6, „Dok čuvanje događaja traje", the last
+ * decision of the block; the wording was offered to him and the choice is his).
+ *
+ * <p>What the events do with it, from the press to the last answer, is asked of the real screen
+ * (`pages/admin/saveWhileSaving.test.tsx`). What is asked HERE is what only the renderer can be asked,
+ * with the two facts handed in by hand: the attribute, the refusal, and which of the two facts each of
+ * them reads.
+ *
+ * <p><b>The press is refused off the ref and the word is drawn off the state, and a case for each
+ * direction is what tells the two apart.</b> A ref already true with a render that does not know it yet
+ * is the tick the send began in; a render that still says „held" with the ref already let go of is the
+ * tick after the last answer. A refusal that read the render would pass the first of them through and
+ * hold the second back, and nothing a reader sees tells a press in either tick from a press after it,
+ * which is why this cannot be asked of the screen.
+ */
+describe('the button that sends, while the screen says its send is out', () => {
+  const asked: FormDef = {
+    id: 'proba',
+    titleKey: 'proba.naslov',
+    submitKey: 'form.submit',
+    fields: [{ name: 'ime', type: 'text', labelKey: 'proba.ime', required: true }],
+  }
+
+  /** The ref a screen sets in the tick its send begins in, as the plain object it is. */
+  const refOf = (out: boolean): { current: boolean } => ({ current: out })
+
+  it('is told off and not switched off while it is held, and the dress of a held control reaches it', () => {
+    renderWithI18n(<FormRenderer form={asked} onSubmit={vi.fn()} sendIsHeld />)
+
+    const held = screen.getByRole('button', { name: 'Sačuvaj' })
+
+    expect(held).toHaveAttribute('aria-disabled', 'true')
+    /* Told off and not switched off: the focus the press gave it stays on it. A button that is
+       `disabled` cannot take the focus at all. */
+    held.focus()
+    expect(document.activeElement).toBe(held)
+    /* The rule the sheet dresses it by is the rule this button matches, and it carries no style of its
+       own that a sheet could not outweigh (`formStyle.test.ts` holds what the rule says). */
+    expect(held.matches(".form__submit[aria-disabled='true']")).toBe(true)
+    expect(held.getAttribute('style')).toBeNull()
+  })
+
+  it('carries no such word at all when it is not held', () => {
+    renderWithI18n(<FormRenderer form={asked} onSubmit={vi.fn()} />)
+
+    const live = screen.getByRole('button', { name: 'Sačuvaj' })
+
+    /* `undefined` and not `false`: a control that waits for nothing carries no `aria-disabled`, and the
+       dress is written against `[aria-disabled='true']`, so `"false"` would be a word with no meaning
+       on a button that is not held. */
+    expect(live).not.toHaveAttribute('aria-disabled')
+    expect(live.matches(".form__submit[aria-disabled='true']")).toBe(false)
+  })
+
+  it('is not asked anything when the ref says a send is out, though the render does not know it yet', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    const check = vi.fn(() => ({}))
+    const alsoRefuses = vi.fn(() => undefined)
+
+    renderWithI18n(
+      <FormRenderer
+        form={asked}
+        onSubmit={onSubmit}
+        check={check}
+        alsoRefuses={alsoRefuses}
+        sendIsHeld={false}
+        sendIsOut={refOf(true)}
+      />,
+    )
+
+    /* A form that is complete, so only the refusal can be what stops it. */
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(check, 'the screen\'s own rule was asked').not.toHaveBeenCalled()
+    expect(alsoRefuses, 'the screen\'s refusal over the whole form was asked').not.toHaveBeenCalled()
+
+    /* And the rules of the definition are above it too: the field is emptied and the press says
+       nothing about it, not a sentence and not a mark, and the cursor stays where the press left it. */
+    await user.clear(screen.getByLabelText(/proba.ime/))
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(screen.queryByText('Ovo polje je obavezno.')).toBeNull()
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Sačuvaj' }))
+  })
+
+  it('keeps the browser from sending the form itself when it refuses a press', () => {
+    renderWithI18n(
+      <FormRenderer form={asked} onSubmit={vi.fn()} sendIsOut={refOf(true)} />,
+    )
+
+    /* `fireEvent` answers whether the event was left alone: false is a default action that was
+       prevented. A refusal that returned before that line would let the browser submit the form to its
+       own address and load the page again, in the middle of a send. */
+    expect(fireEvent.submit(screen.getByRole('form'))).toBe(false)
+  })
+
+  it('is asked everything once the ref is let go of, though the render still says it is held', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    const check = vi.fn(() => ({}))
+
+    renderWithI18n(
+      <FormRenderer
+        form={asked}
+        onSubmit={onSubmit}
+        check={check}
+        sendIsHeld
+        sendIsOut={refOf(false)}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(check).toHaveBeenCalledTimes(1)
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('is asked everything by a form that was handed neither', async () => {
+    const user = setupUser()
+    const onSubmit = vi.fn()
+    const check = vi.fn(() => ({}))
+
+    renderWithI18n(<FormRenderer form={asked} onSubmit={onSubmit} check={check} />)
+
+    await user.type(screen.getByLabelText(/proba.ime/), 'Vladan')
+    await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+    expect(check).toHaveBeenCalledTimes(1)
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+})

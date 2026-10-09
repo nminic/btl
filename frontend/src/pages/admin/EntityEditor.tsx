@@ -211,9 +211,18 @@ export function EntityEditor({
    * reader says it is unavailable (`forms/held.ts`, and `FormRenderer`'s `fixed`, which is the one road
    * a field is held by). <b>Every field the form draws</b> is held through `fixed`; <b>what the screen
    * draws beneath the form</b> is held by the screen, which is told so (`beneath`'s second argument).
-   * The button that sends is not a field and is not held: a second press sends nothing, because it is
-   * refused above off the ref. It still runs the form's own checks first, which is measured and not
-   * changed here: on a new event whose event has just been taken, they can say the address is taken.
+   *
+   * <p><b>And the button that sends is held for exactly as long</b> (owner, 05.10.2026, chosen between
+   * offered outcomes; PDL, P6, „Dok čuvanje događaja traje", the last decision of the block; the wording was
+   * offered to him and the choice is his; the cause is measured: a second press on a new event, with the
+   * event taken and a race still on its way, sent nothing and still said „Događaj sa tim nazivom već postoji
+   * te godine" and took the cursor to the date, because the form asked its questions before this editor
+   * refused the press). It is not a field, so it is not held through `fixed`: the form is handed the two
+   * views of the one fact this editor keeps for its other controls, `sendIsHeld` from `working` and
+   * `sendIsOut` from `asking`, and the press is refused above everything the form asks. Told off the way
+   * „Nazad na spisak" is, and let go of in the same tick and for the same reason: the last answer, whatever
+   * it is. Offered and not chosen: switching off only the check of the name while the save lasts, and
+   * leaving it.
    *
    * <p><b>Only the events pass it</b> (owner, the same day: „blokada važi samo za obrazac događaja").
    * What it closes is a press that writes into whatever form is drawn when its answer comes, and that
@@ -232,9 +241,10 @@ export function EntityEditor({
   /* A press that is still out, held in a ref and not in state. Two presses inside one
      tick would both read a `false` that React has not re-rendered yet, and the second
      would send the same record again and answer this reader about it. The same ref is what
-     refuses a way out while it is true (`BlocksLeaving`, and the button below), for the same
-     reason: a state would be true only after the render the press causes. The session path
-     cannot get here: it writes and confirms inside the press. */
+     refuses a way out while it is true (`BlocksLeaving`, and the button below), and what the
+     form is handed to refuse a second press of the button that sends before it asks anything
+     (`sendIsOut`), for the same reason: a state would be true only after the render the press
+     causes. The session path cannot get here: it writes and confirms inside the press. */
   const asking = useRef(false)
   /* AND THE SAME FACT AS A RENDER CAN SEE IT, for the button that is told off and the sentence that
      says why. Set and cleared beside `asking`, in the press, and nowhere else. */
@@ -476,6 +486,13 @@ export function EntityEditor({
            nothing. `holding` is false wherever the screen did not ask to hold the reader, so for the
            other four entities this is `fixed` as it was. */
         fixed={holding ? [...(fixed ?? []), ...form.fields.map((one) => one.name)] : fixed}
+        /* THE BUTTON THAT SENDS, FROM THE SAME TWO FACTS AS EVERYTHING ELSE THAT WAITS: the state for
+           the drawing, the ref for the press (`holdsWhileSaving`, and `FormRenderer`'s own notes on
+           `sendIsHeld` and `sendIsOut`). Handed over only where the screen asked to hold the reader:
+           `holding` is false for the other four entities, and the ref is not given at all, so a
+           press there is asked everything it always was. */
+        sendIsHeld={holding}
+        sendIsOut={holdsWhileSaving ? asking : undefined}
         onSubmit={(values) => void handleSubmit(values)}
       />
 

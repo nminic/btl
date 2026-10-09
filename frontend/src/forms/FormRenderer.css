@@ -430,6 +430,31 @@
   background: var(--accent-hover);
 }
 
+/* THE BUTTON WHILE THE SEND IT STARTED IS STILL OUT, told off by `aria-disabled` and not
+   switched off (`FormRenderer.tsx`, `sendIsHeld`; owner, 05.10.2026, PDL P6, „Dok čuvanje
+   događaja traje"). Dressed as a held control, because an attribute alone is a word for a
+   reader who is listening, and a reader who is looking was shown a live blue button and told
+   nothing: the same four declarations the shared button keeps for it (`pages/Home.css`,
+   `.button[aria-disabled='true']`), written again here because this button is not one.
+
+   The colours and never `opacity`, which dims the focus ring along with everything else on a
+   control that is deliberately still in the order of focus (WCAG 2.2 SC 1.4.11). Written
+   against `[aria-disabled='true']` and never against a bare `[aria-disabled]`, so a button
+   that is not held, which carries no such word, is not dressed. */
+.form__submit[aria-disabled='true'] {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+  cursor: not-allowed;
+}
+
+/* And it does not light up under the pointer, which would say it leads somewhere. Written
+   more tightly than `.form__submit:hover` above, which it has to beat. */
+.form__submit[aria-disabled='true']:hover {
+  background: transparent;
+  border-color: var(--border);
+}
+
 /* What the form was refused over as a whole, which is never a field.
  *
    ~~The list of what is still unanswered.~~ The title and the list of links went
