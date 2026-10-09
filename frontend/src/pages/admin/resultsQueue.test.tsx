@@ -229,6 +229,22 @@ function OneMessageToTheRunner() {
   return null
 }
 
+/**
+ * THE LINE A SWEEP LEAVES, waited for whatever number it says and then read for the one it should.
+ *
+ * <p>Waited for by the sentence itself, a sweep that settled a different number never draws it, and
+ * the case runs out its five seconds before Testing Library's own clock (`test/setup.ts`) says
+ * anything: a timeout, which reads the same as a slow machine. Waited for by its beginning, the case
+ * fails on what the line says.
+ */
+async function sweptSays(sentence: string): Promise<HTMLElement> {
+  const line = await screen.findByText(/^Rešen/)
+
+  expect(line.textContent).toBe(sentence)
+
+  return line
+}
+
 function openTheQueue(probe = <Decided />) {
   return renderAt(PATH, 'superadmin', RUNNER, undefined, null, probe)
 }
@@ -894,7 +910,7 @@ describe('the one decision for the whole queue', () => {
       /* The number the sweep will really decide, which is three and not five. */
       expect(ask).toHaveBeenCalledWith('Odobriti 3 stavke? Ovo se ne može opozvati.')
 
-      expect(await screen.findByText('Rešene su 3 stavke.')).toHaveFocus()
+      expect(await sweptSays('Rešene su 3 stavke.')).toHaveFocus()
       expect(decisionsIn(server.asked).map((one) => one.path)).toEqual([
         '/api/verification/701/decision',
         '/api/verification/702/decision',
@@ -928,7 +944,7 @@ describe('the one decision for the whole queue', () => {
       await rowOf(RUNNER)
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      expect(await screen.findByText('Rešene su 2 stavke.')).toBeVisible()
+      expect(await sweptSays('Rešene su 2 stavke.')).toBeVisible()
       expect(decisionsIn(server.asked).map((one) => one.path)).toEqual([
         '/api/verification/701/decision',
         '/api/verification/702/decision',
@@ -960,7 +976,7 @@ describe('the one decision for the whole queue', () => {
       await rowOf(RUNNER)
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      expect(await screen.findByText('Rešeno je 0 stavki.')).toBeVisible()
+      expect(await sweptSays('Rešeno je 0 stavki.')).toBeVisible()
       expect(decisionsIn(server.asked)).toHaveLength(3)
       expect(screen.getAllByRole('alert')).toHaveLength(1)
       expect((await rowOf(RUNNER)).getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
@@ -991,7 +1007,7 @@ describe('the one decision for the whole queue', () => {
         sweep.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
       })
 
-      expect(await screen.findByText('Rešene su 3 stavke.')).toBeVisible()
+      expect(await sweptSays('Rešene su 3 stavke.')).toBeVisible()
       expect(ask).toHaveBeenCalledTimes(2)
       expect(decisionsIn(server.asked).map((one) => one.path)).toEqual([
         '/api/verification/701/decision',
@@ -1014,8 +1030,10 @@ describe('the one decision for the whole queue', () => {
       await rowOf(RUNNER)
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
+      await sweptSays('Rešena je 1 stavka.')
+
       expect(
-        await screen.findByText('Ostale su 2 prijave sa trka kojih nema u kalendaru. Takve prijave se odavde ne mogu odobriti.'),
+        screen.getByText('Ostale su 2 prijave sa trka kojih nema u kalendaru. Takve prijave se odavde ne mogu odobriti.'),
       ).toBeVisible()
     } finally {
       server.stop()
@@ -1035,7 +1053,7 @@ describe('the one decision for the whole queue', () => {
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      expect(await screen.findByText('Rešene su 2 stavke.')).toBeVisible()
+      expect(await sweptSays('Rešene su 2 stavke.')).toBeVisible()
       expect(screen.queryByText(/kojih nema u kalendaru/)).toBeNull()
     } finally {
       server.stop()
@@ -1084,7 +1102,7 @@ describe('the one decision for the whole queue', () => {
       await user.click((await rowOf('000040')).getByRole('button', { name: sr.review.sendBack }))
       await user.type(screen.getByLabelText(sr.review.reason), 'Napisano pre odobravanja')
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-      await screen.findByText('Rešene su 3 stavke.')
+      await sweptSays('Rešene su 3 stavke.')
 
       expect(screen.getByLabelText(sr.review.reason)).toHaveValue('Napisano pre odobravanja')
     } finally {
@@ -1102,7 +1120,7 @@ describe('the one decision for the whole queue', () => {
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.amend }))
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-      await screen.findByText('Rešene su 3 stavke.')
+      await sweptSays('Rešene su 3 stavke.')
 
       expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull()
     } finally {
@@ -1150,7 +1168,7 @@ describe('what a decision leaves for the screens that read after it', () => {
       expect(await awayAndBack(), 'an approval the route refused').toEqual({ queue: 1, standings: 1 })
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-      await screen.findByText('Rešeno je 0 stavki.')
+      await sweptSays('Rešeno je 0 stavki.')
 
       expect(await awayAndBack(), 'a sweep the route took nothing from').toEqual({ queue: 1, standings: 1 })
 
@@ -1168,7 +1186,7 @@ describe('what a decision leaves for the screens that read after it', () => {
       expect(await awayAndBack(), 'an approval the route took').toEqual({ queue: 3, standings: 2 })
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-      await screen.findByText('Rešena je 1 stavka.')
+      await sweptSays('Rešena je 1 stavka.')
 
       expect(await awayAndBack(), 'a sweep the route took something from').toEqual({ queue: 4, standings: 3 })
     } finally {
