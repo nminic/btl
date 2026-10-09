@@ -1866,7 +1866,7 @@ class VerificationWriteApiTest {
 				"Dvadesetčetvoročasovna", "time", "{\"distanceKm\":61.25,\"ascentM\":410,"
 						+ "\"descentM\":395,\"seconds\":86400}")).getStatus()).isEqualTo(200);
 
-		AnEvent event = eventAt("dvadesetcetiri-sata-2027").orElseThrow();
+		AnEvent event = theEventAt("dvadesetcetiri-sata-2027");
 		List<ARace> under = racesOf(event.id());
 
 		assertThat(under).hasSize(1);
@@ -1895,7 +1895,7 @@ class VerificationWriteApiTest {
 		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Visoki vrh", "Visoki vrh", "free",
 				null)).getStatus()).isEqualTo(200);
 
-		List<ARace> under = racesOf(eventAt("visoki-vrh-2027").orElseThrow().id());
+		List<ARace> under = racesOf(theEventAt("visoki-vrh-2027").id());
 
 		assertThat(under).hasSize(1);
 		assertThat(under.get(0).kind()).isEqualTo("free");
@@ -1926,13 +1926,13 @@ class VerificationWriteApiTest {
 				"Belopalanačka trka", "length", "{\"distanceKm\":10.4,\"ascentM\":55,"
 						+ "\"descentM\":45,\"seconds\":2950}")).getStatus()).isEqualTo(200);
 
-		AnEvent event = eventAt("belopalanacka-trka-2027").orElseThrow();
+		AnEvent event = theEventAt("belopalanacka-trka-2027");
 
 		assertThat(event.placeId()).isNull();
 		assertThat(event.city()).isEqualTo("Bela Palanka");
 		assertThat(event.countryId()).isEqualTo(countryCoded("RS"));
 
-		assertThat(racesOf(event.id()).get(0).fixes())
+		assertThat(theOneRaceOf(event.id()).fixes())
 				.as("the race was made of the figures the member sent and not of the moderator's")
 				.isEqualTo(fourFigures("10.4", 55, 45, 0));
 		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("10.4", 55, 45, 2950));
@@ -1966,7 +1966,7 @@ class VerificationWriteApiTest {
 				.isPresent();
 		assertThat(eventAt("trka-cacak-2027-2")).isPresent();
 		assertThat(theResultOf(ANA).raceId())
-				.isEqualTo(racesOf(eventAt("zimska-trka-2027-3").orElseThrow().id()).get(0).id());
+				.isEqualTo(theOneRaceOf(theEventAt("zimska-trka-2027-3").id()).id());
 	}
 
 	/**
@@ -2213,8 +2213,8 @@ class VerificationWriteApiTest {
 				.isEqualTo(bojansBefore);
 		assertThat(stateOf(bojans)).isEqualTo("waiting");
 
-		AnEvent event = eventAt("nocna-trka-zemun-2027").orElseThrow();
-		long theRace = racesOf(event.id()).get(0).id();
+		AnEvent event = theEventAt("nocna-trka-zemun-2027");
+		long theRace = theOneRaceOf(event.id()).id();
 
 		assertThat(decideWith(THE_SUPERADMIN, bojans, onTheRace(theRace, null)).getStatus())
 				.isEqualTo(200);
@@ -3271,6 +3271,13 @@ class VerificationWriteApiTest {
 				.optional();
 	}
 
+	/** The event at that address, and a failed assertion naming the address where there is
+	 *  none: a case that reads an event the route did not make fails on that sentence. */
+	private AnEvent theEventAt(String address) {
+		return eventAt(address).orElseThrow(
+				() -> new AssertionError("no event answers at " + address));
+	}
+
 	/** Every race under one event, in the order of their keys. */
 	private List<ARace> racesOf(long event) {
 		return db.sql("select id, name, renamed, date, kind, limit_seconds, distance_km, ascent_m,"
@@ -3286,7 +3293,7 @@ class VerificationWriteApiTest {
 	/** The race a member's one result is counted on, the day it carries, its four figures and
 	 *  its points. */
 	private AResult theResultOf(String memberNumber) {
-		return db.sql("select race_id, race_date, distance_km, ascent_m, descent_m, seconds, points"
+		List<AResult> his = db.sql("select race_id, race_date, distance_km, ascent_m, descent_m, seconds, points"
 						+ " from result where competitor_id ="
 						+ " (select id from competitor where member_number = ?)")
 				.param(memberNumber)
@@ -3294,7 +3301,20 @@ class VerificationWriteApiTest {
 						fourFigures(row.getBigDecimal(3).toPlainString(), row.getInt(4),
 								row.getInt(5), row.getInt(6)),
 						row.getBigDecimal(7)))
-				.single();
+				.list();
+
+		assertThat(his).as("%s has no result, or more than one", memberNumber).hasSize(1);
+
+		return his.get(0);
+	}
+
+	/** The one race under an event, and a failed assertion where there is none or more. */
+	private ARace theOneRaceOf(long event) {
+		List<ARace> under = racesOf(event);
+
+		assertThat(under).as("the event holds no race, or more than one").hasSize(1);
+
+		return under.get(0);
 	}
 
 	/** Everything a submission says about its race, as it stands now: the race it points at and
