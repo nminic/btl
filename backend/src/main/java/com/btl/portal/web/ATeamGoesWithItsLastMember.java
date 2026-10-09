@@ -100,8 +100,10 @@ import java.util.Optional;
  *
  * <p><b>What that costs, written here rather than left to be found.</b> Between October and
  * the turn of the year a team whose only member has left stands with nobody visible in it:
- * the three resources above already answer „no members" while this class still answers „not
- * empty". That gap closes when the row stops covering the season, and the thing that ends
+ * the three resources above still answer „no members" for the link on a member's own record
+ * (since 10.10.2026 {@link TeamApi} also names him in {@code endedMemberships} for the season
+ * he is in it, so the server is no longer silent about him), while this class still answers
+ * „not empty". That gap closes when the row stops covering the season, and the thing that ends
  * it is the job of 1 January at 16:00 CET which PDL P13, 19.09.2026 already decided and
  * which does not exist yet. P13 counted it as the first scheduled job this backend would
  * have; since {@link ThePicturesFolderIsSwept} the first is that one, scheduling is already
