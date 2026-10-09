@@ -126,7 +126,22 @@ import java.util.Optional;
  * <li><b>The trail names who entered it on the portal, never the board's own decision.</b>
  * The owner refused a column for the number of that decision on 27.09.2026, with the cost
  * shown to him: the administration would have to type it at every exemption. {@code V35}
- * carries the reason.
+ * carries the reason. It is written for the second act that forgives money as well, since
+ * 03.10.2026: a balance that fell short of the fee (see {@code grant}).
+ * <li><b>The button that was pressed is not on the wire, so a balance that moved between the
+ * screen and the press is read as it stands NOW.</b> „Odobri iz balansa" and „Odobri umanjen
+ * iznos iz balansa" are one ground and two labels, and the label tells the moderator what the
+ * screen worked out from the balance it was served. This route works the same thing out again
+ * from the book, inside the transaction, and acts on THAT. If a referral landed, or a spend was
+ * written, between the two, he can press a button that read „the whole fee" and find the balance
+ * short: it is spent to the last, the trail is written and the answer is 201. Nothing is forgiven
+ * in silence - the trail names him and the moment - but he did not choose it with his eyes open.
+ * The other direction, a button that read „reduced" over a book that now covers the fee, forgives
+ * nothing: the book pays the whole fee, which is what the member owes, and no trail is written.
+ * <b>Whether the request should carry the intent, and the route refuse a press whose intent the
+ * book no longer matches, is a question put to the owner (09.10.2026, PENDING, question 23).</b>
+ * Until he answers, the route reads the book, which is the first of the outcomes put to him, and
+ * this paragraph is the boundary written down rather than found.
  * </ul>
  */
 @RestController
@@ -373,9 +388,31 @@ class MembershipWriteApi {
 		   any more. His own is what is named, because it is the money the line would have been written
 		   in had there been one - and `GrantingAMembership` asks nothing of it beyond whether it is
 		   money at all. */
-		Balance.Money offTheBook = ground == GrantingAMembership.Ground.THE_BALANCE
-				? whatHisBalanceWouldPay(competitor.get().id())
+		Balance.Settlement settled = ground == GrantingAMembership.Ground.THE_BALANCE
+				? hisBalanceAgainstTheFee(competitor.get().id())
+				: null;
+
+		Balance.Money offTheBook = settled != null
+				? settled.fromTheBalance()
 				: Balance.Money.nothingIn(currencyOf.of(competitor.get().id()));
+
+		/* WHETHER THIS ACT FORGIVES MONEY, which is what decides whether a trail is written, and it is
+		   worked out from the SAME settlement the amount comes off the book from, so that the two
+		   cannot be two readings of one balance. Owner, 03.10.2026: the trail goes with every act that
+		   forgives money - „Odobri umanjen iznos iz balansa" and the exemption - and „Odobri iz
+		   balansa" for the whole fee „ne prasta nista i ide bez traga".
+
+		   AN EXEMPTION forgives the whole fee by definition. A BALANCE forgives what it falls short
+		   of, and `coveredByTheBalance` is true at EQUALITY (`Balance` says why: a man whose balance is
+		   exactly the fee owes nothing more), so a balance of exactly the fee is a whole fee and
+		   leaves no trail, and one para less is a reduced amount and leaves one.
+
+		   IT IS THE FEE THE BALANCE IS MEASURED AGAINST, NEVER THE FEE AND THE PROCESSING TAX
+		   TOGETHER: a membership paid out of a balance moves no money through an intermediary, so it
+		   carries no tax (PDL, „Clanarina placena iz balansa ne nosi taksu"). A balance of 41 against a
+		   fee of 40 and a tax of 3 is therefore a whole fee: it takes 40 and writes no trail. */
+		boolean forgivesMoney = ground == GrantingAMembership.Ground.FREE_OF_THE_FEE
+				|| !settled.coveredByTheBalance();
 
 		GrantingAMembership.Asking question = new GrantingAMembership.Asking(ground, held,
 				aPaymentWasReversed(competitor.get().id(), season), offTheBook,
@@ -400,15 +437,21 @@ class MembershipWriteApi {
 			case NOTHING_WOULD_COME_OFF_THE_BOOK ->
 					no(HttpStatus.CONFLICT, NOTHING_WOULD_COME_OFF_THE_BOOK);
 			case GRANT, GRANT_AND_NUMBER_HIM -> grant(season, competitor.get(), asking,
-					GrantingAMembership.groundIsWrittenAs(question), offTheBook);
+					GrantingAMembership.groundIsWrittenAs(question), offTheBook, forgivesMoney);
 		};
 	}
 
 	/**
-	 * WHAT HIS BALANCE WOULD PAY FOR THIS SEASON, and the arithmetic is NOT here.
+	 * HIS BALANCE AGAINST THE FEE FOR THIS SEASON, and the arithmetic is NOT here.
 	 *
 	 * <p>{@link Balance.Settlement#fromTheBalance()} owns it, which is {@code min(balance, fee)} - and
 	 * since V42 that is the answer on BOTH doors rather than only on the member's own.
+	 *
+	 * <p><b>The whole settlement is returned and not the amount that comes off</b>, because the route
+	 * needs two answers out of one reading: how much comes off the book, and whether the balance
+	 * covered the fee, which is what decides whether the act leaves a trail
+	 * ({@link Balance.Settlement#coveredByTheBalance()}, true at equality). Read twice they would be
+	 * two readings of one balance.
 	 *
 	 * <p><b>It was a rule of its own until then, and the reason it is worth recording is that the rule
 	 * was right.</b> While a balance was a PAIR, {@code min} taken per currency answered „40 EUR and
@@ -423,8 +466,8 @@ class MembershipWriteApi {
 	 * holding it was deleted rather than shortened.</b> The owner decided that on 27.09.2026 (PDL 25);
 	 * a short balance is now simply spent to the end, which is exactly what case 5 asks for.
 	 */
-	private Balance.Money whatHisBalanceWouldPay(long competitorId) {
-		return invoice.forMember(competitorId).settled().fromTheBalance();
+	private Balance.Settlement hisBalanceAgainstTheFee(long competitorId) {
+		return invoice.forMember(competitorId).settled();
 	}
 
 	/**
@@ -450,21 +493,37 @@ class MembershipWriteApi {
 	 * {@link CompetitorApi} names the increment that ends it - the one that removes
 	 * {@code competitor.active} and moves both homes and all their readers at once.
 	 *
-	 * <p><b>2. THE TRAIL OF WHO DECIDED IT GOES WHERE THE SCHEMA ASKS FOR IT, WHICH IS TWO
-	 * DIFFERENT TABLES.</b> For an exemption it is {@code membership.decided_by_name} and
-	 * {@code decided_at}, because {@code membership_free_of_the_fee_says_who} and
-	 * {@code ..._says_when} (V35) demand them of exactly that basis. For a balance it is
-	 * {@code balance_entry.recorded_by} and {@code recorded_by_name}, which V38 makes
-	 * {@code not null} on the name and which is where the OTHER door already puts it - „the
-	 * moderator who recognised the payment that activated the newcomer, or the member himself when
-	 * he spends his own balance", in the migration's own words. So the trail has one home per
-	 * ground and the same act is never recorded twice.
-	 * <p><b>Why the three membership columns are left empty on a balance rather than filled in
-	 * too.</b> They are nullable and nothing forbids it, so this is a decision: filling them would
-	 * make „who activated this" answerable from two tables for one row, with nothing saying which is
-	 * right, and the answer would be MISSING for the member's own door - which writes no trail on
-	 * {@code membership} at all and cannot be made to without a constraint that tells the two doors
-	 * apart, and {@code basis} is the same word at both.
+	 * <p><b>2. THE TRAIL OF WHO DECIDED IT IS WRITTEN FOR EVERY ACT THAT FORGIVES MONEY, AND ON A
+	 * SHORT BALANCE IT STANDS IN TWO PLACES.</b> Owner, 03.10.2026: „Trag (ko je odobrio i kada) ide
+	 * uz svaku radnju koja prasta novac" - an exemption from the fee, and „Odobri umanjen iznos iz
+	 * balansa"; „Odobri iz balansa" for the whole fee forgives nothing and goes without one. So the
+	 * three columns {@code V35} added ({@code decided_by}, {@code decided_by_name},
+	 * {@code decided_at}) are written when the ground is the fee being waived AND when the ground is
+	 * the balance and it did not cover the fee ({@code forgivesMoney}, worked out in {@code write}),
+	 * and are left empty otherwise. {@code membership_on_a_balance_carries_its_trail_whole_or_not_at_all}
+	 * (V56) holds the three together on a balance. It cannot hold „a trail exactly when the balance
+	 * fell short", because a row carries no price: deciding which of the two a row gets is this
+	 * method's work, and {@code MembershipWriteApiTest}'s to hold, on both sides of the fee.
+	 * <p><b>The book is the other place, and it is kept.</b> {@code balance_entry.recorded_by},
+	 * {@code recorded_by_name} and {@code occurred_at} (V38) name whoever spent the balance and when.
+	 * That is the record of the money, and it is written on a whole fee too, where the membership
+	 * carries nothing. On a short balance the same account, name and moment stand on the membership
+	 * as well, so „on which memberships was money forgiven, and by whom" is one question on one table
+	 * for an exemption and for a short balance alike (ADL, the entry of 09.10.2026 under the decision
+	 * of 03.10.2026).
+	 * <p><b>WHAT THIS PARAGRAPH SAID UNTIL 09.10.2026, written out because it was the premise and it
+	 * is overturned.</b> It said that for a balance the trail was {@code balance_entry.recorded_by} and
+	 * {@code recorded_by_name} and nothing else, „so the trail has one home per ground and the same act
+	 * is never recorded twice", and that filling the membership columns on a balance would make „who
+	 * activated this" answerable from two tables with nothing saying which is right. The owner's
+	 * decision of 03.10.2026 overturned it, and the fact is now recorded twice on purpose. What keeps
+	 * two homes one answer is not a sentence but a case: {@code theTrailOnTheRowIsTheTrailInTheBook}
+	 * reads both for one press and requires the same account, the same name and the same moment. Both
+	 * are written in this transaction, from this request's account and from this clock (two readings
+	 * of it, microseconds apart in production and one instant under the fixed clock of the cases).
+	 * <p><b>The member's own door writes no trail, and that is right rather than missing.</b>
+	 * {@link MyMembershipWriteApi} only ever spends a balance that covers the fee, so the act forgives
+	 * nothing there, exactly as a whole fee forgives nothing here.
 	 *
 	 * <p><b>3. THE BOOK IS WRITTEN FIRST, AND ONLY ON THE GROUND THAT SPENDS.</b> V38 gives
 	 * {@code membership} a {@code balance_entry_id} and
@@ -472,13 +531,16 @@ class MembershipWriteApi {
 	 * membership naming none, so the order is not a preference. An exemption takes nothing off
 	 * anybody: {@link BalanceBook} carries the reason and PDL 11.08.2026 is where it comes from.
 	 *
-	 * @param basis      the word {@code membership.basis} is to carry, as
-	 *                   {@link GrantingAMembership#groundIsWrittenAs} spells it
-	 * @param offTheBook what this activation takes out of his book, already worked out and already
-	 *                   known not to be nothing on the ground that spends
+	 * @param basis         the word {@code membership.basis} is to carry, as
+	 *                      {@link GrantingAMembership#groundIsWrittenAs} spells it
+	 * @param offTheBook    what this activation takes out of his book, already worked out and already
+	 *                      known not to be nothing on the ground that spends
+	 * @param forgivesMoney whether this act forgives money, which is what decides whether the trail
+	 *                      is written: an exemption always, a balance when it fell short of the fee.
+	 *                      Worked out once in {@code write}, from the settlement the amount came from
 	 */
 	private ResponseEntity<?> grant(int season, CompetitorRow competitor, WhoIsAsking.Member asking,
-			String basis, Balance.Money offTheBook) {
+			String basis, Balance.Money offTheBook, boolean forgivesMoney) {
 
 		String enteredByName = db.sql("select first_name || ' ' || last_name from account where id = ?")
 				.param(asking.account()).query(String.class).single();
@@ -492,12 +554,17 @@ class MembershipWriteApi {
 				: book.spentOnAMembership(competitor.id(), season, offTheBook, asking.account(),
 						enteredByName);
 
+		/* THE TRAIL, THREE COLUMNS OR NONE, which is what V56 asks of a balance and V35 of an
+		   exemption: the account that is asking, the name it carries now (copied, because the name is
+		   what outlives the account), and this clock's instant. All three come from the request's own
+		   principal and never from the body or from the member being activated, so a moderator who
+		   activates himself is named, and is named because he asked. */
 		db.sql("insert into membership (competitor_id, season, basis, payment_id, balance_entry_id,"
 						+ " decided_by, decided_by_name, decided_at) values (?, ?, ?, null, ?, ?, ?, ?)")
 				.params(competitor.id(), season, basis, entry,
-						freeOfTheFee ? asking.account() : null,
-						freeOfTheFee ? enteredByName : null,
-						freeOfTheFee ? Timestamp.from(clock.instant()) : null)
+						forgivesMoney ? asking.account() : null,
+						forgivesMoney ? enteredByName : null,
+						forgivesMoney ? Timestamp.from(clock.instant()) : null)
 				.update();
 
 		/* AND WHOEVER BROUGHT HIM IN IS PAID, HERE TOO, because the owner said so in as many words on

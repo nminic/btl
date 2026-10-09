@@ -7,6 +7,7 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
@@ -48,6 +50,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * moderator holding only a different tick. „Signed in" and „allowed" are therefore never the
  * same fact, and the trail is asserted to name the moderator who asked and not the only
  * account in the fixture.
+ * <li><b>The account that belongs to the MEMBER himself is made by the cases that need it</b>,
+ * and it is never a moderator's unless the case is the one about a moderator approving
+ * himself. So „who pressed" and „whose membership it is" are two different people, with two
+ * different names, in every case but that one - which says so in its name.
  * <li><b>Three moments of the clock</b>, because the season is the axis with TWO divergences
  * and one moment closes only one of them. In June 2027 {@code seasonBeingPaidFor} is 2027
  * while {@code transfersTakeEffect} is 2028; in October 2027 it is 2028 while
@@ -324,6 +330,69 @@ class MembershipWriteApiTest {
 
 	private long membershipCount() {
 		return db.sql("select count(*) from membership").query(Long.class).single();
+	}
+
+	/**
+	 * ONE PRICE OF THE LIST, asked of the list and never written here, for the reason ADL A12 gives:
+	 * a case that repeated a price would be a second home for it.
+	 */
+	private BigDecimal priceOf(String key, String column) {
+		return db.sql("select " + column + " from price_row where key = ?")
+				.param(key).query(BigDecimal.class).single();
+	}
+
+	private long accountId(String email) {
+		return db.sql("select id from account where email = ?").param(email).query(Long.class).single();
+	}
+
+	/**
+	 * AN ACCOUNT THAT BELONGS TO A MEMBER, as against the moderators and the superadmin above, none
+	 * of which is anybody's.
+	 *
+	 * @return its session cookie, so a case can press the button AS that member when it needs to
+	 */
+	private String anAccountOf(long competitorId, String email, String role, String first, String last) {
+		String cookie = account(email, role, first, last);
+
+		db.sql("update account set competitor_id = ? where email = ?").params(competitorId, email).update();
+
+		return cookie;
+	}
+
+	/**
+	 * THE TRAIL AS ONE VALUE, so a case asserts who, under what name and when together, and a row
+	 * that answers right about two of the three cannot pass half of a case.
+	 *
+	 * @param by   the account that pressed the button, or {@code null} once that account is gone
+	 * @param name the name it carried, which outlives the account
+	 * @param at   the moment, off the clock these cases move
+	 */
+	private record Trail(Long by, String name, Timestamp at) {
+	}
+
+	/** Nobody forgave anything, so all three columns are empty. */
+	private static final Trail NO_TRAIL = new Trail(null, null, null);
+
+	private Trail trailOf(long competitorId, int season) {
+		return db.sql("select decided_by, decided_by_name, decided_at from membership"
+						+ " where competitor_id = ? and season = ?")
+				.params(competitorId, season)
+				.query((row, i) -> new Trail((Long) row.getObject(1), row.getString(2), row.getTimestamp(3)))
+				.single();
+	}
+
+	/** The trail the CASHIER leaves when he presses a button in June 2027: his account, his name, the minute. */
+	private Trail theCashiersTrail() {
+		return new Trail(accountId(CASHIER), "Blagajnik Probic", Timestamp.from(IN_JUNE_2027));
+	}
+
+	/** A body written out by hand, for the cases that send more than {@link MembershipWriteApi.Grant} knows. */
+	private MockHttpServletResponse withThisBody(String json, String cookie) throws Exception {
+		return http.perform(post("/api/memberships").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, cookie))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json))
+				.andReturn().getResponse();
 	}
 
 	/**
@@ -876,6 +945,308 @@ class MembershipWriteApiTest {
 				.as("all of it, so the book is emptied rather than driven negative")
 				.isEqualTo("referral 5.00 EUR for " + whoPays
 						+ ", membership -5.00 EUR for nobody");
+		assertThat(membershipOf(him, 2027))
+				.as("a reduced amount forgives money, so the membership carries the trail (owner,"
+						+ " 03.10.2026)")
+				.isEqualTo("balance names an entry, trail by Blagajnik Probic");
+	}
+
+	/**
+	 * A REDUCED AMOUNT LEAVES THE TRAIL OF WHO APPROVED IT, which is the short side of the boundary
+	 * the owner's decision draws and the half this route did not carry out until 09.10.2026.
+	 *
+	 * <p>Owner, 03.10.2026 (PDL P8): „Trag (ko je odobrio i kada) ide uz svaku radnju koja prasta
+	 * novac", and the two acts he names are the exemption and „Odobri umanjen iznos iz balansa". A
+	 * balance of 25 against a fee of 40 is the second: all of it is spent, fifteen is forgiven, and
+	 * the row says who pressed the button and when.
+	 *
+	 * <p><b>The three columns are read as ONE value</b> ({@link Trail}) and the account is the
+	 * CASHIER's: four accounts stand in this file's cases, so a trail that named the first account the
+	 * database holds, the superadmin or the member would be a different value and not a coincidence.
+	 * The moment is the clock these cases move and never the day they happen to run on.
+	 *
+	 * <p><b>The premise is asserted and not assumed.</b> The fee is the price list's, and a case about
+	 * „25 against 40" that went on passing after the list moved would be measuring something else.
+	 */
+	@Test
+	void aReducedAmountFromTheBalanceLeavesTheTrailOfWhoApprovedIt() throws Exception {
+		assertThat(priceOf("season", "eur"))
+				.as("this case is about 25 against a fee of 40, and the fee is the price list's")
+				.isEqualByComparingTo("40");
+
+		earnedAReferral(him, whoPays, "25", "EUR");
+
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(bookOf(him))
+				.as("every para he had, and not the fee")
+				.isEqualTo("referral 25.00 EUR for " + whoPays
+						+ ", membership -25.00 EUR for nobody");
+		assertThat(trailOf(him, 2027)).isEqualTo(theCashiersTrail());
+	}
+
+	/**
+	 * A BALANCE ABOVE THE FEE BUT BELOW THE FEE AND THE TAX TOGETHER IS A WHOLE FEE, AND THE ROW HAS NO
+	 * TRAIL: the long side of the boundary, and the one the screen gets wrong today.
+	 *
+	 * <p>41 is above the fee (40) and below the fee plus the processing tax (43), which is the band in
+	 * which what a member SENDS and what a balance PAYS come apart. A membership paid out of a balance
+	 * moves no money through an intermediary and so carries no tax (PDL, „Clanarina placena iz balansa
+	 * ne nosi taksu"): 40 comes off, one stays his, nothing is forgiven and nothing is written. A route
+	 * that measured the balance against the fee plus the tax would call this a reduced amount and put a
+	 * trail on a membership that cost what it costs.
+	 *
+	 * <p>The book is asserted as well, because „no trail" is a claim about a press that otherwise did
+	 * what a whole fee does: the fee came off and the surplus stayed.
+	 */
+	@Test
+	void aBalanceAboveTheFeeAndBelowTheFeeAndTheTaxIsAWholeFeeAndLeavesNoTrail() throws Exception {
+		assertThat(priceOf("season", "eur"))
+				.as("this case is about 41 against a fee of 40, and the fee is the price list's")
+				.isEqualByComparingTo("40");
+		assertThat(priceOf("processing", "eur"))
+				.as("and against a tax of 3, which is what puts 41 below the 43 a member sends")
+				.isEqualByComparingTo("3");
+
+		earnedAReferral(him, whoPays, "41", "EUR");
+
+		MockHttpServletResponse answer = fromHisBalance(him, cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(bookOf(him))
+				.as("the fee and not the balance, and the rest stays his")
+				.isEqualTo("referral 41.00 EUR for " + whoPays
+						+ ", membership -40.00 EUR for nobody");
+		assertThat(trailOf(him, 2027)).isEqualTo(NO_TRAIL);
+	}
+
+	/**
+	 * Where a balance can stand against the fee and against the fee plus the tax, on both sides of
+	 * both and exactly on each, which is the whole of the axis the two cases above name two points of.
+	 *
+	 * <p>Each position says whether it falls short of THE FEE, and the case below checks that claim
+	 * against the price list before it asserts anything else, so a position labelled wrongly cannot
+	 * turn the case into a statement about nothing.
+	 */
+	enum WhereTheBalanceStands {
+
+		ONE_PARA(true, (fee, tax) -> new BigDecimal("0.01")),
+		HALF_THE_FEE(true, (fee, tax) -> fee.divide(new BigDecimal("2"))),
+		ONE_PARA_UNDER_THE_FEE(true, (fee, tax) -> fee.subtract(new BigDecimal("0.01"))),
+		EXACTLY_THE_FEE(false, (fee, tax) -> fee),
+		ONE_PARA_OVER_THE_FEE(false, (fee, tax) -> fee.add(new BigDecimal("0.01"))),
+		ONE_PARA_UNDER_THE_FEE_AND_THE_TAX(false,
+				(fee, tax) -> fee.add(tax).subtract(new BigDecimal("0.01"))),
+		EXACTLY_THE_FEE_AND_THE_TAX(false, (fee, tax) -> fee.add(tax)),
+		WELL_OVER_BOTH(false, (fee, tax) -> fee.add(tax).add(new BigDecimal("10")));
+
+		final boolean fallsShortOfTheFee;
+
+		private final java.util.function.BinaryOperator<BigDecimal> worked;
+
+		WhereTheBalanceStands(boolean fallsShortOfTheFee,
+				java.util.function.BinaryOperator<BigDecimal> worked) {
+			this.fallsShortOfTheFee = fallsShortOfTheFee;
+			this.worked = worked;
+		}
+
+		BigDecimal balance(BigDecimal fee, BigDecimal tax) {
+			return worked.apply(fee, tax);
+		}
+	}
+
+	/**
+	 * THE TRAIL IS WRITTEN EXACTLY WHEN THE BALANCE FALLS SHORT OF THE FEE, at every position the
+	 * balance can stand in, and what comes off the book is the smaller of the two at every one of them.
+	 *
+	 * <p><b>One invocation per position and not a loop in one case</b>, for the reason
+	 * {@code PaymentApiTest} measured: a loop under a mutation stops at the first position it fails and
+	 * the later ones are never measured at all.
+	 *
+	 * <p><b>Exactly the fee is a whole fee</b> ({@code Balance} says why: a man whose balance is the
+	 * fee owes nothing more), and one para under it is not. A comparison written the other way round
+	 * passes every position but these two.
+	 */
+	@ParameterizedTest
+	@EnumSource(WhereTheBalanceStands.class)
+	void theTrailIsWrittenExactlyWhenTheBalanceFallsShortOfTheFee(WhereTheBalanceStands standing)
+			throws Exception {
+		BigDecimal fee = priceOf("season", "eur");
+		BigDecimal balance = standing.balance(fee, priceOf("processing", "eur"));
+
+		assertThat(balance.compareTo(fee) < 0)
+				.as("%s is labelled wrongly against the price list, so this case would assert nothing", standing)
+				.isEqualTo(standing.fallsShortOfTheFee);
+
+		earnedAReferral(him, whoPays, balance.toPlainString(), "EUR");
+
+		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select amount from balance_entry where competitor_id = ? and reason = 'membership'")
+						.param(him).query(BigDecimal.class).single())
+				.as("the book gave up something other than the smaller of the balance and the fee")
+				.isEqualByComparingTo(balance.min(fee).negate());
+
+		assertThat(trailOf(him, 2027))
+				.isEqualTo(standing.fallsShortOfTheFee ? theCashiersTrail() : NO_TRAIL);
+	}
+
+	/**
+	 * THE TRAIL NAMES WHOEVER PRESSED THE BUTTON, AND NOT THE MEMBER OR THE ACCOUNT THAT IS HIS.
+	 *
+	 * <p>The owner's sentence is „ko je odobrio", and the one who approved is the moderator whose
+	 * session the request arrived in. Three other candidates are in reach of the route and each is a
+	 * way to be wrong that the fixture makes DIFFERENT from the right answer: the member's own row
+	 * (name „Probni Takmicar"), the account that belongs to him ({@code anAccountOf}, „Clan
+	 * Nalogovic"), and the lowest account in the database. None of the three is the cashier.
+	 */
+	@Test
+	void theTrailNamesWhoPressedTheButtonAndNotTheMemberOrTheAccountThatIsHis() throws Exception {
+		anAccountOf(him, "clan@primer.rs", "competitor", "Clan", "Nalogovic");
+		earnedAReferral(him, whoPays, "5", "EUR");
+
+		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		assertThat(trailOf(him, 2027))
+				.as("the trail named somebody other than the moderator who pressed")
+				.isEqualTo(theCashiersTrail());
+	}
+
+	/**
+	 * A MODERATOR WHO IS ALSO THE MEMBER IS NAMED WHEN HE APPROVES HIMSELF. This is the one case in which
+	 * „who pressed" and „whose membership it is" are the same man, so the two sources of the name give
+	 * the same string and no assertion here can tell them apart.
+	 *
+	 * <p><b>It records what the route does and is NOT a decision.</b> No entry of PDL or ADL says
+	 * whether a moderator may approve his own membership or forgive himself a fee; nothing in the code
+	 * stops him, and the trail is what makes it visible afterwards. If the owner decides otherwise this
+	 * case is the one that changes.
+	 */
+	@Test
+	void aModeratorWhoIsAlsoTheMemberIsNamedWhenHeApprovesHimself() throws Exception {
+		String hisCookie = anAccountOf(him, "sam@primer.rs", "moderator", "Probni", "Takmicar");
+		ticked("sam@primer.rs", "queue:payments");
+		earnedAReferral(him, whoPays, "5", "EUR");
+
+		MockHttpServletResponse answer = fromHisBalance(him, hisCookie);
+
+		assertThat(answer.getStatus()).as("approving himself was refused, which no decision says").isEqualTo(201);
+		assertThat(trailOf(him, 2027))
+				.isEqualTo(new Trail(accountId("sam@primer.rs"), "Probni Takmicar", Timestamp.from(IN_JUNE_2027)));
+	}
+
+	/**
+	 * A BODY THAT NAMES WHO DECIDED IS NOT BELIEVED.
+	 *
+	 * <p>The request carries a competitor and a ground and nothing else, and the trail is the
+	 * principal's. This sends the three fields a trail is made of in a body that has no place for them
+	 * (Jackson drops unknown fields, which is what {@code @RequestBody} does here) and asserts that
+	 * not one of them reaches the row. It protects the day somebody gives {@code Grant} a fourth
+	 * field.
+	 */
+	@Test
+	void aBodyThatNamesWhoDecidedIsNotBelieved() throws Exception {
+		earnedAReferral(him, whoPays, "5", "EUR");
+
+		MockHttpServletResponse answer = withThisBody("{\"competitorId\":" + him
+				+ ",\"ground\":\"balance\",\"decidedBy\":" + accountId(SUPERADMIN)
+				+ ",\"decidedByName\":\"Neko Drugi\",\"decidedAt\":\"2020-01-01T00:00:00Z\"}", cashierCookie);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+		assertThat(trailOf(him, 2027))
+				.as("a field of the body reached the trail")
+				.isEqualTo(theCashiersTrail());
+	}
+
+	/**
+	 * THE TRAIL ON THE ROW IS THE TRAIL IN THE BOOK. A short balance records who pressed and when in two
+	 * places, on purpose (ADL, the entry of 09.10.2026), and this is the case that keeps them one
+	 * answer.
+	 *
+	 * <p>Read through the key that joins them: the membership NAMES its book entry
+	 * ({@code balance_entry_id}), so the line compared is the line that paid for this very row and not
+	 * the first one the member happens to have. The moment is equal because the clock these cases move
+	 * is one instant; in production the two readings of the clock are microseconds apart.
+	 *
+	 * <p>Both sides are required to be PRESENT as well as equal: two nulls are equal, and a pair of
+	 * empty homes would otherwise pass.
+	 */
+	@Test
+	void theTrailOnTheRowIsTheTrailInTheBook() throws Exception {
+		earnedAReferral(him, whoPays, "5", "EUR");
+
+		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		record BothHomes(Long rowBy, Long bookBy, String rowName, String bookName, Timestamp rowAt,
+				Timestamp bookAt) {
+		}
+
+		BothHomes homes = db.sql("select m.decided_by, e.recorded_by, m.decided_by_name,"
+						+ " e.recorded_by_name, m.decided_at, e.occurred_at from membership m"
+						+ " join balance_entry e on e.id = m.balance_entry_id"
+						+ " where m.competitor_id = ? and m.season = 2027")
+				.param(him)
+				.query((row, i) -> new BothHomes((Long) row.getObject(1), (Long) row.getObject(2),
+						row.getString(3), row.getString(4), row.getTimestamp(5), row.getTimestamp(6)))
+				.single();
+
+		assertThat(homes.rowBy()).as("the membership names no account").isNotNull();
+		assertThat(homes.rowBy()).as("the membership and the book name two accounts").isEqualTo(homes.bookBy());
+		assertThat(homes.rowName()).as("the membership names nobody").isNotBlank();
+		assertThat(homes.rowName()).as("the membership and the book name two people").isEqualTo(homes.bookName());
+		assertThat(homes.rowAt()).as("the membership names no moment").isNotNull();
+		assertThat(homes.rowAt()).as("the membership and the book give two moments").isEqualTo(homes.bookAt());
+	}
+
+	/**
+	 * THE ACCOUNT THAT APPROVED A REDUCED AMOUNT MAY GO AND THE TRAIL KEEPS HIS NAME.
+	 *
+	 * <p>The exemption's case of the same shape exists because a mutation survived without it, and the
+	 * mutation was the trap V9 paid for: a rule written over the POINTER contradicts its own foreign key,
+	 * because {@code ON DELETE SET NULL} empties the pointer of everything that account ever entered.
+	 * {@code membership_on_a_balance_carries_its_trail_whole_or_not_at_all} (V56) is written over the
+	 * NAME and the pair, so what is left after the delete - no pointer, a name and a moment - is a trail
+	 * that is still whole.
+	 */
+	@Test
+	void theAccountThatApprovedAReducedAmountMayGoAndTheTrailKeepsHisName() throws Exception {
+		earnedAReferral(him, whoPays, "5", "EUR");
+
+		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
+
+		db.sql("delete from account where email = ?").param(CASHIER).update();
+
+		assertThat(trailOf(him, 2027))
+				.as("the pointer was meant to empty and the name and the moment to stay")
+				.isEqualTo(new Trail(null, "Blagajnik Probic", Timestamp.from(IN_JUNE_2027)));
+	}
+
+	/**
+	 * A SECOND PRESS OF A REDUCED AMOUNT, BY ANOTHER MODERATOR, KEEPS THE FIRST TRAIL AND SPENDS
+	 * NOTHING FURTHER.
+	 *
+	 * <p>The harmless repeat of {@link #asecondPressOfTheBalanceButtonDrawsNoSecondNumberAndSpendsNothingFurther}
+	 * for the short side, with the second press made by somebody else on purpose: a repeat that wrote
+	 * the trail again would replace the cashier with the superadmin, and a repeat by the same man
+	 * could not tell that from nothing.
+	 */
+	@Test
+	void aSecondPressOfAReducedAmountByAnotherModeratorKeepsTheFirstTrail() throws Exception {
+		earnedAReferral(him, whoPays, "5", "EUR");
+
+		MockHttpServletResponse first = fromHisBalance(him, cashierCookie);
+		MockHttpServletResponse second = fromHisBalance(him, superadminCookie);
+
+		assertThat(first.getStatus()).isEqualTo(201);
+		assertThat(second.getStatus()).as("a repeat is harmless and not a refusal").isEqualTo(200);
+		assertThat(granted(second).memberNumber()).isEqualTo(granted(first).memberNumber());
+		assertThat(bookOf(him))
+				.as("the balance was spent once")
+				.isEqualTo("referral 5.00 EUR for " + whoPays + ", membership -5.00 EUR for nobody");
+		assertThat(trailOf(him, 2027))
+				.as("the second press replaced the trail of the first")
+				.isEqualTo(theCashiersTrail());
 	}
 
 	/**
@@ -905,12 +1276,18 @@ class MembershipWriteApiTest {
 				.as("a dinar book was measured against the euro column of the price list")
 				.isEqualTo("referral 6000.00 RSD for " + whoPays
 						+ ", membership -4800.00 RSD for nobody");
+		assertThat(trailOf(coversIt, 2027))
+				.as("a dinar balance that covers the fee forgave nothing, and left a trail")
+				.isEqualTo(NO_TRAIL);
 
 		assertThat(fromHisBalance(shortOfIt, cashierCookie).getStatus()).isEqualTo(201);
 		assertThat(bookOf(shortOfIt))
 				.as("a short dinar book did not give up all of itself")
 				.isEqualTo("referral 600.00 RSD for " + him
 						+ ", membership -600.00 RSD for nobody");
+		assertThat(trailOf(shortOfIt, 2027))
+				.as("a short dinar balance forgave money, and the trail is written for euro alone")
+				.isEqualTo(theCashiersTrail());
 	}
 
 	/**
@@ -984,22 +1361,31 @@ class MembershipWriteApiTest {
 	}
 
 	/**
-	 * THE TRAIL OF THIS GROUND IS IN THE BOOK AND NOT ON THE MEMBERSHIP, which is one home per
-	 * ground.
+	 * WHERE THE TRAIL OF EACH ACT STANDS: ON THE MEMBERSHIP FOR EVERY ACT THAT FORGIVES MONEY, AND IN
+	 * THE BOOK FOR EVERY SPEND OF A BALANCE.
 	 *
-	 * <p>{@code V35} demands {@code decided_by_name} and {@code decided_at} of an EXEMPTION and of
-	 * nothing else, and {@code balance_entry.recorded_by_name} is {@code not null} on every line of
-	 * the book - „the moderator who recognised the payment that activated the newcomer, or the member
-	 * himself when he spends his own balance", V38's own words. Filling both in would make „who did
-	 * this" answerable from two tables with nothing saying which is right.
+	 * <p>This case was called {@code eachGroundKeepsItsTrailInExactlyOnePlace} until 09.10.2026 and
+	 * claimed that a ground has ONE home for who and when - the exemption's on the membership, the
+	 * balance's in the book, never both, because filling both in „would make 'who did this' answerable
+	 * from two tables with nothing saying which is right". The owner's decision of 03.10.2026
+	 * overturned that premise: the trail goes with every act that forgives money, and a balance that
+	 * falls short of the fee forgives some. So a reduced amount is recorded in BOTH places, on
+	 * purpose, and {@link #theTrailOnTheRowIsTheTrailInTheBook} is what says which of the two is
+	 * right: they are the same.
 	 *
-	 * <p><b>Both directions are read, which is what makes this a claim rather than a coincidence:</b>
-	 * the exemption's trail is on the membership and empty in the book, and the balance's is in the
-	 * book and empty on the membership.
+	 * <p><b>Three acts on three members, each read in both homes</b>, so each of the six cells below
+	 * is a claim and not a coincidence:
+	 *
+	 * <ul>
+	 * <li>a whole fee from the balance: the book names the cashier and the membership nobody;
+	 * <li>an exemption: the membership names the cashier and the book holds no line at all;
+	 * <li>a reduced amount: the membership names the cashier, and so does the book.
+	 * </ul>
 	 */
 	@Test
-	void eachGroundKeepsItsTrailInExactlyOnePlace() throws Exception {
+	void theTrailIsOnTheMembershipOfEveryActThatForgivesMoneyAndInTheBookOfEverySpend() throws Exception {
 		earnedAReferral(him, whoPays, "50", "EUR");
+		earnedAReferral(alreadyFreeElsewhere, him, "5", "EUR");
 
 		assertThat(fromHisBalance(him, cashierCookie).getStatus()).isEqualTo(201);
 		assertThat(membershipOf(him, 2027)).isEqualTo("balance names an entry, no trail");
@@ -1011,6 +1397,11 @@ class MembershipWriteApiTest {
 		assertThat(bookOf(whoPays))
 				.as("an exemption takes nothing off anybody")
 				.isEqualTo("no lines");
+
+		assertThat(fromHisBalance(alreadyFreeElsewhere, cashierCookie).getStatus()).isEqualTo(201);
+		assertThat(membershipOf(alreadyFreeElsewhere, 2027))
+				.isEqualTo("balance names an entry, trail by Blagajnik Probic");
+		assertThat(whoWroteTheSpend(alreadyFreeElsewhere)).isEqualTo("Blagajnik Probic");
 	}
 
 	/**
