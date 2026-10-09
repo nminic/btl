@@ -697,7 +697,12 @@
   /* Only where the browser knows anchor positioning, and all of it or none: the name on
      the button, the name on the menu and the offsets that read the anchor are one
      thing. Where the browser cannot read them the rules above stand as they are,
-     whole on the screen and only far from the button. */
+     whole on the screen and only far from the button.
+
+     The one condition is enough for the alignment too: `justify-self` on a box that is
+     absolutely positioned came to Chrome in 122, to Firefox in 134 and to Safari in 26
+     (MDN's browser-compat-data), in each no later than anchor positioning (125, 147
+     and 26). */
   @supports (anchor-name: --lang-button) {
     .lang__btn {
       anchor-name: --lang-button;
