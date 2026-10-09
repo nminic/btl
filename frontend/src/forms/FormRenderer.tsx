@@ -28,6 +28,7 @@ import type {
   FormDef,
   FormValues,
   Suggestion,
+  UnreadableList,
 } from './types'
 import { CountryOptions } from './CountryOptions'
 import { DatePicker } from './DatePicker'
@@ -144,8 +145,20 @@ type Props = {
    * from: this is what the portal already holds, offered while somebody types
    * something they may also type freely. Choosing an entry fills the fields it
    * names and locks them; typing again breaks that and hands them back.
+   *
+   * <p><b>A field's list is its rows, or the way it failed to come</b> (decision of 03.10.2026,
+   * `forms/types.ts`, `UnreadableList`): a list that could not be read is not handed in as an empty
+   * one, because an empty list looks like a calendar with nothing in it. The field then says so
+   * under its box, with a button that asks again, and goes on taking whatever is typed into it.
+   * One prop and not two, so a field cannot be given both and the box is the same box on either
+   * side of the failure: it is not replaced, and the keyboard on it is not lost, when the list
+   * comes.
+   *
+   * <p><b>A held box says nothing</b> (`fixed`): nothing is typed into it, so a list is of no use to
+   * it and a button that asks for one would offer something that cannot be used. That is the
+   * coordinator's reading and not a recorded decision.
    */
-  suggests?: Record<string, Suggestion[]>
+  suggests?: Record<string, Suggestion[] | UnreadableList>
   /**
    * Fields this form must not let anybody change, whatever they do.
    *
@@ -427,6 +440,8 @@ const Field = memo(function Field({
    *  what is typed and what is chosen (forms/Suggesting.tsx). */
   suggesting?: {
     list: readonly Suggestion[]
+    /** Present only where the list could not be read (see `suggests` on the form). */
+    unreadable?: UnreadableList
     onType: (next: string) => void
     onChoose: (one: Suggestion) => void
   }
@@ -885,6 +900,8 @@ const Field = memo(function Field({
           shared={shared}
           value={String(value)}
           suggestions={suggesting.list}
+          /* A held box is not typed into, so it says nothing about a list it cannot use. */
+          unreadable={locked ? undefined : suggesting.unreadable}
           onType={suggesting.onType}
           onChoose={suggesting.onChoose}
         />
@@ -1368,7 +1385,8 @@ export function FormRenderer({
     }
 
     return {
-      list,
+      list: Array.isArray(list) ? list : [],
+      unreadable: Array.isArray(list) ? undefined : list,
       onType: (next: string) => {
         /* The link breaks the moment the name is edited (owner, 23.08.2026):
            what was filled from the chosen entry is emptied and handed back, so a

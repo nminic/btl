@@ -37,8 +37,11 @@ import './GoingToEvent.css'
  * signed in whose fee is not standing; a moderator and the superadmin read the
  * list; and the switch is a member's in good standing, a moderator's included
  * where he races. Asked of `roles/activeMemberOrAdministration.ts`, the one home
- * of that question on the screen, and never of the rule the comments keep
- * (`useReadsComments`), which the owner left as it was.
+ * of that question on the screen. The comments under the event ask it too
+ * (`useReadsComments`): this said they kept the older rule, anybody signed in, which
+ * the owner had left as it was, until his choice of the same day that gave them the
+ * same reader (PDL P6, 03.10.2026, „Komentare vide aktivni članovi i administracija,
+ * isto kao najava dolaska").
  *
  * **THE SERVER KEEPS IT, AND THE SCREEN DRAWS ONLY WHAT THE SERVER SAYS.** Until
  * 03.10.2026 the switch wrote into this visit's session and nowhere else, and the

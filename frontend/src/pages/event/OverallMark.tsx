@@ -33,18 +33,31 @@ import './EventComments.css'
  * resolves into nothing moves the name of the race under the reader's eye.
  */
 export function OverallMark({ eventId }: { eventId: number }) {
-  const { locale, t } = useI18n()
   const reads = useReadsComments()
-  const state = combinePair(useComments(), useEvents())
 
-  /* Read out of the comments, so it goes where they go: only members see them
-     (owner, 11.08.2026), and a mark is what the comments add up to. A screen
-     and not a lock, for the reason written out under the comments themselves
-     (EventComments.tsx): the file is already in the browser, and the endpoint
-     that replaces it has to be the one that refuses. */
-  if (!reads) {
+  /* Read out of the comments, so it goes where they go: active members and the
+     administration see them (owner, 03.10.2026), and a mark is what the comments add
+     up to - PDL records it in the same entry, „pa deli njihovu sudbinu" (PDL P6,
+     11.08.2026, „Komentare vide samo prijavljeni članovi"). A screen and not a lock, for
+     the reason written out under the comments themselves (EventComments.tsx): the
+     endpoint is the one that refuses, 401 to a visitor and 404 to anybody else who does
+     not read.
+
+     Nothing is drawn while it is not known whether this reader reads, and nothing is
+     said if it never becomes known: this stands in the head of the page, where a box
+     that resolves into nothing moves the name of the race under the reader's eye. The
+     comments are not asked for either, for a reader who is not drawn the figure. */
+  if (reads.status !== 'ready' || !reads.data) {
     return null
   }
+
+  return <TheMark eventId={eventId} />
+}
+
+/** The figure itself, for somebody who reads the comments it is worked out of. */
+function TheMark({ eventId }: { eventId: number }) {
+  const { locale, t } = useI18n()
+  const state = combinePair(useComments(), useEvents())
 
   /* Nothing is drawn while it is on its way, and nothing is said if it never
      arrives. This stands in the head of the page: a box that resolves into
