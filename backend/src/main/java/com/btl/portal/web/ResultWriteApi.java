@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.domain.event.WhatARaceCarries;
+import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.mail.WhatTheMessageSays.Said;
@@ -108,9 +109,11 @@ import java.util.Optional;
  *
  * <p><b>WHAT THE FORM ASKS FOR IS NOT WHAT THE RACE ANSWERS FOR, AND A CORRECTION ASKS
  * THE RACE THE SAME QUESTION A FRESH REPORT DOES.</b> Which figures a race fixes depends
- * on its kind, and {@link #figuresOf} is the one place that decides it - called from both
- * writers rather than boxed by each in its own words, so they cannot come to answer
- * „whose figure is this" two different ways. A race of a LENGTH fixes the distance, the
+ * on its kind, and {@link WhatARaceCarries#figuresOf} is the one place that decides it -
+ * called from both writers here rather than boxed by each in its own words, so they cannot
+ * come to answer „whose figure is this" two different ways. The moderator's approval asks
+ * it too, and so does the queue that shows him what an approval would count, which is why
+ * it lives beside the race and not in this class. A race of a LENGTH fixes the distance, the
  * climb and the fall; a race to a LIMIT fixes the time, „jer je zadato trkom" (owner,
  * 29.08.2026); a FREE race fixes neither - the split {@code pages/event/reportedResult.ts}
  * already makes. PDL, owner, 03.08.2026: „Duzina, uspon i spust se ne unose, nego se
@@ -345,8 +348,8 @@ class ResultWriteApi {
 	 * own to fall back on - the picture is deleted on decision (ADL A12) and the link was
 	 * the moderator's to read at the time.
 	 *
-	 * <p><b>The four figures go through {@link #figuresOf}</b>, the very function
-	 * {@link #fromTheCalendar} calls, so which of them is the member's to correct still
+	 * <p><b>The four figures go through {@link WhatARaceCarries#figuresOf}</b>, the very
+	 * function {@link #fromTheCalendar} calls, so which of them is the member's to correct still
 	 * depends on what the race fixes (see the class note) - a correction does not get a
 	 * second, looser answer to that question just for being a correction.
 	 */
@@ -382,8 +385,8 @@ class ResultWriteApi {
 		   deleted out from under it and `orElseThrow` never actually throws. */
 		Counted before = standing.get();
 		TheRace race = raceOf(before.raceId()).orElseThrow();
-		Figures figures = figuresOf(race, typed.distanceKm(), typed.ascentM(), typed.descentM(),
-				typed.seconds());
+		Figures figures = WhatARaceCarries.figuresOf(race.fixes(), new Figures(typed.distanceKm(),
+				typed.ascentM(), typed.descentM(), typed.seconds()));
 
 		if (notADistance(figures.distanceKm()) || notAClimb(figures.ascentM())
 				|| notAClimb(figures.descentM()) || notATime(figures.seconds())) {
@@ -492,8 +495,8 @@ class ResultWriteApi {
 			return no(THE_RACE_HAS_NOT_BEEN_RUN);
 		}
 
-		Figures figures = figuresOf(race, typed.distanceKm(), typed.ascentM(), typed.descentM(),
-				typed.seconds());
+		Figures figures = WhatARaceCarries.figuresOf(race.fixes(), new Figures(typed.distanceKm(),
+				typed.ascentM(), typed.descentM(), typed.seconds()));
 
 		if (notADistance(figures.distanceKm()) || notAClimb(figures.ascentM())
 				|| notAClimb(figures.descentM()) || notATime(figures.seconds())) {
@@ -508,43 +511,13 @@ class ResultWriteApi {
 				typed, race.name());
 	}
 
-	/**
-	 * WHICH FOUR FIGURES A RUN CARRIES, ASKED OF THE RACE EXACTLY ONCE FOR BOTH WRITERS.
-	 *
-	 * <p>{@link #fromTheCalendar} and {@link #change} both call this rather than each
-	 * boxing the race's side by hand, which is the whole of what the class note above
-	 * means by „they cannot come to answer the question two different ways": one function
-	 * decides it now, not two that could drift apart. A race of a length gives the three
-	 * it measured; a race to a limit gives the time, because on such a race the time is
-	 * the same for everyone who finished and it is what the formula scores it against; a
-	 * free race gives neither, so every figure below is the request's own (owner,
-	 * 29.08.2026).
-	 *
-	 * <p><b>THE RACE'S SIDE IS BOXED BY HAND, AND THAT IS NOT STYLE - IT WAS A 500.</b>
-	 * Written {@code ofALength ? race.ascentM() : typedAscentM}, with an {@code int} on
-	 * one side and an {@code Integer} on the other, Java promotes: the conditional UNBOXES
-	 * the typed value before anything looks at it, so a form with no climb in it threw a
-	 * NullPointerException here, before the guard after this call could answer 400.
-	 * Measured on three of the four figures at once
-	 * ({@code everyWayARunOnAFreeRaceCanFailToHoldTogether}); the length was safe only
-	 * because both of its sides are already {@code BigDecimal}.
+	/*
+	 * WHICH FOUR FIGURES A RUN CARRIES stood here as a private function from the day this class
+	 * was written until the moderator's approval and the queue that shows it came to need the
+	 * same answer. It moved rather than being copied - three copies of „whose figure is this"
+	 * would be free to disagree - and it lives beside the race now, with its note about why the
+	 * race's side is boxed by hand: {@link WhatARaceCarries#figuresOf}.
 	 */
-	private static Figures figuresOf(TheRace race, BigDecimal typedDistanceKm,
-			Integer typedAscentM, Integer typedDescentM, Integer typedSeconds) {
-		boolean ofALength = WhatARaceCarries.OF_A_LENGTH.equals(race.kind());
-		boolean toALimit = WhatARaceCarries.TO_A_LIMIT.equals(race.kind());
-
-		return new Figures(
-				ofALength ? race.distanceKm() : typedDistanceKm,
-				ofALength ? Integer.valueOf(race.ascentM()) : typedAscentM,
-				ofALength ? Integer.valueOf(race.descentM()) : typedDescentM,
-				toALimit ? Integer.valueOf(race.limitSeconds()) : typedSeconds);
-	}
-
-	/** The four figures {@link #figuresOf} decides between the race and the request. */
-	private record Figures(BigDecimal distanceKm, Integer ascentM, Integer descentM,
-			Integer seconds) {
-	}
 
 	/**
 	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD: THE MEMBER ANSWERS FOR ALL OF IT.
@@ -848,8 +821,13 @@ class ResultWriteApi {
 	 * the portal would carry a length nobody entered. {@link WhatARaceCarries} already answers
 	 * that question for {@code race.distance_km} - the same scale since V31 - so it is asked
 	 * there rather than counted again here.
+	 *
+	 * <p><b>Package-private and not private, together with the two below</b>, because a
+	 * moderator who puts his own figures in place of the runner's at approval
+	 * ({@link VerificationWriteApi}) writes into the same columns under the same checks, and a
+	 * second copy of these three would be a second answer to „is this a run".
 	 */
-	private static boolean notADistance(BigDecimal value) {
+	static boolean notADistance(BigDecimal value) {
 		return value == null || value.signum() <= 0
 				|| value.compareTo(WhatARaceCarries.mostADistanceCanBe()) > 0
 				|| !WhatARaceCarries.distanceIsKeptExactly(value);
@@ -857,13 +835,13 @@ class ResultWriteApi {
 
 	/** {@code result_submission_ascent_not_negative} and its twin: nought is a real climb and
 	 *  a flat race has one, so this refuses only what is missing or below it. */
-	private static boolean notAClimb(Integer value) {
+	static boolean notAClimb(Integer value) {
 		return value == null || value < 0;
 	}
 
 	/** {@code result_submission_seconds_positive}, and it is NOT the same rule as the climb
 	 *  above: nought metres of ascent is a flat race, and nought seconds is not a run. */
-	private static boolean notATime(Integer value) {
+	static boolean notATime(Integer value) {
 		return value == null || value <= 0;
 	}
 
@@ -924,5 +902,10 @@ class ResultWriteApi {
 	/** A race as the calendar holds it, with everything it might answer for. */
 	private record TheRace(long id, String name, LocalDate day, String kind, int limitSeconds,
 			BigDecimal distanceKm, int ascentM, int descentM) {
+
+		/** The part of it {@link WhatARaceCarries#figuresOf} asks about. */
+		WhatARaceCarries.ARace fixes() {
+			return new WhatARaceCarries.ARace(kind, distanceKm, ascentM, descentM, limitSeconds);
+		}
 	}
 }
