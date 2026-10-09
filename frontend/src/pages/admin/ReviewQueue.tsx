@@ -658,8 +658,10 @@ function AmendPanel({
           aria-describedby={waits ? 'amend-waits' : undefined}
           onClick={() => {
             /* Reachable means pressable, as everywhere else on this portal, so the refusal
-               lives here as well as on the attribute above. */
-            if (waits || deciding) {
+               lives here as well as on the attribute above. A decision already out is held back
+               by `decide`, as it is for every other button of this queue, and not here a
+               second time. */
+            if (waits) {
               return
             }
 

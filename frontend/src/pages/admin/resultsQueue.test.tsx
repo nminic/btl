@@ -289,7 +289,11 @@ describe('the queue of results as the server answers it', () => {
       openTheQueue()
 
       expect((await rowOf('000030')).getByText(sr.admin.corrected)).toBeVisible()
-      expect((await rowOf(RUNNER)).queryByText(sr.admin.corrected)).toBeNull()
+      /* And on no other row, the first report of a run on a free race among them: the correction
+         is on a free race too, so a mark read off the kind of race would land there as well. */
+      for (const member of [RUNNER, '000020', '000040', '000050']) {
+        expect((await rowOf(member)).queryByText(sr.admin.corrected)).toBeNull()
+      }
     } finally {
       server.stop()
     }
@@ -446,6 +450,81 @@ describe('a decision on one run', () => {
 
       await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
       expect(approve).toHaveAttribute('aria-disabled', 'true')
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('says on every button that would send another decision that it cannot act while one is out', async () => {
+    /* One decision out at a time over the whole tab. A box still opens, because opening one
+       decides nothing; what it would send says it cannot act and sends nothing (`decide`), and
+       the one decision for the whole queue does not even ask. Counted once the decision that
+       was out has come back, because a request leaves a few turns after its press and one
+       counted at once would read as one never sent. */
+    const user = setupUser()
+    const ask = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    let release: (answer: Response) => void = () => undefined
+    const held = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    const server = serverWith(RUNS, (id) => (id === '701' ? held : taken()))
+
+    try {
+      openTheQueue()
+
+      await user.click((await rowOf('000020')).getByRole('button', { name: sr.review.sendBack }))
+      await user.type(screen.getByLabelText(sr.review.reason), 'Vreme se ne poklapa.')
+      await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+      await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
+
+      const sweep = screen.getByRole('button', { name: 'Odobri sve' })
+      const refuse = screen.getByRole('button', { name: sr.review.confirmSendBack })
+
+      expect(sweep).toHaveAttribute('aria-disabled', 'true')
+      expect(refuse).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(sweep)
+      await user.click(refuse)
+
+      expect(ask).not.toHaveBeenCalled()
+
+      await user.click((await rowOf('000030')).getByRole('button', { name: sr.review.amend }))
+
+      const save = within(screen.getByRole('group', { name: sr.review.amendTitle })).getByRole('button', {
+        name: sr.review.amendSave,
+      })
+
+      expect(save).toHaveAttribute('aria-disabled', 'true')
+
+      await user.click(save)
+
+      release(taken())
+      await waitFor(() => expect(screen.queryByText(RUNNER)).toBeNull())
+
+      expect(decisionsIn(server.asked).map((one) => one.path)).toEqual(['/api/verification/701/decision'])
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('takes the route’s last sentence off the screen once the route takes a decision', async () => {
+    /* The shape the queue of cards has (`PendingQueue.tsx`): the sentence is about the last press,
+       so the next press that goes through takes it away. */
+    const user = setupUser()
+    const server = serverWith(RUNS, (id) => (id === '702' ? refused('O stavci je već odlučeno.', 409) : taken()))
+
+    try {
+      openTheQueue()
+
+      await user.click((await rowOf('000020')).getByRole('button', { name: sr.review.approve }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+
+      await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+      await waitFor(() => expect(screen.queryByText(RUNNER)).toBeNull())
+
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect(await rowOf('000020')).toBeDefined()
     } finally {
       server.stop()
     }
