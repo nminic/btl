@@ -113,16 +113,26 @@ const LONG = anEvent(
     .slice(0, LONGEST),
 )
 const NEXT = anEvent(2, 'komsija', 'Komsijska trka')
-const FITS = anEvent(3, 'staje', 'Jesenji kros 2026')
+/* Longer than its first day and well inside its bar of three at every width here, with room either
+   way for a font other than this machine's: measured 09.10.2026, the words are 121px at the
+   browser's own text, at least 49px short of the room the bar gives them (780px) and at least 39px
+   past the end of the first day (1440px). */
+const FITS = anEvent(3, 'staje', 'Jesenji kros oko jezera')
 const ACROSS = anEvent(4, 'preko-vikenda', 'Vikend trka')
 const FOUR = anEvent(5, 'cetiri-dana', 'Cetvorodnevna')
 
 const ANSWERS = {
   '/api/events': [LONG, NEXT, FITS, ACROSS, FOUR],
   '/api/races': [
-    /* Monday and Tuesday: a bar of two days, ending on the 6th. */
+    /* Monday and Tuesday: a bar of two days, ending on the 6th, with all five lengths. Its last
+       piece then draws the widest row of dots there is, the one the name leaves room for
+       (`--length-dots-row`), so „stops where the dots begin" is met to the pixel. With two dots
+       the name had 77px to spare at 200% text, and a room written in pixels went unseen. */
     aRace(11, 1, 5),
-    aRace(12, 1, 6, 'half'),
+    aRace(12, 1, 5, 'half'),
+    aRace(13, 1, 5, 'long'),
+    aRace(14, 1, 6, 'marathon'),
+    aRace(15, 1, 6, 'ultra'),
     /* Wednesday: the day after the bar ends, in the same row, so a name that runs even one day
        too far is over this tile (one day too many measured 8,94px into the next tile, round 5). */
     aRace(21, 2, 7),
@@ -219,13 +229,24 @@ const theBars = ({ long, fits, next }: { long: string; fits: string; next: strin
     return null
   }
 
+  /* Where the WORDS of the name that fits end, which is not where its box ends: the box is as wide
+     as the bar allows whatever it holds. */
+  const words = document.createRange()
+
+  words.selectNodeContents(fitsName)
+
   return {
     opening: box(opening),
     second: box(second),
     name: { ...box(name), scrollWidth: name.scrollWidth },
     dots: box(dots),
     fitsFirst: box(fitsFirst),
-    fitsName: { ...box(fitsName), scrollWidth: fitsName.scrollWidth, clientWidth: fitsName.clientWidth },
+    fitsName: {
+      ...box(fitsName),
+      scrollWidth: fitsName.scrollWidth,
+      clientWidth: fitsName.clientWidth,
+      wordsEnd: words.getBoundingClientRect().right,
+    },
     next: box(nextTile),
   }
 }
@@ -291,7 +312,7 @@ for (const at of GRID) {
     )
 
     expect(seen.fitsName.scrollWidth, 'a name that fits its bar is not cut').toBeLessThanOrEqual(seen.fitsName.clientWidth)
-    expect(seen.fitsName.right, 'and it runs on past its first day').toBeGreaterThan(seen.fitsFirst.right)
+    expect(seen.fitsName.wordsEnd, 'and its words run on past its first day').toBeGreaterThan(seen.fitsFirst.right)
 
     /* Over its own pieces and not under them: a point of the name inside the second day is the
        name, and not the ground of the piece drawn after it. */
