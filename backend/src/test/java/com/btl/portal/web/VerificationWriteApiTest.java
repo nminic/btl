@@ -1904,25 +1904,38 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * THE EVENT STANDS IN THE TOWN THE MEMBER TYPED WHERE HE TYPED ONE, WITH ITS COUNTRY.
+	 * THE EVENT STANDS IN THE TOWN THE MEMBER TYPED WHERE HE TYPED ONE, WITH ITS COUNTRY, AND A
+	 * RACE OF A LENGTH IS MADE OF THE FIGURES THE MODERATOR SET.
 	 *
 	 * <p>PDL P9, 30.08.2026, in the record's wording: „Događaj u kalendaru nosi grad i državu, a
 	 * forma ih nije tražila, pa bi događaj napravljen pri verifikaciji ostao bez mesta." The other
-	 * way a town is held, beside the codebook's above; neither is the member's own.
+	 * way a town is held, beside the codebook's above; neither is the member's own, and the
+	 * country is not his town's either (his stands in the codebook, in another country).
+	 *
+	 * <p><b>The moderator sets all four figures, each different from what was sent</b>, so a race
+	 * of a length made of the sent copy - its distance, its climb or its fall - is a different row
+	 * from the one made of his.
 	 */
 	@Test
-	void theEventStandsInTheTownTheMemberTypedWithItsCountry() throws Exception {
+	void theEventStandsInTheTownTheMemberTypedAndTheRaceIsMadeOfTheModeratorsFigures()
+			throws Exception {
 		long run = describedRun(ANA, "Gradska trka", "length", THE_DAY_HE_RAN, null,
 				"Bela Palanka", "RS", "10.0000", 40, 35, 2900);
 
 		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Belopalanačka trka",
-				"Belopalanačka trka", "length", null)).getStatus()).isEqualTo(200);
+				"Belopalanačka trka", "length", "{\"distanceKm\":10.4,\"ascentM\":55,"
+						+ "\"descentM\":45,\"seconds\":2950}")).getStatus()).isEqualTo(200);
 
 		AnEvent event = eventAt("belopalanacka-trka-2027").orElseThrow();
 
 		assertThat(event.placeId()).isNull();
 		assertThat(event.city()).isEqualTo("Bela Palanka");
 		assertThat(event.countryId()).isEqualTo(countryCoded("RS"));
+
+		assertThat(racesOf(event.id()).get(0).fixes())
+				.as("the race was made of the figures the member sent and not of the moderator's")
+				.isEqualTo(fourFigures("10.4", 55, 45, 0));
+		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("10.4", 55, 45, 2950));
 	}
 
 	/**
@@ -1982,16 +1995,17 @@ class VerificationWriteApiTest {
 	 * wording the choice „popuni i zaključa ono što trka zadaje".
 	 *
 	 * <p><b>Three races carry the name „Desetka" and the one chosen is the middle one by key</b>,
-	 * so a race found by its name - first or last - is a different row. <b>The member's day, his
-	 * distance, climb and fall are all different from the race's</b>, so a result written from
-	 * any of them is a different row too; only his time is his.
+	 * so a race found by its name - first or last - is a different row; <b>and the last one is run
+	 * on the same Saturday</b>, so a race found by its day is a different row as well. <b>The
+	 * member's day, his distance, climb and fall are all different from the race's</b>, so a
+	 * result written from any of them is a different row too; only his time is his.
 	 */
 	@Test
 	void aRunIsCountedOnTheRaceOfTheCalendarChosenByItsKeyAndTheRaceAnswersForWhatItFixes()
 			throws Exception {
 		long chosen = race(theWeekendEvent, "Desetka", SATURDAY, "10.5000", 70, 40);
-		race(event("treci-dogadjaj-r3", "Treći događaj", LocalDate.of(2027, 3, 14)), "Desetka",
-				LocalDate.of(2027, 3, 14), "9.8000", 20, 20);
+		race(event("treci-dogadjaj-r3", "Treći događaj", SATURDAY), "Desetka", SATURDAY, "9.8000",
+				20, 20);
 
 		long run = describedRun(ANA, "Desetka u parku", "free", LocalDate.of(2027, 3, 8),
 				"11.0000", 90, 80, 2500);
