@@ -76,7 +76,7 @@ import java.util.Optional;
  * ćeliji, jer iza njega ne stoji ništa") without speaking for the seat, and the seat is served to
  * the administration in four shapes, one of which - somebody who holds it with no member number -
  * could not be sent back at all. Absent, empty and a run of spaces are one answer here, the same
- * three shapes every route on this server folds into one.
+ * three shapes {@link TeamWriteApi} folds into one for its own fields.
  * </ul>
  *
  * <p><b>WHAT IS NOT CHANGED, AND THIS PARAGRAPH IS MY REASONING OVER THE SCHEMA, NOT A DECISION
