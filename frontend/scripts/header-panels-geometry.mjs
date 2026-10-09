@@ -25,12 +25,14 @@
  *     VITE_DEV_TOOLS=1 npx vite build --outDir dist/qa --emptyOutDir
  *     node scripts/header-panels-geometry.mjs --dist dist/qa
  *
- * `--table` prints every measurement and not only the ones that failed; `--widths 360,390`
- * and `--states messages,language` (names, as printed) narrow a run while a stylesheet is
- * being worked on. The exit code is 0 where every panel is where it should be, 1 where one
- * is not, and 2 where nothing could be measured, which is not a pass: a browser that did not
- * start, a portal that did not draw the signed in header, a text size the browser did not
- * take.
+ * `--table` prints every measurement and not only the ones that failed; `--widths 360,390`,
+ * `--texts 100` (or 200) and `--states messages,language` (names, as printed) narrow a run while
+ * a stylesheet is being worked on, `--widths 320-1300:5` is every fifth width from 320 to 1300 (a
+ * sweep, for „on every width" asked of more than seven of them), and `--shots <folder>` keeps a
+ * picture of the top of the page for each measurement. The exit code is 0 where every panel is
+ * where it should be, 1 where one is not, and 2 where nothing could be measured, which is not a
+ * pass: a browser that did not start, a portal that did not draw the header of the person it was
+ * asked about, a text size the browser did not take.
  *
  * Chrome is taken from `CHROME_PATH`, falling back to the usual Windows install; on Linux
  * and macOS that variable has to be given. No port is fixed: Chrome is asked for any free
@@ -48,11 +50,23 @@
  *   so there is nothing to scroll and the screen is simply wider than the one asked for;
  * - every control in the panel can be reached: scrolled into view, the point at its
  *   centre is on the screen and is the control and not something laid over it;
- * - under the width where the navigation unfolds (`51.24875em`) the panel hangs from the
- *   gutter at the right edge of the bar, is no wider than its own 20rem or 11rem and no
- *   wider than the bar allows, and stands one step under the button that opened it;
- * - from that width up it is where it always was: its right edge is the right edge of its
- *   own button.
+ * - under the width where the navigation unfolds (`51.24875em`) the messages and the account
+ *   panel hang from the gutter at the right edge of the bar, are no wider than their own 20rem
+ *   and no wider than the bar allows, and stand one step under the button that opened them;
+ * - under that width **the language menu hangs from its own button** (owner, 03.10.2026, `ADL.md`
+ *   A63: it opens under it): its right edge is the right edge of the button, or, where that
+ *   would begin it left of the gutter, it begins AT the gutter. One formula for both, its left
+ *   edge being the gutter or the button's right edge less its own width, whichever is further
+ *   right, and with it both ends of the menu lie inside the gutters of the bar, the whole of the
+ *   button lies over it, and it stands one step under the button;
+ * - from that width up they are where they always were: the right edge of each is the right edge
+ *   of its own button, and the language menu stands one step under its button there as well.
+ *
+ * **Two headers.** A member's, with the inbox and the picture where the sign-in links stand for a
+ * visitor, and a visitor's, which `GET /api/me` answering 401 draws (state `visitor-language`, the
+ * only panel that header has). They wrap differently: at 768 a member's button for the language
+ * stands at 464px and a visitor's at 16px, and most of the distances the owner decided on were
+ * measured on the second. This file measured the first alone until 09.10.2026.
  *
  * **The states of the inbox, because the panel is drawn for all of them:** with messages,
  * empty, the list refused by the server (500), and the list that is never answered. The
@@ -65,13 +79,17 @@
  * production header was still cut off; 768; 819 and 820, which are either side of the width
  * the rules change at; and 1280. Phones and tablets are emulated as such (`mobile`), so the
  * scrollbar is drawn over the page as it is on a telephone and `innerWidth` is the width
- * asked for (PDL P24, 23.08.2026); 1280 is a desktop and keeps its scrollbar.
+ * asked for (PDL P24, 23.08.2026); 1280 is a desktop and keeps its scrollbar. All of them at the
+ * text the browser starts with and at 200%.
  *
  * **Text at 200%** is not done by setting `font-size` on the root, which doubles every
  * `rem` and leaves the `em` of a media query where it was (ADL A34). It is done the way a
  * reader does it, through the browser's own default font size, which the profile of a
  * second browser is given before it starts; and the run checks that a media query in `em`
- * moved with it before it trusts a single number from it.
+ * moved with it before it trusts a single number from it. **At every width, and not at 360
+ * alone** (until 09.10.2026): at 200% the rules for a narrow screen apply up to 1639px, so a
+ * desktop at 1280 is a narrow screen of its own, with the row of tools wrapped against the left
+ * edge, and the language menu stood 552px from its button there.
  *
  * **WHAT THIS DOES NOT HOLD, written here as a boundary and not left to be found, with the
  * numbers it was measured at on 02.10.2026 (Chrome, `origin/main` a65f7452), so that the
@@ -99,10 +117,37 @@
  *   where the row of tools wraps and the button stands at 447px, the same card begins 103.8px
  *   off the left edge at 820; on the production build it is whole at every width. Not asked
  *   here, because the portal does not write such a subject and the server does not forbid one.
- * - *The panels no longer stand under their own button between 690 and 820:* they hang from
- *   the gutter at the right edge of the bar, which is the choice `forms/FieldHint.css` made
- *   for the same fault. The language menu is the one a reader sees move, 28px to the right of
- *   its button at 768. Not asked here either, since it is a decision and not a fault.
+ * - *The messages and the account panel no longer stand under their own button between 690 and
+ *   820:* they hang from the gutter at the right edge of the bar, which is the choice
+ *   `forms/FieldHint.css` made for the same fault. Not asked here, since it is a decision and not
+ *   a fault, and it is the owner's to change: on 03.10.2026 he changed it for the language menu
+ *   alone (ADL A63), which is asked, and measured in the next item.
+ * - *The language menu, sideways distance between it and its button, before and after the
+ *   change of 09.10.2026* (Chrome 154, `origin/main` 45e3a86a, production build, a member's
+ *   header and a visitor's). Before: 67.7 at 360 and 97.7 at 390 in both; 347.7 at 640 in both;
+ *   27.7 for a member and 475.7 for a visitor at 768; 27.7 and 526.7 at 819; at 200% text none at
+ *   360 and 390 (the menu was as wide as the bar) and 92.4, 220.4, 271.4 and 272.4 at 640, 768, 819
+ *   and 820 in both, and 552.4 at 1280 in both. The QA build, which draws the two development
+ *   controls first, has other distances: 67.7 and 97.7 at 360 and 390, 49.7, 177.7 and 228.7 at
+ *   640, 768 and 819, and at 200% 92.4 at 640 and none elsewhere (at 768 and over the menu already
+ *   covered the button, without hanging from it). After: none, at any width, in either header,
+ *   in either build, at either size of text, and the left edge of the menu is the gutter (16 at 360,
+ *   390 and 640, and for a visitor at 768 and 819, production) or the right edge of its button less
+ *   its own 176 (372.3 at 768 and 423.3 at 819 for a member, production). From 820 up, at the text
+ *   the browser starts with, nothing moved. A sweep of every fifth width from 320 to 1300
+ *   (`--widths 320-1300:5`, both language menus, both sizes of text: 788 measurements) holds all
+ *   788 on the production build and all 788 on the QA build; over `origin/main` it fails 554 of
+ *   788 on the production build, every one of them for not being under its button and none for
+ *   leaving the screen.
+ * - *A browser that does not know anchor positioning* (older than Chrome 125, Safari 26 or
+ *   Firefox 147) reads none of the block the menu is hung from, and keeps the shape of the repair of
+ *   02.10.2026: whole on the screen and far from its button. The Chrome this drives has the feature
+ *   and has no flag that turns it off (measured: `--disable-blink-features=CSSAnchorPositioning`
+ *   changes nothing), so that shape is measured by a build whose `@supports` asks for something no
+ *   browser has. Of the 32 panels it holds there (the messages, the account and the language menus
+ *   of both headers, at 360, 768, 819 and 1280 and at both sizes of text) 12 fail, every one a
+ *   language menu and only for not being under its button; none runs off an edge, scrolls the page
+ *   sideways or cannot be reached.
  * - *Which panel is on top of which, and what is under the header,* when two are open or when
  *   the navigation is: the panels close on a press outside them, so two are never open, and
  *   the navigation is not measured with a panel over it.
@@ -127,8 +172,11 @@ const SCREEN = '/sr/uslovi-koriscenja'
 const SLACK = 0.5
 /** The width the rules change at, in pixels at the browser's own 16px: `51.25em`. */
 const WHERE_THE_NAVIGATION_UNFOLDS = 820
-/** What the stylesheet says in `em`, at the browser's own default size. */
-const PROBE = '(min-width: 15em)'
+/** A query in `em` that tells the two text sizes apart at THIS width: a third of the way
+ *  under the width at the browser's own 16px (true) and a third of the way over it at 32px
+ *  (false), so one number cannot be read as the other. A fixed one told them apart at 360
+ *  only, which was the only width the enlarged text was ever read at. */
+const probeAt = (width) => `(min-width: ${width / 24}em)`
 
 /* ------------------------------------------------------------------ command line */
 
@@ -151,12 +199,43 @@ for (let at = 2; at < process.argv.length; at += 1) {
 
 const DIST = resolve(String(flags.get('dist') ?? 'dist'))
 const TABLE = flags.get('table') === true
+/** `--shots <folder>` keeps a picture of the top of the page for every measurement, panel open, as
+ *  `<width>-<text>-<state>.png`: the numbers say where a panel stands and a picture says whether it
+ *  looks like a menu under its button. Nothing is held on it. */
+const SHOTS = typeof flags.get('shots') === 'string' ? resolve(String(flags.get('shots'))) : null
 
 const ALL_WIDTHS = [360, 390, 640, 768, 819, 820, 1280]
+
+/** `--widths 360,768` names widths, and `--widths 320-1300:5` is every fifth from 320 to 1300: a
+ *  sweep, for the question „on every width" asked of more than the seven the run reads by default.
+ *  The two can be mixed, `--widths 360,500-700:10`. A word that is neither is `NaN`, which stops the
+ *  run before it starts. */
 const widths =
   typeof flags.get('widths') === 'string'
-    ? String(flags.get('widths')).split(',').map(Number)
+    ? String(flags.get('widths'))
+        .split(',')
+        .flatMap((word) => {
+          const range = /^(\d+)-(\d+):(\d+)$/.exec(word)
+
+          if (range === null) {
+            return [Number(word)]
+          }
+
+          const [from, to, step] = [Number(range[1]), Number(range[2]), Number(range[3])]
+
+          return step > 0 && from <= to
+            ? Array.from({ length: Math.floor((to - from) / step) + 1 }, (_, at) => from + at * step)
+            : [Number.NaN]
+        })
     : ALL_WIDTHS
+
+/** The sizes of text a run reads every width at, in per cent of the browser's own: both by
+ *  default, and `--texts 100` or `--texts 200` for one of them while a stylesheet is being
+ *  worked on. */
+const texts =
+  typeof flags.get('texts') === 'string'
+    ? String(flags.get('texts')).split(',').map(Number)
+    : [100, 200]
 
 /* ------------------------------------------------------------------ what the canned server says */
 
@@ -169,6 +248,13 @@ const widths =
  * These are two facts with a second home, and they are checked rather than trusted: a
  * portal that no longer signs in on these answers draws no inbox button, and this stops
  * with exit code 2 saying so instead of reporting on a header it did not see.
+ *
+ * **And the header of somebody who is NOT signed in is the other half of the same ask**
+ * (it was not measured until 09.10.2026, and most of the distances the owner decided on
+ * on 03.10.2026 were measured there): `GET /api/me` answers 401, which is what the server
+ * says to a visitor (`ADL.md` A8), and the header then draws the sign-in and join links
+ * where the inbox and the picture stand. The row of tools wraps somewhere else for it, and
+ * the language menu is the only panel it has.
  */
 const MEMBER = { role: 'competitor', account: 41, member: { memberNumber: '000041' } }
 
@@ -201,16 +287,26 @@ const MESSAGES = [
 const ONE_WORD = 'Dugackareckabezrazmakazalomljenje0123456789abcdefghijklmnop'
 
 /** What the server says to `GET /api/inbox` in each state the panel is drawn for, and the
- *  states themselves, each with the panel it opens. */
+ *  states themselves, each with the panel it opens and whose header it is (`session`). */
 const STATES = [
-  { id: 'messages', inbox: 'served', opens: 'messages' },
-  { id: 'messages-empty', inbox: 'empty', opens: 'messages' },
-  { id: 'messages-refused', inbox: 'refused', opens: 'messages' },
-  { id: 'messages-silent', inbox: 'silent', opens: 'messages' },
-  { id: 'messages-one-word', inbox: 'one-word', opens: 'messages', grows: true, info: true },
-  { id: 'account', inbox: 'served', opens: 'account' },
-  { id: 'language', inbox: 'served', opens: 'language' },
+  { id: 'messages', session: 'member', inbox: 'served', opens: 'messages' },
+  { id: 'messages-empty', session: 'member', inbox: 'empty', opens: 'messages' },
+  { id: 'messages-refused', session: 'member', inbox: 'refused', opens: 'messages' },
+  { id: 'messages-silent', session: 'member', inbox: 'silent', opens: 'messages' },
+  { id: 'messages-one-word', session: 'member', inbox: 'one-word', opens: 'messages', grows: true, info: true },
+  { id: 'account', session: 'member', inbox: 'served', opens: 'account' },
+  { id: 'language', session: 'member', inbox: 'served', opens: 'language' },
+  { id: 'visitor-language', session: 'visitor', inbox: 'served', opens: 'language' },
 ]
+
+/** What the header of each session must have drawn before anything is read, so that a run
+ *  never reports on the header of the other one: the picture's own button for a member, and
+ *  the link that signs in for a visitor. The header is drawn as a visitor's first and changes
+ *  when `GET /api/me` is answered, and the row of tools stands somewhere else in each. */
+const DRAWN = {
+  member: 'button[aria-controls="account-menu"]',
+  visitor: '.shell__tools a[href$="/prijava"]',
+}
 
 const PANELS = {
   messages: {
@@ -231,6 +327,7 @@ const PANELS = {
 const WIDEST_IN_REM = { messages: 20, account: 20, language: 11 }
 
 let inbox = 'served'
+let session = 'member'
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -259,18 +356,22 @@ const server = createServer((request, response) => {
 
     const [status, body] =
       url.pathname === '/api/me'
-        ? [200, MEMBER]
+        ? session === 'visitor'
+          ? [401, {}]
+          : [200, MEMBER]
         : url.pathname === '/api/inbox'
-          ? inbox === 'refused'
-            ? [500, {}]
-            : [
-                200,
-                inbox === 'empty'
-                  ? []
-                  : inbox === 'one-word'
-                    ? [message(10, ONE_WORD, '2027-03-15', false), ...MESSAGES]
-                    : MESSAGES,
-              ]
+          ? session === 'visitor'
+            ? [401, {}]
+            : inbox === 'refused'
+              ? [500, {}]
+              : [
+                  200,
+                  inbox === 'empty'
+                    ? []
+                    : inbox === 'one-word'
+                      ? [message(10, ONE_WORD, '2027-03-15', false), ...MESSAGES]
+                      : MESSAGES,
+                ]
           : url.pathname === '/api/competitors'
             ? [200, []]
             : [404, {}]
@@ -516,6 +617,10 @@ function askThePage(spec) {
     sideways: Math.max(0, root.scrollWidth - root.clientWidth),
     panel: box(panel),
     button: box(button),
+    /* The bar is as wide as the screen up to 1100px and centred beyond it, and the gutters a panel
+       is held to are the bar's and not the screen's: at 1280 with the text at 200% the narrow rules
+       apply on a screen wider than the bar. */
+    bar: box(document.querySelector('.shell__bar')),
   }
   const list = spec.list === null ? null : panel.querySelector(spec.list)
 
@@ -545,7 +650,9 @@ function askThePage(spec) {
 async function measure(browser, base, width, state, font) {
   inbox = state.inbox
 
-  const spec = { ...PANELS[state.opens], probe: PROBE, list: state.opens === 'messages' ? '.inbox__list' : null }
+  const spec = { ...PANELS[state.opens], probe: probeAt(width), list: state.opens === 'messages' ? '.inbox__list' : null }
+
+  session = state.session
 
   await browser.send('Emulation.setDeviceMetricsOverride', {
     width,
@@ -558,12 +665,12 @@ async function measure(browser, base, width, state, font) {
   try {
     await waitFor(
       browser,
-      `document.readyState === 'complete' && document.querySelector(${JSON.stringify(spec.button)}) !== null`,
-      `the ${state.opens} button on the signed in header at ${width}px`,
+      `document.readyState === 'complete' && document.querySelector(${JSON.stringify(spec.button)}) !== null && document.querySelector(${JSON.stringify(DRAWN[state.session])}) !== null`,
+      `the ${state.opens} button on the header of a ${state.session} at ${width}px`,
     )
   } catch (problem) {
     throw new Error(
-      `${problem.message}. The canned answers in this file no longer sign the portal in, or the header was changed; this is not a pass.`,
+      `${problem.message}. The canned answers in this file no longer draw the header of a ${state.session}, or the header was changed; this is not a pass.`,
     )
   }
 
@@ -591,6 +698,20 @@ async function measure(browser, base, width, state, font) {
     await browser.evaluate(`JSON.stringify((${askThePage.toString()})(${JSON.stringify(spec)}))`),
   )
 
+  if (SHOTS !== null) {
+    mkdirSync(SHOTS, { recursive: true })
+
+    const shot = await browser.send('Page.captureScreenshot', {
+      format: 'png',
+      clip: { x: 0, y: 0, width: asked.innerWidth, height: 520, scale: 1 },
+    })
+
+    writeFileSync(
+      join(SHOTS, `${width}-${font === null ? 100 : 200}-${state.id}.png`),
+      Buffer.from(shot.data, 'base64'),
+    )
+  }
+
   /* A page NARROWER than the screen it was asked for is the emulation not landing, and that
      is not a measurement. A page WIDER than it is the finding and not a fault of the run: a
      phone browser widens the layout viewport to take in whatever runs off the right edge (a
@@ -609,7 +730,7 @@ async function measure(browser, base, width, state, font) {
 
   if (asked.rootFont !== wantedFont || asked.probe !== (font === null)) {
     throw new Error(
-      `the browser draws the root at ${asked.rootFont}px and answers ${PROBE} with ${asked.probe}, where ${wantedFont}px and ${font === null} were asked for; a text size that did not take is not a measurement`,
+      `the browser draws the root at ${asked.rootFont}px and answers ${spec.probe} with ${asked.probe}, where ${wantedFont}px and ${font === null} were asked for; a text size that did not take is not a measurement`,
     )
   }
 
@@ -619,6 +740,7 @@ async function measure(browser, base, width, state, font) {
     screen: Math.min(width, asked.screen),
     widened: asked.innerWidth - width,
     state: state.id,
+    session: state.session,
     text: (wantedFont * 100) / 16,
     closed,
     opens: state.opens,
@@ -672,18 +794,49 @@ function judge(found) {
     )
   }
 
-  if (under) {
-    const edge = found.screen - found.gutter
+  /* Where the controls of the bar begin and end: the bar's own box less its gutters. The bar is the
+     screen up to 1100px and is centred beyond it, so these are not the edges of the screen at 1280
+     with the text at 200%, where the narrow rules apply on a screen wider than the bar. */
+  const gutterAtLeft = found.bar.left + found.gutter
+  const gutterAtRight = found.bar.right - found.gutter
 
-    if (Math.abs(found.panel.right - edge) > 1) {
+  if (under) {
+    if (found.opens === 'language') {
+      /* THE LANGUAGE MENU HANGS FROM ITS OWN BUTTON (owner, 03.10.2026, `ADL.md` A63): its right
+         edge is the right edge of the button, unless that would put its left edge past the gutter,
+         and then it begins at the gutter. One formula, so that the two cases are not two checks that
+         can each be satisfied by something else: the left edge is the gutter or the button's right
+         edge less the menu's own width, whichever is further right. Both ends of it lie inside the
+         bar's gutters and the button lies under it, which is what „directly under its button" and
+         „never off the screen" ask for together. */
+      const hangs = Math.max(gutterAtLeft, found.button.right - found.panel.width)
+
+      if (Math.abs(found.panel.left - hangs) > 1) {
+        wrong.push(
+          `is not under its button: its left edge is ${found.panel.left.toFixed(1)}, and hung from the right edge of the button (${found.button.right.toFixed(1)}) and no further left than the gutter (${gutterAtLeft.toFixed(1)}) it would be ${hangs.toFixed(1)}`,
+        )
+      }
+
+      if (found.panel.left < gutterAtLeft - 1 || found.panel.right > gutterAtRight + 1) {
+        wrong.push(
+          `is not inside the gutters of the bar: ${found.panel.left.toFixed(1)}..${found.panel.right.toFixed(1)} against ${gutterAtLeft.toFixed(1)}..${gutterAtRight.toFixed(1)}`,
+        )
+      }
+
+      if (found.panel.left > found.button.left + 1 || found.panel.right < found.button.right - 1) {
+        wrong.push(
+          `does not lie under the whole of its button: the menu is ${found.panel.left.toFixed(1)}..${found.panel.right.toFixed(1)} and the button ${found.button.left.toFixed(1)}..${found.button.right.toFixed(1)}`,
+        )
+      }
+    } else if (Math.abs(found.panel.right - gutterAtRight) > 1) {
       wrong.push(
-        `is not hung from the gutter at the right edge of the bar: its right edge is ${found.panel.right.toFixed(1)} and the gutter is at ${edge}`,
+        `is not hung from the gutter at the right edge of the bar: its right edge is ${found.panel.right.toFixed(1)} and the gutter is at ${gutterAtRight}`,
       )
     }
 
-    if (found.panel.width > found.screen - 2 * found.gutter + SLACK) {
+    if (found.panel.width > found.bar.width - 2 * found.gutter + SLACK) {
       wrong.push(
-        `is ${found.panel.width.toFixed(1)}px wide, wider than the bar allows (${found.screen - 2 * found.gutter}px)`,
+        `is ${found.panel.width.toFixed(1)}px wide, wider than the bar allows (${found.bar.width - 2 * found.gutter}px)`,
       )
     } else if (!found.grows && found.panel.width > WIDEST_IN_REM[found.opens] * rem + SLACK) {
       wrong.push(
@@ -696,14 +849,31 @@ function judge(found) {
         `stands ${(found.panel.top - found.button.bottom).toFixed(1)}px under its button and not one step (${rem / 2}px)`,
       )
     }
-  } else if (Math.abs(found.panel.right - found.button.right) > 1) {
-    wrong.push(
-      `no longer hangs from its own button: its right edge is ${found.panel.right.toFixed(1)} and the button's is ${found.button.right.toFixed(1)}`,
-    )
+  } else {
+    if (Math.abs(found.panel.right - found.button.right) > 1) {
+      wrong.push(
+        `no longer hangs from its own button: its right edge is ${found.panel.right.toFixed(1)} and the button's is ${found.button.right.toFixed(1)}`,
+      )
+    }
+
+    /* The language menu is under its button at the other widths too, and one step under it: held
+       here as well, since „on every width" is the whole of what the owner decided. */
+    if (found.opens === 'language' && Math.abs(found.panel.top - found.button.bottom - rem / 2) > 1) {
+      wrong.push(
+        `stands ${(found.panel.top - found.button.bottom).toFixed(1)}px under its button and not one step (${rem / 2}px)`,
+      )
+    }
   }
 
   return wrong
 }
+
+/** How far a panel stands from its button sideways, and nothing if the two overlap: the measure the
+ *  owner was shown when he decided (03.10.2026, `ADL.md` A63: between 348 and 552 pixels), printed
+ *  for every panel. It is held for the language menu (it is nothing there) and only printed for the
+ *  other two, which hang from the bar and are not asked to be under their buttons. */
+const awayFrom = (found) =>
+  Math.max(0, found.panel.left - found.button.right, found.button.left - found.panel.right)
 
 /* ------------------------------------------------------------------ run */
 
@@ -717,8 +887,13 @@ const wanted =
     ? STATES.filter((one) => String(flags.get('states')).split(',').includes(one.id))
     : STATES
 
-if (wanted.length === 0 || widths.some((one) => Number.isNaN(one))) {
-  console.error('--states and --widths name nothing this file measures')
+if (
+  wanted.length === 0 ||
+  widths.some((one) => Number.isNaN(one)) ||
+  texts.length === 0 ||
+  texts.some((one) => one !== 100 && one !== 200)
+) {
+  console.error('--states, --widths and --texts name nothing this file measures (texts are 100 and 200)')
   process.exit(2)
 }
 
@@ -740,33 +915,46 @@ function shutDown() {
   server.close()
 }
 
-const watchdog = setTimeout(() => {
-  console.error('watchdog: the run took longer than ten minutes, stopping it')
-  shutDown()
-  process.exit(2)
-}, 10 * 60 * 1000)
+/** Ten minutes, and more where the run is longer than the default one: forty measurements a minute
+ *  is what a busy machine gives, and a sweep of widths is a thousand of them. */
+const MINUTES = Math.max(10, Math.ceil((widths.length * wanted.length * texts.length) / 40))
+
+const watchdog = setTimeout(
+  () => {
+    console.error(`watchdog: the run took longer than ${MINUTES} minutes, stopping it`)
+    shutDown()
+    process.exit(2)
+  },
+  MINUTES * 60 * 1000,
+)
 
 try {
-  /* The browser as it comes for every width, and a second one with the text at 200% for the
-     narrowest. Enlarged text is only ever read at 360: that is the screen where it is
-     asked for, and a desktop at 200% text is a narrower screen already (ADL A34). */
-  const plain = await launch(null)
+  /* The browser as it comes for every width, and a second one with the text at 200% for every
+     width as well. Enlarged text was read at 360 alone until 09.10.2026, and that was too few:
+     at 200% the rules for a narrow screen apply up to 1639px (51.25em is 1640px at twice the
+     size, ADL A34), so a desktop at 1280 is a narrow screen of its own, and the owner's
+     552px was measured there. */
+  if (texts.includes(100)) {
+    const plain = await launch(null)
 
-  browsers.push(plain)
+    browsers.push(plain)
 
-  for (const width of widths) {
-    for (const state of wanted) {
-      measured.push(await measure(plain, base, width, state, null))
+    for (const width of widths) {
+      for (const state of wanted) {
+        measured.push(await measure(plain, base, width, state, null))
+      }
     }
   }
 
-  if (widths.includes(360)) {
+  if (texts.includes(200)) {
     const large = await launch(32)
 
     browsers.push(large)
 
-    for (const state of wanted) {
-      measured.push(await measure(large, base, 360, state, 32))
+    for (const width of widths) {
+      for (const state of wanted) {
+        measured.push(await measure(large, base, width, state, 32))
+      }
     }
   }
 } catch (problem) {
@@ -790,7 +978,7 @@ if (process.exitCode !== 2) {
 
     if (TABLE || wrong.length > 0) {
       console.log(
-        `${wrong.length > 0 ? 'FAIL' : found.info ? 'info' : 'ok  '} ${label.padEnd(34)} panel ${found.panel.left.toFixed(1)}..${found.panel.right.toFixed(1)} (${found.panel.width.toFixed(1)}) button ${found.button.left.toFixed(1)}..${found.button.right.toFixed(1)} gap ${(found.panel.top - found.button.bottom).toFixed(1)} sideways ${found.closed}/${found.sideways} reached ${found.reached}/${found.controls} clip ${found.clip}`,
+        `${wrong.length > 0 ? 'FAIL' : found.info ? 'info' : 'ok  '} ${label.padEnd(40)} panel ${found.panel.left.toFixed(1)}..${found.panel.right.toFixed(1)} (${found.panel.width.toFixed(1)}) button ${found.button.left.toFixed(1)}..${found.button.right.toFixed(1)} away ${awayFrom(found).toFixed(1)} gap ${(found.panel.top - found.button.bottom).toFixed(1)} sideways ${found.closed}/${found.sideways} reached ${found.reached}/${found.controls} clip ${found.clip}`,
       )
     }
 
