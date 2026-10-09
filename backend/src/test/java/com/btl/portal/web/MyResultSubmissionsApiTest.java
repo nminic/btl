@@ -42,7 +42,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * at a time:
  *
  * <ul>
- * <li><b>Whose.</b> Three members and the one asking is written third, and the OTHER member
+ * <li><b>Whose.</b> Four members and the one asking is written third, neither first nor last;
+ * a member written before him and one written after him have runs too, and the OTHER member
  * has a run in every state the asker has one in, on the very race the asker ran, so „mine" and
  * „every run in this state" and „every run on this race" are three different answers.</li>
  * <li><b>Which state.</b> The asker has runs waiting and runs sent back, which are served, and a
@@ -89,8 +90,11 @@ class MyResultSubmissionsApiTest {
 	/** Has a run in every one of the three states, on the race the asker ran too. */
 	private static final String SOMEONE_ELSE = "000200";
 
-	/** The member every case asks as, written third and never first. */
+	/** The member every case asks as, written third: neither first nor last. */
 	private static final String ME = "000300";
+
+	/** Written after the asker, with a run waiting, so the asker is not the newest member either. */
+	private static final String LAST_WRITTEN = "000400";
 
 	private static final String MY_ADDRESS = "vera@primer.rs";
 
@@ -145,6 +149,7 @@ class MyResultSubmissionsApiTest {
 		competitor(FIRST_WRITTEN, "Ana", "Prva");
 		competitor(SOMEONE_ELSE, "Bojan", "Drugi");
 		competitor(ME, "Vera", "Treca");
+		competitor(LAST_WRITTEN, "Dejan", "Cetvrti");
 
 		account("ana@primer.rs", FIRST_WRITTEN);
 		account("bojan@primer.rs", SOMEONE_ELSE);
@@ -225,6 +230,11 @@ class MyResultSubmissionsApiTest {
 		long hersWaiting = fromTheCalendar(FIRST_WRITTEN, timeRace, "2026-05-16", "58.0000", 250,
 				240, 21600, "https://rezultati.rs/njeno", "Njen komentar", null);
 		waiting(hersWaiting, "Dvanaest sati", "2026-06-10 09:00:00+00");
+
+		/* AND THE LAST MEMBER'S, so a member written after me has a run in a state mine are in. */
+		long hisLaterWaiting = fromTheCalendar(LAST_WRITTEN, freeRace, "2026-03-21", "15.5000", 420,
+				410, 7600, "https://rezultati.rs/poslednji", "Poslednji komentar", null);
+		waiting(hisLaterWaiting, "Fruskogorski trail", "2026-06-11 09:00:00+00");
 
 		/* RENAMED AND MEASURED AGAIN AFTER EVERY RUN ON THEM WAS SENT, so every copy taken on the
 		   day a run was sent is stale. */
@@ -523,6 +533,9 @@ class MyResultSubmissionsApiTest {
 		assertThat(statesOn(SOMEONE_ELSE, lengthRace))
 				.as("somebody else has no run in one of the states mine are in, on my race")
 				.containsExactlyInAnyOrder("waiting", "rejected", "approved");
+		assertThat(statesOf(LAST_WRITTEN))
+				.as("nobody written after me has a run, so a run of a key past mine is never somebody else's")
+				.contains("waiting");
 		assertThat(statesOf(ME))
 				.as("I have no approved run, so my runs and my runs in these two states agree")
 				.contains("approved");
@@ -581,6 +594,18 @@ class MyResultSubmissionsApiTest {
 				.param(ME).query(Long.class).single())
 				.as("no two of my runs were sent in one instant, so nothing tests the key's tie")
 				.isEqualTo(1L);
+
+		assertThat(db.sql("select count(*) from verification v"
+						+ " join result_submission rs on rs.id = v.result_submission_id"
+						+ " where rs.competitor_id = (select id from competitor where member_number = ?)"
+						+ " and (to_char(v.raised_at at time zone 'Europe/Belgrade', 'YYYY-MM') <> '2026-06'"
+						+ " or (v.decided_at is not null"
+						+ " and to_char(v.decided_at at time zone 'Europe/Belgrade', 'YYYY-MM') <> '2026-06')"
+						+ " or to_char(rs.race_date, 'YYYY-MM') = '2026-06')")
+				.param(ME).query(Long.class).single())
+				.as("a run of mine was sent or decided outside June, or run in it, so a day of June in the"
+						+ " answer would not be a day a run was sent or decided on")
+				.isZero();
 	}
 
 	/*
