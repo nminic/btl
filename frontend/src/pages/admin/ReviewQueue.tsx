@@ -1,20 +1,25 @@
-import { useState } from 'react'
-import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
+import { useRef, useState } from 'react'
+import { Resource } from '../../components/Resource'
+import { clearResourceCache } from '../../data/client'
 import { outsideHost, outsideLink } from '../../data/outsideLink'
+import { raceKind } from '../../data/raceKind'
+import { pointsOf } from '../../data/scoring'
+import type { RaceKind, WaitingRun } from '../../data/types'
+import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
+import { fromBoxes, inBoxes, noTime } from '../../forms/clock'
+import { storedNumber } from '../../forms/numberField'
+import { validateField } from '../../forms/validate'
+import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
-import { useToday } from '../../clock/useClock'
 import { useSession } from '../../session/useSession'
+import { askTheServer, type Answer } from '../account/askTheServer'
+import { figuresAsked, type Figure } from './amendFields'
+import { useWaitingRuns, waitingIn } from './pending'
 import { QueueMeta } from './QueueMeta'
 import { QUEUE, refusalTo } from './queues'
 import { Swept } from './Swept'
-import { AskedLabel, RequiredNote } from '../../forms/AskedLabel'
-import { inBoxes, fromBoxes, noTime, type WrittenBoxes } from '../../forms/clock'
-import { ASKED } from './amendFields'
-import { validateField } from '../../forms/validate'
-import { raceKind } from '../../data/raceKind'
-import { eventFrom, raceFrom } from './madeFromResult'
-import { EVENTS, idFor, RACES } from './entityForms'
-import { RACE_KINDS, type RaceKind } from '../../data/types'
+import { aRefusal, anApproval, anApprovalWith, decisionPath, type Answered } from './verificationWrites'
+import { WhatTheServerSaid } from './WhatTheServerSaid'
 import '../../styles/outsideLink.css'
 import '../member/Member.css'
 /* For `.pending__bar`, the row that carries the heading and the one decision
@@ -23,7 +28,8 @@ import '../member/Member.css'
    deleting the sheet breaks the build rather than the screen (ADL A7). */
 import './Verification.css'
 
-/* Every result that has been sent in and not yet decided, as one table.
+/* Every result that has been sent in and not yet decided, as one table, READ FROM THE
+ * SERVER AND DECIDED ON IT (R1 of the results flows).
  *
  * A table because the work is comparison: the same columns, in the same places,
  * down a list of thirty. Cards read well one at a time and were useless in bulk.
@@ -31,740 +37,659 @@ import './Verification.css'
  * A result enters the standings only once it is approved, so until then it does
  * not exist for anybody but its author (PDL P9).
  *
- * Two kinds of change are not the same thing, and the screen says so. Refusing
- * a result, or correcting the time, carries a reason, because both touch what
- * the member claims to have done. Correcting the distance, the name or the
- * climb does not: those are set from the official data, which is announced in
- * the terms rather than argued case by case.
+ * **Until R1 this screen read and wrote the browser's session**: a result waited there,
+ * was approved there, and a race the calendar did not hold was made there. So a decision
+ * taken in one browser was a decision nobody else ever heard of, and the standings never
+ * moved. The route that does the work, `POST /api/verification/{id}/decision`, is what
+ * every press here asks now, in the order the queue of cards already asks it in
+ * (`PendingQueue.tsx`): the server decides, and only the answer that says it did is
+ * written down in the session (`settle`), which is what takes the row off this table and
+ * the count off the navigation at once.
+ *
+ * **What the server answers is what an approval would count** (`VerificationApi`): the race
+ * as it is named and measured today, the day it was run beside the day it was sent, and
+ * the four figures with those the race fixes taken off the race. So the moderator decides on
+ * the numbers his approval writes.
  */
+
+/** A row the route would not settle, and what it said about it. Carried with the row's
+ *  identity because the sentence belongs on the row it is about. */
+type ServerRefusal = { id: string; answer: Exclude<Answer, { got: 'done' }> }
+
+/**
+ * Whether this is a run on a race the calendar does not hold: a run, because it carries the
+ * day it was run, and on no race of the calendar. A row naming no run carries neither and is
+ * not one. Asked in one place, because the mark in the corner of the row and the sentence
+ * that counts what a sweep stepped over are about the same rows.
+ */
+function onARaceNotInTheCalendar(one: WaitingRun): boolean {
+  return one.raceId === null && one.raceDate !== null
+}
+
+/** The four figures a run is counted on, all of them there. */
+type Counted = { distanceKm: number; ascentM: number; descentM: number; seconds: number }
+
+/**
+ * THE FIGURES A RUN WOULD BE COUNTED AT, or nothing where the row carries none.
+ *
+ * <p>Nothing on exactly one kind of row, and it is a state the schema permits rather than a
+ * fault: V10 lets a results row name no submission („A results row without a submission is a
+ * real thing"), the server then answers all four as nothing, and approving such a row is
+ * refused with „Stavka ne nosi prijavljen rezultat." Nothing writes one today. Asked once,
+ * here, so the table, the points and the panel cannot each decide it their own way.
+ */
+function countedOf(one: WaitingRun): Counted | null {
+  if (one.distanceKm === null || one.ascentM === null || one.descentM === null || one.seconds === null) {
+    return null
+  }
+
+  return { distanceKm: one.distanceKm, ascentM: one.ascentM, descentM: one.descentM, seconds: one.seconds }
+}
+
+/**
+ * The boxes of the panel as they are written, and they are text because a box holds text.
+ * All six are always held, and a race of each kind draws its own few of them
+ * (`figuresAsked`), so a box the kind does not ask for is simply never drawn.
+ */
+type Written = Record<Figure, string>
+
+/** The panel that sets the runner's figures before approving, open on one row. */
+type Fixing = { id: string; kind: RaceKind; written: Written }
+
+/** The boxes seeded with the figures the row shows, so the moderator corrects a number
+ *  rather than typing every one again. The distance with the dot the server keeps, which
+ *  a box reads exactly as it reads the comma (`forms/numberField.ts`). */
+function writtenFrom(counted: Counted): Written {
+  return {
+    distanceKm: String(counted.distanceKm),
+    ascentM: String(counted.ascentM),
+    descentM: String(counted.descentM),
+    ...inBoxes(counted.seconds),
+  }
+}
+
 export function ReviewQueue() {
   const { locale, t } = useI18n()
-  const { submissions, decide, notify, amend, create, creations } = useSession()
-  const today = useToday()
-  /* Which result the reason box is open on: the id the decision is written
-     under, and the member the refusal is written to. Both taken when the box is
-     opened, from the row it was opened from, so the moment of sending has
-     nothing left to look up and no case where the lookup fails. */
+  const { decisions, settle } = useSession()
+  const state = useWaitingRuns()
+  /* Which result the reason box is open on: the id the decision is written under, and the
+     member the refusal will reach, both taken when the box is opened from the row. */
   const [open, setOpen] = useState<{ id: string; memberNumber: string } | null>(null)
   const [note, setNote] = useState('')
   /**
-   * The submission being put right, with the boxes as they stand.
+   * The panel that sets the runner's figures, and the boxes as they stand.
    *
-   * Its own state and not the one above, because the two panels answer different
-   * questions and both may be reached from the same row: the reason box refuses,
-   * this one corrects before deciding. Held as text, since that is what a box
-   * holds, and turned back into a number only when it is saved.
+   * <p>Its own state and not the one above, because the two answer different questions and
+   * both may be reached from the same row: the reason box refuses, this one approves at
+   * figures of the moderator's own. **What it holds lives here and nowhere else until it is
+   * sent**, inside the approval itself (`anApprovalWith`): one request, so no other moderator
+   * can meet a run half changed, and nothing is left to undo when the approval is refused.
+   * The cost, accepted with the plan of R1: a correction typed here does not survive the page
+   * being reloaded before it is approved.
    */
-  const [fixing, setFixing] = useState<
-    { id: string; eventName: string; raceName: string; raceKind: RaceKind } & WrittenBoxes | null
-  >(null)
+  const [fixing, setFixing] = useState<Fixing | null>(null)
   /** How many the last sweep settled, and null until there has been one. */
   const [swept, setSwept] = useState<number | null>(null)
-
-  const waiting = submissions.filter((one) => one.status === 'pending')
-
+  /** The one row the route last refused, and what it said. */
+  const [said, setSaid] = useState<ServerRefusal | null>(null)
   /**
-   * Approving one, and making its event and its race first where there is none.
+   * Whether a decision is out with the route, so a second press before the first has
+   * answered cannot send a second one.
    *
-   * A submission carries the race it belongs to on every road but one: a member who
-   * typed a name the calendar does not hold. That absence is the whole signal, and
-   * the terms of use have promised the answer to it since before the portal could
-   * give it — „administrator će uz vaš rezultat napraviti i događaj i trku".
-   *
-   * **All four are written in the order they have to be, and none of it is taste.**
-   * The event goes before the race that names it, held by „an event first" in
-   * `adminFlows.test.tsx`. And `amend` goes before `decide` because `amend` refuses
-   * a submission that is no longer waiting, which is right and was decided for its
-   * own reasons; so `decide` moved ahead of it loses the race silently, leaving
-   * exactly what this part exists to prevent: an event and a race in the calendar,
-   * a result approved, and nothing joining them. Measured in
-   * review, 31.08.2026, with the whole suite green, which is why it is now measured
-   * against the store itself rather than against a double that records calls.
-   *
-   * The shape is `pages/event/EventActions.tsx`, which makes an event and its races
-   * in one go, and its hard-won part is the counting: a number in use is in use
-   * whichever way the race came to be, out of the file or out of a creation, and
-   * counting the list instead of reading its highest number handed two copies the
-   * same ids (measured 23.08.2026).
+   * <p>A ref and a state, which is the arrangement `PendingQueue.tsx` has and its reason: a
+   * second click fired before the render the state would cause reads the ref, and the
+   * buttons read the state to say they are inert while one is out.
    */
-  const approve = (one: (typeof waiting)[number]) => {
-    if (one.raceId === undefined) {
-      const made = (creations[EVENTS.id] ?? []).map((each) => each.id)
-      /* The identity, counted the way every other new record of this entity is
-         (`entityForms.idFor`). No values are handed over: an event does not name
-         itself, so `idFor` reads none, and the address it answers on is worked out
-         from the name and the date when the record is read (`EVENTS.derived`). An
-         earlier draft passed a slug in here and it went nowhere at all. */
-      const event = idFor(EVENTS, {}, made, [])
+  const outstanding = useRef(false)
+  const [deciding, setDeciding] = useState(false)
 
-      create(EVENTS.id, event, eventFrom(one))
-
-      const taken = (creations[RACES.id] ?? []).map((each) => each.id)
-
-      /* And the race under it, numbered the way every other new record filed under
-         `id` is (`entityForms.idFor`). Counted over the races this visit made:
-         nothing out of the file is in that list, which is why the count starts
-         from what the screen holds rather than from nothing. */
-      const race = idFor(RACES, {}, taken, [])
-
-      create(RACES.id, race, raceFrom(one, event))
-
-      /* And the result is tied to it. Without this the two halves of one act come
-         apart: a race stands in the calendar with nothing run on it, and a result
-         is counted that points at no race (PDL, 30.08.2026, point 6, and the cost
-         the owner accepted when he chose it). */
-      amend(one.id, { raceId: Number(race) })
-    }
-
-    decide(one.id, 'approved', '')
+  /** Both panels close over a row once its answer is in, whichever answer it was (owner,
+   *  02.10.2026, PDL „Odbijanje zatvara pitanje kao i uspeh": „na svaki odgovor servera
+   *  pitanje se zatvara, a razlog odbijanja stoji uz dugme"). Only that row's: a box open on
+   *  another row is the moderator's next piece of work. */
+  const closeOver = (ids: ReadonlySet<string>): void => {
+    setOpen((now) => (now !== null && ids.has(now.id) ? null : now))
+    setFixing((now) => (now !== null && ids.has(now.id) ? null : now))
   }
 
-  /* What this panel writes goes into the very fields the member's own form asks
-     for, so what may stand in them is the same question, asked of the same place.
-     Written by hand it was narrower than the form and let through what the form
-     refuses: minus five hours (which the table then drew as 00:00), a thousand
-     minutes, one and a half hours, `Infinity`, and a race with no name at all.
-     Worse than wrong on this screen: a result refused after such a correction
-     came back to the member with `-5` in a box they never touched, and their own
-     form turned it down (measured in review, 31.08.2026). */
   /**
-   * What is wrong with one box, in the words the member's own form would use.
+   * ONE ROW TO THE ROUTE, and what is written down here only once it says it did it.
    *
-   * The sentence and not only the verdict, which is the correction of 31.08.2026:
-   * three sentences written here said „the names must be filled in" over a name
-   * that was filled in and one character too long, and „the numbers must be within
-   * their bounds" over three noughts that are. A rule and a message written apart
-   * drift the moment either moves, so both come from the one place that holds
-   * them (`forms/validate.ts` and the form's own definition).
+   * <p>`settle` takes the row off this table and the number off the navigation at once,
+   * through the same `decisions` every other queue is counted against (`queues.ts`,
+   * `countFor`). The cached answer is dropped as well, so a screen mounted later reads the
+   * server and not this visit's first answer (`PendingQueue.tsx` says why, and what it cost
+   * when it was not). An approval drops the results too: it is the one decision on the
+   * portal that changes the standings, and a table read before it would go on drawing them
+   * as they were.
    *
-   * **And the name of the box with it**, off the same pairing. It was written out
-   * beside every call until 05.09.2026, so „Sati" had two homes: `ASKED[].field`
-   * and a hand-written label. Measured then: `label: 'newResult.hours'` swapped for
-   * `newResult.seconds` passed the whole gate, and the panel named the wrong box in
-   * a message about a real fault.
+   * <p>**No message is written to the member from here, unlike until R1.** The route writes
+   * the line in his inbox itself on a refusal (`VerificationWriteApi.tell`) and posts the
+   * letter on an approval, so a second line written in the browser would be the same message
+   * in two homes.
    *
-   * **What it answers to a name the pairing does not know is nothing**, which is the
-   * same thing it answers about a box with nothing wrong in it. A sentence here said
-   * such a name „is a mistake in this file, and it refuses rather than letting the
-   * value through unchecked": it does not refuse, and it never did (review,
-   * 31.08.2026). What keeps a name from going unpaired is the case that counts the
-   * pairing (`adminFlows.test.tsx`, „holds every box it writes to a rule"), not this
-   * line.
+   * @return whether the route recorded it
    */
-  const wrongBox = (name: string, written: string) => {
-    const found = ASKED.flatMap((one) => {
-      const said = one.name === name ? validateField(one.field, written) : null
+  const sendOne = async (one: WaitingRun, answered: Answered): Promise<boolean> => {
+    const answer = await askTheServer(decisionPath(one.id), answered)
 
-      return said === null ? [] : [{ label: one.field.labelKey, said }]
+    if (answer.got !== 'done') {
+      setSaid({ id: one.id, answer })
+
+      return false
+    }
+
+    settle(one.id, {
+      status: answered.approved ? 'approved' : 'rejected',
+      note: answered.reason,
+      basis: '',
+      memberNumber: '',
     })
 
-    return found[0] ?? null
+    return true
+  }
+
+  /** A single row's decision, guarded against a second press while one is out. */
+  const decide = async (one: WaitingRun, answered: Answered): Promise<void> => {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setDeciding(true)
+
+    try {
+      if (await sendOne(one, answered)) {
+        setSaid(null)
+        clearResourceCache('verification')
+
+        if (answered.approved) {
+          clearResourceCache('results')
+        }
+      }
+
+      closeOver(new Set([one.id]))
+    } finally {
+      outstanding.current = false
+      setDeciding(false)
+    }
+  }
+
+  /**
+   * THE SWEEP: every run on a race the calendar holds, approved as it stands, one after
+   * another.
+   *
+   * <p><b>A run on a race the calendar does not hold is stepped over</b> (owner, 31.08.2026,
+   * choosing this over making them in a sweep), and so is a row that names no run. Neither can
+   * be approved from here since R1: the server refuses both with a sentence of its own until
+   * the decision over a race the calendar does not hold is built on the server (R3).
+   *
+   * <p><b>One after another and never at once</b>, for the reason the queue of cards gives:
+   * the route takes one decision per row, and forty requests released together are forty
+   * answers arriving in no order over one table.
+   */
+  const sweep = async (rows: WaitingRun[]): Promise<void> => {
+    if (outstanding.current) {
+      return
+    }
+
+    outstanding.current = true
+    setDeciding(true)
+
+    try {
+      const refusals: ServerRefusal[] = []
+      const settled = new Set<string>()
+
+      for (const one of rows) {
+        const answer = await askTheServer(decisionPath(one.id), anApproval())
+
+        if (answer.got !== 'done') {
+          refusals.push({ id: one.id, answer })
+
+          continue
+        }
+
+        settle(one.id, { status: 'approved', note: '', basis: '', memberNumber: '' })
+        settled.add(one.id)
+      }
+
+      if (settled.size > 0) {
+        clearResourceCache('verification')
+        clearResourceCache('results')
+      }
+
+      /* The first refusal, on the row it is about, or nothing where every one went through. */
+      setSaid(refusals[0] ?? null)
+      closeOver(settled)
+      setSwept(settled.size)
+    } finally {
+      outstanding.current = false
+      setDeciding(false)
+    }
   }
 
   return (
     <div className="member">
       <QueueMeta queue={QUEUE.results} />
 
-      {/* As on the other seven queues: the name is in the navigation and in the
-          tab, and what stood above the work is gone (owner, 30.07.2026). */}
+      {/* As on the other queues: the name is in the navigation and in the tab, and what
+          stood above the work is gone (owner, 30.07.2026). */}
       <h1 className="visually-hidden">{t('review.title')}</h1>
 
-      <div className="pending__bar">
-        <h2 className="profile__section">
-          {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
-        </h2>
+      <Resource state={state}>
+        {(runs) => {
+          const waiting = waitingIn(runs, decisions, QUEUE.results.id)
+          /* What the sweep may approve: a run on a race the calendar holds. Asked once, so
+             whether the sweep is offered, the number it asks about and the rows it walks
+             are one list. */
+          const sweepable = waiting.filter((one) => one.raceId !== null)
+          const leftOver = waiting.filter(onARaceNotInTheCalendar).length
+          const fixingRow = waiting.find((one) => one.id === fixing?.id)
 
-        {/* One decision for the whole queue, as on the six that share a screen
-            (owner, 01.08.2026). This is the queue he described it for: thirty
-            results in a week, most of them from members who have been sending
-            the same kind of thing for years.
+          return (
+            <>
+              <div className="pending__bar">
+                <h2 className="profile__section">
+                  {t('review.waiting')} <span className="profile__count">{waiting.length}</span>
+                </h2>
 
-            It asks first, because there is nothing to undo. Approving is what
-            puts a result into the standings, and a queue of thirty approved by
-            a misplaced click is thirty results to find again by hand.
+                {/* One decision for the whole queue (owner, 01.08.2026), offered only
+                    where there is something for it to do: asked of everything waiting it
+                    stood over a queue it would step over whole, and asked „Odobriti 0
+                    stavki?" (review, 31.08.2026). It asks first, because an approval puts a
+                    result into the standings and nothing undoes it. */}
+                {sweepable.length > 0 && (
+                  <button
+                    type="button"
+                    className="button button--secondary"
+                    aria-disabled={deciding}
+                    onClick={() => {
+                      if (
+                        deciding ||
+                        !window.confirm(t('verification.approveAllAsk', { count: sweepable.length }))
+                      ) {
+                        return
+                      }
 
-            Nothing is written down on an approval here, the same as pressing
-            the button in every row: a reason belongs to a refusal. */}
-        {/* Offered only where there is something for it to do. Asked of `waiting`
-            it stood over a queue holding nothing but submissions it steps over,
-            and pressing it asked „Odobriti 0 stavki? Ovo se ne može opozvati" and
-            then said „Rešeno je 0 stavki" (measured in review, 31.08.2026). What
-            it sweeps is what says whether it is there at all.
+                      void sweep(sweepable)
+                    }}
+                  >
+                    {t('verification.approveAll')}
+                  </button>
+                )}
 
-            The predicate and its mirror are written by hand **six** times in this
-            file, and the count said four for one round. The gate under the sweep is
-            the one that was measured through: **both halves and both directions**, on
-            04.09.2026. Its mirror turned round said „Ostalo je 0 prijava" after a
-            sweep that had emptied the queue, which is the very nought the line exists
-            to keep off the screen; `swept !== null` taken out explained a sweep to
-            somebody who had pressed nothing; and `some` written as `every` fails two
-            older cases. Four cases in `adminFlows` fall on those three mutations, each
-            on its own.
+                <Swept count={swept} />
 
-            **What is not claimed here**, because it is not measured: that the other
-            five do the same. This sentence read „All six are measured now" until
-            04.09.2026, which is a closed gate promised rather than shown. One home for
-            the predicate would be better and is not worth a helper read six times in
-            one file. */}
-        {waiting.some((one) => one.raceId !== undefined) && (
-          <button
-            type="button"
-            className="button button--secondary"
-            onClick={() => {
-              /* The number the sweep will really decide, not the number waiting: a
-                 submission asking for a race to be made is stepped over, and asking
-                 „approve 4?" before deciding 2 puts a number on an act that cannot
-                 be undone which is not the number of the act. */
-              const sweeping = waiting.filter((each) => each.raceId !== undefined)
+                {/* And how many the sweep stepped over, said where it says what it did:
+                    without it the queue simply does not empty and nothing says why (owner,
+                    31.08.2026). Only after a sweep, since before one there is nothing to
+                    explain. */}
+                {swept !== null && leftOver > 0 && (
+                  <p className="profile__empty">{t('review.sweptLeft', { count: leftOver })}</p>
+                )}
+              </div>
 
-              if (!window.confirm(t('verification.approveAllAsk', { count: sweeping.length }))) {
-                return
-              }
+              {waiting.length === 0 ? (
+                <p className="profile__empty">{t('review.empty')}</p>
+              ) : (
+                <div className="table-scroll">
+                  <table className="table">
+                    <caption className="visually-hidden">{t('review.waiting')}</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('newResult.date')}</th>
+                        {/* The day it was sent, beside the day it was run and never in its
+                            place (owner, 18.09.2026: „Odnosno verifikator vidi kad je
+                            rezultat poslat"). Two days in one column would be read as one. */}
+                        <th scope="col" className="table__hide-phone">
+                          {t('review.sentOn')}
+                        </th>
+                        <th scope="col">{t('competitors.columns.member')}</th>
+                        {/* „Trka" and not „Događaj": what stands in this column is the race
+                            (owner, 23.08.2026). */}
+                        <th scope="col">{t('profile.columns.race')}</th>
+                        <th scope="col" className="table__hide-phone">
+                          {t('profile.columns.distance')}
+                        </th>
+                        <th scope="col" className="table__hide-phone">
+                          {t('rankings.columns.ascent')}
+                        </th>
+                        <th scope="col" className="table__hide-phone">
+                          {t('rankings.columns.descent')}
+                        </th>
+                        <th scope="col">{t('profile.columns.time')}</th>
+                        <th scope="col" className="table__hide-phone">
+                          {t('profile.columns.points')}
+                        </th>
+                        <th scope="col">{t('review.decision')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {waiting.map((one) => {
+                        const counted = countedOf(one)
 
-              /* Only the ones the calendar already holds a race for. A submission
-                 that asks for a race to be made is a submission somebody has to
-                 read: approving it writes an event and a race into the calendar
-                 under a name the member typed (owner, 31.08.2026, choosing this
-                 over making them in a sweep). They stay in the queue, and the
-                 count below says how many. */
-              for (const one of sweeping) {
-                decide(one.id, 'approved', '')
-              }
+                        return (
+                          <tr key={one.id}>
+                            <td>{one.raceDate === null ? '' : formatShortDate(one.raceDate, locale)}</td>
+                            <td className="table__hide-phone">{formatShortDate(one.date, locale)}</td>
+                            <td>{one.memberNumber}</td>
+                            <td>
+                              {/* That the calendar does not hold this race, said in the corner
+                                  of the row (owner, 31.08.2026: „te trke treba da imaju posebnu
+                                  naznaku NOVO negde u ćošku"). A run with a day and no race is
+                                  what that is; a row naming no run has neither and is not one. */}
+                              {onARaceNotInTheCalendar(one) && (
+                                <span className="review__new">
+                                  {t('review.newRace')}
+                                  {/* And what it means, for whoever cannot see a corner. */}
+                                  <span className="visually-hidden">{t('review.newRaceTitle')}</span>
+                                </span>
+                              )}
+                              {/* A link only where the address is one this portal is willing to
+                                  hand a browser (`data/outsideLink.ts` says why both sides ask),
+                                  and the name alone otherwise, saying that something was sent
+                                  which the portal will not open. The race and not the event it
+                                  was run at (owner, 23.08.2026), as it is named today. */}
+                              {outsideLink(one.link) === undefined ? (
+                                <>
+                                  {one.subject}
+                                  {one.link !== '' && (
+                                    <span className="outside-host">{t('review.unusableLink')}</span>
+                                  )}
+                                </>
+                              ) : (
+                                /* `noreferrer` because the host is one the member chose, and
+                                   without it the address of this administrative screen travels
+                                   there in the `Referer`; `noopener` is written out rather than
+                                   left to a browser's default. */
+                                <a href={outsideLink(one.link)} rel="noreferrer noopener" target="_blank">
+                                  {one.subject}
+                                  <span className="outside-host">{outsideHost(one.link)}</span>
+                                </a>
+                              )}
+                              {/* That this corrects a result already counted, and nothing about
+                                  what changed (owner, 27.08.2026: „samo labela, ne šta je
+                                  ispravljano"). */}
+                              {one.kind === 'correction' && (
+                                <span className="tag tag--corrected">{t('admin.corrected')}</span>
+                              )}
+                              {/* What the member wrote in his own words: a start number, a watch
+                                  that stopped. Its own line and never the link, which it once
+                                  was, and became an address made of his sentence. */}
+                              {one.body !== '' && <span className="review__said">{one.body}</span>}
+                            </td>
+                            <td className="table__hide-phone">
+                              {counted === null ? '' : formatNumber(counted.distanceKm, locale, 2)}
+                            </td>
+                            <td className="table__hide-phone">
+                              {counted === null ? '' : formatNumber(counted.ascentM, locale)}
+                            </td>
+                            <td className="table__hide-phone">
+                              {counted === null ? '' : formatNumber(counted.descentM, locale)}
+                            </td>
+                            <td>{counted === null ? '' : formatDuration(counted.seconds)}</td>
+                            {/* What the approval would award, worked out by the formula every
+                                screen of this portal shows points by (`data/scoring.ts`) from
+                                the figures beside it. The server works them out again when it
+                                counts the run, and only that number enters the standings
+                                (owner, 31.08.2026: „bodovi treba da se dodele tek NAKON
+                                verifikacije"). */}
+                            <td className="table__hide-phone">
+                              {counted === null
+                                ? ''
+                                : formatPoints(
+                                    pointsOf(counted.distanceKm, counted.ascentM, counted.descentM, counted.seconds),
+                                    locale,
+                                  )}
+                            </td>
+                            <td>
+                              {/* The buttons in a box inside the cell, never on the cell itself:
+                                  a `td` laid out as a flex container leaves the table and stops
+                                  lining up with the row (Member.css). */}
+                              <div className="review__decide">
+                                <button
+                                  type="button"
+                                  className="button button--primary"
+                                  aria-disabled={deciding}
+                                  onClick={() => {
+                                    void decide(one, anApproval())
+                                  }}
+                                >
+                                  {t('review.approve')}
+                                </button>
+                                {/* Opening a box decides nothing, so it is never told off; what
+                                    the box sends is, while a decision is out (`decide`). */}
+                                <button
+                                  type="button"
+                                  className="button button--secondary"
+                                  onClick={() => {
+                                    setFixing(null)
+                                    setOpen({ id: one.id, memberNumber: one.memberNumber })
+                                    setNote('')
+                                  }}
+                                >
+                                  {t('review.sendBack')}
+                                </button>
+                                {/* The figures may be set only on a race the calendar holds: there
+                                    the race answers which of them it fixes, and the route counts
+                                    the rest at the moderator's numbers. A race it does not hold
+                                    cannot be approved from here until R3, and a row naming no run
+                                    has no figures to set. */}
+                                {one.raceId !== null && counted !== null && (
+                                  <button
+                                    type="button"
+                                    className="button button--secondary"
+                                    onClick={() => {
+                                      setOpen(null)
+                                      setFixing({ id: one.id, kind: raceKind(one.raceKind), written: writtenFrom(counted) })
+                                    }}
+                                  >
+                                    {t('review.amend')}
+                                  </button>
+                                )}
+                              </div>
+                              {said?.id === one.id && <WhatTheServerSaid answer={said.answer} />}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-              /* The box stands below the table. Left open over a result that
-                 the sweep has just approved, confirming it would refuse what
-                 was approved a moment ago and say nothing about it. */
-              /* Both panels close, but only over a row the sweep has actually
-                 decided. Closed outright, a correction typed over a „NOVO" row was
-                 thrown away while the row itself stayed in the table, which is a
-                 sweep taking something from a submission it deliberately did not
-                 touch (measured in review, 31.08.2026). */
-              const settled = new Set(sweeping.map((each) => each.id))
+              {fixing !== null && fixingRow !== undefined && (
+                <AmendPanel
+                  fixing={fixing}
+                  deciding={deciding}
+                  onChange={setFixing}
+                  onApprove={(amended) => {
+                    void decide(fixingRow, anApprovalWith(amended))
+                  }}
+                  onCancel={() => setFixing(null)}
+                />
+              )}
 
-              setOpen((current) => (current !== null && settled.has(current.id) ? null : current))
-              setFixing((current) => (current !== null && settled.has(current.id) ? null : current))
-              setSwept(sweeping.length)
-            }}
-          >
-            {t('verification.approveAll')}
-          </button>
-        )}
+              {open !== null && (
+                <div className="review__reason" role="group" aria-label={t('review.sendBack')}>
+                  {/* Obligatory, and it says so both ways: the star for the eye and
+                      `aria-required` for a reader (owner, 12.08.2026, „na svim formama za
+                      unos i verifikaciju"). */}
+                  <RequiredNote />
 
-        <Swept count={swept} />
+                  <div className="rankings__field rankings__field--wide">
+                    <AskedLabel id="review-reason">{t('review.reason')}</AskedLabel>
+                    <input
+                      id="review-reason"
+                      type="text"
+                      value={note}
+                      aria-required="true"
+                      /* What the box promises is what this item will do, asked of the one
+                         rule that decides it (queues.ts) rather than written out here. */
+                      placeholder={t(
+                        refusalTo(QUEUE.results, { kind: '', memberNumber: open.memberNumber }) === null
+                          ? 'review.reasonKeptPlaceholder'
+                          : 'review.reasonPlaceholder',
+                      )}
+                      onChange={(event) => setNote(event.target.value)}
+                    />
+                  </div>
+                  <div className="member__links">
+                    <button
+                      type="button"
+                      className="button button--primary"
+                      /* Written means written, spaces taken off, exactly as the forms decide
+                         it (src/forms/validate.ts). Told off rather than switched off:
+                         `disabled` takes the button out of the tab order and the line below
+                         that says why with it. */
+                      aria-disabled={note.trim() === '' || deciding}
+                      aria-describedby={note.trim() === '' ? 'review-reason-waits' : undefined}
+                      onClick={() => {
+                        const row = waiting.find((each) => each.id === open.id)
 
-        {/* And how many the sweep stepped over, said where it says what it did.
-            Without it the queue simply does not empty and nothing explains why
-            (owner, 31.08.2026). Only after a sweep, since before one there is
-            nothing to explain. */}
-        {swept !== null && waiting.some((each) => each.raceId === undefined) && (
-          <p className="profile__empty">
-            {t('review.sweptLeft', {
-              count: waiting.filter((each) => each.raceId === undefined).length,
-            })}
-          </p>
-        )}
+                        /* Reachable means pressable, so the refusal lives here too. The row is
+                           asked for again because a sweep may have settled it while the box
+                           stood open, and then there is nothing left to refuse. */
+                        if (note.trim() === '' || row === undefined) {
+                          return
+                        }
+
+                        void decide(row, aRefusal(note.trim()))
+                      }}
+                    >
+                      {t('review.confirmSendBack')}
+                    </button>
+                    <button type="button" className="button button--secondary" onClick={() => setOpen(null)}>
+                      {t('review.cancel')}
+                    </button>
+                  </div>
+
+                  {/* Why it will not go yet, said where it can be read rather than left to a
+                      button that is simply dead. */}
+                  {note.trim() === '' && (
+                    <p id="review-reason-waits" className="rate__hint" role="status">
+                      {t('review.reasonNeeded')}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )
+        }}
+      </Resource>
+    </div>
+  )
+}
+
+/**
+ * THE PANEL THAT APPROVES A RUN AT FIGURES OF THE MODERATOR'S OWN.
+ *
+ * <p><b>What it asks is what the member's own form asks on a race of this kind</b>
+ * (`admin/amendFields.ts`): the time on a race of a length, the distance, the climb and the
+ * drop on a race to a limit, all four on a free race. A figure the race fixes is never
+ * offered, because it is corrected on the race, where the correction reaches everybody who
+ * ran it. Each box is held to the rule that box is held to on that form, in the words that
+ * form uses (`forms/validate.ts`), and the time to „not nought" (owner, 31.08.2026: „Ne sme da
+ * se popuni 0:0:0!").
+ *
+ * <p><b>Nothing is said to the member per change</b>: the owner's decision of 30.08.2026 is one
+ * standing sentence in the rulebook rather than a note beside each run.
+ */
+function AmendPanel({
+  fixing,
+  deciding,
+  onChange,
+  onApprove,
+  onCancel,
+}: {
+  fixing: Fixing
+  deciding: boolean
+  onChange: (next: Fixing) => void
+  onApprove: (amended: { distanceKm?: number; ascentM?: number; descentM?: number; seconds?: number }) => void
+  onCancel: () => void
+}) {
+  const { t } = useI18n()
+  const asked = figuresAsked(fixing.kind)
+  const has = (name: Figure): boolean => asked.some((one) => one.name === name)
+  /* Box by box, in the order they are drawn, and kept per box: a form draws each message
+     under its own field, so each control says of itself that it is wrong, and the line
+     below names the box its sentence came from (review, 31.08.2026). */
+  const errors = new Map(
+    asked.flatMap(({ name, field }) => {
+      const wrong = validateField(field, fixing.written[name])
+
+      return wrong === null ? [] : [[name, { label: field.labelKey, said: wrong }] as const]
+    }),
+  )
+  const wrong = [...errors.values()][0] ?? null
+  /* The box before the sum, and that order is the point: a box holding a minus or a word
+     makes the sum negative or not a number, which reads as „no time" and would name a
+     problem nobody has while hiding the one they do. */
+  const waits = wrong !== null || (has('seconds') && noTime(fixing.written))
+
+  return (
+    <div className="review__reason" role="group" aria-label={t('review.amendTitle')}>
+      {/* What this panel is for, said before the boxes: the figures the race fixes are not
+          the moderator's to set on one run. */}
+      <p className="profile__empty">{t('review.amendNote')}</p>
+
+      <RequiredNote />
+
+      {asked.map(({ name, field }) => (
+        <div className="rankings__field" key={name}>
+          <AskedLabel id={`amend-${name}`}>{t(field.labelKey)}</AskedLabel>
+          <input
+            id={`amend-${name}`}
+            type="text"
+            inputMode={field.integer === true ? 'numeric' : 'decimal'}
+            aria-required="true"
+            aria-invalid={errors.has(name)}
+            value={fixing.written[name]}
+            onChange={(event) => onChange({ ...fixing, written: { ...fixing.written, [name]: event.target.value } })}
+          />
+        </div>
+      ))}
+
+      <div className="member__links">
+        <button
+          type="button"
+          className="button button--primary"
+          aria-disabled={waits || deciding}
+          aria-describedby={waits ? 'amend-waits' : undefined}
+          onClick={() => {
+            /* Reachable means pressable, as everywhere else on this portal, so the refusal
+               lives here as well as on the attribute above. */
+            if (waits || deciding) {
+              return
+            }
+
+            /* Read the way a form leaves by (`forms/numberField.ts`, `storedNumber`): the one
+               comma a box may hold is the separator of the decimals. The time is the sum of
+               its three boxes (`forms/clock.ts`), because the route keeps seconds. Only what
+               was asked travels, so the figures the race fixes are never sent at all. */
+            const number = (name: Figure): number => Number(storedNumber(fixing.written[name].trim()))
+
+            onApprove({
+              ...(has('distanceKm') ? { distanceKm: number('distanceKm') } : {}),
+              ...(has('ascentM') ? { ascentM: number('ascentM') } : {}),
+              ...(has('descentM') ? { descentM: number('descentM') } : {}),
+              ...(has('seconds') ? { seconds: fromBoxes(fixing.written) } : {}),
+            })
+          }}
+        >
+          {t('review.amendSave')}
+        </button>
+        <button type="button" className="button button--secondary" onClick={onCancel}>
+          {t('review.amendCancel')}
+        </button>
       </div>
 
-      {waiting.length === 0 ? (
-        <p className="profile__empty">{t('review.empty')}</p>
-      ) : (
-        <div className="table-scroll">
-          <table className="table">
-            <caption className="visually-hidden">{t('review.waiting')}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{t('profile.columns.date')}</th>
-                <th scope="col">{t('competitors.columns.member')}</th>
-                {/* „Trka" and not „Događaj": what stands in this column is the name of
-                      the race (owner, 23.08.2026), and a heading that says otherwise
-                      is read out with every cell under it. */}
-                  <th scope="col">{t('profile.columns.race')}</th>
-                <th scope="col" className="table__hide-phone">
-                  {t('profile.columns.distance')}
-                </th>
-                <th scope="col" className="table__hide-phone">
-                  {t('rankings.columns.ascent')}
-                </th>
-                <th scope="col" className="table__hide-phone">
-                  {t('rankings.columns.descent')}
-                </th>
-                <th scope="col">{t('profile.columns.time')}</th>
-                <th scope="col" className="table__hide-phone">
-                  {t('profile.columns.points')}
-                </th>
-                <th scope="col">{t('review.decision')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {waiting.map((one) => (
-                <tr key={one.id}>
-                  <td>{formatShortDate(one.date, locale)}</td>
-                  <td>{one.memberNumber}</td>
-                  <td>
-                    {/* A link only where what is stored is an address this
-                        portal is willing to hand a browser, which is asked here
-                        and not taken on trust from the form (data/outsideLink.ts
-                        says why both ask). Anything else is drawn as the name and
-                        nothing more, the same as an entry that carries no address
-                        at all.
-                     *
-                        Empty is what Član 37 allows: a member who attached a
-                        picture instead of a link sends no address. Since
-                        23.08.2026 both ways in ask for one, the form on the event
-                        included. Words in an `href` would be an address made of
-                        somebody's sentence, and that is what this screen drew
-                        before the field existed. */}
-                    {/* That the calendar does not hold this race, said in the
-                        corner of the row (owner, 31.08.2026: „te trke treba da
-                        imaju posebnu naznaku NOVO negde u ćošku i da znam o čemu se
-                        radi"). It is why approving this one makes an event and a
-                        race, and why sweeping the queue steps over it.
-                     *
-                        Beside the name and outside the two ways it is drawn, since
-                        it is a fact about the row and not about whether the link
-                        can be opened; written inside one of them it appeared only
-                        on submissions whose address the portal refuses. */}
-                    {one.raceId === undefined && (
-                      <span className="review__new">
-                        {t('review.newRace')}
-                        {/* And what it means, for whoever cannot see a corner. It
-                            was in `title` alone, which a keyboard never reaches, a
-                            finger never opens and most readers never speak. */}
-                        <span className="visually-hidden">{t('review.newRaceTitle')}</span>
-                      </span>
-                    )}
-                    {outsideLink(one.link) === undefined ? (
-                      <>
-                        {one.raceName}
-                        {/* And that something was sent which the portal will not
-                            open, where something was.
-                         *
-                            Without this the moderator cannot tell a member who
-                            attached a picture and no address from one who sent an
-                            address the portal refuses: both draw the name alone.
-                            Measured by a review on 28.08.2026 with
-                            `https://primer.rs:99999/rezultati`, which the form
-                            takes and a browser will not open: the queue drew the
-                            race name and nothing else, so the moderator was
-                            deciding on evidence they could not see was there.
-                         *
-                            The address itself is not drawn. It is a string the
-                            member wrote and this screen has already decided it
-                            will not hand it to a browser; printing it beside the
-                            name would put an unopenable address in front of a
-                            moderator who might copy it out. What is said is that
-                            one was sent. */}
-                        {one.link !== '' && (
-                          <span className="outside-host">{t('review.unusableLink')}</span>
-                        )}
-                      </>
-                    ) : (
-                      /* `noreferrer` because the host on the other end is one the
-                         member chose, and without it the address of this
-                         administrative screen travels there in the `Referer`.
-                         `noopener` says the same thing about `window.opener`; it
-                         is what browsers already do for `target="_blank"`, and it
-                         is written out because a rule that depends on a default
-                         is a rule nobody can read. */
-                      <a href={outsideLink(one.link)} rel="noreferrer noopener" target="_blank">
-                        {/* The race, not the event it was run at (owner,
-                            23.08.2026). */}
-                        {one.raceName}
-                        {/* And where it leads, because the words of this link are a
-                            name the member wrote. Inside the link so that it is read
-                            with it rather than after it, and drawn from the address
-                            through the browser's own parser rather than off the
-                            text. */}
-                        <span className="outside-host">{outsideHost(one.link)}</span>
-                      </a>
-                    )}
-                    {/* And that the member has changed this since sending it,
-                        which is the whole of what the queue is told.
-
-                        Owner, 27.08.2026, asked whether a corrected result should
-                        say so: „samo labela, ne šta je ispravljano." The mark and
-                        nothing behind it is also all that can be said, since the
-                        portal keeps no history of a result (P9).
-
-                        It earns its place because a corrected result goes to the
-                        back of the queue: what a moderator meets is an item they
-                        may have read once already, now carrying different numbers
-                        and, without this, nothing at all saying so. */}
-                    {one.corrected && <span className="tag tag--corrected">{t('admin.corrected')}</span>}
-                    {one.comment !== '' && <span className="review__said">{one.comment}</span>}
-                    {/* And the proof, where there is any.
-                     *
-                        A member may attach a picture of the watch, and until now
-                        this screen was the only place that would ever have shown
-                        it and did not: the field was collected on both entry
-                        paths, kept on the record, and read by nobody. The one
-                        thing it is for is this decision, and ADL A12 has the file
-                        deleted once the decision is made, so a picture nobody is
-                        shown before then is a picture that is only ever deleted.
-                     *
-                        The name of the file, because in this prototype that is all
-                        there is: no file is uploaded anywhere and the record keeps
-                        what the field was called. When the store arrives it
-                        becomes a link, in this same place. */}
-                    {one.photo !== '' && (
-                      <span className="review__said">{t('review.proof', { file: one.photo })}</span>
-                    )}
-                  </td>
-                  <td className="table__hide-phone">{formatNumber(one.distanceKm, locale, 2)}</td>
-                  <td className="table__hide-phone">{formatNumber(one.ascentM, locale)}</td>
-                  <td className="table__hide-phone">{formatNumber(one.descentM, locale)}</td>
-                  <td>{formatDuration(one.seconds)}</td>
-                  <td className="table__hide-phone">{formatPoints(one.points, locale)}</td>
-                  <td>
-                    {/* The buttons in a box inside the cell, never on the cell
-                        itself: a `td` laid out as a flex container leaves the
-                        table and stops lining up with the row (Member.css). */}
-                    <div className="review__decide">
-                      <button
-                        type="button"
-                        className="button button--primary"
-                        onClick={() => {
-                          approve(one)
-                          /* Both panels stand below the table, so approving from
-                             the row would leave one of them open over a result
-                             that is already decided: confirming the refusal would
-                             turn down what was just approved without saying so,
-                             and saving the correction would write on a submission
-                             nobody may rewrite any more. */
-                          setOpen((current) => (current?.id === one.id ? null : current))
-                          setFixing((current) => (current?.id === one.id ? null : current))
-                        }}
-                      >
-                        {t('review.approve')}
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--secondary"
-                        onClick={() => {
-                          /* The other panel closes, because both stand below the
-                             table and two open at once would leave the moderator
-                             looking at a correction of one item over a refusal of
-                             another. */
-                          setFixing(null)
-                          setOpen({ id: one.id, memberNumber: one.memberNumber })
-                          setNote('')
-                        }}
-                      >
-                        {t('review.sendBack')}
-                      </button>
-                      <button
-                        type="button"
-                        className="button button--secondary"
-                        onClick={() => {
-                          setOpen(null)
-                          setFixing({
-                            id: one.id,
-                            /* Seeded from the race where the submission carries no
-                               event of its own, which is every submission a member
-                               types: they are asked one name and the moderator is
-                               offered it for both (owner, 31.08.2026). Once the
-                               moderator has settled it, the submission keeps it and
-                               this reads what they wrote rather than seeding again. */
-                            eventName: one.eventName ?? one.raceName,
-                            raceName: one.raceName,
-                            /* Through the one home for that reading: the member
-                               chose one of three, but a submission holds a word
-                               and this control offers three (`data/raceKind.ts`). */
-                            raceKind: raceKind(one.raceKind),
-                            ...inBoxes(one.seconds),
-                          })
-                        }}
-                      >
-                        {t('review.amend')}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* And why it will not go, said rather than left to be guessed. */}
+      {waits && (
+        <p className="field__error" id="amend-waits">
+          {wrong === null ? t('newResult.needsTime') : `${t(wrong.label)}: ${t(wrong.said.key, wrong.said.params)}`}
+        </p>
       )}
-
-      {fixing !== null && (() => {
-        /* Asked of the same rule the member's own form is held to, field by
-           field, rather than of a bound written out here. */
-        /* Box by box, in the order they are drawn, and **kept per box**: the
-           messages a form gives are written without the name of the field,
-           because a form draws each one under the field it belongs to. Drawn once
-           under the buttons instead, „Najveća dozvoljena vrednost je 59." over two
-           boxes of 99 says nothing about which of them is meant (measured in
-           review, 31.08.2026). So each control says of itself that it is wrong,
-           which is what the table of races beside this one already does and for
-           the same reason (`raceRows.isWrong`, measured 23.08.2026), and the
-           sentence is named after the box it came from. */
-        const errors = new Map(
-          [
-            { name: 'eventName', written: fixing.eventName },
-            { name: 'raceName', written: fixing.raceName },
-            { name: 'hours', written: fixing.hours },
-            { name: 'minutes', written: fixing.minutes },
-            { name: 'seconds', written: fixing.seconds },
-          ].flatMap(({ name, written }) => {
-            const wrong = wrongBox(name, written)
-
-            return wrong === null ? [] : [[name, wrong] as const]
-          }),
-        )
-        const wrong = [...errors.values()][0] ?? null
-
-        const amendWaits = wrong !== null || noTime(fixing)
-
-        return (
-        <div className="review__reason" role="group" aria-label={t('review.amendTitle')}>
-          {/* What this panel is for, said before the boxes rather than after: the
-              kind the member chose is a hint (owner, 30.08.2026, „kao nagoveštaj
-              tipa"), and the time on a timed race is the race's own limit, the
-              same for everybody who finished, not a run. A moderator who does not
-              know that writes the runner's time into a box that decides points
-              for everyone. */}
-          <p className="profile__empty">{t('review.amendNote')}</p>
-
-          {/* Six fields carry a star, so the star is explained and each control
-              says the same thing to a reader who cannot see it (owner, 12.08.2026,
-              „na svim formama za unos i verifikaciju"). It is the very thing the
-              refusal box below was measured missing: without it the button simply
-              stayed dead and nothing said why. */}
-          <RequiredNote />
-
-          {/* The event above the race, in that order, because that is the order
-              the moderator is asked to think in: what was run, and then which of
-              its races this is. */}
-          <div className="rankings__field rankings__field--wide">
-            <AskedLabel id="amend-event">{t('review.amendEvent')}</AskedLabel>
-            <input
-              id="amend-event"
-              type="text"
-              aria-required="true"
-              aria-invalid={errors.has('eventName')}
-              value={fixing.eventName}
-              onChange={(event) => setFixing({ ...fixing, eventName: event.target.value })}
-            />
-          </div>
-
-          <div className="rankings__field rankings__field--wide">
-            <AskedLabel id="amend-name">{t('newResult.raceName')}</AskedLabel>
-            <input
-              id="amend-name"
-              type="text"
-              aria-required="true"
-              aria-invalid={errors.has('raceName')}
-              value={fixing.raceName}
-              onChange={(event) => setFixing({ ...fixing, raceName: event.target.value })}
-            />
-          </div>
-
-          <div className="rankings__field">
-            <AskedLabel id="amend-kind">{t('newResult.raceKind')}</AskedLabel>
-            <select
-              id="amend-kind"
-              aria-required="true"
-              value={fixing.raceKind}
-              onChange={(event) => setFixing({ ...fixing, raceKind: raceKind(event.target.value) })}
-            >
-              {RACE_KINDS.map((one) => (
-                <option key={one} value={one}>
-                  {t(`race.kind.${one}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* The three boxes a time is asked in everywhere on this portal, split
-              and added up by the one place that answers both ways
-              (`forms/clock.ts`), so a limit written here is the same number the
-              form on the other side writes. */}
-          {(['hours', 'minutes', 'seconds'] as const).map((box) => (
-            <div className="rankings__field" key={box}>
-              <AskedLabel id={`amend-${box}`}>{t(`newResult.${box}`)}</AskedLabel>
-              <input
-                id={`amend-${box}`}
-                type="text"
-                inputMode="numeric"
-                aria-required="true"
-                aria-invalid={errors.has(box)}
-                value={fixing[box]}
-                onChange={(event) => setFixing({ ...fixing, [box]: event.target.value })}
-              />
-            </div>
-          ))}
-
-          <div className="member__links">
-            <button
-              type="button"
-              className="button button--primary"
-              aria-disabled={amendWaits}
-              aria-describedby={amendWaits ? 'amend-waits' : undefined}
-              onClick={() => {
-                /* Reachable means pressable, as everywhere else on this portal, so
-                   the refusal lives here as well as on the attribute above. */
-                if (amendWaits) {
-                  return
-                }
-
-                amend(fixing.id, {
-                  eventName: fixing.eventName.trim(),
-                  raceName: fixing.raceName.trim(),
-                  raceKind: fixing.raceKind,
-                  /* Added up by the one place that answers both ways, so a limit
-                     written here is the same number the form on the other side
-                     writes, for every value that form would accept. */
-                  seconds: fromBoxes(fixing),
-                })
-                setFixing(null)
-              }}
-            >
-              {t('review.amendSave')}
-            </button>
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => setFixing(null)}
-            >
-              {t('review.amendCancel')}
-            </button>
-          </div>
-
-          {/* And why it will not go, said rather than left to be guessed. Told off
-              rather than switched off, as everywhere else here: `disabled` takes
-              the button out of the tab order and takes this line with it.
-
-              **The box before the sum, and that order is the point.** `noTime` asks
-              whether the three boxes come to more than nought, so a box holding a
-              minus or a word answers it exactly as three empty boxes do — the sum
-              is negative or `NaN`, and neither is greater than nought. „Unesite
-              vreme" over a box saying `-5` therefore names a problem nobody has and
-              hides the one they do. The box
-              error says which box and in the words the member's own form uses; the
-              sum is what is left when every box is answerable. This paragraph is
-              the only record of that order and was deleted once with the sentence
-              it stood beside (review, 31.08.2026), which is how a later reader
-              comes to swap the two. */}
-          {amendWaits && (
-            <p className="field__error" id="amend-waits">
-              {wrong === null
-                ? t('newResult.needsTime')
-                : `${t(wrong.label)}: ${t(wrong.said.key, wrong.said.params)}`}
-            </p>
-          )}
-          </div>
-        )
-      })()}
-
-      {open !== null && (
-        <div className="review__reason" role="group" aria-label={t('review.sendBack')}>
-          {/* Obligatory, and it says so both ways: the star for the eye and
-              `aria-required` for a reader, which is the rule the owner asked for
-              on 12.08.2026 („Ova pravila... treba da funkcioniše na svim formama
-              za unos i verifikaciju"). This field is written by hand rather than
-              drawn from a definition, so it takes the rule from the same place
-              every other hand written field does (forms/AskedLabel.tsx). Without
-              it, the button below simply stayed dead and nothing said why. */}
-          <RequiredNote />
-
-          <div className="rankings__field rankings__field--wide">
-            <AskedLabel id="review-reason">{t('review.reason')}</AskedLabel>
-            <input
-              id="review-reason"
-              type="text"
-              value={note}
-              aria-required="true"
-              /* What the box promises is what this very item will do, asked of
-                 the one rule that decides it (queues.ts) rather than written out
-                 here. Written out, the two drifted apart twice: the box promised
-                 a message while this screen never sent one, and after the sending
-                 was wired in it went on saying the message would not go. */
-              placeholder={t(
-                refusalTo(QUEUE.results, { kind: '', memberNumber: open.memberNumber }) === null
-                  ? 'review.reasonKeptPlaceholder'
-                  : 'review.reasonPlaceholder',
-              )}
-              onChange={(event) => setNote(event.target.value)}
-            />
-          </div>
-          <div className="member__links">
-            <button
-              type="button"
-              className="button button--primary"
-              /* Written means written, spaces taken off, exactly as the forms
-                 decide it (src/forms/validate.ts). Three spaces are not a
-                 reason, and a plain comparison against the empty string let
-                 them through.
-
-                 Told off rather than switched off, as everywhere else on the
-                 portal: `disabled` takes the button out of the tab order and
-                 takes with it the very line this screen added to say why it will
-                 not go. */
-              aria-disabled={note.trim() === ''}
-              aria-describedby={note.trim() === '' ? 'review-reason-waits' : undefined}
-              onClick={() => {
-                /* Reachable means pressable, so the refusal lives here too. */
-                if (note.trim() === '') {
-                  return
-                }
-
-                const reason = note.trim()
-
-                decide(open.id, 'rejected', reason)
-
-                /* And the member is told, which this screen did not do until
-                   16.08.2026 while the box beside it promised they would be
-                   (owner, 15.08.2026: „Poruka ide sa svih redova"). A review
-                   measured it: `decide` was called and `notify` never was.
-                 *
-                   Read through the one place that knows whether a message goes
-                   and under what heading (queues.ts), rather than written out
-                   here, because a second copy of that rule is a second answer to
-                   the same question. A result carries no sort, so the empty one
-                   is handed in, which is what every queue but the racing profile
-                   carries.
-                 *
-                   `canSendBack` first, and it is not a formality: an empty
-                   recipient in this portal is the whole league and not nobody
-                   (Message.to), so a submission without a member number would
-                   send one person`s refusal to everybody. */
-                const going = refusalTo(QUEUE.results, { kind: '', memberNumber: open.memberNumber })
-
-                if (going !== null) {
-                  notify({
-                    from: t('app.name'),
-                    to: going.to,
-                    subject: t(going.heading),
-                    body: reason,
-                    date: today,
-                  })
-                }
-
-                setOpen(null)
-                setNote('')
-              }}
-            >
-              {t('review.confirmSendBack')}
-            </button>
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => setOpen(null)}
-            >
-              {t('review.cancel')}
-            </button>
-          </div>
-
-          {/* Why it will not go yet, said where it can be read rather than left
-              to a button that is simply dead. */}
-          {note.trim() === '' && (
-            <p id="review-reason-waits" className="rate__hint" role="status">
-              {t('review.reasonNeeded')}
-            </p>
-          )}
-        </div>
-      )}
-
     </div>
   )
 }

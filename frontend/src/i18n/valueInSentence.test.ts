@@ -258,6 +258,13 @@ describe('a sentence with a value put into it', () => {
       '? (ReportResult.tsx)',
       '? (ReviewQueue.tsx)',
       '? (SendBack.tsx)',
+      /* The sentence a bare number gets from the decision route, chosen by
+         `whatABareNumberSays` and handed the number: „Server je odgovorio brojem {status}".
+         It stood under `PendingQueue.tsx` until R1 of the results flows, when the line that
+         draws it moved, unchanged, into a module of its own so the table of results could
+         draw it too. A status is written in figures after „brojem", so it has no case to be
+         wrong in. */
+      '? (WhatTheServerSaid.tsx)',
       /* The refusal a route named, looked up by the word the server sent rather than by
          a name written out here: `refusals[answer.reason]`. Which sentence that is
          cannot be read off the call at all, which is the case this row stands for.
@@ -401,7 +408,6 @@ describe('a sentence with a value put into it', () => {
       'registration.bioFull',
       'registration.bioLeft',
       'registration.doneText',
-      'review.proof',
       'review.sweptLeft',
       'rights.box',
       'rights.granted',

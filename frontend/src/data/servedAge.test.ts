@@ -279,7 +279,18 @@ describe('which fields the portal serves', () => {
        none of their values to read. What they hold on the server is a member NUMBER, the same
        spelling every public answer uses for somebody, and `since`, which is `teamSince` told on
        the other door: the season a membership began in, which V11 keeps at 2027 or later, and
-       not anything an age could be read off. */
+       not anything an age could be read off.
+
+       **Eight more paths since R1 of the results flows, on `verification.json`, and none of
+       them is about a person: the run a result waits with** (`raceId`, `raceDate`, `raceKind`,
+       the four figures and `link`), which `/api/verification` answers on every item and fills
+       on the results tab alone. Added to the snapshot by hand, as this file requires. Every
+       item the served file holds is on another tab, so all eight are empty there and the rule
+       below has no value of theirs to read. What they hold on the server is a race's key, a
+       DAY (`2027-03-06`, never a bare year), a word, kilometres, metres and seconds. The one
+       that could ever land in the band below is the time - a run of thirty two to thirty four
+       minutes is 1900 to 2040 seconds - and the day a served run carries one, the case after
+       this one asks for that path to be named rather than letting it through. */
     expect(Object.keys(served)).toHaveLength(17)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(

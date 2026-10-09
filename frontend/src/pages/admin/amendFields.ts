@@ -1,28 +1,45 @@
-import { dogadjaj, unosRezultata } from '../../forms/definitions'
+import type { RaceKind } from '../../data/types'
+import type { FieldDef } from '../../forms/types'
+import { reportForm } from '../event/reportForm'
 
-/** The names of the boxes that make a time, and the race they belong to, as the
- *  form away from the calendar asks for them. */
-const TIMED = ['raceName', 'hours', 'minutes', 'seconds']
+/** The figures a run is counted on, by the names the member's own forms give them, in the
+ *  order those forms ask them in: the length, the climb and the fall, and the time in its
+ *  three boxes. The link, the picture and the comment are on those forms too and are not
+ *  figures. */
+const FIGURES = ['distanceKm', 'ascentM', 'descentM', 'hours', 'minutes', 'seconds'] as const
+
+export type Figure = (typeof FIGURES)[number]
 
 /**
- * What this panel writes into, each paired with the definition that owns it: the
- * race and the three boxes of a time from the form away from the calendar, and
- * the event from the form that makes one.
+ * WHAT A MODERATOR MAY SET IN PLACE OF THE RUNNER'S FIGURES ON A RACE OF THIS KIND, which
+ * is exactly what the member's own form asks on it: the same boxes, with the same labels,
+ * hints and bounds, in the same order.
  *
- * **The event by its own definition and not by the race's.** The two agree today,
- * so the difference is invisible until one of them moves, and the day it does the
- * panel would hold the event to a limit the administration does not.
+ * <p><b>Taken from that form and never written a third time</b> (`pages/event/reportForm.ts`).
+ * The owner decided what each kind leaves to the runner, 29.08.2026 among the outcomes
+ * offered, in the record's wording: „Na vremenskoj trci vreme ne unosi, jer je zadato trkom",
+ * and on a free race the member gives all four. A race of a length gives the time alone. So
+ * the figures a race fixes are never offered here: they are corrected on the race, „gde
+ * ispravka stiže svima koji su je istrčali, a ne na jednoj prijavi" (the record of
+ * 03.08.2026, in its wording), and the server does not read them off an amendment either
+ * (`VerificationWriteApi.Amended`).
  *
- * A list of pairs rather than a lookup by name: a lookup answers „or nothing" for
- * a name that is always there, and the nothing is a branch no case can reach. The
- * price is that a field renamed in a definition would quietly leave this list, so
- * the list is counted in `adminFlows.test.tsx` rather than trusted.
+ * <p><b>A list of pairs and not a lookup by name</b>, which is the shape this file had before
+ * and its reason: a lookup answers „or nothing" for a name that is always there, and the
+ * nothing is a branch no case can reach. Each figure brings its definition, and a figure the
+ * kind does not ask for brings none and is simply not in the list.
+ *
+ * <p><b>Read off the race's kind and never off the member's hint</b>: the run the screen is
+ * handed carries the calendar's kind for a race the calendar holds (`VerificationApi`), and a
+ * race it does not hold offers no amendment at all until such a run can be approved here.
+ *
+ * <p>Until R1 of the results flows this file paired the event's name, the race's name and
+ * the three boxes of a time with their definitions, for a panel that rewrote a submission
+ * held in the browser. Those names belong to the decision over a race the calendar does not
+ * hold, which is the road R3 of the same flows builds on the server.
  */
-export const ASKED = [
-  ...unosRezultata.fields
-    .filter((one) => TIMED.includes(one.name))
-    .map((field) => ({ name: field.name, field })),
-  ...dogadjaj.fields
-    .filter((one) => one.name === 'name')
-    .map((field) => ({ name: 'eventName', field })),
-]
+export function figuresAsked(kind: RaceKind): { name: Figure; field: FieldDef }[] {
+  const fields = reportForm(kind).fields
+
+  return FIGURES.flatMap((name) => fields.filter((one) => one.name === name).map((field) => ({ name, field })))
+}

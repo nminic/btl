@@ -891,20 +891,23 @@ export type StaticPage = {
   includes?: string[]
 }
 
-/* What is waiting for a decision, in the four queues that are read from a file.
+/* What is waiting for a decision, in the five queues `/api/verification` answers for.
  *
- * Here rather than beside the screens that draw it, because it describes a file
- * under `public/mock` and `src/data` is the only place that says what the
- * portal's data looks like. It also has to be reachable from the session: a
- * competitor proposes a team during a visit, and that proposal joins the same
- * queue as everything read off the disc, so both ends need the shape and neither
- * may import the other.
+ * Here rather than beside the screens that draw it, because it describes an answer
+ * the server gives and `src/data` is the only place that says what the portal's data
+ * looks like. It also has to be reachable from the session: a competitor proposes a
+ * team during a visit, and that proposal joins the same queue as everything the
+ * server answered, so both ends need the shape and neither may import the other.
  *
  * Five until 22.09.2026: PDL P10a removed the schedule queue „u celini, zajedno
  * sa pravom za njega", so this list is one shorter than the row count V5 seeded
- * used to be.
+ * used to be. Four from then until the results moved onto the server with R1 of the
+ * results flows: until that day a result waited in the browser's session and not in
+ * this answer, and the list named only what the answer could hold. The results come
+ * first because they are first on the screen (`admin/queues.ts`, `QUEUES`), and that
+ * order is decided here rather than wherever a record happens to be written.
  */
-export const PENDING_QUEUE_IDS = ['payments', 'teams', 'profiles', 'comments'] as const
+export const PENDING_QUEUE_IDS = ['results', 'payments', 'teams', 'profiles', 'comments'] as const
 
 export type PendingQueueId = (typeof PENDING_QUEUE_IDS)[number]
 
@@ -980,8 +983,13 @@ export const NO_RATING = Object.freeze<EventRating>({
    ide u isti red za verifikaciju kao i predlog novog tima, uz oznaku šta je
    šta"). One queue and a mark on the item, rather than a queue of its own: a
    moderator looks at one place to decide about teams, and the two decisions
-   differ only in what an approval writes. */
-export const ITEM_KINDS = ['', 'bio', 'photo', 'teamEdit'] as const
+   differ only in what an approval writes.
+
+   `correction` is a run that corrects a result already counted, on the results
+   queue, read off V32's pointer by `VerificationApi` the way `teamEdit` is read off
+   V11's. It is the whole of what the owner asked the queue to be told about it:
+   „samo labela, ne šta je ispravljano" (PDL P9, 27.08.2026). */
+export const ITEM_KINDS = ['', 'bio', 'photo', 'teamEdit', 'correction'] as const
 
 export type ItemKind = (typeof ITEM_KINDS)[number]
 
@@ -1219,11 +1227,54 @@ export type PendingItem = {
  * delivered to nobody at all. The one place these two shapes meet turns the nothing into
  * the portal's own empty, and it is the same place that turns the number into text and
  * fills the six above.
+ *
+ * **And it carries the run a result waits with** ({@link WaitingRunFields}), on every item
+ * and empty on four tabs of the five, since R1 of the results flows moved that tab onto
+ * this answer.
  */
 export type ServedPendingItem = Omit<
   PendingItem,
   'id' | 'memberNumber' | 'email' | 'picture' | 'crop' | 'currentDate' | 'proposedDate'
-> & { id: number; memberNumber: string | null }
+> & { id: number; memberNumber: string | null } & WaitingRunFields
+
+/**
+ * THE RUN A RESULT WAITS WITH, as `/api/verification` answers it on every item and fills
+ * on the results tab alone (`VerificationApi.Waiting`, R1 of the results flows).
+ *
+ * <p><b>On every item and empty on the other four tabs</b> - the empty string for text and
+ * nothing for a number or a day, the shape `photoId` already has - which is the server's
+ * own answer and is why these are part of {@link ServedPendingItem} rather than of a type
+ * of their own on the wire.
+ *
+ * <p><b>Not part of {@link PendingItem}, and that is a boundary rather than an oversight.</b>
+ * A `PendingItem` is also made up during a visit (`session/context.ts`, `propose`), and
+ * nothing a visit proposes is a run: the results tab is fed by the server alone. So the
+ * names travel on the answer and on {@link WaitingRun}, which is what the one screen that
+ * reads them is handed (`admin/pending.ts`, `useWaitingRuns`).
+ *
+ * - `raceId` and `raceDate`: the race the run was run at and the day it was run, which is
+ *   not `date` - that one is the day it was SENT, and the owner asked the verifier to see
+ *   it (PDL P9, 18.09.2026: „Odnosno verifikator vidi kad je rezultat poslat"). Nothing for
+ *   `raceId` where the calendar does not hold the race yet.
+ * - `raceKind`: the calendar's kind where the race is in it, and the member's hint where it
+ *   is not.
+ * - the four figures AS AN APPROVAL WOULD COUNT THEM TODAY, worked out by the server
+ *   (`WhatARaceCarries.figuresOf`): a figure the race fixes is the race's as it stands now.
+ * - `link`: the official results the member pointed at, or empty.
+ */
+export type WaitingRunFields = {
+  raceId: number | null
+  raceDate: string | null
+  raceKind: string
+  distanceKm: number | null
+  ascentM: number | null
+  descentM: number | null
+  seconds: number | null
+  link: string
+}
+
+/** One run waiting in the results tab, as the screen reads it: a waiting item and its run. */
+export type WaitingRun = PendingItem & WaitingRunFields
 
 /**
  * ONE ACCOUNT WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, exactly as
