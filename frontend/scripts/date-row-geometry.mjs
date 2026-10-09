@@ -58,7 +58,8 @@
  * one line.
  *
  * **Widths:** 360, the narrowest the portal promises, where the content is 328px (PDL P24);
- * 390; 768; and 1280, a desktop that keeps its scrollbar. Phones and tablets are emulated as
+ * 390; 480, which is inside the range where the doubled text loses the date and neither end of
+ * it; 768; and 1280, a desktop that keeps its scrollbar. Phones and tablets are emulated as
  * such (`mobile`), so the scrollbar is drawn over the page as it is on a telephone and
  * `innerWidth` is the width asked for. **Text at 200%** is not done by setting `font-size` on
  * the root, which doubles every `rem` and leaves the `em` of a media query where it was (ADL
@@ -68,7 +69,7 @@
  *
  * **What was measured, 09.10.2026, in Chrome 154.0.8037.98, on the copy of „Balkansko
  * prvenstvo veterana" (two mornings, four races), before this change (`origin/main`, 0cc5f88f,
- * where this run exits 1 on two rows of sixteen) and after it (exit 0 on all sixteen, twice):**
+ * where this run exits 1 on three rows of twenty) and after it (exit 0 on all twenty):**
  *
  * - *360px, text 100%.* The box is 181.2px (16.0..197.2) and the two days and the calendar
  *   stand beside it (203.2..344.0), in one line. The same before and after.
@@ -80,6 +81,13 @@
  *   scroll.
  * - *390px, text 200%.* BEFORE: the same box of 50.0px (48.0 inside) and no sideways scroll.
  *   AFTER: the box is 326.0px and the group of days stands under it, whole.
+ * - *480px, text 200%.* BEFORE: the box is 126.4px and shows 124.0 of the 211 its date takes,
+ *   the days and the calendar beside it. AFTER: the box is 416.0px on a line of its own and the
+ *   group stands under it. Asked by hand at 440, 520 and 560 as well, and the same every time:
+ *   the box before is 86.4, 166.4 and 206.4px (it shows the whole date from about 570px of
+ *   screen up, where it is 246.4px at 600) and after it is the width of the line.
+ * - *600px, text 200%.* The same before and after, to a tenth of a pixel: the box is 246.4px
+ *   with the days and the calendar beside it, because there the row has room for all four.
  * - *768px and 1280px, both sizes, and every width at the text a browser starts with.* The same
  *   boxes to a tenth of a pixel before and after (the box is 589.2px at 768 and 649.2 at 1280
  *   with the text as it comes, 414.4 and 746.4 doubled; the three always beside it).
@@ -90,10 +98,12 @@
  *
  * **WHAT THIS DOES NOT HOLD, written here as a boundary and not left to be found:**
  *
- * - *Widths and sizes between the ones walked.* The row wraps by its content, so with the
- *   text at 200% it wraps at some width between 390 and 768 (the box asks for 7rem and the
- *   group of days for 277.56px at that size) and nothing here says where. Nothing in the
- *   sheet is a width in pixels, so the walk is a sample and the rule is the content.
+ * - *Widths and sizes between the ones walked.* The row wraps by its content: with the text at
+ *   200% the box asks for 7rem (224px), the group of days takes 277.56px and the gap is 12px,
+ *   so it wraps when the content is narrower than 513.56px, which is a screen of about 578px,
+ *   and nothing here asks where exactly. It was measured by hand at 440, 520, 560 and 600 (the
+ *   last is the first where it does not wrap), and the walk is a sample: nothing in the sheet
+ *   is a width in pixels, so the rule is the content and not any of these numbers.
  * - *The plain date box at 360px with the text at 200%.* It is 200.81px wide and holds a date
  *   that needs 211px, so about 12px of its last character stand under the right padding. That
  *   is measured on the change of an event, it is the same on every date of the portal, it is
@@ -157,7 +167,7 @@ const TABLE = flags.get('table') === true
 const widths =
   typeof flags.get('widths') === 'string'
     ? String(flags.get('widths')).split(',').map(Number)
-    : [360, 390, 768, 1280]
+    : [360, 390, 480, 768, 1280]
 const texts =
   typeof flags.get('texts') === 'string'
     ? String(flags.get('texts')).split(',').map(Number)

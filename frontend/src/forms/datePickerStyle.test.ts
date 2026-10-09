@@ -21,8 +21,8 @@ import { ruleFor } from '../test/stylesheet'
  * **What is NOT held, and is written here rather than left to be found.** Whether the row
  * really wraps where it should, which rule wins where two apply, and where a box lands are
  * the browser's to answer, not a stylesheet's text (ADL A33). `scripts/date-row-geometry.mjs`
- * asks it, by hand and not in the gate, at 360, 390, 768 and 1280 with the text as it comes
- * and doubled; the browser of ADL A63 is the one to turn that into a guard. The markup the
+ * asks it, by hand and not in the gate, at 360, 390, 480, 768 and 1280 with the text as it
+ * comes and doubled; the browser of ADL A63 is the one to turn that into a guard. The markup the
  * sheet is written against, the class and the group, is held where the picker is drawn
  * (`DatePicker.test.tsx`).
  */
@@ -60,10 +60,12 @@ describe('the row of a picker that was handed days', () => {
        the buttons beside it are as wide as theirs. */
     const rems = Number(must(/^(\d+(?:\.\d+)?)rem$/.exec(basis)?.[1], `a basis in rem, written ${basis}`))
 
-    /* The floor: a typed date takes 211px of a root of 32px with its padding, measured in
-       Chrome on 09.10.2026, which is 6.6rem. Below it the box is one nobody can read a date
-       in, which is the fault this row was changed for (50px at 360px and 200%). */
-    expect(rems, 'the box would be too narrow to show a date').toBeGreaterThanOrEqual(6.6)
+    /* The floor: a typed date takes 211px of a root of 32px with its padding, and the box
+       has two pixels of border besides, so 213px, which is 6.66rem: measured in Chrome on
+       09.10.2026. Below it the box is one nobody can read a whole date in, which is the
+       fault this row was changed for (50px at 360px and 200%). Written as 6.7, the next
+       tenth up, so that a basis written on the line cannot be a hair short. */
+    expect(rems, 'the box would be too narrow to show a date').toBeGreaterThanOrEqual(6.7)
 
     /* The ceiling, from the other side: at 360px with the text as a browser starts, the
        content is 328px wide and the days with the calendar and the gaps take 140.78 and
