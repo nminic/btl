@@ -268,6 +268,25 @@ uslova nad `state` ili `query`. `pg_backend_pid()` isključuje sopstvenu konekci
 pitanje; ništa se ne pretpostavlja o tome kako `state`/`query` izgledaju dok je bekend stvarno
 zaustavljen, jer je upravo ta pretpostavka ono što je ovde palo.
 
+**[ISPRAVLJENO 09.10.2026.]** Dve stvari iz ovog odeljka su kasnije izmerene drugačije, i oba merenja
+stoje u javadocu `backend/src/test/java/com/btl/portal/web/BlockedBehindThisHold.java`:
+
+- **Uzrok `idle` i stare komande je zamrznut snimak, ne drajver** (izmereno 03.10.2026, sidro „the
+  frozen copy is the reason, not a quirk of the driver"). Prva izjava u transakciji koja dodirne
+  `pg_stat_activity` zamrzne spisak bekenda i ono što svaki kaže o sebi, i svaka sledeća izjava te
+  transakcije dobija istu kopiju. Bekend koji je pri prvom čitanju bio `idle` zato ostaje `idle` sa
+  komandom podešavanja veze, dok je `wait_event` tekući. Ista dva bekenda pročitana van transakcije
+  kažu `active` i nose izjavu na kojoj stoje. Do 03.10.2026 se to pripisivalo drajveru (PgJDBC).
+- **Isti snimak sakriva i bekend rođen POSLE prvog čitanja**, pa brojanje unutar transakcije ostaje
+  kratko dokle god neko čeka. To je, a ne prekratak rok, obaralo CI 03.10.2026 u
+  `FreeingTwiceAtOneInstantTest`. Od PR-a 486 brojanje počinje sa `select pg_stat_clear_snapshot()`.
+- **Brojanje svakog `wait_event_type = 'Lock'` je preširoko** (izmereno 22.09.2026): jedna baza služi
+  ceo paket, pa taj uslov zadovoljava svaki drugi bekend zaustavljen na bilo čemu. Broji se ono što
+  zaustavlja BAŠ ova veza: rekurzivno kroz `pg_blocking_pids`, od `pg_backend_pid()`, jer Postgres
+  drugog čekača reda iza prvog, ne iza držaoca.
+
+**Ostaje tačno:** ne čita se ni `state` ni `query`.
+
 ## 11. Ogranicenje koje ne prezivljava ZATECENE podatke je nevidljivo svakom paketu koji podatke sam pravi (27.09.2026)
 
 **Ovo je prvi kvar ove nedelje koji je stigao do servera i oborio ga.** Nije nadjen recenzijom, nije
@@ -424,7 +443,12 @@ isporuceno, pa ce se raditi i dalje; a ova razlika izgleda tacno kao prekrsena o
 - **Nikad `git add -A` dok recenzija radi u istom radnom direktorijumu.** Recenzent dokazuje nalaz tako što namerno pokvari fajl, pokrene test i vrati ga. Ako se u tom prozoru zapiše sve što je izmenjeno, tuđa privremena mutacija ulazi u commit i CI pada na nečemu što u kodu ne postoji. Desilo se 13.08.2026: član `000004` je za jedan prolaz testa postao platiša i tako gurnut na granu. Zapisuju se **imenovane putanje** onoga što je stvarno menjano, ili recenzija dobija svoj worktree.
 
 - `main` grana prima izmene isključivo kroz PR sa zelenim CI (`.github/workflows/verify.yml`).
-- Pre svakog PR-a: pokrenuti oba test paketa lokalno i /code-review prolaz.
+- ~~Pre svakog PR-a: pokrenuti oba test paketa lokalno i /code-review prolaz.~~
+  **[IZMENJENO 04.10.2026, vlasnik, `../btl-produkt/ADL.md` A29, sidro „Završna puna kapija ide samo
+  u CI-ju"]** Puna kapija (oba paketa testova, pokrivenost 100 odsto, lint, build) se lokalno ne pušta
+  pre guranja, jer je CI meri isto. Lokalno se meri usko: mutacije nad jednim fajlom ili razredom, uz
+  podove nad klasom stvari koju grana uvodi (odeljak 24). Pre svakog PR-a i dalje ide `/code-review`
+  prolaz; odluka obara samo lokalno puštanje oba paketa.
 - OBAVEZNO pre merge-a netrivijalnog PR-a: nezavisna recenzija kroz subagenta koji NIJE pisao kod. Recenzent dobija isključivo diff i opis PR-a (svež kontekst, bez konteksta autora) i vraća nalaze; kritični i visoki nalazi blokiraju merge dok se ne razreše. Za bezbednosno osetljive izmene (auth, podaci, upload) dodatno i security-reviewer agent.
 
 ### 5. `git checkout --` PRE prvog commita brise rad, i to je 27.09.2026 pogodilo TRI agenta u jednom danu
@@ -902,3 +926,24 @@ odgovori na pitanje „zasto bas ovde", i odgovor je bio da prekretnica uopste n
 
 **Provera koja iz ovoga sledi, jedna recenica:** koju **vrstu** stvari ova grana uvodi prvi put, i
 koji pod nad tom vrstom stoji van foldera koji diram?
+
+## 25. Istek slučaja u vitest-u se čita kao pad na tvrdnji, i to u oba oblika izveštaja (09.10.2026)
+
+Nađeno na grani `b222` (PR 492), i to je deveti oblik klase „merenje koje izgleda uredno a nije
+merilo ono što tvrdi". Skripta koja pušta mutacije presudila je „uhvaćeno" za mutaciju čiji su slučajevi
+završili **istekom** (`Test timed out in 20000ms`, tri od tri), a ne na tvrdnji. Recenzija je to
+uhvatila, ne skripta. Kvar je u čitaču, kao u odeljku 20:
+
+- **U tekstualnom logu** vitest više slučajeva sa istom greškom ispiše kao niz `FAIL` redova i
+  **jedan** blok greške, pa skripta koja svaki `FAIL` red gleda zasebno pripiše tvrdnju i onima koji
+  su istekli.
+- **U JSON izveštaju** istek nema svoje reči: poruka je zamenjena sa `Error: STACK_TRACE_ERROR`.
+
+**Merilo:** presuda „uhvaćeno" traži da **svaki** pali slučaj padne **odmah na tvrdnji**. Istek
+(zamena `STACK_TRACE_ERROR`, reči o isteku, ili trajanje koje dostigne sat slučaja) je „nije mereno",
+a pad tek posle dugog čekanja (agent je uzeo pet sekundi i više) se označava kao sumnjiv i gleda se
+zašto je čekao.
+
+**Ispravka u samom testu, i ona je presedan:** svako čekanje u fajlu ima polovinu sata slučaja
+(`configure` na vrhu `frontend/src/pages/admin/saveWhileSaving.test.tsx`), pa čekanje koje zapne pada
+**svojom tvrdnjom**, nikad satom slučaja, a poseban slučaj drži da je ta polovina i dalje polovina.

@@ -1350,6 +1350,82 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * ONLY THE SUBMISSION AN APPROVAL DECIDES IS WRITTEN OVER, AND EVERY OTHER ONE IS LEFT AS IT
+	 * WAS (PR 495 review).
+	 *
+	 * <p>{@link #onlyHisOwnRunIsCountedAndTheOtherTwoMembersAreLeftAsTheyWere} holds that approving
+	 * one member's run leaves the other members' results where they were; this holds the same of
+	 * the submissions. {@code VerificationWriteApi.countTheResult} writes what was counted back
+	 * into the decided submission with {@code where id = ?}, and the other cases that read a
+	 * submission after an answer all read the one that answer was about, so a statement naming
+	 * more rows than that one wrote the right figures where they were looked for and agreed with
+	 * every case. The review measured two that did: {@code where id >= ?}, which reaches every
+	 * later row whoever's it is, and {@code where competitor_id = (select competitor_id from
+	 * result_submission where id = ?)}, which reaches every row of the same member. Neither
+	 * failed a case.
+	 *
+	 * <p><b>It asks the table and not a list.</b> Every submission but the decided one is read
+	 * before the answer and again after it, and the two readings must be equal row for row. The
+	 * comparison names no row, so a row the fixture gains later is watched without anybody adding
+	 * it to anything.
+	 *
+	 * <p><b>The rows beside the decided one are drawn so that a wider statement, along any axis,
+	 * reaches one.</b> Vera's correction is the one decided. Her second correction of the same
+	 * run waits beside it: the same member, the same race and the same run amended (nothing in
+	 * {@code ResultWriteApi} refuses a second correction while one is waiting, as its class
+	 * comment says). Ana's run at the same race is another member's, and so are the rows made
+	 * before Vera's. The floor asserts the axes the review's two statements reach along - a row
+	 * before, a row after, a row of the same member and a row of another - and that no neighbour
+	 * carries the figures the answer writes or the ones her correction carried until then, or a
+	 * statement that wrote them into it would change nothing anybody could see.
+	 *
+	 * <p>That the decided submission IS written over with what was counted is a different fact,
+	 * held by the cases that read it through {@code submitted}. This one asserts nothing about it.
+	 */
+	@Test
+	void onlyTheSubmissionAnApprovalDecidesIsWrittenOverAndEveryOtherOneIsLeftAsItWas()
+			throws Exception {
+		runWaitingFor(VERA, theTrail, SATURDAY, "10.00", 120, 40, 3400, verasCountedRun);
+
+		long decided = db.sql("select result_submission_id from verification where id = ?")
+				.param(verasCorrection).query(Long.class).single();
+		String whatHerCorrectionSaid = fourFigures("10.00", CORRECTED_CLIMB, CORRECTED_DROP,
+				CORRECTED_TIME);
+		String whatTheAnswerWrites = fourFigures("10.5", 180, 60, 3250);
+		List<Sent> before = everySubmissionBut(verasCorrection);
+
+		assertThat(before).extracting(Sent::figures)
+				.as("a neighbour carries what the answer writes or what her correction said, so a"
+						+ " write into it would change nothing anybody could see")
+				.doesNotContain(whatHerCorrectionSaid, whatTheAnswerWrites);
+		assertThat(before)
+				.as("no submission stands before the decided one, so every earlier row is out of"
+						+ " reach and this measures nothing along that axis")
+				.anyMatch(each -> each.id() < decided);
+		assertThat(before)
+				.as("no submission stands after the decided one, so every later row is out of"
+						+ " reach and this measures nothing along that axis")
+				.anyMatch(each -> each.id() > decided);
+		assertThat(before)
+				.as("Vera has no other submission, so the same member is out of reach and this"
+						+ " measures nothing along that axis")
+				.anyMatch(each -> each.member().equals(VERA));
+		assertThat(before)
+				.as("nobody but Vera has a submission, so another member is out of reach and this"
+						+ " measures nothing along that axis")
+				.anyMatch(each -> !each.member().equals(VERA));
+
+		assertThat(decideWith(THE_SUPERADMIN, verasCorrection, "{\"approved\":true,\"amended\":"
+				+ "{\"distanceKm\":10.5,\"ascentM\":180,\"descentM\":60,\"seconds\":3250}}")
+				.getStatus()).isEqualTo(200);
+		assertThat(stateOf(verasCorrection)).as("the answer was not given").isEqualTo("approved");
+
+		assertThat(everySubmissionBut(verasCorrection))
+				.as("an approval wrote over a submission it did not decide")
+				.containsExactlyElementsOf(before);
+	}
+
+	/**
 	 * A CORRECTION OVERWRITES THE RUN IT AMENDS AND DOES NOT ADD A SECOND ONE.
 	 *
 	 * <p>The owner chose on 28.08.2026 between four outcomes, and what follows from the one he
@@ -2417,6 +2493,31 @@ class VerificationWriteApiTest {
 				.query((row, one) -> new Counted(row.getBigDecimal(1), row.getInt(2), row.getInt(3),
 						row.getInt(4), null, null))
 				.single();
+	}
+
+	/**
+	 * EVERY SUBMISSION BUT THE ONE BEHIND {@code item}: whose it is, which row it is and the four
+	 * figures it carries now, in the order of the table's own key.
+	 *
+	 * <p>Read off the table and not off the fixture's fields, so a row the fixture gains later is
+	 * in it without anybody adding it to a list. The decided row is the one left out, because what
+	 * an answer does to it is what the cases that read it through {@link #submitted} are for.
+	 */
+	private List<Sent> everySubmissionBut(long item) {
+		return db.sql("select c.member_number, rs.id, rs.distance_km, rs.ascent_m, rs.descent_m,"
+						+ " rs.seconds from result_submission rs"
+						+ " join competitor c on c.id = rs.competitor_id"
+						+ " where rs.id <> (select v.result_submission_id from verification v"
+						+ " where v.id = ?) order by rs.id")
+				.param(item)
+				.query((row, one) -> new Sent(row.getString(1), row.getLong(2),
+						fourFigures(row.getBigDecimal(3).toPlainString(), row.getInt(4),
+								row.getInt(5), row.getInt(6))))
+				.list();
+	}
+
+	/** One submission as another case sees it: whose it is, which row, and what it carries. */
+	private record Sent(String member, long id, String figures) {
 	}
 
 	/** A result that is already counted, written straight in: it is what the portal looked
