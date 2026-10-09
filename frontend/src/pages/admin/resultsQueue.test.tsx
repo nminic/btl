@@ -245,6 +245,34 @@ async function sweptSays(sentence: string): Promise<HTMLElement> {
   return line
 }
 
+/**
+ * UNTIL WHATEVER DECISION WAS OUT HAS COME BACK, whatever it said: the buttons of the rows still
+ * waiting stop saying they cannot act (`deciding`). Waited for this way rather than for the
+ * sentence or the row the answer should leave, for the reason `sweptSays` gives, so a decision that
+ * came back saying something else fails on what it says. Where nothing was sent at all it passes at
+ * once, which is what lets a case that claims nothing was sent count AFTER anything that was sent
+ * has been recorded: a request leaves a few turns after its press, and one counted at once reads as
+ * one never sent.
+ */
+async function untilItHasAnswered(): Promise<void> {
+  await waitFor(() => {
+    for (const one of screen.queryAllByRole('button', { name: sr.review.approve })) {
+      expect(one).toHaveAttribute('aria-disabled', 'false')
+    }
+  })
+}
+
+/** A decision the route holds until the case lets it answer, and then takes; each request gets an
+ *  answer of its own, so a second one sent by mistake is counted rather than broken. */
+function heldDecision(): { decided: () => Promise<Response>; release: () => void } {
+  let release: () => void = () => undefined
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+
+  return { decided: () => gate.then(taken), release: () => release() }
+}
+
 function openTheQueue(probe = <Decided />) {
   return renderAt(PATH, 'superadmin', RUNNER, undefined, null, probe)
 }
@@ -387,7 +415,9 @@ describe('the queue of results as the server answers it', () => {
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
 
-      await waitFor(() => expect(within(results()).getByText('4')).toBeVisible())
+      await untilItHasAnswered()
+
+      expect(within(results()).getByText('4')).toBeVisible()
     } finally {
       server.stop()
     }
@@ -403,8 +433,9 @@ describe('a decision on one run', () => {
       openTheQueue()
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+      await untilItHasAnswered()
 
-      await waitFor(() => expect(screen.queryByText(RUNNER)).toBeNull())
+      expect(screen.queryByText(RUNNER)).toBeNull()
 
       const sent = decisionsIn(server.asked)
 
@@ -425,8 +456,10 @@ describe('a decision on one run', () => {
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
-      /* On the row it is about, and the row is still there to be decided again. */
+      await untilItHasAnswered()
+
+      /* Once, on the row it is about, and the row is still there to be decided again. */
+      expect(screen.getAllByRole('alert')).toHaveLength(1)
       expect((await rowOf(RUNNER)).getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
       expect(decidedIn().queryByText(/^701/)).toBeNull()
     } finally {
@@ -444,7 +477,10 @@ describe('a decision on one run', () => {
 
       await user.click((await rowOf('000040')).getByRole('button', { name: sr.review.approve }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(sentence)
+      await untilItHasAnswered()
+
+      expect(screen.getAllByRole('alert')).toHaveLength(1)
+      expect((await rowOf('000040')).getByRole('alert')).toHaveTextContent(sentence)
       expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({ approved: true, reason: '' })
     } finally {
       server.stop()
@@ -452,7 +488,8 @@ describe('a decision on one run', () => {
   })
 
   it('sends a second press nothing while the first is out', async () => {
-    const server = serverWith(RUNS, () => new Promise<Response>(() => undefined))
+    const decision = heldDecision()
+    const server = serverWith(RUNS, decision.decided)
 
     try {
       openTheQueue()
@@ -464,8 +501,12 @@ describe('a decision on one run', () => {
       fireEvent.click(approve)
       fireEvent.click(approve)
 
-      await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
       expect(approve).toHaveAttribute('aria-disabled', 'true')
+
+      decision.release()
+      await untilItHasAnswered()
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
     } finally {
       server.stop()
     }
@@ -479,11 +520,8 @@ describe('a decision on one run', () => {
        counted at once would read as one never sent. */
     const user = setupUser()
     const ask = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    let release: (answer: Response) => void = () => undefined
-    const held = new Promise<Response>((resolve) => {
-      release = resolve
-    })
-    const server = serverWith(RUNS, (id) => (id === '701' ? held : taken()))
+    const decision = heldDecision()
+    const server = serverWith(RUNS, (id) => (id === '701' ? decision.decided() : taken()))
 
     try {
       openTheQueue()
@@ -491,7 +529,7 @@ describe('a decision on one run', () => {
       await user.click((await rowOf('000020')).getByRole('button', { name: sr.review.sendBack }))
       await user.type(screen.getByLabelText(sr.review.reason), 'Vreme se ne poklapa.')
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
-      await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
+      await waitFor(() => expect(decisionsIn(server.asked).length).toBeGreaterThan(0))
 
       const sweep = screen.getByRole('button', { name: 'Odobri sve' })
       const refuse = screen.getByRole('button', { name: sr.review.confirmSendBack })
@@ -514,9 +552,10 @@ describe('a decision on one run', () => {
 
       await user.click(save)
 
-      release(taken())
-      await waitFor(() => expect(screen.queryByText(RUNNER)).toBeNull())
+      decision.release()
+      await untilItHasAnswered()
 
+      expect(screen.queryByText(RUNNER)).toBeNull()
       expect(decisionsIn(server.asked).map((one) => one.path)).toEqual(['/api/verification/701/decision'])
     } finally {
       server.stop()
@@ -533,12 +572,14 @@ describe('a decision on one run', () => {
       openTheQueue()
 
       await user.click((await rowOf('000020')).getByRole('button', { name: sr.review.approve }))
+      await untilItHasAnswered()
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
+      expect(screen.getByRole('alert')).toHaveTextContent('O stavci je već odlučeno.')
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
-      await waitFor(() => expect(screen.queryByText(RUNNER)).toBeNull())
+      await untilItHasAnswered()
 
+      expect(screen.queryByText(RUNNER)).toBeNull()
       expect(screen.queryByRole('alert')).toBeNull()
       expect(await rowOf('000020')).toBeDefined()
     } finally {
@@ -610,7 +651,9 @@ describe('refusing a run', () => {
       await user.type(screen.getByLabelText(sr.review.reason), '  Vreme se ne poklapa.  ')
       await user.click(screen.getByRole('button', { name: sr.review.confirmSendBack }))
 
-      await waitFor(() => expect(decidedIn().getByText(/^701 \| rejected \| Vreme se ne poklapa\./)).toBeInTheDocument())
+      await untilItHasAnswered()
+
+      expect(decidedIn().getByText(/^701 \| rejected \| Vreme se ne poklapa\./)).toBeInTheDocument()
       expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({ approved: false, reason: 'Vreme se ne poklapa.' })
       expect(inbox().getAllByRole('listitem')).toHaveLength(1)
       /* And the box closes with its answer. */
@@ -636,6 +679,7 @@ describe('refusing a run', () => {
       expect(confirm).toHaveAccessibleDescription(sr.review.reasonNeeded)
 
       await user.click(confirm)
+      await untilItHasAnswered()
 
       expect(decisionsIn(server.asked)).toHaveLength(0)
     } finally {
@@ -653,6 +697,7 @@ describe('refusing a run', () => {
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.sendBack }))
       await user.type(screen.getByLabelText(sr.review.reason), 'Nešto')
       await user.click(screen.getByRole('button', { name: sr.review.cancel }))
+      await untilItHasAnswered()
 
       expect(screen.queryByLabelText(sr.review.reason)).toBeNull()
       expect(decisionsIn(server.asked)).toHaveLength(0)
@@ -734,14 +779,16 @@ describe('the figures the moderator sets', () => {
       await user.type(panel().getByLabelText(sr.newResult.minutes), '54')
       await user.click(panel().getByRole('button', { name: sr.review.amendSave }))
 
-      await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
+      await untilItHasAnswered()
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
       expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({
         approved: true,
         reason: '',
         amended: { seconds: 3240 },
       })
       /* And the panel goes with its answer, along with the row. */
-      await waitFor(() => expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull())
+      expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull()
     } finally {
       server.stop()
     }
@@ -760,7 +807,9 @@ describe('the figures the moderator sets', () => {
       await user.type(panel().getByLabelText(sr.newResult.distanceKm), '53,1')
       await user.click(panel().getByRole('button', { name: sr.review.amendSave }))
 
-      await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
+      await untilItHasAnswered()
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
       expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({
         approved: true,
         reason: '',
@@ -785,7 +834,9 @@ describe('the figures the moderator sets', () => {
       await user.type(panel().getByLabelText(sr.newResult.seconds), '20')
       await user.click(panel().getByRole('button', { name: sr.review.amendSave }))
 
-      await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
+      await untilItHasAnswered()
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
       expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({
         approved: true,
         reason: '',
@@ -814,6 +865,7 @@ describe('the figures the moderator sets', () => {
       expect(save).toHaveAccessibleDescription(`${sr.newResult.minutes}: Najveća dozvoljena vrednost je 59.`)
 
       await user.click(save)
+      await untilItHasAnswered()
 
       expect(decisionsIn(server.asked)).toHaveLength(0)
     } finally {
@@ -845,6 +897,7 @@ describe('the figures the moderator sets', () => {
       expect(save).toHaveAccessibleDescription(`${sr.newResult.distanceKm}: Ovo polje je obavezno.`)
 
       await user.click(save)
+      await untilItHasAnswered()
 
       expect(decisionsIn(server.asked)).toHaveLength(0)
     } finally {
@@ -886,7 +939,10 @@ describe('the figures the moderator sets', () => {
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.amend }))
       await user.click(panel().getByRole('button', { name: sr.review.amendSave }))
 
-      expect(await screen.findByRole('alert')).toHaveTextContent('Trka još nije održana')
+      await untilItHasAnswered()
+
+      expect(screen.getAllByRole('alert')).toHaveLength(1)
+      expect((await rowOf(RUNNER)).getByRole('alert')).toHaveTextContent('Trka još nije održana')
       expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull()
       expect(await rowOf(RUNNER)).toBeDefined()
     } finally {
@@ -1070,6 +1126,7 @@ describe('the one decision for the whole queue', () => {
 
       await rowOf(RUNNER)
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
+      await untilItHasAnswered()
 
       expect(decisionsIn(server.asked)).toHaveLength(0)
       expect(screen.queryByText(/Rešen/)).toBeNull()
@@ -1163,7 +1220,9 @@ describe('what a decision leaves for the screens that read after it', () => {
       }
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
-      await screen.findByRole('alert')
+      await untilItHasAnswered()
+
+      expect(screen.getAllByRole('alert')).toHaveLength(1)
 
       expect(await awayAndBack(), 'an approval the route refused').toEqual({ queue: 1, standings: 1 })
 
@@ -1176,13 +1235,16 @@ describe('what a decision leaves for the screens that read after it', () => {
       await user.click((await rowOf('000020')).getByRole('button', { name: sr.review.sendBack }))
       await user.type(screen.getByLabelText(sr.review.reason), 'Vreme se ne poklapa.')
       await user.click(screen.getByRole('button', { name: sr.review.confirmSendBack }))
-      await waitFor(() => expect(screen.queryByText('000020')).toBeNull())
+      await untilItHasAnswered()
+
+      expect(screen.queryByText('000020')).toBeNull()
 
       expect(await awayAndBack(), 'a refusal the route took').toEqual({ queue: 2, standings: 1 })
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
-      await waitFor(() => expect(screen.queryByText(RUNNER)).toBeNull())
+      await untilItHasAnswered()
 
+      expect(screen.queryByText(RUNNER)).toBeNull()
       expect(await awayAndBack(), 'an approval the route took').toEqual({ queue: 3, standings: 2 })
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))

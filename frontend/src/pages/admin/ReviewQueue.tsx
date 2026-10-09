@@ -143,10 +143,11 @@ export function ReviewQueue() {
   const outstanding = useRef(false)
   const [deciding, setDeciding] = useState(false)
 
-  /** Both panels close over a row once its answer is in, whichever answer it was (owner,
-   *  02.10.2026, PDL „Odbijanje zatvara pitanje kao i uspeh": „na svaki odgovor servera
-   *  pitanje se zatvara, a razlog odbijanja stoji uz dugme"). Only that row's: a box open on
-   *  another row is the moderator's next piece of work. */
+  /** Both panels close over a row once its answer is in, whichever answer it was: the owner's
+   *  choice of 02.10.2026 among the outcomes offered, in the record's wording (PDL „Odbijanje
+   *  zatvara pitanje kao i uspeh"): „na svaki odgovor servera pitanje se zatvara, a razlog
+   *  odbijanja stoji uz dugme". Only that row's: a box open on another row is the moderator's
+   *  next piece of work. */
   const closeOver = (ids: ReadonlySet<string>): void => {
     setOpen((now) => (now !== null && ids.has(now.id) ? null : now))
     setFixing((now) => (now !== null && ids.has(now.id) ? null : now))
