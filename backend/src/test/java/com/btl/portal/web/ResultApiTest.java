@@ -287,9 +287,9 @@ class ResultApiTest {
 	/**
 	 * SOMEBODY WHO REGISTERED AND HAS NO MEMBER NUMBER, which V16 allows and which is what an
 	 * applicant is until the first payment is recorded. He is not a member (V16: a member is a row
-	 * whose number is there), and he has a result because the owner opens the profiles of earlier
-	 * years by hand for people who never paid (V23). His fee does not stand, so his result is
-	 * served only for a season that is not the one running.
+	 * whose number is there), and the schema still lets his row own a result, since
+	 * {@code result_competitor_fk} points at a competitor and not at a member. His fee does not
+	 * stand, so his result is served only for a season that is not the one running.
 	 */
 	private void anApplicantWithNoMemberNumber(String first, String last, String gender,
 			String born) {
@@ -1039,8 +1039,8 @@ class ResultApiTest {
 	 * THE ANSWER IS THE SAME TO EVERY READER, to the byte.
 	 *
 	 * <p>Article 73 makes the record public, and the runner is part of it; nothing in it depends on
-	 * who asks (PDL P11, 03.10.2026: plain text for everybody, and a link only for the reader who
-	 * may follow one is the screen's business and is decided on the screen). The readers are the
+	 * who asks. Whether a name is drawn as a link is decided on the screen, by the reader and the
+	 * record ({@code frontend/src/pages/profile/visible.ts}), and not by this answer. The readers are the
 	 * visitor, a member whose fee stands, the member whose fee has lapsed (who reads as a visitor
 	 * does), an account that is no member at all, and the administration. None of them takes a
 	 * different answer, and {@code everyNameThatDependsOnTheReader.test.ts} holds the other half:
@@ -1134,6 +1134,12 @@ class ResultApiTest {
 	 * <p>It reports UTC as its zone on purpose: whoever asks what season it is has to
 	 * re-read the instant in the league's own time, and a server that reads this zone
 	 * instead answers 2027 on a night that is already 2028 in Belgrade.
+	 *
+	 * <p><b>It counts how often it is asked, and a clock derived from it asks it.</b>
+	 * {@code clock.withZone(...)} is how the server reads the year in the league's zone, and a
+	 * derived clock that was frozen at the moment of deriving would answer without this one ever
+	 * being asked: a clock read per row through it would be invisible to the count, which is how
+	 * {@code theClockIsNotAskedAgainForEachRowOfTheAnswer} first came to pass for the wrong reason.
 	 */
 	static final class AClockTheCaseMoves extends Clock {
 
@@ -1177,7 +1183,25 @@ class ResultApiTest {
 
 		@Override
 		public Clock withZone(ZoneId zone) {
-			return Clock.fixed(now, zone);
+			AClockTheCaseMoves theClockItCameFrom = this;
+
+			return new Clock() {
+
+				@Override
+				public ZoneId getZone() {
+					return zone;
+				}
+
+				@Override
+				public Clock withZone(ZoneId another) {
+					return theClockItCameFrom.withZone(another);
+				}
+
+				@Override
+				public Instant instant() {
+					return theClockItCameFrom.instant();
+				}
+			};
 		}
 	}
 
