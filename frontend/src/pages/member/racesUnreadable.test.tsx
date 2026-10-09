@@ -468,12 +468,14 @@ describe('the town on the form a result is entered on, which is the boundary of 
 
     await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka kroz šumu')
     await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-    await user.type(screen.getByLabelText('Mesto'), 'Čačak')
+    await user.type(screen.getByLabelText('Mesto'), 'Ča')
     /* The request goes out on the second letter, so seeing it asked for is seeing the refusal on its
-       way, and nothing the answer could bring is left to arrive later. */
+       way. The rest of the name is typed AFTER that, so there is a drawing once the refusal has
+       landed, and a screen that said it would have said it by the time the next line looks. */
     await waitFor(() => {
       expect(timesAsked('/api/places')).toBeGreaterThan(0)
     }, SOON)
+    await user.type(screen.getByLabelText('Mesto'), 'čak')
 
     /* Nothing is said and nothing is offered: no sentence, no button, no list of towns. */
     expect(screen.queryByRole('alert')).toBeNull()
@@ -510,10 +512,11 @@ describe('the town on the form a result is entered on, which is the boundary of 
     const nameField = within(fieldOf(nameBox()))
 
     await nameField.findByRole('alert', undefined, SOON)
-    await user.type(screen.getByLabelText('Mesto'), 'Čačak')
+    await user.type(screen.getByLabelText('Mesto'), 'Ča')
     await waitFor(() => {
       expect(timesAsked('/api/places')).toBeGreaterThan(0)
     }, SOON)
+    await user.type(screen.getByLabelText('Mesto'), 'čak')
 
     const townField = within(fieldOf(htmlElement(screen.getByLabelText('Mesto'))))
 
