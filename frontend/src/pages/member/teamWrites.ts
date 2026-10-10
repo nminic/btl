@@ -56,9 +56,10 @@ export function theAnswerGoesTo(team: number, invitation: number): string {
  * `THE_FORM_IS_NOT_COMPLETE` for a body naming neither „Prihvati" nor „Odbij",
  * `THE_WINDOW_IS_SHUT` for accepting on a day nothing may be written about a squad, and
  * `HE_IS_ALREADY_IN_A_TEAM` for accepting once he has a team. `A_QUESTION_ALREADY_STANDS`
- * and `HE_HAS_ALREADY_BEEN_ASKED` belong to the two POST routes of the same class, which no
- * screen sends, and `THE_INVITATION_WAS_MISSED` is a subject line rather than a refusal at
- * all. `pages/account/refusals.test.ts` holds all six, split exactly that way.
+ * and `HE_HAS_ALREADY_BEEN_ASKED` belong to the two POST routes of the same class, which the
+ * team's page and a profile send (`pages/joiningThisTeam.ts`, since T5 on 10.10.2026), and
+ * `THE_INVITATION_WAS_MISSED` is a subject line rather than a refusal at all.
+ * `pages/account/refusals.test.ts` holds all six, split by the screen that meets each.
  *
  * <p><b>TWO OF THE THREE POINT AT A SENTENCE THE SCREEN ALSO DRAWS BEFORE ANYTHING IS SENT,
  * and that is the decision rather than a saving.</b> The same two facts are answered twice
@@ -205,7 +206,7 @@ function whetherHeMayAccept(waiting: WhatIsWaiting, today: string): MayHeAccept 
  * portal that dropped them on the asking would draw a member in a team that never took him.
  * A refusal leaves everything exactly as the server last said it was.
  *
- * <p><b>TWO ARE DROPPED EITHER WAY AND THE THIRD ONLY ON „Prihvati", because the two answers
+ * <p><b>TWO ARE DROPPED EITHER WAY AND TWO MORE ONLY ON „Prihvati", because the two answers
  * change different things.</b>
  *
  * <ul>
@@ -224,6 +225,14 @@ function whetherHeMayAccept(waiting: WhatIsWaiting, today: string): MayHeAccept 
  * after he joined one. Clearing a second resource after a write is the portal's own shape:
  * `member/pairWrites.ts` drops `pairs`, `admin/Payments.tsx` two and `admin/AdminMembers.tsx`
  * eight.
+ * <li><b>And the members, for the same reason and only on „Prihvati", since T5 (10.10.2026)</b>,
+ * which is where the reason above was half carried out: a member's team reaches the portal as
+ * `Competitor.teamId` off `/api/competitors`, which answers the membership that has not ended
+ * whatever season it starts in (`CompetitorApi`, `m.season_to is null`), so it moves the moment
+ * „Prihvati" goes through. Held, his own profile showed no team, and „Prijavi se u tim" and
+ * „Predloži tim" - both of which read „nema tim" off that record (PDL, 05.09.2026) - went on
+ * offering him a press the server answers with 404. `pages/joiningThisTeam.ts` drops the same
+ * two when the team takes somebody in, and `member/teamExit.ts` when he leaves.
  * </ul>
  *
  * @param team       which team's invitation, off {@link theInvitationStanding}
@@ -245,6 +254,7 @@ export async function theServerWasAnswered(
   if (answer.got === 'done') {
     if (accepted) {
       clearResourceCache('teams')
+      clearResourceCache('competitors')
     }
 
     clearResourceCache('me/applications')

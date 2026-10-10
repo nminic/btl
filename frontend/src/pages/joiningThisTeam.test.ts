@@ -6,13 +6,18 @@ import {
   invitationIn,
   theApplicationsOf,
   theApplicationWasAnswered,
+  theApplicationWasSent,
+  theApplicationWasTakenBack,
   theDecisionGoesTo,
   theInvitationsOf,
+  theInvitationWasSent,
   theInvitationWasTakenBack,
   theWithdrawalGoesTo,
   whatIsWaitingOn,
   whatThisTeamHasAsked,
+  WHEN_APPLYING_TO_A_TEAM,
   WHEN_DECIDING_AN_APPLICATION,
+  WHEN_INVITING_INTO_A_TEAM,
 } from './joiningThisTeam'
 
 /**
@@ -64,6 +69,20 @@ describe('where the team answers what is waiting on it', () => {
       'theFormIsNotComplete',
       'theWindowIsShut',
     ])
+  })
+
+  it('names the one refusal of applying and the four of inviting, and no others', () => {
+    /* Since T5 (10.10.2026), for the reason the case above gives. The one that means „he has
+       been asked" is said in the words that stand in the button's place once the list shows it,
+       which is the line asserted last. */
+    expect(Object.keys(WHEN_APPLYING_TO_A_TEAM)).toEqual(['aQuestionAlreadyStands'])
+    expect(Object.keys(WHEN_INVITING_INTO_A_TEAM)).toEqual([
+      'theFormIsNotComplete',
+      'theWindowIsShut',
+      'heIsAlreadyInATeam',
+      'heHasAlreadyBeenAsked',
+    ])
+    expect(WHEN_INVITING_INTO_A_TEAM.heHasAlreadyBeenAsked).toBe('teams.invited')
   })
 })
 
@@ -206,6 +225,15 @@ describe('reading the two queues off the server', () => {
   })
 })
 
+/** What `GET /api/me/applications` answers a member who waits on nothing. */
+const NOTHING_WAITS = {
+  teamApplications: [],
+  teamInvitations: [],
+  teamProposals: [],
+  pairInvites: [],
+  alreadyInATeam: false,
+}
+
 /** What was written, and to where, off the recording server's own account of it. */
 function writes(asked: Asked[]): { path: string; how: string; body: string }[] {
   return asked
@@ -225,10 +253,17 @@ function writes(asked: Asked[]): { path: string; how: string; body: string }[] {
  * therefore the only reading that says whether the cache was dropped, and it is the reading
  * that cannot be satisfied by anything else.
  */
-async function timesAskedFor(name: 'teams' | 'competitors', act: () => Promise<unknown>) {
+async function timesAskedFor(
+  name: 'teams' | 'competitors' | 'me/applications',
+  act: () => Promise<unknown>,
+) {
   clearResourceCache(name)
 
-  const server = serverThat((path) => (path === `/api/${name}` ? listOf([]) : null))
+  /* What the member waits on is one object and not a list, served whole so that nothing about
+     its shape is what decides whether the read is cached. */
+  const server = serverThat((path) =>
+    path === `/api/${name}` ? listOf(name === 'me/applications' ? NOTHING_WAITS : []) : null,
+  )
 
   try {
     await loadResource(name)
@@ -399,5 +434,220 @@ describe('the team taking one invitation back', () => {
     } finally {
       server.stop()
     }
+  })
+})
+
+/* THE THREE WRITES T5 (10.10.2026) PUT ON THE SERVER: a member asking a team to take him, taking
+   that back, and a team's administrator asking a member in. NOT THE FIRST MEMBER either: a number
+   no fixture of the portal starts with. */
+const ASKED = '000127'
+
+describe('the member asking a team to take him', () => {
+  it('sends the application to the team the address names, and nothing in it', async () => {
+    const server = serverThat((path, init) =>
+      init?.method === 'POST' && path === '/api/teams/2/applications'
+        ? new Response(JSON.stringify({ id: 90, teamId: TEAM }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      expect(await theApplicationWasSent(TEAM)).toMatchObject({ got: 'done' })
+    } finally {
+      server.stop()
+    }
+
+    /* No body to speak of: the route takes the member from the session and the team from the
+       path, so a body naming either would be a second answer to a question already answered. */
+    expect(writes(server.asked)).toEqual([
+      { path: '/api/teams/2/applications', how: 'POST', body: '{}' },
+    ])
+  })
+
+  it('hands back the reason the route named, unchanged', async () => {
+    const server = serverThat((_path, init) =>
+      init?.method === 'POST' ? refused('aQuestionAlreadyStands', 409) : null,
+    )
+
+    try {
+      expect(await theApplicationWasSent(TEAM)).toEqual({
+        got: 'refused',
+        reason: 'aQuestionAlreadyStands',
+      })
+    } finally {
+      server.stop()
+    }
+  })
+
+  /* WHAT HE WAITS ON IS DROPPED WHERE THE SERVER AGREED AND NOWHERE ELSE, read off the cache: the
+     page asks it again after a press that went through, and a cache still holding the old answer
+     would hand it straight back. Dropped on the ASKING instead, a refusal would cost a read of a
+     list that did not change. */
+  it('drops what he waits on when the server agreed', async () => {
+    expect(
+      await timesAskedFor('me/applications', async () => {
+        const server = serverThat((_path, init) => (init?.method === 'POST' ? did() : null))
+
+        try {
+          await theApplicationWasSent(TEAM)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(1)
+  })
+
+  it.each([
+    ['me/applications'] as const,
+    ['teams'] as const,
+    ['competitors'] as const,
+  ])('leaves %s alone when the route refused', async (name) => {
+    expect(
+      await timesAskedFor(name, async () => {
+        const server = serverThat((_path, init) =>
+          init?.method === 'POST' ? refused('aQuestionAlreadyStands', 409) : null,
+        )
+
+        try {
+          await theApplicationWasSent(TEAM)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(0)
+  })
+
+  /* And the two resources an application does not touch, on the press that went through: an
+     application puts nobody in a team until the team answers it. */
+  it.each([
+    ['teams'] as const,
+    ['competitors'] as const,
+  ])('leaves %s alone even when the server agreed', async (name) => {
+    expect(
+      await timesAskedFor(name, async () => {
+        const server = serverThat((_path, init) => (init?.method === 'POST' ? did() : null))
+
+        try {
+          await theApplicationWasSent(TEAM)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(0)
+  })
+})
+
+describe('the member taking his application back', () => {
+  it('sends the withdrawal to that row of that team, and nothing in it', async () => {
+    const server = serverThat((path, init) =>
+      init?.method === 'DELETE' && path === '/api/teams/2/applications/71' ? did() : null,
+    )
+
+    try {
+      expect(await theApplicationWasTakenBack(TEAM, APPLICATION)).toEqual({
+        got: 'done',
+        body: undefined,
+      })
+    } finally {
+      server.stop()
+    }
+
+    expect(writes(server.asked)).toEqual([
+      { path: '/api/teams/2/applications/71', how: 'DELETE', body: '{}' },
+    ])
+  })
+
+  it('drops what he waits on when the server agreed', async () => {
+    expect(
+      await timesAskedFor('me/applications', async () => {
+        const server = serverThat((_path, init) => (init?.method === 'DELETE' ? did() : null))
+
+        try {
+          await theApplicationWasTakenBack(TEAM, APPLICATION)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(1)
+  })
+
+  it('leaves what he waits on alone when the route answered a number', async () => {
+    expect(
+      await timesAskedFor('me/applications', async () => {
+        const server = serverThat((_path, init) =>
+          init?.method === 'DELETE' ? new Response(null, { status: 404 }) : null,
+        )
+
+        try {
+          expect(await theApplicationWasTakenBack(TEAM, APPLICATION)).toEqual({
+            got: 'wrong',
+            status: 404,
+          })
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(0)
+  })
+})
+
+describe('the team asking a member in', () => {
+  it('sends the invitation to the team the address names, naming the member by his number', async () => {
+    const server = serverThat((path, init) =>
+      init?.method === 'POST' && path === '/api/teams/2/invitations'
+        ? new Response(JSON.stringify({ id: 91, memberNumber: ASKED }), {
+            status: 201,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      expect(await theInvitationWasSent(TEAM, ASKED)).toMatchObject({ got: 'done' })
+    } finally {
+      server.stop()
+    }
+
+    expect(writes(server.asked)).toEqual([
+      { path: '/api/teams/2/invitations', how: 'POST', body: '{"memberNumber":"000127"}' },
+    ])
+  })
+
+  it('hands back the reason the route named, unchanged', async () => {
+    const server = serverThat((_path, init) =>
+      init?.method === 'POST' ? refused('heHasAlreadyBeenAsked', 409) : null,
+    )
+
+    try {
+      expect(await theInvitationWasSent(TEAM, ASKED)).toEqual({
+        got: 'refused',
+        reason: 'heHasAlreadyBeenAsked',
+      })
+    } finally {
+      server.stop()
+    }
+  })
+
+  /* AND DROPS NO CACHE AT ALL. What it changes is the team's list of what it has asked, which is
+     not a resource and is read again by the screen that pressed (`profile/InviteToTeam.tsx`), and
+     the INVITED member's waiting list, which is his and not the reader's. */
+  it.each([
+    ['me/applications'] as const,
+    ['teams'] as const,
+    ['competitors'] as const,
+  ])('leaves %s alone even when the server agreed', async (name) => {
+    expect(
+      await timesAskedFor(name, async () => {
+        const server = serverThat((_path, init) => (init?.method === 'POST' ? did() : null))
+
+        try {
+          await theInvitationWasSent(TEAM, ASKED)
+        } finally {
+          server.stop()
+        }
+      }),
+    ).toBe(0)
   })
 })

@@ -760,7 +760,14 @@ export type SessionValue = {
    *  whole league. Not the whole store: see Message.to. */
   inbox: Message[]
 
-  /** The applications to join a team that nobody has answered yet. */
+  /** The applications to join a team that nobody has answered yet.
+   *
+   *  **No screen files or answers one here since T5 (10.10.2026).** „Prijavi se u tim" and
+   *  „Povuci prijavu" send `POST` and `DELETE /api/teams/{id}/applications` and draw what
+   *  `GET /api/me/applications` answers (`pages/AskingThisTeam.tsx`); the team has answered
+   *  through the server since 29.09.2026. What still calls these three is
+   *  `pages/teamJoin.test.tsx`, which holds the identities they hand out until the cleanup item SC
+   *  takes the prototype away. */
   applications: Application[]
   /** Files one, from the member asking. */
   apply: (application: Omit<Application, 'id'>) => void
@@ -775,11 +782,16 @@ export type SessionValue = {
    *
    *  **Who may send is not this method's question and the sentence that used to
    *  answer it here is overturned.** It said „from any member of the team", the
-   *  owner's parenthesis of 05.09.2026, and he replaced it on 27.09.2026
-   *  (`PDL.md:8703`) with „samo administrator tog tima". This writes whatever the
-   *  screen asks it to write; the condition lives where the button is drawn
-   *  (`pages/profile/InviteToTeam.tsx`, which names why it does not enforce the new
-   *  rule yet) and on the server, which does. */
+   *  owner's parenthesis of 05.09.2026, and he replaced it on 27.09.2026 with
+   *  „Samo administrator tima, kako pise u Pravilniku."
+   *
+   *  **And no screen calls it since T5 (10.10.2026).** „Pozovi u tim" is drawn to the
+   *  administrator alone and sends `POST /api/teams/{id}/invitations`, which writes the
+   *  invitation and its message on the server (`pages/profile/InviteToTeam.tsx`). What
+   *  still writes here is the probe in `pages/teamInvite.test.tsx`, call for call what the
+   *  press wrote, so that the prototype's answer in the inbox
+   *  (`member/InvitationAnswer.tsx`) stays measured until the cleanup item SC takes both
+   *  away. */
   invite: (invitation: Omit<Invitation, 'id'>) => string
 
   /** The invitations into a racing pair that are still open, from everybody at once. */
