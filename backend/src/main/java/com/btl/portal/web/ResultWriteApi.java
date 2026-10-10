@@ -13,7 +13,6 @@ import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.mail.Postman;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -47,31 +46,44 @@ import java.util.Optional;
  * brise (ima pravo na to, iako je verifikovan) ili menja i dostavlja dokaz za tu izmenu
  * (ponovo)."
  *
- * <p><b>TWO OF THE SIX MANDATORY MESSAGES LIVE HERE.</b> PDL P22, 11.08.2026: „Sest
- * obaveznih mejlova u prvoj verziji: kreiranje naloga i potvrda mejla, promena lozinke,
- * UNET REZULTAT, PROMENJEN REZULTAT, dodatni zahtev za verifikaciju, krupna izmena na
- * portalu", and „Sest mejlova iz spiska su obavezni i clan ih ne moze iskljuciti." There
- * is no switch consulted anywhere below, and since V48 there is no switch anywhere at all.
- * V13 once gave {@code notification_setting} six columns for the six OPTIONAL messages, and
- * said in its own words why the mandatory six had none - „a column for them would be a
- * promise the portal must refuse to keep." The owner then removed the optional six outright
- * on 29.09.2026 („da funkcionise samo kao poruke u inbox portala"), so the table went with
- * them. <b>The mandatory six are untouched by that and are still six</b>, these two among
- * them: they never had a column, which is exactly why dropping the table could not reach
- * them.
+ * <p><b>ONE OF THE MANDATORY MAILS IS SENT HERE, AND SINCE 09.10.2026 THE OTHER ONE ABOUT A
+ * RESULT IS NOT.</b> PDL P18, 25.09.2026, „Obaveznih mejlova je pet", names „unet rezultat" and
+ * „promenjen rezultat" among the five a member cannot switch off. The second is a correction,
+ * and {@link #change} sends it. The first is no longer this class's to send. The owner chose
+ * among the outcomes offered on 09.10.2026, and the record words his choice as PDL P9,
+ * 09.10.2026, „Pri slanju rezultata clan dobija samo red u sanducetu; mejl stize tek kad je
+ * rezultat odobren"; the same record already reads the mail about an approved result as „unet
+ * rezultat" (a derivation of 03.10.2026, not a sentence of the owner's). So {@link #report}
+ * writes the line in his inbox and posts nothing, and the letter is
+ * {@link VerificationWriteApi}'s, sent when a moderator approves the run. Until then this route
+ * posted too, which would have given a member two letters about one run.
  *
- * <p><b>AND THE THIRD MESSAGE, THE ONE FOR A DELETION, IS NOT AN EXTRA.</b> Same
- * decision: „Isto obavestenje ide i kad se obrise verifikovan rezultat i kad masovni uvoz
- * pregazi postojeci. Bez ove dve stavke, brisanje i uvoz postaju nacin da se rezultat
- * promeni bez traga, pa cela mera ne vredi nista." Deleting is the cheapest way to change
- * a result without leaving a trace, and that is the hole this closes.
+ * <p>There is no switch consulted anywhere below, and since V48 there is no switch anywhere at
+ * all. V13 once gave {@code notification_setting} six columns for the six OPTIONAL messages,
+ * and said in its own words why the mandatory ones had none - „a column for them would be a
+ * promise the portal must refuse to keep." The owner then removed the optional six outright on
+ * 29.09.2026 („da funkcionise samo kao poruke u inbox portala"), so the table went with them.
+ * <b>The mandatory mails are untouched by that</b>: they never had a column, which is exactly
+ * why dropping the table could not reach them.
  *
- * <p><b>THE SAME MESSAGE GOES THREE PLACES AND IS BUILT ONCE.</b> „Skrivena kopija svakog
- * takvog obavestenja ide na administrativnu adresu lige, i ista poruka ide u portalski
- * inboks." One {@link Said}, handed to {@link Postman} with the league blind-copied and
- * written into {@code message} - rather than a second wording for the inbox, which is how
- * two copies of one record come to disagree. What decides the words is
- * {@link WhatAResultChangeSays} and not this class.
+ * <p><b>AND THE MESSAGE FOR A DELETION IS NOT AN EXTRA.</b> „Isto obavestenje ide i kad se
+ * obrise verifikovan rezultat i kad masovni uvoz pregazi postojeci. Bez ove dve stavke,
+ * brisanje i uvoz postaju nacin da se rezultat promeni bez traga, pa cela mera ne vredi
+ * nista." Deleting is the cheapest way to change a result without leaving a trace, and that is
+ * the hole this closes.
+ *
+ * <p><b>ONE MESSAGE, BUILT ONCE, AND IT GOES TO THE MEMBER AND TO NOBODY ELSE.</b> „Skrivena
+ * kopija svakog takvog obavestenja ide na administrativnu adresu lige, i ista poruka ide u
+ * portalski inboks" - and its exception, which is every message this class sends: PDL P9,
+ * 25.09.2026, „Skrivena kopija ligi NE ide kad clan sam menja ili brise svoj rezultat". The
+ * owner's own words for it: „Covek ima pravo da obrise svoj rezultat bez javljanja i time se i
+ * tabele i obracuni automatski azuriraju. Ispravka svakako ide Adminu na odobrenje." So one
+ * {@link Said} is written into {@code message} and, for a correction and a deletion, handed to
+ * {@link Postman} for his own address with nobody copied - rather than a second wording for the
+ * inbox, which is how two copies of one record come to disagree. A copy of anything the member
+ * did NOT do to his own result is not this class's to decide: the moderator's approval sends
+ * its own letter, copied to the league ({@link VerificationWriteApi}). What decides the words
+ * is {@link WhatAResultChangeSays} and not this class.
  *
  * <p><b>A CORRECTION DOES NOT TOUCH THE RESULT, AND THAT IS AN OWNER'S DECISION MADE
  * AGAINST A MEASUREMENT.</b> 28.08.2026, choosing between four outcomes: „Stari rezultat
@@ -220,10 +232,6 @@ class ResultWriteApi {
 
 	private final Postman postman;
 
-	/** The league's own address, which the blind copy goes to (PDL P22). Configured rather
-	 *  than written here for the reason {@code application.properties} gives beside it. */
-	private final String theLeague;
-
 	/** The bean and never {@code LocalDate.now()}, so „a race in the future" is something a
 	 *  case can state instead of wait for ({@code WhatTimeItIs}). */
 	private final Clock clock;
@@ -234,13 +242,11 @@ class ResultWriteApi {
 	 *  statement silently never ran. */
 	private final TransactionTemplate inOneTransaction;
 
-	ResultWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Postman postman,
-			@Value("${btl.mail.league}") String theLeague, Clock clock,
+	ResultWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Postman postman, Clock clock,
 			TransactionTemplate inOneTransaction) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.postman = postman;
-		this.theLeague = theLeague;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 	}
@@ -330,7 +336,7 @@ class ResultWriteApi {
 			return proof;
 		}
 
-		return typed.raceId() == null ? described(asking, me, typed) : fromTheCalendar(asking, me, typed);
+		return typed.raceId() == null ? described(me, typed) : fromTheCalendar(me, typed);
 	}
 
 	/**
@@ -477,7 +483,7 @@ class ResultWriteApi {
 	 * that disagreed with the calendar could not be written anyway, and asking for one would
 	 * be a 500 where an answer belongs.
 	 */
-	private ResponseEntity<?> fromTheCalendar(WhoIsAsking.Member asking, long me, Ran typed) {
+	private ResponseEntity<?> fromTheCalendar(long me, Ran typed) {
 		if (typed.raceName() != null || typed.raceKind() != null || typed.placeId() != null
 				|| typed.city() != null || typed.country() != null) {
 			return no(THE_RACE_IS_NAMED_TWICE);
@@ -507,8 +513,8 @@ class ResultWriteApi {
 				figures.descentM(), figures.seconds(), pointsFor(figures.distanceKm(),
 						figures.ascentM(), figures.descentM(), figures.seconds()));
 
-		return write(asking, me, typed.raceId(), race.day(), null, null, null, null, null, run,
-				typed, race.name());
+		return write(me, typed.raceId(), race.day(), null, null, null, null, null, run, typed,
+				race.name());
 	}
 
 	/*
@@ -527,7 +533,7 @@ class ResultWriteApi {
 	 * approval will need to make an event and a race out of is collected here, at the one
 	 * moment somebody knows it - which is V10's own reason for these columns.
 	 */
-	private ResponseEntity<?> described(WhoIsAsking.Member asking, long me, Ran typed) {
+	private ResponseEntity<?> described(long me, Ran typed) {
 		/* THE KIND IS ASKED FOR ITSELF BEFORE THE CODEBOOK IS ASKED ABOUT IT, and that too
 		   was a 500: `WhatARaceCarries.KINDS` is a `Set.of(...)`, and an immutable set THROWS
 		   on `contains(null)` rather than answering false. So a form that never chose a kind
@@ -556,7 +562,7 @@ class ResultWriteApi {
 				typed.descentM(), typed.seconds(),
 				pointsFor(typed.distanceKm(), typed.ascentM(), typed.descentM(), typed.seconds()));
 
-		return write(asking, me, null, typed.day(), named, typed.raceKind(),
+		return write(me, null, typed.day(), named, typed.raceKind(),
 				fromTheCodebook ? placeKey(typed.placeId()).orElseThrow() : null,
 				fromTheCodebook ? null : typed.city().strip(),
 				fromTheCodebook ? null : countryKey(typed.country()).orElseThrow(),
@@ -637,11 +643,19 @@ class ResultWriteApi {
 				.query(Long.class).optional();
 	}
 
-	/** The writing, which is one transaction from the submission to the queue row and the
-	 *  line in his inbox, and the message after it has committed. */
-	private ResponseEntity<?> write(WhoIsAsking.Member asking, long me, Long raceId, LocalDate day,
-			String raceName, String raceKind, Long theTownsKey, String city, Long theCountrysKey,
-			Run run, Ran typed, String subject) {
+	/**
+	 * THE WRITING, which is one transaction from the submission to the queue row and the line
+	 * in his inbox, AND NO LETTER AFTER IT.
+	 *
+	 * <p>The line in the inbox is the whole of what a run sent in tells him (PDL P9,
+	 * 09.10.2026, „Pri slanju rezultata clan dobija samo red u sanducetu"), and the letter
+	 * waits for the approval, which is {@link VerificationWriteApi}'s. Until 09.10.2026 the
+	 * account that is asking came this far only to be asked for the address that letter went
+	 * to, so with the letter gone neither road that ends here carries it.
+	 */
+	private ResponseEntity<?> write(long me, Long raceId, LocalDate day, String raceName,
+			String raceKind, Long theTownsKey, String city, Long theCountrysKey, Run run, Ran typed,
+			String subject) {
 		Said said = WhatAResultChangeSays.entered(run);
 
 		Long made = inOneTransaction.execute(committing -> {
@@ -653,8 +667,6 @@ class ResultWriteApi {
 
 			return submission;
 		});
-
-		post(asking.account(), said);
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(new Made(made));
 	}
@@ -745,16 +757,21 @@ class ResultWriteApi {
 	}
 
 	/**
-	 * THE MESSAGE, SENT AFTER THE COMMIT AND THEREFORE UNABLE TO UNDO IT, WITH THE LEAGUE
-	 * COPIED IN BLIND.
+	 * THE MESSAGE, SENT AFTER THE COMMIT AND THEREFORE UNABLE TO UNDO IT, TO HIM AND WITH
+	 * NOBODY COPIED.
+	 *
+	 * <p><b>Nobody copied, and that is the owner's exception to the league's copy rather than
+	 * an omission.</b> Both callers are the member acting on his own result - a correction and
+	 * a deletion - and PDL P9, 25.09.2026, „Skrivena kopija ligi NE ide kad clan sam menja ili
+	 * brise svoj rezultat" (see the class note). A run sent in does not come here at all.
 	 *
 	 * <p>{@link RegistrationApi}'s decision, made again here because it is a different
 	 * answer for a different route and is supposed to be: a relay that will not take it is
-	 * not something the member can act on. His result IS reported, his correction IS in the
-	 * queue, his deletion HAS happened - and the record survives in his inbox, which is
-	 * written inside the transaction above precisely so that a relay having a bad afternoon
-	 * does not cost the league its record. Answering 500 would say „nothing happened" to
-	 * somebody for whom everything did, and would have him send it a second time.
+	 * not something the member can act on. His correction IS in the queue, his deletion HAS
+	 * happened - and the record survives in his inbox, which is written inside the transaction
+	 * above precisely so that a relay having a bad afternoon does not cost the league its
+	 * record. Answering 500 would say „nothing happened" to somebody for whom everything did,
+	 * and would have him send it a second time.
 	 *
 	 * <p><b>The address is read off the account that is asking</b>, never off anything in the
 	 * request, and {@code account_competitor_unique} (V23) is what makes „his address" one
@@ -771,7 +788,7 @@ class ResultWriteApi {
 				.single();
 
 		try {
-			postman.send(said, to, theLeague);
+			postman.send(said, to);
 		} catch (MailException theRelayDidNotTakeIt) {
 			LOG.warn("the message about the result of account {} did not go out; what it said is"
 					+ " in his inbox and the row is written either way", account,
