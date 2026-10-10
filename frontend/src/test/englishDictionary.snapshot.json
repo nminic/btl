@@ -1360,7 +1360,8 @@
       "theClimbOrTheFallIsNegative": "The climb and the fall are given as positive numbers.",
       "theRaceCountsInALeagueOfItsSeason": "This race counts in a competition of its season, so the date may not leave that year.",
       "theAddressIsTaken": "There is already a race at that address.",
-      "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at this race."
+      "theDateWouldMoveAResultToAnotherYear": "The date cannot cross into another year while a result stands at this race.",
+      "theKindCannotChangeOnceRunsAreCounted": "The kind of a race cannot change while an approved result stands at it."
     },
     "eventGone": "The event has been deleted, with its races and its results.",
     "eventSavedUnseen": "The event was saved, but the portal cannot show it in this list. Reload the page.",

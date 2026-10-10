@@ -489,9 +489,10 @@ describe('the reasons the server can name', () => {
        and `event/EventActions.tsx` stopped writing into the session and began to send.
        Eleven and twelve, and four names appear in both under two different keys: the
        route answers one word, and what it means to the reader depends on whether he was
-       saving an event or one of its mornings. */
+       saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
+       the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
-    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 12],
+    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 13],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every
