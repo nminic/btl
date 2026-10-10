@@ -160,8 +160,10 @@ import java.util.Set;
  * the owner's choice of 21.09.2026, in the record's wording, „u transakciji su rezultat, rang
  * liste, trka i događaj ako nastaju". Duplicates are not prevented - ADL, owner, 11.09.2026, the
  * cost he accepted, in the record's wording: „kalendar dobija trke koje niko nije planirao, i
- * duplikati se ne sprečavaju" - and the same name twice in one year is told apart by a number in
- * the address rather than refused ({@link #makeTheEventAndTheRace}).
+ * duplikati se ne sprečavaju" - <b>but an event whose address is taken is not made a second
+ * time: the approval is refused</b>, and the moderator adds the race to the event that is there
+ * and chooses it ({@link #THE_EVENT_IS_IN_THE_CALENDAR_ALREADY} says whose decision that is and
+ * what it narrows).
  *
  * <p><b>THE CONTRADICTION BESIDE {@code comments} IS SETTLED, NOT STILL OPEN.</b> PDL („ne
  * odbija nego brise, a napomena je neobavezna") and V9's {@code verification_refusal_says_why}
@@ -296,12 +298,15 @@ class VerificationWriteApi {
 	 *
 	 * <p>Since R3 of the results flows such a run is approved here, on one of two roads the
 	 * answer names ({@link Answered#newRace} or {@link Answered#raceId}, see the head of this
-	 * class). An approval that names neither is refused, and that is a choice made with the plan
-	 * of R3 rather than a decision of the owner's: an approval that wrote an event and a race into
-	 * the public calendar out of what the member typed, with nobody having said so, would be a
-	 * field left out that quietly changed something (ADL A8, owner, 19.09.2026: „Izostavljeno
-	 * polje nikad ne sme tiho da promeni vrednost"). It is 409 for the reason the head of this
-	 * class gives: he can see the row, and what he asked for cannot happen as he asked it.
+	 * class). An approval that names neither is refused, which is the owner's answer of
+	 * 10.10.2026, choosing between the outcomes offered and in the record's wording: „red NOVO se
+	 * odobrava samo kroz panel u kom se upisuje ili bira trka". Until that answer it was a choice
+	 * made with the plan of R3, for a reason that still holds: an approval that wrote an event and
+	 * a race into the public calendar out of what the member typed, with nobody having said so,
+	 * would be a field left out that quietly changed something (ADL A8, owner, 19.09.2026:
+	 * „Izostavljeno polje nikad ne sme tiho da promeni vrednost"). It is 409 for the reason the
+	 * head of this class gives: he can see the row, and what he asked for cannot happen as he
+	 * asked it.
 	 *
 	 * <p><b>{@code result.race_id} is {@code not null}</b>, so the approval this refuses could
 	 * not be carried out as sent: left unsaid, it would either fall over as a server fault or,
@@ -327,6 +332,34 @@ class VerificationWriteApi {
 	/** A new race and a race of the calendar named in one answer, which no row could be. */
 	private static final String THE_RACE_IS_NAMED_TWICE =
 			"Trka je zadata dvaput: ili nova ili postojeća.";
+
+	/**
+	 * AN EVENT WHOSE ADDRESS IS TAKEN IS NOT MADE AT APPROVAL: THE APPROVAL IS REFUSED.
+	 *
+	 * <p>PDL, the owner's answer of 10.10.2026 to the question about an event that exists while
+	 * the race in it does not, choosing between the outcomes offered and in the record's wording:
+	 * „ako događaj postoji a trke nema, odobrenje se odbija, a moderator trku dodaje kroz
+	 * Administraciju". The outcome he chose was worded „odbija se zbog adrese događaja", so the
+	 * event exists when its ADDRESS does ({@link EventAddress#of}, the name and the year): the
+	 * same name in another year is another event, and a name spelt with letters the address does
+	 * not keep is the same one. It narrows his decision of 19.09.2026 for this road alone („Adresa
+	 * događaja je naziv i godina, a isti naziv dvaput u istoj godini dobija redni broj"): numbering
+	 * stays the rule for an event the administration makes ({@code EventWriteApi}, a separate
+	 * increment, which until then refuses the same name twice as a known state). So the moderator
+	 * adds the race to the event that is there and chooses it here ({@link Answered#raceId}).
+	 *
+	 * <p><b>Asked twice, and both answer with this sentence.</b> Before the row is claimed, like
+	 * every refusal here ({@link #howTheRunIsCounted}); and by the unique index itself when the
+	 * event is written, for an address another approval took in between
+	 * ({@link #makeTheEventAndTheRace}), where the whole answer is rolled back and nothing of it is
+	 * left. 409 for the reason the head of this class gives: he can see the row, and what he asked
+	 * for cannot happen as he asked it.
+	 *
+	 * <p>The words are mine, and the owner changes them on QA: the road he chose for the sentences
+	 * of T5 and P2 the same day.
+	 */
+	private static final String THE_EVENT_IS_IN_THE_CALENDAR_ALREADY = "Događaj sa tim nazivom u"
+			+ " toj godini već postoji. Trku u njemu dodaj kroz Administraciju, pa je izaberi ovde.";
 
 	/**
 	 * A race of the calendar named by a key no race answers to: a form fault about the race the
@@ -778,8 +811,18 @@ class VerificationWriteApi {
 			case ALREADY_DECIDED -> no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY);
 			case A_REFUSAL_NEEDS_A_REASON -> no(HttpStatus.BAD_REQUEST, A_REFUSAL_NEEDS_A_REASON);
 			case APPROVE_IT, REJECT_IT -> {
-				Carried carried = inOneTransaction.execute(committing -> write(item, answer,
-						asking, typed));
+				Carried carried;
+
+				try {
+					carried = inOneTransaction.execute(committing -> write(item, answer, asking, typed));
+				}
+				catch (AnEventTookTheAddressMeanwhile taken) {
+					/* THE ONE REFUSAL MET AFTER THE ROW WAS CLAIMED, and the exception is what took the
+					   claim back: thrown out of the transaction, it rolled back everything the answer
+					   had written, so the row waits as it did and nothing of the answer is left. The
+					   sentence is the one the same refusal gets before the claim. */
+					yield no(HttpStatus.CONFLICT, THE_EVENT_IS_IN_THE_CALENDAR_ALREADY);
+				}
 
 				/* AND THE POST GOES AFTER THE TRANSACTION HAS COMMITTED, never inside it.
 				   ADL A36, the owner's choice of 21.09.2026 for this very tab, among three outcomes
@@ -1211,6 +1254,16 @@ class VerificationWriteApi {
 				return Counting.notCounted(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE));
 			}
 
+			/* AN EVENT THAT IS THERE ALREADY IS NOT MADE AGAIN, asked of its ADDRESS
+			   (`THE_EVENT_IS_IN_THE_CALENDAR_ALREADY` says whose decision that is). Asked here,
+			   before the row is claimed, so the refusal needs nothing undone; an address taken
+			   after this question is the unique index's to refuse (`makeTheEventAndTheRace`). */
+			if (Boolean.TRUE.equals(db.sql("select exists(select 1 from btl_event where slug = ?)")
+					.param(EventAddress.of(asked.eventName().strip(), sent.raceDate()))
+					.query(Boolean.class).single())) {
+				return Counting.notCounted(no(HttpStatus.CONFLICT, THE_EVENT_IS_IN_THE_CALENDAR_ALREADY));
+			}
+
 			on = new CountedOn(null, asked.raceName().strip(), sent.raceDate(), null,
 					new Made(asked.eventName().strip(), asked.raceKind()));
 		} else {
@@ -1438,21 +1491,15 @@ class VerificationWriteApi {
 	 * event's link is the organiser's page (V7), and the address the member sent is proof of his
 	 * run, not that. Its day is its one race's, which is V29's rule as well, asked on commit.
 	 *
-	 * <p><b>ITS ADDRESS IS THE NAME AND THE YEAR, AND THE SAME NAME TWICE IN ONE YEAR GETS THE NEXT
-	 * FREE NUMBER RATHER THAN A REFUSAL.</b> PDL, owner, 19.09.2026, choosing among four outcomes
-	 * offered, in the record's wording: „Adresa događaja je naziv i godina, a isti naziv dvaput u
-	 * istoj godini dobija redni broj." - {@code naziv-godina}, then {@code -2}, then {@code -3} -
-	 * and among the outcomes refused, a moderator asked to type a different name. ADL O7 the same
-	 * day says the number is given once, when the event is made. The address is the one rule
-	 * {@link EventAddress} holds, and the number is put on it here, by the unique index itself:
-	 * an address taken - by an event already there, or by a second approval committing first - is
-	 * an insert that writes nothing, and the next number is tried. Nothing is asked before the
-	 * insert, so there is no moment between a question and a write for another approval to land
-	 * in. <b>{@code EventWriteApi} still refuses the same name twice in one year</b>, which the
-	 * record calls a known state until that decision is carried out there („Do sprovođenja portal
-	 * i dalje odbija dvojnika, i to je poznato stanje, ne propust"); the numbering is written here
-	 * for the one caller it has, and goes to {@link EventAddress} on the day it has two, the way
-	 * {@link WhatARaceCarries#figuresOf} moved there when a second road came to need it.
+	 * <p><b>ITS ADDRESS IS THE NAME AND THE YEAR ({@link EventAddress#of}), AND AN ADDRESS TAKEN
+	 * REFUSES THE APPROVAL RATHER THAN BEING NUMBERED.</b> The owner's answer of 10.10.2026, which
+	 * {@link #THE_EVENT_IS_IN_THE_CALENDAR_ALREADY} quotes along with the decision of 19.09.2026 it
+	 * narrows for this road. {@link #howTheRunIsCounted} asks before the row is claimed; what this
+	 * insert meets is an address another approval took after that question, which only the unique
+	 * index can see. So the insert writes nothing on a conflict and says so, and the whole answer -
+	 * the claim of the row among it - is rolled back ({@link AnEventTookTheAddressMeanwhile}).
+	 * Until R3b of the results flows this road numbered a taken address instead
+	 * ({@code naziv-godina-2}), by the decision of 19.09.2026 before the answer narrowed it.
 	 *
 	 * <p><b>THE RACE.</b> The moderator's name for it, given by hand ({@code renamed}, V7: „says the
 	 * name was given by hand"), the same day, and the kind the moderator decided. <b>What it
@@ -1472,19 +1519,14 @@ class VerificationWriteApi {
 	 * @return the race's key
 	 */
 	private long makeTheEventAndTheRace(Submission sent, CountedOn on, Figures counted) {
-		String address = EventAddress.of(on.made().eventName(), on.day());
-		Long event = null;
-
-		for (int ordinal = 1; event == null; ordinal++) {
-			event = db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
-							+ " featured, description, link) values (?, ?, ?, ?, ?, ?, ?, false, '', '')"
-							+ " on conflict (slug) do nothing returning id")
-					.params(ordinal == 1 ? address : address + "-" + ordinal, on.made().eventName(),
-							on.day(), sent.placeId(), sent.city(), sent.countryId(), WhatAnEventCarries.A_RACE)
-					.query(Long.class)
-					.optional()
-					.orElse(null);
-		}
+		long event = db.sql("insert into btl_event (slug, name, date, place_id, city, country_id, kind,"
+						+ " featured, description, link) values (?, ?, ?, ?, ?, ?, ?, false, '', '')"
+						+ " on conflict (slug) do nothing returning id")
+				.params(EventAddress.of(on.made().eventName(), on.day()), on.made().eventName(),
+						on.day(), sent.placeId(), sent.city(), sent.countryId(), WhatAnEventCarries.A_RACE)
+				.query(Long.class)
+				.optional()
+				.orElseThrow(AnEventTookTheAddressMeanwhile::new);
 
 		boolean course = WhatARaceCarries.fixesTheCourse(on.made().kind());
 		boolean time = WhatARaceCarries.fixesTheTime(on.made().kind());
@@ -1821,6 +1863,25 @@ class VerificationWriteApi {
 	/** What an approval writes into the calendar besides the race's name: its event's name, and
 	 *  the kind of race the moderator decided. */
 	private record Made(String eventName, String kind) {
+	}
+
+	/**
+	 * AN ADDRESS ANOTHER APPROVAL TOOK AFTER THIS ONE ASKED ABOUT IT, met by the unique index when
+	 * the event is written ({@link #makeTheEventAndTheRace}).
+	 *
+	 * <p><b>An exception and not an answer carried back</b>, because by then the row is claimed:
+	 * an answer carried back would leave the claim committed and the run decided with nothing
+	 * counted. Thrown out of the transaction it rolls the claim back with everything else, and
+	 * {@link #decide} answers it with the sentence the same refusal gets before the claim. No
+	 * stack: it is a refusal, not a fault.
+	 */
+	private static final class AnEventTookTheAddressMeanwhile extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		AnEventTookTheAddressMeanwhile() {
+			super(THE_EVENT_IS_IN_THE_CALENDAR_ALREADY, null, false, false);
+		}
 	}
 
 	/**
