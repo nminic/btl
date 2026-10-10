@@ -45,6 +45,18 @@ const countedResults: Result[] = JSON.parse(
 const MINE = '/sr/moji-rezultati'
 
 /**
+ * A WAIT SHORTER THAN THE CASE'S OWN CLOCK, for the cases about the list of what was sent and the
+ * form it opens.
+ *
+ * <p>Testing Library waits `SLOW` (`test/setup.ts`), so a case whose clock is `SLOW` too, or shorter,
+ * dies on the clock when a screen never draws what it waits for, and the failure names nothing.
+ * Measured on this file on 10.10.2026: a mutation that kept HIS runs on HER screen was reported as a
+ * case that ran out of time, which is „nije mereno" and not a catch. Half the clock, the shape
+ * `pages/admin/saveWhileSaving.test.tsx` keeps for the whole of its file.
+ */
+const SOON = { timeout: SLOW / 2 }
+
+/**
  * A RUN AS `GET /api/me/result-submissions` ANSWERS IT TO THE MEMBER IT BELONGS TO, sent back with
  * a reason unless a case says otherwise. What a case does not name is the shape the route answers
  * (`data/servedShape.test.ts` holds it against the served file).
@@ -123,7 +135,7 @@ function writes(): { path: string; method: string; body: Record<string, unknown>
 
 /** The runs the list of what was sent draws, in the order it draws them. */
 async function sentRows(): Promise<HTMLElement[]> {
-  return within(await screen.findByRole('region', { name: /^Poslato na proveru/ })).queryAllByRole(
+  return within(await screen.findByRole('region', { name: /^Poslato na proveru/ }, SOON)).queryAllByRole(
     'listitem',
   )
 }
@@ -161,7 +173,7 @@ describe('a run of one’s own that is still waiting', () => {
         name: 'Ispravi i pošalji ponovo: Odbijena trka',
       }),
     ).toBeVisible()
-  })
+  }, SLOW)
 
   it('says the number is BTL points, worked out from the figures the server answers', async () => {
     /* Two different numbers wear the word „bodovi" on this portal, and this row shows the one that
@@ -180,7 +192,7 @@ describe('a run of one’s own that is still waiting', () => {
 
     expect(row.getByText(/23,55 BTL poena$/)).toBeVisible()
     expect(row.queryByText(/bodova$/)).toBeNull()
-  })
+  }, SLOW)
 
   it('carries the caveat about the count while it waits, and not once it has been sent back', async () => {
     /* The one screen that still announces a number before anybody has decided, and so the one that
@@ -200,7 +212,7 @@ describe('a run of one’s own that is still waiting', () => {
 
     expect(screen.getAllByText(/Račun nije konačan/)).toHaveLength(1)
     expect(within(must(rows[1], 'the run that waits')).getByText(/Račun nije konačan/)).toBeVisible()
-  })
+  }, SLOW)
 })
 
 /* „ASKS TWICE BEFORE IT IS GONE" AND „IS LEFT ALONE WHEN THE QUESTION IS ANSWERED NO" stood here
@@ -242,7 +254,7 @@ describe('a run a moderator sent back', () => {
     expect(
       within(must(waiting, 'the run that waits')).queryByText('Na stranici rezultata nema tvog imena.'),
     ).toBeNull()
-  })
+  }, SLOW)
 
   it('opens the form on the run, its race held and its day open, where the calendar does not hold the race', async () => {
     /* „Sve osim trke" (owner, 27.08.2026): sent again, a run keeps the race it named. A race the
@@ -264,12 +276,14 @@ describe('a run a moderator sent back', () => {
     renderAt(MINE, 'competitor', ME, undefined, '2026-08-23')
 
     await user.click(
-      await screen.findByRole('link', { name: 'Ispravi i pošalji ponovo: Trka oko Palićkog jezera' }),
+      await screen.findByRole('link', { name: 'Ispravi i pošalji ponovo: Trka oko Palićkog jezera' }, SOON),
     )
 
     expect(
       await screen.findByText(
         'Ispravljaš rezultat koji je odbijen. Razlog je bio: Na stranici rezultata nema tvog imena.',
+        undefined,
+        SOON,
       ),
     ).toBeVisible()
 
@@ -283,7 +297,7 @@ describe('a run a moderator sent back', () => {
     for (const open of [/^Datum trke/, /^Dužina/, /^Uspon/, /^Spust/, /^Sati/, /^Minuta/, /^Sekundi/]) {
       expect(screen.getByLabelText(open), String(open)).not.toHaveAttribute('readonly')
     }
-  })
+  }, SLOW)
 
   /**
    * AND EVERY FIGURE THE RACE FIXES, WHERE THE RACE IS IN THE CALENDAR, in both directions per kind.
@@ -317,8 +331,8 @@ describe('a run a moderator sent back', () => {
       ])
       renderAt(MINE, 'competitor', ME, undefined, '2026-08-23')
 
-      await user.click(await screen.findByRole('link', { name: `Ispravi i pošalji ponovo: ${name}` }))
-      await screen.findByText(/Ispravljaš rezultat koji je odbijen/)
+      await user.click(await screen.findByRole('link', { name: `Ispravi i pošalji ponovo: ${name}` }, SOON))
+      await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
       for (const locked of [/^Naziv trke/, /^Datum trke/, ...held]) {
         expect(screen.getByLabelText(locked), String(locked)).toHaveAttribute('readonly')
@@ -371,12 +385,12 @@ describe('a run a moderator sent back', () => {
     await user.click(
       screen.getByRole('link', { name: 'Ispravi i pošalji ponovo: Trka oko Palićkog jezera' }),
     )
-    await screen.findByText(/Ispravljaš rezultat koji je odbijen/)
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
     await user.clear(screen.getByLabelText(/^Link/))
     await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/ispravno')
     await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.', undefined, SOON)).toBeVisible()
 
     await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
@@ -410,7 +424,7 @@ describe('the order of what was sent', () => {
     renderAt(MINE, 'competitor', ME, undefined, null)
 
     expect((await sentRows()).map(nameOf)).toEqual(['Poslata poslednja', 'Poslata druga', 'Poslata prva'])
-  })
+  }, SLOW)
 })
 
 /* „A RESULT THAT HAS ALREADY BEEN DECIDED" (an approved run offers neither control), „A SUBMISSION
@@ -489,11 +503,11 @@ describe('the runs sent, when somebody else signs in without signing out first',
 
     renderAt(MINE, 'competitor', ME, undefined, null, <SignInAsWithoutSigningOut memberNumber="000009" />)
 
-    expect(await screen.findByText('Njegova trka')).toBeVisible()
+    expect(await screen.findByText('Njegova trka', undefined, SOON)).toBeVisible()
 
     await user.click(screen.getByRole('button', { name: 'sign in as somebody else, in place' }))
 
-    expect(await screen.findByText('Njena trka')).toBeVisible()
+    expect(await screen.findByText('Njena trka', undefined, SOON)).toBeVisible()
     expect(screen.queryByText('Njegova trka')).toBeNull()
   }, SLOW)
 })
@@ -715,9 +729,9 @@ describe('a result that has been counted', () => {
     renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
 
     await user.click(
-      await screen.findByRole('link', { name: `Ispravi i pošalji ponovo: ${corrected.raceName}` }),
+      await screen.findByRole('link', { name: `Ispravi i pošalji ponovo: ${corrected.raceName}` }, SOON),
     )
-    await screen.findByText(/Ispravljaš rezultat koji je odbijen/)
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
     const day = screen.getByLabelText(/^Datum trke/)
 
@@ -956,7 +970,7 @@ describe('a result that has been counted', () => {
 
       renderAt(`/sr/rezultat/novi?ispravka=${String(asked.id)}`, 'competitor', '000001', undefined, '2026-08-23')
 
-      await screen.findByLabelText(/^Naziv trke/)
+      await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
 
       if (opens) {
         expect(screen.getByText(/Menjaš rezultat koji je već uračunat/)).toBeVisible()

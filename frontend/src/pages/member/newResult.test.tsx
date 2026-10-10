@@ -25,6 +25,17 @@ const NEW = '/sr/rezultat/novi'
 const TODAY = '2026-08-23'
 
 /**
+ * A WAIT SHORTER THAN THE CASE'S OWN CLOCK, for the cases about a run sent back.
+ *
+ * <p>Testing Library waits `SLOW` (`test/setup.ts`) and a case is given `SLOW` too, so a screen that
+ * never draws what a case waits for kills the case on its clock, and the failure names nothing.
+ * Measured on this file on 10.10.2026: a mutation that opened a waiting run on `?ponovo=` was
+ * reported as a case that ran out of time, which is „nije mereno" and not a catch. Half the clock,
+ * the shape `pages/admin/saveWhileSaving.test.tsx` keeps for the whole of its file.
+ */
+const SOON = { timeout: SLOW / 2 }
+
+/**
  * EVERYTHING THIS SCREEN SENT TO `POST /api/results`, read off the requests themselves, and the
  * asker's own runs answered as the case says where it says anything.
  *
@@ -985,12 +996,12 @@ describe('a run sent back, opened again by its address', () => {
     try {
       renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY)
 
-      expect(await screen.findByText(/Link ne otvara rezultate/)).toBeVisible()
+      expect(await screen.findByText(/Link ne otvara rezultate/, undefined, SOON)).toBeVisible()
       expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Trka za proveru')
     } finally {
       route.stop()
     }
-  })
+  }, SLOW)
 
   it('opens nothing that is not on his own list, however the address is typed', async () => {
     /* The only rule this road has, and until 23.08.2026 nothing measured it. The list it reads
@@ -1001,13 +1012,15 @@ describe('a run sent back, opened again by its address', () => {
     try {
       renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY)
 
-      expect(await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/)).toBeVisible()
+      expect(
+        await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/, undefined, SOON),
+      ).toBeVisible()
       expect(screen.queryByText(/Link ne otvara rezultate/), 'a reason was shown').toBeNull()
       expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
     } finally {
       route.stop()
     }
-  })
+  }, SLOW)
 
   it('does not open a run that is still waiting, however the address is typed', async () => {
     /* The owner's choice of 10.10.2026 among the outcomes offered, in the record's wording:
@@ -1019,13 +1032,15 @@ describe('a run sent back, opened again by its address', () => {
     try {
       renderAt(`${NEW}?ponovo=78`, 'competitor', ME, undefined, TODAY)
 
-      expect(await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/)).toBeVisible()
+      expect(
+        await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/, undefined, SOON),
+      ).toBeVisible()
       expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
       expect(screen.getByLabelText(/^Naziv trke/)).not.toHaveAttribute('aria-disabled', 'true')
     } finally {
       route.stop()
     }
-  })
+  }, SLOW)
 })
 
 /* WHAT THE STORE HELD WHILE THE SERVER WAS ASKED stood here until R2 of the results flows: that
