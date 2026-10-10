@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { NO_RATING } from '../data/types'
-import type { ServedPendingItem } from '../data/types'
+import type { ServedPendingItem, WaitingRunFields } from '../data/types'
 import { refused, serverThat, type Asked } from './serverAnswers'
 import { whoTheCookieCurrentlyNames } from './setup'
 
@@ -106,6 +106,7 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
       id,
       memberNumber: who?.memberNumber ?? null,
       photoId: null,
+      ...NO_RUN,
     })
 
     return new Response(JSON.stringify({ id, name }), {
@@ -142,6 +143,7 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
       id,
       memberNumber: who?.memberNumber ?? null,
       photoId: null,
+      ...NO_RUN,
     })
 
     return new Response(JSON.stringify({ id }), {
@@ -176,3 +178,19 @@ type FileEvent = { id: number; name: string }
  * value only has to be a valid date, never today's.
  */
 const TODAY = '2026-01-01'
+
+/**
+ * The run a result waits with, as the server answers it on every item that is not one:
+ * all eight names empty (`data/types.ts`, `WaitingRunFields`). A team proposed or an event
+ * rated here is never a run, so both rows carry this and nothing else.
+ */
+const NO_RUN: WaitingRunFields = {
+  raceId: null,
+  raceDate: null,
+  raceKind: '',
+  distanceKm: null,
+  ascentM: null,
+  descentM: null,
+  seconds: null,
+  link: '',
+}

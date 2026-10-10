@@ -49,15 +49,15 @@ import { PENDING_QUEUE_IDS, type ItemKind, type PendingItem, type PendingQueueId
 export type QueueOutcome = 'sendBack' | 'instruct' | 'delete'
 
 /**
- * Which five there are.
+ * Which five there are: the queues `/api/verification` answers for (pending.ts), named in
+ * one list in `data/types.ts` and not again here, so a queue added there and forgotten
+ * here is a compilation error rather than a screen that quietly serves nothing.
  *
- * The four that wait in the file, plus the results a competitor sends in during
- * the visit and which therefore live in the session rather than in the file
- * (pending.ts). Written as those two and not as a third list of names, so a
- * queue added to the file and forgotten here, or the other way round, is a
- * compilation error rather than a screen that quietly serves nothing.
+ * It was that list and the results until R1 of the results flows, because a result
+ * waited in the browser's session rather than in the answer; the results are in the
+ * answer now, and the list names them.
  */
-export type QueueId = PendingQueueId | 'results'
+export type QueueId = PendingQueueId
 
 export type Queue = {
   id: QueueId
@@ -165,15 +165,14 @@ export const QUEUE: { [K in QueueId]: Queue & { id: K } } = {
 /**
  * The same five as a list, in the order they are shown in.
  *
- * Built from the list of queues that are read from a file, with the results in
- * front of them, rather than from the order the record above happens to be
- * written in. The record's order is not a decision anybody took: it is whatever
- * the keys were typed in, and `Object.values` follows it silently. This way the
- * order lives in one place (src/data/types.ts), beside the shape of the items
- * themselves, and the results come first because they are the queue with the
- * most in it and the one a moderator opens daily.
+ * Built from the list of queues the answer holds rather than from the order the record
+ * above happens to be written in. The record's order is not a decision anybody took: it is
+ * whatever the keys were typed in, and `Object.values` follows it silently. This way the
+ * order lives in one place (src/data/types.ts), beside the shape of the items themselves,
+ * and the results come first there because they are the queue with the most in it and the
+ * one a moderator opens daily.
  */
-export const QUEUES: Queue[] = [QUEUE.results, ...PENDING_QUEUE_IDS.map((id) => QUEUE[id])]
+export const QUEUES: Queue[] = PENDING_QUEUE_IDS.map((id) => QUEUE[id])
 
 /**
  * Whether this item can be handed back at all.
@@ -331,14 +330,14 @@ export function outcomeFor(queue: Queue, item: { kind: ItemKind }): QueueOutcome
  * screen of the portal in order to hand it in unread.
  */
 export type Waiting = {
-  /** Results a competitor sent in during this visit and nobody has judged. */
-  pendingResults: number
   /**
    * HOW MANY ACCOUNTS ARE NOT A MEMBER FOR THE SEASON, which is the length of a DERIVED list
    * and not of anything waiting in a file.
    *
-   * <p><b>Its own field for the same reason `pendingResults` has one, and the reason is a
-   * measurement rather than symmetry.</b> Since 27.09.2026 the Uplate tab reads
+   * <p><b>Its own field, and the reason is a measurement rather than symmetry.</b> (A second
+   * field, `pendingResults`, stood beside it for the results a competitor sent in during the
+   * visit, until R1 of the results flows put those in the answer with the rest.) Since
+   * 27.09.2026 the Uplate tab reads
    * `GET /api/payments` and nothing writes `verification.queue = 'payments'` anywhere in the
    * backend - five places write that table and not one of them writes that word. So counted
    * with the other three, this tab would read a permanent NOUGHT while the screen behind it
@@ -357,13 +356,13 @@ export type Waiting = {
  * in the navigation are the same number, and two ways of counting it would
  * eventually be two different numbers.
  *
- * TWO of the five are counted from something other than the file of waiting items, and they
- * are the two that never had an item in it. Results a competitor sends in during the visit,
- * so they live in the session. And payments are a DERIVED list since 27.09.2026: nothing
- * writes that queue, so the file answers nought for it for ever, and a tab reading nought
- * above a screen listing twenty people is worse than no number at all.
+ * ONE of the five is counted from something other than the answer of waiting items:
+ * payments, a DERIVED list since 27.09.2026. Nothing writes that queue, so the answer holds
+ * nought for it for ever, and a tab reading nought above a screen listing twenty people is
+ * worse than no number at all. The results were the second, counted off the browser's
+ * session, until R1 of the results flows put them in the answer.
  *
- * Memberships were the second of those two once before, and came back into the file when the
+ * Memberships were counted apart once before, and came back into the file when the
  * member number became something the system hands out (PDL P8, 30.07.2026). They are out of it
  * again for a different reason: not because a number is missing, but because there is no item.
  */
@@ -397,14 +396,7 @@ export function notMembersYetIn(served: unknown): number {
   return Array.isArray(accounts) ? accounts.length : 0
 }
 
-export function countFor(
-  { pendingResults, notMembersYet, items, decisions }: Waiting,
-  queue: Queue,
-): number {
-  if (queue.id === 'results') {
-    return pendingResults
-  }
-
+export function countFor({ notMembersYet, items, decisions }: Waiting, queue: Queue): number {
   if (queue.id === 'payments') {
     return notMembersYet
   }

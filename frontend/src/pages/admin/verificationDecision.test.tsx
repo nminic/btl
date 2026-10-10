@@ -57,13 +57,13 @@ function OneMessageThatIsNotADecision() {
  * back in front of the request": every case below that reads `session decisions` fails on
  * it, because a decision the screen took on its own is a decision with no `POST` behind it.
  *
- * <p><b>Three queues and not five.</b> `CARRIED_OUT_HERE` in `VerificationWriteApi` is
- * `{profiles, teams, comments}`, which is exactly the three `admin/PendingQueue.tsx`
- * serves. The route answers the other two 409 „Odluka o ovom redu još nije uvedena." -
- * `results` because ADL A36 settled what a result's transaction contains only on
- * 21.09.2026 and nothing carries it out yet, `payments` because a member cannot reach that
- * queue at all - and their screens (`ReviewQueue.tsx`, `Payments.tsx`) are untouched here.
- * That boundary is in the description of this change rather than left for a reader to find.
+ * <p><b>Three queues and not five.</b> The three `admin/PendingQueue.tsx` serves are what this
+ * file is about. The results are carried out by the same route since ADL A36 settled what an
+ * approved result's transaction contains (21.09.2026), and their screen speaks to it since R1 of
+ * the results flows; that screen is a table of its own, and it is held in
+ * `admin/resultsQueue.test.tsx`. The payments are not a queue at all any more (owner, PDL section
+ * 15: „Reda za verifikaciju uplate NEMA i ne uvodi se"), and the route answers them 409 „Odluka o
+ * ovom redu još nije uvedena."
  */
 
 /** Only what was sent to decide something, out of everything the visit asked for. */

@@ -60,6 +60,35 @@
 export type Answered = {
   approved: boolean
   reason: string
+  /**
+   * The runner's figures as the moderator sets them, on an approved run and nowhere else
+   * (`VerificationWriteApi.Amended`, R1 of the results flows). LEFT OUT means „do not
+   * touch": the run is counted at the figures it was sent with (ADL A8, 19.09.2026,
+   * „Izostavljeno polje nikad ne sme tiho da promeni vrednost", and the route says which of
+   * the two readings its omission has). Beside a refusal, or on another tab, the route
+   * answers 400, so it is never sent there: only {@link anApprovalWith} writes it.
+   */
+  amended?: Amended
+}
+
+/**
+ * THE FOUR FIGURES OF A RUN AS THE MODERATOR SETS THEM, under the names
+ * `VerificationWriteApi.Amended` reads.
+ *
+ * <p><b>Each may be left out, and a figure the race fixes always is.</b> The route reads
+ * only what the race leaves to the runner (`WhatARaceCarries.figuresOf`), and this screen
+ * asks for exactly that and no more (`admin/amendFields.ts`), so what travels is what the
+ * moderator was shown. A figure the race leaves to the runner and the amendment leaves out
+ * is refused by the route as a form not filled in, which the panel never sends.
+ *
+ * <p>The time is the SUM of the three boxes it is asked in, added up where every form on
+ * this portal adds them (`forms/clock.ts`), because the route keeps seconds.
+ */
+export type Amended = {
+  distanceKm?: number
+  ascentM?: number
+  descentM?: number
+  seconds?: number
 }
 
 /**
@@ -111,6 +140,20 @@ export function photoPath(id: string): string {
  */
 export function anApproval(): Answered {
   return { approved: true, reason: '' }
+}
+
+/**
+ * Yes, at these figures in place of the runner's: one request, so there is no moment at
+ * which another moderator could read a run half changed, and nothing to undo when the
+ * approval is refused.
+ *
+ * <p>Its own function rather than an argument to {@link anApproval}, for the reason that
+ * one and {@link aRefusal} are two: the screen presses two different buttons, and an
+ * optional argument would let a caller send `amended` holding nothing, a shape that reads
+ * „change" and says „change nothing".
+ */
+export function anApprovalWith(amended: Amended): Answered {
+  return { approved: true, reason: '', amended }
 }
 
 /**

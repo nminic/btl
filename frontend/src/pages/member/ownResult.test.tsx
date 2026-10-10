@@ -50,7 +50,6 @@ const allEvents: BtlEvent[] = JSON.parse(
 )
 
 const MINE = '/sr/moji-rezultati'
-const QUEUE = '/sr/administracija/verifikacija/rezultati'
 
 /** One result of a given member, waiting, written straight into the store. */
 function Waiting({ whose, races }: { whose: string; races: string[] }) {
@@ -270,72 +269,14 @@ describe('a result that has already been decided', () => {
 })
 
 describe('the queue a corrected result comes back to', () => {
-  it('is told that it was corrected, and nothing about what changed', async () => {
-    /* The label and nothing behind it (owner: „samo labela, ne šta je
-       ispravljano"), which is also all there is to say: the portal keeps no
-       history of a result, so there is no before to show.
-
-       Written through the store rather than through the form, because what is
-       measured is what the moderator is shown; the walk through the form is the
-       subject of `newResult.test.tsx`. */
-    function Corrected() {
-      const session = useSession()
-      const done = useRef(false)
-
-      useEffect(() => {
-        if (!done.current) {
-          done.current = true
-          session.resubmit('sub-1', {
-            raceName: 'Probna trka',
-            raceKind: 'length',
-            city: 'Niš',
-            country: 'RS',
-            date: '2026-05-10',
-            distanceKm: 21.1,
-            ascentM: 540,
-            descentM: 540,
-            photo: '',
-            seconds: 6000,
-            points: 15.5,
-            category: 'half',
-            link: 'https://primer.rs/rezultati',
-            comment: '',
-          })
-        }
-      }, [session])
-
-      return null
-    }
-
-    renderAt(QUEUE, 'superadmin', null, undefined, null, (
-      <>
-        <Waiting whose={ME} races={['Probna trka']} />
-        <Corrected />
-      </>
-    ))
-
-    const row = must(
-      (await screen.findAllByRole('row')).find((one) => within(one).queryByText('Probna trka') !== null),
-      'the corrected result in the queue',
-    )
-
-    expect(within(row).getByText('Ispravljeno')).toBeVisible()
-  })
-
-  it('says nothing of the sort about one nobody has touched', async () => {
-    /* The other direction, and the one that decides whether the label means
-       anything: a mark on every row is a mark on none. */
-    renderAt(QUEUE, 'superadmin', null, undefined, null, (
-      <Waiting whose={ME} races={['Probna trka']} />
-    ))
-
-    const row = must(
-      (await screen.findAllByRole('row')).find((one) => within(one).queryByText('Probna trka') !== null),
-      'the untouched result in the queue',
-    )
-
-    expect(within(row).queryByText('Ispravljeno')).toBeNull()
-  })
+  /* TWO CASES STOOD HERE UNTIL R1 OF THE RESULTS FLOWS: that the moderator's queue marked a
+     corrected result „Ispravljeno" (owner: „samo labela, ne šta je ispravljano"), and that it
+     marked nothing a member had not touched. They wrote the correction into this session and
+     read the queue, which read this session then. The queue reads the server since R1, where a
+     correction is a run that names the result it amends (V32) and is answered `kind:
+     correction`, so both directions are held where that answer is drawn,
+     `pages/admin/resultsQueue.test.tsx` („marks a correction, and nothing else, as corrected").
+     What stays here is the member's half: where a corrected result stands in his own list. */
 
   it('puts it where a new one goes, rather than where it stood', async () => {
     /* Owner: „Vraća se na kraj reda kao nov." A moderator who has already opened

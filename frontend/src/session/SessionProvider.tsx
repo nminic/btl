@@ -24,7 +24,6 @@ import {
   type SessionValue,
   type Submission,
   type SubmissionStatus,
-  type Amendment,
 } from './context'
 import { readerOf, useTheCachesFollowTheReader } from './theCachesFollowTheReader'
 
@@ -281,65 +280,13 @@ export function SessionProvider({
     })
   }, [])
 
-  /**
-   * What the administration puts right on a submission before it decides it.
-   *
-   * A separate act from `decide`, and from `resubmit`, because it is a third
-   * thing. `resubmit` is the member's: it marks the item corrected, which is a
-   * word aimed at the moderator („samo labela", owner 27.08.2026), and it sends
-   * the item back to the front of the queue as new. Neither is true here. The
-   * moderator is already reading this item, is the one changing it, and the mark
-   * would tell them that somebody else had.
-   *
-   * What may be changed is what the owner named on 30.08.2026: the name of the
-   * event, the name of the race, the kind, and the time. The member's answer to
-   * the kind is a hint until this happens („Takmičar je mogao da izabere dužinska
-   * ili vremenska, kao nagoveštaj tipa"), and the time on a timed race is the
-   * race's limit rather than a run („ja ću lako promeniti njegovo vreme sa recimo
-   * 23:23:15 na 24:00:00").
-   *
-   * Nothing is said to the member per change: one standing sentence in Član 44
-   * covers it, which was the owner's own answer over a note beside each one.
-   *
-   * The item keeps its place. A moderator who has read the row is the one writing
-   * on it, so there is nobody to surprise, which is the whole reason `resubmit`
-   * moves an item and this does not.
-   */
-  const amend = useCallback((id: string, changes: Amendment) => {
-    setSubmissions((current) =>
-      current.map((one) => {
-        /* Only the one named, and only while it is still waiting. A panel left
-           open over a row that has just been decided still has a live button, and
-           a decided result is not the administration's to rewrite: what it holds
-           is what somebody agreed to. */
-        if (one.id !== id || one.status !== 'pending') {
-          return one
-        }
-
-        /* The points are not worked out here. They are awarded at verification and
-           nowhere else (owner, 31.08.2026: „bodovi treba da se dodele tek NAKON
-           verifikacije").
-         *
-           **What that costs, said plainly rather than talked around.** Between a
-           correction and the decision the row does show the new time beside the
-           points the member arrived with: correct 1:52:10 to 3:00:00 on the
-           21,1 km with 540 of climb and 540 of fall that the tests walk, and the
-           queue draws 3:00:00 beside the 23,55 points of 1:52:10 until „Odobri" is
-           pressed, when both become the 8,57 of 3:00:00. The climb is named
-           because the formula reads it: flat, the same two times are worth 11,21
-           and 4,08. That is the owner's rule and not a fault, and the one screen
-           that still announces a number before a decision says so: the member's own
-           list carries the caveat beside a result that waits (`MyResults.tsx`,
-           `newResult.pointsNotFinal`). The two forms that send a result stopped
-           announcing one at all on 28.09.2026, so there is nothing for them to
-           qualify. An earlier note here claimed this shape prevented the two
-           halves from disagreeing; it does not, it moves the moment they agree to
-           the decision, which is where he put it. */
-        return { ...one, ...changes }
-      }),
-    )
-  }, [])
-
+  /* NOTHING IN THE ADMINISTRATION CALLS THIS SINCE R1 OF THE RESULTS FLOWS: the queue of
+     results decides on the server (`admin/ReviewQueue.tsx`, `POST
+     /api/verification/{id}/decision`). It stays for the member's side, which still reads a
+     submission's state off this session until R2 moves „Moji rezultati" onto the server -
+     his own list draws a refused submission, offers it again and keeps a counted one locked
+     by `status`, and only this writes that field. Removed with R1, every one of those
+     branches would be code no road can reach. */
   const decide = useCallback((id: string, status: SubmissionStatus, note: string) => {
     setSubmissions((current) =>
       current.map((item) => {
@@ -357,9 +304,8 @@ export function SessionProvider({
         /* **The points are awarded here, and only here** (owner, 31.08.2026:
            „bodovi treba da se dodele tek NAKON verifikacije"). Until this moment
            what the item carries is the estimate the member's own form showed them,
-           worked out from what they typed; between then and now the administration
-           may have settled the kind and the time, and on a timed race the time is
-           the race's own limit rather than a run.
+           worked out from what they typed, and on a timed race the time is the
+           race's own limit rather than a run.
 
            Worked out from what the item holds at this moment, so the number that
            enters the standing belongs to the numbers beside it. Left to the older
@@ -656,7 +602,6 @@ export function SessionProvider({
       corrected,
       submit,
       resubmit,
-      amend,
       withdraw,
       decide,
       inbox,
@@ -721,7 +666,6 @@ export function SessionProvider({
       corrected,
       submit,
       resubmit,
-      amend,
       withdraw,
       decide,
       inbox,
