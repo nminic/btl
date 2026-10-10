@@ -240,7 +240,8 @@ export function ReviewQueue() {
    * server and not this visit's first answer (`PendingQueue.tsx` says why, and what it cost
    * when it was not). An approval drops the results too: it is the one decision on the
    * portal that changes the standings, and a table read before it would go on drawing them
-   * as they were.
+   * as they were. And an approval that makes a race drops the calendar's two files, for the
+   * panel that offers the races (`decide`, below, says why it is that one and no other).
    *
    * <p>**No message is written to the member from here, unlike until R1.** The route writes
    * the line in his inbox itself on a refusal (`VerificationWriteApi.tell`) and posts the
@@ -289,6 +290,39 @@ export function ReviewQueue() {
 
         if (answered.approved) {
           clearResourceCache('results')
+        }
+
+        /* THE CALENDAR, DROPPED WITH THE ANSWER THAT SAYS THE APPROVAL WROTE INTO IT. An approval
+           that names a race to make (`newRace`) writes an event and a race
+           (`VerificationWriteApi`, `makeTheEventAndTheRace`), and the list the panel offers is built
+           from those two files (`RaceForTheRun.tsx`, `racesToOffer`). Left in the cache, the next
+           panel opened in this visit would offer the calendar as it stood before the approval, and
+           the second member of that race could not choose the race the first member's approval made
+           - the sentence of the owner of 30.08.2026 (PDL, „Verifikacija menja naziv događaja, naziv
+           trke, vrstu i vreme, i upisuje događaj i trku u kalendar"): „kad odem da verifikujem
+           drugom članu mogu da zamenim njegov naziv događaja i izbor trke autocompletom sad već
+           postojeće trke". It would offer to make the race again, and the route refuses an event
+           whose address is taken (`THE_EVENT_IS_IN_THE_CALENDAR_ALREADY`).
+
+           BOTH NAMES, as `AdminEvents.tsx` and `EventActions.tsx` drop them after a write into the
+           calendar: the offered list is the pairs of an event and its races (`racesToOffer`), so a
+           race read again under an event that was not is left out of it, and the other way round.
+
+           ONLY HERE, AFTER THE ANSWER: dropped before the request goes, a panel opened while it is
+           out would read the calendar as it stood and leave that read in the cache for the answer
+           to find.
+
+           AND ONLY FOR THIS BODY. Every other approval writes the result and nothing the calendar
+           serves (`CalendarApi.Event` and `Race` carry nothing derived from results), and a refusal
+           writes neither, so neither has a reason to make the next panel read two files again. A
+           refusal that says the list is stale drops them anyway (`readTheListAgain`).
+
+           What this does not reach: a panel already open over ANOTHER run when the answer comes
+           keeps the list it read, because dropping a cache tells no reader that is mounted
+           (`data/useResource.ts`, `revision`). */
+        if (answered.newRace !== undefined) {
+          clearResourceCache('events')
+          clearResourceCache('races')
         }
       }
 

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { raceMeasure } from '../../data/raceLabel'
-import { NO_RATING, type ServedPendingItem } from '../../data/types'
+import { NO_RATING, type BtlEvent, type ServedPendingItem } from '../../data/types'
 import { formatNumber, formatNumericDate, formatShortDate } from '../../i18n/format'
 import sr from '../../i18n/sr.json'
 import { htmlElement, must } from '../../test/at'
@@ -33,6 +33,13 @@ import { QUEUE } from './queues'
  * kinds, and a third of that name still to come, so a race found by its name or its day, or a race
  * not yet run, is a different answer from the one chosen.</li>
  * </ul>
+ *
+ * <p><b>And what the panel offers once an approval has made a race</b> (the review of PR 519): the
+ * owner's sentence of 30.08.2026, „kad odem da verifikujem drugom članu mogu da zamenim njegov naziv
+ * događaja i izbor trke autocompletom sad već postojeće trke". The calendar here GROWS: before the
+ * route has taken the approval that makes a race neither file holds it, and after it both do, so the
+ * race can be offered to the next panel only because the files were read again after the answer and
+ * never because it was in them from the first read.
  */
 
 /* A CASE OF THIS FILE ENDS ON AN ASSERTION AND NEVER ON ITS OWN CLOCK (review of PR 492, and the
@@ -177,24 +184,88 @@ const THE_OTHER_TABS: unknown[] = JSON.parse(
   readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'verification.json'), 'utf-8'),
 )
 
+/** The events as the served file holds them, so a race stands under an event that is really there. */
+const THE_EVENTS: BtlEvent[] = JSON.parse(
+  readFileSync(join(process.cwd(), 'src', 'test', 'mock', 'events.json'), 'utf-8'),
+)
+
+/**
+ * THE CALENDAR THE FIRST APPROVAL WRITES INTO, as the route serves it before that approval and after it.
+ *
+ * <p><b>Never a single event or a single race</b> (the rule of 06.09.2026, for the panel's list): before the
+ * approval the races stand under four events, two of them night races of the summer, so the letters typed
+ * into the box hit something both before and after, and what comes back is a list of pairs and not the one
+ * pair that would be offered whatever was read. The race the approval makes stands under an event the
+ * approval makes, so a file read again without the other leaves the pair out of the list.
+ */
+const A_NIGHT_BEFORE = {
+  ...OF_A_LENGTH,
+  id: 9104,
+  eventId: 54,
+  name: 'Noćna šumska trka',
+  date: '2026-06-20',
+  distanceKm: 6,
+  ascentM: 80,
+  descentM: 80,
+}
+
+/** Another race of another name under a fourth event, which the letters typed here never hit. */
+const ELSEWHERE = { ...OF_A_LENGTH, id: 9105, eventId: 55, name: 'Kros kroz šumu', date: '2026-08-02' }
+
+const BEFORE_THE_APPROVAL = [...THE_CALENDAR, A_NIGHT_BEFORE, ELSEWHERE]
+
+/** The event the approval makes, under a key neither file holds, and the race under it, with the names the
+ *  moderator settles in the panel (and not the words the member sent, which are another constant). */
+const MADE_EVENT: BtlEvent = {
+  ...must(
+    THE_EVENTS.find((one) => one.id === THE_EVENT),
+    'the event the races of the calendar stand under',
+  ),
+  id: 9300,
+  slug: 'nocne-trke-uz-jezero-2026',
+  name: 'Noćne trke uz jezero',
+  date: '2026-09-13',
+  city: 'Struga',
+  country: 'MK',
+}
+
+const MADE_RACE = {
+  ...OF_A_LENGTH,
+  id: 9200,
+  eventId: MADE_EVENT.id,
+  name: 'Noćna desetka uz jezero',
+  date: '2026-09-13',
+  distanceKm: 10.05,
+  ascentM: 40,
+  descentM: 35,
+}
+
 const answering = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
 const taken = (): Response => answering({ id: 1, state: 'approved' })
 
+/** The two files as the route answers them, before the approval that makes the race and after it. */
+const racesServed = (made: boolean): Response =>
+  answering(made ? [...BEFORE_THE_APPROVAL, MADE_RACE] : BEFORE_THE_APPROVAL)
+
+const eventsServed = (made: boolean): Response => answering(made ? [...THE_EVENTS, MADE_EVENT] : THE_EVENTS)
+
 /**
  * A server that answers the queue with what `queue` says on each read, the calendar's races with
- * `races`, and every decision with what `decided` says. Everything else goes on to the disc reader,
- * the events among it.
+ * `races`, its events with `events`, and every decision with what `decided` says. Everything else
+ * goes on to the disc reader, the events among it unless a case says what they are.
  */
 function serverWith({
   queue = () => RUNS,
   decided = taken,
   races = () => answering(THE_CALENDAR),
+  events = () => null,
 }: {
   queue?: (read: number) => ServedPendingItem[]
   decided?: (id: string) => Response | Promise<Response>
   races?: () => Response
+  events?: () => Response | null
 } = {}): { asked: Asked[]; stop: () => void } {
   let reads = 0
 
@@ -207,6 +278,10 @@ function serverWith({
 
     if (path === '/api/races' && (init?.method ?? 'GET') === 'GET') {
       return races()
+    }
+
+    if (path === '/api/events' && (init?.method ?? 'GET') === 'GET') {
+      return events()
     }
 
     const decision = /^\/api\/verification\/([^/]+)\/decision$/.exec(path)
@@ -253,6 +328,41 @@ async function openThePanelOver(user: ReturnType<typeof setupUser>, member: stri
 /** What a race of the calendar is offered as under the box, built the way the list builds it. */
 const offeredAs = (race: typeof OF_A_LENGTH): string =>
   [race.name, formatNumericDate(race.date), raceMeasure(race, 'sr')].filter((one) => one !== '').join(' – ')
+
+/** What the panel offers under its box, as the buttons of the list say it, for the ones that start with `prefix`. */
+const offeredStartingWith = (prefix: string): (string | null)[] =>
+  panel()
+    .getAllByRole('button')
+    .map((one) => one.textContent)
+    .filter((one) => one?.startsWith(prefix) === true)
+
+/** What is typed into the race's box, over what stands there. */
+async function typeIntoTheRaceName(user: ReturnType<typeof setupUser>, text: string): Promise<void> {
+  await user.clear(panel().getByLabelText(sr.newResult.raceName))
+  await user.type(panel().getByLabelText(sr.newResult.raceName), text)
+}
+
+/**
+ * Until the list has come to the box. The other night race stands in the files both before the approval and
+ * after it, so waiting for it is waiting for the files and never for the race a case is asking about: the
+ * assertion that follows is made at once, and a race that is not offered fails it in its own words.
+ */
+async function untilTheListHasCome(): Promise<void> {
+  await waitFor(() => expect(offeredStartingWith('Noćna')).toContain(offeredAs(A_NIGHT_BEFORE)))
+}
+
+/**
+ * THE FIRST MEMBER'S RUN, APPROVED ON A RACE THE APPROVAL MAKES: the panel over the run TYPED, the names the
+ * moderator settles for its event and its race, and the press. It returns when the press has been made, which
+ * is when the request is out and not when it has come back.
+ */
+async function makeTheNightRace(user: ReturnType<typeof setupUser>): Promise<void> {
+  await openThePanelOver(user, '000060')
+  await user.clear(panel().getByLabelText(sr.admin.field.eventName))
+  await user.type(panel().getByLabelText(sr.admin.field.eventName), MADE_EVENT.name)
+  await typeIntoTheRaceName(user, MADE_RACE.name)
+  await user.click(panel().getByRole('button', { name: sr.review.placeSave }))
+}
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -763,6 +873,178 @@ describe('what the route answers to the panel', () => {
     },
     SLOW,
   )
+})
+
+describe('what the panel offers once an approval has made a race', () => {
+  it('offers the race the first approval made to the panel opened over the next run, read again after the answer', async () => {
+    /* The two files are served WITHOUT the race until the route has taken the approval that makes it and WITH
+       it after, so the race can be on the list only because both files were asked for again, and never because
+       it was there from the first read. The same letters in the same box offer the other night race alone
+       before, and the two together after. */
+    const user = setupUser()
+    let made = false
+    const server = serverWith({
+      decided: () => {
+        made = true
+
+        return taken()
+      },
+      races: () => racesServed(made),
+      events: () => eventsServed(made),
+    })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await waitFor(() => expect(reads(server.asked, '/api/races')).toBe(1))
+      expect(reads(server.asked, '/api/events')).toBe(1)
+      await typeIntoTheRaceName(user, 'Noćna')
+      await untilTheListHasCome()
+
+      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(A_NIGHT_BEFORE)])
+
+      await user.click(panel().getByRole('button', { name: sr.review.cancel }))
+      await makeTheNightRace(user)
+      await untilItHasAnswered()
+
+      /* It was the approval that makes a race which went to the route, and the names are the moderator's. */
+      expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({
+        approved: true,
+        reason: '',
+        amended: { distanceKm: 10.05, ascentM: 40, descentM: 35, seconds: 2700 },
+        newRace: { eventName: MADE_EVENT.name, raceName: MADE_RACE.name, raceKind: 'length' },
+      })
+      expect(screen.queryByText('000060')).toBeNull()
+
+      /* Each file once more, and not before the answer: the second member's panel is the one that asks. */
+      await openThePanelOver(user, '000040')
+
+      expect(reads(server.asked, '/api/races')).toBe(2)
+      expect(reads(server.asked, '/api/events')).toBe(2)
+
+      await typeIntoTheRaceName(user, 'Noćna')
+      await untilTheListHasCome()
+
+      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(MADE_RACE), offeredAs(A_NIGHT_BEFORE)])
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('keeps the calendar it holds until the answer comes, so a panel opened while the approval is out leaves nothing old for the answer to find', async () => {
+    /* The press is made and the request is out. The moderator opens the box that refuses another run, which
+       puts the panel away, and then a panel over that run: it is drawn from what was read for the first one,
+       because nothing is dropped yet. Dropped before the request went, the files would be read here, as they
+       stood, and that read would be what the answer found in the cache: the next panel, opened after the
+       answer, would offer the calendar without the race. */
+    const user = setupUser()
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let made = false
+    const server = serverWith({
+      decided: () =>
+        gate.then(() => {
+          made = true
+
+          return taken()
+        }),
+      races: () => racesServed(made),
+      events: () => eventsServed(made),
+    })
+
+    try {
+      openTheQueue()
+
+      await makeTheNightRace(user)
+
+      expect(decisionsIn(server.asked)).toHaveLength(1)
+
+      await user.click((await rowOf('000040')).getByRole('button', { name: sr.review.sendBack }))
+      await openThePanelOver(user, '000040')
+
+      expect(reads(server.asked, '/api/races')).toBe(1)
+      expect(reads(server.asked, '/api/events')).toBe(1)
+
+      release()
+      await untilItHasAnswered()
+
+      expect(screen.queryByText('000060')).toBeNull()
+
+      await user.click(panel().getByRole('button', { name: sr.review.cancel }))
+      await openThePanelOver(user, '000040')
+
+      expect(reads(server.asked, '/api/races')).toBe(2)
+      expect(reads(server.asked, '/api/events')).toBe(2)
+
+      await typeIntoTheRaceName(user, 'Noćna')
+      await untilTheListHasCome()
+
+      expect(offeredStartingWith('Noćna')).toEqual([offeredAs(MADE_RACE), offeredAs(A_NIGHT_BEFORE)])
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('leaves the calendar it read as it is after every decision that wrote nothing into it', async () => {
+    /* Only an approval that names a race to make writes an event and a race, and the files carry nothing that
+       a result changes, so three decisions are asked in turn and none of them makes the next panel read the
+       two files again: a run from the calendar approved as it stands, a refusal, and an approval on a race the
+       calendar already holds, which the panel sends by its key (`raceId`) and which is the one nearest to the
+       approval that makes a race. */
+    const user = setupUser()
+    const server = serverWith()
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await waitFor(() => expect(reads(server.asked, '/api/races')).toBe(1))
+      expect(reads(server.asked, '/api/events')).toBe(1)
+      await user.click(panel().getByRole('button', { name: sr.review.cancel }))
+
+      const stillOnce = (after: string): void => {
+        expect(reads(server.asked, '/api/races'), after).toBe(1)
+        expect(reads(server.asked, '/api/events'), after).toBe(1)
+      }
+
+      await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+      await untilItHasAnswered()
+
+      expect(screen.queryByText(RUNNER)).toBeNull()
+
+      await openThePanelOver(user, '000040')
+      stillOnce('an approval of a run from the calendar')
+      await user.click(panel().getByRole('button', { name: sr.review.cancel }))
+
+      await user.click((await rowOf('000050')).getByRole('button', { name: sr.review.sendBack }))
+      await user.type(screen.getByLabelText(sr.review.reason), 'Vreme se ne poklapa.')
+      await user.click(screen.getByRole('button', { name: sr.review.confirmSendBack }))
+      await untilItHasAnswered()
+
+      expect(screen.queryByText('000050')).toBeNull()
+
+      await openThePanelOver(user, '000040')
+      stillOnce('a refusal')
+
+      await typeIntoTheRaceName(user, 'Jesenji')
+      await user.click(panel().getByRole('button', { name: offeredAs(OF_A_LENGTH) }))
+      await user.click(panel().getByRole('button', { name: sr.review.placeSave }))
+      await untilItHasAnswered()
+
+      const sent = decisionsIn(server.asked)
+
+      expect(bodyOf(sent[sent.length - 1])).toMatchObject({ approved: true, raceId: OF_A_LENGTH.id })
+      expect(screen.queryByText('000040')).toBeNull()
+
+      await openThePanelOver(user, '000060')
+      stillOnce('an approval on a race the calendar already holds')
+    } finally {
+      server.stop()
+    }
+  })
 })
 
 describe('what a case of this file may end in', () => {
