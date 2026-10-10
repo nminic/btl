@@ -9,6 +9,7 @@ import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import com.btl.portal.domain.verification.HoldingAnItem;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
+import com.icegreen.greenmail.user.GreenMailUser;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -40,6 +42,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -268,6 +271,12 @@ class VerificationWriteApiTest {
 	 *  same component the route does rather than through a query of their own. */
 	@Autowired
 	private BestOfficialSeason bestOfficialSeason;
+
+	/** Read off the configuration rather than written here, so „where the blind copy goes" is
+	 *  one fact and not two that can drift - the arrangement {@code ResultWriteApiTest} made
+	 *  first, for the letters that copied the league until 09.10.2026. */
+	@Value("${btl.mail.league}")
+	private String theLeague;
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -2407,14 +2416,50 @@ class VerificationWriteApiTest {
 	}
 
 	/**
+	 * AND THE LEAGUE IS COPIED ON IT IN BLIND, WHICH SINCE 09.10.2026 NO OTHER LETTER ABOUT A
+	 * RESULT IS.
+	 *
+	 * <p>Until then {@code ResultWriteApiTest} asked the envelope of every letter about a
+	 * member's own result for the member and the league, and that was the one place on this
+	 * server where a blind copy was ever seen to arrive. Those letters copy nobody now (PDL P9,
+	 * 25.09.2026, „Skrivena kopija ligi NE ide kad član sam menja ili briše svoj rezultat"), so
+	 * this case holds the copy that stays - and with it the half of {@code Postman} that puts
+	 * one on a message at all. Why this letter keeps it is written at
+	 * {@code VerificationWriteApi.post}, and it is a reading put to the owner on 09.10.2026: if
+	 * he decides an approval is not copied, this is the case that turns round.
+	 *
+	 * <p>Asked of the ENVELOPE, because a blind copy leaves no header behind
+	 * ({@code ResultWriteApiTest.everyAddressThatGotACopy} carries the measurement), and of the
+	 * headers of every stored copy as well, because the league written into {@code Cc} would be
+	 * reached just the same and would be named in a letter the member may forward anywhere.
+	 */
+	@Test
+	void theLetterAboutAnApprovedRunIsCopiedToTheLeagueInBlind() throws Exception {
+		assertThat(answer(THE_SUPERADMIN, anasMarathon, true, null)).isEqualTo(200);
+
+		assertThat(SMTP.getUserManager().listUser().stream().map(GreenMailUser::getEmail))
+				.as("the letter about an approved run did not reach the member and the league,"
+						+ " and nobody else")
+				.containsExactlyInAnyOrder(A_COMPETITOR, theLeague);
+
+		for (MimeMessage one : SMTP.getReceivedMessages()) {
+			assertThat(Arrays.stream(one.getAllRecipients()).map(Object::toString))
+					.as("the copy to the league was not blind: an address beside the member's"
+							+ " stands in the letter itself")
+					.containsExactly(A_COMPETITOR);
+		}
+	}
+
+	/**
 	 * AND THE LETTER NAMES THE CLIMB AND THE DROP IN THE ORDER HE SENT THEM (PR 443 review).
 	 *
 	 * <p>The run the letter tells him about is built at a third place, beside the two
 	 * statements and from the same two figures, so it is a third place they can be turned
-	 * round. The sister route asserts this of its own letter
-	 * ({@code ResultWriteApiTest.aFreshReportCarriesWhatWasSentInAndThePointsTheFormulaGives});
-	 * this route's letter was asserted for its recipient and its subject and not for a word
-	 * of its body.
+	 * round. The sister route asserts this of the line it writes into the inbox when a run is
+	 * sent in
+	 * ({@code ResultWriteApiTest.aFreshReportCarriesWhatWasSentInAndThePointsTheFormulaGives}),
+	 * which since 09.10.2026 is all it writes then; this route's letter was asserted for its
+	 * recipient and its subject and not for a word of its body.
 	 */
 	@Test
 	void theLetterAboutSuchARunNamesTheClimbAndTheDropInTheOrderHeSentThem() throws Exception {
