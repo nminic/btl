@@ -26,6 +26,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { useMemberScreen } from './memberScreen'
 import type { Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
+import { aCorrectionWaitsOn } from './correctionWaits'
 import {
   saysTheResultIsGone,
   theCorrectionWasSentIn,
@@ -268,21 +269,25 @@ function TheForm({ me }: { me: string }) {
      anything off a list that has not arrived. */
   const mine = sent.status === 'ready' ? sent.data : undefined
   /* A run that was sent back, and only that: a run still waiting is not changed from here
-     (`SentBack` above says whose choice that is). */
-  const correcting = mine?.filter(isSentBack).find((one) => String(one.id) === again)
+     (`SentBack` above says whose choice that is). And not a correction of a result that has
+     another correction WAITING: that road is shut like the others (`aCorrectionWaitsOn`), so an
+     address that names such a run opens the form for a new one, exactly as it does for a run
+     that is not on the list at all. Measured by the review of PR 521 on 10.10.2026: this road
+     asked nothing, the list offered it from the row of a correction sent back, and it sent. */
+  const correcting = mine
+    ?.filter(isSentBack)
+    .find((one) => String(one.id) === again && !aCorrectionWaitsOn(mine, one.amendsResultId))
   /* And the counted one this is a correction of, read against the member signed in: an
      identity out of the address opens nobody else's result. Read through the overlay, so a
      result taken back a moment ago is not offered for changing. */
   const counted = results.status === 'ready' ? results.data : []
-  /* And not one that already has a correction WAITING on somebody. The list offers
-     no way in then (`MyResults`), so the only way to try is to type the address,
-     which is exactly why the form and not only the list has to say no: a second
-     correction of one result puts two rows for one race in front of a moderator,
-     and „Odobri sve" walks them newest first, so what ends up counted is the
-     oldest. Measured by a review on 28.08.2026. A correction that was sent back is
-     in nobody's queue and does not stand in the way. */
-  const waiting =
-    mine?.some((one) => one.state === 'waiting' && String(one.amendsResultId) === fixing) === true
+  /* And not one that already has a correction WAITING on somebody, which is the question
+     `aCorrectionWaitsOn` answers for every way in. The list offers no way in then, on either of
+     its two links (`MyResults`), so the only way to try is to type the address, which is exactly
+     why the form and not only the list has to say no. A correction that was sent back is in
+     nobody's queue and does not stand in the way of this road; it has a road of its own, above,
+     and that one asks the same question. */
+  const waiting = aCorrectionWaitsOn(mine, fixing === null ? null : Number(fixing))
   const fixingOne = waiting
     ? undefined
     : counted.find((one) => String(one.id) === fixing && one.memberNumber === me)

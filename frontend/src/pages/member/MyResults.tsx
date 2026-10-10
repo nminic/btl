@@ -13,6 +13,7 @@ import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
 import type { Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
+import { aCorrectionWaitsOn } from './correctionWaits'
 import { saysTheResultIsGone, theResultWasTakenBack, WHEN_A_RESULT_IS_WRITTEN } from './resultWrites'
 import './Member.css'
 
@@ -229,10 +230,18 @@ function Mine({ me }: { me: string }) {
                             stays with its state and its reason (his choice of 06.09.2026) and a
                             row in verification stays for good (ADL).
 
+                            **Except a correction sent back while a correction of the same result
+                            waits.** Sent again it would be a second correction of one result in
+                            front of a moderator, which no way in sends (`aCorrectionWaitsOn`), so
+                            the control is not drawn, and it comes back by itself the moment nothing
+                            of that result waits (PDL, 04.09.2026: „Član sme da traži ispravku
+                            koliko puta hoće, i posle odbijanja."). A run sent back that corrected
+                            nothing is a fresh run and is not touched by it.
+
                             The name of the race is in the accessible name of the control, because
                             a list of six runs sent back is six links a screen reader cannot
                             otherwise tell apart. */}
-                        {one.state === 'rejected' && (
+                        {one.state === 'rejected' && !aCorrectionWaitsOn(mine, one.amendsResultId) && (
                           <p className="submissions__again">
                             <Link
                               className="button button--secondary"
@@ -356,14 +365,18 @@ function Mine({ me }: { me: string }) {
                                *
                                   **Waiting and not sent back**, derived on 10.10.2026 from that
                                   same reason: a correction a moderator sent back is in nobody's
-                                  queue, so it puts no second row in front of anybody, and the
-                                  link stays.
+                                  queue, so it does not stand in the way of this link. That does not
+                                  make it harmless, because sent again it is a correction of this
+                                  very result, and the control on its own row in the list above asks
+                                  the same question of the same function and is gone while one of
+                                  this result waits (`aCorrectionWaitsOn`). Measured by the review
+                                  of PR 521 on 10.10.2026: with only this link asking, the row of a
+                                  correction sent back went on offering a second one beside the one
+                                  that waited, and the address behind it sent.
                                *
                                   The way on is not lost while one waits: the correction is in the
                                   list above, and the moderator is the one deciding it. */}
-                              {mine.every(
-                                (one) => one.state !== 'waiting' || one.amendsResultId !== result.id,
-                              ) && (
+                              {!aCorrectionWaitsOn(mine, result.id) && (
                                 <Link
                                   className="button button--secondary"
                                   aria-label={t('myResults.changeNamed', { name: result.raceName })}

@@ -403,6 +403,83 @@ describe('a run a moderator sent back', () => {
       within(must(rows[1], 'the run sent back')).getByText('Na stranici rezultata nema tvog imena.'),
     ).toBeVisible()
   }, SLOW)
+
+  it('loses its control once the correction sent again for it waits', async () => {
+    /* The way the review of PR 521 reached the fault without typing an address (10.10.2026): the
+       row of a correction sent back stays on the list after it is sent again, by the owner's
+       choice of that day in the record's wording, „posle ponovnog slanja na spisku stoje oba
+       reda", and it kept the control it had, so a second press sent a second correction of the
+       same result while the first one waited.
+
+       The server here answers the new row only once the `PUT` has really gone, as the case above
+       does for a run, so the list shows the control gone only if the screen asks again after the
+       write. */
+    const user = setupUser()
+    const sentBackFor = must(
+      resultsOf(countedResults, ME)[1],
+      'a counted result of his that is not his newest',
+    )
+    let onTheServer: SentRun[] = [
+      aRun(77, {
+        raceName: sentBackFor.raceName,
+        raceDate: sentBackFor.date,
+        seconds: sentBackFor.seconds,
+        amendsResultId: sentBackFor.id,
+      }),
+    ]
+
+    server = serverThat((path, init) => {
+      if (path === `/api/results/${String(sentBackFor.id)}` && init?.method === 'PUT') {
+        onTheServer = [
+          aRun(99, {
+            state: 'waiting',
+            reason: null,
+            raceName: sentBackFor.raceName,
+            amendsResultId: sentBackFor.id,
+          }),
+          ...onTheServer,
+        ]
+
+        return did()
+      }
+
+      return path.replace(/\?.*$/, '') === '/api/me/result-submissions' ? served(onTheServer) : null
+    })
+
+    renderAt(MINE, 'competitor', ME, undefined, '2026-08-23')
+
+    const [before] = await sentRows()
+
+    expect(
+      within(must(before, 'the correction sent back')).getByRole('link', {
+        name: `Ispravi i pošalji ponovo: ${sentBackFor.raceName}`,
+      }),
+    ).toBeVisible()
+
+    await user.click(
+      screen.getByRole('link', { name: `Ispravi i pošalji ponovo: ${sentBackFor.raceName}` }),
+    )
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+    await user.clear(screen.getByLabelText(/^Link/))
+    await user.type(screen.getByLabelText(/^Link/), 'https://primer.rs/nov-dokaz')
+    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+
+    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.', undefined, SOON)).toBeVisible()
+
+    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+    const rows = await sentRows()
+
+    expect(rows).toHaveLength(2)
+    expect(within(must(rows[0], 'the correction sent again')).getByText('Čeka proveru')).toBeVisible()
+    expect(within(must(rows[1], 'the correction sent back')).getByText('Odbijeno')).toBeVisible()
+    expect(
+      within(must(rows[1], 'the correction sent back')).queryByRole('link', {
+        name: /^Ispravi i pošalji ponovo/,
+      }),
+      'the row that was sent back goes on offering a second correction beside the one that waits',
+    ).toBeNull()
+  }, SLOW)
 })
 
 describe('the order of what was sent', () => {
@@ -916,8 +993,10 @@ describe('a result that has been counted', () => {
 
        **Waiting and not sent back**, derived on 10.10.2026 from that same reason and
        accepted by the coordinator, so not the owner's word: a correction a moderator
-       sent back is in nobody's queue, so it puts no second row in front of anybody,
-       and the link stays.
+       sent back is in nobody's queue, so it does not stand in the way of this link.
+       It is not harmless for that: sent again it is a correction of the same result,
+       and the control on its own row asks the same question, which the cases below
+       hold on one list with this link.
 
        Both on one table: the SECOND counted row has a correction waiting, the THIRD
        has one that was sent back, and the first has none. Read off each row by the
@@ -977,6 +1056,131 @@ describe('a result that has been counted', () => {
       } else {
         expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
         expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+      }
+    },
+    SLOW,
+  )
+
+  /**
+   * ONE LIST, AND EVERY WAY IN TO A SECOND CORRECTION READ OFF IT.
+   *
+   * <p>The review of PR 521 measured on 10.10.2026 that the four ways in to `PUT /api/results/{id}`
+   * did not agree: with a correction of a result waiting, „Izmeni" and `?ispravka=` said no, and
+   * „Ispravi i pošalji ponovo" on a correction of the same result that had been sent back, and the
+   * address behind it, said yes and sent. Each case above holds one of the ways on a list of its
+   * own making, and none of them could see the others.
+   *
+   * <p>Seven runs, in the order the server answers them, each there to tell two readings apart:
+   *
+   * <ul>
+   * <li>9107 waits for ANOTHER result and is the first row, so a reading of „some correction waits"
+   * or of the first row alone answers for the wrong result;
+   * <li>9106 waits for THIS result and is neither the first row nor the last, so only a reading of
+   * the whole list finds it;
+   * <li>9105 is the correction sent back that this is about, whose result has one waiting;
+   * <li>9104 and 9103 are two corrections sent back for ONE result with nothing waiting on it, so a
+   * reading that takes a correction sent back for standing in the way (it is in nobody's queue)
+   * shuts both;
+   * <li>9102 is a run sent back that corrected nothing and 9101, the last row, is one that waits
+   * and corrected nothing either: both carry `null` where a result would be, and two of them are
+   * not corrections of one result.
+   * </ul>
+   *
+   * <p>No number of a run is a number of a result (the file's go up to 3528), so a reading that
+   * took the key of the run for the key of the result finds nothing to agree with.
+   */
+  function waysIntoACorrection() {
+    const [first, second, third] = resultsOf(countedResults, '000001')
+    const calm = must(first, 'his newest result')
+    const held = must(second, 'his second result')
+    const elsewhere = must(third, 'his third result')
+
+    return {
+      calm,
+      held,
+      elsewhere,
+      runs: [
+        aRun(9107, { state: 'waiting', reason: null, raceName: elsewhere.raceName, amendsResultId: elsewhere.id }),
+        aRun(9106, { state: 'waiting', reason: null, raceName: held.raceName, amendsResultId: held.id }),
+        aRun(9105, { raceName: held.raceName, amendsResultId: held.id }),
+        aRun(9104, { raceName: calm.raceName, amendsResultId: calm.id }),
+        aRun(9103, { raceName: calm.raceName, amendsResultId: calm.id }),
+        aRun(9102, { raceName: 'Trka koje nema u kalendaru' }),
+        aRun(9101, { state: 'waiting', reason: null, raceName: 'Druga trka koje nema u kalendaru' }),
+      ],
+    }
+  }
+
+  type Ways = ReturnType<typeof waysIntoACorrection>
+
+  it('offers a correction sent back again, and „Izmeni", exactly where no correction of that result waits', async () => {
+    const { calm, runs } = waysIntoACorrection()
+
+    mine = runs
+    renderAt(COUNTED, 'competitor', '000001', undefined, '2026-08-23')
+
+    const rows = await sentRows()
+    const again = (at: number) =>
+      within(must(rows[at], `run ${String(at)} of the list`)).queryByRole('link', {
+        name: /^Ispravi i pošalji ponovo/,
+      })
+
+    expect(rows).toHaveLength(7)
+    expect(again(0), 'a run that waits has a control').toBeNull()
+    expect(again(1), 'a run that waits has a control').toBeNull()
+    expect(again(2), 'a second correction of a result whose correction waits is offered').toBeNull()
+    expect(again(3)).toHaveAttribute('href', '/sr/rezultat/novi?ponovo=9104')
+    expect(again(4)).toHaveAttribute('href', '/sr/rezultat/novi?ponovo=9103')
+    expect(again(5)).toHaveAttribute('href', '/sr/rezultat/novi?ponovo=9102')
+    expect(again(6), 'a run that waits has a control').toBeNull()
+
+    /* AND THE OTHER WAY IN TO THE SAME RESULTS, on the same list: the two agree on every result
+       that has a correction sent back, the first (no correction waits: both open) and the second
+       (one waits: both shut). The third has one waiting and nothing sent back, so it has only the
+       link to be shut. */
+    const table = within(await screen.findByRole('table', { name: 'Uračunato' }, SOON))
+    const izmeni = (at: number) =>
+      within(must(table.getAllByRole('row')[at + 1], `counted row ${String(at)}`)).queryByRole('link', {
+        name: /^Izmeni rezultat/,
+      })
+
+    expect(izmeni(0)).toHaveAttribute('href', `/sr/rezultat/novi?ispravka=${String(calm.id)}`)
+    expect(izmeni(1), 'Izmeni is offered on a result whose correction waits').toBeNull()
+    expect(izmeni(2), 'Izmeni is offered on a result whose correction waits').toBeNull()
+  }, SLOW)
+
+  /**
+   * THE ADDRESSES OF THE SAME LIST, because where the list hides a link the only way to try is to
+   * type the address. Both roads on one list, so the form is asked the same question by the same
+   * runs: a refused address opens the form for a NEW run, which is what an address that names
+   * nothing opens, and shows nothing of the run it was typed for.
+   */
+  it.each([
+    ['refuses a correction sent back while another correction of its result waits', () => 'ponovo=9105', null],
+    ['opens a correction sent back whose result has none waiting, while others wait', () => 'ponovo=9104', /Ispravljaš rezultat koji je odbijen/],
+    ['opens the second correction sent back for one result, since neither waits', () => 'ponovo=9103', /Ispravljaš rezultat koji je odbijen/],
+    ['opens a run sent back that corrected nothing, while one that corrected nothing waits', () => 'ponovo=9102', /Ispravljaš rezultat koji je odbijen/],
+    ['refuses the counted result whose correction waits and another was sent back for', (ways: Ways) => `ispravka=${String(ways.held.id)}`, null],
+    ['refuses the counted result whose correction waits and none was sent back for', (ways: Ways) => `ispravka=${String(ways.elsewhere.id)}`, null],
+    ['opens the counted result with two corrections sent back and none waiting', (ways: Ways) => `ispravka=${String(ways.calm.id)}`, /Menjaš rezultat koji je već uračunat/],
+  ] as const)(
+    '%s, even when the address is typed',
+    async (_what, road, opens) => {
+      const ways = waysIntoACorrection()
+
+      mine = ways.runs
+      renderAt(`/sr/rezultat/novi?${road(ways)}`, 'competitor', '000001', undefined, '2026-08-23')
+
+      await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
+
+      if (opens === null) {
+        expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+        expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+        expect(screen.queryByText(/Link ne otvara rezultate/), 'a reason was shown').toBeNull()
+        expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+        expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
+      } else {
+        expect(screen.getByText(opens)).toBeVisible()
       }
     },
     SLOW,

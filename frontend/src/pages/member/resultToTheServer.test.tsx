@@ -1099,6 +1099,73 @@ describe('a run sent back, sent again', () => {
     },
     SLOW,
   )
+
+  /**
+   * AND NO SECOND CORRECTION OF A RESULT LEAVES WHILE ONE WAITS, from the address of a correction
+   * sent back.
+   *
+   * <p>The case above is the other half, on the same shape of list: there the correction that waits
+   * names ANOTHER result and the one sent back goes to its own. Here the correction that waits names
+   * the same result, and the address opens the form for a NEW run, as it does for an address that
+   * names no run at all, so what can leave is a run to `POST /api/results` and never a `PUT` on the
+   * result. The review of PR 521 measured on 10.10.2026 the opposite: the same address sent one
+   * `PUT` on the result while another correction of it waited.
+   *
+   * <p>The correction that waits is neither the first row nor the last, and a correction of another
+   * result waits in front of it, so a reading of the first row or of „some correction waits" cannot
+   * stand in for the right one.
+   */
+  it(
+    'sends a run and never a second correction of the result, from the address of a correction sent back while one waits',
+    async () => {
+      const user = setupUser()
+      const HIS = '000001'
+      const his = countedResults.filter((one) => one.memberNumber === HIS)
+      const corrected = must(his.at(-1), 'a counted result of his that is not his first')
+      const other = must(his[0], 'his first counted result')
+
+      expect(his.length, 'he has more than one counted result to tell apart').toBeGreaterThan(1)
+
+      listeningWith([
+        aRun(79, { state: 'waiting', reason: null, raceName: other.raceName, amendsResultId: other.id }),
+        aRun(78, {
+          state: 'waiting',
+          reason: null,
+          raceName: corrected.raceName,
+          amendsResultId: corrected.id,
+        }),
+        aRun(77, {
+          raceName: corrected.raceName,
+          raceDate: corrected.date,
+          seconds: corrected.seconds,
+          amendsResultId: corrected.id,
+        }),
+        aRun(76),
+      ])
+      renderAt('/sr/rezultat/novi?ponovo=77', 'competitor', HIS, undefined, '2026-08-23')
+
+      await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
+
+      /* The form for a new run, which is what is typed into below: the correction's would be
+         locked on the race and would not take it. */
+      expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+
+      await describeARace(user)
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      const sent = must(writes()[0], 'the request')
+
+      expect(sent.path).toBe('/api/results')
+      expect(sent.init?.method).toBe('POST')
+      expect(bodyOf(sent).raceName).toBe('Trka kroz šumu')
+      expect(writes().map((one) => one.path)).not.toContain(`/api/results/${String(corrected.id)}`)
+    },
+    SLOW,
+  )
 })
 
 describe('a counted result the member takes back', () => {
