@@ -38,11 +38,11 @@ import static org.assertj.core.api.Assertions.catchThrowable;
  * <li>Every phrase that must be GONE is looked for in the text the migrations before V57 wrote, read out of the
  * files Flyway resolved ({@link #pageTextOfTheMigrationsBeforeThisOne}). A phrase that was never there is
  * decorative, and the sweep that expects it gone would stay green on a text that never said it.</li>
- * <li>The table names exactly the sections V57 edits, and that is asked of V57 itself and not of its text: run
- * again over the finished text, it refuses and says, line by line, which edit it aimed at which section of which
- * page in which language ({@link #theTableNamesExactlyTheSectionsTheMigrationEdits}). A section added to V57 and
- * not to the table, or the other way round, fails there. Reading the list of edits out of the file would be a
- * parser of a shape of text; asking the migration is asking the tool.</li>
+ * <li>The table names exactly the edits V57 makes, and that is asked of V57 itself and not of its text: run again
+ * over the finished text, it refuses and says, line by line, which edit it aimed at which section of which page in
+ * which language ({@link #theTableNamesExactlyTheEditsTheMigrationMakes}). An edit added to V57 and not to the
+ * table, one dropped from the table, or one table entry for a section V57 does not touch, fails there. Reading the
+ * list of edits out of the file would be a parser of a shape of text; asking the migration is asking the tool.</li>
  * </ul>
  *
  * <p><b>And the refusal is held.</b> V57 checks that every old text stands exactly once where it is written and
@@ -73,8 +73,9 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 	 */
 	record Edit(String label, String slug, int position, String language, List<String> gone, List<String> stands) {
 
-		String where() {
-			return slug + " #" + position + " " + language;
+		/** The name V57 gives this edit in the report it raises: the label, then the section it is aimed at. */
+		String named() {
+			return label + " @ " + slug + " #" + position + " " + language;
 		}
 	}
 
@@ -142,14 +143,15 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 			new Edit("Z2", POLICY, 6, "en",
 					List.of("turn notifications on and off"),
 					List.of("profile fields in settings. Consent for cookies")),
+			new Edit("Z1 and", POLICY, 7, "en",
+					List.of("cryptographic hash, a small number of people"),
+					List.of("cryptographic hash, and a small number of people")),
 			new Edit("Z1", POLICY, 7, "sr",
 					List.of("dvofaktorsk"),
 					List.of("sa tačno određenim pravima. Nijedan sistem nije potpuno bezbedan")),
 			new Edit("Z1", POLICY, 7, "en",
 					List.of("two-factor"),
-					List.of(
-						"and a small number of people with precisely defined rights have access to the data. No "
-							+ "system is completely secure")),
+					List.of("have access to the data. No system is completely secure")),
 			new Edit("Z5 terms", TERMS, 4, "sr",
 					NOTHING,
 					List.of("kao i svaki drugi član. Član čiji virtuelni balans pokriva celu članarinu prolazi bez koraka 4.")),
@@ -277,7 +279,7 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 			for (String gone : edit.gone()) {
 				assertThat(bodies)
 						.as("edit %s: a %s section still carries \"%s\", which V57 took out of %s",
-								edit.label(), language, gone, edit.where())
+								edit.label(), language, gone, edit.named())
 						.noneMatch(body -> body.contains(gone));
 			}
 		}
@@ -295,7 +297,7 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 
 			for (String stands : edit.stands()) {
 				assertThat(body)
-						.as("edit %s: %s does not carry \"%s\" exactly once", edit.label(), edit.where(), stands)
+						.as("edit %s: %s does not carry \"%s\" exactly once", edit.label(), edit.named(), stands)
 						.containsOnlyOnce(stands);
 				phrasesChecked++;
 			}
@@ -396,14 +398,13 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 	}
 
 	@Test
-	void v57RunOverTheFinishedTextStopsAndSaysThatEveryOldTextIsMissing() {
+	void v57RunOverTheFinishedTextStopsAndSaysThatOldTextsAreMissing() {
 		PSQLException error = v57RunAgain();
 
 		assertThat(error.getServerErrorMessage().getMessage()).contains("the written pages were not edited");
 		assertThat(reportOf(error))
-				.as("the finished text still holds every old text of V57, so the edits are not finished")
-				.contains("A @ politika-privatnosti #2 sr: found 0 times")
-				.contains("D @ pravilnik #17 en: found 0 times");
+				.as("the finished text holds the old text of hardly any edit, and V57 did not say so")
+				.contains("found 0 times");
 	}
 
 	@Test
@@ -436,35 +437,37 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 				.contains("A @ politika-privatnosti #2 en: there is no such text");
 	}
 
-	private static final Pattern A_LINE_OF_THE_REPORT = Pattern.compile("^(.+) @ (\\S+) #(\\d+) (\\w+): .+$");
+	private static final Pattern A_LINE_OF_THE_REPORT = Pattern.compile("^(.+ @ \\S+ #\\d+ \\w+): .+$");
 
 	/**
-	 * THE TABLE NAMES EXACTLY THE SECTIONS V57 EDITS, asked of V57 itself.
+	 * THE TABLE NAMES EXACTLY THE EDITS V57 MAKES, asked of V57 itself.
 	 *
 	 * <p>Run over the finished text it refuses, and its report has one line for every edit, whether that edit found
 	 * its old text or not (so an edit that adds a sentence after an anchor, and finds the anchor still there, is
-	 * named as well). The sections those lines name are the floor under {@link #EDITS}.
+	 * named as well). Those lines, each with the label V57 gives the edit and the section and language it is aimed
+	 * at, are the floor under {@link #EDITS}: a label and not only a section, because two edits aimed at one section
+	 * would otherwise hide each other.
 	 */
 	@Test
-	void theTableNamesExactlyTheSectionsTheMigrationEdits() {
+	void theTableNamesExactlyTheEditsTheMigrationMakes() {
 		Set<String> editedByTheMigration = new HashSet<>();
 
 		for (String line : reportOf(v57RunAgain()).lines().toList()) {
 			Matcher named = A_LINE_OF_THE_REPORT.matcher(line);
 
 			assertThat(named.matches()).as("V57 reported a line this case cannot read: %s", line).isTrue();
-			editedByTheMigration.add(named.group(2) + " #" + named.group(3) + " " + named.group(4));
+			editedByTheMigration.add(named.group(1));
 		}
 
 		Set<String> heldByTheTable = new HashSet<>();
 
 		for (Edit edit : EDITS) {
-			heldByTheTable.add(edit.where());
+			assertThat(heldByTheTable.add(edit.named())).as("the table names %s twice", edit.named()).isTrue();
 		}
 
-		assertThat(editedByTheMigration).as("V57 names no section at all, so this case measures nothing").isNotEmpty();
+		assertThat(editedByTheMigration).as("V57 names no edit at all, so this case measures nothing").isNotEmpty();
 		assertThat(heldByTheTable)
-				.as("the table and V57 do not edit the same sections of the same pages in the same languages")
+				.as("the table and V57 do not make the same edits, each aimed at the same section in the same language")
 				.isEqualTo(editedByTheMigration);
 	}
 }
