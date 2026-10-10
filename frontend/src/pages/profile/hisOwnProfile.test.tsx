@@ -234,14 +234,14 @@ describe('a member whose fee has lapsed, on his own page', () => {
     /* A podium he won in 2019, in a season when his fee stood. The results are what the server
        serves: the rows of the seasons he was a member in, with his number on them. The other man
        is on the list. */
-    const aRun = (id: number, memberNumber: string, points: number) => ({
+    const aRun = (id: number, memberNumber: string, points: number, year = 2019) => ({
       id,
       memberNumber,
       raceId: 700 + id,
       raceName: 'Trka za pehar',
       eventName: 'Trka za pehar',
-      eventSlug: 'trka-za-pehar-2019',
-      date: '2019-05-05',
+      eventSlug: `trka-za-pehar-${year}`,
+      date: `${year}-05-05`,
       distanceKm: 21.1,
       ascentM: 40,
       descentM: 40,
@@ -263,6 +263,42 @@ describe('a member whose fee has lapsed, on his own page', () => {
 
       expect(screen.getByRole('heading', { level: 2, name: 'Pehari 2' })).toBeVisible()
       expect(rows.map((row) => row.textContent)).toEqual([
+        expect.stringContaining('2019Generalni plasman1. mesto'),
+        expect.stringContaining('2019Kategorija M40-541. mesto'),
+      ])
+    }, SLOW)
+
+    it('hands him nothing for a season in which three men of his band finished ahead of him', async () => {
+      /* The one thing a list of him alone cannot say: he races against the members the list carries,
+         so a trophy is a place among THEM. In 2018 he is fourth on both boards (the men, and the men
+         of his band), and a ranking drawn against nobody but himself would put him first on both. The
+         three are read off the list the case serves and not named, and the case says first that there
+         are three of them to be read. */
+      const ahead = FILE.filter(
+        (one) =>
+          one.active === true && one.gender === 'M' && one.ageBand === '40-54' && one.firstSeason2027 === false,
+      ).slice(0, 3)
+
+      expect(ahead, 'three men of his band on the list, which the generated data has').toHaveLength(3)
+
+      stand(
+        serverThat((path) =>
+          path === '/api/results'
+            ? json([
+                aRun(9001, '000032', 100),
+                aRun(9002, '000001', 50),
+                aRun(9003, '000032', 100, 2018),
+                ...ahead.map((one, index) => aRun(9010 + index, String(one.memberNumber), 300 - 50 * index, 2018)),
+              ])
+            : null,
+        ),
+      )
+      renderAt(`${HIS_ADDRESS}/priznanja`, 'competitor', '000032')
+
+      const table = await screen.findByRole('table', { name: 'Pehari' })
+
+      expect(screen.getByRole('heading', { level: 2, name: 'Pehari 2' })).toBeVisible()
+      expect(within(table).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual([
         expect.stringContaining('2019Generalni plasman1. mesto'),
         expect.stringContaining('2019Kategorija M40-541. mesto'),
       ])
