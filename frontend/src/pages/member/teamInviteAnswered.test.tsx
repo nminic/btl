@@ -545,11 +545,18 @@ describe('answering a served invitation into a team', () => {
          **And the members, since T5 (10.10.2026)**, because his team reaches every screen as
          `teamId` on his own record off `/api/competitors`, and that is what „Prijavi se u tim"
          and „Predloži tim" read „nema tim" off (PDL, 05.09.2026). Held, both went on offering
-         him a press the server answers with 404. */
-      await waitFor(() => {
-        expect(arrivedResource('teams')).toBeUndefined()
-        expect(arrivedResource('competitors')).toBeUndefined()
-      })
+         him a press the server answers with 404.
+
+         Waited for in half of the case's time, so that a cache left in place fails here in these
+         words and not on the case's own clock (`admin/saveWhileSaving.test.tsx` gives the reason;
+         measured on T5's series, where leaving the members in place ended in `Test timed out`). */
+      await waitFor(
+        () => {
+          expect(arrivedResource('teams')).toBeUndefined()
+          expect(arrivedResource('competitors')).toBeUndefined()
+        },
+        { timeout: SLOW / 2 },
+      )
     },
     SLOW,
   )
