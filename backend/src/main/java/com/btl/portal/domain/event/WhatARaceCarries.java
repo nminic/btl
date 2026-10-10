@@ -1,6 +1,7 @@
 package com.btl.portal.domain.event;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -174,13 +175,15 @@ public final class WhatARaceCarries {
 	 * formula scores it against; a free race gives neither, so every figure is the runner's own
 	 * (owner, 29.08.2026). Whatever the request carries for a figure the race fixes is not read.
 	 *
-	 * <p><b>Four roads ask it, and that is why it is here and not in any one of them.</b> A
+	 * <p><b>Five roads ask it, and that is why it is here and not in any one of them.</b> A
 	 * member reporting a run and a member correcting a counted one
 	 * ({@code ResultWriteApi}); a moderator approving a run, with or without figures of his own
-	 * put in place of the runner's ({@code VerificationWriteApi}); and the queue showing the
-	 * moderator what that approval would count ({@code VerificationApi}). Answered four ways it
-	 * would come to answer „whose figure is this" differently on the screen and in the
-	 * standings, so the moderator would approve numbers he was never shown.
+	 * put in place of the runner's ({@code VerificationWriteApi}); the queue showing the
+	 * moderator what that approval would count ({@code VerificationApi}); and an administrator
+	 * correcting the race itself, after which every run already counted at it is counted again
+	 * ({@code RaceWriteApi}, through {@link #whatItFixesMoved}). Answered five ways it would
+	 * come to answer „whose figure is this" differently on the screen and in the standings, so
+	 * the moderator would approve numbers he was never shown.
 	 *
 	 * <p><b>The race is asked as it stands NOW, never as it stood when the run was sent.</b>
 	 * The record of 03.08.2026 above has a figure the race fixes corrected on the race, where
@@ -206,5 +209,71 @@ public final class WhatARaceCarries {
 				course ? Integer.valueOf(race.ascentM()) : typed.ascentM(),
 				course ? Integer.valueOf(race.descentM()) : typed.descentM(),
 				time ? Integer.valueOf(race.limitSeconds()) : typed.seconds());
+	}
+
+	/** A run carrying no figure of its own, which is what makes {@link #figuresOf} answer with
+	 *  the race's side and nothing else. */
+	private static final Figures NOTHING_OF_THE_RUNNERS = new Figures(null, null, null, null);
+
+	/**
+	 * WHAT A RACE OF ITS KIND FIXES FOR EVERY RUN AT IT, AND AN EMPTY PLACE FOR WHAT IT LEAVES
+	 * TO THE RUNNER.
+	 *
+	 * <p>{@link #figuresOf} asked with a run that carries nothing: a figure the race fixes comes
+	 * back as the race has it, and a figure it leaves to the runner comes back empty. So this is
+	 * not a second answer to „whose figure is this" but the first one read from the race's side,
+	 * and a kind that tomorrow fixes something else changes both at once.
+	 */
+	public static Figures whatItFixes(ARace race) {
+		return figuresOf(race, NOTHING_OF_THE_RUNNERS);
+	}
+
+	/**
+	 * WHETHER AN EDIT OF A RACE MOVED ANYTHING IT FIXES, which is the question that decides
+	 * whether the runs already counted at it are counted again.
+	 *
+	 * <p><b>PDL P4, the owner's decision of 20.09.2026, in his own words:</b> „Upisao bih nule, a
+	 * onda kad jednog dana promenim, portal treba da preracuna i bodove osim ako je sezona
+	 * zamrznuta." The journal names the climb and the fall, and adds in its own wording that the
+	 * recount „mora da proveri da li je sezona zamrznuta pre nego što išta promeni".
+	 *
+	 * <p><b>That every OTHER figure a race fixes recounts too is derived and not his
+	 * sentence</b> - the length on a race of a length and the limit on a race to a limit. It is
+	 * derived from the two records that say why those figures are the race's at all, both in the
+	 * journal's wording: 03.08.2026, the course „to su zvanični podaci i moderator ih ispravlja na
+	 * trci, gde ispravka stiže svima koji su je istrčali", and 29.08.2026, on a race to a limit
+	 * {@code Tsec} is the race's own limit, the same for everyone who finished it. It was put to
+	 * him as derived on 09.10.2026.
+	 *
+	 * <p><b>Asked of the race as it stood against the race as it is written, never of the runs.</b>
+	 * The owner's sentence ties the recount to an EDIT of the value, and the screen that edits a
+	 * race sends every race of the event on every save ({@code AdminEvents.tsx},
+	 * {@code writeTheRaces}), so a save that moved nothing a race fixes must recount nothing - that
+	 * half is also derived, and was put to him the same day. A figure the kind leaves to the runner
+	 * moves nothing either: the climb of a race to a limit is on the race and in no run's score.
+	 *
+	 * <p><b>The length is compared as a number and not as text.</b> {@code race.distance_km} is
+	 * {@code numeric(8,4)}, so a length read back is {@code 42.2000} while the form sends what was
+	 * typed, {@code 42.2} or {@code 42.20}. Those are one length, and {@link BigDecimal#equals}
+	 * would call them three.
+	 *
+	 * <p><b>A change of kind always moves something</b>, unless neither kind fixes anything: the
+	 * figures one kind fixes are empty under the other. Whether the runs follow a change of kind
+	 * is NOT this method's question and it does not answer it; the route that edits races does,
+	 * and says why.
+	 */
+	public static boolean whatItFixesMoved(ARace before, ARace after) {
+		Figures was = whatItFixes(before);
+		Figures is = whatItFixes(after);
+
+		return !(sameLength(was.distanceKm(), is.distanceKm())
+				&& Objects.equals(was.ascentM(), is.ascentM())
+				&& Objects.equals(was.descentM(), is.descentM())
+				&& Objects.equals(was.seconds(), is.seconds()));
+	}
+
+	/** Two lengths that are the same number, and two absent lengths, are the same length. */
+	private static boolean sameLength(BigDecimal one, BigDecimal other) {
+		return one == null || other == null ? one == other : one.compareTo(other) == 0;
 	}
 }

@@ -12,8 +12,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -26,8 +29,10 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -74,6 +79,16 @@ class TeamApiTest {
 	 * every name in this class is: a rename has to fail a case, not rename the case with it.
 	 */
 	private static final String ALSO_IN_THE_TEAM = "alsoInTheTeam";
+
+	/**
+	 * AND THE MEMBERSHIPS OF A TEAM THAT HAVE ENDED, since 10.10.2026: a member who left, with the
+	 * season his membership began in and the last season he is in it. The same to every reader, which
+	 * is what tells it from the field above. Written out here rather than taken from {@code TeamApi},
+	 * for the reason every name in this class is: a rename has to fail a case, not rename the case
+	 * with it. The cases that hold its VALUES are in
+	 * {@code ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest}; this class holds the answer around it.
+	 */
+	private static final String ENDED_MEMBERSHIPS = "endedMemberships";
 
 	/**
 	 * Founded the team that comes back FIRST, which is the source the next one separates,
@@ -253,6 +268,27 @@ class TeamApiTest {
 					+ " was NAMED, and nothing here pretends it is always somebody.";
 
 
+	/**
+	 * THE MOMENT THESE CASES ARE ASKED AT, PINNED, because the answer now depends on one.
+	 *
+	 * <p>{@code endedMemberships} names a member who left only until the last season of his
+	 * membership freezes, on 1 January at 16:00 of the year after it. The member this fixture has
+	 * who left ({@code 000008}) was in his team for 2027, so a case reading the machine's clock
+	 * would pass until 1 January 2028 at 16:00 and fail from then on, in a build nobody had
+	 * touched. The moment is October 2027: inside the window and a season before the freeze, so he
+	 * is named. The cases that move the clock around the freeze itself are
+	 * {@code ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest}'s.
+	 */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class TheMomentTheseCasesAreAskedAt {
+
+		@Bean
+		@Primary
+		Clock aClockThatDoesNotMove() {
+			return Clock.fixed(Instant.parse("2027-10-20T09:00:00Z"), ZoneOffset.UTC);
+		}
+	}
+
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	@Autowired
@@ -324,8 +360,11 @@ class TeamApiTest {
 	 * season answered with him has one source.</li>
 	 * <li>{@code 000004}, standing in {@code klub-lovcen} since 2027 - named, on the SECOND
 	 * team, so „the team he is in" and „the first team" are two places.</li>
-	 * <li>{@code 000008}, who LEFT {@code vardarski-krug} - named nowhere, which is what
-	 * dropping {@code season_to is null} would change.</li>
+	 * <li>{@code 000008}, who LEFT {@code vardarski-krug} - named nowhere on
+	 * {@code alsoInTheTeam}, which is what dropping {@code season_to is null} would change, and
+	 * named on {@code endedMemberships} since 10.10.2026 like every member who left while his fee
+	 * stands, for as long as 2027 has not frozen (the clock of this class is pinned to October
+	 * 2027).</li>
 	 * <li>{@code 000003}, standing in {@code novosadski-trkaci} since 2029 with a fee that has
 	 * lapsed - named nowhere, which is what dropping {@code c.active} would change, and which
 	 * is the door the note on {@code TeamApi} keeps shut.</li>
@@ -416,8 +455,9 @@ class TeamApiTest {
 		membership(paidAndUnnumbered, "vardarski-krug", 2027);
 
 		/* AND FOUR WHO HIDE THEIR PROFILE, one per state of the link: two standing, on two
-		   different teams, and two who must not be named at all - one who left and one whose
-		   fee has lapsed. The note on this method says what each one separates. */
+		   different teams, and two who must not be named on that door - one who left (named on
+		   `endedMemberships` instead) and one whose fee has lapsed. The note on this method says
+		   what each one separates. */
 		hidesHisProfile("000002");
 		hidesHisProfile("000004");
 		hidesHisProfile("000008");
@@ -796,6 +836,64 @@ class TeamApiTest {
 		return visitor;
 	}
 
+	/** One membership that has ended, as the DATABASE says it, in team then number order. */
+	private record Left(String slug, String memberNumber, int since, int until) {
+	}
+
+	/**
+	 * THE MEMBERS WHO LEFT, EMPTIED OUT OF AN ANSWER BY THE EXACT TEXT THEY MUST BE TOLD IN.
+	 *
+	 * <p>The second excuse {@link #noMemberNumberLeavesTheServer} stands on since 10.10.2026, built the
+	 * way the first is (rule of 14.09.2026: what a comparison has to ignore to pass is often exactly
+	 * what it should be measuring) and EXACT for the same reason. Every team's value of
+	 * {@code endedMemberships} is built from the database by this class's own query - the
+	 * memberships that have ended, of members whose fee is standing, and (at the pinned moment of
+	 * October 2027) none whose last season has frozen - and has to be found in the text
+	 * once and only once before it is emptied, so a reader told one member too many or too few, or
+	 * told nothing, fails here before any number is looked for. It is EVERY reader's excuse and not
+	 * a reader's own, which is why it is applied to all of them.
+	 */
+	private String withTheMembersWhoLeftEmptied(String answer) throws Exception {
+		List<Left> left = db.sql("select t.slug, c.member_number, m.season_from, m.season_to"
+						+ " from team_membership m"
+						+ " join competitor c on c.id = m.competitor_id"
+						+ " join team t on t.id = m.team_id"
+						+ " where m.season_to is not null and c.active"
+						+ " order by t.slug, c.member_number, m.season_from")
+				.query((row, one) -> new Left(row.getString(1), row.getString(2), row.getInt(3),
+						row.getInt(4)))
+				.list();
+
+		assertThat(left).as("nobody in the fixture has left a team while his fee stands, so nothing is"
+				+ " excused below and nothing about it is measured").isNotEmpty();
+
+		Map<String, List<Map<String, Object>>> byTeam = new LinkedHashMap<>();
+
+		for (Left one : left) {
+			Map<String, Object> written = new LinkedHashMap<>();
+			written.put("memberNumber", one.memberNumber());
+			written.put("since", one.since());
+			written.put("until", one.until());
+			byTeam.computeIfAbsent(one.slug(), any -> new ArrayList<>()).add(written);
+		}
+
+		ObjectMapper mapper = new ObjectMapper();
+		String emptied = answer;
+
+		for (Map.Entry<String, List<Map<String, Object>>> one : byTeam.entrySet()) {
+			String said = "\"" + ENDED_MEMBERSHIPS + "\":" + mapper.writeValueAsString(one.getValue());
+
+			assertThat(emptied.split(java.util.regex.Pattern.quote(said), -1).length - 1)
+					.as("the answer was not told, exactly once, the members who left %s: %s",
+							one.getKey(), one.getValue())
+					.isEqualTo(1);
+
+			emptied = emptied.replace(said, "\"" + ENDED_MEMBERSHIPS + "\":[]");
+		}
+
+		return emptied;
+	}
+
 	/**
 	 * EVERY FIELD THE PORTAL READS IS ANSWERED TO THE VISITOR, EXCEPT THE ONE THAT IS
 	 * NOT HIS TO SEE, and it is named here with the reason.
@@ -830,11 +928,20 @@ class TeamApiTest {
 	 * them out. It also refuses any name the portal does NOT read, which is what says
 	 * the team's link, its first season and its administrator did not arrive under
 	 * another word.
+	 *
+	 * <p><b>One name is answered although no screen reads it yet, since 10.10.2026:
+	 * {@code endedMemberships}.</b> It is named in {@code alsoAnswered} here and at the three
+	 * other calls on this resource, each time for the one reason: the portal's standing will read
+	 * it in the increment that follows (the frontend half), and a field added on purpose and a
+	 * field that leaked look alike from here. {@code Answers} requires a name listed there to be
+	 * ABSENT from the served file, so the day that increment puts the field into
+	 * {@code teams.json} these four calls fail until the name leaves them: the list cannot
+	 * outlive its reason.
 	 */
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/teams", answer(), "teams.json",
-				WHO_ADMINISTERS_THE_TEAM);
+				java.util.Set.of(ENDED_MEMBERSHIPS), WHO_ADMINISTERS_THE_TEAM);
 	}
 
 	@Test
@@ -877,6 +984,15 @@ class TeamApiTest {
 	 * whole answer, untouched, because he is owed nothing here; a member whose fee has lapsed is
 	 * owed what a visitor is since 03.10.2026 and stands on the same exact-text excuse
 	 * ({@link #theAnswerWithWhatHeIsOwedEmptied}).
+	 *
+	 * <p><b>AND SINCE 10.10.2026 EVERY READER IS OWED SOME MORE, NAMED THE SAME WAY.</b> A member who
+	 * left a team is named on it, with the seasons he was in it, to every reader and the
+	 * administration included ({@code endedMemberships}; no record names an ended membership, so
+	 * there is no second home to keep it from). His number leaves inside that field and nowhere
+	 * else, so each team's value of it is emptied out of every answer by its exact text, read off the
+	 * database ({@link #withTheMembersWhoLeftEmptied}), and what is left is asked what it was asked
+	 * before. The fixture holds such a member - 000008, who left {@code vardarski-krug} - so the
+	 * excuse is measured by a value and not by an empty set.
 	 */
 	@Test
 	void noMemberNumberLeavesTheServer() throws Exception {
@@ -890,8 +1006,9 @@ class TeamApiTest {
 				+ " assert nothing").hasSize(9);
 
 		for (String nobody : NOBODY_WHO_MAY_SEE_THE_SEAT) {
-			String whole = nobody == null || OWED_WHAT_A_VISITOR_IS.contains(nobody)
-					? theAnswerWithWhatHeIsOwedEmptied(nobody) : whole(nobody);
+			String whole = withTheMembersWhoLeftEmptied(
+					nobody == null || OWED_WHAT_A_VISITOR_IS.contains(nobody)
+							? theAnswerWithWhatHeIsOwedEmptied(nobody) : whole(nobody));
 
 			assertThat(whole).as("the answer to %s carries nothing at all, so it says nothing"
 							+ " about what it leaves out", nobody)
@@ -916,7 +1033,7 @@ class TeamApiTest {
 				+ " asserts nothing about the roster").isNotEmpty();
 
 		for (String administration : THE_ADMINISTRATION) {
-			String whole = whole(administration);
+			String whole = withTheMembersWhoLeftEmptied(whole(administration));
 
 			for (String number : inNoSeat) {
 				assertThat(whole).as("a member number (%s) that sits in no team's seat left the"
@@ -1504,7 +1621,7 @@ class TeamApiTest {
 	void theMembersAnswerCarriesNothingNobodyNamed() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/teams asked by a member",
 				new ObjectMapper().readTree(whole(FOUNDED_THE_SECOND_TEAM)), "teams.json",
-				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT),
+				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT, ENDED_MEMBERSHIPS),
 				WHO_ADMINISTERS_THE_TEAM);
 	}
 
@@ -2146,13 +2263,14 @@ class TeamApiTest {
 	@Test
 	void theAdministrationsRecordCarriesNothingNobodyNamed() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered("/api/teams asked by the superadmin",
-				new ObjectMapper().readTree(whole(THE_SUPERADMIN)), "teams.json");
+				new ObjectMapper().readTree(whole(THE_SUPERADMIN)), "teams.json",
+				java.util.Set.of(ENDED_MEMBERSHIPS));
 
 		Answers.everyFieldThePortalReadsIsAnswered(
 				"/api/teams asked by a moderator over the teams",
 				new ObjectMapper().readTree(whole(FOUNDED_THE_FIRST_TEAM_AND_ADMINISTERS_THEM)),
 				"teams.json",
-				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT));
+				java.util.Set.of(WHETHER_THE_SEAT_IS_MINE, WHETHER_I_ADMINISTER_IT, ENDED_MEMBERSHIPS));
 	}
 
 	/**

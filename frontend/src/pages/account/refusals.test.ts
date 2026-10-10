@@ -24,7 +24,11 @@ import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
 import { WHEN_ANSWERING_A_PAIR_INVITE } from '../member/pairWrites'
 import { WHEN_ANSWERING_A_TEAM_INVITE } from '../member/teamWrites'
-import { WHEN_DECIDING_AN_APPLICATION } from '../joiningThisTeam'
+import {
+  WHEN_APPLYING_TO_A_TEAM,
+  WHEN_DECIDING_AN_APPLICATION,
+  WHEN_INVITING_INTO_A_TEAM,
+} from '../joiningThisTeam'
 import { WHEN_WRITING_AN_EVENT, WHEN_WRITING_A_RACE } from '../admin/eventWrites'
 
 /**
@@ -213,26 +217,13 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
      dictionary and this entry shrinks to nothing, the same way `CompetitorWriteApi`'s six above
      are waiting to. */
   'PairWriteApi.java': ['aQuestionAlreadyStands', 'aPairAlreadyHolds'],
-  /* `TeamJoiningWriteApi` names two this way, and they belong to the two POST routes of that
-     class rather than to the PUT the screen sends. `aQuestionAlreadyStands` is
-     `POST /api/teams/{id}/applications`'s („Prijava ne može da se umnoži", PDL 06.09.2026)
-     and `heHasAlreadyBeenAsked` is `POST /api/teams/{id}/invitations`'s („Isti tim ne poziva
-     istog čoveka dvaput").
-
-     RE-MEASURED 29.09.2026, because the sentence that stood here had gone out of date and a
-     stale measurement reads exactly like a live one. It used to say that the two collection
-     addresses appear only in prose; since `pages/joiningThisTeam.ts` they are built for real, and
-     `grep -rn "api/teams" frontend/src` now answers 125 times rather than 65. What has NOT
-     changed is the one thing this exemption rests on: the verbs sent are `GET` on the two
-     collections, `PUT` on one application and `DELETE` on one invitation. `POST` to either
-     collection is still sent by nothing - the member's own „Prijavi se u tim" writes into the
-     session (`pages/TeamDetail.tsx`, which says so in as many words) and „Pozovi u tim"
-     likewise (`profile/InviteToTeam.tsx`).
-
-     The day a screen asks to join a team or sends an invitation for real, these two move into
-     a dictionary and this entry shrinks, the same way `CompetitorWriteApi`'s six above are
-     waiting to. */
-  'TeamJoiningWriteApi.java': ['aQuestionAlreadyStands', 'heHasAlreadyBeenAsked'],
+  /* `TeamJoiningWriteApi` stood here until 10.10.2026 with two names, `aQuestionAlreadyStands`
+     and `heHasAlreadyBeenAsked`, one for each of the class's two POST routes, which no screen
+     sent: „Prijavi se u tim" and „Pozovi u tim" wrote into the session. Since T5 the first is
+     sent from the team's page (`pages/AskingThisTeam.tsx`) and the second from a profile
+     (`profile/InviteToTeam.tsx`), both through `pages/joiningThisTeam.ts`, so both names have a
+     dictionary on the line for that file below and the entry went, as the case at the bottom of
+     this file requires of a reason whose screen has arrived. */
 }
 
 describe('the reasons the server can name', () => {
@@ -417,8 +408,8 @@ describe('the reasons the server can name', () => {
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
        is this list's twin of the line above it in every way but one. Six constants splitting
        three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real
-       refusals of the two POST routes of the same class and no screen sends either
-       (`NOT_YET_ON_ANY_SCREEN`), and the remaining three are the whole of what
+       refusals of the two POST routes of the same class, which no screen sent until 10.10.2026
+       (see the last paragraph of this note), and the remaining three are the whole of what
        `PUT /api/teams/{id}/invitations/{invitation}` can name - `theFormIsNotComplete`,
        `theWindowIsShut` and `heIsAlreadyInATeam`, all three read straight off
        `TeamJoiningWriteApi.answer` and `answering`.
@@ -452,8 +443,28 @@ describe('the reasons the server can name', () => {
        THE OTHER VERB THAT SCREEN SENDS CARRIES NO DICTIONARY AT ALL, and that is not an
        omission. `DELETE .../invitations/{invitation}` answers 204 or an empty 404 and names
        nothing, so an entry for it would claim a refusal this route cannot make; the screen
-       hands `ServerSaid` an empty table there, which draws the number out loud. */
-    ['TeamJoiningWriteApi.java', [WHEN_ANSWERING_A_TEAM_INVITE, WHEN_DECIDING_AN_APPLICATION], 6],
+       hands `ServerSaid` an empty table there, which draws the number out loud.
+
+       TWO MORE SINCE 10.10.2026 (T5), ONE FOR EACH POST ROUTE OF THE CLASS, which no screen
+       sent until that day and which `NOT_YET_ON_ANY_SCREEN` excused until then.
+       `WHEN_APPLYING_TO_A_TEAM` is `POST .../applications`, sent from the team's page, and its
+       one name, `aQuestionAlreadyStands`, is the only reason `apply` gives. `WHEN_INVITING_INTO_A_TEAM`
+       is `POST .../invitations`, sent from a profile, and its four are the four `invite` can
+       give; three of them are names `WHEN_ANSWERING_A_TEAM_INVITE` also answers, each in words
+       about the other end of the same question. So the six of this line still does not move,
+       and both maps are added for the reason given above for the second one: a map on no line
+       of this table is held by nothing. `DELETE .../applications/{application}` carries none,
+       for the reason `DELETE .../invitations/{invitation}` carries none. */
+    [
+      'TeamJoiningWriteApi.java',
+      [
+        WHEN_ANSWERING_A_TEAM_INVITE,
+        WHEN_DECIDING_AN_APPLICATION,
+        WHEN_APPLYING_TO_A_TEAM,
+        WHEN_INVITING_INTO_A_TEAM,
+      ],
+      6,
+    ],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT WRITES ONE MEMBER'S NOTE TO ANOTHER,
        `event/GoingToEvent.tsx`. Two constants, both real refusals of
        `POST /api/inbox`, and neither exempt: there is nothing in this class that is
@@ -478,9 +489,10 @@ describe('the reasons the server can name', () => {
        and `event/EventActions.tsx` stopped writing into the session and began to send.
        Eleven and twelve, and four names appear in both under two different keys: the
        route answers one word, and what it means to the reader depends on whether he was
-       saving an event or one of its mornings. */
+       saving an event or one of its mornings. The race's thirteenth arrived 10.10.2026 with
+       the owner's answer that a race carrying an approved result keeps its kind (PDL P4). */
     ['EventWriteApi.java', [WHEN_WRITING_AN_EVENT], 11],
-    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 12],
+    ['RaceWriteApi.java', [WHEN_WRITING_A_RACE], 13],
   ]
 
   /** What a file declares that really is a refusal AND has a screen today, which is every

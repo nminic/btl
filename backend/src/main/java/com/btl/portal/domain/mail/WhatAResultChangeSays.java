@@ -46,9 +46,13 @@ import java.util.ResourceBundle;
  *
  * <p><b>AND THE SAME {@link Said} GOES INTO THE INBOX.</b> „Skrivena kopija svakog takvog
  * obavestenja ide na administrativnu adresu lige, i ISTA PORUKA ide u portalski inboks."
- * One value, built once here, written into {@code message} and handed to the relay -
- * rather than a second wording for the inbox, which is exactly how two copies of one
- * record come to disagree.
+ * One value, built once here, written into {@code message} and, wherever there is a letter at
+ * all, handed to the relay - rather than a second wording for the inbox, which is exactly how
+ * two copies of one record come to disagree. WHETHER there is a letter, and who is copied on
+ * it, is the route's to decide and not this class's: by the owner's decisions of 09.10.2026
+ * and 25.09.2026, a run sent in gets the line in the inbox and no letter, and what a member
+ * does to his own result is not copied to the league. Both are carried out, and cited, in
+ * {@code ResultWriteApi}.
  *
  * <p><b>The words live in {@code notices/sr.properties}</b> and deliberately not beside the
  * other Serbian this server says out loud; {@link #WORDS} carries the measured reason.
@@ -143,14 +147,17 @@ public final class WhatAResultChangeSays {
 	 */
 	public enum Told {
 
-		/** „unet rezultat", PDL P22's third mandatory message. */
+		/** A run sent in, told in his inbox and, since 09.10.2026, nowhere else: the mandatory
+		 *  mail „unet rezultat" is {@link #A_RESULT_WAS_APPROVED} (see
+		 *  {@link WhatAResultChangeSays#entered}). */
 		A_RESULT_WAS_ENTERED("resultEntered", 1),
 
-		/** „promenjen rezultat", its fourth, and the one that carries both values. */
+		/** „promenjen rezultat", one of the mandatory mails, and the one that carries both
+		 *  values. */
 		A_RESULT_WAS_CHANGED("resultChanged", 2),
 
-		/** Not on the list of six by that name, and required by the same decision all the
-		 *  same: „Isto obavestenje ide i kad se obrise verifikovan rezultat." */
+		/** Not on the list of mandatory mails by that name, and required by the same decision
+		 *  all the same: „Isto obavestenje ide i kad se obrise verifikovan rezultat." */
 		A_RESULT_WAS_DELETED("resultDeleted", 1),
 
 		/**
@@ -158,7 +165,9 @@ public final class WhatAResultChangeSays {
 		 * occasion of the four the member did not set off himself, which is why it exists
 		 * separately from {@link #A_RESULT_WAS_ENTERED} rather than being the same words
 		 * sent twice: what he is being told is not that the portal received something, but
-		 * that it now COUNTS.
+		 * that it now COUNTS. The record reads it as the mandatory „unet rezultat" (a derivation
+		 * of 03.10.2026, not a sentence of the owner's), and since 09.10.2026 it is the only
+		 * letter a run sent in ever produces.
 		 *
 		 * <p>One fact, and it is the run as it was approved. A refusal is not here and has
 		 * no occasion of its own: PDL P22 puts that in the inbox with the moderator's reason
@@ -193,9 +202,14 @@ public final class WhatAResultChangeSays {
 	 *
 	 * <p>This is the one of the three whose shape differs, and it differs for a reason
 	 * rather than for tidiness: the other two exist to carry what is being overwritten or
-	 * taken away, and a first report overwrites nothing. It is on the owner's list of six
-	 * mandatory messages all the same („unet rezultat", PDL P22, 11.08.2026), because what
-	 * it tells the member is that the portal really did receive what he sent.
+	 * taken away, and a first report overwrites nothing. What it tells the member is that the
+	 * portal really did receive what he sent.
+	 *
+	 * <p><b>These words go into his inbox and nowhere else.</b> The owner chose among the
+	 * outcomes offered on 09.10.2026, and the record words his choice as PDL P9, 09.10.2026,
+	 * „Pri slanju rezultata clan dobija samo red u sanducetu; mejl stize tek kad je rezultat
+	 * odobren". So the mandatory mail „unet rezultat" is no longer these words but
+	 * {@link #approved}, sent when the run counts.
 	 */
 	public static Said entered(Run sent) {
 		Objects.requireNonNull(sent, "sent");
@@ -266,8 +280,16 @@ public final class WhatAResultChangeSays {
 	 * dve ili manje decimala. Dakle 42.203 treba da zaokruzi na 42.2, ali da vodi kao
 	 * ultramaraton." This is a place where it is SHOWN, so two decimals; what decides the
 	 * category is the stored value and is not this class's business at all.
+	 *
+	 * <p><b>Public since 10.10.2026, for the one line about a run that is not a mail.</b> A
+	 * correction of a race tells every member whose run it counted again, in his inbox and never
+	 * by post (PDL P4, the owner's answers of 10.10.2026 on the recount, PR 504), with the run as
+	 * it was and as it is ({@code RaceWriteApi}). Those words are not an entry in this class's
+	 * dictionary, because every occasion that has words here is a mail
+	 * ({@code EveryMailIsAMandatoryOneTest}); the run in them is written by this method all the
+	 * same, so a run reads one way in a letter and in that line.
 	 */
-	static String inWords(Run run) {
+	public static String inWords(Run run) {
 		return run.raceName() + ", " + asADay(run.day()) + ", "
 				+ twoDecimals(run.distanceKm()) + " km, uspon " + run.ascentM()
 				+ " m, spust " + run.descentM() + " m, vreme " + asAClock(run.seconds())
