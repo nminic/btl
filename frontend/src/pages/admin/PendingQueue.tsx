@@ -272,7 +272,9 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * from its own memory. <b>The element is keyed by the same number</b>, so a picture that is
  * replaced is a new element that draws nothing until its own pixels arrive: left to change its
  * `src` in place, the element keeps drawing the old pixels until the new ones are decoded, and a
- * press in that moment names the new picture over the old one on the screen.
+ * press in that moment names the new picture over the old one on the screen. The circle needs none
+ * of this: the pixels do not change with it, and it travels in the decision itself (`approvalOf`,
+ * `refusalOf`).
  *
  * <p><b>`broken` is a prop and never state of its own, unlike before this
  * decision.</b> The Approve button beside this card has to read the identical

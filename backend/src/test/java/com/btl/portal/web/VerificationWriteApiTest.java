@@ -1064,21 +1064,27 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * AND A PICTURE NAMED BESIDE A ROW THAT HOLDS NONE IS REFUSED, which is the rule this route
-	 * keeps for every field that rides with one kind of decision only.
+	 * AND A PICTURE NAMED BESIDE A ROW THAT HOLDS NONE IS REFUSED, WHICHEVER PART OF IT IS NAMED,
+	 * which is the rule this route keeps for every field that rides with one kind of decision only.
 	 *
 	 * <p>The row is a biography. Taken and dropped, the key would tell whoever sent it that it was
 	 * kept; and the screen sends one only where it drew a picture (`PendingQueue.tsx`), so this is
-	 * a request that did not come from it.
+	 * a request that did not come from it. <b>The key alone, the circle alone and both are three
+	 * rows</b>, because the guard asks about two fields and a case that named both could not tell a
+	 * guard that asks about both from one that asks about either: removing the key from the question
+	 * left the key refused only when the circle came with it (measured by a mutation of the series
+	 * that first ran this as one case with both named, which survived).
 	 */
-	@Test
-	void aPictureNamedBesideARowThatHoldsNoneIsRefusedForBothAnswers() throws Exception {
+	@ParameterizedTest
+	@ValueSource(strings = {"KEY_ONLY", "CIRCLE_ONLY", "BOTH"})
+	void aPictureNamedBesideARowThatHoldsNoneIsRefusedForBothAnswers(String named) throws Exception {
 		for (boolean approved : new boolean[] {true, false}) {
 			MockHttpServletResponse answered = decideSeeing(PROFILES_MODERATOR, anasText, approved,
-					approved ? null : THE_REASON, verasPhoto);
+					approved ? null : THE_REASON, named.equals("CIRCLE_ONLY") ? null : verasPhoto,
+					named.equals("KEY_ONLY") ? null : verasCircle);
 
 			assertThat(answered.getStatus())
-					.as("a key was taken beside a biography (approved=%s)", approved)
+					.as("%s was taken beside a biography (approved=%s)", named, approved)
 					.isEqualTo(400);
 			assertThat(reasonIn(answered)).isEqualTo(A_SEEN_PICTURE_GOES_WITH_A_PICTURE);
 			assertThat(stateOf(anasText)).isEqualTo("waiting");
@@ -1292,31 +1298,6 @@ class VerificationWriteApiTest {
 					.isEqualTo(400);
 			assertThat(reasonIn(answered)).isEqualTo(THE_FORM_IS_NOT_COMPLETE);
 			nothingWasDecided(verasPicture, verasPhoto);
-		}
-	}
-
-	/**
-	 * A CIRCLE NAMED BESIDE A ROW THAT HOLDS NO PICTURE IS REFUSED ON ITS OWN, like the key is: the
-	 * rule this route keeps for every field that rides with one kind of decision only.
-	 *
-	 * <p>The row is a biography and the request names only the circle. A guard that asked about the
-	 * key alone would take it and drop it, and tell whoever sent it that it was kept.
-	 */
-	@Test
-	void aCircleNamedBesideARowThatHoldsNoPictureIsRefusedForBothAnswers() throws Exception {
-		for (boolean approved : new boolean[] {true, false}) {
-			MockHttpServletResponse answered = decideSeeing(PROFILES_MODERATOR, anasText, approved,
-					approved ? null : THE_REASON, null, verasCircle);
-
-			assertThat(answered.getStatus())
-					.as("a circle was taken beside a biography (approved=%s)", approved)
-					.isEqualTo(400);
-			assertThat(reasonIn(answered)).isEqualTo(A_SEEN_PICTURE_GOES_WITH_A_PICTURE);
-			assertThat(stateOf(anasText)).isEqualTo("waiting");
-			assertThat(db.sql("select bio from competitor where member_number = ?")
-					.param(ANA).query(String.class).single())
-					.as("the biography was published although the request was refused")
-					.isEmpty();
 		}
 	}
 

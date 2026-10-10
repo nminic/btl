@@ -593,7 +593,10 @@ class MePhotoApi {
 		/* AND THE CIRCLE ALONE MOVES ON THE ROW THAT IS ALREADY THERE: no second `photo` row, no
 		   second file, and the same bytes under the same digest. The digest is the content, so the
 		   address `PhotoApi.mineThatWaits` answers at does not move either, which is exactly right
-		   - the bytes a browser may have cached really are still the bytes. */
+		   - the bytes a browser may have cached really are still the bytes. THE KEY THEREFORE STAYS
+		   where it was, and a decision about the row names the circle beside the key for exactly that
+		   reason (`VerificationWriteApi.Answered#seenCrop`): the key alone would not say that what the
+		   moderator saw has changed. */
 		if (onlyTheCircle) {
 			Waits standing = waits.orElseThrow();
 

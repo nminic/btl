@@ -233,7 +233,9 @@ import java.util.Set;
  * statement takes its snapshot after the wait. The key is a column of the locked row and would
  * have survived being compared in the claim, but a print compared half in one place and half in
  * another is two homes for one fact, so both halves are compared here and the claim is the plain
- * claim by state again.
+ * claim by state again. The case that holds it is {@code
+ * AMemberSendsAnotherPictureWhileTheDecisionWaitsTest#aCircleMovedWhileTheDecisionWaitsForTheRowIsNotDecided}:
+ * with the circle read by a join in the locking statement it answers something other than 409.
  *
  * <p><b>THE ORDER OF THE LOCKS IS THE MEMBER'S OWN.</b> {@code MePhotoApi.send} takes this row
  * {@code for update} first and writes the picture or the circle after, so a decision that takes
@@ -962,9 +964,11 @@ class VerificationWriteApi {
 			return new Carried(unnamed.get(), null, null);
 		}
 
-		/* THE ROW IS TAKEN HERE, FIRST, AND THEN LOOKED AT. See the head of this class for why it is
-		   two statements and what was measured. Everything below this line runs with the row held,
-		   so the picture and the circle compared here are the ones the claim below acts on. */
+		/* THE ROW IS TAKEN HERE, FIRST, AND THEN LOOKED AT, for a decision about a picture (every other
+		   decision passes through this line without touching the database). See the head of this class
+		   for why it is two statements and what was measured. For a picture everything below this line
+		   runs with the row held, so the picture and the circle compared here are the ones the claim
+		   below acts on. */
 		Optional<ResponseEntity<?>> notTheOneHeSaw = whyThePictureIsNotTheOneHeSaw(item, typed);
 
 		if (notTheOneHeSaw.isPresent()) {
