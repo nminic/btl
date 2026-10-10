@@ -424,6 +424,30 @@ describe('what stands in the place of the button', () => {
 
       expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
       expect(screen.queryByText(itStands)).toBeNull()
+      /* Asked again for him, and not answered out of what was read for the last one: the team's
+         list moves between two profiles as surely as between two days. */
+      expect(readsOfLists(server.asked)).toHaveLength(2)
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  it('does not carry a refusal about one member to the next one visited', async () => {
+    const server = aServerForTheTeam({ post: () => refused('theWindowIsShut', 409) })
+    const user = setupUser()
+
+    try {
+      const { router } = renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
+
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW }))
+      await screen.findByRole('alert')
+
+      await act(async () => {
+        await router.navigate(NEXT_AT)
+      })
+
+      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(screen.queryByRole('alert')).toBeNull()
     } finally {
       server.stop()
     }
