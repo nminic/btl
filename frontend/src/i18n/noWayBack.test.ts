@@ -35,6 +35,18 @@ import sr from './sr.json'
  */
 const KEPT = 'admin.form.back'
 
+/**
+ * AND ONE SENTENCE THAT SAYS THE WORD WITHOUT BEING A WAY BACK, since 10.10.2026 (T5).
+ *
+ * <p>The question asked before a member leaves his team, in the wording the owner chose that day
+ * from the ones offered to him: „Sigurno izlaziš iz tima {team}? Nazad se vraćaš samo ako tim
+ * prihvati tvoju prijavu ili te ponovo pozove." Its „Nazad" is about coming back INTO A TEAM, it
+ * stands in a question and on no link or control, and the rule of 05.09.2026 is about links
+ * („Obriši sve Nazad linkove"). So this is the decision the case below asks for, taken once and
+ * named by its key: the word arriving in any other sentence still fails.
+ */
+const NOT_A_WAY_BACK = 'membership.leaveTeamAsk'
+
 function every(node: object, prefix = ''): [string, string][] {
   return Object.entries(node).flatMap(([key, value]: [string, unknown]): [string, string][] => {
     const name = prefix === '' ? key : `${prefix}.${key}`
@@ -48,12 +60,12 @@ function every(node: object, prefix = ''): [string, string][] {
 }
 
 describe('the portal offers no way back of its own', () => {
-  it('says „Nazad" in one sentence only, the one that closes a form', () => {
+  it('says „Nazad" in one control only, the one that closes a form, and in one question', () => {
     const saying = every(sr)
       .filter(([, value]) => value.includes('Nazad'))
       .map(([name]) => name)
 
-    expect(saying).toEqual([KEPT])
+    expect([...saying].sort()).toEqual([KEPT, NOT_A_WAY_BACK].sort())
   })
 
   it('is not vacuous: the sentence it allows is really there', () => {
