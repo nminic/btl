@@ -1078,6 +1078,14 @@ export type PendingItem = {
    *
    * The whole picture where nothing was chosen, which is what every queue that
    * carries no picture holds.
+   *
+   * **For a row that holds a picture it is the circle the server served**
+   * (`VerificationApi.Waiting.crop`, since 10.10.2026), and the one thing that reads it is
+   * the decision about that card (`admin/PendingQueue.tsx`, `approvalOf` and `refusalOf`):
+   * a circle moved over the same picture does not change `photoId`, and a decision is only
+   * about what the moderator saw (PDL, 10.10.2026). **The card does not draw it** - it shows
+   * the whole original, and drawing the crop is a job of its own - so this is the print of a
+   * decision and not yet a picture.
    */
   crop: Crop
   /**
@@ -1086,11 +1094,16 @@ export type PendingItem = {
    *
    * `VerificationApi.Waiting.photoId`, and the only name this row's answer carries
    * that `PendingItem` did not use to have (see `ServedPendingItem` below, where it
-   * used to be added rather than inherited). Never an address: `GET
+   * used to be added rather than inherited). Never the address: `GET
    * /api/verification/{id}/photo` (`PhotoApi.waitingOn`) is keyed by THIS item's own
-   * `id`, not by this number, and answers 404 alike to a moderator with no right over
-   * the row and to a row that never held a picture - the two cannot be told apart
-   * from here, on purpose (ADL A8), so this field says only whether to ask at all.
+   * `id`, not by this number, which follows it only as a query the route does not read
+   * (`admin/verificationWrites.ts`, `photoPath`), and answers 404 alike to a moderator with
+   * no right over the row and to a row that never held a picture - the two cannot be told
+   * apart from here, on purpose (ADL A8), so this field says whether to ask at all and
+   * WHICH picture the card drew. That second is what a decision about the card names
+   * (`VerificationWriteApi.Answered.seenPhotoId`; PDL, 10.10.2026: „Obe odluke o profilnoj
+   * slici, odobravanje i odbijanje, važe samo za sliku koju je moderator video"), and it is
+   * the key and not a digest because it is the number the answer already carried.
    *
    * Null on a proposal (`prop-`) for the same reason `picture` and `crop` are empty
    * on one: nothing this visit makes up locally has a server row to hold a key for.
@@ -1145,7 +1158,7 @@ export type PendingItem = {
 
 /**
  * THE SAME ITEM AS `/api/verification` REALLY ANSWERS IT, which is `PendingItem`
- * less the five the schema has nowhere to hold, has nowhere to read from, or no
+ * less the four the schema has nowhere to hold, has nowhere to read from, or no
  * longer has a queue to fill.
  *
  * **Derived by `Omit` and never written out, which is the whole point.** A
@@ -1167,12 +1180,12 @@ export type PendingItem = {
  * touches.** V30 gave the schedule tab the identical shape
  * (`schedule_proposal`) within hours of `rating` gaining its table, and the owner's
  * later decision that same 22.09.2026 took the tab away before either date was read
- * by a screen fed from the real server: „Redova je pet, ne šest." The five that are
+ * by a screen fed from the real server: „Redova je pet, ne šest." The four that are
  * left carry the reason that is true of EACH of them, in `PENDING.md` too:
  *
  * - `email` — a registration's address. `account.email` exists; serving it here is a
  *   decision about what the payments queue may say, not a shortfall of this shape.
- * - `picture`, `crop` — ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka
+ * - `picture` — ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka
  *   odluku moderatora nije javna... Takva slika odgovara tacno isto kao slika koje
  *   nema." `verification.photo_id` is exactly such a holder, so `/api/photos/` answers
  *   a waiting picture the same as one that was never uploaded. An address answered
@@ -1189,11 +1202,17 @@ export type PendingItem = {
  * `PendingItem` carries `photoId` too now (see it there), and `admin/pending.ts`
  * stopped throwing the number away. So it is no longer added below - `Omit` leaves
  * it alone and it comes through with everything else `PendingItem` already had.
- * `picture` and `crop` are untouched by that: they are still not answered here, for
- * the reason given above, and `admin/pending.ts` says why neither has gained a real
- * reader on the strength of `photoId` alone.
+ * `picture` is untouched by that: it is still not answered here, for the reason given
+ * above, and `admin/pending.ts` says why it has not gained a real reader on the strength
+ * of `photoId` alone.
  *
- * **TWO NAMES DIFFER BY SORT RATHER THAN BY PRESENCE, and those are written out rather
+ * **`crop` LEFT THAT LIST ON 10.10.2026 AND IS ANSWERED NOW, as `Crop | null`**: the circle
+ * of the picture the row holds, and null on every row that holds none. The reason above is
+ * about an ADDRESS, which can be asked for and refused; three fractions of the picture's own
+ * edges are not one. What it is answered FOR is the print of a decision and nothing else
+ * (`PendingItem.crop`): the card still draws no circle.
+ *
+ * **THREE NAMES DIFFER BY SORT RATHER THAN BY PRESENCE, and those are written out rather
  * than omitted**, because a field that arrives as the wrong sort is read in silence
  * where a field that does not arrive at all is read as `undefined`.
  *
@@ -1206,6 +1225,9 @@ export type PendingItem = {
  *   („A payment waiting to be recognised may be about a person who is not one yet"), and
  *   since V16 somebody who has registered and whose fee is not recorded is a row in
  *   `competitor` with no number at all.
+ * - `crop` is a circle OR NOTHING here and always a circle there: null on every row that
+ *   holds no picture, where `PendingItem.crop` is „the whole picture where nothing was
+ *   chosen" (`WHOLE`), and `admin/pending.ts` turns the one into the other.
  *
  * **That nothing is JSON null and not an empty string, and that is the portal's own
  * word measured rather than chosen here.** `/api/comments` answers `memberNumber` as
@@ -1225,8 +1247,8 @@ export type PendingItem = {
  * A null travelling on into the screen passes `item.memberNumber !== ''`, so a
  * moderator's reason for refusing one person's picture would be addressed to null and
  * delivered to nobody at all. The one place these two shapes meet turns the nothing into
- * the portal's own empty, and it is the same place that turns the number into text and
- * fills the six above.
+ * the portal's own empty, and it is the same place that turns the number into text,
+ * turns a null circle into `WHOLE` and fills the five above.
  *
  * **And it carries the run a result waits with** ({@link WaitingRunFields}), on every item
  * and empty on four tabs of the five, since R1 of the results flows moved that tab onto
@@ -1235,7 +1257,7 @@ export type PendingItem = {
 export type ServedPendingItem = Omit<
   PendingItem,
   'id' | 'memberNumber' | 'email' | 'picture' | 'crop' | 'currentDate' | 'proposedDate'
-> & { id: number; memberNumber: string | null } & WaitingRunFields
+> & { id: number; memberNumber: string | null; crop: Crop | null } & WaitingRunFields
 
 /**
  * THE RUN A RESULT WAITS WITH, as `/api/verification` answers it on every item and fills

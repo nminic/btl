@@ -55,6 +55,10 @@ const aPhotoRow = {
   city: '',
   country: '',
   photoId: 9,
+  /* THE CIRCLE THE SERVER ANSWERS for a row that holds a picture (`VerificationApi.Waiting.crop`),
+     neither the whole picture nor the mock file's constant, so a decision that names the
+     placeholder is another request. */
+  crop: { x: 0.4, y: 0.6, size: 0.5 },
   rating: RATING,
 }
 
@@ -71,6 +75,7 @@ const aBioRow = {
   body: 'Trčim od malena, najviše volim brdske staze.',
   kind: 'bio' as const,
   photoId: null,
+  crop: null,
 }
 
 function answering(rows: unknown[]) {
@@ -102,8 +107,15 @@ describe('the picture on a card the moderator is deciding about', () => {
       expect(picture).toBeVisible()
       /* The attribute and not `.src`: jsdom resolves the latter to an absolute
          `http://localhost/...`, and the one thing worth pinning here is that the
-         portal asked a relative `/api` address rather than one it built a host into. */
-      expect(picture.getAttribute('src')).toBe('/api/verification/21/photo')
+         portal asked a relative `/api` address rather than one it built a host into.
+
+         AND THE NUMBER AFTER THE QUESTION MARK IS THE KEY OF THE PICTURE THE CARD DREW
+         (`photoId`, 9), which the route does not read and the card names in its decision
+         (PDL, 10.10.2026: „Odobrava se samo slika koju je moderator video"). It is in the
+         address so that a card read again with another picture asks for another address
+         instead of keeping the pixels it has (`decidingOnThePictureHeSaw.test.tsx` holds that
+         half); the row is still named by its own id, never by the picture's. */
+      expect(picture.getAttribute('src')).toBe('/api/verification/21/photo?photo=9')
       /* The dictionary's own sentence, naming who sent it - never the file name or
          the subject read straight off the row, which is exactly the mutation
          `theRealAnswer.test.tsx` already measured this alt text against. */
@@ -228,8 +240,10 @@ describe('the picture on a card the moderator is deciding about', () => {
   it('lets neither press reach the wrong outcome once the picture has failed to load: Odobri does nothing, Odbij still works', async () => {
     /* PDL.md "29.": approving is refused because a moderator who cannot see the
        picture has nothing to approve, and that reasoning says nothing about
-       refusing it - a picture an instruction is written against is exactly a
-       picture nobody has to see first.
+       refusing it: PDL.md says "Odbij radi" in as many words, and the decision of
+       10.10.2026 that a refusal too names the picture the card drew is about a
+       picture REPLACED, not about one whose pixels did not arrive. So the refusal
+       still works here, and it still names the key the card holds - asserted below.
 
        BOTH HALVES IN ONE CASE, and neither would be measured by the other:
        `aria-disabled` alone does not stop a press from reaching the handler
@@ -268,6 +282,8 @@ describe('the picture on a card the moderator is deciding about', () => {
       expect(JSON.parse(String(sent?.init?.body))).toEqual({
         approved: false,
         reason: 'Slika je nejasna.',
+        seenPhotoId: 9,
+        seenCrop: { x: 0.4, y: 0.6, size: 0.5 },
       })
     } finally {
       stop()

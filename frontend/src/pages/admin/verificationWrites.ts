@@ -37,6 +37,8 @@
  * (`PendingQueue.tsx`, `WhatTheServerSaid`).
  */
 
+import type { Crop } from '../../data/types'
+
 /**
  * WHAT `POST /api/verification/{id}/decision` TAKES, which is
  * `VerificationWriteApi.Answered` and nothing besides.
@@ -60,6 +62,38 @@
 export type Answered = {
   approved: boolean
   reason: string
+  /**
+   * The key of the picture the card DREW, on a decision about a card that drew one and nowhere
+   * else (`VerificationWriteApi.Answered.seenPhotoId`; PDL, 10.10.2026: „Obe odluke o profilnoj
+   * slici, odobravanje i odbijanje, važe samo za sliku koju je moderator video").
+   *
+   * <p>It is `PendingItem.photoId`, the number the queue served with the card, and the card draws
+   * its `<img>` from an address that carries the same number (`photoPath`), so what the moderator
+   * saw and what he names are one value read once. The route compares it with what the row holds
+   * when it takes the row and answers 409 „Slika je promenjena, pogledaj je ponovo." when they
+   * differ, for the refusal as much as for the approval. Beside a card that drew no picture the
+   * route answers 400, and a card that drew one cannot be decided without it, so it is written by
+   * {@link anApprovalOfThePicture} and {@link aRefusalOfThePicture} and by nothing else.
+   */
+  seenPhotoId?: number
+  /**
+   * The circle over that picture as the queue served it, beside the key and on the same decisions
+   * and no others (`VerificationWriteApi.Answered.seenCrop`). It is `PendingItem.crop`, the three
+   * fractions that came with the card, sent back exactly as they arrived.
+   *
+   * <p>The key alone does not say what the moderator saw: a member can send the same picture with
+   * the circle moved, and `MePhotoApi.send` then keeps the key and changes the circle on the row.
+   * A decision is only about what the moderator saw (PDL, 10.10.2026), so the route compares both
+   * and answers the same 409 for either. <b>The card does not draw the circle</b> - it shows the
+   * whole original, and drawing the crop is a job of its own - so a card read again after such a
+   * refusal looks as it did before; the price of the owner's sentence until the crop is drawn
+   * (`PendingQueue.tsx` says it where the refusal is handled).
+   *
+   * <p>Written with the key by {@link anApprovalOfThePicture} and {@link aRefusalOfThePicture} and
+   * by nothing else: a key without its circle is a form not filled in (400), and so is a circle
+   * without its key.
+   */
+  seenCrop?: Crop
   /**
    * The runner's figures as the moderator sets them, on an approved run and nowhere else
    * (`VerificationWriteApi.Amended`, R1 of the results flows). LEFT OUT means „do not
@@ -115,16 +149,26 @@ export function decisionPath(id: string): string {
  * and an address built twice - once here, once where the `<img>` is drawn - is two
  * places that could spell the row's identity differently.
  *
- * <p><b>The identity is the item's own `id`, never `photoId`.</b> `PhotoApi.waitingOn`
- * takes `verification.id` and looks the picture up FROM it
- * (`join photo p on p.id = v.photo_id where v.id = :id`), so the address never carries
- * the picture's own key at all; whether to ask this address is what `photoId`
- * answers, and asking it is what this function does. A row with no picture is answered
- * 404 by the same route a moderator with no right over it is, and this file has no
- * business telling the two apart - see `admin/PendingQueue.tsx`'s `WaitingPicture`.
+ * <p><b>The row is named by the item's own `id`, and the picture by `photoId` after a
+ * question mark.</b> `PhotoApi.waitingOn` takes `verification.id` and looks the picture up
+ * FROM it (`join photo p on p.id = v.photo_id where v.id = :id`), and it does not read
+ * the query at all: whatever the row holds is what it answers, and a row with no picture
+ * is answered 404 by the same route a moderator with no right over it is, which this file
+ * has no business telling apart - see `admin/PendingQueue.tsx`'s `WaitingPicture`.
+ *
+ * <p><b>The number after the question mark is what makes „a new picture is a new
+ * address", on the one side of the wire where it was missing.</b> `MePhotoApi` says it of
+ * the member's own address (the digest is in it, so a replaced picture is another address
+ * and nothing cached can be mistaken for it); the moderator's is addressed by a row that a
+ * member's second send leaves as it was, so a card that has been read again with a new
+ * `photoId` would have kept drawing the old pixels - the same `src`, the same element, no
+ * new request - while the decision it sends names the new picture. That is the one
+ * arrangement in which the moderator approves what he has not seen, and the owner closed it
+ * on 10.10.2026 (PDL: „Odobrava se samo slika koju je moderator video"). The server's answer
+ * to this address is untouched by the number, and a case on that side holds it.
  */
-export function photoPath(id: string): string {
-  return `/api/verification/${id}/photo`
+export function photoPath(id: string, photoId: number): string {
+  return `/api/verification/${id}/photo?photo=${String(photoId)}`
 }
 
 /**
@@ -140,6 +184,21 @@ export function photoPath(id: string): string {
  */
 export function anApproval(): Answered {
   return { approved: true, reason: '' }
+}
+
+/**
+ * Yes, to the picture this card drew and the circle over it: one request that names both, so the
+ * route can tell a picture the moderator looked at from one a member sent after he did, and a
+ * circle he looked at from one the member moved after.
+ *
+ * <p>Its own function for the reason {@link anApprovalWith} gives: a card that drew a picture
+ * and a card that drew none are two different things to press on, and an optional argument to
+ * {@link anApproval} would let a caller leave the number out of a decision that cannot be taken
+ * without it - the route answers that a form not filled in - or write it where there is no
+ * picture to name.
+ */
+export function anApprovalOfThePicture(seenPhotoId: number, seenCrop: Crop): Answered {
+  return { approved: true, reason: '', seenPhotoId, seenCrop }
 }
 
 /**
@@ -168,4 +227,18 @@ export function anApprovalWith(amended: Amended): Answered {
  */
 export function aRefusal(reason: string): Answered {
   return { approved: false, reason }
+}
+
+/**
+ * No, to the picture this card drew, and here is why.
+ *
+ * <p>The refusal names the picture as the approval does, and that is the owner's answer and not
+ * symmetry (PDL, 10.10.2026: „I odbijanje slike traži viđenu sliku."): a reason typed about one
+ * picture reaches the member as the verdict on another otherwise, and the outcome he turned down
+ * was „da otisak traži samo odobravanje (član bi dobio odbijenu sliku koju niko nije pogledao)".
+ * Its own function for the reason {@link anApprovalOfThePicture} gives, and it names the circle
+ * as that one does.
+ */
+export function aRefusalOfThePicture(reason: string, seenPhotoId: number, seenCrop: Crop): Answered {
+  return { approved: false, reason, seenPhotoId, seenCrop }
 }

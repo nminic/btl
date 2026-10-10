@@ -106,6 +106,7 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
       id,
       memberNumber: who?.memberNumber ?? null,
       photoId: null,
+      crop: null,
       ...NO_RUN,
     })
 
@@ -143,6 +144,7 @@ export function fakeQueue(): { asked: Asked[]; stop: () => void } {
       id,
       memberNumber: who?.memberNumber ?? null,
       photoId: null,
+      crop: null,
       ...NO_RUN,
     })
 

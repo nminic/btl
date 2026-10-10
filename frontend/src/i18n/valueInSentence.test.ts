@@ -504,6 +504,14 @@ describe('a sentence with a value put into it', () => {
       'topBoards.sharedRaces',
       'units.btlPoints <- formatPoints',
       'units.memberCount',
+      /* NOT A SENTENCE, and written here because the guard reads names and cannot tell: the queue
+         of cards is read again with a revision after a refusal of a decision about a picture
+         (`useResource('verification', { revision })` in `admin/pending.ts`, OS), and
+         `verification` is also the name of a section of the dictionary, which counts as a name
+         here on purpose (a plural is a branch, „knows the dictionary by its own names" below).
+         Nothing is put into any sentence by that call. R3b (#519) writes the same entry for the
+         queue of results; whichever reaches `main` second keeps one. */
+      'verification',
       'verification.approveAllAsk',
       'verification.approveAllDone',
       /* „{whose}, sezona {season}." - the name and the year under the question asking whether

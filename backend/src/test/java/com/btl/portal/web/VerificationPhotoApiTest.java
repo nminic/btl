@@ -307,6 +307,48 @@ class VerificationPhotoApiTest {
 	}
 
 	/**
+	 * THE NUMBER AFTER THE QUESTION MARK IS NOT READ, whatever it says: the row is named by the
+	 * path and the route answers what the row holds.
+	 *
+	 * <p>The queue of cards asks this address with the key of the picture the card drew
+	 * ({@code admin/verificationWrites.ts}, {@code photoPath}: {@code ?photo=<key>}), and it does so
+	 * for one reason that has nothing to do with this route: the address is the same character for
+	 * character when a member's second send repoints the row, so a card read again with a new key
+	 * would otherwise keep drawing the old pixels beside a decision that names the new picture. A new
+	 * number is a new address to a browser and nothing else. <b>This case holds the other half of
+	 * that arrangement</b>: the route does not take the number for a choice of picture. Read as one,
+	 * a number that is not the row's would be a way to ask this address for a picture that is not the
+	 * one the row holds, and the moderator's route serves ONE picture to ONE caller over ONE row
+	 * (ADL A60).
+	 *
+	 * <p>The numbers are the key of the picture the row holds, the key of another row's, one no
+	 * picture has, and a word, because a route that took the first for a selector would pass a
+	 * case that sent only the one it expects.
+	 */
+	@Test
+	void aPhotoNumberAfterTheQuestionMarkChangesNothingAboutWhatTheRowAnswers() throws Exception {
+		long row = rows.get(WAITING.digest());
+		long ofAnotherRow = rows.get(ALSO_WAITING.digest());
+
+		for (String number : List.of(String.valueOf(row), String.valueOf(ofAnotherRow),
+				"9000000000", "nije-kljuc")) {
+
+			MockHttpServletResponse answer = http.perform(get("/api/verification/{id}/photo", row)
+							.param("photo", number)
+							.cookie(new Cookie(SessionCookie.NAME,
+									sessions.get(MAY_THE_PROFILES).secret())))
+					.andReturn().getResponse();
+
+			assertThat(answer.getStatus())
+					.as("a request that carried ?photo=%s was not answered as the row is", number)
+					.isEqualTo(200);
+			assertThat(answer.getContentAsByteArray())
+					.as("?photo=%s chose a picture; the route answers the one the ROW holds", number)
+					.isEqualTo(WAITING.bytes());
+		}
+	}
+
+	/**
 	 * AND HE HOLDS EVERY RIGHT WITH NO TICK ANYWHERE, so the privilege cannot be a condition
 	 * over the ticks.
 	 *

@@ -934,6 +934,63 @@ class VerificationApiTest {
 	}
 
 	/**
+	 * A WAITING PICTURE ANSWERS WITH THE CIRCLE THE MEMBER SET OVER IT, AND EVERY OTHER ITEM WITH
+	 * NONE.
+	 *
+	 * <p>The circle is the second half of what a decision about the picture names (PDL,
+	 * 10.10.2026: „Odobrava se samo slika koju je moderator video"; a circle moved over the same
+	 * picture does not change its key, which {@code VerificationWriteApi.Answered#seenCrop} says
+	 * with the measurement). So it has to be the circle of THE PICTURE THE ROW HOLDS: the member's
+	 * portrait on his profile is another picture with another circle while this one waits (ADL A60:
+	 * it is not on the profile yet), and an answer built from the wrong one would let a decision be
+	 * compared with a circle nobody looked at.
+	 *
+	 * <p>The portrait below is made with a circle of its own for exactly that reason. The names
+	 * under {@code crop} are compared with the ones the served file carries, because {@code
+	 * Answers} reads the top of a record and cannot see inside it: the portal's own word for the
+	 * diameter is {@code size}, and {@code cropIn} answers the whole picture, without an error, for
+	 * a record that says {@code diameter}.
+	 */
+	@Test
+	void aWaitingPictureAnswersWithItsOwnCircleAndEveryOtherItemWithNone() throws Exception {
+		long portrait = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
+						+ " crop_diameter) values ('image/jpeg', 1000, ?, 0.11, 0.22, 0.33) returning id")
+				.param("fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210")
+				.query(Long.class).single();
+
+		assertThat(db.sql("update competitor set photo_id = ? where id ="
+						+ " (select competitor_id from verification where photo_id = ?)")
+				.params(portrait, photo).update())
+				.as("the member whose picture waits was not found, so no portrait of his was made")
+				.isEqualTo(1);
+
+		JsonNode crop = itemIn(OTHER_QUEUES, PROFILES, 0).path("crop");
+
+		assertThat(Answers.fieldsOf(crop))
+				.as("the circle is not answered under the portal's own three names")
+				.isEqualTo(Answers.fieldsOf(Answers.servedRecord("verification.json").path("crop")));
+		assertThat(crop.path("x").decimalValue()).as("x").isEqualByComparingTo("0.3");
+		assertThat(crop.path("y").decimalValue()).as("y").isEqualByComparingTo("0.7");
+		assertThat(crop.path("size").decimalValue()).as("size").isEqualByComparingTo("0.45");
+
+		int pictures = 0;
+
+		for (JsonNode item : everyItemServedTo(THE_SUPERADMIN)) {
+			boolean holdsOne = !item.path("photoId").isNull();
+
+			assertThat(item.path("crop").isObject())
+					.as("an item that %s a picture answered %s for its circle",
+							holdsOne ? "holds" : "holds no", item.path("crop"))
+					.isEqualTo(holdsOne);
+			pictures += holdsOne ? 1 : 0;
+		}
+
+		assertThat(pictures)
+				.as("no item holds a picture, so the loop above compared nothing")
+				.isPositive();
+	}
+
+	/**
 	 * THE ANSWER IS A FLAT LIST OF ITEMS, AND NEVER A LIST OF TABS.
 	 *
 	 * <p><b>This is the case the portal did not have on 22.09.2026, and its absence is the
@@ -1622,7 +1679,7 @@ class VerificationApiTest {
 	}
 
 	/**
-	 * EVERY FIELD THE PORTAL READS IS ONE THE SERVER ANSWERS WITH, EXCEPT THE THREE THE
+	 * EVERY FIELD THE PORTAL READS IS ONE THE SERVER ANSWERS WITH, EXCEPT THE TWO THE
 	 * SCHEMA HAS NOWHERE TO HOLD (OR NOWHERE IT MAY BE READ FROM), AND THOSE ARE NAMED HERE
 	 * EACH WITH ITS OWN REASON.
 	 *
@@ -1645,13 +1702,13 @@ class VerificationApiTest {
 	 *
 	 * <p><b>That is the cost of one reason covering a list.</b> A name on a list with a true
 	 * reason is a boundary; a name on a list with somebody else's reason is a field nobody
-	 * will look at again. So each of the three below carries the reason that is true of IT.
+	 * will look at again. So each of the two below carries the reason that is true of IT.
 	 *
 	 * <ul>
 	 * <li>{@code email} - the address a registration waiting for its fee is known by. It is on
 	 * {@code account} and reachable, so this one is a decision about what the payments tab may
 	 * say rather than a missing column, and it is in {@code PENDING.md} as that.
-	 * <li>{@code picture}, {@code crop} - NOT a missing column. ADL A60, 20.09.2026: „Slika
+	 * <li>{@code picture} - NOT a missing column. ADL A60, 20.09.2026: „Slika
 	 * koju drzi samo nesto sto ceka odluku moderatora nije javna: ni verification.photo_id...
 	 * Takva slika odgovara tacno isto kao slika koje nema", and {@link PhotoApi} enforces it by
 	 * serving only what {@code competitor.photo_id} or {@code team.logo_id} holds. An address
@@ -1659,6 +1716,12 @@ class VerificationApiTest {
 	 * worse than drawing none. Letting a moderator see what he is deciding about is a new
 	 * decision about who may see a picture, and it belongs to the owner.
 	 * </ul>
+	 *
+	 * <p><b>{@code crop} left this list on 10.10.2026</b> and is answered for the rows that hold
+	 * a picture, as the other half of what a decision about the picture names
+	 * ({@link #aWaitingPictureAnswersWithItsOwnCircleAndEveryOtherItemWithNone}). The reason above
+	 * is about an ADDRESS, which can be asked for and refused; three fractions of the picture's own
+	 * edges are not one and say nothing about the person in it.
 	 *
 	 * <p><b>{@code rating} left this list on 22.09.2026</b> (ADL A64 A1), off
 	 * {@code comment_submission};
@@ -1685,7 +1748,7 @@ class VerificationApiTest {
 	 *
 	 * <p><b>{@code Answers} checks both halves of every name</b> - that the file really serves
 	 * it, so a stale name cannot excuse a field that went missing for another reason, and that
-	 * the answer really leaves it out, so each of the three is a claim rather than a wish.
+	 * the answer really leaves it out, so each of the two is a claim rather than a wish.
 	 *
 	 * <p><b>It reads the ANSWER and no longer a flattening of it</b>, which is what made this
 	 * floor blind: see {@code everyItemServedTo} and
@@ -1695,7 +1758,7 @@ class VerificationApiTest {
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered(PATH, everyItemServedTo(THE_SUPERADMIN),
 				"verification.json", Set.of("photoId"),
-				"picture", "crop", "email");
+				"picture", "email");
 	}
 
 	/**

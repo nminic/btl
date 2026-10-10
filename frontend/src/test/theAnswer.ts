@@ -240,8 +240,13 @@ export const readAsMemberWithNoPortrait: Competitor = aCompetitorWithNoPortrait
  * **`currentDate` and `proposedDate` are not here at all, since PDL P10a, 22.09.2026.**
  * They answered for real off the schedule tab, from V30 until the owner's later
  * decision the same day took the tab away: „Redova je pet, ne šest." `ServedPendingItem`
- * omits both now, the same as `email`, `picture` and `crop` - fields the schema has
+ * omits both now, the same as `email` and `picture` - fields the schema has
  * nowhere to hold - so this sample has nothing to carry blank for them any more.
+ *
+ * **`crop` is null here, and that is the value this row has to show.** It is answered since
+ * 10.10.2026 (`VerificationApi.Waiting.crop`): the circle of the picture the row holds, and
+ * null on every row that holds none, as a teams row does not. Its other state is
+ * {@link aWaitingPicture}.
  */
 export const aWaitingItem = {
   queue: 'teams' as const,
@@ -256,6 +261,7 @@ export const aWaitingItem = {
   city: 'Zaječar',
   country: 'RS',
   photoId: null,
+  crop: null,
   rating: { organisation: 0, value: 0, ambience: 0 },
   /* The run a result waits with, which the server answers on every item since R1 of the
      results flows and fills on the results tab alone, so a teams row carries all eight
@@ -268,6 +274,29 @@ export const aWaitingItem = {
   descentM: null,
   seconds: null,
   link: '',
+}
+
+/**
+ * AND A PICTURE WAITING, which is the other state of `crop` and has to be written down
+ * separately for the same reason `aWaitingItemAboutNobody` is: a sample with the field null
+ * everywhere would be satisfied by a server that never answered a circle.
+ *
+ * **The names under `crop` are the portal's own**, `x`, `y` and `size` - the diameter is
+ * `size` here and `crop_diameter` in the column - and `servedShape.test.ts` holds them
+ * against the ones the served file carries. A circle answered under another name would be
+ * read by `cropIn` as „no square of its own" and lose the crop without an error.
+ */
+export const aWaitingPicture = {
+  ...aWaitingItem,
+  id: 9,
+  queue: 'profiles' as const,
+  kind: 'photo' as const,
+  subject: 'Slika Ane',
+  body: '',
+  city: '',
+  country: '',
+  photoId: 31,
+  crop: { x: 0.3, y: 0.7, size: 0.45 },
 }
 
 /**
@@ -302,6 +331,9 @@ export const readAsTeamWithNoMark: Team = aTeamWithNoMark
    an empty list is assignable to a list of anything. */
 export const readAsTeamToAVisitor: Team = aTeamToAVisitor
 export const readAsWaitingItem: ServedPendingItem = aWaitingItem
+/* The other state of `crop`: with `Crop.size` renamed, or the circle typed as plain `Crop`
+   where a row may hold none, this line or the one above does not build. */
+export const readAsWaitingPicture: ServedPendingItem = aWaitingPicture
 /* The compiler is the assertion here as everywhere in this file: with
    `ServedPendingItem.memberNumber` back to plain text this line does not build, which is
    the whole of the claim that the server may answer nothing. */

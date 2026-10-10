@@ -81,6 +81,9 @@ const THE_SERVER_ROW = {
   subject: 'Strahinja Vukićević',
   body: 'sa-servera.jpg',
   photoId: 2,
+  /* The circle the server answers for it, neither the whole picture nor the file's constant:
+     what the decision below names has to be this and nothing the screen makes up. */
+  crop: { x: 0.2, y: 0.4, size: 0.6 },
 }
 
 /** What `MePhotoApi.Waiting` answers with: the key of the queue row it just filed, and two
@@ -241,6 +244,8 @@ describe('a picture sent for a decision', () => {
       expect(JSON.parse(String(sent[0]?.init?.body ?? 'null'))).toEqual({
         approved: false,
         reason: 'Slika je mutna.',
+        seenPhotoId: 2,
+        seenCrop: { x: 0.2, y: 0.4, size: 0.6 },
       })
     } finally {
       server.stop()
@@ -265,6 +270,8 @@ describe('a picture sent for a decision', () => {
       expect(JSON.parse(String(sent[0]?.init?.body ?? 'null'))).toEqual({
         approved: true,
         reason: '',
+        seenPhotoId: 2,
+        seenCrop: { x: 0.2, y: 0.4, size: 0.6 },
       })
     } finally {
       server.stop()
