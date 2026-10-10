@@ -1128,12 +1128,14 @@ class VerificationWriteApi {
 	 * WHETHER THE REQUEST NAMES A PICTURE WHERE THERE IS ONE AND NONE WHERE THERE IS NOT, asked of
 	 * the request and the row alone and writing nothing.
 	 *
-	 * <p>Three of the four combinations are a refusal and none of them is about the state of
-	 * anything, which is why they are answered here and the fourth, the picture itself, is not: a
-	 * row that holds one and a request that names none is a form not filled in
-	 * ({@link #THE_FORM_IS_NOT_COMPLETE}, the sentence every body that carries no decision gets),
-	 * and a request that names one beside a row that holds none is a field that rides with the wrong
-	 * decision ({@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE}). Both are 400.
+	 * <p>Two of the four combinations are a refusal, and neither is about the state of anything,
+	 * which is why they are answered here: a row that holds a picture and a request that names none
+	 * is a form not filled in ({@link #THE_FORM_IS_NOT_COMPLETE}, the sentence every body that
+	 * carries no decision gets), and a request that names one beside a row that holds none is a field
+	 * that rides with the wrong decision ({@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE}).
+	 * Both are 400. Of the other two, neither names a picture beside a row that holds none and needs
+	 * nothing, and both naming one is the picture itself, which this does not ask: the statement that
+	 * claims the row does.
 	 *
 	 * <p><b>Asked of the ROW and not of the queue.</b> {@code PendingQueue.tsx} draws a picture on
 	 * any card whose {@code photoId} is not null, "whichever tab it stands in" (the note on

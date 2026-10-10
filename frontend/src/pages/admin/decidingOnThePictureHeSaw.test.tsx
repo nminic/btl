@@ -438,8 +438,13 @@ describe('when the route says the picture is not the one the card drew', () => {
   })
 
   it('does not say it over another queue the moderator goes to afterwards', async () => {
-    /* ONE MOUNTED SCREEN SERVES THE THREE QUEUES, so a sentence about a card the list no longer
-       holds is, to the next queue, a sentence about a card that is not in ITS list either. */
+    /* WHAT THE FALLBACK ABOVE RELIES ON, and holds rather than writes: the screen is mounted afresh
+       for each queue, so a sentence about a card the list no longer holds is gone with the screen it
+       was said on and is never, to the next queue, a sentence about a card that is not in ITS list
+       either. Measured on 10.10.2026 by taking the guard `said` once had for this (its queue)
+       away: nothing went red, and the guard was removed as the code nothing could fail. If this
+       case ever goes red, the screen has started to outlive a change of queue, and the fallback
+       has to remember which queue it spoke in. */
     const { stop } = aServerThatSaysItChanged(
       [[neda(9)], []],
       [() => refused(SOMEBODY_ANSWERED_IT_ALREADY, 409)],
@@ -459,7 +464,9 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       await user.click(screen.getByRole('link', { name: /Komentari/ }))
 
-      await screen.findByText('Nema nijedne stavke na čekanju.')
+      /* The other queue's own heading, so the assertion below is made on the other queue and not
+         on the one just left, which also says „Nema nijedne stavke na čekanju." */
+      await screen.findByRole('heading', { level: 1, name: 'Komentari' })
       expect(screen.queryByRole('alert')).toBeNull()
     } finally {
       stop()

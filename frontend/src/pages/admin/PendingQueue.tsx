@@ -165,13 +165,8 @@ function Refused({ why, id }: { why: string | null; id: string }) {
  * belongs on the card it is about: the sweep asks about forty and the one that was
  * refused is still among them, so a sentence drawn anywhere else would be a reason
  * beside the wrong picture.
- *
- * <p>With the queue it was refused in, because one mounted screen serves the three queues
- * (`app/routeObjects.tsx` carries no `key`) and a sentence about a card the list no longer
- * holds is drawn over the list (`saidOfNoCard`): without the queue it would be drawn over
- * whichever queue the moderator moved to.
  */
-type ServerRefusal = { id: string; queue: string; answer: Exclude<Answer, { got: 'done' }> }
+type ServerRefusal = { id: string; answer: Exclude<Answer, { got: 'done' }> }
 
 /** The three marks a comment carries, as they are read everywhere else: not a
  *  control, and each one says its number in words for anybody who cannot see the
@@ -750,7 +745,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
           const answer = await askTheServer(decisionPath(one.id), approvalOf(one))
 
           if (answer.got !== 'done') {
-            refusals.push({ id: one.id, queue: one.queue, answer })
+            refusals.push({ id: one.id, answer })
 
             if (answer.got === 'refused' && one.photoId !== null) {
               pictureRefused = true
@@ -1042,7 +1037,7 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       const answer = await askTheServer(decisionPath(one.id), refusalOf(one, reason))
 
       if (answer.got !== 'done') {
-        sayIt({ id: one.id, queue: one.queue, answer })
+        sayIt({ id: one.id, answer })
         putTheBoxAway(one)
 
         /* A refusal of a picture that moved on says the list is stale as the approval's does
@@ -1305,13 +1300,13 @@ export function PendingQueue({ queue }: { queue: Queue }) {
                   stood. It is what a refusal that read the list again leaves when the card it was
                   about was decided by somebody else (`readTheQueueAgain`): the card goes with the
                   list it was in, and without this the moderator would watch it go with no word about
-                  why - the shape `ReviewQueue.tsx` gives the same case (`saidOfNoRow`). Of THIS queue
-                  only, because one mounted screen serves all three. */}
-              {said !== null &&
-                said.queue === queue.id &&
-                !waiting.some((one) => one.id === said.id) && (
-                  <WhatTheServerSaid answer={said.answer} />
-                )}
+                  why - the shape `ReviewQueue.tsx` gives the same case (`saidOfNoRow`). Nothing here
+                  keeps it from following the moderator to another queue, because nothing has to: this
+                  screen is mounted afresh for each queue (measured, and held by a case in
+                  `decidingOnThePictureHeSaw.test.tsx`), so what it was saying is gone with it. */}
+              {said !== null && !waiting.some((one) => one.id === said.id) && (
+                <WhatTheServerSaid answer={said.answer} />
+              )}
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>
