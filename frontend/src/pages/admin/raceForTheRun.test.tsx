@@ -193,10 +193,11 @@ const THE_EVENTS: BtlEvent[] = JSON.parse(
  * THE CALENDAR THE FIRST APPROVAL WRITES INTO, as the route serves it before that approval and after it.
  *
  * <p><b>Never a single event or a single race</b> (the rule of 06.09.2026, for the panel's list): before the
- * approval the races stand under four events, two of them night races of the summer, so the letters typed
- * into the box hit something both before and after, and what comes back is a list of pairs and not the one
- * pair that would be offered whatever was read. The race the approval makes stands under an event the
- * approval makes, so a file read again without the other leaves the pair out of the list.
+ * approval the races stand under three events of the served file (the calendar above, a night race of the
+ * summer, and a race of another name), so the letters typed into the box hit something both before and
+ * after, and what comes back is a list of pairs and not the one pair that would be offered whatever was
+ * read. The race the approval makes stands under an event the approval makes, so one file read again
+ * without the other leaves the pair out of the list.
  */
 const A_NIGHT_BEFORE = {
   ...OF_A_LENGTH,
@@ -959,8 +960,9 @@ describe('what the panel offers once an approval has made a race', () => {
       openTheQueue()
 
       await makeTheNightRace(user)
-
-      expect(decisionsIn(server.asked)).toHaveLength(1)
+      /* The request is out: the token is read first where the browser holds none (`askTheServer`), so the
+         decision may leave a tick after the press. */
+      await waitFor(() => expect(decisionsIn(server.asked)).toHaveLength(1))
 
       await user.click((await rowOf('000040')).getByRole('button', { name: sr.review.sendBack }))
       await openThePanelOver(user, '000040')

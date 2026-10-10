@@ -292,17 +292,17 @@ export function ReviewQueue() {
           clearResourceCache('results')
         }
 
-        /* THE CALENDAR, DROPPED WITH THE ANSWER THAT SAYS THE APPROVAL WROTE INTO IT. An approval
-           that names a race to make (`newRace`) writes an event and a race
-           (`VerificationWriteApi`, `makeTheEventAndTheRace`), and the list the panel offers is built
-           from those two files (`RaceForTheRun.tsx`, `racesToOffer`). Left in the cache, the next
-           panel opened in this visit would offer the calendar as it stood before the approval, and
-           the second member of that race could not choose the race the first member's approval made
-           - the sentence of the owner of 30.08.2026 (PDL, „Verifikacija menja naziv događaja, naziv
-           trke, vrstu i vreme, i upisuje događaj i trku u kalendar"): „kad odem da verifikujem
-           drugom članu mogu da zamenim njegov naziv događaja i izbor trke autocompletom sad već
-           postojeće trke". It would offer to make the race again, and the route refuses an event
-           whose address is taken (`THE_EVENT_IS_IN_THE_CALENDAR_ALREADY`).
+        /* THE CALENDAR, DROPPED WITH THE ANSWER THAT SAYS THE APPROVAL WROTE INTO IT. An approval that
+           names a race to make (`newRace`) writes an event and a race (`VerificationWriteApi`,
+           `makeTheEventAndTheRace`), and the list the panel offers is built from those two files
+           (`RaceForTheRun.tsx`, `racesToOffer`). That list is what the owner's sentence of 30.08.2026
+           asks for (PDL, „Verifikacija menja naziv događaja, naziv trke, vrstu i vreme, i upisuje
+           događaj i trku u kalendar"): „kad odem da verifikujem drugom članu mogu da zamenim njegov
+           naziv događaja i izbor trke autocompletom sad već postojeće trke". Left in the cache, the
+           next panel opened in this visit would offer the calendar as it stood before the approval,
+           so the race the first approval made could not be chosen for the second member's run: it
+           could only be made again, which the route refuses where the event's address is taken
+           (`THE_EVENT_IS_IN_THE_CALENDAR_ALREADY`).
 
            BOTH NAMES, as `AdminEvents.tsx` and `EventActions.tsx` drop them after a write into the
            calendar: the offered list is the pairs of an event and its races (`racesToOffer`), so a
