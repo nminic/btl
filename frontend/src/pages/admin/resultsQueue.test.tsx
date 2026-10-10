@@ -963,7 +963,7 @@ describe('the figures the moderator sets', () => {
    */
   const MOVED_UNDER_IT = [
     {
-      name: 'a run in front of it leaves and another run in front of it is refused',
+      name: 'a run in front leaves, one is refused',
       member: '000030',
       id: 703,
       amended: { distanceKm: 14.35, ascentM: 780, descentM: 210, seconds: 7200 },
@@ -972,7 +972,7 @@ describe('the figures the moderator sets', () => {
       afterwards: ['000020', '000030', '000040', '000050'],
     },
     {
-      name: 'a run in front of it and a run behind it leave and a run behind that is refused',
+      name: 'a run on each side leaves, one refused',
       member: '000020',
       id: 702,
       amended: { distanceKm: 52.4, ascentM: 640, descentM: 610 },
