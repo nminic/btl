@@ -87,6 +87,15 @@ const withHer = (sentByMe: boolean): Row => ({
   date: '2026-10-08',
 })
 
+/**
+ * WHAT THE READER WHO SIGNS IN AFTER THE FIRST WAITS ON, none of it about HER: a question he sent to
+ * 000006 Ivona Stamenkovska. Rows of his own, because a question is between two members and so none
+ * of these ids can stand on the first reader's list.
+ */
+const THE_NEXT_READERS_QUESTIONS: Row[] = [
+  { id: 71, memberNumber: '000006', sentByMe: true, date: '2026-10-03' },
+]
+
 /** What `POST` answers a new question with, which no row above carries. */
 const NEW_KEY = 91
 
@@ -196,6 +205,20 @@ async function settled(): Promise<void> {
 }
 
 const theButton = () => screen.queryByRole('button', { name: sr.pair.invite })
+
+/**
+ * WHICH OF THE TWO THE PROFILE DRAWS in answer to „is a question standing between us": the sentence
+ * that one stands, or the button that asks one. Both and neither are answers too, so a screen that
+ * draws both, or is still reading, is not taken for either of the right ones.
+ */
+const whatIsDrawn = () => ({
+  sentence: screen.queryByText(sr.pair.asked) !== null,
+  button: theButton() !== null,
+})
+
+const THE_SENTENCE_ONLY = { sentence: true, button: false }
+
+const THE_BUTTON_ONLY = { sentence: false, button: true }
 
 /** Each line the profile draws about pairs, in the order it draws them. */
 const pairRows = (): string[] =>
@@ -532,11 +555,76 @@ describe('what stands in the place of the button', () => {
 
       await user.click(screen.getByRole('button', { name: `postani ${ANOTHER_READER}` }))
 
-      /* Read again for him, because what he waits on is his and not the first reader's. */
+      /* WHAT THE FIRST READER WAS TOLD IS NOT DRAWN TO THE NEXT ONE, and that is all this case
+         measures: the component is keyed by the reader as well as by the member on the page, so it
+         comes down with the refusal it holds. What the next reader WAITS ON is another fact and is
+         not measured here: neither list names her (his own is empty and the first one's names
+         others), so the button is the same screen whether the list was read again for him or served
+         from the first reader's. The case below tells the two apart. */
       await waitFor(() => {
         expect(screen.queryByRole('alert')).toBeNull()
       })
       expect(await screen.findByRole('button', { name: sr.pair.invite })).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
+  /* THE LIST IS THE READER'S, AND SIGNING IN AS SOMEBODY ELSE HAPPENS IN PLACE (the profile is one
+     component across every member's address), so what the page draws has to come from what the
+     route says to the one who is signed in NOW. Two things can hand him the first reader's list
+     instead, and the case above tells neither from the right answer: the number the page gives
+     `useWhatIsWaiting` (`profile/InviteToPair.tsx`, `mine`) and the cache that is dropped when that
+     number changes (`data/useResource.ts`, `theWaitingNowBelongsTo`). Review of PR 518,
+     10.10.2026: `mine` taken from the member on the page and not from the reader kept every case
+     of this file green.
+
+     **The two lists differ in the one row that matters, and in both directions.** A question the
+     first reader asked is not drawn to the next, who is no party to it; and a question that stands
+     with the next reader takes the button's place, instead of the button being offered over it,
+     which the route would refuse. Neither can be had without the list being read AGAIN, once for
+     each reader, which is the second thing every row holds. */
+  it.each([
+    [
+      'the first had asked her and the next has not',
+      [...HIS_QUESTIONS, withHer(true)],
+      THE_NEXT_READERS_QUESTIONS,
+      THE_SENTENCE_ONLY,
+      THE_BUTTON_ONLY,
+    ],
+    [
+      'the first had not asked her and the next was asked by her',
+      HIS_QUESTIONS,
+      [...THE_NEXT_READERS_QUESTIONS, { ...withHer(false), id: 72 }],
+      THE_BUTTON_ONLY,
+      THE_SENTENCE_ONLY,
+    ],
+  ])('draws what the route says to the reader signed in after the first, and nothing of the first’s, when %s', async (_, first, next, firstSees, nextSees) => {
+    const server = aServerForThePair({ lists: { [READER]: first, [ANOTHER_READER]: next } })
+    const user = setupUser()
+
+    try {
+      renderAt(HER_PAGE, 'competitor', READER, undefined, DAY, <Become who={ANOTHER_READER} />)
+
+      /* The first reader is told what his own list says, from the one read that went out for him. */
+      await waitFor(() => {
+        expect(whatIsDrawn()).toEqual(firstSees)
+      })
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
+
+      await user.click(screen.getByRole('button', { name: `postani ${ANOTHER_READER}` }))
+
+      /* At once, whether or not his own list has landed yet: whatever is drawn is not the first
+         reader's. Held by the wait below alone, a screen that served the first reader's list would
+         be told only when that wait runs out. */
+      expect(whatIsDrawn()).not.toEqual(firstSees)
+
+      /* And then his own: the right one of the two, and the second read, which is what tells a
+         list read for him from the first reader's list served to him. */
+      await waitFor(() => {
+        expect(whatIsDrawn()).toEqual(nextSees)
+      })
+      expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
     } finally {
       server.stop()
     }
