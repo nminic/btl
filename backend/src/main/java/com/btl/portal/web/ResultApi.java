@@ -97,13 +97,15 @@ import java.util.List;
  * about a member answered to everybody because nobody was asked.
  *
  * <p><b>THE BAND IS THE BAND OF THE SEASON THE RESULT WAS RUN IN.</b> Owner, 10.10.2026 (PDL
- * P23), chosen between offered outcomes and against my recommendation: the band beside an old
- * result is the one its member had in the season of that result, the same as in the frozen
- * table of that season, for every served result of a member with a number, whether his fee
- * stands or has lapsed. The season is the calendar year of the result's day, never earlier than
- * the first season there is ({@link SeasonClock#seasonTheBandOfAResultIsWorkedOutFor}, which says
- * why), so it does not depend on the clock: the same row is answered in the same band on any day,
- * and a fee that lapses changes which rows are served and never which band a served row carries.
+ * P23), chosen between offered outcomes, against my recommendation, and kept with my
+ * recommendation once the cost had been corrected to the exact year of birth (below): the band
+ * beside an old result is the one its member had in the season of that result, the same as in
+ * the frozen table of that season, for every served result of a member with a number, whether
+ * his fee stands or has lapsed. The season is the calendar year of the result's day, never
+ * earlier than the first season there is
+ * ({@link SeasonClock#seasonTheBandOfAResultIsWorkedOutFor}, which says why), so it does not
+ * depend on the clock: the same row is answered in the same band on any day, and a fee that
+ * lapses changes which rows are served and never which band a served row carries.
  * {@code aResultCarriesTheBandOfTheSeasonItWasRunInWhateverTheFee} holds it.
  *
  * <p>The list is not touched. It still answers the band of the season that is running, one
@@ -111,14 +113,19 @@ import java.util.List;
  * {@link SeasonClock#seasonTheBandIsWorkedOutFor}, so for a member who has crossed a band the two
  * doors agree while the season is being run and part company on every earlier one.
  *
- * <p><b>What it costs, written here because it was exposed to the owner before he chose and
- * the next reader should find it before a member does.</b> A band per season is the map that
- * gives a year of birth back (the measurement is on the note of that same method): the history
- * of one member's results now shows the season in which he crossed a band, which is an
- * approximate year of birth. The second cost is a beginner's band, which the frozen table hides
- * behind its „R" and which stands here beside the result, with the beginner's mark.
- * {@code noYearOfBirthLeavesTheServer} holds the year itself, which is a field and not an
- * inference.
+ * <p><b>What it costs, written here so that the next reader finds it before a member does.</b>
+ * A band is the season minus the year of birth, so a member who crosses a band (25, 40 or 55)
+ * between two seasons he ran in gives away his EXACT year of birth: 25-39 in 2027 and 40-54 in
+ * 2028 means 1988. It is the map the measurement on the note of
+ * {@link SeasonClock#seasonTheBandIsWorkedOutFor} counted (25 of 32 members), and this door is
+ * not the only one that makes it: the list read before and after a New Year gives the same, and
+ * so do the frozen tables, which carry the category of their season. The owner kept the season's
+ * band with that cost in view, and the published text, Article 74 of the rulebook and the privacy
+ * policy, is to say before 1 January 2028 that a change of category between seasons shows the
+ * year of birth; that is item BR, a job of its own and not this class's. The second cost is a
+ * beginner's band, which the frozen table hides behind its „R" and which stands here beside the
+ * result, with the beginner's mark. {@code noYearOfBirthLeavesTheServer} holds the year itself,
+ * which is a field and not an inference.
  *
  * <p><b>A BOUNDARY AND NOT A DECISION: THE BEGINNER'S MARK IS WHAT THE RECORD SAYS TODAY.</b>
  * The owner's choice was about the band alone. The mark a member had in the season of an old

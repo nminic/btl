@@ -699,9 +699,10 @@ class ResultApiTest {
 	 *
 	 * <p><b>What this case holds is the year itself, the field and the text it could leak
 	 * through, and not what can be INFERRED from the bands.</b> A band per season is the map that
-	 * gives an approximate year of birth back, and that is the cost the owner chose on 10.10.2026
-	 * (the notes on {@code ResultApi} and on {@code SeasonClock} give it); no case can refuse the
-	 * inference without refusing the decision.
+	 * gives the EXACT year of birth back of a member who crosses a band between two seasons he ran
+	 * in, and that is the cost the owner kept on 10.10.2026 once it was measured (the notes on
+	 * {@code ResultApi} and on {@code SeasonClock} give it, and the published text is to say it,
+	 * item BR); no case can refuse the inference without refusing the decision.
 	 *
 	 * <p><b>The answer is read as TEXT and the things to look for are read out of the table</b>,
 	 * so the case refuses the year however it is spelt and whatever the field it leaks through is
@@ -882,11 +883,11 @@ class ResultApiTest {
 	 * A RESULT CARRIES THE BAND OF THE SEASON IT WAS RUN IN, WHATEVER THE FEE, AND ON WHATEVER DAY
 	 * IT IS ASKED FOR.
 	 *
-	 * <p>Owner, 10.10.2026 (PDL P23), chosen between offered outcomes and against my
-	 * recommendation: the band beside an old result is the one its member had in the season of
-	 * that result, for a member whose fee stands and for one whose fee has lapsed alike. It
-	 * reverses the case that stood here before, which held the band to the day the answer is read
-	 * on and not to the day the result was run.
+	 * <p>Owner, 10.10.2026 (PDL P23), chosen between offered outcomes (against my recommendation,
+	 * and kept with it once the cost was measured to be the exact year of birth): the band beside
+	 * an old result is the one its member had in the season of that result, for a member whose fee
+	 * stands and for one whose fee has lapsed alike. It reverses the case that stood here before,
+	 * which held the band to the day the answer is read on and not to the day the result was run.
 	 *
 	 * <p><b>The two members are TWINS.</b> Born on the same day, they ran the same two races, on
 	 * the last day of 2027 and the first of 2028, and the only thing that tells them apart is

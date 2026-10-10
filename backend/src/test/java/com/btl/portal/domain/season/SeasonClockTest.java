@@ -719,11 +719,12 @@ class SeasonClockTest {
 	 * THE BAND OF A RESULT IS WORKED OUT FOR THE SEASON ITS DAY IS IN, and never for one before the
 	 * league's first.
 	 *
-	 * <p>Owner, 10.10.2026 (PDL P23), chosen between offered outcomes and against my
-	 * recommendation: the band beside an old result is the one its member had in the season of
-	 * that result. The season of a result is the calendar year of its day, so the answer turns
-	 * between 31 December and 1 January, and on nothing else: a day has no zone, which is why this
-	 * case, unlike the ones above, stands on days and not on moments.
+	 * <p>Owner, 10.10.2026 (PDL P23), chosen between offered outcomes (against my recommendation,
+	 * and kept with it once the cost was measured to be the exact year of birth): the band beside
+	 * an old result is the one its member had in the season of that result. The season of a result
+	 * is the calendar year of its day, so the answer turns between 31 December and 1 January, and
+	 * on nothing else: a day has no zone, which is why this case, unlike the ones above, stands on
+	 * days and not on moments.
 	 *
 	 * <p><b>Both sides of the floor and both sides of the turn</b>, because they are four
 	 * different mistakes: a version with no floor answers the year of the history, a version that
