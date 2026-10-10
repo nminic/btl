@@ -114,6 +114,17 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	private static final String THE_MEMBERS_NUMBER = "990201";
 
 	/**
+	 * A MEMBER WHO REGISTERED AND HAS NEVER PAID: no number (V16) and not active. Since P8U every route
+	 * this class asks about turns him away down the branch it turns away an account naming no member,
+	 * so he is told exactly what that account is told (PDL P8, 10.10.2026, quoted on
+	 * {@link ActiveMemberOrAdministration}).
+	 */
+	private static final String A_MEMBER_WHO_HAS_NOT_PAID = "b257-neplacen@primer.rs";
+
+	/** {@code competitor.id} of the member who has not paid, who has no number to be found by. */
+	private long theMemberWhoHasNotPaid;
+
+	/**
 	 * EVERY BODY THAT IS NOT THE ONE THE FORM ASKS FOR, and each is a different way of not being it:
 	 * cut short, nothing, the wrong shape, not JSON at all, and JSON that says nothing.
 	 */
@@ -174,6 +185,20 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 		account(MODERATOR_WITH_NO_MEMBER, "moderator");
 		account(MODERATOR_WITH_EVERY_RIGHT, "moderator");
 
+		theMemberWhoHasNotPaid = db.sql("insert into competitor (member_number, first_name, last_name,"
+						+ " gender, birth_date, place_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " father_name, address, shirt_size, health_statement_at)"
+						+ " values (null, 'Neplacen', 'Neplacenic', 'M', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, false, 'payment', ?, '',"
+						+ " false, 'none', 'Otac', 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')"
+						+ " returning id")
+				.param("b257000000000001").query(Long.class).single();
+
+		account(A_MEMBER_WHO_HAS_NOT_PAID, "competitor");
+		db.sql("update account set competitor_id = ? where email = ?")
+				.params(theMemberWhoHasNotPaid, A_MEMBER_WHO_HAS_NOT_PAID).update();
+
 		for (String right : db.sql("select code from admin_right").query(String.class).list()) {
 			db.sql("insert into account_admin_right (account_id, right_code)"
 							+ " values ((select id from account where email = ?), ?)")
@@ -189,6 +214,7 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 		}
 
 		db.sql("delete from competitor where member_number = ?").param(THE_MEMBERS_NUMBER).update();
+		db.sql("delete from competitor where id = ?").param(theMemberWhoHasNotPaid).update();
 	}
 
 	private void account(String email, String role) {
@@ -395,12 +421,11 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 
 	/**
 	 * WHETHER A CLASS ASKS WHICH MEMBER IS BEHIND AN ACCOUNT, answered by the type system and not by a
-	 * list of classes: {@link MemberOfAccount} is the one home of that question, so a class that holds
-	 * one is a class that asks it.
+	 * list of classes, and answered in ONE place: {@link RightsAtTheDoorTest#asksWhichMember} says how,
+	 * and since P8U that includes a class which asks through {@link ActiveMemberOrAdministration}.
 	 */
 	private static boolean asksWhichMember(Class<?> controller) {
-		return Stream.of(ClassUtils.getUserClass(controller).getDeclaredFields())
-				.anyMatch(field -> field.getType() == MemberOfAccount.class);
+		return RightsAtTheDoorTest.asksWhichMember(ClassUtils.getUserClass(controller));
 	}
 
 	/**
@@ -468,6 +493,12 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.allSatisfy(email -> assertThat(db.sql("select competitor_id is null from account"
 								+ " where email = ?").param(email).query(Boolean.class).single())
 						.isTrue());
+		assertThat(db.sql("select c.member_number is null and not c.active from account a"
+						+ " join competitor c on c.id = a.competitor_id where a.email = ?")
+				.param(A_MEMBER_WHO_HAS_NOT_PAID).query(Boolean.class).single())
+				.as("the member who has not paid names a member who carries a number or is active, so"
+						+ " the case about him is about somebody else")
+				.isTrue();
 	}
 
 	/**
@@ -688,5 +719,68 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 		finally {
 			db.sql("delete from team where slug = ?").param(slug).update();
 		}
+	}
+
+	/**
+	 * A MEMBER WHO HAS NOT PAID IS TOLD, BYTE FOR BYTE, WHAT AN ACCOUNT THAT NAMES NO MEMBER IS TOLD -
+	 * FOR EVERY BODY, ON EVERY ROUTE HERE.
+	 *
+	 * <p>Since P8U every route this class derives is one PDL P8 refuses him (10.10.2026), and it turns
+	 * him away down the branch it turns away an account naming no member. What MockMvc cannot see is
+	 * the road that answer takes - a status written onto the response and an error sent through the
+	 * container are one number and different bytes - so his answer to the body the form accepts is
+	 * compared with the answer to the moderator who races for nobody, on the open addresses too, where
+	 * the twin is not the comparison; and every other body, the one over the line included, must be
+	 * answered as that one was, which is what shows his body is not read before his fee is asked.
+	 *
+	 * <p><b>Every route here is one of his own acts in {@code NoWriteTakesAMemberWhoHasNotPaidTest}.</b>
+	 * A route that asks which member and takes a body but is one he MAY use before he pays would be
+	 * answered otherwise, and belongs out of this comparison by name - so it fails here first, with that
+	 * sentence, rather than as a difference in bytes.
+	 */
+	@Test
+	void aMemberWhoHasNotPaidIsToldWhatAnAccountThatNamesNoMemberIsTold() throws Exception {
+		List<String> wrong = new ArrayList<>();
+		List<Route> routes = routes();
+
+		assertThat(routes.stream().map(Route::toString)
+				.filter(route -> !NoWriteTakesAMemberWhoHasNotPaidTest.AN_ACT_OF_HIS_OWN.containsKey(route))
+				.toList())
+				.as("a route that asks which member and takes a body is not one of the acts a member who"
+						+ " has not paid is refused, so comparing him with an account naming no member there"
+						+ " compares two different answers")
+				.isEmpty();
+
+		for (Route route : routes) {
+			String address = route.address();
+			String his = answerTo(route.verb(), address, A_MEMBER_WHO_HAS_NOT_PAID, route.body());
+
+			if (!firstLine(his).equals("HTTP/1.1 404 ")) {
+				wrong.add(route + ": the body the form accepts, from a member who has not paid, was not"
+						+ " answered as nothing is, but " + firstLine(his).strip());
+			}
+
+			wrong.addAll(differences(route + " from a member who has not paid against an account that"
+					+ " names no member", his, address,
+					answerTo(route.verb(), address, MODERATOR_WITH_NO_MEMBER, route.body()), address));
+
+			for (String body : BODIES_THAT_ARE_NOT_THE_FORM) {
+				wrong.addAll(differences(route + " from a member who has not paid, body [" + body + "]",
+						answerTo(route.verb(), address, A_MEMBER_WHO_HAS_NOT_PAID, body), address, his,
+						address));
+			}
+
+			for (boolean chunked : new boolean[] {false, true}) {
+				wrong.addAll(differences(route + " from a member who has not paid, a body one byte over"
+						+ " the line, " + (chunked ? "chunked" : "declared"),
+						answerTo(route.verb(), address, A_MEMBER_WHO_HAS_NOT_PAID, aBodyOverTheLine(),
+								chunked), address, his, address));
+			}
+		}
+
+		assertThat(wrong)
+				.as("a member who has not paid was told something an account naming no member is not"
+						+ " told, which says that a write lives at the address and that it is shut to him")
+				.isEmpty();
 	}
 }

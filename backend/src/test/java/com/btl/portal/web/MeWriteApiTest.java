@@ -2663,4 +2663,175 @@ class MeWriteApiTest {
 				.as("a member was written from a form carrying a town named twice")
 				.isEqualTo(before);
 	}
+
+	// ------------------------------------------------------------------------------------
+	// P8U: A MEMBER WHOSE FEE DOES NOT STAND (PDL P8, 10.10.2026)
+	// ------------------------------------------------------------------------------------
+
+	/**
+	 * What PDL P8 gives a member before he pays, in the decision's own words, „svoje podatke za
+	 * evidenciju i majicu", spelt as {@link MeWriteApi.Change} spells them. Written out here and
+	 * not derived, because it is the half of the sentence the production list does not carry;
+	 * {@link #everyFieldThisRouteTakesIsHisBeforeHePaysOrMakesHimSeen} is the floor under both.
+	 */
+	private static final List<String> HIS_BEFORE_HE_PAYS = List.of("firstName", "lastName",
+			"address", "phone", "placeId", "city", "country", "shirtSize");
+
+	/**
+	 * A member who has not paid, behind an account of his own, and the address it signs in with.
+	 *
+	 * @param hasHadANumber {@code false} for somebody who registered and never paid (no number,
+	 *                      V16), {@code true} for a member whose fee has lapsed (a number, and
+	 *                      not active) - the two states the rule reads as one, because it reads
+	 *                      the fee and not the number
+	 */
+	private String aMemberWhoHasNotPaid(boolean hasHadANumber) {
+		String email = hasHadANumber ? "istekla-clanarina@primer.rs" : "nikad-placeno@primer.rs";
+
+		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " father_name, address, shirt_size, health_statement_at)"
+						+ " values (?, 'Neplacen', 'Neplacenic', 'M', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, false, 'payment', ?,"
+						+ " 'Tekst koji stoji.', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
+				.params(hasHadANumber ? "000900" : null, String.format("%016x", ++issued))
+				.query(Long.class).single();
+
+		db.sql("insert into account (first_name, last_name, email, role_id, competitor_id) values"
+						+ " (?, ?, ?, (select id from role where code = 'competitor'), ?)")
+				.params(THE_NAME_ON_THE_ACCOUNT, THE_SURNAME_ON_THE_ACCOUNT, email, id).update();
+
+		openSession(email);
+
+		return email;
+	}
+
+	private MockHttpServletResponse sentBy(String email, String body) throws Exception {
+		return sent(body, new Cookie(SessionCookie.NAME, sessions.get(email).secret()));
+	}
+
+	/** Every column of his own the route could touch, read back in one fixed order. */
+	private List<Object> everythingOf(String email) {
+		return db.sql("select c.bio, c.profile_hidden, c.phone, c.address, c.shirt_size,"
+						+ " c.first_name from competitor c join account a on a.competitor_id = c.id"
+						+ " where a.email = ?")
+				.param(email)
+				.query((row, one) -> java.util.Arrays.<Object>asList(row.getString(1),
+						row.getBoolean(2), row.getString(3), row.getString(4), row.getString(5),
+						row.getString(6)))
+				.single();
+	}
+
+	/**
+	 * A MEMBER WHO HAS NOT PAID CHANGES HIS DATA AND HIS SHIRT, AND IT TAKES EFFECT AT ONCE.
+	 *
+	 * <p>PDL P8, 10.10.2026: „Sme: ... svoje podatke za evidenciju i majicu". Both kinds of such a
+	 * member, because the rule reads the fee and not whether a number was ever handed out.
+	 */
+	@ParameterizedTest
+	@ValueSource(booleans = {false, true})
+	void aMemberWhoHasNotPaidChangesHisDataAndHisShirt(boolean hasHadANumber) throws Exception {
+		String email = aMemberWhoHasNotPaid(hasHadANumber);
+
+		MockHttpServletResponse answer = sentBy(email, changing("phone", "0601234567", "address",
+				"Nova ulica 2", "shirtSize", "L"));
+
+		assertThat(answer.getStatus())
+				.as("a member who has not paid was refused what PDL P8 gives him before he pays")
+				.isEqualTo(200);
+		assertThat(everythingOf(email))
+				.as("his telephone, his address and his size were not written, or the rest was")
+				.containsExactly("Tekst koji stoji.", false, "0601234567", "Nova ulica 2", "L",
+						"Neplacen");
+	}
+
+	/**
+	 * AND WHAT MAKES HIM SEEN IS AN ADDRESS THAT IS NOT THERE, THE WHOLE REQUEST AND NOTHING
+	 * WRITTEN, WHATEVER ELSE THE REQUEST CARRIES.
+	 *
+	 * <p>„Ne sme ništa što ga čini vidljivim ...: sliku, biografiju, skrivanje profila" (PDL P8,
+	 * 10.10.2026), answered with ADL A8's 404. Each body is a different way of carrying one of the
+	 * two: alone, sent as nothing, beside a field that IS his, and beside a field only an
+	 * administrator changes - which shows the question is asked before that one, so the answer
+	 * does not depend on what else came.
+	 *
+	 * <p><b>The member whose fee stands is the anchor, with a body of the same kind</b>: he is
+	 * not turned away, so what turns the other away is his fee and not the body.
+	 */
+	@ParameterizedTest
+	@ValueSource(booleans = {false, true})
+	void whatMakesAMemberWhoHasNotPaidSeenIsAnAddressThatIsNotThere(boolean hasHadANumber)
+			throws Exception {
+
+		String email = aMemberWhoHasNotPaid(hasHadANumber);
+		List<Object> before = everythingOf(email);
+		long queued = howManyRowsInTheQueue();
+
+		Map<String, String> bodies = new LinkedHashMap<>();
+		bodies.put("the biography", changing("bio", "Trcim od 2010."));
+		bodies.put("the switch", changing("profileHidden", true));
+		bodies.put("the biography sent as nothing", changing("bio", null));
+		bodies.put("the biography beside his telephone", changing("phone", "0601234567", "bio",
+				"Trcim od 2010."));
+		bodies.put("the switch beside a date of birth", changing("birthDate", "1990-01-01",
+				"profileHidden", false));
+
+		for (Map.Entry<String, String> one : bodies.entrySet()) {
+			MockHttpServletResponse answer = sentBy(email, one.getValue());
+
+			assertThat(answer.getStatus())
+					.as("%s, from a member who has not paid, was not answered as an address that is"
+							+ " not there", one.getKey())
+					.isEqualTo(404);
+			assertThat(answer.getContentAsString())
+					.as("%s: a refusal that says anything says that a write lives here", one.getKey())
+					.isEmpty();
+		}
+
+		assertThat(everythingOf(email))
+				.as("a refused request wrote something of his anyway")
+				.isEqualTo(before);
+		assertThat(howManyRowsInTheQueue())
+				.as("a refused request put something in front of a moderator anyway")
+				.isEqualTo(queued);
+
+		assertThat(changeAs(ME, changing("phone", "0601234567", "bio", "Moje nove reci."))
+				.getStatus())
+				.as("the member whose fee stands was turned away by a body of the same kind, so the"
+						+ " body and not the fee is what the refusal reads")
+				.isEqualTo(200);
+	}
+
+	/**
+	 * EVERY FIELD THIS ROUTE TAKES IS EITHER HIS BEFORE HE PAYS OR ON THE LIST OF WHAT MAKES HIM
+	 * SEEN, AND NONE IS BOTH.
+	 *
+	 * <p>The floor under {@link MeWriteApi#ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES}, in the same
+	 * commit as the list. Read off {@link MeWriteApi.Change} itself, so a field added to the
+	 * record tomorrow fails here until somebody says on which side of PDL P8's sentence of
+	 * 10.10.2026 it stands, rather than being his before he pays by default.
+	 */
+	@Test
+	void everyFieldThisRouteTakesIsHisBeforeHePaysOrMakesHimSeen() {
+		List<String> onTheRecord = new ArrayList<>();
+
+		for (RecordComponent one : MeWriteApi.Change.class.getRecordComponents()) {
+			onTheRecord.add(one.getName());
+		}
+
+		assertThat(MeWriteApi.ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES)
+				.as("a field is both his before he pays and something that makes him seen")
+				.doesNotContainAnyElementsOf(HIS_BEFORE_HE_PAYS)
+				.isNotEmpty();
+
+		List<String> both = new ArrayList<>(MeWriteApi.ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES);
+		both.addAll(HIS_BEFORE_HE_PAYS);
+
+		assertThat(both)
+				.as("a field this route takes is on neither side of PDL P8's sentence, or a side names"
+						+ " a field the route does not take")
+				.containsExactlyInAnyOrderElementsOf(onTheRecord);
+	}
 }

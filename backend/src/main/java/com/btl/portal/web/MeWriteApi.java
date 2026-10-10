@@ -66,6 +66,20 @@ import java.util.function.Function;
  * anywhere saying why. {@link #ONLY_AN_ADMINISTRATOR_CHANGES} carries them and
  * {@link #NOT_YOURS_TO_CHANGE} is what he is told.
  *
+ * <p><b>AND A MEMBER WHOSE FEE DOES NOT STAND MAY CHANGE HIS DATA AND HIS SHIRT, AND NOT WHAT
+ * MAKES HIM SEEN.</b> PDL P8 records the owner's choice of 10.10.2026 between offered outcomes:
+ * „Sme: izbor kategorije i plaćanje, lozinku, adresu pošte i svoje podatke za evidenciju i
+ * majicu. Ne sme ništa što ga čini vidljivim ili ga uključuje u ligu: sliku, biografiju,
+ * skrivanje profila, ...". So this one route is both: the name, the address, the telephone,
+ * the town and the size are his before he pays, and the biography and the switch that hides the
+ * profile are not. {@link #ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES} carries the second two, and a
+ * request from a member who has never paid, or whose fee has lapsed, that carries either of them
+ * is answered as an address that is not there, the whole request and nothing written - ADL A8's
+ * 404 for a caller who lacks the right, by the shape {@link AttendanceWriteApi} already gives
+ * one, and the same {@link #away} an account naming no member is told. Asked of the body as it
+ * arrived and BEFORE every other question about it, so the answer does not depend on what else
+ * the request carries. The decision is quoted in full on {@link ActiveMemberOrAdministration}.
+ *
  * <p><b>AND THE SHIRT SIZE IS HIS, AND IT TAKES EFFECT AT ONCE.</b> The same entry gives the
  * size to the member himself. That it waits for nobody is derived rather than written there:
  * PDL „Odobrenje čeka samo ono što javnost vidi kao sadržaj" puts only the biography and the
@@ -415,6 +429,19 @@ class MeWriteApi {
 			"fatherName");
 
 	/**
+	 * THE FIELDS OF {@link Change} THAT A MEMBER WHOSE FEE DOES NOT STAND MAY NOT SEND, because
+	 * each of them makes him seen: „biografiju, skrivanje profila" (PDL P8, 10.10.2026).
+	 *
+	 * <p><b>Every other field of {@link Change} is his before he pays</b> - „svoje podatke za
+	 * evidenciju i majicu" - and that is not a second list somebody has to keep beside this one:
+	 * {@code MeWriteApiTest} partitions the components of {@link Change} into this list and the
+	 * rest, and names the rest, so a field added to the record tomorrow fails the build until
+	 * somebody says on which side of that sentence it stands.
+	 */
+	static final List<String> ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES = List.of("bio",
+			"profileHidden");
+
+	/**
 	 * THE TAB THIS WAITS IN, and the only one it could wait in.
 	 *
 	 * <p>V5 carried six queues of the rights matrix and V31 (PDL P10a, 22.09.2026) took
@@ -576,6 +603,9 @@ class MeWriteApi {
 
 	private final MemberOfAccount memberOfAccount;
 
+	/** Whether the member's fee stands, asked only of a request that names what makes him seen. */
+	private final ActiveMemberOrAdministration readers;
+
 	/**
 	 * The application's own reader, so a body is read exactly as {@code @RequestBody} would
 	 * have read it and the only thing this class changed about reading it is WHEN. Taken
@@ -603,12 +633,13 @@ class MeWriteApi {
 	/** Read twice on such a request, before and after, because the question is whether it CHANGED. */
 	private final CurrencyOfMember currencyOf;
 
-	MeWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, ObjectMapper json,
-			TransactionTemplate inOneTransaction, BalanceBook book,
+	MeWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, ActiveMemberOrAdministration readers,
+			ObjectMapper json, TransactionTemplate inOneTransaction, BalanceBook book,
 			CurrencyOfMember currencyOf) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.json = json;
 		this.inOneTransaction = inOneTransaction;
 		this.book = book;
@@ -820,8 +851,19 @@ class MeWriteApi {
 
 		JsonNode sent = read(request.getInputStream().readAllBytes());
 
+		/* WHAT MAKES HIM SEEN, SENT BY A MEMBER WHOSE FEE DOES NOT STAND, IS AN ADDRESS THAT IS
+		   NOT THERE: the whole request, and nothing is written (PDL P8, 10.10.2026, „biografiju,
+		   skrivanje profila"; see the class note). Asked of the body as it arrived and before
+		   every other question about it, so that the answer is the same whatever else the request
+		   carries; and the fee is asked only of a request that names one of the two, because a
+		   member who has not paid may change everything else here. */
+		if (!named(sent, ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES).isEmpty()
+				&& readers.activeMember(asking).isEmpty()) {
+			return away(response);
+		}
+
 		/* WHAT IS NOT HIS TO MOVE IS ASKED OF THE BODY AS IT ARRIVED, AND BEFORE ANYTHING
-		   ELSE IS LOOKED AT.
+		   ELSE ABOUT THE FORM IS LOOKED AT.
 
 		   Of the TREE and not of `Change`, because the whole point is that these names are
 		   NOT on that record: bound into it they would be fields this route takes, and
@@ -830,8 +872,10 @@ class MeWriteApi {
 		   record goes on describing exactly what this route writes, and the refusal is a
 		   sentence about the request rather than a field quietly ignored (ADL A54).
 
-		   Asked FIRST, because a body carrying a date of birth AND a name too long is a
-		   request whose first fault is that half of it was never this member's to send. */
+		   Asked FIRST of the questions about the form, because a body carrying a date of birth
+		   AND a name too long is a request whose first fault is that half of it was never this
+		   member's to send. Only the question above comes before it, and that one is about who
+		   is asking rather than about the form. */
 		List<String> notHis = named(sent, ONLY_AN_ADMINISTRATOR_CHANGES);
 
 		if (!notHis.isEmpty()) {

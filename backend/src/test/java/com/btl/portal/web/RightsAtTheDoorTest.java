@@ -1215,9 +1215,11 @@ class RightsAtTheDoorTest {
 	 * its author remembers and with no list.
 	 *
 	 * <p><b>"Asks which member" is the type system answering</b>: {@link MemberOfAccount} is the one home
-	 * of that question, so a class that holds one asks it. {@code MePasswordApi} is not such a class and is
-	 * not named: a password belongs to the account and not to a member, so there is no question for a body
-	 * to be read in front of, and every signed in account is entitled to be told 400 there.
+	 * of that question, so a class that holds one asks it - directly, or through a bean of the portal's
+	 * that holds one, which is what {@link #asksWhichMember} reads. {@code MePasswordApi} is not such a
+	 * class and is not named: a password belongs to the account and not to a member, so there is no
+	 * question for a body to be read in front of, and every signed in account is entitled to be told 400
+	 * there.
 	 *
 	 * <p><b>The routes the door decides are asked the opposite question, which is why this has two
 	 * halves.</b> A route a right guards is refused by the door, in {@code preHandle}, before any argument
@@ -1229,9 +1231,16 @@ class RightsAtTheDoorTest {
 	@Test
 	void noClassThatAsksWhichMemberIsAskingBindsABodyAsAnArgumentUnlessTheDoorDecidesTheRoute() {
 		List<HandlerMethod> inClassesThatAsk = mappings.getHandlerMethods().values().stream().distinct()
-				.filter(method -> Stream.of(method.getBeanType().getDeclaredFields())
-						.anyMatch(field -> field.getType() == MemberOfAccount.class))
+				.filter(method -> asksWhichMember(method.getBeanType()))
 				.toList();
+
+		assertThat(inClassesThatAsk.stream().map(HandlerMethod::getBeanType)
+				.filter(type -> Stream.of(type.getDeclaredFields())
+						.noneMatch(field -> field.getType() == MemberOfAccount.class))
+				.count())
+				.as("every class that asks which member holds a MemberOfAccount itself, so the half of"
+						+ " the predicate that reads through a bean of the portal's asks about nothing")
+				.isPositive();
 
 		assertThat(inClassesThatAsk.stream().filter(method -> !theDoorDecides(method))
 				.filter(method -> TheBodyOf.type(method).isPresent())
@@ -1723,6 +1732,26 @@ class RightsAtTheDoorTest {
 	private static boolean theDoorDecides(HandlerMethod method) {
 		return Stream.of(method.getMethod().getAnnotations())
 				.anyMatch(one -> one.annotationType().isAnnotationPresent(AskedAtTheDoor.class));
+	}
+
+	/**
+	 * WHETHER A CLASS ASKS WHICH MEMBER IS BEHIND AN ACCOUNT, answered by the type system and not by a
+	 * list of the classes or of the beans that ask it.
+	 *
+	 * <p>{@link MemberOfAccount} is the one home of the question, so a class that holds one asks it; and
+	 * so does a class that holds a bean of the portal's which holds one. Since P8U that second shape is
+	 * how a member's own write asks - through {@link ActiveMemberOrAdministration}, which turns away a
+	 * member whose fee does not stand as well - and a predicate that read only the class's own fields
+	 * let four classes fall out of this floor and out of {@code ABodyIsReadAfterTheDoorOverRealHttpTest}
+	 * with nothing failing. One level deep, and only into beans of this portal's own package, because
+	 * that is where the question lives.
+	 */
+	static boolean asksWhichMember(Class<?> controller) {
+		return Stream.of(controller.getDeclaredFields()).map(Field::getType)
+				.anyMatch(type -> type == MemberOfAccount.class
+						|| type.getPackageName().startsWith("com.btl.portal")
+						&& Stream.of(type.getDeclaredFields())
+								.anyMatch(inner -> inner.getType() == MemberOfAccount.class));
 	}
 
 	private static Stream<String> pathsOf(RequestMappingInfo info) {

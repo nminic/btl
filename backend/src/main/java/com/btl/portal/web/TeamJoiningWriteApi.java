@@ -188,6 +188,15 @@ import java.util.Optional;
  * told apart from a number nobody carries, a lapsed member would be named by the DIFFERENCE
  * between two answers over consecutive numbers.
  *
+ * <p><b>AND SINCE P8U THE CALLER'S HALF OF IT IS ASKED FIRST ON THE THREE ROUTES THAT READ A
+ * BODY.</b> Teams are on the list PDL P8 gives of what a member who has not paid may not do
+ * (10.10.2026, „timove"), and inviting, deciding about an application and answering an
+ * invitation used to read the body before any of those conditions was reached, so a member who
+ * had never paid was told 400 for a body that cannot be read where an account naming no member
+ * was told 404. Those three now open with {@link ActiveMemberOrAdministration#activeMember},
+ * before the body; the other three take no body and ask the caller where they always did. The
+ * decision is quoted in full on {@link ActiveMemberOrAdministration}.
+ *
  * <p><b>ANSWERING A QUESTION DELETES ITS ROW, WHICH THE SCHEMA DECIDED AND THIS CLASS DOES
  * NOT REOPEN.</b> V12: „An answer is not a column here: accepting an application writes a
  * row in {@code team_membership} and removes this one, refusing removes it." So there is no
@@ -395,6 +404,9 @@ class TeamJoiningWriteApi {
 
 	private final MemberOfAccount memberOfAccount;
 
+	/** Who is asking, and whether his fee stands: what the three routes with a body open with. */
+	private final ActiveMemberOrAdministration readers;
+
 	private final ATeamHeIsAlreadyIn alreadyInATeam;
 
 	private final Clock clock;
@@ -408,10 +420,12 @@ class TeamJoiningWriteApi {
 	private final TransactionTemplate inOneTransaction;
 
 	TeamJoiningWriteApi(JdbcClient db, MemberOfAccount memberOfAccount,
-			ATeamHeIsAlreadyIn alreadyInATeam, Clock clock, TransactionTemplate inOneTransaction) {
+			ActiveMemberOrAdministration readers, ATeamHeIsAlreadyIn alreadyInATeam, Clock clock,
+			TransactionTemplate inOneTransaction) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.alreadyInATeam = alreadyInATeam;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
@@ -589,10 +603,11 @@ class TeamJoiningWriteApi {
 			@PathVariable AKey id, @PathVariable AKey application, WhatWasSent<Answered> sent)
 			throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
-		/* AN ACCOUNT THAT NAMES NO MEMBER, and his body is not read: it is read below, after this
-		   question, and not bound as an argument (register 166). */
+		/* AN ACCOUNT THAT NAMES NO MEMBER, OR A MEMBER WHOSE FEE DOES NOT STAND (see the class
+		   note), and his body is not read: it is read below, after this question, and not bound
+		   as an argument (register 166). */
 		if (me == null) {
 			throw nothingIsHere();
 		}
@@ -723,7 +738,9 @@ class TeamJoiningWriteApi {
 	ResponseEntity<?> invite(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@PathVariable AKey id, WhatWasSent<Asked> sent) throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND, before the body
+		   (see the class note). */
+		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
@@ -817,7 +834,9 @@ class TeamJoiningWriteApi {
 			@PathVariable AKey id, @PathVariable AKey invitation, WhatWasSent<Answered> sent)
 			throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND, before the body
+		   (see the class note). */
+		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();

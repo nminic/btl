@@ -49,6 +49,22 @@ import java.util.Optional;
  * PDL's rule of 13.09.2026 forbids, „Nijedan javni odgovor ne sme da imenuje člana kome je
  * članarina istekla, ni posredno".
  *
+ * <p><b>AND SINCE P8U EVERY WRITE THAT IS A MEMBER'S OWN ASKS {@link #activeMember} FIRST.</b>
+ * PDL P8 records the owner's choice of 10.10.2026, made between offered outcomes, as „Šta sme
+ * neplaćen član: registracija, plaćanje i nalog": „Sme: izbor kategorije i plaćanje, lozinku,
+ * adresu pošte i svoje podatke za evidenciju i majicu. Ne sme ništa što ga čini vidljivim ili ga
+ * uključuje u ligu: sliku, biografiju, skrivanje profila, timove, parove, komentare, najave i
+ * rezultate." It sits under the older line „Pre plaćanja član sme da otvori nalog, ali nigde nije
+ * vidljiv i ne može ništa da radi u sistemu". Both are PDL's sentences; the choice is the owner's.
+ * So a route on the second list asks this class where it used to ask {@link MemberOfAccount}
+ * whether the account names a member at all - before a byte of the body is read - and turns away
+ * a member who has never paid, or whose fee has lapsed, down the branch that turns away an
+ * account naming no member: one branch, so one road, and ADL A8's 404. Signing in is not such a
+ * route and must not become one: „Prijava ostaje netaknuta: ona ne čita članarinu i ne sme da se
+ * natera da je čita" (PDL P13, 19.09.2026). {@code NoWriteTakesAMemberWhoHasNotPaidTest} reads
+ * every write off the dispatcher and holds which ask this, which a member may use before paying
+ * and why, and which are the administration's.
+ *
  * <p><b>THE ADMINISTRATION IS READ OFF THE ROLE'S {@code rights_mode}, and the role is the one
  * {@link WhoIsAsking} decided.</b> V5 gives every role a mode, {@code none} for the visitor and
  * the competitor, {@code granted} for the moderator and {@code all} for the superadmin, so

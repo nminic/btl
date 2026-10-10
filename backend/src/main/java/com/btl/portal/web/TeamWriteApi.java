@@ -380,6 +380,9 @@ class TeamWriteApi {
 
 	private final MemberOfAccount memberOfAccount;
 
+	/** Who is asking, and whether his fee stands: what {@link #propose} opens with. */
+	private final ActiveMemberOrAdministration readers;
+
 	private final Clock clock;
 
 	/**
@@ -420,12 +423,13 @@ class TeamWriteApi {
 	 */
 	private final WhatHeMayDo mayHe;
 
-	TeamWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock,
-			TransactionTemplate inOneTransaction, ATeamGoesWithItsLastMember emptyTeams,
-			WhatHeMayDo mayHe) {
+	TeamWriteApi(JdbcClient db, MemberOfAccount memberOfAccount,
+			ActiveMemberOrAdministration readers, Clock clock, TransactionTemplate inOneTransaction,
+			ATeamGoesWithItsLastMember emptyTeams, WhatHeMayDo mayHe) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 		this.emptyTeams = emptyTeams;
@@ -499,13 +503,14 @@ class TeamWriteApi {
 	ResponseEntity<?> propose(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Proposed> sent) throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
-		   moderator who does not race. There is nobody to file a proposal under, and the
-		   answer is the one InboxApi and InboxWriteApi already give him - and his body is not
-		   read: it is read below, after this question, and not bound as an argument
-		   (register 166). */
+		   moderator who does not race, OR A MEMBER WHOSE FEE DOES NOT STAND: teams are on the
+		   list PDL P8 gives of what a member who has not paid may not do (10.10.2026, „timove").
+		   There is nobody to file a proposal under, and the answer is the one InboxApi and
+		   InboxWriteApi already give an account naming no member - and his body is not read: it
+		   is read below, after this question, and not bound as an argument (register 166). */
 		if (me == null) {
 			return awayAtAnOpenAddress();
 		}
@@ -944,11 +949,10 @@ class TeamWriteApi {
 	 * same decision has him falling out of every team of his own accord when the season
 	 * turns. {@link PairWriteApi} asks the identical question of its own two halves.
 	 *
-	 * <p><b>What this route does NOT ask, named rather than left to be found:</b>
-	 * {@link #propose} does not read {@code competitor.active} at all, so the portal today
-	 * refuses a lapsed member here and accepts a team from him one method up. That is a hole
-	 * in the older route rather than an inconsistency created here, and it is reported as
-	 * its own item; the safe direction is the one this route takes.
+	 * <p><b>{@link #propose} asks the same question, and since P8U it asks it first.</b> It
+	 * used to read {@code competitor.active} nowhere, so the portal refused a lapsed member here
+	 * and accepted a team from him one method up; it now opens with
+	 * {@link ActiveMemberOrAdministration#activeMember} (PDL P8, 10.10.2026, „timove").
 	 */
 	private Optional<Membership> membershipHeCouldLeave(long me, long team) {
 		return db.sql("select m.team_id, m.season_from, m.season_to, m.left_reason"

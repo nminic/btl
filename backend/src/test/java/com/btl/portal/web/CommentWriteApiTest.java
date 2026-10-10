@@ -107,14 +107,10 @@ class CommentWriteApiTest {
 	 * A MEMBER WHOSE FEE HAS LAPSED, the „clanarina istekla" half of the axis the plan
 	 * names by name.
 	 *
-	 * <p>Not gated on here, and that absence is measured rather than assumed:
-	 * {@code competitor.active} governs what a PUBLIC answer links back to
-	 * ({@link CommentApi}'s own {@code case when author.active}), and no WRITE on this
-	 * server reads it at all - {@link TeamWriteApi}, the literal precedent this class
-	 * carries over, has no such check either. A route that refused this member would be
-	 * inventing a fourth gate PDL never asked for, on the strength of a reading between
-	 * lines about a screen ({@code Membership.tsx}) that is not this file's to enforce a
-	 * second time.
+	 * <p>Turned away since P8U, as an account naming no member is: comments are on the list
+	 * PDL P8 gives of what a member who has not paid may not do (10.10.2026, „komentare"). Until
+	 * then no write on this server read {@code competitor.active}, and this note said so; the case
+	 * that measured that absence is the case that now measures the refusal.
 	 */
 	private static final String LAPSED = "000400";
 
@@ -653,15 +649,28 @@ class CommentWriteApiTest {
 	}
 
 	/**
-	 * A MEMBER WHOSE FEE HAS LAPSED IS RATED EXACTLY LIKE ANYBODY ELSE - see the note on
-	 * {@link #LAPSED} for where that absence is measured rather than assumed.
+	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE ADDRESS IS NOT THERE, AND NOTHING IS WRITTEN -
+	 * see the note on {@link #LAPSED}. The same form from {@link #ME}, whose fee stands, is the
+	 * anchor: it goes through, so what turns the lapsed member away is his fee and not the form.
 	 */
 	@Test
-	void aMemberWhoseFeeHasLapsedIsNotRefusedByTheServer() throws Exception {
+	void aMemberWhoseFeeHasLapsedIsToldTheAddressIsNotThere() throws Exception {
+		long before = howManySubmissions();
+
 		MockHttpServletResponse answer = rateAs(LAPSED, form(run, 4, 4, 4, "I dalje trčim."));
 
-		assertThat(answer.getStatus()).isEqualTo(201);
-		assertThat(rowFor(run, LAPSED).get(6)).isEqualTo("I dalje trčim.");
+		assertThat(answer.getStatus()).isEqualTo(404);
+		assertThat(answer.getContentAsString())
+				.as("a refusal that says anything says that a write lives here")
+				.isEmpty();
+		assertThat(howManySubmissions())
+				.as("a member whose fee has lapsed was turned away and his rating was written anyway")
+				.isEqualTo(before);
+
+		assertThat(rateAs(ME, form(run, 4, 4, 4, "I dalje trčim.")).getStatus())
+				.as("the same form from a member whose fee stands was turned away too, so the form and"
+						+ " not the fee is what refused it")
+				.isEqualTo(201);
 	}
 
 	/**
