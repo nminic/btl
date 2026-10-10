@@ -9,6 +9,10 @@ jobs:
   backend:
     name: Backend (build, testovi, 100% coverage)
     runs-on: ubuntu-latest
+    # About seven minutes on a good day. Without a ceiling, a run that waits on something outside
+    # holds a runner for the six hours GitHub allows (09.10.2026: an image pull retried for 46
+    # minutes before the run was cancelled).
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -19,7 +23,27 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      # The database image comes from a mirror and not from Docker Hub. On 09.10.2026 Docker Hub
+      # refused the runners' anonymous pulls (`toomanyrequests`) or let its token service time out,
+      # so every backend run retried `postgres:18` until it was cancelled. On that day both mirrors below served the same index
+      # digest. Tagged `postgres:18`, it is the image `TestcontainersConfiguration` names, so
+      # Testcontainers finds it present and asks no registry. The digest is printed so a change of
+      # what the mirror serves is visible beside a change of outcome.
+      - name: Slika baze sa ogledala
+        run: |
+          for mirror in mirror.gcr.io/library public.ecr.aws/docker/library; do
+            if docker pull --quiet "$mirror/postgres:18"; then
+              docker tag "$mirror/postgres:18" postgres:18
+              docker image inspect --format '{{index .RepoDigests 0}}' postgres:18
+              exit 0
+            fi
+          done
+          exit 1
       - name: Build i testovi (JaCoCo prag 100%)
+        # Ryuk, the container Testcontainers starts to clean up after the JVM, is pulled from
+        # Docker Hub as well. A runner is thrown away when the job ends, so it has nothing to clean.
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: 'true'
         run: ./mvnw --batch-mode verify
       - name: Sačuvaj coverage izveštaj
         if: always()

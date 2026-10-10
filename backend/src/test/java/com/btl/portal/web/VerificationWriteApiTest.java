@@ -1,6 +1,7 @@
 package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
+import com.btl.portal.TheEndOfTheTransaction;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
@@ -43,12 +44,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
 /**
  * A MODERATOR ANSWERING SOMETHING IN THE QUEUE, AND HOLDING IT WHILE HE READS IT.
@@ -329,7 +332,8 @@ class VerificationWriteApiTest {
 	/** A correction of {@link #verasCountedRun}, which an approval must overwrite. */
 	private long verasCorrection;
 
-	/** A run on a race the calendar does not hold, which this route refuses. */
+	/** A run on a race the calendar does not hold, which a plain approval does not count: the
+	 *  answer has to name the race. */
 	private long aRunOnARaceNobodyHasEnteredYet;
 
 	/** A results row naming no submission, which V10 permits and this route refuses. */
@@ -371,6 +375,18 @@ class VerificationWriteApiTest {
 	private static final LocalDate SATURDAY = LocalDate.of(2027, 3, 6);
 
 	private static final LocalDate THE_OTHER_EVENTS_DAY = LocalDate.of(2027, 3, 13);
+
+	/**
+	 * THE DAY A MEMBER SAYS HE RAN A RACE THE CALENDAR DOES NOT HOLD, and it is none of the
+	 * other days a case could read in its place: not a race day of the fixture, not the day the
+	 * clock stands on ({@link #IN_MARCH}), and not the day his run was sent, which is the
+	 * database's own moment ({@code verification.raised_at}) and lies months earlier.
+	 */
+	private static final LocalDate THE_DAY_HE_RAN = LocalDate.of(2027, 3, 7);
+
+	/** The town of the codebook a member names for a race he describes, by its rank: not the
+	 *  town of rank 1, where every member and every event of the fixture stands. */
+	private static final int THE_TOWN_HE_NAMED = 2;
 
 	/**
 	 * A CLOCK THE CASE MOVES, copied from {@code PairWriteApiTest} with its reason.
@@ -1722,26 +1738,617 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD IS REFUSED, AND STAYS IN THE QUEUE.
+	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD IS NOT APPROVED BY A PLAIN YES, AND STAYS IN THE
+	 * QUEUE WITH NOTHING WRITTEN INTO THE CALENDAR.
 	 *
-	 * <p>PDL: „Član sme da unese trku koje nema u kalendaru. Tada administrator kreira događaj
-	 * i trku uz rezultat, i sve troje nastaje istovremeno." That is three writes into two
-	 * tables this route does not touch, so it says so instead of doing half of it.
+	 * <p>Since R3 such a run is approved here on one of two roads the answer names (the cases
+	 * below, under „a run on a race the calendar does not hold"). An answer naming neither is
+	 * refused rather than taken as „make it out of what the member typed", which is the choice the
+	 * plan of R3 made and wrote down beside {@code THE_RACE_IS_NOT_IN_THE_CALENDAR}.
 	 *
-	 * <p><b>The item is asserted to be still WAITING, which is the whole point.</b> Recording
-	 * the decision and writing nothing would take the row out of every moderator's screen for
-	 * ever while the member's run reached nothing - the one outcome a screen cannot undo.
+	 * <p><b>The item is asserted to be still WAITING, and the calendar untouched, which is the
+	 * whole point.</b> Recording the decision and writing nothing would take the row out of every
+	 * moderator's screen for ever while the member's run reached nothing - the one outcome a
+	 * screen cannot undo - and writing an event and a race nobody named would be the other.
 	 */
 	@Test
-	void aRunOnARaceTheCalendarDoesNotHoldIsRefusedAndStaysInTheQueue() throws Exception {
+	void aPlainApprovalOfARunOnARaceTheCalendarDoesNotHoldIsRefusedAndWritesNothing()
+			throws Exception {
+		int events = howManyEvents();
+		int races = howManyRaces();
+
 		MockHttpServletResponse refused = decide(THE_SUPERADMIN, aRunOnARaceNobodyHasEnteredYet,
 				true, null);
 
 		assertThat(refused.getStatus()).isEqualTo(409);
-		assertThat(reasonIn(refused)).startsWith("Trka nije u kalendaru");
+		assertThat(reasonIn(refused)).startsWith("Trke nema u kalendaru");
 
 		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
 		assertThat(howManyResults(ANA)).isZero();
+		assertThat(howManyEvents()).as("an event was written that nobody named").isEqualTo(events);
+		assertThat(howManyRaces()).as("a race was written that nobody named").isEqualTo(races);
+	}
+
+	// ----- a run on a race the calendar does not hold (R3) --------------------------------------
+
+	/**
+	 * AN APPROVAL THAT MAKES THE RACE WRITES THE EVENT, THE RACE AND THE RESULT AT ONCE, AND THE
+	 * SUBMISSION POINTS AT THE RACE.
+	 *
+	 * <p>PDL P9, in the record's wording: „Član sme da unese trku koje nema u kalendaru. Tada
+	 * administrator kreira događaj i trku uz rezultat, i sve troje nastaje istovremeno."
+	 *
+	 * <p><b>Every name is a different value</b>: what the member typed, what the moderator calls
+	 * the event and what he calls the race. So an event or a race written under the wrong one of
+	 * the three is a different row. <b>The town is one nobody else in the fixture stands in</b>,
+	 * and it is read off the codebook here, before the answer, because the submission's own town
+	 * is emptied by it. <b>The climb is not the drop</b>, so a race that carried them the other way
+	 * round is caught, and the formula is asked to tell the two orders apart first.
+	 */
+	@Test
+	void aNewRaceOfALengthIsMadeWithItsEventAndTheResultAndTheSubmissionPointsAtIt()
+			throws Exception {
+		theFormulaTellsTheTwoOrdersApart("15.5", 220, 180, 4500);
+
+		long run = describedRun(ANA, "Tuđa trka", "length", THE_DAY_HE_RAN, "15.5000", 220, 180,
+				4500);
+		long theTown = placeOfRank(THE_TOWN_HE_NAMED);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Jarkovačka staza",
+				"Jarkovačka desetka", "length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(stateOf(run)).isEqualTo("approved");
+
+		AnEvent event = eventAt("jarkovacka-staza-2027").orElseThrow(
+				() -> new AssertionError("no event answers at the address of the name the moderator"
+						+ " gave it and the year the member ran"));
+
+		assertThat(event.name()).isEqualTo("Jarkovačka staza");
+		assertThat(event.date()).as("the event begins on the day of its one race")
+				.isEqualTo(THE_DAY_HE_RAN);
+		assertThat(event.placeId()).as("the event does not stand in the town the member named")
+				.isEqualTo(theTown);
+		assertThat(event.city()).isNull();
+		assertThat(event.countryId()).isNull();
+		assertThat(event.kind()).isEqualTo("race");
+		assertThat(event.featured()).isFalse();
+		assertThat(event.description()).isEmpty();
+		assertThat(event.link())
+				.as("the event's link is the organiser's page, and the member's proof is not that")
+				.isEmpty();
+
+		List<ARace> under = racesOf(event.id());
+
+		assertThat(under).as("the event holds one race, the one the run is counted on").hasSize(1);
+		assertThat(under.get(0).name()).isEqualTo("Jarkovačka desetka");
+		assertThat(under.get(0).renamed()).as("the race's name was given by hand").isTrue();
+		assertThat(under.get(0).date()).isEqualTo(THE_DAY_HE_RAN);
+		assertThat(under.get(0).kind()).isEqualTo("length");
+		assertThat(under.get(0).fixes())
+				.as("a race of a length fixes the distance, the climb and the fall it was made of")
+				.isEqualTo(fourFigures("15.5", 220, 180, 0));
+
+		AResult result = theResultOf(ANA);
+
+		assertThat(result.raceId()).as("the result is not on the race the approval made")
+				.isEqualTo(under.get(0).id());
+		assertThat(result.raceDate()).isEqualTo(THE_DAY_HE_RAN);
+		assertThat(result.figures()).isEqualTo(fourFigures("15.5", 220, 180, 4500));
+		assertThat(result.points()).isEqualByComparingTo(
+				BtlScoreCalculator.calculate(15.5, 220, 180, 4500));
+
+		assertThat(whatTheSubmissionSays(run))
+				.as("the decided submission still describes a race instead of naming the one it"
+						+ " was counted on")
+				.isEqualTo(new Described(under.get(0).id(), THE_DAY_HE_RAN, null, null, null, null,
+						null, fourFigures("15.5", 220, 180, 4500)));
+
+		/* AND THE EVENT'S DAY IS ITS FIRST RACE'S, which V29 asks only when the transaction
+		   commits and a case like this one never does. */
+		TheEndOfTheTransaction.broughtForward(db);
+	}
+
+	/**
+	 * ON A NEW RACE TO A LIMIT THE TIME IS THE RACE'S LIMIT, AND THE KIND IS THE MODERATOR'S.
+	 *
+	 * <p>PDL P9, owner, 30.08.2026: „a ja ću lako promeniti njegovo vreme sa recimo 23:23:15 na
+	 * 24:00:00". The member hinted a race of a length and sent his own 23:23:15; the moderator
+	 * decides it is a race to a limit and sets the limit, and his distance, climb and fall in
+	 * place of the member's - every one of the four different from what was sent, so a race or a
+	 * result written from the sent copy is a different row.
+	 */
+	@Test
+	void aNewRaceToALimitTakesTheTimeAsItsLimitAndTheRunIsCountedAtIt() throws Exception {
+		long run = describedRun(ANA, "Noćni krug", "length", THE_DAY_HE_RAN, "60.0000", 400, 390,
+				84195);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Dvadesetčetiri sata",
+				"Dvadesetčetvoročasovna", "time", "{\"distanceKm\":61.25,\"ascentM\":410,"
+						+ "\"descentM\":395,\"seconds\":86400}")).getStatus()).isEqualTo(200);
+
+		AnEvent event = theEventAt("dvadesetcetiri-sata-2027");
+		List<ARace> under = racesOf(event.id());
+
+		assertThat(under).hasSize(1);
+		assertThat(under.get(0).kind())
+				.as("the race took the member's hint rather than the moderator's decision")
+				.isEqualTo("time");
+		assertThat(under.get(0).limitSeconds()).isEqualTo(86400);
+		assertThat(under.get(0).fixes())
+				.as("a race to a limit fixes the time and nothing else: no distance, and a climb and"
+						+ " a fall it cannot know in advance")
+				.isEqualTo(fourFigures("0", 0, 0, 86400));
+
+		assertThat(theResultOf(ANA).figures())
+				.as("the run is counted at the limit and at the moderator's own three")
+				.isEqualTo(fourFigures("61.25", 410, 395, 86400));
+		assertThat(theResultOf(ANA).points()).isEqualByComparingTo(
+				BtlScoreCalculator.calculate(61.25, 410, 395, 86400));
+	}
+
+	/** A NEW FREE RACE FIXES NOTHING, and the run is counted at all four of the member's own. */
+	@Test
+	void aNewFreeRaceFixesNothingAndTheRunIsCountedAtAllFourOfHis() throws Exception {
+		long run = describedRun(ANA, "Planinski uspon", "time", THE_DAY_HE_RAN, "18.4000", 1250, 300,
+				9000);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Visoki vrh", "Visoki vrh", "free",
+				null)).getStatus()).isEqualTo(200);
+
+		List<ARace> under = racesOf(theEventAt("visoki-vrh-2027").id());
+
+		assertThat(under).hasSize(1);
+		assertThat(under.get(0).kind()).isEqualTo("free");
+		assertThat(under.get(0).fixes()).isEqualTo(fourFigures("0", 0, 0, 0));
+		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("18.4", 1250, 300, 9000));
+	}
+
+	/**
+	 * THE EVENT STANDS IN THE TOWN THE MEMBER TYPED WHERE HE TYPED ONE, WITH ITS COUNTRY, AND A
+	 * RACE OF A LENGTH IS MADE OF THE FIGURES THE MODERATOR SET.
+	 *
+	 * <p>PDL P9, 30.08.2026, in the record's wording: „Događaj u kalendaru nosi grad i državu, a
+	 * forma ih nije tražila, pa bi događaj napravljen pri verifikaciji ostao bez mesta." The other
+	 * way a town is held, beside the codebook's above; neither is the member's own, and the
+	 * country is not his town's either (his stands in the codebook, in another country).
+	 *
+	 * <p><b>The moderator sets all four figures, each different from what was sent</b>, so a race
+	 * of a length made of the sent copy - its distance, its climb or its fall - is a different row
+	 * from the one made of his.
+	 */
+	@Test
+	void theEventStandsInTheTownTheMemberTypedAndTheRaceIsMadeOfTheModeratorsFigures()
+			throws Exception {
+		long run = describedRun(ANA, "Gradska trka", "length", THE_DAY_HE_RAN, null,
+				"Bela Palanka", "RS", "10.0000", 40, 35, 2900);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Belopalanačka trka",
+				"Belopalanačka trka", "length", "{\"distanceKm\":10.4,\"ascentM\":55,"
+						+ "\"descentM\":45,\"seconds\":2950}")).getStatus()).isEqualTo(200);
+
+		AnEvent event = theEventAt("belopalanacka-trka-2027");
+
+		assertThat(event.placeId()).isNull();
+		assertThat(event.city()).isEqualTo("Bela Palanka");
+		assertThat(event.countryId()).isEqualTo(countryCoded("RS"));
+
+		assertThat(theOneRaceOf(event.id()).fixes())
+				.as("the race was made of the figures the member sent and not of the moderator's")
+				.isEqualTo(fourFigures("10.4", 55, 45, 0));
+		assertThat(theResultOf(ANA).figures()).isEqualTo(fourFigures("10.4", 55, 45, 2950));
+	}
+
+	/**
+	 * THE SAME NAME TWICE IN ONE YEAR GETS THE NEXT FREE NUMBER, AND IS NOT REFUSED.
+	 *
+	 * <p>PDL, owner, 19.09.2026, choosing among four outcomes offered, in the record's wording:
+	 * „Adresa događaja je naziv i godina, a isti naziv dvaput u istoj godini dobija redni broj."
+	 * Two addresses of that name are taken already, so the next is the THIRD and not the second;
+	 * and a name spelt with letters the address does not keep is the same address, so „Trka
+	 * Čačak" meets „Trka Cacak" and is numbered rather than written over it or refused.
+	 */
+	@Test
+	void theSameNameTwiceInOneYearGetsTheNextFreeNumberRatherThanARefusal() throws Exception {
+		event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
+		event("zimska-trka-2027-2", "Zimska trka", LocalDate.of(2027, 2, 13));
+		event("trka-cacak-2027", "Trka Cacak", LocalDate.of(2027, 2, 20));
+
+		long one = describedRun(ANA, "Zimska", "length", THE_DAY_HE_RAN, "8.0000", 30, 30, 2000);
+		long other = describedRun(BOJAN, "Čačak", "length", THE_DAY_HE_RAN, "9.0000", 35, 25, 2300);
+
+		assertThat(decideWith(THE_SUPERADMIN, one, makingTheRace("Zimska trka", "Zimska trka",
+				"length", null)).getStatus()).isEqualTo(200);
+		assertThat(decideWith(THE_SUPERADMIN, other, makingTheRace("Trka Čačak", "Trka Čačak",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(eventAt("zimska-trka-2027-3"))
+				.as("the third event of that name that year was not given the next free number")
+				.isPresent();
+		assertThat(eventAt("trka-cacak-2027-2")).isPresent();
+		assertThat(theResultOf(ANA).raceId())
+				.isEqualTo(theOneRaceOf(theEventAt("zimska-trka-2027-3").id()).id());
+	}
+
+	/**
+	 * AND THE SAME NAME IN ANOTHER YEAR IS NOT NUMBERED AT ALL, because the year is in the
+	 * address: „Prolećna trka" of 2026 and of 2027 are two addresses that never met.
+	 */
+	@Test
+	void theSameNameInAnotherYearIsNotNumbered() throws Exception {
+		event("prolecna-trka-2026", "Prolećna trka", LocalDate.of(2026, 4, 4));
+
+		long run = describedRun(ANA, "Prolećna", "length", THE_DAY_HE_RAN, "7.0000", 20, 20, 1900);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Prolećna trka", "Prolećna trka",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(eventAt("prolecna-trka-2027")).isPresent();
+		assertThat(eventAt("prolecna-trka-2027-2")).isEmpty();
+	}
+
+	/**
+	 * A RUN IS COUNTED ON A RACE OF THE CALENDAR THE MODERATOR CHOSE, BY ITS KEY, AND THAT RACE
+	 * ANSWERS FOR WHAT IT FIXES AND FOR ITS DAY.
+	 *
+	 * <p>PDL P9, owner, 30.08.2026: „kad odem da verifikujem drugom članu mogu da zamenim njegov
+	 * naziv događaja i izbor trke autocompletom sad već postojeće trke", and in the record's
+	 * wording the choice „popuni i zaključa ono što trka zadaje".
+	 *
+	 * <p><b>Three races carry the name „Desetka" and the one chosen is the middle one by key</b>,
+	 * so a race found by its name - first or last - is a different row; <b>and the last one is run
+	 * on the same Saturday</b>, so a race found by its day is a different row as well. <b>The
+	 * member's day, his distance, climb and fall are all different from the race's</b>, so a
+	 * result written from any of them is a different row too; only his time is his.
+	 */
+	@Test
+	void aRunIsCountedOnTheRaceOfTheCalendarChosenByItsKeyAndTheRaceAnswersForWhatItFixes()
+			throws Exception {
+		long chosen = race(theWeekendEvent, "Desetka", SATURDAY, "10.5000", 70, 40);
+		race(event("treci-dogadjaj-r3", "Treći događaj", SATURDAY), "Desetka", SATURDAY, "9.8000",
+				20, 20);
+
+		long run = describedRun(ANA, "Desetka u parku", "free", LocalDate.of(2027, 3, 8),
+				"11.0000", 90, 80, 2500);
+		int events = howManyEvents();
+		int races = howManyRaces();
+
+		assertThat(decideWith(THE_SUPERADMIN, run, onTheRace(chosen, null)).getStatus())
+				.isEqualTo(200);
+
+		AResult result = theResultOf(ANA);
+
+		assertThat(result.raceId()).as("the run is counted on a race other than the one chosen")
+				.isEqualTo(chosen);
+		assertThat(result.raceDate()).as("the run carries the day the member typed, and the race"
+				+ " answers for its own").isEqualTo(SATURDAY);
+		assertThat(result.figures())
+				.as("the race of a length did not answer for the distance, the climb and the fall")
+				.isEqualTo(fourFigures("10.5", 70, 40, 2500));
+
+		assertThat(whatTheSubmissionSays(run)).isEqualTo(new Described(chosen, SATURDAY, null,
+				null, null, null, null, fourFigures("10.5", 70, 40, 2500)));
+		assertThat(howManyEvents()).as("an event was made for a run whose race was chosen")
+				.isEqualTo(events);
+		assertThat(howManyRaces()).isEqualTo(races);
+
+		/* AND THE LETTER NAMES THE RACE'S DAY AND NOT THE ONE THE MEMBER TYPED. */
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).isNotEmpty();
+		assertThat(arrived[0].getContent().toString()).contains("Desetka, 06.03.2027");
+	}
+
+	/**
+	 * ON A RACE TO A LIMIT THE CHOSEN RACE'S LIMIT IS THE TIME, NOT THE ONE THE MEMBER TYPED.
+	 *
+	 * <p>PDL P9, 30.08.2026, in the record's wording: the formula counts by the limit „isto kao da
+	 * je došlo iz kalendara, pa odluka od 29.08.2026 važi na oba puta". The member typed his own
+	 * five hours and fifty minutes; the race runs to six.
+	 */
+	@Test
+	void aRunCountedOnARaceToALimitIsCountedAtTheLimitAndNotAtTheTimeHeTyped() throws Exception {
+		long run = describedRun(BOJAN, "Šestočasovna trka", "time", THE_DAY_HE_RAN, "50.1000", 600,
+				580, 21000);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, onTheRace(theTimedRace, null)).getStatus())
+				.isEqualTo(200);
+
+		assertThat(theResultOf(BOJAN).figures()).isEqualTo(fourFigures("50.1", 600, 580,
+				SIX_HOURS));
+	}
+
+	/** A RACE STILL TO COME IS REFUSED THE SAME WAY WHICHEVER ROAD NAMED IT, and the run waits,
+	 *  still describing the race the member typed. */
+	@Test
+	void aRaceStillToComeIsRefusedWhenChosenAndTheRunWaitsAsItWas() throws Exception {
+		long future = race(event("buduca-trka-r3", "Buduća trka", LocalDate.of(2027, 4, 10)),
+				"Buduća trka", LocalDate.of(2027, 4, 10), "21.1000", 100, 100);
+		long run = describedRun(ANA, "Buduća", "length", THE_DAY_HE_RAN, "21.1000", 100, 100, 6000);
+		Described before = whatTheSubmissionSays(run);
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, run, onTheRace(future, null));
+
+		assertThat(refused.getStatus()).isEqualTo(409);
+		assertThat(reasonIn(refused)).startsWith("Trka još nije održana");
+		assertThat(stateOf(run)).isEqualTo("waiting");
+		assertThat(whatTheSubmissionSays(run)).isEqualTo(before);
+		assertThat(howManyResults(ANA)).isZero();
+	}
+
+	/** A KEY NO RACE ANSWERS TO is a form fault about the race the form carries, and nothing is
+	 *  decided. */
+	@Test
+	void aRaceNoRowAnswersToIsAFormFaultAndNothingIsDecided() throws Exception {
+		long nobody = db.sql("select coalesce(max(id), 0) + 1000 from race").query(Long.class)
+				.single();
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, aRunOnARaceNobodyHasEnteredYet,
+				onTheRace(nobody, null));
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo("Te trke nema u kalendaru.");
+		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
+	}
+
+	/**
+	 * THE RACE IS NAMED ONLY BESIDE AN APPROVAL OF A RUN IN THE RESULTS TAB: beside a refusal it
+	 * names a race nobody counts on, and on another tab a race for a thing that is not a run.
+	 * Both ways of naming it, and both are refused rather than quietly dropped.
+	 */
+	@Test
+	void aRaceNamedBesideARefusalOrOnAnotherTabIsRefusedAndNothingIsDecided() throws Exception {
+		String making = "\"newRace\":{\"eventName\":\"Događaj\",\"raceName\":\"Trka\","
+				+ "\"raceKind\":\"length\"}";
+		String choosing = "\"raceId\":" + theShortRace;
+
+		for (String named : List.of(making, choosing)) {
+			MockHttpServletResponse refusal = decideWith(THE_SUPERADMIN,
+					aRunOnARaceNobodyHasEnteredYet,
+					"{\"approved\":false,\"reason\":\"" + THE_REASON + "\"," + named + "}");
+			MockHttpServletResponse elsewhere = decideWith(THE_SUPERADMIN, anasText,
+					"{\"approved\":true," + named + "}");
+
+			assertThat(refusal.getStatus()).as(named).isEqualTo(400);
+			assertThat(reasonIn(refusal)).startsWith("Trka se zadaje samo uz odobrenje");
+			assertThat(elsewhere.getStatus()).as(named).isEqualTo(400);
+			assertThat(reasonIn(elsewhere)).startsWith("Trka se zadaje samo uz odobrenje");
+		}
+
+		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
+		assertThat(stateOf(anasText)).isEqualTo("waiting");
+	}
+
+	/**
+	 * A RUN WHOSE RACE THE CALENDAR HOLDS IS NOT MOVED TO ANOTHER RACE, OR MADE INTO A NEW ONE,
+	 * BY AN APPROVAL: both are refused, and the run is not counted anywhere.
+	 */
+	@Test
+	void aRunFromTheCalendarIsNotCountedOnARaceTheAnswerNames() throws Exception {
+		MockHttpServletResponse made = decideWith(THE_SUPERADMIN, anasMarathon,
+				makingTheRace("Drugi maraton", "Drugi maraton", "length", null));
+		MockHttpServletResponse moved = decideWith(THE_SUPERADMIN, anasMarathon,
+				onTheRace(theShortRace, null));
+
+		assertThat(made.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(made)).startsWith("Trka se zadaje samo uz odobrenje");
+		assertThat(moved.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(moved)).startsWith("Trka se zadaje samo uz odobrenje");
+		assertThat(stateOf(anasMarathon)).isEqualTo("waiting");
+		assertThat(howManyResults(ANA)).isZero();
+		assertThat(eventAt("drugi-maraton-2027")).isEmpty();
+	}
+
+	/** A NEW RACE AND A RACE OF THE CALENDAR IN ONE ANSWER is no race a run could be counted on. */
+	@Test
+	void aRaceNamedTwiceIsRefusedAndNothingIsDecided() throws Exception {
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, aRunOnARaceNobodyHasEnteredYet,
+				"{\"approved\":true,\"raceId\":" + theShortRace + ",\"newRace\":{\"eventName\":"
+						+ "\"Događaj\",\"raceName\":\"Trka\",\"raceKind\":\"length\"}}");
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo("Trka je zadata dvaput: ili nova ili postojeća.");
+		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
+	}
+
+	/**
+	 * A NEW RACE WITH A NAME LEFT OUT, A KIND NOBODY KNOWS, OR FIGURES OF HIS OWN THAT LEAVE ONE
+	 * OUT IS A FORM NOT FILLED IN, and nothing is written into the calendar.
+	 *
+	 * <p>None of the three names falls back on what the member typed, which would be the reading
+	 * of an omitted field ADL A8 forbids, „vrati na podrazumevano". A kind left out is asked for
+	 * itself before the list of kinds is asked about it, because that list is a {@code Set.of} and
+	 * throws on {@code null}. And a race made of the run is made of all four of its figures, so an
+	 * amendment that leaves one out is not one.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {
+			"{\"approved\":true,\"newRace\":{\"raceName\":\"Trka\",\"raceKind\":\"length\"}}",
+			"{\"approved\":true,\"newRace\":{\"eventName\":\"   \",\"raceName\":\"Trka\","
+					+ "\"raceKind\":\"length\"}}",
+			"{\"approved\":true,\"newRace\":{\"eventName\":\"Događaj\",\"raceKind\":\"length\"}}",
+			"{\"approved\":true,\"newRace\":{\"eventName\":\"Događaj\",\"raceName\":\"\","
+					+ "\"raceKind\":\"length\"}}",
+			"{\"approved\":true,\"newRace\":{\"eventName\":\"Događaj\",\"raceName\":\"Trka\"}}",
+			"{\"approved\":true,\"newRace\":{\"eventName\":\"Događaj\",\"raceName\":\"Trka\","
+					+ "\"raceKind\":\"brdska\"}}",
+			"{\"approved\":true,\"newRace\":{\"eventName\":\"Događaj\",\"raceName\":\"Trka\","
+					+ "\"raceKind\":\"length\"},\"amended\":{\"distanceKm\":12.0,\"ascentM\":10,"
+					+ "\"seconds\":3000}}"})
+	void aNewRaceLeftIncompleteIsAFormNotFilledInAndNothingIsWritten(String body) throws Exception {
+		int events = howManyEvents();
+
+		MockHttpServletResponse refused = decideWith(THE_SUPERADMIN, aRunOnARaceNobodyHasEnteredYet,
+				body);
+
+		assertThat(refused.getStatus()).isEqualTo(400);
+		assertThat(reasonIn(refused)).isEqualTo("Forma nije popunjena.");
+		assertThat(stateOf(aRunOnARaceNobodyHasEnteredYet)).isEqualTo("waiting");
+		assertThat(howManyEvents()).isEqualTo(events);
+	}
+
+	/**
+	 * THE SECOND MEMBER WHO RAN THE SAME RACE WAITS UNTOUCHED WHILE THE FIRST IS APPROVED, AND IS
+	 * THEN COUNTED ON THE RACE THAT APPROVAL MADE.
+	 *
+	 * <p>PDL P9, owner, 30.08.2026: „Ja kad unesem događaj i trku prilikom verifikacije rezultata
+	 * prvog člana, kad odem da verifikujem drugom članu mogu da zamenim njegov naziv događaja i
+	 * izbor trke autocompletom sad već postojeće trke." The two runs carry the same name typed and
+	 * the same day, so an approval that wrote over every submission of that name - or of that day -
+	 * would reach the second one, and his submission is read before the first answer and after it.
+	 */
+	@Test
+	void theSecondMemberWhoRanTheSameRaceIsCountedOnTheRaceTheFirstApprovalMade()
+			throws Exception {
+		long anas = describedRun(ANA, "Noćna trka Zemun", "length", THE_DAY_HE_RAN, "5.0000", 15, 10,
+				1500);
+		long bojans = describedRun(BOJAN, "Noćna trka Zemun", "free", THE_DAY_HE_RAN, "5.3000", 25,
+				20, 1700);
+		Described bojansBefore = whatTheSubmissionSays(bojans);
+
+		assertThat(decideWith(THE_SUPERADMIN, anas, makingTheRace("Noćna trka Zemun",
+				"Noćna trka Zemun", "length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(whatTheSubmissionSays(bojans))
+				.as("the first approval wrote over a submission it did not decide")
+				.isEqualTo(bojansBefore);
+		assertThat(stateOf(bojans)).isEqualTo("waiting");
+
+		AnEvent event = theEventAt("nocna-trka-zemun-2027");
+		long theRace = theOneRaceOf(event.id()).id();
+
+		assertThat(decideWith(THE_SUPERADMIN, bojans, onTheRace(theRace, null)).getStatus())
+				.isEqualTo(200);
+
+		assertThat(racesOf(event.id())).as("the second approval made a race of its own")
+				.hasSize(1);
+		assertThat(theResultOf(BOJAN).raceId()).isEqualTo(theRace);
+		assertThat(theResultOf(BOJAN).figures())
+				.as("the race the first approval made answers for what it fixes")
+				.isEqualTo(fourFigures("5", 15, 10, 1700));
+		assertThat(theResultOf(ANA).raceId()).isEqualTo(theRace);
+	}
+
+	/**
+	 * AND A SECOND RACE FOR THE SAME RUN IS NOT PREVENTED: a moderator who names the event
+	 * otherwise makes a second event and a second race.
+	 *
+	 * <p>ADL, owner, 11.09.2026, the cost he accepted in the record's wording: „kalendar dobija
+	 * trke koje niko nije planirao, i duplikati se ne sprečavaju".
+	 */
+	@Test
+	void aSecondRaceForTheSameRunIsMadeWhenTheModeratorNamesItOtherwise() throws Exception {
+		long anas = describedRun(ANA, "Noćna trka Zemun", "length", THE_DAY_HE_RAN, "5.0000", 15, 10,
+				1500);
+		long bojans = describedRun(BOJAN, "Noćna trka Zemun", "length", THE_DAY_HE_RAN, "5.0000",
+				15, 10, 1700);
+
+		assertThat(decideWith(THE_SUPERADMIN, anas, makingTheRace("Noćna trka Zemun",
+				"Noćna trka Zemun", "length", null)).getStatus()).isEqualTo(200);
+		assertThat(decideWith(THE_SUPERADMIN, bojans, makingTheRace("Zemunska noćna trka",
+				"Zemunska noćna trka", "length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(eventAt("nocna-trka-zemun-2027")).isPresent();
+		assertThat(eventAt("zemunska-nocna-trka-2027")).isPresent();
+		assertThat(theResultOf(ANA).raceId()).isNotEqualTo(theResultOf(BOJAN).raceId());
+	}
+
+	/**
+	 * A MODERATOR WHO RACES MAKES THE RACE, AND THE RESULT IS THE RUNNER'S, NOT HERS.
+	 *
+	 * <p>Mira decides results and runs herself, so „whose result is this" has a wrong answer that
+	 * is a real member rather than a null.
+	 */
+	@Test
+	void aModeratorWhoRacesMakesTheRaceAndTheResultIsTheRunners() throws Exception {
+		long run = describedRun(ANA, "Rečna trka", "length", THE_DAY_HE_RAN, "6.0000", 12, 9, 1800);
+
+		assertThat(decideWith(RESULTS_MODERATOR, run, makingTheRace("Rečna trka", "Rečna trka",
+				"length", null)).getStatus()).isEqualTo(200);
+
+		assertThat(howManyResults(ANA)).isEqualTo(1);
+		assertThat(howManyResults(MIRA)).isZero();
+	}
+
+	/**
+	 * THE LETTER NAMES THE RACE THE MODERATOR NAMED AND THE DAY IT WAS RUN, and never the words
+	 * the member typed: from the approval on, that run is counted on that race (PDL P9, owner,
+	 * 30.08.2026: „od tog trenutka se tako vodi rezultat u sistemu").
+	 */
+	@Test
+	void theLetterAboutARunOnANewRaceNamesTheRaceTheModeratorNamed() throws Exception {
+		long run = describedRun(ANA, "Tuđa trka", "length", THE_DAY_HE_RAN, "15.5000", 220, 180,
+				4500);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Jarkovačka staza",
+				"Jarkovačka desetka", "length", null)).getStatus()).isEqualTo(200);
+
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).isNotEmpty();
+		assertThat(arrived[0].getContent().toString())
+				.contains("Jarkovačka desetka, 07.03.2027")
+				.doesNotContain("Tuđa trka");
+	}
+
+	/**
+	 * FROM THE APPROVAL ON, HIS OWN CORRECTION IS JUDGED BY THE RACE THE APPROVAL MADE.
+	 *
+	 * <p>PDL P9, owner, 30.08.2026: „Član od tog trenutka može tražiti kroz portal promenu svog
+	 * rezultata regularno, na novodefinisanom događaju", and in the record's wording, „ispravka se
+	 * ravna po tome šta ta trka zadaje, bez ijednog novog pravila". The race is of a length, so the
+	 * distance he sends in his correction is not his to set, and the correction carries the race's.
+	 */
+	@Test
+	void hisOwnCorrectionAfterTheApprovalIsJudgedByTheRaceTheApprovalMade() throws Exception {
+		long run = describedRun(ANA, "Tuđa trka", "length", THE_DAY_HE_RAN, "15.5000", 220, 180,
+				4500);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Jarkovačka staza",
+				"Jarkovačka desetka", "length", null)).getStatus()).isEqualTo(200);
+
+		long result = onlyResultOf(ANA);
+
+		MockHttpServletResponse corrected = http.perform(asking(A_COMPETITOR,
+						put("/api/results/" + result))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"distanceKm\":99.0,\"ascentM\":1,\"descentM\":1,\"seconds\":4400,"
+								+ "\"link\":\"https://primer.rs/ispravka\",\"comment\":\"\"}"))
+				.andReturn().getResponse();
+
+		assertThat(corrected.getStatus()).isEqualTo(200);
+		assertThat(db.sql("select distance_km || ' ' || ascent_m || ' ' || descent_m || ' '"
+						+ " || seconds from result_submission where amends_result_id = ?")
+				.param(result).query(String.class).single())
+				.as("his correction set what the race the approval made fixes")
+				.isEqualTo("15.5000 220 180 4400");
+	}
+
+	/**
+	 * THE RUN IS SEEN UNDER ITS NEW RACE AND EVENT, WHERE EVERY OTHER RESULT IS SEEN.
+	 *
+	 * <p>PDL P9, 30.08.2026, in the record's wording: „Rezultat prvog člana se veže za trku koja
+	 * je tim upisom nastala, pa se vidi u tabeli te trke i na strani događaja kao i svi posle
+	 * njega." Asked of the public read every table and every event page draws results from.
+	 */
+	@Test
+	void theRunIsServedUnderTheRaceAndTheEventTheApprovalMade() throws Exception {
+		long run = describedRun(ANA, "Tuđa trka", "length", THE_DAY_HE_RAN, "15.5000", 220, 180,
+				4500);
+
+		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Jarkovačka staza",
+				"Jarkovačka desetka", "length", null)).getStatus()).isEqualTo(200);
+
+		long result = onlyResultOf(ANA);
+		var served = new ObjectMapper().readTree(http.perform(get("/api/results"))
+				.andReturn().getResponse().getContentAsString());
+		var hers = StreamSupport.stream(served.spliterator(), false)
+				.filter(one -> one.path("id").asLong() == result)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("the run is not served at all"));
+
+		assertThat(hers.path("eventSlug").asString()).isEqualTo("jarkovacka-staza-2027");
+		assertThat(hers.path("eventName").asString()).isEqualTo("Jarkovačka staza");
+		assertThat(hers.path("raceName").asString()).isEqualTo("Jarkovačka desetka");
 	}
 
 	/**
@@ -2557,9 +3164,10 @@ class VerificationWriteApiTest {
 
 	/**
 	 * AND ONE ON A RACE NOBODY HAS ENTERED IN THE CALENDAR, which V10 takes on purpose - „One
-	 * way or the other, never both and never neither" - and which this route refuses to
-	 * approve, because making the event and the race with it is a road of its own (PDL, „Član
-	 * sme da unese trku koje nema u kalendaru").
+	 * way or the other, never both and never neither" - and which a plain approval does not
+	 * count: the answer has to name the race (PDL, „Član sme da unese trku koje nema u
+	 * kalendaru"). The cases about the two roads that do count it make their own, with
+	 * {@link #describedRun}.
 	 */
 	private long describedRunWaitingFor(String memberNumber, LocalDate day) {
 		long submission = db.sql("insert into result_submission (competitor_id, race_id,"
@@ -2582,6 +3190,164 @@ class VerificationWriteApiTest {
 						+ " returning id")
 				.params(memberNumber, submission)
 				.query(Long.class).single();
+	}
+
+	/**
+	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD, described the way {@code ResultWriteApi}
+	 * writes one: the name the member typed, the kind he hinted, the day he ran, his six measures
+	 * and the town he named.
+	 *
+	 * <p><b>The town is never the one his profile names</b> ({@link #member} puts every member at
+	 * the town of rank 1, and {@link #event} every event of the fixture there too), so an event
+	 * made in a member's town, or in some town an event of the fixture happens to stand in, is a
+	 * different row from the one the member named. It is a town of the codebook by its rank, or,
+	 * with {@code rank} left empty, one typed with its country.
+	 */
+	private long describedRun(String memberNumber, String typedName, String hintedKind,
+			LocalDate day, Integer rank, String typedCity, String countryCode, String km, int climb,
+			int drop, int seconds) {
+		long submission = db.sql("insert into result_submission (competitor_id, race_id,"
+						+ " race_date, race_name, race_kind, place_id, city, country_id, distance_km,"
+						+ " ascent_m, descent_m, seconds, link, comment)"
+						+ " values ((select id from competitor where member_number = ?), null, ?, ?, ?,"
+						+ " (select id from place where rank = ?), ?,"
+						+ " (select id from country where code = ?), cast(? as numeric), ?, ?, ?,"
+						+ " 'https://primer.rs/rezultati/van-kalendara', '') returning id")
+				.params(memberNumber, day, typedName, hintedKind, rank, typedCity, countryCode, km,
+						climb, drop, seconds)
+				.query(Long.class).single();
+
+		return queued(memberNumber, submission);
+	}
+
+	/** The same run, at the town of the codebook the cases about a new race name. */
+	private long describedRun(String memberNumber, String typedName, String hintedKind,
+			LocalDate day, String km, int climb, int drop, int seconds) {
+		return describedRun(memberNumber, typedName, hintedKind, day, THE_TOWN_HE_NAMED, null, null,
+				km, climb, drop, seconds);
+	}
+
+	/** An answer that makes the event and the race, as JSON, with or without figures of the
+	 *  moderator's own after it. */
+	private static String makingTheRace(String eventName, String raceName, String kind,
+			String amended) {
+		return "{\"approved\":true,\"newRace\":{\"eventName\":\"" + eventName + "\",\"raceName\":\""
+				+ raceName + "\",\"raceKind\":\"" + kind + "\"}"
+				+ (amended == null ? "" : ",\"amended\":" + amended) + "}";
+	}
+
+	/** An answer that counts the run on a race of the calendar, as JSON. */
+	private static String onTheRace(long race, String amended) {
+		return "{\"approved\":true,\"raceId\":" + race
+				+ (amended == null ? "" : ",\"amended\":" + amended) + "}";
+	}
+
+	private int howManyEvents() {
+		return db.sql("select count(*) from btl_event").query(Integer.class).single();
+	}
+
+	private int howManyRaces() {
+		return db.sql("select count(*) from race").query(Integer.class).single();
+	}
+
+	private long placeOfRank(int rank) {
+		return db.sql("select id from place where rank = ?").param(rank).query(Long.class).single();
+	}
+
+	private long countryCoded(String code) {
+		return db.sql("select id from country where code = ?").param(code).query(Long.class)
+				.single();
+	}
+
+	/** An event as the calendar holds it, found by its address and by nothing else. */
+	private Optional<AnEvent> eventAt(String address) {
+		return db.sql("select id, name, date, place_id, city, country_id, kind, featured,"
+						+ " description, link from btl_event where slug = ?")
+				.param(address)
+				.query((row, one) -> new AnEvent(row.getLong(1), row.getString(2),
+						row.getDate(3).toLocalDate(), row.getObject(4, Long.class), row.getString(5),
+						row.getObject(6, Long.class), row.getString(7), row.getBoolean(8),
+						row.getString(9), row.getString(10)))
+				.optional();
+	}
+
+	/** The event at that address, and a failed assertion naming the address where there is
+	 *  none: a case that reads an event the route did not make fails on that sentence. */
+	private AnEvent theEventAt(String address) {
+		return eventAt(address).orElseThrow(
+				() -> new AssertionError("no event answers at " + address));
+	}
+
+	/** Every race under one event, in the order of their keys. */
+	private List<ARace> racesOf(long event) {
+		return db.sql("select id, name, renamed, date, kind, limit_seconds, distance_km, ascent_m,"
+						+ " descent_m from race where event_id = ? order by id")
+				.param(event)
+				.query((row, one) -> new ARace(row.getLong(1), row.getString(2), row.getBoolean(3),
+						row.getDate(4).toLocalDate(), row.getString(5), row.getInt(6),
+						fourFigures(row.getBigDecimal(7).toPlainString(), row.getInt(8), row.getInt(9),
+								row.getInt(6))))
+				.list();
+	}
+
+	/** The race a member's one result is counted on, the day it carries, its four figures and
+	 *  its points. */
+	private AResult theResultOf(String memberNumber) {
+		List<AResult> his = db.sql("select race_id, race_date, distance_km, ascent_m, descent_m, seconds, points"
+						+ " from result where competitor_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(memberNumber)
+				.query((row, one) -> new AResult(row.getLong(1), row.getDate(2).toLocalDate(),
+						fourFigures(row.getBigDecimal(3).toPlainString(), row.getInt(4),
+								row.getInt(5), row.getInt(6)),
+						row.getBigDecimal(7)))
+				.list();
+
+		assertThat(his).as("%s has no result, or more than one", memberNumber).hasSize(1);
+
+		return his.get(0);
+	}
+
+	/** The one race under an event, and a failed assertion where there is none or more. */
+	private ARace theOneRaceOf(long event) {
+		List<ARace> under = racesOf(event);
+
+		assertThat(under).as("the event holds no race, or more than one").hasSize(1);
+
+		return under.get(0);
+	}
+
+	/** Everything a submission says about its race, as it stands now: the race it points at and
+	 *  that race's day, or the five columns that describe one instead, and its four figures. */
+	private Described whatTheSubmissionSays(long item) {
+		return db.sql("select rs.race_id, rs.race_date, rs.race_name, rs.race_kind, rs.place_id,"
+						+ " rs.city, rs.country_id, rs.distance_km, rs.ascent_m, rs.descent_m,"
+						+ " rs.seconds from result_submission rs join verification v"
+						+ " on v.result_submission_id = rs.id where v.id = ?")
+				.param(item)
+				.query((row, one) -> new Described(row.getObject(1, Long.class),
+						row.getDate(2).toLocalDate(), row.getString(3), row.getString(4),
+						row.getObject(5, Long.class), row.getString(6), row.getObject(7, Long.class),
+						fourFigures(row.getBigDecimal(8).toPlainString(), row.getInt(9),
+								row.getInt(10), row.getInt(11))))
+				.single();
+	}
+
+	private record AnEvent(long id, String name, LocalDate date, Long placeId, String city,
+			Long countryId, String kind, boolean featured, String description, String link) {
+	}
+
+	/** One race, with what it fixes in the shape {@link #fourFigures} writes: its limit stands
+	 *  where a run's time would. */
+	private record ARace(long id, String name, boolean renamed, LocalDate date, String kind,
+			int limitSeconds, String fixes) {
+	}
+
+	private record AResult(long raceId, LocalDate raceDate, String figures, BigDecimal points) {
+	}
+
+	private record Described(Long raceId, LocalDate raceDate, String raceName, String raceKind,
+			Long placeId, String city, Long countryId, String figures) {
 	}
 
 	/**

@@ -231,6 +231,10 @@ class MembershipConstraintsTest extends DatabaseTest {
 	private static final String NAMES_A_BOOK_ENTRY_ON_THE_WRONG_BASIS =
 			membershipNaming(A_MEMBER + ", 2030, 'feeExempt', null, " + HIS_BOOK_ENTRY + ", " + A_TRAIL);
 
+	/** V56's one change, by name: the trail of a membership held on a balance is whole or absent. */
+	private static final String THE_TRAIL_OF_A_BALANCE =
+			"membership_on_a_balance_carries_its_trail_whole_or_not_at_all";
+
 	static List<Violation> violations() {
 		return List.of(
 				/* THESE FOUR CARRY A TRAIL, and not for tidiness: without one they would break
@@ -344,7 +348,24 @@ class MembershipConstraintsTest extends DatabaseTest {
 
 				/* And the line it names has to be there. */
 				Violation.of("membership_balance_entry_fk",
-						membershipNaming(A_MEMBER + ", 2030, 'balance', null, 999999, null, null, null")));
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, 999999, null, null, null")),
+
+				/* V56, AND THE THREE ROWS BREAK IT IN THREE DIFFERENT DIRECTIONS, each on a line of his
+				   own book so that `membership_basis_says_whether_a_book_entry_is_named` is satisfied
+				   and this is the only thing wrong with them: the name and no moment, the moment and no
+				   name, and an account with neither. The first two are the two halves of the PAIR, so
+				   neither can be satisfied by the other's half, and the third is the clause about the
+				   POINTER, which the pair does not say: it is satisfied by two nulls. A row that broke
+				   two of them would prove nothing about which. */
+				Violation.of(THE_TRAIL_OF_A_BALANCE,
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY
+								+ ", null, 'Blagajnik Probni', null")),
+				Violation.of(THE_TRAIL_OF_A_BALANCE,
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY
+								+ ", null, null, " + AN_INSTANT)),
+				Violation.of(THE_TRAIL_OF_A_BALANCE,
+						membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY + ", "
+								+ AN_ACCOUNT + ", null, null")));
 	}
 
 	@ParameterizedTest
@@ -417,15 +438,143 @@ class MembershipConstraintsTest extends DatabaseTest {
 	private static final String GOOD_OUT_OF_THE_BOOK =
 			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY + ", null, null, null");
 
+	/**
+	 * Let in on a balance that fell short of the fee, with the whole trail V56 asks of it, which is
+	 * what the route writes for „Odobri umanjen iznos iz balansa".
+	 */
+	private static final String GOOD_OUT_OF_THE_BOOK_AT_A_REDUCED_AMOUNT =
+			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY + ", " + A_TRAIL);
+
+	/**
+	 * The same, once the account that pressed the button is gone: no pointer, and the name and the moment
+	 * still there. `ON DELETE SET NULL` leaves exactly this behind, so the rule has to take it.
+	 */
+	private static final String GOOD_OUT_OF_THE_BOOK_AFTER_THE_ACCOUNT_WENT =
+			membershipNaming(A_MEMBER + ", 2030, 'balance', null, " + HIS_BOOK_ENTRY
+					+ ", null, 'Blagajnik Probni', " + AN_INSTANT);
+
 	static List<String> legitimateRows() {
 		return List.of(GOOD_ON_HIS_OWN_RECEIPT, GOOD_LET_IN_FREE, GOOD_ANOTHER_MEMBER,
-				GOOD_OUT_OF_THE_BOOK);
+				GOOD_OUT_OF_THE_BOOK, GOOD_OUT_OF_THE_BOOK_AT_A_REDUCED_AMOUNT,
+				GOOD_OUT_OF_THE_BOOK_AFTER_THE_ACCOUNT_WENT);
 	}
 
 	@ParameterizedTest
 	@MethodSource("legitimateRows")
 	void aLegitimateRowIsAccepted(String insert) {
 		assertThat(db.sql(insert).update()).isOne();
+	}
+
+	/**
+	 * WHAT V56 DOES TO A DATABASE THAT ALREADY HOLDS A MEMBERSHIP ON A BALANCE, run against a real
+	 * database - because every case in this file starts from an EMPTY one and writes the rows it needs,
+	 * so each of them satisfies a new constraint by construction. A constraint that cannot survive the
+	 * rows already there is invisible to any suite that makes its own: that is what took QA down on
+	 * 27.09.2026 (V35), and {@link TheTrailArrivesOverMembershipsAlreadyThereTest} says so at length.
+	 *
+	 * <p><b>The fixture takes away the migration's ONE change and names it.</b> V56 adds no column, so
+	 * the way the carried-over cases of V22 and V35 undo a migration - drop the columns it adds and let
+	 * {@code cascade} compute the rest - has nothing to drop; what V56 adds is one constraint, and a
+	 * list of one name is the change itself and not a list of its consequences. The row written after
+	 * the undo is the only shape a database held before this file: a membership on a balance with all
+	 * three columns empty, because nothing ever wrote them there. The constraint would take it standing
+	 * as well; it is written after the undo because this case is about the migration meeting it.
+	 *
+	 * <p><b>Then THE MIGRATION ITSELF is executed</b> - the file Flyway applied
+	 * ({@link DatabaseTest#migrationSql}), not a copy of its statements - and the catalogue is asked
+	 * whether the constraint came out VALIDATED. That is the claim the header of V56 makes against
+	 * V35's pair, which was added {@code not valid}; a constraint that quietly became {@code not valid}
+	 * would pass every case above and protect nothing about the rows that were there.
+	 *
+	 * <p>The last assertion is that the constraint this run added is a live one: it refuses a half
+	 * trail. Without it the case would pass for a migration that added a constraint which says
+	 * nothing.
+	 */
+	@Test
+	void theRuleArrivesOverBalanceMembershipsAlreadyThere() {
+		jdbc.execute("alter table membership drop constraint " + THE_TRAIL_OF_A_BALANCE);
+
+		assertThat(db.sql(GOOD_OUT_OF_THE_BOOK).update())
+				.as("the membership on a balance, with all three columns empty, could not be written")
+				.isOne();
+
+		jdbc.execute(migrationSql("56"));
+
+		assertThat(db.sql("select convalidated from pg_constraint where conname = ?"
+						+ " and conrelid = 'membership'::regclass")
+				.param(THE_TRAIL_OF_A_BALANCE).query(Boolean.class).single())
+				.as("the migration added the rule over the rows already there as one it never checked")
+				.isTrue();
+		assertThat(db.sql("select count(*) from membership where basis = 'balance'")
+				.query(Long.class).single())
+				.as("the membership that was there is not there any more")
+				.isOne();
+
+		assertThatThrownBy(() -> db.sql("update membership set decided_by_name = 'Blagajnik Probni'"
+						+ " where basis = 'balance'").update())
+				.as("the rule this run added refuses nothing, and it is the rule to be met by a half"
+						+ " trail written over the row that was already there")
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining(THE_TRAIL_OF_A_BALANCE);
+	}
+
+	/**
+	 * Every basis the table knows, less the ones that some rule about the TRAIL names - asked of the
+	 * catalogue and not written down.
+	 *
+	 * <p>A rule about the trail is a CHECK that mentions {@code decided_by}, and it speaks for a basis
+	 * by naming it, which is how all three of them are written (V35 scoped them by name, and V56
+	 * follows). So a basis that appears in {@code membership_basis_known} and in no such rule is a
+	 * basis nobody has said anything about, and that is the sentence V35's header ends on: „a third
+	 * basis arrives to a question nobody has answered for it yet".
+	 */
+	private List<String> basesNoRuleAboutTheTrailNames() {
+		List<String> rules = db.sql("select pg_get_constraintdef(con.oid) from pg_constraint con"
+						+ " where con.conrelid = 'membership'::regclass and con.contype = 'c'"
+						+ " and pg_get_constraintdef(con.oid) like '%decided_by%'")
+				.query(String.class).list();
+
+		return basesNamedIn("membership_basis_known").stream()
+				.filter(basis -> rules.stream().noneMatch(rule -> rule.contains("'" + basis + "'")))
+				.sorted().toList();
+	}
+
+	/**
+	 * EVERY BASIS THERE IS HAS A RULE ABOUT ITS TRAIL: never on a payment, always on an exemption,
+	 * whole or absent on a balance.
+	 *
+	 * <p>This is the floor under the three rules, and it is derived from the schema rather than from a
+	 * list: the bases are read out of {@code membership_basis_known} and the rules out of the catalogue.
+	 * V35 left the question open on purpose and said so in its header; V56 answers it for the third
+	 * basis, and from here the NEXT basis cannot arrive without this case saying so, instead of
+	 * arriving to a question that nobody notices is open.
+	 */
+	@Test
+	void everyBasisTheTableKnowsHasARuleAboutItsTrail() {
+		assertThat(basesNamedIn("membership_basis_known"))
+				.as("the table knows fewer than three bases, so the floor below asserts almost nothing")
+				.hasSize(3);
+
+		assertThat(basesNoRuleAboutTheTrailNames())
+				.as("a basis the table knows and no rule about the trail names")
+				.isEmpty();
+	}
+
+	/**
+	 * AND THE FLOOR SEES A BASIS THAT ARRIVES WITHOUT ONE, which is the only way to know it is a floor
+	 * and not a list that happens to be empty.
+	 *
+	 * <p>A fourth word is added to {@code membership_basis_known} inside this case and rolled back
+	 * with it, and the question above must name exactly that word. No migration is needed to ask it,
+	 * which is the point: the day somebody writes one the floor is already looking.
+	 */
+	@Test
+	void aBasisThatArrivesWithoutARuleAboutItsTrailIsSeen() {
+		jdbc.execute("alter table membership drop constraint membership_basis_known");
+		jdbc.execute("alter table membership add constraint membership_basis_known"
+				+ " check (basis in ('payment', 'feeExempt', 'balance', 'scholarship'))");
+
+		assertThat(basesNoRuleAboutTheTrailNames()).containsExactly("scholarship");
 	}
 
 	/** What the schema itself says about a basis, in its own words. */
