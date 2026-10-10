@@ -1132,11 +1132,11 @@
     "approve": "Odobri",
     "sendBack": "Odbij",
     "newRace": "NOVO",
-    "newRaceTitle": "Ove trke nema u kalendaru, pa se prijava odavde ne može odobriti.",
+    "newRaceTitle": "Ove trke nema u kalendaru: prijava se odobrava uz trku koja se za nju upiše ili izabere.",
     "sweptLeft": {
-      "one": "Ostala je {count} prijava sa trka kojih nema u kalendaru. Takva prijava se odavde ne može odobriti.",
-      "few": "Ostale su {count} prijave sa trka kojih nema u kalendaru. Takve prijave se odavde ne mogu odobriti.",
-      "other": "Ostalo je {count} prijava sa trka kojih nema u kalendaru. Takve prijave se odavde ne mogu odobriti."
+      "one": "Ostala je {count} prijava sa trka kojih nema u kalendaru. Takva prijava se odobrava pojedinačno, uz trku koja se za nju upiše ili izabere.",
+      "few": "Ostale su {count} prijave sa trka kojih nema u kalendaru. Takve prijave se odobravaju pojedinačno, uz trku koja se za svaku upiše ili izabere.",
+      "other": "Ostalo je {count} prijava sa trka kojih nema u kalendaru. Takve prijave se odobravaju pojedinačno, uz trku koja se za svaku upiše ili izabere."
     },
     "amend": "Ispravi",
     "amendTitle": "Ispravka pre odluke",
@@ -1153,6 +1153,12 @@
     "decision": "Odluka",
     "confirmSendBack": "Odbij uz ovaj razlog",
     "cancel": "Odustani",
+    "placeRace": "Upiši ili izaberi trku",
+    "placeTitle": "Trka za ovu prijavu",
+    "placeNote": "Trke nema u kalendaru. Izaberi postojeću trku ili upiši novu, koja sa svojim događajem ulazi u kalendar kad odobriš. Datum i mesto ostaju onakvi kako ih je član poslao.",
+    "chosenRace": "Izabrana trka: {race}",
+    "limitNote": "Na vremenskoj trci vreme je ograničenje trke.",
+    "placeSave": "Odobri sa ovom trkom",
     "statement": {
       "title": "Izvod iz banke",
       "choose": "Izaberi PDF izvoda",

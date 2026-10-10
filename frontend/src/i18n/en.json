@@ -1132,11 +1132,11 @@
     "approve": "Approve",
     "sendBack": "Refuse",
     "newRace": "NEW",
-    "newRaceTitle": "This race is not in the calendar, so the report cannot be approved from here.",
+    "newRaceTitle": "This race is not in the calendar: the report is approved with a race entered or chosen for it.",
     "sweptLeft": {
-      "one": "{count} report is left from races that are not in the calendar. Such a report cannot be approved from here.",
-      "few": "{count} reports are left from races that are not in the calendar. Such reports cannot be approved from here.",
-      "other": "{count} reports are left from races that are not in the calendar. Such reports cannot be approved from here."
+      "one": "{count} report is left from races that are not in the calendar. Such a report is approved on its own, with a race entered or chosen for it.",
+      "few": "{count} reports are left from races that are not in the calendar. Such reports are approved one at a time, with a race entered or chosen for each.",
+      "other": "{count} reports are left from races that are not in the calendar. Such reports are approved one at a time, with a race entered or chosen for each."
     },
     "amend": "Correct",
     "amendTitle": "Correction before deciding",
@@ -1153,6 +1153,12 @@
     "decision": "Decision",
     "confirmSendBack": "Refuse with this reason",
     "cancel": "Cancel",
+    "placeRace": "Enter or choose the race",
+    "placeTitle": "The race for this report",
+    "placeNote": "The race is not in the calendar. Choose a race that is, or enter a new one, which goes into the calendar with its event when you approve. The day and the town stay as the member sent them.",
+    "chosenRace": "Chosen race: {race}",
+    "limitNote": "On a race by time, the time is the race's limit.",
+    "placeSave": "Approve with this race",
     "statement": {
       "title": "A bank statement",
       "choose": "Choose a statement PDF",

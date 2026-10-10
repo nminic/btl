@@ -139,11 +139,26 @@
   background: var(--mine-surface);
 }
 
+/* What a row still has to say on a phone about a column it does not draw there, said in a
+   box inside a cell it does draw, and drawn on a phone only (the queue of results is the first,
+   by the owner's answer of 10.10.2026: the figures under the race's name). It is the other half
+   of the query below, in the same unit and at the same width, so the column and the box never
+   both show and never both hide; in `em` it would agree with the pixels only at the default text
+   size (`components/NamePlate.css` measured the same for its own half). A box and not a cell,
+   because a cell taken out of a row moves every cell after it. */
+.table__phone-only {
+  display: none;
+}
+
 /* On a phone the table keeps four columns: position, name, category, points.
    Everything else would force a horizontal scroll nobody reads. */
 @media (max-width: 699.98px) {
   .table__hide-phone {
     display: none;
+  }
+
+  .table__phone-only {
+    display: block;
   }
 }
 

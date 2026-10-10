@@ -310,6 +310,8 @@ describe('the queue of results as the server answers it', () => {
       const table = await screen.findByRole('table', { name: sr.review.waiting })
       const row = await rowOf(RUNNER)
 
+      /* And no column of points, at any width: the owner's answer of 10.10.2026 (question 22),
+         „Bodovi izlaze iz reda za proveru". */
       expect(within(table).getAllByRole('columnheader').map((one) => one.textContent)).toEqual([
         sr.newResult.date,
         sr.competitors.columns.member,
@@ -319,7 +321,6 @@ describe('the queue of results as the server answers it', () => {
         sr.rankings.columns.ascent,
         sr.rankings.columns.descent,
         sr.profile.columns.time,
-        sr.profile.columns.points,
         sr.review.decision,
       ])
 
@@ -339,8 +340,9 @@ describe('the queue of results as the server answers it', () => {
       )
       expect(row.getByText('Startni broj 412')).toBeVisible()
       expect(cells.slice(4, 8)).toEqual(['10,00', '50', '40', '55:00'])
-      /* What the approval would award, from the figures beside it. */
-      expect(cells[8]).toBe(formatPoints(pointsOf(10, 50, 40, 3300), 'sr'))
+      /* And no points anywhere on the row, which a cell of its own carried until question 22:
+         10 km, 50 m up, 40 m down in 55:00 is worth this, and the row does not say it. */
+      expect(row.queryByText(formatPoints(pointsOf(10, 50, 40, 3300), 'sr'))).toBeNull()
     } finally {
       server.stop()
     }
@@ -379,7 +381,7 @@ describe('the queue of results as the server answers it', () => {
       const cells = none.getAllByRole('cell').map((one) => one.textContent)
 
       expect(cells[0]).toBe('')
-      expect(cells.slice(4, 9)).toEqual(['', '', '', '', ''])
+      expect(cells.slice(4, 8)).toEqual(['', '', '', ''])
     } finally {
       server.stop()
     }
@@ -487,21 +489,26 @@ describe('a decision on one run', () => {
     }
   })
 
-  it('reads the server’s sentence on a run whose race the calendar does not hold', async () => {
-    const user = setupUser()
-    const sentence = 'Trka nije u kalendaru, pa rezultat ne može odavde da se odobri.'
-    const server = serverWith(RUNS, (id) => (id === '704' ? refused(sentence, 409) : taken()))
+  it('offers a run on a race the calendar does not hold no plain approval, only the panel that names its race', async () => {
+    /* The owner's answer of 10.10.2026: „red NOVO se odobrava samo kroz panel u kom se upisuje ili
+       bira trka". Until R3b the row drew „Odobri" and the route refused it with a sentence; the
+       button is gone, the panel's is there, and the row naming no run keeps its „Odobri", because
+       it is not such a run (`admin/raceForTheRun.test.tsx` measures the panel itself). */
+    const server = serverWith(RUNS)
 
     try {
       openTheQueue()
 
-      await user.click((await rowOf('000040')).getByRole('button', { name: sr.review.approve }))
+      const novo = await rowOf('000040')
 
-      await untilItHasAnswered()
+      expect(novo.queryByRole('button', { name: sr.review.approve })).toBeNull()
+      expect(novo.getByRole('button', { name: sr.review.placeRace })).toBeVisible()
+      expect(novo.getByRole('button', { name: sr.review.sendBack })).toBeVisible()
 
-      expect(screen.getAllByRole('alert')).toHaveLength(1)
-      expect((await rowOf('000040')).getByRole('alert')).toHaveTextContent(sentence)
-      expect(bodyOf(decisionsIn(server.asked)[0])).toEqual({ approved: true, reason: '' })
+      for (const member of [RUNNER, '000020', '000030', '000050']) {
+        expect((await rowOf(member)).getByRole('button', { name: sr.review.approve })).toBeVisible()
+        expect((await rowOf(member)).queryByRole('button', { name: sr.review.placeRace })).toBeNull()
+      }
     } finally {
       server.stop()
     }
@@ -980,10 +987,12 @@ describe('the figures the moderator sets', () => {
         { member: RUNNER, id: 701 },
         { member: '000030', id: 703 },
       ],
+      /* The row naming no run, which the route refuses for having none: the run on a race the
+         calendar does not hold stood here until R3b, and „Odobri" is no longer drawn on it. */
       stand: {
-        member: '000040',
-        id: 704,
-        sentence: 'Trka nije u kalendaru, pa rezultat ne može odavde da se odobri.',
+        member: '000050',
+        id: 705,
+        sentence: 'Stavka ne nosi prijavljen rezultat.',
       },
       afterwards: ['000020', '000040', '000050'],
     },
@@ -1493,7 +1502,7 @@ describe('the one decision for the whole queue', () => {
       /* And what it stepped over, said where it says what it did. The row naming no run is not a
          run on a race the calendar does not hold, so it is not counted among them. */
       expect(
-        screen.getByText('Ostala je 1 prijava sa trka kojih nema u kalendaru. Takva prijava se odavde ne može odobriti.'),
+        screen.getByText('Ostala je 1 prijava sa trka kojih nema u kalendaru. Takva prijava se odobrava pojedinačno, uz trku koja se za nju upiše ili izabere.'),
       ).toBeVisible()
       expect(screen.getByText('000040')).toBeVisible()
       expect(screen.getByText('000050')).toBeVisible()
@@ -1604,7 +1613,7 @@ describe('the one decision for the whole queue', () => {
       await sweptSays('Rešena je 1 stavka.')
 
       expect(
-        screen.getByText('Ostale su 2 prijave sa trka kojih nema u kalendaru. Takve prijave se odavde ne mogu odobriti.'),
+        screen.getByText('Ostale su 2 prijave sa trka kojih nema u kalendaru. Takve prijave se odobravaju pojedinačno, uz trku koja se za svaku upiše ili izabere.'),
       ).toBeVisible()
     } finally {
       server.stop()
@@ -1713,14 +1722,19 @@ describe('what a decision leaves for the screens that read after it', () => {
        read once its screen has drawn with what it read, so an absence is never read off a screen
        that had not asked yet.
      *
-       Both caches, both doors, all three answers. What the route refused changed nothing on the
-       server, so it drops nothing (`PendingQueue.tsx`: a screen throwing away an answer it still
-       has every reason to trust); a decision the route took changes the queue; and an approval is
-       the one decision that changes the standings as well. */
+       Both caches, both doors, all three answers. A decision the route took changes the queue, and an
+       approval is the one decision that changes the standings as well. What the route refused changed
+       nothing on the server, so the standings are not read again for it - but since R3b the queue
+       IS, at once and without leaving the screen: a refusal in the route's words says the list on
+       the screen is not the queue any more („O stavci je već odlučeno." is another moderator's
+       decision), which is the finding of the review of T5 (PENDING, „Odbijanje koje dokazuje da je
+       ekran zastareo ostavlja zastareo crtež"). Until R3b this case held the opposite, on the reason
+       `PendingQueue.tsx` gives for a screen that throws away an answer it still trusts. */
     const user = setupUser()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     let takes = false
     const server = serverWith(RUNS, () => (takes ? taken() : refused('O stavci je već odlučeno.', 409)))
+    const queueReads = (): number => reads(server.asked, '/api/verification')
 
     try {
       const { router } = openTheQueue()
@@ -1731,20 +1745,27 @@ describe('what a decision leaves for the screens that read after it', () => {
         await router.navigate(PATH)
         await screen.findByRole('table', { name: sr.review.waiting })
 
-        return { queue: reads(server.asked, '/api/verification'), standings: reads(server.asked, '/api/results') }
+        return { queue: queueReads(), standings: reads(server.asked, '/api/results') }
       }
+
+      await rowOf(RUNNER)
+      expect(queueReads()).toBe(1)
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
       await untilItHasAnswered()
 
       expect(screen.getAllByRole('alert')).toHaveLength(1)
+      /* Read again while the screen stood, and only once. */
+      expect(queueReads()).toBe(2)
 
-      expect(await awayAndBack(), 'an approval the route refused').toEqual({ queue: 1, standings: 1 })
+      expect(await awayAndBack(), 'an approval the route refused').toEqual({ queue: 2, standings: 1 })
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
       await sweptSays('Rešeno je 0 stavki.')
+      /* Three refusals in one walk, and the list is read again once for the walk. */
+      expect(queueReads()).toBe(3)
 
-      expect(await awayAndBack(), 'a sweep the route took nothing from').toEqual({ queue: 1, standings: 1 })
+      expect(await awayAndBack(), 'a sweep the route took nothing from').toEqual({ queue: 3, standings: 1 })
 
       takes = true
       await user.click((await rowOf('000020')).getByRole('button', { name: sr.review.sendBack }))
@@ -1754,18 +1775,18 @@ describe('what a decision leaves for the screens that read after it', () => {
 
       expect(screen.queryByText('000020')).toBeNull()
 
-      expect(await awayAndBack(), 'a refusal the route took').toEqual({ queue: 2, standings: 1 })
+      expect(await awayAndBack(), 'a refusal the route took').toEqual({ queue: 4, standings: 1 })
 
       await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
       await untilItHasAnswered()
 
       expect(screen.queryByText(RUNNER)).toBeNull()
-      expect(await awayAndBack(), 'an approval the route took').toEqual({ queue: 3, standings: 2 })
+      expect(await awayAndBack(), 'an approval the route took').toEqual({ queue: 5, standings: 2 })
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
       await sweptSays('Rešena je 1 stavka.')
 
-      expect(await awayAndBack(), 'a sweep the route took something from').toEqual({ queue: 4, standings: 3 })
+      expect(await awayAndBack(), 'a sweep the route took something from').toEqual({ queue: 6, standings: 3 })
     } finally {
       server.stop()
     }

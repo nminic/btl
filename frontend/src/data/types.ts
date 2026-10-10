@@ -1132,12 +1132,16 @@ export type PendingItem = {
    *  P8). Empty on the other four. */
   email: string
   /**
-   * The town and the country, on the two queues that have one.
+   * The town and the country, on the three queues that have one.
    *
    * On the payments, because how a member pays follows the country they live in
    * (PDL P8), so it belongs beside the fee. On the new teams, because approving
    * a proposal is what makes the team and these are two of the four things it is
-   * made from (PDL P13). Empty on the other three.
+   * made from (PDL P13). And on the results, for a run on a race the calendar does
+   * not hold: the town the member gave for it, where the event an approval makes
+   * will stand, which the moderator is to see (the owner's answer of 10.10.2026,
+   * in the record's wording, „moderator u redu vidi mesto koje je član upisao").
+   * A run from the calendar names none. Empty on the other two.
    */
   city: string
   country: string

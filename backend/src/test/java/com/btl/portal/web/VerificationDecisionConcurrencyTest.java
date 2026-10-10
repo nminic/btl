@@ -17,6 +17,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -125,8 +126,8 @@ class VerificationDecisionConcurrencyTest {
 	/**
 	 * WHAT THE CASES ABOUT A RACE THE CALENDAR DOES NOT HOLD CALL THE EVENTS THEY MAKE, and every
 	 * address begins with the same words so the cleanup can take them all back by them: these rows
-	 * are committed, and one left behind would number the next run's event instead of the one
-	 * this case asserts.
+	 * are committed, and one left behind would refuse the next run's approval as an event that is
+	 * in the calendar already.
 	 */
 	private static final String MADE_BY_THESE_CASES = "van-kalendara-istovremeno-%";
 
@@ -807,6 +808,74 @@ class VerificationDecisionConcurrencyTest {
 			assertThat(answerWith(ONE_MODERATOR, runItem, makingTheRace(A_THIRD_NAME)).getStatus())
 					.isEqualTo(200);
 			assertThat(eventAt(A_THIRD_ADDRESS)).isPresent();
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * AN ADDRESS TAKEN AFTER THE APPROVAL ASKED ABOUT IT REFUSES THE APPROVAL, AND THE ROW IT HAD
+	 * CLAIMED WAITS AGAIN.
+	 *
+	 * <p>PDL, the owner's answer of 10.10.2026: „ako događaj postoji a trke nema, odobrenje se
+	 * odbija". The route asks before it claims the row, and that question cannot see an event
+	 * another approval is writing at the same moment, because that event is not committed yet; only
+	 * the unique index sees it, and by then the row is claimed.
+	 *
+	 * <p><b>So this connection is the other approval.</b> It writes an event at the address the
+	 * request is about to make and holds it uncommitted. The request asks, finds nothing, claims the
+	 * row and stops at its own insert, behind this connection: nothing else the route does waits on
+	 * an event nobody has committed, so being held up here is being at that insert, and the lock
+	 * manager says when it is ({@link BlockedBehindThisHold}). Then this connection commits.
+	 *
+	 * <p>What has to be left is a refusal in the sentence the same refusal gets before the claim, and
+	 * nothing of the answer: the row waiting, no race, no result, the submission as the member sent
+	 * it, and one event at that address - the one that took it.
+	 */
+	@Test
+	void anAddressTakenAfterTheApprovalAskedAboutItRefusesItAndTheRowWaitsAgain() throws Exception {
+		aRunOnARaceTheCalendarDoesNotHoldWaits();
+
+		ExecutorService pool = Executors.newFixedThreadPool(1);
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			long theOneThatTookIt = holdingTheRow.execute(heldOpen -> {
+				long event = db.sql("insert into btl_event (slug, name, date, place_id, kind, featured,"
+								+ " description, link) values (?, ?, date '2026-09-12', " + A_TOWN + ","
+								+ " 'race', false, '', '') returning id")
+						.params(A_THIRD_ADDRESS, A_THIRD_NAME).query(Long.class).single();
+
+				submitted.add(pool.submit(() -> answerWith(ONE_MODERATOR, runItem,
+						makingTheRace(A_THIRD_NAME))));
+
+				theOneStoppedBehindThisHold();
+
+				return event;
+			});
+
+			MockHttpServletResponse refused = submitted.get(0).get(30, TimeUnit.SECONDS);
+
+			assertThat(refused.getStatus()).isEqualTo(409);
+			assertThat(refused.getContentAsString(StandardCharsets.UTF_8))
+					.contains("Događaj sa tim nazivom u toj godini već postoji.");
+
+			assertThat(db.sql("select id from btl_event where slug like ?").param(MADE_BY_THESE_CASES)
+					.query(Long.class).list())
+					.as("the refused approval left an event of its own, numbered or not")
+					.containsExactly(theOneThatTookIt);
+			assertThat(db.sql("select count(*) from race where name = ?").param(A_THIRD_NAME)
+					.query(Integer.class).single()).isZero();
+			assertThat(db.sql("select count(*) from result where competitor_id = ?").param(founder)
+					.query(Integer.class).single()).isZero();
+			assertThat(db.sql("select state from verification where id = ?").param(runItem)
+					.query(String.class).single())
+					.as("the row the refused approval had claimed was left decided")
+					.isEqualTo("waiting");
+			assertThat(db.sql("select race_name from result_submission where id = ? and race_id"
+							+ " is null").param(theRun).query(String.class).single())
+					.as("the submission no longer describes the race the member typed")
+					.isEqualTo(THE_NAME_HE_TYPED);
 		} finally {
 			pool.shutdownNow();
 		}

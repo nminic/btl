@@ -216,9 +216,16 @@ export function usePending(): ResourceState<PendingItem[]> {
  *
  * <p>No proposals are merged in, for the same reason: the results tab is fed by the server
  * alone, and a session holds no run a moderator could decide.
+ *
+ * @param revision bumped by the screen when the route's refusal says the list it drew is no
+ *                 longer the queue (a run another moderator decided, a race gone from the
+ *                 calendar), together with the cache dropped, so the list is read again while the
+ *                 screen stays: the shape `AskingThisTeam.tsx` reads its own list again in, and the
+ *                 finding of the review of T5 it answers (PENDING, „Odbijanje koje dokazuje da je
+ *                 ekran zastareo ostavlja zastareo crtež")
  */
-export function useWaitingRuns(): ResourceState<WaitingRun[]> {
-  const state = useResource<ServedPendingItem[]>('verification')
+export function useWaitingRuns(revision?: number): ResourceState<WaitingRun[]> {
+  const state = useResource<ServedPendingItem[]>('verification', { revision })
 
   return useMemo(
     () =>
