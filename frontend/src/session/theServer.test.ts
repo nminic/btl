@@ -450,11 +450,23 @@ describe('who the server says I am', () => {
      told". And every number it may not believe comes back as „I was not told". The set it believes is
      written once, on the reader: a whole number of nought or more.
 
-     **Nought is believed for all three, and that is the boundary of one rule rather than a finding about
-     each.** A team numbered nought cannot exist (`team.id` is a `bigserial`, V11) and a season numbered
-     nought is not a year, so for those two the floor is looser than it could be. That is written here and
-     not mended, because a floor of its own per key would be three readers where `wholeIn` says there is
-     one, and nothing in PENDING asks for it. */
+     **Nought is believed for all four, and that is the boundary of one rule rather than a finding about
+     each.** A team numbered nought cannot exist (`team.id` is a `bigserial`, V11), a season numbered
+     nought is not a year and neither is the season he joined his team in, so for those three the floor
+     is looser than it could be. That is written here and not mended, because a floor of its own per key
+     would be four readers where `wholeIn` says there is one, and nothing in PENDING asks for it.
+
+     **AND SINCE 10.10.2026 THE QUESTION IS ASKED OF BOTH READERS, because a key may be read by either.**
+     The record the server declares has nineteen names and the portal has two readers of it:
+     `whoTheServerSaysIAm` reads who he is, and `whatTheServerSaysOfMyProfile` reads the page his own
+     profile is drawn from. They are two on purpose (the second is `null` for a page the portal cannot
+     believe and the first never is, so a fault in his page cannot sign him out; the cases on that are
+     below), and the one number the page reads that who-he-is does not is `teamSince`. A floor that asked
+     only the first would demand that the session read it, which is the very thing the separation exists
+     to refuse. So each key is asked of BOTH, with a whole page around it, and the question for it is
+     WHICH READER HANDS IT BACK: a key that neither does fails here by name, which is the whole of what
+     this floor is for and is unchanged, and whichever reader does is held to the same two things. Nothing
+     is listed by hand: which reader reads which key is found out by asking. */
   const NUMBERS_THE_SERVER_DECLARES = Object.entries(myOwnRecordFromMe)
     .filter(([, value]) => typeof value === 'number')
     .map(([key]) => key)
@@ -479,29 +491,54 @@ describe('who the server says I am', () => {
     expect(NUMBERS_THE_SERVER_DECLARES.length).toBeGreaterThanOrEqual(3)
   })
 
-  it.each(NUMBERS_THE_SERVER_DECLARES)('believes a whole number of nought or more for %s', async (key) => {
+  /** What each of the two readers hands back for `key` when the member says `sent` there (the text the
+   *  wire carries) and says everything else a page needs (`HIS_PAGE`, which is further down and is the
+   *  page the second reader accepts). `undefined` is „this reader has no such name", which is how the
+   *  floor finds out which reader reads which key. */
+  async function whatTheReadersHandBack(
+    key: string,
+    sent: string,
+  ): Promise<{ whoHeIs: unknown; hisPage: unknown }> {
+    const THE_VALUE = 'THE_VALUE_THIS_CASE_SENDS'
+    const member = JSON.stringify({ ...HIS_PAGE, [key]: THE_VALUE }).replace(
+      JSON.stringify(THE_VALUE),
+      () => sent,
+    )
+
+    server?.stop()
+    server = serverThat(() => saying(`{"role":"competitor","account":41,"member":${member}}`))
+
+    const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
+    const page = await whatTheServerSaysOfMyProfile()
+
+    return {
+      whoHeIs: Reflect.has(who, key) ? Reflect.get(who, key) : undefined,
+      hisPage: page !== null && Reflect.has(page, key) ? Reflect.get(page, key) : undefined,
+    }
+  }
+
+  it.each(NUMBERS_THE_SERVER_DECLARES)('is read by some reader, and believed as a whole number of nought or more, for %s', async (key) => {
     for (const sent of BELIEVED) {
-      server?.stop()
-      server = serverThat(() =>
-        saying(`{"role":"competitor","account":41,"member":{"${key}":${sent}}}`),
-      )
+      const { whoHeIs, hisPage } = await whatTheReadersHandBack(key, sent)
 
-      const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
+      expect(
+        whoHeIs !== undefined || hisPage !== undefined,
+        `${key} sent as ${sent}: neither reader hands it back, so the portal never reads it`,
+      ).toBe(true)
 
-      expect(Reflect.get(who, key), `${key} sent as ${sent}`).toBe(Number(sent))
+      for (const handedBack of [whoHeIs, hisPage].filter((one) => one !== undefined)) {
+        expect(handedBack, `${key} sent as ${sent}`).toBe(Number(sent))
+      }
     }
   })
 
-  it.each(NUMBERS_THE_SERVER_DECLARES)('believes nothing else for %s', async (key) => {
+  it.each(NUMBERS_THE_SERVER_DECLARES)('is believed as nothing else by either reader for %s', async (key) => {
     for (const [kind, sent] of NOT_BELIEVED) {
-      server?.stop()
-      server = serverThat(() =>
-        saying(`{"role":"competitor","account":41,"member":{"${key}":${sent}}}`),
-      )
+      const { whoHeIs, hisPage } = await whatTheReadersHandBack(key, sent)
 
-      const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
-
-      expect(Reflect.get(who, key), `${key} sent as ${kind}: ${sent}`).toBeNull()
+      for (const handedBack of [whoHeIs, hisPage].filter((one) => one !== undefined)) {
+        expect(handedBack, `${key} sent as ${kind}: ${sent}`).toBeNull()
+      }
     }
   })
 
