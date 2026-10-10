@@ -1,7 +1,9 @@
 import { Fragment, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useToday } from '../../clock/useClock'
+import { Unreadable } from '../../components/Unreadable'
 import { pairsFrom } from '../../data/derive'
+import { useWhatIsWaiting } from '../../data/useResource'
 import { useI18n } from '../../i18n/useI18n'
 import { useProfileLink } from './useProfileLink'
 import { useSession } from '../../session/useSession'
@@ -30,7 +32,9 @@ import type { Competitor, RacingPair } from '../../data/types'
  * decision, and the person being read has their own page to end it from.
  *
  * **The questions still standing are the reader's own, and only on their own page.** Whether
- * somebody else has been asked, and by whom, is their business (odluka 07.09.2026).
+ * somebody else has been asked, and by whom, is their business (odluka 07.09.2026). Since P2
+ * (10.10.2026) they are the server's: `GET /api/me/applications`, which answers the reader's own
+ * questions and nobody else's ({@link QuestionsStanding}).
  *
  * **„RASKINI" REACHES THE SERVER SINCE 28.09.2026, AND IT CHOOSES WHICH STORE BY ASKING WHICH ONE
  * HOLDS THE PAIR.** Owner, PDL, 24.09.2026: „Par sme da raskine **svaka strana, bilo kad**", and
@@ -88,7 +92,7 @@ export function RacingPairLine({
   const { t } = useI18n()
   const today = useToday()
   const linkTo = useProfileLink()
-  const { memberNumber: reader, pairInvites, pairsMade, breakPair, notify } = useSession()
+  const { memberNumber: reader, pairsMade, breakPair, notify } = useSession()
   /**
    * WHAT THE SERVER SAID ABOUT ONE ROW, AND WHICH ROW, because a member may hold two.
    *
@@ -179,27 +183,28 @@ export function RacingPairLine({
     breakPair(pair.id)
   }
 
-  const waiting = mine
-    ? pairInvites
-        .filter((one) => one.from === reader || one.to === reader)
-        .map((one) => (
-          <span key={one.id} className="profile__pair-waiting">
-            {' '}
-            {one.from === reader
-              ? t('pair.sent', { who: named(one.to) })
-              : t('pair.received', { who: named(one.from) })}
-          </span>
-        ))
-    : []
+  /* The questions still standing, on the reader's own page and on no other. Passed the number of
+     the member on the page, which on this page is the reader's own, so the reader is handed to the
+     read as a string and nobody's „no number" can reach it. */
+  const standing = mine ? (
+    <QuestionsStanding mine={competitor.memberNumber} competitors={competitors} />
+  ) : null
 
   if (held.length === 0) {
     /* On somebody else's page, nothing at all. On the reader's own, that there is no pair and what
-       is still standing: an empty space answers nothing. */
+       is still standing: an empty space answers nothing.
+     *
+       THE QUESTIONS ARE A PARAGRAPH OF THEIR OWN SINCE P2 (10.10.2026), as they already were beside
+       a pair: they are read off the server now, and what a read that failed says
+       (`components/Unreadable.tsx`) is a block that cannot stand inside a `<p>`, which the parser
+       would close around it. */
     return mine ? (
-      <p className="profile__pair">
-        <span>{t('pair.none')}</span>
-        {waiting}
-      </p>
+      <>
+        <p className="profile__pair">
+          <span>{t('pair.none')}</span>
+        </p>
+        {standing}
+      </>
     ) : null
   }
 
@@ -293,7 +298,7 @@ export function RacingPairLine({
           </Fragment>
         )
       })}
-      {waiting.length > 0 && <p className="profile__pair">{waiting}</p>}
+      {standing}
     </>
   )
 }
@@ -334,4 +339,73 @@ const WHEN_BREAKING_A_PAIR: Record<string, string> = {}
  */
 const WHAT_THE_NUMBER_SAYS_WHEN_BREAKING_A_PAIR: Record<number, string> = {
   404: 'pair.breakRefused.notHeld',
+}
+
+/**
+ * THE QUESTIONS STILL STANDING ON THE READER'S OWN PAGE, SENT AND RECEIVED, read off the server.
+ *
+ * <p>PDL, 07.09.2026: „Sopstveni profil nosi stanje: tekući trkački par sa linkom, pozive koji
+ * čekaju (i poslate i primljene) i dugme „Raskini"". Until P2 (10.10.2026) these were the session's
+ * questions, so a question asked of the member never reached this page and one he asked was gone
+ * after a reload. `GET /api/me/applications` answers both directions with `sentByMe`, names the
+ * OTHER member of each by number (`MyApplicationsApi.pairInvites`), and lists them oldest first.
+ *
+ * <p><b>Nothing while it is read, and a read that failed says so</b>, with the way to ask again
+ * (decision of 02.10.2026, PENDING stavka 368, in the PDL's words: „Spisak koji ne moze da se
+ * ucita KAZE to, umesto da izgleda prazan"). The pairs drawn above it are this page's own read and
+ * stand either way.
+ *
+ * <p><b>A question whose other member has let the fee lapse is not drawn.</b> Derived on
+ * 10.10.2026 and told to the owner with his answers of that day, not his word: „poziv u par koji
+ * čeka, a drugom članu je istekla članarina, ne crta se na sopstvenom profilu". The server already
+ * names nobody there (`MyApplicationsApi`: „the person behind it stops being named"), and a row
+ * standing without a name would tell the member who asked that the fee of the one he asked has
+ * lapsed, which Article 74 shuts and PDL, 13.09.2026 forbids „ni posredno". Not drawn, it reads
+ * exactly like a question that has been answered, which says nothing about anybody.
+ *
+ * <p><b>A number the list of members does not carry is said as the number</b>, which is
+ * `TeamQueue.tsx`'s answer: the two reads are made at different moments, and the number is what
+ * the route already handed this reader.
+ *
+ * <p><b>And no day</b>: PDL, 02.10.2026, „Poziv u par ne nosi datum", so the `date` the route
+ * still answers is drawn nowhere.
+ */
+function QuestionsStanding({ mine, competitors }: { mine: string; competitors: Competitor[] }) {
+  const { t } = useI18n()
+  const state = useWhatIsWaiting(mine)
+
+  if (state.status === 'loading') {
+    return null
+  }
+
+  if (state.status === 'error') {
+    return <Unreadable said={t('data.error')} reading={state.reading} onRetry={state.readAgain} />
+  }
+
+  const said = (number: string): string => {
+    const found = competitors.find((one) => one.memberNumber === number)
+
+    return found === undefined ? number : `${found.firstName} ${found.lastName}`
+  }
+
+  const standing = state.data.pairInvites.flatMap(({ id, memberNumber, sentByMe }) =>
+    memberNumber === null ? [] : [{ id, other: memberNumber, sentByMe }],
+  )
+
+  if (standing.length === 0) {
+    return null
+  }
+
+  return (
+    <p className="profile__pair">
+      {standing.map((one) => (
+        <span key={one.id} className="profile__pair-waiting">
+          {' '}
+          {one.sentByMe
+            ? t('pair.sent', { who: said(one.other) })
+            : t('pair.received', { who: said(one.other) })}
+        </span>
+      ))}
+    </p>
+  )
 }
