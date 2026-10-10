@@ -17,16 +17,18 @@ import type { SentRun } from '../../data/types'
  * <p><b>Why a second correction does not go while one waits.</b> It puts two corrections of one
  * result in front of a moderator, and each approval writes the same row of `result`
  * (`VerificationWriteApi`), so what ends up counted is whichever was approved last. Measured by a
- * review on 28.08.2026 and kept by this screen since. The server does not refuse a second one
- * (`ResultWriteApi`, „A second correction while one is already waiting"), so this is the only
- * place that does, and the PDL's line of 04.09.2026 says nothing about two at once.
+ * review on 28.08.2026 and kept by this screen since, and the owner's decision of 11.10.2026,
+ * chosen among the outcomes offered, in the record's wording (PDL, beside his line of 04.09.2026):
+ * „Pred moderatorom je najviše jedna ispravka po rezultatu." The server does not refuse a second
+ * one (`ResultWriteApi`, „A second correction while one is already waiting"), so this is the only
+ * place that does.
  *
  * <p><b>Waiting, and nothing else.</b> A correction a moderator sent back is in nobody's queue, so it
  * stands in the way of nothing, and the moment no correction of a result waits, one that was sent
- * back goes again. That is the owner's line of 04.09.2026 held to the letter: „Broj zahteva za
- * ispravku nije ograničen. Član sme da traži ispravku koliko puta hoće, i posle odbijanja." (PDL).
- * That a sent-back one goes again is his; that it does not go beside a waiting one is the
- * screen's, derived on 10.10.2026 from the reason above and so not the owner's word.
+ * back goes again. Both halves are the owner's: the number of requests is not limited („Broj
+ * zahteva za ispravku nije ograničen. Član sme da traži ispravku koliko puta hoće, i posle
+ * odbijanja.", PDL, 04.09.2026), and his decision of 11.10.2026 adds only that they do not stand
+ * in front of a moderator at once: „odbijena se nudi ponovo čim se ona na čekanju odluči".
  *
  * <p><b>`null` is a run that corrects nothing, and it is not a key.</b> A fresh run sent in, waiting
  * or sent back, carries `null` in `amendsResultId`, and two of them are not corrections of the same

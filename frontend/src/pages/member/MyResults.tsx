@@ -363,16 +363,18 @@ function Mine({ me }: { me: string }) {
                                   waiting result: „two rows for one race, and the moderator
                                   reading the same morning twice" (owner, 06.08.2026).
                                *
-                                  **Waiting and not sent back**, derived on 10.10.2026 from that
-                                  same reason: a correction a moderator sent back is in nobody's
-                                  queue, so it does not stand in the way of this link. That does not
-                                  make it harmless, because sent again it is a correction of this
-                                  very result, and the control on its own row in the list above asks
-                                  the same question of the same function and is gone while one of
-                                  this result waits (`aCorrectionWaitsOn`). Measured by the review
-                                  of PR 521 on 10.10.2026: with only this link asking, the row of a
-                                  correction sent back went on offering a second one beside the one
-                                  that waited, and the address behind it sent.
+                                  **Waiting and not sent back**, the owner's decision of 11.10.2026
+                                  among the outcomes offered, in the record's wording: „Pred
+                                  moderatorom je najviše jedna ispravka po rezultatu." A correction a
+                                  moderator sent back is in nobody's queue, so it does not stand in
+                                  the way of this link. That does not make it harmless, because sent
+                                  again it is a correction of this very result, and the control on
+                                  its own row in the list above asks the same question of the same
+                                  function and is gone while one of this result waits
+                                  (`aCorrectionWaitsOn`). Measured by the review of PR 521 on
+                                  10.10.2026: with only this link asking, the row of a correction
+                                  sent back went on offering a second one beside the one that
+                                  waited, and the address behind it sent.
                                *
                                   The way on is not lost while one waits: the correction is in the
                                   list above, and the moderator is the one deciding it. */}

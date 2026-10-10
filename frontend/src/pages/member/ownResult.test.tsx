@@ -1,16 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { SLOW } from '../../test/slow'
 import type { Result, SentRun } from '../../data/types'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { loadResource } from '../../data/client'
 import { resultsOf } from '../../data/derive'
 import { fieldDate } from '../../forms/dateField'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { useSession } from '../../session/useSession'
-import { did, serverThat, type Asked } from '../../test/serverAnswers'
+import { answeredWith, did, serverThat, type Asked } from '../../test/serverAnswers'
 
 /**
  * What a member may do with a result of their own after sending it.
@@ -991,12 +992,12 @@ describe('a result that has been counted', () => {
        refuses for a waiting result: „two rows for one race, and the moderator
        reading the same morning twice" (owner, 06.08.2026).
 
-       **Waiting and not sent back**, derived on 10.10.2026 from that same reason and
-       accepted by the coordinator, so not the owner's word: a correction a moderator
-       sent back is in nobody's queue, so it does not stand in the way of this link.
-       It is not harmless for that: sent again it is a correction of the same result,
-       and the control on its own row asks the same question, which the cases below
-       hold on one list with this link.
+       **Waiting and not sent back**, the owner's decision of 11.10.2026 among the
+       outcomes offered, in the record's wording: „Pred moderatorom je najviše jedna
+       ispravka po rezultatu." A correction a moderator sent back is in nobody's queue,
+       so it does not stand in the way of this link. It is not harmless for that: sent
+       again it is a correction of the same result, and the control on its own row asks
+       the same question, which the cases below hold on one list with this link.
 
        Both on one table: the SECOND counted row has a correction waiting, the THIRD
        has one that was sent back, and the first has none. Read off each row by the
@@ -1257,5 +1258,139 @@ describe('a result that has been counted', () => {
     } finally {
       noCalendar.stop()
     }
+  }, SLOW)
+})
+
+/**
+ * THE ADDRESS OF A CORRECTION OF A COUNTED RESULT, BEFORE THE LIST OF WHAT WAS SENT HAS COME AND
+ * AFTER IT COULD NOT BE READ.
+ *
+ * <p>`aCorrectionWaitsOn` answers „nothing waits" for a list that is not there, so on `?ispravka=`
+ * the one thing that keeps the form shut until the list is here is that the screen draws nothing
+ * until BOTH lists are (`NewResult.tsx`, `waitFor`, which is `combinePair(results, sent)` on that
+ * road). The counted result comes out of the OTHER list, so a screen that waited for the counted
+ * results alone would find the result, hear of no correction waiting, and draw the form of a second
+ * correction (the owner's decision of 11.10.2026, in the record's wording: „Pred moderatorom je
+ * najviše jedna ispravka po rezultatu."), and on a list that could not be read it would send it.
+ * The second review of PR 521 measured on 11.10.2026 that the whole package stayed green with that
+ * one word taken out, `combinePair(results, sent)` reduced to `results`.
+ *
+ * <p><b>The counted results are in hand before the screen is drawn</b> (`loadResource`, which is what
+ * the cache of a visit that has already read them answers from), so the very first render holds
+ * them, and a screen that waits for them alone draws the form in that render. What the cases wait
+ * for is the request for the list of runs sent, which the screen makes only after that render has
+ * been committed, so the assertion that follows reads the first draw and not a guess at how long a
+ * draw takes. Every wait is half the case's own clock (`SOON`), so a screen that never draws what is
+ * waited for fails on the assertion and not on the clock.
+ */
+describe('a correction by its address, before the list of what was sent has come', () => {
+  /** His second counted result and a correction of it that waits: nobody else's number in either. */
+  function aResultWithACorrectionWaiting() {
+    const [, second] = resultsOf(countedResults, '000001')
+    const result = must(second, 'his second result')
+
+    return {
+      result,
+      waiting: aRun(9106, {
+        state: 'waiting',
+        reason: null,
+        raceName: result.raceName,
+        amendsResultId: result.id,
+      }),
+    }
+  }
+
+  /** Whether the screen has asked for the list of runs sent, which it does once its first draw is
+   *  committed. */
+  const askedForWhatWasSent = () =>
+    (server?.asked ?? []).some(
+      (one) => one.path.replace(/\?.*$/, '') === '/api/me/result-submissions',
+    )
+
+  it('draws no form while the list has not come, and refuses the correction once it comes with one waiting', async () => {
+    const { result, waiting } = aResultWithACorrectionWaiting()
+    let release: (response: Response) => void = () => undefined
+    const held = new Promise<Response>((settle) => {
+      release = settle
+    })
+
+    server = serverThat((path) =>
+      path.replace(/\?.*$/, '') === '/api/me/result-submissions' ? held : null,
+    )
+    await loadResource('results')
+    renderAt(`/sr/rezultat/novi?ispravka=${String(result.id)}`, 'competitor', '000001', undefined, '2026-08-23')
+
+    await waitFor(() => {
+      expect(askedForWhatWasSent()).toBe(true)
+    }, SOON)
+
+    expect(
+      screen.queryByLabelText(/^Naziv trke/),
+      'the form is drawn before the list of what was sent has come',
+    ).toBeNull()
+    expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+    expect(
+      screen.queryAllByRole('status').filter((one) => one.textContent === 'Učitavanje'),
+      'the screen does not say that it is waiting',
+    ).not.toHaveLength(0)
+
+    release(served([waiting]))
+
+    await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
+
+    expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+    expect(writes()).toEqual([])
+  }, SLOW)
+
+  it('draws no form and sends nothing when the list could not be read, and refuses the correction once reading it again brings one waiting', async () => {
+    const user = setupUser()
+    const { result, waiting } = aResultWithACorrectionWaiting()
+    let readable = false
+
+    server = serverThat((path, init) => {
+      if (path.startsWith('/api/results') && init?.method !== undefined) {
+        return did()
+      }
+
+      return path.replace(/\?.*$/, '') === '/api/me/result-submissions'
+        ? readable
+          ? served([waiting])
+          : answeredWith(500)
+        : null
+    })
+    await loadResource('results')
+    renderAt(`/sr/rezultat/novi?ispravka=${String(result.id)}`, 'competitor', '000001', undefined, '2026-08-23')
+
+    await waitFor(() => {
+      expect(askedForWhatWasSent()).toBe(true)
+    }, SOON)
+
+    /* Before the answer has been drawn, so a screen that does not wait for the list has already
+       drawn the form here and is told so at once. */
+    expect(
+      screen.queryByLabelText(/^Naziv trke/),
+      'the form is drawn before the list of what was sent has come',
+    ).toBeNull()
+
+    expect(await screen.findByText('Podaci se ne mogu učitati.', undefined, SOON)).toBeVisible()
+    expect(
+      screen.queryByLabelText(/^Naziv trke/),
+      'the form is drawn over a list that could not be read',
+    ).toBeNull()
+    expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /^Pošalji/ }),
+      'a way to send is drawn over a list that could not be read',
+    ).toBeNull()
+    expect(writes()).toEqual([])
+
+    readable = true
+    await user.click(screen.getByRole('button', { name: /Pokušaj ponovo/ }))
+    await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
+
+    expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+    expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
+    expect(writes()).toEqual([])
   }, SLOW)
 })
