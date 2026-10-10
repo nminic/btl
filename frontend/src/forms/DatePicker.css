@@ -98,6 +98,61 @@
   border-color: var(--accent);
 }
 
+/* THE ROW OF A COPY GIVES WAY WHEN ITS DAYS CANNOT STAND BESIDE A BOX THAT STILL SHOWS A DATE.
+
+   What stands beside the calendar is the owner's (PDL, „Kopiranje događaja bira korak",
+   23.08.2026): the two days sit in the same row as the date, as tall as the calendar button,
+   and they take their width from the date box. At the size of text a browser starts with,
+   that is what is drawn and it is left exactly as it was.
+
+   What nothing said is where the row gives way, and it did not. Measured in Chrome on
+   `origin/main` (0cc5f88f), the copy of an event at 360px with the text at 200%, the way a
+   reader doubles it: the three buttons and their gaps ask for 289.56px of a row that is 296
+   wide, so the box was left with its own padding and border and no room for a date (50px,
+   of which 48 inside it, where a date is 211px), and the calendar button stood with its
+   right edge at 371.56 on a screen of 360, which made the page scroll sideways by 13px. At
+   390px and 200% the box was 50px as well and the page did not scroll, and at 480px it was
+   126px: with the text doubled the date was lost on every screen up to about 570px. The
+   same field without days, on the form of a new event and on the change of one, is 200.81px
+   at 360px and does not scroll. A form that scrolls sideways breaks the portal's own standard
+   (`CLAUDE.md`, „UI standardi": bez horizontalnog skrola), and a date nobody can read is
+   content lost at 200% (WCAG 2.2 SC 1.4.4 and 1.4.10).
+
+   So this row, and only this row, may wrap: `.datepicker--steps` is on a picker that was
+   handed days (`DatePicker.tsx`) and on no other, so the plain date in the cell of a table
+   and in the corner of the shell is not touched. The box asks for 7rem before it will share
+   a line, and 7rem is not a taste, it is between two measurements. Below 6.7rem the box
+   cannot show a whole date (211px and two of border, 213, at a root of 32px). Above 11.3rem
+   the three buttons would have no room beside it at 360px with the text as a browser starts
+   (328 less 140.78 less a gap of 6), which would break the owner's one row where it holds
+   today. `forms/datePickerStyle.test.ts` holds both ends.
+
+   The days and the calendar button wrap TOGETHER, in `.datepicker__tools`. Wrapped one by
+   one, which was the first draft and was measured, the first day stood beside the box and
+   the second day and the calendar went under it at 390px and 200%, a row nobody drew. The
+   group neither grows nor shrinks, so it is beside the box whole or under it whole, and its
+   gap is the row's own. Under the box the three are as tall as the box (96px at a root of
+   32px, 48 at 16), because `.field .datepicker__open` carries the shared control height
+   (`FormRenderer.css`) and the days stretch to it.
+
+   WHAT THIS DOES NOT HOLD. Where the row really wraps is the browser's to say (ADL A33), so
+   `scripts/date-row-geometry.mjs` asks it, by hand and not in the gate, at 360, 390, 480, 768
+   and 1280 with the text as it comes and doubled, with the numbers it was measured at written
+   in its head. The browser of ADL A63 is the one to turn it into a guard. */
+.datepicker--steps {
+  flex-wrap: wrap;
+}
+
+.datepicker--steps .field__control {
+  flex: 1 1 7rem;
+}
+
+.datepicker__tools {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-6);
+}
+
 .datepicker__open svg {
   width: 17px;
   height: 17px;
