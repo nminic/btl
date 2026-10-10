@@ -53,7 +53,7 @@ import type { Competitor } from '../../data/types'
  * own and the public list does not carry him, which is a member whose fee has lapsed (that list
  * is the members whose fee is standing). It is not an answer about the member and carries no
  * record: the record is what the screen has to ask for, and `profile/HisOwnRecord.tsx` does. The
- * owner, PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". The
+ * owner, PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". The
  * record of that decision gives the reason for the order below, in
  * words that are the record's and not the owner's: the redirect of a hidden profile exists
  * because a visitor must not tell a hidden profile from one that does not exist (P23), "taj razlog

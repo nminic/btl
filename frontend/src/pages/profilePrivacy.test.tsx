@@ -1028,7 +1028,7 @@ describe('a hidden profile is reachable from nowhere, not even to a member whose
      only the signal that the screen has been drawn, and two screens are not the member's own for
      somebody the list does not carry: the page of ratings says who rates an event, and his own
      profile is HIS OWN - headed by his name, drawn from his own record. It sent him to the front
-     page until 10.10.2026 and this map said so (PDL P8a, 25.09.2026, „Treba da moze da otvori svoj
+     page until 10.10.2026 and this map said so (PDL P8, 25.09.2026, „Treba da moze da otvori svoj
      profil dokle god postoji"; review of PR 488, who found that this case held the opposite of the
      decision). Both are still walked. */
   const WHAT_HE_MEETS_INSTEAD = new Map([

@@ -86,7 +86,7 @@ import { SignedOut } from './SignedOut'
  * an active member opened and he was redirected away from.
  *
  * <p><b>THIS SAID THE REDIRECT „CANNOT BE ANYTHING ELSE THERE, BECAUSE THE PROFILE IS HIS BY
- * DEFINITION", AND THAT WAS THE OPPOSITE OF WHAT THE OWNER DECIDED.</b> PDL P8a, 25.09.2026,
+ * DEFINITION", AND THAT WAS THE OPPOSITE OF WHAT THE OWNER DECIDED.</b> PDL P8, 25.09.2026,
  * „Treba da moze da otvori svoj profil dokle god postoji": the redirect belongs to a profile
  * nobody may reach, and a member's own is not one, so it is exactly what the redirect cannot
  * be there. Corrected rather than deleted, because a sentence saying a redirect cannot be

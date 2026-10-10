@@ -920,7 +920,7 @@ class MeApiTest {
 	 * A MEMBER IS HANDED THE PROFILE HIS OWN PAGE IS DRAWN FROM, EACH FACT COMPARED WITH WHAT
 	 * THE DATABASE HAS FOR HIM.
 	 *
-	 * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a
+	 * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a
 	 * page headed by a name needs the name, none of which reached a member who is on no row of
 	 * the public list.
 	 *
@@ -1045,7 +1045,7 @@ class MeApiTest {
 	 * back from a reader who is neither an active member nor the administration, and a member
 	 * whose fee has lapsed is such a reader (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome
 	 * ko nije aktivan član ni administracija, nikad prema aktivnom članu"). Of his OWN page he is
-	 * not: PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - the
+	 * not: PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - the
 	 * record gives the reason in its own sentence, that when a member looks at himself nothing
 	 * about himself is hidden from him. A route that carried that withholding in, as
 	 * {@code case when THE_PROFILE_IS_OPEN_TO_THE_CALLER then c.bio end}, would answer him the

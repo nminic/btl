@@ -17,7 +17,7 @@ type Heard = { asked: string; record: Competitor | null }
 /**
  * THE RECORD A MEMBER'S OWN PROFILE IS DRAWN FROM, when the public list does not carry him.
  *
- * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a member
+ * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a member
  * whose fee has lapsed is on no row of `/api/competitors`, so
  * `profile/visible.ts` answers „this one is his" and the screen asks HERE for what it cannot find
  * there. The read is `GET /api/me`, once more, and only when this hook is mounted, which is

@@ -20,7 +20,7 @@ import { setupUser } from '../../test/user'
 /**
  * A MEMBER WHOSE FEE HAS LAPSED OPENS HIS OWN PROFILE, AND ONLY HIS OWN.
  *
- * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji": the page this
+ * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji": the page this
  * portal used to turn such a member away from, to the front page, even when it was his. He is on no
  * row of `/api/competitors` (the list the server serves ends where the fee does), so the screens
  * find nobody for him and ask the server for his record instead (`profile/HisOwnRecord.tsx`).

@@ -11,7 +11,7 @@ import { appended, profileFor, reachable } from './visible'
  * which a screen cannot show because it only ever meets the answer. Every row below is ONE
  * reader and ONE profile, and no number is shared by the two readers it tells apart.
  *
- * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji": a member whose
+ * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji": a member whose
  * fee has lapsed is on no row of the list the server serves, so the rule finds nobody for him,
  * and `his` is the answer that says the page is his and the list cannot show it.
  */

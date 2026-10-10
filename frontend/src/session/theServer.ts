@@ -344,7 +344,7 @@ export async function whoTheServerSaysIAm(): Promise<WhoTheServerSaysIAm | null>
  * THE PAGE OF THE CALLER HIMSELF, as `GET /api/me` answers it, or nothing: the record his own
  * profile is drawn from.
  *
- * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a member
+ * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a member
  * whose fee has lapsed is on no row of the public list, so his name, his town, his category,
  * his biography and his portrait reach the screen through this answer and no other
  * (`MeApi.MyOwnRecord`, which says why that is the right door).

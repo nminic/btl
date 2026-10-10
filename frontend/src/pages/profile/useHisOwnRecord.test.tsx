@@ -8,7 +8,7 @@ import { useHisOwnRecord } from './useHisOwnRecord'
  * THE RECORD A MEMBER'S OWN PROFILE IS DRAWN FROM, as a hook: the four things it can be, and the
  * one it must never be.
  *
- * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". The hook is
+ * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". The hook is
  * handed the number on the page, which is also the reader's, and answers a state the portal's own
  * `Resource` draws: loading, the record, or a failed read that can be asked again. <b>The one it
  * must never be is another member's record</b>: the reader can change inside one visit, and an

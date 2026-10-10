@@ -439,7 +439,7 @@ function emptyText(
  * public, which is the sort of thing that is nobody's fault and everybody's
  * problem. It is the same answer as a number nobody has.
  *
- * **EXCEPT TO THE MEMBER HIMSELF, since 25.09.2026 and carried out on 10.10.2026.** PDL P8a,
+ * **EXCEPT TO THE MEMBER HIMSELF, since 25.09.2026 and carried out on 10.10.2026.** PDL P8,
  * 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and this page sent such a
  * member to the front page even when the profile was his own, which was the portal turning a man
  * away from the page he had to pass to reach his own fee. He is on no

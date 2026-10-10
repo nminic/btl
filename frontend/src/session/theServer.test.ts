@@ -525,7 +525,7 @@ describe('who the server says I am', () => {
  * THE PAGE OF THE CALLER HIMSELF: the record his own profile is drawn from, read APART from who
  * he is.
  *
- * <p>PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". A member whose
+ * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". A member whose
  * fee has lapsed is on no row of the public list, and `MeApi.MyOwnRecord` is where his name, his
  * town, his category, his biography and his portrait reach the screen.
  *

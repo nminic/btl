@@ -118,7 +118,7 @@ import java.math.BigDecimal;
  * the debt the paragraph about a lapsed fee names.</b> {@link CompetitorApi}'s own javadoc
  * says the profile of a member whose fee has lapsed "need a resource that knows them, and it
  * is not this one", and that paragraph answers that this one is. The owner then said what that
- * profile is for (PDL P8a, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
+ * profile is for (PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
  * postoji"), and a profile cannot be drawn from seven facts about a fee: it is headed by a
  * name and stands on a town, a category, a biography and a portrait, none of which reached a
  * member who is on no row of the public list.
