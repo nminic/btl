@@ -449,6 +449,11 @@ public final class SeasonClock {
 	 * race's. A day has no zone, so unlike the moment {@link #seasonTheBandIsWorkedOutFor} is asked
 	 * about there is nothing here for a zone to move: the day is read as the start of itself in the
 	 * league's own zone, and that method is asked, so that the floor under both bands has one home.
+	 * The zone is spelt out so that nobody has to ask which one a day is in, and it is NOT what the
+	 * answer rests on: any zone within hours of Belgrade starts a day on the same date and reads
+	 * the same year, so the only zone that would change the answer is one far to the east (the
+	 * start of 1 January in Tokyo is still 31 December here), and that is the mistake
+	 * {@code SeasonClockTest} catches on the first day of 2028.
 	 *
 	 * <p><b>WHAT IS NOT DECIDED HERE, written down rather than left to be found.</b> A result run
 	 * before the league's first season (the history imported from before 2027) belongs to no season
