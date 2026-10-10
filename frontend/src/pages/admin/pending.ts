@@ -1,15 +1,18 @@
 import { useMemo } from 'react'
-import type { PendingItem, ServedPendingItem } from '../../data/types'
+import type { PendingItem, ServedPendingItem, WaitingRun } from '../../data/types'
 import { NO_RATING } from '../../data/types'
 import { WHOLE } from '../../components/crop'
 import { useResource, type ResourceState } from '../../data/useResource'
 import type { Decisions } from '../../session/context'
 import { useSession } from '../../session/useSession'
 
-/* What is waiting in the four queues that are read from a file.
+/* What is waiting in the five queues `/api/verification` answers for.
  *
- * Results are the fifth and are not here: a competitor sends those in during
- * the visit, so they live in the session.
+ * Results are among them since R1 of the results flows. Until then a competitor's
+ * result waited in the browser's session and nowhere else, so the moderator's queue,
+ * its counters and the decision all lived there too, and a decision taken in one
+ * browser was a decision nobody else ever heard of. The server answers a waiting run
+ * with the run itself now (`useWaitingRuns` below).
  *
  * Payments were not here either, and are now. A membership waiting to be
  * activated used to be read off the list of members, as the member who was not
@@ -202,14 +205,52 @@ export function usePending(): ResourceState<PendingItem[]> {
   )
 }
 
+/**
+ * THE RUNS WAITING IN THE RESULTS TAB, out of the same answer every other tab is read from.
+ *
+ * <p><b>The same resource and not a second request</b>: `usePending` above and this read one
+ * `verification` answer, which the data layer keeps for the visit, so the number beside the
+ * tab, the number in the header and the table cannot be counted off two different answers.
+ * What this adds is only the run each item carries (`WaitingRunFields`), which `PendingItem`
+ * has no place for because nothing a visit proposes is a run (`data/types.ts` says why).
+ *
+ * <p>No proposals are merged in, for the same reason: the results tab is fed by the server
+ * alone, and a session holds no run a moderator could decide.
+ */
+export function useWaitingRuns(): ResourceState<WaitingRun[]> {
+  const state = useResource<ServedPendingItem[]>('verification')
+
+  return useMemo(
+    () =>
+      state.status === 'ready'
+        ? { status: 'ready', data: state.data.filter((one) => one.queue === 'results').map(runFrom) }
+        : state,
+    [state],
+  )
+}
+
+/** One waiting run: the item as every tab reads it, and the eight names of its run taken
+ *  across by name rather than by a spread, so the type says what the screen holds. */
+function runFrom(served: ServedPendingItem): WaitingRun {
+  const { raceId, raceDate, raceKind, distanceKm, ascentM, descentM, seconds, link } = served
+
+  return {
+    ...itemFrom(served),
+    raceId,
+    raceDate,
+    raceKind,
+    distanceKm,
+    ascentM,
+    descentM,
+    seconds,
+    link,
+  }
+}
+
 /** Everything in one queue that nobody has decided on yet. The queues screen,
  *  the counters and the navigation all count through this, so they cannot
- *  disagree. */
-export function waitingIn(
-  items: PendingItem[],
-  decisions: Decisions,
-  queue: string,
-): PendingItem[] {
+ *  disagree. Generic so the results tab, which holds runs, keeps them as runs. */
+export function waitingIn<T extends PendingItem>(items: T[], decisions: Decisions, queue: string): T[] {
   return items.filter((one) => one.queue === queue && decisions[one.id] === undefined)
 }
 

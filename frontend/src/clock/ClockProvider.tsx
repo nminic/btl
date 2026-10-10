@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { devToolsEnabled } from '../dev/tools'
+import { DEV_TOOLS_IN_THIS_BUILD, devToolsEnabled } from '../dev/tools'
 import { ClockContext, realToday, type ClockValue } from './context'
 
 /* Where a moved clock is left so it survives a reload.
@@ -12,6 +12,12 @@ import { ClockContext, realToday, type ClockValue } from './context'
  * Only ever touched when the development controls are on (src/dev/tools.ts). In
  * production nothing is written and nothing is read, so a value planted in the
  * store by hand moves nothing.
+ *
+ * AND IN A PRODUCTION BUNDLE THE CODE THAT WOULD TOUCH IT IS NOT THERE AT ALL, which
+ * is what the constant in front of each of the two functions below is for: behind
+ * the function alone this name went to production with them (ADL A15, measured on
+ * 09.10.2026, see dev/tools.ts). `productionPackage.test.ts` asks the built package
+ * for it.
  */
 const KEY = 'btl.simulated-day'
 
@@ -37,7 +43,7 @@ function fromStore(): string | null {
  * competitor under sixteen, and nothing anywhere would say why.
  */
 function storedDay(): string | null {
-  if (!devToolsEnabled()) {
+  if (!DEV_TOOLS_IN_THIS_BUILD || !devToolsEnabled()) {
     return null
   }
 
@@ -59,7 +65,7 @@ function storedDay(): string | null {
 }
 
 function keepDay(day: string | null): void {
-  if (!devToolsEnabled()) {
+  if (!DEV_TOOLS_IN_THIS_BUILD || !devToolsEnabled()) {
     return
   }
 

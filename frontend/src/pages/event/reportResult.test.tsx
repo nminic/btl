@@ -298,117 +298,56 @@ describe('a result reported this way', () => {
     )
   })
 
-  it('sends the name of the race, not the name of the event it is run at', async () => {
-    /* Owner, 23.08.2026: the result carries the race's name, and that is what the
-       queue and „Moji rezultati" show. The field was renamed and the value was left
-       behind for a day: a race the administrator had called „Mrazijada,
-       polumaraton" reached the moderator as „Mrazijada".
-
-       Measured on the one race in the data that carries a name of its own, because
-       every other one is named after its event and the fault is invisible against
-       them. */
-    const { races } = await racesOf('mrazijada-2020')
-    const own = must(
-      races.find((race) => race.name.includes('polumaraton')),
-      'the race with a name of its own',
-    )
-    const user = setupUser()
-    const { router } = renderAt(reportAddress('mrazijada-2020', own), 'superadmin', ME)
-
-    await fillIn(user)
-    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
-    await screen.findByRole('heading', { level: 1 })
-
-    await router.navigate('/sr/administracija/verifikacija/rezultati')
-
-    const table = await screen.findByRole('table', { name: 'Čeka proveru' })
-
-    expect(within(table).getByText(own.name), 'the queue was sent the event name').toBeVisible()
-  })
-
-  it('names the column of the queue after the race, not after the event', async () => {
-    /* The third of the three screens the owner named (23.08.2026). The cell was put
-       right in the first round and the heading above it was left saying „Događaj";
-       a round measured that nothing sees it, so the heading is asked for here. */
-    const { races } = await racesOf('mrazijada-2020')
-    const own = must(
-      races.find((race) => race.name.includes('polumaraton')),
-      'the race with a name of its own',
-    )
-    const user = setupUser()
-    const { router } = renderAt(reportAddress('mrazijada-2020', own), 'superadmin', ME)
-
-    await fillIn(user)
-    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
-    await screen.findByRole('heading', { level: 1 })
-
-    await router.navigate('/sr/administracija/verifikacija/rezultati')
-
-    const table = within(await screen.findByRole('table', { name: 'Čeka proveru' }))
-
-    expect(
-      table.getAllByRole('columnheader').map((one) => one.textContent),
-      'the heading says the column holds events',
-    ).toContain('Trka')
-  })
-
-  it('reaches the queue the moderator decides in, with the points already worked out', async () => {
-    const { races } = await racesOf(EVENT)
-    const user = setupUser()
-    const { router } = renderAt(reportAddress(EVENT, first(races)), 'superadmin', ME)
-
-    await fillIn(user)
-    await user.type(screen.getByLabelText(/Komentar/), 'Startni broj 412')
-    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
-    await screen.findByRole('heading', { level: 1 })
-
-    await router.navigate('/sr/administracija/verifikacija/rezultati')
-
-    const table = await screen.findByRole('table', { name: 'Čeka proveru' })
-
-    expect(table).toBeVisible()
-    expect(screen.getAllByRole('button', { name: 'Odobri' }).length).toBeGreaterThan(0)
-
-    /* Both halves of what the member sent: the words as words, and the address
-       as an address. The address used to be written into the field for words,
-       because this form asked for no address at all; since 23.08.2026 it asks
-       for one, so the queue can draw it as a link and the moderator can follow
-       it. */
-    expect(within(table).getByText('Startni broj 412')).toBeVisible()
-    expect(within(table).getAllByRole('link').length).toBeGreaterThan(0)
-  })
+  /* THREE CASES STOOD HERE UNTIL R1 OF THE RESULTS FLOWS, and each walked a result from this
+     form to the moderator's queue through the browser's session: that the queue drew the
+     race's name and not the event's, that its column was headed „Trka", and that the member's
+     comment and address reached it. The queue reads the server since R1 and this form's
+     session copy never reaches it, so what they measured is measured where each half lives
+     now: what this form sends is held in `pages/member/resultToTheServer.test.tsx` (the race
+     by its id and nothing else about it), what the server answers is
+     `VerificationApiTest`'s (the race's name as it is today), and what the queue draws of an
+     answer is `pages/admin/resultsQueue.test.tsx`'s (the heading, the comment, the link). */
 
   it('sends no address at all where a picture stands in for one', async () => {
     /* Član 37, and the rule the form keeps on both ways in since 23.08.2026: a
        picture makes the link optional and the comment obligatory. What reaches
        the moderator then has no address, and the queue draws the name of the
-       event as a name rather than as a link, because a sentence in an `href` is
+       race as a name rather than as a link, because a sentence in an `href` is
        an address made of somebody's sentence (admin/ReviewQueue.tsx).
 
        Held from this side and not from the queue's, because it is the form that
-       decides whether an address is sent at all. */
+       decides whether an address is sent at all - and read off what it SENT, since
+       R1 of the results flows, because the queue reads the server and not this
+       form's copy. */
     const { races } = await racesOf(EVENT)
     const user = setupUser()
-    const { router } = renderAt(reportAddress(EVENT, first(races)), 'superadmin', ME)
+    const server = serverThat(() => null)
 
-    await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '41')
-    await user.type(screen.getByLabelText(/Sekundi/), '12')
-    await user.upload(
-      screen.getByLabelText(/Slika kao dokaz/),
-      new File(['proba'], 'sat.jpg', { type: 'image/jpeg' }),
-    )
-    await user.type(screen.getByLabelText(/Komentar/), 'Snimak sa sata, bez zvanicne liste')
-    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
-    await screen.findByRole('heading', { level: 1 })
+    try {
+      renderAt(reportAddress(EVENT, first(races)), 'superadmin', ME)
 
-    await router.navigate('/sr/administracija/verifikacija/rezultati')
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuta/), '41')
+      await user.type(screen.getByLabelText(/Sekundi/), '12')
+      await user.upload(
+        screen.getByLabelText(/Slika kao dokaz/),
+        new File(['proba'], 'sat.jpg', { type: 'image/jpeg' }),
+      )
+      await user.type(screen.getByLabelText(/Komentar/), 'Snimak sa sata, bez zvanicne liste')
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+      await screen.findByRole('heading', { level: 1 })
 
-    const table = await screen.findByRole('table', { name: 'Čeka proveru' })
+      const sent = server.asked.filter((one) => one.path === '/api/results' && one.init?.method === 'POST')
 
-    expect(within(table).getByText('Snimak sa sata, bez zvanicne liste')).toBeVisible()
-    expect(within(table).queryByRole('link', { name: /Maraton maratona/ })).toBeNull()
-    expect(within(table).getAllByText(/Maraton maratona/).length).toBeGreaterThan(0)
+      expect(sent).toHaveLength(1)
+
+      const body: { link: unknown; comment: unknown } = JSON.parse(String(sent[0]?.init?.body ?? '{}'))
+
+      expect(body.link, 'an address was sent where the picture stood in for one').toBe('')
+      expect(body.comment).toBe('Snimak sa sata, bez zvanicne liste')
+    } finally {
+      server.stop()
+    }
   })
 
   it('refuses a form that was never filled in', async () => {
