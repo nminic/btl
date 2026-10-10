@@ -32,14 +32,23 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code league_slug_shape}, {@code account_email_shape} and {@code payment_reference_shape}
  * and meets the index at the {@code INSERT}. What the person typing it gets is a 500.
  *
- * <p>{@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE},
- * {@code LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE} and {@code PaymentApi.MOST_A_REFERENCE_CAN_BE}
- * are the three numbers that turn that 500 into the sentence each route already has for a value
- * that is not the right shape. This file is what keeps them honest, in the way ADL A45 asks for:
- * it does not compare the numbers with a number written down, it asks the database. For each of
- * the three indexes it inserts a real row, through the real table and the real constraints, and
- * finds by halving the interval the longest text the index keeps; it then requires the route's
- * number not to be above that.
+ * <p>{@code LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE} and {@code PaymentApi.MOST_A_REFERENCE_CAN_BE}
+ * are two numbers that turn that 500 into the sentence each route already has for a value that is
+ * not the right shape, and both are taken from the index. This file is what keeps them honest, in
+ * the way ADL A45 asks for: it does not compare the numbers with a number written down, it asks
+ * the database. For each of the three indexes it inserts a real row, through the real table and
+ * the real constraints, and finds by halving the interval the longest text the index keeps; it
+ * then requires the route's number not to be above that.
+ *
+ * <p><b>The third number, {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, is not taken
+ * from the index but from the standard: 254, RFC 5321's 256 octets for a path less the two angle
+ * brackets.</b> It is far below what {@code account_email_unique} keeps, so it closes the 500 as a
+ * consequence and not as its reason, and this file still holds it to that: the same search is made
+ * over that index and the number must not be above what the index keeps, so the index can never be
+ * the one that refuses an address the code takes. The route cases for an address do NOT read the
+ * constant, because a case built from the number it tests follows that number wherever it is
+ * moved: they use {@link #THE_STANDARDS_LIMIT_FOR_AN_ADDRESS}, a 254 written here once from the
+ * standard, and a constant edited to anything else falls on them.
  *
  * <p><b>The text that is measured cannot be compressed, and that is asserted rather than
  * hoped.</b> PostgreSQL compresses a long index key when that makes it markedly smaller (the
@@ -107,6 +116,20 @@ class WhatAnIndexHoldsTest {
 	static final String DIGITS = "0123456789";
 
 	/**
+	 * THE STANDARD'S LIMIT FOR AN ADDRESS OF ELECTRONIC MAIL, written here from RFC 5321 and read
+	 * from nothing in the portal.
+	 *
+	 * <p>Section 4.5.3.1.3 limits a path to 256 octets, punctuation included, and an address stands
+	 * in a path between two angle brackets, so the address is at most 254. (Sections 4.5.3.1.1 and
+	 * 4.5.3.1.2 limit the local part to 64 octets and the domain to 255 as well; the portal bounds
+	 * the total only.) {@code WhatAnAddressLooksLikeMatchesTheSchemaTest}, in the {@code db}
+	 * package where this is not visible, writes the same number once more for the same reason:
+	 * neither copy may be read from the constant in {@code main}, or the cases would agree with
+	 * whatever that said.
+	 */
+	static final int THE_STANDARDS_LIMIT_FOR_AN_ADDRESS = 254;
+
+	/**
 	 * EVERY CHARACTER AN ADDRESS MAY HAVE, in lower case. The widest alphabet is the hardest to
 	 * compress, so it is the one the limit is measured with; the route cases use the narrower
 	 * {@link #LETTERS_AND_DIGITS}, which only has to be long enough to reach the bound.
@@ -145,7 +168,7 @@ class WhatAnIndexHoldsTest {
 		return List.of(
 				new Key("account_email_unique", "account", "email",
 						WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE, 3,
-						length -> "a@" + noise(EVERY_CHARACTER_OF_AN_ADDRESS, length - 2),
+						WhatAnIndexHoldsTest::theFloorsMailAddressOf,
 						WhatAnIndexHoldsTest::aRepeatedMailAddressOf, this::anAccountAt),
 				new Key("league_slug_unique", "league", "slug",
 						LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE, 1,
@@ -181,6 +204,16 @@ class WhatAnIndexHoldsTest {
 		return "a@" + noise(LETTERS_AND_DIGITS, length - 2);
 	}
 
+	/**
+	 * An address of electronic mail of exactly that many characters, made of EVERY character an
+	 * address may have: the text the search over {@code account_email_unique} writes, and so the
+	 * one {@link TooLong#A_TEXT_THE_INDEX_ITSELF_REFUSES} sends to a route, which makes "the index
+	 * refuses it" a fact this file has already measured about that very text and not a hope.
+	 */
+	static String theFloorsMailAddressOf(int length) {
+		return "a@" + noise(EVERY_CHARACTER_OF_AN_ADDRESS, length - 2);
+	}
+
 	/** A league's typed address of exactly that many characters, the shape its CHECK asks for. */
 	static String aSlugOf(int length) {
 		return noise(LETTERS_AND_DIGITS, length);
@@ -207,24 +240,30 @@ class WhatAnIndexHoldsTest {
 	}
 
 	/**
-	 * THE FOUR TEXTS EVERY ROUTE CASE SENDS OVER ITS BOUND, EACH ONE A CASE OF ITS OWN.
+	 * THE FIVE TEXTS EVERY ROUTE CASE SENDS OVER ITS BOUND, EACH ONE A CASE OF ITS OWN.
 	 *
-	 * <p>They are cases and not the four turns of one loop, and that is measured and not tidy: in a
-	 * loop the first text that is wrongly accepted ends the case, so a mutation that removed the
-	 * bound fell on "one character past it" every time and the other three were never the ones that
-	 * decided anything. As four cases, each is judged on its own, and a bound that is wrong in only
-	 * one of the four ways shows up as that one failing.
+	 * <p>They are cases and not the turns of one loop, and that is measured and not tidy: in a loop
+	 * the first text that is wrongly accepted ends the case, so a mutation that removed the bound
+	 * fell on "one character past it" every time and the others were never the ones that decided
+	 * anything. As separate cases, each is judged on its own, and a bound that is wrong in only some
+	 * of the ways shows up as exactly those failing.
 	 *
 	 * <ul>
-	 * <li><b>One character past the bound</b>, which the database would still keep and which only a
-	 * bound written as a number refuses.
-	 * <li><b>Twice the bound</b>, which on the day of writing is past what the index keeps as well
-	 * (4000 against 2692), so the route answers instead of meeting the fault this was written for.
+	 * <li><b>One character past the bound</b>, which for the league and the reference the database
+	 * would still keep and which only a bound written as a number refuses; and for an address, one
+	 * past the standard's number, which the database would keep as well.
+	 * <li><b>Twice the bound</b>: for the league and the reference (2000) it is past what the index
+	 * keeps (4000 against 2692); for an address (254) it is 508, which the index keeps.
 	 * <li><b>One repeated letter, one past the bound</b>, and <b>a hundred thousand copies of one
 	 * letter</b>: PostgreSQL compresses an index key that long and keeps them (measured in
 	 * {@link #aRepeatedTextIsKeptFarBeyondThatLimitWhichIsWhyTheBoundDoesNotFollowTheDatabase}), so
 	 * a route that refused only what the database refuses would let them through. This one refuses
 	 * them, on purpose, and is stricter than the database for exactly that reason.
+	 * <li><b>A text the index itself refuses</b>: the very text of the farthest search of this file,
+	 * which the search asserts every index refuses. It is the one that has to come back as a sentence
+	 * on EVERY route whatever the bound is, because it is the original fault, a 500 from the
+	 * database, and for an address, whose bound is the standard's and far below the index, it is the
+	 * only text that would reach the index at all if the bound were removed.
 	 * </ul>
 	 */
 	enum TooLong {
@@ -235,7 +274,9 @@ class WhatAnIndexHoldsTest {
 
 		ONE_REPEATED_LETTER_ONE_PAST_THE_BOUND("one repeated letter, one past the bound"),
 
-		A_HUNDRED_THOUSAND_COPIES_OF_ONE_LETTER("a hundred thousand copies of one letter");
+		A_HUNDRED_THOUSAND_COPIES_OF_ONE_LETTER("a hundred thousand copies of one letter"),
+
+		A_TEXT_THE_INDEX_ITSELF_REFUSES("a text the index itself refuses");
 
 		private final String described;
 
@@ -243,27 +284,32 @@ class WhatAnIndexHoldsTest {
 			this.described = described;
 		}
 
-		private String of(int bound, IntFunction<String> noise, IntFunction<String> repeated) {
+		private String of(int bound, IntFunction<String> noise, IntFunction<String> repeated,
+				IntFunction<String> theFloors) {
+
 			return switch (this) {
 				case ONE_CHARACTER_PAST_THE_BOUND -> noise.apply(bound + 1);
 				case TWICE_THE_BOUND -> noise.apply(2 * bound);
 				case ONE_REPEATED_LETTER_ONE_PAST_THE_BOUND -> repeated.apply(bound + 1);
 				case A_HUNDRED_THOUSAND_COPIES_OF_ONE_LETTER -> repeated.apply(A_HUNDRED_THOUSAND);
+				case A_TEXT_THE_INDEX_ITSELF_REFUSES -> theFloors.apply(THE_FARTHEST_LOOKED);
 			};
 		}
 
 		String forAMailAddress(int bound) {
 			return of(bound, WhatAnIndexHoldsTest::aMailAddressOf,
-					WhatAnIndexHoldsTest::aRepeatedMailAddressOf);
+					WhatAnIndexHoldsTest::aRepeatedMailAddressOf,
+					WhatAnIndexHoldsTest::theFloorsMailAddressOf);
 		}
 
 		String forASlug(int bound) {
-			return of(bound, WhatAnIndexHoldsTest::aSlugOf, WhatAnIndexHoldsTest::aRepeatedSlugOf);
+			return of(bound, WhatAnIndexHoldsTest::aSlugOf, WhatAnIndexHoldsTest::aRepeatedSlugOf,
+					WhatAnIndexHoldsTest::aSlugOf);
 		}
 
 		String forAReference(int bound) {
 			return of(bound, WhatAnIndexHoldsTest::aReferenceOf,
-					WhatAnIndexHoldsTest::aRepeatedReferenceOf);
+					WhatAnIndexHoldsTest::aRepeatedReferenceOf, WhatAnIndexHoldsTest::aReferenceOf);
 		}
 
 		/** What the case is called in a report, and in the message of an assertion. */
@@ -522,9 +568,12 @@ class WhatAnIndexHoldsTest {
 	 * <p><b>So the routes refuse a repeated text too, deliberately, and it is stricter than the
 	 * database.</b> Each route case that sends one over the bound says so, and this is the
 	 * measurement behind the sentence: the database would have kept it. The day PostgreSQL stops
-	 * doing this, the case fails and the sentence in the javadoc of the three constants about
-	 * "the same bound for a text that could be compressed" is no longer a choice but a fact about
-	 * every text, which is a reason to read it again and not a reason to change a number.
+	 * doing this, the case fails and the sentence in the javadoc of the league's and the
+	 * reference's constants about "the same bound for a text that could be compressed" is no longer
+	 * a choice but a fact about every text, which is a reason to read it again and not a reason to
+	 * change a number. (The address of electronic mail is bounded at the standard's 254, far under
+	 * both, so for it the repeated text is refused for the standard's reason and the measurement
+	 * above is only the same fact about its index.)
 	 */
 	@Test
 	void aRepeatedTextIsKeptFarBeyondThatLimitWhichIsWhyTheBoundDoesNotFollowTheDatabase() {

@@ -2,7 +2,6 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
-import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import com.btl.portal.domain.registration.WhatRegistrationAsksFor;
 import com.btl.portal.domain.token.SecretToken;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
@@ -661,18 +660,23 @@ class GroupEntryTest {
 	}
 
 	/**
-	 * AN ADDRESS LONGER THAN THE INDEX CAN HOLD IS THE SENTENCE FOR AN ADDRESS THAT IS NOT ONE,
+	 * AN ADDRESS LONGER THAN THE STANDARD ALLOWS IS THE SENTENCE FOR AN ADDRESS THAT IS NOT ONE,
 	 * NAMES THE ROW, AND THE WHOLE GROUP IS REFUSED.
 	 *
-	 * <p>{@code account_email_shape} has no upper bound and {@code account_email_unique} has one:
-	 * an address of three thousand characters passes the shape, reaches the {@code insert} and
-	 * comes back to the administration as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the
-	 * database where the limit is). This route judges a row's address with
-	 * {@code WhatAnAddressLooksLike.itDoes}, after the same fold {@code RegistrationApi} uses, and
-	 * answers a misshapen one with {@code theAddressIsNotShaped} naming the row, so that is what a
-	 * long one gets and no sentence is added.
+	 * <p>The bound is 254 characters, RFC 5321's number for an address and not the index's.
+	 * {@code account_email_shape} has no upper bound, and past what {@code account_email_unique}
+	 * keeps an address that passed the shape would reach the {@code insert} and come back to the
+	 * administration as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the database where that
+	 * limit is). This route judges a row's address with {@code WhatAnAddressLooksLike.itDoes},
+	 * after the same fold {@code RegistrationApi} uses, and answers a misshapen one with
+	 * {@code theAddressIsNotShaped} naming the row, so that is what a long one gets and no sentence
+	 * is added.
 	 *
-	 * <p><b>One case for each of four texts</b>, and the four are told apart and explained in
+	 * <p><b>The number is the one written in {@link WhatAnIndexHoldsTest}, not the constant under
+	 * test</b>: a case built from the number it tests follows it wherever it is moved, and a bound
+	 * put back to the index's two thousand would still pass.
+	 *
+	 * <p><b>One case for each of five texts</b>, told apart and explained in
 	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
 	 * accepted and leave the others unjudged.
 	 *
@@ -683,12 +687,13 @@ class GroupEntryTest {
 	 */
 	@ParameterizedTest
 	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
-	void anAddressLongerThanTheIndexCanHoldNamesTheRowAndRefusesTheWholeGroup(
+	void anAddressLongerThanTheStandardAllowsNamesTheRowAndRefusesTheWholeGroup(
 			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
 
 		List<Map<String, Object>> group = aGroupOfThree();
 
-		group.get(1).put("email", kind.forAMailAddress(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE));
+		group.get(1).put("email",
+				kind.forAMailAddress(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS));
 
 		MockHttpServletResponse answered = WhatAnIndexHoldsTest.answered(
 				() -> enter(group, EVERYTHING));
@@ -712,26 +717,25 @@ class GroupEntryTest {
 	}
 
 	/**
-	 * AND THE LONGEST ADDRESS THE ROUTE TAKES IS ENTERED WHOLE.
+	 * AND THE LONGEST ADDRESS THE STANDARD ALLOWS IS ENTERED WHOLE.
 	 *
-	 * <p>This is the other half of the bound, and the one a bound set too high fails: the address
-	 * is noise (it does not compress), exactly as long as the bound allows, so if the number were
-	 * above what the index keeps this request would reach the {@code insert} and come back as a
-	 * fault instead of as a group entered. {@link WhatAnIndexHoldsTest} is the file that says
-	 * where the index stops; this one says that the route's own largest address is on the right
-	 * side of it, through the whole route and not through a bare table.
+	 * <p>This is the other half of the bound, and the one a bound set too low fails: the address
+	 * is exactly 254 characters, the number written in {@link WhatAnIndexHoldsTest} from the
+	 * standard, and it is noise, so that "stored whole" is a fact about this text and not about one
+	 * that compresses. A bound moved either way fails it or the case above, and a bound raised past
+	 * what the index keeps fails the floor in {@link WhatAnIndexHoldsTest} as well.
 	 *
-	 * <p>Nothing is asserted about the invitation to that address. A relay is not obliged to
-	 * deliver to an address of this length (RFC 5321 gives 254 characters for the address of a
-	 * message), and what the portal does when a relay does not take a message is
-	 * {@code CompetitorWriteApi#send}'s decision, not this bound's.
+	 * <p>Nothing is asserted about the invitation to that address. A relay is entitled to refuse
+	 * an address of the longest length, and what the portal does when a relay does not take a
+	 * message is {@code CompetitorWriteApi#send}'s decision, not this bound's.
 	 */
 	@Test
-	void theLongestAddressTheRouteTakesIsEnteredWhole() throws Exception {
-		String longest = WhatAnIndexHoldsTest.aMailAddressOf(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+	void theLongestAddressTheStandardAllowsIsEnteredWhole() throws Exception {
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
 		List<Map<String, Object>> group = aGroupOfThree();
 
-		assertThat(longest).hasSize(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+		assertThat(longest).hasSize(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
 
 		group.get(1).put("email", longest);
 
@@ -765,7 +769,8 @@ class GroupEntryTest {
 	void anAddressAsLongAsTheBoundTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff()
 			throws Exception {
 
-		String longest = WhatAnIndexHoldsTest.aMailAddressOf(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
 		List<Map<String, Object>> group = aGroupOfThree();
 
 		group.get(1).put("email", "  " + longest + "  ");

@@ -368,13 +368,19 @@ class PaymentApi {
 	 * {@code insert} and come back to a moderator booking a payment as a 500, which is why the
 	 * answer for them is the sentence a misshapen reference already gets.
 	 *
-	 * <p><b>Derived from the schema and decided by nobody</b>, the same way and for the same
-	 * reasons as {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, which carries them at
-	 * length: below what the index holds, with a margin, the text being ASCII by the shape so a
-	 * digit is a byte, and the same bound for a text PostgreSQL could compress.
-	 * {@code WhatAnIndexHoldsTest} asks the database what the index holds and fails the day this
-	 * number rises above it. A reference as the bank prints it is the season and the member number
-	 * run together (V16), which is a handful of digits; this is a floor and not a description of one.
+	 * <p><b>Derived from the schema and decided by nobody.</b> It sits below what
+	 * {@code payment_reference_unique} can hold, with a margin of about a quarter, and
+	 * {@code WhatAnIndexHoldsTest} asks PostgreSQL what that is (2692 characters of text that cannot
+	 * be compressed on PostgreSQL 18.6) and fails the day this number rises above it. The text is
+	 * ASCII by the shape, so a digit is a byte in the index and the one number answers for both.
+	 *
+	 * <p><b>And the bound is the same for a text that could be compressed</b>, which is the
+	 * deliberately stricter half: PostgreSQL keeps a hundred thousand copies of one digit in this
+	 * index because it compresses them, so a limit measured on what the database refuses would
+	 * depend on what was typed. This one does not.
+	 *
+	 * <p>A reference as the bank prints it is the season and the member number run together (V16),
+	 * which is a handful of digits; this is a floor and not a description of one.
 	 */
 	static final int MOST_A_REFERENCE_CAN_BE = 2000;
 

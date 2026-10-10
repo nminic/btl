@@ -40,43 +40,51 @@ import java.util.regex.Pattern;
  * league owes somebody an address in his own alphabet, that is a migration and a
  * decision, and this class moves with it.
  *
- * <p><b>THE ONE THING THE SHAPE DOES NOT SAY IS HOW LONG, AND THE INDEX DOES.</b>
- * {@code account_email_shape} has no upper bound, but {@code account_email_unique} is a
- * B-tree over {@code lower(email)}, and a key longer than about a third of a page does not
- * go into one: PostgreSQL answers {@code index row size ... exceeds btree version 4
- * maximum}, and being an error it aborts the transaction. So an address of three thousand
- * characters passes the shape, reaches {@code INSERT}, and comes back to the person as a
- * 500 - the very thing the shape is copied here to prevent. {@link #MOST_AN_ADDRESS_CAN_BE}
- * is the bound that closes it, {@link #itDoes} applies it in the same breath as the shape,
- * and {@code WhatAnIndexHoldsTest} is the floor under the number.
+ * <p><b>THE ONE THING THE SHAPE DOES NOT SAY IS HOW LONG.</b> {@code account_email_shape} has
+ * no upper bound, and two limits stand over an address longer than anybody types. The
+ * standard's: RFC 5321 gives 254 characters, and {@link #MOST_AN_ADDRESS_CAN_BE} is that
+ * number. The index's: {@code account_email_unique} is a B-tree over {@code lower(email)}, a
+ * key longer than about a third of a page does not go into one, and PostgreSQL answers
+ * {@code index row size ... exceeds btree version 4 maximum} with an error that aborts the
+ * transaction, so an address of three thousand characters that passed the shape would reach
+ * {@code INSERT} and come back to the person as a 500 - the very thing the shape is copied
+ * here to prevent. The standard's number is far below the index's, so {@link #itDoes} closes
+ * the second by applying the first in the same breath as the shape, and
+ * {@code WhatAnIndexHoldsTest} is the floor that keeps it so: it asks PostgreSQL what the index
+ * holds and fails the day this number is above it.
  */
 public final class WhatAnAddressLooksLike {
 
 	/**
-	 * THE MOST CHARACTERS AN ADDRESS MAY HAVE, and the limit is the INDEX'S: it is not the
-	 * shape's, and it is not what an address of electronic mail is allowed to be.
+	 * THE MOST CHARACTERS AN ADDRESS MAY HAVE: 254, and the number is the STANDARD'S and not the
+	 * index's.
 	 *
-	 * <p><b>Derived from the schema, and decided by nobody.</b> It sits below what
-	 * {@code account_email_unique} can hold, with a margin, and {@code WhatAnIndexHoldsTest}
-	 * asks PostgreSQL what that is and fails the day this number rises above it. The margin
-	 * is deliberate and is a quarter of what the index holds, give or take: a later change to
-	 * the index (a second key column, another page size) has to be a large one before this
-	 * stops being true, and the test says so first.
+	 * <p><b>Where 254 comes from.</b> RFC 5321, section 4.5.3.1.3, limits a path to 256 octets,
+	 * punctuation included, and an address stands in a path between two angle brackets, so the
+	 * address is at most 254. That is the only source of the number: it is not worked out from
+	 * the schema, no constraint says it, and the index would keep addresses far longer. (Sections
+	 * 4.5.3.1.1 and 4.5.3.1.2 limit the local part to 64 octets and the domain to 255 as well;
+	 * only the total is bounded here, because a total is what a text can be asked for without
+	 * taking an address apart.)
+	 *
+	 * <p><b>Derived, not asked.</b> The owner's rule of 10.10.2026 is that an absurd input gets a
+	 * plain validation and not a question (he said it of a password too long to be typed).
+	 * Nothing he has written decides about addresses; applying the rule to one is a derivation,
+	 * and it is marked as one. An address past the bound is refused with the sentence the route
+	 * already has for an address that is not one.
+	 *
+	 * <p><b>What the index still has to say about it.</b> {@code account_email_unique} keeps
+	 * about two and a half thousand characters of text that cannot be compressed (2692 on
+	 * PostgreSQL 18.6), so this number is far under it and the index can never be the one that
+	 * refuses an address this class takes. That is held and not assumed:
+	 * {@code WhatAnIndexHoldsTest} asks PostgreSQL what the index keeps and fails the day this
+	 * number rises above it. It is also what closes the 500 on a text of three thousand
+	 * characters, because nothing past 254 reaches the {@code insert}.
 	 *
 	 * <p><b>The characters of an address are ASCII by the shape</b>, so a character here is
 	 * a byte in the index and the one number answers for both.
-	 *
-	 * <p><b>It is not a statement about electronic mail.</b> RFC 5321 gives 254 characters
-	 * for the address a message is sent to, and a bound that strict would be the portal
-	 * refusing addresses on a rule nobody has decided to apply. If the owner wants one it is
-	 * a different constant with his sentence on it, and it goes UNDER this one.
-	 *
-	 * <p><b>And the bound is the same for a text that could be compressed</b>, which is the
-	 * deliberately stricter half: PostgreSQL keeps a hundred thousand copies of one letter in
-	 * this index because it compresses them, so a limit measured on what the database
-	 * refuses would depend on what was typed. This one does not.
 	 */
-	public static final int MOST_AN_ADDRESS_CAN_BE = 2000;
+	public static final int MOST_AN_ADDRESS_CAN_BE = 254;
 
 	/**
 	 * Exactly one {@code @}, with something a reader can see on either side.

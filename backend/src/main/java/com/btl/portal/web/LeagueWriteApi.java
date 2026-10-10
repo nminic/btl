@@ -140,13 +140,22 @@ class LeagueWriteApi {
 	 * the administrator as a 500, which is why the answer for it is the sentence a misshapen
 	 * address already gets.
 	 *
-	 * <p><b>Derived from the schema and decided by nobody</b>, the same way and for the same
-	 * reasons as {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, which carries them at
-	 * length: below what the index holds, with a margin, the text being ASCII by the shape so a
-	 * character is a byte, and the same bound for a text PostgreSQL could compress.
-	 * {@code WhatAnIndexHoldsTest} asks the database what the index holds and fails the day this
-	 * number rises above it. The form already stops an address at sixty characters
-	 * ({@code admin-liga.form.json}); this is the floor under it and not a replacement.
+	 * <p><b>Derived from the schema and decided by nobody.</b> It sits below what
+	 * {@code league_slug_unique} can hold, with a margin of about a quarter, and
+	 * {@code WhatAnIndexHoldsTest} asks PostgreSQL what that is (2692 characters of text that cannot
+	 * be compressed on PostgreSQL 18.6) and fails the day this number rises above it. The text is
+	 * ASCII by the shape, so a character is a byte in the index and the one number answers for both.
+	 * (The address of electronic mail has a constant of the same name in
+	 * {@code WhatAnAddressLooksLike}, and it is 254: that one is the standard's number, this one
+	 * is the index's, and the two are not to be mistaken for each other.)
+	 *
+	 * <p><b>And the bound is the same for a text that could be compressed</b>, which is the
+	 * deliberately stricter half: PostgreSQL keeps a hundred thousand copies of one letter in this
+	 * index because it compresses them, so a limit measured on what the database refuses would
+	 * depend on what was typed. This one does not.
+	 *
+	 * <p>The form already stops an address at sixty characters ({@code admin-liga.form.json});
+	 * this is the floor under it and not a replacement.
 	 */
 	static final int MOST_AN_ADDRESS_CAN_BE = 2000;
 
