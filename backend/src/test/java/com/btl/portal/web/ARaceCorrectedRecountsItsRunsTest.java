@@ -83,8 +83,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * instant:</b> half an hour after the freeze, a race of 2027 (frozen) and a race of
  * 1 January 2028 (running) are corrected side by side.
  * <li><b>A run still waiting and a submission already decided stand at the marathon</b>, so
- * a recount that reached {@code result_submission} shows; and a race that carries ONLY a
- * waiting run ({@link #aCrossCountry}) may still change its kind.
+ * a recount that reached {@code result_submission} shows.
+ * <li><b>Whether an approved run stands at a race is told apart from the queue and from the
+ * active members.</b> The cross-country course ({@link #aCrossCountry}) carries a waiting run
+ * and an approval whose run its member has since taken back, and no row of {@code result}, so
+ * it may still change its kind; the free race ({@link #theFreeOne}) carries one counted run,
+ * the lapsed member's, with nothing in the queue behind it, so it may not. A question asked of
+ * the queue, or of the active members only, answers both the other way round.
  * <li><b>A member just under the beginners' threshold and nowhere near it run the same
  * race</b> ({@link #anotherEventsTen}), so a correction of it moves one category and not the
  * other.
@@ -266,7 +271,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
-	 * EIGHT RACES OVER SIX EVENTS, TWELVE RUNS, THREE SUBMISSIONS AND ONE MODERATOR.
+	 * EIGHT RACES OVER SIX EVENTS, TWELVE RUNS, FOUR SUBMISSIONS AND ONE MODERATOR.
 	 *
 	 * <p>Every run a case expects to be counted again is written at the points the formula gives
 	 * for its figures today, so „counted again at the old figures" and „not counted again" are
@@ -275,7 +280,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * that reached it cannot leave it as it was.
 	 */
 	@BeforeEach
-	void eightRacesTwelveRunsAndThreeSubmissions() {
+	void eightRacesTwelveRunsAndFourSubmissions() {
 		clock.moveTo(WHILE_2027_RUNS);
 
 		event("maraton-2027", "Prolecni maraton", THE_MARATHONS_DAY);
@@ -324,6 +329,13 @@ class ARaceCorrectedRecountsItsRunsTest {
 		decidedSubmission = submission(runner, theMarathon, "42.2", 300, 280, 12600);
 		queued(runner, decidedSubmission, true);
 		queued(runner, submission(runner, aCrossCountry, "5", 50, 50, 1300), false);
+
+		/* AN APPROVAL WHOSE RUN ITS MEMBER HAS SINCE TAKEN BACK, which he may do (PDL P9,
+		   27.08.2026). Taking it back deletes the row of `result` and leaves the queue's row
+		   approved: an approval writes its run with no reference to the submission, and the one
+		   key into `result` (`result_submission_amends_fk`) is a correction's. So the
+		   cross-country course carries an approval in the queue and no counted run. */
+		queued(third, submission(third, aCrossCountry, "5", 50, 50, 1500), true);
 
 		session = account(MODERATOR);
 		db.sql("insert into account_admin_right (account_id, right_code)"
@@ -505,32 +517,43 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * were, and the NEXT save, correcting only the limit, took every runner's real time away for
 	 * good. So both saves are sent here, and both are refused.
 	 *
-	 * <p>The other side of the line: a race that carries only a WAITING run changes its kind,
-	 * because a waiting run is counted at its approval against the race as it stands then.
+	 * <p>An approved run is a row of {@code result}, whoever's it is, and the free race asks it
+	 * where nothing else gives the same answer: its one run is the lapsed member's, and nothing
+	 * in the queue stands behind it. A question asked of the active members only, or of the
+	 * queue's approvals, finds nothing there to lose, and the free race is refused all the same.
+	 *
+	 * <p>The other side of the line: the cross-country course carries a waiting run and an
+	 * approval whose run its member has since taken back, and no row of {@code result}, so it
+	 * changes its kind. A waiting run is counted at its approval against the race as it stands
+	 * then, and a run taken back is nothing to lose.
 	 */
 	@Test
 	void aRaceWithACountedRunKeepsItsKindAndNothingIsLost() throws Exception {
-		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun);
+		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun,
+				runAtTheFreeOne);
 
 		MockHttpServletResponse toSixHours = change(theMarathon,
 				toALimit("Maraton", THE_MARATHONS_DAY, 21600, 300, 280));
 		MockHttpServletResponse thenItsLimit = change(theMarathon,
 				toALimit("Maraton", THE_MARATHONS_DAY, 25200, 300, 280));
+		MockHttpServletResponse theFreeOneToALength = change(theFreeOne,
+				ofALength("Slobodna", THE_FREE_ONES_DAY, "8", 200, 210));
 
 		/* THE HARM FIRST, so that a route which let the change of kind through fails here on the
-		   runner's lost time - the finding itself - and not only on a status code. */
-		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun))
-				.as("a runner's own time was written over").isEqualTo(before);
-		assertThat(List.of(toSixHours.getStatus(), thenItsLimit.getStatus()))
-				.containsExactly(409, 409);
-		assertThat(List.of(reasonIn(toSixHours), reasonIn(thenItsLimit))).containsOnly(
+		   runner's lost figures - the finding itself - and not only on a status code. */
+		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun, runAtTheFreeOne))
+				.as("a runner's own figures were written over").isEqualTo(before);
+		assertThat(List.of(toSixHours.getStatus(), thenItsLimit.getStatus(),
+				theFreeOneToALength.getStatus())).containsExactly(409, 409, 409);
+		assertThat(List.of(reasonIn(toSixHours), reasonIn(thenItsLimit),
+				reasonIn(theFreeOneToALength))).containsOnly(
 				RaceWriteApi.THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
-		assertThat(kindOf(theMarathon)).as("the race took the kind it was refused")
-				.isEqualTo("length");
+		assertThat(List.of(kindOf(theMarathon), kindOf(theFreeOne)))
+				.as("a race took the kind it was refused").containsExactly("length", "free");
 		assertThat(newLines()).isEmpty();
 
 		assertThat(change(aCrossCountry, toALimit("Kros", THE_MARATHONS_DAY, 3600, 50, 50))
-				.getStatus()).as("a race with only a waiting run at it kept its kind")
+				.getStatus()).as("a race with only a waiting run and a run taken back kept its kind")
 				.isEqualTo(200);
 		assertThat(kindOf(aCrossCountry)).isEqualTo("time");
 	}

@@ -761,7 +761,13 @@ class RaceWriteApi {
 				.update();
 	}
 
-	/** Whether an approved run stands at this race. A run still waiting is not one. */
+	/**
+	 * Whether an approved run stands at this race: a row of {@code result}, whoever's it is, a
+	 * member whose fee has lapsed included. A run still waiting is not one, and neither is the
+	 * queue's approval of a run its member has since taken back (PDL P9, 27.08.2026): taking it
+	 * back deletes the row of {@code result} and leaves the approval in the queue, with nothing
+	 * at the race left to lose.
+	 */
 	private boolean carriesACountedRun(long race) {
 		return Boolean.TRUE.equals(db.sql("select exists(select 1 from result where race_id = ?)")
 				.param(race).query(Boolean.class).single());
