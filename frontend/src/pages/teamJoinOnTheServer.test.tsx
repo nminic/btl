@@ -820,8 +820,9 @@ describe('whose applications the page draws', () => {
   /* THE LIST IS THE READER'S AND THE PAGE IS NOT. The portal signs out and signs in without
      anything being reloaded (`app/AccountMenu.tsx` signs out in place; `pages/member/SignIn.tsx`
      signs in and navigates), and the page of a team is the same page for whoever is reading it:
-     `here` in `AskingThisTeam.tsx` is the team and the season and nothing of the reader. What it
-     draws has to come from what the route says to the one who is signed in NOW, and two things can
+     `here` in `AskingThisTeam.tsx` is the team and the season and nothing of the reader. The list
+     is the member's (PDL, 06.09.2026: „traženo po broju člana kroz sve timove"). What it draws has
+     to come from what the route says to the one who is signed in NOW, and two things can
      hand him the first reader's list instead: the number the half gives `useWhatIsWaiting`
      (`mine`) and the cache that is dropped when that number changes (`data/useResource.ts`,
      `theWaitingNowBelongsTo`). Measured 10.10.2026: `mine={here}` in place of
