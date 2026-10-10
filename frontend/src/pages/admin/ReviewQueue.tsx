@@ -600,7 +600,9 @@ export function ReviewQueue() {
                                 {onARaceNotInTheCalendar(one) && counted !== null ? (
                                   <button
                                     type="button"
-                                    className="button button--primary"
+                                    /* `review__place` lets its four words wrap where the other buttons
+                                       of the cell keep to one line (Verification.css says why). */
+                                    className="button button--primary review__place"
                                     onClick={() => {
                                       setOpen(null)
                                       setFixing(null)

@@ -316,3 +316,13 @@
 .review__figures dd {
   margin: 0;
 }
+
+/* The button that opens the panel naming the race is four words, where the other buttons of the
+   cell are one (`.review__decide .button` keeps each to a single line, Member.css). Held to one line
+   it set the width of the whole column of decisions, and measured at 360 in Chrome the table then
+   scrolled inside its box by 149 px instead of the 72 it scrolled by with „Odobri" in its place; let
+   to wrap, it is 72 again. Written with three classes, so it outweighs that rule's two wherever this
+   sheet stands. */
+.review__decide .button.review__place {
+  white-space: normal;
+}

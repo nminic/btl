@@ -343,6 +343,20 @@ describe('the box drawn on a telephone only', () => {
     expect(named(onAPhone, '.table__phone-only')).toEqual(['block'])
     expect(named(onAPhone, '.table__hide-phone')).toEqual(['none'])
   })
+
+  it('lets the button that opens the panel wrap, where the buttons beside it keep to one line', () => {
+    /* Held to one line it set the width of the column of decisions, and at 360 the table scrolled
+       inside its box twice as far (measured in Chrome, `Verification.css` has the numbers). The rule
+       and the class it reaches are held together, as the box above is. */
+    const css = readFileSync(join(process.cwd(), 'src', 'pages', 'admin', 'Verification.css'), 'utf-8')
+    const rules = unconditionalRules(css, 'pages/admin/Verification.css').filter(
+      (one) => one.selectorText === '.review__decide .button.review__place',
+    )
+    const markup = readFileSync(join(process.cwd(), 'src', 'pages', 'admin', 'ReviewQueue.tsx'), 'utf-8')
+
+    expect(rules.map((one) => one.style.whiteSpace)).toEqual(['normal'])
+    expect(markup).toContain('className="button button--primary review__place"')
+  })
 })
 
 describe('the panel that names the race', () => {
