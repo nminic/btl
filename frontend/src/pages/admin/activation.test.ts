@@ -18,28 +18,45 @@ import {
  * be mistaken for it.
  *
  * <ul>
- * <li><b>`EXPECTED` and `BALANCE` are never equal and neither is a multiple of the other</b>, so
- * „the expected amount" can never stand in for „the balance" and a decision reading the wrong
- * one of the two answers differently.
- * <li><b>Nothing is a round number where round would do</b>: 43.50 and 4800 rather than 40 and
- * 400, so an arithmetic that survives only on whole units cannot pass.
- * <li><b>The pair 43.29 / 0.01 is in the file on purpose</b> and is the only pair there whose
- * answer depends on how the sum is compared. It is the case that fails the moment the
- * comparison stops rounding to whole paras.
+ * <li><b>`EXPECTED`, `PRICE` and the balances are never equal and none is a multiple of another</b>
+ * (except where a case says it is on purpose), so „the expected amount" can never stand in for
+ * „the price" and neither for „the balance", and a decision reading the wrong one of the three
+ * answers differently. `EXPECTED` is what he SENDS, 43, and `PRICE` is the fee without the
+ * processing charge, 40: the two are a position apart in `whatToDo`'s signature, and a call that
+ * swaps them is told apart because they are different numbers.
+ * <li><b>An amount that is typed and the expected amount are whole numbers, and the balance is
+ * the one number that is not</b> (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", and
+ * for what is typed 10.10.2026: „balans sme decimale"). So the non-round numbers of this file are
+ * balances: 12.75, 41.5, 71.25, and the pair 4.35 / 0.07 that no whole number can stand in for.
+ * <li><b>`4.35` and `0.07` are in the file on purpose</b>: `4.35 * 100` is `434.99999999999994` and
+ * `0.07 * 100` is `7.000000000000001`, so a shortfall worked out from them without rounding to
+ * whole paras comes out as a tail of nines, and one rounded the wrong way is a para out. Until
+ * 10.10.2026 the pair here was `8.20 + 0.10` against `8.30`, which needs a typed amount with a
+ * fraction in it and a typed amount has none now.
  * <li><b>Every state of the tick box is measured against BOTH a balance that covers and one
  * that does not</b>, because the box and the size of the balance are two axes and a case using
  * one for the other would pass on half the grid.
  * </ul>
  */
 describe('which of the seven cases a row is in', () => {
-  /** With the processing charge in it, which is what the owner decided „Ocekivan iznos" means. */
-  const EXPECTED = 43.5
+  /** With the processing charge in it, which is what the owner decided „Ocekivan iznos" means:
+   *  a fee of forty and a charge of three. Whole, as every expected amount is since 10.10.2026. */
+  const EXPECTED = 43
+
+  /** The fee WITHOUT the charge, the one number a balance is measured against when nothing is
+   *  typed (PDL, [IZVEDENO 02.10.2026] „Članarina plaćena iz balansa ne nosi taksu"). */
+  const PRICE = 40
 
   /** Enough to cover the whole of it, and not a round number. */
   const COVERS = 71.25
 
-  /** Something, but not enough. Distinct from every other number in the file. */
+  /** Something, but not enough: below the price as well as below the expected amount. Distinct
+   *  from every other number in the file. */
   const SHORT = 12.75
+
+  /** BETWEEN THE PRICE AND THE EXPECTED AMOUNT, which is the band the owner's change is about: it
+   *  covers the fee to the last para and does not reach what he would send. Not a round number. */
+  const IN_THE_BAND = 41.5
 
   const TICKED = true
 
@@ -53,33 +70,46 @@ describe('which of the seven cases a row is in', () => {
      * THE OWNER'S DECISION OF 27.09.2026, POINT 5 OF SECTION 19, AND THE ONE THING IT TURNS ON.
      *
      * <p>„Prazno polje i ukucana nula vode na ISTI prompt, onaj o oslobodjenju od clanarine."
-     * Five spellings, one state. <b>The mutation this exists for is reading the SPELLING</b>: a
-     * guard written as `said === '0'` passes the first of these and fails the other two, and
-     * `'0,00'` is the one a moderator copying the amount off this very screen would type,
-     * because the portal writes Serbian.
+     * Four spellings, one state. <b>The mutation this exists for is reading the SPELLING</b>: a
+     * guard written as `said === '0'` passes the first of these and fails the last. `'0.00'` and
+     * `'0,00'` were two more of the five until 10.10.2026 and are not: an amount is typed without a
+     * dot or a comma (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi"), so a nought
+     * written with one is refused, DERIVED from that decision and told to the owner in one sentence
+     * among the derived items of 10.10.2026 (point 15, K). Both are rows of the table of refusals
+     * below.
      */
     it.each([
       ['empty', ''],
       ['a space', ' '],
       ['nought', '0'],
-      ['nought written out', '0.00'],
-      ['nought written the Serbian way', '0,00'],
+      ['nought written with more zeros', '00'],
     ])('treats %s as nothing typed', (_what, said) => {
       expect(typedIn(said)).toEqual({ got: 'nothing' })
     })
 
-    it('reads an amount, either separator', () => {
-      expect(typedIn('43.50')).toEqual({ got: 'amount', value: 43.5 })
-      expect(typedIn('43,50')).toEqual({ got: 'amount', value: 43.5 })
+    /**
+     * <p><b>Whole numbers, read by value, with the spaces around them taken off.</b> `'007'` is seven
+     * and not a refusal (a leading zero is a spelling, and the value is what is decided), and a
+     * number as long as the column will not keep is still a number here and is refused by the
+     * route, which knows what `numeric(10,2)` holds (`theAmountIsNotKeptExactly`).
+     */
+    it('reads a whole amount', () => {
+      expect(typedIn('43')).toEqual({ got: 'amount', value: 43 })
       expect(typedIn(' 4800 ')).toEqual({ got: 'amount', value: 4800 })
+      expect(typedIn('007')).toEqual({ got: 'amount', value: 7 })
     })
 
     /**
-     * <p><b>`4.800` IS THE CASE THIS TEST IS REALLY FOR.</b> `Number('4.800')` is `4.8` -
-     * finite, positive, and four thousand seven hundred and ninety five too small - so a guard
-     * that only asks `Number.isFinite` accepts it and books the wrong money in silence. The
-     * portal writes „4.800" itself (`i18n/format.ts` writes Serbian), so this is what somebody
-     * reading the expected amount off the screen and typing it back produces.
+     * <p><b>`4.800` IS THE CASE THIS TEST IS REALLY FOR, AND SO IS EVERY WRITING WITH A DOT OR A
+     * COMMA IN IT.</b> `Number('4.800')` is `4.8` - finite, positive, and four thousand seven
+     * hundred and ninety five too small - so a guard that only asks `Number.isFinite` accepts it
+     * and books the wrong money in silence. The portal writes „4.800" itself (`i18n/format.ts`
+     * writes Serbian), so this is what somebody reading the expected amount off the screen and
+     * typing it back produces. It is no longer the only one refused: an amount is typed as a whole
+     * number, without a dot or a comma (PDL, ODLUKA 02.10.2026, recorded as the owner's own words:
+     * „Iznosi se unose bez tačaka i zareza!"), so one decimal, two of them with either separator,
+     * and a nought written with a separator are refused as well. Until 10.10.2026 only a third
+     * decimal digit was (and with it the grouped thousand).
      *
      * <p>Negative and unreadable are here for a different reason:
      * `payment_amount_positive` (V16:105) refuses nought and below, so neither has a row it
@@ -87,15 +117,22 @@ describe('which of the seven cases a row is in', () => {
      */
     it.each([
       ['a grouped thousand, which would read four point eight', '4.800'],
+      ['a grouped thousand written the other way', '4,800'],
+      ['one decimal', '43.5'],
+      ['two decimals with a dot', '43.50'],
+      ['two decimals with a comma', '43,50'],
       ['three decimals', '43.500'],
+      ['a nought written out with a dot', '0.00'],
+      ['a nought written the Serbian way', '0,00'],
       ['a negative amount', '-5'],
       ['a negative nought', '-0'],
       ['words', 'nesto'],
-      ['an amount with a word after it', '43.50 RSD'],
+      ['an amount with a word after it', '43 RSD'],
       ['two separators', '4.800,50'],
       ['a separator and nothing after it', '43.'],
+      ['a space inside', '4 800'],
       ['an exponent', '4e3'],
-      ['a plus sign', '+43.50'],
+      ['a plus sign', '+43'],
     ])('refuses %s', (_what, said) => {
       expect(typedIn(said)).toEqual({ got: 'refused' })
     })
@@ -103,11 +140,11 @@ describe('which of the seven cases a row is in', () => {
 
   describe('with nothing typed', () => {
     /**
-     * CASE 4: the balance reaches the expected amount, so the two buttons are „Odobri
+     * CASE 4: the balance reaches the price, so the two buttons are „Odobri
      * oslobodjenje od clanarine" and „Odobri iz balansa".
      */
     it('offers the balance or the exemption, and says the balance covers it', () => {
-      expect(whatToDo({ got: 'nothing' }, EXPECTED, COVERS, TICKED)).toEqual({
+      expect(whatToDo({ got: 'nothing' }, EXPECTED, PRICE, COVERS, TICKED)).toEqual({
         does: 'offersTheBalanceOrTheExemption',
         covers: true,
       })
@@ -119,35 +156,59 @@ describe('which of the seven cases a row is in', () => {
      * server calls it too.
      */
     it('offers the same two and says the balance does not cover it', () => {
-      expect(whatToDo({ got: 'nothing' }, EXPECTED, SHORT, TICKED)).toEqual({
+      expect(whatToDo({ got: 'nothing' }, EXPECTED, PRICE, SHORT, TICKED)).toEqual({
         does: 'offersTheBalanceOrTheExemption',
         covers: false,
       })
     })
 
     /**
-     * <p><b>THE BOUNDARY BETWEEN 4 AND 5 IS MEASURED FROM BOTH SIDES AND ONE PARA APART.</b>
-     * Equal counts as covering - he owes exactly what he has - and one para less does not. A
-     * comparison written `>` rather than `>=` passes every other case in this file and fails
-     * only this pair.
+     * <p><b>THE BOUNDARY BETWEEN 4 AND 5 IS MEASURED FROM BOTH SIDES AND ONE PARA APART, AND IT IS
+     * THE PRICE'S.</b> Equal counts as covering - he owes exactly what he has - and one para less
+     * does not. A comparison written `>` rather than `>=` passes every other case in this file and
+     * fails only this pair.
      */
-    it('counts a balance equal to the expected amount as covering it', () => {
-      expect(whatToDo({ got: 'nothing' }, EXPECTED, EXPECTED, TICKED)).toEqual({
+    it('counts a balance equal to the price as covering it', () => {
+      expect(whatToDo({ got: 'nothing' }, EXPECTED, PRICE, PRICE, TICKED)).toEqual({
         does: 'offersTheBalanceOrTheExemption',
         covers: true,
       })
 
-      expect(whatToDo({ got: 'nothing' }, EXPECTED, 43.49, TICKED)).toEqual({
+      expect(whatToDo({ got: 'nothing' }, EXPECTED, PRICE, 39.99, TICKED)).toEqual({
         does: 'offersTheBalanceOrTheExemption',
         covers: false,
       })
+    })
+
+    /**
+     * <p><b>THE BAND, WHICH IS THE WHOLE OF THE OWNER'S CHANGE OF 10.10.2026.</b> A fee paid out of
+     * a balance carries no processing charge (PDL, [IZVEDENO 02.10.2026] „Članarina plaćena iz
+     * balansa ne nosi taksu"), and the server takes `min(balance, price)` off the book. A member
+     * abroad whose balance stands between the fee and the fee plus the charge - 41.50 against 40
+     * and 43 - is therefore covered to the last para, and the second button is „Odobri iz balansa".
+     * Measured against the expected amount it was „Odobri umanjen iznos iz balansa" over a book the
+     * server spends as a whole fee, which told a moderator one thing on an act that cannot be
+     * undone and did another.
+     *
+     * <p><b>Three balances, all inside the band and at both ends of it:</b> the middle, exactly
+     * what he would send, and one para under it. A comparison against the expected amount answers
+     * the first and the third as „does not cover", which is the mutation this holds shut; the
+     * middle one alone would pass a comparison against the price plus a fraction of the charge.
+     */
+    it('says a balance in the band between the price and what he sends covers the fee', () => {
+      for (const balance of [IN_THE_BAND, EXPECTED, 42.99]) {
+        expect(whatToDo({ got: 'nothing' }, EXPECTED, PRICE, balance, TICKED)).toEqual({
+          does: 'offersTheBalanceOrTheExemption',
+          covers: true,
+        })
+      }
     })
 
     /** CASE 6: the box is cleared, so the balance is not a way to pay and only the exemption is
      *  left. <b>Measured with a balance that WOULD cover</b>, so clearing the box is what
      *  decides rather than there being nothing to spend. */
     it('asks only about the exemption when the box is cleared, however big the balance', () => {
-      expect(whatToDo({ got: 'nothing' }, EXPECTED, COVERS, CLEARED)).toEqual({
+      expect(whatToDo({ got: 'nothing' }, EXPECTED, PRICE, COVERS, CLEARED)).toEqual({
         does: 'asksAboutTheExemption',
       })
     })
@@ -160,7 +221,7 @@ describe('which of the seven cases a row is in', () => {
      * everybody who has no entry.
      */
     it('asks only about the exemption when the box is ticked over an empty book', () => {
-      expect(whatToDo({ got: 'nothing' }, EXPECTED, 0, TICKED)).toEqual({
+      expect(whatToDo({ got: 'nothing' }, EXPECTED, PRICE, 0, TICKED)).toEqual({
         does: 'asksAboutTheExemption',
       })
     })
@@ -173,7 +234,7 @@ describe('which of the seven cases a row is in', () => {
       ['ticked', TICKED],
       ['cleared', CLEARED],
     ])('books the payment when the amount is the expected one, box %s', (_what, box) => {
-      expect(whatToDo(amount(EXPECTED), EXPECTED, COVERS, box)).toEqual({
+      expect(whatToDo(amount(EXPECTED), EXPECTED, PRICE, COVERS, box)).toEqual({
         does: 'booksThePayment',
       })
     })
@@ -183,27 +244,53 @@ describe('which of the seven cases a row is in', () => {
       ['ticked', TICKED],
       ['cleared', CLEARED],
     ])('credits the surplus when more than expected arrived, box %s', (_what, box) => {
-      expect(whatToDo(amount(50), EXPECTED, COVERS, box)).toEqual({
+      expect(whatToDo(amount(50), EXPECTED, PRICE, COVERS, box)).toEqual({
         does: 'creditsTheSurplus',
       })
     })
 
-    /** <p>One para either way of the expected amount, so „equal" and „more" are told apart at
-     *  the boundary rather than only in the middle. */
-    it('tells equal from more one para apart', () => {
-      expect(whatToDo(amount(43.51), EXPECTED, 0, CLEARED)).toEqual({
+    /** <p>One unit either way of the expected amount, so „equal" and „more" are told apart at the
+     *  boundary rather than only in the middle. One unit and not one para, since an amount that is
+     *  typed is a whole number: there is nothing between 43 and 44 that anybody can type. */
+    it('tells equal from more one unit apart', () => {
+      expect(whatToDo(amount(EXPECTED + 1), EXPECTED, PRICE, 0, CLEARED)).toEqual({
         does: 'creditsTheSurplus',
       })
 
-      expect(whatToDo(amount(43.49), EXPECTED, 0, CLEARED)).toEqual({
+      expect(whatToDo(amount(EXPECTED - 1), EXPECTED, PRICE, 0, CLEARED)).toEqual({
         does: 'asksAboutTheShortfall',
-        short: 0.01,
+        short: 1,
+      })
+    })
+
+    /**
+     * <p><b>AN AMOUNT THAT WAS TYPED IS MEASURED AGAINST WHAT HE SENDS AND NEVER AGAINST THE
+     * PRICE</b>, which is the other half of the owner's change of 10.10.2026 and the half that must
+     * NOT move. The price is the number a BALANCE is measured against when nothing is typed (a fee
+     * paid out of a balance carries no processing charge); money that arrived is compared with the
+     * sum, because what he sends is what pays, and the route measures the shortfall against the
+     * same total (`PaymentApi`, `theshortfallIsMeasuredAgainstTheSameTotalSoAbalanceMayPayAprocessingFee`).
+     *
+     * <p>40 is the price and is three short of 43, so an amount equal to the PRICE is a shortfall and
+     * not his case 1; and 30 with a balance of 10 reaches exactly the price and not what he sends,
+     * so that pair is a question and not his case 2. A comparison that read the price where it
+     * reads the expected amount answers both of them the other way and passes everything else.
+     */
+    it('measures an amount that arrived against what he sends and never against the price', () => {
+      expect(whatToDo(amount(PRICE), EXPECTED, PRICE, 0, CLEARED)).toEqual({
+        does: 'asksAboutTheShortfall',
+        short: 3,
+      })
+
+      expect(whatToDo(amount(30), EXPECTED, PRICE, 10, TICKED)).toEqual({
+        does: 'asksAboutTheShortfall',
+        short: 3,
       })
     })
 
     /** CASE 2: less arrived, the box is ticked, and the balance covers the difference. */
     it('spends the balance and books when the balance covers the difference', () => {
-      expect(whatToDo(amount(35), EXPECTED, SHORT, TICKED)).toEqual({
+      expect(whatToDo(amount(35), EXPECTED, PRICE, SHORT, TICKED)).toEqual({
         does: 'spendsTheBalanceAndBooks',
       })
     })
@@ -212,12 +299,12 @@ describe('which of the seven cases a row is in', () => {
      * CASE 3, in the owner's own words: „ukljucen balans koji kad se iskoristi POTPUNO i dalje
      * nije ukupan zbir jednak ocekivanog... zelim prompt". <b>So the balance is spent to the
      * last and the question is about what is left</b>, which is why the shortfall is carried
-     * and is 43.50 - 20 - 12.75.
+     * and is 43 - 20 - 12.75.
      */
     it('asks about the shortfall left after the whole balance is spent', () => {
-      expect(whatToDo(amount(20), EXPECTED, SHORT, TICKED)).toEqual({
+      expect(whatToDo(amount(20), EXPECTED, PRICE, SHORT, TICKED)).toEqual({
         does: 'asksAboutTheShortfall',
-        short: 10.75,
+        short: 10.25,
       })
     })
 
@@ -227,52 +314,52 @@ describe('which of the seven cases a row is in', () => {
      * (PDL 23a): a case using an empty book here would pass whether the box were read or not.
      */
     it('asks about the whole shortfall when the box is cleared, ignoring a balance that would cover it', () => {
-      expect(whatToDo(amount(35), EXPECTED, COVERS, CLEARED)).toEqual({
+      expect(whatToDo(amount(35), EXPECTED, PRICE, COVERS, CLEARED)).toEqual({
         does: 'asksAboutTheShortfall',
-        short: 8.5,
+        short: 8,
       })
     })
 
     /** <p>And the boundary of case 2 against case 3, one para apart on the SUM rather than on
-     *  either number, so an arithmetic that reads only one of the two cannot pass. */
+     *  either number, so an arithmetic that reads only one of the two cannot pass. The amount is
+     *  whole and the para is the balance's: 30 and 13 reach 43 exactly, and 30 and 12.99 are a
+     *  para short of it. */
     it('tells covered from short one para apart on the sum', () => {
-      expect(whatToDo(amount(30.75), EXPECTED, 12.75, TICKED)).toEqual({
+      expect(whatToDo(amount(30), EXPECTED, PRICE, 13, TICKED)).toEqual({
         does: 'spendsTheBalanceAndBooks',
       })
 
-      expect(whatToDo(amount(30.74), EXPECTED, 12.75, TICKED)).toEqual({
+      expect(whatToDo(amount(30), EXPECTED, PRICE, 12.99, TICKED)).toEqual({
         does: 'asksAboutTheShortfall',
         short: 0.01,
       })
     })
 
     /**
-     * <p><b>THE ONE CASE IN THIS FILE WHOSE ANSWER DEPENDS ON HOW THE SUM IS COMPARED, RE-MEASURED
-     * ON REVIEW OF PR 411.</b> The pair that stood here, 43.29 / 43.30 / 0.01, does not: measured
-     * in Node, `43.29 + 0.01` and `43.30` are the SAME double, so `>=` answers `true` whether the
-     * sums are rounded first or not, and the mutation `inMinorUnits` exists to catch - dropping
-     * `Math.round` - survived this exact case, 82 green (review of PR 411, VISOK 2).
+     * <p><b>THE SHORTFALL IS WORKED OUT IN WHOLE PARAS AND COMES OUT AS A CLEAN NUMBER, which is
+     * what is left of the case this file held for the rounding until 10.10.2026.</b> That case was
+     * `8.20 + 0.10` against `8.30` (measured on review of PR 411: in binary the first is
+     * `8.299999999999999` and the second `8.300000000000001`, so comparing the raw sums reported a
+     * shortfall of `2.27e-15`). It needs a TYPED amount with a fraction in it, and a typed amount
+     * is a whole number now (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi"), as is the
+     * expected amount; with both whole the sum of the two cannot miss its target by a hair, so the
+     * pair has no input left that the field or the server can produce. The balance still has
+     * decimals, though, and the shortfall that is SHOWN is where they surface.
      *
-     * <p><b>`8.20 + 0.10` against `8.30` is the pair that actually divides the two comparisons.</b>
-     * In binary, `8.20 + 0.10` is `8.299999999999999` and `8.30` is `8.300000000000001` - two
-     * DIFFERENT doubles, the first strictly the smaller - so comparing the raw sums reports a
-     * shortfall of `2.27e-15`, asking the moderator to accept a reduced total that is not reduced
-     * by any amount a para could hold. Rounded to whole paras, `820 + 10 >= 830` is `true` and the
-     * balance is read as covering it exactly. Every other case in this file passes either way;
-     * this one does not.
+     * <p><b>`4.35 * 100` is `434.99999999999994` and `0.07 * 100` is `7.000000000000001`</b>, so a
+     * balance of either, taken off a whole difference without rounding to whole paras, comes out as
+     * `0.6500000000000004` and `0.9299999999999999` where the moderator is shown „0,65" and „0,93";
+     * truncated rather than rounded it is a para out in one direction (434) and rounded up it is a
+     * para out in the other (8). One row for each, so the mutations „no rounding", „round down" and
+     * „round up" all fall on this table.
      */
-    it('counts a balance that covers the difference to the last para', () => {
-      expect(whatToDo(amount(8.2), 8.3, 0.1, TICKED)).toEqual({
-        does: 'spendsTheBalanceAndBooks',
-      })
-    })
-
-    /** <p>And the same hazard in the other direction: a shortfall that must come out as a clean
-     *  number rather than as a tail of nines. */
-    it('says the shortfall in whole paras', () => {
-      expect(whatToDo(amount(0.07), 0.3, 0.1, TICKED)).toEqual({
+    it.each([
+      ['4.35, which a truncation takes a para off', 38, 4.35, 0.65],
+      ['0.07, which a rounding up adds a para to', 42, 0.07, 0.93],
+    ])('says the shortfall in whole paras: a balance of %s', (_what, typed, balance, short) => {
+      expect(whatToDo(amount(typed), EXPECTED, PRICE, balance, TICKED)).toEqual({
         does: 'asksAboutTheShortfall',
-        short: 0.13,
+        short,
       })
     })
   })
@@ -287,7 +374,7 @@ describe('which of the seven cases a row is in', () => {
     ['ticked, no balance', 0, TICKED],
     ['cleared, balance covers', COVERS, CLEARED],
   ])('refuses at the field whatever else the row is in (%s)', (_what, balance, box) => {
-    expect(whatToDo({ got: 'refused' }, EXPECTED, balance, box)).toEqual({
+    expect(whatToDo({ got: 'refused' }, EXPECTED, PRICE, balance, box)).toEqual({
       does: 'theFieldRefuses',
     })
   })
@@ -325,12 +412,15 @@ describe('what one press on a row sends', () => {
    * PETAR, in euro, with a balance that is real and SHORT of what is expected.
    *
    * <p>Short on purpose: it is what makes „the box is ticked" and „the balance covers it" two
-   * different answers, so `useTheBalance` cannot be satisfied by the wrong one of the two.
+   * different answers, so `useTheBalance` cannot be satisfied by the wrong one of the two. His
+   * fee is 40 and the processing charge 3, so what he sends is 43: the two numbers differ, and
+   * the cases that read the wrong one of them are told apart by it.
    */
-  const HIM = { competitorId: 58, currency: 'EUR', expected: 43.5, balance: 12.75 }
+  const HIM = { competitorId: 58, currency: 'EUR', expected: 43, price: 40, balance: 12.75 }
 
-  /** And one in the other money, so the way to pay is measured rather than assumed. */
-  const HER = { competitorId: 23, currency: 'RSD', expected: 4800, balance: 6000 }
+  /** And one in the other money, so the way to pay is measured rather than assumed. There is no
+   *  processing charge in dinars, so for her the price and the expected amount are one number. */
+  const HER = { competitorId: 23, currency: 'RSD', expected: 4800, price: 4800, balance: 6000 }
 
   const TICKED = true
 
@@ -346,17 +436,17 @@ describe('what one press on a row sends', () => {
      * CASE 1: the amount is the expected one, so nothing is asked and the payment is booked.
      *
      * <p><b>This case deliberately does NOT assert the join</b>, because it cannot: `received` and
-     * `expected` are the same number here, so both a right and a wrong reading give 43.5. What it
+     * `expected` are the same number here, so both a right and a wrong reading give 43. What it
      * is for is the door and the shape - `POST /api/payments` with five fields and no question.
      */
     it('books the payment with no question at all', () => {
-      expect(sending(HIM, amount(43.5), TICKED)).toEqual({
+      expect(sending(HIM, amount(43), TICKED)).toEqual({
         press: 'sends',
         sending: {
           to: PAYMENTS,
           body: {
             competitorId: 58,
-            received: 43.5,
+            received: 43,
             useTheBalance: true,
             method: 'paypal',
             reference: NO_REFERENCE,
@@ -372,7 +462,7 @@ describe('what one press on a row sends', () => {
      * expects to find.
      */
     it('names every field the route takes and none besides', () => {
-      const press = sending(HIM, amount(43.5), TICKED)
+      const press = sending(HIM, amount(43), TICKED)
 
       if (press.press !== 'sends' || press.sending.to !== PAYMENTS) {
         throw new Error(`the expected amount does not book a payment: ${press.press}`)
@@ -459,7 +549,7 @@ describe('what one press on a row sends', () => {
     it('names what is missing and carries the same body case 2 sends', () => {
       expect(sending(HIM, amount(20), TICKED)).toEqual({
         press: 'asksAboutTheShortfall',
-        short: 10.75,
+        short: 10.25,
         sending: {
           to: PAYMENTS,
           body: {
@@ -476,13 +566,13 @@ describe('what one press on a row sends', () => {
     /**
      * CASE 3b: the same question with the box cleared, and <b>measured against a balance that
      * WOULD have covered the difference</b>. 35 with 12.75 on the book reaches 47.75, past the
-     * 43.50 expected - so a body that ignored the cleared box would make this his case 2 and no
+     * 43 expected - so a body that ignored the cleared box would make this his case 2 and no
      * question would be put at all.
      */
     it('asks about the whole shortfall when the box is cleared over a balance that would cover it', () => {
       expect(sending(HIM, amount(35), CLEARED)).toEqual({
         press: 'asksAboutTheShortfall',
-        short: 8.5,
+        short: 8,
         sending: {
           to: PAYMENTS,
           body: {
@@ -504,8 +594,9 @@ describe('what one press on a row sends', () => {
      * impossible, and an assertion reading only one of the two would not see it.
      */
     it.each([
-      ['covers the expected amount, his case 4', 71.25, true],
-      ['does not cover it, his case 5', 12.75, false],
+      ['covers the price, his case 4', 71.25, true],
+      ['stands between the price and what he sends, his case 4 as well', 41.5, true],
+      ['does not reach the price, his case 5', 12.75, false],
     ])('offers the balance or the exemption when the balance %s', (_what, balance, covers) => {
       expect(sending({ ...HIM, balance }, { got: 'nothing' }, TICKED)).toEqual({
         press: 'asksAboutTheGround',
@@ -575,7 +666,7 @@ describe('what one press on a row sends', () => {
      * nothing else: the same press in either real money books a payment.
      */
     it('an amount in money that names no way to pay', () => {
-      expect(sending({ ...HIM, currency: 'CHF' }, amount(43.5), TICKED)).toEqual({
+      expect(sending({ ...HIM, currency: 'CHF' }, amount(43), TICKED)).toEqual({
         press: 'nothing',
       })
     })

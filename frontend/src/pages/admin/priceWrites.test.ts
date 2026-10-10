@@ -25,11 +25,15 @@ describe('the name and the two amounts the form sends', () => {
     })
   })
 
-  it('keeps the para rather than rounding them away', () => {
-    /* `numeric(10,2)`, and the route refuses a third decimal rather than letting PostgreSQL
-       round it (`PricingWriteApi`, `theAmountIsNotKeptExactly`). Nothing here may round
-       either: a price the portal quietly changed on the way out is the fault that refusal
-       exists for. */
+  it('sends a fraction as it was handed over rather than rounding it into a different price', () => {
+    /* A fraction cannot come off the form any more: both amount boxes say `integer` in
+       `admin-cena.form.json` (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi"), and the
+       route refuses one with `theAmountIsNotWhole` (`PricingWriteApi`). This module is neither of
+       the two and must not behave as though it were: it sends what it was handed, because a
+       module that rounded or truncated a fraction on the way out would turn a refusal into a
+       different price - 35.50 into 35 or 36 - and that quiet change is the fault the whole rule
+       exists for. (It was „keeps the para" until 10.10.2026, when a price could still have two
+       decimals.) */
     expect(amountsFrom({ label: 'Rani upis', eur: '35.50', rsd: '4260.75' })).toEqual({
       label: 'Rani upis',
       eur: 35.5,

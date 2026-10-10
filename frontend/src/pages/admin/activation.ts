@@ -40,9 +40,17 @@ export type Typed =
    *
    * **The two are one answer and that is the owner's decision rather than an economy here**
    * (PDL section 19, point 5, [ZATVORENO 27.09.2026, vlasnik]): „Prazno polje i ukucana nula
-   * vode na **isti** prompt, onaj o oslobodjenju od clanarine." So `''`, `' '`, `'0'`,
-   * `'0.00'` and `'0,00'` are one state, which is the axis a guard reading the SPELLING would
-   * split into five.
+   * vode na **isti** prompt, onaj o oslobodjenju od clanarine." So `''`, `' '` and `'0'` are one
+   * state, which is the axis a guard reading the SPELLING would split into three.
+   *
+   * **`'0.00'` AND `'0,00'` WERE IN THAT LIST UNTIL 10.10.2026 AND ARE NOT, and the sentence that
+   * listed them is rewritten rather than left.** An amount is typed as a whole number, without a
+   * dot or a comma (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", recorded as the
+   * owner's own words: „Iznosi se unose bez tačaka i zareza!", and POTVRĐENO 03.10.2026 „Celi
+   * brojevi svuda, i za iznos uplate"), so a nought written with a separator is not an amount
+   * typed correctly and is {@link Typed} `'refused'` like any other writing with one. That is
+   * DERIVED from those two decisions and not a decision of its own: it was told to the owner in
+   * one sentence among the derived items of 10.10.2026 (point 15, K), where he can object.
    *
    * **Why nought is not „less than expected", which is where arithmetic alone would put it.**
    * `V16:105` holds `constraint payment_amount_positive check (amount > 0)`, so a payment row
@@ -60,14 +68,17 @@ export type Typed =
    * it, so a negative number has no row it could ever become. Letting it reach a prompt would
    * offer the moderator a decision the database will not accept.
    *
-   * **`4.800` IS REFUSED, AND THAT IS THE POINT OF COUNTING THE DECIMALS.** This is my own
-   * reasoning rather than a decision of the owner's, and it earns its place by what the
-   * alternative does: the portal WRITES amounts in Serbian („4.800", `i18n/format.ts`), so a
-   * moderator reading the expected amount off this very screen and typing it back will type a
-   * grouping dot. `Number('4.800')` is `4.8` - finite, positive, and quietly four thousand
-   * seven hundred and ninety five too small. Refusing a third decimal digit turns that silent
-   * misreading into a sentence asking him to type it again, which is the one outcome of the
-   * three that cannot book the wrong money.
+   * **`4.800` IS REFUSED, AND SO IS EVERY WRITING WITH A DOT OR A COMMA IN IT, which is the
+   * owner's decision since 02.10.2026** (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi
+   * brojevi", recorded as his own words: „Iznosi se unose bez tačaka i zareza!", and POTVRĐENO
+   * 03.10.2026 for the amount of a payment as well). Until 10.10.2026 this paragraph was my own
+   * reasoning, that refusing a third decimal digit turned a silent misreading into a sentence;
+   * the decision is simpler and stronger and the case it exists for is the same: the portal
+   * WRITES amounts in Serbian („4.800", `i18n/format.ts`), so a moderator reading the expected
+   * amount off this very screen and typing it back will type a grouping dot, and
+   * `Number('4.800')` is `4.8` - finite, positive, and quietly four thousand seven hundred and
+   * ninety five too small. Refused as WRITTEN, that misreading is a sentence asking him to type
+   * it again, which is the one outcome that cannot book the wrong money. He types 4800.
    */
   | { got: 'refused' }
   /** A positive amount. Never nought: that is {@link Typed} `'nothing'` by the decision above. */
@@ -114,10 +125,15 @@ export type WhatToDo =
    * `POST /api/memberships` calls both of them the ground `balance` and says so
    * (`MembershipWriteApi`, „which are one ground and two labels").
    *
-   * @param covers whether the balance reaches the expected amount, which is case 4 („Odobri iz
-   *               balansa") as against case 5 („Odobri umanjen iznos iz balansa"). It changes
-   *               the words on one button and nothing else: the ground sent is the same, and
-   *               the server works the amount out for itself
+   * @param covers whether the balance reaches the PRICE, the fee without the processing charge,
+   *               which is case 4 („Odobri iz balansa") as against case 5 („Odobri umanjen iznos
+   *               iz balansa"). It is the price and not the expected amount since 10.10.2026,
+   *               because that is what the server takes off the book: a fee paid out of a balance
+   *               carries no charge (PDL, [IZVEDENO 02.10.2026] „Članarina plaćena iz balansa ne
+   *               nosi taksu"), so a member abroad whose balance stands between the two is
+   *               covered to the last para and the press is „Odobri iz balansa". It changes the
+   *               words on one button and nothing else: the ground sent is the same, and the
+   *               server works the amount out for itself
    */
   | { does: 'offersTheBalanceOrTheExemption'; covers: boolean }
   /**
@@ -216,7 +232,9 @@ export const WHEN_ACTIVATING: Record<string, string> = {
 }
 
 /**
- * THE TEN REFUSALS `POST /api/payments` NAMES, and the sentence this screen turns each into.
+ * THE ELEVEN REFUSALS `POST /api/payments` NAMES, and the sentence this screen turns each into.
+ * (Ten until 10.10.2026, when `theAmountIsNotWhole` was added; the counts below are rewritten
+ * with it and not left standing.)
  *
  * <p><b>ITS OWN MAP AND NOT AN ADDITION TO {@link WHEN_ACTIVATING}, because they are two routes
  * and `pages/account/refusals.test.ts` counts over the FILE.</b> That floor reads every
@@ -226,46 +244,51 @@ export const WHEN_ACTIVATING: Record<string, string> = {
  * precedent for the opposite arrangement - two acts of one class, two maps - and this is the same
  * question with the classes the other way round.
  *
- * <p><b>Four of the ten point at the sentences {@link WHEN_ACTIVATING} already uses, and that is
+ * <p><b>Four of the eleven point at the sentences {@link WHEN_ACTIVATING} already uses, and that is
  * deliberate rather than lazy.</b> `theFormIsNotComplete`, `theCompetitorDoesNotExist`,
  * `theMembershipIsAlreadyHeld` and `thePaymentWasReversed` mean the same thing whichever door
  * refused them, and the moderator is looking at one row either way. A second Serbian sentence
  * saying the same thing would be a second place to change when the wording changes, and the two
  * would drift.
  *
- * <p><b>THE SCREEN CANNOT REACH FIVE OF THE TEN AND ANSWERS THEM ANYWAY</b>, which is the shape
+ * <p><b>THE SCREEN CANNOT REACH SIX OF THE ELEVEN AND ANSWERS THEM ANYWAY</b>, which is the shape
  * `admin/priceWrites.ts` and {@link WHEN_ACTIVATING} both keep and the reason they give: the
  * screen is the floor and the route decides. Counted, because „cannot reach" is a claim:
  *
  * <ul>
  * <li><b>`theAmountIsNotMoney`</b> - {@link whatToDo} sends nought, blank and unreadable
- * elsewhere, so nothing below a para can be put on the wire from here.
+ * elsewhere, so nothing that is not a positive amount can be put on the wire from here.
+ * <li><b>`theAmountIsNotWhole`</b> - {@link AN_AMOUNT} takes digits and nothing else, so a dot or
+ * a comma is refused at the field and never reaches the route. The route's answer is the floor
+ * for a caller that is not this screen (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi
+ * brojevi").
  * <li><b>`theMethodIsNotKnown`</b> - {@link methodFor} answers one of the two the route knows or
  * else the row cannot act at all.
  * <li><b>`theReferenceIsNotShaped` and `theReferenceIsTaken`</b> - the owner's row carries three
  * things and a poziv na broj is not one of them (PDL section 19, „Sta stoji u redu"), so this
  * screen always sends none.
- * <li><b>`theAmountIsNotKeptExactly` is the one of the five that IS half reachable</b>, and so it
- * is not on this list: {@link AN_AMOUNT} refuses a third decimal but puts no ceiling on the
- * digits before the separator, and the route asks `MembershipPrice.amountIsKeptExactly`, which
- * knows what `numeric(10,2)` holds. So a moderator who types eleven digits is refused by the
- * server and reads a sentence.
+ * <li><b>`theAmountIsNotKeptExactly` is the one of the six that IS half reachable</b>, and so it
+ * is not on this list: {@link AN_AMOUNT} takes digits only but puts no ceiling on how many, and
+ * the route asks `MembershipPrice.amountIsKeptExactly`, which knows what `numeric(10,2)` holds.
+ * So a moderator who types eleven digits is refused by the server and reads a sentence.
  * </ul>
  *
- * <p><b>THE TENTH, `theMembershipCostsNothing`, ADDED 28.09.2026, AND IT IS THE ONE REFUSAL ON
- * THIS LIST THAT IS ABOUT NO FIELD ON THIS SCREEN AT ALL.</b> It says the PRICE LIST asks nothing
- * for the season this member is being booked into, which `PUT /api/pricing/{key}` allows since PDL
+ * <p><b>THE LAST, `theMembershipCostsNothing`, ADDED 28.09.2026 (it was the tenth then), AND IT IS
+ * THE ONE REFUSAL ON THIS LIST THAT IS ABOUT NO FIELD ON THIS SCREEN AT ALL.</b> It says the PRICE
+ * LIST asks nothing for the season this member is being booked into, which
+ * `PUT /api/pricing/{key}` allows since PDL
  * 20b (free in both currencies or in neither) while `payment_amount_positive` (V16) will not take
  * a payment of nought. The moderator typed nothing wrong, and that is why its sentence sends him
  * to the exemption rather than back to the amount box: PDL 19 point 5 already routes „no money is
  * owed" to `POST /api/memberships`, and this is that same state arrived at from the price list's
  * side. Nothing the screen is served would let it predict this - the expected amount it draws
  * comes from the same row, so it would read „3 EUR" for a free membership abroad - so it is a
- * sixth reason the screen answers without being able to reach.
+ * seventh reason the screen answers without being able to reach.
  */
 export const WHEN_BOOKING_A_PAYMENT: Record<string, string> = {
   theFormIsNotComplete: 'verification.activationRefused.theFormIsNotComplete',
   theAmountIsNotMoney: 'verification.activationRefused.theAmountIsNotMoney',
+  theAmountIsNotWhole: 'verification.activationRefused.theAmountIsNotWhole',
   theAmountIsNotKeptExactly: 'verification.activationRefused.theAmountIsNotKeptExactly',
   theMethodIsNotKnown: 'verification.activationRefused.theMethodIsNotKnown',
   theReferenceIsNotShaped: 'verification.activationRefused.theReferenceIsNotShaped',
@@ -277,13 +300,15 @@ export const WHEN_BOOKING_A_PAYMENT: Record<string, string> = {
 }
 
 /**
- * Digits, and at most one separator with at most two digits after it.
+ * Digits and nothing else: an amount is typed as a whole number, without a dot or a comma.
  *
- * Both separators, because the portal writes the Serbian one and an administrator may type
- * either. No sign, no spaces inside, no grouping: see {@link Typed} `'refused'` for what
- * counting the decimals is really for.
+ * PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", recorded as the owner's own words -
+ * „Iznosi se unose bez tačaka i zareza!" - and POTVRĐENO 03.10.2026 for the amount of a payment
+ * as well. It took at most two decimals after either separator until 10.10.2026, and a
+ * separator at all is refused now: see {@link Typed} `'refused'` for the case that is the point
+ * of it („4.800" read as four point eight). No sign, no spaces inside, no grouping.
  */
-const AN_AMOUNT = /^\d+(?:[.,]\d{1,2})?$/
+const AN_AMOUNT = /^\d+$/
 
 /**
  * WHAT IS IN THE FIELD, READ ONCE AND BY VALUE.
@@ -305,12 +330,12 @@ export function typedIn(field: string): Typed {
     return { got: 'refused' }
   }
 
-  const value = Number(said.replace(',', '.'))
+  const value = Number(said)
 
   /* READ BY VALUE AND NOT BY SPELLING, which is the owner's decision of 27.09.2026 and the one
-     line that makes „0", „0.00" and „0,00" one state. A comparison against the text would
-     answer differently for each of the three, and the middle one is what somebody copying an
-     amount off this screen types. */
+     line that makes „0" and „00" one state. A comparison against the text would answer
+     differently for each of them. (It made „0.00" and „0,00" the same state as well until
+     10.10.2026; a separator is refused before this line now, see `AN_AMOUNT`.) */
   return value === 0 ? { got: 'nothing' } : { got: 'amount', value }
 }
 
@@ -333,6 +358,13 @@ export function typedIn(field: string): Typed {
  * what turns that shortfall into "the balance covers it to the last para" - `activation.test.ts`
  * holds this with that pair now, so the mutation „compare the sums as they come" fails rather
  * than passing on every round number.
+ *
+ * **Since 10.10.2026 an amount that is typed and the expected amount are whole numbers** (PDL,
+ * ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", for what is typed confirmed on
+ * 10.10.2026), and the balance is the one number on the row that may still have decimals (650 RSD
+ * is 5.42 EUR). So the hazard above can only come from a balance now, and the function still takes
+ * any number: it is the shortfall `short`, which is shown, that must come out of whole paras and
+ * not as a tail of nines.
  */
 function inMinorUnits(amount: number): number {
   return Math.round(amount * 100)
@@ -344,6 +376,15 @@ function inMinorUnits(amount: number): number {
  * @param expected  what the portal expects him to SEND, which is the fee plus the processing
  *                  charge where one applies (owner, 27.09.2026: „„Ocekivan iznos" je ono sto
  *                  clan SALJE, dakle sa uracunatom taksom"). Served, never worked out here
+ * @param price     what the membership costs him WITHOUT the processing charge, served on the
+ *                  same row. **The one number a balance is measured against when nothing is
+ *                  typed** (cases 4 and 5), because a fee paid out of a balance carries no
+ *                  charge (PDL, [IZVEDENO 02.10.2026] „Članarina plaćena iz balansa ne nosi
+ *                  taksu"). **And not what an amount that was TYPED is measured against**: money
+ *                  that arrived is compared with `expected`, because what he sends is what pays,
+ *                  and the route measures the shortfall against the same total (cases 1, 2, 3, 3b
+ *                  and 7). Two numbers a position apart, so a call site that swaps them is a
+ *                  mutation the cases below tell apart by giving them different values
  * @param balance   what his book adds up to today in HIS currency, served on the same row.
  *                  Never negative and never absent: `Balance.Money` refuses a negative amount
  *                  outright and `BalanceBook.forEveryOneOf` answers `NOTHING` for a member with
@@ -352,7 +393,13 @@ function inMinorUnits(amount: number): number {
  *                  owner's decision of 27.09.2026** (PDL 23a): „Na moderatorovom ekranu
  *                  odlucuje kucica i iznos u njenoj labeli, ne ono sto je QR kod obecao."
  */
-export function whatToDo(typed: Typed, expected: number, balance: number, including: boolean): WhatToDo {
+export function whatToDo(
+  typed: Typed,
+  expected: number,
+  price: number,
+  balance: number,
+  including: boolean,
+): WhatToDo {
   if (typed.got === 'refused') {
     return { does: 'theFieldRefuses' }
   }
@@ -368,7 +415,11 @@ export function whatToDo(typed: Typed, expected: number, balance: number, includ
       return { does: 'asksAboutTheExemption' }
     }
 
-    return { does: 'offersTheBalanceOrTheExemption', covers: his >= owed }
+    /* AGAINST THE PRICE AND NOT AGAINST WHAT HE WOULD SEND: nothing is being sent, the balance pays
+       the fee, and the server takes `min(balance, price)` off the book. Measured against `owed`, a
+       member abroad whose balance stands between the fee and the fee plus the charge (41 against 40
+       and 43) was offered „Odobri umanjen iznos" over a book the server spends as a whole fee. */
+    return { does: 'offersTheBalanceOrTheExemption', covers: his >= inMinorUnits(price) }
   }
 
   const sent = inMinorUnits(typed.value)
@@ -431,14 +482,22 @@ type Granting = {
 }
 
 /**
- * WHAT ONE ROW IS, AS {@link sending} NEEDS IT: the two fields a body carries and the two
+ * WHAT ONE ROW IS, AS {@link sending} NEEDS IT: the two fields a body carries and the three
  * {@link whatToDo} reads.
  *
- * <p><b>Four fields and not `MembershipDue`</b>, although every row that reaches this is one. The
+ * <p><b>Five fields and not `MembershipDue`</b>, although every row that reaches this is one. The
  * names and the town are on that type and decide nothing here, and a function taking them would
- * be a function a test has to invent a name for before it can ask about money.
+ * be a function a test has to invent a name for before it can ask about money. (Four until
+ * 10.10.2026, when `price` was added: the number a balance is measured against, beside
+ * `expected`, the number an amount that was typed is measured against.)
  */
-type Whose = { competitorId: number; currency: string; expected: number; balance: number }
+type Whose = {
+  competitorId: number
+  currency: string
+  expected: number
+  price: number
+  balance: number
+}
 
 /**
  * WHAT PRESSING „AKTIVIRAJ" ON ONE ROW DOES, AND WITH WHAT BODY.
@@ -483,7 +542,8 @@ export type Press =
    * His 4 and 5: two grounds and one question.
    *
    * @param covers which of the two labels the second button carries, his 4 („Odobri iz balansa")
-   *               against his 5 („Odobri umanjen iznos iz balansa")
+   *               against his 5 („Odobri umanjen iznos iz balansa"): whether the balance reaches
+   *               the PRICE of the membership, see {@link WhatToDo}
    */
   | {
       press: 'asksAboutTheGround'
@@ -539,7 +599,7 @@ function granting(whose: Whose, ground: string): Sending {
  *                  is what decides (PDL 23a), and the server is what works out how much comes off
  */
 export function sending(whose: Whose, typed: Typed, including: boolean): Press {
-  const what = whatToDo(typed, whose.expected, whose.balance, including)
+  const what = whatToDo(typed, whose.expected, whose.price, whose.balance, including)
 
   if (typed.got !== 'amount') {
     if (what.does === 'offersTheBalanceOrTheExemption') {
