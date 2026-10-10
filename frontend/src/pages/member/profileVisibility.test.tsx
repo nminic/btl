@@ -84,7 +84,9 @@ const writes = (asked: Asked[]): Asked[] =>
 const panelFor = async () => within(await screen.findByRole('region', { name: 'Privatnost' }))
 
 const theBox = async () =>
-  (await panelFor()).getByLabelText('Sakrij moj profil od posetilaca koji nisu prijavljeni')
+  (await panelFor()).getByLabelText(
+    'Sakrij moj profil od svakoga ko nije aktivan član ni administracija',
+  )
 
 /** Somebody else signing in during the same visit, through the portal's own live writer -
  *  the very call `member/SignIn.tsx` makes with the answer to `GET /api/me`. */
