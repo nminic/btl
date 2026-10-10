@@ -1665,3 +1665,52 @@ export type WhatIsWaiting = {
    */
   alreadyInATeam: boolean
 }
+
+/**
+ * ONE RUN OF THE ASKER'S THAT NOBODY HAS COUNTED, as `GET /api/me/result-submissions` answers
+ * it (`MyResultSubmissionsApi.Sent`, R2 of the results flows).
+ *
+ * <p><b>Two states and never a third.</b> The route serves what waits on a moderator and what a
+ * moderator sent back; an approved run is a result, read at `GET /api/results`, and serving it
+ * here as well would draw one counted run twice. The words are V9's own.
+ *
+ * <p><b>Newest first, by the moment it was SENT</b>, which is the route's order and the screen
+ * keeps it rather than sorting again (derived on 10.10.2026 with the owner's answers: „Najnovije
+ * prvo" in „Moji rezultati" is by the moment of sending).
+ *
+ * - `id` is the submission's own key, which is what `?ponovo=` carries, and NOT a result's.
+ * - `raceId`: the race in the calendar, or nothing for a race the calendar does not hold.
+ * - `raceName`: the race as it is called NOW, or the name typed for a described race.
+ * - `raceDate`: the day it was run, never the day it was sent.
+ * - `raceKind`: the race's kind, or the member's hint for a described race.
+ * - `city`, `country`: the event's town for a race in the calendar, the run's own for a
+ *   described one; the country by its code.
+ * - the four figures AS AN APPROVAL WOULD COUNT THEM TODAY, worked out by the server
+ *   (`WhatARaceCarries.figuresOf`), the same answer the moderator's queue is given.
+ * - `link`, `comment`: the run's own proof, empty where there is none.
+ * - `reason`: why a moderator sent it back, and nothing while it waits.
+ * - `amendsResultId`: the counted result a correction would replace (`result.id`), and nothing
+ *   for a fresh run.
+ *
+ * <p>Who decided and when are not answered, and the picture is not either: the first for the
+ * reason a payment's row carries no moderator's name (19.09.2026, „odalo bi ko je odbio
+ * uplatu"), the second because a picture is deleted once it has been decided (ADL A12).
+ */
+export type SentRun = {
+  id: number
+  state: 'waiting' | 'rejected'
+  raceId: number | null
+  raceName: string
+  raceDate: string
+  raceKind: string
+  city: string
+  country: string
+  distanceKm: number
+  ascentM: number
+  descentM: number
+  seconds: number
+  link: string
+  comment: string
+  reason: string | null
+  amendsResultId: number | null
+}

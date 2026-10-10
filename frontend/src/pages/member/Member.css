@@ -90,10 +90,6 @@
   gap: var(--space-6);
 }
 
-.submissions__item--approved {
-  border-left-color: var(--up);
-}
-
 .submissions__item--rejected {
   border-left-color: var(--down);
 }
@@ -149,10 +145,6 @@
   background: var(--surface-hover);
   color: var(--text-muted);
   white-space: nowrap;
-}
-
-.tag--approved {
-  color: var(--up);
 }
 
 .tag--rejected {

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { SLOW } from '../test/slow'
 import type { ReactNode } from 'react'
+import type { SentRun } from '../data/types'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { MEMBERS } from './admin/entityForms'
@@ -1944,69 +1945,88 @@ describe('messages', () => {
 })
 
 /**
- * A REFUSAL ARRIVING IN THE MEMBER'S SESSION, which is where his side still reads a submission's
- * state until R2 of the results flows moves „Moji rezultati" onto the server.
+ * A SERVER THAT KEEPS WHAT IS SENT TO IT, which is the half of this walk the browser no longer
+ * holds since R2 of the results flows: `POST /api/results` puts a run in the member's list, and
+ * `GET /api/me/result-submissions` answers that list newest first, as `MyResultSubmissionsApi` does.
  *
- * <p>The moderator's queue decided in this same session until R1, so a walk could press „Odbij" on
- * the queue and read the refusal on the member's list. The queue decides on the server since R1
- * (`pages/admin/resultsQueue.test.tsx` holds that), and nothing in the administration writes into
- * this session any more; the member's half of a refusal is still read from here, so it is written
- * here, by the one call that writes it (`session/context.ts`, `decide`).
+ * <p>A moderator's refusal is pressed here rather than on the queue, which reads and decides on the
+ * server since R1 (`pages/admin/resultsQueue.test.tsx` holds that half), so what reaches the member
+ * is what the route answers him on his next read.
+ *
+ * <p>Only the road this walk takes is kept, a race the calendar does not hold: a body that names a
+ * race of the calendar is not this walk's, and is refused, so a screen that sent one fails here
+ * loudly instead of drawing a row out of nothing.
  */
-function RefusesInTheSession({ race, reason }: { race: string; reason: string }) {
-  const { submissions, decide } = useSession()
+function aServerThatKeepsWhatIsSent(): {
+  posted: () => Record<string, unknown>[]
+  sendBack: (race: string, reason: string) => void
+  stop: () => void
+} {
+  let held: SentRun[] = []
+  const bodyOf = (init: RequestInit | undefined): Record<string, unknown> => {
+    const said: unknown = JSON.parse(String(init?.body ?? '{}'))
 
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        for (const one of submissions.filter((each) => each.raceName === race)) {
-          decide(one.id, 'rejected', reason)
-        }
-      }}
-    >
-      odbij u sesiji
-    </button>
-  )
-}
+    return typeof said === 'object' && said !== null ? { ...said } : {}
+  }
+  const server = serverThat((path, init) => {
+    if (path === '/api/results' && init?.method === 'POST') {
+      const run = bodyOf(init)
 
-/** What each submission carries, one line each, for the half of a correction no screen of the
- *  member's draws: the address, the words, the proof, the day and the figures. */
-function Carried() {
-  const { submissions } = useSession()
+      if (Object.hasOwn(run, 'raceId')) {
+        return refused('theRaceIsNotKnown')
+      }
 
-  return (
-    <ul aria-label="carried">
-      {submissions.map((one) => (
-        <li key={one.id}>
-          {[
-            one.raceName,
-            one.link,
-            one.comment,
-            one.photo,
-            one.date,
-            one.distanceKm,
-            one.ascentM,
-            one.descentM,
-            one.seconds,
-            /* To two places, which is how the portal ever shows a score. */
-            one.points.toFixed(2),
-          ].join(' | ')}
-        </li>
-      ))}
-    </ul>
-  )
+      held = [
+        {
+          id: held.length + 1,
+          state: 'waiting',
+          raceId: null,
+          raceName: String(run.raceName),
+          raceDate: String(run.day),
+          raceKind: String(run.raceKind),
+          city: String(run.city),
+          country: String(run.country),
+          distanceKm: Number(run.distanceKm),
+          ascentM: Number(run.ascentM),
+          descentM: Number(run.descentM),
+          seconds: Number(run.seconds),
+          link: String(run.link),
+          comment: String(run.comment),
+          reason: null,
+          amendsResultId: null,
+        },
+        ...held,
+      ]
+
+      return new Response(null, { status: 201 })
+    }
+
+    return path.replace(/\?.*$/, '') === '/api/me/result-submissions'
+      ? new Response(JSON.stringify(held), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      : null
+  })
+
+  return {
+    posted: () =>
+      server.asked
+        .filter((one) => one.path === '/api/results' && one.init?.method === 'POST')
+        .map((one) => bodyOf(one.init)),
+    sendBack: (race, reason) => {
+      held = held.map((one) =>
+        one.raceName === race && one.state === 'waiting' ? { ...one, state: 'rejected', reason } : one,
+      )
+    },
+    stop: server.stop,
+  }
 }
 
 describe('a result from entry to decision', () => {
-  /** The member's own list, and not the probe drawn beside the portal. */
+  /** The member's own list of what he has sent. */
   async function theMembersList() {
-    return within(
-      must(
-        (await screen.findAllByRole('list')).find((one) => one.getAttribute('aria-label') !== 'carried'),
-        "the member's own list",
-      ),
-    )
+    return within(await screen.findByRole('region', { name: /^Poslato na proveru/ }))
   }
 
   async function enterResult(user: ReturnType<typeof setupUser>) {
@@ -2046,33 +2066,41 @@ describe('a result from entry to decision', () => {
 
   it('goes in and waits, and the member sees it waiting', async () => {
     const user = setupUser()
-    const { unmount } = renderAt('/sr/rezultat/novi', 'superadmin', '000007')
+    const server = aServerThatKeepsWhatIsSent()
 
-    await enterResult(user)
+    try {
+      const { unmount } = renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
-    /* The entry stays on a confirmation that says what happens next, instead of
-       jumping to the list without a word.
+      await enterResult(user)
 
-       It said what the race earned until 28.09.2026 („Ova trka ti donosi 23,55 BTL
-       poena.", 21,1 km with 540 up and 540 down in 1:52:10 by the formula in the
-       rulebook), and the owner took that off every entry form that day. */
-    expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+      /* The entry stays on a confirmation that says what happens next, instead of
+         jumping to the list without a word.
 
-    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+         It said what the race earned until 28.09.2026 („Ova trka ti donosi 23,55 BTL
+         poena.", 21,1 km with 540 up and 540 down in 1:52:10 by the formula in the
+         rulebook), and the owner took that off every entry form that day. */
+      expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+      expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
 
-    // It lands among the things sent in, and says it is waiting.
-    expect(await screen.findByRole('heading', { name: /Poslato na proveru/ })).toBeVisible()
-    expect(screen.getByText('Čeka proveru')).toBeVisible()
-    expect(screen.getByText('Probna trka')).toBeVisible()
+      await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
-    /* THE WALK WENT ON TO THE QUEUE UNTIL R1 OF THE RESULTS FLOWS: a moderator approved the
-       result there and the member read „Odobreno" on this list, all of it inside this
-       browser's session. The queue reads and decides on the server since R1, and this list
-       reads the session until R2, so the two halves of the walk no longer meet in one
-       visit. The decision is held in `pages/admin/resultsQueue.test.tsx` and on the server
-       (`VerificationWriteApiTest`); what the member reads after it arrives with R2. */
-    unmount()
+      /* It lands among the things sent in, and says it is waiting: read off the server since R2
+         of the results flows, so it is there only because the list was asked for again after
+         the write went through. */
+      expect(await screen.findByRole('heading', { name: /Poslato na proveru/ })).toBeVisible()
+      expect(screen.getByText('Čeka proveru')).toBeVisible()
+      expect(screen.getByText('Probna trka')).toBeVisible()
+
+      /* THE WALK WENT ON TO THE QUEUE UNTIL R1 OF THE RESULTS FLOWS: a moderator approved the
+         result there and the member read „Odobreno" on this list, all of it inside this
+         browser's session. The queue reads and decides on the server since R1, and an approved
+         run leaves this list for the counted table since R2 (`MyResultSubmissionsApi` answers
+         only what waits or was sent back). The decision is held in
+         `pages/admin/resultsQueue.test.tsx` and on the server (`VerificationWriteApiTest`). */
+      unmount()
+    } finally {
+      server.stop()
+    }
   }, SEVERAL_SCREENS)
 
   it('sends what the member said about the race to the server', async () => {
@@ -2197,8 +2225,7 @@ describe('a result from entry to decision', () => {
 
   /* Its own limit, because it really does walk the whole way: a member enters a
      result, a moderator sends it back, the member corrects it and sends it again,
-     and the queue is read at every step. Five screens and eleven changes of screen,
-     the longest walk in this file.
+     and his list is read at every step.
 
      Measured 23.08.2026: 1,6 seconds of test time on a warm run and 4,4 under the
      load of the whole package, against the package's five, and the machine that
@@ -2211,123 +2238,134 @@ describe('a result from entry to decision', () => {
      A test that genuinely walks carries its own limit rather than raising
      everybody's (the same rule is written over the turning chart in
      `publicScreens.test.tsx`). */
-  it('is corrected and sent again, as the same result rather than a second one', async () => {
-    /* Owner, 06.08.2026. A refusal is not the end of a result: the member is
-       told why, corrects it and sends the same race again, and it goes back into
-       the queue it came from. One row and not two, because it is one race. */
+  it('is corrected and sent again, and stands on the list beside the run sent back', async () => {
+    /* Owner, 06.08.2026. A refusal is not the end of a result: the member is told
+       why, corrects it and sends the same race again. Since R2 of the results flows
+       it goes again through the routes that already exist and stands on the list
+       beside the run that was sent back, the owner's choice of 10.10.2026 among the
+       outcomes offered, in the record's wording: „sada ponovno slanje odbijene
+       prijave preko postojećih ruta" and „posle ponovnog slanja na spisku stoje oba
+       reda". It said „one row and not two" until then, because the browser wrote
+       over the run that was sent back. */
     const user = setupUser()
-    renderAt(
-      '/sr/rezultat/novi',
-      'superadmin',
-      '000007',
-      undefined,
-      null,
-      <>
-        <RefusesInTheSession race="Probna trka" reason="Link ne otvara rezultate." />
-        <Carried />
-      </>,
-    )
+    const server = aServerThatKeepsWhatIsSent()
 
-    await enterResult(user)
+    try {
+      renderAt('/sr/rezultat/novi', 'superadmin', '000007')
 
-    /* A second race, which this must leave alone: one correction is about one
-       result, and a list rewritten wholesale would carry the correction into
-       every row of it. */
-    /* A link now, not a button: the confirmation lives on its own entry in the history
-       since 06.09.2026, so starting another one is going somewhere rather than clearing
-       something the screen was holding.
-     *
-       **Awaited since 28.09.2026, because the confirmation is no longer drawn on the
-       press.** `POST /api/results` is what really puts the run in the queue, so the screen
-       stays on the form until the route has answered - which is the whole point of the
-       change and is exactly what the case above this one already waited for. */
-    await user.click(await screen.findByRole('link', { name: 'Unesi još jedan' }))
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
-    await user.type(screen.getByLabelText(/Datum trke/), '11052026')
-    await user.type(screen.getByLabelText('Mesto'), 'Niš')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-    await user.type(screen.getByLabelText(/Dužina/), '10')
-    await user.type(screen.getByLabelText(/Uspon/), '0')
-    await user.type(screen.getByLabelText(/Spust/), '0')
-    await user.type(screen.getByLabelText('Sati'), '0')
-    await user.type(screen.getByLabelText('Minuta'), '44')
-    await user.type(screen.getByLabelText('Sekundi'), '2')
-    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/druga')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
-    await screen.findByRole('heading', { name: 'Rezultat je poslat' })
+      await enterResult(user)
 
-    /* The refusal reaches the member's session, which is where his list reads it until R2
-       (`RefusesInTheSession` says why it is pressed here and not on the queue). */
-    await user.click(screen.getByRole('button', { name: 'odbij u sesiji' }))
+      /* A second race, which this must leave alone: one correction is about one
+         result, and a list rewritten wholesale would carry the correction into
+         every row of it. */
+      /* A link now, not a button: the confirmation lives on its own entry in the history
+         since 06.09.2026, so starting another one is going somewhere rather than clearing
+         something the screen was holding.
+       *
+         **Awaited since 28.09.2026, because the confirmation is no longer drawn on the
+         press.** `POST /api/results` is what really puts the run in the queue, so the screen
+         stays on the form until the route has answered. */
+      await user.click(await screen.findByRole('link', { name: 'Unesi još jedan' }))
+      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Druga trka')
+      await user.type(screen.getByLabelText(/Datum trke/), '11052026')
+      await user.type(screen.getByLabelText('Mesto'), 'Niš')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      await user.type(screen.getByLabelText(/Dužina/), '10')
+      await user.type(screen.getByLabelText(/Uspon/), '0')
+      await user.type(screen.getByLabelText(/Spust/), '0')
+      await user.type(screen.getByLabelText('Sati'), '0')
+      await user.type(screen.getByLabelText('Minuta'), '44')
+      await user.type(screen.getByLabelText('Sekundi'), '2')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/druga')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
-    /* Straight from the confirmation, which offers the list itself; the walk went through
-       the account menu while it came back from the queue, which is another screen. */
-    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+      /* The moderator sends the first back, on the server (`aServerThatKeepsWhatIsSent` says
+         why it is pressed there and not on the queue). */
+      server.sendBack('Probna trka', 'Link ne otvara rezultate.')
 
-    const sent = await theMembersList()
-    expect(sent.getAllByRole('listitem')).toHaveLength(2)
+      /* Straight from the confirmation, which offers the list itself. */
+      await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
 
-    /* Named by the race, like everything else that names a result since 23.08.2026.
-       A sweep of mutations found this one and six rounds of review did not: the name
-       inside the accessible label was the only place left reading the event, and
-       nothing measured it. A member with two refused results hears „Ispravi i pošalji
-       ponovo" twice over otherwise. */
-    expect(
-      screen.queryByRole('link', { name: 'Ispravi i pošalji ponovo: Probna trka' }),
-      'the link is named after something other than the race',
-    ).not.toBeNull()
+      const sent = await theMembersList()
 
-    await user.click(screen.getByRole('link', { name: /Ispravi i pošalji ponovo: / }))
+      expect(sent.getAllByRole('listitem')).toHaveLength(2)
 
-    /* The form opens on what was refused, and says why it is full. */
-    expect(await screen.findByText(/Link ne otvara rezultate\./)).toBeVisible()
-    const link = screen.getByLabelText(/^Link/)
-    expect(link).toHaveValue('https://primer.rs/rezultati')
-    /* And what the member said about the race comes back with it. This is the one
-       submission where those words matter most: the refusal is usually about the
-       link, and the comment is what explains it. Left out, the member reopened the
-       form, saw the sentence gone, and sending the correction wiped it from the
-       moderator's card too, because a correction is the same submission written
-       over. A review measured exactly that on the first version of this fix: the
-       link came back and the comment did not (PDL P9 binds the two as a pair). */
-    expect(screen.getByLabelText(/Komentar/)).toHaveValue('Sat mi je stao.')
+      /* Named by the race, like everything else that names a result since 23.08.2026.
+         A sweep of mutations found this one and six rounds of review did not: the name
+         inside the accessible label was the only place left reading the event, and
+         nothing measured it. A member with two refused results hears „Ispravi i pošalji
+         ponovo" twice over otherwise. */
+      expect(
+        screen.queryByRole('link', { name: 'Ispravi i pošalji ponovo: Probna trka' }),
+        'the link is named after something other than the race',
+      ).not.toBeNull()
 
-    await user.clear(link)
-    await user.type(link, 'https://primer.rs/ispravno')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.click(screen.getByRole('link', { name: /Ispravi i pošalji ponovo: / }))
 
-    expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
+      /* The form opens on what was refused, and says why it is full. */
+      expect(await screen.findByText(/Link ne otvara rezultate\./)).toBeVisible()
 
-    /* One result, waiting again, and the reason that was answered is gone with
-       the version it was about. */
-    await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+      const link = screen.getByLabelText(/^Link/)
 
-    const again = await theMembersList()
+      expect(link).toHaveValue('https://primer.rs/rezultati')
+      /* And what the member said about the race comes back with it. This is the one
+         run where those words matter most: the refusal is usually about the link, and
+         the comment is what explains it. A review measured exactly that on the first
+         version of this fix: the link came back and the comment did not (PDL P9 binds
+         the two as a pair). */
+      expect(screen.getByLabelText(/Komentar/)).toHaveValue('Sat mi je stao.')
 
-    expect(again.getAllByRole('listitem')).toHaveLength(2)
-    expect(again.getAllByText('Čeka proveru')).toHaveLength(2)
-    expect(again.queryByText(/Link ne otvara rezultate\./)).toBeNull()
-    // And the race that was never refused still says what it always said.
-    expect(again.getByText('Druga trka')).toBeVisible()
+      await user.clear(link)
+      await user.type(link, 'https://primer.rs/ispravno')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    /* Now what the corrected record carries, which is where a correction either carries the
-       whole result over or quietly drops half of it.
-     *
-       `filledFrom` hands back eleven fields and this walk used to hold two of
-       them. Measured: nine could be replaced by a wrong value and the whole suite
-       of 1970 tests stayed green, the picture among them. They were read off the
-       moderator's row until R1 of the results flows, when that row started reading the
-       server; a resubmission stays in this session until R2, so they are read off the
-       record it wrote: the corrected link, the words, the proof, the day of the race, and
-       the figures of the race nobody was correcting. The day matters as much as the rest:
-       a review put `date: fieldDate('2025-01-02')` into `filledFrom` and the whole suite
-       passed, and a correction about a link would then have moved the day the race was
-       run, and with it the season the result belongs to. */
-    const carried = within(screen.getByRole('list', { name: 'carried' }))
+      expect(await screen.findByText('Rezultat je ponovo poslat na proveru.')).toBeVisible()
 
-    expect(carried.getByText(/^Probna trka \|/).textContent).toBe(
-      'Probna trka | https://primer.rs/ispravno | Sat mi je stao. | sat.jpg | 2026-05-10 | 21.1 | 540 | 540 | 6730 | 23.55',
-    )
+      await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
+
+      /* Three rows: the run sent again, waiting, the race nobody sent back, still waiting, and
+         the run that was sent back, with its state and its reason. */
+      const again = await theMembersList()
+
+      expect(again.getAllByRole('listitem')).toHaveLength(3)
+      expect(again.getAllByText('Čeka proveru')).toHaveLength(2)
+      expect(again.getAllByText('Odbijeno')).toHaveLength(1)
+      expect(again.getByText(/Link ne otvara rezultate\./)).toBeVisible()
+      expect(again.getByText('Druga trka')).toBeVisible()
+
+      /* Now what the run sent again carried, which is where a run either carries the whole
+         result over or quietly drops half of it.
+       *
+         `filledFrom` hands back every field of the run and this walk used to hold two of them.
+         Measured: nine could be replaced by a wrong value and the whole suite of 1970 tests
+         stayed green. Read off the request since R2 of the results flows: the corrected link,
+         the words, the day of the race, and the figures of the race nobody was correcting. The
+         day matters as much as the rest: a review put `date: fieldDate('2025-01-02')` into
+         `filledFrom` and the whole suite passed, and a correction about a link would then have
+         moved the day the race was run, and with it the season the result belongs to.
+       *
+         **The picture is not among them**: the route has no field for one
+         (`ResultWriteApi.Ran`) and answers none, because a picture is deleted once it has been
+         decided (ADL A12), so nothing of it comes back to be sent again. The upload is carried
+         as debt until it is built (`PDL.md`, „Slika kao dokaz uz rezultat: upload se gradi, ali
+         u oktobru"). */
+      expect(server.posted().at(-1)).toEqual({
+        raceName: 'Probna trka',
+        day: '2026-05-10',
+        raceKind: 'length',
+        city: 'Niš',
+        country: 'RS',
+        distanceKm: 21.1,
+        ascentM: 540,
+        descentM: 540,
+        seconds: 6730,
+        link: 'https://primer.rs/ispravno',
+        comment: 'Sat mi je stao.',
+      })
+    } finally {
+      server.stop()
+    }
   }, SEVERAL_SCREENS)
 
   /* „IS NOT SENT BACK WITHOUT A REASON, AND THE REASON REACHES THE MEMBER" stood here until R1 of
@@ -2557,11 +2595,24 @@ describe('screens that depend on the date', () => {
 
 describe('an empty inbox and an empty result list', () => {
   it('says so rather than showing nothing', async () => {
-    renderAt('/sr/moji-rezultati', 'competitor', '000031')
+    /* What the server answers a member who has sent nothing, since R2 of the results flows. The
+       file the disc serves is one member's runs and is served to every case that names none, so
+       this one names the empty answer. */
+    const server = serverThat((path) =>
+      path.replace(/\?.*$/, '') === '/api/me/result-submissions'
+        ? new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } })
+        : null,
+    )
 
-    // 000031 has never raced, so nothing is counted and nothing is waiting.
-    expect(await screen.findByText('Nijedan rezultat još nije poslat na proveru.')).toBeVisible()
-    expect(screen.getByText('Na ovom profilu još nema nijednog rezultata.')).toBeVisible()
+    try {
+      renderAt('/sr/moji-rezultati', 'competitor', '000031')
+
+      // 000031 has never raced, so nothing is counted and nothing is waiting.
+      expect(await screen.findByText('Nijedan rezultat još nije poslat na proveru.')).toBeVisible()
+      expect(screen.getByText('Na ovom profilu još nema nijednog rezultata.')).toBeVisible()
+    } finally {
+      server.stop()
+    }
   })
 })
 

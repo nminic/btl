@@ -408,6 +408,13 @@ describe('a sentence with a value put into it', () => {
       'registration.bioFull',
       'registration.bioLeft',
       'registration.doneText',
+      /* NOT A SENTENCE, and written down rather than dodged. `useResults` asks for the resource
+         `results` together with the number that makes a screen already drawn ask again
+         (`data/useResource.ts`, `{ revision }`, since R2 of the results flows), and the dictionary
+         has a branch of that very name, which is all this floor reads a call by. Moved behind a
+         constant, the call would leave this list, and so would a real sentence written the same
+         way, which is the blind spot the note over this file already names. */
+      'results',
       'review.sweptLeft',
       'rights.box',
       'rights.granted',

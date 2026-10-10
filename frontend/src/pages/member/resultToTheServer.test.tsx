@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { BtlEvent, Race, Result } from '../../data/types'
+import type { BtlEvent, Race, Result, SentRun } from '../../data/types'
 import { renderAt } from '../../test/render'
 import { setupUser } from '../../test/user'
 import { must } from '../../test/at'
 import { SLOW } from '../../test/slow'
-import { did, refused, serverThat, type Asked } from '../../test/serverAnswers'
+import { answeredWith, did, refused, serverThat, type Asked } from '../../test/serverAnswers'
 
 /**
  * A MEMBER'S OWN RESULT REACHING THE SERVER, WHICH BEFORE 28.09.2026 IT NEVER DID.
@@ -69,9 +69,10 @@ function bodyOf(one: Asked): Record<string, unknown> {
  * A SERVER THAT ANSWERS THE RESULT ROUTES AND NOTHING ELSE, so every other read still
  * comes off the files the portal is served in a test.
  *
- * @param answering what the result routes say back. `did()` unless a case wants otherwise
+ * @param answering what the result routes say back. `did()` unless a case wants otherwise, and a
+ *                  promise that rejects where the case is about an answer that never came
  */
-function listening(answering: () => Response = did) {
+function listening(answering: () => Response | Promise<Response> = did) {
   server = serverThat((path, init) =>
     path.startsWith('/api/results') && init?.method !== undefined ? answering() : null,
   )
@@ -836,43 +837,265 @@ describe('a counted result the member asks to have put right', () => {
   )
 })
 
-describe('a submission that is still waiting', () => {
+/**
+ * A RUN AS `GET /api/me/result-submissions` ANSWERS IT TO THE MEMBER IT BELONGS TO, sent back with
+ * a reason unless a case says otherwise. What a case does not name is the shape the route answers
+ * (`data/servedShape.test.ts` holds it against the served file).
+ */
+function aRun(id: number, over: Partial<SentRun> = {}): SentRun {
+  return {
+    id,
+    state: 'rejected',
+    raceId: null,
+    raceName: `Trka ${String(id)}`,
+    raceDate: '2026-05-10',
+    raceKind: 'length',
+    city: 'Niš',
+    country: 'RS',
+    distanceKm: 21.1,
+    ascentM: 540,
+    descentM: 540,
+    seconds: 6730,
+    link: 'https://primer.rs/rezultati',
+    comment: '',
+    reason: 'Link ne otvara rezultate.',
+    amendsResultId: null,
+    ...over,
+  }
+}
+
+/**
+ * THE RESULT ROUTES, AND THE ASKER'S OWN RUNS ANSWERED AS THE CASE NAMES THEM, so `?ponovo=` opens
+ * what the server would answer this member and not what the disc holds for every member.
+ */
+function listeningWith(mine: SentRun[]) {
+  server = serverThat((path, init) => {
+    if (path.startsWith('/api/results') && init?.method !== undefined) {
+      return did()
+    }
+
+    return path.replace(/\?.*$/, '') === '/api/me/result-submissions'
+      ? new Response(JSON.stringify(mine), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      : null
+  })
+}
+
+describe('a run sent back, sent again', () => {
+  /* THROUGH THE ROUTES THAT ALREADY EXIST, the owner's choice of 10.10.2026 among the outcomes
+     offered, in the record's wording: „sada ponovno slanje odbijene prijave preko postojećih
+     ruta". So a run sent back goes again as a run, by the road its race decides, and a correction
+     sent back goes again as a correction of the counted result it named.
+
+     Until R2 of the results flows the case here said that a run still waiting was changed in the
+     browser alone and that no request went out, because nothing served a member his own runs.
+     The server serves them since then, a run still waiting has no control at all (the same choice:
+     „„Izmeni" i „Obriši" na prijavi koja čeka se skrivaju do zasebnog posla"), and the address
+     does not open one either (`newResult.test.tsx`, „does not open a run that is still
+     waiting"). */
+
   it(
-    'is corrected in the browser alone, because no route on this server takes one',
+    'goes again as the race of the calendar it was run in, and not one word about the race beside it',
+    async () => {
+      const user = setupUser()
+      /* Two races of a length that have been run, neither the first of the file, and neither
+         numbered like a run below. The run opened names the first and the run beside it the
+         second, so a body built out of the run's own number, out of the first run on the list or
+         out of the first race of the file fails here. */
+      const [race, elsewhere] = allRaces.filter(
+        (one) =>
+          one.id !== allRaces[0]?.id &&
+          one.id !== 90 &&
+          one.id !== 91 &&
+          one.kind === 'length' &&
+          one.date <= '2026-08-23',
+      )
+      const ran = must(race, 'a race of a length that has been run')
+      const other = must(elsewhere, 'a second one')
+
+      /* NEVER THE FIRST ON THE LIST: the run opened is the second the server answers. */
+      listeningWith([
+        aRun(91, { state: 'waiting', reason: null, raceId: other.id, raceName: other.name }),
+        aRun(90, {
+          raceId: ran.id,
+          raceName: ran.name,
+          raceDate: ran.date,
+          distanceKm: ran.distanceKm,
+          ascentM: ran.ascentM,
+          descentM: ran.descentM,
+        }),
+      ])
+      renderAt('/sr/rezultat/novi?ponovo=90', 'competitor', ME, undefined, '2026-08-23')
+
+      await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+
+      await user.clear(screen.getByLabelText('Minuta'))
+      await user.type(screen.getByLabelText('Minuta'), '49')
+      await user.clear(screen.getByLabelText(/Link/))
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/ispravno')
+      await send(user)
+
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
+
+      const sent = must(writes()[0], 'the request')
+
+      expect(sent.path).toBe('/api/results')
+      expect(sent.init?.method).toBe('POST')
+
+      const body = bodyOf(sent)
+
+      expect(body.raceId).toBe(ran.id)
+
+      /* AND NOT ONE WORD ABOUT THE RACE BESIDE ITS NUMBER, which `ResultWriteApi.fromTheCalendar`
+         refuses as `theRaceIsNamedTwice`: the form for a run sent back asks the kind and the town,
+         and a body built out of every box would carry both. */
+      for (const beside of ['raceName', 'raceKind', 'placeId', 'city', 'country', 'day', 'date']) {
+        expect(Object.hasOwn(body, beside), `${beside} travelled beside a raceId`).toBe(false)
+      }
+
+      /* What the member changed, and what he left: the hour and the ten seconds the run already
+         had, and the forty nine minutes he typed. */
+      expect(body.seconds).toBe(3600 + 49 * 60 + 10)
+      expect(body.link).toBe('https://primer.rs/ispravno')
+      expect(Object.hasOwn(body, 'points')).toBe(false)
+
+      /* And he is told it went AGAIN, the one thing the confirmation cannot work out afterwards
+         (`NewResult.tsx`, `done`). */
+      expect(
+        await screen.findByText('Rezultat je ponovo poslat na proveru.', undefined, SOON),
+      ).toBeVisible()
+    },
+    SLOW,
+  )
+
+  it(
+    'goes again as the race it described where the calendar does not hold one, whatever the box says',
     async () => {
       const user = setupUser()
 
-      listening()
-      renderAt('/sr/rezultat/novi', 'competitor', ME, undefined, '2026-08-23')
+      /* The run opened is the second on the list, and every word of the race differs from the
+         run beside it and from what a fresh form starts on („Dužinska", no town, today's day), so
+         a body that read any of them from the wrong place fails here. */
+      listeningWith([
+        aRun(81, {
+          raceName: 'Neka druga trka',
+          raceDate: '2026-04-04',
+          city: 'Banja Luka',
+          country: 'BA',
+        }),
+        aRun(80, {
+          raceName: 'Trka oko Palićkog jezera',
+          raceDate: '2026-08-01',
+          raceKind: 'free',
+          city: 'Subotica',
+          country: 'RS',
+          distanceKm: 15.5,
+          ascentM: 40,
+          descentM: 35,
+          seconds: 4980,
+          comment: 'Startni broj 7',
+        }),
+      ])
+      renderAt('/sr/rezultat/novi?ponovo=80', 'competitor', ME, undefined, '2026-08-23')
 
-      await describeARace(user, 'Probna trka')
+      await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+
+      /* THE NAME FORCED PAST ITS LOCK, which is the half beneath it: whatever reaches the form, the
+         run goes as the race it was sent with (owner, 27.08.2026: „sve osim trke"). The lock is
+         `ownResult.test.tsx`'s. */
+      fireEvent.change(screen.getByLabelText(/^Naziv trke/), {
+        target: { value: 'Sasvim druga trka' },
+      })
+      await user.clear(screen.getByLabelText(/Link/))
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/ispravno')
       await send(user)
 
-      expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-      expect(writes()).toHaveLength(1)
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
 
-      await user.click(screen.getByRole('link', { name: 'Moji rezultati' }))
-      await user.click(
-        await screen.findByRole('link', { name: 'Izmeni rezultat: Probna trka' }, SOON),
-      )
+      const sent = must(writes()[0], 'the request')
 
-      await screen.findByText(/Menjaš rezultat koji još čeka proveru/, undefined, SOON)
-      await user.clear(screen.getByLabelText('Minuta'))
-      await user.type(screen.getByLabelText('Minuta'), '51')
+      expect(sent.path).toBe('/api/results')
+      expect(sent.init?.method).toBe('POST')
+      /* The whole body, so a word about the race that is not the run's own, a `raceId`, a
+         `placeId` or a number the screen worked out has nowhere to hide. */
+      expect(bodyOf(sent)).toEqual({
+        raceName: 'Trka oko Palićkog jezera',
+        day: '2026-08-01',
+        raceKind: 'free',
+        city: 'Subotica',
+        country: 'RS',
+        distanceKm: 15.5,
+        ascentM: 40,
+        descentM: 35,
+        seconds: 4980,
+        link: 'https://primer.rs/ispravno',
+        comment: 'Startni broj 7',
+      })
+    },
+    SLOW,
+  )
+
+  it(
+    'goes to the address of the result it corrected, and never to its own number',
+    async () => {
+      const user = setupUser()
+      const HIS = '000001'
+      const his = countedResults.filter((one) => one.memberNumber === HIS)
+      const corrected = must(his.at(-1), 'a counted result of his that is not his first')
+      const other = must(his[0], 'his first counted result')
+
+      expect(his.length, 'he has more than one counted result to tell apart').toBeGreaterThan(1)
+
+      /* THREE NUMBERS THAT MUST NOT BE MISTAKEN FOR ONE ANOTHER: the run sent back (77), the
+         counted result it corrected, and the counted result a run beside it corrects. A PUT to
+         any but the second fails here. */
+      listeningWith([
+        aRun(76, {
+          state: 'waiting',
+          reason: null,
+          raceName: other.raceName,
+          amendsResultId: other.id,
+        }),
+        aRun(77, {
+          raceName: corrected.raceName,
+          raceDate: corrected.date,
+          seconds: corrected.seconds,
+          amendsResultId: corrected.id,
+        }),
+      ])
+      renderAt('/sr/rezultat/novi?ponovo=77', 'competitor', HIS, undefined, '2026-08-23')
+
+      await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
+      await user.clear(screen.getByLabelText(/Link/))
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/nov-dokaz')
       await send(user)
 
-      expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+      await waitFor(() => {
+        expect(writes()).toHaveLength(1)
+      }, SOON)
 
-      /* STILL ONE REQUEST, AND THAT IS THE BOUNDARY RATHER THAN A GAP.
-         `?ponovo=` is about a `Submission` - a question the member asked, keyed by a string
-         this browser minted - and `ResultWriteApi` writes that exclusion out as deliberate:
-         „a result is njegov podatak and a submission is a question he asked. This class is
-         about `result`." Nothing serves a member his own submissions either, so there is
-         nothing to send it to and nothing to read it back from.
+      const sent = must(writes()[0], 'the request')
 
-         Measured as a COUNT rather than as an absence of one address, so a correction that
-         went to some other address of the result routes would fail here too. */
-      expect(writes()).toHaveLength(1)
+      expect(corrected.id, 'the run and the result it corrects share a number').not.toBe(77)
+      expect(sent.path).toBe(`/api/results/${String(corrected.id)}`)
+      expect(sent.init?.method).toBe('PUT')
+
+      const body = bodyOf(sent)
+
+      /* „Menja se sve osim trke" (owner, 27.08.2026), and the record on the server declares no
+         field for a race on a correction at all. */
+      for (const beside of ['raceId', 'raceName', 'raceKind', 'day', 'date', 'city', 'country']) {
+        expect(Object.hasOwn(body, beside), `${beside} travelled on a correction`).toBe(false)
+      }
+
+      expect(body.link).toBe('https://primer.rs/nov-dokaz')
+      expect(body.seconds).toBe(corrected.seconds)
     },
     SLOW,
   )
@@ -1044,6 +1267,177 @@ describe('a counted result the member takes back', () => {
       await waitFor(() => {
         expect(writes()).toHaveLength(2)
       }, SOON)
+    },
+    SLOW,
+  )
+})
+
+describe('a refusal that says the counted result is not there', () => {
+  /* THE CLASS THE REVIEW OF T5 NAMED ON 10.10.2026, carried to R2 by the coordinator's scope of
+     the same day: a list read once per visit is read AGAIN when a refusal says it is stale, and not
+     only after the screen's own success. The answer that says so is an empty 404 from the address
+     of a counted result (`resultWrites.ts`, `saysTheResultIsGone`): taken back in another tab or by
+     another hand, and a correction of it with it. A 403, a 5xx and an answer that never came say
+     nothing about the result, and move nothing.
+
+     What is read here is what crosses the wire, which for a list read again is one more GET: the
+     two screens bump the number that makes a list already drawn ask again
+     (`HowToRead.revision`), and `resultWrites.test.ts` holds the caches those GETs then miss. */
+
+  const HIS = '000001'
+
+  /** How many times each of the two lists has been asked for so far. A read carries no `init`
+   *  (`data/client.ts`, `loadResource`), which is what tells it from a write. */
+  function reads(): { counted: number; sent: number } {
+    const asked = (server?.asked ?? [])
+      .filter((one) => one.init === undefined)
+      .map((one) => one.path.replace(/\?.*$/, ''))
+
+    return {
+      counted: asked.filter((one) => one === '/api/results').length,
+      sent: asked.filter((one) => one === '/api/me/result-submissions').length,
+    }
+  }
+
+  /** Takes the second counted row back, as a member does, and waits for what the screen says. */
+  async function takeTheSecondBack(user: ReturnType<typeof setupUser>, said: RegExp) {
+    const table = within(await screen.findByRole('table', { name: 'Uračunato' }, SOON))
+    const row = within(must(table.getAllByRole('row')[2], 'the second counted result'))
+    const before = reads()
+
+    await user.click(row.getByRole('button', { name: /^Obriši: / }))
+    await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+
+    expect(await screen.findByText(said, undefined, SOON)).toBeVisible()
+
+    return before
+  }
+
+  /** Sends a correction of the first counted row, as a member does, and waits for what the screen
+   *  says. */
+  async function correctTheFirst(
+    user: ReturnType<typeof setupUser>,
+    router: { state: { location: { search: string } } },
+    said: RegExp,
+  ) {
+    await openTheCorrection(user, router)
+
+    const before = reads()
+
+    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/nov-dokaz')
+    await send(user)
+
+    expect(await screen.findByText(said, undefined, SOON)).toBeVisible()
+
+    return before
+  }
+
+  it(
+    'reads both lists again when taking a result back is answered that it is not there',
+    async () => {
+      const user = setupUser()
+
+      listening(() => answeredWith(404))
+      renderAt('/sr/moji-rezultati', 'competitor', HIS, undefined, null)
+
+      const before = await takeTheSecondBack(user, /Server je odgovorio brojem 404/)
+
+      /* Read the moment the sentence is there, because the sentence and the asking again are one
+         answer: what the screen does after that is not this case's. The same moment is when the
+         cases below find nothing asked. */
+      expect(before.counted, 'the counted list was never read, so this measures nothing').toBeGreaterThan(0)
+      expect(reads()).toEqual({ counted: before.counted + 1, sent: before.sent + 1 })
+    },
+    SLOW,
+  )
+
+  it(
+    'reads both lists again when a correction is answered that its result is not there',
+    async () => {
+      const user = setupUser()
+
+      listening(() => answeredWith(404))
+      const { router } = renderAt('/sr/moji-rezultati', 'competitor', HIS, undefined, '2026-08-23')
+
+      const before = await correctTheFirst(user, router, /Server je odgovorio brojem 404/)
+
+      expect(before.sent, 'the list of what was sent was never read, so this measures nothing').toBeGreaterThan(0)
+      expect(reads()).toEqual({ counted: before.counted + 1, sent: before.sent + 1 })
+    },
+    SLOW,
+  )
+
+  const SAYING_NOTHING_ABOUT_THE_RESULT: [string, () => Response | Promise<Response>, RegExp][] = [
+    ['a 403', () => answeredWith(403), /nije uspeo da dokaže serveru/],
+    ['a 500', () => answeredWith(500), /Server je odgovorio brojem 500/],
+    [
+      'no answer at all',
+      () => Promise.reject(new TypeError('Failed to fetch')),
+      /nije uspeo da dođe do servera/,
+    ],
+  ]
+
+  it.each(SAYING_NOTHING_ABOUT_THE_RESULT)(
+    'reads neither list again when taking a result back is answered with %s',
+    async (_what, answering, said) => {
+      const user = setupUser()
+
+      listening(answering)
+      renderAt('/sr/moji-rezultati', 'competitor', HIS, undefined, null)
+
+      const before = await takeTheSecondBack(user, said)
+
+      expect(before.counted, 'the counted list was never read, so this measures nothing').toBeGreaterThan(0)
+      expect(reads()).toEqual(before)
+    },
+    SLOW,
+  )
+
+  it.each(SAYING_NOTHING_ABOUT_THE_RESULT)(
+    'reads neither list again when a correction is answered with %s',
+    async (_what, answering, said) => {
+      const user = setupUser()
+
+      listening(answering)
+      const { router } = renderAt('/sr/moji-rezultati', 'competitor', HIS, undefined, '2026-08-23')
+
+      const before = await correctTheFirst(user, router, said)
+
+      expect(before.sent, 'the list of what was sent was never read, so this measures nothing').toBeGreaterThan(0)
+      expect(reads()).toEqual(before)
+    },
+    SLOW,
+  )
+
+  /**
+   * AND AFTER A RESULT REALLY IS TAKEN BACK, ONLY THE LIST OF WHAT WAS SENT IS READ AGAIN.
+   *
+   * <p>A correction of that result, waiting or sent back, went with it on the server, so the list
+   * that showed it is stale. The counted list is not read again: the row is taken off by the
+   * overlay the moment the route agrees (`MyResults.tsx`, `takeBack`), and the file of counted
+   * results is the largest the portal serves. Two numbers on the screen and not one, and this is
+   * the case that holds them apart in both directions.
+   */
+  it(
+    'reads the list of what was sent again once a result is taken back, and not the counted one',
+    async () => {
+      const user = setupUser()
+
+      listening()
+      renderAt('/sr/moji-rezultati', 'competitor', HIS, undefined, null)
+
+      const table = within(await screen.findByRole('table', { name: 'Uračunato' }, SOON))
+      const row = within(must(table.getAllByRole('row')[2], 'the second counted result'))
+      const before = reads()
+
+      await user.click(row.getByRole('button', { name: /^Obriši: / }))
+      await user.click(await screen.findByRole('button', { name: /^Potvrdi brisanje/ }, SOON))
+
+      await waitFor(() => {
+        expect(reads().sent).toBe(before.sent + 1)
+      }, SOON)
+
+      expect(reads().counted).toBe(before.counted)
     },
     SLOW,
   )

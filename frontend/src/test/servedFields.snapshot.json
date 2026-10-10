@@ -112,6 +112,24 @@
     "teamProposals.name",
     "teamProposals.teamId"
   ],
+  "me/result-submissions.json": [
+    "amendsResultId",
+    "ascentM",
+    "city",
+    "comment",
+    "country",
+    "descentM",
+    "distanceKm",
+    "id",
+    "link",
+    "raceDate",
+    "raceId",
+    "raceKind",
+    "raceName",
+    "reason",
+    "seconds",
+    "state"
+  ],
   "moderators.json": [
     "email",
     "firstName",

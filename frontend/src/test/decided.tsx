@@ -10,11 +10,11 @@ import { useSession } from '../session/useSession'
  *
  * Written as one line per decision, in a list, so a test asks for it by role and
  * by words like any other list on the portal rather than by reaching into state.
- * The submissions are here too, because the results are the one queue whose
- * items are entered during the visit and are therefore not in `decisions`.
+ * The results are not here: their queue decides on the server since R1 of the
+ * results flows, and the member's list reads the server since R2.
  */
 export function Decided() {
-  const { decisions, submissions } = useSession()
+  const { decisions } = useSession()
 
   return (
     <ul aria-label="session decisions">
@@ -23,11 +23,6 @@ export function Decided() {
           {`${id} | ${decision.status} | ${decision.note} | ${decision.basis} | ${decision.memberNumber}`}
         </li>
       ))}
-      {submissions
-        .filter((one) => one.status !== 'pending')
-        .map((one) => (
-          <li key={one.id}>{`${one.id} | ${one.status} | ${one.note}`}</li>
-        ))}
     </ul>
   )
 }

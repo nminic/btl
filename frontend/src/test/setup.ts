@@ -274,13 +274,20 @@ const PUBLIC_DIR = join(process.cwd(), 'src', 'test')
  *  caches it, and `data/useResource.test.tsx`'s own `vi.mock('./client')` would then
  *  register a mock nothing sees. The shape stays a shape.
  *
+ *  **AND A HYPHEN, since `me/result-submissions` on 10.10.2026**, for the same reason one
+ *  level up: the route is declared at `/api/me/result-submissions` (`MyResultSubmissionsApi`),
+ *  and a pattern of lowercase runs joined by slashes answered the nineteenth name 404.
+ *
  *  **Nothing else moves, because every other address under `/api` carries something this
- *  pattern still refuses**: a digit (`/api/inbox/612/read`, `/api/teams/1/invitations/7`), a
- *  hyphen (`/api/sign-in`) or an upper case letter. `/api/me` never reaches here at all, and
- *  a lowercase address with no fixture (`/api/me/photo`) lands on the same 404 it landed on
- *  before, by the `try` below rather than by this pattern. */
+ *  pattern still refuses, or has no fixture**: a digit (`/api/inbox/612/read`,
+ *  `/api/teams/1/invitations/7`) or an upper case letter is refused here, and an address with
+ *  a hyphen and no file of its name (`/api/sign-in`, `/api/password-reset`) is now turned into
+ *  a path that does not exist and lands on the same 404 it landed on before, by the `try` below
+ *  rather than by this pattern - measured on the day: `src/test/mock` holds no file with a
+ *  hyphen in its name but this one. `/api/me` never reaches here at all, and a lowercase address
+ *  with no fixture (`/api/me/photo`) meets that same `try`. */
 function fileFor(path: string): string {
-  const resource = /^\/api\/([a-z]+(?:\/[a-z]+)*)(\?[^#]*)?$/.exec(path)
+  const resource = /^\/api\/([a-z]+(?:[-/][a-z]+)*)(\?[^#]*)?$/.exec(path)
 
   return resource === null ? path : `/mock/${resource[1] ?? ''}.json`
 }
