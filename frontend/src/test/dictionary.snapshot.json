@@ -1366,7 +1366,8 @@
       "theClimbOrTheFallIsNegative": "Uspon i spust se upisuju kao pozitivni brojevi.",
       "theRaceCountsInALeagueOfItsSeason": "Ova trka se broji u ligi svoje sezone, pa datum ne sme da izađe iz te godine.",
       "theAddressIsTaken": "Na toj adresi već stoji jedna trka.",
-      "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci upisan rezultat."
+      "theDateWouldMoveAResultToAnotherYear": "Datum ne može da pređe u drugu godinu dok je na trci upisan rezultat.",
+      "theKindCannotChangeOnceRunsAreCounted": "Vrsta trke ne može da se promeni dok na trci stoji odobren rezultat."
     },
     "eventGone": "Događaj je obrisan, sa svojim trkama i rezultatima.",
     "eventSavedUnseen": "Događaj je sačuvan, ali portal ne može da ga prikaže u ovom spisku. Osveži stranu.",
