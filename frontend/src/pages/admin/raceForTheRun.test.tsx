@@ -11,6 +11,7 @@ import { Decided } from '../../test/decided'
 import { renderAt } from '../../test/render'
 import { refused, serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
+import { rulesInMedia, unconditionalRules } from '../../test/stylesheet'
 import { setupUser } from '../../test/user'
 import { QUEUE } from './queues'
 
@@ -319,6 +320,22 @@ describe('what the queue says about a run on a race the calendar does not hold',
     } finally {
       server.stop()
     }
+  })
+})
+
+describe('the box drawn on a telephone only', () => {
+  it('is hidden everywhere and drawn under the same query, in the same unit, that takes the columns away', () => {
+    /* The other half of `table__hide-phone`, held where the two meet: the sheet. The markup is held
+       to the same name above (the box is found by it), so a name changed on one side only is a
+       case that fails, and never a box drawn twice or not at all. */
+    const css = readFileSync(join(process.cwd(), 'src', 'styles', 'table.css'), 'utf-8')
+    const named = (rules: CSSStyleRule[], selector: string): string[] =>
+      rules.filter((one) => one.selectorText === selector).map((one) => one.style.display)
+    const onAPhone = rulesInMedia(css, '(max-width: 699.98px)', 'styles/table.css')
+
+    expect(named(unconditionalRules(css, 'styles/table.css'), '.table__phone-only')).toEqual(['none'])
+    expect(named(onAPhone, '.table__phone-only')).toEqual(['block'])
+    expect(named(onAPhone, '.table__hide-phone')).toEqual(['none'])
   })
 })
 
@@ -656,6 +673,37 @@ describe('what the route answers to the panel', () => {
       await untilItHasAnswered()
 
       await waitFor(() => expect(reads(server.asked, '/api/verification')).toBe(2))
+    } finally {
+      server.stop()
+    }
+  })
+
+  it('holds nothing of its own while a decision about another run is out', async () => {
+    /* A decision out for ANOTHER run is not this panel's: its „Odustani" goes on answering and it
+       says nothing is being sent (`outFor` in `ReviewQueue.tsx` says why it is the run and not the
+       flag every button of the tab reads). */
+    const user = setupUser()
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const server = serverWith({ decided: () => gate.then(taken) })
+
+    try {
+      openTheQueue()
+
+      await openThePanelOver(user, '000040')
+      await user.click((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve }))
+
+      expect((await rowOf(RUNNER)).getByRole('button', { name: sr.review.approve })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      expect(panel().getByRole('button', { name: sr.review.cancel })).not.toHaveAttribute('aria-disabled')
+      expect(panel().queryAllByRole('status').filter((one) => one.textContent === sr.results.sending)).toHaveLength(0)
+
+      release()
+      await untilItHasAnswered()
     } finally {
       server.stop()
     }
