@@ -27,6 +27,23 @@ import { formDef } from './definitions'
  * fields of the forms on disk, in both directions, so a seventeenth number field arrives here
  * as a red gate. The join: pointing one row at the wrong component - the climb at the length,
  * say - has to fail, and it does because the length is kept with decimals.
+ *
+ * <p><b>THE TWO AMOUNTS OF A PRICE ARE THE ONE EXCEPTION TO „THE TYPE SAYS WHETHER IT IS WHOLE",
+ * AND THEY SAY SO IN THEIR ROWS.</b> PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi",
+ * recorded as the owner's own words - „Iznosi se unose bez tačaka i zareza!" - confirmed for the
+ * amount of a payment on 03.10.2026 and, for what is TYPED, on 10.10.2026 („celi brojevi važe za
+ * ono što se kuca, balans sme decimale"). `PricingWriteApi.TheForm` reads `eur` and `rsd` into a
+ * `BigDecimal` all the same, and refuses a fraction with a check (`MembershipPrice.amountIsWhole`)
+ * instead of with a type, because a `Long` would read 40.5 as 40 without saying a word - the
+ * quietly different number the decision is about. So the form has to be whole where the type is
+ * NOT, and a row says that it is one of those with `refusesAFraction`.
+ *
+ * <p><b>That the route really refuses a fraction in both is NOT read out of the Java here</b>, and
+ * deliberately: what a check does is a question about behaviour, and a guard that read the source
+ * to answer it would be the kind this portal has already had to take apart three times. It is held
+ * where behaviour is measured - `PricingWriteApiTest` sends a fraction in each amount and the fee -
+ * and the same form file is read from that side by `WhatAPriceMayCostTest`, so a form that drops
+ * `integer` fails on both sides and a route that stops refusing fails on its own.
  */
 
 const DEFINITIONS = join(process.cwd(), 'src', 'forms', 'definitions')
@@ -34,9 +51,12 @@ const MAIN = join(process.cwd(), '..', 'backend', 'src', 'main')
 const WEB = join(MAIN, 'java', 'com', 'btl', 'portal', 'web')
 
 /** Where a value lands on the server: a component of the record a route reads it into, or a
- *  column, where no route writes it at all. */
+ *  column, where no route writes it at all.
+ *
+ *  `refusesAFraction` is for the one kind of component that is kept as an exact decimal on purpose
+ *  and is whole all the same: the route refuses a fraction in it by a check. See the note above. */
 type Landing =
-  | { file: string; record: string; component: string }
+  | { file: string; record: string; component: string; refusesAFraction?: boolean }
   | { file: string; table: string; column: string }
 
 const RESULTS = join(WEB, 'ResultWriteApi.java')
@@ -60,8 +80,12 @@ const DECISIONS = join(WEB, 'VerificationWriteApi.java')
  * and with decimals on the other fails here.
  */
 const LANDS_IN: Record<string, Landing[]> = {
-  'admin-cena.eur': [{ file: join(WEB, 'PricingWriteApi.java'), record: 'TheForm', component: 'eur' }],
-  'admin-cena.rsd': [{ file: join(WEB, 'PricingWriteApi.java'), record: 'TheForm', component: 'rsd' }],
+  'admin-cena.eur': [
+    { file: join(WEB, 'PricingWriteApi.java'), record: 'TheForm', component: 'eur', refusesAFraction: true },
+  ],
+  'admin-cena.rsd': [
+    { file: join(WEB, 'PricingWriteApi.java'), record: 'TheForm', component: 'rsd', refusesAFraction: true },
+  ],
   'admin-clan.firstSeason': [
     {
       file: join(MAIN, 'resources', 'db', 'migration', 'V7__competitor_event_race_result.sql'),
@@ -202,10 +226,21 @@ describe('a number the server keeps whole', () => {
 
     for (const landing of landings) {
       const type = typeAt(landing)
+      const refusesAFraction = 'refusesAFraction' in landing && landing.refusesAFraction === true
 
       expect([...WHOLE, ...DECIMAL], `${name} lands in ${type}, which is not a number`).toContain(type)
+
+      /* THE EXCEPTION IS FOR A DECIMAL TYPE ONLY. A row that says its route refuses a fraction
+         while the type is already whole is a row that has stopped meaning anything, and a row that
+         says it about a decimal the route reads for another purpose (a length) would excuse the
+         one thing this file is for. */
+      expect(
+        !refusesAFraction || DECIMAL.includes(type),
+        `${name} says its route refuses a fraction, and lands in ${type}, which is not a decimal`,
+      ).toBe(true)
+
       expect(whole, `${name} is ${whole ? '' : 'not '}whole on the form and lands in ${type}`).toBe(
-        WHOLE.includes(type),
+        WHOLE.includes(type) || refusesAFraction,
       )
     }
   })

@@ -1164,11 +1164,13 @@ describe('membership', () => {
   })
 
   it('promises the amount as it stands, and does not round it to a whole', async () => {
-    /* `price_row.rsd` is `numeric(10,2)` and the route keeps two decimals exactly - it
-       refuses a third rather than letting PostgreSQL round it (`PricingWriteApi`,
-       `theAmountIsNotKeptExactly`). Written through the portal's own way of writing numbers,
-       which rounds to whole unless told otherwise, the price list said 5,5 and this screen
-       promised „6 EUR". A promise the terms of use point at is not a place to round. */
+    /* `price_row.rsd` is `numeric(10,2)` and a row can hold a fraction. An administrator cannot TYPE
+       one any more - an amount is a whole number (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao
+       celi brojevi", for what is typed confirmed on 10.10.2026) and the route refuses a fraction
+       with `theAmountIsNotWhole` - but a row written before that day, or a balance, can, and the
+       screen has to say what the row holds. Written through the portal's own way of writing
+       numbers, which rounds to whole unless told otherwise, the price list said 5,5 and this
+       screen promised „6 EUR". A promise the terms of use point at is not a place to round. */
     const { stop } = pricesWith('referral', { eur: 5.5, rsd: 612.5 })
 
     try {

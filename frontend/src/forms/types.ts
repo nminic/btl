@@ -122,11 +122,18 @@ export type FieldDef = {
   /**
    * A number the server keeps as a WHOLE number, so the box takes no separator at all.
    *
-   * <p>Twelve of the sixteen number fields the portal has: hours, minutes and seconds (the
+   * <p>Fourteen of the sixteen number fields the portal has: hours, minutes and seconds (the
    * server keeps their sum, `result.seconds integer`, so each of the three has to be whole for
    * the sum to be whole), the climb and the fall (`ascent_m`, `descent_m integer`), the season
-   * of a competition and a member's first season. A length and the two amounts of a price are
-   * kept with two decimals and do not carry it.
+   * of a competition, a member's first season, and since 10.10.2026 the two amounts of a price
+   * (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", recorded as the owner's own
+   * words: „Iznosi se unose bez tačaka i zareza!"; for what is typed confirmed on 10.10.2026). A
+   * length is kept with decimals and does not carry it.
+   *
+   * <p>The two amounts of a price are the one exception to „the type a route declares says
+   * whether the field is whole": `PricingWriteApi.TheForm` keeps them as `BigDecimal`, because a
+   * `Long` would read `40.5` as 40 without a word, and refuses a fraction with a check instead
+   * (`MembershipPrice.amountIsWhole`). `forms/wholeNumbers.test.ts` says so in its own table.
    *
    * <p><b>Why it exists, and it is the coordinator's reasoning rather than the owner's
    * words:</b> once a number box took a comma (owner, 02.10.2026, „Polje za broj prima i zarez

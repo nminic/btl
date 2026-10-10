@@ -318,6 +318,7 @@ const anOutstandingAnswer = {
       city: 'Novi Sad',
       currency: 'RSD',
       expected: 4800,
+      price: 4800,
       balance: 0,
     },
   ],
@@ -333,6 +334,7 @@ const anAccountNotYetAMember = {
   city: 'Novi Sad',
   currency: 'RSD',
   expected: 4800,
+  price: 4800,
   balance: 0,
 }
 

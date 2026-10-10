@@ -224,6 +224,52 @@ public class MembershipPriceTest {
 				.isEqualTo(kept);
 	}
 
+	/**
+	 * AN AMOUNT IS WHOLE WHATEVER ZEROS IT IS WRITTEN WITH, AND ONLY WHEN IT HAS NO FRACTION.
+	 *
+	 * <p>PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi" (recorded as the owner's own
+	 * words: „Iznosi se unose bez tačaka i zareza!"), for what is typed, confirmed on 10.10.2026.
+	 * The question is asked of the VALUE: {@code 4.800} is 4.8 and is a fraction, which is how a
+	 * dinar price typed with a separator for the thousands was quietly becoming 3,5 dinars.
+	 *
+	 * <p><b>Every row is one way the rule can be written wrongly.</b> {@code 40.00} and
+	 * {@code 0.00} are whole but have a scale of two as they arrive, so a rule that reads the scale
+	 * without stripping the zeros refuses them. {@code 1E+2} is a hundred with a scale BELOW nought,
+	 * so a rule asking {@code scale == 0} refuses it. {@code 40.5}, {@code 40.10} and {@code 0.01} are
+	 * the fractions, from half a unit down to the smallest one the column keeps, so a rule that lets
+	 * one decimal or two through passes some of them and not others. {@code 3.500} is the incident
+	 * spelt as it was typed.
+	 *
+	 * <p><b>And two rows that say what is NOT asked here:</b> a negative whole number and one past
+	 * the column's ceiling are whole, because the sign and the ceiling are
+	 * {@link MembershipPrice#amountIsKeptExactly}'s question and the route's own, and a rule that
+	 * judged them as well would give a negative price the wrong sentence.
+	 */
+	@ParameterizedTest
+	@CsvSource({
+			"0, true",
+			"0.00, true",
+			"40, true",
+			"40.0, true",
+			"40.00, true",
+			"4800, true",
+			"1E+2, true",
+			"-40, true",
+			"100000000, true",
+			"0.01, false",
+			"40.5, false",
+			"40.10, false",
+			"4.800, false",
+			"3.500, false",
+			"41.125, false",
+			"-40.5, false"})
+	void anAmountIsWholeOnlyWhenItHasNoFractionWhateverZerosItIsWrittenWith(String written,
+			boolean whole) {
+		assertThat(MembershipPrice.amountIsWhole(new BigDecimal(written)))
+				.as("%s: it %s a fraction in it", written, whole ? "has no" : "has")
+				.isEqualTo(whole);
+	}
+
 	private static MonthDay monthDay(String written) {
 		return MonthDay.of(Integer.parseInt(written.substring(0, 2)), Integer.parseInt(written.substring(3)));
 	}

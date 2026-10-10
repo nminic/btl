@@ -9,6 +9,7 @@
       "city": "Novi Sad",
       "currency": "RSD",
       "expected": 4800,
+      "price": 4800,
       "balance": 0
     },
     {
@@ -19,6 +20,7 @@
       "city": "Beograd",
       "currency": "RSD",
       "expected": 4800,
+      "price": 4800,
       "balance": 6000
     },
     {
@@ -28,7 +30,8 @@
       "lastName": "Marko",
       "city": "Ljubljana",
       "currency": "EUR",
-      "expected": 43.5,
+      "expected": 43,
+      "price": 40,
       "balance": 12.75
     },
     {
@@ -39,6 +42,7 @@
       "city": "Beograd",
       "currency": "RSD",
       "expected": 4800,
+      "price": 4800,
       "balance": 1500
     }
   ]

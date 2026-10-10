@@ -144,6 +144,24 @@ import java.util.stream.Collectors;
  * processing fee is added here, which is the one place in the portal that adds it without asking:
  * {@link MembershipInvoice} deliberately carries it raw, because on the member's own screen
  * whether anything is transferred at all is still open.
+ * <li><b>AND THE PRICE COMES TOO, SINCE 10.10.2026: what the membership costs WITHOUT the
+ * processing fee, and the one number a balance is measured against.</b> PDL, <b>[IZVEDENO
+ * 02.10.2026]</b> „Članarina plaćena iz balansa ne nosi taksu ... Server tako i radi, a ekran se
+ * usklađuje sa serverom (zaseban PR sa bekend delom)." The server takes {@code min(balance,
+ * price)} off the book ({@code MembershipInvoice} compares the balance with
+ * {@code price.amount()} and never with the amount plus the fee), so a member abroad whose
+ * balance stands between 40 and 43 can be covered to the last para while the amount he SENDS is
+ * still 43. The screen used to compare the balance with the expected amount and so labelled that
+ * press „umanjen iznos" over a book the server spends as a whole fee; the owner's choice of
+ * 10.10.2026 among the outcomes put to him (PDL, the entry „Odgovori na pitanja skupljena dok je
+ * bio odsutan", item „Članstvo i uplate": „prompt „Odobri iz balansa" pokazuje članarinu umesto
+ * očekivanog iznosa") needs the number on the row as well, so it is served and not worked out by
+ * the screen, which cannot read the price list. <b>It is {@code price.amount()} of the very
+ * object {@code expected} is added up from</b>, so the two cannot be two readings of one price.
+ * <b>Called {@code price} and not {@code fee}</b> because {@code MembershipPrice.Price.fee} is
+ * the processing fee, and a field named the same as a different thing is how the two get
+ * swapped. Junior and period alike: the junior price replaces the period, and this is whichever
+ * of them applies.
  * <li><b>The CURRENCY comes, worked out from the country and never asked for.</b>
  * <li><b>And the BALANCE comes, in that same currency</b>, because the owner chose exactly that
  * on 27.09.2026 and gave the reason: „kad balans pokriva razliku, oba broja <b>moraju</b> da budu
@@ -252,12 +270,19 @@ class PaymentsDueApi {
 	 *                     charged - forty and three make forty-three, the owner's own example. The
 	 *                     junior price replaces whichever period applies rather than reducing it
 	 *                     ({@link MembershipPrice})
+	 * @param price        what the membership costs him in that currency WITHOUT the processing
+	 *                     fee: the {@code expected} amount less the fee, which is the number a
+	 *                     balance is measured against and the one the prompt for the balance names
+	 *                     („Članarina: 40 EUR"). Whichever of the period and the junior price
+	 *                     applies to him, from the same {@code MembershipPrice.Price} that
+	 *                     {@code expected} is added up from. It is {@code price} and not
+	 *                     {@code fee} because {@code Price.fee()} is the processing fee
 	 * @param balance      what his book adds up to TODAY in that same currency, which is the
 	 *                     number the tick box carries in its label, and never what a payment code
 	 *                     once promised him (PDL 23a)
 	 */
 	record Due(long competitorId, String memberNumber, String firstName, String lastName,
-			String city, String currency, BigDecimal expected, BigDecimal balance) {
+			String city, String currency, BigDecimal expected, BigDecimal price, BigDecimal balance) {
 	}
 
 	/**
@@ -398,8 +423,12 @@ class PaymentsDueApi {
 			   currencies rather than branching on one of them. */
 			BigDecimal expected = price.amount().add(price.fee());
 
+			/* AND WHAT HE IS CHARGED WITHOUT THE FEE ON THE SAME ROW, taken from the very `price`
+			   `expected` was just added up from: a balance is measured against this and never
+			   against the sum (PDL, „Članarina plaćena iz balansa ne nosi taksu"), and two readings
+			   of one price list in one answer could part by a day or a junior's birth year. */
 			return new Due(one.id(), one.memberNumber(), one.firstName(), one.lastName(), one.city(),
-					his.name(), expected, books.get(one.id()).amount());
+					his.name(), expected, price.amount(), books.get(one.id()).amount());
 		}).toList();
 	}
 

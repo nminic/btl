@@ -162,6 +162,7 @@
     "accounts.firstName",
     "accounts.lastName",
     "accounts.memberNumber",
+    "accounts.price",
     "season"
   ],
   "pricing.json": [

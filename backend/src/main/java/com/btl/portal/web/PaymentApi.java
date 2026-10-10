@@ -230,6 +230,26 @@ class PaymentApi {
 	static final String THE_AMOUNT_IS_NOT_MONEY = "theAmountIsNotMoney";
 
 	/**
+	 * WHAT ARRIVED HAS A FRACTION IN IT, and an amount that is typed is a whole number.
+	 *
+	 * <p>PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", recorded as the owner's own words -
+	 * „Iznosi se unose bez tačaka i zareza!" - and <b>PDL, POTVRĐENO 03.10.2026, „Celi brojevi svuda,
+	 * i za iznos uplate"</b>, chosen among the outcomes put to him and against the recommendation he
+	 * was given (that a payment which really arrived could keep two decimals); the cost put to him
+	 * was that a payment of 39,97 EUR cannot be entered exactly. On 10.10.2026 he chose that the rule is for
+	 * what is TYPED and that a balance may have decimals (PDL, the entry „Odgovori na pitanja skupljena
+	 * dok je bio odsutan"): the balance is worked out, never typed, and nothing is asked of it here.
+	 *
+	 * <p><b>Its own word, as it is in {@link PricingWriteApi#THE_AMOUNT_IS_NOT_WHOLE}</b>, with its own
+	 * sentence on the screen: the moderator is told about the payment he is booking and not about a
+	 * price. After {@link #THE_AMOUNT_IS_NOT_MONEY} and before {@link #THE_AMOUNT_IS_NOT_KEPT_EXACTLY},
+	 * both chosen: a negative or nought amount keeps the sentence it already had however it is written
+	 * (-38.5 is „no money arrived" before it is a fraction), and 38.001 and 38.006, which met the
+	 * column's word until today, meet this one - held by {@code PaymentApiTest} on those very amounts.
+	 */
+	static final String THE_AMOUNT_IS_NOT_WHOLE = "theAmountIsNotWhole";
+
+	/**
 	 * AND WHAT ARRIVED HAS TO BE A NUMBER THE COLUMN KEEPS, which is the same question
 	 * {@link PricingWriteApi#THE_AMOUNT_IS_NOT_KEPT_EXACTLY} asks of a price and is deliberately the
 	 * same word.
@@ -237,8 +257,9 @@ class PaymentApi {
 	 * <p><b>Why it is one sentence and not two, which is the precedent's own reasoning rather than a
 	 * saving.</b> {@code MembershipPrice.amountIsKeptExactly} asks three things at once - not negative,
 	 * no more para than the column keeps, and inside what it can hold - and {@code PricingWriteApi} puts
-	 * all three under THIS one name, with its own note saying so: „Negative, or with more para than the
-	 * column keeps, or past what it can hold." Its SECOND name,
+	 * what is left of them under THIS one name, with its own note saying so: „Negative, or past what the
+	 * column can hold." (The middle one, a fraction, has a word of its own in both classes since
+	 * 10.10.2026, {@link #THE_AMOUNT_IS_NOT_WHOLE}, and cannot get this far.) Its SECOND name,
 	 * {@code THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST}, is a different question entirely: a PRODUCT
 	 * ceiling the owner decided on 25.09.2026 (PDL P12c, 1.000 EUR and 200.000 RSD) which „the column
 	 * knows nothing about". <b>A payment has no such ceiling and nobody has decided one</b> - case 7 of
@@ -476,7 +497,8 @@ class PaymentApi {
 	 *                     statement and typed it into the field beside „Ocekivan iznos"
 	 *                     (owner, 27.09.2026, PDL 19). In the member's own money, which is
 	 *                     not asked for. Null, nought and a negative are one state and are
-	 *                     refused as {@link #THE_AMOUNT_IS_NOT_MONEY}
+	 *                     refused as {@link #THE_AMOUNT_IS_NOT_MONEY}; a positive amount with a
+	 *                     fraction in it as {@link #THE_AMOUNT_IS_NOT_WHOLE}
 	 * @param useTheBalance whether the tick box „ukljuci balans (iznos balansa)" was left
 	 *                     ticked. <b>Asked for and never guessed</b>, the same refusal
 	 *                     {@code GrantingAMembership} makes of its own prompt: the screen
@@ -533,28 +555,42 @@ class PaymentApi {
 			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_MONEY);
 		}
 
+		/* AND WHAT ARRIVED IS A WHOLE NUMBER, because that is what a moderator TYPES: PDL, ODLUKA
+		   02.10.2026, „Iznosi se unose kao celi brojevi" („Iznosi se unose bez tačaka i zareza!"),
+		   POTVRĐENO 03.10.2026 „Celi brojevi svuda, i za iznos uplate", and for what is typed only on
+		   10.10.2026. `THE_AMOUNT_IS_NOT_WHOLE` carries the rest of why, and `MembershipPrice.amountIsWhole`
+		   why the VALUE is asked and not the writing.
+
+		   AFTER „NO MONEY ARRIVED" AND BEFORE THE COLUMN'S QUESTION, both chosen and both measured: -38.5
+		   keeps the sentence every negative amount has had, and 38.001 and 38.006, which met the
+		   column's word until today, meet this one. That DOES restate two old answers, and it is the
+		   decision's doing and not a drift; `PaymentApiTest` holds the new word on those very amounts. */
+		if (!MembershipPrice.amountIsWhole(typed.received())) {
+			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_WHOLE);
+		}
+
 		/* AND THAT IT IS A NUMBER `numeric(10,2)` KEEPS, ASKED OF THE ONE PLACE THAT ALREADY KNOWS.
 
-		   WHY IT IS OWED HERE, and it is two separate faults rather than one theoretical one. Without
-		   it, `38.001` against an expected `38.00` leaves a surplus of `0.001`, which `isMoney()` calls
-		   money because its sign is positive; the column then ROUNDS it to `0.00` and
-		   `balance_entry_an_overpayment_adds` (V42) refuses a credit of nothing. The whole transaction
-		   goes back: no payment, no membership, no member number, and a 500 with no sentence on it. And
-		   `99999999999.00`, an ordinary mistyping, is `numeric field overflow` on the `insert` itself,
-		   which is the same 500 by a shorter road.
+		   WHAT IS LEFT OF IT SINCE 10.10.2026 IS THE CEILING. `99999999999.00`, an ordinary mistyping,
+		   is `numeric field overflow` on the `insert` itself: a 500 with no sentence on it.
 
-		   AND THE HALF THAT IS SILENT, which is the same fault and not a second one: `38.006` is not
-		   refused by anything, the surplus `0.006` enters the column as `0.01`, and `received` becomes
-		   `38.01` - a number nobody typed, in the books, for ever. On the dinar side `3600.004` short of
-		   4.200 leaves `599.996` and the book is charged `-600.00`. Closing the scale closes all three,
-		   because every other amount in the arithmetic comes out of a `numeric(10,2)` column already:
-		   `price.amount()` and `price.fee()` are read from `price_row`, so once what ARRIVED has two
-		   decimals at most, the difference has two decimals at most and nothing can round.
+		   THE TWO FAULTS THAT MADE THIS QUESTION OWED BEFORE were both fractions, and a fraction is refused
+		   one question earlier now. `38.001` against an expected `38.00` left a surplus of `0.001`, which
+		   `isMoney()` calls money because its sign is positive; the column then ROUNDS it to `0.00` and
+		   `balance_entry_an_overpayment_adds` (V42) refuses a credit of nothing, so the whole transaction
+		   went back - no payment, no membership, no member number, and a 500. And the silent one,
+		   `38.006`, whose surplus `0.006` entered the column as `0.01` and made `received` a `38.01`
+		   nobody typed, in the books, for ever. A whole `received` closes both by construction, because
+		   every other amount in the arithmetic comes out of a `numeric(10,2)` column already
+		   (`price.amount()` and `price.fee()` are read from `price_row`): the difference has two
+		   decimals at most and nothing can round.
 
-		   ASKED OF `MembershipPrice` AND NOT WRITTEN HERE, because the scale and the ceiling are the
-		   COLUMN'S and `AnAmountMatchesTheSchemaTest` rebuilds both of them out of `information_schema`.
-		   A second copy of either number would be a second home for a fact a migration is allowed to
-		   change. `RaceWriteApi` refuses a distance for the same reason and in the same words. */
+		   THE CLAUSE THAT ASKS THE SCALE STAYS IN THE METHOD, ASKED OF `MembershipPrice` AND NOT WRITTEN
+		   HERE, because the scale and the ceiling are the COLUMN'S and `AnAmountMatchesTheSchemaTest`
+		   rebuilds both of them out of `information_schema`. A second copy of either number would be a
+		   second home for a fact a migration is allowed to change, and through this route nothing can
+		   reach that clause. `RaceWriteApi` refuses a distance for the same reason and in the same
+		   words. */
 		if (!MembershipPrice.amountIsKeptExactly(typed.received())) {
 			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
 		}

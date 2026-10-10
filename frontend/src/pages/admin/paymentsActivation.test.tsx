@@ -42,18 +42,26 @@ import { QUEUE } from './queues'
  * it could be confused with:
  *
  * <ul>
- * <li><b>Six rows, and the row these cases work on is NEVER the first and never the only one.</b>
+ * <li><b>Seven rows, and the row these cases work on is NEVER the first and never the only one.</b>
  * Petar is fourth. So a screen reading `accounts[0]` for anything - the currency, the expected
- * amount, the balance, the competitor it sends - fails rather than passes by luck.
+ * amount, the price, the balance, the competitor it sends - fails rather than passes by luck.
  * <li><b>Three currencies' worth of states in two words:</b> four rows in dinars and two in euro,
  * so „RSD" can never stand in for „the currency of this row". Petar's is EUR while the first
  * row's is RSD, which is the replacement of a source that a screen reading the list's first
  * currency would survive.
  * <li><b>Every expected amount differs</b>, so „the expected amount" cannot be read off another
- * row and give the same answer.
- * <li><b>Balance in all three of its states:</b> nought (Ana, and it is the commonest state on a
- * real list), short of the fee (Petar, Marko), and covering it (Jovana, Nikola). Each against
- * BOTH currencies, because the box and the size of the balance are two axes.
+ * row and give the same answer. <b>And the price is the expected amount less the processing
+ * charge on the rows abroad</b> (40 and 43, 35 and 38, 50 and 53: a charge of three euro) <b>and
+ * the same number on the rows in dinars</b>, where there is none; so „the fee" can never stand in
+ * for „what he sends" on a euro row, and a screen reading one where it should read the other
+ * answers differently. An amount that is typed and the expected amount are whole numbers (PDL,
+ * ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", for what is typed 10.10.2026), and the
+ * balance is the one number on a row that is not.
+ * <li><b>Balance in all four of its states:</b> nought (Ana, and it is the commonest state on a
+ * real list), short of the fee (Petar, Marko), covering it (Jovana, Nikola), and <b>between the
+ * fee and what he sends</b> (Luka: 51.50 against a fee of 50 and an expected 53), which is the
+ * band the owner's change of 10.10.2026 is about. Each against BOTH currencies where the band
+ * exists, because the box and the size of the balance are two axes.
  * <li><b>Two share a surname and two share a town</b>, so neither is an identity.
  * <li><b>The season served is 2031</b>, which no clock in this portal would produce.
  * </ul>
@@ -72,6 +80,7 @@ describe('activating a membership from the payments screen', () => {
       city: 'Novi Sad',
       currency: 'RSD',
       expected: 4800,
+      price: 4800,
       balance: 0,
     },
     {
@@ -82,6 +91,7 @@ describe('activating a membership from the payments screen', () => {
       city: 'Beograd',
       currency: 'RSD',
       expected: 4500,
+      price: 4500,
       balance: 6000,
     },
     {
@@ -92,11 +102,13 @@ describe('activating a membership from the payments screen', () => {
       city: 'Beograd',
       currency: 'RSD',
       expected: 4200,
+      price: 4200,
       balance: 1500,
     },
-    /* THE ONE MOST OF THESE CASES WORK ON: fourth of six, in the other currency, with a balance
+    /* THE ONE MOST OF THESE CASES WORK ON: fourth of seven, in the other currency, with a balance
        that is real and short of the fee. Every one of those three facts differs from the first
-       row's, which is what makes a replacement of the source fail. */
+       row's, which is what makes a replacement of the source fail. His fee is 40 and what he sends
+       is 43. */
     {
       competitorId: 58,
       memberNumber: '',
@@ -104,7 +116,8 @@ describe('activating a membership from the payments screen', () => {
       lastName: 'Marko',
       city: 'Ljubljana',
       currency: 'EUR',
-      expected: 43.5,
+      expected: 43,
+      price: 40,
       balance: 12.75,
     },
     {
@@ -114,7 +127,8 @@ describe('activating a membership from the payments screen', () => {
       lastName: 'Zorić',
       city: 'Bar',
       currency: 'EUR',
-      expected: 40,
+      expected: 38,
+      price: 35,
       balance: 71.25,
     },
     {
@@ -125,7 +139,24 @@ describe('activating a membership from the payments screen', () => {
       city: 'Niš',
       currency: 'RSD',
       expected: 4000,
+      price: 4000,
       balance: 0,
+    },
+    /* THE SEVENTH, LAST SO THAT PETAR STAYS FOURTH, AND THE ONLY ROW WHOSE BALANCE STANDS BETWEEN
+       THE FEE AND WHAT HE SENDS: 51.50 against a fee of 50 and an expected 53. A balance covering
+       the fee to the last para and not reaching the sum is the member abroad the owner's change of
+       10.10.2026 is about (PDL, [IZVEDENO 02.10.2026] „Članarina plaćena iz balansa ne nosi
+       taksu"), and no other row of this fixture is in that band. */
+    {
+      competitorId: 64,
+      memberNumber: '000023',
+      firstName: 'Luka',
+      lastName: 'Babić',
+      city: 'Zagreb',
+      currency: 'EUR',
+      expected: 53,
+      price: 50,
+      balance: 51.5,
     },
   ]
 
@@ -144,7 +175,7 @@ describe('activating a membership from the payments screen', () => {
   }
 
   /**
-   * The six served above, and whatever the write route is told to answer.
+   * The seven served above, and whatever the write route is told to answer.
    *
    * <p>Its own server rather than the shared one, for the reason `adminPayments.test.tsx` gives
    * about its own: a case that has to know WHAT WAS SENT has to record the requests.
@@ -291,8 +322,9 @@ describe('activating a membership from the payments screen', () => {
 
       /* „Ocekivan iznos: IZNOS". In a table the column heading IS the label, and a screen reader
          reads the pair together, which is what `getByRole('cell')` under the heading measures.
-         43,50 rather than 43.5: the portal writes Serbian. */
-      expect(within(row).getByText('43,50 EUR')).toBeVisible()
+         43 and not 43,00: `money()` writes two decimals only where there are any, and what he
+         sends is a whole number since 10.10.2026. */
+      expect(within(row).getByText('43 EUR')).toBeVisible()
 
       /* THE FIELD, FOUND BY ITS LABEL AND NEVER BY A CLASS, and empty to begin with. The
          currency is part of the name it really has: a reader who cannot see the mark beside the
@@ -345,7 +377,7 @@ describe('activating a membership from the payments screen', () => {
     })
 
     /**
-     * <p><b>ONE ROW'S TYPING NEVER REACHES ANOTHER'S.</b> Six rows and a moderator working down a
+     * <p><b>ONE ROW'S TYPING NEVER REACHES ANOTHER'S.</b> Seven rows and a moderator working down a
      * bank statement is exactly where a number appearing under the wrong name books one man's
      * money to another. Measured on the FIELD and on the BOX both, because they are two pieces of
      * state and one could be shared while the other is not.
@@ -392,7 +424,7 @@ describe('activating a membership from the payments screen', () => {
       await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '4.800')
 
       const said = within(row).getByText(
-        'Iznos unesi ciframa, sa najviše dve decimale i bez razdvajanja hiljada.',
+        'Iznos unesi samo ciframa, bez tačaka i zareza.',
       )
 
       expect(said).toBeVisible()
@@ -419,14 +451,14 @@ describe('activating a membership from the payments screen', () => {
       await user.type(field, 'nesto')
       expect(
         within(row).getByText(
-          'Iznos unesi ciframa, sa najviše dve decimale i bez razdvajanja hiljada.',
+          'Iznos unesi samo ciframa, bez tačaka i zareza.',
         ),
       ).toBeVisible()
 
       await user.clear(field)
       expect(
         within(row).queryByText(
-          'Iznos unesi ciframa, sa najviše dve decimale i bez razdvajanja hiljada.',
+          'Iznos unesi samo ciframa, bez tačaka i zareza.',
         ),
       ).toBeNull()
       expect(field).not.toBeInvalid()
@@ -452,7 +484,7 @@ describe('activating a membership from the payments screen', () => {
    * and {@link everythingWritten} is what this file uses now wherever the assertion is that
    * nothing was sent.
    *
-   * <p><b>Measured against PETAR throughout</b>, fourth of six and in euro, whose expected amount,
+   * <p><b>Measured against PETAR throughout</b>, fourth of seven and in euro, whose expected amount,
    * balance and id all differ from the first row's - so a screen reading any of the three off
    * `accounts[0]` fails rather than passes.
    */
@@ -463,13 +495,13 @@ describe('activating a membership from the payments screen', () => {
      * <p><b>What was typed is asserted on the wire and it is never the expected amount</b>, except
      * for his case 1 where the two are the same number by definition - which is why 50 and 35 are
      * in this table as well. A screen sending `expected` instead of what was read would book Petar
-     * as having paid 43.50 when he sent 20.
+     * as having paid 43 when he sent 20.
      *
      * <p><b>AND NO QUESTION IS PUT, which is his table read literally:</b> the cell for these three
      * holds no prompt, and one invented for case 2 would be a decision he did not ask for.
      */
     it.each([
-      ['the expected amount, his case 1', '43,50', 43.5],
+      ['the expected amount, his case 1', '43', 43],
       ['more than expected, his case 7', '50', 50],
       ['less, with a balance that covers the difference, his case 2', '35', 35],
     ])('books what arrived with no question on %s', async (_what, typed, received) => {
@@ -504,7 +536,7 @@ describe('activating a membership from the payments screen', () => {
 
     /**
      * <p><b>THE TICK BOX IS WHAT GOES ON THE WIRE, and it is measured over a balance that does NOT
-     * cover the fee.</b> Petar has 12.75 against 43.50 expected, so „is it ticked" and „does it
+     * cover the fee.</b> Petar has 12.75 against 43 expected, so „is it ticked" and „does it
      * cover" are two different answers here and a screen sending the wrong one shows. The amount
      * is 50, which covers it on its own, so the box is the only thing that moves.
      */
@@ -569,8 +601,8 @@ describe('activating a membership from the payments screen', () => {
      * HIS CASES 3 AND 3b: „Prihvatam umanjen ukupan iznos? Da / Ne", which is the question this
      * screen was written around the absence of.
      *
-     * <p><b>The question NAMES what is missing</b>, and the number is his own: 43.50 expected, 20
-     * sent, 12.75 on the book, so 10.75 short. That figure appears nowhere else on the row, so a
+     * <p><b>The question NAMES what is missing</b>, and the number is his own: 43 expected, 20
+     * sent, 12.75 on the book, so 10.25 short. That figure appears nowhere else on the row, so a
      * question drawing the expected amount or the balance in its place fails.
      */
     it('asks about the shortfall, names it, and books on „Da" (his case 3)', async () => {
@@ -586,7 +618,7 @@ describe('activating a membership from the payments screen', () => {
       const sheet = await screen.findByRole('dialog')
 
       expect(within(sheet).getByText(/Prihvatam umanjen ukupan iznos/)).toBeVisible()
-      expect(within(sheet).getByText('Nedostaje: 10,75 EUR')).toBeVisible()
+      expect(within(sheet).getByText('Nedostaje: 10,25 EUR')).toBeVisible()
 
       /* NOTHING HAS BEEN SENT YET, which is what makes this a question rather than a notice. */
       expect(everythingWritten(server.asked)).toEqual([])
@@ -610,9 +642,9 @@ describe('activating a membership from the payments screen', () => {
 
     /**
      * HIS CASE 3b: the same question with the box cleared, and <b>over a balance that WOULD have
-     * covered the difference</b>. 35 with 12.75 reaches 47.75, past the 43.50 expected, so a screen
+     * covered the difference</b>. 35 with 12.75 reaches 47.75, past the 43 expected, so a screen
      * that ignored the cleared box would make this his case 2 and put no question at all. The
-     * shortfall named is the whole 8.50 rather than nothing.
+     * shortfall named is the whole 8 rather than nothing.
      */
     it('asks the same question with the box cleared over a balance that would cover (his 3b)', async () => {
       const server = serving()
@@ -627,7 +659,7 @@ describe('activating a membership from the payments screen', () => {
 
       const sheet = await screen.findByRole('dialog')
 
-      expect(within(sheet).getByText('Nedostaje: 8,50 EUR')).toBeVisible()
+      expect(within(sheet).getByText('Nedostaje: 8 EUR')).toBeVisible()
 
       await user.click(within(sheet).getByRole('button', { name: 'Da' }))
 
@@ -702,10 +734,11 @@ describe('activating a membership from the payments screen', () => {
      * <p><b>AND NOUGHT IS NOT ONE OF THEM, which is the owner's decision of 27.09.2026</b> (PDL
      * section 19, point 5): „Prazno polje i ukucana nula vode na ISTI prompt, onaj o oslobodjenju
      * od clanarine." So the button stays available and the question asked is the one about the
-     * exemption. Three spellings, because a guard reading the text rather than the value answers
-     * differently for each, and „0,00" is what somebody copying an amount off this screen types.
+     * exemption. Two spellings, because a guard reading the text rather than the value answers
+     * differently for each. „0.00" and „0,00" were two more until 10.10.2026 and are the next case:
+     * an amount is typed without a dot or a comma, so a nought written with one is refused.
      */
-    it.each([['0'], ['0.00'], ['0,00']])(
+    it.each([['0'], ['00']])(
       'treats a typed nought (%s) as nothing typed and still activates',
       async (typed) => {
         const server = serving()
@@ -727,6 +760,77 @@ describe('activating a membership from the payments screen', () => {
         server.stop()
       },
     )
+  })
+
+  describe('the field takes no separator, not even in a nought', () => {
+    /**
+     * <p><b>A NOUGHT WRITTEN WITH A SEPARATOR IS REFUSED, NOT TAKEN FOR NOTHING TYPED.</b> The owner
+     * decided on 27.09.2026 (PDL section 19, point 5) that an empty field and a typed nought lead to
+     * the same question; an amount is typed without a dot or a comma (PDL, ODLUKA 02.10.2026,
+     * „Iznosi se unose bez tačaka i zareza!", confirmed for the amount of a payment on 03.10.2026),
+     * so „0.00" and „0,00" are not the nought the first decision is about. DERIVED from the two and
+     * told to the owner in one sentence among the derived items of 10.10.2026 (point 15, K), where he
+     * can object. „0" and „00" are the next block up and still activate.
+     *
+     * <p>The row says so in words, ties the sentence to the field, and the button is disabled: the
+     * same behaviour `4.800` gets above, because it is the same refusal.
+     */
+    it.each([['0.00'], ['0,00']])('refuses a nought written as %s and will not activate', async (typed) => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), typed)
+
+      expect(within(row).getByText('Iznos unesi samo ciframa, bez tačaka i zareza.')).toBeVisible()
+      expect(within(row).getByLabelText('Uplaćeno (EUR)')).toBeInvalid()
+      expect(within(row).getByRole('button', { name: 'Aktiviraj' })).toBeDisabled()
+      expect(everythingWritten(server.asked)).toEqual([])
+      expect(screen.queryByRole('dialog')).toBeNull()
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>AND A DECIMAL OF ANY SIZE IS REFUSED THE SAME WAY</b>, with both separators: one
+     * decimal and two, with the dot and with the comma. The keyboard offers digits only
+     * (`inputMode="numeric"`), but a field is typed into from a clipboard as well, and a bank
+     * statement copied onto it carries exactly these.
+     */
+    it.each([['43.5'], ['43,50'], ['43.50']])('refuses %s and will not activate', async (typed) => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), typed)
+
+      expect(within(row).getByText('Iznos unesi samo ciframa, bez tačaka i zareza.')).toBeVisible()
+      expect(within(row).getByRole('button', { name: 'Aktiviraj' })).toBeDisabled()
+      expect(everythingWritten(server.asked)).toEqual([])
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>THE KEYBOARD A TOUCH SCREEN OFFERS IS THE NUMERIC ONE</b>, since an amount is a whole
+     * number and a separator is not on it. `type="text"` stays (a number field reports an empty
+     * value for anything it dislikes, so „nije unet" and „unet pogresno" would be one state), and
+     * `inputMode` is what picks the keyboard.
+     */
+    it('asks for the numeric keyboard and not the decimal one', async () => {
+      const server = serving()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      expect(within(row).getByLabelText('Uplaćeno (EUR)')).toHaveAttribute('inputmode', 'numeric')
+
+      server.stop()
+    })
   })
 
   describe('the question about the ground, his cases 4 and 5', () => {
@@ -758,9 +862,14 @@ describe('activating a membership from the payments screen', () => {
       expect(sheet).toHaveAccessibleName('Aktivacija članstva: Petar Marko, sezona 2031.')
 
       /* BOTH AMOUNTS ARE IN THE SHEET AND IN HIS CURRENCY, so the moderator decides with the
-         numbers in front of him rather than from the row behind the sheet. */
-      expect(within(sheet).getByText('Očekivan iznos: 43,50 EUR')).toBeVisible()
+         numbers in front of him rather than from the row behind the sheet. The first of them is
+         THE FEE and not what he would send, which is the owner's choice of 10.10.2026 (PDL, the
+         entry „Odgovori na pitanja skupljena dok je bio odsutan", item „Članstvo i uplate": „prompt
+         „Odobri iz balansa" pokazuje članarinu umesto očekivanog iznosa"): 40, where the row behind
+         the sheet says 43. */
+      expect(within(sheet).getByText('Članarina: 40 EUR')).toBeVisible()
       expect(within(sheet).getByText('Balans: 12,75 EUR')).toBeVisible()
+      expect(within(sheet).queryByText(/Očekivan iznos/)).toBeNull()
 
       await user.click(within(sheet).getByRole('button', { name: 'Odobri umanjen iznos iz balansa' }))
 
@@ -790,10 +899,89 @@ describe('activating a membership from the payments screen', () => {
       expect(
         within(sheet).queryByRole('button', { name: 'Odobri umanjen iznos iz balansa' }),
       ).toBeNull()
+      expect(within(sheet).getByText('Članarina: 35 EUR')).toBeVisible()
 
       await user.click(within(sheet).getByRole('button', { name: 'Odobri iz balansa' }))
 
       expect(grantsIn(server.asked)).toEqual([{ competitorId: 77, ground: 'balance' }])
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>THE BAND, ON THE SCREEN: A MEMBER ABROAD WHOSE BALANCE STANDS BETWEEN THE FEE AND WHAT
+     * HE SENDS IS OFFERED „ODOBRI IZ BALANSA", NOT „UMANJEN IZNOS".</b> A fee paid out of a balance
+     * carries no processing charge (PDL, [IZVEDENO 02.10.2026] „Članarina plaćena iz balansa ne nosi
+     * taksu"), so Luka's 51.50 covers his fee of 50 to the last para while the row says he sends 53.
+     * Measured against the expected amount the second button read „umanjen iznos" and the prompt
+     * showed 53 over 51.50, which told a moderator he was approving a reduced amount on an act that
+     * cannot be undone, and the server then took the whole fee.
+     *
+     * <p><b>Luka and not Nikola, because Nikola's balance is past BOTH numbers</b> and answers alike
+     * whichever the screen compares with; the premise is asserted on the row before the question is
+     * put (the balance in the box, and the expected amount in the cell), so the case cannot go on
+     * passing on a fixture that stopped being in the band.
+     */
+    it('offers „Odobri iz balansa" to a member abroad whose balance covers the fee but not the sum', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Luka Babić')
+
+      expect(within(row).getByText('53 EUR')).toBeVisible()
+      expect(within(row).getByLabelText('uključi balans (51,50 EUR)')).toBeChecked()
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const sheet = await screen.findByRole('dialog')
+
+      expect(within(sheet).getByText('Članarina: 50 EUR')).toBeVisible()
+      expect(within(sheet).getByText('Balans: 51,50 EUR')).toBeVisible()
+      expect(within(sheet).getByRole('button', { name: 'Odobri iz balansa' })).toBeVisible()
+      expect(
+        within(sheet).queryByRole('button', { name: 'Odobri umanjen iznos iz balansa' }),
+      ).toBeNull()
+
+      await user.click(within(sheet).getByRole('button', { name: 'Odobri iz balansa' }))
+
+      expect(grantsIn(server.asked)).toEqual([{ competitorId: 64, ground: 'balance' }])
+
+      server.stop()
+    })
+
+    /**
+     * <p><b>THE OTHER PROMPTS KEEP THE EXPECTED AMOUNT</b>, because the owner's choice of
+     * 10.10.2026 was about the prompt for the balance and nothing else was put to him. The question
+     * about the exemption (his case 6) and the question about a shortfall (his 3 and 3b) are drawn
+     * with „Očekivan iznos", in the same currency, and a screen that began drawing the fee there
+     * would show a moderator the wrong number in the one place money is being sent.
+     */
+    it('still shows what he sends in the questions that are not about the balance', async () => {
+      const server = serving()
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Sanja Perić')
+
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+
+      const exemption = await screen.findByRole('dialog')
+
+      expect(within(exemption).getByText('Očekivan iznos: 4.000 RSD')).toBeVisible()
+      expect(within(exemption).queryByText(/Članarina:/)).toBeNull()
+
+      await user.click(within(exemption).getByRole('button', { name: 'Ne' }))
+
+      const petar = await rowOf('Petar Marko')
+
+      await user.type(within(petar).getByLabelText('Uplaćeno (EUR)'), '20')
+      await user.click(within(petar).getByRole('button', { name: 'Aktiviraj' }))
+
+      const shortfall = await screen.findByRole('dialog')
+
+      expect(within(shortfall).getByText('Očekivan iznos: 43 EUR')).toBeVisible()
+      expect(within(shortfall).queryByText(/Članarina:/)).toBeNull()
 
       server.stop()
     })
@@ -1283,8 +1471,8 @@ describe('activating a membership from the payments screen', () => {
      * would pass on it.
      *
      * <p><b>It is also the one of the five new reasons a moderator can really provoke:</b> the
-     * field refuses a third decimal but puts no ceiling on the digits before the separator, and
-     * `numeric(10,2)` has one - so eleven digits is a typing mistake that reaches the server.
+     * field takes digits only but puts no ceiling on how many, and `numeric(10,2)` has one - so
+     * eleven digits is a typing mistake that reaches the server.
      */
     it('reads the payment door’s own sentences, not the membership door’s', async () => {
       const server = serving(OUTSTANDING, () =>
@@ -1313,6 +1501,49 @@ describe('activating a membership from the payments screen', () => {
       expect(within(await rowOf('Petar Marko')).getByLabelText('Uplaćeno (EUR)')).toHaveValue(
         '99999999999',
       )
+
+      server.stop()
+    })
+  })
+
+  describe('a refusal the screen cannot provoke', () => {
+    /**
+     * <p><b>`theAmountIsNotWhole` IS ANSWERED ALTHOUGH THE FIELD NEVER LETS A FRACTION OUT.</b>
+     * `PaymentApi` names it for a caller that is not this screen (PDL, ODLUKA 02.10.2026, „Iznosi se
+     * unose kao celi brojevi"), and `pages/account/refusals.test.ts` holds the map to the route's
+     * constants in both directions. This is the other half: the sentence it points at is on the
+     * screen, in words and not as a code, and the row is where it was.
+     */
+    it('says the sentence for an amount with a fraction rather than printing the code', async () => {
+      const server = serving(OUTSTANDING, () =>
+        new Response(JSON.stringify({ reason: 'theAmountIsNotWhole' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        }),
+      )
+      const user = setupUser()
+      renderAt(ADDRESS, 'superadmin')
+
+      const row = await rowOf('Petar Marko')
+
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '20')
+      await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
+      await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
+
+      /* THIS WAIT GIVES UP BEFORE THE CASE'S OWN CLOCK DOES, and that is measured rather than
+         tidy: `test/setup.ts` lets every `findBy` wait twenty seconds and a case is given five,
+         so a sentence that is not there (the map pointing at the column's sentence, or the
+         dictionary saying something else) would be reported as `Test timed out in 5000ms`
+         instead of as the sentence it did not find. Two seconds is room for the answer to be
+         drawn and still leaves the case most of its clock for the lines above. */
+      const said = await within(await rowOf('Petar Marko')).findByText(
+        /Iznos uplate mora da bude ceo broj/,
+        undefined,
+        { timeout: 2_000 },
+      )
+
+      expect(said).toBeVisible()
+      expect(said).not.toHaveTextContent('theAmountIsNotWhole')
 
       server.stop()
     })
@@ -1515,7 +1746,7 @@ describe('activating a membership from the payments screen', () => {
       const row = await rowOf('Petar Marko')
 
       /* His case 1, so the press books it and opens nothing. */
-      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43,50')
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43')
 
       const aktiviraj = within(row).getByRole('button', { name: 'Aktiviraj' })
 
@@ -1530,7 +1761,7 @@ describe('activating a membership from the payments screen', () => {
         expect(paymentsIn(server.asked)).toEqual([
           {
             competitorId: 58,
-            received: 43.5,
+            received: 43,
             useTheBalance: true,
             method: 'paypal',
             reference: null,
@@ -1908,7 +2139,7 @@ describe('activating a membership from the payments screen', () => {
 
     /**
      * <p>His case 1, no sheet at all: the press books at once, so the focus is on „Aktiviraj"
-     * itself when the answer comes and that button is gone with the row. Petar, fourth of six.
+     * itself when the answer comes and that button is gone with the row. Petar, fourth of seven.
      */
     it('goes to the search box when a payment booked at once has taken its row off the list', async () => {
       const { server, reads } = servingTheListWithout(58)
@@ -1917,7 +2148,7 @@ describe('activating a membership from the payments screen', () => {
 
       const row = await rowOf('Petar Marko')
 
-      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43,50')
+      await user.type(within(row).getByLabelText('Uplaćeno (EUR)'), '43')
       await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
 
       await waitFor(() => expect(screen.queryByText('Petar Marko')).toBeNull())
