@@ -609,30 +609,54 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	}
 
 	/**
-	 * THE DECISION ON THE QUEUE: A ZERO IN THE REASON IS ITS OWN „FORMA NIJE POPUNJENA", AND THE ITEM
-	 * IS STILL WAITING.
+	 * THE DECISION ON THE QUEUE: A ZERO IN ANY OF ITS TEXTS IS ITS OWN "FORMA NIJE POPUNJENA", AND THE
+	 * ITEM IS STILL WAITING.
 	 *
-	 * <p>The zero goes first and the control after it, because the control decides the item: the case
+	 * <p>Four texts, and the last three are the ones R3 (PR 508, 10.10.2026) added: an approval of a run
+	 * on a race the calendar does not hold makes the event and the race out of the NAMES the moderator
+	 * types, and those names go into {@code btl_event} and {@code race}. They are read in the same body as
+	 * the reason, by the same mapper, so the route needs nothing of its own - which is what is asked here
+	 * rather than assumed. The refusal comes before the route looks at which queue the item is in, so the
+	 * item in front of the moderator is a profile text and the answer is the same.
+	 *
+	 * <p>The zeros go first and the control after them, because the control decides the item: the case
 	 * would otherwise be asking about an item somebody had already answered.
 	 */
 	@Test
-	void aDecisionWithAZeroInTheReasonIsRefusedInTheRoutesOwnWordsAndTheItemWaits() throws Exception {
+	void aDecisionWithAZeroInAnyOfItsTextsIsRefusedInTheRoutesOwnWordsAndTheItemWaits() throws Exception {
 		String where = "/api/verification/" + theItem + "/decision";
+		Map<String, String> refused = new LinkedHashMap<>();
 
-		MockHttpServletResponse answer = send(post(where), PROFILES,
-				body("approved", false, "reason", withAZero("Slika je mutna")));
+		refused.put("reason", body("approved", false, "reason", withAZero("Slika je mutna")));
 
-		assertThat(answer.getStatus()).as("a zero in the reason of a decision was not turned away").isEqualTo(400);
-		assertThat(reasonIn(answer))
-				.as("a zero in the reason of a decision was refused, but not in the route's own words")
-				.isEqualTo(THE_DECISIONS_OWN_SENTENCE);
-		assertThat(db.sql("select state from verification where id = ?").param(theItem)
-				.query(String.class).single())
-				.as("an item was answered out of a body the route could not read")
-				.isEqualTo("waiting");
+		for (String field : List.of("eventName", "raceName", "raceKind")) {
+			Map<String, Object> race = new LinkedHashMap<>();
+
+			race.put("eventName", "Planinarska trka");
+			race.put("raceName", "Desetka");
+			race.put("raceKind", "trail");
+			race.put(field, withAZero(String.valueOf(race.get(field))));
+
+			refused.put("newRace." + field, body("approved", true, "newRace", race));
+		}
+
+		for (Map.Entry<String, String> one : refused.entrySet()) {
+			MockHttpServletResponse answer = send(post(where), PROFILES, one.getValue());
+
+			assertThat(answer.getStatus())
+					.as("a zero in %s of a decision was not turned away", one.getKey())
+					.isEqualTo(400);
+			assertThat(reasonIn(answer))
+					.as("a zero in %s of a decision was refused, but not in the route's own words", one.getKey())
+					.isEqualTo(THE_DECISIONS_OWN_SENTENCE);
+			assertThat(db.sql("select state from verification where id = ?").param(theItem)
+					.query(String.class).single())
+					.as("an item was answered out of a body the route could not read (%s)", one.getKey())
+					.isEqualTo("waiting");
+		}
 
 		assertThat(send(post(where), PROFILES, body("approved", false, "reason", "Slika je mutna")).getStatus())
-				.as("the same decision without a zero was not carried out, so the case above refused a body"
+				.as("the same decision without a zero was not carried out, so the cases above refused a body"
 						+ " for some other reason")
 				.isEqualTo(200);
 		assertThat(db.sql("select state from verification where id = ?").param(theItem)
