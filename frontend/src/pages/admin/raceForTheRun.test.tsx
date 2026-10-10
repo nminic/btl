@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { raceMeasure } from '../../data/raceLabel'
 import { NO_RATING, type ServedPendingItem } from '../../data/types'
@@ -34,6 +34,12 @@ import { QUEUE } from './queues'
  * not yet run, is a different answer from the one chosen.</li>
  * </ul>
  */
+
+/* A CASE OF THIS FILE ENDS ON AN ASSERTION AND NEVER ON ITS OWN CLOCK (review of PR 492, and the
+   precedent `saveWhileSaving.test.tsx` sets): every case has `SLOW`, and every wait half of it, so a
+   wait that never succeeds fails in the words of what it waited for. The case at the foot holds it. */
+vi.setConfig({ testTimeout: SLOW })
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const PATH = `/sr/${QUEUE.results.path}`
 
@@ -606,12 +612,12 @@ describe('what the route answers to the panel', () => {
       expect((await rowOf('000040')).getByRole('alert')).toHaveTextContent(sentence)
       expect(decidedIn().queryAllByRole('listitem')).toHaveLength(0)
       /* The list read again while the screen stood, which a refusal in the route's words asks. */
-      await waitFor(() => expect(reads(server.asked, '/api/verification')).toBe(2))
+      expect(reads(server.asked, '/api/verification')).toBe(2)
 
       /* And the races are read afresh the next time the panel is opened, so a race the
          administration has added since is there to be chosen. */
       await openThePanelOver(user, '000040')
-      await waitFor(() => expect(reads(server.asked, '/api/races')).toBe(2))
+      expect(reads(server.asked, '/api/races')).toBe(2)
     } finally {
       server.stop()
     }
@@ -672,7 +678,7 @@ describe('what the route answers to the panel', () => {
       await user.click(panel().getByRole('button', { name: sr.review.placeSave }))
       await untilItHasAnswered()
 
-      await waitFor(() => expect(reads(server.asked, '/api/verification')).toBe(2))
+      expect(reads(server.asked, '/api/verification')).toBe(2)
     } finally {
       server.stop()
     }
@@ -743,4 +749,10 @@ describe('what the route answers to the panel', () => {
     },
     SLOW,
   )
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })

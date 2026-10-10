@@ -1756,14 +1756,14 @@ describe('what a decision leaves for the screens that read after it', () => {
 
       expect(screen.getAllByRole('alert')).toHaveLength(1)
       /* Read again while the screen stood, and only once. */
-      await waitFor(() => expect(queueReads()).toBe(2))
+      expect(queueReads()).toBe(2)
 
       expect(await awayAndBack(), 'an approval the route refused').toEqual({ queue: 2, standings: 1 })
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
       await sweptSays('Rešeno je 0 stavki.')
       /* Three refusals in one walk, and the list is read again once for the walk. */
-      await waitFor(() => expect(queueReads()).toBe(3))
+      expect(queueReads()).toBe(3)
 
       expect(await awayAndBack(), 'a sweep the route took nothing from').toEqual({ queue: 3, standings: 1 })
 
