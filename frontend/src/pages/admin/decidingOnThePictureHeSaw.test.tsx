@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { did, refused, serverThat } from '../../test/serverAnswers'
+import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
 import { decisionPath } from './verificationWrites'
 import { QUEUE } from './queues'
@@ -38,6 +39,15 @@ import { QUEUE } from './queues'
  * `verification.json` carries no `photoId` on any row (`moderatorSeesThePicture.test.tsx` says so)
  * and a card that draws no picture is exactly what these cases are not about.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, which is what `saveWhileSaving.test.tsx`
+   did for the same reason: the global is `SLOW` for a wait (`test/setup.ts`) and a case without a clock
+   of its own has five seconds, so a wait that never succeeded was ended by the clock of its case
+   (`Test timed out in 5000ms`), and a series of mutations that does not tell that from an assertion
+   counts it as caught. Measured on 10.10.2026 on this file: four mutations of the first series ended
+   that way, and none of them says what it was caught by. Every case here is given `SLOW`, every wait
+   half of it, and the last case holds that the half is still half. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 /** The owner's sentence, said whole and with its full stop, and written here rather than read
  *  off the route so that a reworded route fails the case instead of agreeing with itself. */
@@ -126,7 +136,7 @@ describe('what a decision about a picture names', () => {
     } finally {
       stop()
     }
-  })
+  }, SLOW)
 
   it('is the picture the card drew when the box hands the card back, with the reason beside it', async () => {
     const { asked, stop } = serverThat((path) =>
@@ -158,7 +168,7 @@ describe('what a decision about a picture names', () => {
     } finally {
       stop()
     }
-  })
+  }, SLOW)
 
   it("is each card's own picture in a sweep, and nothing for the biography between them", async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
@@ -194,7 +204,7 @@ describe('what a decision about a picture names', () => {
       confirm.mockRestore()
       stop()
     }
-  })
+  }, SLOW)
 
   it('is nothing at all for a card that drew no picture, whichever answer', async () => {
     const { asked, stop } = serverThat((path) =>
@@ -224,7 +234,7 @@ describe('what a decision about a picture names', () => {
     } finally {
       stop()
     }
-  })
+  }, SLOW)
 })
 
 describe('when the route says the picture is not the one the card drew', () => {
@@ -284,6 +294,8 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       expect(pictureOf('Neda Nedić')).toBe('/api/verification/21/photo?photo=9')
 
+      const theOldPixels = cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ })
+
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 
       /* THE SENTENCE, ON THE CARD IT IS ABOUT, in the owner's words. */
@@ -299,6 +311,15 @@ describe('when the route says the picture is not the one the card drew', () => {
         expect(pictureOf('Neda Nedić')).toBe('/api/verification/21/photo?photo=10')
       })
       expect(reads()).toBe(2)
+
+      /* AND IT DRAWS IT IN AN ELEMENT OF ITS OWN: an `<img>` whose `src` moves keeps drawing the
+         old bitmap until the new one is decoded, and a press in that moment would name the new
+         picture over the old one on the screen. The element that drew the old pixels is gone. */
+      expect(
+        cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }),
+        'the same element is drawing the new picture, so the old pixels stay until it is decoded',
+      ).not.toBe(theOldPixels)
+      expect(theOldPixels.isConnected).toBe(false)
 
       /* AND THE SENTENCE IS STILL THERE after the read: it is about a card that is still standing,
          and it tells the moderator why the picture under him is another one. */
@@ -321,7 +342,7 @@ describe('when the route says the picture is not the one the card drew', () => {
     } finally {
       stop()
     }
-  })
+  }, SLOW)
 
   it('does the same when it is the box that hands the card back, and the reason he typed goes with the box', async () => {
     const { asked, reads, stop } = aServerThatSaysItChanged(
@@ -366,7 +387,7 @@ describe('when the route says the picture is not the one the card drew', () => {
     } finally {
       stop()
     }
-  })
+  }, SLOW)
 
   it('reads the list again once for a whole sweep, however many pictures were refused', async () => {
     /* THREE PICTURES, TWO REFUSED: a read per refusal would be a third read, and the sentence
@@ -408,7 +429,7 @@ describe('when the route says the picture is not the one the card drew', () => {
       confirm.mockRestore()
       stop()
     }
-  })
+  }, SLOW)
 
   it('says it over the list and not on a card when the card went with the list it was read in', async () => {
     /* ANOTHER MODERATOR GOT THERE FIRST: the route says the row was decided, the list read after
@@ -435,7 +456,7 @@ describe('when the route says the picture is not the one the card drew', () => {
     } finally {
       stop()
     }
-  })
+  }, SLOW)
 
   it('does not say it over another queue the moderator goes to afterwards', async () => {
     /* WHAT THE FALLBACK ABOVE RELIES ON, and holds rather than writes: the screen is mounted afresh
@@ -471,7 +492,7 @@ describe('when the route says the picture is not the one the card drew', () => {
     } finally {
       stop()
     }
-  })
+  }, SLOW)
 
   it('leaves the list as it was when the refusal is about a card that drew no picture', async () => {
     /* THE EXTENT OF WHAT WAS ASKED: a refusal about a biography says what it says over a card that
@@ -505,5 +526,14 @@ describe('when the route says the picture is not the one the card drew', () => {
     } finally {
       stop()
     }
+  }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the paragraph above. Take the `configure` away and a wait is `SLOW` again, the
+       same twenty seconds as the case that is waiting for it. Asked of the number that decides and
+       not of the text of the file. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
 })

@@ -259,7 +259,10 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * would be asked to „pogledaj je ponovo" over a picture that did not change on his screen, and the
  * next press would approve what he never saw. With the number in it the `src` moves with the
  * fact it stands for, and a request for a new address is the one thing a browser cannot answer
- * from its own memory.
+ * from its own memory. <b>The element is keyed by the same number</b>, so a picture that is
+ * replaced is a new element that draws nothing until its own pixels arrive: left to change its
+ * `src` in place, the element keeps drawing the old pixels until the new ones are decoded, and a
+ * press in that moment names the new picture over the old one on the screen.
  *
  * <p><b>`broken` is a prop and never state of its own, unlike before this
  * decision.</b> The Approve button beside this card has to read the identical
@@ -311,6 +314,7 @@ function WaitingPicture({
 
   return (
     <img
+      key={item.photoId}
       className="pending__picture"
       src={photoPath(item.id, item.photoId)}
       alt={t('verification.pictureAlt', { who: item.who })}
