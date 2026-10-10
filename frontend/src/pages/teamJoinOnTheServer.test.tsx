@@ -863,7 +863,29 @@ describe('whose applications the page draws', () => {
   ])(
     'draws what the route says to the reader who signs in after the first on the same page, and nothing of the first’s, when %s',
     async (_, first, next, firstSees, nextSees) => {
+      /* HIS LIST IS HELD while the page is looked at. Asked right after the click and answered at
+         once, a half that drew the first reader's list for the first paint and his own a moment
+         later would pass: by the time a click is handed back, an answer that came at once has
+         landed (measured 10.10.2026: dropping the cache in an effect, after the render that reads
+         it, kept a form of this case that did not hold his list green). „Nothing of the first's"
+         is exactly the paint that comes before his own list can, so it is looked at while it is
+         out. */
+      let answerHim: () => void = () => {}
+      const held = new Promise<void>((resolve) => {
+        answerHim = resolve
+      })
       const server = aServerForTheAsker({ lists: { [ASKER]: first, [NEXT_ASKER]: next } })
+      const answering = globalThis.fetch
+
+      globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+        const response = await answering(input, init)
+        const heIsAsking =
+          String(input) === '/api/me/applications' &&
+          whoTheCookieCurrentlyNames()?.memberNumber === NEXT_ASKER
+
+        return heIsAsking ? held.then(() => response) : response
+      }
+
       const user = setupUser()
 
       try {
@@ -887,18 +909,22 @@ describe('whose applications the page draws', () => {
 
         await user.click(screen.getByRole('button', { name: `postani ${NEXT_ASKER}` }))
 
-        /* At once, whether or not his own list has landed yet: whatever is drawn is not the first
-           reader's. Held by the wait below alone, a screen that served the first reader's list
-           would be told only when that wait runs out. */
-        expect(whatIsDrawn()).not.toEqual(firstSees)
+        /* While his own list is out nothing of this half is drawn, and so nothing of the first
+           reader's: the page asks for his list and draws no list at all until it has come. That it
+           WAS asked for is the second read, which is also what tells a list read for him from the
+           first reader's list served to him. */
+        expect(whatIsDrawn()).toEqual(NEITHER)
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
 
-        /* And then his own: the right one of the two, and the second read, which is what tells a
-           list read for him from the first reader's list served to him. */
+        answerHim()
+
+        /* And then his own: the right one of the two, and nothing asked again. */
         await waitFor(() => {
           expect(whatIsDrawn()).toEqual(nextSees)
         })
         expect(readsOfWhatHeWaitsOn(server.asked)).toBe(2)
       } finally {
+        globalThis.fetch = answering
         server.stop()
       }
     },
