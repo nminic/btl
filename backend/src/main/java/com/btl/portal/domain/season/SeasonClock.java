@@ -374,16 +374,24 @@ public final class SeasonClock {
 	 * više oblika dobija jedan dom, i taj dom se prebroji a ne oseti". It was a private method
 	 * of {@code CompetitorApi} until 10.10.2026, and what follows is its note, kept whole.
 	 *
-	 * <p><b>One season and never a band per season, and that is a measurement rather than a
-	 * simplification.</b> PDL, 13.09.2026 (now in {@code btl-produkt/arhiva/PDL-2026-10-03.md},
-	 * the entry on {@code birthYear}): a map of band by season „vraća tačna godina rođenja" for
-	 * 25 of the 32 members, because a member who crosses a boundary narrows the candidate years
-	 * to one. „Iz jednog pojasa za tekuću sezonu ne vraća se ni za jednog, jer je najuži skup
-	 * kandidata širok petnaest godina." So the year is private BECAUSE only one season is
-	 * answered, and answering a second would hand back the very field the band was made to
-	 * withhold. The cost is written down in the same place and accepted: a screen drawing a
-	 * category for an earlier season draws today's band. PDL P34 (21.09.2026) says what the band
-	 * is for: it „je napravljen tako da ne odaje godinu rođenja".
+	 * <p><b>The LIST answers one season and never a band per season, and that is a measurement
+	 * rather than a simplification.</b> PDL, 13.09.2026 (now in
+	 * {@code btl-produkt/arhiva/PDL-2026-10-03.md}, the entry on {@code birthYear}): a map of band
+	 * by season „vraća tačna godina rođenja" for 25 of the 32 members, because a member who
+	 * crosses a boundary narrows the candidate years to one. „Iz jednog pojasa za tekuću sezonu ne
+	 * vraća se ni za jednog, jer je najuži skup kandidata širok petnaest godina." So the year is
+	 * private BECAUSE only one season is answered, and answering a second hands back the very
+	 * field the band was made to withhold. For the list that cost is written down in the same
+	 * place and accepted: a screen drawing a category for an earlier season out of the list draws
+	 * today's band. PDL P34 (21.09.2026) says what the band is for: it „je napravljen tako da ne
+	 * odaje godinu rođenja".
+	 *
+	 * <p><b>One other door answers more than one season since 10.10.2026, and this method is not
+	 * its home:</b> the runner of a result carries the band its member had in the season the result
+	 * was run in ({@link #seasonTheBandOfAResultIsWorkedOutFor}). The owner chose that between
+	 * offered outcomes, against my recommendation, with the cost above exposed before he chose: the
+	 * history of one member's results shows the season he crossed a band, which is an approximate
+	 * year of birth. This method is still the list's, and still one season.
 	 *
 	 * <p><b>Read in the league's own zone, whatever zone the moment arrives in</b>, for the
 	 * reason {@code ResultApi} writes beside its own year: a server kept in UTC, as containers
@@ -420,6 +428,42 @@ public final class SeasonClock {
 	 */
 	public static int seasonTheBandIsWorkedOutFor(ZonedDateTime at) {
 		return Math.max(FIRST_SEASON, at.withZoneSameInstant(ZONE).getYear());
+	}
+
+	/**
+	 * THE SEASON THE AGE BAND ON A RESULT IS WORKED OUT FOR: the one the day it was run is in, and
+	 * never earlier than the first the league has.
+	 *
+	 * <p><b>Owner, 10.10.2026 (PDL P23), chosen between offered outcomes and against my
+	 * recommendation:</b> the band beside an old result is the band its member had in the season
+	 * that result was run in, the same as in the frozen table of that season, for every served
+	 * result of a member with a number, whether his fee stands or has lapsed. The outcome he did
+	 * not choose was today's band, which {@link #seasonTheBandIsWorkedOutFor} still answers for the
+	 * list; its cost was that, for a member who crossed a band, the result and the frozen table of
+	 * the same season would show two categories. The cost of the one he chose was exposed before he
+	 * chose and is on the note of that method: the history of a member's results shows the season
+	 * he crossed a band, which is an approximate year of birth.
+	 *
+	 * <p><b>The season of a result is the calendar year of its day, and nothing else.</b> The
+	 * league scores a race in the year it is run in, and V7 holds a result's day equal to its
+	 * race's. A day has no zone, so unlike the moment {@link #seasonTheBandIsWorkedOutFor} is asked
+	 * about there is nothing here for a zone to move: the day is read as the start of itself in the
+	 * league's own zone, and that method is asked, so that the floor under both bands has one home.
+	 *
+	 * <p><b>WHAT IS NOT DECIDED HERE, written down rather than left to be found.</b> A result run
+	 * before the league's first season (the history imported from before 2027) belongs to no season
+	 * of the league (PDL P2), so there is no band its member had in it. This answers the first
+	 * season for it, which is the floor the list already stands on and the reading that gives away
+	 * least: the year the result was run in would put every imported year of every member's history
+	 * into the same map that 13.09.2026 measurement found the exact year of birth in, for 25 of
+	 * 32 members, and not the approximate year the owner was told about. It is a derivation from
+	 * the rule that a band is never worked out for a season the league does not have, and not a
+	 * thing the owner was asked; the owner is told.
+	 *
+	 * @param day the day the result was run, which is its race's day
+	 */
+	public static int seasonTheBandOfAResultIsWorkedOutFor(LocalDate day) {
+		return seasonTheBandIsWorkedOutFor(day.atStartOfDay(ZONE));
 	}
 
 	/**
