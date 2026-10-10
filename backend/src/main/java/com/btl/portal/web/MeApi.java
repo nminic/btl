@@ -57,10 +57,14 @@ import java.math.BigDecimal;
  * <p><b>AND IT ANSWERS A MEMBER WHOSE FEE HAS LAPSED, which is the whole of why
  * this is a second resource and not four more fields on the first one.</b>
  * {@link CompetitorApi} leaves such a member off its list entirely - owner,
- * 13.09.2026, asked which shape PDL P11 takes on the server - and its own javadoc
- * names the consequence as owed rather than solved: „the profile and the
- * historical tables of a member whose fee has lapsed need a resource that knows
- * them, and it is not this one." It is this one.
+ * 13.09.2026, asked which shape PDL P11 takes on the server - and named the
+ * consequence as owed rather than solved: the profile and the historical tables
+ * of a member whose fee has lapsed need a resource that knows them. Two resources
+ * know him now, each for what is its own, and between them they are what that
+ * sentence asked for: this one answers him the page of his own profile (below,
+ * since 10.10.2026), and {@code GET /api/results} carries his name on the results
+ * of the seasons he was a member in. Neither is {@link CompetitorApi}, which stays
+ * the members whose fee is standing.
  *
  * <p><b>AND THREE FIELDS THAT ARE HIS OWN BUSINESS AND NOBODY ELSE'S, each here
  * because a decision or a measurement put it here.</b> Two of them were refused on
@@ -115,13 +119,13 @@ import java.math.BigDecimal;
  * that compared the doors.
  *
  * <p><b>AND SINCE 10.10.2026 IT CARRIES THE RECORD HIS OWN PROFILE IS DRAWN FROM, which is
- * the debt the paragraph about a lapsed fee names.</b> {@link CompetitorApi}'s own javadoc
- * says the profile of a member whose fee has lapsed "need a resource that knows them, and it
- * is not this one", and that paragraph answers that this one is. The owner then said what that
- * profile is for (PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
- * postoji"), and a profile cannot be drawn from seven facts about a fee: it is headed by a
- * name and stands on a town, a category, a biography and a portrait, none of which reached a
- * member who is on no row of the public list.
+ * the half of the debt the paragraph about a lapsed fee names that is the member's own.</b>
+ * The other half, his name in the tables of the seasons he was a member in, rides on the
+ * results ({@code GET /api/results}); this route answers the page, and answers it to him
+ * alone. The owner said what that profile is for (PDL P8, 25.09.2026, „Treba da moze da
+ * otvori svoj profil dokle god postoji"), and a profile cannot be drawn from seven facts about
+ * a fee: it is headed by a name and stands on a town, a category, a biography and a portrait,
+ * none of which reached a member who is on no row of the public list.
  *
  * <p><b>The names are {@link CompetitorApi.Competitor}'s, for the same facts, on purpose</b>,
  * so that the portal reads one vocabulary for a member whichever door answered him. What
@@ -140,13 +144,15 @@ import java.math.BigDecimal;
  * this query, and {@code MeApiTest.aMemberWhoseFeeHasLapsedAndHidesHisProfileIsHandedAllOfIt}
  * refuses the one carried in.
  *
- * <p><b>WHAT IS NOT DECIDED HERE: THE BYTES OF A HIDDEN PORTRAIT.</b> {@code photo} is the
- * address of his own approved portrait, answered to him whatever his profile says. Whether the
- * bytes behind that address are served to him is {@link PhotoApi}'s question, and it refuses
- * them to a reader who is neither an active member nor the administration - his own included,
- * when his fee has lapsed AND his profile is hidden. No decision covers that member looking at
- * his own portrait, so this answers the address and leaves the bytes where they are; it is
- * named here so that the next reader meets a boundary and not a fault.
+ * <p><b>A BOUNDARY THE OWNER LEFT WHERE IT IS: THE BYTES OF A HIDDEN PORTRAIT.</b>
+ * {@code photo} is the address of his own approved portrait, answered to him whatever his
+ * profile says. Whether the bytes behind that address are served to him is {@link PhotoApi}'s
+ * question, and it refuses them to a reader who is neither an active member nor the
+ * administration - his own included, when his fee has lapsed AND his profile is hidden. The
+ * owner was asked what that member should see of his own portrait and chose to leave it: the
+ * profile is drawn and the portrait does not load, which in Chrome is a circle of his colour
+ * with a small broken-picture mark in it. So this answers the address and leaves the bytes
+ * where they are; it is named here so that the next reader meets a boundary and not a fault.
  *
  * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
  * COMFORTABLE: no pattern over the English above measures anything.</b> What the
