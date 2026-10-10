@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -7,6 +8,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -281,11 +284,14 @@ import java.util.stream.Collectors;
  * 02.10.2026 (the boundary of 13.09.2026 that kept „ko je u njemu" off this resource was a
  * reading too, and this narrows it for one reader and one kind of member).
  *
- * <p><b>SINCE 10.10.2026 THE MEMBERS WHO LEFT ARE NAMED TOO, FOR THE SEASONS THEY WERE IN IT, AND
- * THAT IS THE SAME BOUNDARY NARROWED A SECOND TIME.</b> {@code endedMemberships} is every membership
- * of this team that has ENDED, of a member whose fee is standing: who he is, the season it began in
+ * <p><b>SINCE 10.10.2026 THE MEMBERS WHO LEFT ARE NAMED TOO, FOR THE SEASONS THEY WERE IN IT AND
+ * ONLY UNTIL THE LAST OF THEM FREEZES, AND THAT IS THE SAME BOUNDARY NARROWED A SECOND TIME.</b>
+ * {@code endedMemberships} is every membership of this team that has ENDED and whose last season
+ * has not frozen, of a member whose fee is standing: who he is, the season it began in
  * ({@code since}) and the last season he is in it ({@code until}), both inclusive, exactly as V11
- * writes {@code season_to}. Nothing else about a leaving leaves: not the reason, which is a
+ * writes {@code season_to}. A season freezes on 1 January at 16:00 of the year after it
+ * ({@link SeasonClock#isFrozen}); from that moment the table of the season is a snapshot's, and the
+ * team names him no more. Nothing else about a leaving leaves: not the reason, which is a
  * sentence a person may one day be shown ({@code Membership}), and not a date, because the schema
  * keeps none.
  *
@@ -298,19 +304,25 @@ import java.util.stream.Collectors;
  * day he pressed. The schema already says the right thing (V11: the last season he is in it, and
  * {@code Membership.covers} asks it of a range); this is the door that lets a screen ask it too.
  *
- * <p><b>Whose words are whose, because the step to this field is DERIVED and not decided.</b> What
- * PDL records as decided: [ODLUKA 29.09.2026, vlasnik], „Promena stupa na snagu 1. januara naredne
- * sezone, i to samo ako je članstvo aktivno za tu sezonu." and, for the hidden member above, the
- * owner's own words of 27.09.2026. What was put to the owner as the REASON when he chose, between
- * offered outcomes, to let members out only inside the window (the reason is not his sentence): „tim
- * nosi bodove kroz sezonu, pa bi izlazak usred nje značio da tabela u januaru i tabela u junu govore
- * različito o istoj sezoni". What PDL records as the content of the decision of 25.09.2026 (a
- * record, not a quotation): „član po toj odluci ostaje u timu do 31.12". And what the published
- * rulebook says, Član 56 in V46, whose header names its clause „doprinos koji je član dao timu u toj
- * sezoni ostaje" as the agent's derivation, put to the owner before he chose. Together: the team has
- * the member for the season he leaves in, and not from the next. Saying so HERE narrows the boundary
- * quoted at the top of this note a second time (the first is the hidden member's), so the owner is
- * told in one sentence and may object.
+ * <p><b>Whose words are whose: the reading is DERIVED, and how far it is published is DECIDED.</b>
+ * What PDL records as decided about the exit: [ODLUKA 29.09.2026, vlasnik], „Promena stupa na snagu
+ * 1. januara naredne sezone, i to samo ako je članstvo aktivno za tu sezonu." and, for the hidden
+ * member above, the owner's own words of 27.09.2026. What was put to the owner as the REASON when he
+ * chose, between offered outcomes, to let members out only inside the window (the reason is not his
+ * sentence): „tim nosi bodove kroz sezonu, pa bi izlazak usred nje značio da tabela u januaru i
+ * tabela u junu govore različito o istoj sezoni". What PDL records as the content of the decision of
+ * 25.09.2026 (a record, not a quotation): „član po toj odluci ostaje u timu do 31.12". And what the
+ * published rulebook says, Član 56 in V46, whose header names its clause „doprinos koji je član dao
+ * timu u toj sezoni ostaje" as the agent's derivation, put to the owner before he chose. Together:
+ * the team has the member for the season he leaves in, and not from the next. THAT READING IS
+ * DERIVED. Saying it HERE narrowed the boundary quoted at the top of this note a second time (the
+ * first is the hidden member's), and how far was put to the owner as a question with three offered
+ * outcomes and decided by him on 10.10.2026 (PDL, [ODLUKA 10.10.2026, vlasnik, izabrao između
+ * ponuđenih, uz moju preporuku]; the wording is the journal's and not his sentence): the season of
+ * his membership that is the last one must not have frozen („sezona njegovog članstva nije
+ * zamrznuta (1. januar u 16:00)"), because „dok sezona izlaska teče i dok njen zbir računa ekran,
+ * tim ga broji i javno imenuje". The two outcomes he refused, with the cost put to him, were forever
+ * for every season and forever for the season of the exit only.
  *
  * <p><b>Why a field of its own and not {@code alsoInTheTeam} widened.</b> That one is the members
  * whose record does not name this team to THIS reader, and it differs by reader on purpose. No record
@@ -355,10 +367,11 @@ import java.util.stream.Collectors;
  * and since the field below reads that table, this is the case that says the reading
  * is a condition: every member of a team who is in no seat is in the query and in no
  * answer. <b>Since 10.10.2026 there is a SECOND exception and it is every reader's, the
- * administration's included:</b> the numbers of the members who left, inside
- * {@code endedMemberships} and nowhere else. The case empties each team's value of that field by
- * its exact text, read out of the database, before it asks its question, so the excuse is as
- * narrow as the first: a number that leaves by any other road still fails it.
+ * administration's included:</b> the numbers of the members who left, while the last season of
+ * their membership has not frozen, inside {@code endedMemberships} and nowhere else. The case
+ * empties each team's value of that field by its exact text, read out of the database, before it
+ * asks its question, so the excuse is as narrow as the first: a number that leaves by any other
+ * road still fails it.
  *
  * <p><b>AND THE MARK DOES LEAVE SINCE 21.09.2026, WHICH IS THIS PARAGRAPH
  * REVERSED RATHER THAN EXTENDED.</b> What stood here said the mark could not
@@ -544,12 +557,21 @@ class TeamApi {
 	 *  names (see the note on this class). */
 	private final ActiveMemberOrAdministration readers;
 
+	/**
+	 * The moment, for one thing only: whether the last season of a membership that ended has
+	 * frozen ({@code endedMemberships}; see the note on this class). Off the bean rather than off
+	 * {@code ZonedDateTime.now()}, for the reason {@code WhatTimeItIs} gives: both sides of a
+	 * freeze have to be measurable on a day that is not 1 January.
+	 */
+	private final Clock clock;
+
 	TeamApi(JdbcClient db, MemberOfAccount memberOfAccount, WhatHeMayDo mayHe,
-			ActiveMemberOrAdministration readers) {
+			ActiveMemberOrAdministration readers, Clock clock) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
 		this.mayHe = mayHe;
 		this.readers = readers;
+		this.clock = clock;
 	}
 
 	/**
@@ -609,10 +631,12 @@ class TeamApi {
 	 *                    them here. See the
 	 *                    note on this class for why this is the other half of one condition
 	 *                    rather than a second home
-	 * @param endedMemberships the memberships of this team that have ENDED, of members whose fee
-	 *                    is standing: the same to every reader (no record names an ended
+	 * @param endedMemberships the memberships of this team that have ENDED and whose last season
+	 *                    has not frozen (1 January at 16:00 of the year after it), of members whose
+	 *                    fee is standing: the same to every reader (no record names an ended
 	 *                    membership, so there is nothing to tell twice) and EMPTY, never absent,
-	 *                    for a team nobody has left. One entry is one membership and not one
+	 *                    for a team nobody has left, and for one whose leavers' seasons have all
+	 *                    frozen. One entry is one membership and not one
 	 *                    member, so a member who left and came back stands in it once and on his
 	 *                    record, or on {@code alsoInTheTeam}, once. In member number order, then by
 	 *                    the season it began in. Since 10.10.2026; see the note on this class for
@@ -754,9 +778,24 @@ class TeamApi {
 		   writes it as the season being run, so a row with one is a member who left and is in this
 		   team for the season it names. The rows that have not ended are the other two doors' - the
 		   record, and `alsoIn` above - and a membership of an active member is named on exactly one of
-		   the three, to every caller, which is what
+		   the three, to every caller, until the last season of one that has ended freezes, and on none
+		   after that. That is what
 		   `ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest.theThreeDoorsNameEveryMembershipOfAnActiveMemberOnceToEveryCaller`
-		   asks of the whole database for every kind of reader.
+		   asks of the whole database for every kind of reader, at the moments around each freeze.
+
+		   AND ONLY WHILE THE LAST SEASON OF THE MEMBERSHIP HAS NOT FROZEN, which is the owner's choice of
+		   10.10.2026 between three offered outcomes (PDL, [ODLUKA 10.10.2026, vlasnik, izabrao između
+		   ponuđenih, uz moju preporuku]; the wording is the journal's and not his sentence): „dok sezona
+		   izlaska teče i dok njen zbir računa ekran, tim ga broji i javno imenuje". A season freezes on 1
+		   January at 16:00 of the year after it, and from then its table is read off a snapshot, so the
+		   team names him no more. Refused, with the cost put to him: forever and for every season
+		   („istorija timova svakog člana trajno javna"), and forever for the season of the exit only.
+		   `until` is the season that is asked about, and nothing else is: not the season being run, which
+		   would let him go at midnight, sixteen hours before the table freezes, and not the season the
+		   membership began in. The question is put to `SeasonClock.isFrozen` AFTER the read and is not
+		   written into the SQL, because `SeasonClock` is the one home of that moment (a boundary written
+		   twice is two homes for it, as its own notes say of the others) and the rows are few. The moment
+		   is read once for the request, so one answer is never half before the turn and half after it.
 
 		   NO CONDITION ABOUT WHO IS ASKING, which is what tells it from `alsoIn`. That one is turned
 		   over by the rule about a hidden profile because the record carries the link for the readers
@@ -778,6 +817,8 @@ class TeamApi {
 		   ORDERED by member number, then by key, then by the season it began in, so two memberships of
 		   one member in one team come out in the order he had them, and the answer does not depend on
 		   the order the rows were written in. */
+		ZonedDateTime now = clock.instant().atZone(SeasonClock.ZONE);
+
 		Map<Long, List<EndedMembership>> ended = db.sql(
 						"select m.team_id, c.member_number, m.season_from, m.season_to"
 						+ " from team_membership m"
@@ -787,6 +828,7 @@ class TeamApi {
 				.query((row, one) -> Map.entry(row.getLong(1),
 						new EndedMembership(row.getString(2), row.getInt(3), row.getInt(4))))
 				.list().stream()
+				.filter(one -> !SeasonClock.isFrozen(one.getValue().until(), now))
 				.collect(Collectors.groupingBy(Map.Entry::getKey,
 						Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
 

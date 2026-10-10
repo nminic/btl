@@ -12,8 +12,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -26,8 +29,10 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -263,6 +268,27 @@ class TeamApiTest {
 					+ " was NAMED, and nothing here pretends it is always somebody.";
 
 
+	/**
+	 * THE MOMENT THESE CASES ARE ASKED AT, PINNED, because the answer now depends on one.
+	 *
+	 * <p>{@code endedMemberships} names a member who left only until the last season of his
+	 * membership freezes, on 1 January at 16:00 of the year after it. The member this fixture has
+	 * who left ({@code 000008}) was in his team for 2027, so a case reading the machine's clock
+	 * would pass until 1 January 2028 at 16:00 and fail from then on, in a build nobody had
+	 * touched. The moment is October 2027: inside the window and a season before the freeze, so he
+	 * is named. The cases that move the clock around the freeze itself are
+	 * {@code ATeamNamesWhoLeftItForTheSeasonTheyLeftInTest}'s.
+	 */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class TheMomentTheseCasesAreAskedAt {
+
+		@Bean
+		@Primary
+		Clock aClockThatDoesNotMove() {
+			return Clock.fixed(Instant.parse("2027-10-20T09:00:00Z"), ZoneOffset.UTC);
+		}
+	}
+
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
 	@Autowired
@@ -337,7 +363,8 @@ class TeamApiTest {
 	 * <li>{@code 000008}, who LEFT {@code vardarski-krug} - named nowhere on
 	 * {@code alsoInTheTeam}, which is what dropping {@code season_to is null} would change, and
 	 * named on {@code endedMemberships} since 10.10.2026 like every member who left while his fee
-	 * stands.</li>
+	 * stands, for as long as 2027 has not frozen (the clock of this class is pinned to October
+	 * 2027).</li>
 	 * <li>{@code 000003}, standing in {@code novosadski-trkaci} since 2029 with a fee that has
 	 * lapsed - named nowhere, which is what dropping {@code c.active} would change, and which
 	 * is the door the note on {@code TeamApi} keeps shut.</li>
@@ -820,7 +847,8 @@ class TeamApiTest {
 	 * way the first is (rule of 14.09.2026: what a comparison has to ignore to pass is often exactly
 	 * what it should be measuring) and EXACT for the same reason. Every team's value of
 	 * {@code endedMemberships} is built from the database by this class's own query - the
-	 * memberships that have ended, of members whose fee is standing - and has to be found in the text
+	 * memberships that have ended, of members whose fee is standing, and (at the pinned moment of
+	 * October 2027) none whose last season has frozen - and has to be found in the text
 	 * once and only once before it is emptied, so a reader told one member too many or too few, or
 	 * told nothing, fails here before any number is looked for. It is EVERY reader's excuse and not
 	 * a reader's own, which is why it is applied to all of them.
