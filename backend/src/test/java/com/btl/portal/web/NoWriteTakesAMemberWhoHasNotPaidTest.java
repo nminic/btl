@@ -112,9 +112,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * every table there is; a refusal must leave every count where it was, and the anchor must move one.
  *
  * <p><b>What this cannot see, and where it is held instead.</b> MockMvc runs no ERROR dispatch, so a
- * refusal written as a status on the response and one sent through the container look alike here;
- * that a member who has not paid is answered byte for byte what an account naming no member is
- * answered is measured over a real socket in {@code ABodyIsReadAfterTheDoorOverRealHttpTest}.
+ * refusal written as a status on the response and one sent through the container look alike here.
+ * Over a real socket, in {@code ABodyIsReadAfterTheDoorOverRealHttpTest}, a member who has never paid is
+ * asked every key of {@link #AN_ACT_OF_HIS_OWN}, each sent as its route takes it, and the two fields of
+ * {@code PUT /api/me} that make a member seen: he is answered byte for byte what an account naming no
+ * member is answered, and, where {@code ApiSecurity.READ_BY_ANYBODY} does not open the address, what an
+ * address that maps nothing answers. Of the other callers above, the member whose fee has lapsed and
+ * the moderator whose own member has not paid are not asked there.
  */
 @SpringBootTest
 @AutoConfigureMockMvc

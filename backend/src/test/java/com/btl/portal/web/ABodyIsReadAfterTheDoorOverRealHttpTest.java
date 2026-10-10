@@ -11,12 +11,16 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerExecutionChain;
 import org.springframework.web.servlet.mvc.condition.PathPatternsRequestCondition;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.web.util.ServletRequestPathUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
@@ -34,6 +38,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -103,7 +109,12 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	/** Ten characters, shaped like a key, and a key no sequence has ever reached. */
 	private static final String A_NUMBER_WITH_NO_ROW = "9999999999";
 
-	private static final String JSON = "Content-Type: application/json\r\n";
+	private static final String JSON = "application/json";
+
+	/** Any text the parts of {@link #aPictureWithItsCircle} do not contain would do. */
+	private static final String A_BOUNDARY = "b257-p8u-no-part-says-this";
+
+	private static final String MULTIPART = "multipart/form-data; boundary=" + A_BOUNDARY;
 
 	private static final Pattern A_VARIABLE = Pattern.compile("\\{[^/}]*\\}");
 
@@ -114,10 +125,11 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	private static final String THE_MEMBERS_NUMBER = "990201";
 
 	/**
-	 * A MEMBER WHO REGISTERED AND HAS NEVER PAID: no number (V16) and not active. Since P8U every route
-	 * this class asks about turns him away down the branch it turns away an account naming no member,
-	 * so he is told exactly what that account is told (PDL P8, 10.10.2026, quoted on
+	 * A MEMBER WHO REGISTERED AND HAS NEVER PAID: no number (V16) and not active. Since P8U every act of
+	 * his own turns him away down the branch it turns away an account naming no member, so he is told
+	 * exactly what that account is told (PDL P8, 10.10.2026, quoted on
 	 * {@link ActiveMemberOrAdministration}).
+	 * {@link #aMemberWhoHasNotPaidIsToldWhatAnAccountThatNamesNoMemberIsTold} asks it of every one of them.
 	 */
 	private static final String A_MEMBER_WHO_HAS_NOT_PAID = "b257-neplacen@primer.rs";
 
@@ -250,6 +262,15 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	 */
 	private String answerTo(String method, String path, String email, byte[] body, boolean chunked)
 			throws Exception {
+		return answerTo(method, path, email, JSON, body, chunked);
+	}
+
+	/**
+	 * @param contentType what the body is declared to be, or {@code null} for a request that declares
+	 *                    none, which is how a write with no body is really sent
+	 */
+	private String answerTo(String method, String path, String email, String contentType, byte[] body,
+			boolean chunked) throws Exception {
 		String cookies = "XSRF-TOKEN=" + A_TOKEN
 				+ (email == null ? "" : "; " + SessionCookie.NAME + "=" + sessions.get(email));
 
@@ -259,7 +280,7 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				+ "Host: localhost:" + port + "\r\n"
 				+ "Cookie: " + cookies + "\r\n"
 				+ "X-XSRF-TOKEN: " + A_TOKEN + "\r\n"
-				+ JSON
+				+ (contentType == null ? "" : "Content-Type: " + contentType + "\r\n")
 				+ (chunked ? "Transfer-Encoding: chunked\r\n" : "Content-Length: " + body.length + "\r\n")
 				+ "Connection: close\r\n\r\n").getBytes(StandardCharsets.ISO_8859_1));
 
@@ -457,6 +478,234 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 		}
 
 		return null;
+	}
+
+	/** How the body of an act is sent, which is read off what its mapping consumes. */
+	private enum Takes {
+		JSON, A_PICTURE, NOTHING
+	}
+
+	/**
+	 * ONE ACT OF HIS OWN, AS A REQUEST ITS ROUTE TAKES.
+	 *
+	 * @param what        its name: the key it has in {@code AN_ACT_OF_HIS_OWN}, or the field of
+	 *                    {@code PUT /api/me} that it is
+	 * @param handler     the handler the dispatcher maps the name to
+	 * @param open        whether {@link ApiSecurity#READ_BY_ANYBODY} opens the ADDRESS for reading, which
+	 *                    decides whether a twin is a comparison that is true of it
+	 * @param contentType what the request declares, or {@code null} for a write that has no body
+	 * @param form        the request the form sends
+	 * @param everyBody   whether a member who has not paid is turned away BEFORE any of the body is read,
+	 *                    so that a body which cannot be read, or one over the line, must be answered like
+	 *                    the one that can. {@code PUT /api/me} is not such a route: it reads the body to
+	 *                    see whether it names a field that makes him seen, which is what refuses him
+	 */
+	private record ActAsSent(String what, String verb, String pattern, boolean open, HandlerMethod handler,
+			Takes takes, String contentType, byte[] form, boolean everyBody) {
+
+		/** The address with every key a number that matches no row. */
+		String address() {
+			return A_VARIABLE.matcher(pattern).replaceAll(A_NUMBER_WITH_NO_ROW);
+		}
+	}
+
+	/** Every path pattern a mapping answers, the way {@link #routes} reads them. */
+	private static Set<String> patternsOf(RequestMappingInfo info) {
+		PathPatternsRequestCondition patterns = info.getPathPatternsCondition();
+
+		return patterns == null ? info.getDirectPaths() : patterns.getPatternValues();
+	}
+
+	/** The one handler the dispatcher maps a verb and a path to, and a failure where it maps none or two. */
+	private Map.Entry<RequestMappingInfo, HandlerMethod> mappingOf(String verb, String pattern) {
+		List<Map.Entry<RequestMappingInfo, HandlerMethod>> found = mappings.getHandlerMethods().entrySet()
+				.stream()
+				.filter(one -> one.getKey().getMethodsCondition().getMethods().stream()
+						.anyMatch(method -> method.name().equals(verb)))
+				.filter(one -> patternsOf(one.getKey()).contains(pattern))
+				.toList();
+
+		assertThat(found)
+				.as("%s %s is mapped to %d handlers, and an act is sent to exactly one", verb, pattern,
+						found.size())
+				.hasSize(1);
+
+		return found.get(0);
+	}
+
+	/**
+	 * A WELL FORMED MULTIPART REQUEST WITH ONE FILE AND THREE FIELDS: a picture and the circle over it.
+	 *
+	 * <p>The names are the photo route's own and nothing here depends on them. What this request has to
+	 * be is one the container parses and the dispatcher hands to that route, and the second is held by
+	 * {@link #theDispatcherTakesIt}: a request the dispatcher hands to no route would be answered like an
+	 * address that maps nothing by everybody, and every comparison would be about nothing.
+	 */
+	private static byte[] aPictureWithItsCircle() {
+		ByteArrayOutputStream parts = new ByteArrayOutputStream();
+
+		parts.writeBytes(("--" + A_BOUNDARY + "\r\n"
+				+ "Content-Disposition: form-data; name=\"picture\"; filename=\"p.jpg\"\r\n"
+				+ "Content-Type: image/jpeg\r\n\r\n").getBytes(StandardCharsets.ISO_8859_1));
+		parts.writeBytes(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 'b', '2', '5', '7'});
+		parts.writeBytes("\r\n".getBytes(StandardCharsets.ISO_8859_1));
+
+		for (String field : List.of("cropX", "cropY", "cropSize")) {
+			parts.writeBytes(("--" + A_BOUNDARY + "\r\n"
+					+ "Content-Disposition: form-data; name=\"" + field + "\"\r\n\r\n"
+					+ "0.5\r\n").getBytes(StandardCharsets.ISO_8859_1));
+		}
+
+		parts.writeBytes(("--" + A_BOUNDARY + "--\r\n").getBytes(StandardCharsets.ISO_8859_1));
+
+		return parts.toByteArray();
+	}
+
+	/**
+	 * THE DISPATCHER HANDS THE REQUEST THAT WILL BE SENT TO THE HANDLER OF THE ACT, and to no other.
+	 *
+	 * <p><b>This is the anchor, and nothing else in this class can be.</b> A refusal of a member who has
+	 * not paid is a 404 with nothing in it, and so is the answer to a request the dispatcher takes for
+	 * nothing: a verb the address does not take, or a body the mapping does not consume, is turned into
+	 * the answer of an address that maps nothing ({@code NothingIsHereRatherThanAlmost}), on purpose. So
+	 * a request that was simply wrongly built is answered like a refusal by EVERYBODY, the member, the
+	 * moderator and the twin, and every comparison below would hold having measured nothing. The member
+	 * whose fee stands cannot say it either: against a key that matches no row he is answered 404 by the
+	 * route's own line, which is the same bytes. So the dispatcher is asked, with the verb, the address
+	 * and the content type that go down the socket.
+	 */
+	private void theDispatcherTakesIt(ActAsSent act) throws Exception {
+		MockHttpServletRequest asking = new MockHttpServletRequest(act.verb(), act.address());
+
+		if (act.contentType() != null) {
+			asking.setContentType(act.contentType());
+		}
+
+		ServletRequestPathUtils.parseAndCache(asking);
+
+		HandlerExecutionChain chain = mappings.getHandler(asking);
+
+		assertThat(chain)
+				.as("%s: the dispatcher hands the request this class sends to no handler at all, so"
+						+ " everybody is answered like an address that maps nothing", act.what())
+				.isNotNull();
+		assertThat(((HandlerMethod) chain.getHandler()).getMethod())
+				.as("%s: the request this class sends is handed to another handler than the act's own",
+						act.what())
+				.isEqualTo(act.handler().getMethod());
+	}
+
+	/**
+	 * EVERY ACT OF HIS OWN, AS A REQUEST ITS ROUTE TAKES.
+	 *
+	 * <p><b>The names are a list this class does not keep.</b> They are the keys of
+	 * {@code NoWriteTakesAMemberWhoHasNotPaidTest.AN_ACT_OF_HIS_OWN}, which that class compares with the
+	 * dispatcher exactly and in both directions ({@code everyWriteIsOnExactlyOneList}): a write mapped
+	 * tomorrow fails THERE until it is on a list, and the day it goes onto this one it is compared HERE
+	 * without anybody remembering that this class exists. Taking them from {@link #routes} instead is what
+	 * this replaced, and it asked about nine of the twenty-two: that derivation takes a handler that binds
+	 * its body, and so left out the eleven acts that take none, the picture, and the message that reads
+	 * the request by hand (found by the independent review of PR 522).
+	 *
+	 * <p><b>How each is sent is read off its mapping and not written here</b>: JSON where the mapping
+	 * consumes JSON, built from the type of the body where the handler declares one; a multipart request
+	 * where it consumes that; nothing, with no content type, where it consumes nothing. A mapping that
+	 * consumes anything else is a failure and not an act that is skipped.
+	 */
+	private List<ActAsSent> actsOfHisOwn() throws Exception {
+		List<ActAsSent> found = new ArrayList<>();
+
+		for (String name : new TreeSet<>(NoWriteTakesAMemberWhoHasNotPaidTest.AN_ACT_OF_HIS_OWN.keySet())) {
+			String verb = name.substring(0, name.indexOf(' '));
+			String pattern = name.substring(name.indexOf(' ') + 1);
+			Map.Entry<RequestMappingInfo, HandlerMethod> mapped = mappingOf(verb, pattern);
+			Set<MediaType> consumes = mapped.getKey().getConsumesCondition().getConsumableMediaTypes();
+			boolean open = ApiSecurity.READ_BY_ANYBODY.contains(pattern);
+
+			if (consumes.isEmpty()) {
+				found.add(new ActAsSent(name, verb, pattern, open, mapped.getValue(), Takes.NOTHING, null,
+						new byte[0], true));
+			}
+			else if (consumes.contains(MediaType.APPLICATION_JSON)) {
+				String body = TheBodyOf.type(mapped.getValue())
+						.map(ABodyIsReadAfterTheDoorOverRealHttpTest::validBodyOf).orElse("{}");
+
+				found.add(new ActAsSent(name, verb, pattern, open, mapped.getValue(), Takes.JSON, JSON,
+						body.getBytes(StandardCharsets.ISO_8859_1), true));
+			}
+			else if (consumes.contains(MediaType.MULTIPART_FORM_DATA)) {
+				found.add(new ActAsSent(name, verb, pattern, open, mapped.getValue(), Takes.A_PICTURE,
+						MULTIPART, aPictureWithItsCircle(), true));
+			}
+			else {
+				throw new AssertionError(name + " consumes " + consumes + ", which this class does not know"
+						+ " how to send, so the act would be compared without being asked");
+			}
+		}
+
+		return found;
+	}
+
+	/**
+	 * THE ONE ACT OF {@code PUT /api/me} A MEMBER WHO HAS NOT PAID IS REFUSED, once for each field that
+	 * makes him seen.
+	 *
+	 * <p>PDL P8 gives him the rest of the route, „svoje podatke za evidenciju i majicu", so the route is
+	 * on the list of what he MAY do and not on {@code AN_ACT_OF_HIS_OWN}; what he is refused is a body that
+	 * NAMES one of the fields on {@link MeWriteApi#ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES}. That list is the
+	 * production code's own, so the names are read from it, and the value each is sent with is built from
+	 * the type {@link MeWriteApi.Change} declares for it. The route reads its body before it can know
+	 * whether it names one, so a body that cannot be read is not turned away and is not asked about.
+	 */
+	private List<ActAsSent> theBiographyAndTheSwitch() {
+		Map.Entry<RequestMappingInfo, HandlerMethod> mapped = mappingOf("PUT", "/api/me");
+		List<ActAsSent> found = new ArrayList<>();
+
+		assertThat(mapped.getKey().getConsumesCondition().getConsumableMediaTypes())
+				.as("PUT /api/me does not consume JSON, so a body naming a field is sent as something it"
+						+ " does not take")
+				.contains(MediaType.APPLICATION_JSON);
+
+		for (String name : MeWriteApi.ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES) {
+			RecordComponent declared = Stream.of(MeWriteApi.Change.class.getRecordComponents())
+					.filter(one -> one.getName().equals(name)).findFirst().orElse(null);
+			String value = declared == null ? null : aValueFor(declared);
+
+			assertThat(value)
+					.as("MeWriteApi.Change declares no field %s that this class can write a value for, so"
+							+ " the field that makes him seen would not be sent", name)
+					.isNotNull();
+
+			found.add(new ActAsSent("PUT /api/me naming " + name, "PUT", "/api/me",
+					ApiSecurity.READ_BY_ANYBODY.contains("/api/me"), mapped.getValue(), Takes.JSON, JSON,
+					("{" + value + "}").getBytes(StandardCharsets.ISO_8859_1), false));
+		}
+
+		return found;
+	}
+
+	/**
+	 * EVERYTHING A MEMBER WHO HAS NOT PAID IS REFUSED, EACH ASKED OF THE DISPATCHER BEFORE IT IS SENT.
+	 *
+	 * <p>The acts of {@link #actsOfHisOwn} and the two fields of {@link #theBiographyAndTheSwitch}. The
+	 * dispatcher is asked here and not in the case that compares, so that no comparison can be run on a
+	 * request that was not checked.
+	 */
+	private List<ActAsSent> everyActHeIsRefused() throws Exception {
+		List<ActAsSent> found = new ArrayList<>(actsOfHisOwn());
+
+		found.addAll(theBiographyAndTheSwitch());
+
+		for (ActAsSent one : found) {
+			theDispatcherTakesIt(one);
+		}
+
+		return found;
+	}
+
+	/** The members this class asks about, each a different way of not having paid. */
+	private static List<String> membersWhoHaveNotPaid() {
+		return List.of(A_MEMBER_WHO_HAS_NOT_PAID);
 	}
 
 	/**
@@ -722,28 +971,74 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 	}
 
 	/**
-	 * A MEMBER WHO HAS NOT PAID IS TOLD, BYTE FOR BYTE, WHAT AN ACCOUNT THAT NAMES NO MEMBER IS TOLD -
-	 * FOR EVERY BODY, ON EVERY ROUTE HERE.
+	 * EVERY ACT OF HIS OWN IS SENT, AND IN EVERY SHAPE THE PORTAL TAKES ONE.
 	 *
-	 * <p>Since P8U every route this class derives is one PDL P8 refuses him (10.10.2026), and it turns
-	 * him away down the branch it turns away an account naming no member. What MockMvc cannot see is
-	 * the road that answer takes - a status written onto the response and an error sent through the
-	 * container are one number and different bytes - so his answer to the body the form accepts is
-	 * compared with the answer to the moderator who races for nobody, on the open addresses too, where
-	 * the twin is not the comparison; and every other body, the one over the line included, must be
-	 * answered as that one was, which is what shows his body is not read before his fee is asked.
+	 * <p>Asserted before anything is compared, for the reason the floor above gives: a derivation that
+	 * found fewer acts than the list holds, or found only the ones that take JSON, would make every
+	 * comparison below true while asking about the rest. The three shapes are the ones a write can take
+	 * here - a JSON body, a picture, no body at all - and each must be sent by at least one act, or the
+	 * way that shape is sent is never asked about. Both kinds of address are asked about too, because
+	 * the twin is the comparison for one of them and not for the other.
+	 */
+	@Test
+	void everyActOfHisOwnIsSentAsItsRouteTakesIt() throws Exception {
+		List<ActAsSent> acts = actsOfHisOwn();
+
+		assertThat(acts.stream().map(ActAsSent::what).toList())
+				.as("an act on AN_ACT_OF_HIS_OWN is not sent, or one is sent that is not on it")
+				.containsExactlyInAnyOrderElementsOf(
+						NoWriteTakesAMemberWhoHasNotPaidTest.AN_ACT_OF_HIS_OWN.keySet());
+		assertThat(acts.stream().map(ActAsSent::takes).distinct().toList())
+				.as("no act takes one of the shapes a write can take, so the way that shape is sent is"
+						+ " never asked about")
+				.containsExactlyInAnyOrder(Takes.values());
+		assertThat(acts.stream().filter(ActAsSent::open).count())
+				.as("no act is on an address opened for reading, so the comparison that is not with a twin"
+						+ " is never asked about")
+				.isPositive();
+		assertThat(acts.stream().filter(one -> !one.open()).count())
+				.as("every act is on an address opened for reading, so the comparison with a twin is never"
+						+ " asked about")
+				.isPositive();
+		assertThat(theBiographyAndTheSwitch().stream().map(ActAsSent::what).toList())
+				.as("a field that makes a member seen is not sent, or one is sent that is not on the list")
+				.hasSameSizeAs(MeWriteApi.ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES);
+	}
+
+	/**
+	 * A MEMBER WHO HAS NOT PAID IS TOLD, BYTE FOR BYTE, WHAT AN ACCOUNT THAT NAMES NO MEMBER IS TOLD, ON
+	 * EVERY ACT OF HIS OWN AND ON THE TWO FIELDS OF {@code PUT /api/me} THAT MAKE HIM SEEN.
 	 *
-	 * <p><b>Every route here is one of his own acts in {@code NoWriteTakesAMemberWhoHasNotPaidTest}.</b>
-	 * A route that asks which member and takes a body but is one he MAY use before he pays would be
-	 * answered otherwise, and belongs out of this comparison by name - so it fails here first, with that
-	 * sentence, rather than as a difference in bytes.
+	 * <p>Since P8U every act on the second list of PDL P8 (10.10.2026) turns him away down the branch it
+	 * turns away an account naming no member. What MockMvc cannot see is the road that answer takes: a
+	 * status written onto the response and an error sent through the container are one number and
+	 * different bytes, and the difference is an oracle for whether a write lives at the address (ADL A8,
+	 * 13.09.2026). So his answer to the request the form sends is compared with the answer of the
+	 * moderator who races for nobody to the same request, byte for byte; and on a route that takes JSON,
+	 * every other body, the one over the line included, is compared the same way, which is what shows his
+	 * body is not read before his fee is asked.
+	 *
+	 * <p><b>AND, WHERE THE ADDRESS IS NOT ONE {@link ApiSecurity#READ_BY_ANYBODY} OPENS, WITH AN ADDRESS
+	 * THAT MAPS NOTHING.</b> Two answers that went down the SAME wrong road agree with each other and
+	 * with nothing else: the member's refusal and the moderator's are written by the same handler, so a
+	 * refusal turned into a status written onto the response for both of them is equal to itself and
+	 * different from the container's error document. On an open address the twin is not the comparison
+	 * (the decision of 18.09.2026 keeps the status written there, and {@code OPTIONS} already says that a
+	 * write lives at it), so the two answers are compared with each other alone.
+	 *
+	 * <p><b>Which acts, and how each is sent, is {@link #actsOfHisOwn}'s</b>, and the dispatcher is asked
+	 * about every request before it goes down the socket ({@link #theDispatcherTakesIt}). The two fields
+	 * of {@code PUT /api/me} are sent as a body that names them and nothing else, and not as every kind
+	 * of body: that route reads the body to find out whether it names one.
+	 *
+	 * <p>Every route this class derives is also one of his own acts. A route that asks which member and
+	 * takes a body but is one he MAY use before he pays would be answered otherwise, and belongs out of
+	 * this comparison by name - so it fails here first, with that sentence, rather than as a difference in
+	 * bytes.
 	 */
 	@Test
 	void aMemberWhoHasNotPaidIsToldWhatAnAccountThatNamesNoMemberIsTold() throws Exception {
-		List<String> wrong = new ArrayList<>();
-		List<Route> routes = routes();
-
-		assertThat(routes.stream().map(Route::toString)
+		assertThat(routes().stream().map(Route::toString)
 				.filter(route -> !NoWriteTakesAMemberWhoHasNotPaidTest.AN_ACT_OF_HIS_OWN.containsKey(route))
 				.toList())
 				.as("a route that asks which member and takes a body is not one of the acts a member who"
@@ -751,30 +1046,11 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 						+ " compares two different answers")
 				.isEmpty();
 
-		for (Route route : routes) {
-			String address = route.address();
-			String his = answerTo(route.verb(), address, A_MEMBER_WHO_HAS_NOT_PAID, route.body());
+		List<String> wrong = new ArrayList<>();
 
-			if (!firstLine(his).equals("HTTP/1.1 404 ")) {
-				wrong.add(route + ": the body the form accepts, from a member who has not paid, was not"
-						+ " answered as nothing is, but " + firstLine(his).strip());
-			}
-
-			wrong.addAll(differences(route + " from a member who has not paid against an account that"
-					+ " names no member", his, address,
-					answerTo(route.verb(), address, MODERATOR_WITH_NO_MEMBER, route.body()), address));
-
-			for (String body : BODIES_THAT_ARE_NOT_THE_FORM) {
-				wrong.addAll(differences(route + " from a member who has not paid, body [" + body + "]",
-						answerTo(route.verb(), address, A_MEMBER_WHO_HAS_NOT_PAID, body), address, his,
-						address));
-			}
-
-			for (boolean chunked : new boolean[] {false, true}) {
-				wrong.addAll(differences(route + " from a member who has not paid, a body one byte over"
-						+ " the line, " + (chunked ? "chunked" : "declared"),
-						answerTo(route.verb(), address, A_MEMBER_WHO_HAS_NOT_PAID, aBodyOverTheLine(),
-								chunked), address, his, address));
+		for (ActAsSent act : everyActHeIsRefused()) {
+			for (String caller : membersWhoHaveNotPaid()) {
+				wrong.addAll(howHeIsRefused(caller, act));
 			}
 		}
 
@@ -782,5 +1058,61 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 				.as("a member who has not paid was told something an account naming no member is not"
 						+ " told, which says that a write lives at the address and that it is shut to him")
 				.isEmpty();
+	}
+
+	/**
+	 * WHAT ONE CALLER IS TOLD FOR ONE ACT, against what nobody is told and against what an address that
+	 * maps nothing tells him. Every difference is returned, so that one run names every act that is
+	 * wrong and not only the first in alphabetical order.
+	 */
+	private List<String> howHeIsRefused(String caller, ActAsSent act) throws Exception {
+		List<String> wrong = new ArrayList<>(refusedLikeNobody(caller, act, act.what(), act.form(), false));
+		String address = act.address();
+
+		if (!act.open()) {
+			String twin = twinOf(address);
+
+			wrong.addAll(differences(act.what() + " from " + caller + " against its twin",
+					answerTo(act.verb(), address, caller, act.contentType(), act.form(), false), address,
+					answerTo(act.verb(), twin, caller, act.contentType(), act.form(), false), twin));
+		}
+
+		if (act.everyBody() && act.takes() == Takes.JSON) {
+			for (String body : BODIES_THAT_ARE_NOT_THE_FORM) {
+				wrong.addAll(refusedLikeNobody(caller, act, act.what() + ", body [" + body + "]",
+						body.getBytes(StandardCharsets.ISO_8859_1), false));
+			}
+
+			for (boolean chunked : new boolean[] {false, true}) {
+				wrong.addAll(refusedLikeNobody(caller, act, act.what() + ", a body one byte over the line, "
+						+ (chunked ? "chunked" : "declared"), aBodyOverTheLine(), chunked));
+			}
+		}
+
+		return wrong;
+	}
+
+	/**
+	 * ONE REQUEST, ASKED OF THE CALLER AND OF THE MODERATOR WHO RACES FOR NOBODY: pinned to 404, so that
+	 * two answers that are both a fault are not "the same", and then compared byte for byte.
+	 */
+	private List<String> refusedLikeNobody(String caller, ActAsSent act, String what, byte[] body,
+			boolean chunked) throws Exception {
+
+		List<String> wrong = new ArrayList<>();
+		String address = act.address();
+		String his = answerTo(act.verb(), address, caller, act.contentType(), body, chunked);
+
+		if (!firstLine(his).equals("HTTP/1.1 404 ")) {
+			wrong.add(what + " from " + caller + " was not answered as nothing is, but "
+					+ firstLine(his).strip());
+		}
+
+		wrong.addAll(differences(what + " from " + caller + " against an account that names no member",
+				his, address,
+				answerTo(act.verb(), address, MODERATOR_WITH_NO_MEMBER, act.contentType(), body, chunked),
+				address));
+
+		return wrong;
 	}
 }
