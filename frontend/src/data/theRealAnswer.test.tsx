@@ -230,7 +230,7 @@ describe('the answer the harness stands in with', () => {
     /* Narrowed by asking rather than by asserting (ADL A14): what comes back is the
        one value on this portal nobody can vouch for, so a cast here would be the file
        claiming what it is here to measure. An answer that carried no record at all
-       leaves nothing to compare and fails against the seven names below. */
+       leaves nothing to compare and fails against the names below. */
     const names =
       typeof member === 'object' && member !== null ? Object.keys(member) : []
 

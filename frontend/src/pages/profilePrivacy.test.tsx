@@ -1008,14 +1008,22 @@ describe('a hidden profile is reachable from nowhere', () => {
 describe('a hidden profile is reachable from nowhere, not even to a member whose fee has lapsed', () => {
   const served = theServerAnswersWithItsMembers()
 
+  /* HIS OWN PROFILE IS DRAWN FROM THE RECORD `GET /api/me` ANSWERS HIM (`profile/HisOwnRecord.tsx`),
+     because the list above does not have him. Nothing stands in front of the harness for it: the
+     harness answers the generated row of 000032, cut to the keys `myOwnRecordFromMe` declares
+     (`test/setup.ts`), and that row is a page the portal can believe, which is what the stand-in
+     (`test/hisPage.ts`) used to say by hand until the twelve keys of the page were declared there. */
+
   /* THE TWO ADDRESSES THAT DRAW SOMETHING ELSE FOR HIM, named rather than skipped. The heading is
      only the signal that the screen has been drawn, and two screens are not the member's own for
      somebody the list does not carry: the page of ratings says who rates an event, and his own
-     profile has no member to open, so it sends him to the front page (read off both on
-     03.10.2026, with the list the server really serves). Both are still walked. */
+     profile is HIS OWN - headed by his name, drawn from his own record. It sent him to the front
+     page until 10.10.2026 and this map said so (PDL P8, 25.09.2026, „Treba da moze da otvori svoj
+     profil dokle god postoji"; review of PR 488, who found that this case held the opposite of the
+     decision). Both are still walked. */
   const WHAT_HE_MEETS_INSTEAD = new Map([
     ['/sr/kalendar/fruskogorski-maraton-2010/ocena', 'Ovaj događaj ocenjuju oni koji su ga istrčali'],
-    ['/sr/moj-profil', 'Balkanska trkačka liga'],
+    ['/sr/moj-profil', 'Vojislav Antonijević'],
   ])
 
   it.each(PUBLIC)('is not reached from %s', async (where, _asVisitor, asMember) => {

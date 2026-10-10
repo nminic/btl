@@ -76,10 +76,14 @@ import java.util.List;
  * the two shapes P11 takes on the server, chose this one: <b>not on the list at
  * all</b>, rather than on the list with the flag withheld.
  *
- * <p>What follows from that, and is owed: the profile and the historical tables
- * of a member whose fee has lapsed need a resource that knows them, and it is
- * not this one. Until it exists those screens have nothing to read, which is
- * visible rather than silent, and that is the point.
+ * <p>What followed from that was owed, and is answered since 10.10.2026 in two
+ * places that together know such a member: {@code GET /api/me} ({@link MeApi})
+ * answers him the page of his own profile and nobody else (PDL P8, 25.09.2026,
+ * „Treba da moze da otvori svoj profil dokle god postoji"), and
+ * {@code GET /api/results} carries his name on the results of the seasons he was
+ * a member in (PDL P23, 03.10.2026, „Ime ide uz stari rezultat člana kome je
+ * istekla članarina"). Neither is this resource, which stays what it was: the
+ * members whose fee is standing.
  *
  * <p><b>And neither the referral code nor who handed it out.</b> Article 73
  * lists what is public and neither is on it. This one is worth the extra
