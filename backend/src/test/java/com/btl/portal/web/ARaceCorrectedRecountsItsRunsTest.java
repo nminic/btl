@@ -102,6 +102,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * ({@link #A_SECOND_BEFORE_THE_WINDOW_OPENS}, where the season on sale is still 2027) and the last
  * second before the freeze ({@link #A_SECOND_BEFORE_THE_FREEZE}, where the clock is in 2028 and
  * the race is of 2027).
+ * <li><b>The category is asked twice, and each question is parted from the clock's year on its
+ * own.</b> The same season is asked before the rows move and after them, and a swap at one of the
+ * two changes nothing unless the member has a total in the season after the race's: closed for
+ * 2029 by a run of 2028, open for 2028. The rookie therefore runs a half marathon on 1 January
+ * 2028 in two more cases, one in each direction, so that 2029 is told from 2028 at the first
+ * question (his category closes) and at the second (it opens again).
  * <li><b>The climb and the fall are each corrected ALONE.</b> Every other case that moves one of
  * them moves both, and the length with them, so a question that skipped the climb, or the fall,
  * was never put to a run that differed in that figure and nothing else. The marathon's runs at
@@ -734,6 +740,18 @@ class ARaceCorrectedRecountsItsRunsTest {
 	@Test
 	void aCorrectionThatTakesAMemberBackUnderTheThresholdOpensHisCategoryAgainAndHeIsTold()
 			throws Exception {
+		theRookieIsCarriedBackUnderTheThresholdAndToldHisCategoryOpensAgainFor2028();
+	}
+
+	/**
+	 * The rookie's run is put at a time that carries him over the threshold, and the ten is
+	 * corrected from 10 to 9.5 km at whatever instant the clock stands at: his one run of 2027 goes
+	 * back under it, his category opens again for 2028 and he is told so, and the other member at
+	 * the ten reads the line about his run and nothing else. One body for the instants it is made
+	 * at, as the one that closes the category is.
+	 */
+	private void theRookieIsCarriedBackUnderTheThresholdAndToldHisCategoryOpensAgainFor2028()
+			throws Exception {
 		db.sql("update result set seconds = 2400, points = ? where id = ?")
 				.params(counted("10", 120, 110, 2400), rookiesRun).update();
 		assertThat(counted("10", 120, 110, 2400)).isGreaterThanOrEqualTo(new BigDecimal("12"));
@@ -786,6 +804,67 @@ class ARaceCorrectedRecountsItsRunsTest {
 		clock.moveTo(A_SECOND_BEFORE_THE_FREEZE);
 
 		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
+	}
+
+	/**
+	 * A CATEGORY ALREADY CLOSED FOR THE SEASON AFTER NEXT STILL CLOSES FOR THE NEXT ONE, AND HE IS
+	 * TOLD: the question asked BEFORE the rows move is asked for the race's year plus one.
+	 *
+	 * <p>The rookie also ran a half marathon on 1 January 2028, over the threshold on its own
+	 * ({@link #theRookieAlsoRanOverTheThresholdInTheYearAfter}), so his category for 2029 is closed
+	 * already whatever is done to the ten, and his category for 2028 is not: that one is decided off
+	 * 2027 alone. The clock stands a second before the freeze, in 2028, so the clock's year plus one
+	 * IS 2029. The correction of the ten closes the category for 2028 and the line says so. A route
+	 * that asked whether it WAS open of the clock's year plus one sees it closed before the rows
+	 * move and closed after them, and tells him nothing. In the cases above no total of 2028
+	 * matters to anybody's category (the rookie has none, and the other member is closed by 2027
+	 * alone), so nothing parts 2029 from 2028, which is why that swap at one of the two questions
+	 * survived them (S2a of round 4 of this PR).
+	 */
+	@Test
+	void aCategoryAlreadyClosedForTheSeasonAfterNextStillClosesForTheNextOneAndHeIsTold()
+			throws Exception {
+		clock.moveTo(A_SECOND_BEFORE_THE_FREEZE);
+		theRookieAlsoRanOverTheThresholdInTheYearAfter();
+
+		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
+	}
+
+	/**
+	 * A CATEGORY CLOSED FOR THE SEASON AFTER NEXT STILL OPENS AGAIN FOR THE NEXT ONE, AND HE IS
+	 * TOLD: the question asked AFTER the rows move is asked for the race's year plus one.
+	 *
+	 * <p>The other direction of the case above, with the same half marathon of 2028. The rookie's
+	 * run of 2027 is first over the threshold, so his category for 2028 is closed, and the
+	 * correction of the ten to 9.5 km takes it back under, so the category opens again for 2028
+	 * while the run of 2028 keeps it closed for 2029. A route that asked whether it IS open of the
+	 * clock's year plus one after the rows move sees it closed on both sides and tells him nothing
+	 * (S2b of round 4 of this PR).
+	 */
+	@Test
+	void aCategoryClosedForTheSeasonAfterNextStillOpensAgainForTheNextOneAndHeIsTold()
+			throws Exception {
+		clock.moveTo(A_SECOND_BEFORE_THE_FREEZE);
+		theRookieAlsoRanOverTheThresholdInTheYearAfter();
+
+		theRookieIsCarriedBackUnderTheThresholdAndToldHisCategoryOpensAgainFor2028();
+	}
+
+	/**
+	 * The rookie's second season: a half marathon on 1 January 2028 run at a time that is over the
+	 * threshold on its own. His best single season before 2029 is then this one whatever the ten
+	 * says, and his best before 2028 is still the ten alone, which is what lets a question about
+	 * 2029 be told from a question about 2028.
+	 */
+	private void theRookieAlsoRanOverTheThresholdInTheYearAfter() {
+		long theHalf = race("novogodisnja-2028", "Novogodisnji polumaraton", NEW_YEARS_DAY, "length",
+				0, "21.1", 100, 90);
+
+		assertThat(counted("21.1", 100, 90, 6000))
+				.as("a half marathon of 2028 under the threshold would not part 2029 from 2028")
+				.isGreaterThanOrEqualTo(new BigDecimal("12"));
+
+		result(rookie, theHalf, "21.1", 100, 90, 6000, counted("21.1", 100, 90, 6000));
 	}
 
 	/**
