@@ -88,14 +88,22 @@ class EveryMailIsAMandatoryOneTest {
 			"invitedAsAModerator", "creating an account: the same road, for somebody who moderates",
 			"setANewPassword", "changing the password, from the screen that says it is forgotten",
 			"thePasswordHasChanged", "changing the password, telling him it happened",
-			"resultEntered", "a result entered",
-			/* Not one of the six by name, and named by the owner all the same. PDL P22, an [ODLUKA]
-			   in the section that lists the six: „Član dobija mejl kad mu je rezultat odobren." And
-			   the decision of 28.09.2026 that took the notification screen away whole records the key
-			   `resultApproved`, „Kad mi rezultat bude odobren", as „obavezan mejl", one of the two
-			   switches that screen offered over „dva od šest obaveznih". Which of the six it is
-			   PDL does not say, so no number is claimed here. */
-			"resultApproved", "a result approved: named a mandatory mail by PDL P22 and by the decision of 28.09.2026",
+			/* WORDS, AND SINCE 09.10.2026 NO LETTER. A run sent in is told in the member's inbox and
+			   nowhere else (PDL P9, 09.10.2026, „Pri slanju rezultata član dobija samo red u
+			   sandučetu"), so these words stay in the dictionary for that line and no mail carries
+			   them; the mail „unet rezultat" is `resultApproved` below. This file reads words and not
+			   channels, so it cannot see the difference - the case that does is
+			   `ResultWriteApiTest.sendingOneInWritesTheLineInHisInboxAndPostsNoLetter`. */
+			"resultEntered", "a result entered: the line in his inbox when he sends it, and since 09.10.2026 no letter",
+			/* Not on the list of mandatory mails by that name, and named by the owner all the same.
+			   PDL P22, an [ODLUKA] in the section that lists them: „Član dobija mejl kad mu je
+			   rezultat odobren." And the decision of 28.09.2026 that took the notification screen
+			   away whole records the key `resultApproved`, „Kad mi rezultat bude odobren", as
+			   „obavezan mejl", one of the two switches that screen offered over „dva od šest
+			   obaveznih". Which one of the list it is, the record now says by a derivation of
+			   03.10.2026 rather than in the owner's words: „Mejl o odobrenom rezultatu je mejl
+			   „unet rezultat" iz spiska". */
+			"resultApproved", "a result approved: the mandatory mail about a result entered, named by PDL P22 and by the decision of 28.09.2026",
 			"resultChanged", "a result changed",
 			"resultDeleted", "a result changed: deleting is the cheapest way to change one without a trace");
 

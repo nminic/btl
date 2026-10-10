@@ -7,7 +7,6 @@ import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import com.btl.portal.domain.token.SecretToken;
 import com.icegreen.greenmail.junit5.GreenMailExtension;
 import com.icegreen.greenmail.user.GreenMailUser;
-import jakarta.mail.Message.RecipientType;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,7 +57,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p>GreenMail is an SMTP server rather than a mock, so what these cases read back is what
  * actually travelled - which matters more here than anywhere else on this server, because
- * PDL P22 makes the message the league's ONLY record of what a result used to say: „Posto
+ * PDL P22 makes the message the ONLY record of what a result used to say: „Posto
  * se istorija izmena ne cuva ni dnevnik administrativnih akcija, obavestenje mora da sadrzi
  * staru vrednost, jer ona nigde drugde ne prezivljava." A mock asked „were you called"
  * would answer about this file; this answers about the record.
@@ -157,9 +156,10 @@ class ResultWriteApiTest {
 	@Autowired
 	private AClockTheCaseMoves clock;
 
-	/** Read off the configuration rather than written here, so „where the blind copy goes"
-	 *  is one fact and not two that can drift (the same arrangement {@code PostmanTest}
-	 *  makes for the address messages leave from). */
+	/** Read off the configuration rather than written here, so the address these cases say
+	 *  the league is NOT copied at is the one the portal copies it at elsewhere, and not a
+	 *  second spelling that a returning copy could miss (the same arrangement
+	 *  {@code PostmanTest} makes for the address messages leave from). */
 	@Value("${btl.mail.league}")
 	private String theLeague;
 
@@ -1142,7 +1142,12 @@ class ResultWriteApiTest {
 	}
 
 	/**
-	 * A FRESH REPORT CARRIES THE FIGURES THE PORTAL WROTE DOWN AND THE POINTS IT WORKED OUT.
+	 * A FRESH REPORT'S LINE IN HIS INBOX CARRIES THE FIGURES THE PORTAL WROTE DOWN AND THE
+	 * POINTS IT WORKED OUT.
+	 *
+	 * <p>Read off the inbox and not off a letter, because since 09.10.2026 there is no letter
+	 * when a run is sent in ({@link #sendingOneInWritesTheLineInHisInboxAndPostsNoLetter}): the
+	 * line is the whole of what he is told until a moderator approves it.
 	 *
 	 * <p>The points are asked of {@link BtlScoreCalculator} here rather than typed, so this
 	 * case cannot go on passing beside a route that started accepting them from a request -
@@ -1152,7 +1157,7 @@ class ResultWriteApiTest {
 	void aFreshReportCarriesWhatWasSentInAndThePointsTheFormulaGives() throws Exception {
 		reportedAs(ME, ordinaryReport());
 
-		assertThat(bodyOfTheMessageThatWentOut())
+		assertThat(theLineInTheInboxOf(ME).get(1))
 				.contains("Dugi maraton, 05.05.2027, 42,20 km, uspon 350 m, spust 410 m,"
 						+ " vreme 3:25:45, "
 						+ BtlScoreCalculator.calculate(42.2035, 350, 410, 12345)
@@ -1161,35 +1166,80 @@ class ResultWriteApiTest {
 	}
 
 	/**
-	 * THE LEAGUE GETS A COPY AND IT IS BLIND, and the member's own letter does not say so.
+	 * SENDING ONE IN TELLS HIM IN HIS INBOX AND POSTS NOTHING, AND THE RELAY WAS THERE TO POST
+	 * TO.
 	 *
-	 * <p>PDL P22: „Skrivena kopija svakog takvog obavestenja ide na administrativnu adresu
-	 * lige." Blind rather than plain, because written into {@code Cc} it would tell the member
-	 * the league reads his post and would put the league's address in the headers of a letter
-	 * he may forward anywhere.
+	 * <p>The owner chose among the outcomes offered on 09.10.2026, and the record words his
+	 * choice as PDL P9, 09.10.2026, „Pri slanju rezultata clan dobija samo red u sanducetu; mejl
+	 * stize tek kad je rezultat odobren". The server used to post at both moments, so a member
+	 * would have had two letters about one run; the letter at the approval is
+	 * {@code VerificationWriteApiTest}'s to hold.
+	 *
+	 * <p><b>No letter is also exactly what a relay that is down looks like</b>, so the case does
+	 * not stop at the absence. The same member then corrects a result, and that letter has to
+	 * arrive, to him alone: a route that had stopped posting anything at all, or a mail server
+	 * that never came up, fails at the second half instead of passing at the first.
 	 */
 	@Test
-	void theLeagueGetsABlindCopyOfEveryOneOfThem() throws Exception {
-		deletedAs(ME, myResult);
+	void sendingOneInWritesTheLineInHisInboxAndPostsNoLetter() throws Exception {
+		assertThat(reportedAs(ME, ordinaryReport()).getStatus()).isEqualTo(201);
 
-		theMessageThatWentOut();
+		assertThat(theLineInTheInboxOf(ME).get(0))
+				.as("sending a run in did not tell him in his inbox")
+				.isEqualTo("Primili smo vaš rezultat");
+		assertThat(SMTP.getReceivedMessages())
+				.as("a letter went out when the run was sent in, and the letter belongs to the"
+						+ " approval")
+				.isEmpty();
+
+		correctedAs(ME, myResult, correction("42.20", 350, 410, 11400,
+				"https://rezultati.rs/ispravka", ""));
+
+		assertThat(theMessageThatWentOut().getSubject())
+				.as("the letter about the correction did not arrive, so the absence above says"
+						+ " nothing about the route")
+				.isEqualTo("Primili smo izmenu vašeg rezultata");
+	}
+
+	/**
+	 * THE LEAGUE GETS NO COPY OF WHAT HE DOES TO HIS OWN RESULT, for either verb.
+	 *
+	 * <p>PDL P9, 25.09.2026, „Skrivena kopija ligi NE ide kad clan sam menja ili brise svoj
+	 * rezultat", and the owner's own words for it: „Covek ima pravo da obrise svoj rezultat bez
+	 * javljanja i time se i tabele i obracuni automatski azuriraju. Ispravka svakako ide Adminu
+	 * na odobrenje." It is the one written exception to „Skrivena kopija svakog takvog
+	 * obavestenja ide na administrativnu adresu lige", and a copy that came back would read
+	 * exactly like the rule.
+	 *
+	 * <p><b>Both verbs, and the member's letters counted as well as the league's absence</b>,
+	 * because no letter at all satisfies „the league got none" just as well. The copy that stays
+	 * - the approval's - is {@code VerificationWriteApiTest}'s.
+	 *
+	 * <p>Every case that reads a letter asks the same of its envelope through
+	 * {@link #theMessageThatWentOut}; this one names the league's address, which is the copy the
+	 * decision is about, and asks the headers too, where a copy written into {@code Cc} rather
+	 * than {@code Bcc} would show.
+	 */
+	@Test
+	void theLeagueGetsNoCopyOfWhatHeDoesToHisOwnResult() throws Exception {
+		correctedAs(ME, myResult, correction("42.20", 350, 410, 11400,
+				"https://rezultati.rs/ispravka", ""));
+		deletedAs(ME, myOtherResult);
 
 		MimeMessage[] arrived = SMTP.getReceivedMessages();
 
-		assertThat(arrived).as("somebody got a copy nobody decided on").hasSize(2);
+		assertThat(arrived).as("not one letter for each of the two").hasSize(2);
+
+		assertThat(everyAddressThatGotACopy())
+				.as("the league was copied on what the member did to his own result")
+				.doesNotContain(theLeague)
+				.as("the two letters did not go to the member and to nobody else")
+				.containsExactly(MY_ADDRESS);
 
 		for (MimeMessage one : arrived) {
-			/* AND NEITHER COPY SAYS THE LEAGUE IS READING. Written into `Cc` rather than
-			   `Bcc`, this header would name the league in a letter the member may forward
-			   anywhere - and a route that sent to the wrong member would be caught here
-			   too, because this address is the one read off his account. */
-			assertThat(Arrays.stream(one.getRecipients(RecipientType.TO)).map(Object::toString))
-					.as("a copy named somebody other than the member in its To")
+			assertThat(Arrays.stream(one.getAllRecipients()).map(Object::toString))
+					.as("a letter names somebody other than the member as a recipient")
 					.containsExactly(MY_ADDRESS);
-
-			assertThat(one.getHeader("Bcc"))
-					.as("the blind copy was not blind")
-					.isNull();
 		}
 	}
 
@@ -1523,13 +1573,21 @@ class ResultWriteApiTest {
 				.param(result).query(Integer.class).single();
 	}
 
+	/** The one line this route wrote into his inbox, ASSERTED to be one rather than taken with
+	 *  {@code single()}: a route that wrote none, or wrote it into somebody else's inbox, then
+	 *  fails a case on this sentence instead of on a driver exception that says nothing. */
 	private List<String> theLineInTheInboxOf(String memberNumber) {
-		return db.sql("select m.subject, m.body from message m"
+		List<List<String>> lines = db.sql("select m.subject, m.body from message m"
 						+ " join competitor c on c.id = m.to_id"
 						+ " where c.member_number = ? and m.from_name = 'Rezultati'")
 				.param(memberNumber)
 				.query((row, one) -> List.of(row.getString(1), row.getString(2)))
-				.single();
+				.list();
+
+		assertThat(lines).as("not exactly one line about his result in the inbox of " + memberNumber)
+				.hasSize(1);
+
+		return lines.get(0);
 	}
 
 	private String bodyOfTheMessageThatWentOut() throws Exception {
@@ -1537,33 +1595,44 @@ class ResultWriteApiTest {
 	}
 
 	/**
-	 * WHAT TRAVELLED, having first said who got it.
+	 * WHAT TRAVELLED, having first said who got it: the member, once, and nobody else.
 	 *
-	 * <p>Both stored copies are the same message - the relay is handed one and delivers it
-	 * twice - so which of the two is read does not matter, and WHO the two went to is asserted
-	 * here rather than left to the one case that is about the blind copy. Every case reading a
-	 * body therefore also measures that the league was copied and that nobody else was.
+	 * <p>WHO it went to is asserted here rather than left to the one case that is about the
+	 * league's copy ({@link #theLeagueGetsNoCopyOfWhatHeDoesToHisOwnResult}), so every case
+	 * reading a body also measures that the league was not copied and that nobody else was.
+	 *
+	 * <p><b>The wait is for one letter and it cannot end before a second one would have
+	 * arrived.</b> GreenMail delivers to every address of the envelope before it answers the
+	 * data with „250 OK" (read off 2.1.5's {@code DataCommand}, which calls
+	 * {@code SmtpManager.send} first), the sending side does not give the request back before
+	 * that answer, and the route posts inside the request. So by the time a case reads this, a
+	 * copy to the league would already be here - which is what the copy put back in measures.
 	 */
 	private MimeMessage theMessageThatWentOut() {
-		assertThat(SMTP.waitForIncomingEmail(5000, 2)).isTrue();
+		assertThat(SMTP.waitForIncomingEmail(5000, 1)).isTrue();
 
 		assertThat(everyAddressThatGotACopy())
-				.as("the message did not reach the member and the league, and nobody else")
-				.containsExactlyInAnyOrder(MY_ADDRESS, theLeague);
+				.as("the letter did not reach the member, or reached somebody besides him")
+				.containsExactly(MY_ADDRESS);
 
-		return SMTP.getReceivedMessages()[0];
+		MimeMessage[] arrived = SMTP.getReceivedMessages();
+
+		assertThat(arrived).as("more than the one letter went out").hasSize(1);
+
+		return arrived[0];
 	}
 
 	/**
 	 * EVERY ADDRESS THAT REALLY RECEIVED A COPY, ASKED OF THE ENVELOPE AND NOT OF THE HEADERS.
 	 *
 	 * <p><b>A blind copy leaves no header at all, and that is the whole difficulty.</b>
-	 * Whoever sends a message strips {@code Bcc} out of it before it travels, so both stored
-	 * copies carry the SAME {@code To} and the same everything else. Measured on this very
-	 * fixture: {@code getAllRecipients()} answers {@code [vera@primer.rs]} on BOTH, and
-	 * {@code getReceivedMessagesForDomain}, which reads exactly that, answers nought for the
-	 * league's domain. Read that way, a route that never copied the league would look
-	 * identical to one that did.
+	 * Whoever sends a message strips {@code Bcc} out of it before it travels, so every stored
+	 * copy carries the SAME {@code To} and the same everything else. Measured on this very
+	 * fixture while these letters still copied the league (until 09.10.2026):
+	 * {@code getAllRecipients()} answered {@code [vera@primer.rs]} on BOTH copies, and
+	 * {@code getReceivedMessagesForDomain}, which reads exactly that, answered nought for the
+	 * league's domain. Read that way, a route that copied the league again would look identical
+	 * to one that does not.
 	 *
 	 * <p>What DOES survive is the envelope: GreenMail opens a mailbox for each {@code RCPT TO}
 	 * it is given, so its user manager is the list of addresses the relay was really asked to
