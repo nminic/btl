@@ -2,6 +2,7 @@ package com.btl.portal.domain.season;
 
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
@@ -712,6 +713,65 @@ class SeasonClockTest {
 				ZonedDateTime.of(2028, 1, 1, 12, 0, 0, 0, SeasonClock.ZONE)))
 				.as("the band did not move on 1 January, the one day it does")
 				.isEqualTo(2028);
+	}
+
+	/**
+	 * THE BAND OF A RESULT IS WORKED OUT FOR THE SEASON ITS DAY IS IN, and never for one before the
+	 * league's first.
+	 *
+	 * <p>Owner, 10.10.2026 (PDL P23), chosen between offered outcomes (against my recommendation,
+	 * and kept with it once the cost was measured to be the exact year of birth): the band beside
+	 * an old result is the one its member had in the season of that result. The season of a result
+	 * is the calendar year of its day, so the answer turns between 31 December and 1 January, and
+	 * on nothing else: a day has no zone, which is why this case, unlike the ones above, stands on
+	 * days and not on moments.
+	 *
+	 * <p><b>Both sides of the floor and both sides of the turn</b>, because they are four
+	 * different mistakes: a version with no floor answers the year of the history, a version that
+	 * always answered the first season is told apart by the seasons after it, and a turn on the
+	 * wrong day fails the pair of days that stand either side of it. The days before the league are
+	 * years apart, so that no single year is a lucky one. The floor is the one {@link
+	 * SeasonClock#seasonTheBandIsWorkedOutFor} stands on and this asks that method, so there is
+	 * one floor and not two: dropping it fails the case above for the list and this one for the
+	 * result.
+	 */
+	@Test
+	void theBandOfAResultIsWorkedOutForTheSeasonItsDayIsInAndNeverForOneBeforeTheFirst() {
+		assertThat(LocalDate.of(2026, 12, 31).getYear())
+				.as("the league's first season moved, so 2026 is no longer before it and the case measures"
+						+ " nothing")
+				.isLessThan(SeasonClock.FIRST_SEASON);
+
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2026, 12, 31)))
+				.as("the last day before the league was answered with the season it is in, which the"
+						+ " league does not have")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2025, 6, 1)))
+				.as("a result of 2025 was answered with the year it was run in, a season the league does"
+						+ " not have")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2014, 6, 1)))
+				.as("a result of the oldest history was answered with the year it was run in")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2027, 1, 1)))
+				.as("the first day of the first season was not answered with that season")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2027, 12, 31)))
+				.as("the last day of 2027 was answered with the next season")
+				.isEqualTo(2027);
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2028, 1, 1)))
+				.as("the first day of 2028 was answered with the season that had just ended")
+				.isEqualTo(2028);
+
+		/* AND THE FLOOR DOES NOT FLATTEN WHAT COMES AFTER IT. Neither answer below is the first
+		   season, so a version that always answered it satisfies neither. */
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2029, 7, 1)))
+				.as("every day was answered as the first season, which is the other way to be wrong")
+				.isEqualTo(2029);
+		assertThat(SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(LocalDate.of(2031, 3, 15)))
+				.as("the answer stopped following the day once it was past the first season")
+				.isEqualTo(2031);
 	}
 
 	/**
