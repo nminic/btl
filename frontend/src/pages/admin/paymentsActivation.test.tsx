@@ -1530,8 +1530,16 @@ describe('activating a membership from the payments screen', () => {
       await user.click(within(row).getByRole('button', { name: 'Aktiviraj' }))
       await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Da' }))
 
+      /* THIS WAIT GIVES UP BEFORE THE CASE'S OWN CLOCK DOES, and that is measured rather than
+         tidy: `test/setup.ts` lets every `findBy` wait twenty seconds and a case is given five,
+         so a sentence that is not there (the map pointing at the column's sentence, or the
+         dictionary saying something else) would be reported as `Test timed out in 5000ms`
+         instead of as the sentence it did not find. Two seconds is room for the answer to be
+         drawn and still leaves the case most of its clock for the lines above. */
       const said = await within(await rowOf('Petar Marko')).findByText(
         /Iznos uplate mora da bude ceo broj/,
+        undefined,
+        { timeout: 2_000 },
       )
 
       expect(said).toBeVisible()
