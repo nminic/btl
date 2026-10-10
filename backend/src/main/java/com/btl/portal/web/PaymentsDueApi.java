@@ -4,10 +4,12 @@ import com.btl.portal.domain.balance.Balance;
 import com.btl.portal.domain.pricing.Currency;
 import com.btl.portal.domain.pricing.MembershipPrice;
 import com.btl.portal.domain.season.SeasonClock;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -156,12 +158,18 @@ import java.util.stream.Collectors;
  * a table this route does not name, and a fixture where the two disagree is what holds it.
  * </ul>
  *
- * <p><b>NOTHING IS REFUSED HERE, and ADL A54 is why that is said out loud rather than left to
- * be noticed.</b> That decision requires a route to state which of the two meanings an omitted
- * field has, and its other half - a refused form says what is missing - is about forms being
- * refused. This route has no form: the search term is optional, and <b>absent and blank both
+ * <p><b>NOTHING IS REFUSED HERE BUT A TERM THAT HOLDS A ZERO CHARACTER, and ADL A54 is why that
+ * is said out loud rather than left to be noticed.</b> That decision requires a route to state
+ * which of the two meanings an omitted field has, and its other half - a refused form says what
+ * is missing - is about forms being refused. This route has no form: the search term is
+ * optional, and <b>absent and blank both
  * mean „the whole list"</b> rather than „nothing matches". There is no length at which a term
  * is refused, because no decision sets one and inventing a refusal is not this route's to make.
+ * The zero is not a length and not an invention: {@code text} cannot hold it, so a term carrying
+ * one reached the statement and was answered 500 (measured on 09.10.2026 with
+ * {@code search=%00}), and it is answered 400 now by the question {@link NoTextHoldsAZero} asks of
+ * every text of a body. No other REQUEST parameter of this portal reaches a statement as it was
+ * typed (a path variable does, and a zero in a path never gets this far).
  *
  * <p><b>THE ORDER IS THE ONE A HUMAN READS, and it is total.</b> By surname then given name,
  * through the {@code sr_latn} collation the columns already carry (V1, O21), because that is
@@ -265,11 +273,19 @@ class PaymentsDueApi {
 	 * @param search the member number, given name, surname or full name to look for. Absent and
 	 *               blank are ONE answer, the whole list, and neither is refused (ADL A54 asks
 	 *               every route to say which of the two meanings omission has; here it means
-	 *               „do not narrow" and can never mean „match nothing")
+	 *               „do not narrow" and can never mean „match nothing").
+	 *               A term holding U+0000 is the one thing refused, with a 400.
 	 */
 	@GetMapping("/api/payments")
 	@RightIsNeeded("queue:payments")
 	Outstanding due(@RequestParam(name = "search", required = false) String search) {
+		/* A ZERO CHARACTER IS NOT A TERM THE LIST CAN BE NARROWED BY. `text` cannot hold it, so it
+		   would reach the statement below and come back as a 500; it is turned away here, with the
+		   same question the reader of a body asks, before anything is worked out. */
+		if (NoTextHoldsAZero.holdsAZero(search)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+		}
+
 		/* THE SEASON PAYMENT IS BEING TAKEN FOR, read ONCE for the whole answer. Read per row
 		   it could cross 15 October between two rows of one list, and two accounts would be
 		   answered about two different seasons under one heading. `PaymentApi` reads the same
