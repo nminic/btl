@@ -247,6 +247,18 @@ function writes(asked: Asked[]): { path: string; how: string; body: string }[] {
 const reads = (asked: Asked[]) =>
   asked.filter((one) => (one.init?.method ?? 'GET') === 'GET').map((one) => one.path)
 
+/**
+ * A READ OF A TEAM'S OWN QUEUE, and of nothing else that ends the same way.
+ *
+ * <p>Since T5 (10.10.2026) the team's page also asks `GET /api/me/applications` for every member
+ * reading it (`pages/AskingThisTeam.tsx`), and that address ends in `/applications` too. It is the
+ * reader's own question and not the team's queue, so a count of the queue's reads taken by the
+ * ending alone counted it as one: two cases here waited for a number they could no longer reach.
+ */
+const A_QUEUE = /^\/api\/teams\/\d+\/(applications|invitations)$/
+
+const THE_APPLICATIONS = /^\/api\/teams\/\d+\/applications$/
+
 const waitingList = async () =>
   within(await screen.findByRole('list', { name: sr.teams.joinWaiting }, { timeout: SLOW }))
 
@@ -494,7 +506,7 @@ describe('the two queues for a reader they are not for', () => {
       /* AND NOTHING WAS ASKED OF EITHER ADDRESS, which is the half a hidden section leaves
          open: a screen that fetched and then declined to draw would still be telling the
          server who is reading which team's queue. */
-      expect(reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one))).toEqual(
+      expect(reads(server.asked).filter((one) => A_QUEUE.test(one))).toEqual(
         [],
       )
     } finally {
@@ -514,7 +526,7 @@ describe('the two queues for a reader they are not for', () => {
 
       expect(screen.queryByRole('heading', { name: sr.teams.joinWaiting })).not.toBeInTheDocument()
       expect(screen.queryByRole('heading', { name: sr.teams.inviteSent })).not.toBeInTheDocument()
-      expect(reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one))).toEqual(
+      expect(reads(server.asked).filter((one) => A_QUEUE.test(one))).toEqual(
         [],
       )
     } finally {
@@ -1276,7 +1288,7 @@ describe('a queue that could not be read', () => {
       renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
       await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
 
-      const before = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+      const before = reads(server.asked).filter((one) => A_QUEUE.test(one)).length
 
       failing.applications = null
       failing.invitations = null
@@ -1289,7 +1301,7 @@ describe('a queue that could not be read', () => {
 
       /* BOTH addresses were asked once more: they are one question in two routes, and a screen
          that showed a fresh queue beside a stale one would be telling two different moments. */
-      const after = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+      const after = reads(server.asked).filter((one) => A_QUEUE.test(one)).length
 
       expect(after - before).toBe(2)
     } finally {
@@ -1312,7 +1324,7 @@ describe('a queue that could not be read', () => {
       renderAt(at(MINE.slug), 'competitor', LEADS_IT, undefined, DAY_IN)
       await screen.findByText(sr.teams.invitationsUnreadable, undefined, { timeout: SLOW })
 
-      const before = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+      const before = reads(server.asked).filter((one) => A_QUEUE.test(one)).length
 
       failing.invitations = null
       await user.click(must(retryOf(sr.teams.inviteSent), 'the button of the invitations'))
@@ -1321,7 +1333,7 @@ describe('a queue that could not be read', () => {
       expect(screen.queryByText(sr.teams.invitationsUnreadable)).toBeNull()
       expect((await waitingList()).getAllByRole('listitem')).toHaveLength(3)
 
-      const after = reads(server.asked).filter((one) => /\/applications$|\/invitations$/.test(one)).length
+      const after = reads(server.asked).filter((one) => A_QUEUE.test(one)).length
 
       expect(after - before).toBe(2)
     } finally {
@@ -1353,10 +1365,10 @@ describe('a queue that could not be read', () => {
       expect(screen.queryByText(sr.teams.applicationsUnreadable)).toBeNull()
       expect(retryOf(sr.teams.joinWaiting)).toHaveAttribute('aria-disabled', 'true')
 
-      const out = reads(server.asked).filter((one) => /\/applications$/.test(one)).length
+      const out = reads(server.asked).filter((one) => THE_APPLICATIONS.test(one)).length
 
       await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
-      expect(reads(server.asked).filter((one) => /\/applications$/.test(one)).length).toBe(out)
+      expect(reads(server.asked).filter((one) => THE_APPLICATIONS.test(one)).length).toBe(out)
 
       letGo()
 
@@ -1468,7 +1480,7 @@ describe('a queue that could not be read', () => {
       await screen.findByText(sr.teams.applicationsUnreadable, undefined, { timeout: SLOW })
 
       const applicationsAsked = () =>
-        reads(server.asked).filter((one) => /\/applications$/.test(one)).length
+        reads(server.asked).filter((one) => THE_APPLICATIONS.test(one)).length
 
       await user.click(must(retryOf(sr.teams.joinWaiting), 'the button of the applications'))
 

@@ -848,8 +848,16 @@
       "theFormIsNotComplete": "Odgovor nije poslat do kraja, pa prijava nije odgovorena. Osveži stranicu i pokušaj ponovo.",
       "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa član nije primljen u tim. Prijava i dalje čeka: rok se otvara 15. oktobra i traje do 31. decembra."
     },
+    "applyRefused": {
+      "aQuestionAlreadyStands": "Već imaš prijavu koja čeka odgovor tima, pa nova nije poslata. Prijavu povlačiš na strani tima kome si je poslao/la."
+    },
     "invite": "Pozovi u tim",
     "invited": "Poziv u tim „{team}\" je poslat.",
+    "inviteRefused": {
+      "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv nije poslat. Osveži stranicu i pokušaj ponovo.",
+      "theWindowIsShut": "Prelazni rok se u međuvremenu zatvorio, pa poziv nije poslat. Rok se otvara 15. oktobra i traje do 31. decembra.",
+      "heIsAlreadyInATeam": "Član je u međuvremenu ušao/la u tim, pa poziv nije poslat."
+    },
     "inviteSubject": "Poziv u tim „{team}\"",
     "inviteBody": "Tim „{team}\" te poziva da od naredne sezone trčiš za njih.",
     "inviteAccept": "Prihvati",
@@ -1087,9 +1095,9 @@
     "inTeam": "Trenutno si u timu {team}.",
     "transferOpen": "Prelazni rok je otvoren do 31. decembra u 23.59. Promena stupa na snagu 1. januara {season}.",
     "transferShut": "Prelazni rok je zatvoren. Otvara se 15. oktobra i traje do 31. decembra. Ako se do tada ništa ne dogovori, ostaješ tamo gde jesi.",
-    "askToJoin": "Prelazak u drugi tim se dogovara van portala. Kad se dogovorite, administracija te upisuje u tim.",
+    "askToJoin": "U tim ulaziš prijavom na strani tima ili prihvatanjem poziva koji ti stigne u sanduče.",
     "leaveTeam": "Izađi iz tima",
-    "leaveTeamAsk": "Sigurno izlaziš iz tima {team}? U tim se ne vraćaš sam: ponovo te upisuje administracija.",
+    "leaveTeamAsk": "Sigurno izlaziš iz tima {team}? Nazad se vraćaš samo ako tim prihvati tvoju prijavu ili te ponovo pozove.",
     "leaveTeamSure": "Potvrdi izlazak",
     "leaveTeamKeep": "Odustani",
     "payNow": "Uplatnica",

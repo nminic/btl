@@ -2385,9 +2385,15 @@ describe('the transfer window and renewal', () => {
     expect(await screen.findByRole('heading', { name: /Obnova članarine/ })).toBeVisible()
     expect(screen.getByText(/Obnova je otvorena/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je otvoren do 31. decembra/)).toBeVisible()
-    /* A sentence since 26.09.2026, not a button: joining another team has no route
-       in either direction yet (PDL.md:1659). */
-    expect(screen.getByText(/Prelazak u drugi tim se dogovara van portala/)).toBeVisible()
+    /* A sentence and not a button, because both ways in are pressed elsewhere: „Prijavi se u
+       tim" on the team's page and „Prihvati" in the inbox. Whole, because the owner chose this
+       wording on 10.10.2026 (T5) from the ones offered to him; until that day this sentence sent
+       the member to agree a move outside the portal. */
+    expect(
+      screen.getByText(
+        'U tim ulaziš prijavom na strani tima ili prihvatanjem poziva koji ti stigne u sanduče.',
+      ),
+    ).toBeVisible()
   })
 
   /* **THE TWO CASES BELOW USED TO MEASURE THE RULE AND NOW MEASURE THE SENTENCE**, and that
@@ -2453,9 +2459,7 @@ describe('the transfer window and renewal', () => {
 
     expect(await screen.findByText(/Obnova se otvara 15. oktobra/)).toBeVisible()
     expect(screen.getByText(/Prelazni rok je zatvoren/)).toBeVisible()
-    expect(
-      screen.queryByText(/Prelazak u drugi tim se dogovara van portala/),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/U tim ulaziš prijavom/)).not.toBeInTheDocument()
   })
 
   it('says plainly when somebody is in no team at all', async () => {

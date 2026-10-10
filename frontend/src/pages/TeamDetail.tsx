@@ -38,6 +38,7 @@ import { recordKey } from '../session/context'
 import { useOverlay } from './admin/overlay'
 import './Profile.css'
 import { CompetitorName } from '../components/CompetitorName'
+import { AskingThisTeam } from './AskingThisTeam'
 import { TeamQueue } from './TeamQueue'
 
 /* A team is the only entity besides a competitor that carries a standing, so
@@ -56,18 +57,14 @@ export function TeamDetail() {
   const today = useToday()
   const running = today.slice(0, 4)
   const asked = useSeason(running)
-  /* **`applications` and `answer` are the member's OWN half and are still the session's**,
-     which is a boundary rather than a leftover. „Prijavi se u tim" and „Povuci prijavu" write
-     into the browser, because `POST /api/teams/{id}/applications` is sent by no screen on this
-     portal (`pages/account/refusals.test.ts` keeps that as an exemption with its own reason).
-     The list of applications this team must ANSWER comes off the server, through `TeamQueue`.
-
-     **So one screen now holds two mechanisms for one kind of row, and the server is the
-     truth.** A member who applied through the session sees his own „Povuci prijavu" here and
-     the team does not see him waiting, because he is not waiting on the server at all. That is
-     visible and is written down rather than left to be found; it closes when applying goes to
-     the route, which is its own increment. */
-  const { memberNumber, remove, editRecord, applications, apply, answer } = useSession()
+  /* **THE MEMBER'S OWN HALF IS THE SERVER'S SINCE T5 (10.10.2026), AND NOTHING OF IT IS READ
+     FROM THE SESSION HERE ANY MORE.** „Prijavi se u tim" and „Povuci prijavu" are drawn off
+     `GET /api/me/applications` and sent to `POST` and `DELETE` on the application's own address
+     (`AskingThisTeam.tsx`), and the list this team must ANSWER comes off the server through
+     `TeamQueue`. Until that day the two buttons wrote into the browser, so one screen held two
+     mechanisms for one kind of row: a member who applied saw his own „Povuci prijavu" and the
+     team did not see him waiting. */
+  const { memberNumber, remove, editRecord } = useSession()
   const navigate = useNavigate()
   const overlay = useOverlay()
   const state = combineResources(useTeams(), useCompetitors(), useResults())
@@ -219,8 +216,10 @@ export function TeamDetail() {
            članova" under it, because the founder's team is written into the session
            and nowhere else (review, 05.09.2026). PDL, 05.09.2026: the founder „je od
            tog trenutka prvi i jedini član i vidi se u sastavu tima". */
-        /* Whoever is reading, off the same list as everything else on this screen, and
-           what they are called, because an application says who is asking. */
+        /* Whoever is reading, off the same list as everything else on this screen. Nothing for a
+           visitor, for an account that races for nobody and for a member whose fee has lapsed,
+           none of whom `/api/competitors` carries, and that is what `AskingThisTeam.tsx` reads
+           as „nothing of the member's own half is drawn, or asked for". */
         const me = listedMembers.find((one) => one.memberNumber === memberNumber)
         /* **TWO QUESTIONS AND TWO ANSWERS SINCE 21.09.2026, because one of them was
            being answered by the other and that was a hole.** „Is there anybody here to
@@ -231,18 +230,6 @@ export function TeamDetail() {
            not told about fell through to the standing rule. */
         const runs = teamAdminOf(team, listedMembers)
         const mineToRun = readerAdministers(team, listedMembers, memberNumber)
-        /* The application this member has open, wherever it is: one at a time, because a
-           member is in one team and cannot be waiting on two.
-
-           **On a team that is still there.** A team deleted while the application waited
-           left the member waiting on nothing: no way in anywhere else, and no way to end
-           it, so they were outside every team on the portal for good (review, 06.09.2026).
-           An application about a team that is gone is about nothing, and stops counting. */
-        const asking = applications.find(
-          (one) =>
-            one.memberNumber === memberNumber &&
-            listedTeams.some((each) => each.id === one.teamId),
-        )
         /* Off BOTH doors the server names a member of this team on, since 02.10.2026: his
            record, and - for a member who hides his profile, read by somebody who may not read
            it - the team's own
@@ -287,120 +274,97 @@ export function TeamDetail() {
                     control (owner, 05.08.2026: one shape everywhere). It carried
                     a row of its own until then and was left without one when the
                     profile moved onto the shared row. */}
-                <div className="profile__title rankings--tooled">
-                  <h1 className="profile__name">{team.name}</h1>
-                  <div className="rankings__head-tool">
-                    {/* The way into the team's own data, and only for whoever
-                        administers it (owner, 04.09.2026: „na strani tog tima za
-                        administratora tima treba da postoje dugmići Izmeni i
-                        Obriši"). Who that is is worked out from the roster rather
-                        than stored, so it follows a founder who leaves
-                        (`data/teamAdmin.ts`).
+                {/* **The way in, and the way back out, both on the team's own page and both on
+                    the server** (`AskingThisTeam.tsx`). An application is a record about this
+                    team, not a letter to whoever happened to run it when it was sent: who may
+                    answer it is worked out from the roster every time it is drawn (review,
+                    06.09.2026), and the team reads it in `TeamQueue` below. This hands the page
+                    the two buttons for the row of controls and what is said about them for
+                    under it, and the page lays both out. */}
+                <AskingThisTeam
+                  me={me}
+                  /* What the member and the team must be for the way in to be offered at all.
+                     „Nema tim" is read off the record and not by season (PDL, 05.09.2026, „„Nema
+                     tim" se čita sa zapisa (`teamId`), ne po sezoni"); only inside the transfer
+                     window, the one door through which a team changes (owner, 05.09.2026); and
+                     only where there is somebody to answer, because a team nobody is in has
+                     nobody to decide. */
+                  mayApply={teamOf(me) === null && runs !== null && inYearlyWindow(today)}
+                  team={team.id}
+                  standing={(id) => listedTeams.some((each) => each.id === id)}
+                  here={here}
+                >
+                  {({ controls, said }) => (
+                    <div className="profile__title rankings--tooled">
+                      <h1 className="profile__name">{team.name}</h1>
+                      <div className="rankings__head-tool">
+                        {controls}
+                        {/* The way into the team's own data, and only for whoever
+                            administers it (owner, 04.09.2026: „na strani tog tima za
+                            administratora tima treba da postoje dugmići Izmeni i
+                            Obriši"). Who that is is worked out from the roster rather
+                            than stored, so it follows a founder who leaves
+                            (`data/teamAdmin.ts`).
 
-                        Written against a member number that is really there:
-                        `admin` is null for a team nobody is in, and comparing it
-                        with a visitor's own null would put the button in front of
-                        everybody who is not signed in. */}
-                    {/* **The way in, and the way it is answered, both on the team's own
-                        page.** An application is a record about this team, not a letter to
-                        whoever happened to run it when it was sent: who may answer it is
-                        worked out here, from the roster, every time it is drawn. Written as
-                        a letter it went to a person, and a founder who left went on
-                        deciding while the one who really ran the team never saw it (review,
-                        06.09.2026).
+                            Written against a member number that is really there:
+                            `admin` is null for a team nobody is in, and comparing it
+                            with a visitor's own null would put the button in front of
+                            everybody who is not signed in. */}
+                        {mineToRun && (
+                          <>
+                            <Link
+                              className="button button--secondary"
+                              to={`/${locale}/tim/${team.slug}/izmena`}
+                            >
+                              {t('teams.edit')}
+                            </Link>
+                            {/* Asked twice before it happens, and asked by the portal's one
+                                way of asking about something nothing brings back
+                                (`DeleteRecord`), dressed as the button beside it. Not a
+                                dialog written here: all three of its controls carry the name
+                                of what is being deleted, so a reader who arrives at the
+                                question „delete what" is answered without going back up the
+                                page, and that was got right once already. */}
+                            <DeleteRecord
+                              name={team.name}
+                              look="button button--secondary"
+                              /* The team goes, and with it its points in the standing: there is
+                                 no standing without a record, so the owner's „pa se tim briše
+                                 kao i bodovi iz tabele za tu sezonu" is one act and not two. The
+                                 frozen seasons are untouched, because nothing here writes a
+                                 result (PDL, 04.09.2026), and since 28.09.2026 none of that is
+                                 decided on this screen at all: `deleteOne` sends the act to the
+                                 route the administration already sends it to. */
+                              onDelete={() => deleteOne(team, everMembers.map((one) => one.competitor))}
+                              /* A READER WHO ASKED AGAIN AND THEN PUT THE QUESTION AWAY HAS NO USE
+                                 FOR THE LAST ANSWER: nothing beside the button is about a deletion
+                                 any more (registry item 311; the same shape
+                                 `admin/AdminTeams.tsx#deleteOne` clears it in). */
+                              onKeep={() => setRefused(null)}
+                            />
+                          </>
+                        )}
+                        <SeasonPicker seasons={seasons} season={season} fallback={running} />
+                      </div>
+                      {/* WHAT IS SAID ABOUT THE MEMBER'S OWN QUESTION, and WHY A DELETION DID NOT
+                          HAPPEN, both under the row they were pressed in and not inside it.
+                          `Rankings.css` gives whatever follows the control the whole width of the
+                          head („Whatever comes first after the control"); put among the buttons a
+                          sentence would be a flex item in the narrow second track of that grid,
+                          and one of this length would widen the track and squeeze the name of the
+                          team beside it.
 
-                        Offered only inside the transfer window, which is the one door
-                        through which a team changes (owner, 05.09.2026), and only where
-                        there is somebody to answer: a team nobody is in has nobody to
-                        decide. */}
-                    {memberNumber !== null &&
-                      asking === undefined &&
-                      runs !== null &&
-                      teamOf(me) === null &&
-                      inYearlyWindow(today) && (
-                        <button
-                          type="button"
-                          className="button button--secondary"
-                          onClick={() => {
-                            apply({ teamId: team.id, memberNumber, date: today })
-                          }}
-                        >
-                          {t('teams.join')}
-                        </button>
+                          `ServerSaid` draws the refusal of a deletion as an alert, so the reader
+                          hears it as it appears, and the question has closed with the answer: the
+                          focus is on „Obriši", the button the sentence stands beside
+                          (`DeleteRecord`, owner 02.10.2026). */}
+                      {said}
+                      {refused !== null && (
+                        <ServerSaid answer={refused} refusals={WHEN_DELETING_A_TEAM} />
                       )}
-                    {/* **And a way to take it back, on its own terms and not on the terms
-                        that let it be sent.** Written inside the conditions above, it
-                        disappeared the moment any of them changed: the team deleted, a team
-                        arrived by another road, the window shut. The application went on
-                        existing with nothing that could end it, and the member stayed
-                        outside every team on the portal (review, 06.09.2026). Ending what
-                        you started may not depend on whether you could start it again.
-
-                        On the team it was sent to and nowhere else: on any other there is
-                        simply no way in while it waits, because a member is in one team
-                        (PDL P13). */}
-                    {asking !== undefined && asking.teamId === team.id && (
-                      <button
-                        type="button"
-                        className="button button--secondary"
-                        onClick={() => {
-                          answer(asking.id)
-                        }}
-                      >
-                        {t('teams.joinWithdraw')}
-                      </button>
-                    )}
-                    {mineToRun && (
-                      <>
-                        <Link
-                          className="button button--secondary"
-                          to={`/${locale}/tim/${team.slug}/izmena`}
-                        >
-                          {t('teams.edit')}
-                        </Link>
-                        {/* Asked twice before it happens, and asked by the portal's one
-                            way of asking about something nothing brings back
-                            (`DeleteRecord`), dressed as the button beside it. Not a
-                            dialog written here: all three of its controls carry the name
-                            of what is being deleted, so a reader who arrives at the
-                            question „delete what" is answered without going back up the
-                            page, and that was got right once already. */}
-                        <DeleteRecord
-                          name={team.name}
-                          look="button button--secondary"
-                          /* The team goes, and with it its points in the standing: there is
-                             no standing without a record, so the owner's „pa se tim briše
-                             kao i bodovi iz tabele za tu sezonu" is one act and not two. The
-                             frozen seasons are untouched, because nothing here writes a
-                             result (PDL, 04.09.2026), and since 28.09.2026 none of that is
-                             decided on this screen at all: `deleteOne` sends the act to the
-                             route the administration already sends it to. */
-                          onDelete={() => deleteOne(team, everMembers.map((one) => one.competitor))}
-                          /* A READER WHO ASKED AGAIN AND THEN PUT THE QUESTION AWAY HAS NO USE FOR
-                             THE LAST ANSWER: nothing beside the button is about a deletion any
-                             more (registry item 311; the same shape
-                             `admin/AdminTeams.tsx#deleteOne` clears it in). */
-                          onKeep={() => setRefused(null)}
-                        />
-                      </>
-                    )}
-                    <SeasonPicker seasons={seasons} season={season} fallback={running} />
-                  </div>
-                  {/* WHY A DELETION DID NOT HAPPEN, under the row it was pressed in and not
-                      inside it. `Rankings.css` gives whatever follows the control the whole
-                      width of the head („Whatever comes first after the control"); put among
-                      the buttons it would be a flex item in the narrow second track of that
-                      grid, and a sentence of this length would widen the track and squeeze
-                      the name of the team beside it.
-
-                      `ServerSaid` draws it as an alert, so the reader hears it as it
-                      appears, and the question has closed with the answer: the focus is
-                      on „Obriši", the button the sentence stands beside (`DeleteRecord`,
-                      owner 02.10.2026). */}
-                  {refused !== null && (
-                    <ServerSaid answer={refused} refusals={WHEN_DELETING_A_TEAM} />
+                    </div>
                   )}
-                </div>
+                </AskingThisTeam>
                 <p className="profile__meta">
                   {team.city}
                   {' · '}
