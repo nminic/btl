@@ -391,7 +391,12 @@ describe('a sentence with a value put into it', () => {
       /* The season a pair runs in, and not the day it was made: that day is answered to
          nobody since 13.09.2026 and is drawn nowhere. */
       'pair.forSeason',
-      'pair.inviteBody',
+      /* ONE WENT FROM THIS LIST ON 10.10.2026 (P2) AND ITS KEY DID NOT: `pair.inviteBody`, the
+         message „Pozovi u trkački par" wrote into the session. The press sends `POST /api/pairs`
+         since that day and the server writes the message (`PairWriteApi.theInvitationBodyReads`),
+         so no screen makes the sentence. The key stays because
+         `PairWriteApiTest.theTwoSentencesAreThePortalsOwnWords` holds it against the Java that
+         writes it, the reason given below for the team's two that went with T5. */
       'pair.received',
       'pair.sent',
       'profile.allDucats',
