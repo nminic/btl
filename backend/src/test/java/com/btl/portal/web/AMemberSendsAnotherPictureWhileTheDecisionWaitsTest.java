@@ -35,8 +35,9 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
- * THE PICTURE IS COMPARED BY THE STATEMENT THAT CLAIMS THE ROW, SO A MEMBER'S SEND THAT LANDS
- * BETWEEN READING THE ROW AND CLAIMING IT IS REFUSED AND NOT PUBLISHED.
+ * THE ROW IS TAKEN BEFORE THE PICTURE IS LOOKED AT, SO A MEMBER'S SEND THAT LANDS BETWEEN READING THE
+ * ROW AND DECIDING IT - A NEW PICTURE, OR THE CIRCLE MOVED OVER THE SAME ONE - IS REFUSED AND NOT
+ * PUBLISHED.
  *
  * <p>PDL, the owner's answers of 10.10.2026: „Odobrava se samo slika koju je moderator video
  * (odluka nosi otisak; promenjena slika se odbija rečenicom)." and „Obe odluke o profilnoj slici,
@@ -46,30 +47,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p><b>WHY THIS IS A FILE OF ITS OWN, AND WHY {@code VerificationWriteApiTest} CANNOT HOLD IT.</b>
  * That class is {@code @Transactional}, so the route joins the test's transaction and the member's
- * send and the moderator's claim cannot be two transactions at all. Every case there that replaces
- * the picture does it BEFORE the moderator presses, which the claim meets as a row that already holds
- * another picture; it cannot tell a claim that asks the row for the picture from a route that asked
- * the row in Java a moment earlier and then claimed it without asking, because sequentially the two
+ * send and the moderator's decision cannot be two transactions at all. Every case there that changes
+ * the picture does it BEFORE the moderator presses, which the route meets as a row that already holds
+ * another picture; it cannot tell a route that took the row and then looked from one that looked at
+ * the row in Java a moment earlier and then acted without taking it, because sequentially the two
  * agree. <b>This is the shape {@code VerificationDecisionConcurrencyTest} names for the state of the
  * row</b> - a check written in Java passes every sequential case and fails only under concurrency -
- * and the picture is the second thing the claim has to be the one to ask.
+ * and the picture and its circle are the second and third things the route has to look at under the
+ * lock.
  *
  * <p><b>THE ORDER IS TAKEN AWAY FROM THE SCHEDULER</b>, the way that precedent takes it. The case
  * holds the row {@code FOR UPDATE} from a connection neither HTTP thread touches, sends the decision,
- * and waits until the lock manager shows it stopped behind the held row: by then it has read the row
- * (a plain read is not stopped by a row lock), found the picture it named, and reached the statement
- * that claims. Only then does the member's send happen - on the holding connection, as the same
- * {@code update verification set photo_id} that {@code MePhotoApi.send} runs under its own {@code for
- * update} - and the lock is let go. The claim wakes up and re-reads the row after the commit, which
- * is what READ COMMITTED does for a statement that waited, and so meets the picture the member left.
+ * and waits until the lock manager shows it stopped behind the held row: by then it has done
+ * everything a decision does before it takes the row, and it is stopped at the first statement that
+ * does. Only then does the member's send happen - on the holding connection, as the statement
+ * {@code MePhotoApi.send} runs under its own {@code for update}: {@code update verification set
+ * photo_id} for a new picture, or {@code update photo set crop_x ...} for a circle moved over the
+ * same one - and the lock is let go. The statement that waited re-checks the row, and the statement
+ * after it reads the picture and the circle in a snapshot taken after the wait.
  *
- * <p><b>What it measures that nothing else can, and the mutation that says so.</b> A claim without
- * the condition on the picture goes through on the repointed row. For an approval it then publishes
- * the picture it read before the send, which the database has since deleted (V54: nobody holds it),
- * so the decision falls over as a server fault; for a refusal it simply records a verdict on a
- * picture nobody looked at and tells the member. A route that asked the row first in Java and then
- * claimed without the condition does exactly the same, because its question was put before the lock
- * was let go. Both answer something other than 409 here.
+ * <p><b>What it measures that nothing else can, and the mutations that say so.</b> A route that reads
+ * the circle in the SAME statement as the lock (a join), or looks at the row before it takes it, goes
+ * through on a circle the member has since moved, and an approval then publishes it; measured on
+ * 10.10.2026 on a real PostgreSQL, such a statement reads the circle as it stood before it waited. A
+ * route that compares the key alone answers 200 on a moved circle (measured on the route as it stood:
+ * the key 1 before and 1 after). A route that does not compare the key goes through on the repointed
+ * row, and for an approval then publishes a picture the database has since deleted (V54: nobody holds
+ * it), so it falls over as a server fault. All of them answer something other than 409 here.
  *
  * <p>NOT {@code @Transactional}, for the precedent's reason, so every row is a real commit against the
  * database the whole suite shares and the {@code @AfterEach} takes them out again by key whether the
@@ -95,6 +99,10 @@ class AMemberSendsAnotherPictureWhileTheDecisionWaitsTest {
 	private static final String SOMEBODY_ANSWERED_IT_ALREADY = "O stavci je već odlučeno.";
 
 	private static final String THE_REASON = "Slika je mutna, posalji ostriju";
+
+	/** The circle both pictures are made with ({@link #aPicture}) and the one the moderator names,
+	 *  spelled the way a screen sends back the number it read: 0.3 for the column's 0.30000000. */
+	private static final String THE_CIRCLE_HE_SAW = "{\"x\":0.3,\"y\":0.7,\"size\":0.45}";
 
 	private static final String A_TOWN = "(select id from place where rank = 1)";
 
@@ -222,7 +230,7 @@ class AMemberSendsAnotherPictureWhileTheDecisionWaitsTest {
 				   statement `MePhotoApi.send` runs once it has the row: the pointer moves to the
 				   other picture and the row keeps its key and its place. The request above has
 				   already read the row and found `seen`; it is stopped at the statement that
-				   claims it. */
+				   takes the row. */
 				db.sql("update verification set photo_id = ? where id = ?")
 						.params(newer, item).update();
 
@@ -243,44 +251,129 @@ class AMemberSendsAnotherPictureWhileTheDecisionWaitsTest {
 			assertThat(mapper.readTree(answered.getContentAsString()).path("reason").asString())
 					.isEqualTo(THE_PICTURE_WAS_CHANGED);
 
-			assertThat(db.sql("select state from verification where id = ?").param(item)
-					.query(String.class).single()).isEqualTo("waiting");
-			assertThat(db.sql("select photo_id from verification where id = ?").param(item)
-					.query(Long.class).single())
-					.as("the row does not hold the picture the member left")
-					.isEqualTo(newer);
-			assertThat(db.sql("select count(*) from verification where id = ? and decided_at is null"
-							+ " and decided_by is null and decided_by_name is null and reason is null")
-					.param(item).query(Integer.class).single())
-					.as("a column of the decision was written although it was refused")
-					.isEqualTo(1);
-			assertThat(db.sql("select photo_id from competitor where id = ?").param(he)
-					.query(Long.class).optional())
-					.as("a picture was published on his profile although the decision was refused")
-					.isEmpty();
-			assertThat(db.sql("select count(*) from message where to_id = ?").param(he)
-					.query(Integer.class).single())
-					.as("he was written to although the decision was refused")
-					.isZero();
+			nothingWasDecidedAndTheRowHolds(newer);
 		} finally {
 			pool.shutdownNow();
 		}
 	}
 
 	/**
+	 * THE CIRCLE IS MOVED OVER THE SAME PICTURE WHILE THE DECISION WAITS FOR THE ROW, AND THE DECISION
+	 * IS REFUSED FOR BOTH ANSWERS, WITH THE KEY WHERE IT WAS.
+	 *
+	 * <p>This is the member's other half of PDL 27.09.2026 („da pomerim krug da gadja drugi deo
+	 * slike"): {@code MePhotoApi.send} with no file moves the circle on the picture's own row and
+	 * leaves the key where it was, so everything the case above measures about the KEY is silent
+	 * here by construction. Measured on the route as it stood before the circle was part of what a
+	 * decision names: the key 1 before and 1 after, and a decision naming the old key answered 200
+	 * and published the moved circle.
+	 *
+	 * <p>What stands after the refusal is asked of every column the decision writes, and of the
+	 * circle as well: the member's move is his, and a refusal that put it back, or a decision that
+	 * had half-written, would leave it somewhere else than where he put it.
+	 */
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	void aCircleMovedWhileTheDecisionWaitsForTheRowIsNotDecided(boolean approved) throws Exception {
+
+		ExecutorService pool = Executors.newSingleThreadExecutor();
+		List<Future<MockHttpServletResponse>> submitted = new ArrayList<>();
+
+		try {
+			holdingTheRow.execute(heldOpen -> {
+				db.sql("select 1 from verification where id = ? for update")
+						.param(item).query(Integer.class).single();
+
+				assertThat(BlockedBehindThisHold.count(db))
+						.as("the row is locked and nothing has been submitted yet")
+						.isZero();
+
+				submitted.add(pool.submit(() -> decide(session, approved)));
+
+				waitUntilTheRequestIsStopped();
+
+				/* AND NOW THE MEMBER'S SEND WITH NO FILE LANDS, on the connection that holds the row, as
+				   the statement `MePhotoApi.send` runs once it has the row: the circle moves on the
+				   picture's own row, all three fractions, and no pointer and no key changes. The request
+				   above has already done everything before the lock and is stopped at the statement that
+				   takes the row. */
+				db.sql("update photo set crop_x = 0.125, crop_y = 0.875, crop_diameter = 0.625"
+								+ " where id = ?")
+						.param(seen).update();
+
+				assertThat(submitted)
+						.as("the decision was answered before the member's send landed, so it never"
+								+ " waited for the row and this case measures nothing about the circle")
+						.hasSize(1).noneMatch(Future::isDone);
+
+				return null;
+			});
+
+			MockHttpServletResponse answered = submitted.get(0).get(30, TimeUnit.SECONDS);
+
+			assertThat(answered.getStatus())
+					.as("a decision about the circle the moderator saw was carried out on a circle the"
+							+ " member had since moved, or fell over on it (approved=%s)", approved)
+					.isEqualTo(409);
+			assertThat(mapper.readTree(answered.getContentAsString()).path("reason").asString())
+					.isEqualTo(THE_PICTURE_WAS_CHANGED);
+
+			nothingWasDecidedAndTheRowHolds(seen);
+			assertThat(db.sql("select crop_x || '/' || crop_y || '/' || crop_diameter from photo"
+							+ " where id = ?").param(seen).query(String.class).single())
+					.as("the circle is not where the member put it")
+					.isEqualTo("0.12500000/0.87500000/0.62500000");
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	/**
+	 * EVERYTHING A DECISION WRITES, AND NONE OF IT IS THERE: the row still waits, still holds the
+	 * picture the member left, carries no trace of an answer, nothing is on his profile and nothing
+	 * was written to him. Asked of every column on purpose, because 409 is also what a route would
+	 * answer after it had published the picture or recorded the verdict.
+	 *
+	 * @param holding the key of the picture the row should be holding now
+	 */
+	private void nothingWasDecidedAndTheRowHolds(long holding) {
+		assertThat(db.sql("select state from verification where id = ?").param(item)
+				.query(String.class).single()).isEqualTo("waiting");
+		assertThat(db.sql("select photo_id from verification where id = ?").param(item)
+				.query(Long.class).single())
+				.as("the row does not hold the picture the member left")
+				.isEqualTo(holding);
+		assertThat(db.sql("select count(*) from verification where id = ? and decided_at is null"
+						+ " and decided_by is null and decided_by_name is null and reason is null")
+				.param(item).query(Integer.class).single())
+				.as("a column of the decision was written although it was refused")
+				.isEqualTo(1);
+		assertThat(db.sql("select photo_id from competitor where id = ?").param(he)
+				.query(Long.class).optional())
+				.as("a picture was published on his profile although the decision was refused")
+				.isEmpty();
+		assertThat(db.sql("select count(*) from message where to_id = ?").param(he)
+				.query(Integer.class).single())
+				.as("he was written to although the decision was refused")
+				.isZero();
+	}
+
+	/**
 	 * TWO MODERATORS NAME THE SAME PICTURE AT THE SAME INSTANT: THE LOSER IS TOLD THE ROW WAS
 	 * DECIDED, NOT THAT THE PICTURE CHANGED.
 	 *
-	 * <p>The picture did not change, and both of them named the one the row holds, so the condition
-	 * on the picture is met by both and it is the state that the loser's claim misses. The two
-	 * refusals are different sentences and a route that read a miss the cheap way - „my claim found
-	 * nothing, so it is the picture" - would tell a man who looked at the right picture that it had
-	 * changed. A decided row keeps no picture (V9), so asking only whether the row now holds another
-	 * one than he named is true of it too; the answer is owed to the state first.
+	 * <p>The picture did not change, and both of them named the one the row holds, so what each
+	 * names is right and it is the state that the loser meets: the statement that takes the row
+	 * finds it decided when its turn comes. The two refusals are different sentences and a route that
+	 * read a miss the cheap way - „the row is not as I looked at it, so it is the picture" - would
+	 * tell a man who looked at the right picture that it had changed. A decided row keeps no picture
+	 * (V9), so asking only whether the row now holds another one than he named is true of it too; the
+	 * answer is owed to the state first.
 	 *
 	 * <p>Both requests are stopped behind the held row by the lock manager before it is let go
 	 * ({@link BlockedBehindThisHold}), which names the branch: a request refused on the READ of an
-	 * already decided row is answered without ever reaching the claim, and its future is done by then.
+	 * already decided row is answered without ever reaching the lock, and its future is done by
+	 * then.
 	 */
 	@Test
 	void twoModeratorsNamingTheSamePictureLeaveTheLoserToldItWasDecidedAndNotThatItChanged()
@@ -363,7 +456,7 @@ class AMemberSendsAnotherPictureWhileTheDecisionWaitsTest {
 	private MockHttpServletResponse decide(String as, boolean approved) throws Exception {
 		String body = "{\"approved\":" + approved
 				+ (approved ? "" : ",\"reason\":\"" + THE_REASON + "\"")
-				+ ",\"seenPhotoId\":" + seen + "}";
+				+ ",\"seenPhotoId\":" + seen + ",\"seenCrop\":" + THE_CIRCLE_HE_SAW + "}";
 
 		return http.perform(post("/api/verification/" + item + "/decision").with(csrf())
 						.cookie(new Cookie(SessionCookie.NAME, as))

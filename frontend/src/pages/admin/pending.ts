@@ -49,19 +49,20 @@ export const WAITING = 'waiting'
 /**
  * ONE WAITING ITEM AS THE SCREEN NEEDS IT, out of the one the server gives.
  *
- * **The six it fills are not invented, they are the portal's own word for „not
+ * **The five it fills are not invented, they are the portal's own word for „not
  * here".** `PendingItem` says it of itself - „One shape for all seven, with every
  * field always present and empty where it does not apply" - and every queue has
- * always carried the five or six that are not its own as empty. What is new is only
+ * always carried the four or five that are not its own as empty. What is new is only
  * that the emptiness now arrives from this side, because the server has nowhere to
- * read these six from (`ServedPendingItem` names each one and why).
+ * read these five from (`ServedPendingItem` names each one and why).
  *
  * **The absent values are the ones the portal already reads as absent**, and never a
  * plausible-looking stand-in: `NO_RATING` is „nobody has given a mark", which the card
- * draws with the event page's own words for a comment nobody marked, and `WHOLE` is what
- * `cropIn` returns for a record with no square of its own. Three of the six are held to
- * that by a case; `crop` is `WHOLE` and cannot be, which is the paragraph at the bottom
- * of this one, and `currentDate`/`proposedDate` need no case at all any more - see below.
+ * draws with the event page's own words for a comment nobody marked. Three of the five
+ * are held to that by a case, and `currentDate`/`proposedDate` need no case at all any
+ * more - see below. `WHOLE` is what `cropIn` returns for a record with no square of its
+ * own, and `crop` is the SIXTH of the old list that is no longer on it: see the paragraph
+ * at the bottom of this one.
  *
  * **`picture` is the empty string, and it is STILL NOTHING READS IT, past the day this
  * paragraph expected that to change.** It mattered while the card asked
@@ -84,8 +85,7 @@ export const WAITING = 'waiting'
  * (`pages/member/ProfileBio.tsx`, `pages/member/EditTeam.tsx`) send `picture: ''`, and
  * `ServedPendingItem` omits the field outright - two producers, and neither has ever
  * written anything else. So this field goes on being written and never read, which
- * stays a loose end named here on purpose rather than solved in passing: `crop` below
- * it is in the identical position, for a related but separate reason of its own.
+ * stays a loose end named here on purpose rather than solved in passing.
  *
  * **It fills what is missing rather than overwriting what is there, and the
  * difference is not academic.** The answers this portal is fed do not all come off
@@ -96,9 +96,9 @@ export const WAITING = 'waiting'
  * marks a comment carries (PDL P6) - and leave nothing measuring them.
  *
  * **What keeps that from being a lie is that the gap is measured elsewhere and not
- * excused here**: `ServedPendingItem` names `picture`, `crop` and `email` and why the
+ * excused here**: `ServedPendingItem` names `picture` and `email` and why the
  * schema cannot reach them, `servedShape.test.ts` holds the declared answer against
- * `PendingItem` and prints exactly these three as the difference, and `PENDING.md`
+ * `PendingItem` and prints exactly these two as the difference, and `PENDING.md`
  * carries each with the table that has nowhere to hold it. A screen fed by the server
  * shows them empty today, and that is a decision the owner has yet to take rather than
  * something this function hides.
@@ -111,28 +111,28 @@ export const WAITING = 'waiting'
  * through the answer the server really gives, and each of the three set to something
  * plausible instead of empty turns exactly one case red.
  *
- * **`crop` HAS NO READER AT ALL, and that is written here rather than left to be
- * found.** Measured the same day `picture`/`email`/`rating` were: `crop` set to a
- * quarter of the picture leaves every case green. The one thing that read it was
- * `CropWindow`, drawn on a card until 27.09.2026 - so while ADL
- * A60 kept a waiting picture out of every address the portal could ask for it at,
- * there was nothing for a square to be a square OF. It is `WHOLE` because that is what
- * `cropIn` answers for a record with no square of its own.
+ * **`crop` LEFT THIS LIST ON 10.10.2026, AND IT HAS A READER NOW THAT IS NOT A DRAWING.**
+ * The sentence that stood here said `crop` had no reader at all, measured the day
+ * `picture`/`email`/`rating` were: set to a quarter of the picture it left every case
+ * green, because the one thing that had read it, `CropWindow`, was gone from the card
+ * on 27.09.2026 (the moderator is shown the WHOLE original, the note on
+ * `PhotoApi.waitingOn`). It is answered since 10.10.2026 for a row that holds a picture
+ * (`VerificationApi.Waiting.crop`), and the reader is the DECISION about that card:
+ * `admin/PendingQueue.tsx` sends it back with `photoId` (`approvalOf`, `refusalOf`),
+ * because a circle moved over the same picture does not change the key and a decision is
+ * only about what the moderator saw (PDL, 10.10.2026). Nothing draws it still, and
+ * drawing it is the owner's decision of 27.09.2026 and a job of its own.
  *
- * **THE DAY A60 WAS REVISITED THIS BOUNDARY DID NOT GO WITH IT, and the sentence that
- * used to stand here saying it would was a guess rather than a measurement.**
- * `PhotoApi.waitingOn`'s own comment settles why, and it is a decision the route forces
- * rather than a style this screen chose: the moderator is shown the WHOLE original and
- * never the member's circle - „the circle is the MEMBER's choice... not part of the
- * one being taken here" - so the route carries no crop for this caller to draw one
- * from. `admin/PendingQueue.tsx` therefore draws a plain picture and never
- * `CropWindow`, `crop` stays exactly as unread as it always was, and this paragraph is
- * corrected rather than left standing to tell the next reader to go finish it.
+ * **It arrives as null for a row that holds no picture, and null is turned into `WHOLE`
+ * here** (`itemFrom`, next to `photoId`), because `PendingItem.crop` is never null:
+ * `cropIn` and every other reader of a square ask for one. A row that holds a picture
+ * keeps its real circle, and that is what the decision names - so the `WHOLE` that
+ * `ABSENT` used to hold for it would have sent every approval with a circle nobody drew.
  *
  * **`currentDate` AND `proposedDate` ARE THE OTHER TWO, AND THEY ARE NOT AN OPEN
  * QUESTION LIKE THE REST.** Both answered for real off the schedule tab, from V30
  * until PDL P10a, 22.09.2026 took the tab away the same day: „Redova je pet, ne šest."
- * Where `picture`, `email` and `crop` wait on a decision the owner may yet take, these
+ * Where `picture` and `email` wait on a decision the owner may yet take, these
  * two wait on nothing - the queue that would carry a value for either is gone, not
  * merely unbuilt - so the case that once proved the fill-in inert
  * (`draws both days of a reported change of term now that the server answers them`)
@@ -140,7 +140,6 @@ export const WAITING = 'waiting'
  */
 const ABSENT = {
   picture: '',
-  crop: WHOLE,
   currentDate: '',
   proposedDate: '',
   rating: NO_RATING,
@@ -150,7 +149,7 @@ const ABSENT = {
 function itemFrom(served: ServedPendingItem): PendingItem {
   /* WHAT DID NOT ARRIVE IS FILLED IN; WHAT DID ARRIVE WINS. The spread order is the
      whole rule and it is written this way round on purpose: the day the server starts
-     answering one of the six, nothing here changes and the value simply comes through.
+     answering one of the five, nothing here changes and the value simply comes through.
      Written the other way round, this file would have to be edited to stop overwriting
      a field that had just been decided, and nothing would fail if somebody forgot. */
   return {
@@ -168,6 +167,13 @@ function itemFrom(served: ServedPendingItem): PendingItem {
        reason: what the server never omits is still made proof against a harness
        that predates it. */
     photoId: served.photoId ?? null,
+    /* THE CIRCLE IS NORMALISED FOR THE SAME REASON, in the other direction: the server answers
+       null for a row that holds no picture, and the spread above would lay that null over a
+       field `PendingItem` never lets be null. `WHOLE` is the portal's own word for „no square
+       of its own". A row that holds a picture arrives with its real circle and keeps it - it is
+       what a decision about the card names (`PendingQueue.tsx`, `approvalOf`), and a `WHOLE`
+       standing in for it would send the press with a circle nobody drew. */
+    crop: served.crop ?? WHOLE,
     /* AND THE TWO NAMES THE SERVER ANSWERS IN ANOTHER SORT, which is a different thing
        from the six above and is why they are written after the spread rather than
        before it: those are absent, these arrive and arrive as something else.

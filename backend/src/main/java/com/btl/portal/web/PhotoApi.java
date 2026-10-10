@@ -703,6 +703,16 @@ class PhotoApi {
 	 * down. Doing it would also change that answer's shape and therefore the portal's
 	 * contract, but the reason it is not done is the first one and not the cost.
 	 *
+	 * <p><b>[ISPRAVLJENO 10.10.2026, OS: the three fractions ARE answered beside the picture
+	 * now, for another reason than drawing it.]</b> {@code /api/verification} carries {@code
+	 * crop} on a row that holds a picture, because a decision about the row names the circle as
+	 * well as the key ({@code VerificationWriteApi.Answered#seenCrop}): a circle moved over the
+	 * same picture does not change its key, and it is a change of what the moderator saw. THIS
+	 * route is unchanged - it answers the WHOLE original and nothing about the crop - and the card
+	 * still draws the whole photograph. That the moderator sees the crop with the rest dimmed is
+	 * the owner's decision of 27.09.2026 and a job of its own; the day it is done it reads the
+	 * fractions from that answer and this route needs nothing.
+	 *
 	 * <p><b>AND THE CROP IS NOT REFUSED EVERYWHERE, WHICH HAS TO BE SAID HERE OR THIS
 	 * PARAGRAPH READS AS A RULE ABOUT THE PORTAL.</b> PDL 21b gives the MEMBER his own waiting
 	 * picture „sa krugom" on the screen he sends from. So the two readers are deliberately

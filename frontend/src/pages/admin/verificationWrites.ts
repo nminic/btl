@@ -37,6 +37,8 @@
  * (`PendingQueue.tsx`, `WhatTheServerSaid`).
  */
 
+import type { Crop } from '../../data/types'
+
 /**
  * WHAT `POST /api/verification/{id}/decision` TAKES, which is
  * `VerificationWriteApi.Answered` and nothing besides.
@@ -68,12 +70,30 @@ export type Answered = {
    * <p>It is `PendingItem.photoId`, the number the queue served with the card, and the card draws
    * its `<img>` from an address that carries the same number (`photoPath`), so what the moderator
    * saw and what he names are one value read once. The route compares it with what the row holds
-   * when it claims the row and answers 409 „Slika je promenjena, pogledaj je ponovo." when they
+   * when it takes the row and answers 409 „Slika je promenjena, pogledaj je ponovo." when they
    * differ, for the refusal as much as for the approval. Beside a card that drew no picture the
    * route answers 400, and a card that drew one cannot be decided without it, so it is written by
    * {@link anApprovalOfThePicture} and {@link aRefusalOfThePicture} and by nothing else.
    */
   seenPhotoId?: number
+  /**
+   * The circle over that picture as the queue served it, beside the key and on the same decisions
+   * and no others (`VerificationWriteApi.Answered.seenCrop`). It is `PendingItem.crop`, the three
+   * fractions that came with the card, sent back exactly as they arrived.
+   *
+   * <p>The key alone does not say what the moderator saw: a member can send the same picture with
+   * the circle moved, and `MePhotoApi.send` then keeps the key and changes the circle on the row.
+   * A decision is only about what the moderator saw (PDL, 10.10.2026), so the route compares both
+   * and answers the same 409 for either. <b>The card does not draw the circle</b> - it shows the
+   * whole original, and drawing the crop is a job of its own - so a card read again after such a
+   * refusal looks as it did before; the price of the owner's sentence until the crop is drawn
+   * (`PendingQueue.tsx` says it where the refusal is handled).
+   *
+   * <p>Written with the key by {@link anApprovalOfThePicture} and {@link aRefusalOfThePicture} and
+   * by nothing else: a key without its circle is a form not filled in (400), and so is a circle
+   * without its key.
+   */
+  seenCrop?: Crop
   /**
    * The runner's figures as the moderator sets them, on an approved run and nowhere else
    * (`VerificationWriteApi.Amended`, R1 of the results flows). LEFT OUT means „do not
@@ -167,8 +187,9 @@ export function anApproval(): Answered {
 }
 
 /**
- * Yes, to the picture this card drew: one request that names it, so the route can tell a
- * picture the moderator looked at from one a member sent after he did.
+ * Yes, to the picture this card drew and the circle over it: one request that names both, so the
+ * route can tell a picture the moderator looked at from one a member sent after he did, and a
+ * circle he looked at from one the member moved after.
  *
  * <p>Its own function for the reason {@link anApprovalWith} gives: a card that drew a picture
  * and a card that drew none are two different things to press on, and an optional argument to
@@ -176,8 +197,8 @@ export function anApproval(): Answered {
  * without it - the route answers that a form not filled in - or write it where there is no
  * picture to name.
  */
-export function anApprovalOfThePicture(seenPhotoId: number): Answered {
-  return { approved: true, reason: '', seenPhotoId }
+export function anApprovalOfThePicture(seenPhotoId: number, seenCrop: Crop): Answered {
+  return { approved: true, reason: '', seenPhotoId, seenCrop }
 }
 
 /**
@@ -215,8 +236,9 @@ export function aRefusal(reason: string): Answered {
  * symmetry (PDL, 10.10.2026: „I odbijanje slike traži viđenu sliku."): a reason typed about one
  * picture reaches the member as the verdict on another otherwise, and the outcome he turned down
  * was „da otisak traži samo odobravanje (član bi dobio odbijenu sliku koju niko nije pogledao)".
- * Its own function for the reason {@link anApprovalOfThePicture} gives.
+ * Its own function for the reason {@link anApprovalOfThePicture} gives, and it names the circle
+ * as that one does.
  */
-export function aRefusalOfThePicture(reason: string, seenPhotoId: number): Answered {
-  return { approved: false, reason, seenPhotoId }
+export function aRefusalOfThePicture(reason: string, seenPhotoId: number, seenCrop: Crop): Answered {
+  return { approved: false, reason, seenPhotoId, seenCrop }
 }

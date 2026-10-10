@@ -21,14 +21,18 @@ import { QUEUE } from './queues'
  * does not.</b>
  *
  * <ul>
- * <li><b>What a decision names is the picture the card drew</b> (`photoId`), for all three doors
- * that decide: the card's own Odobri, the box that hands a card back, and the sweep. And it names
- * THAT card's own: two cards side by side, so a screen that sent the first card's key for the
- * second is a different request.
- * <li><b>A card that drew no picture names none</b>, because the route answers 400 to a key
- * beside a biography.
+ * <li><b>What a decision names is the picture the card drew</b> (`photoId`) <b>and the circle that
+ * came with it</b> (`crop`), for all three doors that decide: the card's own Odobri, the box that
+ * hands a card back, and the sweep. And it names THAT card's own: two cards side by side, with two
+ * circles that are neither each other nor the whole picture, so a screen that sent the first card's
+ * key or circle for the second, or the `WHOLE` that stands in for a circle nobody served, is a
+ * different request.
+ * <li><b>A card that drew no picture names neither</b>, because the route answers 400 to a key or
+ * a circle beside a biography.
  * <li><b>The refusal is said on the card and the list is read again</b>, so that the card holds
- * what the row holds now (`readTheQueueAgain`; the review of T5).
+ * what the row holds now (`readTheQueueAgain`; the review of T5) - and that is the circle as well
+ * as the key, including when only the circle moved and the key did not (the member sent the same
+ * picture with the circle dragged), which is the case no address can show.
  * <li><b>And the card DRAWS what it holds</b>: the address of the picture moves with the number,
  * because the row's address does not. This is the case that matters most and the one nothing
  * else could see: with the old address a card read again with a new `photoId` keeps its element
@@ -57,9 +61,27 @@ const SOMEBODY_ANSWERED_IT_ALREADY = 'O stavci je već odlučeno.'
 
 const RATING = { organisation: 0, value: 0, ambience: 0 }
 
+/** The circles of the two pictures below. Neither is the other, neither is the whole picture
+ *  (`WHOLE`), and none of the three numbers of one repeats in the other, so a request that carries
+ *  the wrong card's circle, or the placeholder, or a coordinate taken from elsewhere, is another
+ *  request. */
+const NEDA_CROP = { x: 0.3, y: 0.7, size: 0.45 }
+
+const MIRA_CROP = { x: 0.125, y: 0.2, size: 0.8 }
+
+/** What Neda's circle becomes when she drags it: a different position over the SAME picture. */
+const NEDA_DRAGGED = { x: 0.35, y: 0.6, size: 0.5 }
+
 /** A row the schema really produces for an uploaded photograph, as `moderatorSeesThePicture`
- *  builds one, with the key of the picture it holds the thing the cases below vary. */
-function aPictureOf(id: number, who: string, memberNumber: string, photoId: number) {
+ *  builds one, with the key of the picture it holds and the circle over it, the things the cases
+ *  below vary. */
+function aPictureOf(
+  id: number,
+  who: string,
+  memberNumber: string,
+  photoId: number,
+  crop: { x: number; y: number; size: number },
+) {
   return {
     queue: 'profiles' as const,
     id,
@@ -73,21 +95,24 @@ function aPictureOf(id: number, who: string, memberNumber: string, photoId: numb
     city: '',
     country: '',
     photoId,
+    crop,
     rating: RATING,
   }
 }
 
-/** The other sort of row on the same tab, which holds no picture at all. */
+/** The other sort of row on the same tab, which holds no picture at all and so no circle: the
+ *  server answers null for it, and the screen reads that as `WHOLE`. */
 const aBiography = {
-  ...aPictureOf(22, 'Petar Petrović', '000012', 0),
+  ...aPictureOf(22, 'Petar Petrović', '000012', 0, NEDA_CROP),
   body: 'Trčim od malena, najviše volim brdske staze.',
   kind: 'bio' as const,
   photoId: null,
+  crop: null,
 }
 
-const neda = (photoId = 9) => aPictureOf(21, 'Neda Nedić', '000011', photoId)
+const neda = (photoId = 9, crop = NEDA_CROP) => aPictureOf(21, 'Neda Nedić', '000011', photoId, crop)
 
-const mira = (photoId = 12) => aPictureOf(23, 'Mira Mirić', '000013', photoId)
+const mira = (photoId = 12, crop = MIRA_CROP) => aPictureOf(23, 'Mira Mirić', '000013', photoId, crop)
 
 const asTheList = (rows: unknown[]): Response =>
   new Response(JSON.stringify(rows), {
@@ -132,6 +157,7 @@ describe('what a decision about a picture names', () => {
         approved: true,
         reason: '',
         seenPhotoId: 12,
+        seenCrop: MIRA_CROP,
       })
     } finally {
       stop()
@@ -164,6 +190,7 @@ describe('what a decision about a picture names', () => {
         approved: false,
         reason: 'Lice se ne vidi.',
         seenPhotoId: 12,
+        seenCrop: MIRA_CROP,
       })
     } finally {
       stop()
@@ -195,10 +222,21 @@ describe('what a decision about a picture names', () => {
       const bodyOf = (path: string): unknown =>
         JSON.parse(String(asked.find((one) => one.path === path)?.init?.body))
 
-      expect(bodyOf(decisionPath('21'))).toEqual({ approved: true, reason: '', seenPhotoId: 9 })
-      expect(bodyOf(decisionPath('23'))).toEqual({ approved: true, reason: '', seenPhotoId: 12 })
-      /* NOTHING NAMED beside the biography: the route answers 400 to a key where the row holds
-         no picture, so a sweep that named one for every card would settle two of the three. */
+      expect(bodyOf(decisionPath('21'))).toEqual({
+        approved: true,
+        reason: '',
+        seenPhotoId: 9,
+        seenCrop: NEDA_CROP,
+      })
+      expect(bodyOf(decisionPath('23'))).toEqual({
+        approved: true,
+        reason: '',
+        seenPhotoId: 12,
+        seenCrop: MIRA_CROP,
+      })
+      /* NOTHING NAMED beside the biography, neither a key nor the `WHOLE` that stands in for its
+         circle: the route answers 400 to either where the row holds no picture, so a sweep that
+         named them for every card would settle two of the three. */
       expect(bodyOf(decisionPath('22'))).toEqual({ approved: true, reason: '' })
     } finally {
       confirm.mockRestore()
@@ -282,7 +320,7 @@ describe('when the route says the picture is not the one the card drew', () => {
        order they happen: the sentence stays through the second read, the second read is what
        moves the address, and the address is what the next press has to agree with. */
     const { asked, reads, stop } = aServerThatSaysItChanged(
-      [[neda(9)], [neda(10)]],
+      [[neda(9)], [neda(10, NEDA_DRAGGED)]],
       [changed, did],
     )
 
@@ -332,8 +370,8 @@ describe('when the route says the picture is not the one the card drew', () => {
         .map((one) => JSON.parse(String(one.init?.body)))
 
       expect(bodies).toEqual([
-        { approved: true, reason: '', seenPhotoId: 9 },
-        { approved: true, reason: '', seenPhotoId: 10 },
+        { approved: true, reason: '', seenPhotoId: 9, seenCrop: NEDA_CROP },
+        { approved: true, reason: '', seenPhotoId: 10, seenCrop: NEDA_DRAGGED },
       ])
 
       await waitFor(() => {
@@ -346,7 +384,7 @@ describe('when the route says the picture is not the one the card drew', () => {
 
   it('does the same when it is the box that hands the card back, and the reason he typed goes with the box', async () => {
     const { asked, reads, stop } = aServerThatSaysItChanged(
-      [[neda(9)], [neda(10)]],
+      [[neda(9)], [neda(10, NEDA_DRAGGED)]],
       [changed, did],
     )
 
@@ -381,8 +419,59 @@ describe('when the route says the picture is not the one the card drew', () => {
         .map((one) => JSON.parse(String(one.init?.body)))
 
       expect(bodies).toEqual([
-        { approved: false, reason: 'Slika je mutna.', seenPhotoId: 9 },
-        { approved: false, reason: 'Slika je i dalje mutna.', seenPhotoId: 10 },
+        { approved: false, reason: 'Slika je mutna.', seenPhotoId: 9, seenCrop: NEDA_CROP },
+        {
+          approved: false,
+          reason: 'Slika je i dalje mutna.',
+          seenPhotoId: 10,
+          seenCrop: NEDA_DRAGGED,
+        },
+      ])
+    } finally {
+      stop()
+    }
+  }, SLOW)
+
+  it('names the circle as it is read again when only the circle moved and the key stayed', async () => {
+    /* THE CASE NO ADDRESS CAN SHOW. The member sends the same picture with the circle dragged:
+       `MePhotoApi.send` keeps the key and changes the circle on the row, so the card's `src` is the
+       same character for character before and after, and the only thing that tells the screen it
+       holds a stale card is the circle in the list read again. The decision about the old circle is
+       refused with the owner's sentence; the next press has to name the NEW circle, which it can
+       only do if the list was really read again and not served from what the data layer kept. */
+    const { asked, reads, stop } = aServerThatSaysItChanged(
+      [[neda(9, NEDA_CROP)], [neda(9, NEDA_DRAGGED)]],
+      [changed, did],
+    )
+
+    try {
+      const user = setupUser()
+
+      openQueue()
+      await screen.findByRole('list', { name: /Čeka/ })
+
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      expect(await cardOf('Neda Nedić').findByRole('alert')).toHaveTextContent(
+        THE_PICTURE_WAS_CHANGED,
+      )
+
+      await waitFor(() => {
+        expect(reads()).toBe(2)
+      })
+
+      /* The key did not move, so nothing about the picture's address did either. */
+      expect(pictureOf('Neda Nedić')).toBe('/api/verification/21/photo?photo=9')
+
+      await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
+
+      const bodies = asked
+        .filter((one) => one.path === decisionPath('21'))
+        .map((one) => JSON.parse(String(one.init?.body)))
+
+      expect(bodies).toEqual([
+        { approved: true, reason: '', seenPhotoId: 9, seenCrop: NEDA_CROP },
+        { approved: true, reason: '', seenPhotoId: 9, seenCrop: NEDA_DRAGGED },
       ])
     } finally {
       stop()
@@ -400,8 +489,8 @@ describe('when the route says the picture is not the one the card drew', () => {
 
         return asTheList(
           reads === 1
-            ? [neda(9), mira(12), aPictureOf(25, 'Zora Zorić', '000014', 14)]
-            : [neda(10), mira(13), aPictureOf(25, 'Zora Zorić', '000014', 14)],
+            ? [neda(9), mira(12), aPictureOf(25, 'Zora Zorić', '000014', 14, NEDA_CROP)]
+            : [neda(10), mira(13), aPictureOf(25, 'Zora Zorić', '000014', 14, NEDA_CROP)],
         )
       }
 

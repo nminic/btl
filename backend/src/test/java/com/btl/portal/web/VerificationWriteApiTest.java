@@ -305,6 +305,11 @@ class VerificationWriteApiTest {
 	 *  names when he answers (PDL, 10.10.2026, „odluka nosi otisak"). */
 	private long verasPhoto;
 
+	/** The circle Vera's picture was made with, written the way a screen sends the numbers back:
+	 *  the ones it read off the answer, {@code 0.11} for the column's {@code 0.11000000}. Taken
+	 *  from the fixture when it is made and never read off the row at the press. */
+	private String verasCircle;
+
 	/** An item about nobody in the record at all. */
 	private long aboutNobody;
 
@@ -486,6 +491,7 @@ class VerificationWriteApiTest {
 		waiting("profiles", BOJAN, "Biografija Bojana", "Trcim od 2019.", null);
 		anasText = waiting("profiles", ANA, "Biografija Ane", "Trcim od 2021. godine", null);
 		verasPhoto = photograph();
+		verasCircle = circleOf(verasPhoto);
 		verasPicture = waiting("profiles", VERA, "Slika Vere", "vera.jpg", verasPhoto);
 		aboutNobody = waitingAboutNobody("profiles", "Neko ko nije u evidenciji");
 		alreadyAnswered = decided("profiles", BOJAN, "Vec odluceno", "approved", null);
@@ -1141,24 +1147,177 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * A CIRCLE MOVED OVER THE SAME PICTURE IS NOT A CHANGE OF PICTURE, and that is a limit
-	 * written down and not a rule recommended.
+	 * A CIRCLE MOVED OVER THE SAME PICTURE IS A CHANGE OF WHAT HE SAW, FOR BOTH ANSWERS: THE
+	 * DECISION IS REFUSED AND THE ROW STAYS WITH THE CIRCLE THE MEMBER LEFT.
 	 *
-	 * <p>{@code MePhotoApi.send} moves the circle on the row that is there ("the circle alone moves
-	 * on the row that is already there"), so the key does not move. While the moderator is shown
-	 * the whole original and never the circle that is right; the day the queue draws it as the
-	 * owner decided on 27.09.2026 this case is where somebody finds out the key no longer says
-	 * what he saw. The head of {@code Answered} names it in the same words.
+	 * <p>{@code MePhotoApi.send} with no file moves the circle on the row of the picture that is
+	 * there, so the KEY does not move. A case that pinned exactly that as a limit stood here until
+	 * 10.10.2026, when the print was extended to the circle: the record of 27.09.2026 has a circle
+	 * moved over the same picture overwrite the waiting row as a new picture does („da pomerim krug
+	 * da gadja drugi deo slike, opet se salje na verifikaciju i gazi trenutan red kod verifikatora"),
+	 * and a decision is only about what the moderator saw. Measured on the route before the circle
+	 * was part of it: the key 1 before and 1 after, and a decision naming the old key answered 200
+	 * and published the moved circle.
+	 *
+	 * <p>All three fractions move here; {@link #aCircleMovedInOnlyOneFractionIsStillAnotherCircle}
+	 * moves them one at a time. The circle named is the one the picture HAD (the fixture's, never
+	 * read off the row at the press) and the key is the one the row still holds, so the only thing
+	 * in the request that disagrees with the row is the circle. What stands after the refusal is
+	 * asked of every column, and of the circle: the refusal does not put the member's move back.
 	 */
-	@Test
-	void aCircleMovedOverTheSamePictureDoesNotChangeWhichPictureHeSaw() throws Exception {
-		db.sql("update photo set crop_x = 0.4, crop_y = 0.6, crop_diameter = 0.3 where id = ?")
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	void aCircleMovedOverTheSamePictureRefusesTheDecisionAndLeavesTheRowAsTheMemberLeftIt(
+			boolean approved) throws Exception {
+
+		theMemberMovesTheCircle(verasPhoto, "0.125", "0.875", "0.625");
+
+		MockHttpServletResponse answered = decideSeeing(PROFILES_MODERATOR, verasPicture, approved,
+				approved ? null : THE_REASON, verasPhoto);
+
+		assertThat(answered.getStatus())
+				.as("the moderator decided about a circle that is no longer the one on the row, and it"
+						+ " was not refused (approved=%s)", approved)
+				.isEqualTo(409);
+		assertThat(reasonIn(answered)).isEqualTo(THE_PICTURE_WAS_CHANGED);
+		nothingWasDecided(verasPicture, verasPhoto);
+		assertThat(circleOn(verasPhoto))
+				.as("the refusal did not leave the circle where the member put it")
+				.isEqualTo("0.12500000/0.87500000/0.62500000");
+	}
+
+	/**
+	 * AND ONE FRACTION OF THE THREE MOVED IS ALREADY ANOTHER CIRCLE.
+	 *
+	 * <p>A comparison that left one of the three out would pass the case above, which moves all of
+	 * them, and a member who drags the circle straight across moves one. Each column is moved on its
+	 * own by the same small step, the picture and its key stay, and the decision names the circle as
+	 * it was.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"crop_x", "crop_y", "crop_diameter"})
+	void aCircleMovedInOnlyOneFractionIsStillAnotherCircle(String column) throws Exception {
+		db.sql("update photo set " + column + " = " + column + " + 0.05 where id = ?")
 				.param(verasPhoto).update();
 
+		MockHttpServletResponse answered =
+				decideSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto);
+
+		assertThat(answered.getStatus())
+				.as("%s moved on its own and the decision about the old circle was not refused", column)
+				.isEqualTo(409);
+		assertThat(reasonIn(answered)).isEqualTo(THE_PICTURE_WAS_CHANGED);
+		nothingWasDecided(verasPicture, verasPhoto);
+	}
+
+	/**
+	 * AFTER THE REFUSAL THE ROW STILL CAN BE DECIDED, by the moderator who looks again: naming the
+	 * circle as it stands now goes through, and what it publishes is that circle.
+	 *
+	 * <p>This is the other half of „i red ostaje" (PDL, 10.10.2026): a refusal that left the row
+	 * waiting but unable to be answered would satisfy every assertion of the cases above.
+	 */
+	@Test
+	void afterTheRefusalADecisionNamingTheCircleAsItStandsNowGoesThrough() throws Exception {
+		theMemberMovesTheCircle(verasPhoto, "0.125", "0.875", "0.625");
+
 		assertThat(answerSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto))
+				.isEqualTo(409);
+
+		assertThat(decideSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto,
+				circleOf(verasPhoto)).getStatus())
+				.as("the moderator who looked again was refused")
 				.isEqualTo(200);
+		assertThat(stateOf(verasPicture)).isEqualTo("approved");
 		assertThat(db.sql("select photo_id from competitor where member_number = ?")
 				.param(VERA).query(Long.class).optional()).contains(verasPhoto);
+		assertThat(circleOn(verasPhoto)).isEqualTo("0.12500000/0.87500000/0.62500000");
+	}
+
+	/**
+	 * THE CIRCLE IS COMPARED BY VALUE AND NOT BY SPELLING: the column keeps eight decimals and the
+	 * number a screen sends back is the one it read, so {@code 0.3} is the circle the column holds as
+	 * {@code 0.30000000}.
+	 *
+	 * <p>{@code BigDecimal.equals} compares the scale as well and would call all of these but the
+	 * eight-decimal one another circle, refusing every approval the screen ever sends. The spellings
+	 * are the ones a client can honestly produce for the same number: padded, unpadded, with more
+	 * digits than the column keeps, and in exponent form.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"0.3", "0.30", "0.30000000", "0.3000000000", "3E-1"})
+	void theCircleIsComparedByValueAndNotBySpelling(String spelled) throws Exception {
+		theMemberMovesTheCircle(verasPhoto, "0.3", "0.7", "0.45");
+
+		String circle = "{\"x\":" + spelled + ",\"y\":0.7,\"size\":0.45}";
+
+		assertThat(decideSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto, circle)
+				.getStatus())
+				.as("the circle spelled %s was taken for another circle", spelled)
+				.isEqualTo(200);
+	}
+
+	/**
+	 * A PICTURE NAMED WITHOUT ITS CIRCLE, OR A CIRCLE WITHOUT ITS PICTURE, OR A CIRCLE WITH A
+	 * FRACTION MISSING, IS A FORM NOT FILLED IN.
+	 *
+	 * <p>The key alone is not the print (the case above that moves the circle is what shows it), so
+	 * a request that names the key and leaves the circle out would be a check anybody could skip
+	 * (ADL A8, owner, 19.09.2026: „Izostavljeno polje nikad ne sme tiho da promeni vrednost"). The
+	 * halves are separate guards of one function and each is its own row here, so that removing any
+	 * one leaves a case that fails: a missing part is read as a missing circle, and the whole of it
+	 * as a refusal of the form and not as a fault of the server.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"KEY_ONLY",
+		"CIRCLE_ONLY",
+		"{\"y\":0.7,\"size\":0.45}",
+		"{\"x\":0.3,\"size\":0.45}",
+		"{\"x\":0.3,\"y\":0.7}",
+		"{}"})
+	void aPictureNamedWithoutItsWholeCircleIsAFormNotFilledIn(String what) throws Exception {
+		for (boolean approved : new boolean[] {true, false}) {
+			MockHttpServletResponse answered = switch (what) {
+				case "KEY_ONLY" -> decideSeeing(PROFILES_MODERATOR, verasPicture, approved,
+						approved ? null : THE_REASON, verasPhoto, null);
+				case "CIRCLE_ONLY" -> decideSeeing(PROFILES_MODERATOR, verasPicture, approved,
+						approved ? null : THE_REASON, null, verasCircle);
+				default -> decideSeeing(PROFILES_MODERATOR, verasPicture, approved,
+						approved ? null : THE_REASON, verasPhoto, what);
+			};
+
+			assertThat(answered.getStatus())
+					.as("a decision naming %s was taken (approved=%s)", what, approved)
+					.isEqualTo(400);
+			assertThat(reasonIn(answered)).isEqualTo(THE_FORM_IS_NOT_COMPLETE);
+			nothingWasDecided(verasPicture, verasPhoto);
+		}
+	}
+
+	/**
+	 * A CIRCLE NAMED BESIDE A ROW THAT HOLDS NO PICTURE IS REFUSED ON ITS OWN, like the key is: the
+	 * rule this route keeps for every field that rides with one kind of decision only.
+	 *
+	 * <p>The row is a biography and the request names only the circle. A guard that asked about the
+	 * key alone would take it and drop it, and tell whoever sent it that it was kept.
+	 */
+	@Test
+	void aCircleNamedBesideARowThatHoldsNoPictureIsRefusedForBothAnswers() throws Exception {
+		for (boolean approved : new boolean[] {true, false}) {
+			MockHttpServletResponse answered = decideSeeing(PROFILES_MODERATOR, anasText, approved,
+					approved ? null : THE_REASON, null, verasCircle);
+
+			assertThat(answered.getStatus())
+					.as("a circle was taken beside a biography (approved=%s)", approved)
+					.isEqualTo(400);
+			assertThat(reasonIn(answered)).isEqualTo(A_SEEN_PICTURE_GOES_WITH_A_PICTURE);
+			assertThat(stateOf(anasText)).isEqualTo("waiting");
+			assertThat(db.sql("select bio from competitor where member_number = ?")
+					.param(ANA).query(String.class).single())
+					.as("the biography was published although the request was refused")
+					.isEmpty();
+		}
 	}
 
 	/**
@@ -3186,16 +3345,26 @@ class VerificationWriteApiTest {
 	/**
 	 * A DECISION ABOUT A PICTURE, written out whole so that what it names is exactly what the case
 	 * names: {@code seen} is the key of the picture the moderator looked at, and left out when it
-	 * is {@code null}. The key is NEVER read off the row here, which is what every case about the
-	 * picture he saw depends on: a helper that looked it up at the moment of the press would be
-	 * the very route this case is written against.
+	 * is {@code null}; the circle is Vera's ({@link #verasCircle}) beside any key. Neither is EVER
+	 * read off the row here, which is what every case about the picture he saw depends on: a helper
+	 * that looked them up at the moment of the press would be the very route this case is written
+	 * against.
 	 */
 	private MockHttpServletResponse decideSeeing(String email, long id, boolean approved,
 			String reason, Long seen) throws Exception {
 
+		return decideSeeing(email, id, approved, reason, seen, seen == null ? null : verasCircle);
+	}
+
+	/** The same with the circle named by the case, as the JSON object a screen sends, or left out
+	 *  when it is {@code null}. */
+	private MockHttpServletResponse decideSeeing(String email, long id, boolean approved,
+			String reason, Long seen, String circle) throws Exception {
+
 		String body = "{\"approved\":" + approved
 				+ (reason == null ? "" : ",\"reason\":\"" + reason + "\"")
-				+ (seen == null ? "" : ",\"seenPhotoId\":" + seen) + "}";
+				+ (seen == null ? "" : ",\"seenPhotoId\":" + seen)
+				+ (circle == null ? "" : ",\"seenCrop\":" + circle) + "}";
 
 		return decideWith(email, id, body);
 	}
@@ -3334,12 +3503,46 @@ class VerificationWriteApiTest {
 				.update();
 	}
 
+	/**
+	 * A picture of its own digest AND OF ITS OWN CIRCLE. The circle differs from every other
+	 * picture's, because a decision names a circle and a comparison that read the circle of another
+	 * picture, or of the member's portrait, would otherwise find the same three numbers and agree.
+	 */
 	private long photograph() {
+		int n = ++issued;
+		int step = n % 50;
+
 		return db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
-						+ " crop_diameter) values ('image/jpeg', 40960, ?, 0.3, 0.7, 0.45)"
-						+ " returning id")
-				.param(String.format("%064x", ++issued))
+						+ " crop_diameter) values ('image/jpeg', 40960, ?, ?, ?, ?) returning id")
+				.params(String.format("%064x", n), BigDecimal.valueOf(10 + step, 2),
+						BigDecimal.valueOf(90 - step, 2), BigDecimal.valueOf(30 + step, 2))
 				.query(Long.class).single();
+	}
+
+	/** The circle of a picture as a screen would send it back: the number it read, without the
+	 *  zeros the column pads it with. */
+	private String circleOf(long photo) {
+		return db.sql("select crop_x, crop_y, crop_diameter from photo where id = ?").param(photo)
+				.query((row, number) -> "{\"x\":" + plain(row.getBigDecimal(1)) + ",\"y\":"
+						+ plain(row.getBigDecimal(2)) + ",\"size\":" + plain(row.getBigDecimal(3)) + "}")
+				.single();
+	}
+
+	private static String plain(BigDecimal fraction) {
+		return fraction.stripTrailingZeros().toPlainString();
+	}
+
+	/** What the column holds, padded as the column pads it: for asking what stands after a refusal. */
+	private String circleOn(long photo) {
+		return db.sql("select crop_x || '/' || crop_y || '/' || crop_diameter from photo where id = ?")
+				.param(photo).query(String.class).single();
+	}
+
+	/** WHAT A MEMBER'S SEND WITH NO FILE DOES (`MePhotoApi.send`): the circle moves on the row of the
+	 *  picture that is there, and the pointer and the key stay where they were. */
+	private void theMemberMovesTheCircle(long photo, String x, String y, String size) {
+		db.sql("update photo set crop_x = ?, crop_y = ?, crop_diameter = ? where id = ?")
+				.params(new BigDecimal(x), new BigDecimal(y), new BigDecimal(size), photo).update();
 	}
 
 	private long waiting(String queue, String memberNumber, String subject, String body,

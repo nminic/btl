@@ -185,14 +185,18 @@ import java.util.List;
  * while a column for it exists is worse than answering it: the list reads as a reason, and
  * a reason that is not true teaches the next reader to stop looking.
  *
- * <p><b>The three that really have no home are still named, each with the reason that is
+ * <p><b>The two that really have no home are still named, each with the reason that is
  * true today</b>, in {@code VerificationApiTest.everyFieldThePortalReadsIsOneTheServerAnswersWith}:
- * the address of a registration, and the picture with its crop - which is not a missing
- * column at all but ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka odluku
- * moderatora nije javna... Takva slika odgovara tacno isto kao slika koje nema", so a
- * digest answered here would draw a broken frame. {@code Answers} checks both halves of
- * every name, so a field that went missing for some other reason cannot hide behind the
- * list.
+ * the address of a registration, and the picture - which is not a missing column at all but
+ * ADL A60, 20.09.2026: „Slika koju drzi samo nesto sto ceka odluku moderatora nije javna...
+ * Takva slika odgovara tacno isto kao slika koje nema", so a digest answered here would draw a
+ * broken frame. {@code Answers} checks both halves of every name, so a field that went missing
+ * for some other reason cannot hide behind the list. <b>The third name, the circle over the
+ * picture ({@code crop}), left this list on 10.10.2026</b> and is answered for the rows that hold
+ * a picture: the sentence above is about a digest, which can be asked for and refused, and three
+ * fractions of the picture's own edges are not an address and say nothing about the person in it
+ * (the same reasoning {@code servedAge.test.ts} gives for the portrait's). What it is answered
+ * FOR is named below.
  *
  * <p><b>WHICH IS STILL TRUE OF A DIGEST AND IS NO LONGER TRUE OF THE PICTURE, since ADL
  * A60's dopuna of 27.09.2026.</b> The sentence above is kept because it is still exactly why
@@ -209,6 +213,20 @@ import java.util.List;
  * the route does not read). <b>Since 10.10.2026 the portal reads it as the picture the card
  * drew</b>: a decision about the row names it, and {@link VerificationWriteApi} refuses a
  * decision about any other (PDL: „Odobrava se samo slika koju je moderator video").
+ *
+ * <p><b>AND THE CIRCLE IS ANSWERED BESIDE IT, AS THE OTHER HALF OF THE SAME NAME.</b> A circle
+ * moved over the same picture is not a new key ({@code MePhotoApi.send} moves it on the row that
+ * is there, measured 10.10.2026: the key 1 before and 1 after, the circle 0.30/0.70/0.45 before
+ * and 0.125/0.875/0.625 after), and a decision that named the key alone would approve a circle
+ * its moderator never had in front of him. So {@code crop} carries the three fractions of the
+ * picture the row holds, a decision names them with the key, and {@link VerificationWriteApi}
+ * compares both and refuses a decision about any other with the owner's sentence. <b>That is all
+ * they are for.</b> The card still draws the whole original and no circle; drawing it as the owner decided
+ * on 27.09.2026 („Isecak sa zatamnjenim ostatkom") is a job of its own, and the day it is done it
+ * reads the fractions from this answer and needs nothing added here. Until then a circle moved
+ * under his hand refuses his decision and the card, read again, looks exactly as it did: that is
+ * the price of the owner's sentence while the card cannot show the circle, and it is written
+ * where he can find it.
  *
  * <p><b>WHAT USED TO COST AN ACTION AND NOT AN EMPTY BOX, until 22.09.2026 (ADL A64).</b>
  * That is measured rather than described, and it is kept here rather than deleted because
@@ -409,6 +427,16 @@ class VerificationApi {
 	 *                     picture the moderator saw ({@code seenPhotoId} of {@code
 	 *                     VerificationWriteApi.Answered}), so it must be the key of the
 	 *                     picture the card draws and nothing else
+	 * @param crop         the circle the member set over THAT picture, the one the row holds
+	 *                     while it waits and not the one on his profile, and nothing where
+	 *                     {@code photoId} is nothing. <b>It is the second half of what a
+	 *                     decision about the row names</b> ({@code seenCrop} of {@code
+	 *                     VerificationWriteApi.Answered}), and it is answered for that and for
+	 *                     nothing else: the card still draws the whole original and no circle
+	 *                     (the note on {@code PhotoApi.waitingOn}; drawing the crop is a job of
+	 *                     its own). Needed because a circle moved over the same picture does not
+	 *                     change its key ({@code MePhotoApi.send} moves it on the row that is
+	 *                     there), so the key alone cannot say that what he saw has changed
 	 * @param rating       what a member thought of the event, on the comments tab and
 	 *                     {@code NO_RATING} - nought on all three marks - everywhere else,
 	 *                     off {@code comment_submission} (V30). The portal's own default
@@ -427,9 +455,22 @@ class VerificationApi {
 	 */
 	record Waiting(String queue, long id, LocalDate date, String memberNumber, String who,
 			String subject, String subjectId, String body, String kind, String city,
-			String country, Long photoId, Rating rating, Long raceId, LocalDate raceDate,
+			String country, Long photoId, Crop crop, Rating rating, Long raceId, LocalDate raceDate,
 			String raceKind, BigDecimal distanceKm, Integer ascentM, Integer descentM,
 			Integer seconds, String link) {
+	}
+
+	/**
+	 * Which circle of a picture, as three fractions between 0 and 1.
+	 *
+	 * <p>The same three numbers under the same names {@link CompetitorApi.Crop}, {@link TeamApi.Crop}
+	 * and {@code MePhotoApi.Crop} answer with, and for the reason they give: the column has been
+	 * {@code crop_diameter} since V21 and the portal's word is {@code size}. A copy of its own and not
+	 * a shared record is what those three already do, and it holds here too - each resource owns the
+	 * shape of its own answer. {@code VerificationWriteApi} takes the same record back, because a
+	 * decision names the circle exactly as the queue served it.
+	 */
+	record Crop(BigDecimal x, BigDecimal y, BigDecimal size) {
 	}
 
 	/**
@@ -565,7 +606,15 @@ class VerificationApi {
 						+ " ra.limit_seconds as the_races_limit,"
 						+ " rs.distance_km as sent_distance, rs.ascent_m as sent_ascent,"
 						+ " rs.descent_m as sent_descent, rs.seconds as sent_seconds,"
-						+ " coalesce(rs.link, '') as link"
+						+ " coalesce(rs.link, '') as link,"
+						/* THE CIRCLE OF THE PICTURE THIS ROW HOLDS, named and last so that nothing
+						   above it moves: the mapping reads the early columns by place. Off `shown`
+						   below, which is joined by the ROW's pointer and never by the member's
+						   portrait - while a picture waits the two are two different pictures with
+						   two different circles (ADL A60: it is not on the profile yet), and a
+						   circle read off the wrong one would let a decision about the one he saw
+						   be compared with the circle of the other. */
+						+ " shown.crop_x, shown.crop_y, shown.crop_diameter"
 						/* THE TWO DAYS A REPORTED CHANGE OF TERM ONCE CARRIED STOOD HERE, off
 						   `schedule_proposal` (V30), from the day that table arrived until PDL
 						   P10a took its tab away the same day: „Redova je pet, ne šest." Neither
@@ -633,6 +682,10 @@ class VerificationApi {
 						   the figures of his run. */
 						+ " left join result_submission rs on rs.id = v.result_submission_id"
 						+ " left join race ra on ra.id = rs.race_id"
+						/* AND THE PICTURE THE ROW HOLDS, LEFT: only a profiles row holds one, and
+						   only while it waits (`verification_decided_keeps_no_photo`, V9), so
+						   every other row joins to nothing and answers no circle. */
+						+ " left join photo shown on shown.id = v.photo_id"
 						/* THE ONES HE MAY, decided by `WhatHeMayDo` and passed in. Written
 						   here as a condition over the ticks it would be a second home for
 						   „may he" and would answer the superadmin, who holds everything with
@@ -653,6 +706,9 @@ class VerificationApi {
 							row.getString(4), row.getString(5), row.getString(6), row.getString(7),
 							row.getString(8), row.getString(9), row.getString(10), row.getString(11),
 							row.getObject(12, Long.class),
+							row.getObject("crop_x") == null ? null
+									: new Crop(row.getBigDecimal("crop_x"), row.getBigDecimal("crop_y"),
+											row.getBigDecimal("crop_diameter")),
 							new Rating(row.getInt(13), row.getInt(14), row.getInt(15)),
 							row.getObject("race_id", Long.class),
 							row.getObject("race_date", LocalDate.class),

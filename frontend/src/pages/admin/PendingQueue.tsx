@@ -102,7 +102,8 @@ function isProposal(id: string): boolean {
 }
 
 /**
- * THE DECISIONS A CARD SENDS, each naming the picture the card drew where it drew one.
+ * THE DECISIONS A CARD SENDS, each naming the picture the card drew where it drew one, and the
+ * circle that came with it.
  *
  * <p>PDL, the owner's answer of 10.10.2026: „Obe odluke o profilnoj slici, odobravanje i
  * odbijanje, važe samo za sliku koju je moderator video". What a card drew is `photoId`, the one
@@ -111,13 +112,20 @@ function isProposal(id: string): boolean {
  * 400 to a key beside a row that holds no picture, and to a picture's decision without one).
  * Asked here once for the three doors that decide - a card's own Odobri, the sweep, and the box
  * that hands a card back - so that none of them can spell it its own way.
+ *
+ * <p><b>The circle is `one.crop`, exactly as the queue served it</b> (`PendingItem.crop`), because
+ * the key alone does not move when the member sends the same picture with the circle moved and a
+ * decision is only about what the moderator saw. It is read where `photoId` is, off the same card,
+ * and for the same reason: two facts about one picture that came in one answer.
  */
 function approvalOf(one: PendingItem): Answered {
-  return one.photoId === null ? anApproval() : anApprovalOfThePicture(one.photoId)
+  return one.photoId === null ? anApproval() : anApprovalOfThePicture(one.photoId, one.crop)
 }
 
 function refusalOf(one: PendingItem, reason: string): Answered {
-  return one.photoId === null ? aRefusal(reason) : aRefusalOfThePicture(reason, one.photoId)
+  return one.photoId === null
+    ? aRefusal(reason)
+    : aRefusalOfThePicture(reason, one.photoId, one.crop)
 }
 
 /** Whether a queue has a second decision that hands the work back to its
@@ -222,22 +230,24 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * vidi ISECAK sa zatamnjenim ostatkom" (owner, 27.09.2026), confirms and sharpens
  * the 12.08.2026 decision this paragraph used to read as unmet: the moderator sees
  * the crop with its remainder dimmed but still perceptible, not the whole
- * photograph this card draws today. Drawing that needs `/api/verification` to
- * carry the crop's three fractions beside the picture, which this branch's route
- * does not - so drawing the crop is its own increment, and the whole photograph
- * drawn here in the meantime is a temporary stand-in rather than a decision of
- * this component's own. It stands in because it is strictly better than the
+ * photograph this card draws today. Drawing that is its own increment, and the
+ * whole photograph drawn here in the meantime is a temporary stand-in rather than
+ * a decision of this component's own. It stands in because it is strictly better than the
  * "Datoteka" label with nothing under it this branch replaces (owner, 27.09.2026:
  * "Svakako uradi sta god je potrebno da moderator vidi sliku koju verifikuje"),
  * not because the question of what he should see was ever open - it no longer is.
  * `PhotoApi.waitingOn`'s own comment still answers the WHOLE original and nothing
- * about the crop - "the circle is the MEMBER's choice over his own picture... not
- * part of the one being taken here" - and `VerificationApi.Waiting` carries no
- * `crop` field at all today, which is exactly what the branch that draws the crop
- * has to add. Drawing `CropWindow` here regardless would mean feeding it
- * `one.crop`, which is always `WHOLE` for a server row (`ABSENT.crop` in
- * `./pending.ts`) and would show a generic centred circle as though it were the
- * member's own choice, which it is not.
+ * about the crop. **`VerificationApi.Waiting` has carried the member's circle since
+ * 10.10.2026, as the print of a decision and for nothing else:** `one.crop` is the
+ * circle this card was served for a row that holds a picture, and `approvalOf` and
+ * `refusalOf` send it back with the key. Nothing here draws it, so a circle moved
+ * under the moderator's hand refuses his decision (409 „Slika je promenjena,
+ * pogledaj je ponovo.") and the card, read again, looks exactly as it did - the whole
+ * original and no circle. That is the price of the owner's sentence until the crop
+ * is drawn, written here where the refusal is handled and not left to be found on
+ * QA; drawing it is the job this paragraph names, and it now needs nothing added
+ * to the server. For a row with no picture `one.crop` is `WHOLE`, the portal's own
+ * word for „no square of its own" (`./pending.ts`), and is not sent.
  *
  * <p><b>A failed load says so rather than hiding the picture or drawing a broken
  * image icon, since PDL.md "29. Slika koja ne moze da se ucita" (owner,

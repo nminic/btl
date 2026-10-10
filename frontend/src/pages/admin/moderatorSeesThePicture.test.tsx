@@ -55,6 +55,10 @@ const aPhotoRow = {
   city: '',
   country: '',
   photoId: 9,
+  /* THE CIRCLE THE SERVER ANSWERS for a row that holds a picture (`VerificationApi.Waiting.crop`),
+     neither the whole picture nor the mock file's constant, so a decision that names the
+     placeholder is another request. */
+  crop: { x: 0.4, y: 0.6, size: 0.5 },
   rating: RATING,
 }
 
@@ -71,6 +75,7 @@ const aBioRow = {
   body: 'Trčim od malena, najviše volim brdske staze.',
   kind: 'bio' as const,
   photoId: null,
+  crop: null,
 }
 
 function answering(rows: unknown[]) {
@@ -278,6 +283,7 @@ describe('the picture on a card the moderator is deciding about', () => {
         approved: false,
         reason: 'Slika je nejasna.',
         seenPhotoId: 9,
+        seenCrop: { x: 0.4, y: 0.6, size: 0.5 },
       })
     } finally {
       stop()

@@ -13,6 +13,7 @@ import {
   aTeam,
   aTeamWithNoMark,
   aWaitingItem,
+  aWaitingPicture,
   myOwnRow,
   readAsWaitingItem,
   readAsWaitingItemWithNoNumber,
@@ -768,8 +769,9 @@ describe('the answer the backend gives', () => {
        something out of nothing. */
     expect(missing(aDucat, servedRow('ducats'))).toEqual([])
 
-    /* AND THREE OF THE QUEUE, WHICH ARE THREE AND NOT TWELVE ANY MORE (22.09.2026,
-       ADL A64). Twelve names stood on the server's own list with one reason for all of
+    /* AND TWO OF THE QUEUE, WHICH ARE TWO AND NOT TWELVE ANY MORE (22.09.2026, ADL A64,
+       and `crop` left on 10.10.2026). Twelve names stood on the server's own list with one
+       reason for all of
        them - „there is no column for any of them" - and it was true of none of them by
        22.09.2026: V11 had already given a proposal its own row with the town, the
        country and the team a change is about, `competitor` carries the sender's name,
@@ -779,15 +781,28 @@ describe('the answer the backend gives', () => {
        the same day, removed the schedule tab and the two columns with it; `rating` is
        the one of the three still standing. Nine of the twelve were answered that day.
 
-       The three below still have no home, each for its own reason, and each is in
+       The two below still have no home, each for its own reason, and each is in
        `PENDING.md` with the table that lacks it: the address of a registration has no
-       column, and the picture and its square are not a missing column at all but ADL
-       A60 - a picture held only by something awaiting a decision answers exactly as a
-       picture that is not there, so an address served here would draw a broken frame.
+       column, and the picture is not a missing column at all but ADL A60 - a picture
+       held only by something awaiting a decision answers exactly as a picture that is
+       not there, so an address served here would draw a broken frame.
 
-       `crop` reads as three names because the file nests it and this compares the
-       names of one record; that is the same subtraction the ducats made above. */
-    expect(missing(aWaitingItem, servedRow('verification'))).toEqual(['crop', 'email', 'picture'])
+       `crop` was the third and is answered since 10.10.2026, for the rows that hold a
+       picture (`aWaitingPicture`, whose three names are held against the file's own just
+       below): three fractions of the picture's own edges are not an address, and a
+       decision about the picture names them beside its key. */
+    expect(missing(aWaitingItem, servedRow('verification'))).toEqual(['email', 'picture'])
+
+    /* AND THE NAMES UNDER IT, which `missing` cannot see: it compares the names at the top of a
+       record, and `crop` is one name at the top and three inside. The portal's own word for the
+       diameter is `size`, and `cropIn` answers the whole picture, without an error, for a record
+       that says anything else - so a circle answered under another name would lose every crop in
+       silence. */
+    const servedCrop = servedRow('verification').crop
+
+    expect(typeof servedCrop === 'object' && servedCrop !== null ? Object.keys(servedCrop).sort() : null).toEqual(
+      Object.keys(aWaitingPicture.crop).sort(),
+    )
 
     /* **AND THE FOUR THAT WERE NEVER SEEN UNTIL 21.09.2026, COUNTED RATHER THAN
        LISTED.** Every name the generated file carries that the answer does not, over

@@ -201,7 +201,8 @@ import java.util.Set;
  * first and only place doing it. That is its own work.
  *
  * <p><b>A DECISION ABOUT A PICTURE IS A DECISION ABOUT THE PICTURE THE MODERATOR SAW, and the
- * answer says which that was ({@link Answered#seenPhotoId}).</b> PDL, the owner's answer of
+ * answer says which that was ({@link Answered#seenPhotoId} and {@link Answered#seenCrop}: the key
+ * and the circle).</b> PDL, the owner's answer of
  * 10.10.2026 about approving, in the record's wording: „Odobrava se samo slika koju je moderator
  * video (odluka nosi otisak; promenjena slika se odbija rečenicom)." And his answer of the same
  * day about refusing, which he chose between the outcomes offered: „Obe odluke o profilnoj slici,
@@ -213,15 +214,32 @@ import java.util.Set;
  * prihvatljivo." What is new is only what that costs the moderator: until this decision his press
  * published the NEW picture, which nobody had looked at, and the league has members under age.
  *
- * <p><b>HOW IT IS CARRIED OUT IS MY CHOICE AND NOT THE OWNER'S: he chose the outcome.</b> The
- * claim of the row is the comparison ({@link #write}): the statement that takes the row also
- * demands that it still holds the picture named, and a miss is told apart from a row decided by
- * somebody else by reading the row again. A question asked in Java before the claim would be a
- * check-then-act, the shape {@code VerificationDecisionConcurrencyTest} measured to pass every
- * sequential case and fail only under concurrency: {@code MePhotoApi.send} repoints the row
- * under a lock this route does not take until its claim, so only the statement that waits for
- * that lock sees what the send left. Nothing is asked of the row before the claim except the
- * shape of the request ({@link #whyThePictureIsNotNamedRight}), which needs no lock.
+ * <p><b>HOW IT IS CARRIED OUT IS MY CHOICE AND NOT THE OWNER'S: he chose the outcome.</b> A decision
+ * about a picture TAKES THE ROW AND THEN LOOKS ({@link #whyThePictureIsNotTheOneHeSaw}), before any
+ * other statement: one statement locks the waiting row ({@code select ... for update}), and the NEXT
+ * one reads the picture the row holds now, its key and its circle, and compares both with what was
+ * named. A question asked in Java with no lock taken first would be a check-then-act, the shape
+ * {@code VerificationDecisionConcurrencyTest} measured to pass every sequential case and fail only
+ * under concurrency. Nothing is asked of the row before the lock except the shape of the request
+ * ({@link #whyThePictureIsNotNamedRight}), which needs no lock.
+ *
+ * <p><b>TWO STATEMENTS AND NOT ONE, AND THAT IS MEASURED AND NOT READ</b> (10.10.2026, a real
+ * PostgreSQL, the member's circle moved while the readers were stopped behind the row's lock). One
+ * statement that locked the row and read the circle through a join to {@code photo} saw the OLD
+ * circle (0.30000000), and an {@code update} that joined {@code photo} and had waited for the same
+ * lock updated its row all the same, with the circle moved under it. Under READ COMMITTED a
+ * statement that waited re-checks the locked row and not the tables joined to it. The same lock
+ * followed by a read in a statement of its own saw the NEW circle (0.12500000), because that
+ * statement takes its snapshot after the wait. The key is a column of the locked row and would
+ * have survived being compared in the claim, but a print compared half in one place and half in
+ * another is two homes for one fact, so both halves are compared here and the claim is the plain
+ * claim by state again.
+ *
+ * <p><b>THE ORDER OF THE LOCKS IS THE MEMBER'S OWN.</b> {@code MePhotoApi.send} takes this row
+ * {@code for update} first and writes the picture or the circle after, so a decision that takes
+ * this row first waits for a send that is in the middle of its work and is never inside one, and
+ * the two cannot each hold what the other wants. A second moderator meets the first at the same
+ * lock and finds the row no longer waiting, which the claim then answers as it always did.
  *
  * <p><b>WHAT THE MEMBER IS TOLD, AND WHAT HE IS NOT.</b> A refusal reaches his inbox with
  * the reason in it, from every queue and not only from his profile: PDL P22, 15.08.2026,
@@ -331,7 +349,8 @@ class VerificationWriteApi {
 	private static final String THE_PICTURE_WAS_CHANGED = "Slika je promenjena, pogledaj je ponovo.";
 
 	/**
-	 * THE KEY OF A SEEN PICTURE BESIDE A DECISION THAT HAS NO PICTURE: a form fault, so 400.
+	 * THE KEY OR THE CIRCLE OF A SEEN PICTURE BESIDE A DECISION THAT HAS NO PICTURE: a form fault,
+	 * so 400.
 	 *
 	 * <p>The rule this route keeps for every field that rides with one kind of decision only
 	 * ({@link #AN_AMENDMENT_GOES_WITH_AN_APPROVED_RUN}, {@link
@@ -550,18 +569,34 @@ class VerificationWriteApi {
 	 *                    unchanged. <b>Its one cost, named so it is not found:</b> the same file
 	 *                    sent again is a new key too, so a decision about the old one is refused
 	 *                    ({@link #THE_PICTURE_WAS_CHANGED}), which is the safe direction.
-	 *                    <p><b>And a limit, also named:</b> a circle moved over the same picture is
-	 *                    NOT a change of key ({@code MePhotoApi.send} moves it on the row that is
-	 *                    there). That is right while the moderator is shown the whole original and
-	 *                    never the circle, which is what the queue draws today (the note on
-	 *                    {@code PhotoApi.waitingOn}). The day it draws the circle as the owner
-	 *                    decided on 27.09.2026 (PDL: „Moderator mora da vidi sliku koju odobrava, i
-	 *                    to kao isečak sa zatamnjenim ostatkom, a ostatak se nazire."), a moved
-	 *                    circle is something he has or has not seen, and this key will not say
-	 *                    which
+	 *                    <p><b>The key is half of the print and {@code seenCrop} is the other
+	 *                    half</b>: a circle moved over the same picture is NOT a change of key
+	 *                    ({@code MePhotoApi.send} moves it on the row that is there)
+	 * @param seenCrop    the three fractions of the circle over that picture, as the queue served
+	 *                    them ({@code crop}). <b>The two together are the print the owner asked
+	 *                    for</b> („odluka nosi otisak viđene slike", PDL, 10.10.2026), because the
+	 *                    key does not move when the member sends the same picture with the circle
+	 *                    moved: the record of 27.09.2026 has him overwrite the waiting row in that
+	 *                    case as in the case of a new picture („da pomerim krug da gadja drugi deo
+	 *                    slike, opet se salje na verifikaciju i gazi trenutan red kod verifikatora").
+	 *                    That the circle belongs in the print is the journal's derivation from the
+	 *                    two records and not a sentence of the owner's: a decision is only about what
+	 *                    the moderator saw, and a circle moved over the same picture is a change the
+	 *                    record itself puts beside a new picture. <b>Measured on 10.10.2026 on the route as it
+	 *                    stood, before this field existed:</b> a send with no file and the circle
+	 *                    0.125/0.875/0.625 over a picture whose circle was 0.30/0.70/0.45 answered
+	 *                    200 with the key 1 before and 1 after, and a decision naming the old key
+	 *                    answered 200 and published the moved circle.
+	 *                    <p>Asked wherever {@code seenPhotoId} is and refused where it is not
+	 *                    ({@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE}); all three
+	 *                    fractions must be there, a missing part being a form not filled in
+	 *                    ({@link #THE_FORM_IS_NOT_COMPLETE}). <b>Compared by value and not by
+	 *                    spelling</b>: the column keeps eight decimals ({@code 0.30000000}) and the
+	 *                    number the screen sends back is one it read off the queue's answer
+	 *                    ({@code 0.3}), so the two are the same circle
 	 */
 	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId,
-			Long seenPhotoId) {
+			Long seenPhotoId, VerificationApi.Crop seenCrop) {
 	}
 
 	/**
@@ -918,14 +953,22 @@ class VerificationWriteApi {
 
 		/* WHAT THE DECISION IS ABOUT IS SETTLED BEFORE ANYTHING IS READ FOR IT, from the request and
 		   the row alone and writing nothing: a decision about a picture names the picture the
-		   moderator saw, and a decision about anything else names none. Whether the row STILL holds
-		   that picture is not asked here. It is asked by the statement that claims the row, further
-		   down, because that is the one place the answer cannot change under the question - the head
-		   of this class says why a question put to the row before it would be a check-then-act. */
+		   moderator saw and the circle over it, and a decision about anything else names neither.
+		   Whether the row STILL holds that picture is not asked here but by the next call, which is
+		   the first thing in this transaction to touch the row and takes its lock before it looks. */
 		Optional<ResponseEntity<?>> unnamed = whyThePictureIsNotNamedRight(item, typed);
 
 		if (unnamed.isPresent()) {
 			return new Carried(unnamed.get(), null, null);
+		}
+
+		/* THE ROW IS TAKEN HERE, FIRST, AND THEN LOOKED AT. See the head of this class for why it is
+		   two statements and what was measured. Everything below this line runs with the row held,
+		   so the picture and the circle compared here are the ones the claim below acts on. */
+		Optional<ResponseEntity<?>> notTheOneHeSaw = whyThePictureIsNotTheOneHeSaw(item, typed);
+
+		if (notTheOneHeSaw.isPresent()) {
+			return new Carried(notTheOneHeSaw.get(), null, null);
 		}
 
 		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. It has to be
@@ -1021,44 +1064,23 @@ class VerificationWriteApi {
 		 * derives it: a second moderator who meets an item that is held gets a refusal, not a
 		 * silent failure). It is also why every consequence below
 		 * happens AFTER this line and not before it. */
-		/* AND THE PICTURE HE SAW IS THE SECOND CONDITION OF THE SAME CLAIM, for the same reason and
-		 * written where the same lock is. `MePhotoApi.send` repoints `photo_id` on this very row
-		 * under `for update`, so a statement that has to wait for that lock re-reads the row after
-		 * the send has committed: the condition below is evaluated against the picture the member
-		 * LEFT and not against the one this request read a moment earlier. Nothing is asked in Java
-		 * before it, because that would be the check-then-act this class has measured twice.
-		 *
-		 * The two `?` are one value, written twice because a null has no type until it is cast: a
-		 * decision about anything but a picture names none (`whyThePictureIsNotNamedRight`), and
-		 * for those the condition is true whatever the row holds. For a picture it is the key he
-		 * named, and `photo_id = null` in the SET above does not matter to it, because a WHERE is
-		 * evaluated against the row as it stood. */
+		/* AND THE PICTURE HE SAW IS NOT ASKED HERE. For a decision about a picture the row was taken
+		 * and compared at the top of this method and is held until this transaction ends, so this
+		 * claim cannot lose it to a member's send, and the key and the circle it acts on are the ones
+		 * that were compared. A miss therefore means one thing for every kind of decision: somebody
+		 * decided the row first. */
 		int claimed = db.sql("update verification set state = ?, decided_at = now(),"
 						+ " decided_by = a.id,"
 						+ " decided_by_name = a.first_name || ' ' || a.last_name,"
 						+ " reason = ?, photo_id = null"
 						+ " from account a where verification.id = ? and verification.state = ?"
-						+ " and a.id = ?"
-						+ " and (cast(? as bigint) is null or verification.photo_id = ?)")
+						+ " and a.id = ?")
 				.params(state, DecidingOnASubmission.reasonAsItGoesIn(answer), item.id(),
-						DecidingOnASubmission.WAITING, asking.account(), typed.seenPhotoId(),
-						typed.seenPhotoId())
+						DecidingOnASubmission.WAITING, asking.account())
 				.update();
 
 		if (claimed == 0) {
-			/* A MISS HAS TWO CAUSES, and the row says which. Somebody decided it first, which is
-			   what this refusal always meant; or it still waits and holds another picture than the
-			   one he named, which the member's send did while he looked. The second is asked of
-			   the row and not remembered from the request, so that a row decided meanwhile is
-			   never told it was changed: a decided row keeps no picture (V9), so `is distinct
-			   from` could not tell it apart from a changed one without the state beside it. */
-			boolean changed = Boolean.TRUE.equals(db.sql("select exists(select 1 from verification"
-							+ " where id = ? and state = ? and photo_id is distinct from ?)")
-					.params(item.id(), DecidingOnASubmission.WAITING, typed.seenPhotoId())
-					.query(Boolean.class).single());
-
-			return new Carried(no(HttpStatus.CONFLICT,
-					changed ? THE_PICTURE_WAS_CHANGED : SOMEBODY_ANSWERED_IT_ALREADY), null, null);
+			return new Carried(no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY), null, null);
 		}
 
 		/* AND THE HOLD GOES WITH THE ANSWER. Nothing is being read any more, and a decided
@@ -1128,14 +1150,17 @@ class VerificationWriteApi {
 	 * WHETHER THE REQUEST NAMES A PICTURE WHERE THERE IS ONE AND NONE WHERE THERE IS NOT, asked of
 	 * the request and the row alone and writing nothing.
 	 *
-	 * <p>Two of the four combinations are a refusal, and neither is about the state of anything,
-	 * which is why they are answered here: a row that holds a picture and a request that names none
-	 * is a form not filled in ({@link #THE_FORM_IS_NOT_COMPLETE}, the sentence every body that
-	 * carries no decision gets), and a request that names one beside a row that holds none is a field
-	 * that rides with the wrong decision ({@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE}).
-	 * Both are 400. Of the other two, neither names a picture beside a row that holds none and needs
-	 * nothing, and both naming one is the picture itself, which this does not ask: the statement that
-	 * claims the row does.
+	 * <p>A picture is named by TWO things, the key and the circle, and both or neither: the key
+	 * alone is not the print (see {@link Answered#seenCrop}). Two of the four combinations are a
+	 * refusal, and neither is about the state of anything, which is why they are answered here: a
+	 * row that holds a picture and a request that names it incompletely (neither, or the key without
+	 * the circle, or the circle with a part missing) is a form not filled in
+	 * ({@link #THE_FORM_IS_NOT_COMPLETE}, the sentence every body that carries no decision gets), and a
+	 * request that names ANY part of one beside a row that holds none is a field that rides with the
+	 * wrong decision ({@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE}). Both are 400. Of the
+	 * other two, neither names a picture beside a row that holds none and needs nothing, and both
+	 * naming one is the picture itself, which this does not ask: {@link #whyThePictureIsNotTheOneHeSaw}
+	 * does, with the row held.
 	 *
 	 * <p><b>Asked of the ROW and not of the queue.</b> {@code PendingQueue.tsx} draws a picture on
 	 * any card whose {@code photoId} is not null, "whichever tab it stands in" (the note on
@@ -1154,13 +1179,75 @@ class VerificationWriteApi {
 			Answered typed) {
 
 		if (item.photoId() == null) {
-			return typed.seenPhotoId() == null ? Optional.empty()
+			return typed.seenPhotoId() == null && typed.seenCrop() == null ? Optional.empty()
 					: Optional.of(no(HttpStatus.BAD_REQUEST, A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE));
 		}
 
-		return typed.seenPhotoId() == null
+		return typed.seenPhotoId() == null || !isWhole(typed.seenCrop())
 				? Optional.of(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE))
 				: Optional.empty();
+	}
+
+	/** A circle with all three of its fractions, which is the only kind a decision can name. */
+	private static boolean isWhole(VerificationApi.Crop crop) {
+		return crop != null && crop.x() != null && crop.y() != null && crop.size() != null;
+	}
+
+	/**
+	 * WHETHER THE ROW STILL HOLDS THE PICTURE THE MODERATOR SAW, THE CIRCLE INCLUDED, asked of the
+	 * row WHILE HOLDING IT. Writes nothing, and the first thing a decision about a picture does to
+	 * the database.
+	 *
+	 * <p><b>Two statements, in this order, and the order is the whole of it</b> (the head of this
+	 * class has the measurement). The first locks the waiting row and waits for any send of the
+	 * member's that is in the middle of its work; it returns the key the row holds AFTER that wait,
+	 * because a statement that waited re-checks the locked row. The second reads the circle of that
+	 * picture in a statement of its own, which takes its snapshot after the wait and so sees what
+	 * the send committed. Folded into one statement by a join the circle would be the one the
+	 * statement saw before it waited, and the decision would go through on a circle the moderator
+	 * never had in front of him.
+	 *
+	 * <p><b>Nothing here when the row is not waiting any more</b>: somebody decided it while this
+	 * request stood behind the lock, and the claim below then answers what it always did for that,
+	 * {@link #SOMEBODY_ANSWERED_IT_ALREADY}. A moderator who lost a race is never told the picture
+	 * was changed.
+	 *
+	 * <p><b>The circle is compared by value</b> ({@code compareTo}), not by {@code equals}, which
+	 * on a {@code BigDecimal} compares the scale as well: the column keeps eight decimals and the
+	 * screen sends back the number it read, {@code 0.3} for {@code 0.30000000}.
+	 */
+	private Optional<ResponseEntity<?>> whyThePictureIsNotTheOneHeSaw(Item item, Answered typed) {
+
+		if (typed.seenPhotoId() == null) {
+			return Optional.empty();
+		}
+
+		Optional<Long> held = db.sql("select photo_id from verification where id = ? and state = ?"
+						+ " for update")
+				.params(item.id(), DecidingOnASubmission.WAITING)
+				.query(Long.class)
+				.optional();
+
+		if (held.isEmpty()) {
+			return Optional.empty();
+		}
+
+		VerificationApi.Crop now = db.sql("select crop_x, crop_y, crop_diameter from photo"
+						+ " where id = ?")
+				.param(held.get())
+				.query((row, number) -> new VerificationApi.Crop(row.getBigDecimal(1),
+						row.getBigDecimal(2), row.getBigDecimal(3)))
+				.single();
+
+		VerificationApi.Crop saw = typed.seenCrop();
+
+		boolean theSame = held.get().equals(typed.seenPhotoId())
+				&& now.x().compareTo(saw.x()) == 0
+				&& now.y().compareTo(saw.y()) == 0
+				&& now.size().compareTo(saw.size()) == 0;
+
+		return theSame ? Optional.empty()
+				: Optional.of(no(HttpStatus.CONFLICT, THE_PICTURE_WAS_CHANGED));
 	}
 
 	/**
