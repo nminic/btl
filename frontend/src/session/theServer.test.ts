@@ -699,10 +699,10 @@ describe('the page of the caller himself', () => {
     ['a picture and a square missing its top edge', { photo: '/api/photos/3c9e5f41', crop: { x: 0, size: 1 } }],
     ['a picture and a square missing its size', { photo: '/api/photos/3c9e5f41', crop: { x: 0, y: 0 } }],
     ['a picture and a square whose left edge is a word', { photo: '/api/photos/3c9e5f41', crop: { x: 'a', y: 0, size: 1 } }],
-    ['a picture and a square whose size is too large to be a number', { photo: '/api/photos/3c9e5f41', crop: { x: 0, y: 0, size: 1e999 } }],
+    ['a picture and a square whose size is a word', { photo: '/api/photos/3c9e5f41', crop: { x: 0, y: 0, size: 'big' } }],
   ])('reads %s as no portrait, and the page is still drawn', async (_what, sent) => {
     server = serverThat(() =>
-      saying(JSON.stringify({ role: 'competitor', account: 41, member: { ...HIS_PAGE, ...sent } }).replace('1e999', '1e999')),
+      saying(JSON.stringify({ role: 'competitor', account: 41, member: { ...HIS_PAGE, ...sent } })),
     )
 
     expect(await whatTheServerSaysOfMyProfile()).toMatchObject({
@@ -713,9 +713,9 @@ describe('the page of the caller himself', () => {
   })
 
   it('is nothing when the first number of the square is too large to be one', async () => {
-    /* `JSON.stringify` cannot say `1e999` and the wire can (the same reason the whole numbers
-       above are written as text), so these two are sent as the text itself. Each of the three
-       numbers has its own case, because each is its own operand of the one condition. */
+    /* `JSON.stringify` cannot say `1e999` (it writes `null`) and the wire can (the same reason the
+       whole numbers above are written as text), so these three are sent as the text itself. Each of
+       the three numbers has its own case, because each is its own operand of the one condition. */
     for (const square of [
       '{"x":1e999,"y":0,"size":1}',
       '{"x":0,"y":1e999,"size":1}',
