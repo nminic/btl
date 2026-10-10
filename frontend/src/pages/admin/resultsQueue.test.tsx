@@ -8,7 +8,7 @@ import { NO_RATING, type ServedPendingItem } from '../../data/types'
 import sr from '../../i18n/sr.json'
 import { formatPoints, formatShortDate } from '../../i18n/format'
 import { useSession } from '../../session/useSession'
-import { must } from '../../test/at'
+import { at, must } from '../../test/at'
 import { Decided, Inbox } from '../../test/decided'
 import { renderAt } from '../../test/render'
 import { refused, serverThat, type Asked } from '../../test/serverAnswers'
@@ -204,6 +204,17 @@ async function rowOf(memberNumber: string) {
   const table = await screen.findByRole('table', { name: sr.review.waiting })
 
   return within(must(within(table).getByText(memberNumber).closest('tr'), `the row of ${memberNumber}`))
+}
+
+/** The members of the runs that are waiting, in the order the table draws them, from the top. Read
+ *  when a case needs to say WHERE a run stands, which no query by a member's number can. */
+async function membersInTheTable(): Promise<(string | null)[]> {
+  const table = await screen.findByRole('table', { name: sr.review.waiting })
+
+  return within(table)
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => at(within(row).getAllByRole('cell'), 1).textContent)
 }
 
 const decidedIn = () => within(screen.getByRole('list', { name: 'session decisions' }))
@@ -915,6 +926,125 @@ describe('the figures the moderator sets', () => {
         expect(decidedIn().getAllByRole('listitem').map((one) => one.textContent?.split(' | ')[0])).toEqual([
           String(id),
         ])
+      } finally {
+        server.stop()
+      }
+    },
+    SLOW,
+  )
+
+  /**
+   * THE PANEL KEEPS ITS RUN WHEN THE QUEUE MOVES UNDER IT (the second review of this branch, 10.10.2026).
+   *
+   * <p><b>What the three cases above could not say.</b> Each opens the panel and presses its button over a
+   * queue that has not moved since: the run stands where the panel was opened at, no refusal stands on any
+   * row, and every way of finding the run again gives the same run - by the identity the panel was opened
+   * on, by the position the run had, by its position among all the runs the server holds, by the run the
+   * route last refused, by the run whose own „Odobri" was pressed last. All of them but the first send the
+   * approval to a run the moderator never opened a panel on, and an approval cannot be taken back.
+   * Measured on the 54 cases as they stood: the position the run had when the panel was opened, its
+   * position among all the runs and the run the route last refused (the three the review named), and with
+   * them the position counted from the bottom and the run pressed last (the same class swept one step
+   * further), each left all 54 green, exit code 0.
+   *
+   * <p><b>What the setup does about it.</b> Between opening the panel and saving it the queue moves under
+   * it in every way a queue can: a run in front of it is approved and leaves, in the second flow a run
+   * behind it leaves as well, and the route refuses one more run, so that a sentence stands on a row that
+   * is not the panel's. The case says so before it saves anything - who is waiting and where, and that the
+   * sentence is on that row - and only then saves the panel and asks what a body cannot say: WHERE the
+   * approval went, that THIS run left and that the others are still waiting. The refusal is pressed last,
+   * because a decision the route takes takes the last sentence away (`takes the route’s last sentence off
+   * the screen once the route takes a decision`).
+   *
+   * <p><b>Two flows and not one</b>, because the position counted from the bottom moves only when a run
+   * BEHIND the panel's leaves, and a run behind it that the route takes is one on a race the calendar
+   * holds: the second flow opens the panel on the second run for that reason, where the third is one to
+   * take. The first flow is the review's own.
+   */
+  const MOVED_UNDER_IT = [
+    {
+      name: 'a run in front of it leaves and another run in front of it is refused',
+      member: '000030',
+      id: 703,
+      amended: { distanceKm: 14.35, ascentM: 780, descentM: 210, seconds: 7200 },
+      leave: [{ member: RUNNER, id: 701 }],
+      stand: { member: '000020', id: 702, sentence: 'O stavci je već odlučeno.' },
+      afterwards: ['000020', '000030', '000040', '000050'],
+    },
+    {
+      name: 'a run in front of it and a run behind it leave and a run behind that is refused',
+      member: '000020',
+      id: 702,
+      amended: { distanceKm: 52.4, ascentM: 640, descentM: 610 },
+      leave: [
+        { member: RUNNER, id: 701 },
+        { member: '000030', id: 703 },
+      ],
+      stand: {
+        member: '000040',
+        id: 704,
+        sentence: 'Trka nije u kalendaru, pa rezultat ne može odavde da se odobri.',
+      },
+      afterwards: ['000020', '000040', '000050'],
+    },
+  ]
+
+  it.each(MOVED_UNDER_IT)(
+    'approves the run the panel was opened on after the queue moved under it, when $name',
+    async ({ member, id, amended, leave, stand, afterwards }) => {
+      const user = setupUser()
+      const server = serverWith(RUNS, (answered) =>
+        answered === String(stand.id) ? refused(stand.sentence, 409) : taken(),
+      )
+
+      try {
+        openTheQueue()
+
+        const opened = await membersInTheTable()
+
+        expect(opened).toEqual([RUNNER, '000020', '000030', '000040', '000050'])
+
+        await user.click((await rowOf(member)).getByRole('button', { name: sr.review.amend }))
+
+        for (const press of [...leave, stand]) {
+          await user.click((await rowOf(press.member)).getByRole('button', { name: sr.review.approve }))
+          await untilItHasAnswered()
+        }
+
+        /* THE SOURCES THE RUN COULD BE FOUND AGAIN BY ARE NO LONGER THE SAME, which is said before the
+           panel is saved and not assumed: the run is higher in the table than where the panel was
+           opened, the runs that are waiting are not the runs the server holds, and the route's last
+           sentence stands on a row that is not the panel's. The panel has stood through all of it. */
+        const now = await membersInTheTable()
+
+        expect(now).toEqual(afterwards)
+        expect(now.indexOf(member)).toBeLessThan(opened.indexOf(member))
+        expect(screen.getAllByRole('alert')).toHaveLength(1)
+        expect((await rowOf(stand.member)).getByRole('alert')).toHaveTextContent(stand.sentence)
+        expect(screen.getByRole('group', { name: sr.review.amendTitle })).toBeVisible()
+
+        await user.click(panel().getByRole('button', { name: sr.review.amendSave }))
+        await untilItHasAnswered()
+
+        const sent = decisionsIn(server.asked)
+
+        expect(sent.map((one) => one.path)).toEqual(
+          [...leave, stand, { id }].map((one) => `/api/verification/${one.id}/decision`),
+        )
+        expect(bodyOf(sent[leave.length + 1])).toEqual({ approved: true, reason: '', amended })
+        expect(screen.queryByText(member)).toBeNull()
+        expect(screen.queryByRole('group', { name: sr.review.amendTitle })).toBeNull()
+
+        for (const other of afterwards.filter((one) => one !== member)) {
+          expect(screen.getByText(other)).toBeVisible()
+        }
+
+        expect(
+          decidedIn()
+            .getAllByRole('listitem')
+            .map((one) => one.textContent?.split(' | ')[0])
+            .sort(),
+        ).toEqual([...leave.map((one) => String(one.id)), String(id)].sort())
       } finally {
         server.stop()
       }
