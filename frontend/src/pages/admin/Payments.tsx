@@ -304,11 +304,17 @@ function Row({
               className="activate__field"
               type="text"
               /* A NUMERIC KEYBOARD AND NOT `type="number"`, and the reason is measured rather
-                 than stylistic: a number field in a Serbian browser refuses the comma this
-                 portal itself writes amounts with, and silently reports an empty value for
-                 anything it dislikes - so „nije unet" and „unet pogresno" would arrive here as
-                 one state, and the owner's grid sends them to opposite places. */
-              inputMode="decimal"
+                 than stylistic: a number field silently reports an empty value for anything it
+                 dislikes - so „nije unet" and „unet pogresno" would arrive here as one state, and
+                 the owner's grid sends them to opposite places. (It also refused the comma this
+                 portal writes amounts with in Serbian, which was the first reason until
+                 10.10.2026.)
+
+                 `numeric` AND NOT `decimal` since 10.10.2026: an amount is typed as a whole number,
+                 without a dot or a comma (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi
+                 brojevi"), so the keyboard offers digits and no separator, which is what
+                 `forms/FormRenderer.tsx` does for a number field the server keeps whole. */
+              inputMode="numeric"
               autoComplete="off"
               value={typed}
               aria-describedby={read.got === 'refused' ? wrongId : undefined}
@@ -519,7 +525,16 @@ function Asking({
         onDecline={onDecline}
         working={workingSays}
       >
-        <p>{t('verification.askGroundExpected', { amount: inHisCurrency(one.expected) })}</p>
+        {/* THE FEE AND NOT THE EXPECTED AMOUNT, which is the owner's choice of 10.10.2026 among the
+            outcomes put to him (PDL, the entry „Odgovori na pitanja skupljena dok je bio odsutan",
+            item „Članstvo i uplate": „prompt „Odobri iz balansa" pokazuje članarinu umesto
+            očekivanog iznosa"). Nothing is being sent when this question is put, a balance pays the
+            fee and never the processing charge, and the sentence beside „Balans" names the number the
+            balance is measured against: „Članarina: 40 EUR" over „Balans: 41 EUR" says why the second
+            button reads „Odobri iz balansa" where „Očekivan iznos: 43 EUR" over the same balance
+            made it look like a fault. The other prompts of this file draw the expected amount
+            still: the owner's choice was about this prompt, and nothing else was put to him. */}
+        <p>{t('verification.askGroundFee', { amount: inHisCurrency(one.price) })}</p>
         <p>{t('verification.askGroundBalance', { amount: inHisCurrency(one.balance) })}</p>
       </Prompt>
     )

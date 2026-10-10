@@ -513,15 +513,20 @@ describe('a sentence with a value put into it', () => {
          is again the nominative. Two sentences and not one because they head two different
          questions, and the owner's grid asks them of different rows. */
       'verification.askGround',
-      /* „Balans: {amount}" and „Očekivan iznos: {amount}". The amount arrives already written
-         with its currency („12,75 EUR"), which is the shape `pages/member/Membership.tsx`
-         already writes for the member's own side of this. After a colon it is the thing being
-         named, so the nominative, and the currency is a code that never declines.
+      /* „Balans: {amount}", „Očekivan iznos: {amount}" and, since 10.10.2026, „Članarina:
+         {amount}". The amount arrives already written with its currency („12,75 EUR"), which is
+         the shape `pages/member/Membership.tsx` already writes for the member's own side of this.
+         After a colon it is the thing being named, so the nominative, and the currency is a code
+         that never declines.
          AND THE AMOUNT IS NEVER A BARE NUMBER: it is put together by one helper on the screen
          so that the number and the currency cannot come apart, which matters because the two
-         currencies stand in NO ratio anywhere in this portal - there is no rate in it at all. */
+         currencies stand in NO ratio anywhere in this portal - there is no rate in it at all.
+         The third is the owner's choice of 10.10.2026 for the prompt of the balance (PDL, the entry
+         „Odgovori na pitanja skupljena dok je bio odsutan", item „Članstvo i uplate"), and it is
+         the fee WITHOUT the processing charge: `MembershipDue.price`, not `expected`. */
       'verification.askGroundBalance',
       'verification.askGroundExpected',
+      'verification.askGroundFee',
       /* „Nedostaje: {amount}" - what is still missing under the question „Prihvatam umanjen
          ukupan iznos? Da / Ne", which is the owner's cases 3 and 3b (PDL section 19). After a
          colon it is the thing being named, so the nominative, exactly as the two amounts above

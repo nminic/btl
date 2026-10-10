@@ -51,6 +51,7 @@ describe('the payments screen', () => {
       city: 'Novi Sad',
       currency: 'RSD',
       expected: 4800,
+      price: 4800,
       balance: 0,
     },
     {
@@ -61,6 +62,7 @@ describe('the payments screen', () => {
       city: 'Beograd',
       currency: 'RSD',
       expected: 4800,
+      price: 4800,
       balance: 6000,
     },
     {
@@ -70,7 +72,8 @@ describe('the payments screen', () => {
       lastName: 'Marko',
       city: 'Niš',
       currency: 'EUR',
-      expected: 43.5,
+      expected: 43,
+      price: 40,
       balance: 12.75,
     },
     {
@@ -81,6 +84,7 @@ describe('the payments screen', () => {
       city: 'Niš',
       currency: 'RSD',
       expected: 4800,
+      price: 4800,
       balance: 1500,
     },
   ]

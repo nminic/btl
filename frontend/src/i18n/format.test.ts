@@ -11,6 +11,7 @@ import {
   formatPoints,
   formatDayMonth,
   formatShortDate,
+  money,
   wholePeriod,
 } from './format'
 import { DEFAULT_LOCALE } from './config'
@@ -338,5 +339,41 @@ describe('a race limit written out', () => {
        and „0 h" says the limit is missing where „" would make the race read as a
        free one, which is the kind that carries no brackets. */
     expect(formatLimit(0)).toBe('0 h')
+  })
+})
+
+/**
+ * AN AMOUNT OF MONEY, WRITTEN THE WAY THE LANGUAGE WRITES IT, WHOLE OR NOT.
+ *
+ * <p>Every amount the portal shows goes through `money()` (the payments screen, the price list, the
+ * membership screen), and until 10.10.2026 it had no case of its own. It matters more since the
+ * rule that an amount is TYPED as a whole number (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi
+ * brojevi", for what is typed confirmed on 10.10.2026): the separators are then only ever in the
+ * DISPLAY, as the thousands mark of each language - „3.500" in Serbian and „3,500" in English - and
+ * the one thing that still has decimals is a balance (650 RSD is 5,42 EUR, „balans sme decimale").
+ *
+ * <p><b>Both languages, because the two disagree about every separator</b>: the dot that groups
+ * thousands in Serbian is the dot that starts the decimals in English. A function that wrote one
+ * language for both would pass one half of this table. <b>Whole and not whole, because the function
+ * is one branch on that</b>: „600" and not „600,00" for a whole amount, two decimals for any other,
+ * and the pair below the first is the case a formatter that rounded to whole units would fail
+ * (5,42 written „5").
+ *
+ * <p>Zero is whole, and so is a thousand, which is where the grouping mark first appears.
+ */
+describe('an amount of money', () => {
+  it.each([
+    ['a whole amount in Serbian', 'sr', 600, '600'],
+    ['a whole amount with a thousands mark in Serbian', 'sr', 3500, '3.500'],
+    ['a whole amount in English', 'en', 600, '600'],
+    ['a whole amount with a thousands mark in English', 'en', 3500, '3,500'],
+    ['nought', 'sr', 0, '0'],
+    ['a balance with decimals in Serbian', 'sr', 5.42, '5,42'],
+    ['a balance with decimals in English', 'en', 5.42, '5.42'],
+    ['a balance with one decimal, written with two', 'sr', 41.5, '41,50'],
+    ['a balance past a thousand in Serbian', 'sr', 1234.5, '1.234,50'],
+    ['a balance past a thousand in English', 'en', 1234.5, '1,234.50'],
+  ])('writes %s', (_what, locale, amount, written) => {
+    expect(money(amount, locale)).toBe(written)
   })
 })

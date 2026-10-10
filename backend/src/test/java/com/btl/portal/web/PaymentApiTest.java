@@ -148,9 +148,14 @@ class PaymentApiTest {
 	}
 
 	private String account(String email, String role) {
+		return account(email, role, "Probni", "Probic");
+	}
+
+	/** An account with a name of its own, for the cases that ask WHICH account a record names. */
+	private String account(String email, String role, String first, String last) {
 		db.sql("insert into account (first_name, last_name, email, role_id) values"
-						+ " ('Probni', 'Probic', ?, (select id from role where code = ?))")
-				.params(email, role).update();
+						+ " (?, ?, ?, (select id from role where code = ?))")
+				.params(first, last, email, role).update();
 
 		SecretToken session = SecretToken.fresh();
 		Instant now = Instant.now();
@@ -168,6 +173,23 @@ class PaymentApiTest {
 		db.sql("insert into account_admin_right (account_id, right_code)"
 						+ " values ((select id from account where email = ?), ?)")
 				.params(email, right).update();
+	}
+
+	/**
+	 * An account that BELONGS TO a member (V23), with a name nobody else in this file has, so a record
+	 * that names „the account of the member" instead of the one that pressed is told apart from it.
+	 */
+	private long anAccountOf(long competitorId, String email, String first, String last) {
+		return db.sql("insert into account (first_name, last_name, email, role_id, competitor_id)"
+						+ " values (?, ?, ?, (select id from role where code = 'competitor'), ?)"
+						+ " returning id")
+				.params(first, last, email, competitorId)
+				.query(Long.class).single();
+	}
+
+	private long accountIdOf(String email) {
+		return db.sql("select id from account where email = ?").param(email)
+				.query(Long.class).single();
 	}
 
 	private long competitor(String referralSuffix, String memberNumber, boolean active, String birthDate) {
@@ -738,44 +760,86 @@ class PaymentApiTest {
 	}
 
 	/**
-	 * AN AMOUNT THE COLUMN WOULD NOT KEEP IS REFUSED, IN ALL THREE OF THE WAYS IT CAN FAIL TO BE ONE.
+	 * AN AMOUNT WITH A FRACTION IN IT IS REFUSED IN EVERY SHAPE IT ARRIVES IN, AND NOTHING IS WRITTEN.
 	 *
-	 * <p><b>Every one of the three reached the database before this, and two of them answered 500.</b>
-	 * The route asked only whether what arrived was positive, so:
+	 * <p><b>PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi"</b>, recorded as the owner's own
+	 * words - „Iznosi se unose bez tačaka i zareza!" - and <b>POTVRĐENO 03.10.2026</b>, „Celi brojevi
+	 * svuda, i za iznos uplate", chosen among the outcomes put to him and against the recommendation he
+	 * was given; the cost put to him was that a payment of 39,97 EUR cannot be entered exactly. On
+	 * 10.10.2026 the rule was limited to what is TYPED (PDL, the entry „Odgovori na pitanja skupljena dok
+	 * je bio odsutan"), so a balance, which is worked out, keeps its decimals.
 	 *
-	 * <ul>
-	 * <li>{@code 38.001} against an expected 38.00 left a surplus of {@code 0.001}, which
-	 * {@code Balance.Money.isMoney} calls money because its sign is positive. The column then ROUNDED it
-	 * to {@code 0.00} and {@code balance_entry_an_overpayment_adds} (V42) refused a credit of nothing, so
-	 * the whole transaction went back: no payment, no membership, no member number, and a 500 carrying no
-	 * sentence a moderator could read.
-	 * <li>{@code 99999999999.00}, an ordinary mistyping, was {@code numeric field overflow} on the
-	 * {@code insert} itself - the same 500 by a shorter road.
-	 * <li>{@code 38.006} was the SILENT one and is in the same case because it is the same fault: nothing
-	 * refused it, the surplus {@code 0.006} entered the column as {@code 0.01}, and {@code received}
-	 * became {@code 38.01} - a number nobody typed, in the books, for ever.
-	 * </ul>
+	 * <p><b>Five shapes, and each is a different way for a fraction to get in.</b> {@code 38.5} is the
+	 * plain one that no earlier question ever refused - the column keeps it exactly. {@code 0.5} is a
+	 * positive amount below one, which is not nought, not negative and keeps its sign through the first
+	 * question. {@code 38.001} and {@code 38.006} are the two that used to meet the column's word
+	 * ({@code theAmountIsNotKeptExactly}) and meet this one now: the first left a surplus the column
+	 * rounded to nothing, so the whole transaction went back as a 500, and the second was the silent one
+	 * whose surplus entered the column as {@code 0.01} and made {@code received} a number nobody typed.
+	 * {@code 4.800} is a dinar amount written the way the portal itself writes four thousand eight
+	 * hundred, which a JSON number reads as 4.8.
 	 *
-	 * <p><b>All three carry the SAME word, and that is the precedent's own choice rather than a
-	 * shortcut.</b> {@code PricingWriteApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY} covers „negative, or with more
-	 * para than the column keeps, or past what it can hold" under one name, and reserves its second name
-	 * for a PRODUCT ceiling the owner decided (PDL P12c). A payment has no product ceiling - case 7 lets a
-	 * member send more than was expected on purpose - so a second name here would be two names for one
-	 * question.
+	 * <p><b>And nothing is written on any of them</b>, which is asserted rather than assumed: a 400 that
+	 * had already drawn a member number would have spent it for good, because the sequence only counts up.
 	 *
-	 * <p><b>And nothing is written on any of the three</b>, which is asserted rather than assumed: a 400
-	 * that had already drawn a member number would have spent it for good, because the sequence only
-	 * counts up.
-	 *
-	 * <p><b>ONE INVOCATION PER FORM AND NOT A LOOP INSIDE ONE CASE, and that is measured rather than
-	 * tidy.</b> Written as a loop, the first form THREW under the mutation that removes the guard - the
-	 * refusal reaches this route as an exception and not as a 500 body - so the loop stopped there and
-	 * the other two forms were never measured under that mutation at all. A case whose later assertions
-	 * only run while the code is correct is a case that measures the first one. Each form now gets its
-	 * own transaction and its own verdict.
+	 * <p><b>ONE INVOCATION PER SHAPE AND NOT A LOOP INSIDE ONE CASE, and that is measured rather than
+	 * tidy.</b> Written as a loop, the first shape THREW under the mutation that removes the guard - the
+	 * refusal reaches this route as an exception and not as a 500 body - so the loop stopped there and the
+	 * others were never measured under that mutation at all. A case whose later assertions only run while
+	 * the code is correct is a case that measures the first one.
 	 */
 	@ParameterizedTest
-	@ValueSource(strings = {"38.001", "38.006", "99999999999.00"})
+	@ValueSource(strings = {"38.5", "0.5", "38.001", "38.006", "4.800"})
+	void anAmountWithAFractionInItIsRefusedAndNothingIsWritten(String withAFraction) throws Exception {
+		long id = competitor("ca", null, false, "1990-05-15");
+
+		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+				new BigDecimal(withAFraction), true, "paypal", null)), moderatorCookie);
+
+		assertThat(answer.getStatus())
+				.as("an amount of %s was taken, or reached the database and answered a 500 where a"
+						+ " moderator should have been told something", withAFraction)
+				.isEqualTo(400);
+		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+				.as("an amount of %s was reported as something other than a number with a fraction in it",
+						withAFraction)
+				.isEqualTo(PaymentApi.THE_AMOUNT_IS_NOT_WHOLE);
+
+		assertThat(paymentCount()).isZero();
+		assertThat(membershipCount()).isZero();
+		assertThat(db.sql("select member_number from competitor where id = ?").param(id)
+						.query(String.class).optional())
+				.as("a member number was drawn for a request that was refused, and the sequence only"
+						+ " counts up")
+				.isEmpty();
+	}
+
+	/**
+	 * AN AMOUNT THE COLUMN WOULD NOT KEEP IS REFUSED, AND WHAT IS LEFT OF IT IS THE CEILING.
+	 *
+	 * <p><b>It was three ways until a fraction became its own refusal, and the two that went were the
+	 * two fractions</b> ({@code 38.001} and {@code 38.006}, in the case above now). What remains is
+	 * {@code 99999999999.00}, an ordinary mistyping, which was {@code numeric field overflow} on the
+	 * {@code insert} itself - a 500 carrying no sentence a moderator could read - and
+	 * {@code 100000000}, the first WHOLE number past what {@code numeric(10,2)} holds
+	 * ({@code 99999999.99} is its largest), so a ceiling written one digit short or one digit long
+	 * moves it.
+	 *
+	 * <p><b>Both carry the SAME word, and that is the precedent's own choice rather than a
+	 * shortcut.</b> {@code PricingWriteApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY} covers „negative, or past what
+	 * the column can hold" under one name, and reserves its second name for a PRODUCT ceiling the owner
+	 * decided (PDL P12c). A payment has no product ceiling - case 7 lets a member send more than was
+	 * expected on purpose - so a second name here would be two names for one question.
+	 *
+	 * <p><b>And nothing is written on either</b>, which is asserted rather than assumed: a 400 that had
+	 * already drawn a member number would have spent it for good, because the sequence only counts up.
+	 *
+	 * <p><b>ONE INVOCATION PER FORM AND NOT A LOOP INSIDE ONE CASE</b>, for the reason the case above
+	 * gives: under the mutation that removes the guard a loop stops at the first form and the second is
+	 * never measured.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"99999999999.00", "100000000"})
 	void anamountTheColumnWouldNotKeepIsRefused(String notKept) throws Exception {
 		long id = competitor("cb", null, false, "1990-05-15");
 
@@ -801,20 +865,28 @@ class PaymentApiTest {
 	}
 
 	/**
-	 * AND WHICH REFUSAL GOES WITH WHICH CONDITION, WHICH IS THE ONE THING TWO HALVES CANNOT ASSERT ON
+	 * AND WHICH REFUSAL GOES WITH WHICH CONDITION, WHICH IS THE ONE THING THREE HALVES CANNOT ASSERT ON
 	 * THEIR OWN.
 	 *
-	 * <p><b>A negative amount fails BOTH questions and must keep the sentence it already had.</b>
-	 * {@code MembershipPrice.amountIsKeptExactly} asks {@code signum() >= 0} as well as the scale and the
-	 * ceiling, so had the new question been asked FIRST, three cases that have answered
-	 * {@link PaymentApi#THE_AMOUNT_IS_NOT_MONEY} since this route was written would quietly have started
-	 * answering something else. {@code PricingWriteApi} states the same reason for the same order: „a
-	 * change that quietly restates old cases is a change nobody measured."
+	 * <p><b>A negative amount fails the later questions too and must keep the sentence it already
+	 * had.</b> {@code MembershipPrice.amountIsKeptExactly} asks {@code signum() >= 0} as well as the
+	 * ceiling, and a negative fraction fails the whole-number question as well, so had either been asked
+	 * FIRST, cases that have answered {@link PaymentApi#THE_AMOUNT_IS_NOT_MONEY} since this route was
+	 * written would quietly have started answering something else. {@code -38.5} is the row that
+	 * measures it for the whole-number question, {@code -38.00} for the column's. {@code PricingWriteApi}
+	 * states the same reason for the same order: „a change that quietly restates old cases is a change
+	 * nobody measured."
 	 *
-	 * <p><b>So this case is about the JOIN and not about either half.</b> Each half has its own cases
-	 * above; what neither of them can say is which word comes out of which condition, and swapping the
-	 * two words over is a mutation both halves survive. Three amounts, three pairs: nought and a
-	 * negative keep the older sentence, and something the column will not keep gets the newer one.
+	 * <p><b>And a number that fails BOTH of the later questions gets the earlier one.</b>
+	 * {@code 99999999999.5} has a fraction and is past the column, and it is told about the fraction:
+	 * the order the route asks in is whole number first, column second, and a route asking them the
+	 * other way round answers this row differently while every other row here agrees.
+	 *
+	 * <p><b>So this case is about the JOIN and not about any one question.</b> Each has its own cases
+	 * above; what none of them can say is which word comes out of which condition, and swapping the
+	 * words over is a mutation every one of them survives. Nought and two negatives keep the oldest
+	 * sentence, a fraction gets the whole-number one, and a whole number past the column gets the
+	 * column's.
 	 *
 	 * <p><b>One invocation per pair</b>, for the reason the case above gives at length: an amount that
 	 * reaches the database throws rather than answering, so a loop would measure only its first row the
@@ -822,16 +894,19 @@ class PaymentApiTest {
 	 */
 	@ParameterizedTest
 	@CsvSource({"0.00,theAmountIsNotMoney", "-38.00,theAmountIsNotMoney",
-			"38.001,theAmountIsNotKeptExactly"})
+			"-38.5,theAmountIsNotMoney", "38.5,theAmountIsNotWhole",
+			"38.001,theAmountIsNotWhole", "99999999999.5,theAmountIsNotWhole",
+			"99999999999.00,theAmountIsNotKeptExactly"})
 	void eachAmountGetsItsOwnRefusalAndTheOrderIsWhatKeepsThemApart(String amount, String reason)
 			throws Exception {
 
-		/* THE TWO WORDS ARE COMPARED WITH THE CONSTANTS AND NOT ONLY WITH THE TEXT IN THE TABLE ABOVE,
+		/* THE WORDS ARE COMPARED WITH THE CONSTANTS AND NOT ONLY WITH THE TEXT IN THE TABLE ABOVE,
 		   so a constant renamed on the route cannot leave this case agreeing with a string nothing
 		   answers any more. The table has to carry text because `@CsvSource` takes no expressions. */
 		assertThat(reason)
-				.as("the expected reason is not one of the two words this route can say")
-				.isIn(PaymentApi.THE_AMOUNT_IS_NOT_MONEY, PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
+				.as("the expected reason is not one of the three words this route can say")
+				.isIn(PaymentApi.THE_AMOUNT_IS_NOT_MONEY, PaymentApi.THE_AMOUNT_IS_NOT_WHOLE,
+						PaymentApi.THE_AMOUNT_IS_NOT_KEPT_EXACTLY);
 
 		long id = competitor("cc", null, false, "1990-05-15");
 
@@ -840,7 +915,7 @@ class PaymentApiTest {
 
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
-				.as("an amount of %s was answered with the wrong one of the two sentences", amount)
+				.as("an amount of %s was answered with the wrong one of the three sentences", amount)
 				.isEqualTo(reason);
 	}
 
@@ -848,15 +923,17 @@ class PaymentApiTest {
 	 * AND WHAT THE ANSWER SAYS ARRIVED IS READ OFF THE ROW, NOT ECHOED BACK FROM THE REQUEST.
 	 *
 	 * <p><b>The amount is sent as {@code 38.0} on purpose, and the SCALE is what this case reads.</b>
-	 * That is a number the bound accepts - {@code stripTrailingZeros().scale()} of {@code 38.0} is
-	 * {@code -1} - and the column stores it as {@code 38.00}. So the two possible sources answer the same
+	 * That is a number the route accepts - {@code stripTrailingZeros().scale()} of {@code 38.0} is
+	 * {@code 0}, so it is a whole number - and the column stores it as {@code 38.00}. So the two
+	 * possible sources answer the same
 	 * VALUE with two different spellings, and the spelling is the only thing that says which of them
 	 * answered. Asserting it is therefore asserting the SOURCE, which is what the rule about two sources
 	 * of one value asks for; {@code isEqualByComparingTo} would call both correct and measure nothing.
 	 *
 	 * <p><b>Why it matters that it is the row.</b> Before the scale was bounded the two could differ by
 	 * VALUE and not only by spelling: a request carrying {@code 38.006} was answered {@code 38.006} while
-	 * the row held {@code 38.01}. The bound closes that, and reading the row closes it by CONSTRUCTION
+	 * the row held {@code 38.01}. The bound (a whole number, since 10.10.2026) closes that, and reading
+	 * the row closes it by CONSTRUCTION
 	 * rather than by argument - which is the difference between a rule that holds and one that happens
 	 * to. It also makes this branch answer the way the repeat branch always has:
 	 * {@code alreadyRecorded} reads {@code received} off the row.
@@ -1394,6 +1471,82 @@ class PaymentApiTest {
 						+ " 27.09.2026")
 				.isEqualTo("nothing taken");
 		assertThat(bookOf(id, "RSD")).isEqualByComparingTo("600.00");
+	}
+
+	/**
+	 * THE PAYMENT OF A SHORT BOOKING NAMES WHO ACCEPTED IT AND WHEN, FOR CASE 3 AND FOR CASE 3b.
+	 *
+	 * <p>PDL, P8, <b>[IZVEDENO 03.10.2026, iz te odluke]</b>: „Trag ide i uz slučajeve 3 i 3b ekrana
+	 * Uplate, gde moderator potvrđuje „Prihvatam umanjen ukupan iznos? Da": i tu se prašta razlika
+	 * između očekivanog i uplaćenog, a odluka kaže da trag ide uz svaku radnju koja prašta novac." The
+	 * decision it is derived from is the one of 03.10.2026, chosen among the outcomes put to the owner:
+	 * „Trag (ko je odobrio i kada) ide uz svaku radnju koja prašta novac."
+	 *
+	 * <p><b>The trail of these two cases is not a column added for them.</b> It is the one every
+	 * recognised payment carries - {@code payment_recognised_says_who} and its pair (V16) make a
+	 * payment without a name and a moment illegal - and the route writes it for all seven cases alike.
+	 * What no case held until now was its CONTENT: the schema holds that a name and a moment are THERE,
+	 * not that they are the right ones, and nothing in the web tests asserted what
+	 * {@code recorded_by}, {@code recorded_by_name} or {@code recorded_at} said.
+	 *
+	 * <p><b>The fixture makes every wrong source different from the right one</b> (the rule of
+	 * 06.09.2026: a value that could arrive from two places measures nothing). The moderator who
+	 * presses is NOT the one the fixture created first, so „the lowest account" is a wrong answer; the
+	 * member has an account of his own with a name nobody else here has, so „the account that belongs to
+	 * the member" is a wrong answer; and the member's name is not the moderator's, so „the name off the
+	 * member's row" is a wrong answer. The moment is the clock this file fixes ({@code NOW}), which is
+	 * not the day the case happens to run on.
+	 *
+	 * <p><b>Both cases, one invocation each</b>: the box ticked and the book spent to the end (3), and
+	 * the box cleared (3b). The question put to the moderator is the same either way and so is the
+	 * trail, and what the premise asserts is that the booking really was short - there was a difference
+	 * to forgive - because a booking that forgave nothing would make this a case about nothing.
+	 */
+	@ParameterizedTest
+	@ValueSource(booleans = {true, false})
+	void aShortBookingNamesTheModeratorWhoAcceptedItAndTheMomentHeDidInBothCases(boolean theBoxIsTicked)
+			throws Exception {
+		long id = competitor("d1", null, false, "1990-05-15", A_TOWN_IN_SERBIA);
+		long oneHeBroughtIn = competitor("d2", "004110", true, "1991-05-15");
+
+		rewardFor(id, oneHeBroughtIn, "RSD");
+
+		long hisOwnAccount = anAccountOf(id, "clan@primer.rs", "Clan", "Nalogovic");
+		String pressing = account("kasir@primer.rs", "moderator", "Kasir", "Kasirovic");
+		ticked("kasir@primer.rs", "queue:payments");
+
+		MockHttpServletResponse answer = confirm(json(new PaymentApi.Confirm(id,
+				new BigDecimal("1000.00"), theBoxIsTicked, "ips", null)), pressing);
+
+		assertThat(answer.getStatus()).isEqualTo(201);
+
+		assertThat(db.sql("select received < amount + fee from payment where competitor_id = ?")
+						.param(id).query(Boolean.class).single())
+				.as("the booking was not short of what was expected, so nothing was forgiven and this"
+						+ " case measures nothing")
+				.isTrue();
+
+		record Trail(Long by, String name, java.sql.Timestamp at) {
+		}
+
+		Trail trail = db.sql("select recorded_by, recorded_by_name, recorded_at from payment"
+						+ " where competitor_id = ?")
+				.param(id)
+				.query((row, i) -> new Trail((Long) row.getObject(1), row.getString(2),
+						row.getTimestamp(3)))
+				.single();
+
+		assertThat(trail.by())
+				.as("the payment names an account other than the moderator who pressed")
+				.isEqualTo(accountIdOf("kasir@primer.rs"))
+				.isNotEqualTo(hisOwnAccount)
+				.isNotEqualTo(accountIdOf(MODERATOR));
+		assertThat(trail.name())
+				.as("the payment names somebody other than the moderator who pressed")
+				.isEqualTo("Kasir Kasirovic");
+		assertThat(trail.at())
+				.as("the payment names a moment other than the portal's own clock")
+				.isEqualTo(java.sql.Timestamp.from(NOW));
 	}
 
 	/**

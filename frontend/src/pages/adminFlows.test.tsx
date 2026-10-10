@@ -773,8 +773,8 @@ describe('the price list', () => {
        sent - because the route is what decides and this is the sentence a reader meets when
        a request goes round the screen or loses a race.
 
-       **Its own sentence and not the one about para**, which is the distinction
-       `PricingWriteApi` wrote down: one says „take a para off it" and this says „that is
+       **Its own sentence and not the one about the column**, which is the distinction
+       `PricingWriteApi` wrote down: one says „that number cannot be kept" and this says „that is
        more than a membership may cost", and 1.500 EUR is a perfectly good
        `numeric(10,2)`. */
     const user = setupUser()
@@ -790,15 +790,24 @@ describe('the price list', () => {
       const said = await screen.findByRole('alert')
 
       expect(said).toHaveTextContent(/1.000 EUR i 200.000 RSD/)
-      expect(said, 'the ceiling and the scale are two different sentences').not.toHaveTextContent(
-        /decimale/,
+      expect(said, 'the ceiling and the column are two different sentences').not.toHaveTextContent(
+        /najvećeg iznosa koji portal može da zapiše/,
       )
     } finally {
       stop()
     }
   })
 
-  it('says a price with too many para is a price with too many para', async () => {
+  /**
+   * A PRICE THE COLUMN CANNOT KEEP IS SAID TO BE THAT, and it is no longer a sentence about
+   * decimals.
+   *
+   * <p>`theAmountIsNotKeptExactly` said „at most two decimals" until 10.10.2026. A fraction of any
+   * size is its own refusal now (`theAmountIsNotWhole`, the next case), so what this one still names
+   * is a price that is negative or past what `numeric(10,2)` can hold, and the sentence says that.
+   * Reached past the form on purpose: its `min` and `max` turn both back before a request is sent.
+   */
+  it('says a price the column cannot keep is that, and not a matter of decimals', async () => {
     const user = setupUser()
     const { stop } = serverThat((path, init) =>
       path.startsWith('/api/pricing/') && init?.method === 'PUT'
@@ -807,12 +816,92 @@ describe('the price list', () => {
     )
 
     try {
-      await theEarlyBandIsChangedTo('41.125', user)
+      await theEarlyBandIsChangedTo('33', user)
 
       const said = await screen.findByRole('alert')
 
-      expect(said).toHaveTextContent(/dve decimale/)
+      expect(said).toHaveTextContent(/ne sme da bude negativna niti veća od najvećeg iznosa/)
+      expect(said).not.toHaveTextContent(/decimal/)
       expect(said).not.toHaveTextContent(/1.000 EUR/)
+    } finally {
+      stop()
+    }
+  })
+
+  /**
+   * A PRICE WITH A FRACTION IN IT IS SAID TO HAVE ONE, in the sentence the route's own word points
+   * at.
+   *
+   * <p>PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", recorded as the owner's own words -
+   * „Iznosi se unose bez tačaka i zareza!" - and, for what is typed, confirmed on 10.10.2026. What
+   * started it was „3.500" in the price list quietly becoming 3,5 dinars. The form turns a separator
+   * back before a request is sent (the next case), so this is reached past it, as a request that
+   * goes round the screen or loses a race would reach it.
+   */
+  it('says a price with a fraction in it has a fraction in it', async () => {
+    const user = setupUser()
+    const { stop } = serverThat((path, init) =>
+      path.startsWith('/api/pricing/') && init?.method === 'PUT'
+        ? refused('theAmountIsNotWhole')
+        : null,
+    )
+
+    try {
+      await theEarlyBandIsChangedTo('33', user)
+
+      const said = await screen.findByRole('alert')
+
+      expect(said).toHaveTextContent('Cena mora da bude ceo broj, bez tačaka i zareza.')
+      expect(said).not.toHaveTextContent('theAmountIsNotWhole')
+    } finally {
+      stop()
+    }
+  })
+
+  /**
+   * THE FORM TURNS A SEPARATOR BACK IN BOTH AMOUNT BOXES, BEFORE ANYTHING IS SENT.
+   *
+   * <p>`admin-cena.form.json` says `integer` on `eur` and on `rsd` (PDL, ODLUKA 02.10.2026, „Iznosi se
+   * unose kao celi brojevi"), and `WhatAPriceMayCostTest` on the server holds those two boxes to the
+   * route's two amounts. <b>„3.500" is the input this exists for, in the DINAR box</b>, because that
+   * is where it happened: an administrator writes three thousand five hundred with a dot for the
+   * thousands, and a box that read it as a number saved 3,5 dinars. „41.5" is the same fault in the
+   * euro box, and a comma is the same fault spelt the Serbian way.
+   *
+   * <p>One invocation per box and per spelling, and what is asserted is both halves: the sentence is
+   * on the screen and the box is marked invalid, and NO request left, because a form that said so and
+   * sent it anyway would have only moved the sentence.
+   */
+  it.each([
+    ['the dinar box', /Iznos u dinarima/, '3.500'],
+    ['the dinar box, with the comma', /Iznos u dinarima/, '3,500'],
+    ['the euro box', /Iznos u evrima/, '41.5'],
+  ])('refuses a separator in %s and sends nothing', async (_what, box, typed) => {
+    const user = setupUser()
+    const { asked, stop } = serverThat((path, init) =>
+      path.startsWith('/api/pricing/') && init?.method === 'PUT'
+        ? new Response(JSON.stringify({ key: 'early', eur: 35, rsd: 4200 }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          })
+        : null,
+    )
+
+    try {
+      renderAt('/sr/administracija/cenovnik', 'superadmin')
+
+      await screen.findByRole('table', { name: 'Cenovnik' })
+      await user.click(screen.getByRole('button', { name: 'Otvori: 15. do 31. oktobra' }))
+
+      const field = screen.getByLabelText(box)
+
+      await user.clear(field)
+      await user.type(field, typed)
+      await user.click(screen.getByRole('button', { name: 'Sačuvaj' }))
+
+      expect(await screen.findByText('Unesi ceo broj.')).toBeVisible()
+      expect(field).toHaveAttribute('aria-invalid', 'true')
+      expect(asked.filter((one) => one.init?.method === 'PUT')).toEqual([])
     } finally {
       stop()
     }

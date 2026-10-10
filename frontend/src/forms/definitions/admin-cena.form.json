@@ -16,14 +16,16 @@
       "labelKey": "admin.field.eur",
       "required": true,
       "min": 0,
-      "max": 1000
+      "max": 1000,
+      "integer": true
     },
     {
       "name": "rsd",
       "type": "number",
       "labelKey": "admin.field.rsd",
       "min": 0,
-      "max": 200000
+      "max": 200000,
+      "integer": true
     }
   ]
 }

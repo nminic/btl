@@ -305,8 +305,14 @@ describe('the reasons the server can name', () => {
        `theRowIsFreeInOneCurrencyOnly` is PDL 20b: a row is free in both currencies or
        priced in both. It is the one reason on this list the FORM cannot turn back, which
        is why it is worth saying twice - nought is a perfectly good number in both amount
-       boxes, so no `min` or `max` on either of them can ask whether the two agree. */
-    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 9],
+       boxes, so no `min` or `max` on either of them can ask whether the two agree.
+
+       TEN CONSTANTS AND EIGHT REASONS since 10.10.2026. `theAmountIsNotWhole` is a price with a
+       fraction in it (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", for what is typed
+       confirmed on 10.10.2026), and the form turns it back before a request is sent (`integer` on
+       both amount boxes), so it is the third reason on this list that is answered although the
+       screen cannot reach it. */
+    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 10],
     /* THE SEVENTH, ADDED WITH B106: making a moderator, ticking his boxes and taking his
        moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
        one dictionary covers all four reasons the class declares. */
@@ -382,8 +388,14 @@ describe('the reasons the server can name', () => {
        is indifferent to and `activation.ts` gives the reason for: a refusal means the same thing
        whichever door refused it, and a second Serbian sentence for it would be a second place to
        change. What this gate asks is that every name be answered, not that every name have a
-       sentence of its own. */
-    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 10],
+       sentence of its own.
+
+       ELEVEN CONSTANTS AND ELEVEN REASONS since 10.10.2026, which is still a file where the two
+       numbers agree. `theAmountIsNotWhole` is an amount with a fraction in it (PDL, ODLUKA
+       02.10.2026, „Iznosi se unose kao celi brojevi", and POTVRĐENO 03.10.2026 for the amount of a
+       payment as well). The field takes digits only (`AN_AMOUNT`), so the screen cannot send one,
+       and it is answered anyway for the reason every unreachable name on this list is. */
+    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 11],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers
