@@ -517,14 +517,16 @@ class ARaceCorrectedRecountsItsRunsTest {
 		MockHttpServletResponse thenItsLimit = change(theMarathon,
 				toALimit("Maraton", THE_MARATHONS_DAY, 25200, 300, 280));
 
+		/* THE HARM FIRST, so that a route which let the change of kind through fails here on the
+		   runner's lost time - the finding itself - and not only on a status code. */
+		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun))
+				.as("a runner's own time was written over").isEqualTo(before);
 		assertThat(List.of(toSixHours.getStatus(), thenItsLimit.getStatus()))
 				.containsExactly(409, 409);
 		assertThat(List.of(reasonIn(toSixHours), reasonIn(thenItsLimit))).containsOnly(
 				RaceWriteApi.THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
 		assertThat(kindOf(theMarathon)).as("the race took the kind it was refused")
 				.isEqualTo("length");
-		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun))
-				.as("a runner's own time was written over").isEqualTo(before);
 		assertThat(newLines()).isEmpty();
 
 		assertThat(change(aCrossCountry, toALimit("Kros", THE_MARATHONS_DAY, 3600, 50, 50))
