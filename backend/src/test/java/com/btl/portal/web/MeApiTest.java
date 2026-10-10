@@ -2,30 +2,43 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.method.HandlerMethod;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 
 import java.lang.reflect.RecordComponent;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -87,6 +100,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * now, one whose fee stands and one who never got a number, so his count is 1: different from
  * 0 (the clause carried in), different from 2 (the caller's own, and the caller's season), and
  * different from the 2 a query that forgot „whose fee stands" would give him.
+ *
+ * <p><b>AND THE CALLER IS THE ONE ROW OF HIS KIND IN EVERY FIELD THE PROFILE ADDED</b>, which a
+ * field with two values turns from an accident into a decision. The sweep in
+ * {@link #andNothingOfAnybodyElses} asks of every OTHER row whether it carries the very value
+ * the caller was answered, and a letter or a boolean cannot differ on seven rows: so the fixture
+ * writes him as the odd one of each, in one place ({@link #giveTheCallerWhatNoOtherRowHas}).
+ * There is one woman here and it is he, one row in the oldest band, one row in the beginners'
+ * category, one that hides its profile, one that shows its whole birthday, one with a biography,
+ * one with a portrait, and one who is in a team from 2028. Gender is not worked out from the given
+ * name: the names were chosen for the other fields and this one needed exactly one of each.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -95,6 +118,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class MeApiTest {
 
 	private static final String PATH = "/api/me";
+
+	/**
+	 * AUTUMN 2026, WHICH IS A DAY WITH NO SEASON RUNNING AT ALL, and that is why the cases stand on
+	 * it by default: the league begins in 2027 (PDL P2), so the calendar answers a season the portal
+	 * does not have and every band below is answered through the floor and not around it. It is also
+	 * why the bands do not drift as the real years go by: a case that stood on the machine's own
+	 * clock would see the 1990 rows move into the next band in 2030.
+	 */
+	private static final Instant AUTUMN_2026 = Instant.parse("2026-09-21T10:00:00Z");
+
+	/** The first season the league has, while it is running. */
+	private static final Instant DURING_2027 = Instant.parse("2027-06-15T12:00:00Z");
+
+	/**
+	 * MID OCTOBER OF 2027, the one kind of moment where „which season" has two answers: from the
+	 * transfer window on, {@code seasonBeingPaidFor} answers NEXT year while the season being RUN is
+	 * still this one, and the band moves on the second and never on the first (PDL P7).
+	 */
+	private static final Instant MID_OCTOBER_2027 = Instant.parse("2027-10-15T12:00:00Z");
+
+	/**
+	 * The night the year turns, the instant {@code CompetitorApiTest} and {@code ResultApiTest} stand
+	 * on: the clock this fixture hands the server reports UTC, as a container's does, so a door that
+	 * reads the server's zone instead of the league's calls this night 2027 while Belgrade is already
+	 * in 2028.
+	 */
+	private static final Instant NEW_YEARS_NIGHT_INTO_2028 = Instant.parse("2027-12-31T23:30:00Z");
 
 	/**
 	 * THE CALLER. Second competitor written, first account written, so neither „the first
@@ -205,11 +255,52 @@ class MeApiTest {
 	private static final String A_SERBIAN_TOWN = "(select id from place where country_id ="
 			+ " (select id from country where code = 'RS') order by rank limit 1)";
 
+	/**
+	 * WHERE A PICTURE IS ASKED FOR, written out here rather than taken from {@link MeApi}.
+	 *
+	 * <p>Taken from the constant, a rename would rename both and every case below would go on
+	 * passing while the portal asked for an address nothing answers - one value in two roles.
+	 * What proves the two equal is {@link #thePortraitIsTheAddressOfHisOwnPicture}, which hands
+	 * the address to the dispatcher instead of comparing spellings.
+	 */
+	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
+
+	/**
+	 * THE CALLER'S PORTRAIT, SPELT IN LETTERS ALONE, and that is a measurement. A digest is sixty
+	 * four characters of {@code [0-9a-f]} (V8, {@code photo_digest_shape}), so one carrying
+	 * digits may spell a four digit year by accident, and {@link #noDateOfBirthLeavesHisOwnDoor}
+	 * reads the answer as text and asks it for every year of birth. Letters cannot spell one.
+	 */
+	private static final String HIS_PORTRAIT = "ab".repeat(32);
+
+	/**
+	 * AND THE LAPSED MEMBER'S, a different pair so that no two pictures here share a digest and
+	 * „his portrait" is never satisfied by another member's.
+	 */
+	private static final String THE_LAPSED_MEMBERS_PORTRAIT = "cd".repeat(32);
+
+	/** What the caller has written about himself, in letters alone for the same reason. */
+	private static final String HIS_BIOGRAPHY = "Trci od detinjstva i o tome pise.";
+
+	/** And the lapsed member's, so a biography answered to him is his and nobody else's. */
+	private static final String THE_LAPSED_MEMBERS_BIOGRAPHY = "Prestao je da trci ali nije prestao da pise.";
+
+	/**
+	 * THE CALLER'S DATE OF BIRTH, which is the one datum on the table that must not leave in any
+	 * spelling (Clan 74, and the privacy policy: „Datum rodjenja se nikada ne prikazuje, ni u
+	 * punom ni u skracenom obliku"). Every other row is born on {@code 1990-01-01}, so the two
+	 * years in the table are far apart and neither is a season in this fixture.
+	 */
+	private static final String HIS_DATE_OF_BIRTH = "1957-06-15";
+
 	@Autowired
 	private MockMvc http;
 
 	@Autowired
 	private JdbcClient db;
+
+	@Autowired
+	private AClockTheCaseMoves clock;
 
 	private final Map<String, SecretToken> sessions = new HashMap<>();
 
@@ -236,6 +327,8 @@ class MeApiTest {
 	 */
 	@BeforeEach
 	void sevenCompetitorsAndEightAccounts() {
+		clock.moveTo(AUTUMN_2026);
+
 		/* Not the caller, and written first so that „the first row" is somebody else. Her
 		   town was TYPED and names its own country, which is the second of the two roads V7
 		   leaves open; the caller rides the first. */
@@ -245,7 +338,7 @@ class MeApiTest {
 		   case about the basis asks his answer and a payer's, so „his own and not the other
 		   word" is said of both states and not of one. */
 		competitor(ME, "Milica", "Djurisic", A_SERBIAN_TOWN, "null",
-				"null", 2014, false, "feeExempt", "null");
+				"null", 2014, true, "feeExempt", "null");
 		/* THE ONE WHOSE FEE HAS LAPSED, brought in by the caller. He is what makes „whose fee
 		   stands" a clause that can be removed and measured: without the clause the caller's
 		   count is 3 rather than 2. And he is written here, before the two people HE brought
@@ -264,7 +357,7 @@ class MeApiTest {
 		   member, so that member's count of 1 also carries the „whose fee stands" clause
 		   rather than only the caller's count of 2. */
 		competitor(NOT_A_MEMBER_YET, "Tek", "Stigao", "null", "'Skoplje'",
-				"(select id from country where code = 'MK')", 2027, true, "payment",
+				"(select id from country where code = 'MK')", 2027, false, "payment",
 				broughtBy(LAPSED));
 		/* The caller's first recruit whose fee stands. */
 		competitor(ALSO_BROUGHT_BY_ME, "Dusan", "Maric", "null", "'Tirana'",
@@ -310,6 +403,7 @@ class MeApiTest {
 		belongsTo(THE_SECOND_RECRUITS_ACCOUNT, THE_SECOND_BROUGHT_BY_ME);
 		account(RACES_FOR_NOBODY, "moderator");
 
+		giveTheCallerWhatNoOtherRowHas();
 	}
 
 	/**
@@ -861,6 +955,567 @@ class MeApiTest {
 				.isEqualTo(1);
 	}
 
+	/**
+	 * A MEMBER IS HANDED THE PROFILE HIS OWN PAGE IS DRAWN FROM, EACH FACT COMPARED WITH WHAT
+	 * THE DATABASE HAS FOR HIM.
+	 *
+	 * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - and a
+	 * page headed by a name needs the name, none of which reached a member who is on no row of
+	 * the public list.
+	 *
+	 * <p><b>Every expectation is read out of the database or is a constant defined once above</b>,
+	 * and every one is a value no other row here carries (the class note, and the sweep in
+	 * {@link #andNothingOfAnybodyElses}), so a query that reached the wrong row is wrong in the
+	 * value. <b>The two booleans are both {@code true} for him</b>, so a swap of the two would
+	 * pass here; it is {@link #aMemberWhoseFeeHasLapsedAndHidesHisProfileIsHandedAllOfIt} that
+	 * writes them differently and asks.
+	 */
+	@Test
+	void aMemberIsHandedHisOwnProfile() throws Exception {
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(mine.path("memberNumber").asString())
+				.as("this is not his record at all, so the profile below says nothing").isEqualTo(ME);
+		assertThat(mine.path("firstName").asString()).as("his given name")
+				.isEqualTo(columnOf("first_name", ME)).isEqualTo("Milica");
+		assertThat(mine.path("lastName").asString()).as("his family name")
+				.isEqualTo(columnOf("last_name", ME)).isEqualTo("Djurisic");
+		assertThat(mine.path("gender").asString())
+				.as("his gender, the one value in this fixture that only he carries")
+				.isEqualTo(columnOf("gender", ME)).isEqualTo("F");
+		assertThat(mine.path("city").asString())
+				.as("the NAME of the town he lives in, out of the codebook, and not the empty typed"
+						+ " column beside it")
+				.isEqualTo(townOf(ME));
+		assertThat(mine.path("ageBand").asString())
+				.as("the band the rulebook puts him in for the season that is running: born in 1957 he"
+						+ " is the one row of the fixture that is 55 or more, and the year itself is not"
+						+ " an answer (the case on the year of birth)")
+				.isEqualTo("55+");
+		assertThat(mine.path("firstSeason2027").asBoolean())
+				.as("whether he runs in the beginners' category").isTrue();
+		assertThat(mine.path("teamSince").asInt())
+				.as("the season the membership that has NOT ended began in, which is the one he"
+						+ " moved to and not the one he left")
+				.isEqualTo(seasonThatMembershipBeganIn(ME)).isEqualTo(2028);
+		assertThat(mine.path("bio").asString()).as("the biography a moderator approved")
+				.isEqualTo(columnOf("bio", ME)).isEqualTo(HIS_BIOGRAPHY);
+		assertThat(mine.path("profileHidden").asBoolean())
+				.as("whether he has hidden his page, which is answered to HIM as well").isTrue();
+		assertThat(mine.path("birthdayShown").asString()).as("what he chose about his birthday")
+				.isEqualTo(columnOf("birthday_shown", ME)).isEqualTo("full");
+		assertThat(mine.path("photo").asString())
+				.as("the address of his approved portrait, which is built out of the DIGEST of the"
+						+ " picture and never out of its key")
+				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HIS_PORTRAIT);
+		assertThat(new BigDecimal(mine.path("crop").path("x").asString()))
+				.as("the left edge of the square of his portrait").isEqualByComparingTo("0.125");
+		assertThat(new BigDecimal(mine.path("crop").path("y").asString()))
+				.as("the top edge of it").isEqualByComparingTo("0.25");
+		assertThat(new BigDecimal(mine.path("crop").path("size").asString()))
+				.as("and its diameter, which this resource names `size` as the public list does")
+				.isEqualByComparingTo("0.5");
+	}
+
+	/**
+	 * AND A TOWN THAT WAS TYPED ANSWERS ITS OWN NAME, with the keys that belong to a member who
+	 * has no portrait and no team left out altogether.
+	 *
+	 * <p>The case above rides the codebook road to a town and this rides the typed one: the
+	 * {@code coalesce} between them is made in SQL, where a Java branch counter sees nothing.
+	 * <b>Absent and not null</b>, which is {@code teamId}'s own precedent on this record and the
+	 * reason the frontend reads a missing key and a null as one answer; the public list says null
+	 * where this says nothing, and {@link #theTwoDoorsAnswerTheSameMemberFieldForField} compares
+	 * the two on the VALUE for that reason.
+	 */
+	@Test
+	void aMemberWithATypedTownAndNoPortraitAndNoTeamIsHandedHisTownAndNothingMore() throws Exception {
+		JsonNode hers = answerFor(HER_ACCOUNT).path("member");
+
+		assertThat(hers.path("memberNumber").asString())
+				.as("this is not her record at all, so the keys left out below say nothing")
+				.isEqualTo(ABROAD);
+		assertThat(hers.path("city").asString())
+				.as("the town somebody TYPED did not come back, which is the second road to a name")
+				.isEqualTo("Podgorica");
+		assertThat(hers.path("gender").asString())
+				.as("she shares the gender of every row but one, and it is not the caller's")
+				.isEqualTo("M");
+		assertThat(hers.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(hers.path("profileHidden").asBoolean()).isFalse();
+		assertThat(hers.path("birthdayShown").asString()).isEqualTo("none");
+		assertThat(hers.path("bio").asString())
+				.as("a member who has written nothing is answered the empty text and not nothing")
+				.isEmpty();
+		assertThat(hers.has("bio")).isTrue();
+
+		for (String key : List.of("photo", "crop", "teamSince", "teamId")) {
+			assertThat(hers.has(key))
+					.as("%s was answered for a member who has none, and it is a key that is left out"
+							+ " of the record rather than carried as null", key)
+					.isFalse();
+		}
+	}
+
+	/**
+	 * AND A PERSON WHO HAS REGISTERED AND HAS NO NUMBER YET IS HANDED HIS PROFILE TOO.
+	 *
+	 * <p>He is a competitor from registration (ADL A44), so he has a name and a town and a team
+	 * long before he has a number. The frontend does not draw a profile for him, because there is
+	 * no address to ask it at; but a record that answered him the profile of a moderator, which is
+	 * nothing, would be the same fault as an answer that forgot he has a team.
+	 */
+	@Test
+	void aPersonWithNoNumberYetIsHandedHisProfileToo() throws Exception {
+		JsonNode his = answerFor(THE_ACCOUNT_WITH_NO_NUMBER).path("member");
+
+		assertThat(his.has("memberNumber")).as("a number was answered for somebody who has none")
+				.isFalse();
+		assertThat(his.path("firstName").asString()).isEqualTo("Tek");
+		assertThat(his.path("lastName").asString()).isEqualTo("Stigao");
+		assertThat(his.path("city").asString()).isEqualTo("Skoplje");
+		assertThat(his.path("teamSince").asInt())
+				.as("the season his membership of the third team began in")
+				.isEqualTo(2027);
+		assertThat(his.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(his.path("profileHidden").asBoolean()).isFalse();
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED AND WHO HIDES HIS PROFILE IS HANDED ALL OF IT, which is the
+	 * one place the two doors differ on purpose.
+	 *
+	 * <p>{@link CompetitorApi} holds a hidden profile's biography, portrait and link to its team
+	 * back from a reader who is neither an active member nor the administration, and a member
+	 * whose fee has lapsed is such a reader (PDL P23, 03.10.2026, „Skrivanje deluje prema svakome
+	 * ko nije aktivan član ni administracija, nikad prema aktivnom članu"). Of his OWN page he is
+	 * not: PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji" - the
+	 * record gives the reason in its own sentence, that when a member looks at himself nothing
+	 * about himself is hidden from him. A route that carried that withholding in, as
+	 * {@code case when THE_PROFILE_IS_OPEN_TO_THE_CALLER then c.bio end}, would answer him the
+	 * empty profile of a stranger.
+	 *
+	 * <p><b>The floor is read off the other door and not assumed</b>: he really is a reader the
+	 * public list withholds a hidden member's biography from (it asks the caller, and he is
+	 * neither), so that the full answer below is a difference that was available to be got wrong.
+	 * <b>And his two booleans are written DIFFERENTLY</b> (hidden, and not in the beginners'
+	 * category), so a swap of the two is wrong in a value.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedAndHidesHisProfileIsHandedAllOfIt() throws Exception {
+		long portrait = aPortrait(THE_LAPSED_MEMBERS_PORTRAIT, "0.37500000", "0.62500000",
+				"0.25000000");
+		db.sql("update competitor set profile_hidden = true, bio = ?, photo_id = ?"
+						+ " where member_number = ?")
+				.params(THE_LAPSED_MEMBERS_BIOGRAPHY, portrait, LAPSED).update();
+
+		assertThat(whatThePublicListSays(THE_LAPSED_ACCOUNT))
+				.as("the public list carries him after all, so he is not the lapsed member this case"
+						+ " is about")
+				.doesNotContain(LAPSED);
+		JsonNode whatHeIsToldOfTheCaller = rowOnThePublicList(THE_LAPSED_ACCOUNT, ME);
+		assertThat(whatHeIsToldOfTheCaller.path("profileHidden").asBoolean())
+				.as("the caller does not hide his profile, so there is nothing for the public list to"
+						+ " withhold from the lapsed member")
+				.isTrue();
+		assertThat(whatHeIsToldOfTheCaller.path("bio").isNull())
+				.as("the public list hands the lapsed member a hidden profile's biography, so he is"
+						+ " not a reader it withholds from and the answer below proves nothing")
+				.isTrue();
+
+		JsonNode his = answerFor(THE_LAPSED_ACCOUNT).path("member");
+
+		assertThat(his.path("memberNumber").asString())
+				.as("this is not his record at all, so the profile below says nothing")
+				.isEqualTo(LAPSED);
+		assertThat(his.path("profileHidden").asBoolean()).isTrue();
+		assertThat(his.path("firstSeason2027").asBoolean()).isFalse();
+		assertThat(his.path("bio").asString())
+				.as("his biography was held back from him, as the public list holds a hidden one back"
+						+ " from a reader whose fee has lapsed. Of his own page nothing is hidden")
+				.isEqualTo(THE_LAPSED_MEMBERS_BIOGRAPHY);
+		assertThat(his.path("photo").asString())
+				.as("his portrait was held back from him")
+				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + THE_LAPSED_MEMBERS_PORTRAIT);
+		assertThat(new BigDecimal(his.path("crop").path("x").asString()))
+				.as("and the square of it").isEqualByComparingTo("0.375");
+		assertThat(his.path("teamId").asLong())
+				.as("the link to his team was held back from him")
+				.isEqualTo(teamIdOf("probni-tim"));
+		assertThat(his.path("teamSince").asInt())
+				.as("and the season it began in, which leaves with the team")
+				.isEqualTo(2027);
+		assertThat(his.path("city").asString())
+				.as("the name of a codebook town that is not the caller's")
+				.isEqualTo(townOf(LAPSED)).isNotEqualTo(townOf(ME));
+	}
+
+	/**
+	 * AND THE OTHER POLARITY OF HIS TWO CHOICES, WITH EVERY NAME HE HAS, for the same member whose
+	 * fee has lapsed.
+	 *
+	 * <p>The case above writes him hiding his profile and outside the beginners' category, which
+	 * keeps a swap of the two flags wrong in a value. It cannot also tell a flag that was gated on
+	 * his standing fee from the flag itself: a gated {@code boolean} reads back as {@code false},
+	 * which is exactly the value that case gives him for the beginners' category, so right and wrong
+	 * are one number (the fault the lapsed member's COUNT had until 21.09.2026). So he is written
+	 * the other way round here - in the beginners' category and not hiding - with a birthday shown
+	 * to the year and the other gender than the one the fixture gives him, and asked the facts the
+	 * case above leaves unasked: his two names, his gender and his birthday. Each is a value a gate
+	 * on his standing fee would turn into nothing.
+	 */
+	@Test
+	void aMemberWhoseFeeHasLapsedIsHandedEveryNameAndBothChoicesOfHisProfileToo() throws Exception {
+		db.sql("update competitor set first_season_2027 = true, profile_hidden = false,"
+						+ " birthday_shown = 'year', gender = 'F' where member_number = ?")
+				.param(LAPSED).update();
+
+		JsonNode his = answerFor(THE_LAPSED_ACCOUNT).path("member");
+
+		assertThat(his.path("memberNumber").asString())
+				.as("this is not his record at all, so the profile below says nothing")
+				.isEqualTo(LAPSED);
+		assertThat(his.path("firstName").asString()).as("his given name")
+				.isEqualTo(columnOf("first_name", LAPSED)).isEqualTo("Nenad");
+		assertThat(his.path("lastName").asString()).as("his family name")
+				.isEqualTo(columnOf("last_name", LAPSED)).isEqualTo("Ilic");
+		assertThat(his.path("gender").asString()).as("his gender")
+				.isEqualTo(columnOf("gender", LAPSED)).isEqualTo("F");
+		assertThat(his.path("ageBand").asString())
+				.as("his band, which a lapsed fee does not take from him: born in 1990 he is in the band"
+						+ " every other row of the fixture is in, and the year a band is worked out from"
+						+ " is read off his row and not off the fee")
+				.isEqualTo("25-39");
+		assertThat(his.path("birthdayShown").asString()).as("what he chose about his birthday")
+				.isEqualTo("year");
+		assertThat(his.path("firstSeason2027").asBoolean())
+				.as("whether he runs in the beginners' category, which a lapsed fee does not take"
+						+ " from him")
+				.isTrue();
+		assertThat(his.path("profileHidden").asBoolean())
+				.as("he does not hide his page, and the answer must say it as a value of his own"
+						+ " and not as the absence of one")
+				.isFalse();
+	}
+
+	/**
+	 * A TEXT THAT IS STILL WAITING FOR A MODERATOR IS NOT HIS BIOGRAPHY, and does not replace the
+	 * one he has. The text twin of {@link #aPictureThatWaitsIsNotHisPortraitAndDoesNotReplaceTheOneHeHas}.
+	 *
+	 * <p>A member's biography is {@code competitor.bio} once a moderator has approved it, and until
+	 * then the text sits in {@code verification} (ADL A60 makes only the first public). A query that
+	 * read the queue's text, or took it when the member's own was empty, would answer HER words
+	 * nobody has looked at and would answer HIM the wrong ones. <b>Both members have a text waiting
+	 * here</b>: she has written nothing approved and so must be answered the empty text, and he has
+	 * a biography and so must be answered that one.
+	 */
+	@Test
+	void aBiographyThatWaitsIsNotHisBiographyAndDoesNotReplaceTheOneHeHas() throws Exception {
+		isWaitingWithText(ABROAD, "Ovo je tekst koji je poslala a koji niko nije odobrio.");
+		isWaitingWithText(ME, "Ovo je tekst koji ceka umesto onog koji je odobren.");
+
+		JsonNode hers = answerFor(HER_ACCOUNT).path("member");
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(hers.path("memberNumber").asString())
+				.as("this is not her record at all, so the empty text says nothing")
+				.isEqualTo(ABROAD);
+		assertThat(hers.path("bio").asString())
+				.as("a text nobody has approved was answered as her biography")
+				.isEmpty();
+		assertThat(mine.path("bio").asString())
+				.as("the text that waits replaced the biography a moderator approved")
+				.isEqualTo(HIS_BIOGRAPHY);
+	}
+
+	/**
+	 * THE ADDRESS OF HIS PORTRAIT REALLY REACHES THE ROUTE THAT SERVES A PICTURE.
+	 *
+	 * <p>{@code CompetitorApiTest} and {@code TeamApiTest} do the same for their copies of the
+	 * string, and the reason is written there: a constant copied is only ever as good as what
+	 * proves it equal. This hands the address back to the DISPATCHER, so a rename of
+	 * {@code /api/photos/{name}} that left this copy behind is caught by the route and not by a
+	 * comparison of two spellings. The HANDLER is asked for and not the status, because no file
+	 * stands behind the row on this machine and a 404 says „no mapping" and „no file" in one number.
+	 */
+	@Test
+	void thePortraitIsTheAddressOfHisOwnPicture() throws Exception {
+		String address = answerFor(MY_ACCOUNT).path("member").path("photo").asString();
+
+		assertThat(address)
+				.as("the answer carries no portrait at all, so there is no address to walk")
+				.isNotEmpty();
+		assertThat(http.perform(get(address)).andReturn().getHandler())
+				.as("the address answered (%s) is not one the portal maps to a picture, so it is a"
+						+ " circle that will never draw", address)
+				.isInstanceOfSatisfying(HandlerMethod.class,
+						one -> assertThat(one.getBeanType()).isEqualTo(PhotoApi.class));
+	}
+
+	/**
+	 * A PICTURE THAT IS STILL WAITING FOR A MODERATOR IS NOT HIS PORTRAIT, and does not replace
+	 * the one he has.
+	 *
+	 * <p>It is the second source of the same value: a member's portrait is {@code competitor.photo_id}
+	 * once a moderator has approved it, and until then the picture sits in {@code verification}
+	 * (ADL A60 makes only the first public). A query that read the queue's column, or took the
+	 * queue's when the member's own was empty, would answer HER a portrait nobody has looked at
+	 * and would answer HIM the wrong one. <b>Both members have a picture waiting here</b>: she has
+	 * no portrait and so must be answered none, and he has one and so must be answered that one.
+	 */
+	@Test
+	void aPictureThatWaitsIsNotHisPortraitAndDoesNotReplaceTheOneHeHas() throws Exception {
+		isHavingModerated(ABROAD, aPortrait("ef".repeat(32), "0.50000000", "0.50000000", "0.50000000"));
+		isHavingModerated(ME, aPortrait("ba".repeat(32), "0.75000000", "0.75000000", "0.25000000"));
+
+		JsonNode hers = answerFor(HER_ACCOUNT).path("member");
+		JsonNode mine = answerFor(MY_ACCOUNT).path("member");
+
+		assertThat(hers.path("memberNumber").asString())
+				.as("this is not her record at all, so the missing portrait says nothing")
+				.isEqualTo(ABROAD);
+		assertThat(hers.has("photo")).as("a picture nobody has approved was answered as her portrait")
+				.isFalse();
+		assertThat(hers.has("crop")).as("and its square with it").isFalse();
+		assertThat(mine.path("photo").asString())
+				.as("the picture that waits replaced the portrait a moderator approved")
+				.isEqualTo(A_PICTURE_IS_ASKED_FOR_AT + HIS_PORTRAIT);
+		assertThat(new BigDecimal(mine.path("crop").path("x").asString())).isEqualByComparingTo("0.125");
+	}
+
+	/**
+	 * AND NO DATE OF BIRTH LEAVES THIS DOOR EITHER, in any spelling.
+	 *
+	 * <p>Clan 74 and the privacy policy: „Datum rodjenja se nikada ne prikazuje, ni u punom ni u
+	 * skracenom obliku." {@link CompetitorApiTest#noYearOfBirthLeavesTheServer} holds it for the
+	 * public list and this holds it for the door that answers a member his own page. Asked of the
+	 * answer as TEXT and not of a field name, because a year is a year whatever it is called.
+	 *
+	 * <p><b>The four whole numbers an answer legitimately carries are taken out first</b> - the
+	 * season he started in, the key of his team, the season he joined it and his count - because
+	 * a key out of a {@code bigserial} that happens to read 1990 is a coincidence and not a leak,
+	 * and a case that went red on it would be one nobody could fix. What is left is names, words,
+	 * addresses and digests, none of which can spell a year in this fixture. The years are read
+	 * out of the database, so a row added tomorrow is measured without anybody remembering it.
+	 */
+	@Test
+	void noDateOfBirthLeavesHisOwnDoor() throws Exception {
+		ObjectNode mine = (ObjectNode) answerFor(MY_ACCOUNT).path("member").deepCopy();
+
+		assertThat(mine.path("memberNumber").asString())
+				.as("this is not his record at all, so the text below says nothing about what is"
+						+ " left out of it")
+				.isEqualTo(ME);
+		for (String number : List.of("firstSeason", "teamId", "teamSince", "referredCount")) {
+			assertThat(mine.has(number)).as("%s is a whole number he is answered", number).isTrue();
+			mine.remove(number);
+		}
+		String text = mine.toString();
+
+		List<String> years = db.sql("select distinct to_char(birth_date, 'YYYY') from competitor")
+				.query(String.class).list();
+		List<String> days = db.sql("select distinct to_char(birth_date, '-MM-DD') from competitor")
+				.query(String.class).list();
+		assertThat(years).as("the years were not read out of the database, so the loop asserts"
+				+ " nothing").hasSize(2);
+		assertThat(days).as("the days were not read out of the database").hasSize(2);
+
+		for (String year : years) {
+			assertThat(text).as("a year of birth (%s) left the server", year).doesNotContain(year);
+		}
+		for (String day : days) {
+			assertThat(text).as("a whole date of birth (%s) left the server", day)
+					.doesNotContain(day);
+		}
+		assertThat(text).as("his own date, spelt as the table spells it")
+				.doesNotContain(HIS_DATE_OF_BIRTH);
+	}
+
+	/**
+	 * THE BAND MOVES WITH THE SEASON THAT IS RUNNING, ON THIS DOOR AS ON THE OTHER, and at no other
+	 * moment.
+	 *
+	 * <p>The rulebook's bands are settled once, on 1 January of the season (PDL P7), and
+	 * {@code /api/competitors} and this route both answer one. They ask the same function for the
+	 * season ({@code SeasonClock.seasonTheBandIsWorkedOutFor}), and what holds them to it is this
+	 * case, which asks BOTH doors about the very same member at four moments and requires the answers
+	 * to be equal and to be the literal band the rulebook gives.
+	 *
+	 * <p><b>The three members are each one year short of a boundary at the start of 2027</b> (24, 39
+	 * and 54), so a season too many moves every one of them, a season too few moves none of them
+	 * back, and the year does not need to be known to see it. <b>The four moments are the four ways
+	 * a door can read the season wrongly</b>: before the league has a season at all (the floor), in
+	 * the middle of a season, in the autumn when next year's membership is on sale (the renewal
+	 * screen's question is not this one), and on the night the year turns (the league's zone and not
+	 * the server's). Each is a case the other three cannot tell from the right answer, which is why
+	 * none of them is dropped.
+	 *
+	 * <p><b>Both preconditions are asked of the code and not remembered</b>: the zones still disagree
+	 * on that night and the two seasons still disagree in that October. If either stops being true the
+	 * moment measures nothing, and the case says so instead of passing.
+	 */
+	@Test
+	void theBandMovesWithTheSeasonThatIsRunningAndIsTheSameOnBothDoors() throws Exception {
+		bornOn(ME, "2003-06-01");
+		bornOn(ABROAD, "1988-06-01");
+		bornOn(LAPSED, "1973-06-01");
+
+		assertThat(NEW_YEARS_NIGHT_INTO_2028.atZone(clock.getZone()).getYear())
+				.as("the server's clock already reads this moment in the league's own year, so the"
+						+ " answers below are the same whether a door re-reads the zone or not, and the"
+						+ " zone is not measured")
+				.isNotEqualTo(NEW_YEARS_NIGHT_INTO_2028.atZone(SeasonClock.ZONE).getYear());
+		assertThat(SeasonClock.seasonBeingPaidFor(MID_OCTOBER_2027.atZone(SeasonClock.ZONE)))
+				.as("the season being paid for and the season being run agree at this moment, so"
+						+ " swapping one for the other cannot be seen")
+				.isEqualTo(2028);
+
+		/* when, then the band he is in at that moment: born 2003, born 1988, born 1973 (the lapsed one). */
+		Object[][] moments = {
+				{"autumn 2026, before the league has a season", AUTUMN_2026, "24-", "25-39", "40-54"},
+				{"June 2027, the first season running", DURING_2027, "24-", "25-39", "40-54"},
+				{"mid October 2027, with next year on sale", MID_OCTOBER_2027, "24-", "25-39", "40-54"},
+				{"the night the year turns into 2028", NEW_YEARS_NIGHT_INTO_2028, "25-39", "40-54", "55+"},
+		};
+
+		for (Object[] moment : moments) {
+			String when = (String) moment[0];
+
+			clock.moveTo((Instant) moment[1]);
+
+			String his = answerFor(MY_ACCOUNT).path("member").path("ageBand").asString();
+			String hers = answerFor(HER_ACCOUNT).path("member").path("ageBand").asString();
+			String theLapsed = answerFor(THE_LAPSED_ACCOUNT).path("member").path("ageBand").asString();
+
+			assertThat(his).as("%s: the member born in 2003", when).isEqualTo(moment[2]);
+			assertThat(hers).as("%s: the member born in 1988", when).isEqualTo(moment[3]);
+			assertThat(theLapsed).as("%s: the member born in 1973, whose fee has lapsed", when)
+					.isEqualTo(moment[4]);
+			assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("ageBand").asString())
+					.as("%s: the two doors name two bands for the member born in 2003", when)
+					.isEqualTo(his);
+			assertThat(rowOnThePublicList(HER_ACCOUNT, ABROAD).path("ageBand").asString())
+					.as("%s: the two doors name two bands for the member born in 1988", when)
+					.isEqualTo(hers);
+		}
+	}
+
+	/**
+	 * BUT NEVER FOR A SEASON THE LEAGUE DOES NOT HAVE.
+	 *
+	 * <p>The calendar through 2026 answers 2026 and there is no season 2026 (PDL P2), so a band
+	 * worked out for it is a band for nothing. <b>The member is chosen so that the floor is the only
+	 * thing between two answers</b>: born in 2002 he is 24 in 2026 and 25 in 2027, one on each side of a
+	 * boundary, so a door without the floor does not name a different number, it names a different
+	 * band. Without him the case above passes either way (its three members are in the same band in
+	 * 2026 as in 2027), which is how a floor gets deleted in a tidy-up. The other door is asked as
+	 * well, because the floor is the one thing the two could stop sharing.
+	 */
+	@Test
+	void theBandIsNeverWorkedOutForASeasonTheLeagueDoesNotHave() throws Exception {
+		bornOn(ME, "2002-06-01");
+
+		assertThat(SeasonClock.FIRST_SEASON)
+				.as("the league's first season moved, so the clock below no longer stands before it and"
+						+ " this case measures nothing")
+				.isGreaterThan(AUTUMN_2026.atZone(SeasonClock.ZONE).getYear());
+
+		assertThat(answerFor(MY_ACCOUNT).path("member").path("ageBand").asString())
+				.as("the band was worked out for the calendar year 2026, a season the league does not"
+						+ " have, instead of for its first")
+				.isEqualTo("25-39");
+		assertThat(rowOnThePublicList(MY_ACCOUNT, ME).path("ageBand").asString())
+				.as("the other door names another band for the same member")
+				.isEqualTo("25-39");
+	}
+
+	/**
+	 * THE TWO DOORS ANSWER THE SAME MEMBER THE SAME WAY, name by name.
+	 *
+	 * <p>{@link CompetitorApi} and this route both say a member's name, town, biography and
+	 * portrait, and two homes for one fact are the shape that lets two answers disagree. The
+	 * precedent on this class is to write each clause where it is read and to hold the twins
+	 * together with a case rather than with a shared helper, and this is that case: it asks both
+	 * doors about the same member, AS that member, and compares every name they share.
+	 *
+	 * <p><b>The names they share are worked out and not listed</b> - the components of the two
+	 * records - and the ones that are NOT shared are three, each with a reason: his referral code
+	 * and his count left the public list for good (PDL P26a, 25.09.2026) and the basis is the
+	 * administration's to read there and his own to read here ("Clan vidi SVOJ osnov clanstva;
+	 * tudj ne vidi niko osim administracije", owner, 20.09.2026). A fourth fact on this record
+	 * that the public one does not carry fails the first assertion; it has to be named here with
+	 * its reason or given a twin.
+	 *
+	 * <p><b>Absent and null are one answer here</b> and the value is what is compared: the list
+	 * says {@code null} where this route says nothing, by each one's own precedent.
+	 */
+	@Test
+	void theTwoDoorsAnswerTheSameMemberFieldForField() throws Exception {
+		Set<String> mine = Arrays.stream(MeApi.MyOwnRecord.class.getRecordComponents())
+				.map(RecordComponent::getName).collect(Collectors.toSet());
+		Set<String> theirs = Arrays.stream(CompetitorApi.Competitor.class.getRecordComponents())
+				.map(RecordComponent::getName).collect(Collectors.toSet());
+		Set<String> shared = mine.stream().filter(theirs::contains).collect(Collectors.toSet());
+
+		assertThat(mine)
+				.as("one of the three names this case excuses is not on this record at all, so the"
+						+ " excuse is for nothing")
+				.containsAll(Set.of("referralCode", "referredCount", "membershipBasis"));
+		assertThat(mine.stream().filter(name -> !theirs.contains(name)).collect(Collectors.toSet()))
+				.as("a fact this record carries has no twin on the public list and is not one of the"
+						+ " three named for it: give it a twin, or name it here with its reason")
+				.containsExactlyInAnyOrder("referralCode", "referredCount");
+		shared.remove("membershipBasis");
+
+		assertThat(shared)
+				.as("the two doors share almost nothing, so the comparison below is asked of a few"
+						+ " names and says little")
+				.contains("firstName", "lastName", "gender", "city", "ageBand", "firstSeason2027", "teamSince",
+						"bio", "profileHidden", "birthdayShown", "photo", "crop", "memberNumber",
+						"country", "firstSeason", "teamId");
+
+		for (String[] who : new String[][] {{MY_ACCOUNT, ME}, {HER_ACCOUNT, ABROAD}}) {
+			JsonNode here = answerFor(who[0]).path("member");
+			JsonNode there = rowOnThePublicList(who[0], who[1]);
+
+			for (String name : shared) {
+				assertThat(valueOf(here.path(name)))
+						.as("%s is answered one way by /api/me and another by /api/competitors for"
+								+ " the very same member (%s)", name, who[1])
+						.isEqualTo(valueOf(there.path(name)));
+			}
+		}
+	}
+
+	/** An answer's value, with „absent" and „null" being one: the two doors spell it differently. */
+	private static String valueOf(JsonNode node) {
+		return node.isMissingNode() || node.isNull() ? "null" : node.toString();
+	}
+
+	/** When he was born, which is the one datum a band is worked out from and no answer carries. */
+	private void bornOn(String memberNumber, String date) {
+		db.sql("update competitor set birth_date = date '" + date + "' where member_number = ?")
+				.param(memberNumber).update();
+	}
+
+	private String columnOf(String column, String memberNumber) {
+		return db.sql("select " + column + "::text from competitor where member_number = ?")
+				.param(memberNumber).query(String.class).single();
+	}
+
+	/** The name of the town: the codebook's when the town came from it, the typed one otherwise. */
+	private String townOf(String memberNumber) {
+		return db.sql("select coalesce(p.name, c.city) from competitor c"
+						+ " left join place p on p.id = c.place_id where c.member_number = ?")
+				.param(memberNumber).query(String.class).single();
+	}
+
+	private int seasonThatMembershipBeganIn(String memberNumber) {
+		return db.sql("select season_from from team_membership where season_to is null"
+						+ " and competitor_id = ?")
+				.param(competitorIdOf(memberNumber)).query(Integer.class).single();
+	}
+
 	private String whole(String email) throws Exception {
 		return http.perform(asking(email)).andReturn().getResponse()
 				.getContentAsString(StandardCharsets.UTF_8);
@@ -943,7 +1598,7 @@ class MeApiTest {
 						+ " place_id, city, country_id, first_season, first_season_2027, active,"
 						+ " membership_basis, referral_code, referred_by, bio, profile_hidden,"
 						+ " birthday_shown, father_name, address, shirt_size, health_statement_at)"
-						+ " values (?, ?, ?, 'F', date '1990-01-01', " + place + ", " + city + ", "
+						+ " values (?, ?, ?, 'M', date '1990-01-01', " + place + ", " + city + ", "
 						+ country + ", ?, ?, ?, ?, ?, " + broughtBy + ", '', false, 'none', 'Otac',"
 						+ " 'Ulica 1', 'M', timestamptz '2026-09-01 10:00:00+00')")
 				/* ACTIVE FOLLOWS THE NUMBER, and is worked out here rather than passed in because
@@ -958,6 +1613,60 @@ class MeApiTest {
 						number != null && !LAPSED.equals(number), basis,
 						String.format("%016x", ++issued))
 				.update();
+	}
+
+	/**
+	 * THE CALLER, WRITTEN AS THE ONE ROW OF HIS KIND IN EVERY FIELD THE PROFILE ADDED (see the
+	 * note on the class), over the row {@link #competitor} wrote: the only woman, the only one
+	 * who hides his profile and the only one who shows the whole of his birthday, with a
+	 * biography, a portrait with its square, and a date of birth no other row shares.
+	 *
+	 * <p>He hides his profile ON PURPOSE, and it is not decoration: the page of a member who
+	 * hides it is exactly the one {@link CompetitorApi} withholds a biography, a portrait and a
+	 * team from, so a member who is answered all three of his own is answered them ALONE of
+	 * every row here. {@link #aMemberWhoseFeeHasLapsedAndHidesHisProfileIsHandedAllOfIt} asks the
+	 * same of the member who also has no fee standing.
+	 */
+	private void giveTheCallerWhatNoOtherRowHas() {
+		long portrait = aPortrait(HIS_PORTRAIT, "0.12500000", "0.25000000", "0.50000000");
+
+		db.sql("update competitor set gender = 'F', bio = ?, profile_hidden = true,"
+						+ " birthday_shown = 'full', birth_date = date '" + HIS_DATE_OF_BIRTH + "',"
+						+ " photo_id = ? where member_number = ?")
+				.params(HIS_BIOGRAPHY, portrait, ME).update();
+	}
+
+	/**
+	 * A picture SENT AND NOT YET DECIDED, which is the only state a picture in the queue can be
+	 * in: V9's {@code verification_decided_keeps_no_photo} refuses a decided row that still holds
+	 * one. The queue is {@code profiles} and the subject is the member's own name, which is what
+	 * {@code MePhotoApi} writes when a member really sends one.
+	 */
+	private void isHavingModerated(String memberNumber, long photo) {
+		db.sql("insert into verification (queue, competitor_id, subject, body, photo_id, state)"
+						+ " select 'profiles', c.id, c.first_name || ' ' || c.last_name, '', ?,"
+						+ " 'waiting' from competitor c where c.member_number = ?")
+				.params(photo, memberNumber).update();
+	}
+
+	/**
+	 * A text SENT AND NOT YET DECIDED: the same queue and the same subject as the picture above,
+	 * with the words in {@code body} and no picture, which is what {@code MeWriteApi} writes when a
+	 * member really sends one (V53 allows one such text per member at a time).
+	 */
+	private void isWaitingWithText(String memberNumber, String text) {
+		db.sql("insert into verification (queue, competitor_id, subject, body)"
+						+ " select 'profiles', c.id, c.first_name || ' ' || c.last_name, ?"
+						+ " from competitor c where c.member_number = ?")
+				.params(text, memberNumber).update();
+	}
+
+	/** A picture a moderator has APPROVED is a {@code photo} row; the member's column names it. */
+	private long aPortrait(String digest, String x, String y, String size) {
+		return db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
+						+ " crop_diameter) values ('image/png', 1024, ?, ?, ?, ?) returning id")
+				.params(digest, new BigDecimal(x), new BigDecimal(y), new BigDecimal(size))
+				.query(Long.class).single();
 	}
 
 	private void account(String email, String role) {
@@ -1003,5 +1712,51 @@ class MeApiTest {
 						+ " left_reason) values (?, (select id from team where slug = ?), ?, "
 						+ to + ", " + leftReason + ")")
 				.params(competitor, slug, from).update();
+	}
+
+	/**
+	 * A CLOCK THE CASE MOVES, standing in for the server's own: copied in shape from
+	 * {@code CompetitorApiTest}, including the reason it reports UTC. Whoever asks what season it is
+	 * has to re-read the instant in the league's own time, and a door that reads this zone instead
+	 * answers 2027 on a night that is already 2028 in Belgrade.
+	 */
+	static final class AClockTheCaseMoves extends Clock {
+
+		private Instant now;
+
+		private AClockTheCaseMoves(Instant now) {
+			this.now = now;
+		}
+
+		void moveTo(Instant when) {
+			this.now = when;
+		}
+
+		@Override
+		public Instant instant() {
+			return now;
+		}
+
+		@Override
+		public ZoneId getZone() {
+			return ZoneOffset.UTC;
+		}
+
+		@Override
+		public Clock withZone(ZoneId zone) {
+			return Clock.fixed(now, zone);
+		}
+	}
+
+	/** And it stands in for the server's own clock, which is the point of that bean. */
+	@TestConfiguration(proxyBeanMethods = false)
+	static class TheClockTheseCasesUse {
+
+		@Bean
+		@Primary
+		AClockTheCaseMoves aClockTheCaseMoves() {
+			return new AClockTheCaseMoves(AUTUMN_2026);
+		}
+
 	}
 }

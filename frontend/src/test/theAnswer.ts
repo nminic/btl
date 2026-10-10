@@ -373,12 +373,21 @@ export const readAsFee: Price = aProcessingFee
  * requires the two to be the same set - so a name added here that the server has not got
  * fails by name, and a name the server has that is missing here fails the same way.
  *
+ * **Twelve of its nineteen names are the page his own profile is drawn from, since
+ * 10.10.2026** (PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god
+ * postoji"): a member whose fee has lapsed is on no row of `/api/competitors`, so his name,
+ * his town, his category, his biography and his portrait reach the screen through this
+ * answer and no other (`MeApi.MyOwnRecord` says why). They carry the names
+ * `CompetitorApi.Competitor` answers the same facts under, and their values are the
+ * template's own (`aCompetitor`, above), so the sample is one member and not twelve words
+ * that happen to stand beside seven others.
+ *
  * **Not handed to a type, and that is said rather than left as an omission.** The portal
- * has no type for this record: it reads THREE fields off it (`session/theServer.ts`) -
- * how the caller's own membership is held, his own referral link and his count of whom he
- * brought in - because those three are the ones with no other door. It read one until
- * 25.09.2026, when P26a took the other two off `/api/competitors`. A type here would be
- * four names nothing reads.
+ * has no type for this record: `session/theServer.ts` reads the first seven off it for who
+ * is asking (`whoTheServerSaysIAm`) and the twelve for his page
+ * (`whatTheServerSaysOfMyProfile`), two readers over one request on purpose, each field
+ * looked for and never asserted (ADL A14). A type here would be nineteen names that two
+ * readers already narrow for themselves.
  */
 export const myOwnRecordFromMe = {
   memberNumber: '000001',
@@ -388,6 +397,18 @@ export const myOwnRecordFromMe = {
   membershipBasis: 'payment',
   referralCode: '7f07b38ff7ee7543',
   referredCount: 4,
+  firstName: aCompetitor.firstName,
+  lastName: aCompetitor.lastName,
+  gender: aCompetitor.gender,
+  city: aCompetitor.city,
+  ageBand: aCompetitor.ageBand,
+  firstSeason2027: aCompetitor.firstSeason2027,
+  teamSince: aCompetitor.teamSince,
+  bio: aCompetitor.bio,
+  profileHidden: aCompetitor.profileHidden,
+  birthdayShown: aCompetitor.birthdayShown,
+  photo: aCompetitor.photo,
+  crop: aCompetitor.crop,
 }
 
 /**

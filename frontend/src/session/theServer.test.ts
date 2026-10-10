@@ -5,7 +5,7 @@ import { ROLES, SIGNED_IN_ROLES } from '../roles/context'
 import { must } from '../test/at'
 import { serverThat, type Asked } from '../test/serverAnswers'
 import { myOwnRecordFromMe } from '../test/theAnswer'
-import { whoTheServerSaysIAm } from './theServer'
+import { whatTheServerSaysOfMyProfile, whoTheServerSaysIAm } from './theServer'
 
 /**
  * WHAT THE PORTAL BELIEVES ABOUT THE ANSWER TO „WHO IS ASKING".
@@ -450,11 +450,23 @@ describe('who the server says I am', () => {
      told". And every number it may not believe comes back as „I was not told". The set it believes is
      written once, on the reader: a whole number of nought or more.
 
-     **Nought is believed for all three, and that is the boundary of one rule rather than a finding about
-     each.** A team numbered nought cannot exist (`team.id` is a `bigserial`, V11) and a season numbered
-     nought is not a year, so for those two the floor is looser than it could be. That is written here and
-     not mended, because a floor of its own per key would be three readers where `wholeIn` says there is
-     one, and nothing in PENDING asks for it. */
+     **Nought is believed for all four, and that is the boundary of one rule rather than a finding about
+     each.** A team numbered nought cannot exist (`team.id` is a `bigserial`, V11), a season numbered
+     nought is not a year and neither is the season he joined his team in, so for those three the floor
+     is looser than it could be. That is written here and not mended, because a floor of its own per key
+     would be four readers where `wholeIn` says there is one, and nothing in PENDING asks for it.
+
+     **AND SINCE 10.10.2026 THE QUESTION IS ASKED OF BOTH READERS, because a key may be read by either.**
+     The record the server declares has nineteen names and the portal has two readers of it:
+     `whoTheServerSaysIAm` reads who he is, and `whatTheServerSaysOfMyProfile` reads the page his own
+     profile is drawn from. They are two on purpose (the second is `null` for a page the portal cannot
+     believe and the first never is, so a fault in his page cannot sign him out; the cases on that are
+     below), and the one number the page reads that who-he-is does not is `teamSince`. A floor that asked
+     only the first would demand that the session read it, which is the very thing the separation exists
+     to refuse. So each key is asked of BOTH, with a whole page around it, and the question for it is
+     WHICH READER HANDS IT BACK: a key that neither does fails here by name, which is the whole of what
+     this floor is for and is unchanged, and whichever reader does is held to the same two things. Nothing
+     is listed by hand: which reader reads which key is found out by asking. */
   const NUMBERS_THE_SERVER_DECLARES = Object.entries(myOwnRecordFromMe)
     .filter(([, value]) => typeof value === 'number')
     .map(([key]) => key)
@@ -479,29 +491,54 @@ describe('who the server says I am', () => {
     expect(NUMBERS_THE_SERVER_DECLARES.length).toBeGreaterThanOrEqual(3)
   })
 
-  it.each(NUMBERS_THE_SERVER_DECLARES)('believes a whole number of nought or more for %s', async (key) => {
+  /** What each of the two readers hands back for `key` when the member says `sent` there (the text the
+   *  wire carries) and says everything else a page needs (`HIS_PAGE`, which is further down and is the
+   *  page the second reader accepts). `undefined` is „this reader has no such name", which is how the
+   *  floor finds out which reader reads which key. */
+  async function whatTheReadersHandBack(
+    key: string,
+    sent: string,
+  ): Promise<{ whoHeIs: unknown; hisPage: unknown }> {
+    const THE_VALUE = 'THE_VALUE_THIS_CASE_SENDS'
+    const member = JSON.stringify({ ...HIS_PAGE, [key]: THE_VALUE }).replace(
+      JSON.stringify(THE_VALUE),
+      () => sent,
+    )
+
+    server?.stop()
+    server = serverThat(() => saying(`{"role":"competitor","account":41,"member":${member}}`))
+
+    const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
+    const page = await whatTheServerSaysOfMyProfile()
+
+    return {
+      whoHeIs: Reflect.has(who, key) ? Reflect.get(who, key) : undefined,
+      hisPage: page !== null && Reflect.has(page, key) ? Reflect.get(page, key) : undefined,
+    }
+  }
+
+  it.each(NUMBERS_THE_SERVER_DECLARES)('is read by some reader, and believed as a whole number of nought or more, for %s', async (key) => {
     for (const sent of BELIEVED) {
-      server?.stop()
-      server = serverThat(() =>
-        saying(`{"role":"competitor","account":41,"member":{"${key}":${sent}}}`),
-      )
+      const { whoHeIs, hisPage } = await whatTheReadersHandBack(key, sent)
 
-      const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
+      expect(
+        whoHeIs !== undefined || hisPage !== undefined,
+        `${key} sent as ${sent}: neither reader hands it back, so the portal never reads it`,
+      ).toBe(true)
 
-      expect(Reflect.get(who, key), `${key} sent as ${sent}`).toBe(Number(sent))
+      for (const handedBack of [whoHeIs, hisPage].filter((one) => one !== undefined)) {
+        expect(handedBack, `${key} sent as ${sent}`).toBe(Number(sent))
+      }
     }
   })
 
-  it.each(NUMBERS_THE_SERVER_DECLARES)('believes nothing else for %s', async (key) => {
+  it.each(NUMBERS_THE_SERVER_DECLARES)('is believed as nothing else by either reader for %s', async (key) => {
     for (const [kind, sent] of NOT_BELIEVED) {
-      server?.stop()
-      server = serverThat(() =>
-        saying(`{"role":"competitor","account":41,"member":{"${key}":${sent}}}`),
-      )
+      const { whoHeIs, hisPage } = await whatTheReadersHandBack(key, sent)
 
-      const who = must(await whoTheServerSaysIAm(), 'an answer that names a member')
-
-      expect(Reflect.get(who, key), `${key} sent as ${kind}: ${sent}`).toBeNull()
+      for (const handedBack of [whoHeIs, hisPage].filter((one) => one !== undefined)) {
+        expect(handedBack, `${key} sent as ${kind}: ${sent}`).toBeNull()
+      }
     }
   })
 
@@ -519,4 +556,289 @@ describe('who the server says I am', () => {
 
     expect(await whoTheServerSaysIAm()).toBeNull()
   })
+})
+
+/**
+ * THE PAGE OF THE CALLER HIMSELF: the record his own profile is drawn from, read APART from who
+ * he is.
+ *
+ * <p>PDL P8, 25.09.2026, „Treba da moze da otvori svoj profil dokle god postoji". A member whose
+ * fee has lapsed is on no row of the public list, and `MeApi.MyOwnRecord` is where his name, his
+ * town, his category, his biography and his portrait reach the screen.
+ *
+ * <p><b>The sample is the lapsed member the generated data has</b> (000032, `test/mock/
+ * competitors.json`) in the names the server answers, and it is written out here and not read off
+ * the disc: this file measures what a body is BELIEVED as, and a sample that came off the same
+ * file the screens are drawn from would agree with them however wrong both were. He is in no team
+ * and has no portrait, which is the common answer, so the two pairs that may honestly be absent
+ * are absent in it.
+ */
+const HIS_PAGE: Record<string, unknown> = {
+  memberNumber: '000032',
+  country: 'RS',
+  firstSeason: 2016,
+  membershipBasis: 'payment',
+  referralCode: 'a92a9c8493cecc3e',
+  referredCount: 0,
+  firstName: 'Vojislav',
+  lastName: 'Antonijević',
+  gender: 'M',
+  city: 'Zaječar',
+  ageBand: '40-54',
+  firstSeason2027: false,
+  bio: '',
+  profileHidden: false,
+  birthdayShown: 'none',
+}
+
+/** What the answer is when somebody signed in with a member behind the account says this. */
+function aMemberSaying(member: Record<string, unknown>): string {
+  return JSON.stringify({ role: 'competitor', account: 41, member })
+}
+
+/**
+ * THE FACTS A PAGE CANNOT BE DRAWN WITHOUT, which are the sample's keys less the three that are
+ * about his fee and not about his page: the basis he pays on, his referral code and his count.
+ * Derived from the sample, so a fact added to it tomorrow is measured here on the day it arrives.
+ */
+const WHAT_A_PAGE_NEEDS = Object.keys(HIS_PAGE).filter(
+  (key) => !['membershipBasis', 'referralCode', 'referredCount'].includes(key),
+)
+
+/** The three of those that are ALSO who he is, and so are read by the session as well. */
+const WHAT_HE_IS = ['memberNumber', 'country', 'firstSeason']
+
+/** A value of the wrong kind for each fact, and for each of them a kind the server could send. */
+const NOT_BELIEVED_AS_A_PAGE: [key: string, sent: unknown][] = [
+  ['memberNumber', 7],
+  ['country', 7],
+  ['firstSeason', -1],
+  ['firstSeason', 2016.5],
+  ['firstSeason', '2016'],
+  ['firstName', ''],
+  ['firstName', '   '],
+  ['firstName', 7],
+  ['lastName', ''],
+  ['lastName', null],
+  ['gender', 'X'],
+  ['gender', 'f'],
+  ['gender', 1],
+  ['city', ''],
+  ['city', 7],
+  ['ageBand', '99+'],
+  ['ageBand', '25–39'],
+  ['ageBand', 7],
+  ['firstSeason2027', 'false'],
+  ['firstSeason2027', 0],
+  ['bio', 7],
+  ['bio', null],
+  ['profileHidden', 'true'],
+  ['profileHidden', 1],
+  ['birthdayShown', 'date'],
+  ['birthdayShown', 3],
+]
+
+describe('the page of the caller himself', () => {
+  it('is the record the public list would have given him, under the names it gives them', async () => {
+    server = serverThat(() => saying(aMemberSaying(HIS_PAGE)))
+
+    expect(await whatTheServerSaysOfMyProfile()).toEqual({
+      memberNumber: '000032',
+      firstName: 'Vojislav',
+      lastName: 'Antonijević',
+      gender: 'M',
+      city: 'Zaječar',
+      country: 'RS',
+      ageBand: '40-54',
+      firstSeason2027: false,
+      firstSeason: 2016,
+      profileHidden: false,
+      birthdayShown: 'none',
+      /* The two pairs that may honestly be absent are null on the record, which is how the public
+         list says it as well, and not absent: a record is read by one reader on this portal. */
+      teamId: null,
+      teamSince: null,
+      bio: '',
+      photo: null,
+      crop: null,
+    })
+    expect(server.asked.map((one) => one.path)).toEqual(['/api/me'])
+  })
+
+  it('carries the club and its year, and the portrait and its square, when the answer has them', async () => {
+    server = serverThat(() =>
+      saying(
+        aMemberSaying({
+          ...HIS_PAGE,
+          teamId: 3,
+          teamSince: 2018,
+          bio: 'Trci i piše.',
+          profileHidden: true,
+          birthdayShown: 'full',
+          photo: '/api/photos/3c9e5f41',
+          crop: { x: 0.125, y: 0.25, size: 0.5 },
+        }),
+      ),
+    )
+
+    expect(await whatTheServerSaysOfMyProfile()).toMatchObject({
+      teamId: 3,
+      teamSince: 2018,
+      bio: 'Trci i piše.',
+      profileHidden: true,
+      birthdayShown: 'full',
+      photo: '/api/photos/3c9e5f41',
+      crop: { x: 0.125, y: 0.25, size: 0.5 },
+    })
+  })
+
+  it('reads the facts a page needs off the sample, and finds some', () => {
+    /* An empty list would make both sweeps below say nothing at all, quietly. */
+    expect(WHAT_A_PAGE_NEEDS.length).toBeGreaterThanOrEqual(12)
+    expect(WHAT_A_PAGE_NEEDS).toContain('gender')
+    expect(WHAT_A_PAGE_NEEDS).not.toContain('referralCode')
+  })
+
+  it.each(WHAT_A_PAGE_NEEDS)('is nothing at all without %s, which no page can be drawn without', async (key) => {
+    const { [key]: _left, ...without } = HIS_PAGE
+
+    server = serverThat(() => saying(aMemberSaying(without)))
+
+    expect(await whatTheServerSaysOfMyProfile(), `${key} left out`).toBeNull()
+  })
+
+  it.each(NOT_BELIEVED_AS_A_PAGE)('does not believe %s sent as %j', async (key, sent) => {
+    server = serverThat(() => saying(aMemberSaying({ ...HIS_PAGE, [key]: sent })))
+
+    expect(await whatTheServerSaysOfMyProfile()).toBeNull()
+  })
+
+  it.each([
+    ['a club below nought', { teamId: -1, teamSince: 2018 }, { teamId: null, teamSince: 2018 }],
+    ['a year that is not a number', { teamId: 3, teamSince: '2018' }, { teamId: 3, teamSince: null }],
+    ['a fraction for a year', { teamId: 3, teamSince: 2018.5 }, { teamId: 3, teamSince: null }],
+  ])('keeps the page when the club is %s, and says nothing of the part it cannot believe', async (_what, sent, expected) => {
+    server = serverThat(() => saying(aMemberSaying({ ...HIS_PAGE, ...sent })))
+
+    expect(await whatTheServerSaysOfMyProfile()).toMatchObject(expected)
+  })
+
+  /* **THE PORTRAIT IS DECORATION, SO IT NEVER COSTS A MEMBER HIS PAGE** - the opposite of the facts
+     above. It and its square travel together, here as on the server (`CompetitorApi` reads both off
+     one joined row): one without the other is read as no portrait, which draws the monogram. */
+  it.each([
+    ['an address that is not under the portal\'s own pictures', { photo: 'https://elsewhere.example/x.png', crop: { x: 0, y: 0, size: 1 } }],
+    ['a picture with no square', { photo: '/api/photos/3c9e5f41' }],
+    ['a square with no picture', { crop: { x: 0, y: 0, size: 1 } }],
+    ['a picture and a square that is not an object', { photo: '/api/photos/3c9e5f41', crop: 'whole' }],
+    ['a picture and a square that is null', { photo: '/api/photos/3c9e5f41', crop: null }],
+    ['a picture and a square missing its left edge', { photo: '/api/photos/3c9e5f41', crop: { y: 0, size: 1 } }],
+    ['a picture and a square missing its top edge', { photo: '/api/photos/3c9e5f41', crop: { x: 0, size: 1 } }],
+    ['a picture and a square missing its size', { photo: '/api/photos/3c9e5f41', crop: { x: 0, y: 0 } }],
+    ['a picture and a square whose left edge is a word', { photo: '/api/photos/3c9e5f41', crop: { x: 'a', y: 0, size: 1 } }],
+    ['a picture and a square whose size is a word', { photo: '/api/photos/3c9e5f41', crop: { x: 0, y: 0, size: 'big' } }],
+  ])('reads %s as no portrait, and the page is still drawn', async (_what, sent) => {
+    server = serverThat(() =>
+      saying(JSON.stringify({ role: 'competitor', account: 41, member: { ...HIS_PAGE, ...sent } })),
+    )
+
+    expect(await whatTheServerSaysOfMyProfile()).toMatchObject({
+      firstName: 'Vojislav',
+      photo: null,
+      crop: null,
+    })
+  })
+
+  it('is nothing when the first number of the square is too large to be one', async () => {
+    /* `JSON.stringify` cannot say `1e999` (it writes `null`) and the wire can (the same reason the
+       whole numbers above are written as text), so these three are sent as the text itself. Each of
+       the three numbers has its own case, because each is its own operand of the one condition. */
+    for (const square of [
+      '{"x":1e999,"y":0,"size":1}',
+      '{"x":0,"y":1e999,"size":1}',
+      '{"x":0,"y":0,"size":1e999}',
+    ]) {
+      server?.stop()
+      server = serverThat(() =>
+        saying(
+          `{"role":"competitor","account":41,"member":${JSON.stringify(HIS_PAGE).slice(0, -1)},` +
+            `"photo":"/api/photos/3c9e5f41","crop":${square}}}`,
+        ),
+      )
+
+      expect(await whatTheServerSaysOfMyProfile(), square).toMatchObject({
+        photo: null,
+        crop: null,
+      })
+    }
+  })
+
+  it.each([
+    ['an account that races for nobody', JSON.stringify({ role: 'moderator', account: 41 })],
+    ['a record that is null', JSON.stringify({ role: 'competitor', account: 41, member: null })],
+    ['a record that is not an object', JSON.stringify({ role: 'competitor', account: 41, member: 'x' })],
+    ['nothing but the word for it', '"competitor"'],
+    ['null', 'null'],
+    ['something that is not JSON', '<!doctype html><title>ne ovo</title>'],
+  ])('is nothing for %s', async (_what, body) => {
+    server = serverThat(() => saying(body))
+
+    expect(await whatTheServerSaysOfMyProfile()).toBeNull()
+  })
+
+  it('is nothing when the chain refuses, and when there is no server to reach', async () => {
+    server = serverThat(() => new Response(null, { status: 401 }))
+
+    expect(await whatTheServerSaysOfMyProfile()).toBeNull()
+
+    server.stop()
+    server = serverThat(() => {
+      throw new Error('nema veze')
+    })
+
+    expect(await whatTheServerSaysOfMyProfile()).toBeNull()
+  })
+
+  /* **THE CONDITION THIS READER EXISTS UNDER, MEASURED FROM THE OTHER SIDE.** `whoTheServerSaysIAm`
+     answers `null` for every fault and the session reads `null` as nobody, so a fact of the page
+     that the portal cannot believe, read THERE, would sign the member out of every screen of the
+     portal. It is read here instead, and the same body that leaves his page unreadable leaves him
+     signed in. Asked of every fact that is only about the page; the three that are also who he is
+     are measured by the session's own cases above.
+
+     The mutation that drops the separation is the one that reads the page inside
+     `whoTheServerSaysIAm` and answers `null` for it as a whole: it fails every case here. */
+  it.each(NOT_BELIEVED_AS_A_PAGE.filter(([key]) => !WHAT_HE_IS.includes(key)))(
+    'leaves him signed in when %s is sent as %j, whatever it does to his page',
+    async (key, sent) => {
+      server = serverThat(() => saying(aMemberSaying({ ...HIS_PAGE, [key]: sent })))
+
+      expect(await whatTheServerSaysOfMyProfile(), 'his page').toBeNull()
+      expect(await whoTheServerSaysIAm(), 'who he is').toEqual({
+        role: 'competitor',
+        account: 41,
+        memberNumber: '000032',
+        country: 'RS',
+        firstSeason: 2016,
+        teamId: null,
+        membershipBasis: 'payment',
+        referralCode: 'a92a9c8493cecc3e',
+        referredCount: 0,
+      })
+    },
+  )
+
+  it.each(WHAT_A_PAGE_NEEDS.filter((key) => !WHAT_HE_IS.includes(key)))(
+    'leaves him signed in when %s is missing altogether',
+    async (key) => {
+      const { [key]: _left, ...without } = HIS_PAGE
+
+      server = serverThat(() => saying(aMemberSaying(without)))
+
+      expect(await whoTheServerSaysIAm(), 'who he is').toMatchObject({
+        role: 'competitor',
+        memberNumber: '000032',
+      })
+    },
+  )
 })
