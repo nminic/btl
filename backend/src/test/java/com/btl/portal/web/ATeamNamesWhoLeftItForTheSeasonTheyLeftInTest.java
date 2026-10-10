@@ -129,12 +129,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * drops him while he is named; one asked of the season being run drops him sixteen hours early. Every
  * {@code first_season} in the fixture is a third and a fourth (2019 for the members, 2030 for the
  * teams), so a season read from the wrong column is a wrong number.
- * <li>The leavers of the first October have {@code until} equal to the season that freezes at
- * {@link #WHEN_2027_FREEZES}, and the leaver of the second has {@code until} one season later than
- * the last frozen season at {@link #OCTOBER_2028}: the source of the number and the subject of the
- * decision are the same season in the first, and are not in the second. They cannot share one answer,
- * because a membership ending with 2028 is written in October 2028, and the cases do not pretend it
- * is written earlier.
+ * <li>The relation between the season a row ends with and the season being frozen is itself an axis,
+ * and each of its three values stands next to another at a moment that can exist. At
+ * {@link #WHEN_2027_FREEZES} the leavers of the first October end with exactly the season that
+ * freezes (the source of the number and the subject of the decision are one season). At
+ * {@link #OCTOBER_2028} they end with a season frozen long before and the member of two seasons ends
+ * with one that has not frozen yet. At {@link #WHEN_2028_FREEZES} his season is the one that freezes
+ * and theirs is the one frozen long before. The pair „equal to the season freezing" and „later than
+ * it" cannot stand in one answer, because a membership ending with 2028 is written in October 2028,
+ * and the cases do not pretend it is written earlier.
  * <li>{@link #A_LAPSED_LEAVER} left and has not paid: not named, and asked at the moments when he WOULD
  * be, since after the freeze he is named nowhere for a second reason. {@link #THE_ONE_WITH_NO_NUMBER}
  * left and has no member number: named, because the record door has no condition on the number either.

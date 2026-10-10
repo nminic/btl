@@ -797,6 +797,13 @@ class TeamApi {
 		   twice is two homes for it, as its own notes say of the others) and the rows are few. The moment
 		   is read once for the request, so one answer is never half before the turn and half after it.
 
+		   `season_to` IS READ AS AN `Integer` AND NOT WITH `getInt`: `getInt` reads a SQL NULL as 0, and 0
+		   is a season that froze long ago, so a row the condition on `season_to` let through by mistake
+		   would be dropped by the freeze below in silence, and that condition would have no case that sees
+		   it go (measured: with `getInt` the mutation that drops it survived the whole of the new class).
+		   As an `Integer` it is a NullPointerException the first time one gets through, and the cases see
+		   that.
+
 		   NO CONDITION ABOUT WHO IS ASKING, which is what tells it from `alsoIn`. That one is turned
 		   over by the rule about a hidden profile because the record carries the link for the readers
 		   who may read one; no record carries an ended membership, so there is nothing to be told
@@ -826,7 +833,7 @@ class TeamApi {
 						+ " where m.season_to is not null and c.active"
 						+ " order by c.member_number, c.id, m.season_from")
 				.query((row, one) -> Map.entry(row.getLong(1),
-						new EndedMembership(row.getString(2), row.getInt(3), row.getInt(4))))
+						new EndedMembership(row.getString(2), row.getInt(3), row.getObject(4, Integer.class))))
 				.list().stream()
 				.filter(one -> !SeasonClock.isFrozen(one.getValue().until(), now))
 				.collect(Collectors.groupingBy(Map.Entry::getKey,
