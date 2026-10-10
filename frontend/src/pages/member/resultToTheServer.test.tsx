@@ -1148,7 +1148,10 @@ describe('a run sent back, sent again', () => {
 
       /* The form for a new run, which is what is typed into below: the correction's would be
          locked on the race and would not take it. */
-      expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
+      expect(
+        screen.queryByText(/Ispravljaš rezultat koji je odbijen/),
+        'the form for the correction sent back is open while another correction of its result waits',
+      ).toBeNull()
 
       await describeARace(user)
       await send(user)

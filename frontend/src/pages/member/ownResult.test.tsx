@@ -1156,15 +1156,43 @@ describe('a result that has been counted', () => {
    * nothing opens, and shows nothing of the run it was typed for.
    */
   it.each([
-    ['refuses a correction sent back while another correction of its result waits', () => 'ponovo=9105', null],
-    ['opens a correction sent back whose result has none waiting, while others wait', () => 'ponovo=9104', /Ispravljaš rezultat koji je odbijen/],
-    ['opens the second correction sent back for one result, since neither waits', () => 'ponovo=9103', /Ispravljaš rezultat koji je odbijen/],
-    ['opens a run sent back that corrected nothing, while one that corrected nothing waits', () => 'ponovo=9102', /Ispravljaš rezultat koji je odbijen/],
-    ['refuses the counted result whose correction waits and another was sent back for', (ways: Ways) => `ispravka=${String(ways.held.id)}`, null],
-    ['refuses the counted result whose correction waits and none was sent back for', (ways: Ways) => `ispravka=${String(ways.elsewhere.id)}`, null],
-    ['opens the counted result with two corrections sent back and none waiting', (ways: Ways) => `ispravka=${String(ways.calm.id)}`, /Menjaš rezultat koji je već uračunat/],
+    [
+      'refuses a correction sent back while another correction of its result waits, even when the address is typed',
+      () => 'ponovo=9105',
+      null,
+    ],
+    [
+      'opens a correction sent back whose result has none waiting, while others wait',
+      () => 'ponovo=9104',
+      /Ispravljaš rezultat koji je odbijen/,
+    ],
+    [
+      'opens the second correction sent back for one result, since neither waits',
+      () => 'ponovo=9103',
+      /Ispravljaš rezultat koji je odbijen/,
+    ],
+    [
+      'opens a run sent back that corrected nothing, while one that corrected nothing waits',
+      () => 'ponovo=9102',
+      /Ispravljaš rezultat koji je odbijen/,
+    ],
+    [
+      'refuses the counted result whose correction waits and another was sent back for, even when the address is typed',
+      (ways: Ways) => `ispravka=${String(ways.held.id)}`,
+      null,
+    ],
+    [
+      'refuses the counted result whose correction waits and none was sent back for, even when the address is typed',
+      (ways: Ways) => `ispravka=${String(ways.elsewhere.id)}`,
+      null,
+    ],
+    [
+      'opens the counted result with two corrections sent back and none waiting',
+      (ways: Ways) => `ispravka=${String(ways.calm.id)}`,
+      /Menjaš rezultat koji je već uračunat/,
+    ],
   ] as const)(
-    '%s, even when the address is typed',
+    '%s',
     async (_what, road, opens) => {
       const ways = waysIntoACorrection()
 
@@ -1174,8 +1202,14 @@ describe('a result that has been counted', () => {
       await screen.findByLabelText(/^Naziv trke/, undefined, SOON)
 
       if (opens === null) {
-        expect(screen.queryByText(/Ispravljaš rezultat koji je odbijen/)).toBeNull()
-        expect(screen.queryByText(/Menjaš rezultat koji je već uračunat/)).toBeNull()
+        expect(
+          screen.queryByText(/Ispravljaš rezultat koji je odbijen/),
+          'the form for a correction sent back is open',
+        ).toBeNull()
+        expect(
+          screen.queryByText(/Menjaš rezultat koji je već uračunat/),
+          'the form for a counted result is open',
+        ).toBeNull()
         expect(screen.queryByText(/Link ne otvara rezultate/), 'a reason was shown').toBeNull()
         expect(screen.getByText(/Rezultat ulazi u rang liste tek kad/)).toBeVisible()
         expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')

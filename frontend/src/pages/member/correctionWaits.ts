@@ -10,9 +10,9 @@ import type { SentRun } from '../../data/types'
  * in the same `PUT /api/results/{id}` (`resultWrites.ts`, `theCorrectionWasSentIn`). Two of them
  * asked this each for itself and the other two did not ask it at all: the review of PR 521
  * measured on 10.10.2026 that with a correction of a result waiting, the list hid „Izmeni" and went
- * on offering „Ispravi i pošalji ponovo" on a refused correction of the same result, and the address
- * behind that link opened the form and sent. It is one function now, so that no way in can answer
- * for itself and two of them be found saying opposite things about the same result.
+ * on offering „Ispravi i pošalji ponovo" on a correction of the same result that had been sent back,
+ * and the address behind that link opened the form and sent. It is one function now, so that no way
+ * in can answer for itself and two of them be found saying opposite things about the same result.
  *
  * <p><b>Why a second correction does not go while one waits.</b> It puts two corrections of one
  * result in front of a moderator, and each approval writes the same row of `result`
