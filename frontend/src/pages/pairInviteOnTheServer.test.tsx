@@ -405,6 +405,48 @@ describe('what stands in the place of the button', () => {
     }
   }, SLOW)
 
+  it('offers nothing while what the reader waits on is still being read', async () => {
+    /* The button is a claim that no question stands, so it waits for the list that says so, and
+       no loader stands in its place either, which is `profile/InviteToTeam.tsx`'s answer directly
+       above it. */
+    let release = (): void => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const server = aServerForThePair({
+      reading: () =>
+        held.then(() =>
+          json({
+            teamApplications: [],
+            teamInvitations: [],
+            teamProposals: [],
+            pairInvites: HIS_QUESTIONS,
+            alreadyInATeam: false,
+          }),
+        ),
+    })
+
+    try {
+      renderAt(HER_PAGE, 'competitor', READER, undefined, DAY)
+
+      await screen.findByRole('heading', { level: 1, name: /Katarina/ })
+      await waitFor(() => {
+        expect(readsOfWhatHeWaitsOn(server.asked)).toBe(1)
+      })
+      await settled()
+
+      expect(theButton()).toBeNull()
+      expect(screen.queryByText(sr.pair.asked)).toBeNull()
+      expect(screen.queryByText(sr.data.loading)).toBeNull()
+
+      release()
+
+      expect(await screen.findByRole('button', { name: sr.pair.invite })).toBeVisible()
+    } finally {
+      server.stop()
+    }
+  }, SLOW)
+
   it('says so when what the reader waits on cannot be read, offers no button over it, and asks again', async () => {
     let fails = true
     const server = aServerForThePair({
