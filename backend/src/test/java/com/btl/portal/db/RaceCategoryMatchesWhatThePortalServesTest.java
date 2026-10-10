@@ -94,11 +94,15 @@ class RaceCategoryMatchesWhatThePortalServesTest extends DatabaseTest {
 	 * What the schema itself works the category out of, in its own words.
 	 *
 	 * <p>Two tables carry the same rule: a race has a distance and so does a result,
-	 * because a result keeps its own rather than reading the race's (V7), so that a
-	 * race edited afterwards cannot rescore what was already run. That is the right
-	 * decision and it makes the rule live in two places, which is why this takes the
-	 * table as an argument and why one of the cases below puts the two to each
-	 * other.
+	 * because a result keeps its own rather than reading the race's (V7). On a race to a
+	 * limit and on a free race the length is the runner's and the race has none to give;
+	 * on a race of a length it is the race's, copied onto a run when the run is approved
+	 * and copied again onto every counted run when the race is corrected
+	 * ({@code RaceWriteApi}, the owner's decision of 20.09.2026), a frozen season apart.
+	 * V7's other reason, that a race edited afterwards cannot rescore what was already run,
+	 * is the one that decision overturned. Either way the rule lives in two places, which
+	 * is why this takes the table as an argument and why one of the cases below puts the
+	 * two to each other.
 	 */
 	private String howTheSchemaWorksItOut(String table) {
 		return db.sql("select pg_get_expr(def.adbin, def.adrelid)"
