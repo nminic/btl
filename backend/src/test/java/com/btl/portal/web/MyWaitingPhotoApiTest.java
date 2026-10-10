@@ -76,8 +76,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li>{@link #ON_MY_OWN_PROFILE} is the caller's and APPROVED, which this address must refuse
  * because it is served by the public one: a route that forgot the join to {@code verification}
  * would answer it.
- * <li>{@link #WITHOUT_ITS_FILE} is the caller's, waiting, and its file is gone - the state
- * {@code deploy/README.md} produces every morning QA is refreshed.
+ * <li>{@link #WITHOUT_ITS_FILE} is a FOURTH member's own, waiting, and its file is gone - the
+ * state {@code deploy/README.md} produces every morning QA is refreshed. It is his and not the
+ * caller's of the other three cases since V55: a member has one picture waiting at a time, and the
+ * database refuses the second (the fixture used to give the caller two).
  * </ul>
  *
  * <p><b>AND A MODERATOR WHO HOLDS THE PROFILES QUEUE IS ASKED HERE TOO</b>, because this route and
@@ -123,7 +125,7 @@ class MyWaitingPhotoApiTest {
 			new byte[] {'R', 'I', 'F', 'F', 0x00, 'o', 'n'});
 
 	/**
-	 * AND ONE OF HIS WHOSE ROW IS THERE AND WHOSE FILE IS NOT.
+	 * AND ONE OF A FOURTH MEMBER'S WHOSE ROW IS THERE AND WHOSE FILE IS NOT.
 	 *
 	 * <p>{@code deploy/README.md} says QA is refreshed by throwing the volume away while the rows
 	 * stay, so every picture on the portal is one of these the morning after. Its decoy IS written,
@@ -138,6 +140,9 @@ class MyWaitingPhotoApiTest {
 
 	/** Whose picture {@link #SOMEBODY_ELSES} is. */
 	private static final String SOMEBODY_ELSE = "neko-drugi@primer.rs";
+
+	/** Whose picture {@link #WITHOUT_ITS_FILE} is, and who asks in the one case about a lost file. */
+	private static final String WHOSE_FILE_IS_GONE = "bez-fajla@primer.rs";
 
 	/** Holds the profiles queue, so he may see these pictures at his OWN address and not here. */
 	private static final String MAY_THE_PROFILES = "profili@primer.rs";
@@ -178,10 +183,12 @@ class MyWaitingPhotoApiTest {
 		member("000801", "Moja");
 		member("000802", "Tudja");
 		member("000803", "Moderator");
+		member("000804", "Bez fajla");
 
 		account(ME, "competitor", "000801");
 		account(SOMEBODY_ELSE, "competitor", "000802");
 		account(MAY_THE_PROFILES, "moderator", "000803");
+		account(WHOSE_FILE_IS_GONE, "competitor", "000804");
 		ticked(MAY_THE_PROFILES, "queue:profiles");
 
 		accountWithNoMember(RACES_FOR_NOBODY);
@@ -195,7 +202,7 @@ class MyWaitingPhotoApiTest {
 		   the answer this route is meant to give. */
 		waitingRow("000802", SOMEBODY_ELSES);
 		waitingRow("000801", MINE);
-		waitingRow("000801", WITHOUT_ITS_FILE);
+		waitingRow("000804", WITHOUT_ITS_FILE);
 
 		/* AND THE APPROVED ONE IS ON THE PROFILE RATHER THAN IN THE QUEUE, which is what an
 		   approval leaves behind: `competitor.photo_id` set and the queue row's pointer emptied. */
@@ -387,7 +394,7 @@ class MyWaitingPhotoApiTest {
 		speaking.addAppender(heard);
 
 		try {
-			MockHttpServletResponse answer = asked(WITHOUT_ITS_FILE.digest(), ME);
+			MockHttpServletResponse answer = asked(WITHOUT_ITS_FILE.digest(), WHOSE_FILE_IS_GONE);
 
 			assertThat(answer.getStatus())
 					.as("a row naming a picture whose file cannot be read was not answered 404, so"
@@ -395,7 +402,7 @@ class MyWaitingPhotoApiTest {
 					.isEqualTo(404);
 			assertThat(whatCameBack(answer))
 					.as("a row whose file is gone is told apart from a digest nobody wrote")
-					.isEqualTo(whatCameBack(asked("f3".repeat(32), ME)));
+					.isEqualTo(whatCameBack(asked("f3".repeat(32), WHOSE_FILE_IS_GONE)));
 
 			assertThat(heard.list)
 					.as("nothing was said to whoever runs the server about a row that names a file"

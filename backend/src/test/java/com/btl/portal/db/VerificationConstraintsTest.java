@@ -337,6 +337,18 @@ class VerificationConstraintsTest extends DatabaseTest {
 								+ " select 'profiles', " + A_MEMBER + ", 'Naslov', 'Tekst', 'waiting'"
 								+ " from generate_series(1, 2)"),
 
+				/* AND ONE PICTURE OF ONE MEMBER WAITS AT A TIME, WHICH V55 ADDS. PDL, „Ponovno slanje
+				   pregazi red koji ceka, ne pravi drugi" (27.09.2026). Two pictures of one member
+				   waiting at once, written by one statement the way the two texts above are: the index
+				   is the only thing that can refuse them here, because the turn MePhotoApi makes the
+				   sends of one member take is not on the way of an insert written in this file. What it
+				   lets stand beside a waiting picture is
+				   `onePictureWaitsAndEverythingElseOfHisMayStandBesideIt` below. */
+				Violation.of("verification_one_picture_waits_per_member",
+						"insert into verification (queue, competitor_id, subject, body, photo_id, state)"
+								+ " select 'profiles', " + A_MEMBER + ", 'Naslov', '', " + A_PHOTO + ", 'waiting'"
+								+ " from generate_series(1, 2)"),
+
 				/* V30 gave the schedule tab the identical three shapes, off `schedule_proposal`
 				   (ADL A64 A2), until PDL P10a, 22.09.2026 took the tab and the table both away
 				   (V31): `verification_schedule_proposal_fk`,
@@ -470,6 +482,92 @@ class VerificationConstraintsTest extends DatabaseTest {
 					.as("refused beside a waiting text: %s", insert)
 					.isOne();
 		}
+	}
+
+	/** A picture of his waiting, in the shape MePhotoApi writes one. */
+	private static final String HIS_PICTURE_WAITING = row("'profiles', " + A_MEMBER
+			+ ", 'Slika', '', " + A_PHOTO + ", 'waiting', null, null, null, null");
+
+	/**
+	 * ONE PICTURE OF HIS WAITS, AND EVERYTHING ELSE OF HIS MAY STAND BESIDE IT.
+	 *
+	 * <p>The row above that breaks {@code verification_one_picture_waits_per_member} says it refuses a
+	 * second waiting picture. This says what it must NOT refuse, which is the other half of the same
+	 * condition and the half a wider index would take away, one row for each term of it: a TEXT
+	 * waiting in the same tab (the term {@code photo_id is not null}), his texts already decided,
+	 * approved and refused alike (V9 keeps them for ever), a row waiting in another tab that carries
+	 * a picture too (the term {@code queue = 'profiles'}, which nothing but this row can tell from a
+	 * missing term, since no route writes a picture into another tab), another member's picture
+	 * waiting (the key), and two pictures about nobody at all, which an index over a null never
+	 * compares.
+	 *
+	 * <p><b>And it ends with the refusal again</b>, with every one of those rows standing: a case
+	 * that only listed what goes in would be satisfied by an index that refused nothing, and the
+	 * refusal up in the list is satisfied by one that refused everything beside it.
+	 */
+	@Test
+	void onePictureWaitsAndEverythingElseOfHisMayStandBesideIt() {
+		db.sql("insert into competitor (" + COMPETITOR_COLUMNS + ") values ('000944', 'Treci', 'Clan', 'F',"
+				+ " date '1992-07-07', " + A_TOWN + ", null, null, 2027, false, true, 'payment',"
+				+ " '00112233445566d2', null, '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+				+ " timestamptz '2026-09-01 10:00:00+00')").update();
+
+		String anotherMember = "(select id from competitor where member_number = '000944')";
+
+		assertThat(db.sql(HIS_PICTURE_WAITING).update())
+				.as("the picture itself was refused, so nothing below is beside it")
+				.isOne();
+
+		List<String> beside = List.of(
+				row("'profiles', " + A_MEMBER + ", 'Tekst', 'Tekst koji ceka', null, 'waiting', null,"
+						+ " null, null, null"),
+				row("'profiles', " + A_MEMBER + ", 'Tekst', 'Pusten tekst', null, 'approved', "
+						+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', null"),
+				row("'profiles', " + A_MEMBER + ", 'Tekst', 'Odbijen tekst', null, 'rejected', "
+						+ AN_INSTANT + ", " + AN_ACCOUNT + ", 'Moderator Probni', 'Nije o trcanju'"),
+				row("'teams', " + A_MEMBER + ", 'Tim', '', " + A_PHOTO + ", 'waiting', null, null,"
+						+ " null, null"),
+				row("'profiles', " + anotherMember + ", 'Slika', '', " + A_PHOTO + ", 'waiting', null,"
+						+ " null, null, null"),
+				row("'profiles', null, 'Slika', '', " + A_PHOTO + ", 'waiting', null, null, null, null"),
+				row("'profiles', null, 'Slika', '', " + A_PHOTO + ", 'waiting', null, null, null, null"));
+
+		for (String insert : beside) {
+			assertThat(db.sql(insert).update())
+					.as("refused beside a waiting picture: %s", insert)
+					.isOne();
+		}
+
+		assertThatThrownBy(() -> db.sql(HIS_PICTURE_WAITING).update())
+				.as("a second picture of his went in with all of the above standing, so the index"
+						+ " refuses nothing it should")
+				.isInstanceOf(DataIntegrityViolationException.class)
+				.hasMessageContaining("verification_one_picture_waits_per_member");
+	}
+
+	/**
+	 * A PICTURE THAT HAS BEEN DECIDED NO LONGER COUNTS, AND THE NEXT ONE MAY WAIT.
+	 *
+	 * <p>This is the road a member really takes: his picture is approved or refused, and he sends
+	 * another. A decision empties the pointer on the queue row (V9,
+	 * {@code verification_decided_keeps_no_photo}), so the row leaves the index in the same
+	 * statement; an index that kept counting it would shut the member's portrait for good, which is
+	 * what V53's header says of a text written as „not refused".
+	 */
+	@Test
+	void aPictureThatHasBeenDecidedNoLongerCountsAndTheNextOneMayWait() {
+		assertThat(db.sql(HIS_PICTURE_WAITING).update()).isOne();
+
+		assertThat(db.sql("update verification set state = 'approved', decided_at = " + AN_INSTANT
+				+ ", decided_by = " + AN_ACCOUNT + ", decided_by_name = 'Moderator Probni',"
+				+ " photo_id = null where competitor_id = " + A_MEMBER
+				+ " and queue = 'profiles' and photo_id = " + A_PHOTO).update())
+				.as("the decision did not find the picture it was to decide")
+				.isOne();
+
+		assertThat(db.sql(HIS_PICTURE_WAITING).update())
+				.as("a member whose picture was decided cannot send another")
+				.isOne();
 	}
 
 	/**
