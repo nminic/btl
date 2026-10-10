@@ -93,6 +93,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li><b>A member just under the beginners' threshold and nowhere near it run the same
  * race</b> ({@link #anotherEventsTen}), so a correction of it moves one category and not the
  * other.
+ * <li><b>The season the category is asked for can be read from three places, and at the instant
+ * the fixture starts at they are one number.</b> The race's year plus one, the clock's year plus
+ * one and the season on sale ({@link SeasonClock#seasonBeingPaidFor}) all read 2028 at noon on
+ * 15 October 2027, so a case standing there tells the season AFTER the race's from the race's own
+ * season and from nothing else. The same correction is therefore made at two more instants, one
+ * for each reading that can be parted from the race's: the last second before the window opens
+ * ({@link #A_SECOND_BEFORE_THE_WINDOW_OPENS}, where the season on sale is still 2027) and the last
+ * second before the freeze ({@link #A_SECOND_BEFORE_THE_FREEZE}, where the clock is in 2028 and
+ * the race is of 2027).
+ * <li><b>The climb and the fall are each corrected ALONE.</b> Every other case moves a figure the
+ * race fixes together with another, so a question that skipped the climb, or the fall, was never
+ * put to a run that differed in that figure and nothing else. The marathon's runs at its old
+ * course agree with the corrected one on every figure but the one that moved.
  * </ul>
  *
  * <p><b>Where the formula is asked, it is asked and not typed</b>, the shape
@@ -109,6 +122,12 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	/** Noon in Belgrade, with 2027 running and nowhere near a freeze. */
 	private static final Instant WHILE_2027_RUNS = Instant.parse("2027-10-15T10:00:00Z");
+
+	/** 23:59:59 in Belgrade on 14 October 2027, the last second before the transfer window opens:
+	 *  2027 is running and the season on sale is still 2027, where at noon on the day after it is
+	 *  already 2028. */
+	private static final Instant A_SECOND_BEFORE_THE_WINDOW_OPENS =
+			Instant.parse("2027-10-14T21:59:59Z");
 
 	/** 15:59:59 in Belgrade on 1 January 2028: 2027 has stopped taking reports at ten and
 	 *  has not frozen yet. */
@@ -351,8 +370,10 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 *
 	 * <p>Without this the cases below could go on passing on a fixture that no longer
 	 * separates what they claim to separate: a freeze moved to ten in the morning would make
-	 * the case a second before four measure nothing, and an October of 2026 that counted as
-	 * frozen would make the case about history measure the freeze instead.
+	 * the case a second before four measure nothing, an October of 2026 that counted as
+	 * frozen would make the case about history measure the freeze instead, and a window that
+	 * opened a day earlier would make the case a second before it read 2028 off the season on
+	 * sale, which is what the race's year plus one reads as well.
 	 */
 	@Test
 	void theMomentsTheseCasesStandAtAnswerTheWayTheCasesNeed() {
@@ -374,6 +395,36 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.as("2026 must not be frozen yet in October 2026, or the case about history"
 						+ " measures the freeze and not the first season")
 				.isFalse();
+
+		/* THE SEASON AFTER A RACE OF 2027 IS 2028, and a route could read 2028 from three places:
+		   the race's year, the clock's year, and the season on sale. */
+		int afterTheTen = THE_TENS_DAY.getYear() + 1;
+
+		assertThat(afterTheTen).isEqualTo(2028);
+		assertThat(List.of(afterTheTen, at(WHILE_2027_RUNS).getYear() + 1,
+				SeasonClock.seasonBeingPaidFor(at(WHILE_2027_RUNS))))
+				.as("noon on 15 October 2027 must read 2028 from all three places, which is why the"
+						+ " first case there cannot tell them apart and the two after it exist")
+				.containsOnly(afterTheTen);
+		assertThat(SeasonClock.transferWindowOpen(at(A_SECOND_BEFORE_THE_WINDOW_OPENS)))
+				.as("the window must not be open yet a second before it opens")
+				.isFalse();
+		assertThat(SeasonClock.seasonBeingPaidFor(at(A_SECOND_BEFORE_THE_WINDOW_OPENS)))
+				.as("a second before the window opens the season on sale must still be the one"
+						+ " running, or the case there cannot part it from the season after the race's")
+				.isNotEqualTo(afterTheTen);
+		assertThat(at(A_SECOND_BEFORE_THE_WINDOW_OPENS).getYear() + 1)
+				.as("and the clock's year plus one must still be the race's, so that the case there"
+						+ " parts the season on sale from the race's and nothing else")
+				.isEqualTo(afterTheTen);
+		assertThat(at(A_SECOND_BEFORE_THE_FREEZE).getYear() + 1)
+				.as("a second before the freeze the clock must already be in the year after the race's,"
+						+ " or the case there cannot part the clock's year from the race's")
+				.isNotEqualTo(afterTheTen);
+		assertThat(SeasonClock.seasonBeingPaidFor(at(A_SECOND_BEFORE_THE_FREEZE)))
+				.as("and the season on sale must still be the race's year plus one there, so that the"
+						+ " case parts the clock's year from the race's and nothing else")
+				.isEqualTo(afterTheTen);
 	}
 
 	/**
@@ -457,6 +508,53 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowOf(thirdsSixHours)).isEqualTo(countedAt("55", 90, 80, 86400, "ultra"));
 		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
 		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
+	}
+
+	/**
+	 * A CORRECTED CLIMB ALONE REACHES EVERY RUN AT THE RACE, AND EACH MEMBER WHOSE RUN MOVED IS
+	 * TOLD.
+	 *
+	 * <p>The second round of review of this PR measured that the question „is this run as it was"
+	 * could skip the climb altogether and every case stayed green: each of the others moves the
+	 * climb together with the length, the fall or the limit, so a run that differs from the new
+	 * course in the climb and nothing else was never in front of it. Here the marathon's climb goes
+	 * from 300 m to 520 m and its length ({@code 42.2}), its fall, its name and its day are sent as
+	 * they were. The runner's two runs and the lapsed member's one agree with the new course on
+	 * every figure but that one, and each of them has to come back at the new climb, at its own
+	 * time and with the points the formula gives, with its line in the inbox.
+	 */
+	@Test
+	void aCorrectedClimbAloneReachesEveryRunAtTheRaceAndEachMemberWhoseRunMovedIsTold()
+			throws Exception {
+		for (int seconds : new int[] {12600, 13800, 15000}) {
+			assertThat(counted("42.2", 520, 280, seconds))
+					.as("the new climb gives the same points as the old one at %s s", seconds)
+					.isNotEqualByComparingTo(counted("42.2", 300, 280, seconds));
+		}
+
+		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "42.2", 520, 280))
+				.getStatus()).isEqualTo(200);
+
+		theMarathonsRunsStandAt(520, 280);
+	}
+
+	/**
+	 * AND A CORRECTED FALL ALONE DOES THE SAME - the other figure the question could skip, for the
+	 * same reason: the marathon's fall goes from 280 m to 150 m and nothing else it fixes moves.
+	 */
+	@Test
+	void aCorrectedFallAloneReachesEveryRunAtTheRaceAndEachMemberWhoseRunMovedIsTold()
+			throws Exception {
+		for (int seconds : new int[] {12600, 13800, 15000}) {
+			assertThat(counted("42.2", 300, 150, seconds))
+					.as("the new fall gives the same points as the old one at %s s", seconds)
+					.isNotEqualByComparingTo(counted("42.2", 300, 280, seconds));
+		}
+
+		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "42.2", 300, 150))
+				.getStatus()).isEqualTo(200);
+
+		theMarathonsRunsStandAt(300, 150);
 	}
 
 	/**
@@ -586,12 +684,31 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * <p>PDL P4, the owner's answer of 10.10.2026, in the journal's wording: „poruku o
 	 * početničkoj kategoriji kad joj preračun zatvori ili ponovo otvori pravo, u oba smera". The
 	 * ten is corrected from 10 to 12 km: the rookie's one run of 2027 goes from under twelve
-	 * points to over it, so the beginners' category closes for 2028, the season after the
-	 * race's. The other member at the ten was over the threshold before and is over it after:
-	 * he reads the line about his run and nothing about his category.
+	 * points to over it, so the beginners' category closes for 2028. The other member at the ten
+	 * was over the threshold before and is over it after: he reads the line about his run and
+	 * nothing about his category.
+	 *
+	 * <p><b>WHAT THIS CASE TELLS APART, AND WHAT IT DOES NOT.</b> It stands at noon on 15 October
+	 * 2027, where 2028 is the race's year plus one, the clock's year plus one and the season on
+	 * sale all at once. So it tells the season AFTER the race's from the race's OWN season, which
+	 * is 2027 and which a season never closes on itself, and from nothing else: a route that asked
+	 * the clock's year, or the season on sale, passes it. The two cases after the next one make the
+	 * same correction at the instants where those two readings part from the race's.
 	 */
 	@Test
 	void aCorrectionThatCarriesAMemberOverTheThresholdClosesHisCategoryAndHeIsTold()
+			throws Exception {
+		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
+	}
+
+	/**
+	 * The ten corrected from 10 to 12 km at whatever instant the clock stands at: the rookie's one
+	 * run of 2027 crosses the threshold, his category closes for 2028 and he is told so, and the
+	 * other member at the ten reads the line about his run and nothing else. One body for the
+	 * three instants it is made at, so that the instant is the only thing that differs between
+	 * the cases.
+	 */
+	private void theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028()
 			throws Exception {
 		assertThat(counted("10", 120, 110, 2700)).isLessThan(new BigDecimal("12"));
 		assertThat(counted("12", 120, 110, 2700)).isGreaterThanOrEqualTo(new BigDecimal("12"));
@@ -629,6 +746,44 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.contains("pali ispod praga od 12 bodova")
 				.contains("ponovo otvorena za sezonu 2028.");
 		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
+	}
+
+	/**
+	 * THE SEASON THE CATEGORY CLOSES FOR IS THE RACE'S YEAR PLUS ONE AND NOT THE SEASON ON SALE,
+	 * asked a second before the transfer window opens.
+	 *
+	 * <p>The correction of the case that closes the category, made at 23:59:59 on 14 October 2027.
+	 * The season on sale is still 2027 then, and the race's year plus one is 2028: a route that
+	 * took the season from {@link SeasonClock#seasonBeingPaidFor} would ask for the category of
+	 * the season the run is part of, which a season never closes on itself, so the rookie's
+	 * category would stay open and he would be told nothing about it. At noon on the next day the
+	 * two readings are one number, which is why the second review of this PR found that swap
+	 * standing green under every case here.
+	 */
+	@Test
+	void theSeasonTheCategoryClosesForIsTheRacesYearPlusOneAndNotTheSeasonOnSale()
+			throws Exception {
+		clock.moveTo(A_SECOND_BEFORE_THE_WINDOW_OPENS);
+
+		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
+	}
+
+	/**
+	 * THE SEASON THE CATEGORY CLOSES FOR IS THE RACE'S YEAR PLUS ONE AND NOT THE CLOCK'S YEAR
+	 * PLUS ONE, asked a second before the freeze on New Year's Day.
+	 *
+	 * <p>The correction of the case that closes the category, of a race of 2027, made at 15:59:59
+	 * on 1 January 2028: 2027 has not frozen, the clock is in 2028, and the category closes for
+	 * 2028 and not for 2029. A route that took the clock's year plus one would close it for a
+	 * season two years after the race's and say so in the line. At noon on 15 October 2027 the two
+	 * readings are one number, which is why the second review of this PR found that swap standing
+	 * green under every case here.
+	 */
+	@Test
+	void theSeasonTheCategoryClosesForIsTheRacesYearPlusOneAndNotTheClocks() throws Exception {
+		clock.moveTo(A_SECOND_BEFORE_THE_FREEZE);
+
+		theRookieIsCarriedOverTheThresholdAndToldHisCategoryClosesFor2028();
 	}
 
 	/**
@@ -709,6 +864,53 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.isNotEqualByComparingTo(BtlScoreCalculator.calculate(42.2, 300, 280, seconds));
 		assertThat(after).as("the climb and the fall swapped give the same points at %s s", seconds)
 				.isNotEqualByComparingTo(BtlScoreCalculator.calculate(42.195, 310, 520, seconds));
+	}
+
+	/**
+	 * The runner's two runs and the lapsed member's one, after the marathon was corrected to 42.2 km
+	 * with this climb and this fall and renamed and moved by nothing: each is at the new course and
+	 * at the time it was run in, each of its members reads the line with the run as it was and as it
+	 * is, the member with only a waiting run at the marathon reads nothing, and no line is addressed
+	 * to nobody (V13). The member whose run already stood at the course of the main case is moved
+	 * here too, by his length and his fall, and is left out of the asserts: it is not the figure
+	 * under test that moves him.
+	 */
+	private void theMarathonsRunsStandAt(int ascent, int descent) {
+		assertThat(rowOf(runnersFirst)).as("the runner's first run")
+				.isEqualTo(countedAt("42.2", ascent, descent, 12600, "marathon"));
+		assertThat(rowOf(runnersSecond)).as("the runner's second run, at a time of its own")
+				.isEqualTo(countedAt("42.2", ascent, descent, 13800, "marathon"));
+		assertThat(rowOf(lapsedRun)).as("the run of the member whose fee has lapsed")
+				.isEqualTo(countedAt("42.2", ascent, descent, 15000, "marathon"));
+
+		assertThat(linesTo(runner)).as("the runner reads one line for each of his two runs")
+				.extracting(Line::subject).containsExactly(RECOUNTED, RECOUNTED);
+		assertThat(linesTo(runner).get(0).body())
+				.contains(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 12600));
+		assertThat(linesTo(runner).get(1).body())
+				.contains(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 13800));
+		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(lapsed).get(0).body())
+				.contains(theMarathonsRunAsItWasAndAsItIs(ascent, descent, 15000));
+		assertThat(linesTo(third)).as("a line about a run that is still waiting").isEmpty();
+		assertThat(newLines()).as("a line addressed to nobody would reach the whole league")
+				.allSatisfy(line -> assertThat(line.to()).isNotNull());
+	}
+
+	/**
+	 * THE MARATHON'S RUN AS IT WAS AND AS IT IS when only its climb or its fall was corrected: the
+	 * same race on the same day at the same length and the same time, at the course of the fixture
+	 * and at the one given. Written by {@link WhatAResultChangeSays#inWords}, like the line itself.
+	 */
+	private static String theMarathonsRunAsItWasAndAsItIs(int ascent, int descent, int seconds) {
+		WhatAResultChangeSays.Run was = new WhatAResultChangeSays.Run("Maraton", THE_MARATHONS_DAY,
+				new BigDecimal("42.2"), 300, 280, seconds, counted("42.2", 300, 280, seconds));
+		WhatAResultChangeSays.Run is = new WhatAResultChangeSays.Run("Maraton", THE_MARATHONS_DAY,
+				new BigDecimal("42.2"), ascent, descent, seconds,
+				counted("42.2", ascent, descent, seconds));
+
+		return "Stara vrednost:\n" + WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
+				+ WhatAResultChangeSays.inWords(is);
 	}
 
 	/**

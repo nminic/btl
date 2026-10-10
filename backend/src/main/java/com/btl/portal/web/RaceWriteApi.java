@@ -669,7 +669,7 @@ class RaceWriteApi {
 
 			/* A RUN THE CORRECTION LEFT EXACTLY AS IT WAS IS NOT A RUN IT CHANGED, so nothing is
 			   written over it and its member is not told about it. */
-			if (isAsItWas(run, counted, points)) {
+			if (isAsItWas(run, counted)) {
 				continue;
 			}
 
@@ -692,14 +692,34 @@ class RaceWriteApi {
 		}
 	}
 
-	/** The four figures and the points a run already carries, compared as values: a length is
-	 *  one number whatever scale it was written at. */
-	private static boolean isAsItWas(CountedRun run, Figures counted, BigDecimal points) {
+	/**
+	 * WHETHER A RUN ALREADY CARRIES THE FOUR FIGURES IT WOULD BE COUNTED AT NOW, a length being
+	 * compared as a number: it is one number whatever scale it was written at.
+	 *
+	 * <p><b>THE POINTS ARE NOT ASKED, and that is a measurement and not a shortcut.</b> They are a
+	 * function of the four figures and of nothing else, and the only statements that write a figure
+	 * of {@code result} are two: the approval ({@code VerificationWriteApi}, an insert and an update
+	 * of the row) and the recount below. Both work the points out with {@link BtlScoreCalculator}
+	 * from the very figures they store, no migration inserts into the table or updates it, and
+	 * {@code ResultWriteApi} only deletes from it. Every length that reaches either statement is one the column keeps
+	 * exactly ({@link WhatARaceCarries#distanceIsKeptExactly}, asked for the race, for the member's
+	 * report and for the moderator's own figures), so the number the formula is handed is the number
+	 * the row holds. A row whose four figures are the counted ones therefore already carries the
+	 * points that would be written over it.
+	 *
+	 * <p><b>A comparison of the points stood here until 10.10.2026 and its false branch had no
+	 * case.</b> The coverage threshold found it on the head of PR 504 (the branch ratio read
+	 * 0.99), and the second round of review of that PR gave the reason: no road writes a row whose
+	 * figures agree with the course and whose points do not, so the only case that could reach the
+	 * branch is one that writes {@code result} by hand with points the formula does not give, and
+	 * that measures the fixture and not the portal. A branch no road reaches is removed, and is not
+	 * covered by a detour.
+	 */
+	private static boolean isAsItWas(CountedRun run, Figures counted) {
 		return run.figures().distanceKm().compareTo(counted.distanceKm()) == 0
 				&& run.figures().ascentM().equals(counted.ascentM())
 				&& run.figures().descentM().equals(counted.descentM())
-				&& run.figures().seconds().equals(counted.seconds())
-				&& run.points().compareTo(points) == 0;
+				&& run.figures().seconds().equals(counted.seconds());
 	}
 
 	/**
