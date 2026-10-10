@@ -947,22 +947,26 @@ export function useInbox(
  * different screen, and text where this is a number.
  *
  * <p><b>Whose it is is an argument rather than something this hook works out</b>, which is
- * {@link useInbox}'s own measurement carried over: the one caller gates on the same fact
- * before it draws anything that asks (`member/MessageDetail.tsx` reaches this only through
- * `who.memberNumber`), so a branch for „nobody" would be a branch nothing could reach, and
- * the coverage floor of 100 per cent on branches is what says so out loud.
+ * {@link useInbox}'s own measurement carried over: both callers gate on the same fact before
+ * they draw anything that asks (`member/MessageDetail.tsx` reaches this only through
+ * `who.memberNumber`, and `pages/AskingThisTeam.tsx` only for a member the list of members
+ * carries), so a branch for „nobody" would be a branch nothing could reach, and the coverage
+ * floor of 100 per cent on branches is what says so out loud.
  *
- * <p><b>No `revision` and no `reactive`, and both absences are decisions.</b> Answering an
- * invitation drops this name outright (`member/teamWrites.ts`) and the component that drew
- * the buttons goes with it - the inbox is re-read in the same breath and the line comes back
- * with no `teamInvitationId`, because `TeamJoiningWriteApi.theInvitationIsOver` empties the
- * pointer before it deletes the row. So there is no mounted reader left to tell, which is
- * exactly what `revision` exists for and exactly what is not needed here.
+ * <p><b>No `reactive`, and since T5 (10.10.2026) a `revision`.</b> The inbox's caller needs
+ * none: answering an invitation drops this name outright (`member/teamWrites.ts`) and the
+ * component that drew the buttons goes with it, because the line comes back with no
+ * `teamInvitationId`. <b>The team's page is the reader that stays</b>: „Prijavi se u tim" and
+ * „Povuci prijavu" are drawn from this answer and the press leaves the page where it is, so
+ * after the server agreed the cache is dropped (`pages/joiningThisTeam.ts`) and the caller bumps
+ * this number to ask again - the pair `event/GoingToEvent.tsx` uses for `useAttendance`, for the
+ * reason `HowToRead.revision` gives. Left out, the button pressed would stay drawn until the next
+ * visit, over an application the server already holds.
  */
-export function useWhatIsWaiting(mine: string): ResourceState<WhatIsWaiting> {
+export function useWhatIsWaiting(mine: string, revision?: number): ResourceState<WhatIsWaiting> {
   theWaitingNowBelongsTo(mine)
 
-  return useResource<WhatIsWaiting>('me/applications', { owner: mine })
+  return useResource<WhatIsWaiting>('me/applications', { owner: mine, revision })
 }
 
 /** A record the browser is holding, as a line. Its read mark is the portal's own, because

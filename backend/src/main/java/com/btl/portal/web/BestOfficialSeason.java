@@ -48,9 +48,18 @@ import java.math.BigDecimal;
  * zavrsena sa 12 ili vise bodova" is what shuts the category, and a season that is still
  * being run has not finished.
  *
- * <p><b>Toward the NEXT season, points never go down</b>, so a season already over the
- * threshold is certain to finish over it, and waiting for the year to end would leave that
- * next season's category open to somebody who has plainly left it. This is also the shape
+ * <p><b>Toward the NEXT season, points go down only by a hand that means them to</b> - a
+ * member deleting his own run, which he may do even after it was approved (PDL P9,
+ * 27.08.2026), or a race corrected downward, after which every run counted at it is
+ * counted again ({@code RaceWriteApi}, PDL P4, the owner's decision of 20.09.2026) - so a
+ * season already over the threshold almost always finishes over it, and waiting for the
+ * year to end would leave that next season's category open to somebody who has plainly
+ * left it. Where the points DO go down the answer goes down with them, because nothing
+ * here is stored: the right opens again exactly as it closed. The member is told when an
+ * approval closes it ({@code VerificationWriteApi}), and since the owner's answers of
+ * 10.10.2026 (PDL P4) when a correction of a race closes it or opens it again
+ * ({@code RaceWriteApi}); a deletion of his own run says nothing about the category. This
+ * is also the shape
  * the owner's decision of 26.09.2026 needs: „ga superadmin / moderator verifikacijom necega
  * moze gurnuti u starosnu kategoriju ako odobri rezultat kojim prelaz 12 bodova", spelt out
  * the same day for which season moves - „ako odobrenje prevede clanov zbir tekuce sezone na

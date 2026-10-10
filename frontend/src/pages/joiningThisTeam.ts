@@ -19,10 +19,14 @@ import { askTheServer, type Answer } from './account/askTheServer'
  * direction, and `TeamDetail.tsx` is a component file.
  *
  * <p><b>Beside `TeamDetail.tsx` rather than under `pages/member/`, and named for the ACT
- * rather than for the screen</b>, because its one
- * caller is the team's own public page and not the member area: the reader is whoever leads
- * the team, standing on the team's page, and `pages/profileAddress.ts` and `pages/sent.ts`
- * are already modules of this level for the same reason. The name is `joiningThisTeam` and
+ * rather than for the screen</b>, because its callers are public pages and not the member
+ * area: whoever leads the team, standing on the team's page (`TeamQueue.tsx`), the member
+ * asking to be let in, standing on the same page (`AskingThisTeam.tsx`), and whoever leads a
+ * team, standing on the profile of somebody he asks in (`profile/InviteToTeam.tsx`).
+ * `pages/profileAddress.ts` and `pages/sent.ts` are already modules of this level for the same
+ * reason. <b>Every verb of `TeamJoiningWriteApi` is sent from here since T5 (10.10.2026) but
+ * one:</b> the invited member's answer, which `member/teamWrites.ts` sends from his inbox,
+ * because its one screen is in the member area. The name is `joiningThisTeam` and
  * not `teamQueue` for a reason `tsc` gives out loud (TS1149): `pages/TeamQueue.tsx` is the
  * drawing, and on a case-insensitive filesystem two files whose names differ only in a
  * capital letter are one file as far as the compiler is concerned.
@@ -86,12 +90,16 @@ export function theInvitationsOf(team: number): string {
 }
 
 /**
- * THE TEAM'S ANSWER TO ONE APPLICATION.
+ * THE ADDRESS OF ONE APPLICATION: where the team answers it, and where the member who sent it
+ * takes it back.
  *
  * <p>Built out of {@link theApplicationsOf} rather than written again, so the read and the
- * write of one row are one text: `TeamJoiningWriteApi.decide` is declared on exactly this
- * path, and a second spelling here is the drift the route's own heading calls „the read and
- * the write of one row are one address apart and cannot drift into naming different sets".
+ * write of one row are one text: `TeamJoiningWriteApi.decide` (`PUT`) and
+ * `TeamJoiningWriteApi.withdraw` (`DELETE`) are declared on exactly this path, and a second
+ * spelling here is the drift the route's own heading calls „the read and the write of one row
+ * are one address apart and cannot drift into naming different sets". The name is the team's
+ * act because that was its first caller; the member's withdrawal is the same row and so the
+ * same address ({@link theApplicationWasTakenBack}).
  */
 export function theDecisionGoesTo(team: number, application: number): string {
   return `${theApplicationsOf(team)}/${String(application)}`
@@ -148,6 +156,55 @@ export function theWithdrawalGoesTo(team: number, invitation: number): string {
 export const WHEN_DECIDING_AN_APPLICATION = {
   theFormIsNotComplete: 'teams.decideRefused.theFormIsNotComplete',
   theWindowIsShut: 'teams.decideRefused.theWindowIsShut',
+}
+
+/**
+ * THE ONE REFUSAL `POST /api/teams/{id}/applications` NAMES, to a sentence.
+ *
+ * <p><b>Read off the route.</b> `TeamJoiningWriteApi.asking` names `A_QUESTION_ALREADY_STANDS`
+ * (409) for a member who already has an application standing on any team, which is PDL
+ * 06.09.2026, „„Prijavi se u tim" se crta samo kad član nema nijednu prijavu u letu, traženo po
+ * broju člana kroz sve timove". Every other way that route says no is an empty 404 by ADL A8 -
+ * an account naming no member, a member whose fee has lapsed, a member who already has a team,
+ * a shut window, a team nobody leads - so it carries no reason to look up, and `ServerSaid`
+ * says the number.
+ *
+ * <p><b>The screen does not offer the press in that state</b> (`AskingThisTeam.tsx` reads
+ * `GET /api/me/applications` first), so the sentence answers a race: an application sent from
+ * another tab after this page read what was waiting. The words are the agent's and the owner
+ * took them to be changed on QA (10.10.2026).
+ */
+export const WHEN_APPLYING_TO_A_TEAM = {
+  aQuestionAlreadyStands: 'teams.applyRefused.aQuestionAlreadyStands',
+}
+
+/**
+ * THE FOUR REFUSALS `POST /api/teams/{id}/invitations` NAMES, each to a sentence.
+ *
+ * <p><b>Read off the route.</b> `TeamJoiningWriteApi.invite` and `inviting` name
+ * `THE_FORM_IS_NOT_COMPLETE` (400, a body with no member number), `THE_WINDOW_IS_SHUT`,
+ * `HE_IS_ALREADY_IN_A_TEAM` and `HE_HAS_ALREADY_BEEN_ASKED` (all 409); everything else is an
+ * empty 404 - a caller who does not lead the team, an account naming no member, a number
+ * nobody carries, a member whose fee has lapsed, himself.
+ *
+ * <p><b>`heHasAlreadyBeenAsked` is the sentence that stands where the button would have
+ * been, and that is the decision rather than a saving.</b> PDL 06.09.2026, „[IZVEDENO] Isti
+ * tim ne poziva istog čoveka dvaput: ... poziv je isti zapis, pa dok stoji, na njegovom mestu
+ * stoji da je poslat." The route refusing a second invitation and the list saying one stands
+ * are one fact told on two doors, so they get one sentence (`teams.invited`), the arrangement
+ * `member/teamWrites.ts` gives the reason for. It takes the team's name, so the screen hands
+ * `ServerSaid` the same value it draws the sentence with.
+ *
+ * <p><b>The other three are only ever refusals, and filed under one</b>, each of them a race
+ * the screen cannot close: the window shutting at midnight on 31 December, the member taking a
+ * team between the drawing and the press, and a request that went round this screen. The words
+ * are the agent's and the owner took them to be changed on QA (10.10.2026).
+ */
+export const WHEN_INVITING_INTO_A_TEAM = {
+  theFormIsNotComplete: 'teams.inviteRefused.theFormIsNotComplete',
+  theWindowIsShut: 'teams.inviteRefused.theWindowIsShut',
+  heIsAlreadyInATeam: 'teams.inviteRefused.heIsAlreadyInATeam',
+  heHasAlreadyBeenAsked: 'teams.invited',
 }
 
 /**
@@ -382,4 +439,79 @@ export async function theInvitationWasTakenBack(
   invitation: number,
 ): Promise<Answer> {
   return askTheServer(theWithdrawalGoesTo(team, invitation), {}, 'DELETE')
+}
+
+/**
+ * A MEMBER ASKS THIS TEAM TO TAKE HIM, and says what came back.
+ *
+ * <p>Owner, PDL P13: „Učlanjenje ide u oba smera kroz portal: takmičar šalje administratoru tima
+ * zahtev na odobrenje, ili administrator šalje takmičaru poziv." Until T5 (10.10.2026) the button
+ * wrote into `session/SessionProvider.tsx` and nowhere else, so the team never saw the
+ * application and a reload took it away.
+ *
+ * <p><b>No body</b>: `TeamJoiningWriteApi.apply` takes the member from the session and the team
+ * from the path, and reads nothing else.
+ *
+ * <p><b>What it makes stale is the asker's own list of what he waits on, and only where the
+ * server agreed</b> - the rule `member/teamWrites.ts` states for the same resource. Nothing else
+ * this visit reads moves: the application is drawn to the team off its own route, read afresh by
+ * whoever leads it, and the route writes no message (`TeamJoiningWriteApi.asking`, „NOBODY IS
+ * WRITTEN TO"). The screen asks for the list again itself, because it is still mounted.
+ */
+export async function theApplicationWasSent(team: number): Promise<Answer> {
+  const answer = await askTheServer(theApplicationsOf(team), {})
+
+  if (answer.got === 'done') {
+    clearResourceCache('me/applications')
+  }
+
+  return answer
+}
+
+/**
+ * A MEMBER TAKES HIS OWN APPLICATION BACK, and says what came back.
+ *
+ * <p>PDL 06.09.2026, „[IZVEDENO] Prijava u oba slučaja ostaje njegova da je povuče, pa i dalje ima
+ * kraj koji ne zavisi ni od koga drugog." The route carries no window, for the reason „Odbij"
+ * carries none: it writes nothing about a squad.
+ *
+ * <p><b>It names no reason.</b> `TeamJoiningWriteApi.withdraw` answers 204 or an empty 404 („an
+ * application that is not there, one that is not his, one belonging to another team, and an
+ * account naming no member"), so a refusal is said with its number and there is no dictionary for
+ * it - the arrangement {@link theInvitationWasTakenBack} gives the reason for.
+ *
+ * @param team        the team the ROW names, which is the team of the page it is pressed on,
+ *                    because the button stands only there
+ * @param application `team_application.id`, as `GET /api/me/applications` carries it
+ */
+export async function theApplicationWasTakenBack(
+  team: number,
+  application: number,
+): Promise<Answer> {
+  const answer = await askTheServer(theDecisionGoesTo(team, application), {}, 'DELETE')
+
+  if (answer.got === 'done') {
+    clearResourceCache('me/applications')
+  }
+
+  return answer
+}
+
+/**
+ * WHOEVER LEADS A TEAM ASKS SOMEBODY IN, and says what came back.
+ *
+ * <p>PDL 27.09.2026, „Poziv u tim šalje samo administrator tog tima", and the route asks the same
+ * seat (`TeamJoiningWriteApi.heAdministersThisTeam`). The member is named by the number on his
+ * card, which is the one thing `TeamJoiningWriteApi.Asked` takes; the invitation and the message
+ * that carries it into his inbox are both written by the route, so nothing here writes a message.
+ *
+ * <p><b>Nothing is dropped</b>: no resource this visit reads is answered out of the team's
+ * invitations, and the list of them is not a resource (see {@link Queue}). The screen asks for
+ * that list again itself, which is how „poziv je poslat" comes to stand where the button stood.
+ *
+ * @param memberNumber the number of the member whose profile the press was on, and never the
+ *                     reader's own
+ */
+export async function theInvitationWasSent(team: number, memberNumber: string): Promise<Answer> {
+  return askTheServer(theInvitationsOf(team), { memberNumber })
 }
