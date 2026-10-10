@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { outsideOf } from '../components/outsideOf'
 import { useToday } from '../clock/useClock'
 import { monthGrid, monthNumbers, shiftMonth } from '../data/derive'
@@ -19,6 +19,20 @@ function monthOf(value: string, today: string): string {
   }
 
   return `${parsed.getUTCFullYear()}-${String(parsed.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * The days a picker offers and its calendar button, in one group where there are days and
+ * loose where there are none.
+ *
+ * One group so that a row too narrow for all of them beside the box puts all of them under
+ * it and never some (`.datepicker--steps` in `DatePicker.css` says why, with the numbers
+ * it was measured at). Loose where there are no days, so that the plain picker is the
+ * markup it always was: it is the one every other screen of the portal draws, in the cell
+ * of a table and in the corner of the shell among them.
+ */
+function Tools({ grouped, children }: { grouped: boolean; children: ReactNode }) {
+  return grouped ? <div className="datepicker__tools">{children}</div> : <>{children}</>
 }
 
 /**
@@ -258,8 +272,13 @@ export function DatePicker({
     opener.current?.focus()
   }
 
+  /* Whether this picker was handed days. It is the one fact the markup and the sheet both
+     read, so it is asked once: the class on the root below and the group around the days
+     further down cannot come to disagree about it. */
+  const stepped = steps.length > 0
+
   return (
-    <div className="datepicker" ref={box}>
+    <div className={stepped ? 'datepicker datepicker--steps' : 'datepicker'} ref={box}>
       <input
         id={id}
         name={name}
@@ -286,67 +305,75 @@ export function DatePicker({
         onChange={(event) => onChange(maskDate(event.target.value))}
       />
 
-      {/* Steps beside the calendar, where a screen has days worth offering rather
-          than only a calendar to find them in: copying an event offers next season
-          and a week on (owner, 23.08.2026).
+      <Tools grouped={stepped}>
+        {/* Steps beside the calendar, where a screen has days worth offering rather
+            than only a calendar to find them in: copying an event offers next season
+            and a week on (owner, 23.08.2026).
 
-          Each step carries the day it writes rather than a press to run, and that is
-          what makes it mean the same thing twice: the button is pressed when the box
-          already holds its day, so two presses give what one press gives, and a day
-          typed by hand simply leaves both of them unpressed. */}
-      {steps.map((step) => (
+            Each step carries the day it writes rather than a press to run, and that is
+            what makes it mean the same thing twice: the button is pressed when the box
+            already holds its day, so two presses give what one press gives, and a day
+            typed by hand simply leaves both of them unpressed. */}
+        {steps.map((step) => (
+          <button
+            key={step.label}
+            type="button"
+            className="datepicker__step"
+            aria-disabled={locked ? true : undefined}
+            aria-pressed={value === step.to}
+            aria-label={step.label}
+            title={step.title}
+            onClick={() => {
+              if (!locked) {
+                onChange(step.to)
+              }
+            }}
+          >
+            {step.label}
+          </button>
+        ))}
+
         <button
-          key={step.label}
+          ref={opener}
           type="button"
-          className="datepicker__step"
+          className="datepicker__open"
           aria-disabled={locked ? true : undefined}
-          aria-pressed={value === step.to}
-          aria-label={step.label}
-          title={step.title}
+          aria-expanded={open}
+          aria-label={t('form.openCalendar')}
           onClick={() => {
-            if (!locked) {
-              onChange(step.to)
+            /* And a button that says it is refused refuses. `aria-disabled` says so
+               and leaves the button in the keyboard's path, which is the whole point
+               of it here, but saying so is not doing so: a control that answers to a
+               press it has just declared refused is worse than one that is switched
+               off, because the reader is told one thing and shown another (PDL: „a
+               lock that is an ornament is worse than none"). Measured 23.08.2026: the
+               calendar opened over a date the portal had filled in, thirty-one days
+               of it, and pressing one of them closed it again without changing
+               anything and without a word. */
+            if (locked) {
+              return
             }
+
+            /* The clock is read when the calendar is opened, never when the field
+               last drew. A field draws again only when something about that field
+               changed (src/forms/FormRenderer.tsx), so a form filled in across
+               midnight would otherwise open the calendar on yesterday's month. */
+            setMonth(monthOf(value, today))
+            setOpen((was) => !was)
           }}
         >
-          {step.label}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M3 10h18M8 3v4M16 3v4" />
+          </svg>
         </button>
-      ))}
-
-      <button
-        ref={opener}
-        type="button"
-        className="datepicker__open"
-        aria-disabled={locked ? true : undefined}
-        aria-expanded={open}
-        aria-label={t('form.openCalendar')}
-        onClick={() => {
-          /* And a button that says it is refused refuses. `aria-disabled` says so
-             and leaves the button in the keyboard's path, which is the whole point
-             of it here, but saying so is not doing so: a control that answers to a
-             press it has just declared refused is worse than one that is switched
-             off, because the reader is told one thing and shown another (PDL: „a
-             lock that is an ornament is worse than none"). Measured 23.08.2026: the
-             calendar opened over a date the portal had filled in, thirty-one days
-             of it, and pressing one of them closed it again without changing
-             anything and without a word. */
-          if (locked) {
-            return
-          }
-
-          /* The clock is read when the calendar is opened, never when the field
-             last drew. A field draws again only when something about that field
-             changed (src/forms/FormRenderer.tsx), so a form filled in across
-             midnight would otherwise open the calendar on yesterday's month. */
-          setMonth(monthOf(value, today))
-          setOpen((was) => !was)
-        }}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M3 10h18M8 3v4M16 3v4" />
-        </svg>
-      </button>
+      </Tools>
 
       {open && (
         /**

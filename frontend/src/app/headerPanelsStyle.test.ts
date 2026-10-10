@@ -19,7 +19,8 @@ import { setupUser } from '../test/user'
  * **What is held here is where things are written, and nothing about which rule wins or where a
  * box lands** (ADL A33): the first is a fact about the source, the second and the third are a
  * browser's, and `scripts/header-panels-geometry.mjs` asks the browser, by hand and not in the
- * gate, because the browser the owner decided on in ADL A63 (22.09.2026) is not in the package yet.
+ * gate: the browser the owner decided on in ADL A63 (22.09.2026) is in the package now
+ * (`geometry/`), and the panels are not yet among its guards.
  *
  * **The question, and who answers it.** Of the four elements a panel hangs from (the box its button
  * stands in, the row of tools, the bar, and the panel itself), and of the button itself for the one
