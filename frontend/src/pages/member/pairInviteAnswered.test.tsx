@@ -689,16 +689,21 @@ describe('what an answered invitation makes stale', () => {
     expect(arrivedResource('me/applications')).toBeUndefined()
   })
 
-  it('drops what he waits on when the route says the question is not there, and nothing else', async () => {
-    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? answeredWith(404) : null))
+  it.each([
+    ['says the question is not there', () => answeredWith(404)],
+    ['refuses with a reason it names', () => refused('thePairWouldNotBeMixed', 409)],
+  ])('drops what he waits on when the route %s, and nothing else', async (_, answer) => {
+    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? answer() : null))
 
     await withWhatHeWaitsOnInHand()
     await loadResource('pairs')
     await theServerWasAnswered(HIS_INVITE, true)
 
     /* The empty 404 is a question that is no longer there, which that list would otherwise name
-       until the next visit (derived 10.10.2026, from the remedy of the medium finding on PR 516).
-       A refusal makes no pair, so the pairs stay in hand. */
+       until the next visit, and a refusal the route names is the server answering about rows this
+       visit read earlier: both say the list is stale (derived 10.10.2026, from the remedy of the
+       medium finding on PR 516, `theServerSaysTheScreenIsStale`). A refusal makes no pair, so the
+       pairs stay in hand. */
     expect(arrivedResource('me/applications')).toBeUndefined()
     expect(arrivedResource('pairs')).not.toBeUndefined()
   })
