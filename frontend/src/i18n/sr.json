@@ -519,6 +519,12 @@
     },
     "breakRefused": {
       "notHeld": "Ovaj trkački par ne može da se raskine odavde: već je raskinut ili je prestao da važi. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
+    },
+    "inviteRefused": {
+      "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv u trkački par nije poslat. Osveži stranicu i pokušaj ponovo.",
+      "thePairWouldNotBeMixed": "Trkački par mora da ima jednog muškarca i jednu ženu, pa poziv nije poslat.",
+      "aPairAlreadyHolds": "Jedno od vas dvoje već ima trkački par za sezonu koja se formira, pa poziv nije poslat.",
+      "notThere": "Poziv ne može da se pošalje odavde. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
     }
   },
   "topBoards": {
@@ -1446,8 +1452,8 @@
     "intro": "Podešavanja važe za tvoj nalog na svim uređajima.",
     "appearance": "Izgled",
     "privacy": "Privatnost",
-    "hideProfile": "Sakrij moj profil od posetilaca koji nisu prijavljeni",
-    "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od onih koji nisu prijavljeni.",
+    "hideProfile": "Sakrij moj profil od svakoga ko nije aktivan član ni administracija",
+    "hideProfileNote": "Ime ostaje u tabelama i na rang listama, jer bi bez toga zajedničko rangiranje izgubilo smisao. Skriva se samo tvoja profilna strana, i to samo od posetilaca koji nisu prijavljeni i od prijavljenih naloga bez aktivne članarine.",
     "themeLabel": "Tema",
     "themeDark": "Tamna",
     "themeLight": "Svetla"  },

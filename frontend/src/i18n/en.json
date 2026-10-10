@@ -519,6 +519,12 @@
     },
     "breakRefused": {
       "notHeld": "This racing pair cannot be ended from here: it has already ended or has stopped holding. Trying again does not help. Reload the page to see how things stand."
+    },
+    "inviteRefused": {
+      "theFormIsNotComplete": "The request did not reach the server in full, so the invitation into a racing pair was not sent. Refresh the page and try again.",
+      "thePairWouldNotBeMixed": "A racing pair must have one man and one woman, so the invitation was not sent.",
+      "aPairAlreadyHolds": "One of you already has a racing pair for the season being formed, so the invitation was not sent.",
+      "notThere": "The invitation cannot be sent from here. Trying again does not help. Reload the page to see how things stand."
     }
   },
   "topBoards": {
@@ -1446,8 +1452,8 @@
     "intro": "The settings hold for your account on every device.",
     "appearance": "Appearance",
     "privacy": "Privacy",
-    "hideProfile": "Hide my profile from visitors who are not signed in",
-    "hideProfileNote": "The name stays in the tables and on the boards, because without it ranking everybody together would lose its point. What is hidden is only your profile page, and only from those who are not signed in.",
+    "hideProfile": "Hide my profile from anyone who is neither an active member nor the administration",
+    "hideProfileNote": "The name stays in the tables and on the boards, because without it ranking everybody together would lose its point. What is hidden is only your profile page, and only from visitors who are not signed in and from signed-in accounts without an active membership.",
     "themeLabel": "Theme",
     "themeDark": "Dark",
     "themeLight": "Light"  },
