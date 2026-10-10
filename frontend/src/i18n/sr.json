@@ -519,6 +519,12 @@
     },
     "breakRefused": {
       "notHeld": "Ovaj trkački par ne može da se raskine odavde: već je raskinut ili je prestao da važi. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
+    },
+    "inviteRefused": {
+      "theFormIsNotComplete": "Zahtev nije poslat do kraja, pa poziv u trkački par nije poslat. Osveži stranicu i pokušaj ponovo.",
+      "thePairWouldNotBeMixed": "Trkački par mora da ima jednog muškarca i jednu ženu, pa poziv nije poslat.",
+      "aPairAlreadyHolds": "Jedno od vas dvoje već ima trkački par za sezonu koja se formira, pa poziv nije poslat.",
+      "notThere": "Poziv ne može da se pošalje odavde. Ponovni pokušaj ne pomaže. Osveži stranicu da vidiš kako stvari stoje."
     }
   },
   "topBoards": {
