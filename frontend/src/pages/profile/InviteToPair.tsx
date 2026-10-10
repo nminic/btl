@@ -165,6 +165,14 @@ function AskingIntoAPair({ mine, whom }: { mine: string; whom: string }) {
    * already holds. The read that replaces it is a new object - the cache was dropped
    * (`member/pairWrites.ts`) - so the old one being gone is what says it has landed, and a read that
    * failed instead lets go as well, because then there is nothing left to wait for.
+   *
+   * <p><b>No case can hold the half of the effect below that waits while the old object is still
+   * the answer</b>, and that is measured rather than forgotten (10.10.2026): its condition cut down to
+   * `replacing.current === null` keeps all thirty cases of `pages/pairInviteOnTheServer.test.tsx`
+   * green. Both answers that ask for the list again
+   * drop the cache before the number moves, so the read that follows is always a new object and the
+   * half is never reached. It stays because it is `pages/AskingThisTeam.tsx`'s shape, which has the
+   * same half for the same reason; the two go or stay together, in one change that touches both.
    */
   const replacing = useRef<WhatIsWaiting | null>(null)
   /**

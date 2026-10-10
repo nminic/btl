@@ -356,12 +356,12 @@ const WHAT_THE_NUMBER_SAYS_WHEN_BREAKING_A_PAIR: Record<number, string> = {
  * stand either way.
  *
  * <p><b>A question whose other member has let the fee lapse is not drawn.</b> Derived on
- * 10.10.2026 and told to the owner with his answers of that day, not his word: „poziv u par koji
+ * 10.10.2026, not the owner's word, and put to him among that day's derivations: „poziv u par koji
  * čeka, a drugom članu je istekla članarina, ne crta se na sopstvenom profilu". The server already
  * names nobody there (`MyApplicationsApi`: „the person behind it stops being named"), and a row
  * standing without a name would tell the member who asked that the fee of the one he asked has
- * lapsed, which Article 74 shuts and PDL, 13.09.2026 forbids „ni posredno". Not drawn, it reads
- * exactly like a question that has been answered, which says nothing about anybody.
+ * lapsed, which Article 74 shuts; PDL, 13.09.2026 („ni posredno") says it of public answers, and
+ * this is my reading of it for a private one. Not drawn, it reads like an answered question.
  *
  * <p><b>A number the list of members does not carry is said as the number</b>, which is
  * `TeamQueue.tsx`'s answer: the two reads are made at different moments, and the number is what

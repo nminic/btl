@@ -5,7 +5,7 @@ import { askTheServer, type Answer } from '../account/askTheServer'
 /**
  * THE THREE WRITES OF A RACING PAIR, ALL ON THE SERVER: ASKING, ANSWERING AND „RASKINI".
  *
- * <p>Owner, PDL P13: „Trkački par se formira obostranom potvrdom: svako sme da pošalje zahtev
+ * <p>PDL P13: „Trkački par se formira obostranom potvrdom: svako sme da pošalje zahtev
  * svakome, a par nastaje kad druga strana potvrdi." Asking is `POST /api/pairs` since P2
  * (10.10.2026); until that day „Pozovi u trkački par" wrote the question and its message into
  * `session/SessionProvider.tsx`, so the member asked never saw it and the pair could not be made
@@ -53,9 +53,9 @@ export const THE_QUESTION_GOES_TO = '/api/pairs'
  *
  * <p><b>The other three are only ever refusals, and filed under one</b>, each of them a race the
  * screen cannot close: one of the two pairing up between the drawing and the press, a gender put
- * right in between, and a request that went round this screen. The words are the agent's, and the
- * owner takes them to be changed on QA (PDL, the answers of 10.10.2026: „četiri nove rečenice
- * odbijanja idu u formulaciji agenta, vlasnik ih menja na QA").
+ * right in between, and a request that went round this screen. The words are the agent's: the
+ * owner's answer of 10.10.2026 that they go so and are changed on QA (question V3) was about T5's
+ * four, not these, so the description of P2 names them for him.
  */
 export const WHEN_INVITING_INTO_A_PAIR = {
   theFormIsNotComplete: 'pair.inviteRefused.theFormIsNotComplete',
@@ -72,7 +72,7 @@ export const WHEN_INVITING_INTO_A_PAIR = {
  * None of them is answered by pressing again, so the portal's general sentence for a 404 - „try
  * again in a minute" - is the wrong advice for every one, which is the reason
  * `profile/RacingPairLine.tsx` keeps a table of its own for „Raskini" (PENDING stavka 316). The
- * words are the agent's, under the answer quoted above {@link WHEN_INVITING_INTO_A_PAIR}.
+ * words are the agent's, as {@link WHEN_INVITING_INTO_A_PAIR} says of the other three.
  */
 export const WHAT_THE_NUMBER_SAYS_WHEN_INVITING_INTO_A_PAIR: Record<number, string> = {
   404: 'pair.inviteRefused.notThere',
