@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -1005,6 +1006,119 @@ class PaymentApiTest {
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
 				.isEqualTo(PaymentApi.THE_REFERENCE_IS_NOT_SHAPED);
+	}
+
+	/**
+	 * A REFERENCE LONGER THAN THE INDEX CAN HOLD IS REFUSED WITH THE SENTENCE FOR A MISSHAPEN
+	 * ONE, AND NOTHING IS BOOKED.
+	 *
+	 * <p>{@code payment_reference_shape} asks for seven digits at least and says nothing of the
+	 * other end; {@code payment_reference_unique} has one. Three thousand digits walk through
+	 * {@code A_REFERENCE}, reach the {@code insert} and come back to a moderator booking a payment
+	 * as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the database where the limit is). The
+	 * refusal is the one this route already gives for a reference of the wrong shape, so no
+	 * sentence is added and no dictionary moves.
+	 *
+	 * <p><b>One case for each of four texts</b>, and the four are told apart and explained in
+	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
+	 * accepted and leave the others unjudged.
+	 *
+	 * <p><b>What is read afterwards is the whole of what a booking would have written</b>: no
+	 * payment, no membership, and the member himself with the number he did not have and the
+	 * activity he did not get. The draw of a member number is the last thing a booking does, so a
+	 * refusal at the door has no number to leave behind, and the member row is what says so.
+	 */
+	@ParameterizedTest
+	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
+	void aReferenceLongerThanTheIndexCanHoldIsRefusedAsMisshapenAndNothingIsBooked(
+			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
+
+		long id = competitor("d1", null, false, "1990-05-15");
+		String tooLong = kind.forAReference(PaymentApi.MOST_A_REFERENCE_CAN_BE);
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> confirm(json(
+				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", tooLong)),
+				moderatorCookie));
+
+		assertThat(answer.getStatus())
+				.as("%s was taken as a reference", kind)
+				.isEqualTo(400);
+		assertThat(mapper.readValue(answer.getContentAsString(), PaymentApi.Refused.class).reason())
+				.as("%s was refused with a sentence other than the one for a misshapen reference",
+						kind)
+				.isEqualTo(PaymentApi.THE_REFERENCE_IS_NOT_SHAPED);
+
+		assertThat(paymentCount()).as("a payment was written for a reference the route refused")
+				.isZero();
+		assertThat(membershipCount()).as("a membership was written for a refused booking").isZero();
+		assertThat(db.sql("select active, member_number is null from competitor where id = ?")
+				.param(id).query((row, i) -> row.getBoolean(1) + " " + row.getBoolean(2)).single())
+				.as("the member was activated or numbered by a booking the route had refused")
+				.isEqualTo("false true");
+	}
+
+	/**
+	 * AND THE LONGEST REFERENCE THE ROUTE TAKES IS BOOKED WHOLE.
+	 *
+	 * <p>This is the other half of the bound, and the one a bound set too high fails: the
+	 * reference is noise (it does not compress), exactly as long as the bound allows, so if the
+	 * number were above what the index keeps this request would reach the {@code insert} and come
+	 * back as a fault instead of as a booking. {@link WhatAnIndexHoldsTest} is the file that says
+	 * where the index stops; this one says that the route's own largest reference is on the right
+	 * side of it, through the whole route and not through a bare table.
+	 */
+	@Test
+	void theLongestReferenceTheRouteTakesIsBookedWhole() throws Exception {
+		String longest = WhatAnIndexHoldsTest.aReferenceOf(PaymentApi.MOST_A_REFERENCE_CAN_BE);
+		long id = competitor("d2", null, false, "1990-05-15");
+
+		assertThat(longest).hasSize(PaymentApi.MOST_A_REFERENCE_CAN_BE);
+
+		MockHttpServletResponse booked = WhatAnIndexHoldsTest.answered(() -> confirm(json(
+				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal", longest)),
+				moderatorCookie));
+
+		assertThat(booked.getStatus())
+				.as("the longest reference the route takes was refused: %s",
+						booked.getContentAsString())
+				.isEqualTo(201);
+		assertThat(db.sql("select reference from payment where competitor_id = ?").param(id)
+				.query(String.class).single())
+				.as("the reference was not kept whole")
+				.isEqualTo(longest);
+	}
+
+	/**
+	 * AND IT IS MEASURED AFTER THE SPACES ARE TAKEN OFF, which is what the index sees.
+	 *
+	 * <p>The reference is typed with two spaces on each side, so what the route is asked is longer
+	 * than the bound and what it keeps is not. {@code reference.strip()} is what the route stores
+	 * and what the index holds, so it is the stripped text that is measured: a bound read off what
+	 * was typed would refuse a booking the index would have taken, and this is the case that says
+	 * so. It is a case of its own and not a second booking in the case above, so the two cannot hide
+	 * each other.
+	 */
+	@Test
+	void aReferenceAsLongAsTheBoundTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff()
+			throws Exception {
+
+		String longest = "1" + WhatAnIndexHoldsTest.aReferenceOf(PaymentApi.MOST_A_REFERENCE_CAN_BE - 1);
+		long id = competitor("d3", null, false, "1990-05-15");
+
+		assertThat(longest).hasSize(PaymentApi.MOST_A_REFERENCE_CAN_BE);
+
+		MockHttpServletResponse padded = WhatAnIndexHoldsTest.answered(() -> confirm(json(
+				new PaymentApi.Confirm(id, WHAT_A_EURO_MEMBER_SENDS, false, "paypal",
+						"  " + longest + "  ")), moderatorCookie));
+
+		assertThat(padded.getStatus())
+				.as("a reference as long as the bound, typed with spaces around it, was refused: %s",
+						padded.getContentAsString())
+				.isEqualTo(201);
+		assertThat(db.sql("select reference from payment where competitor_id = ?").param(id)
+				.query(String.class).single())
+				.as("the reference was kept with the spaces it was typed with, or cut")
+				.isEqualTo(longest);
 	}
 
 	@Test
