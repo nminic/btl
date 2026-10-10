@@ -323,6 +323,16 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     calls: [{ shape: 'condition', call: "results.status === 'ready' ? results.data : []" }],
   },
   {
+    file: 'pages/profile/InviteToPair.tsx',
+    how: 'says',
+    why: 'THE FILE\'S OWN, and held by `pages/pairInviteOnTheServer.test.tsx` („says so when what the reader waits on cannot be read, offers no button over it, and asks again"): what the reader waits on, read off `/api/me/applications` for „Pozovi u trkački par" on somebody else\'s profile, says `data.error` where the button would stand, through `Unreadable` with the button that asks again, and draws no button over it, because the button is a claim that no question stands between the two (decision of 02.10.2026, PENDING stavka 368). While it is read, nothing, which is `profile/InviteToTeam.tsx`\'s answer directly above it. Written 10.10.2026 with P2.',
+  },
+  {
+    file: 'pages/profile/RacingPairLine.tsx',
+    how: 'says',
+    why: 'THE FILE\'S OWN, and held by `pages/pairInviteOnTheServer.test.tsx` („say so when they cannot be read, and the pairs stay drawn"): the questions still standing on the reader\'s own page, read off `/api/me/applications`, say `data.error` under the pairs through `Unreadable`, with the button that asks again (decision of 02.10.2026, PENDING stavka 368), and the pairs above them, which are this page\'s own read, stay drawn. While it is read, nothing. Written 10.10.2026 with P2.',
+  },
+  {
     file: 'pages/profile/useProfileLink.ts',
     how: 'boundary',
     why: 'MY REASONING: a BOOLEAN and not a list. The call asks only whether the reader\'s number is on the list the server serves, to decide whether a name is a link or plain text, so a read that failed leaves the reader read as nobody who may read a hidden profile: a refusal that lifts when the list arrives, never an admission. The list is not drawn from this call: every caller hands in a `Competitor`, a record of that same list, so a failure of it is already the caller\'s to say. Written 04.10.2026 with the reader fact (PDL P23).',

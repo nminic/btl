@@ -24,10 +24,9 @@ import { theServerWasAnswered } from './pairWrites'
  * screen calling either, so a served invitation drew a subject, a sender and a body.
  *
  * <p><b>THE HALF THIS FILE DOES NOT MEASURE, said here so the absence is a decision.</b> Only
- * the PAIR is answered. `PUT /api/teams/{id}/invitations/{invitation}` needs the team as well
- * and no field of `GET /api/inbox` carries one; the only route that hands the invited member
- * both halves is `GET /api/me/applications`, which nothing in `frontend/src` reads.
- * `member/inboxFromTheServer.test.tsx` still holds that boundary as its own case, untouched.
+ * the PAIR is answered. A team's invitation is answered by `member/ServedTeamInvite.tsx`, which
+ * reads the team off `GET /api/me/applications`, and `member/teamInviteAnswered.test.tsx` measures
+ * it.
  *
  * <p><b>WHY THE FIXTURE IS FOUR MESSAGES AND NOT ONE.</b> Every value an assertion here reads
  * could arrive from somewhere else if the code were wrong, so each has to have somewhere else
@@ -664,5 +663,57 @@ describe('what an answered invitation makes stale', () => {
        `waitFor` before it fails at all. This reads the one value that changes the moment the
        `await` above returns - nothing to wait for and nothing to time out on. */
     expect(arrivedResource('inbox')).toBeUndefined()
+  })
+
+  /** `withPairsInHand`'s own shape, over what the member waits on, which his own profile draws
+   *  the questions still standing off since P2 (10.10.2026, `profile/RacingPairLine.tsx`). */
+  async function withWhatHeWaitsOnInHand(): Promise<void> {
+    clearResourceCache()
+    await loadResource('me/applications')
+
+    expect(arrivedResource('me/applications')).not.toBeUndefined()
+  }
+
+  it.each([
+    ['„Prihvati"', true],
+    ['„Odbij"', false],
+  ])('drops what he waits on when the answer was %s, because both close the question', async (_, accepted) => {
+    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? did() : null))
+
+    await withWhatHeWaitsOnInHand()
+    await theServerWasAnswered(HIS_INVITE, accepted)
+
+    /* His own page lists the questions still standing off `GET /api/me/applications`, and either
+       answer takes this one off it: held, the page would go on saying „Primljen poziv" about a
+       question he has just answered. */
+    expect(arrivedResource('me/applications')).toBeUndefined()
+  })
+
+  it.each([
+    ['says the question is not there', () => answeredWith(404)],
+    ['refuses with a reason it names', () => refused('thePairWouldNotBeMixed', 409)],
+  ])('drops what he waits on when the route %s, and nothing else', async (_, answer) => {
+    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? answer() : null))
+
+    await withWhatHeWaitsOnInHand()
+    await loadResource('pairs')
+    await theServerWasAnswered(HIS_INVITE, true)
+
+    /* The empty 404 is a question that is no longer there, which that list would otherwise name
+       until the next visit, and a refusal the route names is the server answering about rows this
+       visit read earlier: both say the list is stale (derived 10.10.2026, from the remedy of the
+       medium finding on PR 516, `theServerSaysTheScreenIsStale`). A refusal makes no pair, so the
+       pairs stay in hand. */
+    expect(arrivedResource('me/applications')).toBeUndefined()
+    expect(arrivedResource('pairs')).not.toBeUndefined()
+  })
+
+  it('keeps what he waits on when the server said nothing about any row', async () => {
+    server = serverThat((path) => (/^\/api\/pairs\/\d+$/.test(path) ? answeredWith(500) : null))
+
+    await withWhatHeWaitsOnInHand()
+    await theServerWasAnswered(HIS_INVITE, true)
+
+    expect(arrivedResource('me/applications')).not.toBeUndefined()
   })
 })
