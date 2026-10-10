@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, configure, getConfig, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import sr from '../i18n/sr.json'
 import { must } from '../test/at'
@@ -24,6 +24,16 @@ import { MEMBERS } from './admin/entityForms'
  * SECOND team on file; the member on the page is `000006`, not the first member with no team; and
  * where the team's list names him, he is not its first row.
  */
+
+/* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, the arrangement
+   `pages/admin/saveWhileSaving.test.tsx` holds and for its reason: `test/setup.ts` gives both
+   `SLOW`, so a wait that never succeeds and the case waiting for it ran out together and the case
+   ended in `Test timed out` and not in the assertion's own words, which a series of mutations
+   cannot tell from a fault of the machine. Measured on the first series of T5 (10.10.2026): the
+   case written for taking back the right application (`teamJoinOnTheServer.test.tsx`) timed out
+   instead of failing. No wait here names a time of its own, so this line decides all of them, and
+   the case at the foot of the file holds it. */
+configure({ asyncUtilTimeout: SLOW / 2 })
 
 const TEAMS_ON_FILE: { id: number; slug: string; name: string }[] = JSON.parse(
   readFileSync(join(process.cwd(), 'src/test/mock/teams.json'), 'utf-8'),
@@ -225,7 +235,7 @@ describe('who is offered „Pozovi u tim"', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
       /* His own team's list and no other, which is the second team on file. */
       expect(readsOfLists(server.asked)).toEqual([`/api/teams/${String(HIS.id)}/invitations`])
     } finally {
@@ -242,7 +252,7 @@ describe('who is offered „Pozovi u tim"', () => {
     try {
       renderAt(ASKED_AT, 'competitor', STANDS_IN_IT, undefined, DAY_IN)
 
-      await screen.findByRole('heading', { level: 1, name: ASKED_NAME }, { timeout: SLOW })
+      await screen.findByRole('heading', { level: 1, name: ASKED_NAME })
       await settled()
 
       expect(theButton()).toBeNull()
@@ -267,7 +277,7 @@ describe('who is offered „Pozovi u tim"', () => {
     try {
       renderAt(ASKED_AT, 'competitor', reader, undefined, DAY_IN)
 
-      await screen.findByRole('heading', { level: 1, name: ASKED_NAME }, { timeout: SLOW })
+      await screen.findByRole('heading', { level: 1, name: ASKED_NAME })
       await waitFor(() => {
         expect(theButton() !== null).toBe(offered)
       })
@@ -290,7 +300,7 @@ describe('who is offered „Pozovi u tim"', () => {
     try {
       renderAt(address, role, reader, undefined, day)
 
-      await screen.findByRole('heading', { level: 1 }, { timeout: SLOW })
+      await screen.findByRole('heading', { level: 1 })
       await settled()
 
       expect(theButton()).toBeNull()
@@ -313,7 +323,7 @@ describe('who is offered „Pozovi u tim" when the record moves under him', () =
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN, <Emptied who={LEADS_IT} />)
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
 
       await user.click(screen.getByRole('button', { name: `isprazni ${LEADS_IT}` }))
 
@@ -340,7 +350,7 @@ describe('what stands in the place of the button', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      expect(await screen.findByText(itStands, {}, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByText(itStands)).toBeVisible()
       expect(theButton()).toBeNull()
     } finally {
       server.stop()
@@ -362,7 +372,7 @@ describe('what stands in the place of the button', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
       expect(screen.queryByText(itStands)).toBeNull()
     } finally {
       server.stop()
@@ -380,7 +390,7 @@ describe('what stands in the place of the button', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
     } finally {
       server.stop()
     }
@@ -396,13 +406,13 @@ describe('what stands in the place of the button', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      expect(await screen.findByText(sr.data.error, {}, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByText(sr.data.error)).toBeVisible()
       expect(theButton()).toBeNull()
 
       fails = false
       await user.click(screen.getByRole('button', { name: sr.data.retry }))
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
     } finally {
       server.stop()
     }
@@ -416,13 +426,13 @@ describe('what stands in the place of the button', () => {
     try {
       const { router } = renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      await screen.findByText(itStands, {}, { timeout: SLOW })
+      await screen.findByText(itStands)
 
       await act(async () => {
         await router.navigate(NEXT_AT)
       })
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
       expect(screen.queryByText(itStands)).toBeNull()
       /* Asked again for him, and not answered out of what was read for the last one: the team's
          list moves between two profiles as surely as between two days. */
@@ -439,14 +449,14 @@ describe('what stands in the place of the button', () => {
     try {
       const { router } = renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      await user.click(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW }))
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }))
       await screen.findByRole('alert')
 
       await act(async () => {
         await router.navigate(NEXT_AT)
       })
 
-      expect(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })).toBeVisible()
+      expect(await screen.findByRole('button', { name: sr.teams.invite })).toBeVisible()
       expect(screen.queryByRole('alert')).toBeNull()
     } finally {
       server.stop()
@@ -462,9 +472,9 @@ describe('the press', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN, <HeldInTheBrowser />)
 
-      await user.click(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW }))
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }))
 
-      const said = await screen.findByText(itStands, {}, { timeout: SLOW })
+      const said = await screen.findByText(itStands)
 
       expect(writes(server.asked)).toEqual([
         {
@@ -493,7 +503,7 @@ describe('the press', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      await user.click(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW }))
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }))
 
       await waitFor(() => {
         expect(readsOfLists(server.asked)).toHaveLength(2)
@@ -519,7 +529,7 @@ describe('the press', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      await user.click(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW }))
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent(words)
       expect(theButton()).toBeVisible()
@@ -537,7 +547,7 @@ describe('the press', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      await user.click(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW }))
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent('404')
     } finally {
@@ -562,7 +572,7 @@ describe('the press', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      const button = await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW })
+      const button = await screen.findByRole('button', { name: sr.teams.invite })
 
       act(() => {
         button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
@@ -575,7 +585,7 @@ describe('the press', () => {
 
       answer(json({}, 201))
 
-      await screen.findByText(itStands, {}, { timeout: SLOW })
+      await screen.findByText(itStands)
 
       expect(writes(server.asked)).toHaveLength(1)
     } finally {
@@ -603,14 +613,14 @@ describe('the press', () => {
     try {
       renderAt(ASKED_AT, 'competitor', LEADS_IT, undefined, DAY_IN)
 
-      await user.click(await screen.findByRole('button', { name: sr.teams.invite }, { timeout: SLOW }))
+      await user.click(await screen.findByRole('button', { name: sr.teams.invite }))
 
       const elsewhere = screen.getByRole('link', { name: sr.shell.skipToContent })
 
       elsewhere.focus()
       answer(json({}, 201))
 
-      await screen.findByText(itStands, {}, { timeout: SLOW })
+      await screen.findByText(itStands)
       await settled()
 
       expect(elsewhere).toHaveFocus()
@@ -619,4 +629,10 @@ describe('the press', () => {
       server.stop()
     }
   }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
 })
