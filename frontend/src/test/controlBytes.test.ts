@@ -48,13 +48,20 @@ import { SLOW } from './slow'
 
 /** What is built rather than written: everything at the root of the frontend and in
  *  the folders beside `src`, minus what is installed or produced. Read by extension,
- *  which is what tells a text file from a font or a picture. */
+ *  which is what tells a text file from a font or a picture.
+ *
+ *  `test-results` and `playwright-report` are what a run of the geometry guards leaves
+ *  (`playwright.config.ts`): a failed case writes the page it saw into them, and a page the
+ *  portal draws may carry a no-break space it means to, so read here they would fail this
+ *  file over a run of another one. `geometry/` itself is written and is read. */
 function everyRootFile(here: string): string[] {
   return readdirSync(here, { withFileTypes: true }).flatMap((entry) => {
     const path = join(here, entry.name)
 
     if (entry.isDirectory()) {
-      return ['node_modules', 'dist', 'coverage', 'src', 'public', '.vite'].includes(entry.name)
+      return ['node_modules', 'dist', 'coverage', 'src', 'public', '.vite', 'test-results', 'playwright-report'].includes(
+        entry.name,
+      )
         ? []
         : everyRootFile(path)
     }

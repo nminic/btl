@@ -364,6 +364,65 @@ public final class SeasonClock {
 	}
 
 	/**
+	 * THE SEASON A MEMBER'S AGE BAND IS WORKED OUT FOR, which is the one that is RUNNING and
+	 * never earlier than the first the league has.
+	 *
+	 * <p><b>It is written here and not in the resource that answers a band today, because a
+	 * band is not one resource's fact.</b> The same member has to come back in the same band
+	 * from every resource that names one, and a second resource spelling this season out for
+	 * itself would be a second home of one boundary: ADL A31 (28.08.2026), „Činjenica koja ima
+	 * više oblika dobija jedan dom, i taj dom se prebroji a ne oseti". It was a private method
+	 * of {@code CompetitorApi} until 10.10.2026, and what follows is its note, kept whole.
+	 *
+	 * <p><b>One season and never a band per season, and that is a measurement rather than a
+	 * simplification.</b> PDL, 13.09.2026 (now in {@code btl-produkt/arhiva/PDL-2026-10-03.md},
+	 * the entry on {@code birthYear}): a map of band by season „vraća tačna godina rođenja" for
+	 * 25 of the 32 members, because a member who crosses a boundary narrows the candidate years
+	 * to one. „Iz jednog pojasa za tekuću sezonu ne vraća se ni za jednog, jer je najuži skup
+	 * kandidata širok petnaest godina." So the year is private BECAUSE only one season is
+	 * answered, and answering a second would hand back the very field the band was made to
+	 * withhold. The cost is written down in the same place and accepted: a screen drawing a
+	 * category for an earlier season draws today's band. PDL P34 (21.09.2026) says what the band
+	 * is for: it „je napravljen tako da ne odaje godinu rođenja".
+	 *
+	 * <p><b>Read in the league's own zone, whatever zone the moment arrives in</b>, for the
+	 * reason {@code ResultApi} writes beside its own year: a server kept in UTC, as containers
+	 * are, would still be calling it last year for the first hour of every New Year in
+	 * Belgrade, and that hour is a boundary this field moves on.
+	 *
+	 * <p><b>And it is NOT {@link #seasonBeingPaidFor}.</b> That one answers from 15 October
+	 * with NEXT year, which would move every member's band forward a season in the autumn
+	 * without a single birthday - and the band moves once, on 1 January, which is the whole of
+	 * PDL P7 („Uzrast se u ligi utvrđuje jednom, na 1. januar sezone"). Two cases refuse the
+	 * swap, one here and one through the route:
+	 * {@code SeasonClockTest.theSeasonTheBandIsWorkedOutForDoesNotMoveWhenTheNextOneGoesOnSale}
+	 * and {@code CompetitorApiTest.aBandDoesNotMoveWhenTheNextSeasonGoesOnSale}.
+	 *
+	 * <p><b>The floor under the plain calendar year is the league's first season</b>, the same
+	 * {@code Math.max} shape {@code frontend/src/data/season.ts} has in
+	 * {@code transfersTakeEffect}: through 2026 the calendar answers 2026 and there is no season
+	 * 2026 (PDL P2), so a band worked out for it is a band for a season that does not exist.
+	 * <b>That floor is what tells it apart from {@link #seasonBeingRun}</b>, which names 2026
+	 * on purpose and says why in its own note; from 2027 on the two are the same number.
+	 *
+	 * <p><b>WHAT IS NOT DECIDED HERE, written down rather than left to be found.</b> From 1
+	 * January 2028 this answer and the served file part company: the generator that wrote
+	 * {@code competitors.json} holds {@code SEZONA = 2027} as a literal
+	 * ({@code btl-produkt/istorijski-podaci/napravi-mock.py}), so it answers 2027 for ever while
+	 * this follows the running season. This is the reading PDL P7 gives - the age is settled on
+	 * 1 January OF THE SEASON, so a new season settles it again - and the file's constant is an
+	 * artefact of a mock built for a 2027 demo rather than a decision. It is named here because
+	 * the two agree until then and a disagreement that starts on a date nobody is watching is
+	 * the kind that gets found by a member.
+	 *
+	 * @param at the moment being asked about, in any zone: it is read in the league's, which is
+	 *           ADL A36 O2 („sezona se racuna u zoni Europe/Belgrade")
+	 */
+	public static int seasonTheBandIsWorkedOutFor(ZonedDateTime at) {
+		return Math.max(FIRST_SEASON, at.withZoneSameInstant(ZONE).getYear());
+	}
+
+	/**
 	 * THE SEASON A LEAGUE MAY BE MADE FOR: THIS ONE OR THE NEXT, AND NOTHING ELSE
 	 * (PDL P15a, owner 22.09.2026).
 	 *
