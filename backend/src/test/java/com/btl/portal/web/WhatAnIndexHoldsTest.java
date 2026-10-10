@@ -146,15 +146,15 @@ class WhatAnIndexHoldsTest {
 				new Key("account_email_unique", "account", "email",
 						WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE, 3,
 						length -> "a@" + noise(EVERY_CHARACTER_OF_AN_ADDRESS, length - 2),
-						length -> "a@" + "a".repeat(length - 2), this::anAccountAt),
+						WhatAnIndexHoldsTest::aRepeatedMailAddressOf, this::anAccountAt),
 				new Key("league_slug_unique", "league", "slug",
 						LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE, 1,
-						WhatAnIndexHoldsTest::aSlugOf, length -> "a".repeat(length),
+						WhatAnIndexHoldsTest::aSlugOf, WhatAnIndexHoldsTest::aRepeatedSlugOf,
 						this::aLeagueAt),
 				new Key("payment_reference_unique", "payment", "reference",
 						PaymentApi.MOST_A_REFERENCE_CAN_BE, 7,
-						WhatAnIndexHoldsTest::aReferenceOf, length -> "7".repeat(length),
-						this::aPaymentReferencedBy));
+						WhatAnIndexHoldsTest::aReferenceOf,
+						WhatAnIndexHoldsTest::aRepeatedReferenceOf, this::aPaymentReferencedBy));
 	}
 
 	/* ------------------------------------------------------------------------ the noise */
@@ -191,6 +191,88 @@ class WhatAnIndexHoldsTest {
 		return noise(DIGITS, length);
 	}
 
+	/** An address of electronic mail of that many characters made of ONE repeated letter. */
+	static String aRepeatedMailAddressOf(int length) {
+		return "a@" + "a".repeat(length - 2);
+	}
+
+	/** A league's typed address of that many characters made of ONE repeated letter. */
+	static String aRepeatedSlugOf(int length) {
+		return "a".repeat(length);
+	}
+
+	/** A payment reference of that many digits made of ONE repeated digit. */
+	static String aRepeatedReferenceOf(int length) {
+		return "7".repeat(length);
+	}
+
+	/**
+	 * THE FOUR TEXTS EVERY ROUTE CASE SENDS OVER ITS BOUND, EACH ONE A CASE OF ITS OWN.
+	 *
+	 * <p>They are cases and not the four turns of one loop, and that is measured and not tidy: in a
+	 * loop the first text that is wrongly accepted ends the case, so a mutation that removed the
+	 * bound fell on "one character past it" every time and the other three were never the ones that
+	 * decided anything. As four cases, each is judged on its own, and a bound that is wrong in only
+	 * one of the four ways shows up as that one failing.
+	 *
+	 * <ul>
+	 * <li><b>One character past the bound</b>, which the database would still keep and which only a
+	 * bound written as a number refuses.
+	 * <li><b>Twice the bound</b>, which on the day of writing is past what the index keeps as well
+	 * (4000 against 2692), so the route answers instead of meeting the fault this was written for.
+	 * <li><b>One repeated letter, one past the bound</b>, and <b>a hundred thousand copies of one
+	 * letter</b>: PostgreSQL compresses an index key that long and keeps them (measured in
+	 * {@link #aRepeatedTextIsKeptFarBeyondThatLimitWhichIsWhyTheBoundDoesNotFollowTheDatabase}), so
+	 * a route that refused only what the database refuses would let them through. This one refuses
+	 * them, on purpose, and is stricter than the database for exactly that reason.
+	 * </ul>
+	 */
+	enum TooLong {
+
+		ONE_CHARACTER_PAST_THE_BOUND("one character past the bound"),
+
+		TWICE_THE_BOUND("twice the bound"),
+
+		ONE_REPEATED_LETTER_ONE_PAST_THE_BOUND("one repeated letter, one past the bound"),
+
+		A_HUNDRED_THOUSAND_COPIES_OF_ONE_LETTER("a hundred thousand copies of one letter");
+
+		private final String described;
+
+		TooLong(String described) {
+			this.described = described;
+		}
+
+		private String of(int bound, IntFunction<String> noise, IntFunction<String> repeated) {
+			return switch (this) {
+				case ONE_CHARACTER_PAST_THE_BOUND -> noise.apply(bound + 1);
+				case TWICE_THE_BOUND -> noise.apply(2 * bound);
+				case ONE_REPEATED_LETTER_ONE_PAST_THE_BOUND -> repeated.apply(bound + 1);
+				case A_HUNDRED_THOUSAND_COPIES_OF_ONE_LETTER -> repeated.apply(A_HUNDRED_THOUSAND);
+			};
+		}
+
+		String forAMailAddress(int bound) {
+			return of(bound, WhatAnIndexHoldsTest::aMailAddressOf,
+					WhatAnIndexHoldsTest::aRepeatedMailAddressOf);
+		}
+
+		String forASlug(int bound) {
+			return of(bound, WhatAnIndexHoldsTest::aSlugOf, WhatAnIndexHoldsTest::aRepeatedSlugOf);
+		}
+
+		String forAReference(int bound) {
+			return of(bound, WhatAnIndexHoldsTest::aReferenceOf,
+					WhatAnIndexHoldsTest::aRepeatedReferenceOf);
+		}
+
+		/** What the case is called in a report, and in the message of an assertion. */
+		@Override
+		public String toString() {
+			return described;
+		}
+	}
+
 	/** One request, in the shape a case can pass without having to catch what it throws. */
 	@FunctionalInterface
 	interface ARequest {
@@ -217,9 +299,9 @@ class WhatAnIndexHoldsTest {
 				root = root.getCause();
 			}
 
-			throw new AssertionError("the route answered with a fault and not with a sentence, "
-					+ "which is what a value the index cannot hold becomes: " + root.getMessage(),
-					fault);
+			throw new AssertionError("the route answered with a fault and not with a sentence ("
+					+ root.getClass().getSimpleName() + ": " + root.getMessage() + "); a value the"
+					+ " index cannot hold is answered exactly like this", fault);
 		}
 	}
 

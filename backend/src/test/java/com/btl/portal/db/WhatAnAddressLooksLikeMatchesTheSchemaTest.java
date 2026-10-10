@@ -3,7 +3,10 @@ package com.btl.portal.db;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -177,29 +180,33 @@ class WhatAnAddressLooksLikeMatchesTheSchemaTest extends DatabaseTest {
 	 * {@code account_email_unique}, and it refuses with an error, which on PostgreSQL aborts the
 	 * transaction. That is the 500 this bound turns into the refusal every misshapen address
 	 * already gets. The two values are one character past the bound and twice the bound, so the
-	 * rule is not merely "equal or less".
+	 * rule is not merely "equal or less", and each is a case of its own so that the first one wrongly
+	 * accepted cannot hide the second.
 	 *
 	 * <p><b>If the day comes that the shape rule carries a length of its own</b>, this case fails
 	 * and says so, and the right reading is not that the case is wrong: the bound then has a second
 	 * home in the schema, and the two are to be compared the way the shape is, by asking the
 	 * database.
 	 */
-	@Test
-	void theShapeRuleAloneTakesAnAddressOfAnyLengthWhichIsWhyTheCodeCarriesTheBound() {
-		for (int length : new int[] {WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE + 1,
-				2 * WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}) {
+	@ParameterizedTest
+	@MethodSource("lengthsPastTheBound")
+	void theShapeRuleAloneTakesAnAddressOfAnyLengthWhichIsWhyTheCodeCarriesTheBound(int length) {
+		String tooLong = "a@" + "b".repeat(length - 2);
 
-			String tooLong = "a@" + "b".repeat(length - 2);
+		assertThat(WhatAnAddressLooksLike.itDoes(tooLong))
+				.as("the code took an address of %d characters, past the bound it carries", length)
+				.isFalse();
+		assertThat(theSchemaTakes(tooLong))
+				.as("the shape rule refused an address of %d characters by itself, so the length"
+						+ " has a second home in the schema and the bound is no longer the only"
+						+ " thing that keeps it from the INSERT", length)
+				.isTrue();
+	}
 
-			assertThat(WhatAnAddressLooksLike.itDoes(tooLong))
-					.as("the code took an address of %d characters, past the bound it carries", length)
-					.isFalse();
-			assertThat(theSchemaTakes(tooLong))
-					.as("the shape rule refused an address of %d characters by itself, so the length"
-							+ " has a second home in the schema and the bound is no longer the only"
-							+ " thing that keeps it from the INSERT", length)
-					.isTrue();
-		}
+	/** One character past the bound, and twice it. */
+	static IntStream lengthsPastTheBound() {
+		return IntStream.of(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE + 1,
+				2 * WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
 	}
 
 	/**

@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +38,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -2175,49 +2175,34 @@ class ModeratorWriteApiTest {
 	 * {@link ModeratorWriteApi#THE_ADDRESS_IS_NOT_SHAPED}, so that is the sentence a long one
 	 * gets and none is added.
 	 *
-	 * <p><b>Four texts, because the bound has three ways of being half done.</b> One character
-	 * past it, which the database would still keep and which only a bound written as a number
-	 * refuses. Twice the bound, which on the day of writing is past what the index keeps as well
-	 * (4000 against 2692), so the route answers instead of meeting the fault this was written
-	 * for. And the same two made of ONE repeated letter: PostgreSQL compresses an index key that
-	 * long, a hundred thousand copies of one letter go into the index (measured in
-	 * {@link WhatAnIndexHoldsTest}), and a route that refused only what the database refuses
-	 * would let them through. This one refuses them, on purpose, and is stricter than the
-	 * database for exactly that reason.
+	 * <p><b>One case for each of four texts</b>, and the four are told apart and explained in
+	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
+	 * accepted and leave the others unjudged.
 	 *
 	 * <p><b>The list of missing fields is read as empty</b>, as the case above reads it: an
 	 * address typed too long is not an address left out.
 	 */
-	@Test
-	void anAddressLongerThanTheIndexCanHoldIsTheSentenceForAnAddressThatIsNotOne()
-			throws Exception {
+	@ParameterizedTest
+	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
+	void anAddressLongerThanTheIndexCanHoldIsTheSentenceForAnAddressThatIsNotOne(
+			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
 
-		int most = WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE;
-		Map<String, String> tooLong = new LinkedHashMap<>();
-
-		tooLong.put("one character past the bound", WhatAnIndexHoldsTest.aMailAddressOf(most + 1));
-		tooLong.put("twice the bound", WhatAnIndexHoldsTest.aMailAddressOf(2 * most));
-		tooLong.put("one repeated letter, one past the bound", "a@" + "a".repeat(most - 1));
-		tooLong.put("a hundred thousand copies of one letter", "a@" + "a".repeat(100_000 - 2));
-
+		String tooLong = kind.forAMailAddress(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
 		long before = howManyAccounts();
 
-		for (Map.Entry<String, String> one : tooLong.entrySet()) {
-			MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(
-					() -> make("Nova", "Moderatorka", one.getValue()));
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(
+				() -> make("Nova", "Moderatorka", tooLong));
 
-			assertThat(answer.getStatus())
-					.as("%s was accepted as an address of electronic mail", one.getKey())
-					.isEqualTo(400);
-			assertThat(reasonIn(answer))
-					.as("%s was refused with a sentence other than the one for an address that is"
-							+ " not one", one.getKey())
-					.isEqualTo(ModeratorWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
-			assertThat(missingIn(answer))
-					.as("the refusal named a missing field for a form in which every field is there")
-					.isEmpty();
-		}
-
+		assertThat(answer.getStatus())
+				.as("%s was accepted as an address of electronic mail", kind)
+				.isEqualTo(400);
+		assertThat(reasonIn(answer))
+				.as("%s was refused with a sentence other than the one for an address that is not"
+						+ " one", kind)
+				.isEqualTo(ModeratorWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+		assertThat(missingIn(answer))
+				.as("the refusal named a missing field for a form in which every field is there")
+				.isEmpty();
 		assertThat(howManyAccounts())
 				.as("an account was written for an address the route had refused")
 				.isEqualTo(before);
@@ -2227,8 +2212,7 @@ class ModeratorWriteApiTest {
 	}
 
 	/**
-	 * AND THE LONGEST ADDRESS THE ROUTE TAKES IS WRITTEN WHOLE, measured after the spaces are
-	 * taken off.
+	 * AND THE LONGEST ADDRESS THE ROUTE TAKES IS WRITTEN WHOLE.
 	 *
 	 * <p>This is the other half of the bound, and the one a bound set too high fails: the address
 	 * is noise (it does not compress), exactly as long as the bound allows, so if the number were
@@ -2237,12 +2221,6 @@ class ModeratorWriteApiTest {
 	 * index stops; this one says that the route's own largest address is on the right side of it,
 	 * through the whole route and not through a bare table.
 	 *
-	 * <p><b>It is typed with two spaces on each side</b>, so what the route is asked is longer than
-	 * the bound and what it keeps is not. {@code asItIsStored} takes the spaces off before the
-	 * shape is judged, and it is the stripped address that goes into the index, so it is the
-	 * stripped address that is measured: a bound read off what was typed would refuse an address
-	 * the index would have taken, and this is the case that says so.
-	 *
 	 * <p>Nothing is asserted about the invitation. A relay is not obliged to deliver to an address
 	 * of this length (RFC 5321 gives 254 characters for the address of a message), and what the
 	 * portal does when a relay does not take a message is
@@ -2250,21 +2228,47 @@ class ModeratorWriteApiTest {
 	 * bound's.
 	 */
 	@Test
-	void theLongestAddressTheRouteTakesIsWrittenWholeAndIsMeasuredAfterTheSpacesAreOff()
-			throws Exception {
-
+	void theLongestAddressTheRouteTakesIsWrittenWhole() throws Exception {
 		String longest = WhatAnIndexHoldsTest.aMailAddressOf(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
 
 		assertThat(longest).hasSize(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
 
 		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(
-				() -> make("Nova", "Moderatorka", "  " + longest + "  "));
+				() -> make("Nova", "Moderatorka", longest));
 
 		assertThat(answer.getStatus())
 				.as("the longest address the route takes was refused: %s", answer.getContentAsString())
 				.isEqualTo(201);
 		assertThat(rowOf(longest).role())
 				.as("the account was not written whole, at the address it was made at, as a moderator")
+				.isEqualTo("moderator");
+	}
+
+	/**
+	 * AND IT IS MEASURED AFTER THE SPACES ARE TAKEN OFF, which is what the index sees.
+	 *
+	 * <p>The address is typed with two spaces on each side, so what the route is asked is longer
+	 * than the bound and what it keeps is not. {@code asItIsStored} takes the spaces off before the
+	 * shape is judged, and it is the stripped address that goes into the index, so it is the
+	 * stripped address that is measured: a bound read off what was typed would refuse an address
+	 * the index would have taken, and this is the case that says so. It is a case of its own and
+	 * not a second request in the case above, so the two cannot hide each other.
+	 */
+	@Test
+	void anAddressAsLongAsTheBoundTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff()
+			throws Exception {
+
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE);
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(
+				() -> make("Nova", "Moderatorka", "  " + longest + "  "));
+
+		assertThat(answer.getStatus())
+				.as("an address as long as the bound, typed with spaces around it, was refused: %s",
+						answer.getContentAsString())
+				.isEqualTo(201);
+		assertThat(rowOf(longest).role())
+				.as("the account was kept with the spaces it was typed with, or cut")
 				.isEqualTo("moderator");
 	}
 
