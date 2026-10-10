@@ -446,7 +446,7 @@ class NoTextHoldsAZeroTest {
 			Class<?> type = typeNamed(leaf, bodies.keySet());
 
 			for (String text : List.of("", "Ordinary words.", "tab\there", "line\nfeed", "\u0001\u001f\u007f\u0085",
-					"Đorđe Џј", "run 🏃 run", "   ​ ﻿")) {
+					"\u0110or\u0111e \u040f\u0458", "run \uD83C\uDFC3 run", "\u00a0\u2007\u202f\u200b\u2028\ufeff")) {
 
 				String document = documentWith(type, leaf.path(), text);
 
@@ -481,6 +481,31 @@ class NoTextHoldsAZeroTest {
 		}
 
 		return shown.toString().strip();
+	}
+
+	/**
+	 * A RAW ZERO INSIDE A JSON STRING IS A SYNTAX ERROR OF ITS OWN, AND NOT THIS READER'S REFUSAL.
+	 *
+	 * <p>The reason the sweep above always writes the escape the portal's own forms would produce: a
+	 * document that carries the byte itself is turned away by the parser before any deserializer is
+	 * asked, as a {@code JacksonException} like the refusal, and a sweep written that way would pass
+	 * with the module removed. So the two are told apart by the sentence, and this holds that the
+	 * parser's refusal does not carry it.
+	 */
+	@Test
+	void aRawZeroInsideAJsonStringIsASyntaxErrorAndNotThisReadersRefusal() {
+		String document = "{\"email\":\"a" + ZERO + "b\"}";
+
+		Throwable thrown = catchThrowable(() -> mapper.readTree(document));
+
+		assertThat(thrown)
+				.as("the parser took a raw zero inside a string, so the escape is not the only way a zero"
+						+ " arrives")
+				.isInstanceOf(JacksonException.class);
+		assertThat(refusedAsAZero(thrown))
+				.as("the parser's own refusal of a raw zero carries this reader's sentence, so the two can"
+						+ " no longer be told apart: %s", thrown)
+				.isFalse();
 	}
 
 	/**

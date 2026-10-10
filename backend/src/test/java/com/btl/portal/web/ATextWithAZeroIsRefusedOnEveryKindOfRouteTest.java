@@ -3,6 +3,7 @@ package com.btl.portal.web;
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
 import com.btl.portal.domain.token.SecretToken;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -88,8 +89,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * a password was accepted until now and is turned away like every other text. This reads
  * {@code btl/CLAUDE.md}, „Sav korisnicki unos se validira na backendu", and it is my reading and not a
  * decision of the owner: a password is the one text where „bez ostalih uslova" is the owner's own
- * sentence (ADL A62c), and no keyboard types a zero. If he reads it the other way the exception is
- * one place, {@link NoTextHoldsAZero}, and the password fields named in
+ * sentence (ADL, 11.09.2026, the four numbers of authentication), and no keyboard types a zero. If
+ * he reads it the other way the exception is one place, {@link NoTextHoldsAZero}, and the password
+ * fields named in
  * {@link #aPasswordWithAZeroIsRefusedLikeEveryOtherText}.
  */
 @SpringBootTest
@@ -243,7 +245,27 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 			asking = asking.cookie(new Cookie(SessionCookie.NAME, sessions.get(email).secret()));
 		}
 
-		return http.perform(asking).andReturn().getResponse();
+		try {
+			return http.perform(asking).andReturn().getResponse();
+		}
+		catch (ServletException fault) {
+			/* A HANDLER THAT THROWS IS A 500, and MockMvc hands it over as an exception instead of an
+			   answer. It is turned into a failed assertion here because "the route answered with a
+			   server fault" is exactly the sentence these cases exist to deny, and an error of the
+			   harness would not say so. */
+			throw new AssertionError("the route answered with a server fault and not with an answer: "
+					+ rootMessageOf(fault), fault);
+		}
+	}
+
+	private static String rootMessageOf(Throwable fault) {
+		Throwable root = fault;
+
+		while (root.getCause() != null) {
+			root = root.getCause();
+		}
+
+		return root.getClass().getSimpleName() + ": " + root.getMessage();
 	}
 
 	/** A body made of the names and values given, in that order, written by the portal's own mapper. */
@@ -290,8 +312,8 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	 *
 	 * <p>Measured on 09.10.2026 over a running server: {@code lower(email) = lower(?)} met a zero
 	 * and the driver refused the byte. The control is each route's own answer to an address nobody
-	 * has - 401 and 204 - so the zero is what changed, and nothing is written for the caller who
-	 * has no session: no account is touched and no session is made.
+	 * has - 401 and 204 - so the zero is what changed, and no session is made for a caller who sent a
+	 * text nobody reads.
 	 */
 	@Test
 	void aZeroInTheAddressOfAnOpenRouteIsA400AndNotAServerFault() throws Exception {
@@ -325,10 +347,10 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	 * A ZERO IN A PASSWORD IS REFUSED LIKE EVERY OTHER TEXT, ON EVERY ROUTE THAT TAKES ONE.
 	 *
 	 * <p>This is the one place where the rule changes what a caller was told before and not only a
-	 * 500 into a 400: a password with a zero in it was accepted on the three routes that set one and
-	 * was a wrong password on the one that checks. The control on each is that the same request with
-	 * ordinary words is not turned away by the reader (the route has its own opinion of it: an old
-	 * password nobody set, a link nobody was sent).
+	 * 500 into a 400: a password with a zero in it was accepted where one is set (measured on
+	 * 09.10.2026). The control on each route is that the same request with ordinary words is not
+	 * turned away by the reader (the route has its own opinion of it: an old password nobody set, a
+	 * link nobody was sent).
 	 */
 	@Test
 	void aPasswordWithAZeroIsRefusedLikeEveryOtherText() throws Exception {

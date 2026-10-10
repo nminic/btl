@@ -252,13 +252,13 @@ class WhatTextCannotHoldIsWhatTheReaderRefusesTest extends DatabaseTest {
 			assertThat(theDatabaseRefuses(connection, zero)).as("the database, the zero alone").isTrue();
 			assertThat(theDatabaseRefuses(connection, "ab" + zero + "cd"))
 					.as("the database, the zero inside ordinary words").isTrue();
-			assertThat(theDatabaseRefuses(connection, "Ordinary words, a tab\t, a line\n and Đorđe"))
+			assertThat(theDatabaseRefuses(connection, "Ordinary words, a tab\t, a line\n and \u0110or\u0111e"))
 					.as("the database, ordinary text").isFalse();
 
 			assertThat(theReaderRefuses(zero)).as("the reader, the zero alone").isTrue();
 			assertThat(theReaderRefuses("ab" + zero + "cd")).as("the reader, the zero inside ordinary words")
 					.isTrue();
-			assertThat(theReaderRefuses("Ordinary words, a tab\t, a line\n and Đorđe"))
+			assertThat(theReaderRefuses("Ordinary words, a tab\t, a line\n and \u0110or\u0111e"))
 					.as("the reader, ordinary text").isFalse();
 		}
 		finally {

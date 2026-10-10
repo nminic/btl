@@ -81,7 +81,9 @@ import tools.jackson.databind.module.SimpleModule;
  * parameter that reaches a statement as text, {@code search} on {@code GET /api/payments}, asks
  * {@link #holdsAZero} itself, and {@code NoTextHoldsAZeroTest} lists every text the dispatcher
  * binds outside a body (a path variable, a parameter, a cookie) with what becomes of a zero in
- * it, so a new one cannot join unasked. A path is refused before it gets here: {@code %00} is a
+ * it, so a new one cannot join unasked. The name of a property is not a text any route reads: one
+ * that holds a zero names nothing, and a property nobody declared is dropped. A path is refused
+ * before it gets here: {@code %00} is a
  * 400 from the container (measured over a socket on 09.10.2026), and the filter chain answers
  * it the same way, which is what {@code ATextWithAZeroIsRefusedOnEveryKindOfRouteTest} holds. A
  * text built on the server out of other parts is not a request.

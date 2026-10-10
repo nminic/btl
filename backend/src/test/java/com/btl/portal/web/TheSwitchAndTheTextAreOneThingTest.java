@@ -201,6 +201,45 @@ class TheSwitchAndTheTextAreOneThingTest {
 		}
 	}
 
+	/**
+	 * THE LEVER TELLS ITS OWN FAILURE FROM ANY OTHER THE SAME TABLE CAN CAUSE.
+	 *
+	 * <p>The case above is only as good as {@link AFailureOnlyTheDatabaseCanCause#wentOffIn}: a helper
+	 * that said yes to anything that was thrown would let the route fail for a reason of its own and
+	 * the case would still call it the lever. So the helper is asked directly, on the table the cases
+	 * use, with two statements that the database refuses - one for a reason of its own, one for the
+	 * marker - and it has to say no to the first and yes to the second. A lever that never matches
+	 * fails here too, because the second statement is then written and nothing is thrown.
+	 */
+	@Test
+	void theLeverTellsItsOwnFailureFromAnyOtherTheSameTableCanCause() {
+		try (AFailureOnlyTheDatabaseCanCause theMarker = AFailureOnlyTheDatabaseCanCause.on(db,
+				"verification", "body", A_TEXT_ONLY_THE_DATABASE_REFUSES)) {
+
+			Throwable forAReasonOfItsOwn = catchThrowable(() -> db.sql("insert into verification"
+					+ " (queue, subject, body) values ('a queue nobody has', 'Naslov', 'Telo')").update());
+
+			assertThat(forAReasonOfItsOwn)
+					.as("the statement meant to fail for a reason of its own was written, so the lever is"
+							+ " not being asked whether it can tell two failures apart")
+					.isNotNull();
+			assertThat(theMarker.wentOffIn(forAReasonOfItsOwn))
+					.as("the lever claims a failure that is not its own: %s", forAReasonOfItsOwn)
+					.isFalse();
+
+			Throwable forTheMarker = catchThrowable(() -> db.sql("insert into verification"
+					+ " (queue, subject, body) values ('profiles', 'Naslov', ?)")
+					.param(A_TEXT_ONLY_THE_DATABASE_REFUSES).update());
+
+			assertThat(forTheMarker)
+					.as("the marker was written, so the lever was made and never matches")
+					.isNotNull();
+			assertThat(theMarker.wentOffIn(forTheMarker))
+					.as("the lever does not recognise its own failure: %s", forTheMarker)
+					.isTrue();
+		}
+	}
+
 	private boolean amIHidden() {
 		return Boolean.TRUE.equals(db.sql("select profile_hidden from competitor"
 				+ " where member_number = ?").param(ME).query(Boolean.class).single());
