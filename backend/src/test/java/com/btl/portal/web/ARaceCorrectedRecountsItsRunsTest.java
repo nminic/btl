@@ -102,10 +102,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * ({@link #A_SECOND_BEFORE_THE_WINDOW_OPENS}, where the season on sale is still 2027) and the last
  * second before the freeze ({@link #A_SECOND_BEFORE_THE_FREEZE}, where the clock is in 2028 and
  * the race is of 2027).
- * <li><b>The climb and the fall are each corrected ALONE.</b> Every other case moves a figure the
- * race fixes together with another, so a question that skipped the climb, or the fall, was never
- * put to a run that differed in that figure and nothing else. The marathon's runs at its old
- * course agree with the corrected one on every figure but the one that moved.
+ * <li><b>The climb and the fall are each corrected ALONE.</b> Every other case that moves one of
+ * them moves both, and the length with them, so a question that skipped the climb, or the fall,
+ * was never put to a run that differed in that figure and nothing else. The marathon's runs at
+ * its old course agree with the corrected one on every figure but the one that moved.
  * </ul>
  *
  * <p><b>Where the formula is asked, it is asked and not typed</b>, the shape
@@ -404,7 +404,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(List.of(afterTheTen, at(WHILE_2027_RUNS).getYear() + 1,
 				SeasonClock.seasonBeingPaidFor(at(WHILE_2027_RUNS))))
 				.as("noon on 15 October 2027 must read 2028 from all three places, which is why the"
-						+ " first case there cannot tell them apart and the two after it exist")
+						+ " case that stands there cannot tell them apart and the two made at other"
+						+ " instants exist")
 				.containsOnly(afterTheTen);
 		assertThat(SeasonClock.transferWindowOpen(at(A_SECOND_BEFORE_THE_WINDOW_OPENS)))
 				.as("the window must not be open yet a second before it opens")
@@ -515,13 +516,13 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * TOLD.
 	 *
 	 * <p>The second round of review of this PR measured that the question „is this run as it was"
-	 * could skip the climb altogether and every case stayed green: each of the others moves the
-	 * climb together with the length, the fall or the limit, so a run that differs from the new
-	 * course in the climb and nothing else was never in front of it. Here the marathon's climb goes
-	 * from 300 m to 520 m and its length ({@code 42.2}), its fall, its name and its day are sent as
-	 * they were. The runner's two runs and the lapsed member's one agree with the new course on
-	 * every figure but that one, and each of them has to come back at the new climb, at its own
-	 * time and with the points the formula gives, with its line in the inbox.
+	 * could skip the climb altogether and every case stayed green: each of the others that moves
+	 * the climb moves the fall and the length with it, so a run that differs from the new course
+	 * in the climb and nothing else was never in front of it. Here the marathon's climb goes from
+	 * 300 m to 520 m and its length ({@code 42.2}), its fall, its name and its day are sent as they
+	 * were. The runner's two runs and the lapsed member's one agree with the new course on every
+	 * figure but that one, and each of them has to come back at the new climb, at its own time and
+	 * with the points the formula gives, with its line in the inbox.
 	 */
 	@Test
 	void aCorrectedClimbAloneReachesEveryRunAtTheRaceAndEachMemberWhoseRunMovedIsTold()
@@ -692,8 +693,9 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * 2027, where 2028 is the race's year plus one, the clock's year plus one and the season on
 	 * sale all at once. So it tells the season AFTER the race's from the race's OWN season, which
 	 * is 2027 and which a season never closes on itself, and from nothing else: a route that asked
-	 * the clock's year, or the season on sale, passes it. The two cases after the next one make the
-	 * same correction at the instants where those two readings part from the race's.
+	 * the clock's year, or the season on sale, passes it. The two cases that follow the one
+	 * opening the category again make the same correction at the instants where those two
+	 * readings part from the race's.
 	 */
 	@Test
 	void aCorrectionThatCarriesAMemberOverTheThresholdClosesHisCategoryAndHeIsTold()
@@ -868,12 +870,11 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	/**
 	 * The runner's two runs and the lapsed member's one, after the marathon was corrected to 42.2 km
-	 * with this climb and this fall and renamed and moved by nothing: each is at the new course and
-	 * at the time it was run in, each of its members reads the line with the run as it was and as it
-	 * is, the member with only a waiting run at the marathon reads nothing, and no line is addressed
+	 * with this climb and this fall, its name and its day as they were: each is at the new course
+	 * and at the time it was run in, each of its members reads the line with the run as it was and
+	 * as it is, the member with only a waiting run at the marathon reads nothing, and no line is addressed
 	 * to nobody (V13). The member whose run already stood at the course of the main case is moved
-	 * here too, by his length and his fall, and is left out of the asserts: it is not the figure
-	 * under test that moves him.
+	 * here too, and by figures other than the one under test, so he is left out of the asserts.
 	 */
 	private void theMarathonsRunsStandAt(int ascent, int descent) {
 		assertThat(rowOf(runnersFirst)).as("the runner's first run")
