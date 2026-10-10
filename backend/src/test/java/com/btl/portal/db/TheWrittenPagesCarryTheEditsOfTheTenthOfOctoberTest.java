@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 /**
  * THE EDITS V57 MAKES TO THE WRITTEN PAGES, HELD ON THE TEXT THE PORTAL SERVES, IN BOTH LANGUAGES.
  *
- * <p><b>Why this exists.</b> V57 edits the three legal documents in thirty-seven places, in Serbian and in English
+ * <p><b>Why this exists.</b> V57 edits the three legal documents in thirty-nine places, in Serbian and in English
  * (the owner's decisions of 10.10.2026). {@code PageApiTest} compares the whole Serbian answer to
  * {@code pages.json}, field by field, and that holds the Serbian half. Nothing holds the English half:
  * the fixture is Serbian only, and {@link WrittenPageTranslationAppliesTest} re-runs V43, so it sees the English of
@@ -172,6 +172,12 @@ class TheWrittenPagesCarryTheEditsOfTheTenthOfOctoberTest extends DatabaseTest {
 			new Edit("Z3", TERMS, 8, "en",
 					List.of("authorize another member"),
 					List.of("you can always arrange an in-person handover.\n\nTrophies are presented")),
+			new Edit("Z3 count", TERMS, 8, "sr",
+					List.of("Tri pravila vredi znati unapred"),
+					List.of("Dva pravila vredi znati unapred:")),
+			new Edit("Z3 count", TERMS, 8, "en",
+					List.of("Three rules are worth knowing in advance"),
+					List.of("Two rules are worth knowing in advance:")),
 			new Edit("Z4", TERMS, 12, "sr",
 					List.of("to je namerno, jer je pristup sopstvenim trkačkim podacima"),
 					List.of("profil se ne prikazuje drugima; svoj profil i dalje otvarate, dok ga administracija ne obriše.")),

@@ -10,7 +10,7 @@
    because PageApi serves English only when a whole page is translated, and V46 is the precedent for writing
    both in one file.
 
-   WHAT IT EDITS: 37 edits, in the Serbian and the English text of 13 sections of the three legal
+   WHAT IT EDITS: 39 edits, in the Serbian and the English text of 13 sections of the three legal
    documents, which is 26 section texts. The letters and numbers are the owner's: A to E, Q30 and JM are
    the headings of the two pages he approved, Z1 to Z6 are his answers to questions 2, 3 and 4.
 
@@ -24,7 +24,8 @@
      Z5 terms          terms 4       a member whose virtual balance covers the fee goes through without step 4
      Caveat terms      terms 5       what the administration may correct at verification now includes the
                                      length, the ascent and the descent
-     Z3                terms 8       the button that authorizes another member to collect an award is gone
+     Z3, Z3 count      terms 8       the button that authorizes another member to collect an award is gone, and
+                                     the count above the list follows: two rules
      Z4                terms 12      a member whose status is not active still opens his own profile
      Z5 rulebook       rulebook 3    Article 10: the virtual balance is the third way status is activated
      Z6                rulebook 3    Article 11: the deadline is measured by the day the league booked the payment
@@ -40,12 +41,16 @@
        pojedinačnog dokumenta", so all three documents move together, the terms included).
      - Z1, Z2 and Z3 are deletions, and each takes out the least that removes the claim. In English the list in
        Z1 loses its last item, so the "and" that closed it moves to the item that now closes it (Z1 and); in
-       Serbian that list never had a conjunction between its clauses and reads as before. Z3 leaves the sentence
-       "Tri pravila vredi znati unapred" above the list standing, with two rules under it: that is not a
-       conjunction, it was not approved, and the pull request asks the owner about it.
+       Serbian that list never had a conjunction between its clauses and reads as before.
+     - Z3 count: with the third rule of the awards section gone, the sentence above the list would count three
+       over two. It was put to the owner as a question with three outcomes (the number changed, the sentence left
+       alone, the number dropped) and he chose the first, on 10.10.2026, among the outcomes offered and on the
+       assistant's recommendation. The words are the number and nothing else: "Tri pravila" becomes "Dva
+       pravila", and "Three rules" becomes "Two rules".
      - Z4, Z5, Z6 and the caveat: the Serbian is the owner's own wording, transcribed from the journal. The
-       ENGLISH of these was not shown to him. It is the smallest change to the English around it, and the pull
-       request lists those sentences for him to read before it merges.
+       English of these, and the "and" that moves in Z1, was not part of what he was first shown. It is the
+       smallest change to the English around it, and on 10.10.2026 he read those sentences in the pull request
+       and approved them as written.
      - Two placements are mine. Z5 in the terms adds its sentence at the end of step 5 (the journal says
        "dodaje se" and not where). The caveat edits the sentence that already stands in both documents by
        widening its list, because the journal says "Ograda ne dobija nov član: Član 44 Pravilnika je već nosi".
@@ -177,6 +182,12 @@ begin
             ('Z3', 'uslovi-koriscenja', 8, 'en',
              chr(10) || $old$3. With a button on your profile you can authorize another member to collect your award for you.$old$,
              $new$$new$),
+            ('Z3 count', 'uslovi-koriscenja', 8, 'sr',
+             $old$Tri pravila vredi znati unapred:$old$,
+             $new$Dva pravila vredi znati unapred:$new$),
+            ('Z3 count', 'uslovi-koriscenja', 8, 'en',
+             $old$Three rules are worth knowing in advance:$old$,
+             $new$Two rules are worth knowing in advance:$new$),
             ('Z4', 'uslovi-koriscenja', 12, 'sr',
              $old$Kada takmičarski status nije aktivan, profil se ne prikazuje; to je namerno, jer je pristup sopstvenim trkačkim podacima jedna od stvari koje članstvo donosi.$old$,
              $new$Kada takmičarski status nije aktivan, profil se ne prikazuje drugima; svoj profil i dalje otvarate, dok ga administracija ne obriše.$new$),
