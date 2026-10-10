@@ -848,8 +848,16 @@
       "theFormIsNotComplete": "The answer did not reach the server in full, so the application has not been answered. Refresh the page and try again.",
       "theWindowIsShut": "The transfer window has closed in the meantime, so he has not been taken into the team. The application still waits: the window opens on 15 October and runs to 31 December."
     },
+    "applyRefused": {
+      "aQuestionAlreadyStands": "You already have an application waiting for a team's answer, so a new one was not sent. You withdraw it on the page of the team you sent it to."
+    },
     "invite": "Invite into the team",
     "invited": "The invitation into the team „{team}\" has been sent.",
+    "inviteRefused": {
+      "theFormIsNotComplete": "The request did not reach the server in full, so the invitation was not sent. Refresh the page and try again.",
+      "theWindowIsShut": "The transfer window has closed in the meantime, so the invitation was not sent. The window opens on 15 October and runs to 31 December.",
+      "heIsAlreadyInATeam": "The member has joined a team in the meantime, so the invitation was not sent."
+    },
     "inviteSubject": "An invitation into the team „{team}\"",
     "inviteBody": "The team „{team}\" invites you to run for them from the next season.",
     "inviteAccept": "Accept",
@@ -1087,9 +1095,9 @@
     "inTeam": "You are in the team {team} at the moment.",
     "transferOpen": "The transfer window is open until 31 December at 23.59. The change takes effect on 1 January {season}.",
     "transferShut": "The transfer window is closed. It opens on 15 October and lasts until 31 December. If nothing is agreed by then, you stay where you are.",
-    "askToJoin": "Moving to another team is arranged outside the portal. Once you agree, the administration enrols you in the team.",
+    "askToJoin": "You join a team by applying on the team's page or by accepting an invitation that reaches your inbox.",
     "leaveTeam": "Leave the team",
-    "leaveTeamAsk": "Are you sure you want to leave {team}? You cannot come back on your own: the administration is what enrols you in a team again.",
+    "leaveTeamAsk": "Are you sure you want to leave {team}? You come back only if the team accepts your application or invites you again.",
     "leaveTeamSure": "Confirm leaving",
     "leaveTeamKeep": "Cancel",
     "payNow": "Payment slip",

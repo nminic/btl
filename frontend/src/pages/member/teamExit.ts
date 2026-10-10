@@ -22,12 +22,12 @@ import { askTheServer, type Answer } from '../account/askTheServer'
  * of addresses is data rather than words on a screen.
  *
  * <p><b>THIS MODULE SENDS ONE VERB AND ONE ONLY, AND THAT IS A BOUNDARY RATHER THAN A STAGE
- * OF THE WORK.</b> A member cannot put himself INTO a team from this portal at all - not
- * from either side of it, which `member/Membership.tsx` says in as many words where it
- * draws `membership.askToJoin`, and which `account/refusals.test.ts` measures for the two
- * addresses of `TeamJoiningWriteApi` that no screen sends. So leaving is the whole of what
- * a member may do to his own membership here, and the sentence beside the button is what
- * says how he gets back.
+ * OF THE WORK.</b> Leaving is the one thing a member does to his own membership from this
+ * screen. Getting into a team is asked elsewhere since T5 (10.10.2026) - on the team's own page
+ * (`pages/joiningThisTeam.ts`), and in the inbox for an invitation (`member/teamWrites.ts`) -
+ * and is never his alone to decide, so the sentence beside the button (`membership.askToJoin`)
+ * says where it is asked, and the question before he leaves (`membership.leaveTeamAsk`) says
+ * that coming back needs the team.
  */
 
 /**

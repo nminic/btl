@@ -386,7 +386,7 @@ describe('leaving a team from the membership screen', () => {
        somebody else's team. */
     expect(
       screen.getByText(
-        `Sigurno izlaziš iz tima ${MINE.name}? U tim se ne vraćaš sam: ponovo te upisuje administracija.`,
+        `Sigurno izlaziš iz tima ${MINE.name}? Nazad se vraćaš samo ako tim prihvati tvoju prijavu ili te ponovo pozove.`,
       ),
     ).toBeInTheDocument()
     expect(screen.queryByText(new RegExp(FIRST.name))).not.toBeInTheDocument()

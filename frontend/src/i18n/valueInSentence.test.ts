@@ -451,16 +451,22 @@ describe('a sentence with a value put into it', () => {
       'shell.unread',
       'shell.waiting',
       'teams.editDone',
-      /* And the six an invitation is written with. Same answer as the ones below and for the
+      /* And the four an invitation is written with. Same answer as the ones below and for the
          same reason: every value is either the team's name inside quotation marks, which is
          how this portal has written a team since `teams.proposeDone`, or the invited member's
          name at the head of a sentence, which is the nominative for the same reason
-         `admin.form.deleteNamed` is. `inviteMissedBody` carries both at once. */
+         `admin.form.deleteNamed` is. `inviteMissedBody` carries both at once.
+
+         TWO WENT FROM THIS LIST ON 10.10.2026 (T5) AND THEIR KEYS DID NOT: `teams.inviteSubject`
+         and `teams.inviteBody`, the message „Pozovi u tim" wrote into the session. The press
+         sends `POST /api/teams/{id}/invitations` since that day and the server writes the
+         message (`TeamJoiningWriteApi.theInvitationReads` and `theInvitationBodyReads`), so no
+         screen makes either sentence. The keys stay for the reason given below for the four
+         that went on 29.09.2026: `TeamJoiningWriteApiTest.theSentencesAreThePortalsOwnWords`
+         holds both against the Java that writes them. */
       'teams.inviteAccepted',
-      'teams.inviteBody',
       'teams.inviteMissedBody',
       'teams.inviteOvertaken',
-      'teams.inviteSubject',
       /* The third control of the same kind, added 29.09.2026 with the team's own queue going
          to the server: „Povuci poziv: {name}", a person's name after a colon, which is the
          nominative for the same reason `teams.joinRefusedNamed` is. The two sentences beside

@@ -208,13 +208,15 @@ export function Membership() {
    * rather than a decision of the owner's.</b> No entry in the journal asks for a
    * confirmation here; the one that asks for „Da li ste sigurni?" is about DELETING a team
    * (PDL, 04.09.2026) and is a different act. What is measured is that a member cannot undo
-   * this by himself: joining a team is not a member's action on this portal from either side
-   * of it - the sentence below (`membership.askToJoin`) says so on this very screen, and
-   * `account/refusals.test.ts` measures it for the two addresses of `TeamJoiningWriteApi`
-   * that no screen sends. So a mis-press costs him his team until the administration puts
-   * him back, and the question is what stands between the two. <b>It is written down as my
-   * reasoning so that the next reader can overturn it without looking for an owner's
-   * sentence that is not there.</b>
+   * this by himself: since T5 (10.10.2026) he may ask to be let back in from the team's page,
+   * but whether he is taken is the team's to decide (PDL, 05.09.2026, „prijavu odobrava
+   * administrator tima"), and the question itself says so (`membership.leaveTeamAsk`, the agent's
+   * wording the owner chose on 10.10.2026: „Nazad se vraćaš samo ako tim prihvati tvoju prijavu
+   * ili te ponovo pozove").
+   * Until that day joining was not a member's action on this portal at all, and the reasoning
+   * was stronger. So a mis-press costs him his team until somebody else agrees, and the
+   * question is what stands between the two. <b>It is written down as my reasoning so that the
+   * next reader can overturn it without looking for an owner's sentence that is not there.</b>
    *
    * <p><b>And it is asked with this screen's own words rather than through
    * `admin/EntityEditor.tsx`'s `DeleteRecord`.</b> That component asks the same way and its
@@ -997,15 +999,17 @@ export function Membership() {
                   ? t('membership.transferOpen', { season: nextSeason })
                   : t('membership.transferShut')}
               </p>
-              {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026, and for the same
-                  reason as the Renew button above (PDL.md:1659). This one had no route in
-                  EITHER direction: `POST /api/teams` (`TeamWriteApi`) proposes a brand new
-                  team, not joining one that exists, and nothing on the backend writes
-                  `team_application` or `team_invitation` at all - `GET /api/me/applications`
-                  (`MyApplicationsApi`) only reads them, and no frontend screen calls even
-                  that yet. So joining a team is not a member's action on the portal today,
-                  from neither side of it, and the sentence says what is actually true rather
-                  than promise a press that had nowhere to go. */}
+              {/* HOW A MEMBER GETS INTO A TEAM, in the words the owner chose on 10.10.2026 (T5,
+                  between offered outcomes, the agent's wording): „U tim ulaziš prijavom na
+                  strani tima ili prihvatanjem poziva koji ti stigne u sanduče." A sentence and
+                  not a button, because both ways in are pressed elsewhere: „Prijavi se u tim"
+                  on the team's own page (`pages/AskingThisTeam.tsx`) and „Prihvati" in the
+                  inbox (`member/ServedTeamInvite.tsx`).
+
+                  It said until that day that moving to another team „se dogovara van portala"
+                  and that the administration enrols the member, which was written on
+                  26.09.2026 while neither way in had a route a screen called. From T5 on that
+                  was the opposite of PDL P13, „Učlanjenje ide u oba smera kroz portal". */}
               {windowOpen && <p className="member__note">{t('membership.askToJoin')}</p>}
 
               {/* AND THE ONE THING A MEMBER MAY REALLY DO TO HIS OWN MEMBERSHIP OF A TEAM,
