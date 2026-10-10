@@ -489,19 +489,21 @@ describe('answering a served invitation into a team', () => {
   )
 
   it(
-    'drops the teams it has read on „Prihvati" and leaves them alone on „Odbij"',
+    'drops the teams and the members it has read on „Prihvati" and leaves them alone on „Odbij"',
     async () => {
       const user = setupUser()
 
       /* **THE FLOOR UNDER BOTH HALVES: the roster really is in hand before either button is
-         pressed.** `member/MessageDetail.tsx` reads `useTeams()` for the screen that answers a
-         session-held invitation, so this name is populated on every message. Without this line
-         „it was dropped" and „it was never there" are the same green. */
+         pressed.** `member/MessageDetail.tsx` reads `useTeams()` and `useCompetitors()` for the
+         screen that answers a session-held invitation, so both names are populated on every
+         message. Without this line „it was dropped" and „it was never there" are the same
+         green. */
       aServerWhere(waitingWhere())
       await openTheQuestion()
 
       await waitFor(() => {
         expect(arrivedResource('teams')).not.toBeUndefined()
+        expect(arrivedResource('competitors')).not.toBeUndefined()
       })
 
       await user.click(theRefuseButton())
@@ -513,14 +515,15 @@ describe('answering a served invitation into a team', () => {
       /* **„Odbij" WRITES NOTHING ABOUT A SQUAD** (PDL, 06.09.2026: „Odbijanje ne upisuje ništa o
          sastavu"), so a portal that dropped the teams after it would be throwing away an answer
          nothing had changed, and a reader of `member/teamWrites.ts` could no longer tell which of
-         the two answers joins a team. */
+         the two answers joins a team. The members' list likewise, since T5 (10.10.2026). */
       expect(arrivedResource('teams')).not.toBeUndefined()
+      expect(arrivedResource('competitors')).not.toBeUndefined()
     },
     SLOW,
   )
 
   it(
-    'drops the teams it has read once „Prihvati" went through',
+    'drops the teams and the members it has read once „Prihvati" went through',
     async () => {
       const user = setupUser()
 
@@ -529,6 +532,7 @@ describe('answering a served invitation into a team', () => {
 
       await waitFor(() => {
         expect(arrivedResource('teams')).not.toBeUndefined()
+        expect(arrivedResource('competitors')).not.toBeUndefined()
       })
 
       await user.click(theAcceptButton())
@@ -536,10 +540,23 @@ describe('answering a served invitation into a team', () => {
       /* **THE OTHER HALF OF THE SAME AXIS.** „Prihvati" is the one answer that writes
          `team_membership`, and `app/Shell.tsx` holds every screen under one outlet, so walking
          from this message to his own profile or to the team's page without a fresh read would
-         show him no team a moment after he joined one. */
-      await waitFor(() => {
-        expect(arrivedResource('teams')).toBeUndefined()
-      })
+         show him no team a moment after he joined one.
+
+         **And the members, since T5 (10.10.2026)**, because his team reaches every screen as
+         `teamId` on his own record off `/api/competitors`, and that is what „Prijavi se u tim"
+         and „Predloži tim" read „nema tim" off (PDL, 05.09.2026). Held, both went on offering
+         him a press the server answers with 404.
+
+         Waited for in half of the case's time, so that a cache left in place fails here in these
+         words and not on the case's own clock (`admin/saveWhileSaving.test.tsx` gives the reason;
+         measured on T5's series, where leaving the members in place ended in `Test timed out`). */
+      await waitFor(
+        () => {
+          expect(arrivedResource('teams')).toBeUndefined()
+          expect(arrivedResource('competitors')).toBeUndefined()
+        },
+        { timeout: SLOW / 2 },
+      )
     },
     SLOW,
   )

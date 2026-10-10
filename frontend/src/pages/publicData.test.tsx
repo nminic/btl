@@ -32,7 +32,11 @@ import { renderAt } from '../test/render'
  * would have to allow that file everywhere.
  */
 
-vi.mock('../dev/tools', () => ({ devToolsEnabled: () => false }))
+vi.mock('../dev/tools', () => ({
+  devToolsEnabled: () => false,
+  DEV_TOOLS_IN_THIS_BUILD: false,
+  loadTheDevControls: null,
+}))
 
 /** What no screen outside administration may ask for, by the name in the
  *  address. */

@@ -254,6 +254,11 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     why: 'THE FILE\'S OWN, and held by `forms/suggestingUnreadable.test.tsx`: it is handed a read that failed as the way a field\'s list failed to come (`UnreadableList`, the field\'s `suggests`), says so under the box through `Unreadable`, and reads `reading` and `readAgain` off it to draw the asking and to ask again. It never turns the failure into an empty list: the rows of a list that failed are empty because the caller has none, and the sentence is what says why.',
   },
   {
+    file: 'pages/AskingThisTeam.tsx',
+    how: 'says',
+    why: 'THE FILE\'S OWN, and held by `pages/teamJoinOnTheServer.test.tsx` („says so when what he waits on cannot be read, and asks again" and „lets go and says so when the list read after the press cannot be read"): what a member waits on, read off `/api/me/applications` for „Prijavi se u tim" and „Povuci prijavu" on a team\'s page, says `data.error` under the row of controls through `Unreadable`, with the button that asks again, and draws neither button over it, because with nothing known the first could send a second application and the second has no key to send (decision of 02.10.2026, PENDING stavka 368). While it is read, nothing, which is `useTeamQueue.ts`\'s answer to the same question. Written 10.10.2026 with T5.',
+  },
+  {
     file: 'pages/Leagues.tsx',
     how: 'says',
     why: 'THE FILE\'S OWN, and held by `pages/resourceScope.test.tsx`: two cells of a row (the days that count and the number placed) say „nepoznato" when the file failed and nothing while it is on its way, three states and not two. Numbers and not lists.',

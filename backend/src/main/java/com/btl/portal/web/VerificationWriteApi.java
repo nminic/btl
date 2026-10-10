@@ -425,7 +425,9 @@ class VerificationWriteApi {
 	 */
 	private final ObjectMapper json;
 
-	/** The address the league is blind-copied at, exactly as {@link ResultWriteApi} takes it. */
+	/** The league's own address, which the letter about an approved run is blind-copied to
+	 *  ({@link #post} carries why). Configured rather than written here for the reason
+	 *  {@code application.properties} gives beside it. */
 	private final String theLeague;
 
 	VerificationWriteApi(JdbcClient db, WhatHeMayDo mayHe, TransactionTemplate inOneTransaction,
@@ -1320,8 +1322,11 @@ class VerificationWriteApi {
 	 * what was sent, and <b>the decided submission is written over with what was counted</b>:
 	 * left as it was, the database would keep the value sent beside the value written, which is
 	 * the outcome that decision was not. The member keeps what he sent where the record of it
-	 * belongs, in the letter and the line in his inbox written when he sent it. That last step
-	 * is my reading of the decision, not a sentence of the owner's.
+	 * belongs, in the line in his inbox written when he sent it, and for a correction in the
+	 * letter that carried the old figures and the new ones as well. That last step is my reading
+	 * of the decision, not a sentence of the owner's. A run sent in fresh has had no letter of its
+	 * own since 09.10.2026, which is a decision and not a reading ({@link ResultWriteApi} carries
+	 * it).
 	 *
 	 * <p><b>AND THE RACE IT IS COUNTED ON IS THE ONE {@link #howTheRunIsCounted} SETTLED, which
 	 * for a run on a race the calendar does not hold is made here, first.</b> The decided
@@ -1580,10 +1585,19 @@ class VerificationWriteApi {
 	 * 27.09.2026). So this asks {@code optional()} and writes nothing when there is nobody to
 	 * write to, the same shape {@link #tell} has for the inbox.
 	 *
-	 * <p><b>The league is blind-copied, which is what every other message about a member's
-	 * result already does</b> ({@link ResultWriteApi}), and doing otherwise would make the
-	 * approval the one message about a result the league cannot see. That reading is derived
-	 * from the shape already in the portal rather than from a decision naming this message.
+	 * <p><b>The league is blind-copied, and since 09.10.2026 that rests on a reading of a
+	 * decision rather than on a precedent.</b> Until then the reason written here was that every
+	 * other message about a member's result already did it ({@link ResultWriteApi}), and that
+	 * route now carries out two decisions which make it untrue: what a member does to his own
+	 * result is not copied (PDL P9, 25.09.2026, „Skrivena kopija ligi NE ide kad član sam menja ili
+	 * briše svoj rezultat"), and a run sent in is not posted at all (PDL P9, 09.10.2026, „Pri
+	 * slanju rezultata član dobija samo red u sandučetu"). What still stands is the rule those two
+	 * narrow, „Skrivena kopija svakog takvog obaveštenja ide na administrativnu adresu lige",
+	 * whose one written exception is the member acting on his own result - and an approval is
+	 * the moderator's act, not his. That is my reading and not a decision naming this message,
+	 * since whether „takvog" reaches a letter carrying no old value at all is a question put to
+	 * the owner on 09.10.2026. The case that turns round if he decides otherwise is
+	 * {@code VerificationWriteApiTest.theLetterAboutAnApprovedRunIsCopiedToTheLeagueInBlind}.
 	 *
 	 * <p><b>A relay that will not take it is logged and nothing else</b>, exactly as
 	 * {@link ResultWriteApi} decided: the result is written and the answer is already the
