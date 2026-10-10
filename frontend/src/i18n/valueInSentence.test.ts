@@ -255,6 +255,12 @@ describe('a sentence with a value put into it', () => {
       '? (NewPassword.tsx)',
       '? (Payments.tsx)',
       '? (PendingQueue.tsx)',
+      /* What is wrong with one box of the panel that names the race of a run the calendar does
+         not hold, in the words of the form the box comes from (`forms/validate.ts`): the same
+         call `ReviewQueue.tsx` makes for the panel over a run from the calendar, with the same
+         values: a count of letters after „Najviše" or „Najmanje", or a bound after „vrednost
+         je", all in figures, so none has a case to be wrong in. */
+      '? (RaceForTheRun.tsx)',
       '? (ReportResult.tsx)',
       '? (ReviewQueue.tsx)',
       '? (SendBack.tsx)',
@@ -408,6 +414,10 @@ describe('a sentence with a value put into it', () => {
       'registration.bioFull',
       'registration.bioLeft',
       'registration.doneText',
+      /* „Izabrana trka: {race}": the race as the list under the box offered it, its name, day and
+         measure joined by dashes (`member/racesToOffer.ts`), after a colon, where nothing asks a
+         case of it. */
+      'review.chosenRace',
       'review.sweptLeft',
       'rights.box',
       'rights.granted',
@@ -499,6 +509,12 @@ describe('a sentence with a value put into it', () => {
       'topBoards.sharedRaces',
       'units.btlPoints <- formatPoints',
       'units.memberCount',
+      /* NOT A SENTENCE, and written here because the guard reads names and cannot tell: the queue
+         is read again with a revision since R3b (`useResource('verification', { revision })` in
+         `admin/pending.ts`), and `verification` is also the name of a section of the dictionary,
+         which counts as a name here on purpose (a plural is a branch, „knows the dictionary by its
+         own names" below). Nothing is put into any sentence by that call. */
+      'verification',
       'verification.approveAllAsk',
       'verification.approveAllDone',
       /* „{whose}, sezona {season}." - the name and the year under the question asking whether

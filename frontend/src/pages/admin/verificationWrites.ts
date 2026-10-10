@@ -1,3 +1,5 @@
+import type { RaceKind } from '../../data/types'
+
 /**
  * WHAT THE MODERATOR'S DECISION LOOKS LIKE ON THE WIRE, AND THE ADDRESS IT GOES TO.
  *
@@ -69,6 +71,35 @@ export type Answered = {
    * answers 400, so it is never sent there: only {@link anApprovalWith} writes it.
    */
   amended?: Amended
+  /**
+   * The event and the race an approval writes into the calendar, on a run on a race the
+   * calendar does not hold (`VerificationWriteApi.NewRace`, R3 of the results flows). Only
+   * {@link anApprovalOnANewRace} writes it: the route answers 400 to it beside a refusal, on
+   * another tab, or on a run from the calendar.
+   */
+  newRace?: NewRace
+  /**
+   * The race of the calendar such a run is counted on instead, by its key
+   * (`VerificationWriteApi.Answered.raceId`). Only {@link anApprovalOnTheRace} writes it, and
+   * never beside `newRace`: a run is counted on one race.
+   */
+  raceId?: number
+}
+
+/**
+ * THE EVENT AND THE RACE A MODERATOR SETTLES FOR A RUN THE CALENDAR DOES NOT HOLD, under the
+ * names `VerificationWriteApi.NewRace` reads.
+ *
+ * <p><b>All three are asked for, and the route refuses a blank one</b> as a form not filled in:
+ * none of them falls back on what the member typed, so the panel that sends this seeds its
+ * boxes with the member's words and sends what stands in them. The kind is the moderator's
+ * decision and the member's was a hint (PDL P9, 30.08.2026, in the record's wording: „član
+ * nagoveštava vrstu, administrator odlučuje").
+ */
+export type NewRace = {
+  eventName: string
+  raceName: string
+  raceKind: RaceKind
 }
 
 /**
@@ -154,6 +185,29 @@ export function anApproval(): Answered {
  */
 export function anApprovalWith(amended: Amended): Answered {
   return { approved: true, reason: '', amended }
+}
+
+/**
+ * Yes, on a race this approval makes, with its event, at these figures: one request, so the
+ * event, the race, the result and the run pointed at them are written together or not at all
+ * (`VerificationWriteApi`, ADL O14).
+ *
+ * <p>The figures travel all four, because the race is made OF them: what its kind fixes is put
+ * on the race, and on a race to a limit the time is its limit (PDL P9, 30.08.2026, in the
+ * record's wording: „Na vremenskoj trci van kalendara polja za vreme znače ograničenje trke, ne
+ * vreme koje je član istrčao.").
+ */
+export function anApprovalOnANewRace(newRace: NewRace, amended: Amended): Answered {
+  return { approved: true, reason: '', amended, newRace }
+}
+
+/**
+ * Yes, on this race of the calendar, at these figures: the race answers for what it fixes, so
+ * only what it leaves to the runner travels, exactly as {@link anApprovalWith} sends it for a run
+ * sent from the calendar.
+ */
+export function anApprovalOnTheRace(raceId: number, amended: Amended): Answered {
+  return { approved: true, reason: '', amended, raceId }
 }
 
 /**

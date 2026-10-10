@@ -181,22 +181,27 @@ function findingsIn(file: string, code: string): Finding[] {
 }
 
 /**
- * Whether `code` hands a list to type against to a form: a `FormRenderer` element with a `suggests`
- * attribute.
+ * Whether `code` hands a list to type against to a box: a `FormRenderer` element with a `suggests`
+ * attribute, or the box itself, a `Suggesting` element with a `suggestions` attribute.
  *
- * <p>Asked of the syntax tree and by the name the form is drawn under, which is the only name it has
- * (it is imported by name everywhere). It is a sample of one shape and says so: a list handed down
- * through another component is seen where that component hands it to a `FormRenderer`.
+ * <p>Asked of the syntax tree and by the names the two are drawn under, which are the only names they
+ * have (each is imported by name everywhere). The second shape since R3b of the results flows, whose
+ * panel hands the list of races straight to the box and not through a form: read for the first shape
+ * alone, a second list to type against arrived and nothing asked what it says when it cannot be read.
+ * The renderer is where every `suggests` meets the box, so it is a home and not a place that hands one
+ * (`LIST_HOMES` below).
  */
 function handsAListToAForm(file: string, code: string): boolean {
   const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
   let handed = false
+  const carries = (node: ts.JsxOpeningLikeElement, attribute: string): boolean =>
+    node.attributes.properties.some((one) => ts.isJsxAttribute(one) && one.name.getText() === attribute)
 
   walk(source, (node) => {
     if (
       ts.isJsxOpeningLikeElement(node) &&
-      node.tagName.getText() === 'FormRenderer' &&
-      node.attributes.properties.some((one) => ts.isJsxAttribute(one) && one.name.getText() === 'suggests')
+      ((node.tagName.getText() === 'FormRenderer' && carries(node, 'suggests')) ||
+        (node.tagName.getText() === 'Suggesting' && carries(node, 'suggestions')))
     ) {
       handed = true
     }
@@ -204,6 +209,9 @@ function handsAListToAForm(file: string, code: string): boolean {
 
   return handed
 }
+
+/** Where a list handed to a form meets the box, which every such list passes through: the renderer. */
+const LIST_HOMES = ['forms/FormRenderer.tsx']
 
 /**
  * HOW EACH FILE THAT OPENS A READ THAT FAILED TREATS ONE, and why.
@@ -295,6 +303,12 @@ const OPENING: { file: string; how: How; why: string; calls?: { shape: Shape; ca
     file: 'pages/admin/pending.ts',
     how: 'hands on',
     why: 'MY REASONING: `usePending` maps a state that is ready and gives every other state back as it is, with its way to ask again, to the two screens that read it and say it (`PendingQueue.tsx`, `SectionNav.tsx`).',
+  },
+  {
+    file: 'pages/admin/RaceForTheRun.tsx',
+    how: 'says',
+    why: 'THE DECISION OF 03.10.2026 FOR THE RACES (PDL: the races yes, the towns no), carried to the second box that offers them, and held by `pages/admin/raceForTheRun.test.tsx`: when either of the two files the list is made from could not be read, the box for the race\'s name says so beside itself, with the button that asks again, and goes on taking the name typed into it (`offering`, the shape `pages/member/NewResult.tsx` has). MY REASONING for the call below: `known` is not drawn as a list. It is read to find the race already CHOSEN from a list that was read, and to ask what that race leaves to the runner, so a read that failed, which offers nothing to choose, leaves nothing chosen to look up.',
+    calls: [{ shape: 'condition', call: "races.status === 'ready' ? races.data : []" }],
   },
   {
     file: 'pages/event/EventComments.tsx',
@@ -564,12 +578,14 @@ describe('a read that failed', () => {
  * and not the owner's: „Kad spisak trka na formi za rezultat ne može da se učita, uz polje stoji da ne
  * može, uz „Pokušaj ponovo"." The towns are the boundary, in the bullet about `data/places.ts` in the header).
  *
- * <p>There is one today, `pages/member/NewResult.tsx`: the list of races under the name of a race. It
- * is a list made from a read, so it can fail, and what a form does when it does is the decision above.
- * The floor of the first question catches a second one only if the file that hands it down also opens a
- * state; a list that reaches a form through a prop would pass it. So the set is derived here and held in
- * both directions, and a second form with a list to type against is a decision the day it is written:
- * whether its list says it cannot be read, as the races do, or is a boundary, as the towns are
+ * <p>There are two today, and both offer the same list, the races under the name of a race: the
+ * member's own form (`pages/member/NewResult.tsx`, through the renderer), and since R3b the panel that
+ * names the race of a run the calendar does not hold (`pages/admin/RaceForTheRun.tsx`, straight into the
+ * box). It is a list made from a read, so it can fail, and what a box does when it does is the decision
+ * above; both say it. The floor of the first question catches another one only if the file that hands it
+ * down also opens a state; a list that reaches a box through a prop would pass it. So the set is derived
+ * here and held in both directions, and a third box with a list to type against is a decision the day it
+ * is written: whether its list says it cannot be read, as the races do, or is a boundary, as the towns are
  * (`UnreadableList`, `forms/types.ts`).
  */
 describe('a form that is handed a list to type against', () => {
@@ -577,18 +593,29 @@ describe('a form that is handed a list to type against', () => {
     const handed = sources()
       .filter(({ path, code }) => handsAListToAForm(named(path), code))
       .map(({ path }) => named(path))
+      .filter((one) => !LIST_HOMES.includes(one))
       .sort()
 
     expect(
       handed,
       'a form is handed a list to type against: say what it does when the list cannot be read (UnreadableList), then add it here',
-    ).toEqual(['pages/member/NewResult.tsx'])
+    ).toEqual(['pages/admin/RaceForTheRun.tsx', 'pages/member/NewResult.tsx'])
+    /* And the home is still where the lists meet the box, so leaving it out above excuses something. */
+    expect(
+      sources()
+        .filter(({ path, code }) => handsAListToAForm(named(path), code))
+        .map(({ path }) => named(path))
+        .filter((one) => LIST_HOMES.includes(one)),
+    ).toEqual(LIST_HOMES)
   })
 
-  it('sees a FormRenderer given a list, and nothing else', () => {
+  it('sees a FormRenderer or the box itself given a list, and nothing else', () => {
     expect(handsAListToAForm('x.tsx', 'const A = () => <FormRenderer form={f} suggests={{ a: [] }} />')).toBe(true)
     expect(handsAListToAForm('x.tsx', 'const A = () => <FormRenderer form={f} />')).toBe(false)
     expect(handsAListToAForm('x.tsx', 'const A = () => <Other suggests={{ a: [] }} />')).toBe(false)
+    expect(handsAListToAForm('x.tsx', 'const A = () => <Suggesting value={v} suggestions={[]} />')).toBe(true)
+    expect(handsAListToAForm('x.tsx', 'const A = () => <Suggesting value={v} />')).toBe(false)
+    expect(handsAListToAForm('x.tsx', 'const A = () => <Other suggestions={[]} />')).toBe(false)
   })
 })
 
