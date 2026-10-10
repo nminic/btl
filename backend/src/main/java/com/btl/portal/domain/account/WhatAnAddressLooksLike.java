@@ -39,8 +39,52 @@ import java.util.regex.Pattern;
  * internationalised address, and the refusal is loud rather than silent. The day the
  * league owes somebody an address in his own alphabet, that is a migration and a
  * decision, and this class moves with it.
+ *
+ * <p><b>THE ONE THING THE SHAPE DOES NOT SAY IS HOW LONG.</b> {@code account_email_shape} has
+ * no upper bound, and two limits stand over an address longer than anybody types. The
+ * standard's: RFC 5321 gives 254 characters, and {@link #MOST_AN_ADDRESS_CAN_BE} is that
+ * number. The index's: {@code account_email_unique} is a B-tree over {@code lower(email)}, a
+ * key longer than about a third of a page does not go into one, and PostgreSQL answers
+ * {@code index row size ... exceeds btree version 4 maximum} with an error that aborts the
+ * transaction, so an address of three thousand characters that passed the shape would reach
+ * {@code INSERT} and come back to the person as a 500 - the very thing the shape is copied
+ * here to prevent. The standard's number is far below the index's, so {@link #itDoes} closes
+ * the second by applying the first in the same breath as the shape, and
+ * {@code WhatAnIndexHoldsTest} is the floor that keeps it so: it asks PostgreSQL what the index
+ * holds and fails the day this number is above it.
  */
 public final class WhatAnAddressLooksLike {
+
+	/**
+	 * THE MOST CHARACTERS AN ADDRESS MAY HAVE: 254, and the number is the STANDARD'S and not the
+	 * index's.
+	 *
+	 * <p><b>Where 254 comes from.</b> RFC 5321, section 4.5.3.1.3, limits a path to 256 octets,
+	 * punctuation included, and an address stands in a path between two angle brackets, so the
+	 * address is at most 254. That is the only source of the number: it is not worked out from
+	 * the schema, no constraint says it, and the index would keep addresses far longer. (Sections
+	 * 4.5.3.1.1 and 4.5.3.1.2 limit the local part to 64 octets and the domain to 255 as well;
+	 * only the total is bounded here, because a total is what a text can be asked for without
+	 * taking an address apart.)
+	 *
+	 * <p><b>Derived, not asked.</b> The owner's rule of 10.10.2026 is that an absurd input gets a
+	 * plain validation and not a question (he said it of a password too long to be typed).
+	 * Nothing he has written decides about addresses; applying the rule to one is a derivation,
+	 * and it is marked as one. An address past the bound is refused with the sentence the route
+	 * already has for an address that is not one.
+	 *
+	 * <p><b>What the index still has to say about it.</b> {@code account_email_unique} keeps
+	 * about two and a half thousand characters of text that cannot be compressed (2692 on
+	 * PostgreSQL 18.6), so this number is far under it and the index can never be the one that
+	 * refuses an address this class takes. That is held and not assumed:
+	 * {@code WhatAnIndexHoldsTest} asks PostgreSQL what the index keeps and fails the day this
+	 * number rises above it. It is also what closes the 500 on a text of three thousand
+	 * characters, because nothing past 254 reaches the {@code insert}.
+	 *
+	 * <p><b>The characters of an address are ASCII by the shape</b>, so a character here is
+	 * a byte in the index and the one number answers for both.
+	 */
+	public static final int MOST_AN_ADDRESS_CAN_BE = 254;
 
 	/**
 	 * Exactly one {@code @}, with something a reader can see on either side.
@@ -58,10 +102,15 @@ public final class WhatAnAddressLooksLike {
 	/**
 	 * Whether this is an address the portal would store.
 	 *
+	 * <p>The length is asked before the shape, so that a text of a hundred thousand characters is
+	 * refused by a comparison and not read through by a pattern.
+	 *
 	 * @param address what somebody typed, which may be anything at all, null included
 	 */
 	public static boolean itDoes(String address) {
-		return address != null && ONE_AT_BETWEEN_VISIBLE_ASCII.matcher(address).matches();
+		return address != null
+				&& address.length() <= MOST_AN_ADDRESS_CAN_BE
+				&& ONE_AT_BETWEEN_VISIBLE_ASCII.matcher(address).matches();
 	}
 
 	/**
