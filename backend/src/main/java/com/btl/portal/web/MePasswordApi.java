@@ -10,6 +10,7 @@ import com.btl.portal.domain.token.SecretToken;
 import com.btl.portal.mail.Postman;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -18,9 +19,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Optional;
@@ -128,6 +130,27 @@ import java.util.Optional;
  * exists to avoid.
  * </ul>
  *
+ * <p><b>AND A MEMBER WHOSE FEE HAS LAPSED IS TOLD THERE IS NO SUCH ADDRESS, BEFORE A BYTE OF HIS BODY
+ * IS READ.</b> PDL P8 records the owner's choice of 11.10.2026, made between offered outcomes and
+ * refining the list of 10.10.2026 that gives a member „lozinku" before he pays: „Istekao član po
+ * odluci od 19.09.2026 dopire samo do obnove i svog profila: izmena podataka (`PUT /api/me`) i
+ * lozinke (`PUT /api/me/password`) mu daje 404" (quoted in full on
+ * {@link ActiveMemberOrAdministration}). Both are PDL's sentences; the choice is the owner's.
+ * Somebody who never paid keeps this route, and so does an account that names no member, which has
+ * not lapsed: a password belongs to the account and not to a member, which is why this class asks
+ * only whether the member it names HAS lapsed ({@link ActiveMemberOrAdministration#hasLapsed}) and
+ * never whether it names one.
+ *
+ * <p><b>The refusal is thrown, so it is answered by {@code sendError}, the road an address that maps
+ * nothing is answered by</b> (ADL A8, 13.09.2026: the server need not give away even that an address
+ * exists). <b>And the body is read by {@link WhatWasSent} after that question and not bound with
+ * {@code @RequestBody}</b>: a body bound as an argument is read before the first line of the handler,
+ * so a member who has lapsed would be told 400 for one that cannot be read while a body that reads is
+ * told 404, and one request with a broken body would show him that a write lives here. What that
+ * costs is what every route that reads its body this way names: a body this portal cannot read, a
+ * text with a zero in it among them, is answered by this class as {@link #THE_FORM_IS_NOT_COMPLETE}
+ * instead of by the container, with the same status.
+ *
  * <p><b>It carries no {@link RightIsNeeded}</b>, for the same reason {@link MeWriteApi}
  * carries none: no box anybody could tick would let one member change another's password,
  * and changing his own is what every member does. So {@code PUT /api/me/password} is named
@@ -170,6 +193,9 @@ class MePasswordApi {
 
 	private final Postman postman;
 
+	/** Who has lapsed, which is the one question this route asks about the member behind the account. */
+	private final ActiveMemberOrAdministration readers;
+
 	/**
 	 * Written by hand rather than left on the method, and the reason is the notice.
 	 *
@@ -188,8 +214,10 @@ class MePasswordApi {
 	 * once by {@code BreachedPasswords.fromResource} and held in memory by the object it
 	 * hands back.
 	 */
-	MePasswordApi(JdbcClient db, Postman postman, TransactionTemplate inOneTransaction) {
+	MePasswordApi(JdbcClient db, ActiveMemberOrAdministration readers, Postman postman,
+			TransactionTemplate inOneTransaction) {
 		this.db = db;
+		this.readers = readers;
 		this.postman = postman;
 		this.inOneTransaction = inOneTransaction;
 		this.keeping = new StoredPassword();
@@ -219,11 +247,30 @@ class MePasswordApi {
 	 *                and the only place it may come from
 	 * @param carried the cookie this request arrived on, which names the one session that
 	 *                survives
+	 * @param sent    the body, which is not touched until the question about a lapsed fee is
+	 *                answered (see the class note)
 	 */
 	@PutMapping(path = "/api/me/password", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<Refused> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@CookieValue(name = SessionCookie.NAME) String carried,
-			@RequestBody Change typed) {
+			WhatWasSent<Change> sent) throws IOException {
+
+		/* A MEMBER WHOSE FEE HAS LAPSED (PDL P8, 11.10.2026; see the class note), ASKED FIRST,
+		   before a byte of what he sent is looked at. Thrown, so that it goes down the road an
+		   address that maps nothing goes down. */
+		if (readers.hasLapsed(asking)) {
+			throw nothingIsHere();
+		}
+
+		Change typed = sent.read();
+
+		/* A BODY THAT CANNOT BE READ IS THE FORM NOT BEING FILLED IN: no box arrived at all, and
+		   it is told so in the words every other fault of an incomplete form is told in. It is
+		   answered before anything is written and before the old password is judged, so it is not
+		   counted as a guess either. */
+		if (typed == null) {
+			return no(THE_FORM_IS_NOT_COMPLETE).refusal();
+		}
 
 		Done done = inOneTransaction.execute(committing -> write(asking.account(), carried, typed));
 
@@ -461,5 +508,19 @@ class MePasswordApi {
 
 	private static Done no(String reason) {
 		return new Done(ResponseEntity.badRequest().body(new Refused(reason)), 0, null, null, 0);
+	}
+
+	/**
+	 * THE ANSWER FOR A MEMBER THIS ADDRESS IS NOT FOR, which carries nothing at all.
+	 *
+	 * <p>{@link ResponseStatusException} is answered by {@code sendError}, one call into the machinery
+	 * an unmapped address already uses and not an imitation of it: a status written onto the response
+	 * comes back as a shorter answer without the container's error document, and over a real socket
+	 * that is an oracle for whether a route lives at the address. It is made here and thrown at the
+	 * call site and not thrown from this method, because the coverage report counts a line whose call
+	 * never comes back as not run ({@code ResultWriteApi} says the same of its own).
+	 */
+	private static ResponseStatusException nothingIsHere() {
+		return new ResponseStatusException(HttpStatus.NOT_FOUND);
 	}
 }

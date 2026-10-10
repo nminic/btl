@@ -85,6 +85,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <li>{@link #NOT_A_WRITE_OF_THE_PORTAL}: Spring's own error document.
  * </ul>
  *
+ * <p><b>AND THE LIST OF WHAT HE MAY DO IS THE LIST OF A MEMBER WHO HAS NEVER PAID.</b> PDL P8 records
+ * the owner's choice of 11.10.2026, made between offered outcomes and refining the one above, as:
+ * „Spisak „Sme" važi za člana koji nikad nije platio, ne za člana kome je istekla članarina. Istekao
+ * član po odluci od 19.09.2026 dopire samo do obnove i svog profila: izmena podataka (`PUT /api/me`)
+ * i lozinke (`PUT /api/me/password`) mu daje 404, a ostaju mu izbor kategorije i plaćanje (obnova) i
+ * sopstveni profil." So {@link #MAY_BEFORE_PAYING} says, for each route on it, whether a member whose
+ * fee has lapsed may use it as well, and the two the sentence names are the ones that say no: he is
+ * answered as an address that is not there, before the body is read, and nothing is written.
+ *
  * <p>The routes a right decides at the door are not asked about: a member as such never opens them,
  * and {@code RightsAtTheDoorTest} holds that a competitor is answered 404 by every one of them.
  *
@@ -94,8 +103,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * <ul>
  * <li><b>Who is asking:</b> a member who never paid (no number, V16), one whose fee has lapsed and who
  * holds a {@code membership} row for 2027 anyway (so a gate reading „has a membership row" instead of
- * the fee lets him through), a moderator whose own member has not paid (being the administration
- * opens no member's act), an account that names no member, and a member whose fee stands.
+ * the fee lets him through), one whose fee has lapsed and who holds no row at all (so a rule that
+ * tells him from a member who never paid by a row gives him back what PDL P8 of 11.10.2026 takes
+ * from him: it goes by the member number), a moderator whose own member has not paid (being the
+ * administration opens no member's act), an account that names no member, and a member whose fee
+ * stands.
  * <li><b>Whose activity:</b> on every act that names somebody else - the half asked, the addressee,
  * the team's leader, the applicant, the invited - that somebody is a member whose fee stands, so a
  * gate that read HIS fee instead of the caller's would let the caller through and fail here.
@@ -113,12 +125,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p><b>What this cannot see, and where it is held instead.</b> MockMvc runs no ERROR dispatch, so a
  * refusal written as a status on the response and one sent through the container look alike here.
- * Over a real socket, in {@code ABodyIsReadAfterTheDoorOverRealHttpTest}, a member who has never paid is
- * asked every key of {@link #AN_ACT_OF_HIS_OWN}, each sent as its route takes it, and the two fields of
- * {@code PUT /api/me} that make a member seen: he is answered byte for byte what an account naming no
- * member is answered, and, where {@code ApiSecurity.READ_BY_ANYBODY} does not open the address, what an
- * address that maps nothing answers. Of the other callers above, the member whose fee has lapsed and
- * the moderator whose own member has not paid are not asked there.
+ * Over a real socket, in {@code ABodyIsReadAfterTheDoorOverRealHttpTest}, a member who has never paid and
+ * a member whose fee has lapsed are each asked every key of {@link #AN_ACT_OF_HIS_OWN}, sent as its
+ * route takes it, and the two fields of {@code PUT /api/me} that make a member seen: they are answered
+ * byte for byte what an account naming no member is answered, and, where
+ * {@code ApiSecurity.READ_BY_ANYBODY} does not open the address, what an address that maps nothing
+ * answers. The member whose fee has lapsed is also asked the routes of {@link #MAY_BEFORE_PAYING} that
+ * are not his, and is answered what an address that maps nothing answers. Of the other callers above, the
+ * moderator whose own member has not paid is not asked there.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -139,6 +153,9 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 
 	static final String LAPSED = "istekao";
 
+	/** Lapsed all the same, and holding no {@code membership} row for any season. */
+	static final String LAPSED_WITHOUT_A_ROW = "istekao-bez-reda";
+
 	static final String A_MODERATOR_WHO_HAS_NOT_PAID = "moderator-neplacen";
 
 	static final String NAMES_NO_MEMBER = "bez-clana";
@@ -153,7 +170,7 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 	private static final String INVITED_EARLIER = "993061";
 
 	/** Each a different way of being a member whose fee does not stand. */
-	private static final List<String> TURNED_AWAY = List.of(NEVER_PAID, LAPSED,
+	private static final List<String> TURNED_AWAY = List.of(NEVER_PAID, LAPSED, LAPSED_WITHOUT_A_ROW,
 			A_MODERATOR_WHO_HAS_NOT_PAID);
 
 	/** Who an act is sent about, and the request a member sends about his own row. */
@@ -229,25 +246,39 @@ class NoWriteTakesAMemberWhoHasNotPaidTest {
 			entry("POST /api/inbox/{id}/read", (f, owner) -> post("/api/inbox/" + f.messageToHim(owner)
 					+ "/read")));
 
-	/** How a member asks for something he MAY do before he pays, or {@code null} for a route that
-	 *  reads no session at all and is open by name. */
-	record Before(String reason, Act act) {
+	/**
+	 * How a member asks for something he MAY do before he pays, or {@code null} for a route that
+	 * reads no session at all and is open by name.
+	 *
+	 * @param lapsedToo whether a member whose fee has LAPSED may do it as well. PDL P8 of 11.10.2026
+	 *                  gives him the renewal and his profile and takes the rest back, so it is false
+	 *                  for exactly the two routes that sentence names
+	 */
+	record Before(String reason, Act act, boolean lapsedToo) {
+
+		Before(String reason, Act act) {
+			this(reason, act, true);
+		}
 	}
 
 	/**
-	 * WHAT A MEMBER WHO HAS NOT PAID MAY DO, EACH WITH THE WORDS OF PDL P8 (10.10.2026) IT STANDS ON.
+	 * WHAT A MEMBER WHO HAS NEVER PAID MAY DO, EACH WITH THE WORDS OF PDL P8 (10.10.2026) IT STANDS ON,
+	 * and whether a member whose fee has lapsed may do it as well (11.10.2026).
 	 */
 	static final Map<String, Before> MAY_BEFORE_PAYING = Map.ofEntries(
 			entry("PUT /api/me", new Before("„svoje podatke za evidenciju i majicu\"; the biography and"
-					+ " the switch are refused field by field, see MeWriteApiTest",
-					(f, owner) -> json(put("/api/me"), "{\"phone\":\"0601234567\"}"))),
+					+ " the switch are refused field by field, see MeWriteApiTest; and the whole route to a"
+					+ " member whose fee has lapsed (PDL P8, 11.10.2026)",
+					(f, owner) -> json(put("/api/me"), "{\"phone\":\"0601234567\"}"), false)),
 			entry("PUT /api/me/category", new Before("„izbor kategorije\"",
 					(f, owner) -> json(put("/api/me/category"), "{\"firstSeason\":false}"))),
 			entry("POST /api/me/membership", new Before("„plaćanje\": his own membership, out of his"
 					+ " balance", (f, owner) -> post("/api/me/membership"))),
-			entry("PUT /api/me/password", new Before("„lozinku\"", (f, owner) -> json(
+			entry("PUT /api/me/password", new Before("„lozinku\"; not to a member whose fee has lapsed"
+					+ " (PDL P8, 11.10.2026)", (f, owner) -> json(
 					put("/api/me/password"), "{\"oldPassword\":\"" + PASSWORD + "\",\"password\":"
-							+ "\"nova-lozinka-koja-je-duga\",\"passwordRepeat\":\"nova-lozinka-koja-je-duga\"}"))),
+							+ "\"nova-lozinka-koja-je-duga\",\"passwordRepeat\":\"nova-lozinka-koja-je-duga\"}"),
+					false)),
 			entry("POST /api/sign-in", new Before("„nalog\", the heading of the decision; and „Prijava"
 					+ " ostaje netaknuta: ona ne čita članarinu\" (PDL P13, 19.09.2026)",
 					(f, owner) -> json(post("/api/sign-in"), "{\"email\":\"" + emailOf(owner)

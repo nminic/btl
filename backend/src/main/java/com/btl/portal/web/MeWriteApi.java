@@ -66,19 +66,30 @@ import java.util.function.Function;
  * anywhere saying why. {@link #ONLY_AN_ADMINISTRATOR_CHANGES} carries them and
  * {@link #NOT_YOURS_TO_CHANGE} is what he is told.
  *
- * <p><b>AND A MEMBER WHOSE FEE DOES NOT STAND MAY CHANGE HIS DATA AND HIS SHIRT, AND NOT WHAT
- * MAKES HIM SEEN.</b> PDL P8 records the owner's choice of 10.10.2026 between offered outcomes:
+ * <p><b>AND A MEMBER WHO HAS NEVER PAID MAY CHANGE HIS DATA AND HIS SHIRT, AND NOT WHAT MAKES HIM
+ * SEEN.</b> PDL P8 records the owner's choice of 10.10.2026 between offered outcomes:
  * „Sme: izbor kategorije i plaćanje, lozinku, adresu pošte i svoje podatke za evidenciju i
  * majicu. Ne sme ništa što ga čini vidljivim ili ga uključuje u ligu: sliku, biografiju,
  * skrivanje profila, ...". So this one route is both: the name, the address, the telephone,
  * the town and the size are his before he pays, and the biography and the switch that hides the
  * profile are not. {@link #ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES} carries the second two, and a
- * request from a member who has never paid, or whose fee has lapsed, that carries either of them
- * is answered as an address that is not there, the whole request and nothing written - ADL A8's
- * 404 for a caller who lacks the right, by the shape {@link AttendanceWriteApi} already gives
- * one, and the same {@link #away} an account naming no member is told. Asked of the body as it
- * arrived and BEFORE every other question about it, so the answer does not depend on what else
- * the request carries. The decision is quoted in full on {@link ActiveMemberOrAdministration}.
+ * request from a member who has never paid that carries either of them is answered as an address
+ * that is not there, the whole request and nothing written - ADL A8's 404 for a caller who lacks
+ * the right, by the shape {@link AttendanceWriteApi} already gives one, and the same {@link #away}
+ * an account naming no member is told. Asked of the body as it arrived and BEFORE every other
+ * question about it, so the answer does not depend on what else the request carries. The decision
+ * is quoted in full on {@link ActiveMemberOrAdministration}.
+ *
+ * <p><b>AND A MEMBER WHOSE FEE HAS LAPSED MAY CHANGE NOTHING HERE.</b> PDL P8 records the owner's
+ * choice of 11.10.2026, made between offered outcomes and refining the one above, as: „Spisak „Sme"
+ * važi za člana koji nikad nije platio, ne za člana kome je istekla članarina. Istekao član po odluci
+ * od 19.09.2026 dopire samo do obnove i svog profila: izmena podataka (`PUT /api/me`) i lozinke
+ * (`PUT /api/me/password`) mu daje 404, a ostaju mu izbor kategorije i plaćanje (obnova) i sopstveni
+ * profil." The whole request is answered by the same {@link #away}, and it is asked FIRST, beside
+ * the question whether the account names a member at all and before a byte of the body is read, so
+ * that a body which cannot be read, or one over the line, is told what a body that reads is told.
+ * Who has lapsed is {@link ActiveMemberOrAdministration#hasLapsed}'s, which says why it goes by the
+ * member number.
  *
  * <p><b>AND THE SHIRT SIZE IS HIS, AND IT TAKES EFFECT AT ONCE.</b> The same entry gives the
  * size to the member himself. That it waits for nobody is derived rather than written there:
@@ -429,8 +440,10 @@ class MeWriteApi {
 			"fatherName");
 
 	/**
-	 * THE FIELDS OF {@link Change} THAT A MEMBER WHOSE FEE DOES NOT STAND MAY NOT SEND, because
-	 * each of them makes him seen: „biografiju, skrivanje profila" (PDL P8, 10.10.2026).
+	 * THE FIELDS OF {@link Change} THAT A MEMBER WHO HAS NEVER PAID MAY NOT SEND, because each of
+	 * them makes him seen: „biografiju, skrivanje profila" (PDL P8, 10.10.2026). A member whose fee
+	 * has lapsed is turned away from the whole route (PDL P8, 11.10.2026), so for him this list is
+	 * not asked about.
 	 *
 	 * <p><b>Every other field of {@link Change} is his before he pays</b> - „svoje podatke za
 	 * evidenciju i majicu" - and that is not a second list somebody has to keep beside this one:
@@ -844,19 +857,23 @@ class MeWriteApi {
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
 		   moderator who does not race. There is no biography to change and no profile page
 		   to hide, and the answer is the one InboxApi and InboxWriteApi already give him.
+
+		   OR A MEMBER WHOSE FEE HAS LAPSED (PDL P8, 11.10.2026; see the class note): his data
+		   are no longer his to change, and he is told what that account is told.
+
 		   ASKED FIRST, before a byte of what he sent is looked at, for the reason above. */
-		if (me == null) {
+		if (me == null || readers.hasLapsed(asking)) {
 			return away(response);
 		}
 
 		JsonNode sent = read(request.getInputStream().readAllBytes());
 
-		/* WHAT MAKES HIM SEEN, SENT BY A MEMBER WHOSE FEE DOES NOT STAND, IS AN ADDRESS THAT IS
+		/* WHAT MAKES HIM SEEN, SENT BY A MEMBER WHO HAS NEVER PAID, IS AN ADDRESS THAT IS
 		   NOT THERE: the whole request, and nothing is written (PDL P8, 10.10.2026, „biografiju,
 		   skrivanje profila"; see the class note). Asked of the body as it arrived and before
 		   every other question about it, so that the answer is the same whatever else the request
 		   carries; and the fee is asked only of a request that names one of the two, because a
-		   member who has not paid may change everything else here. */
+		   member who has never paid may change everything else here. */
 		if (!named(sent, ONLY_A_MEMBER_WHOSE_FEE_STANDS_CHANGES).isEmpty()
 				&& readers.activeMember(asking).isEmpty()) {
 			return away(response);

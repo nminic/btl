@@ -65,6 +65,16 @@ import java.util.Optional;
  * every write off the dispatcher and holds which ask this, which a member may use before paying
  * and why, and which are the administration's.
  *
+ * <p><b>THE LIST OF WHAT HE MAY DO IS THE LIST OF A MEMBER WHO HAS NEVER PAID, AND NOT OF ONE WHOSE
+ * FEE HAS LAPSED, WHO IS ASKED ABOUT BY {@link #hasLapsed}.</b> PDL P8 records the owner's choice of
+ * 11.10.2026, made between offered outcomes and refining the one above, as: „Spisak „Sme" važi za
+ * člana koji nikad nije platio, ne za člana kome je istekla članarina. Istekao član po odluci od
+ * 19.09.2026 dopire samo do obnove i svog profila: izmena podataka (`PUT /api/me`) i lozinke
+ * (`PUT /api/me/password`) mu daje 404, a ostaju mu izbor kategorije i plaćanje (obnova) i sopstveni
+ * profil." Both are PDL's sentences; the choice is the owner's. So those two routes ask {@link
+ * #hasLapsed} before a byte of the body is read and turn him away down the branch that turns away an
+ * account naming no member, and the renewal, the profile and every read stay open to him.
+ *
  * <p><b>THE ADMINISTRATION IS READ OFF THE ROLE'S {@code rights_mode}, and the role is the one
  * {@link WhoIsAsking} decided.</b> V5 gives every role a mode, {@code none} for the visitor and
  * the competitor, {@code granted} for the moderator and {@code all} for the superadmin, so
@@ -130,6 +140,44 @@ class ActiveMemberOrAdministration {
 				.param(his)
 				.query(Long.class)
 				.optional();
+	}
+
+	/**
+	 * WHETHER THE MEMBER THIS ACCOUNT NAMES HAS LAPSED: HE WAS MADE A MEMBER ONCE, AND HIS FEE DOES NOT
+	 * STAND.
+	 *
+	 * <p>The question PDL P8 of 11.10.2026 asks (quoted on this class): a member who never paid keeps
+	 * what the list of 10.10.2026 gives him, and one whose fee has lapsed keeps the renewal and his
+	 * profile and nothing else. {@code false} for an account that names no member, which has not lapsed
+	 * and keeps the one route a password belongs to the account for, and for a member whose fee stands.
+	 *
+	 * <p><b>HE IS TOLD APART FROM SOMEBODY WHO NEVER PAID BY THE MEMBER NUMBER, AND NOT BY THE FLAG AND
+	 * NOT BY A ROW OF {@code membership}.</b>
+	 *
+	 * <ul>
+	 * <li>{@code active} is false for both, so it cannot tell them apart.
+	 * <li>V16 says what a member is: „a row in `competitor` is a PERSON WHO REGISTERED. A MEMBER is a row
+	 * whose `member_number` is there", after PDL P8, 31.07.2026, „registrovan a neplacen clan nema
+	 * clanski broj". Counted over {@code src/main} on 11.10.2026, the only statements that write it are
+	 * the three that first make somebody active ({@code MembershipWriteApi}, {@code MyMembershipWriteApi}
+	 * and {@code PaymentApi}, each beside {@code active = true}) and nothing clears it, so having one
+	 * is having been made a member once, and it does not go when the fee does.
+	 * <li>A row of {@code membership} is a fact about one season (V22), and the backfill that wrote the
+	 * first ones says what it leaves out: „somebody the association let in free". An honorary member
+	 * whose fee no longer stands can hold a number and no row at all, and a rule that read the row would
+	 * take him for a registrant who never paid and give him back his data and his password.
+	 * </ul>
+	 *
+	 * @param asking read off the session, never off anything the caller sent
+	 */
+	boolean hasLapsed(WhoIsAsking.Member asking) {
+		Long his = memberOfAccount.competitorId(asking.account());
+
+		return his != null && db.sql("select member_number is not null and not active from competitor"
+						+ " where id = ?")
+				.param(his)
+				.query(Boolean.class)
+				.single();
 	}
 
 	/**
