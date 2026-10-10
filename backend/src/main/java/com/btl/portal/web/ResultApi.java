@@ -1,5 +1,6 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,9 +60,122 @@ import java.util.List;
  * the list of members (PDL P11), and the difference between two public answers
  * would then be the exact list of who has not paid - which is „sve u vezi sa
  * clanarinom" and Article 74 puts it beside the date of birth. The other way: his
- * result from a season he WAS a member in is served as it always was, and the
+ * result from a season he WAS a member in is served WITH HIS NAME (below), and the
  * fact that a reader can tell from his absence today that he has not renewed is
  * not a leak but this same decision's own consequence.
+ *
+ * <p><b>AND EVERY RESULT OF A MEMBER SAYS WHO RAN IT, in {@code runner}</b>, so that the
+ * name of somebody whose fee has lapsed does not vanish from the tables of the seasons he
+ * was a member in. Owner, 13.09.2026: „treba da ostanu vidljivi u starim / zamrznutim
+ * sezonama kad je članarina bila aktivna". Owner, 03.10.2026 (PDL P11), chosen between
+ * offered outcomes: the result of a season he was a member in carries the name as plain
+ * text, with no link to the profile, and the list of current competitors stays as it is
+ * (those words are the journal's and not his). What made it a decision and not a reading is
+ * the paragraph above: the name is read off the member's record, a result carries only a
+ * number, and a member whose fee has lapsed is not on {@code /api/competitors}, so a table
+ * of an earlier season had nowhere to read his name from. The row was missing from the
+ * table, and under its event it stood with a number where a name should be. The list is not
+ * touched, and {@code CompetitorApiTest} did not change for it; the name travels with the
+ * result instead.
+ *
+ * <p><b>FIVE NAMES AND NOTHING ELSE: the first name, the last name, the sex, the age band and
+ * whether he runs as a beginner.</b> That is what a table of an earlier season needs to
+ * place a row - the tables are by sex and by category, and the screen builds the category out
+ * of exactly these three ({@code categoryCodeFor}, {@code frontend/src/data/categories.ts}) -
+ * and Article 73 lists the name and the category among what is public. They are the names
+ * {@code /api/competitors} answers, under the same keys, so one member is the same member on
+ * both doors, and in the season that is being run the band is the same on both;
+ * {@code aRunnersBandIsTheBandTheListGaveHimInTheSeasonOfTheResult} holds the two to each other.
+ * Left out on purpose, each for its own decision: the year of birth as a field (Article 74:
+ * „Datum rođenja se nikada ne prikazuje, ni u punom ni u skraćenom obliku", and below is what a
+ * band per season gives back of it anyway); whether his fee
+ * stands (PDL P34, 21.09.2026 took {@code active} off the public list for being „činjenica o
+ * tuđem plaćanju", and a field here would put it back through the side door); and the
+ * portrait, the biography and the link to his team, which belong to a profile and leave it
+ * only to a reader who may read a hidden one (PDL P23, 26.09.2026 and 27.09.2026).
+ * {@code theRunnerIsFiveNamesAndNothingElse} holds the number, since a sixth would be a fact
+ * about a member answered to everybody because nobody was asked.
+ *
+ * <p><b>THE BAND IS THE BAND OF THE SEASON THE RESULT WAS RUN IN.</b> Owner, 10.10.2026 (PDL
+ * P23), chosen between offered outcomes, against my recommendation, and kept with my
+ * recommendation once the cost had been corrected to the exact year of birth (below): the band
+ * beside an old result is the one its member had in the season of that result, the same as in
+ * the frozen table of that season, for every served result of a member with a number, whether
+ * his fee stands or has lapsed. The season is the calendar year of the result's day, never
+ * earlier than the first season there is
+ * ({@link SeasonClock#seasonTheBandOfAResultIsWorkedOutFor}, which says why), so it does not
+ * depend on the clock: the same row is answered in the same band on any day, and a fee that
+ * lapses changes which rows are served and never which band a served row carries.
+ * {@code aResultCarriesTheBandOfTheSeasonItWasRunInWhateverTheFee} holds it.
+ *
+ * <p>The list is not touched. It still answers the band of the season that is running, one
+ * season and no more, for the measured reason on the note of
+ * {@link SeasonClock#seasonTheBandIsWorkedOutFor}, so for a member who has crossed a band the two
+ * doors agree while the season is being run and part company on every earlier one.
+ *
+ * <p><b>What it costs, written here so that the next reader finds it before a member does.</b>
+ * A band is the season minus the year of birth, so a member who crosses a band (25, 40 or 55)
+ * between two seasons he ran in gives away his EXACT year of birth: 25-39 in 2027 and 40-54 in
+ * 2028 means 1988. It is the map the measurement on the note of
+ * {@link SeasonClock#seasonTheBandIsWorkedOutFor} counted (25 of 32 members), and this door is
+ * not the only one that makes it: the list read before and after a New Year gives the same, and
+ * so do the frozen tables, which carry the category of their season. The owner kept the season's
+ * band with that cost in view, and the published text, Article 74 of the rulebook and the privacy
+ * policy, is to say before 1 January 2028 that a change of category between seasons shows the
+ * year of birth; that is item BR, a job of its own and not this class's. The second cost is a
+ * beginner's band, which the frozen table hides behind its „R" and which stands here beside the
+ * result, with the beginner's mark. {@code noYearOfBirthLeavesTheServer} holds the year itself,
+ * which is a field and not an inference.
+ *
+ * <p><b>A BOUNDARY AND NOT A DECISION: THE BEGINNER'S MARK IS WHAT THE RECORD SAYS TODAY.</b>
+ * The owner's choice was about the band alone. The mark a member had in the season of an old
+ * result cannot be read from anywhere, because the record of a member's category per season does
+ * not exist yet (item ZS), so {@code firstSeason2027} is the flag on his record as it stands now,
+ * whichever season the result belongs to, and for an old result it may differ from what the
+ * frozen table of that season files him under. When that record exists this field reads it and
+ * this paragraph goes. That is my derivation from the choice and not a thing he was asked.
+ *
+ * <p><b>IT DOES NOT DEPEND ON THE FEE, and the one place the fee is asked is the condition
+ * above.</b> A row is served with its {@code runner} or it is not served at all: a member
+ * whose fee has lapsed is named on his old results exactly as one whose fee stands is, in the
+ * band the season of each result gives him by the same rule, and the answer is the same to every
+ * reader, visitor, member or administration alike - this route
+ * takes no caller, and {@code everyNameThatDependsOnTheReader.test.ts} reads that off this
+ * source. The condition above is written against the flag {@code competitor.active}, which is
+ * on its way out: PDL 13.09.2026, „Zastavica „aktivan" prestaje da bude podatak i postaje
+ * izvedena". <b>The increment that does it rewrites that {@code where}, and it must leave
+ * {@code runner} exactly as it is</b> - the name does not become something that needs the
+ * flag or a membership row, because the decision names the member and not his membership.
+ *
+ * <p><b>A member who hides his profile is named like any other.</b> Hiding is about the
+ * profile PAGE and not about the place in a table: PDL P23, 06.09.2026, derived from the
+ * policy and not asked, „Ime ostaje u javnim tabelama" - „skriva se profilna strana, ne mesto
+ * u poretku".
+ *
+ * <p><b>WHICH RESULTS ARE NAMED, decided.</b> The decision of 03.10.2026 says the result of a
+ * season he WAS a member in. This server does not read {@code membership}, so it names the
+ * runner on EVERY result it serves of a member who has a number, whichever season the result
+ * belongs to: a result from a season in which he held no membership of his own (a retroactive
+ * 2027 for somebody who paid only for 2028, or the history before 2027) is named too. Owner,
+ * 10.10.2026 (PDL, the answers he gave to the questions collected while he was away, number 33),
+ * chosen between offered outcomes and with my recommendation: the name goes with every served
+ * result of a member with a number. The cost listed beside it is that the page of an event can
+ * carry the name of somebody who held no membership in that season; the other outcome, the name
+ * only where a membership of the result's season exists, was listed with the cost that the
+ * history before 2027 stays without names, and is not what this class does.
+ *
+ * <p><b>A result whose competitor has no member number carries {@code "runner": null}</b> -
+ * the key there and the value null, the shape the portal already uses for a fact that is
+ * withheld (the portrait, PDL P28f) - and nothing else about him. Article 73 makes the name
+ * and the number of a MEMBER public, and a registration without a number is not one (V16: a
+ * member is a row whose number is there); PDL 13.09.2026, „Kad je sporno, polje se izostavlja i
+ * izostavljanje se imenuje sa razlogom, pa se vlasniku javi; nikad se ne servira „za svaki
+ * slucaj"". This is that naming, and the owner is told.
+ *
+ * <p><b>A deleted member takes his results with him</b> (PDL, 06.09.2026: „brisanjem odlaze
+ * profil i svi rezultati člana"; {@code result_competitor_fk} is {@code on delete cascade},
+ * V7), so there is no result left to name, and what a FROZEN season shows in his place is that
+ * season's snapshot and not this answer (ADL A37).
  *
  * <p><b>The year comes from a clock that can be replaced, never from
  * {@code current_date}.</b> Written in SQL it would be a rule that cannot be
@@ -82,19 +196,57 @@ class ResultApi {
 	}
 
 	/**
+	 * WHO RAN IT: as much of him as a table of an earlier season needs, and no more. The note on
+	 * this class gives the decision behind every line.
+	 *
+	 * @param firstName       the name on his record as a competitor, and never the one on his
+	 *                        account: V23 holds them as two facts about two things
+	 * @param lastName        likewise
+	 * @param gender          {@code M} or {@code F}, as the schema holds it
+	 * @param ageBand         the band alone and never the finished code, so that the sex is not
+	 *                        written twice (PDL, 13.09.2026). The band he had in the season the
+	 *                        result was run in, and not the one {@code /api/competitors} answers
+	 *                        for the season that is running (owner, 10.10.2026)
+	 * @param firstSeason2027 whether he runs in the beginners' category rather than in the one for
+	 *                        his age (PDL P7). The flag on his record as it stands now, whichever
+	 *                        season the result belongs to: the record of his category per season
+	 *                        does not exist yet (item ZS), and the note on this class draws that
+	 *                        boundary
+	 */
+	record Runner(String firstName, String lastName, String gender, String ageBand,
+			boolean firstSeason2027) {
+	}
+
+	/**
 	 * @param category the length category worked out by the database from the
 	 *                 distance, never by this server: one rule, one home (V7)
+	 * @param runner   who ran it, or NULL when the competitor has no member number. Null and
+	 *                 never an absent key; the note on this class gives both reasons
 	 */
 	record Result(long id, String memberNumber, long raceId, String raceName, String eventName,
 			String eventSlug, LocalDate date, BigDecimal distanceKm, int ascentM, int descentM,
-			int seconds, BigDecimal points, String category) {
+			int seconds, BigDecimal points, String category, Runner runner) {
 	}
 
 	@GetMapping("/api/results")
 	List<Result> results() {
 		return db.sql("select r.id, c.member_number, r.race_id, ra.name as race_name,"
 						+ " e.name as event_name, e.slug as event_slug, r.race_date,"
-						+ " r.distance_km, r.ascent_m, r.descent_m, r.seconds, r.points, r.category"
+						+ " r.distance_km, r.ascent_m, r.descent_m, r.seconds, r.points, r.category,"
+						/* WHO RAN IT, off the member's own record and from nowhere else: not the
+						   account, whose name is a fact about the login (V23), and not another
+						   member's. Joined every time and never stored, like the names above.
+						   NOTHING HERE ASKS WHETHER HE IS ACTIVE OR WHETHER HE HIDES HIS PROFILE,
+						   on purpose, and the note on this class says why. */
+						+ " c.first_name, c.last_name, c.gender, c.first_season_2027,"
+						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE. It is the input the
+						   band is worked out from and the one field of this table the privacy
+						   policy is written about, so it reaches the mapper below and goes
+						   straight into a band: it is never a component of `Runner`.
+						   `theRunnerIsFiveNamesAndNothingElse` and `noYearOfBirthLeavesTheServer`
+						   refuse it, the first by its names and the second by the text of the
+						   whole answer. */
+						+ " c.birth_year"
 						+ " from result r"
 						+ " join competitor c on c.id = r.competitor_id"
 						+ " join race ra on ra.id = r.race_id"
@@ -109,10 +261,29 @@ class ResultApi {
 						+ " where c.active or extract(year from r.race_date) <> :theSeasonRunning"
 						+ " order by r.race_date, r.id")
 				.param("theSeasonRunning", theSeasonRunning())
-				.query((row, one) -> new Result(row.getLong(1), row.getString(2), row.getLong(3),
-						row.getString(4), row.getString(5), row.getString(6),
-						row.getDate(7).toLocalDate(), row.getBigDecimal(8), row.getInt(9),
-						row.getInt(10), row.getInt(11), row.getBigDecimal(12), row.getString(13)))
+				.query((row, one) -> {
+					String memberNumber = row.getString(2);
+					LocalDate day = row.getDate(7).toLocalDate();
+
+					return new Result(row.getLong(1), memberNumber, row.getLong(3),
+							row.getString(4), row.getString(5), row.getString(6),
+							day, row.getBigDecimal(8), row.getInt(9),
+							row.getInt(10), row.getInt(11), row.getBigDecimal(12), row.getString(13),
+							/* NULL WHEN HE HAS NO MEMBER NUMBER, the key still there. The note on
+							   this class says why a registration without one is not named. */
+							memberNumber == null ? null
+									: new Runner(row.getString(14), row.getString(15),
+											row.getString(16),
+											/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category`
+											   is where the league's bands live, and `SeasonClock`
+											   is where the season a result's band is worked out
+											   for lives. The day is this row's own and not the
+											   clock's, which is why the same row is answered in
+											   the same band on any day. */
+											Category.ageBandFor(row.getInt(18),
+													SeasonClock.seasonTheBandOfAResultIsWorkedOutFor(day)).code(),
+											row.getBoolean(17)));
+				})
 				.list();
 	}
 
@@ -139,6 +310,15 @@ class ResultApi {
 	 * {@code ResultApiTest.andTheRunningSeasonStaysWithheldWhileTheNextOneIsAlreadyBeingPaidFor},
 	 * and its own floor asks {@code SeasonClock} whether the moment it uses still lies
 	 * where the two disagree.
+	 *
+	 * <p><b>The band on a runner does not ask this year, or the clock at all, and the two parted
+	 * company on purpose:</b> what to withhold is asked of the plain calendar year, and the band
+	 * is worked out for the season of the result's own day
+	 * ({@link SeasonClock#seasonTheBandOfAResultIsWorkedOutFor}), which is lifted to the first
+	 * season there is. This is the only question the clock is asked on this route, and it is
+	 * asked once for the whole answer: {@code theClockIsNotAskedAgainForEachRowOfTheAnswer}
+	 * holds that. The cases that hold the band apart from the clock stand on three different
+	 * days: {@code ResultApiTest.aResultCarriesTheBandOfTheSeasonItWasRunInWhateverTheFee}.
 	 */
 	private int theSeasonRunning() {
 		return LocalDate.now(clock.withZone(SeasonClock.ZONE)).getYear();

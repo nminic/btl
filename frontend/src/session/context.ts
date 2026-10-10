@@ -616,8 +616,11 @@ export type SessionValue = {
    * field from a member even on his own row; `/api/me` is where the first half lives
    * (`session/theServer.ts` writes out what reading it the other way cost).
    *
-   * **ONE OF SIX OF THE SEVEN THE ANSWER CARRIES, and it was the only one until
-   * 25.09.2026.** The rule it was written under was „a field is remembered here when it
+   * **ONE OF SIX OF THE SEVEN THE SESSION KEEPS OF THE ANSWER, and it was the only one until
+   * 25.09.2026.** (The answer carries nineteen names since 10.10.2026: the other twelve are the
+   * page his own profile is drawn from, which the screen of that profile reads for itself and
+   * the session does not keep, `session/theServer.ts`.) The rule it was written under was „a
+   * field is remembered here when it
    * has NO OTHER DOOR", and that rule is no longer the whole of it: the country, the
    * first season and the team below are remembered here although `/api/competitors`
    * carries all three. **The rule that replaces it is one sentence wider and is the

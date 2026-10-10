@@ -11,6 +11,7 @@ import { useColumns, useGrowing } from '../components/growing'
 import { LoadMore } from '../components/LoadMore'
 import { earnedDucats } from '../data/ducatEarned'
 import { unitFor, type Ducat } from '../data/ducatRule'
+import type { Competitor } from '../data/types'
 import { formatNumber, formatPoints, wholePeriod } from '../i18n/format'
 import { useI18n } from '../i18n/useI18n'
 import { isActiveMemberOrAdministration } from '../roles/activeMemberOrAdministration'
@@ -18,6 +19,7 @@ import { useRole } from '../roles/useRole'
 import { useSession } from '../session/useSession'
 import { MEMBERS, recordsOf } from './admin/entityForms'
 import { useOverlay } from './admin/overlay'
+import { HisOwnRecord } from './profile/HisOwnRecord'
 import { profileFor } from './profile/visible'
 import {
   combinePair,
@@ -73,7 +75,13 @@ function AwardsBody({
            on one of the two is a check on neither. */
         const competitors = recordsOf(MEMBERS, everybody, overlay)
         const readsHiddenProfiles = isActiveMemberOrAdministration(role, readerNumber, everybody)
-        const readable = profileFor(competitors, memberNumber, readsHiddenProfiles, theServerHasAnswered)
+        const readable = profileFor(
+          competitors,
+          memberNumber,
+          readsHiddenProfiles,
+          theServerHasAnswered,
+          readerNumber,
+        )
 
         if (readable.kind === 'waiting') {
           /* The same wait as the profile's, from the same place and for the same reason
@@ -94,18 +102,43 @@ function AwardsBody({
           return <Navigate to={`/${locale}`} replace />
         }
 
-        const { competitor } = readable
-
-        return (
+        /* THE PAGE, DRAWN FROM A RECORD, whichever way the record came (see the same function on
+           `pages/CompetitorProfile.tsx`): `among` is the competitors the trophies are ranked
+           against, which is the one thing that differs between the two ways. */
+        const drawn = (competitor: Competitor, among: Competitor[]) => (
           <AwardsFor
             competitor={competitor}
             part={part}
-            competitors={competitors}
+            competitors={among}
             results={results}
             ducats={ducats}
             team={teams.find((one) => one.id === competitor.teamId)}
           />
         )
+
+        if (readable.kind === 'his') {
+          /* **HIS OWN PAGE OF AWARDS, AND THE LIST DOES NOT CARRY HIM** (`profile/visible.ts`).
+             The profile is two addresses, the overview and this, and PDL gives him both: it says
+             the profile of a member who is not active is not shown, „ni Pregled ni Priznanja", and
+             in the same passage that he opens his own, „dok ga administracija ne obriše" (P11).
+             A member who could open the one and was turned away from the other would be turned
+             away from a tab of his own page.
+
+             **AND HE IS PUT INTO THE LIST THE TROPHIES ARE RANKED AGAINST**, because they are read
+             back out of the standings (`profile/awards.ts`) and he is not on any of them: without
+             him in it there is no row of his in any board, and a trophy won in 2019 reads as none.
+             What he won stays written on his profile for good (P11: an achievement of an earlier
+             season is never taken off, whatever the member does in the season that follows),
+             whatever his fee does since. It is HIS shelf only: the boards other members read are
+             not drawn from this list. */
+          return (
+            <HisOwnRecord memberNumber={readable.memberNumber}>
+              {(own) => drawn(own, [...competitors, own])}
+            </HisOwnRecord>
+          )
+        }
+
+        return drawn(readable.competitor, competitors)
       }}
     </Resource>
   )
