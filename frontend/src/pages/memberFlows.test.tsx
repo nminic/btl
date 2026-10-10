@@ -1700,8 +1700,9 @@ describe('membership', () => {
      never sent reaches exactly the way a refusal it did send does.
 
      **So every row now carries the whole record and drops the one key it names**
-     (`test/theAnswer.ts`'s `myOwnRecordFromMe`, the same seven the contract test holds
-     against the backend), and the case reads back a fact the session has no door to but
+     (`test/theAnswer.ts`'s `myOwnRecordFromMe`, the nineteen the contract test holds
+     against the backend, the twelve of his page among them), and the case reads back a
+     fact the session has no door to but
      this answer - the basis and the link, which this screen draws nowhere on this branch -
      so satisfying it by silence is no longer available. */
   function memberMissingOneFact(key: 'country' | 'firstSeason'): Record<string, unknown> {
