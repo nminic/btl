@@ -1,7 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { must } from '../test/at'
 import { DAY, PUBLIC } from '../test/addresses'
-import { hisPageAsServed } from '../test/hisPage'
 import { renderAt } from '../test/render'
 import { membersAsServed, serverThat } from '../test/serverAnswers'
 import { SLOW } from '../test/slow'
@@ -1009,20 +1008,11 @@ describe('a hidden profile is reachable from nowhere', () => {
 describe('a hidden profile is reachable from nowhere, not even to a member whose fee has lapsed', () => {
   const served = theServerAnswersWithItsMembers()
 
-  /* THE SERVER'S ANSWER TO „WHO AM I" FOR HIM, in front of the list above. His own profile is drawn
-     from the record that answer carries (`profile/HisOwnRecord.tsx`), because the list does not
-     have him; the harness answers the generated row, and the stand-in is the answer the server
-     really gives a member whose fee has lapsed (`test/hisPage.ts`). */
-  let me: { stop: () => void } | null = null
-
-  beforeEach(() => {
-    me = hisPageAsServed()
-  })
-
-  afterEach(() => {
-    me?.stop()
-    me = null
-  })
+  /* HIS OWN PROFILE IS DRAWN FROM THE RECORD `GET /api/me` ANSWERS HIM (`profile/HisOwnRecord.tsx`),
+     because the list above does not have him. Nothing stands in front of the harness for it: the
+     harness answers the generated row of 000032, cut to the keys `myOwnRecordFromMe` declares
+     (`test/setup.ts`), and that row is a page the portal can believe, which is what the stand-in
+     (`test/hisPage.ts`) used to say by hand until the twelve keys of the page were declared there. */
 
   /* THE TWO ADDRESSES THAT DRAW SOMETHING ELSE FOR HIM, named rather than skipped. The heading is
      only the signal that the screen has been drawn, and two screens are not the member's own for
