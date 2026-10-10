@@ -148,6 +148,16 @@ import java.util.Optional;
  * set is untouchable. The request record below has no field for them at all, which is the
  * form that cannot be got wrong: there is nothing to ignore.
  *
+ * <p><b>ALL THREE VERBS TURN AWAY A MEMBER WHOSE FEE DOES NOT STAND, AS THEY TURN AWAY AN
+ * ACCOUNT THAT NAMES NO MEMBER.</b> Results are on the list PDL P8 gives of what a member who
+ * has not paid may not do (10.10.2026, „rezultate"), beside the older derivation „Dok članarina
+ * nije izmirena, član ne može da unese rezultat; kad plati, kasniji unos se prima". So each verb
+ * opens with {@link ActiveMemberOrAdministration#activeMember} where it used to ask only whether
+ * the account names a member, before a byte of the body is read, and a member who has never paid
+ * or whose fee has lapsed takes the branch an account naming no member takes. {@link ResultApi}
+ * withholding the running season of a lapsed member from every READER is the other half, and is
+ * unchanged (PDL P11). The decision is quoted in full on {@link ActiveMemberOrAdministration}.
+ *
  * <p><b>WHAT IS DELIBERATELY NOT HERE, each named rather than left to be found.</b>
  *
  * <ul>
@@ -156,11 +166,6 @@ import java.util.Optional;
  * photo} anywhere in {@code src/main} and no upload route of any kind. So the report handed
  * to that class always says there is none, and the day an upload exists is the day this
  * line changes - written down here rather than discovered by whoever writes it.
- * <li><b>Whether the member's fee is current.</b> {@link CommentWriteApi} met the identical
- * question and wrote out at length why no write on this server gates on
- * {@code competitor.active}; gating here alone would be one route enforcing a portal-wide
- * decision by itself. {@link ResultApi} already withholds the running season of a lapsed
- * member from every READER, which is the half that was decided (PDL P11).
  * <li><b>Withdrawing a submission that is still waiting.</b> That is a different row in a
  * different table and a different verb, and PDL keeps them apart: a result is „njegov
  * podatak" and a submission is a question he asked. This class is about {@code result}.
@@ -228,7 +233,8 @@ class ResultWriteApi {
 
 	private final JdbcClient db;
 
-	private final MemberOfAccount memberOfAccount;
+	/** Who is asking, and whether his fee stands: the one question each verb opens with. */
+	private final ActiveMemberOrAdministration readers;
 
 	private final Postman postman;
 
@@ -242,10 +248,10 @@ class ResultWriteApi {
 	 *  statement silently never ran. */
 	private final TransactionTemplate inOneTransaction;
 
-	ResultWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Postman postman, Clock clock,
+	ResultWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, Postman postman, Clock clock,
 			TransactionTemplate inOneTransaction) {
 		this.db = db;
-		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.postman = postman;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
@@ -316,10 +322,11 @@ class ResultWriteApi {
 	@PostMapping(path = "/api/results", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> report(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Ran> sent) throws IOException {
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
-		/* AN ACCOUNT THAT NAMES NO MEMBER, and his body is not read: it is read below, after this
-		   question, and not bound as an argument (register 166). */
+		/* AN ACCOUNT THAT NAMES NO MEMBER, OR A MEMBER WHOSE FEE DOES NOT STAND (see the class
+		   note), and his body is not read: it is read below, after this question, and not bound
+		   as an argument (register 166). */
 		if (me == null) {
 			return awayAtAnOpenAddress();
 		}
@@ -362,7 +369,7 @@ class ResultWriteApi {
 	@PutMapping(path = "/api/results/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> change(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@PathVariable AKey id, WhatWasSent<Correction> sent) throws IOException {
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();
@@ -441,7 +448,7 @@ class ResultWriteApi {
 	@DeleteMapping("/api/results/{id}")
 	ResponseEntity<?> remove(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			@PathVariable AKey id) {
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			throw nothingIsHere();

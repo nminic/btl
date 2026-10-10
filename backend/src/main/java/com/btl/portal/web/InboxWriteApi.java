@@ -54,12 +54,17 @@ import java.util.Optional;
  * denied - so there is nothing else here saying out loud that a write lives at this
  * address, and this is the one door that would.
  *
- * <p><b>WHO MAY WRITE.</b> Whoever is signed in AND has a member behind the account. An
- * account naming no member - „a moderator who does not race, which is the ordinary case
- * and not a fault" (V23) - is told the address is not there, the same nothing
- * {@link InboxApi} and {@link InboxReadApi} answer him, off the same
- * {@link MemberOfAccount} lookup. There is nobody to file the message under:
- * {@code message.from_id} points at {@code competitor} and never at {@code account}.
+ * <p><b>WHO MAY WRITE.</b> Whoever is signed in AND has a member behind the account whose fee
+ * stands. An account naming no member - „a moderator who does not race, which is the ordinary
+ * case and not a fault" (V23) - is told the address is not there, the same nothing
+ * {@link InboxApi} and {@link InboxReadApi} answer him. There is nobody to file the message
+ * under: {@code message.from_id} points at {@code competitor} and never at {@code account}.
+ * And since P8U a member who has never paid, or whose fee has lapsed, is told exactly the same
+ * thing on the same line, off {@link ActiveMemberOrAdministration#activeMember}: a message names
+ * its sender to the member who reads it, which is being seen, and PDL P8 records the road as a
+ * fault in so many words - „Nezavisna recenzija je našla da takav čovek dopire do slanja poruka
+ * u sanduče, i to je kvar a ne rupa u odluci" (19.09.2026). The decision of 10.10.2026 that
+ * closes it is quoted in full on {@link ActiveMemberOrAdministration}.
  *
  * <h2>WHO HE MAY WRITE TO, and every half of it names its source</h2>
  *
@@ -206,52 +211,6 @@ import java.util.Optional;
  * nullable precisely because „The portal itself is a sender too, and it has no row in
  * {@code competitor} at all", while every row THIS class writes fills it and names a
  * member. Nothing here is a second home for any of them.
- * <li><b>REFUSING A MEMBER WHOSE FEE HAS LAPSED. THE OWNER DECIDED IT ON 19.09.2026 AND IT IS
- * NOT ENFORCED HERE, WHICH IS ITSELF THE POINT OF THE DECISION.</b> His words: „Zelim da od
- * svih mesta clan kojem je istekla clanarina moze da pristupa SAMO strani za obnovu clanarine,
- * dok ga verifikator ne odobri. Do tada ionako niko nema i ne treba da ima nacin da ga
- * kontaktira recimo porukom, jer se SVE AKCIJE ZA NJEGA BRANE." So he may not write - and he
- * may not do anything else either.
- * <ul>
- *   <li><b>Which is why a condition in this class would be the wrong shape for a rule this
- *   wide.</b> „Od svih mesta" and „sve akcije" are one rule at every route's door, and the
- *   thing it replaces is exactly a habit of scattered checks. A seventh scattered one written
- *   here would be something the general increment then has to take out, and until it did, this
- *   route would refuse him while every other route let him through - which is the state the
- *   decision exists to end. It is its own increment.
- *   <li><b>And the state it is about is not reachable today, which is measured rather than
- *   assumed.</b> Nothing in {@code backend/src/main} takes {@code active} from true to false:
- *   the only two statements that write it at all are {@link PaymentApi}'s, and both set it
- *   TRUE. A fee that lapses needs the renewal and the expiry that arrive with that same
- *   increment.
- *   <li><b>AND A NEIGHBOURING STATE IS REACHABLE TODAY, WHICH IS A FAULT AND NOT A
- *   QUESTION.</b> {@link RegistrationApi} creates a competitor with {@code active} false and
- *   links him to his account, so somebody who registered and NEVER paid writes a message here
- *   - measured on this branch: 201, and the row really enters {@code message}. That overturns
- *   PDL P8, „Pre placanja clan sme da otvori nalog, ali nigde nije vidljiv i NE MOZE NISTA DA
- *   RADI U SISTEMU", and PDL P21, „„Registrovan a neplacen" nije uloga nego stanje Takmicara:
- *   ima nalog, nigde nije vidljiv i ne moze nista". It is not repaired in this increment by
- *   the owner's decision of 19.09.2026 above: the same hole already stands on {@code main} -
- *   {@link TeamWriteApi} reads {@code active} nowhere, so an unpaid registrant may put a team
- *   forward - and one rule at every door replaces the scattered checks rather than adding
- *   another. It is a debt waiting for that sweep, named here so nobody reads this route's
- *   silence as permission.
- *   <li><b>Signing in is the half that was already decided the other way, and it stays.</b>
- *   {@link com.btl.portal.domain.account.SignIn}: „nothing here reads the member number, the
- *   fee or the {@code active} flag, AND NOTHING MAY BE MADE TO", with V6's reason and the
- *   owner's sentence of 11.08.2026 behind it. So the door that gives him a session is not the
- *   door that is meant to stop him; what the decision of 19.09.2026 asks for is a refusal AFTER
- *   he is signed in, at every route, pointing him at one page.
- *   <li><b>Every place on this portal that reads {@code active} today reads it about somebody
- *   being NAMED in an answer</b>, never about whoever is asking: {@link CompetitorApi}
- *   („where c.active"), {@link AttendanceApi}, {@link PairApi}, {@link CommentApi} (the number
- *   alone), {@link ResultApi} (the season alone), {@link MyApplicationsApi} (the other half).
- *   {@link PairWriteApi} is the one that asks it of the asker, and its own note says the reason
- *   is about PAIRS rather than general. That list is what the new rule replaces.
- * </ul>
- * None of this touches the paragraph above it: what an ANSWER may name is PDL's rule of
- * 13.09.2026, the second form applies, and it is satisfied by the schema whatever is decided
- * about who may act.
  * <li><b>A LENGTH.</b> V13 caps neither {@code subject} nor {@code body}, the portal has no
  * form for writing a message at all - there is no {@code *.form.json} for one and no screen
  * that sends - and no other writing route on this server invents a length either
@@ -345,7 +304,8 @@ class InboxWriteApi {
 
 	private final JdbcClient db;
 
-	private final MemberOfAccount memberOfAccount;
+	/** Who is asking, and whether his fee stands: the one question this route opens with. */
+	private final ActiveMemberOrAdministration readers;
 
 	/**
 	 * The one the rest of this application reads bodies with, asked for rather than made.
@@ -356,9 +316,9 @@ class InboxWriteApi {
 	 */
 	private final ObjectMapper json;
 
-	InboxWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, ObjectMapper json) {
+	InboxWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, ObjectMapper json) {
 		this.db = db;
-		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.json = json;
 	}
 
@@ -454,12 +414,13 @@ class InboxWriteApi {
 	ResponseEntity<?> write(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletRequest request, HttpServletResponse response) throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
 		/* AN ACCOUNT THAT NAMES NO MEMBER, which V23 says is the ordinary case for a
-		   moderator who does not race. There is nobody to send a message FROM, and the
-		   answer is the one InboxApi already gives him on the reading side. ASKED FIRST,
-		   before a byte of what he sent is looked at, for the reason above. */
+		   moderator who does not race, OR A MEMBER WHOSE FEE DOES NOT STAND (PDL P8,
+		   10.10.2026; see the class note). There is nobody to send a message FROM, and the
+		   answer is the one InboxApi already gives an account naming no member on the reading
+		   side. ASKED FIRST, before a byte of what he sent is looked at, for the reason above. */
 		if (me == null) {
 			return away(response);
 		}
