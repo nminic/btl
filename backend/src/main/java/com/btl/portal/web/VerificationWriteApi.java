@@ -200,6 +200,29 @@ import java.util.Set;
  * it" - and the deleting code does not exist yet on either road, so this route would be the
  * first and only place doing it. That is its own work.
  *
+ * <p><b>A DECISION ABOUT A PICTURE IS A DECISION ABOUT THE PICTURE THE MODERATOR SAW, and the
+ * answer says which that was ({@link Answered#seenPhotoId}).</b> PDL, the owner's answer of
+ * 10.10.2026 about approving, in the record's wording: „Odobrava se samo slika koju je moderator
+ * video (odluka nosi otisak; promenjena slika se odbija rečenicom)." And his answer of the same
+ * day about refusing, which he chose between the outcomes offered: „Obe odluke o profilnoj slici,
+ * odobravanje i odbijanje, važe samo za sliku koju je moderator video; ako je slika u međuvremenu
+ * promenjena, odluka se odbija istom rečenicom „Slika je promenjena, pogledaj je ponovo." i red
+ * ostaje." The cost accepted earlier stands beside it unchanged (PDL, 27.09.2026, the boundary
+ * the record names, in its wording and not in a sentence of his): „ako član pregazi sliku dok je
+ * moderator gleda, red mu se promeni pod rukom; po pravilu da red ostaje jedan to je
+ * prihvatljivo." What is new is only what that costs the moderator: until this decision his press
+ * published the NEW picture, which nobody had looked at, and the league has members under age.
+ *
+ * <p><b>HOW IT IS CARRIED OUT IS MY CHOICE AND NOT THE OWNER'S: he chose the outcome.</b> The
+ * claim of the row is the comparison ({@link #write}): the statement that takes the row also
+ * demands that it still holds the picture named, and a miss is told apart from a row decided by
+ * somebody else by reading the row again. A question asked in Java before the claim would be a
+ * check-then-act, the shape {@code VerificationDecisionConcurrencyTest} measured to pass every
+ * sequential case and fail only under concurrency: {@code MePhotoApi.send} repoints the row
+ * under a lock this route does not take until its claim, so only the statement that waits for
+ * that lock sees what the send left. Nothing is asked of the row before the claim except the
+ * shape of the request ({@link #whyThePictureIsNotNamedRight}), which needs no lock.
+ *
  * <p><b>WHAT THE MEMBER IS TOLD, AND WHAT HE IS NOT.</b> A refusal reaches his inbox with
  * the reason in it, from every queue and not only from his profile: PDL P22, 15.08.2026,
  * „Poruka o odbijanju ide sa svih redova verifikacije, ne samo sa trkackog profila". The
@@ -289,6 +312,35 @@ class VerificationWriteApi {
 	private static final String THE_NAME_IS_TAKEN = "Tim sa tim nazivom već postoji.";
 
 	private static final String HE_IS_ALREADY_IN_A_TEAM = "Osnivač je već u nekom timu.";
+
+	/**
+	 * THE PICTURE THE MODERATOR SAW IS NOT THE ONE THE ROW HOLDS NOW: NOTHING IS DECIDED AND THE ROW
+	 * STAYS.
+	 *
+	 * <p>The owner's sentence, PDL 10.10.2026, said whole: „Slika je promenjena, pogledaj je
+	 * ponovo." The same one for both answers, the approval and the refusal („odluka se odbija
+	 * istom rečenicom"). 409 for the reason the head of this class gives: he can see the row, and
+	 * what he asked for cannot happen as he asked it.
+	 *
+	 * <p><b>A sentence of the server, like every refusal of this route, and not a code the screen
+	 * looks up</b> (the head of {@code admin/verificationWrites.ts} says why this route answers in
+	 * words). So the dictionary has no key for it and there is no English one: every other sentence
+	 * of this route is Serbian only as well. The words are the ones of the outcome he chose, so
+	 * they are written here as the record has them, full stop included.
+	 */
+	private static final String THE_PICTURE_WAS_CHANGED = "Slika je promenjena, pogledaj je ponovo.";
+
+	/**
+	 * THE KEY OF A SEEN PICTURE BESIDE A DECISION THAT HAS NO PICTURE: a form fault, so 400.
+	 *
+	 * <p>The rule this route keeps for every field that rides with one kind of decision only
+	 * ({@link #AN_AMENDMENT_GOES_WITH_AN_APPROVED_RUN}, {@link
+	 * #A_RACE_IS_NAMED_ONLY_FOR_A_RUN_NOT_IN_THE_CALENDAR}): taken and quietly dropped, it would
+	 * tell whoever sent it that it was kept. Nothing on the portal sends one there; the sentence is
+	 * for a request that did not come from the screen.
+	 */
+	private static final String A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE =
+			"Viđena slika se zadaje samo uz odluku o slici.";
 
 	/**
 	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD IS NOT APPROVED BY A PLAIN YES: THE ANSWER HAS
@@ -478,8 +530,38 @@ class VerificationWriteApi {
 	 *                 postojeće trke"). How the races to choose from are offered is the screen's
 	 *                 to settle, not this route's: the route takes a key and answers for it. Never
 	 *                 beside {@code newRace}: a run is counted on one race
+	 * @param seenPhotoId the key of the picture the moderator had in front of him when he
+	 *                    answered, which is {@code verification.photo_id} as the queue served it
+	 *                    ({@code photoId}). <b>Asked of EVERY decision about a row that holds a
+	 *                    picture, the refusal as much as the approval</b> (PDL, 10.10.2026: „I
+	 *                    odbijanje slike traži viđenu sliku."), and refused beside any other
+	 *                    ({@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE}). Left out of a
+	 *                    decision about a picture it is a form not filled in, never „do not
+	 *                    check": a field whose absence switched the check off would be a check
+	 *                    anybody could skip (ADL A8, owner, 19.09.2026: „Izostavljeno polje nikad
+	 *                    ne sme tiho da promeni vrednost").
+	 *                    <p><b>The key and not a digest of the bytes, and that is a technical
+	 *                    choice of mine</b> (the owner chose the outcome: „odluka nosi otisak
+	 *                    viđene slike"). It needs nothing new on the queue's answer, because
+	 *                    {@code photoId} is already served and is already what decides that a card
+	 *                    draws a picture at all. And it is the stricter of the two: a key is issued
+	 *                    once and never again, so a picture replaced and then replaced back by the
+	 *                    same bytes is a different picture to it, which a digest would call
+	 *                    unchanged. <b>Its one cost, named so it is not found:</b> the same file
+	 *                    sent again is a new key too, so a decision about the old one is refused
+	 *                    ({@link #THE_PICTURE_WAS_CHANGED}), which is the safe direction.
+	 *                    <p><b>And a limit, also named:</b> a circle moved over the same picture is
+	 *                    NOT a change of key ({@code MePhotoApi.send} moves it on the row that is
+	 *                    there). That is right while the moderator is shown the whole original and
+	 *                    never the circle, which is what the queue draws today (the note on
+	 *                    {@code PhotoApi.waitingOn}). The day it draws the circle as the owner
+	 *                    decided on 27.09.2026 (PDL: „Moderator mora da vidi sliku koju odobrava, i
+	 *                    to kao isečak sa zatamnjenim ostatkom, a ostatak se nazire."), a moved
+	 *                    circle is something he has or has not seen, and this key will not say
+	 *                    which
 	 */
-	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId) {
+	record Answered(Boolean approved, String reason, Amended amended, NewRace newRace, Long raceId,
+			Long seenPhotoId) {
 	}
 
 	/**
@@ -834,6 +916,18 @@ class VerificationWriteApi {
 	private Carried write(Item item, DecidingOnASubmission.Answer answer,
 			WhoIsAsking.Member asking, Answered typed) {
 
+		/* WHAT THE DECISION IS ABOUT IS SETTLED BEFORE ANYTHING IS READ FOR IT, from the request and
+		   the row alone and writing nothing: a decision about a picture names the picture the
+		   moderator saw, and a decision about anything else names none. Whether the row STILL holds
+		   that picture is not asked here. It is asked by the statement that claims the row, further
+		   down, because that is the one place the answer cannot change under the question - the head
+		   of this class says why a question put to the row before it would be a check-then-act. */
+		Optional<ResponseEntity<?>> unnamed = whyThePictureIsNotNamedRight(item, typed);
+
+		if (unnamed.isPresent()) {
+			return new Carried(unnamed.get(), null, null);
+		}
+
 		/* WHAT AN APPROVAL WOULD RUN INTO, ASKED FIRST AND WRITING NOTHING. It has to be
 		   settled before the row is claimed: asked afterwards it would need the transaction
 		   rolled back, and a rollback inside a test-managed transaction poisons the outer one
@@ -927,18 +1021,44 @@ class VerificationWriteApi {
 		 * derives it: a second moderator who meets an item that is held gets a refusal, not a
 		 * silent failure). It is also why every consequence below
 		 * happens AFTER this line and not before it. */
+		/* AND THE PICTURE HE SAW IS THE SECOND CONDITION OF THE SAME CLAIM, for the same reason and
+		 * written where the same lock is. `MePhotoApi.send` repoints `photo_id` on this very row
+		 * under `for update`, so a statement that has to wait for that lock re-reads the row after
+		 * the send has committed: the condition below is evaluated against the picture the member
+		 * LEFT and not against the one this request read a moment earlier. Nothing is asked in Java
+		 * before it, because that would be the check-then-act this class has measured twice.
+		 *
+		 * The two `?` are one value, written twice because a null has no type until it is cast: a
+		 * decision about anything but a picture names none (`whyThePictureIsNotNamedRight`), and
+		 * for those the condition is true whatever the row holds. For a picture it is the key he
+		 * named, and `photo_id = null` in the SET above does not matter to it, because a WHERE is
+		 * evaluated against the row as it stood. */
 		int claimed = db.sql("update verification set state = ?, decided_at = now(),"
 						+ " decided_by = a.id,"
 						+ " decided_by_name = a.first_name || ' ' || a.last_name,"
 						+ " reason = ?, photo_id = null"
 						+ " from account a where verification.id = ? and verification.state = ?"
-						+ " and a.id = ?")
+						+ " and a.id = ?"
+						+ " and (cast(? as bigint) is null or verification.photo_id = ?)")
 				.params(state, DecidingOnASubmission.reasonAsItGoesIn(answer), item.id(),
-						DecidingOnASubmission.WAITING, asking.account())
+						DecidingOnASubmission.WAITING, asking.account(), typed.seenPhotoId(),
+						typed.seenPhotoId())
 				.update();
 
 		if (claimed == 0) {
-			return new Carried(no(HttpStatus.CONFLICT, SOMEBODY_ANSWERED_IT_ALREADY), null, null);
+			/* A MISS HAS TWO CAUSES, and the row says which. Somebody decided it first, which is
+			   what this refusal always meant; or it still waits and holds another picture than the
+			   one he named, which the member's send did while he looked. The second is asked of
+			   the row and not remembered from the request, so that a row decided meanwhile is
+			   never told it was changed: a decided row keeps no picture (V9), so `is distinct
+			   from` could not tell it apart from a changed one without the state beside it. */
+			boolean changed = Boolean.TRUE.equals(db.sql("select exists(select 1 from verification"
+							+ " where id = ? and state = ? and photo_id is distinct from ?)")
+					.params(item.id(), DecidingOnASubmission.WAITING, typed.seenPhotoId())
+					.query(Boolean.class).single());
+
+			return new Carried(no(HttpStatus.CONFLICT,
+					changed ? THE_PICTURE_WAS_CHANGED : SOMEBODY_ANSWERED_IT_ALREADY), null, null);
 		}
 
 		/* AND THE HOLD GOES WITH THE ANSWER. Nothing is being read any more, and a decided
@@ -1002,6 +1122,43 @@ class VerificationWriteApi {
 			db.sql("update competitor set photo_id = ? where id = ?")
 					.params(item.photoId(), item.competitorId()).update();
 		}
+	}
+
+	/**
+	 * WHETHER THE REQUEST NAMES A PICTURE WHERE THERE IS ONE AND NONE WHERE THERE IS NOT, asked of
+	 * the request and the row alone and writing nothing.
+	 *
+	 * <p>Three of the four combinations are a refusal and none of them is about the state of
+	 * anything, which is why they are answered here and the fourth, the picture itself, is not: a
+	 * row that holds one and a request that names none is a form not filled in
+	 * ({@link #THE_FORM_IS_NOT_COMPLETE}, the sentence every body that carries no decision gets),
+	 * and a request that names one beside a row that holds none is a field that rides with the wrong
+	 * decision ({@link #A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE}). Both are 400.
+	 *
+	 * <p><b>Asked of the ROW and not of the queue.</b> {@code PendingQueue.tsx} draws a picture on
+	 * any card whose {@code photoId} is not null, "whichever tab it stands in" (the note on
+	 * {@code WaitingPicture}), and the screen asks the same fact to decide what it sends, so the
+	 * two cannot come apart. Today only the profiles tab ever holds one: {@code MePhotoApi} is the
+	 * one writer. That a team's logo would be decided the same way is my reading and not the
+	 * owner's, who spoke of the profile picture; it costs nothing because nothing writes such a
+	 * row.
+	 *
+	 * <p><b>The same answer for the approval and the refusal</b> (PDL, 10.10.2026: „I odbijanje
+	 * slike traži viđenu sliku."), which is why this takes no {@code answer}: a version that asked
+	 * it only of an approval would leave a refusal that rejects a picture nobody looked at, and
+	 * the owner refused exactly that outcome („Odbijeno: da otisak traži samo odobravanje").
+	 */
+	private static Optional<ResponseEntity<?>> whyThePictureIsNotNamedRight(Item item,
+			Answered typed) {
+
+		if (item.photoId() == null) {
+			return typed.seenPhotoId() == null ? Optional.empty()
+					: Optional.of(no(HttpStatus.BAD_REQUEST, A_SEEN_PICTURE_GOES_WITH_A_DECISION_ABOUT_ONE));
+		}
+
+		return typed.seenPhotoId() == null
+				? Optional.of(no(HttpStatus.BAD_REQUEST, THE_FORM_IS_NOT_COMPLETE))
+				: Optional.empty();
 	}
 
 	/**

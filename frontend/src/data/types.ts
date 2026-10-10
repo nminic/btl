@@ -1086,11 +1086,16 @@ export type PendingItem = {
    *
    * `VerificationApi.Waiting.photoId`, and the only name this row's answer carries
    * that `PendingItem` did not use to have (see `ServedPendingItem` below, where it
-   * used to be added rather than inherited). Never an address: `GET
+   * used to be added rather than inherited). Never the address: `GET
    * /api/verification/{id}/photo` (`PhotoApi.waitingOn`) is keyed by THIS item's own
-   * `id`, not by this number, and answers 404 alike to a moderator with no right over
-   * the row and to a row that never held a picture - the two cannot be told apart
-   * from here, on purpose (ADL A8), so this field says only whether to ask at all.
+   * `id`, not by this number, which follows it only as a query the route does not read
+   * (`admin/verificationWrites.ts`, `photoPath`), and answers 404 alike to a moderator with
+   * no right over the row and to a row that never held a picture - the two cannot be told
+   * apart from here, on purpose (ADL A8), so this field says whether to ask at all and
+   * WHICH picture the card drew. That second is what a decision about the card names
+   * (`VerificationWriteApi.Answered.seenPhotoId`; PDL, 10.10.2026: „Obe odluke o profilnoj
+   * slici, odobravanje i odbijanje, važe samo za sliku koju je moderator video"), and it is
+   * the key and not a digest because it is the number the answer already carried.
    *
    * Null on a proposal (`prop-`) for the same reason `picture` and `crop` are empty
    * on one: nothing this visit makes up locally has a server row to hold a key for.

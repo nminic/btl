@@ -192,8 +192,18 @@ function itemFrom(served: ServedPendingItem): PendingItem {
   }
 }
 
-export function usePending(): ResourceState<PendingItem[]> {
-  const state = useResource<ServedPendingItem[]>('verification')
+/**
+ * @param revision bumped by the queue of cards when the route refuses a decision about a picture,
+ *                 together with the cache dropped, so the list is read again while the screen stays
+ *                 and the card draws the picture the row holds now (`PendingQueue.tsx`,
+ *                 `readTheQueueAgain`): the shape `AskingThisTeam.tsx` reads its own list again in,
+ *                 and the finding of the review of T5 it answers (PENDING, „Odbijanje koje dokazuje
+ *                 da je ekran zastareo ostavlja zastareo crtež"). Left out, as every other caller
+ *                 leaves it, it changes nothing: `undefined` on every render is a dependency that
+ *                 never moves.
+ */
+export function usePending(revision?: number): ResourceState<PendingItem[]> {
+  const state = useResource<ServedPendingItem[]>('verification', { revision })
   const { proposals } = useSession()
 
   return useMemo(

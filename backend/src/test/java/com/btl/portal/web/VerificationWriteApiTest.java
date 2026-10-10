@@ -212,6 +212,19 @@ class VerificationWriteApiTest {
 
 	private static final String THE_REASON = "Slika je mutna, posalji ostriju";
 
+	/** The owner's sentence for a decision about a picture that is not the one he looked at, said
+	 *  whole and with its full stop (PDL, 10.10.2026), and the same for the approval and the
+	 *  refusal. Written out here and not read off the route's constant, so a route that reworded
+	 *  it fails the case instead of agreeing with itself. */
+	private static final String THE_PICTURE_WAS_CHANGED = "Slika je promenjena, pogledaj je ponovo.";
+
+	private static final String THE_FORM_IS_NOT_COMPLETE = "Forma nije popunjena.";
+
+	private static final String A_SEEN_PICTURE_GOES_WITH_A_PICTURE =
+			"Viđena slika se zadaje samo uz odluku o slici.";
+
+	private static final String SOMEBODY_ANSWERED_IT_ALREADY = "O stavci je već odlučeno.";
+
 	/** What Bojan and Vera ran their ten kilometres in. */
 	private static final int AN_HOUR = 3600;
 
@@ -287,6 +300,10 @@ class VerificationWriteApiTest {
 
 	/** The item carrying a picture, which is the only one that ever clears a photo. */
 	private long verasPicture;
+
+	/** The key of the picture {@link #verasPicture} holds: what a moderator who looked at it
+	 *  names when he answers (PDL, 10.10.2026, „odluka nosi otisak"). */
+	private long verasPhoto;
 
 	/** An item about nobody in the record at all. */
 	private long aboutNobody;
@@ -468,7 +485,8 @@ class VerificationWriteApiTest {
 		/* FOUR IN THE PROFILES TAB AND NOT ONE, so „this item" is never „the first item". */
 		waiting("profiles", BOJAN, "Biografija Bojana", "Trcim od 2019.", null);
 		anasText = waiting("profiles", ANA, "Biografija Ane", "Trcim od 2021. godine", null);
-		verasPicture = waiting("profiles", VERA, "Slika Vere", "vera.jpg", photograph());
+		verasPhoto = photograph();
+		verasPicture = waiting("profiles", VERA, "Slika Vere", "vera.jpg", verasPhoto);
 		aboutNobody = waitingAboutNobody("profiles", "Neko ko nije u evidenciji");
 		alreadyAnswered = decided("profiles", BOJAN, "Vec odluceno", "approved", null);
 
@@ -816,7 +834,8 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void aRefusalSaysWhyAndTheReasonReachesThatMemberAndNobodyElse() throws Exception {
-		assertThat(answer(PROFILES_MODERATOR, verasPicture, false, THE_REASON)).isEqualTo(200);
+		assertThat(answerSeeing(PROFILES_MODERATOR, verasPicture, false, THE_REASON, verasPhoto))
+				.isEqualTo(200);
 
 		assertThat(stateOf(verasPicture)).isEqualTo("rejected");
 		assertThat(db.sql("select reason from verification where id = ?")
@@ -931,22 +950,245 @@ class VerificationWriteApiTest {
 	 */
 	@Test
 	void decidingLetsGoOfThePictureAndApprovingOneMakesItHisPortrait() throws Exception {
-		assertThat(answer(PROFILES_MODERATOR, verasPicture, true, null)).isEqualTo(200);
+		assertThat(answerSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto))
+				.isEqualTo(200);
 
 		assertThat(db.sql("select photo_id from verification where id = ?")
 				.param(verasPicture).query(Long.class).optional()).isEmpty();
+		/* THE PICTURE HE NAMED, and not just some picture: a portrait that was any photo row at all
+		   would satisfy „it became his portrait" as well. */
 		assertThat(db.sql("select photo_id from competitor where member_number = ?")
-				.param(VERA).query(Long.class).optional()).isNotEmpty();
+				.param(VERA).query(Long.class).optional()).contains(verasPhoto);
 	}
 
 	@Test
 	void aRefusedPictureIsLetGoOfWithoutBecomingAnybodysPortrait() throws Exception {
-		assertThat(answer(PROFILES_MODERATOR, verasPicture, false, THE_REASON)).isEqualTo(200);
+		assertThat(answerSeeing(PROFILES_MODERATOR, verasPicture, false, THE_REASON, verasPhoto))
+				.isEqualTo(200);
 
 		assertThat(db.sql("select photo_id from verification where id = ?")
 				.param(verasPicture).query(Long.class).optional()).isEmpty();
 		assertThat(db.sql("select photo_id from competitor where member_number = ?")
 				.param(VERA).query(Long.class).optional()).isEmpty();
+	}
+
+	// ----- the picture the moderator saw (PDL, 10.10.2026) -----------------------------------
+
+	/**
+	 * A DECISION ABOUT A PICTURE IS A DECISION ABOUT THE PICTURE HE SAW, AND AN APPROVAL OF ONE
+	 * THE MEMBER HAS SINCE REPLACED PUBLISHES NOTHING.
+	 *
+	 * <p>PDL, the owner's answer of 10.10.2026: „Odobrava se samo slika koju je moderator video
+	 * (odluka nosi otisak; promenjena slika se odbija rečenicom)." Until it, this press published
+	 * whatever the row held when it arrived, and the row is the one a member's second send
+	 * repoints under the moderator's hand (the cost the owner accepted, PDL 27.09.2026).
+	 *
+	 * <p><b>The picture he names is the OLD one and the row holds the NEW one</b>, which is the one
+	 * arrangement in which „the key from the request" and „the key from the row at the moment of
+	 * the press" disagree. A case in which the member sent nothing agrees with a route that reads
+	 * the row, so it measures nothing about the claim (the shape this file's head calls two sources
+	 * of one value). <b>What stands after it is measured on every column the decision writes</b>,
+	 * because „409" alone is also what a route would answer after it had published the picture.
+	 */
+	@Test
+	void anApprovalOfAPictureTheMemberHasSinceReplacedIsRefusedAndTheNewOneIsNotPublished()
+			throws Exception {
+
+		long newer = theMemberSendsAnother(verasPicture);
+
+		MockHttpServletResponse answered =
+				decideSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto);
+
+		assertThat(answered.getStatus())
+				.as("the moderator approved a picture that is no longer the one on the row, and it"
+						+ " was not refused")
+				.isEqualTo(409);
+		assertThat(reasonIn(answered)).isEqualTo(THE_PICTURE_WAS_CHANGED);
+		nothingWasDecided(verasPicture, newer);
+	}
+
+	/**
+	 * AND A REFUSAL OF ONE THE MEMBER HAS SINCE REPLACED IS REFUSED WITH THE SAME WORDS.
+	 *
+	 * <p>PDL, 10.10.2026, the owner choosing between the outcomes offered: „I odbijanje slike traži
+	 * viđenu sliku. Obe odluke o profilnoj slici, odobravanje i odbijanje, važe samo za sliku koju
+	 * je moderator video; ako je slika u međuvremenu promenjena, odluka se odbija istom rečenicom".
+	 * The outcome he turned down is the one the first version of this route had: „da otisak traži
+	 * samo odobravanje (član bi dobio odbijenu sliku koju niko nije pogledao)". <b>So the member
+	 * is told nothing here</b>: a reason typed about one picture must not reach him as the verdict
+	 * on another, and that is what the message count in {@link #nothingWasDecided} holds.
+	 */
+	@Test
+	void aRefusalOfAPictureTheMemberHasSinceReplacedIsRefusedWithTheSameSentenceAndTellsHimNothing()
+			throws Exception {
+
+		long newer = theMemberSendsAnother(verasPicture);
+
+		MockHttpServletResponse answered =
+				decideSeeing(PROFILES_MODERATOR, verasPicture, false, THE_REASON, verasPhoto);
+
+		assertThat(answered.getStatus())
+				.as("the moderator refused a picture that is no longer the one he looked at, and it"
+						+ " was recorded")
+				.isEqualTo(409);
+		assertThat(reasonIn(answered)).isEqualTo(THE_PICTURE_WAS_CHANGED);
+		nothingWasDecided(verasPicture, newer);
+	}
+
+	/**
+	 * A DECISION ABOUT A PICTURE THAT NAMES NONE IS A FORM NOT FILLED IN, FOR BOTH ANSWERS.
+	 *
+	 * <p>A field whose absence switched the check off would be a check anybody could skip (ADL A8,
+	 * owner, 19.09.2026: „Izostavljeno polje nikad ne sme tiho da promeni vrednost"), and so would
+	 * a check that only one of the two answers asks. The two are one loop here so that neither
+	 * can be satisfied by a route that guards the other.
+	 */
+	@Test
+	void aDecisionAboutAPictureThatNamesNoPictureIsAFormNotFilledIn() throws Exception {
+		for (boolean approved : new boolean[] {true, false}) {
+			MockHttpServletResponse answered = decideSeeing(PROFILES_MODERATOR, verasPicture,
+					approved, approved ? null : THE_REASON, null);
+
+			assertThat(answered.getStatus())
+					.as("a decision that named no picture (approved=%s) was taken", approved)
+					.isEqualTo(400);
+			assertThat(reasonIn(answered)).isEqualTo(THE_FORM_IS_NOT_COMPLETE);
+			nothingWasDecided(verasPicture, verasPhoto);
+		}
+	}
+
+	/**
+	 * AND A PICTURE NAMED BESIDE A ROW THAT HOLDS NONE IS REFUSED, which is the rule this route
+	 * keeps for every field that rides with one kind of decision only.
+	 *
+	 * <p>The row is a biography. Taken and dropped, the key would tell whoever sent it that it was
+	 * kept; and the screen sends one only where it drew a picture (`PendingQueue.tsx`), so this is
+	 * a request that did not come from it.
+	 */
+	@Test
+	void aPictureNamedBesideARowThatHoldsNoneIsRefusedForBothAnswers() throws Exception {
+		for (boolean approved : new boolean[] {true, false}) {
+			MockHttpServletResponse answered = decideSeeing(PROFILES_MODERATOR, anasText, approved,
+					approved ? null : THE_REASON, verasPhoto);
+
+			assertThat(answered.getStatus())
+					.as("a key was taken beside a biography (approved=%s)", approved)
+					.isEqualTo(400);
+			assertThat(reasonIn(answered)).isEqualTo(A_SEEN_PICTURE_GOES_WITH_A_PICTURE);
+			assertThat(stateOf(anasText)).isEqualTo("waiting");
+			assertThat(db.sql("select bio from competitor where member_number = ?")
+					.param(ANA).query(String.class).single())
+					.as("the biography was published although the request was refused")
+					.isEmpty();
+		}
+	}
+
+	/**
+	 * THE KEY OF ANOTHER ROW'S PICTURE IS NOT THE PICTURE OF THIS ROW, and neither is a key no
+	 * picture has.
+	 *
+	 * <p>Both are the same refusal as a picture replaced, and the second is not a fault: a
+	 * comparison written as „does a photo with this key exist" accepts the first, and one that
+	 * hands the key to a statement that wants a row would fall over on the second. Vera's row
+	 * holds {@link #verasPhoto}; another member's picture waits beside it, so the key sent is a
+	 * real waiting picture that is simply not hers.
+	 */
+	@Test
+	void theKeyOfAnotherRowsPictureOrOfNoPictureIsNotThePictureOfThisRow() throws Exception {
+		long bojansPhoto = photograph();
+
+		waiting("profiles", BOJAN, "Slika Bojana", "bojan.jpg", bojansPhoto);
+
+		for (long named : new long[] {bojansPhoto, 9_000_000_000L}) {
+			MockHttpServletResponse answered =
+					decideSeeing(PROFILES_MODERATOR, verasPicture, true, null, named);
+
+			assertThat(answered.getStatus())
+					.as("key %d was taken for the picture of Vera's row", named)
+					.isEqualTo(409);
+			assertThat(reasonIn(answered)).isEqualTo(THE_PICTURE_WAS_CHANGED);
+			nothingWasDecided(verasPicture, verasPhoto);
+		}
+	}
+
+	/**
+	 * THE SAME FILE SENT AGAIN IS A NEW PICTURE, and the decision about the old one is refused.
+	 *
+	 * <p>This pins a boundary and does not argue for it. The key is issued once and never again,
+	 * so a picture replaced by one of the same bytes is a different key; the cost is a moderator
+	 * who is asked to look again at what he already saw, and that is the safe direction. A digest
+	 * of the bytes would have called it unchanged, and would also have called unchanged a picture
+	 * replaced and then replaced back. The decision about the new key goes through.
+	 */
+	@Test
+	void theSameFileSentAgainIsANewPictureAndTheDecisionAboutTheOldOneIsRefused() throws Exception {
+		long again = theSameFileSentAgain(verasPicture);
+
+		assertThat(db.sql("select digest from photo where id = ?").param(again)
+				.query(String.class).single())
+				.as("the second picture is not the same file, so this case is about two files")
+				.isEqualTo(db.sql("select digest from photo where id = ?").param(verasPhoto)
+						.query(String.class).single());
+
+		assertThat(decideSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto).getStatus())
+				.isEqualTo(409);
+		nothingWasDecided(verasPicture, again);
+
+		assertThat(decideSeeing(PROFILES_MODERATOR, verasPicture, true, null, again).getStatus())
+				.isEqualTo(200);
+		assertThat(db.sql("select photo_id from competitor where member_number = ?")
+				.param(VERA).query(Long.class).optional()).contains(again);
+	}
+
+	/**
+	 * A CIRCLE MOVED OVER THE SAME PICTURE IS NOT A CHANGE OF PICTURE, and that is a limit
+	 * written down and not a rule recommended.
+	 *
+	 * <p>{@code MePhotoApi.send} moves the circle on the row that is there ("the circle alone moves
+	 * on the row that is already there"), so the key does not move. While the moderator is shown
+	 * the whole original and never the circle that is right; the day the queue draws it as the
+	 * owner decided on 27.09.2026 this case is where somebody finds out the key no longer says
+	 * what he saw. The head of {@code Answered} names it in the same words.
+	 */
+	@Test
+	void aCircleMovedOverTheSamePictureDoesNotChangeWhichPictureHeSaw() throws Exception {
+		db.sql("update photo set crop_x = 0.4, crop_y = 0.6, crop_diameter = 0.3 where id = ?")
+				.param(verasPhoto).update();
+
+		assertThat(answerSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto))
+				.isEqualTo(200);
+		assertThat(db.sql("select photo_id from competitor where member_number = ?")
+				.param(VERA).query(Long.class).optional()).contains(verasPhoto);
+	}
+
+	/**
+	 * A ROW SOMEBODY ELSE DECIDED IS ANSWERED AS DECIDED, and not as a picture that changed or as
+	 * a request that named a picture where the row now holds none.
+	 *
+	 * <p>A decided row keeps no picture (V9), so a late request that still names one meets a row
+	 * for which „a key beside a row that holds none" is true. The refusal that is owed to it is the
+	 * one it always got, and that depends on the state being asked before the key is
+	 * (`DecidingOnASubmission.decide`, ahead of the transaction): moved after it, this answers 400
+	 * about the form of a request that was perfectly well formed when the moderator pressed.
+	 */
+	@Test
+	void aModeratorWhoMeetsAPictureSomebodyElseDecidedIsToldSoAndNotThatItChanged()
+			throws Exception {
+
+		assertThat(answerSeeing(PROFILES_MODERATOR, verasPicture, true, null, verasPhoto))
+				.isEqualTo(200);
+
+		for (boolean approved : new boolean[] {true, false}) {
+			MockHttpServletResponse late = decideSeeing(THE_OTHER_PROFILES_MODERATOR, verasPicture,
+					approved, approved ? null : THE_REASON, verasPhoto);
+
+			assertThat(late.getStatus()).as("late answer, approved=%s", approved).isEqualTo(409);
+			assertThat(reasonIn(late)).isEqualTo(SOMEBODY_ANSWERED_IT_ALREADY);
+		}
+
+		assertThat(stateOf(verasPicture)).isEqualTo("approved");
+		assertThat(db.sql("select photo_id from competitor where member_number = ?")
+				.param(VERA).query(Long.class).optional()).contains(verasPhoto);
 	}
 
 	/**
@@ -2939,6 +3181,89 @@ class VerificationWriteApiTest {
 		return http.perform(asking(email, post(decision(id)))
 						.contentType(MediaType.APPLICATION_JSON).content(body))
 				.andReturn().getResponse();
+	}
+
+	/**
+	 * A DECISION ABOUT A PICTURE, written out whole so that what it names is exactly what the case
+	 * names: {@code seen} is the key of the picture the moderator looked at, and left out when it
+	 * is {@code null}. The key is NEVER read off the row here, which is what every case about the
+	 * picture he saw depends on: a helper that looked it up at the moment of the press would be
+	 * the very route this case is written against.
+	 */
+	private MockHttpServletResponse decideSeeing(String email, long id, boolean approved,
+			String reason, Long seen) throws Exception {
+
+		String body = "{\"approved\":" + approved
+				+ (reason == null ? "" : ",\"reason\":\"" + reason + "\"")
+				+ (seen == null ? "" : ",\"seenPhotoId\":" + seen) + "}";
+
+		return decideWith(email, id, body);
+	}
+
+	private int answerSeeing(String email, long id, boolean approved, String reason, Long seen)
+			throws Exception {
+
+		return decideSeeing(email, id, approved, reason, seen).getStatus();
+	}
+
+	/**
+	 * WHAT A MEMBER'S SECOND SEND DOES TO THE ROW THAT WAITS (`MePhotoApi.send`, PDL 27.09.2026):
+	 * the pointer moves to a new picture and the row keeps its key, so a moderator who has the row
+	 * open is holding a row that now names another picture. The old picture is not deleted here:
+	 * the database does that at the end of a transaction (V54) and these cases never commit.
+	 *
+	 * @return the key of the picture the row holds now
+	 */
+	private long theMemberSendsAnother(long item) {
+		long other = photograph();
+
+		db.sql("update verification set photo_id = ? where id = ?").params(other, item).update();
+
+		return other;
+	}
+
+	/** The same, with the bytes the row already held: a new picture with the old one's digest. */
+	private long theSameFileSentAgain(long item) {
+		long again = db.sql("insert into photo (media_type, byte_size, digest, crop_x, crop_y,"
+						+ " crop_diameter) select media_type, byte_size, digest, crop_x, crop_y,"
+						+ " crop_diameter from photo where id ="
+						+ " (select photo_id from verification where id = ?) returning id")
+				.param(item).query(Long.class).single();
+
+		db.sql("update verification set photo_id = ? where id = ?").params(again, item).update();
+
+		return again;
+	}
+
+	/**
+	 * EVERYTHING A DECISION WRITES, AND NONE OF IT IS THERE: the row still waits, still holds the
+	 * picture it held, carries no trace of an answer, nothing was published on Vera's profile, and
+	 * nothing was written to her. Asked of every column on purpose, because a refusal that had
+	 * already claimed the row would answer the same status.
+	 *
+	 * @param holding the key of the picture the row should be holding now
+	 */
+	private void nothingWasDecided(long item, long holding) {
+		assertThat(stateOf(item)).as("the row was decided although the decision was refused")
+				.isEqualTo("waiting");
+		assertThat(db.sql("select photo_id from verification where id = ?").param(item)
+				.query(Long.class).single())
+				.as("the row does not hold the picture it held before the refused decision")
+				.isEqualTo(holding);
+		assertThat(db.sql("select count(*) from verification where id = ? and decided_at is null"
+						+ " and decided_by is null and decided_by_name is null and reason is null")
+				.param(item).query(Integer.class).single())
+				.as("a column of the decision was written although it was refused")
+				.isEqualTo(1);
+		assertThat(db.sql("select photo_id from competitor where member_number = ?")
+				.param(VERA).query(Long.class).optional())
+				.as("a picture was published on Vera's profile although the decision was refused")
+				.isEmpty();
+		assertThat(db.sql("select count(*) from message where to_id ="
+						+ " (select id from competitor where member_number = ?)")
+				.param(VERA).query(Integer.class).single())
+				.as("Vera was written to although the decision was refused")
+				.isZero();
 	}
 
 	private String reasonIn(MockHttpServletResponse response) throws Exception {

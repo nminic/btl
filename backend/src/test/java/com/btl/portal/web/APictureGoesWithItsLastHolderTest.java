@@ -729,12 +729,25 @@ class APictureGoesWithItsLastHolderTest {
 				.andReturn().getResponse();
 	}
 
+	/**
+	 * A MODERATOR DECIDING THE PICTURE THE ROW HOLDS WHEN THE CASE PRESSES, which is the only
+	 * sense in which this file decides anything.
+	 *
+	 * <p>A decision about a picture names the picture the moderator saw (PDL, 10.10.2026), and the
+	 * key is read off the row here, at the moment of the call. That is the one place in the suite
+	 * where it is allowed to be, and the reason is that no case in this file is about WHICH picture
+	 * he saw: each is about where a file goes when a row is decided or deleted, and each presses
+	 * on the row it has just made. The cases that ARE about the key name it from outside the row,
+	 * in {@code VerificationWriteApiTest}.
+	 */
 	private MockHttpServletResponse deciding(long item, boolean approved, String reason)
 			throws Exception {
 
-		String body = reason == null
-				? "{\"approved\":" + approved + "}"
-				: "{\"approved\":" + approved + ",\"reason\":\"" + reason + "\"}";
+		Long held = db.sql("select photo_id from verification where id = ?").param(item)
+				.query(Long.class).optional().orElse(null);
+		String body = "{\"approved\":" + approved
+				+ (reason == null ? "" : ",\"reason\":\"" + reason + "\"")
+				+ (held == null ? "" : ",\"seenPhotoId\":" + held) + "}";
 
 		return http.perform(asModerator(post("/api/verification/" + item + "/decision"))
 						.contentType(MediaType.APPLICATION_JSON).content(body))

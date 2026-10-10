@@ -18,7 +18,15 @@ import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
 import { WhatTheServerSaid } from './WhatTheServerSaid'
 import { clearResourceCache } from '../../data/client'
-import { aRefusal, anApproval, decisionPath, photoPath } from './verificationWrites'
+import {
+  aRefusal,
+  aRefusalOfThePicture,
+  anApproval,
+  anApprovalOfThePicture,
+  decisionPath,
+  photoPath,
+  type Answered,
+} from './verificationWrites'
 import { usePending, WAITING, waitingIn } from './pending'
 import { recordKey } from '../../session/context'
 import type { PendingItem, Team } from '../../data/types'
@@ -93,6 +101,25 @@ function isProposal(id: string): boolean {
   return id.startsWith('prop-')
 }
 
+/**
+ * THE DECISIONS A CARD SENDS, each naming the picture the card drew where it drew one.
+ *
+ * <p>PDL, the owner's answer of 10.10.2026: „Obe odluke o profilnoj slici, odobravanje i
+ * odbijanje, važe samo za sliku koju je moderator video". What a card drew is `photoId`, the one
+ * fact `WaitingPicture` gates the picture on, so the two cannot come apart: a card that draws a
+ * picture sends its key with BOTH answers, and one that draws none sends none (the route answers
+ * 400 to a key beside a row that holds no picture, and to a picture's decision without one).
+ * Asked here once for the three doors that decide - a card's own Odobri, the sweep, and the box
+ * that hands a card back - so that none of them can spell it its own way.
+ */
+function approvalOf(one: PendingItem): Answered {
+  return one.photoId === null ? anApproval() : anApprovalOfThePicture(one.photoId)
+}
+
+function refusalOf(one: PendingItem, reason: string): Answered {
+  return one.photoId === null ? aRefusal(reason) : aRefusalOfThePicture(reason, one.photoId)
+}
+
 /** Whether a queue has a second decision that hands the work back to its
  *  author. Four of the five, and both sorts on the racing profile: a text is
  *  refused with a reason and a picture with an instruction precise enough to
@@ -138,8 +165,13 @@ function Refused({ why, id }: { why: string | null; id: string }) {
  * belongs on the card it is about: the sweep asks about forty and the one that was
  * refused is still among them, so a sentence drawn anywhere else would be a reason
  * beside the wrong picture.
+ *
+ * <p>With the queue it was refused in, because one mounted screen serves the three queues
+ * (`app/routeObjects.tsx` carries no `key`) and a sentence about a card the list no longer
+ * holds is drawn over the list (`saidOfNoCard`): without the queue it would be drawn over
+ * whichever queue the moderator moved to.
  */
-type ServerRefusal = { id: string; answer: Exclude<Answer, { got: 'done' }> }
+type ServerRefusal = { id: string; queue: string; answer: Exclude<Answer, { got: 'done' }> }
 
 /** The three marks a comment carries, as they are read everywhere else: not a
  *  control, and each one says its number in words for anybody who cannot see the
@@ -222,6 +254,18 @@ function RatingGiven({ rating }: { rating: EventRating }) {
  * stays silent exactly as before - it never had a picture to fail, so there is
  * nothing to report missing.
  *
+ * <p><b>THE ADDRESS CARRIES `photoId`, SO THAT THE PICTURE DRAWN AND THE PICTURE NAMED ARE ONE
+ * VALUE READ ONCE (PDL, 10.10.2026: „Odobrava se samo slika koju je moderator video").</b> A
+ * decision from this card names `photoId` (`approvalOf`, `refusalOf`), and the route refuses it
+ * when the row holds another picture. After that refusal the list is read again and the card
+ * holds a new `photoId`; the row's address (`/api/verification/{id}/photo`) is the same
+ * character for character, so without the number in it the `<img>` would keep its `src`, keep its
+ * element and draw the old pixels beside a decision that names the new picture - the moderator
+ * would be asked to „pogledaj je ponovo" over a picture that did not change on his screen, and the
+ * next press would approve what he never saw. With the number in it the `src` moves with the
+ * fact it stands for, and a request for a new address is the one thing a browser cannot answer
+ * from its own memory.
+ *
  * <p><b>`broken` is a prop and never state of its own, unlike before this
  * decision.</b> The Approve button beside this card has to read the identical
  * fact this paragraph draws a sentence about - it is disabled while a picture
@@ -273,7 +317,7 @@ function WaitingPicture({
   return (
     <img
       className="pending__picture"
-      src={photoPath(item.id)}
+      src={photoPath(item.id, item.photoId)}
       alt={t('verification.pictureAlt', { who: item.who })}
       onError={onBroken}
     />
@@ -521,10 +565,15 @@ export function PendingQueue({ queue }: { queue: Queue }) {
    * that has already asked it and cannot unask.
    */
   const brokenPicturesRef = useRef<ReadonlySet<string>>(new Set())
+  /**
+   * How many times the list has been read again because the route refused a decision about a
+   * picture (`readTheQueueAgain`); bumping it is what reads it again while the screen stays.
+   */
+  const [revision, setRevision] = useState(0)
   /* The teams as well, for one rule: a name already in the league cannot be
      taken by a proposal (PDL P13). Read through what this visit has entered, so
      two proposals of the same name in one sitting cannot both go through. */
-  const state = combinePair(usePending(), useTeams())
+  const state = combinePair(usePending(revision), useTeams())
   /* The members, for the one rule a team proposal cannot be decided without:
      a member is in one team at a time (PDL P13), so a proposal from somebody who
      already has one cannot be approved. Read through the overlay like everything
@@ -558,6 +607,29 @@ export function PendingQueue({ queue }: { queue: Queue }) {
         : t('verification.waitingForMembers')
       : null
   const decisionUnknown = whyNoDecision !== null
+
+  /**
+   * THE LIST READ AGAIN, after the route refused a decision about a picture.
+   *
+   * <p>A refusal in the route's own words about a card that drew a picture says the screen is
+   * not looking at the queue any more: the member sent another while the moderator looked
+   * („Slika je promenjena, pogledaj je ponovo.", PDL, 10.10.2026), or somebody else decided the
+   * row, or holds it. Left as it was, the card would go on drawing the picture it drew and naming
+   * its key, and the next press would be refused the same way for ever. The cached answer is
+   * dropped and the revision bumped, which is what reads it again while this screen stays
+   * mounted: dropped alone, the screen would go on drawing the answer it holds
+   * (`data/useResource.ts`, `revision`). It is the fix of the review of T5, for the queue of
+   * cards (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež"), and
+   * `ReviewQueue.tsx` makes it for the queue of results.
+   *
+   * <p>Asked only of a decision about a CARD THAT DREW A PICTURE, and that is the extent of what
+   * was asked and not a finding that no other refusal here proves a list stale. A refusal about a
+   * biography or a team is left to say what it says over a card that stays where it was.
+   */
+  const readTheQueueAgain = (): void => {
+    clearResourceCache('verification')
+    setRevision((was) => was + 1)
+  }
 
   /**
    * Approving, one item or forty, with everything the next one has to know.
@@ -611,6 +683,9 @@ export function PendingQueue({ queue }: { queue: Queue }) {
       const inATeam = organisers(allMembers, teams)
       const refusals: ServerRefusal[] = []
       let done = 0
+      /* Whether the route refused, in its own words, a decision about a card that drew a picture:
+         asked once for the whole walk, after it (`readTheQueueAgain`). */
+      let pictureRefused = false
 
       for (const one of items) {
         /* PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the
@@ -672,10 +747,14 @@ export function PendingQueue({ queue }: { queue: Queue }) {
          * this whole screen decided everything before this increment: locally, and
          * at once. */
         if (!isProposal(one.id)) {
-          const answer = await askTheServer(decisionPath(one.id), anApproval())
+          const answer = await askTheServer(decisionPath(one.id), approvalOf(one))
 
           if (answer.got !== 'done') {
-            refusals.push({ id: one.id, answer })
+            refusals.push({ id: one.id, queue: one.queue, answer })
+
+            if (answer.got === 'refused' && one.photoId !== null) {
+              pictureRefused = true
+            }
 
             continue
           }
@@ -846,6 +925,12 @@ export function PendingQueue({ queue }: { queue: Queue }) {
         clearResourceCache('verification')
       }
 
+      /* AND READ AGAIN WHERE THE ROUTE REFUSED A DECISION ABOUT A PICTURE, once for the whole
+         walk: the cards it left standing then draw what the rows hold now (`readTheQueueAgain`). */
+      if (pictureRefused) {
+        readTheQueueAgain()
+      }
+
       /* The first of them, on the card it is about, or nothing where every press went
          through - which is also what takes a sentence about the last press off the
          screen. */
@@ -954,11 +1039,19 @@ export function PendingQueue({ queue }: { queue: Queue }) {
        carry an id of this shape (`@PathVariable long id`). Handed back locally,
        exactly as every queue was decided before server-recorded decisions existed. */
     if (!isProposal(one.id)) {
-      const answer = await askTheServer(decisionPath(one.id), aRefusal(reason))
+      const answer = await askTheServer(decisionPath(one.id), refusalOf(one, reason))
 
       if (answer.got !== 'done') {
-        sayIt({ id: one.id, answer })
+        sayIt({ id: one.id, queue: one.queue, answer })
         putTheBoxAway(one)
+
+        /* A refusal of a picture that moved on says the list is stale as the approval's does
+           (`readTheQueueAgain`), and it reads it again for the same reason: the box has just
+           closed over the reason he typed about a picture that is not on the row any more, and
+           the card must draw the one that is before he writes another. */
+        if (answer.got === 'refused' && one.photoId !== null) {
+          readTheQueueAgain()
+        }
 
         return
       }
@@ -1207,6 +1300,18 @@ export function PendingQueue({ queue }: { queue: Queue }) {
 
                 <Swept count={swept} />
               </div>
+
+              {/* A SENTENCE ABOUT A CARD THE LIST NO LONGER HOLDS, said over the list where the card
+                  stood. It is what a refusal that read the list again leaves when the card it was
+                  about was decided by somebody else (`readTheQueueAgain`): the card goes with the
+                  list it was in, and without this the moderator would watch it go with no word about
+                  why - the shape `ReviewQueue.tsx` gives the same case (`saidOfNoRow`). Of THIS queue
+                  only, because one mounted screen serves all three. */}
+              {said !== null &&
+                said.queue === queue.id &&
+                !waiting.some((one) => one.id === said.id) && (
+                  <WhatTheServerSaid answer={said.answer} />
+                )}
 
               {waiting.length === 0 ? (
                 <p className="profile__empty">{t('verification.empty')}</p>

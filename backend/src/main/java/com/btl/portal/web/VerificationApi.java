@@ -204,8 +204,11 @@ import java.util.List;
  * photograph on QA WITHOUT SEEING IT, this queue never having drawn one. <b>This paragraph
  * exists because the one above it, left alone, reads as „the moderator cannot be shown the
  * picture"</b>, which is the fault that increment closed rather than a rule it kept. The
- * {@code photoId} this answer already carries is the key of the row, not an address, and
- * still nothing the portal reads.
+ * {@code photoId} this answer already carries is the key of the picture the row holds and
+ * not an address (the address is the row's own, with this number after a question mark that
+ * the route does not read). <b>Since 10.10.2026 the portal reads it as the picture the card
+ * drew</b>: a decision about the row names it, and {@link VerificationWriteApi} refuses a
+ * decision about any other (PDL: „Odobrava se samo slika koju je moderator video").
  *
  * <p><b>WHAT USED TO COST AN ACTION AND NOT AN EMPTY BOX, until 22.09.2026 (ADL A64).</b>
  * That is measured rather than described, and it is kept here rather than deleted because
@@ -402,7 +405,10 @@ class VerificationApi {
 	 *                     one tab's town beside another tab's country is the one shape that
 	 *                     looks right and is not
 	 * @param photoId      the picture while there still is one, and nothing where the tab
-	 *                     carries none
+	 *                     carries none. It is what a decision about the row names, as the
+	 *                     picture the moderator saw ({@code seenPhotoId} of {@code
+	 *                     VerificationWriteApi.Answered}), so it must be the key of the
+	 *                     picture the card draws and nothing else
 	 * @param rating       what a member thought of the event, on the comments tab and
 	 *                     {@code NO_RATING} - nought on all three marks - everywhere else,
 	 *                     off {@code comment_submission} (V30). The portal's own default
