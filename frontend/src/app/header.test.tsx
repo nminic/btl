@@ -488,7 +488,6 @@ function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNum
     makePair: vi.fn(),
     breakPair: vi.fn(),
     close: vi.fn(),
-  amend: vi.fn(),
     submit: vi.fn(),
     resubmit: vi.fn(),
     decide: vi.fn(),

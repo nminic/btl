@@ -1675,14 +1675,13 @@ class VerificationApiTest {
 	 * <p><b>And one name is answered that the portal does not read</b>, {@code photoId}, which
 	 * is V9's own column. It is the one thing there will be to revisit the day A60 is.
 	 *
-	 * <p><b>Beside it stand the eight a waiting run answers with</b> ({@code raceId},
-	 * {@code raceDate}, {@code raceKind}, the four figures and {@code link}; the class note on
-	 * {@code VerificationApi} says what each is). They are answered BEFORE the portal reads them,
-	 * and in that order on purpose: the results tab still reads its rows out of the browser's
-	 * session, and the screen half of this increment is what moves the tab onto this resource and
-	 * puts a run into {@code verification.json}. The day it does, the eight leave this list -
-	 * and {@code Answers} then refuses them here, because a name the served file already carries
-	 * cannot also be „answered on purpose", which is what turns them from allowed into required.
+	 * <p><b>The eight a waiting run answers with stood beside it for one increment</b>
+	 * ({@code raceId}, {@code raceDate}, {@code raceKind}, the four figures and {@code link}; the
+	 * class note on {@code VerificationApi} says what each is). The server answered them before the
+	 * portal read them, and they left this list with the screen half of R1 of the results flows,
+	 * when {@code verification.json} began to carry all eight on every item. {@code Answers}
+	 * refuses a name the served file carries from being „answered on purpose", so they are no
+	 * longer allowed here but required: an answer that dropped one of them fails this case.
 	 *
 	 * <p><b>{@code Answers} checks both halves of every name</b> - that the file really serves
 	 * it, so a stale name cannot excuse a field that went missing for another reason, and that
@@ -1695,8 +1694,7 @@ class VerificationApiTest {
 	@Test
 	void everyFieldThePortalReadsIsOneTheServerAnswersWith() throws Exception {
 		Answers.everyFieldThePortalReadsIsAnswered(PATH, everyItemServedTo(THE_SUPERADMIN),
-				"verification.json", Set.of("photoId", "raceId", "raceDate", "raceKind",
-						"distanceKm", "ascentM", "descentM", "seconds", "link"),
+				"verification.json", Set.of("photoId"),
 				"picture", "crop", "email");
 	}
 

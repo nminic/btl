@@ -172,10 +172,11 @@ describe('the names the portal composes out of a list', () => {
     {
       of: 'verification.body',
       each: [
-        ...PENDING_QUEUE_IDS.filter((id) => id !== 'payments' && id !== 'profiles'),
-        /* And one per sort of thing the racing profile holds, off the same list
-           the screen reads (data/types.ts). */
-        ...ITEM_KINDS.filter((kind) => kind !== ''),
+        ...PENDING_QUEUE_IDS.filter((id) => id !== 'results' && id !== 'payments' && id !== 'profiles'),
+        /* And one per sort of thing the racing profile and the teams hold, off the same
+           list the screen reads (data/types.ts). Not the correction: it is a sort on the
+           results, whose screen is a table and draws no card with text. */
+        ...ITEM_KINDS.filter((kind) => kind !== '' && kind !== 'correction'),
       ],
     },
     { of: 'pricing.rows', each: [...PRICES, JUNIOR].map((row) => row.key) },

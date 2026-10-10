@@ -41,6 +41,7 @@ type Landing =
 
 const RESULTS = join(WEB, 'ResultWriteApi.java')
 const RACES = join(WEB, 'RaceWriteApi.java')
+const DECISIONS = join(WEB, 'VerificationWriteApi.java')
 
 /**
  * WHERE EVERY NUMBER FIELD OF EVERY FORM LANDS.
@@ -50,6 +51,13 @@ const RACES = join(WEB, 'RaceWriteApi.java')
  * six tenths of a second). A result is written by two routes, `POST /api/results` (`Ran`) and
  * `PUT /api/results/{id}` (`Correction`), and the form that asks for it reaches both. A member's
  * first season has no route that writes it, so it is held to its column.
+ *
+ * <p>And a third road since R1 of the results flows: a moderator approving a run at figures of his
+ * own (`POST /api/verification/{id}/decision`, `Amended`) is handed the very boxes the member's
+ * form on a race of that kind asks (`pages/admin/amendFields.ts`, through
+ * `pages/event/reportForm.ts`), which are the three measurements of `unos-rezultata` and the time
+ * of `prijava-sa-trke`. So those six land in `Amended` as well, and a figure kept whole on one road
+ * and with decimals on the other fails here.
  */
 const LANDS_IN: Record<string, Landing[]> = {
   'admin-cena.eur': [{ file: join(WEB, 'PricingWriteApi.java'), record: 'TheForm', component: 'eur' }],
@@ -65,20 +73,32 @@ const LANDS_IN: Record<string, Landing[]> = {
   'admin-trka.distanceKm': [{ file: RACES, record: 'Upsert', component: 'distanceKm' }],
   'admin-trka.ascentM': [{ file: RACES, record: 'Upsert', component: 'ascentM' }],
   'admin-trka.descentM': [{ file: RACES, record: 'Upsert', component: 'descentM' }],
-  'prijava-sa-trke.hours': [{ file: RESULTS, record: 'Ran', component: 'seconds' }],
-  'prijava-sa-trke.minutes': [{ file: RESULTS, record: 'Ran', component: 'seconds' }],
-  'prijava-sa-trke.seconds': [{ file: RESULTS, record: 'Ran', component: 'seconds' }],
+  'prijava-sa-trke.hours': [
+    { file: RESULTS, record: 'Ran', component: 'seconds' },
+    { file: DECISIONS, record: 'Amended', component: 'seconds' },
+  ],
+  'prijava-sa-trke.minutes': [
+    { file: RESULTS, record: 'Ran', component: 'seconds' },
+    { file: DECISIONS, record: 'Amended', component: 'seconds' },
+  ],
+  'prijava-sa-trke.seconds': [
+    { file: RESULTS, record: 'Ran', component: 'seconds' },
+    { file: DECISIONS, record: 'Amended', component: 'seconds' },
+  ],
   'unos-rezultata.distanceKm': [
     { file: RESULTS, record: 'Ran', component: 'distanceKm' },
     { file: RESULTS, record: 'Correction', component: 'distanceKm' },
+    { file: DECISIONS, record: 'Amended', component: 'distanceKm' },
   ],
   'unos-rezultata.ascentM': [
     { file: RESULTS, record: 'Ran', component: 'ascentM' },
     { file: RESULTS, record: 'Correction', component: 'ascentM' },
+    { file: DECISIONS, record: 'Amended', component: 'ascentM' },
   ],
   'unos-rezultata.descentM': [
     { file: RESULTS, record: 'Ran', component: 'descentM' },
     { file: RESULTS, record: 'Correction', component: 'descentM' },
+    { file: DECISIONS, record: 'Amended', component: 'descentM' },
   ],
   'unos-rezultata.hours': [
     { file: RESULTS, record: 'Ran', component: 'seconds' },

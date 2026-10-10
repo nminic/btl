@@ -257,6 +257,17 @@ export const aWaitingItem = {
   country: 'RS',
   photoId: null,
   rating: { organisation: 0, value: 0, ambience: 0 },
+  /* The run a result waits with, which the server answers on every item since R1 of the
+     results flows and fills on the results tab alone, so a teams row carries all eight
+     empty: nothing for a number or a day, and the empty string for text. */
+  raceId: null,
+  raceDate: null,
+  raceKind: '',
+  distanceKm: null,
+  ascentM: null,
+  descentM: null,
+  seconds: null,
+  link: '',
 }
 
 /**

@@ -3,25 +3,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { formatShortDate } from '../i18n/format'
 import sr from '../i18n/sr.json'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { dogadjaj } from '../forms/definitions'
-import { limitOf } from '../forms/records'
-import { MemoryRouter } from 'react-router'
-import { PageMetaContext } from '../app/pageMetaContext'
-import { ClockProvider } from '../clock/ClockProvider'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { JUNIOR, PRICES, PROCESSING_FEE_EUR } from '../data/pricing'
 import servedPrices from '../test/mock/pricing.json'
 import { did, refused, serverThat } from '../test/serverAnswers'
-import { I18nProvider } from '../i18n/I18nProvider'
 import { translate } from '../i18n/translate'
-import { RoleProvider } from '../roles/RoleProvider'
-import {
-  SessionContext,
-  type SessionValue,
-  type Submission,
-  type SubmissionStatus,
-  type Creations,
-} from '../session/context'
 import { Decided } from '../test/decided'
 import { at, first, inputElement, must } from '../test/at'
 import { expectFrontPage, moderatorWith, renderAt } from '../test/render'
@@ -31,8 +17,6 @@ import { ENTITIES } from './admin/entityList'
 import type { PendingItem, PendingQueueId } from '../data/types'
 import { NO_RATING } from '../data/types'
 import { canSendBack, countFor, QUEUE, QUEUES, returned } from './admin/queues'
-import { ReviewQueue } from './admin/ReviewQueue'
-import { ASKED } from './admin/amendFields'
 import {
   ipsPayload,
   methodsFor,
@@ -41,105 +25,6 @@ import {
   RECIPIENT_ACCOUNT,
   RECIPIENT_NAME,
 } from '../data/paymentQr'
-
-/** A session holding results in the states the queue has to tell apart. */
-function sessionWith(states: SubmissionStatus[], loose: number[] = []): SessionValue {
-  return {
-    memberNumber: '000007',
-    signIn: vi.fn(),
-    account: null,
-    theServerSignedMeIn: vi.fn(),
-    /* True, because this session is handed to a screen that is already on screen, and the
-       moment this field exists for is the one BEFORE anything is drawn at all
-       (`pages/admin/Guard.tsx`, `pages/admin/beforeTheAnswer.test.tsx`). A case built here
-       is not about that moment, and saying so is not the same as leaving it out. */
-    theServerHasAnswered: true,
-    theServerAnswered: vi.fn(),
-    myMembershipBasis: null,
-    /* Null all three, because this session is built for a screen that reads none of
-       them: what „Moja članarina" gets off `GET /api/me` since 25.09.2026 has no
-       reader here. Named rather than left out because the type names them, which is the
-       only thing that tells anybody a field was added to the answer. */
-    myCountry: null,
-    myFirstSeason: null,
-    myTeamId: null,
-    myReferralCode: null,
-    myReferredCount: null,
-    signedIn: { as: 'member', memberNumber: '000007' },
-    signOut: vi.fn(),
-    withdraw: vi.fn(),
-    amend: vi.fn(),
-    invitations: [],
-    invite: vi.fn(),
-    pairInvites: [],
-    invitePair: vi.fn(),
-    closePairInvite: vi.fn(),
-    pairsMade: [],
-    pairsBroken: [],
-    makePair: vi.fn(),
-    breakPair: vi.fn(),
-    close: vi.fn(),
-    corrected: {},
-    submissions: states.map((status, index) => ({
-      id: `sub-${index}`,
-      memberNumber: '000007',
-      raceName: 'Probna trka',
-      /* The race the calendar holds for it, on every road but one: a member who
-         typed a name the calendar does not hold sends none, and `loose` names
-         which of these stand for that. */
-      ...(loose.includes(index) ? {} : { raceId: 1 }),
-      raceKind: 'length',
-      city: 'Niš',
-      country: 'RS',
-      /* No event on it, which is every submission a member sends: they are asked
-         one name and it is the race's. The one case about an event the
-         administration has already settled patches it in. */
-      /* Nothing here was corrected; these are results a moderator is deciding
-         for the first time. */
-      corrected: false,
-      date: '2026-05-10',
-      distanceKm: 10,
-      ascentM: 0,
-      descentM: 0,
-      seconds: 2700,
-      points: 12,
-      photo: '',
-      /* Not what `categoryOf(10)` gives, so a record that copies this instead of
-         working it out can be told from one that does. */
-      category: 'marathon' as const,
-      link: 'https://primer.rs/r',
-      comment: '',
-      status,
-      note: '',
-    })),
-    submit: vi.fn(),
-    resubmit: vi.fn(),
-    decide: vi.fn(),
-    inbox: [],
-    applications: [],
-    apply: vi.fn(),
-    answer: vi.fn(),
-    markRead: vi.fn(),
-    notify: vi.fn(),
-    edits: {},
-    edit: vi.fn(),
-    editRecord: vi.fn(),
-    creations: {},
-    create: vi.fn(),
-    rights: {},
-    setRight: vi.fn(),
-    decisions: {},
-    settle: vi.fn(),
-    deletions: {},
-    remove: vi.fn(),
-    proposals: [],
-    propose: vi.fn(),
-    pictureSent: null,
-    sendPicture: vi.fn(),
-    published: [],
-    publish: vi.fn(),
-  }
-}
 
 const dictionary = sr
 
@@ -1203,7 +1088,8 @@ describe('payment payloads', () => {
 
      The RULE they were about is not gone and is not left unmeasured: `refusalTo` still
      decides who a refusal reaches, and `ReviewQueue.tsx` still asks it on the queue of
-     results, where both halves are still live. What went is this screen's reading of it. */
+     results for the words over the box (the line in the member's inbox is written by the
+     server there since R1 of the results flows). What went is this screen's reading of it. */
 
   it('takes a statement in PDF and says what it did with it', async () => {
     const user = setupUser()
@@ -1393,916 +1279,21 @@ describe('an empty queue', () => {
   })
 })
 
-/** The day the results queue is read as. Any day; what matters is that the
- *  refusal it sends is dated from the portal's own clock and not the machine's. */
-const DAY = '2026-08-16'
-
-describe('the queue of results', () => {
-  /** `patch` is applied to the submissions before anything is drawn, for the one
-   *  case that needs a submission the administration has already written on. */
-  const openWith = (
-    states: SubmissionStatus[],
-    patch: Partial<Submission> = {},
-    loose: number[] = [],
-    /* What the session has already made, handed over before anything is drawn: set
-       afterwards it never reaches the screen, since the value is read at render. */
-    creations: Creations = {},
-  ) => {
-    const user = setupUser()
-    const session = { ...sessionWith(states, loose), creations }
-
-    session.submissions = session.submissions.map((one) => ({ ...one, ...patch }))
-
-    render(
-      /* The day the refusal is dated with, from the one clock the whole portal
-         reads (src/clock). This screen took it on 16.08.2026, when the refusal
-         started reaching the member, which is what every other queue already
-         did. */
-      <ClockProvider simulatedDay={DAY}>
-        <I18nProvider locale="sr">
-          <MemoryRouter>
-            {/* The screen names the browser tab after its own queue, and outside the
-                shell there is nothing listening (src/app/PageMeta.tsx). */}
-            <PageMetaContext.Provider value={vi.fn()}>
-              <RoleProvider initialRole="moderator">
-                <SessionContext.Provider value={session}>
-                  <ReviewQueue />
-                </SessionContext.Provider>
-              </RoleProvider>
-            </PageMetaContext.Provider>
-          </MemoryRouter>
-        </I18nProvider>
-      </ClockProvider>,
-    )
-
-    return { user, session }
-  }
-
-  it('says the reason has to be written, in both ways a field says it', async () => {
-    /* Owner, 12.08.2026: „Ova pravila... treba da funkcioniše na svim formama za
-       unos i verifikaciju." This box is not built by the renderer, so it carries
-       the rule itself: a star for the eye and `aria-required` for a reader.
-       Without them the button below simply stayed dead and nothing said why.
-
-       And the star outside the label, or „Razlog odbijanja" is not the name of
-       this field any more. */
-    const { user } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Odbij' }))
-
-    const reason = screen.getByLabelText('Razlog odbijanja')
-
-    expect(reason).toHaveAttribute('aria-required', 'true')
-    expect(
-      must(reason.closest('.rankings__field'), 'the field it stands in').querySelector(
-        '.field__required',
-      ),
-    ).not.toBeNull()
-    /* And it does not promise a message. This queue has a field of its own rather
-       than the shared box, so it carries its own words, and it kept the promising
-       ones after the shared default was corrected. Nothing measured that: a review
-       put them back and all 1905 tests passed. `notify` is never called from this
-       screen (PENDING R9b). */
-    expect(reason).toHaveAttribute('placeholder', sr.review.reasonPlaceholder)
-  })
-
-  it('writes the refusal to the member who entered the result', async () => {
-    /* Owner, 15.08.2026: „Poruka ide sa svih redova." Until 16.08.2026 this
-       screen wrote nothing at all while the box beside it promised the member
-       would read the reason, and the only test of the rule read the table in
-       `queues.ts` rather than the delivery, so it said this queue sends and the
-       queue sent nothing.
-     *
-       Held on the message itself: who it went to, under what heading, and with
-       the words the moderator wrote. The recipient matters most: the empty
-       string in this portal is not nobody but the whole league (Message.to). */
-    const { user, session } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Odbij' }))
-    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Vreme se ne poklapa.')
-    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
-
-    expect(session.notify).toHaveBeenCalledWith({
-      from: sr.app.name,
-      to: '000007',
-      subject: sr.verification.resultReturned,
-      body: 'Vreme se ne poklapa.',
-      date: DAY,
-    })
-  })
-
-  it('writes to nobody rather than to everybody where the result carries no member', async () => {
-    /* A result always carries whoever entered it, so this is a state the portal
-       does not reach today. It is guarded all the same, and the guard is worth a
-       test, because the failure is not „no message" but „a message to the whole
-       league": an empty recipient is everybody (Message.to), so one member`s
-       refusal would land in every inbox on the portal. */
-    const user = setupUser()
-    const session = sessionWith(['pending'])
-    const nobody = { ...at(session.submissions, 0), memberNumber: '' }
-
-    render(
-      <ClockProvider simulatedDay={DAY}>
-        <I18nProvider locale="sr">
-          <MemoryRouter>
-            <PageMetaContext.Provider value={vi.fn()}>
-              <RoleProvider initialRole="moderator">
-                <SessionContext.Provider value={{ ...session, submissions: [nobody] }}>
-                  <ReviewQueue />
-                </SessionContext.Provider>
-              </RoleProvider>
-            </PageMetaContext.Provider>
-          </MemoryRouter>
-        </I18nProvider>
-      </ClockProvider>,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Odbij' }))
-
-    /* And the box says so before a word is typed: the same rule that withholds
-       the message chooses the words over it, so a moderator is never told their
-       reason will be read by somebody who will never see it. */
-    expect(screen.getByLabelText('Razlog odbijanja')).toHaveAttribute(
-      'placeholder',
-      sr.review.reasonKeptPlaceholder,
-    )
-
-    await user.type(screen.getByLabelText('Razlog odbijanja'), 'Nema ko da primi.')
-    await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
-
-    /* The decision is still written down, because the moderator decided; only
-       the message is withheld. */
-    expect(session.decide).toHaveBeenCalledWith(nobody.id, 'rejected', 'Nema ko da primi.')
-    expect(session.notify).not.toHaveBeenCalled()
-  })
-
-  it('takes no reason made of spaces, and writes down the one it takes trimmed', async () => {
-    const { user, session } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Odbij' }))
-
-    const confirm = screen.getByRole('button', { name: 'Odbij uz ovaj razlog' })
-    const reason = screen.getByLabelText('Razlog odbijanja')
-
-    await user.type(reason, '   ')
-    /* Told off, not switched off: the button stays reachable so the line saying
-       why it will not go is reachable with it. */
-    expect(confirm).toHaveAttribute('aria-disabled', 'true')
-    expect(confirm).not.toBeDisabled()
-    expect(confirm).toHaveAccessibleDescription('Upiši razlog da bi mogao da pošalješ.')
-    expect(session.decide).not.toHaveBeenCalled()
-
-    /* And pressed, not merely inspected. Reachable means pressable, so the
-       refusal has to live in the handler as well as in the attribute, and
-       without it three spaces go back to the member as a reason. */
-    await user.click(confirm)
-
-    expect(session.decide).not.toHaveBeenCalled()
-
-    await user.type(reason, 'Vreme se ne poklapa sa zvaničnom listom.  ')
-    await user.click(confirm)
-
-    expect(session.decide).toHaveBeenCalledWith(
-      'sub-0',
-      'rejected',
-      'Vreme se ne poklapa sa zvaničnom listom.',
-    )
-  })
-
-  it('puts right the race, the kind and the time before it decides', async () => {
-    /* Owner, 30.08.2026: the administration settles at verification what the
-       member could only hint at. „Takmičar je mogao da izabere dužinska ili
-       vremenska, kao nagoveštaj tipa", and „ja ću lako promeniti njegovo vreme sa
-       recimo 23:23:15 na 24:00:00", which on a timed race is the race's own limit
-       and the same for everybody who finished. */
-    const { user, session } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
-
-    /* Opened on what the submission holds, not on empty boxes: a moderator
-       correcting one thing must not have to retype the other two. */
-    /* The event above the race, carrying the same name, because a member is asked
-       one and the moderator is offered it for both (owner, 31.08.2026). */
-    expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Probna trka')
-    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
-    expect(screen.getByLabelText(/^Vrsta trke/)).toHaveValue('length')
-    expect(screen.getByLabelText(/^Sati/)).toHaveValue('0')
-    expect(screen.getByLabelText(/^Minuta/)).toHaveValue('45')
-
-    await user.clear(screen.getByLabelText(/^Naziv doga/))
-    /* With spaces around it, because what is saved is trimmed the way every form
-       on this portal trims what it is given (`forms/validate.ts`): a name typed
-       with spaces around it is the same name. */
-    await user.type(screen.getByLabelText(/^Naziv doga/), '  Ultra vikend  ')
-    await user.clear(screen.getByLabelText(/^Naziv trke/))
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
-    await user.selectOptions(screen.getByLabelText(/^Vrsta trke/), 'time')
-    await user.clear(screen.getByLabelText(/^Sati/))
-    await user.type(screen.getByLabelText(/^Sati/), '24')
-    await user.clear(screen.getByLabelText(/^Minuta/))
-    await user.type(screen.getByLabelText(/^Minuta/), '0')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
-
-    expect(session.amend).toHaveBeenCalledWith('sub-0', {
-      eventName: 'Ultra vikend',
-      raceName: 'Ultra 24h',
-      raceKind: 'time',
-      seconds: 86_400,
-    })
-  })
-
-  it('refuses to save a time with a box left empty, and keeps what was typed', async () => {
-    /* Three boxes added up with one of them empty give `NaN`, which would go into
-       the record as a time nobody can read and would score nothing. The member's
-       own form refuses it for the same reason (`forms/clock.ts`); this is the
-       other side of the same rule.
-
-       The panel stays open over what was typed, rather than closing and losing
-       the name the moderator has already corrected. */
-    const { user, session } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
-    await user.clear(screen.getByLabelText(/^Naziv trke/))
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
-    await user.clear(screen.getByLabelText(/^Sati/))
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
-
-    expect(session.amend).not.toHaveBeenCalled()
-    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Ultra 24h')
-  })
-
-  it('closes without writing anything when the correction is given up', async () => {
-    /* The way out that changes nothing. Without it a moderator who opened the
-       panel to read what the member sent has only one way to close it, which is
-       to save, and saving is the one act this panel is for. */
-    const { user, session } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
-    await user.clear(screen.getByLabelText(/^Naziv trke/))
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
-    await user.click(screen.getByRole('button', { name: 'Odustani' }))
-
-    expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
-    expect(session.amend).not.toHaveBeenCalled()
-  })
-
-  it('shows the event the administration already settled, not the race name again', async () => {
-    /* The field is seeded from the race only while the submission carries no event
-       of its own. Once a moderator has shortened „Beogradski maraton kroz Adu" to
-       „Beogradski maraton" and saved, opening the panel again has to show their
-       wording; seeded a second time it would quietly undo them. */
-    const { user } = openWith(['pending'], { eventName: 'Beogradski maraton' })
-
-    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
-
-    expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Beogradski maraton')
-    expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Probna trka')
-  })
-
-  it('holds every box it writes to a rule, and would notice one that stopped being paired', () => {
-    /* The panel pairs each box with the definition that owns it by filtering, so a
-       field renamed in a definition quietly leaves the list and its box stops being
-       checked at all. That was measured with nothing at all holding it: `seconds`
-       dropped from the pairing, the panel took 999 seconds, and the suite stayed
-       green (review, 31.08.2026).
-
-       **It does not stay green now, and this case is no longer the only reason.**
-       The same commit that wrote this one gave the panel a case of its own („takes
-       only what the member's own form would have taken"), and that case reaches the
-       screen: the same mutation fails both, 2 of 2449 (measured 04.09.2026). What
-       this one still buys is the name of the fault — a count that says which box
-       left the list, instead of a refusal that stopped arriving. */
-    expect(ASKED.map((one) => one.name).sort()).toEqual([
-      'eventName',
-      'hours',
-      'minutes',
-      'raceName',
-      'seconds',
-    ])
-
-    /* And the event by the definition that owns **it**, not the race's. The two
-       agree today, so nothing on the screen tells them apart until one moves. */
-    expect(ASKED.find((one) => one.name === 'eventName')?.field).toBe(
-      dogadjaj.fields.find((one) => one.name === 'name'),
-    )
-  })
-
-  it('says its fields are required, in both the ways a field says it', async () => {
-    /* The star for the eye and `aria-required` for a reader, and a legend saying
-       what the star means (owner, 12.08.2026: „na svim formama za unos i
-       verifikaciju"). The refusal box beside this one was measured missing exactly
-       this, and the whole of it went unheld here for a round: removing the legend
-       and all four attributes left the suite green (review, 31.08.2026).
-
-       And the button that will not go says so where a reader can hear it, rather
-       than sitting dead. */
-    const { user } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
-
-    const panel = within(screen.getByRole('group', { name: 'Ispravka pre odluke' }))
-
-    expect(panel.getByText(/Polja sa zvezdicom/)).toBeVisible()
-    for (const label of [/^Naziv doga/, /^Naziv trke/, /^Vrsta trke/, /^Sati/, /^Minuta/, /^Sekundi/]) {
-      expect(panel.getByLabelText(label), String(label)).toHaveAttribute('aria-required', 'true')
-    }
-
-    const save = panel.getByRole('button', { name: 'Sačuvaj ispravku' })
-
-    expect(save).not.toHaveAttribute('aria-disabled', 'true')
-
-    await user.clear(panel.getByLabelText(/^Naziv trke/))
-
-    expect(save).toHaveAttribute('aria-disabled', 'true')
-    expect(save).toHaveAttribute('aria-describedby', 'amend-waits')
-  })
-
-  it('closes when the item under it is decided, by the row or by the sweep', async () => {
-    /* Both panels stand below the table, and the row they were opened over leaves
-       it the moment it is decided. Left open, „Sačuvaj ispravku" is a live button
-       over a submission nobody may rewrite any more, and after „Odobri sve" the
-       screen says „nothing is waiting" while holding open a correction of one of
-       the things that just stopped waiting. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user } = openWith(['pending', 'pending'])
-
-      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
-      await user.click(first(screen.getAllByRole('button', { name: 'Odobri' })))
-
-      expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
-
-      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('takes only what the member’s own form would have taken, and says so when it will not', async () => {
-    /* What may stand in these boxes is a fact the form away from the calendar
-       already holds, and this panel asks the same rule field by field rather than
-       writing bounds of its own. Written by hand it was narrower than the form and
-       let through what the form refuses (measured in review, 31.08.2026):
-
-       - minus five hours, which the table then drew as `00:00`, so it could not
-         be told from nought;
-       - a thousand minutes, out of a box the form bounds at 59;
-       - `Infinity`, which `Number.isNaN` does not catch and `Number.isFinite`
-         does;
-       - a race with no name at all, out of a field that carries a star.
-
-       And the cost lands on the member: a result refused after such a correction
-       comes back to them with `-5` in a box they never touched, and their own form
-       turns it down. */
-    const { user, session } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
-
-    for (const [box, written, says] of [
-      ['Sati', '-5', /Najmanja dozvoljena vrednost/],
-      ['Sati', 'Infinity', /Unesi broj/],
-      ['Minuta', '999', /Najveća dozvoljena vrednost/],
-      /* And a fourth box, because until 05.09.2026 the name in the message was
-         written out beside the call rather than read off the pairing, and only two
-         of the five boxes were ever named by a case. */
-      ['Sekundi', '99', /Najveća dozvoljena vrednost/],
-      /* And the fifth, which the round after that one found: four of the five were
-         named by a case and „Naziv trke" was not, so its pairing could carry another
-         field's label and the panel would say „Mesto: Ovo polje je obavezno." over a
-         box headed „Naziv trke", with the whole gate green (review, 05.09.2026).
-         Emptied rather than filled wrongly, because a name has no bounds to break:
-         what it refuses is being left out. */
-      ['Naziv trke', '', /Ovo polje je obavezno/],
-      /* And one and a half hours, which the member's own form refuses since 02.10.2026:
-         the field carries the rule about whole numbers now (`forms/types.ts`, `integer`,
-         held to `ResultWriteApi`'s `Integer seconds` by `forms/wholeNumbers.test.ts`).
-         Until that day the form took it, and so did this panel, because the rule here is
-         „exactly as strict as the form", not „stricter": the fault was one thing in one
-         place, and it is closed in that same one place. */
-      ['Sati', '1,5', /Unesi ceo broj/],
-    ] as const) {
-      const control = screen.getByLabelText(new RegExp(`^${box}`))
-
-      await user.clear(control)
-
-      if (written !== '') {
-        await user.type(control, written)
-      }
-      await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
-
-      expect(session.amend, `${box} = ${written}`).not.toHaveBeenCalled()
-      /* And it says why, rather than leaving a dead button — **named by the box it
-         is about**. The name comes off the same pairing that holds the rule
-         (`admin/amendFields.ts`); written out beside the call, „Sati" could be
-         swapped for „Sekundi" and the whole gate stayed green, so the panel named
-         the wrong box in a message about a real fault (review, 31.08.2026). */
-      expect(screen.getByText(new RegExp(`^${box}: `)), box).toHaveTextContent(says)
-
-      await user.clear(control)
-      await user.type(control, box === 'Sati' ? '0' : box === 'Naziv trke' ? 'Probna trka' : '45')
-    }
-
-    /* And a whole number the form would take is taken here too, which is the other
-       direction of the same rule. */
-    await user.clear(screen.getByLabelText(/^Sati/))
-    await user.type(screen.getByLabelText(/^Sati/), '2')
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
-    expect(session.amend, 'a whole number the form allows').toHaveBeenCalledTimes(1)
-
-    await user.click(screen.getByRole('button', { name: 'Ispravi' }))
-    await user.clear(screen.getByLabelText(/^Naziv trke/))
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
-    expect(session.amend, 'a race with no name').toHaveBeenCalledTimes(1)
-
-    /* And each of the three things says which of them is wrong, rather than one
-       sentence for all: written as one it told a moderator who had left 0:0:0
-       standing that the numbers must be within their bounds, and nought is within
-       its bounds. */
-    /* And in the words the member's own form uses, from the one place that holds
-       them: written here by hand, the sentence said „the names must be filled in"
-       over a name that was filled in and one character too long (review,
-       31.08.2026). */
-    expect(screen.getByText(/Ovo polje je obavezno/)).toBeVisible()
-
-    await user.type(screen.getByLabelText(/^Naziv trke/), 'Ultra 24h')
-    for (const box of ['Sati', 'Minuta', 'Sekundi'] as const) {
-      await user.clear(screen.getByLabelText(new RegExp(`^${box}`)))
-      await user.type(screen.getByLabelText(new RegExp(`^${box}`)), '0')
-    }
-
-    await user.click(screen.getByRole('button', { name: 'Sačuvaj ispravku' }))
-
-    expect(session.amend, 'nought hours, minutes and seconds').toHaveBeenCalledTimes(1)
-    expect(screen.getByText(/ne mogu svi biti nula/)).toBeVisible()
-
-    /* A name that is filled in and too long says so, rather than saying it is
-       missing: that was a high finding of its own, and the difference is the whole
-       reason the sentence comes from the form's own rule. Read from the definition
-       that owns the limit rather than written out, so raising it there does not
-       leave this case asking for a sentence nobody prints. */
-    const most = limitOf(dogadjaj, 'name')
-
-    fireEvent.change(screen.getByLabelText(/^Naziv doga/), {
-      target: { value: 'x'.repeat(most + 10) },
-    })
-
-    expect(screen.getByText(new RegExp(`Najviše ${most} znakova`))).toBeVisible()
-
-    /* And which box it is about, said twice over: the sentence names it, and the
-       control itself says it is the wrong one. A form writes its messages without
-       the name of the field because it draws each under its own field; drawn once
-       under the buttons, „Najveća dozvoljena vrednost je 59." over two boxes of 99
-       says nothing about which (review, 31.08.2026). */
-    expect(screen.getByText(/^Naziv događaja: Najviše/)).toBeVisible()
-    expect(screen.getByLabelText(/^Naziv doga/)).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText(/^Naziv trke/)).toHaveAttribute('aria-invalid', 'false')
-
-    fireEvent.change(screen.getByLabelText(/^Naziv doga/), { target: { value: 'Ultra vikend' } })
-    fireEvent.change(screen.getByLabelText(/^Minuta/), { target: { value: '99' } })
-    fireEvent.change(screen.getByLabelText(/^Sekundi/), { target: { value: '99' } })
-
-    expect(screen.getByText(/^Minuta: Najveća/)).toBeVisible()
-    expect(screen.getByLabelText(/^Minuta/)).toHaveAttribute('aria-invalid', 'true')
-    expect(screen.getByLabelText(/^Sekundi/)).toHaveAttribute('aria-invalid', 'true')
-  })
-
-  it('never stands open beside the box that refuses one', async () => {
-    /* Both panels are drawn below the table, so two open at once would leave the
-       moderator reading a correction of one item over a refusal of another. */
-    const { user } = openWith(['pending', 'pending'])
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
-    expect(screen.getByRole('group', { name: 'Ispravka pre odluke' })).toBeVisible()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-    expect(screen.queryByRole('group', { name: 'Ispravka pre odluke' })).toBeNull()
-
-    await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
-    expect(screen.queryByRole('group', { name: 'Odbij' })).toBeNull()
-  })
-
-  it('marks a race the calendar does not hold, and steps over it when sweeping', async () => {
-    /* Owner, 31.08.2026: „te trke treba da imaju posebnu naznaku NOVO negde u
-       ćošku i da znam o čemu se radi", and „Odobri sve treba da ih preskoči".
-
-       The two halves belong together. A sweep that quietly left rows behind would
-       read as a queue that will not empty, so the mark says which rows and why, and
-       the line after the sweep says how many are left. Approving one of them writes
-       an event and a race into the calendar, which is why it is not something a
-       sweep does. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user, session } = openWith(['pending', 'pending', 'pending'], {}, [1])
-
-      expect(screen.getAllByText('NOVO')).toHaveLength(1)
-      /* And what it means, in words rather than in a `title` a keyboard never
-         reaches and most readers never speak. */
-      expect(screen.getByText(/Ove trke nema u kalendaru/)).toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      /* Two of the three, and the one that asks for a race is untouched. */
-      expect(session.decide).toHaveBeenCalledTimes(2)
-      expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
-      expect(session.decide).toHaveBeenCalledWith('sub-2', 'approved', '')
-      expect(session.decide).not.toHaveBeenCalledWith('sub-1', 'approved', '')
-      expect(session.create).not.toHaveBeenCalled()
-
-      /* In the grammar the portal already uses for a count on this very screen,
-         one line above this one: written as one flat string it read „Ostalo je 1
-         prijava" beside „Rešena je 1 stavka" (review, 31.08.2026). Both halves of
-         the agreement are asked for, because correcting the noun and leaving the
-         verb is what the first correction did: **„Ostala je"**, feminine and
-         singular, and **„prijava"** rather than „prijave". The precedent is
-         `verification.approveAllDone`, whose three forms all agree. */
-      expect(screen.getByText(/^Ostala je 1 prijava sa trka/)).toBeVisible()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('counts what is left in the plural the number really takes', async () => {
-    /* The other form of the same line, and the reason it is its own case: the
-       correction above changed two strings and only one of them had anything
-       measuring it, so „Ostalo je 2 prijave" passed the whole suite (measured
-       31.08.2026). Serbian takes three forms here and the portal already writes
-       all three next door in `verification.approveAllDone`; two were changed, so
-       two are asked for. The third, five and upward, was already right and is left
-       to the shape it shares with its neighbour. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      /* Five, of which the sweep settles three and leaves two: the same number on
-         both sides could not tell which of the two the line is counting. The other
-         one is read by „says what it did, with the number it really settled", which
-         asks for „Rešen… 3 stavk" further down this file — named rather than
-         pointed at, so „below" does not have to stay true as cases move. */
-      const { user } = openWith(['pending', 'pending', 'pending', 'pending', 'pending'], {}, [1, 2])
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(screen.getByText(/^Ostale su 2 prijave sa trka/)).toBeVisible()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('says nothing about what is left when the sweep left nothing', async () => {
-    /* The gate on that line, in the one direction nothing was holding. Tightened,
-       it already had two cases: `some` written as `every` fails „marks a race the
-       calendar does not hold" and the case just above this one. Loosened — the
-       mirror turned round — it had none, and read „Ostalo je 0 prijava sa trka
-       kojih nema u kalendaru" under a sweep that emptied the queue, which is the
-       very „0" the line above exists to keep off the screen. Both halves measured
-       by mutation, 04.09.2026; the sentence here said „no case in either
-       direction" until then and the tightening half of that was untrue.
-
-       The predicate is written by hand six times in that file and this is the
-       sixth. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user } = openWith(['pending', 'pending'])
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(screen.queryByText(/^Ostal/)).toBeNull()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('explains nothing about a sweep before anybody has swept', () => {
-    /* The other half of that gate, `swept !== null`, which had no case of its own:
-       taken out, the queue says „Ostala je 1 prijava sa trka kojih nema u kalendaru"
-       to somebody who has not pressed anything, explaining a sweep that never
-       happened, and the whole suite stayed green (review, 31.08.2026).
-
-       Two submissions and one of them asking for a race, so the count the line would
-       print is 1 and not 0: with nothing to leave behind, the other half of the gate
-       would hide it anyway and this would pass with both halves gone. */
-    openWith(['pending', 'pending'], {}, [1])
-
-    expect(screen.queryByText(/^Ostal/)).toBeNull()
-    /* And the sweep is offered, so what is absent is the explanation and not the
-       whole row of controls. */
-    expect(screen.getByRole('button', { name: 'Odobri sve' })).toBeVisible()
-  })
-
-  it('makes the event and the race before it approves one the calendar does not hold', async () => {
-    /* The promise the terms of use have carried since before the portal could keep
-       it: „Ako trke nema u kalendaru, prijavite je svejedno; administrator će uz
-       vaš rezultat napraviti i događaj i trku."
-
-       Made before the decision and by one press, because `decide` is what puts the
-       result into the standing: a race made after it would leave the standing
-       pointing at nothing for as long as the two calls are apart. */
-    const { user, session } = openWith(['pending'], {}, [0])
-
-    await user.click(screen.getByRole('button', { name: 'Odobri' }))
-
-    expect(session.create).toHaveBeenCalledTimes(2)
-
-    const made = vi.mocked(session.create)
-    const [event, race] = made.mock.calls
-
-    expect(event?.[0], 'an event first').toBe('events')
-    expect(event?.[2]).toMatchObject({
-      name: 'Probna trka',
-      date: '2026-05-10',
-      city: 'Niš',
-      country: 'RS',
-      kind: 'race',
-    })
-
-    /* Every field, and not the three that happen to be interesting. The file that
-       builds these says „Every field named, none left to a spread", on the ground
-       that a field nobody measures is a field that goes quietly wrong; six of them
-       were measured wrong and passing (review, 31.08.2026). */
-    expect(event?.[2]).toEqual({
-      name: 'Probna trka',
-      date: '2026-05-10',
-      city: 'Niš',
-      country: 'RS',
-      kind: 'race',
-      featured: 'no',
-      description: '',
-      link: '',
-    })
-
-    expect(race?.[0], 'and its race under it').toBe('races')
-    expect(race?.[2]).toEqual({
-      eventId: event?.[1],
-      name: 'Probna trka',
-      /* Given by hand, whatever it started as, so renaming the event later leaves
-         it alone. */
-      renamed: 'true',
-      date: '2026-05-10',
-      kind: 'length',
-      /* Nought on a race run to a distance: the limit belongs to a timed one. */
-      limitSeconds: '0',
-      distanceKm: '10',
-      ascentM: '0',
-      descentM: '0',
-      /* Worked out from the length rather than carried over, as everywhere else.
-         Measured against a submission whose own category says something different,
-         since the two agree on 10 km and the check could not tell them apart. */
-      category: 'short',
-    })
-
-    expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
-  })
-
-  it('makes a timed race run to the time the administration settled', async () => {
-    /* The other kind, and the reason the number means something different on it: on
-       a timed race the three boxes hold the race's own limit rather than a run
-       (owner, 30.08.2026), so what the result carries is what the race is run to.
-       A length race is run to a distance and its limit is nought. */
-    const { user, session } = openWith(['pending'], { raceKind: 'time', seconds: 86_400 }, [0])
-
-    await user.click(screen.getByRole('button', { name: 'Odobri' }))
-
-    const [, race] = vi.mocked(session.create).mock.calls
-
-    expect(race?.[2]).toMatchObject({ kind: 'time', limitSeconds: '86400' })
-  })
-
-  it('counts a free number over what has already been made, not over the file alone', async () => {
-    /* The hard part of making a record, and the one `pages/event/EventActions.tsx`
-       paid for on 23.08.2026: a number in use is in use whichever way the record
-       came to be. Two submissions approved one after another must not be handed the
-       same id, and neither must one approved beside a copy somebody made a minute
-       ago.
-
-       Measured with one already there, since a queue whose session has made nothing
-       cannot tell counting from reading. */
-    const { user, session } = openWith(['pending'], {}, [0], {
-      events: [{ id: '-1', values: {} }],
-      races: [{ id: '-1', values: {} }],
-    })
-
-    await user.click(screen.getByRole('button', { name: 'Odobri' }))
-
-    const made = vi.mocked(session.create)
-    const [event, race] = made.mock.calls
-
-    expect(event?.[1], 'the next event, not the one that is there').toBe('-2')
-    /* And its race is numbered in its OWN family: a `bigserial` is unique inside one
-       table, so a race and an event may hold the same number and the overlay keeps
-       them apart by the family (`session/context.ts`, `recordKey`). */
-    expect(race?.[1], 'and its race, counted over the races this visit made').toBe('-2')
-  })
-
-  it('ties the result to the race it has just made', async () => {
-    /* The half that makes the other half worth doing (PDL, 30.08.2026, point 6):
-       without it a race stands in the calendar with nothing run on it and a result
-       is counted that points at no race. Measured missing in review, 31.08.2026,
-       with the event and the race made and the submission left as it was. */
-    const { user, session } = openWith(['pending'], {}, [0])
-
-    await user.click(screen.getByRole('button', { name: 'Odobri' }))
-
-    const [, race] = vi.mocked(session.create).mock.calls
-
-    expect(session.amend).toHaveBeenCalledWith('sub-0', { raceId: Number(race?.[1]) })
-  })
-
-  it('makes the event under the name the administration settled, not the race’s', async () => {
-    /* The moderator is shown the event above the race and may shorten it (part C,
-       owner 31.08.2026); what they settle is what the calendar gets. Measured
-       against a submission whose two names differ, since with them equal a record
-       that throws the settled one away cannot be told from one that keeps it. */
-    const { user, session } = openWith(['pending'], { eventName: 'Skraćeni naziv' }, [0])
-
-    await user.click(screen.getByRole('button', { name: 'Odobri' }))
-
-    const [event, race] = vi.mocked(session.create).mock.calls
-
-    expect(event?.[2]).toMatchObject({ name: 'Skraćeni naziv' })
-    /* And the race keeps its own, which is the whole reason there are two. */
-    expect(race?.[2]).toMatchObject({ name: 'Probna trka' })
-  })
-
-  it('leaves a correction standing over a row the sweep did not decide', async () => {
-    /* The sweep steps over a submission that asks for a race to be made, so it has
-       no business closing a panel opened over one: closed outright, what the
-       moderator had typed was thrown away while the row itself stayed in the table
-       (measured in review, 31.08.2026). */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user } = openWith(['pending', 'pending'], {}, [0])
-
-      await user.click(first(screen.getAllByRole('button', { name: 'Ispravi' })))
-      await user.clear(screen.getByLabelText(/^Naziv doga/))
-      await user.type(screen.getByLabelText(/^Naziv doga/), 'Skraćeni naziv')
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(screen.getByRole('group', { name: 'Ispravka pre odluke' })).toBeVisible()
-      expect(screen.getByLabelText(/^Naziv doga/)).toHaveValue('Skraćeni naziv')
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('leaves a reason standing over a row the sweep did not decide', async () => {
-    /* The other panel, changed by the same edit and for the same reason, and the
-       one that was left unmeasured: a reason typed over a „NOVO" row vanished
-       because of a sweep that deliberately did not touch that row. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user } = openWith(['pending', 'pending'], {}, [0])
-
-      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-      await user.type(screen.getByLabelText(/^Razlog/), 'Vreme se ne poklapa.')
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(screen.getByLabelText(/^Razlog/)).toHaveValue('Vreme se ne poklapa.')
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('offers no sweep where every waiting result asks for a race to be made', () => {
-    /* Which is the ordinary state after any sweep, since those are the ones it
-       leaves. Offered anyway, it asked „Odobriti 0 stavki? Ovo se ne može opozvati"
-       and then said „Rešeno je 0 stavki" (measured in review, 31.08.2026): what it
-       sweeps is what says whether it is there at all. */
-    openWith(['pending', 'pending'], {}, [0, 1])
-
-    expect(screen.queryByRole('button', { name: 'Odobri sve' })).toBeNull()
-    /* And the rows themselves are still there to be decided one at a time. */
-    expect(screen.getAllByRole('button', { name: 'Odobri' })).toHaveLength(2)
-  })
-
-  it('asks about the number it will really settle', async () => {
-    /* Four waiting and two of them asking for a race: the sweep decides two, so it
-       asks about two. „Odobriti 4 stavke? Ovo se ne može opozvati" over an act that
-       settles two is a number on the wrong thing (review, 31.08.2026). */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user } = openWith(['pending', 'pending', 'pending', 'pending'], {}, [1, 2])
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(String(first(confirm.mock.calls)?.[0])).toContain('2')
-      expect(String(first(confirm.mock.calls)?.[0])).not.toContain('4')
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('makes nothing when the race is already in the calendar', async () => {
-    /* The other direction, and the one that matters most: three quarters of the
-       queue is this, and a portal that made an event for every approval would fill
-       the calendar with copies of races it already holds. */
-    const { user, session } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Odobri' }))
-
-    expect(session.create).not.toHaveBeenCalled()
-    expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
-  })
-
-  it('has the one decision for the whole queue, like every other queue', async () => {
-    /* The button was written once, on the screen six queues share, and reported
-       as being on every queue. The results and the payments each draw their own
-       table and neither had it, so a moderator told the queues all work the same
-       way found two that did not. It asks first here too, because approving is
-       what puts a result into the standings and there is nothing to undo. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user, session } = openWith(['pending', 'pending', 'approved', 'pending'])
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(confirm).toHaveBeenCalledTimes(1)
-      expect(String(first(confirm.mock.calls)?.[0])).toContain('3')
-      /* The three waiting ones and not the one already decided. */
-      expect(session.decide).toHaveBeenCalledTimes(3)
-      expect(session.decide).toHaveBeenCalledWith('sub-0', 'approved', '')
-      expect(session.decide).toHaveBeenCalledWith('sub-1', 'approved', '')
-      expect(session.decide).toHaveBeenCalledWith('sub-3', 'approved', '')
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('says what it did, with the number it really settled, and takes the focus', async () => {
-    /* The line and its number, on the third of the three screens. Written as a
-       nought it would have said "Rešeno je 0 stavki." after approving thirty
-       results, and nothing here would have noticed. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user } = openWith(['pending', 'pending', 'approved', 'pending'])
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      const said = screen.getByText(/^Rešen.* 3 stavk/)
-
-      expect(said).toBeVisible()
-      expect(said).toHaveFocus()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('leaves no reason box open over results the sweep has just approved', async () => {
-    /* The box stands below the table. Left open, confirming it would refuse
-       what the sweep approved a moment ago and say nothing about it. */
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
-
-    try {
-      const { user } = openWith(['pending', 'pending'])
-
-      await user.click(first(screen.getAllByRole('button', { name: 'Odbij' })))
-      expect(screen.getByLabelText('Razlog odbijanja')).toBeInTheDocument()
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('settles nothing when the question is answered no', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
-
-    try {
-      const { user, session } = openWith(['pending', 'pending'])
-
-      await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
-
-      expect(session.decide).not.toHaveBeenCalled()
-    } finally {
-      confirm.mockRestore()
-    }
-  })
-
-  it('shuts the reason box when the same result is approved from its row', async () => {
-    const { user } = openWith(['pending'])
-
-    await user.click(screen.getByRole('button', { name: 'Odbij' }))
-    expect(screen.getByLabelText('Razlog odbijanja')).toBeInTheDocument()
-
-    /* The box stands below the table, so it used to survive the decision taken by
-       the buttons in the row: confirming it afterwards refused a result that had
-       just been approved, without a word. */
-    await user.click(screen.getByRole('button', { name: 'Odobri' }))
-
-    expect(screen.queryByLabelText('Razlog odbijanja')).not.toBeInTheDocument()
-  })
-})
+/* THE WHOLE DESCRIBE OF „the queue of results" STOOD HERE UNTIL R1 OF THE RESULTS FLOWS,
+ * and it is a move rather than a deletion. Every case in it handed `ReviewQueue` a double of
+ * the session and watched what the screen did to it - `decide`, `amend`, `notify`, `create`
+ * - because the queue read and decided results held in the browser. It reads the server and
+ * decides on it now, so what those cases measured is measured where the screen is fed the
+ * way it really is, `pages/admin/resultsQueue.test.tsx`: the reason box and its rules, the
+ * sweep and what it steps over, the panel that sets the runner's figures, and the order of
+ * the press and the answer.
+ *
+ * WHAT DID NOT MOVE, because the thing it measured is not on this screen any more: the event
+ * and the race made for a result the calendar does not hold, and the event's name settled in
+ * the panel. Both are the decision over such a race, which R3 of the same flows builds on the
+ * server; until then the route refuses that approval with a sentence of its own, and the new
+ * file holds that the sentence is what the moderator reads.
+ */
 
 describe('verification', () => {
   it('puts every queue in the navigation beside the work, with its count', async () => {
@@ -2367,37 +1358,11 @@ describe('verification', () => {
     ).toBeVisible()
   })
 
-  it('counts a result from the moment it is sent in', async () => {
-    const user = setupUser()
-    renderAt('/sr/rezultat/novi', 'superadmin', '000007')
-
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Probna trka')
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-    await user.type(screen.getByLabelText('Mesto'), 'Niš')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-    await user.type(screen.getByLabelText(/Dužina/), '10')
-    await user.type(screen.getByLabelText(/Uspon/), '0')
-    await user.type(screen.getByLabelText(/Spust/), '0')
-    await user.type(screen.getByLabelText('Sati'), '0')
-    await user.type(screen.getByLabelText('Minuta'), '45')
-    await user.type(screen.getByLabelText('Sekundi'), '0')
-    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
-
-    await user.click(await screen.findByRole('link', { name: /^Administracija/ }))
-
-    /* The navigation carries the sum of everything waiting (PDL P28a), and it
-       says so in the name of the link rather than only in the ducat, so a screen
-       reader hears the number too. It is the one word of administration that is
-       left in the header since 04.08.2026, so the sum stands on that. The sum is
-       every queue at once, so the one result is checked on its own row. */
-    expect(screen.getByRole('link', { name: /^Administracija, \d+ na čekanju$/ })).toBeVisible()
-
-    /* The sector is a navigation of its own now, so its entries stand beside
-       every administrative screen rather than behind a road to a section. */
-    const results = await screen.findByRole('link', { name: /Rezultati/ })
-    expect(within(results).getByText('1')).toBeVisible()
-  })
+  /* „COUNTS A RESULT FROM THE MOMENT IT IS SENT IN" stood here: a member sent a result through
+     the form and the number beside Rezultati went up, because both read the browser's session.
+     Since R1 of the results flows that number is counted off the server's answer, like every
+     other queue's, so the moment that matters is the server holding the run; the counter
+     reading the served runs is held in `pages/admin/resultsQueue.test.tsx`. */
 
   /*
    * „COUNTS NO MORE BESIDE A QUEUE THAN THE SCREEN BEHIND IT CAN SHOW" stood
@@ -2422,18 +1387,22 @@ describe('verification', () => {
     try {
       renderAt('/sr/administracija/verifikacija', 'moderator')
 
-      /* The file feeds seven of the eight rows, memberships among them since the
-         member number became something the system hands out (PDL P8). Results
-         come from the session, so that row touches no file at all: a failure used
-         to take it down with the rest, and the whole screen with it. The header
-         treats the same failure the other way round (src/app/Shell.tsx), and this
-         still matches it. */
+      /* The file feeds the rows, the results among them since R1 of the results
+         flows, so a failure reads nought on them: a failure used to take the whole
+         screen down with it. The header treats the same failure the other way round
+         (src/app/Shell.tsx), and this still matches it. */
       const results = await screen.findByRole('link', { name: /Rezultati/ })
       expect(within(results).getByText('0')).toBeVisible()
       expect(screen.getByRole('link', { name: /Uplate i aktivacija članova/ })).toBeVisible()
 
-      // What a failure must not do is pass for an empty queue without a word.
-      expect(await screen.findByRole('alert')).toHaveTextContent(/nije dostupan/)
+      /* What a failure must not do is pass for an empty queue without a word: the column
+         says its numbers may be short, and the queue of results, which reads the same file
+         since R1 of the results flows, says it could not read it rather than drawing an
+         empty table. Two alerts, each where it belongs. */
+      expect(
+        await within(screen.getByRole('navigation', { name: 'Odeljak Verifikacija' })).findByRole('alert'),
+      ).toHaveTextContent(/nije dostupan/)
+      expect(screen.getByText('Podaci se ne mogu učitati.')).toHaveAttribute('role', 'alert')
     } finally {
       globalThis.fetch = served
     }
@@ -2598,8 +1567,8 @@ describe('verification', () => {
 
        Standing on the comments, so the empty row is not the one being worked in.
        That one survived emptying under the old rule too, and a test taken there
-       would pass whichever rule is in force. The results are the empty one:
-       nobody sends a result in during this visit. */
+       would pass whichever rule is in force. The results are the empty one: the
+       served file holds no run. */
     renderAt(`/sr/${QUEUE.comments.path}`, 'moderator')
 
     const nav = within(await screen.findByRole('navigation', { name: 'Odeljak Verifikacija' }))
@@ -3912,7 +2881,7 @@ describe('what is counted beside a queue', () => {
     country: '',
   }
   const item = (id: string, queue: PendingQueueId): PendingItem => ({ ...BLANK, id, queue })
-  const empty = { pendingResults: 0, notMembersYet: 0, items: [], decisions: {} }
+  const empty = { notMembersYet: 0, items: [], decisions: {} }
   /* Through countFor, one queue at a time, which is how the navigation and the
      header both read it (SectionNav, Shell). There was a second function here
      answering for all eight at once; nothing on the portal called it, and these
@@ -3922,16 +2891,19 @@ describe('what is counted beside a queue', () => {
 
   it('counts every queue from the one place', () => {
     const counts = countsFor({
-      pendingResults: 3,
-      /* Five, and deliberately a number no other queue here carries. Every count in this
-         case comes from a different source - the session, the derived list, the file - and a
-         number shared between two of them would let a reading of the wrong one pass. */
+      /* Five, and deliberately a number no other queue here carries. The counts in this
+         case come from two sources - the derived list and the file, which holds the results
+         too since R1 of the results flows - and a number shared between two queues would let
+         a reading of the wrong one pass. */
       notMembersYet: 5,
       items: [
         item('a', 'profiles'),
         item('b', 'profiles'),
         item('c', 'comments'),
         item('d', 'teams'),
+        item('r1', 'results'),
+        item('r2', 'results'),
+        item('r3', 'results'),
       ],
       decisions: {},
     })

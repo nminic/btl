@@ -13,7 +13,8 @@ import type {
  *
  * It exists so the flows actually connect: a competitor enters a result, the
  * moderator finds it in the queue, approves it, and the competitor sees it
- * appear. Reading that sequence on a screen is worth more than any description
+ * appear. (The moderator's half of that runs on the server since R1 of the
+ * results flows; the competitor's half is still here until R2.) Reading that sequence on a screen is worth more than any description
  * of it, and it is the whole reason for building the front end first.
  *
  * All of it is in memory. When the backend arrives this provider reads the
@@ -25,43 +26,6 @@ import type {
 export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
-
-/**
- * What verification writes on a submission, and no sixth thing.
- *
- * Four of the five are the administration putting right what the member could only
- * hint at; the fifth, the race, is the portal finishing a sentence the member could
- * not, and it arrived with the part that makes one.
- *
- * A member types one name, the race's; the moderator is shown a field for
- * the event above it, carrying that same name, and may leave it, shorten it, or
- * change either (owner: „administratoru se iznad polja trke prvo prikazuje polje
- * Događaj koji ima isti sadržaj kao naziv trke... može ostaviti isto, ili skratiti
- * / promeniti naziv događaja, trke ili oba").
- *
- * It is kept on the submission rather than worked out again each time the panel
- * opens, because otherwise a moderator who shortens „Beogradski maraton kroz
- * Adu" to „Beogradski maraton", saves, and opens the panel again finds their own
- * wording gone. It is read by the event that part D makes out of it.
- */
-export type Amendment = {
-  /**
-   * The race this submission belongs to, written when verification makes one for
-   * it.
-   *
-   * Not the administration correcting the member, which is what the other three
-   * are: this is the portal finishing a sentence the member could not. A member
-   * who typed a name the calendar does not hold sends no race, verification makes
-   * one, and without this the result stays pointing at nothing while the race it
-   * asked for stands empty (PDL, 30.08.2026, point 6: „Rezultat prvog člana se
-   * veže za trku koja je tim upisom nastala").
-   */
-  raceId?: number
-  eventName?: string
-  raceName?: string
-  raceKind?: string
-  seconds?: number
-}
 
 export type Submission = {
   id: string
@@ -84,21 +48,11 @@ export type Submission = {
    * that row's race, a name chosen from the list is the race chosen, and a
    * correction of a counted result keeps the race the record already names.
    *
-   * That absence is what verification reads to know it has to make the event and
-   * the race before it can approve (owner, 31.08.2026), and it is why the queue
-   * marks such a row „NOVO" and why sweeping the queue steps over it.
+   * Since R1 of the results flows the moderator's queue reads that fact off the server
+   * and not off this record (`VerificationApi` answers `raceId`); this is the member's
+   * own copy of what he sent, read by his side until R2 moves it onto the server too.
    */
   raceId?: number
-  /**
-   * The event this race was run at, as the administration settled it.
-   *
-   * Absent on everything a member sends, because they are asked one name and it is
-   * the race's. The moderator is shown a field for the event above it, carrying
-   * that same name, and may leave it or change it (owner, 31.08.2026); what they
-   * settle is kept here, so opening the panel a second time shows their wording
-   * rather than seeding from the race again.
-   */
-  eventName?: string
   /**
    * Which of the three kinds of race the member says it was, and where it was run.
    *
@@ -752,7 +706,9 @@ export type SessionValue = {
   submit: (submission: Omit<Submission, 'id' | 'status' | 'note' | 'corrected'>) => void
   /**
    * The counted results a moderator has agreed to change during this visit, by
-   * the identity of the record each one replaces.
+   * the identity of the record each one replaces. Filled by `decide` alone, so since
+   * R1 of the results flows only by the member's side of this session: a correction
+   * approved in the queue is written by the server, and the results are read again.
    *
    * Read by `useResults`, so every screen that counts a result sees the same
    * thing: the standing, the profile, the boards and the league all read that one
@@ -778,17 +734,17 @@ export type SessionValue = {
    */
   withdraw: (id: string) => void
   /**
-   * What the administration may put right on a submission before deciding it
-   * (owner, 30.08.2026): the name of the event, the name of the race, the kind,
-   * and the time.
+   * Deciding a submission held in this session. Called by nothing in the administration
+   * since R1 of the results flows, whose queue decides on the server; it stays for the
+   * member's side until R2, because his own list still reads a submission's state off this
+   * session and only this writes it (`SessionProvider.tsx` says what removing it would
+   * leave unreachable).
    *
-   * A type of its own rather than a partial submission, because these four are a
-   * list somebody chose and the rest of a submission is not the administration's
-   * to rewrite: the member's proofs, their number, what they said about the race.
-   * Written as a partial, a later hand could put any of those in it and nothing
-   * would say so.
+   * What the administration could put right on a submission before deciding it, `amend`,
+   * left with R1: the figures a moderator sets travel inside the approval itself
+   * (`admin/verificationWrites.ts`, `anApprovalWith`), and the names and the kind of a
+   * race the calendar does not hold belong to the decision R3 builds on the server.
    */
-  amend: (id: string, changes: Amendment) => void
   decide: (id: string, status: SubmissionStatus, note: string) => void
 
   /* WHO IS GOING TO AN EVENT IS NOT HELD HERE ANY MORE, SINCE 03.10.2026, and a reader who
