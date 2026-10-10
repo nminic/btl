@@ -16,7 +16,7 @@ import countries from '../../data/countries.json'
 import { useI18n } from '../../i18n/useI18n'
 import { useSession } from '../../session/useSession'
 import { askTheServer, type Answer } from '../account/askTheServer'
-import { whatABareNumberSays } from '../account/serverWords'
+import { WhatTheServerSaid } from './WhatTheServerSaid'
 import { clearResourceCache } from '../../data/client'
 import { aRefusal, anApproval, decisionPath, photoPath } from './verificationWrites'
 import { usePending, WAITING, waitingIn } from './pending'
@@ -130,61 +130,6 @@ function Refused({ why, id }: { why: string | null; id: string }) {
   )
 }
 
-/**
- * WHAT THE SERVER SAID WHEN IT WOULD NOT RECORD THE DECISION.
- *
- * <p><b>A refusal is drawn WORD FOR WORD as it came back, and never looked up.</b>
- * `VerificationWriteApi` refuses with a Serbian sentence rather than with a code: its
- * `no(HttpStatus, String)` puts the constant into the body, and those constants are „O
- * stavci je već odlučeno.", „Stavku trenutno drži drugi moderator.", „Odluka o ovom redu
- * još nije uvedena." and four more. There is nothing to map, so nothing is mapped; the
- * reason is the answer (`admin/verificationWrites.ts` says the whole of why, and why
- * `pages/account/ServerSaid.tsx` is neither reused nor touched for it).
- *
- * <p><b>The other three shapes have no words of their own on the wire, so they take the
- * portal's.</b> Those sentences are not copied here: `server.rejected` and `server.nothing` are
- * the same two keys every other screen that speaks to the server draws, and which of
- * `server.wrong` and `server.malformed` a bare number gets is chosen where every other screen
- * has it chosen, `whatABareNumberSays` (`pages/account/serverWords.ts`), so the dictionary stays
- * the one home for the words and that function the one home for the choice. `server.wrong` is
- * what carries 401 and 404 - a moderator who is not signed in any more, and one whose local table
- * of rights says he may decide this queue while the route says the address is not there (ADL A8:
- * „neprijavljen dobija 401, a prijavljen kome pravo nedostaje dobija 404", never 403). And
- * `server.malformed` is a 400 that named no reason: `VerificationWriteApi` has two explicit 400s
- * and both carry a sentence (`THE_FORM_IS_NOT_COMPLETE`, `A_REFUSAL_NEEDS_A_REASON`), so a bare
- * one came from Spring before the route ran, and what it could not read is what the portal sent.
- *
- * <p>`role="alert"` rather than the `role="status"` of {@link Refused} beside it, and the
- * difference is the difference between the two: that line explains a button before it is
- * pressed and changes while a name is typed, this one answers a press that has already
- * happened. An answer nobody is told about is a moderator watching a card stay where it
- * was with no idea why (WCAG 2.2 SC 4.1.3).
- */
-function WhatTheServerSaid({ answer }: { answer: Exclude<Answer, { got: 'done' }> }) {
-  const { t } = useI18n()
-
-  const said = (): string => {
-    if (answer.got === 'refused') {
-      return answer.reason
-    }
-
-    if (answer.got === 'rejected') {
-      return t('server.rejected')
-    }
-
-    if (answer.got === 'wrong') {
-      return t(whatABareNumberSays(answer.status), { status: answer.status })
-    }
-
-    return t('server.nothing')
-  }
-
-  return (
-    <p className="field__error" role="alert">
-      {said()}
-    </p>
-  )
-}
 
 /**
  * A card the route would not settle, and what it said about it.

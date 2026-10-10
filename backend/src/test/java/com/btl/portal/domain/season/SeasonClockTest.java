@@ -566,6 +566,155 @@ class SeasonClockTest {
 	}
 
 	/**
+	 * A BAND IS NEVER WORKED OUT FOR A SEASON THE LEAGUE DOES NOT HAVE, whatever the calendar
+	 * says.
+	 *
+	 * <p>The league begins in 2027 (PDL P2) and through 2026 the plain calendar year names a
+	 * season that does not exist, so a band worked out for it is a band for nothing. This is the
+	 * floor of {@link SeasonClock#seasonTheBandIsWorkedOutFor} at home, beside the case that asks
+	 * the route ({@code CompetitorApiTest.theBandIsNeverWorkedOutForASeasonTheLeagueDoesNotHave}):
+	 * a fact with one home is guarded where it lives (ADL A31, point 4), and the route's case
+	 * would go on passing while this function was changed under a caller the route does not have.
+	 *
+	 * <p><b>Both sides of the floor.</b> Below it the answer is the first season, and from it on
+	 * the calendar decides, so a version with no floor fails on the first half and a version that
+	 * answered {@link SeasonClock#FIRST_SEASON} for every moment fails on the second. The moments
+	 * stand in the middle of a year and in the league's own zone, so that neither the zone nor a
+	 * New Year is what the answer turns on: the next case is about those.
+	 */
+	@Test
+	void aBandIsNeverWorkedOutForASeasonBeforeTheFirstOne() {
+		ZonedDateTime autumn2026 = ZonedDateTime.of(2026, 9, 21, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(autumn2026.getYear())
+				.as("the league's first season moved, so this moment no longer stands before it and"
+						+ " the case measures nothing")
+				.isLessThan(SeasonClock.FIRST_SEASON);
+
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(autumn2026))
+				.as("the band was worked out for the calendar year 2026, a season the league does"
+						+ " not have, instead of for its first")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(
+				ZonedDateTime.of(2026, 1, 5, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the first days of 2026 were answered as 2026")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(
+				ZonedDateTime.of(2025, 7, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("a clock set to 2025 was answered with a season before the league")
+				.isEqualTo(SeasonClock.FIRST_SEASON);
+
+		/* AND THE FLOOR DOES NOT FLATTEN WHAT COMES AFTER IT. Neither answer below is the
+		   first season, so a version that always answered it satisfies neither, and there are
+		   two seasons rather than one so that no single year is a lucky one. */
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(
+				ZonedDateTime.of(2028, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("every moment was answered as the first season, which is the other way to be wrong")
+				.isEqualTo(2028);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(
+				ZonedDateTime.of(2031, 3, 15, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the answer stopped following the calendar once it was past the first season")
+				.isEqualTo(2031);
+	}
+
+	/**
+	 * THE SEASON OF A BAND TURNS AT MIDNIGHT IN THE LEAGUE'S ZONE, WHEREVER THE MOMENT IS READ
+	 * FROM.
+	 *
+	 * <p>A band moves once, on 1 January (PDL P7), so the one thing the zone can do to this
+	 * answer is move that turn to another hour or another day. It is measured on the night the
+	 * turn happens, because on any other day of the year every zone reads the same year and the
+	 * mistake is invisible.
+	 *
+	 * <p><b>Both directions, because they are two different mistakes.</b> A server kept in UTC,
+	 * as containers are, is BEHIND Belgrade: half past eleven on 31 December there is already
+	 * half past midnight on 1 January here, and a version reading the year in UTC is a season
+	 * late. That is the clock bean's own shape, and the instant is the one
+	 * {@code CompetitorApiTest} and {@code ResultApiTest} stand on. A caller in Tokyo is AHEAD
+	 * of it: half past eleven on 31 December here is already half past seven on 1 January
+	 * there, and a version reading the year off the moment it was handed is a season early.
+	 *
+	 * <p><b>Neither answer is the first season</b>, so the floor cannot be what satisfies them.
+	 * The second pair is the turn itself, to the nanosecond, in the league's own zone: the last
+	 * instant of a season and the first of the next.
+	 */
+	@Test
+	void theSeasonOfABandTurnsAtMidnightInTheLeaguesZoneWhereverTheMomentIsReadFrom() {
+		ZonedDateTime newYearsNightInUtc = ZonedDateTime.of(2027, 12, 31, 23, 30, 0, 0, UTC);
+
+		assertThat(newYearsNightInUtc.getYear())
+				.as("the moment already reads as 2028 in UTC, so a version reading UTC is not a"
+						+ " season late here and the case measures nothing")
+				.isEqualTo(2027);
+		assertThat(newYearsNightInUtc.withZoneSameInstant(SeasonClock.ZONE).getYear())
+				.as("the league is not yet in 2028 at this moment, so the case measures nothing")
+				.isEqualTo(2028);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(newYearsNightInUtc))
+				.as("a server kept in UTC worked the band out for the season that had already ended"
+						+ " in Belgrade")
+				.isEqualTo(2028);
+
+		ZonedDateTime theEveInTokyo = ZonedDateTime.of(2028, 12, 31, 23, 30, 0, 0, SeasonClock.ZONE)
+				.withZoneSameInstant(TOKYO);
+
+		assertThat(theEveInTokyo.getYear())
+				.as("it is not already the next year in Tokyo, so the case measures nothing")
+				.isEqualTo(2029);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(theEveInTokyo))
+				.as("a caller in Tokyo was given the next season for a night that is still the last"
+						+ " one of this season in Belgrade")
+				.isEqualTo(2028);
+
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(
+				ZonedDateTime.of(2028, 12, 31, 23, 59, 59, 999_999_999, SeasonClock.ZONE)))
+				.as("the season turned before midnight in Belgrade")
+				.isEqualTo(2028);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(
+				ZonedDateTime.of(2029, 1, 1, 0, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the season had not turned at midnight in Belgrade")
+				.isEqualTo(2029);
+	}
+
+	/**
+	 * AND IT DOES NOT MOVE WHEN THE NEXT SEASON GOES ON SALE, which is {@link
+	 * SeasonClock#seasonBeingPaidFor}'s answer and not this one's.
+	 *
+	 * <p>From 15 October the transfer window is open and a payment buys NEXT year; the band is
+	 * not that question, it moves once, on 1 January (PDL P7). The two functions agree for nine
+	 * months of the year and part company for the last two and a half, so a case standing on any
+	 * other day would pass whichever of them the band used - exactly how that swap survived 1540
+	 * cases of {@code ResultApiTest} until 13.09.2026. The floor asks {@link SeasonClock} itself
+	 * rather than remembering when the window opens.
+	 *
+	 * <p><b>It is asked on 1 January as well, the day the band does move</b>, where the two
+	 * functions agree again: a version that never moved the band at all would pass both days
+	 * in the autumn and is told apart from this one only there.
+	 */
+	@Test
+	void theSeasonTheBandIsWorkedOutForDoesNotMoveWhenTheNextOneGoesOnSale() {
+		ZonedDateTime midOctober = ZonedDateTime.of(2027, 10, 15, 12, 0, 0, 0, SeasonClock.ZONE);
+		ZonedDateTime theLastNoonOfTheYear = ZonedDateTime.of(2027, 12, 31, 12, 0, 0, 0, SeasonClock.ZONE);
+
+		assertThat(SeasonClock.seasonBeingPaidFor(midOctober))
+				.as("the season being paid for is not the next one at this moment, so the band and"
+						+ " the sale cannot be told apart and the case measures nothing")
+				.isEqualTo(2028);
+		assertThat(SeasonClock.seasonBeingPaidFor(theLastNoonOfTheYear)).isEqualTo(2028);
+
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(midOctober))
+				.as("the band moved forward a season in the autumn, without a single birthday,"
+						+ " because the NEXT season went on sale")
+				.isEqualTo(2027);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(theLastNoonOfTheYear))
+				.as("the band moved forward a season before the New Year")
+				.isEqualTo(2027);
+		assertThat(SeasonClock.seasonTheBandIsWorkedOutFor(
+				ZonedDateTime.of(2028, 1, 1, 12, 0, 0, 0, SeasonClock.ZONE)))
+				.as("the band did not move on 1 January, the one day it does")
+				.isEqualTo(2028);
+	}
+
+	/**
 	 * A LEAGUE IS MADE FOR THE YEAR THAT IS RUNNING OR THE ONE AFTER IT, AND FOR NO OTHER
 	 * (PDL P15a, owner 22.09.2026).
 	 *

@@ -102,6 +102,56 @@ describe('a day the box offers beside its calendar', () => {
 
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('stands the days and the calendar in one group after the box, and marks the row', () => {
+    /* A row too narrow for all of them beside the box has to put ALL of them under it and
+       never some: the first draft wrapped them one by one and at 390px with the text at
+       200% the first day stood beside the box and the second day and the calendar went
+       under it (`DatePicker.css`, `.datepicker--steps`, which says why with the numbers).
+       jsdom lays nothing out, so what is held here is the markup the sheet is written
+       against: the class the rule hangs on, the group, what is in it, and in what order.
+       Where the boxes really land is asked of Chrome by `scripts/date-row-geometry.mjs`.
+
+       Written with ONE day, where the copy of an event is handed two: a row that counted
+       days against two would pass the screen and fail here. */
+    renderWithSteps(false)
+
+    const box = screen.getByRole('textbox')
+    const row = must(box.parentElement, 'the row of the picker')
+    const group = must(screen.getByRole('button', { name: '+1w' }).parentElement, 'the group')
+
+    expect(row).toHaveClass('datepicker', 'datepicker--steps')
+    expect(group).toHaveClass('datepicker__tools')
+    /* The row holds the box and the group and nothing else, in that order, so the group is
+       what wraps. Said by identity and not by looking alike: two buttons are two buttons. */
+    expect([...row.children].map((one) => (one === box ? 'box' : one === group ? 'group' : 'other'))).toEqual([
+      'box',
+      'group',
+    ])
+    /* And the calendar is IN the group with the days, after them. A group of the days alone
+       leaves the calendar button beside the box and the days under it. */
+    expect(
+      within(group)
+        .getAllByRole('button')
+        .map((one) => one.getAttribute('aria-label')),
+    ).toEqual(['+1w', 'Otvori kalendar'])
+  })
+
+  it('draws the plain row, with no group and no mark, where there are no days', () => {
+    /* The other state of the same axis, and the one that keeps the change where it was
+       asked for: the plain picker is the one in the cell of a table of races and in the
+       corner of the shell, and neither of them may wrap. A group or a class written for
+       every picker would pass the case above and fail here. */
+    renderPicker()
+
+    const box = screen.getByRole('textbox')
+    const row = must(box.parentElement, 'the row of the picker')
+
+    expect(row).toHaveClass('datepicker')
+    expect(row).not.toHaveClass('datepicker--steps')
+    expect(row.querySelector('.datepicker__tools')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Otvori kalendar' }).parentElement).toBe(row)
+  })
 })
 
 describe('DatePicker', () => {

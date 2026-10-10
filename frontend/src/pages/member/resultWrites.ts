@@ -207,7 +207,8 @@ export type ACorrection = Figures & Proof
  * „bodovi ni na dužinskoj ni na vremenskoj trci ne ulaze u obračun pre verifikacije. Ne
  * vidim razlog da se ispisuju bilo kome prilikom unosa parametara prijave rezultata."
  *
- * <p><b>Where they can differ.</b> `ResultWriteApi.figuresOf` takes the time off the RACE for
+ * <p><b>Where they can differ.</b> `WhatARaceCarries.figuresOf` (asked by `ResultWriteApi`, and
+ * since R1 of the results flows by the moderator's approval too) takes the time off the RACE for
  * a race run to a limit („jer je zadato trkom", owner 29.08.2026), and the length, climb and
  * fall off the race for a race of a length. Every road but one hands the screen those same
  * figures: `pages/event/reportForm.ts` drops the time boxes on a timed race altogether, and

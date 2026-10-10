@@ -1,7 +1,9 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { cleanup, screen, within } from '@testing-library/react'
-import { useEffect, useRef } from 'react'
+import { afterEach } from 'vitest'
+import { clearResourceCache } from '../../data/client'
+import { NO_RATING, type ServedPendingItem } from '../../data/types'
 import {
   OUTSIDE_ADDRESS,
   outsideHost,
@@ -11,7 +13,8 @@ import { must } from '../../test/at'
 import sr from '../../i18n/sr.json'
 import { translate } from '../../i18n/translate'
 import { renderAt } from '../../test/render'
-import { useSession } from '../../session/useSession'
+import { serverThat } from '../../test/serverAnswers'
+import { QUEUE } from './queues'
 
 /**
  * The one address a member types that the portal hands to a browser.
@@ -194,49 +197,64 @@ describe('the shape an address of somebody else’s page must have', () => {
 })
 
 /**
- * Puts one result into the store before the queue is looked at, with whatever
- * address is handed here.
+ * One run waiting in the queue, carrying whatever address is handed here.
  *
- * Written straight into the session rather than through the form, which is the
- * whole point: the form refuses these, and what is being asked is what the screen
- * does with a value that reached the store by another road.
+ * Answered by the server rather than sent through the form, which is the whole point: the
+ * form refuses these, and what is being asked is what the screen does with a value that
+ * reached the server by another road. Until R1 of the results flows it was written straight
+ * into the session, which is where the queue read it from then.
  */
-function Sends({ link }: { link: string }) {
-  const session = useSession()
-  const done = useRef(false)
-
-  useEffect(() => {
-    if (!done.current) {
-      done.current = true
-      session.submit({
-        memberNumber: ME,
-        raceName: 'Probna trka',
-        raceKind: 'length',
-        city: 'Niš',
-        country: 'RS',
-        date: '2026-05-10',
-        distanceKm: 21.1,
-        ascentM: 540,
-        descentM: 540,
-        photo: '',
-        seconds: 6730,
-        points: 12.34,
-        category: 'half',
-        link,
-        comment: '',
-      })
-    }
-  }, [link, session])
-
-  return null
+function aRunWith(link: string): ServedPendingItem {
+  return {
+    queue: 'results',
+    id: 801,
+    kind: '',
+    date: '2026-05-12',
+    memberNumber: ME,
+    who: 'Probni Član',
+    subject: 'Probna trka',
+    subjectId: '',
+    body: '',
+    city: '',
+    country: '',
+    photoId: null,
+    rating: NO_RATING,
+    raceId: 21,
+    raceDate: '2026-05-10',
+    raceKind: 'length',
+    distanceKm: 21.1,
+    ascentM: 540,
+    descentM: 540,
+    seconds: 6730,
+    link,
+  }
 }
 
+/** Every server a case stood in front of the harness, taken down after it in reverse. */
+const standing: (() => void)[] = []
+
+afterEach(() => {
+  for (const stop of standing.splice(0).reverse()) {
+    stop()
+  }
+})
+
 describe('the queue the moderator decides in', () => {
-  /** The queue, with one result already in it. */
+  /** The queue, with one run waiting in it. The cache is dropped first because the case
+   *  that walks several addresses renders the queue once per address in one visit. */
   async function queueWith(link: string) {
-    renderAt('/sr/administracija/verifikacija/rezultati', 'superadmin', ME, undefined, null, (
-      <Sends link={link} />
-    ))
+    clearResourceCache()
+    standing.push(
+      serverThat((path, init) =>
+        path === '/api/verification' && (init?.method ?? 'GET') === 'GET'
+          ? new Response(JSON.stringify([aRunWith(link)]), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            })
+          : null,
+      ).stop,
+    )
+    renderAt(`/sr/${QUEUE.results.path}`, 'superadmin', ME)
 
     return within(await screen.findByRole('table', { name: 'Čeka proveru' }))
   }
@@ -254,8 +272,8 @@ describe('the queue the moderator decides in', () => {
   })
 
   it('says where the press leads, because the words of the link are not the address', async () => {
-    /* The words of this link are the name of the event, and the member who sent the
-       result wrote them. Measured on 23.08.2026, before: a result named „Zvanicni
+    /* The words of this link are the name of the race, which a member writes himself for
+       a race the calendar does not hold. Measured on 23.08.2026, before: a result named „Zvanicni
        rezultati BTL 2026" pointing at `btl-rezultati.zlo.example` put the host
        **nowhere** in the page, not in the text, not in `title`, not in an
        `aria-label`, so a moderator reading with a screen reader heard only the name.
@@ -276,8 +294,8 @@ describe('the queue the moderator decides in', () => {
   })
 
   it('draws a name and no link at all where what was stored is not an address', async () => {
-    /* Every shape a browser would act on, each one reaching the store past the
-       form. The name of the event is still drawn, because the moderator still has
+    /* Every shape a browser would act on, each one reaching the server past the
+       form. The name of the race is still drawn, because the moderator still has
        a result to decide about; what is not drawn is a way to press it. */
     for (const said of ['javascript:alert(1)', 'data:text/html,<b>x</b>', '//zlo.example/p']) {
       const table = await queueWith(said)

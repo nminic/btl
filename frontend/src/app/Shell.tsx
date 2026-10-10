@@ -60,10 +60,10 @@ const ADMIN = 'administracija'
  * It is asked for here as well as on the verification screen, and the data layer
  * keeps a resource for the whole visit, so it costs one request. A header that
  * waited for it would hold up every screen behind it, so until it arrives the
- * number says what the session alone knows.
+ * number counts nothing out of it.
  */
 function useWaiting(): number {
-  const { submissions, decisions } = useSession()
+  const { decisions } = useSession()
   const items = usePending()
   /* TWO reads and not one since 27.09.2026, because one of the five queues is no longer in
      the file: the Uplate tab is a derived list (`queues.ts`, `notMembersYet`). Left out, this
@@ -78,7 +78,6 @@ function useWaiting(): number {
 
   return totalWaiting(
     {
-      pendingResults: submissions.filter((one) => one.status === 'pending').length,
       notMembersYet: notMembersYetIn(dataOr(due, null)),
       items: dataOr(items, []),
       decisions,

@@ -1,5 +1,7 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.event.WhatARaceCarries;
+import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.season.SeasonClock;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -8,6 +10,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -222,11 +227,42 @@ import java.util.List;
  * row holds under the portal's own names, so the proposal is followed here and never
  * answered by its id alone. {@code schedule_proposal_id} stood beside them from V30 until
  * PDL P10a, 22.09.2026 took the tab it served away with it, and the paragraph after this
- * one no longer needs to speak of it as a third source. {@code result_submission_id} is
- * still neither read nor answered - the results tab is fed from the session and not from
- * this resource ({@code countFor} in {@code pages/admin/queues.ts}) - and it waits for the
- * increment that has a use for it, which is ADL P-javno's rule of leaving out rather than
- * serving „za svaki slučaj".
+ * one no longer needs to speak of it as a third source. {@code result_submission_id} (V10)
+ * is followed now as well. Until the results flows moved onto the server it was neither read
+ * nor answered, because the results tab was fed from the browser's session; it waited for the
+ * increment that had a use for it, ADL P-javno's rule of leaving out rather than serving „za
+ * svaki slučaj", and this is that increment. What it answers is the next paragraph.
+ *
+ * <p><b>WHAT A RUN WAITING IN THE RESULTS TAB ANSWERS WITH, and every name below is empty
+ * on the other four tabs</b> - the empty string for text and nothing for a number or a day,
+ * the shape {@code subjectId} and {@code photoId} already have. The pointer is the only way
+ * in: {@code verification_only_the_results_queue_carries_a_submission} (V10) keeps it off
+ * every other tab, so no row of another tab can join a run, the same guarantee {@code tp} and
+ * {@code cs} below rest on.
+ *
+ * <ul>
+ * <li><b>The race, by its key and by its name AS IT IS CALLED NOW.</b> {@code subject} on
+ * this tab is the race's own name read off {@code race}, and not the copy
+ * {@code ResultWriteApi} wrote into {@code verification.subject} on the day the run was
+ * sent: a race renamed since is the race the run will be counted on, under its new name.
+ * A race the calendar does not hold yet has no key, and its name is the one the member
+ * typed (V10's „one way or the other, never both").
+ * <li><b>The day it was run, beside the day it was sent.</b> {@code date} stays the day the
+ * item arrived in the queue, and {@code raceDate} is the race's. Two days and never one
+ * field for both: the owner, 18.09.2026 (PDL P9), „Odnosno verifikator vidi kad je rezultat
+ * poslat", and the day it was sent is that.
+ * <li><b>The kind of race</b>, the calendar's where the race is in it, and the member's
+ * hint where it is not.
+ * <li><b>The four figures AS AN APPROVAL WOULD COUNT THEM NOW</b>, through the one place
+ * that answers which of them a race fixes ({@code WhatARaceCarries.figuresOf}), asked of
+ * the race as it stands today and not of the copy taken when the run was sent. A moderator
+ * is shown the numbers his approval writes, and not numbers it would quietly replace.
+ * <li><b>The link</b> to the official results. The member's own comment is {@code body},
+ * as it always was.
+ * <li><b>{@code kind} is {@code correction} for a run that corrects a counted result</b>
+ * ({@code amends_result_id}, V32), which is the whole of what the owner asked the queue to
+ * be told: „samo labela, ne šta je ispravljano" (PDL P9, 27.08.2026).
+ * </ul>
  *
  * <p><b>{@code subjectId} NOW ANSWERS THE EVENT A COMMENT IS ABOUT, NEVER THE SAME COLUMN
  * OF A DIFFERENT TABLE BY ACCIDENT.</b> {@code comment_submission.event_id} on the comments
@@ -372,10 +408,22 @@ class VerificationApi {
 	 *                     off {@code comment_submission} (V30). The portal's own default
 	 *                     for a comment nobody has rated, so a moderator reading a WAITING
 	 *                     one sees the same nought a published one with no marks would show
+	 * @param raceId       the race a waiting run was run at, on the results tab, and nothing
+	 *                     where the calendar does not hold it yet or the tab carries no run
+	 * @param raceDate     the day that run was run, which is not {@code date}: that one is
+	 *                     the day the run was SENT (see the class note)
+	 * @param raceKind     the calendar's kind of that race, or the member's hint where the
+	 *                     calendar does not hold it; empty on the other tabs
+	 * @param distanceKm   the four figures as an approval would count them now, read through
+	 *                     {@code WhatARaceCarries.figuresOf}; nothing on the other tabs
+	 * @param link         the official results the member pointed at, and empty where he
+	 *                     sent none or the tab carries no run
 	 */
 	record Waiting(String queue, long id, LocalDate date, String memberNumber, String who,
 			String subject, String subjectId, String body, String kind, String city,
-			String country, Long photoId, Rating rating) {
+			String country, Long photoId, Rating rating, Long raceId, LocalDate raceDate,
+			String raceKind, BigDecimal distanceKm, Integer ascentM, Integer descentM,
+			Integer seconds, String link) {
 	}
 
 	/**
@@ -435,7 +483,12 @@ class VerificationApi {
 						   says so in as many words - „Who sent it in, or empty" - and reads
 						   `one.who === ''` to decide whether to draw the line at all. */
 						+ " coalesce(c.first_name || ' ' || c.last_name, '') as who,"
-						+ " v.subject,"
+						/* WHAT IT IS ABOUT, and on the results tab that is the race AS IT IS
+						   CALLED NOW (see the class note). The race and the name a member typed
+						   are V10's two exclusive ways of naming one, so the coalesce never
+						   chooses between two that are both there; on every other tab neither
+						   is, because only the results tab carries a submission at all. */
+						+ " coalesce(ra.name, rs.race_name, v.subject) as subject,"
 						/* THE THING A DECISION IS ABOUT, BY ITS KEY, and blank everywhere else.
 						   Two sources since V30 and never both at once on one row -
 						   `verification_only_the_<queue>_queue_carries_a_<x>` (V11, V30) makes
@@ -455,6 +508,10 @@ class VerificationApi {
 						+ " case when tp.team_id is not null then 'teamEdit'"
 						+ "      when v.queue = 'profiles' and v.photo_id is not null then 'photo'"
 						+ "      when v.queue = 'profiles' then 'bio'"
+						/* AND A RUN THAT CORRECTS A COUNTED RESULT, the third tab holding two
+						   sorts of thing, read off V32's pointer the way `teamEdit` is read off
+						   V11's: „samo labela" is what the owner asked the queue to be told. */
+						+ "      when rs.amends_result_id is not null then 'correction'"
 						+ "      else '' end as kind,"
 						/* THE TOWN THE ONE WAY OR THE OTHER, which is the same coalesce
 						   `TeamApi` and `CompetitorApi` already make over the identical three
@@ -488,7 +545,21 @@ class VerificationApi {
 						   what a published comment with no marks would show him too. */
 						+ " coalesce(cs.rating_organisation, 0) as rating_organisation,"
 						+ " coalesce(cs.rating_value, 0) as rating_value,"
-						+ " coalesce(cs.rating_ambience, 0) as rating_ambience"
+						+ " coalesce(cs.rating_ambience, 0) as rating_ambience,"
+						/* A RUN WAITING IN THE RESULTS TAB, all of it nothing on every other
+						   tab (see the class note). The race's own figures are read beside the
+						   run's, and which of the two each served figure is taken from is
+						   decided in Java by `WhatARaceCarries.figuresOf` and not by a `case`
+						   here: written in SQL it would be a second answer to „whose figure is
+						   this", free to disagree with the one the approval counts by. */
+						+ " rs.race_id, rs.race_date,"
+						+ " coalesce(ra.kind, rs.race_kind, '') as race_kind,"
+						+ " ra.kind as the_races_kind, ra.distance_km as the_races_distance,"
+						+ " ra.ascent_m as the_races_ascent, ra.descent_m as the_races_descent,"
+						+ " ra.limit_seconds as the_races_limit,"
+						+ " rs.distance_km as sent_distance, rs.ascent_m as sent_ascent,"
+						+ " rs.descent_m as sent_descent, rs.seconds as sent_seconds,"
+						+ " coalesce(rs.link, '') as link"
 						/* THE TWO DAYS A REPORTED CHANGE OF TERM ONCE CARRIED STOOD HERE, off
 						   `schedule_proposal` (V30), from the day that table arrived until PDL
 						   P10a took its tab away the same day: „Redova je pet, ne šest." Neither
@@ -548,6 +619,14 @@ class VerificationApi {
 						   `schedule_proposal`, until PDL P10a took the tab and the table both
 						   away (V31). */
 						+ " left join comment_submission cs on cs.id = v.comment_submission_id"
+						/* AND THE RUN V10 GAVE THE RESULTS TAB, with the race it was run at.
+						   LEFT twice over: every other tab carries no submission, and a run on a
+						   race the calendar does not hold yet has no race to join. Joined by the
+						   POINTER and never by whose run it is - a comment and a run by the same
+						   member are two items, and a join on the member would hand his comment
+						   the figures of his run. */
+						+ " left join result_submission rs on rs.id = v.result_submission_id"
+						+ " left join race ra on ra.id = rs.race_id"
 						/* THE ONES HE MAY, decided by `WhatHeMayDo` and passed in. Written
 						   here as a condition over the ticks it would be a second home for
 						   „may he" and would answer the superadmin, who holds everything with
@@ -560,12 +639,44 @@ class VerificationApi {
 						   nobody touched. */
 						+ " order by r.target, v.raised_at, v.id")
 				.param("mine", his)
-				.query((row, one) -> new Waiting(row.getString(1), row.getLong(2),
-						row.getTimestamp(3).toInstant().atZone(SeasonClock.ZONE).toLocalDate(),
-						row.getString(4), row.getString(5), row.getString(6), row.getString(7),
-						row.getString(8), row.getString(9), row.getString(10), row.getString(11),
-						row.getObject(12, Long.class),
-						new Rating(row.getInt(13), row.getInt(14), row.getInt(15))))
+				.query((row, one) -> {
+					Figures counted = countedAt(row);
+
+					return new Waiting(row.getString(1), row.getLong(2),
+							row.getTimestamp(3).toInstant().atZone(SeasonClock.ZONE).toLocalDate(),
+							row.getString(4), row.getString(5), row.getString(6), row.getString(7),
+							row.getString(8), row.getString(9), row.getString(10), row.getString(11),
+							row.getObject(12, Long.class),
+							new Rating(row.getInt(13), row.getInt(14), row.getInt(15)),
+							row.getObject("race_id", Long.class),
+							row.getObject("race_date", LocalDate.class),
+							row.getString("race_kind"), counted.distanceKm(), counted.ascentM(),
+							counted.descentM(), counted.seconds(), row.getString("link"));
+				})
 				.list();
+	}
+
+	/**
+	 * THE FOUR FIGURES OF A WAITING RUN AS AN APPROVAL WOULD COUNT THEM TODAY.
+	 *
+	 * <p>Where the run was sent from the calendar, the race is asked through
+	 * {@link WhatARaceCarries#figuresOf}, as it stands now, which is exactly what
+	 * {@link VerificationWriteApi} asks when the moderator approves it, so the screen and the
+	 * standings cannot come to disagree about a figure the race fixes. Where it was not - a race
+	 * the calendar does not hold yet, or a tab that carries no run at all - there is no race to
+	 * ask, and what was sent is all there is: four figures for the first, nothing for the
+	 * second.
+	 */
+	private static Figures countedAt(ResultSet row) throws SQLException {
+		Figures sent = new Figures(row.getBigDecimal("sent_distance"),
+				row.getObject("sent_ascent", Integer.class),
+				row.getObject("sent_descent", Integer.class),
+				row.getObject("sent_seconds", Integer.class));
+		String theRacesKind = row.getString("the_races_kind");
+
+		return theRacesKind == null ? sent
+				: WhatARaceCarries.figuresOf(new WhatARaceCarries.ARace(theRacesKind,
+						row.getBigDecimal("the_races_distance"), row.getInt("the_races_ascent"),
+						row.getInt("the_races_descent"), row.getInt("the_races_limit")), sent);
 	}
 }

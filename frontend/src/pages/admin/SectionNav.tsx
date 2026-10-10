@@ -235,7 +235,7 @@ function usePathname(): string {
  */
 function QueuesSector() {
   const { t } = useI18n()
-  const { submissions, decisions } = useSession()
+  const { decisions } = useSession()
   const items = usePending()
   /* The Uplate tab is counted off the derived list and not off the file, because nothing
      writes that queue any more (`queues.ts`, `notMembersYet`). Asked here beside the file so
@@ -252,7 +252,6 @@ function QueuesSector() {
      reads it: a section that waited for the file would hold up the screen behind
      it, which is the work itself. */
   const waiting = {
-    pendingResults: submissions.filter((one) => one.status === 'pending').length,
     /* Read for what it is worth, like the file beside it: a derived list still on its way
        counts as nought, which is the same reading every other queue gets while it waits and
        is what keeps this section from holding up the work behind it. */

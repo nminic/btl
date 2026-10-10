@@ -19,11 +19,13 @@ import { setupUser } from '../test/user'
  * **What is held here is where things are written, and nothing about which rule wins or where a
  * box lands** (ADL A33): the first is a fact about the source, the second and the third are a
  * browser's, and `scripts/header-panels-geometry.mjs` asks the browser, by hand and not in the
- * gate, because the browser the owner decided on in ADL A63 (22.09.2026) is not in the package yet.
+ * gate: the browser the owner decided on in ADL A63 (22.09.2026) is in the package now
+ * (`geometry/`), and the panels are not yet among its guards.
  *
  * **The question, and who answers it.** Of the four elements a panel hangs from (the box its button
- * stands in, the row of tools, the bar, and the panel itself), asked in the closed state and in the
- * state a click leaves it in (the box wears `is-open`, focus is inside it, and the pointer is over
+ * stands in, the row of tools, the bar, and the panel itself), and of the button itself for the one
+ * thing that makes it an anchor, asked in the closed state and in the state a click leaves it in
+ * (the box wears `is-open`, focus is inside it, and the pointer is over
  * its button): which rules of which stylesheet REACH it? Asked of the DOM's own `matches`, rule by
  * rule, over every sheet under `src` (the portal's own habit, `forms/formStyle.test.ts`: „asked of
  * what each mark is REACHED by, not of the text of one rule"). That is what takes the question off
@@ -38,24 +40,36 @@ import { setupUser } from '../test/user'
  *
  * 1. Every rule that reaches one of the four and writes a property of that element's family
  *    (below) is a plain class or a list of plain classes, is in `app/Shell.css`, stands outside
- *    any query or in the one narrow query, and is not `!important`. The one excuse is for the
- *    weight and for nothing else: the rule that opens the language menu (`.lang.is-open
- *    .lang__menu`, which writes `transform: none`) is not a plain class, and is read by value.
+ *    any query, in the one narrow query, or in the one `@supports` block inside that query (the
+ *    anchored block, below), and is not `!important`. The one excuse is for the weight and for
+ *    nothing else: the rule that opens the language menu (`.lang.is-open .lang__menu`, which
+ *    writes `transform: none`) is not a plain class, and is read by value.
  * 2. The names those rules write on each element, and the place each is written in (outside any
- *    query, in the narrow one), are exactly the ones pinned below. The names and the places and
- *    not the values, so a repaint of a value fails nothing, while a property nobody has written
- *    there before, or one written in a place it was not written in before, fails at once. Where
- *    a value alone can take a box away or move a panel, it is read as well: the `display` of the
- *    row of tools and of the bar, and what a panel stands on (`position`, the offsets, the step
- *    under the button, the widths in the query, the language menu's `transform` and `margin`).
+ *    query, in the narrow one, in the anchored block), are exactly the ones pinned below. The
+ *    names and the places and not the values, so a repaint of a value fails nothing, while a
+ *    property nobody has written there before, or one written in a place it was not written in
+ *    before, fails at once. Where a value alone can take a box away or move a panel, it is read
+ *    as well: the `display` of the row of tools and of the bar, and what a panel stands on
+ *    (`position`, the offsets, the step under the button, the widths in the query, the language
+ *    menu's `transform` and `margin`, and everything the anchored block says).
  * 3. Where a base rule and the narrow query write one name on one element, the query stands after
- *    the base rule: an order of lines, which is not a claim that it wins.
+ *    the base rule; and the anchored block stands after every narrow rule that reaches the same
+ *    panel, since it writes the logical spelling of an offset the narrow rule writes in the physical
+ *    one (`inset-inline` over `right`), and only the order of the two says which of them is read. An
+ *    order of lines, which is not a claim that it wins.
  * 4. What the narrow query says and what stands outside it is read off the same rules by name,
  *    which is exact because of the first fact: every rule that could say otherwise is one of those.
  * 5. In each of those states none of the four carries an inline `style`, which would be heavier
  *    than any rule, whether it is written for the open state only or for both; and the rendered
  *    page carries no sheet of its own (a `<style>` or a link to a stylesheet that a component
  *    writes at run time), since every rule asked about here is one read from a file.
+ * 6. **The anchored block** (owner, 03.10.2026, ADL A63: the language menu opens under its own
+ *    button) hangs the language menu, and only the language menu, from the right edge of its button
+ *    wherever the browser can anchor it: the button writes an anchor name, the menu names the same
+ *    anchor (one constant here, so that renaming either end fails), its offsets are the gutter at the
+ *    start and the right edge of the anchor at the end, and it is aligned `safe end`, which begins it
+ *    at the gutter where it is wider than the room between the two. The condition it stands under
+ *    names the same anchor, so it is one thing and not three.
  *
  * **The two families, as patterns and not lists.** A list of names is a list of one spelling: the
  * logical `margin-inline-end` is a way to push a panel off the screen that no list of `margin` and
@@ -64,15 +78,18 @@ import { setupUser } from '../test/user'
  * what hangs from it: `position`, `display`, `all`, `overflow` and `clip` in every spelling,
  * `mask`, `zoom`, and the properties that give a box a containing block of its own (`transform`
  * and its three single-property cousins, `perspective`, `filter`, `backdrop-filter`, `contain`,
- * `container` and its longhands, `content-visibility`, `will-change`). For a panel it is what
- * places, sizes or moves it: `position` in every spelling (anchor positioning included), `all`,
+ * `container` and its longhands, `content-visibility`, `will-change`), and `anchor-*`, which can
+ * name one of them an anchor or hide the name from the panel (`anchor-scope`). For a panel it is
+ * what places, sizes or moves it: `position` in every spelling (anchor positioning included), `all`,
  * the four offsets and `inset` in every spelling, `margin` in every spelling, width and height and
  * their minimum and maximum, physical and logical, `transform` with its three single-property
  * cousins (`translate`, `rotate`, `scale`), `zoom`, `offset` (the path a box moves along),
  * `anchor-*` and the three alignment properties (`place-self`, `justify-self`, `align-self`).
- * And for all four, a custom property: written on one of them it changes what every `var()` below
- * it means (`--space-16` given another value on the row of tools is an offset on a panel that no
- * rule about the panel says), and a value read as `var(--space-16)` says nothing of it.
+ * For the button it is `anchor-*` and nothing else: the name that makes it the anchor of a panel
+ * (the button's own box is the browser's). And for all of them, a custom property: written on one
+ * of them it changes what every `var()` below it means (`--space-16` given another value on the
+ * row of tools is an offset on a panel that no rule about the panel says), and a value read as
+ * `var(--space-16)` says nothing of it.
  *
  * **What is NOT held here, said plainly because a guard may claim only what the tool beneath it
  * answers.** Where the panel then lands, and which rule it ends up under. Properties outside the
@@ -80,21 +97,28 @@ import { setupUser } from '../test/user'
  * enlarges its box from the inside, which is `padding`, `border` and `box-sizing` (design values
  * that a pin would freeze, and `box-sizing: border-box` is what `index.css` says of every element,
  * which is what lets `max-width` hold them); what its content asks of it; and the button, whose
- * own box decides the line the panel hangs under. A rule that applies only under a
- * pseudo-class jsdom's matcher does not carry (`:active`, `:focus-visible`, `:target`), or under
- * `:hover` over anything but the button. A property or an at-rule jsdom's parser does not know,
- * which it drops (`@starting-style` inside a rule, measured). And a style that script writes after
- * the state is read, or through a sheet object jsdom does not have (`adoptedStyleSheets`, measured:
- * it is not there to ask). And the size of the floor (`min-width`) a panel is given outside the query,
- * which is a design value: the pin says that a floor is written there, not how big it is. Every
- * one of those is asked of Chrome and none of them of this.
+ * own box decides the line the panel hangs under and which is held for its anchor name alone. A
+ * rule that applies only under a pseudo-class jsdom's matcher does not carry (`:active`,
+ * `:focus-visible`, `:target`), or under `:hover` over anything but the button. A property or an
+ * at-rule jsdom's parser does not know, which it drops (`@starting-style` inside a rule,
+ * measured). **And a spelling of an offset that parser refuses** (measured 09.10.2026: `right:
+ * anchor(right)` and `top: anchor(bottom)` are dropped whole, while `inset-inline`,
+ * `inset-inline-end` and `inset` keep the value, which is why the anchored menu is written with
+ * `inset-inline`, and why the case that reads it below asks for the value to be THERE and not for
+ * something to be absent): a panel moved by one of the dropped spellings is not seen here, and
+ * neither is `position-visibility`, which hides it. And a style that script writes after the
+ * state is read, or through a sheet object jsdom does not have (`adoptedStyleSheets`, measured:
+ * it is not there to ask). And the size of the floor (`min-width`) a panel is given outside the
+ * query, which is a design value: the pin says that a floor is written there, not how big it is.
+ * Every one of those is asked of Chrome and none of them of this.
  *
  * That the shape this holds is the one that keeps a panel on the screen was measured, not argued:
- * fourteen widths from 360 to 1280 on the production build and on the QA build, the inbox with
- * messages, empty, refused by the server and never answered, and 360 at 200% text, where every
- * panel lies whole on the screen. The numbers it was measured at, before and after, are the
- * boundary written in the head of that script, for the browser of ADL A63 to turn into guards one
- * at a time.
+ * seven widths from 360 to 1280 at the text the browser starts with and at 200%, on the production
+ * build and on the QA build, in the header of a member and in the header of a visitor, the inbox
+ * with messages, empty, refused by the server and never answered, where every panel lies whole on
+ * the screen and the language menu lies under its button. The numbers it was measured at, before
+ * and after, are the boundary written in the head of that script, for the browser of ADL A63 to
+ * turn into guards one at a time.
  */
 const SRC = join(process.cwd(), 'src')
 const SHEET = 'app/Shell.css'
@@ -107,18 +131,46 @@ const OPENS_THE_LANGUAGE_MENU = '.lang.is-open .lang__menu'
  *  widths and says why this is on it). */
 const NARROW = '(max-width: 51.24875em)'
 
+/** The name the language menu is anchored by: the button writes it (`anchor-name`) and the menu
+ *  names it (`position-anchor`). One constant for both ends and for the condition below, so that
+ *  renaming any one of the three fails here and is not a menu anchored to nothing. */
+const ANCHOR = '--lang-button'
+
+/** The condition the anchored block stands under: a browser that knows anchor positioning. It
+ *  names the same anchor, which is the one property it is asked about. */
+const ANCHORING = `(anchor-name: ${ANCHOR})`
+
+/** The conditions a rule stands under are written outermost first and joined with ` > `, so that a
+ *  query inside another is not mistaken for the inner one alone. */
+const inside = (outer: string | null, inner: string) => (outer === null ? inner : `${outer} > ${inner}`)
+
+/** The one place the anchored block may be written: inside the narrow query, and inside the
+ *  `@supports` of the anchor. Not outside the query, where the menu hangs from its own button without
+ *  any help and a second set of offsets would fight the first. */
+const ANCHORED = inside(NARROW, `@supports ${ANCHORING}`)
+
 /** Where a rule that reaches one of these elements is written: outside any query, in the one
- *  narrow query, or anywhere else (another width, `print`, `@supports`), which nothing here has
- *  asked about and where nothing is allowed to be written. */
-type Place = 'outside' | 'narrow' | 'elsewhere'
+ *  narrow query, in the one `@supports` block inside it, or anywhere else (another width, `print`,
+ *  another `@supports`, one of them inside another), which nothing here has asked about and where
+ *  nothing is allowed to be written. */
+type Place = 'outside' | 'narrow' | 'anchored' | 'elsewhere'
 
 const placeOf = (condition: string | null): Place =>
-  condition === null ? 'outside' : condition === NARROW ? 'narrow' : 'elsewhere'
+  condition === null
+    ? 'outside'
+    : condition === NARROW
+      ? 'narrow'
+      : condition === ANCHORED
+        ? 'anchored'
+        : 'elsewhere'
 
 /** The names written on one element, by the place each is written in. A name and not the place
  *  would let a property that is already written outside the query be written again inside it,
  *  where nobody has read it (`@media (…) { .lang__menu { transform: … } }`). */
 type Pinned = Record<Place, string[]>
+
+/** Nothing written anywhere. */
+const NOTHING: Pinned = { outside: [], narrow: [], anchored: [], elsewhere: [] }
 
 /**
  * What is written on the panels, by name and by place (pinned, with the reason each is there
@@ -130,17 +182,26 @@ type Pinned = Record<Place, string[]>
  * `transform` is how it opens (`translateY(-4px)` shut, `none` open, both read below by value,
  * because they are the one place a panel is meant to be moved). `margin-top` is the step under the
  * button that the query gives all three.
+ *
+ * And the anchored block is the language menu's alone: the other two panels write nothing in it, so
+ * that a rule written for one panel and read by another (`.lang__menu, .account__panel { … }`)
+ * fails here and is not a messages panel anchored to the language button.
  */
 const ON_THE_PANEL: Pinned = {
+  ...NOTHING,
   outside: ['min-width', 'position', 'right', 'top'],
   narrow: ['margin-top', 'max-width', 'min-width', 'right', 'top', 'width'],
-  elsewhere: [],
 }
 
 const ON_THE_LANGUAGE_MENU: Pinned = {
   ...ON_THE_PANEL,
   outside: ['margin', 'min-width', 'position', 'right', 'top', 'transform'],
+  anchored: ['inset-inline', 'justify-self', 'position-anchor'],
 }
+
+/** What the button writes of its own that makes it the anchor of a panel, and where: the language
+ *  button's anchor name, in the anchored block, and nothing on the other two buttons. */
+const ON_THE_LANGUAGE_BUTTON: Pinned = { ...NOTHING, anchored: ['anchor-name'] }
 
 /**
  * The three panels of the header: the name of the button that opens each, the box that button
@@ -149,10 +210,30 @@ const ON_THE_LANGUAGE_MENU: Pinned = {
  * the ones the other finds on the page (a fact with two homes drifts, and a guard over a class
  * nobody wears holds nothing).
  */
+const LANGUAGE_BUTTON = 'Jezik'
+
 const HEADER_PANELS = [
-  { button: 'Jezik', box: '.lang', panel: '.lang__menu', onThePanel: ON_THE_LANGUAGE_MENU },
-  { button: 'Otvori nalog', box: '.account', panel: '.account__panel', onThePanel: ON_THE_PANEL },
-  { button: /^Otvori poruke/, box: '.inbox', panel: '.inbox__panel', onThePanel: ON_THE_PANEL },
+  {
+    button: LANGUAGE_BUTTON,
+    box: '.lang',
+    panel: '.lang__menu',
+    onThePanel: ON_THE_LANGUAGE_MENU,
+    onTheButton: ON_THE_LANGUAGE_BUTTON,
+  },
+  {
+    button: 'Otvori nalog',
+    box: '.account',
+    panel: '.account__panel',
+    onThePanel: ON_THE_PANEL,
+    onTheButton: NOTHING,
+  },
+  {
+    button: /^Otvori poruke/,
+    box: '.inbox',
+    panel: '.inbox__panel',
+    onThePanel: ON_THE_PANEL,
+    onTheButton: NOTHING,
+  },
 ]
 
 const PANELS = HEADER_PANELS.map((one) => one.panel)
@@ -162,17 +243,21 @@ const BUTTONS_BOX = HEADER_PANELS.map((one) => one.box)
  *  is only ever positioned (`relative` outside the query, `static` in it), the row of tools is a
  *  flex row and nothing else, and the bar is a flex row that the query makes the positioned box. */
 const BETWEEN_PINNED: Record<'box' | 'tools' | 'bar', Pinned> = {
-  box: { outside: ['position'], narrow: ['position'], elsewhere: [] },
-  tools: { outside: ['display'], narrow: [], elsewhere: [] },
-  bar: { outside: ['display'], narrow: ['position'], elsewhere: [] },
+  box: { ...NOTHING, outside: ['position'], narrow: ['position'] },
+  tools: { ...NOTHING, outside: ['display'] },
+  bar: { ...NOTHING, outside: ['display'], narrow: ['position'] },
 }
 
 /** What can make one of the three boxes between a panel and the bar the measure of a positioned
- *  box, take its box away, scale it or clip what hangs from it, and a custom property, which
- *  changes what every `var()` below it means (the head of this file says why a pattern and not a
- *  list). */
+ *  box, take its box away, scale it or clip what hangs from it, or name it an anchor (or hide the
+ *  name of one from the panel), and a custom property, which changes what every `var()` below it
+ *  means (the head of this file says why a pattern and not a list). */
 const BETWEEN =
-  /^(position|display|all|overflow(-.+)?|clip(-path)?|(-webkit-)?mask(-.+)?|transform|translate|rotate|scale|zoom|perspective|filter|backdrop-filter|contain|container(-.+)?|content-visibility|will-change|--.+)$/
+  /^(position|display|all|overflow(-.+)?|clip(-path)?|(-webkit-)?mask(-.+)?|transform|translate|rotate|scale|zoom|perspective|filter|backdrop-filter|contain|container(-.+)?|content-visibility|will-change|anchor-.+|--.+)$/
+
+/** What makes the button of a panel the anchor of anything: a name, or a scope that keeps a name from
+ *  being seen. Its own box is not asked about, and the head of this file says why. */
+const THE_BUTTON = /^anchor-.+$/
 
 /** What places, sizes or moves a panel, in every spelling, and a custom property, which changes
  *  what every `var()` in its own rules means. */
@@ -184,14 +269,15 @@ const THE_PANEL =
 const GUTTER = 'var(--space-16)'
 const WITHIN_THE_BAR = `calc(100% - 2 * ${GUTTER})`
 
-type Role = 'box' | 'panel' | 'tools' | 'bar'
+type Role = 'box' | 'panel' | 'tools' | 'bar' | 'button'
 
 /** One rule of one sheet, with where it is written and what it writes. */
 type Written = {
   sheet: string
   /** The selector as written, the whitespace of its line breaks folded. */
   selector: string
-  /** The query the rule is written in, or null where it is written outside any. */
+  /** The queries the rule is written in, outermost first and joined with ` > ` (`inside`), or null
+   *  where it is written outside any. */
   condition: string | null
   /** Where in its sheet it stands, counted over the style rules of that sheet. */
   line: number
@@ -311,9 +397,11 @@ function everythingWritten(): { rules: Written[]; sheets: number } {
         } else if (within !== null && carriesDeclarations(rule)) {
           add(within, rule.style, condition)
         } else if (rule instanceof CSSMediaRule) {
-          walk([...rule.cssRules], rule.conditionText, within)
+          walk([...rule.cssRules], inside(condition, rule.conditionText), within)
+        } else if (rule instanceof CSSSupportsRule) {
+          walk([...rule.cssRules], inside(condition, `@supports ${rule.conditionText}`), within)
         } else if (rule instanceof CSSGroupingRule) {
-          walk([...rule.cssRules], '(another kind of query)', within)
+          walk([...rule.cssRules], inside(condition, '(another kind of query)'), within)
         }
       }
     }
@@ -369,6 +457,7 @@ function theHeaderAsItIs(): Promise<Snapshot> {
           ['panel', panel, THE_PANEL],
           ['tools', tools, BETWEEN],
           ['bar', bar, BETWEEN],
+          ['button', htmlElement(button), THE_BUTTON],
         ]
 
         states.push({
@@ -452,6 +541,8 @@ function valueIn(selector: string, property: string, condition: string | null): 
 
 const inTheQuery = (selector: string, property: string) => valueIn(selector, property, NARROW)
 
+const inTheAnchoredBlock = (selector: string, property: string) => valueIn(selector, property, ANCHORED)
+
 const outsideAnyQuery = (selector: string, property: string) => valueIn(selector, property, null)
 
 describe('what reaches the three panels of the header and the boxes they hang from', () => {
@@ -463,7 +554,7 @@ describe('what reaches the three panels of the header and the boxes they hang fr
     expect(seen.sheets).toBeGreaterThan(30)
     expect(seen.rules).toBeGreaterThan(500)
 
-    for (const role of ['box', 'panel', 'tools', 'bar']) {
+    for (const role of ['box', 'panel', 'tools', 'bar', 'button']) {
       expect(seen.reaches.filter((one) => one.role === role).length, `rules that reach the ${role}`).toBeGreaterThan(0)
     }
 
@@ -483,7 +574,7 @@ describe('what reaches the three panels of the header and the boxes they hang fr
     }
   })
 
-  it('is written in one sheet, in one of two places, at the weight of one class, and not once important', async () => {
+  it('is written in one sheet, in one of three places, at the weight of one class, and not once important', async () => {
     const seen = await theHeaderAsItIs()
     const PLAIN = /^\.[\w-]+(?: ?, ?\.[\w-]+)*$/
     const offenders = new Set<string>()
@@ -497,9 +588,10 @@ describe('what reaches the three panels of the header and the boxes they hang fr
         offenders.add(`${where}: another sheet`)
       }
 
-      /* TWO PLACES. Outside any query, and in the one narrow query. A third (a query of another
-         width, `print`, a `@supports`) is a place the questions below were not asked about. */
-      if (rule.condition !== null && rule.condition !== NARROW) {
+      /* THREE PLACES. Outside any query, in the one narrow query, and in the one `@supports`
+         inside that query. A fourth (a query of another width, `print`, another `@supports`, one
+         of them inside another) is a place the questions below were not asked about. */
+      if (placeOf(rule.condition) === 'elsewhere') {
         offenders.add(`${where}: a query of its own`)
       }
 
@@ -555,7 +647,12 @@ describe('what reaches the three panels of the header and the boxes they hang fr
             ),
           ].sort()
 
-          return { outside: written('outside'), narrow: written('narrow'), elsewhere: written('elsewhere') }
+          return {
+            outside: written('outside'),
+            narrow: written('narrow'),
+            anchored: written('anchored'),
+            elsewhere: written('elsewhere'),
+          }
         }
         const state = `${name} ${open ? 'open' : 'closed'}`
 
@@ -563,6 +660,7 @@ describe('what reaches the three panels of the header and the boxes they hang fr
         expect(on('tools'), `${state}, the row of tools`).toEqual(BETWEEN_PINNED.tools)
         expect(on('bar'), `${state}, the bar`).toEqual(BETWEEN_PINNED.bar)
         expect(on('panel'), `${state}, the panel`).toEqual(one.onThePanel)
+        expect(on('button'), `${state}, the button`).toEqual(one.onTheButton)
       }
     }
   })
@@ -576,7 +674,7 @@ describe('what reaches the three panels of the header and the boxes they hang fr
         const key = `${panel} ${open ? 'open' : 'closed'} ${role} ${name}`
         const here = lines.get(key) ?? { base: [], narrow: [] }
 
-        here[rule.condition === null ? 'base' : 'narrow'].push(rule.line)
+        here[placeOf(rule.condition) === 'outside' ? 'base' : 'narrow'].push(rule.line)
         lines.set(key, here)
       }
     }
@@ -595,6 +693,30 @@ describe('what reaches the three panels of the header and the boxes they hang fr
         .map(([key]) => key),
     ).toEqual([])
   })
+
+  it('stands the anchored block after every narrow rule that reaches the same panel', async () => {
+    /* The block writes `inset-inline`, which is the logical spelling of the offsets the narrow rule
+       writes as `right`, and the two are one property to the cascade: a name-by-name comparison, as
+       above, cannot see that they meet. Only the order of the two says which of them is read, so it
+       is held for the panel as a whole, in both states. An order of lines and not a claim about
+       which wins. */
+    const seen = await theHeaderAsItIs()
+
+    for (const open of [false, true]) {
+      const reached = seen.reaches.filter(
+        (one) => one.panel === LANGUAGE_BUTTON && one.open === open && one.role === 'panel',
+      )
+      const narrow = reached.filter((one) => placeOf(one.rule.condition) === 'narrow').map((one) => one.rule.line)
+      const anchored = reached.filter((one) => placeOf(one.rule.condition) === 'anchored').map((one) => one.rule.line)
+
+      /* Both are there, or the comparison below is a comparison of nothing. */
+      expect(narrow.length, `narrow rules that reach the language menu, ${open ? 'open' : 'closed'}`).toBeGreaterThan(0)
+      expect(anchored.length, `anchored rules that reach the language menu, ${open ? 'open' : 'closed'}`).toBeGreaterThan(0)
+      expect(Math.min(...anchored), `the first anchored rule, ${open ? 'open' : 'closed'}`).toBeGreaterThan(
+        Math.max(...narrow),
+      )
+    }
+  })
 })
 
 describe('what the narrow query says, and what stands outside it', () => {
@@ -610,7 +732,11 @@ describe('what the narrow query says, and what stands outside it', () => {
     }
   })
 
-  it('stands the panels under the button that opened them, against the gutter at the right edge of the bar', () => {
+  it('stands the panels under the line of the button that opened them, against the gutter at the right edge of the bar', () => {
+    /* For the messages and the account that is the whole of where they stand. For the language menu
+       it is what stands where the browser cannot anchor it, and the anchored block below takes its
+       right edge from the button: the fallback is held as it was, and a browser that does not read
+       the block is a browser that reads this. */
     for (const panel of PANELS) {
       /* The static position is the line under the button; the gap under it is the same step the
          rule outside the query gives it. */
@@ -621,6 +747,44 @@ describe('what the narrow query says, and what stands outside it', () => {
          which pushed the panel half a rem PAST the button it hangs from. */
       expect(inTheQuery(panel, 'right'), `${panel} right`).toBe(GUTTER)
     }
+  })
+
+  it('hangs the language menu from the right edge of its own button, inside the gutters, wherever the browser can anchor it', () => {
+    /* ONE ANCHOR, named at three ends. The button writes the name, the menu names it, and the
+       condition the block stands under asks the browser whether it knows names of that kind; all
+       three are the one constant, so a name changed at one end is a menu anchored to nothing and
+       fails here. What a missing anchor does is a browser's to say (the offsets that name it are
+       then invalid and the menu stands at the gutter), and it is measured, not argued: the script
+       asks whether the menu is under its button. */
+    expect(inTheAnchoredBlock('.lang__btn', 'anchor-name'), 'the button names the anchor').toBe(ANCHOR)
+    expect(inTheAnchoredBlock('.lang__menu', 'position-anchor'), 'the menu is anchored to it').toBe(ANCHOR)
+
+    /* THE ROOM THE MENU MAY STAND IN: the gutter at the start and the right edge of the anchor at the
+       end, the way it is spelled where the parser behind this keeps the value (`right: anchor(…)`
+       it drops, whole, and a case that read `undefined` as „nothing to refuse" would pass on it, so
+       the value is asked for and not its absence). */
+    expect(inTheAnchoredBlock('.lang__menu', 'inset-inline'), 'the room').toBe(`${GUTTER} anchor(right)`)
+
+    /* AGAINST THE END OF THAT ROOM, and against its start where the menu is wider than the room:
+       that is what `safe` is for, and `end` alone puts a menu that does not fit off the left edge. */
+    expect(inTheAnchoredBlock('.lang__menu', 'justify-self'), 'alignment').toBe('safe end')
+  })
+
+  it('writes in the anchored block nothing but that, and keeps the fallback it takes over from', () => {
+    const anchored = read().rules.filter((rule) => rule.sheet === SHEET && placeOf(rule.condition) === 'anchored')
+
+    /* Every rule of the block, whichever element it reaches: two rules, one on the button and one on
+       the menu. A third that reaches an element this file does not ask about (`.lang__name`, say)
+       is a rule about the menu or its button that nothing here would otherwise see. */
+    expect(anchored.map((rule) => `${rule.selector}: ${[...rule.names].sort().join(', ')}`).sort()).toEqual([
+      '.lang__btn: anchor-name',
+      '.lang__menu: inset-inline, justify-self, position-anchor',
+    ])
+
+    /* And the block is not the only thing standing between the menu and the left edge of a
+       telephone: the narrow rules above it are the ones a browser without anchors reads, and they
+       hang the menu from the gutter, so the block is an improvement on a menu that is whole already. */
+    expect(inTheQuery('.lang__menu', 'right'), 'the fallback').toBe(GUTTER)
   })
 
   it('never pulls a panel past an edge, in any query and in any spelling', async () => {

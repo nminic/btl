@@ -111,7 +111,9 @@ import java.util.Optional;
  * {@link MeWriteApi#change} asks it, and answered 404 with no body (ADL A8, 13.09.2026).
  * <li><b>Is one of his pictures already waiting?</b> Asked, but no longer to REFUSE him:
  * it is what decides whether this send overwrites a row or opens one, and it is asked with
- * {@code for update} so a decision cannot land between the question and the answer. <b>The
+ * {@code for update} so a decision cannot land between the question and the answer, <b>and
+ * only once this member's turn is held</b> (the section below), because for a FIRST send there is
+ * no row for {@code for update} to lock. <b>The
  * 409 that used to stand here is what PDL 21c removed</b>, and the pair it was derived from
  * (the owner's 409 for the TEXT, 19.09.2026) is untouched: {@link MeWriteApi} still refuses a
  * second biography, because a text and a picture are two sorts on one tab and „razlikuje se
@@ -128,6 +130,77 @@ import java.util.Optional;
  * both, and the second is answered by reading the bytes rather than the name or the
  * {@code Content-Type} the browser claimed (ADL A12a, 1).
  * </ol>
+ *
+ * <h2>THE SENDS OF ONE MEMBER TAKE TURNS, AND THAT IS WHAT LETS THE QUESTION ABOVE SAY
+ * „FIRST"</h2>
+ *
+ * <p><b>The hole, measured and not read.</b> {@code for update} locks the rows a query returns,
+ * and for a member's FIRST picture the question above returns none: nothing waits, so there is
+ * nothing to lock. Two first sends that both asked before either wrote were both told „nothing
+ * waits" and both opened a row, and a member pressing „Posalji" twice is enough. Measured on
+ * 09.10.2026 on the code before this section existed, with the case written first
+ * ({@code APictureSentTwiceAtOnceTest}): two first sends held at the foreign key of the insert by
+ * one row lock and then let go were both answered 200, with two different queue rows, two pictures
+ * of one member waiting, both of their {@code photo} rows held, and both files on the disk. The
+ * owner's „Red ostaje jedan" (PDL 21c) was untrue for the one send it matters most for.
+ *
+ * <p><b>The fix has two halves and neither is enough alone.</b>
+ *
+ * <ul>
+ * <li><b>The sends of one member take turns.</b> {@link #oneSendOfAMemberAtATime} takes a
+ * transaction-scoped advisory lock keyed by the member, as the first statement after the member
+ * question. The second send waits for the first to commit, then asks the question above and finds
+ * the row the first opened, so it goes down the overwrite road and leaves exactly what a send that
+ * arrived after the first leaves: one row, with the first's {@code id} and place in the queue, the
+ * second's picture, and the first's picture and file gone. Measured on this case for two sends at
+ * once and for three.
+ * <li><b>The database refuses a second picture.</b> {@code verification_one_picture_waits_per_member}
+ * (V55) is a partial unique index under the words of {@link #THE_ONE_OF_MINE_THAT_WAITS}. It is the
+ * floor under the lock: a writer that does not take the turn, a future door or this one with the
+ * lock taken out, meets a unique violation and not a second row. It does not make the second send
+ * an overwrite, which is the lock's work, and V55's header says why the two are measured apart.
+ * </ul>
+ *
+ * <p><b>The mechanism is a technical choice made between measured alternatives on 09.10.2026, and
+ * not a sentence of the owner's.</b> The OUTCOME is his (PDL 21c). Three other ways of getting it
+ * were each measured against the same case and not taken:
+ *
+ * <ul>
+ * <li><b>{@code on conflict do update} on the index</b>, so that the loser's insert becomes the
+ * overwrite. The rows come out right, but the statement cannot say which picture it replaced, so
+ * the route cannot delete that picture's file: one stray file for two sends, two for three, until
+ * {@link ThePicturesFolderIsSwept} picks them up. That is not what a send after the first leaves.
+ * <li><b>{@code on conflict do nothing} and then asking again</b>, the shape {@link MeWriteApi}
+ * has for a text. The loser's second question can find nothing, because a moderator may decide the
+ * winner's row in the instant between the conflict and the question, and that is a third road no
+ * case can enter without a hook inside that instant. The gate asks one hundred per cent of the
+ * branches, and a branch nothing can reach is a branch that looks like protection.
+ * <li><b>Locking the member's row first.</b> {@link VerificationWriteApi} claims the QUEUE row and
+ * then updates the MEMBER, so a send that took the member and then the queue row is the opposite
+ * order. Measured with two transactions in those two orders: deadlock detected after about a
+ * second, the victim a moderator's decision in one run and the send in the other. The advisory lock
+ * cannot be part of such a cycle, because a send waits for it only while holding nothing else.
+ * </ul>
+ *
+ * <p><b>Transaction-scoped and not session-scoped, and that is measured too.</b> A session lock
+ * outlives the request that took it: it stays on the pooled connection, and the next send of that
+ * member, on another connection, waits behind a request that has finished (made session-scoped,
+ * {@code APictureSentTwiceAtOnceTest} fails: at once in the case that asks the lock manager, and in
+ * the forced cases after it, which find the requests of the one before stuck behind the leaked
+ * lock). A transaction lock leaves with the commit or the rollback of the transaction that took it,
+ * whichever comes, with the session that took it still connected (measured on PostgreSQL 18, both
+ * ways), so a send that fails at the disk ({@code rollbackFor = IOException.class}) lets the next
+ * one through.
+ *
+ * <p><b>The boundary, named rather than left to be found.</b> The sends of one member wait for one
+ * another, and each waiting request holds a connection of the pool, which is the default ten and is
+ * not tuned (ADL, the open entry of 14.09.2026 on the size of the pool). {@code lock_timeout} is
+ * not set by the portal, so the wait has no end of its own: it ends when the transaction in front
+ * of it ends, and that one writes a file of up to {@link WhatAPictureIs#AT_MOST_BYTES} bytes and
+ * runs V54's deferred triggers at commit. A REPEATED send already waited like that, on the row,
+ * with the same bound; the first send waits now too. This is the first advisory lock in the portal
+ * (there is none in backend/src, deploy or backend/tools on 09.10.2026). Its key is a text hashed
+ * by the database, so it is this route's own, and two members whose keys met would only take turns.
  *
  * <h2>THE ROW IS WRITTEN FIRST AND THE FILE IS WRITTEN AFTER IT, WHICH IS NOT AN ORDER
  * ANYBODY MAY SWAP</h2>
@@ -468,6 +541,13 @@ class MePhotoApi {
 			return away(response);
 		}
 
+		/* HIS TURN, AND IT IS THE FIRST STATEMENT THAT TOUCHES ANYTHING OF HIS. After the member
+		   question, so an account with no member never takes a turn, and before the question below,
+		   so that a FIRST send finds the row the send in front of it opened instead of asking at
+		   the same moment and being told „nothing waits". The class note says why a turn and not
+		   another way, and why the turn ends with the transaction. */
+		oneSendOfAMemberAtATime(me);
+
 		/* ASKED BEFORE THE BYTES ARE LOOKED AT, which is the order this class already kept for
 		   the refusal that used to live here: what is waiting decides whether this send opens a
 		   row or repoints one, and neither needs five megabytes hashed first.
@@ -486,7 +566,9 @@ class MePhotoApi {
 		   requests, which is `VerificationDecisionConcurrencyTest`'s trade and not this file's,
 		   and the SCHEMA is the floor underneath either way - the constraint above makes the bad
 		   outcome a 500 rather than a lost portrait. This is a boundary written down rather than
-		   a protection claimed. */
+		   a protection claimed. That is about a DECISION landing in the middle of a send; two
+		   SENDS of one member cannot land in the middle of each other, because of the turn above,
+		   and `APictureSentTwiceAtOnceTest` holds that. */
 		Optional<Waits> waits = theOneThatWaits(me, true);
 
 		/* A SEND WITH NO FILE IS 21c'S SECOND HALF, and it is legal exactly when there is
@@ -915,6 +997,34 @@ class MePhotoApi {
 				.param("tab", THE_PROFILES_TAB)
 				.query((row, one) -> new Waits(row.getLong(1), row.getLong(2)))
 				.optional();
+	}
+
+	/**
+	 * WAITS UNTIL NO OTHER SEND OF THIS MEMBER'S IS IN FLIGHT, AND KEEPS HIS TURN UNTIL THE
+	 * TRANSACTION ENDS.
+	 *
+	 * <p>{@code pg_advisory_xact_lock} is the transaction-scoped one: the commit or the rollback of
+	 * the transaction that took it releases it, and there is no unlock call that a road out of
+	 * {@link #send} could forget. The key is the text {@code profile-picture:} and his key, hashed
+	 * to a {@code bigint} by the database. The function returns {@code void}, which has nothing to
+	 * map, hence the cast to text: it only gives {@code JdbcClient} the one row it asks for
+	 * something to read.
+	 *
+	 * <p><b>The text is written here and is NOT a {@code static final String}, and that is
+	 * measured rather than tidy.</b> {@code frontend/src/pages/account/refusals.test.ts} reads every
+	 * {@code static final String} this class declares as a refusal the screens have to answer, and
+	 * counts them: the gate of the screens went red on 09.10.2026 when this text was one, as the
+	 * eighth. A constant that is not a refusal has to be named in that file and counted there, and
+	 * this text is spelt once, so it is not made one.
+	 *
+	 * <p>Why a turn and not another way, and where its edge is, is the class note on the sends of
+	 * one member.
+	 */
+	private void oneSendOfAMemberAtATime(long me) {
+		db.sql("select pg_advisory_xact_lock(hashtextextended(?, 0))::text")
+				.param("profile-picture:" + me)
+				.query(String.class)
+				.single();
 	}
 
 	/**

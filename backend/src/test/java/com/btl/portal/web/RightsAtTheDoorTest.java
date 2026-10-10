@@ -426,6 +426,14 @@ class RightsAtTheDoorTest {
 					   `MyMembershipApiTest` and `MyMembershipWriteApiTest` hold both halves. */
 					"GET /api/me/membership", "POST /api/me/membership",
 					"GET /api/me/applications", "POST /api/email-confirmation",
+					/* HIS OWN RUNS THAT NOBODY HAS COUNTED, WAITING OR SENT BACK, ADDED WITH R2 OF THE
+					   RESULTS FLOWS. Reading what you yourself sent in is not a moderator's action and
+					   there is no box anybody could tick for it, the sentence `/api/me/applications`
+					   beside it is on this list for. The address names no member - no id in the path,
+					   none in a parameter - so „his own" is the only thing it can express. A visitor is
+					   refused 401 by the chain, because it is not on `READ_BY_ANYBODY`, and an account
+					   with no member behind it is answered an empty list. See MyResultSubmissionsApi. */
+					"GET /api/me/result-submissions",
 					"POST /api/email-confirmation/resend", "POST /api/password-reset",
 					"POST /api/password-reset/request", "POST /api/teams", "POST /api/comments",
 					/* A MEMBER'S OWN RUN, ALL THREE VERBS. Sending in a result, correcting it and

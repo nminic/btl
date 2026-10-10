@@ -192,6 +192,13 @@ class VerificationApiTest {
 
 	private long photo;
 
+	/** The race of a length {@link #runsWaitInTheResultsTab} makes, renamed and corrected since
+	 *  the runs on it were sent. */
+	private long aRaceOfALength;
+
+	/** And the race to a limit it makes, whose limit is not the time its run was sent with. */
+	private long aRaceToALimit;
+
 	/**
 	 * SEVEN ACCOUNTS, FOUR PEOPLE IN THE RECORD, FIVE TABS AND ELEVEN ROWS, OF WHICH EIGHT
 	 * WAIT.
@@ -205,7 +212,9 @@ class VerificationApiTest {
 	 * not, and each is about a different event, neither of them the first one made
 	 * (ADL A64 A1).
 	 * <li>{@code results} has been worked to the bottom - one approved, one refused - which
-	 * is the tab „Neka ipak ne nestaju stavke iz Verifikacije kad se odobre" is about.
+	 * is the tab „Neka ipak ne nestaju stavke iz Verifikacije kad se odobre" is about. Runs
+	 * WAITING there are made by the cases that read them and by nobody else
+	 * ({@link #runsWaitInTheResultsTab} says why).
 	 * <li>{@code profiles} waits twice and one of the two carries a photograph.
 	 * <li>{@code teams} waits once, so a tab with a single item is in the fixture too.
 	 * <li>{@code payments} waits twice, along the two axes that tab is read along. Whose it
@@ -531,6 +540,98 @@ class VerificationApiTest {
 						+ " (select id from account where email = ?), ?, ?)")
 				.params(queue, memberNumber, subject, body, state, THE_SUPERADMIN, THE_DECIDER, reason)
 				.update();
+	}
+
+	/**
+	 * FOUR RUNS WAITING IN THE RESULTS TAB, made by the cases about what a run answers with and
+	 * by nobody else.
+	 *
+	 * <p><b>Not in the fixture every case shares, on purpose.</b> There the results tab has been
+	 * worked to the bottom, and the cases about an empty tab read it in exactly that state - one
+	 * of the two ways a tab can be empty that „Prazan red ostaje i piše 0" (owner, 29.08.2026)
+	 * has to survive. A run waiting there would quietly turn it into the other way.
+	 *
+	 * <p><b>Each differs from the others along an axis the answer is read along:</b>
+	 * <ul>
+	 * <li>Ana's, at a race of a length RENAMED and CORRECTED since she sent it: the queue row was
+	 * written as „Desetka" and the race is now „Beogradska desetka", and the submission took 9,9
+	 * km, 45 m up and 35 m down off a race that now says 10, 50 and 40;
+	 * <li>Bojan's, at a race to a limit of six hours, sent with five - the limit corrected since,
+	 * the same way round;
+	 * <li>Vera's, at a race the calendar does not hold, so there is no race to ask and no key;
+	 * <li>and Bojan's correction of a run already counted, the only one whose kind says so.
+	 * </ul>
+	 *
+	 * <p>Every one was sent days after it was run, so the day it arrived and the day it was run
+	 * are never one day.
+	 */
+	private void runsWaitInTheResultsTab() {
+		long event = event("trke-za-proveru", "Trke za proveru", "2027-03-06");
+
+		/* AS THE TWO RACES STOOD WHEN THE RUNS WERE SENT, and both are corrected at the end. */
+		aRaceOfALength = race(event, "Desetka", "length", 0, "9.9000", 45, 35);
+		aRaceToALimit = race(event, "Sestocasovna", "time", 18000, "0", 0, 0);
+
+		queuedRun(MEMBER_ONE, "Desetka", "Startni broj 412", "2027-03-08 09:00:00+00",
+				sentFrom(MEMBER_ONE, aRaceOfALength, "9.9000", 45, 35, 3300,
+						"https://primer.rs/desetka", null));
+		queuedRun(MEMBER_TWO, "Sestocasovna", "", "2027-03-09 09:00:00+00",
+				sentFrom(MEMBER_TWO, aRaceToALimit, "52.4000", 640, 610, 18000, "", null));
+
+		long described = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " race_name, race_kind, place_id, distance_km, ascent_m, descent_m, seconds,"
+						+ " link, comment) values ((select id from competitor where member_number = ?),"
+						+ " null, date '2027-03-07', 'Trka van kalendara', 'free', " + EVERYBODYS_TOWN
+						+ ", 12.0000, 100, 90, 3000, 'https://primer.rs/van', '') returning id")
+				.param(LAPSED).query(Long.class).single();
+		queuedRun(LAPSED, "Trka van kalendara", "", "2027-03-10 09:00:00+00", described);
+
+		long bojansCountedRun = db.sql("insert into result (competitor_id, race_id, race_date,"
+						+ " distance_km, ascent_m, descent_m, seconds, points) values ("
+						+ " (select id from competitor where member_number = ?), ?, date '2027-03-06',"
+						+ " 9.9000, 45, 35, 3500, 3.40) returning id")
+				.params(MEMBER_TWO, aRaceOfALength).query(Long.class).single();
+		queuedRun(MEMBER_TWO, "Desetka", "", "2027-03-11 09:00:00+00",
+				sentFrom(MEMBER_TWO, aRaceOfALength, "9.9000", 45, 35, 3400, "", bojansCountedRun));
+
+		/* RENAMED AND CORRECTED AFTER EVERY RUN ON THEM WAS SENT, so each copy above is stale. */
+		db.sql("update race set name = 'Beogradska desetka', renamed = true, distance_km = 10.00,"
+						+ " ascent_m = 50, descent_m = 40 where id = ?")
+				.param(aRaceOfALength).update();
+		db.sql("update race set limit_seconds = 21600 where id = ?").param(aRaceToALimit).update();
+	}
+
+	/** A race of the day every run above was run on, of the kind given. */
+	private long race(long event, String name, String kind, int limitSeconds, String distance,
+			int ascent, int descent) {
+		return db.sql("insert into race (event_id, name, renamed, date, kind, limit_seconds,"
+						+ " distance_km, ascent_m, descent_m) values (?, ?, false, date '2027-03-06',"
+						+ " ?, ?, cast(? as numeric), ?, ?) returning id")
+				.params(event, name, kind, limitSeconds, distance, ascent, descent)
+				.query(Long.class).single();
+	}
+
+	/** A run at a race the calendar holds, with the four figures as they were sent. The member's
+	 *  comment is not here: {@code ResultWriteApi} writes it into the queue row's {@code body}. */
+	private long sentFrom(String memberNumber, long raceId, String distance, int ascent,
+			int descent, int seconds, String link, Long amends) {
+		return db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " distance_km, ascent_m, descent_m, seconds, link, comment, amends_result_id)"
+						+ " values ((select id from competitor where member_number = ?), ?,"
+						+ " date '2027-03-06', cast(? as numeric), ?, ?, ?, ?, '', ?) returning id")
+				.params(memberNumber, raceId, distance, ascent, descent, seconds, link, amends)
+				.query(Long.class).single();
+	}
+
+	/** The queue row a run waits behind, written as {@code ResultWriteApi} writes it: the race's
+	 *  name as it was that day, and the member's comment. */
+	private void queuedRun(String memberNumber, String subject, String comment, String raisedAt,
+			long submission) {
+		db.sql("insert into verification (queue, competitor_id, subject, body, raised_at, state,"
+						+ " result_submission_id) values ('results',"
+						+ " (select id from competitor where member_number = ?), ?, ?,"
+						+ " timestamptz '" + raisedAt + "', 'waiting', ?)")
+				.params(memberNumber, subject, comment, submission).update();
 	}
 
 	private MockHttpServletRequestBuilder asking(String email) {
@@ -1438,6 +1539,89 @@ class VerificationApiTest {
 	}
 
 	/**
+	 * A RUN WAITING IN THE RESULTS TAB ANSWERS WITH ITS RACE AS IT STANDS NOW, THE DAY IT WAS RUN
+	 * BESIDE THE DAY IT WAS SENT, AND THE FIGURES AN APPROVAL WOULD COUNT.
+	 *
+	 * <p>Every value below has a second place it could come from, and the fixture makes the two
+	 * differ ({@link #runsWaitInTheResultsTab}): the race's own name against the copy the queue
+	 * row was written with; the day it was run against the day it was sent, which the owner asked
+	 * the verifier to see (PDL P9, 18.09.2026: „Odnosno verifikator vidi kad je rezultat
+	 * poslat"); a figure the race fixes as the race says it now against the copy the submission
+	 * took; and, on a race the calendar does not hold, what was sent, because there is no race
+	 * to ask.
+	 *
+	 * <p><b>And none of it reaches an item that is not a run</b>, asked of Ana's comment because
+	 * Ana has a run waiting too: a query that joined the run by whose it is rather than by the
+	 * row's own pointer would hand her comment the figures of her run.
+	 */
+	@Test
+	void aWaitingRunAnswersWithItsRaceAsItStandsNowAndWhatAnApprovalWouldCount()
+			throws Exception {
+		runsWaitInTheResultsTab();
+
+		assertThat(waitingIn(THE_SUPERADMIN, RESULTS)).hasSize(4);
+
+		JsonNode ofALength = itemIn(THE_SUPERADMIN, RESULTS, 0);
+
+		assertThat(ofALength.path("subject").asString())
+				.as("the run is named by the copy written the day it was sent, not by its race")
+				.isEqualTo("Beogradska desetka");
+		assertThat(ofALength.path("raceId").asLong()).isEqualTo(aRaceOfALength);
+		assertThat(ofALength.path("date").asString()).as("the day it was sent")
+				.isEqualTo("2027-03-08");
+		assertThat(ofALength.path("raceDate").asString()).as("the day it was run")
+				.isEqualTo("2027-03-06");
+		assertThat(ofALength.path("raceKind").asString()).isEqualTo("length");
+		assertThat(figuresIn(ofALength))
+				.as("a figure the race fixes was read off the copy and not off the race")
+				.isEqualTo("10 km, up 50 m, down 40 m, 3300 s");
+		assertThat(ofALength.path("link").asString()).isEqualTo("https://primer.rs/desetka");
+		assertThat(ofALength.path("kind").asString()).isEmpty();
+
+		JsonNode toALimit = itemIn(THE_SUPERADMIN, RESULTS, 1);
+
+		assertThat(toALimit.path("raceKind").asString()).isEqualTo("time");
+		assertThat(figuresIn(toALimit))
+				.as("the time sent was served in place of the race's limit")
+				.isEqualTo("52.4 km, up 640 m, down 610 m, 21600 s");
+		assertThat(toALimit.path("link").asString()).as("he sent no link").isEmpty();
+
+		JsonNode described = itemIn(THE_SUPERADMIN, RESULTS, 2);
+
+		assertThat(described.path("subject").asString()).isEqualTo("Trka van kalendara");
+		assertThat(described.path("raceId").isNull()).as("a race nobody has entered has a key")
+				.isTrue();
+		assertThat(described.path("raceKind").asString()).as("the kind the member gave")
+				.isEqualTo("free");
+		assertThat(described.path("raceDate").asString()).isEqualTo("2027-03-07");
+		assertThat(figuresIn(described)).isEqualTo("12 km, up 100 m, down 90 m, 3000 s");
+
+		assertThat(itemIn(THE_SUPERADMIN, RESULTS, 3).path("kind").asString())
+				.as("a correction of a counted run is not labelled as one")
+				.isEqualTo("correction");
+
+		JsonNode hersButNotARun = itemIn(THE_SUPERADMIN, COMMENTS, 0);
+
+		assertThat(hersButNotARun.path("memberNumber").asString())
+				.as("the comment this case reads is not Ana's, so it says nothing about her run")
+				.isEqualTo(MEMBER_ONE);
+		for (String nothing : List.of("raceId", "raceDate", "distanceKm", "ascentM", "descentM",
+				"seconds")) {
+			assertThat(hersButNotARun.path(nothing).isNull())
+					.as("a comment answered with the %s of a run", nothing).isTrue();
+		}
+		assertThat(hersButNotARun.path("raceKind").asString()).isEmpty();
+		assertThat(hersButNotARun.path("link").asString()).isEmpty();
+	}
+
+	/** The four figures of a served run as one value, the distance compared by its value. */
+	private static String figuresIn(JsonNode run) {
+		return run.path("distanceKm").decimalValue().stripTrailingZeros().toPlainString()
+				+ " km, up " + run.path("ascentM").asInt() + " m, down "
+				+ run.path("descentM").asInt() + " m, " + run.path("seconds").asInt() + " s";
+	}
+
+	/**
 	 * EVERY FIELD THE PORTAL READS IS ONE THE SERVER ANSWERS WITH, EXCEPT THE THREE THE
 	 * SCHEMA HAS NOWHERE TO HOLD (OR NOWHERE IT MAY BE READ FROM), AND THOSE ARE NAMED HERE
 	 * EACH WITH ITS OWN REASON.
@@ -1491,6 +1675,14 @@ class VerificationApiTest {
 	 * <p><b>And one name is answered that the portal does not read</b>, {@code photoId}, which
 	 * is V9's own column. It is the one thing there will be to revisit the day A60 is.
 	 *
+	 * <p><b>The eight a waiting run answers with stood beside it for one increment</b>
+	 * ({@code raceId}, {@code raceDate}, {@code raceKind}, the four figures and {@code link}; the
+	 * class note on {@code VerificationApi} says what each is). The server answered them before the
+	 * portal read them, and they left this list with the screen half of R1 of the results flows,
+	 * when {@code verification.json} began to carry all eight on every item. {@code Answers}
+	 * refuses a name the served file carries from being „answered on purpose", so they are no
+	 * longer allowed here but required: an answer that dropped one of them fails this case.
+	 *
 	 * <p><b>{@code Answers} checks both halves of every name</b> - that the file really serves
 	 * it, so a stale name cannot excuse a field that went missing for another reason, and that
 	 * the answer really leaves it out, so each of the three is a claim rather than a wish.
@@ -1528,9 +1720,16 @@ class VerificationApiTest {
 	 * {@code r.target} replaced by a literal in the query, this floor fails on {@code queue}.
 	 * That is the rule of 05.09.2026 - a guard is not taken away until its mutations fall on
 	 * whatever replaces it.
+	 *
+	 * <p><b>The runs are put in the results tab first</b>, and here rather than in the shared
+	 * fixture ({@link #runsWaitInTheResultsTab} says why). Without them every name only a run
+	 * answers with is nothing in every record, and this floor would refuse them for a reason
+	 * that is the fixture's and not the server's.
 	 */
 	@Test
 	void noFieldOfAnItemIsTheSameInEveryRecord() throws Exception {
+		runsWaitInTheResultsTab();
+
 		Answers.noFieldIsTheSameInEveryRecord(PATH, everyItemServedTo(THE_SUPERADMIN));
 	}
 }
