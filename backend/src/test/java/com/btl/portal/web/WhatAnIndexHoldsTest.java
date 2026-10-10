@@ -347,7 +347,7 @@ class WhatAnIndexHoldsTest {
 	 * WHETHER THE INDEX TAKES A TEXT OF THIS LENGTH, asked by writing it.
 	 *
 	 * <p>Rolled back to a savepoint whatever happens (see the head of this class), and the
-	 * refusal is only the index's: SQLSTATE 54000 and a message that names the row size.
+	 * refusal is only the index's: SQLSTATE 54000 and a message that says the key is too large.
 	 */
 	private Attempt tryToKeep(Key key, String value) {
 		db.sql("savepoint a_probe").update();
@@ -363,7 +363,7 @@ class WhatAnIndexHoldsTest {
 			Throwable cause = refused.getMostSpecificCause();
 
 			if (cause instanceof SQLException sql && "54000".equals(sql.getSQLState())
-					&& sql.getMessage() != null && sql.getMessage().contains("index row size")) {
+					&& sql.getMessage() != null && saysTheKeyIsTooLarge(sql.getMessage())) {
 
 				return new Attempt(false, null, sql.getMessage());
 			}
@@ -372,6 +372,21 @@ class WhatAnIndexHoldsTest {
 		} finally {
 			db.sql("rollback to savepoint a_probe").update();
 		}
+	}
+
+	/**
+	 * THE TWO WAYS POSTGRESQL SAYS A KEY IS TOO LARGE FOR AN INDEX, both measured, both SQLSTATE 54000.
+	 *
+	 * <p>{@code index row size N exceeds btree version 4 maximum M} is what a key a little past the
+	 * limit gets (2712 against 2704 at 2693 characters, and the same words at 8000), and
+	 * {@code index row requires N bytes, maximum size is 8191} is what a key of a hundred thousand
+	 * characters that cannot be compressed gets, because no index tuple can say it is larger than
+	 * that. Both are the index refusing the size of the key, and a probe that knew only the first
+	 * would read the second as "the probe is wrong" and end in an error where the claim was about a
+	 * text that does not fit.
+	 */
+	private static boolean saysTheKeyIsTooLarge(String message) {
+		return message.contains("index row size") || message.contains("index row requires");
 	}
 
 	private Attempt tryToKeep(Key key, int length) {
