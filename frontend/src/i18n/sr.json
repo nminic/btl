@@ -1001,7 +1001,6 @@
     "submit": "Pošalji na proveru",
     "note": "Rezultat ulazi u rang liste tek kad ga administrator odobri. Dok čeka, vidiš ga samo ti.",
     "again": "Ispravljaš rezultat koji je odbijen. Razlog je bio: {reason}",
-    "changing": "Menjaš rezultat koji još čeka proveru. Kad ga pošalješ, vraća se na kraj reda.",
     "fixingCounted": "Menjaš rezultat koji je već uračunat. Dok se izmena ne odobri, u poretku ostaje stari rezultat, a odbijena izmena ništa ne menja. Uz izmenu mora da ide nov dokaz.",
     "needsProof": "Uz izmenu uračunatog rezultata mora da ide link ka zvaničnim rezultatima ili slika kao dokaz.",
     "needsTime": "Vreme mora da bude uneto. Sati, minuti i sekunde ne mogu svi biti nula.",
@@ -1048,7 +1047,6 @@
   },
   "status": {
     "pending": "Čeka proveru",
-    "approved": "Odobreno",
     "rejected": "Odbijeno"
   },
   "messages": {

@@ -39,6 +39,7 @@ import type {
   Outstanding,
   Race,
   Result,
+  SentRun,
   ServedMessage,
   ServedTeamInvitation,
   StaticPage,
@@ -373,6 +374,86 @@ const readAsWhatIsWaiting: WhatIsWaiting = whatIsWaitingAnswer
 const readAsServedTeamInvitation: ServedTeamInvitation = aServedTeamInvitation
 
 /**
+ * THE NINETEENTH RESOURCE: ONE RUN OF THE ASKER'S THAT WAITS, AND ONE A MODERATOR SENT BACK.
+ *
+ * <p><b>Written off the record the route declares, `MyResultSubmissionsApi.Sent`, and NOT read
+ * off the wire.</b> The route answers only to a signed in member, and the samples above that
+ * were read off QA were read without one; the same is true of the four resources this list took
+ * from their records on 21.09.2026. The names and the sort of each are the record's: the three
+ * `Long`/`String` components that may be empty (`raceId`, `reason`, `amendsResultId`) are
+ * nothing in JSON, and each is written below in both of its states, which is what lets the case
+ * further down hold the served file to „a number or nothing" rather than to one of the two.
+ *
+ * <p><b>The two states the route serves and no third</b> (`state`): an approved run is a result
+ * and is read at `/api/results`. A run waiting has no reason; a run sent back has one, and a
+ * correction names the counted result it would replace.
+ */
+const aSentRunThatWaits = {
+  id: 41,
+  state: 'waiting' as const,
+  raceId: 671,
+  raceName: 'Mala Sveta gora',
+  raceDate: '2026-06-27',
+  raceKind: 'length',
+  city: 'Novi Sad',
+  country: 'RS',
+  distanceKm: 21.1,
+  ascentM: 123,
+  descentM: 123,
+  seconds: 6930,
+  link: 'https://rezultati.rs/mala-sveta-gora-2026',
+  comment: 'Startni broj 512',
+  reason: null,
+  amendsResultId: null,
+}
+
+/** A run on a race the calendar does not hold, sent back: no race, and the kind and the town
+ *  are the member's own. */
+const aDescribedRunSentBack = {
+  id: 40,
+  state: 'rejected' as const,
+  raceId: null,
+  raceName: 'Trka oko Palićkog jezera',
+  raceDate: '2026-08-01',
+  raceKind: 'free',
+  city: 'Subotica',
+  country: 'RS',
+  distanceKm: 15.5,
+  ascentM: 40,
+  descentM: 35,
+  seconds: 4980,
+  link: 'https://trkapalic.rs/rezultati',
+  comment: '',
+  reason: 'Na stranici rezultata nema tvog imena.',
+  amendsResultId: null,
+}
+
+/** A correction of a counted result, sent back: the race is the counted result's, and
+ *  `amendsResultId` is that result's key. */
+const aCorrectionSentBack = {
+  id: 38,
+  state: 'rejected' as const,
+  raceId: 1352,
+  raceName: 'Tron polumaraton',
+  raceDate: '2017-03-04',
+  raceKind: 'length',
+  city: 'Banja Luka',
+  country: 'BA',
+  distanceKm: 21.1,
+  ascentM: 42,
+  descentM: 42,
+  seconds: 7400,
+  link: 'https://tron.ba/rezultati-2017',
+  comment: 'Vreme sa sata.',
+  reason: 'Zvanično vreme je 2:05:01, kako i stoji.',
+  amendsResultId: 2,
+}
+
+const readAsSentRunThatWaits: SentRun = aSentRunThatWaits
+const readAsDescribedRunSentBack: SentRun = aDescribedRunSentBack
+const readAsCorrectionSentBack: SentRun = aCorrectionSentBack
+
+/**
  * A LINE OF THE INBOX THAT ONLY TELLS, which is what every message the portal writes is.
  *
  * `from` is the LEAGUE'S OWN NAME and not a person's, and that is the owner's decision of
@@ -635,6 +716,15 @@ describe('the answer the backend gives', () => {
     /* The sender is a NAME whichever wrote it, which is the owner's decision of 19.09.2026 and
        the reason no screen tells a forged message from a written one. */
     expect(readAsServedNotice.from).toBe('Balkanska trkačka liga')
+    /* THE NINETEENTH RESOURCE, in both states of the three fields that have two. The key a
+       run is sent again by is the SUBMISSION's (`?ponovo=`) and the key a correction is sent to
+       is the RESULT's (`amendsResultId`), two numbers a screen must never read as one, which is
+       why both are named here. */
+    expect(readAsSentRunThatWaits.reason).toBeNull()
+    expect(readAsSentRunThatWaits.amendsResultId).toBeNull()
+    expect(readAsDescribedRunSentBack.raceId).toBeNull()
+    expect(readAsCorrectionSentBack.id).toBe(38)
+    expect(readAsCorrectionSentBack.amendsResultId).toBe(2)
   })
 
   it('agrees with the served file about the sort of every field they share', () => {
@@ -662,6 +752,9 @@ describe('the answer the backend gives', () => {
          question ids measured as KEYS: one sample alone would say „a number" or „nothing", and
          the file may then hold either of those and nothing else. */
       ['inbox', [aServedNotice, aServedQuestion]],
+      /* The three samples of the asker's runs, so each field with two states is held to „a
+         number or nothing" and „text or nothing" rather than to the one a single sample shows. */
+      ['me/result-submissions', [aSentRunThatWaits, aDescribedRunSentBack, aCorrectionSentBack]],
     ]
 
     for (const [name, answers] of against) {
@@ -759,6 +852,7 @@ describe('the answer the backend gives', () => {
     expect(missing(anAttendance, servedRow('attendance'))).toEqual([])
     expect(missing(aComment, servedRow('comments'))).toEqual([])
     expect(missing(aModerator, servedRow('moderators'))).toEqual([])
+    expect(missing(aSentRunThatWaits, servedRow('me/result-submissions'))).toEqual([])
 
     /* AND THE DUCATS, WHICH LEFT THIS LIST ON 20.09.2026 RATHER THAN SHRANK IN IT.
        Seven names stood here - `art`, `bottom`, `counted`, `mark`, `periodAt`, `top`
@@ -935,6 +1029,12 @@ describe('the answer the backend gives', () => {
          this route hands the invited member, so the portal could send an invitation and had
          nowhere to answer one. */
       'me/applications',
+      /* THE NINETEENTH NAME, added 10.10.2026 with „Moji rezultati" read off the server. Like
+         the five before it, it was answered before anything asked for it (PR 506), and what its
+         absence cost was a list that lived in the browser: a run really sent was gone from it on
+         the next reload, and a run sent back never reached it once the moderator's queue had
+         moved onto the server. */
+      'me/result-submissions',
     ]
 
     /* AND NOTHING IS EXCUSED ANY MORE. */

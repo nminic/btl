@@ -13,7 +13,7 @@ import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the eighteen names the backend has to answer for', () => {
+  it('is the nineteen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -79,6 +79,12 @@ describe('the list of resources', () => {
          `theWaitingNowBelongsTo`); `competitors` and `teams` depend on the caller as well and
          are dropped by the session (`session/theCachesFollowTheReader.ts`). */
       'me/applications',
+      /* Nineteen since 10.10.2026, with „Moji rezultati" read off the server (R2 of the results
+         flows): the asker's own runs that nobody has counted, declared at
+         `/api/me/result-submissions` (`MyResultSubmissionsApi`). The FIRST name here with a
+         hyphen in it, which `test/setup.ts` had to be told about, and the THIRD a hook drops
+         when the caller changes (`theSubmissionsNowBelongTo`). */
+      'me/result-submissions',
       'moderators',
       'pages',
       'pairs',

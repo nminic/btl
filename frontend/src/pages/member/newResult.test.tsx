@@ -1,15 +1,13 @@
 import { RACE_KINDS } from '../../data/types'
 import { fireEvent, screen, within } from '@testing-library/react'
-import { useEffect, useRef } from 'react'
 import { loadResource } from '../../data/client'
 import type { BtlEvent, Race } from '../../data/types'
 import { first, htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { racesToOffer } from './racesToOffer'
-import { refused, serverThat } from '../../test/serverAnswers'
+import { serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { SLOW } from '../../test/slow'
-import { useSession } from '../../session/useSession'
 
 /**
  * The form a result is entered on from a profile, away from the calendar.
@@ -25,6 +23,45 @@ const NEW = '/sr/rezultat/novi'
 /** A day inside the data, so what the list offers is the same list every time
  *  this runs rather than the same list until the calendar catches up. */
 const TODAY = '2026-08-23'
+
+/**
+ * A WAIT SHORTER THAN THE CASE'S OWN CLOCK, for the cases about a run sent back.
+ *
+ * <p>Testing Library waits `SLOW` (`test/setup.ts`) and a case is given `SLOW` too, so a screen that
+ * never draws what a case waits for kills the case on its clock, and the failure names nothing.
+ * Measured on this file on 10.10.2026: a mutation that opened a waiting run on `?ponovo=` was
+ * reported as a case that ran out of time, which is „nije mereno" and not a catch. Half the clock,
+ * the shape `pages/admin/saveWhileSaving.test.tsx` keeps for the whole of its file.
+ */
+const SOON = { timeout: SLOW / 2 }
+
+/**
+ * EVERYTHING THIS SCREEN SENT TO `POST /api/results`, read off the requests themselves, and the
+ * asker's own runs answered as the case says where it says anything.
+ *
+ * <p>Since R2 of the results flows nothing about a run sent is written into the browser, so the
+ * request is the one place what was sent can be read. Everything a case does not name goes on
+ * to the floor (`test/setup.ts`), which answers `POST /api/results` with 201 as the route does.
+ */
+function recording(mine?: unknown[]): { sent: () => Record<string, unknown>[]; stop: () => void } {
+  const server = serverThat((path) =>
+    mine !== undefined && path === '/api/me/result-submissions'
+      ? new Response(JSON.stringify(mine), { status: 200, headers: { 'content-type': 'application/json' } })
+      : null,
+  )
+
+  return {
+    sent: () =>
+      server.asked
+        .filter((one) => one.path === '/api/results' && one.init?.method === 'POST')
+        .map((one) => {
+          const body: unknown = JSON.parse(String(one.init?.body ?? '{}'))
+
+          return typeof body === 'object' && body !== null ? { ...body } : {}
+        }),
+    stop: server.stop,
+  }
+}
 
 /** The box the name of the event is typed into. */
 function raceName(): HTMLElement {
@@ -86,87 +123,103 @@ const shaped = (over: Partial<Race>): Race => ({
 
 
 describe('a race chosen from the list', () => {
-  it('travels with the submission, so verification knows there is nothing to make', async () => {
-    /* The one thing that tells a submission from a submission: a member who chose
-       a race sends its id, and a member who typed a name the calendar does not hold
-       sends none. Verification reads that absence to know it has to make the event
-       and the race first (owner, 31.08.2026), and the queue marks such a row.
+  it('travels with the request, so verification knows there is nothing to make', async () => {
+    /* The one thing that tells a run from a run: a member who chose a race sends its id, and a
+       member who typed a name the calendar does not hold sends none. Verification reads that
+       absence to know it has to make the event and the race first (owner, 31.08.2026), and the
+       queue marks such a row.
 
-       Chosen through the screen and not through `racesToOffer`, because what is
-       measured is that the value survives the choosing and reaches the store: the
-       list hands it over in `fills`, the renderer writes `fills` into the values,
-       and the page reads the values when it sends. */
+       Chosen through the screen and not through `racesToOffer`, because what is measured is
+       that the value survives the choosing and reaches the route: the list hands it over in
+       `fills`, the renderer writes `fills` into the values, and the page reads the values when
+       it sends. Read off the request since R2 of the results flows, because nothing about a
+       run sent is written into the browser any more. */
     const user = setupUser()
+    const route = recording()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY, <Sent />)
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
 
-    const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
+      const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
 
-    await user.click(must(offered[0], 'the first race offered'))
+      await user.click(must(offered[0], 'the first race offered'))
 
-    /* The race answered for its own measures, which is what choosing one does. */
-    expect(screen.getByLabelText(/^Dužina/)).not.toHaveValue('')
+      /* The race answered for its own measures, which is what choosing one does. */
+      expect(screen.getByLabelText(/^Dužina/)).not.toHaveValue('')
 
-    await user.type(screen.getByLabelText('Mesto'), 'Niš')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-    await user.type(screen.getByLabelText('Sati'), '3')
-    await user.type(screen.getByLabelText('Minuta'), '30')
-    await user.type(screen.getByLabelText('Sekundi'), '0')
-    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.type(screen.getByLabelText('Mesto'), 'Niš')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      await user.type(screen.getByLabelText('Sati'), '3')
+      await user.type(screen.getByLabelText('Minuta'), '30')
+      await user.type(screen.getByLabelText('Sekundi'), '0')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    const sent = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
-    /* A real id, and not the word „undefined": the page leaves the field off the
-       submission where the value is empty, and a check that only asked for
-       something after the bar took that word for an answer (measured 31.08.2026,
-       with the list handing over an empty id). */
-    const said = must(sent[0], 'what was sent').textContent ?? ''
+      /* A real id, a number above nought, and not the word „undefined" or an empty text: a check
+         that only asked for something there took that word for an answer (measured 31.08.2026,
+         with the list handing over an empty id). And nothing about the race beside it, which
+         `ResultWriteApi.fromTheCalendar` would refuse as `theRaceIsNamedTwice`. */
+      const sent = must(route.sent()[0], 'what was sent')
 
-    expect(said).not.toMatch(/\| undefined$/)
-    expect(said.split('|')[1]?.trim().length ?? 0).toBeGreaterThan(0)
+      expect(route.sent()).toHaveLength(1)
+      expect(typeof sent.raceId).toBe('number')
+      expect(Number(sent.raceId)).toBeGreaterThan(0)
+      expect(Object.keys(sent)).not.toContain('raceName')
+      expect(Object.keys(sent)).not.toContain('city')
+    } finally {
+      route.stop()
+    }
   }, SLOW)
 
-  it('is gone the moment the name is typed over, and the submission carries none', async () => {
-    /* The link breaks when the name is edited (owner, 23.08.2026), and the race
-       goes with the measures. What the submission must then carry is **nothing** and
-       not an empty one: the queue asks whether the race is absent, so a submission
-       holding „" is not marked „NOVO", the sweep takes it, and no event and no race
-       are ever made for the very member the promise was written for (measured in
-       review, 31.08.2026). */
+  it('is gone the moment the name is typed over, and the request carries none', async () => {
+    /* The link breaks when the name is edited (owner, 23.08.2026), and the race goes with the
+       measures. What the request must then carry is NO race and not an empty one: the queue asks
+       whether the race is absent, so a run holding „" is not marked „NOVO", the sweep takes it,
+       and no event and no race are ever made for the very member the promise was written for
+       (measured in review, 31.08.2026). Read off the request since R2 of the results flows. */
     const user = setupUser()
+    const route = recording()
 
-    renderAt(NEW, 'competitor', ME, undefined, TODAY, <Sent />)
+    try {
+      renderAt(NEW, 'competitor', ME, undefined, TODAY)
 
-    await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
+      await user.type(await screen.findByLabelText(/^Naziv trke/), 'Maraton maratona')
 
-    const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
+      const offered = await screen.findAllByRole('button', { name: /Maraton maratona/ })
 
-    await user.click(must(offered[0], 'the first race offered'))
-    await user.type(screen.getByLabelText(/^Naziv trke/), ' po svome')
+      await user.click(must(offered[0], 'the first race offered'))
+      await user.type(screen.getByLabelText(/^Naziv trke/), ' po svome')
 
-    /* The measures were emptied with it, which is the rule this follows. A number
-       box that has been cleared reads as nothing at all rather than as an empty
-       string, which is what jsdom answers for a numeric input with no value. */
-    expect(inputElement(screen.getByLabelText(/^Dužina/)).value).toBe('')
+      /* The measures were emptied with it, which is the rule this follows. A number
+         box that has been cleared reads as nothing at all rather than as an empty
+         string, which is what jsdom answers for a numeric input with no value. */
+      expect(inputElement(screen.getByLabelText(/^Dužina/)).value).toBe('')
 
-    await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-    await user.type(screen.getByLabelText('Mesto'), 'Niš')
-    await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-    await user.type(screen.getByLabelText(/^Dužina/), '21.1')
-    await user.type(screen.getByLabelText(/Uspon/), '0')
-    await user.type(screen.getByLabelText(/Spust/), '0')
-    await user.type(screen.getByLabelText('Sati'), '1')
-    await user.type(screen.getByLabelText('Minuta'), '52')
-    await user.type(screen.getByLabelText('Sekundi'), '10')
-    await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
-    await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
+      await user.type(screen.getByLabelText(/Datum trke/), '10052026')
+      await user.type(screen.getByLabelText('Mesto'), 'Niš')
+      await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
+      await user.type(screen.getByLabelText(/^Dužina/), '21.1')
+      await user.type(screen.getByLabelText(/Uspon/), '0')
+      await user.type(screen.getByLabelText(/Spust/), '0')
+      await user.type(screen.getByLabelText('Sati'), '1')
+      await user.type(screen.getByLabelText('Minuta'), '52')
+      await user.type(screen.getByLabelText('Sekundi'), '10')
+      await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/r')
+      await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
 
-    const sent = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
-    expect(must(sent[0], 'what was sent').textContent).toMatch(/\| undefined$/)
+      const sent = must(route.sent()[0], 'what was sent')
+
+      expect(Object.keys(sent), 'a race went where the name was typed over').not.toContain('raceId')
+      expect(sent.raceName).toBe('Maraton maratona po svome')
+    } finally {
+      route.stop()
+    }
   }, SLOW)
 })
 
@@ -903,136 +956,94 @@ describe('the foot of the form', () => {
 })
 
 /**
- * Puts one refused result into the store before the screen is looked at, under
- * whichever member is named.
+ * A RUN SENT BACK, AS THE SERVER SERVES IT TO THE MEMBER IT BELONGS TO.
  *
- * Written straight into the session, because the walk through the form and the
- * queue is a different test's subject and this one is about who may open what.
+ * <p>Since R2 of the results flows `?ponovo=` reads the asker's own runs off
+ * `GET /api/me/result-submissions`, which answers his runs and nobody else's
+ * (`MyResultSubmissionsApi`, the asker in the statement). So what a member can open by typing
+ * an address is bounded by what the server answers HIM, and that is what these cases hand the
+ * screen.
  */
-/** What the store holds, for the one case that asks whether the race a member
- *  chose travelled with the submission: no screen draws it. */
-function Sent() {
-  const { submissions } = useSession()
-
-  return (
-    <ul aria-label="store">
-      {submissions.map((one) => (
-        <li key={one.id}>{`${one.raceName} | ${String(one.raceId)}`}</li>
-      ))}
-    </ul>
-  )
+const SENT_BACK = {
+  id: 77,
+  state: 'rejected',
+  raceId: null,
+  raceName: 'Trka za proveru',
+  raceDate: '2026-05-10',
+  raceKind: 'length',
+  city: 'Niš',
+  country: 'RS',
+  distanceKm: 21.1,
+  ascentM: 540,
+  descentM: 540,
+  seconds: 6730,
+  link: 'https://primer.rs/rezultati',
+  comment: 'Moj komentar.',
+  reason: 'Link ne otvara rezultate.',
+  amendsResultId: null,
 }
 
-function Refused({ whose }: { whose: string }) {
-  const session = useSession()
-  const done = useRef(false)
+/** And one still waiting, which `?ponovo=` does not open (the owner's choice of 10.10.2026). */
+const WAITING = { ...SENT_BACK, id: 78, state: 'waiting', reason: null }
 
-  useEffect(() => {
-    if (!done.current) {
-      done.current = true
-      session.submit({
-        memberNumber: whose,
-        raceName: 'Tuđa trka',
-        raceKind: 'length',
-        city: 'Niš',
-        country: 'RS',
-        date: '2026-05-10',
-        distanceKm: 21.1,
-        ascentM: 540,
-        descentM: 540,
-        photo: '',
-        seconds: 6730,
-        points: 12.34,
-        category: 'half',
-        link: 'https://primer.rs/tudje',
-        comment: 'Tuđi komentar.',
-      })
-      session.decide('sub-1', 'rejected', 'Link ne otvara rezultate.')
+describe('a run sent back, opened again by its address', () => {
+  it('opens for the member whose list the server answers it on', async () => {
+    /* The half that has to work, so the other half is not a screen that refuses everybody. The
+       moderator's own words about why it was sent back are what the screen shows over the
+       form. */
+    const route = recording([SENT_BACK])
+
+    try {
+      renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY)
+
+      expect(await screen.findByText(/Link ne otvara rezultate/, undefined, SOON)).toBeVisible()
+      expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('Trka za proveru')
+    } finally {
+      route.stop()
     }
-  }, [session, whose])
+  }, SLOW)
 
-  return null
-}
+  it('opens nothing that is not on his own list, however the address is typed', async () => {
+    /* The only rule this road has, and until 23.08.2026 nothing measured it. The list it reads
+       is the server's answer to the asker, so a key that is not on it - somebody else's, or one
+       that never was - opens the form for a new run and shows nothing of anybody's. */
+    const route = recording([WAITING])
 
-describe('a refused result somebody else is correcting', () => {
-  /** The address the list of my results writes for a refusal of mine. */
-  const AGAIN = `${NEW}?ponovo=sub-1`
+    try {
+      renderAt(`${NEW}?ponovo=77`, 'competitor', ME, undefined, TODAY)
 
-  it('opens for the member it belongs to', async () => {
-    /* The half that has to work, so the other half is not a screen that refuses
-       everybody. */
-    renderAt(AGAIN, 'competitor', ME, undefined, TODAY, <Refused whose={ME} />)
+      expect(
+        await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/, undefined, SOON),
+      ).toBeVisible()
+      expect(screen.queryByText(/Link ne otvara rezultate/), 'a reason was shown').toBeNull()
+      expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
 
-    /* The moderator's own words about why it was refused, which is what the screen
-       shows and what somebody else must not see. The fields themselves are seeded
-       once, when the form mounts, and here the result is written into the store
-       one turn later than that, so what is read is the sentence over the form and
-       not the boxes under it. */
-    expect(await screen.findByText(/Link ne otvara rezultate/)).toBeVisible()
-  })
+  it('does not open a run that is still waiting, however the address is typed', async () => {
+    /* The owner's choice of 10.10.2026 among the outcomes offered, in the record's wording:
+       „„Izmeni" i „Obriši" na prijavi koja čeka se skrivaju do zasebnog posla". The list offers
+       no way in, so typing the address is the one way to try, and it opens the form for a new
+       run rather than a run nobody may change yet. */
+    const route = recording([WAITING])
 
-  it('opens for nobody else, however the address is typed', async () => {
-    /* The only rule this screen has, and until 23.08.2026 nothing measured it:
-       removing the owner from the condition left all 2059 tests green. The ids
-       are `sub-1`, `sub-2` and so on, so the address is guessed from the first
-       try, and what stands behind it is somebody else's race and the moderator's
-       own words about why it was refused. */
-    renderAt(AGAIN, 'competitor', ME, undefined, TODAY, <Refused whose="000021" />)
+    try {
+      renderAt(`${NEW}?ponovo=78`, 'competitor', ME, undefined, TODAY)
 
-    await screen.findByLabelText(/^Naziv trke/)
-
-    expect(screen.queryByText(/Link ne otvara rezultate/), 'the reason was shown').toBeNull()
-    expect(screen.queryByText(/Tuđa trka/), 'the race was shown').toBeNull()
-  })
+      expect(
+        await screen.findByText(/Rezultat ulazi u rang liste tek kad ga administrator odobri/, undefined, SOON),
+      ).toBeVisible()
+      expect(screen.getByLabelText(/^Naziv trke/)).toHaveValue('')
+      expect(screen.getByLabelText(/^Naziv trke/)).not.toHaveAttribute('aria-disabled', 'true')
+    } finally {
+      route.stop()
+    }
+  }, SLOW)
 })
 
-describe('what the store holds while the server is asked', () => {
-  it(
-    'is written to only after the server agreed, and nothing where it refused',
-    async () => {
-      /* Until 28.09.2026 this screen wrote the overlay and confirmed on the spot, so a
-         member was told his run was in the queue when nothing had left the machine.
-         `submit(...)` in `tellTheServer` runs only after `theRunWasSentIn` answers, and
-         only past the check that returns early where the answer was not „done"; a version
-         that ran it first would draw this exact row on a refusal too
-         (`resultToTheServer.test.tsx` measures the same axis on the wire, this measures
-         what is drawn from it). */
-      const user = setupUser()
-      const server = serverThat((path, init) =>
-        path.startsWith('/api/results') && init?.method !== undefined
-          ? refused('theRaceHasNotBeenRun')
-          : null,
-      )
-
-      try {
-        renderAt(NEW, 'competitor', ME, undefined, TODAY, <Sent />)
-
-        await user.type(await screen.findByLabelText(/^Naziv trke/), 'Trka kroz šumu')
-        await user.type(screen.getByLabelText(/Datum trke/), '10052026')
-        await user.type(screen.getByLabelText('Mesto'), 'Niš')
-        await user.selectOptions(screen.getByLabelText(/^Država/), 'RS')
-        await user.type(screen.getByLabelText(/^Dužina/), '21.1')
-        await user.type(screen.getByLabelText(/Uspon/), '540')
-        await user.type(screen.getByLabelText(/Spust/), '540')
-        await user.type(screen.getByLabelText('Sati'), '1')
-        await user.type(screen.getByLabelText('Minuta'), '52')
-        await user.type(screen.getByLabelText('Sekundi'), '10')
-        await user.type(screen.getByLabelText(/Link/), 'https://primer.rs/rezultati')
-        await user.click(screen.getByRole('button', { name: 'Pošalji na proveru' }))
-
-        /* The route's own word, so the wait is really over the answer and not over a
-           redraw that happened to land first. */
-        await screen.findByText('Rezultat ne može da se pošalje pre dana same trke.')
-
-        /* NOTHING IN THE STORE. `resultWrites.ts` names this the one axis it cannot get
-           wrong: the overlay is written only where the server agreed, never on the asking. */
-        expect(
-          within(screen.getByRole('list', { name: 'store' })).queryAllByRole('listitem'),
-        ).toHaveLength(0)
-      } finally {
-        server.stop()
-      }
-    },
-    SLOW,
-  )
-})
+/* WHAT THE STORE HELD WHILE THE SERVER WAS ASKED stood here until R2 of the results flows: that
+   the run was written into the browser only after the server agreed. Nothing about a run sent is
+   written into the browser any more, so there is no store to hold to it; that a refusal confirms
+   nothing and leaves every box as it was is `resultToTheServer.test.tsx`'s. */

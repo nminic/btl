@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { arrivedResource, clearResourceCache, loadResource } from '../../data/client'
-import { did, refused, serverThat } from '../../test/serverAnswers'
+import { answeredWith, did, refused, serverThat } from '../../test/serverAnswers'
 import { first } from '../../test/at'
 import sr from '../../i18n/sr.json'
 import {
@@ -385,6 +385,12 @@ describe('where each of the three writes goes', () => {
  * ostaje u poretku dok ispravka čeka". Only taking one back moves it. So the case is written
  * as „dropped" against „kept" for the same name across the three acts, and a version that
  * cleared everything everywhere fails two of the three.
+ *
+ * <p><b>And the asker's own runs, since R2 of the results flows</b>, which every one of the three
+ * leaves stale: a run sent in or a correction is a new row on that list, and a counted result taken
+ * back takes any correction of it with it (`result_submission_amends_fk` cascades). „Moji
+ * rezultati" reads that list off the server since then, so a name left held there would draw the
+ * list as it was before the write.
  */
 describe('what each act leaves stale', () => {
   async function holding(): Promise<void> {
@@ -397,6 +403,7 @@ describe('what each act leaves stale', () => {
         loadResource('results'),
         loadResource('verification'),
         loadResource('inbox'),
+        loadResource('me/result-submissions'),
       ])
     } finally {
       stop()
@@ -404,7 +411,7 @@ describe('what each act leaves stale', () => {
   }
 
   function stillHeld(): string[] {
-    return (['results', 'verification', 'inbox'] as const).filter(
+    return (['results', 'verification', 'inbox', 'me/result-submissions'] as const).filter(
       (one) => arrivedResource(one) !== undefined,
     )
   }
@@ -413,8 +420,8 @@ describe('what each act leaves stale', () => {
     await holding()
   })
 
-  it('is measuring something: all three are held before any of this', () => {
-    expect(stillHeld()).toEqual(['results', 'verification', 'inbox'])
+  it('is measuring something: all four are held before any of this', () => {
+    expect(stillHeld()).toEqual(['results', 'verification', 'inbox', 'me/result-submissions'])
   })
 
   it.each([
@@ -510,6 +517,96 @@ describe('what each act leaves stale', () => {
        the suite - the two acts that leave `results` alone have nothing else that would
        notice, and the inbox and the queue are re-read cheaply enough that no screen
        complains. */
-    expect(stillHeld()).toEqual(['results', 'verification', 'inbox'])
+    expect(stillHeld()).toEqual(['results', 'verification', 'inbox', 'me/result-submissions'])
+  })
+
+  /**
+   * AND AN EMPTY 404 FROM THE ADDRESS OF A COUNTED RESULT DROPS THE TWO LISTS THAT NAME IT, the
+   * one refusal that drops anything.
+   *
+   * <p>It says the result is not there: taken back in another tab or by another hand, and any
+   * correction of it with it. So the counted results and the asker's own runs are both stale, and
+   * the two screens that drew them ask for them again (`MyResults.tsx`, `NewResult.tsx`). The class
+   * the review of T5 named on 10.10.2026, carried to R2 by the coordinator's scope of the same day:
+   * a list read once per visit is read again when a refusal says it is stale, and not only after
+   * the screen's own success.
+   *
+   * <p>The queue and the inbox are kept, because nothing about them follows from a result being
+   * gone that the deletion which took it did not already drop.
+   */
+  it.each([
+    [
+      'a correction',
+      async () =>
+        theCorrectionWasSentIn(41, {
+          distanceKm: 21.1,
+          ascentM: 0,
+          descentM: 0,
+          seconds: 5100,
+          link: 'https://x.example/1',
+          comment: '',
+        }),
+    ],
+    ['a deletion', async () => theResultWasTakenBack(41)],
+  ])('drops the counted results and the runs sent where %s is told the result is not there', async (_what, act) => {
+    const { stop } = serverThat(() => answeredWith(404))
+
+    try {
+      expect(await act()).toEqual({ got: 'wrong', status: 404 })
+    } finally {
+      stop()
+    }
+
+    expect(stillHeld()).toEqual(['verification', 'inbox'])
+  })
+
+  /* AND ONLY THAT ANSWER, ON ONLY THOSE TWO ROADS. A 403, a 5xx and an answer that never came say
+     nothing about the result, so a version that dropped on any answer but „done" fails here; and
+     `POST /api/results` names no result that could be gone, so a 404 there is the route missing
+     and not the result. */
+  it.each([
+    [
+      'a run sent in is answered 404',
+      async () =>
+        theRunWasSentIn({
+          raceId: 7,
+          distanceKm: 21.1,
+          ascentM: 0,
+          descentM: 0,
+          seconds: 5400,
+          link: 'https://x.example/1',
+          comment: '',
+        }),
+      () => answeredWith(404),
+    ],
+    [
+      'a correction is answered 403',
+      async () =>
+        theCorrectionWasSentIn(41, {
+          distanceKm: 21.1,
+          ascentM: 0,
+          descentM: 0,
+          seconds: 5100,
+          link: 'https://x.example/1',
+          comment: '',
+        }),
+      () => answeredWith(403),
+    ],
+    ['a deletion is answered 500', async () => theResultWasTakenBack(41), () => answeredWith(500)],
+    [
+      'a deletion gets no answer at all',
+      async () => theResultWasTakenBack(41),
+      () => Promise.reject(new TypeError('Failed to fetch')),
+    ],
+  ])('drops nothing either where %s', async (_what, act, answer) => {
+    const { stop } = serverThat(answer)
+
+    try {
+      expect((await act()).got).not.toBe('done')
+    } finally {
+      stop()
+    }
+
+    expect(stillHeld()).toEqual(['results', 'verification', 'inbox', 'me/result-submissions'])
   })
 })

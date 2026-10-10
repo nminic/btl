@@ -17,18 +17,25 @@ export function effectiveLengthKm(lengthKm: number, ascentM: number, descentM: n
 }
 
 /**
- * The points a result is worth, with nought where the numbers are not a race.
+ * The points a run is worth, for figures that are a race by construction.
  *
- * The same answer three places wrote out for themselves as `btlPoints(...) ?? 0`:
- * a record keeps a number, and „no points" and „not a race" are the same thing to
- * everything that reads one. `btlPoints` keeps its `null`, because the calculator
- * on the front page has to tell the two apart to know whether to print anything.
+ * <p><b>Every caller hands it figures nothing can make into anything else.</b> What the
+ * server answers about a run is a race by the schema: `result_submission_distance_positive`
+ * and `result_submission_seconds_positive` (V10) for what the member gave, and
+ * `race_only_a_length_race_fixes_a_distance` and `race_only_a_timed_race_has_a_limit` (V7)
+ * for what a race of the calendar fixes in their place (`WhatARaceCarries.figuresOf`). „Moji
+ * rezultati" draws those, and the form that reports a run from the calendar refuses a time
+ * of nought before it works anything out (`forms/clock.ts`).
  *
- * Written here rather than at each caller since 31.08.2026, when the forms began
- * refusing a race run in no time (`forms/clock.ts`): with that refused and the
- * distance field floored at 0,1 km, the fallback at each caller became a branch
- * nothing can reach, while the question it answers is still a real one for
- * whatever reaches the store by another road.
+ * <p><b>It fell back to nought where the numbers were not a race until R2 of the results
+ * flows</b>, written here on 31.08.2026 for „whatever reaches the store by another road".
+ * That road was the session's own store of runs, where one case approved a run in no
+ * time. The store left with R2, so the fallback became a branch no road reached, and the
+ * floor of 100 per cent on branches said so. The branch went rather than gaining a case
+ * that reaches it by a road production never takes (`btl/CLAUDE.md`, section 23).
+ *
+ * <p>`btlPoints` keeps the question for the one screen that has to ask it: the calculator
+ * on the front page, whose boxes are read as they are typed.
  */
 export function pointsOf(
   lengthKm: number,
@@ -36,7 +43,7 @@ export function pointsOf(
   descentM: number,
   seconds: number,
 ): number {
-  return btlPoints(lengthKm, ascentM, descentM, seconds) ?? 0
+  return (40 * effectiveLengthKm(lengthKm, ascentM, descentM)) ** 3.257 / (2 * seconds ** 2.137)
 }
 
 /**
@@ -59,7 +66,7 @@ export function btlPoints(
     return null
   }
 
-  const effective = effectiveLengthKm(lengthKm, ascentM, descentM)
-
-  return (40 * effective) ** 3.257 / (2 * seconds ** 2.137)
+  /* The formula itself is written once, in `pointsOf`, so the golden set this function is
+     held to (`scoring.test.ts`) holds the one every screen draws. */
+  return pointsOf(lengthKm, ascentM, descentM, seconds)
 }

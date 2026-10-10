@@ -1,9 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { useEffect, useRef } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import en from '../../i18n/en.json'
 import sr from '../../i18n/sr.json'
-import { useSession } from '../../session/useSession'
 import { htmlElement, inputElement, must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { answeredWith, did, serverThat, type Asked } from '../../test/serverAnswers'
@@ -375,44 +373,17 @@ describe('where the keyboard is when the list that could not be read has been re
   }, SLOW)
 })
 
-/** A waiting result of this member, written into the store the way the form opens it again from. */
-function Waiting() {
-  const session = useSession()
-  const done = useRef(false)
-
-  useEffect(() => {
-    if (!done.current) {
-      done.current = true
-      session.submit({
-        memberNumber: ME,
-        raceName: 'Probna trka',
-        raceKind: 'length',
-        city: 'Niš',
-        country: 'RS',
-        date: '2026-05-10',
-        distanceKm: 21.1,
-        ascentM: 540,
-        descentM: 540,
-        photo: '',
-        seconds: 6730,
-        points: 12.34,
-        category: 'half',
-        link: 'https://primer.rs/rezultati',
-        comment: '',
-      })
-    }
-  }, [session])
-
-  return null
-}
-
 describe('the other forms that send a result, when the races could not be read', () => {
-  it('does not offer the list on a waiting result opened again, because the name is held there', async () => {
+  it('does not offer the list on a run sent back and opened again, because the name is held there', async () => {
     theServerAnswers({ '/api/races': failing })
-    renderAt('/sr/rezultat/novi?ponovo=sub-1', 'competitor', ME, undefined, TODAY, <Waiting />)
+    /* A run a moderator sent back, off the served list of the asker's own runs
+       (`test/mock/me/result-submissions.json`, the run of a race the calendar does not hold):
+       since R2 of the results flows the list is the server's, and `?ponovo=` opens only a run
+       sent back. */
+    renderAt('/sr/rezultat/novi?ponovo=40', 'competitor', ME, undefined, TODAY)
 
-    /* The road that holds the name, which is what is drawn once the store has the result. */
-    await screen.findByText(/Menjaš rezultat koji još čeka proveru/, undefined, SOON)
+    /* The road that holds the name, which is what is drawn once the list has the run. */
+    await screen.findByText(/Ispravljaš rezultat koji je odbijen/, undefined, SOON)
 
     const box = nameBox()
 

@@ -1001,7 +1001,6 @@
     "submit": "Send to be checked",
     "note": "The result enters the boards only once an administrator approves it. While it waits, only you see it.",
     "again": "You are correcting a result that was refused. The reason was: {reason}",
-    "changing": "You are changing a result that is still waiting to be checked. Once you send it, it goes back to the end of the queue.",
     "fixingCounted": "You are changing a result that is already counted. Until the change is approved, the old result stays in the standing, and a refused change alters nothing. New proof has to go with the change.",
     "needsProof": "A change to a counted result must carry a link to the official results or a picture as proof.",
     "needsTime": "A time must be entered. Hours, minutes and seconds cannot all be zero.",
@@ -1048,7 +1047,6 @@
   },
   "status": {
     "pending": "Waiting to be checked",
-    "approved": "Approved",
     "rejected": "Refused"
   },
   "messages": {
