@@ -55,9 +55,11 @@ import java.math.BigDecimal;
  * season already over the threshold almost always finishes over it, and waiting for the
  * year to end would leave that next season's category open to somebody who has plainly
  * left it. Where the points DO go down the answer goes down with them, because nothing
- * here is stored: the right opens again exactly as it closed, and the member is told only
- * when an approval closes it ({@code VerificationWriteApi}). Whether he should hear it when
- * a correction of a race moves it was put to the owner on 09.10.2026. This is also the shape
+ * here is stored: the right opens again exactly as it closed. The member is told when an
+ * approval closes it ({@code VerificationWriteApi}), and since the owner's answers of
+ * 10.10.2026 (PDL P4) when a correction of a race closes it or opens it again
+ * ({@code RaceWriteApi}); a deletion of his own run says nothing about the category. This
+ * is also the shape
  * the owner's decision of 26.09.2026 needs: „ga superadmin / moderator verifikacijom necega
  * moze gurnuti u starosnu kategoriju ako odobri rezultat kojim prelaz 12 bodova", spelt out
  * the same day for which season moves - „ako odobrenje prevede clanov zbir tekuce sezone na

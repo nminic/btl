@@ -2,6 +2,7 @@ package com.btl.portal.web;
 
 import com.btl.portal.TestcontainersConfiguration;
 import com.btl.portal.domain.account.SessionLife;
+import com.btl.portal.domain.mail.WhatAResultChangeSays;
 import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import com.btl.portal.domain.season.SeasonClock;
 import com.btl.portal.domain.token.SecretToken;
@@ -47,9 +48,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * kad jednog dana promenim, portal treba da preracuna i bodove osim ako je sezona zamrznuta."
  * {@code RaceWriteApi.change} carries the decision, the two derivations put to the owner on
  * 09.10.2026 (every figure the race fixes, not only the climb and the fall; and a save that
- * moves nothing the race fixes recounts nothing), and the three answers that are interim
- * until he gives his own: a frozen season and a year before the first one are not recounted,
- * a change of kind leaves the runs as they were, and nobody is told.
+ * moves nothing the race fixes recounts nothing), and his three answers of 10.10.2026 (PDL P4,
+ * „Preračun bodova pri izmeni mera trke: tri odgovora (PR 504)"): a race that carries an
+ * approved run keeps its kind, refused with a reason; a frozen season and a year before the
+ * first one count nothing again; and a member whose run moved is told in his inbox, with the
+ * run as it was and as it is, and again when it closes or opens his beginners' category for
+ * the next season - never by post.
  *
  * <p><b>THE FIXTURE IS BUILT SO THAT EVERY VALUE A CASE READS CAN ARRIVE FROM ONE PLACE
  * ONLY.</b>
@@ -59,19 +63,31 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * is corrected; {@link #itsHalf} runs under the same event and {@link #anotherEventsTen}
  * under another, and both carry runs whose points the formula would never give
  * ({@link #NOT_WHAT_THE_FORMULA_GIVES}), so a recount that reached them shows.
- * <li><b>The runs at the marathon are three and none is the only one of its kind:</b> one
- * runner twice, at two different times, and a second runner whose fee has lapsed. A recount
- * that took one run per member, or the first run's time for all, or only active members,
- * answers differently from one that took every row.
+ * <li><b>The runs at the marathon are four and none is the only one of its kind:</b> one
+ * runner twice, at two different times, a second runner whose fee has lapsed, and a fourth
+ * whose run already stands at the course the correction writes. A recount that took one run
+ * per member, or the first run's time for all, or only active members, answers differently
+ * from one that took every row; and a line about a run the correction did not move is a line
+ * about nothing.
  * <li><b>A figure the race fixes and a figure the runner brings are never the same
  * number.</b> The marathon's climb is unlike its fall, before and after, so a recount that
  * swapped them shows; six hours carry a climb and a fall of their own that are unlike both
  * runners', so a recount that read the race's climb into a run to a limit shows.
+ * <li><b>The race as it was and the race as it is are told apart in the line a member
+ * reads:</b> the correction of the marathon also renames it and moves it a day, so the run as
+ * it was and the run as it is name two different races on two different days.
+ * <li><b>Who is told is told apart from who is not:</b> the members whose runs moved; the
+ * member whose run did not; the member with only a WAITING run at the marathon; and the whole
+ * league, which a line with no addressee would reach (V13).
  * <li><b>The season a race is in and the season the clock is in are told apart at one
  * instant:</b> half an hour after the freeze, a race of 2027 (frozen) and a race of
  * 1 January 2028 (running) are corrected side by side.
  * <li><b>A run still waiting and a submission already decided stand at the marathon</b>, so
- * a recount that reached {@code result_submission} shows.
+ * a recount that reached {@code result_submission} shows; and a race that carries ONLY a
+ * waiting run ({@link #aCrossCountry}) may still change its kind.
+ * <li><b>A member just under the beginners' threshold and nowhere near it run the same
+ * race</b> ({@link #anotherEventsTen}), so a correction of it moves one category and not the
+ * other.
  * </ul>
  *
  * <p><b>Where the formula is asked, it is asked and not typed</b>, the shape
@@ -111,9 +127,14 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	private static final LocalDate THE_FREE_ONES_DAY = LocalDate.parse("2027-07-03");
 
+	private static final LocalDate THE_TENS_DAY = LocalDate.parse("2027-09-05");
+
 	private static final LocalDate NEW_YEARS_DAY = LocalDate.parse("2028-01-01");
 
 	private static final LocalDate A_DAY_OF_HISTORY = LocalDate.parse("2026-04-12");
+
+	/** What a line in the inbox about a run counted again is called. */
+	private static final String RECOUNTED = "Vaš rezultat je preračunat";
 
 	/** The member who runs the marathon twice. */
 	private static final String RUNNER = "000901";
@@ -121,7 +142,14 @@ class ARaceCorrectedRecountsItsRunsTest {
 	/** The member whose fee has lapsed, which takes nothing away from his record. */
 	private static final String LAPSED = "000902";
 
+	/** A member with a waiting run at the marathon and counted runs elsewhere. */
 	private static final String A_THIRD = "000903";
+
+	/** A member whose run at the marathon already stands at the course the correction writes. */
+	private static final String ALREADY_THERE = "000904";
+
+	/** A member whose one run of 2027 is the ten, just under the beginners' threshold. */
+	private static final String ROOKIE = "000905";
 
 	@Autowired
 	private MockMvc http;
@@ -138,6 +166,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	private long itsHalf;
 
+	private long aCrossCountry;
+
 	private long anotherEventsTen;
 
 	private long sixHours;
@@ -148,15 +178,29 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 	private long aRaceOfHistory;
 
+	private long runner;
+
+	private long lapsed;
+
+	private long third;
+
+	private long alreadyThere;
+
+	private long rookie;
+
 	private long runnersFirst;
 
 	private long runnersSecond;
 
 	private long lapsedRun;
 
+	private long alreadyThereRun;
+
 	private long runAtTheHalf;
 
 	private long runAtTheTen;
+
+	private long rookiesRun;
 
 	private long runnersSixHours;
 
@@ -171,6 +215,10 @@ class ARaceCorrectedRecountsItsRunsTest {
 	private long waitingSubmission;
 
 	private long decidedSubmission;
+
+	/** The last line any inbox held when the fixture was written, so a case reads only the
+	 *  lines its own request wrote. */
+	private long linesBefore;
 
 	/**
 	 * A CLOCK THE CASE MOVES, so that four moments around two New Years are one fixture.
@@ -218,7 +266,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
-	 * SEVEN RACES OVER SIX EVENTS, TEN RUNS, TWO SUBMISSIONS AND ONE MODERATOR.
+	 * EIGHT RACES OVER SIX EVENTS, TWELVE RUNS, THREE SUBMISSIONS AND ONE MODERATOR.
 	 *
 	 * <p>Every run a case expects to be counted again is written at the points the formula gives
 	 * for its figures today, so „counted again at the old figures" and „not counted again" are
@@ -227,28 +275,30 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * that reached it cannot leave it as it was.
 	 */
 	@BeforeEach
-	void sevenRacesTenRunsAndTwoSubmissions() {
+	void eightRacesTwelveRunsAndThreeSubmissions() {
 		clock.moveTo(WHILE_2027_RUNS);
 
 		event("maraton-2027", "Prolecni maraton", THE_MARATHONS_DAY);
 		event("sest-sati-2027", "Sest sati", SIX_HOURS_DAY);
 		event("slobodna-2027", "Slobodna trka", THE_FREE_ONES_DAY);
-		event("desetka-2027", "Jesenja desetka", LocalDate.parse("2027-09-05"));
+		event("desetka-2027", "Jesenja desetka", THE_TENS_DAY);
 		event("novogodisnja-2028", "Novogodisnja trka", NEW_YEARS_DAY);
 		event("istorija-2026", "Stara trka", A_DAY_OF_HISTORY);
 
 		theMarathon = race("maraton-2027", "Maraton", THE_MARATHONS_DAY, "length", 0, "42.2", 300, 280);
 		itsHalf = race("maraton-2027", "Polumaraton", THE_MARATHONS_DAY, "length", 0, "21.1", 150, 140);
+		aCrossCountry = race("maraton-2027", "Kros", THE_MARATHONS_DAY, "length", 0, "5", 50, 50);
 		sixHours = race("sest-sati-2027", "Sest sati", SIX_HOURS_DAY, "time", 21600, "0", 350, 410);
 		theFreeOne = race("slobodna-2027", "Slobodna", THE_FREE_ONES_DAY, "free", 0, "0", 200, 210);
-		anotherEventsTen = race("desetka-2027", "Desetka", LocalDate.parse("2027-09-05"), "length", 0,
-				"10", 120, 110);
+		anotherEventsTen = race("desetka-2027", "Desetka", THE_TENS_DAY, "length", 0, "10", 120, 110);
 		newYearsRace = race("novogodisnja-2028", "Novogodisnja", NEW_YEARS_DAY, "length", 0, "5", 40, 30);
 		aRaceOfHistory = race("istorija-2026", "Stara", A_DAY_OF_HISTORY, "length", 0, "21.1", 100, 90);
 
-		long runner = competitor(RUNNER, "0011223344556601");
-		long lapsed = competitor(LAPSED, "0011223344556602");
-		long third = competitor(A_THIRD, "0011223344556603");
+		runner = competitor(RUNNER, "0011223344556601");
+		lapsed = competitor(LAPSED, "0011223344556602");
+		third = competitor(A_THIRD, "0011223344556603");
+		alreadyThere = competitor(ALREADY_THERE, "0011223344556604");
+		rookie = competitor(ROOKIE, "0011223344556605");
 
 		/* THE MEMBER WHOSE FEE HAS LAPSED, the precedent's own statement
 		   (`PairWriteApiTest`, `CommentApiTest`): his record stays his and a correction of the
@@ -258,8 +308,11 @@ class ARaceCorrectedRecountsItsRunsTest {
 		runnersFirst = result(runner, theMarathon, "42.2", 300, 280, 12600, counted("42.2", 300, 280, 12600));
 		runnersSecond = result(runner, theMarathon, "42.2", 300, 280, 13800, counted("42.2", 300, 280, 13800));
 		lapsedRun = result(lapsed, theMarathon, "42.2", 300, 280, 15000, counted("42.2", 300, 280, 15000));
+		alreadyThereRun = result(alreadyThere, theMarathon, "42.195", 520, 310, 16000,
+				counted("42.195", 520, 310, 16000));
 		runAtTheHalf = result(runner, itsHalf, "21.1", 150, 140, 6000, NOT_WHAT_THE_FORMULA_GIVES);
 		runAtTheTen = result(third, anotherEventsTen, "10", 120, 110, 2700, NOT_WHAT_THE_FORMULA_GIVES);
+		rookiesRun = result(rookie, anotherEventsTen, "10", 120, 110, 2700, counted("10", 120, 110, 2700));
 		runnersSixHours = result(runner, sixHours, "61.3", 120, 130, 21600, counted("61.3", 120, 130, 21600));
 		thirdsSixHours = result(third, sixHours, "55", 90, 80, 21600, counted("55", 90, 80, 21600));
 		runAtTheFreeOne = result(lapsed, theFreeOne, "8.5", 60, 70, 3100, NOT_WHAT_THE_FORMULA_GIVES);
@@ -270,11 +323,14 @@ class ARaceCorrectedRecountsItsRunsTest {
 		queued(third, waitingSubmission, false);
 		decidedSubmission = submission(runner, theMarathon, "42.2", 300, 280, 12600);
 		queued(runner, decidedSubmission, true);
+		queued(runner, submission(runner, aCrossCountry, "5", 50, 50, 1300), false);
 
 		session = account(MODERATOR);
 		db.sql("insert into account_admin_right (account_id, right_code)"
 						+ " values ((select id from account where email = ?), 'entity:events')")
 				.param(MODERATOR).update();
+
+		linesBefore = db.sql("select coalesce(max(id), 0) from message").query(Long.class).single();
 	}
 
 	/**
@@ -309,18 +365,25 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
-	 * A CORRECTED COURSE REACHES EVERY RUN AT THE RACE, AND NOT ONE ROW ANYWHERE ELSE.
+	 * A CORRECTED COURSE REACHES EVERY RUN AT THE RACE, AND NOT ONE ROW ANYWHERE ELSE, AND EACH
+	 * MEMBER WHOSE RUN MOVED IS TOLD IN HIS INBOX AND NOBODY ELSE IS.
 	 *
-	 * <p>The marathon is corrected to 42,195 km with a climb of 520 m and a fall of 310 m. Each
-	 * of its three runs - the same runner's two and the lapsed member's one - comes back at the
-	 * race's new course, its own time, the points the formula gives for those four, and the
-	 * category 42,195 is (PDL P5: not a marathon but a longer race). The half under the same
-	 * event, the ten under another, and the two submissions at the marathon itself stay exactly
-	 * as they were.
+	 * <p>The marathon is corrected to 42,195 km with a climb of 520 m and a fall of 310 m, and
+	 * renamed and moved a day in the same request. Each of its three runs at the old course -
+	 * the same runner's two and the lapsed member's one - comes back at the race's new course,
+	 * its own time, the points the formula gives for those four, and the category 42,195 is
+	 * (PDL P5: not a marathon but a longer race). The run already at the new course stays as it
+	 * was. The half under the same event, the ten under another, and the two submissions at the
+	 * marathon itself stay exactly as they were.
+	 *
+	 * <p>PDL P4, the owner's answer of 10.10.2026, in the journal's wording: „red u sandučetu sa
+	 * starom i novom vrednošću", „mejl ne ide". One line per run that moved, to its member: the
+	 * runner reads two, the lapsed member one, the member whose run did not move none, the member
+	 * with only a waiting run at the marathon none, and no line is addressed to everybody.
 	 */
 	@Test
-	void aCorrectedCourseReachesEveryRunAtTheRaceAndNotOneRowAnywhereElse() throws Exception {
-		Map<Long, Run> untouched = rowsOf(runAtTheHalf, runAtTheTen);
+	void aCorrectedCourseReachesEveryRunAtTheRaceAndOnlyItsMembersAreTold() throws Exception {
+		Map<Long, Run> untouched = rowsOf(runAtTheHalf, runAtTheTen, alreadyThereRun);
 		List<Object> submissionsBefore = List.of(submitted(waitingSubmission),
 				submitted(decidedSubmission));
 
@@ -328,8 +391,8 @@ class ARaceCorrectedRecountsItsRunsTest {
 			theFormulaTellsTheseApart(seconds);
 		}
 
-		assertThat(change(theMarathon, ofALength("Maraton", THE_MARATHONS_DAY, "42.195", 520, 310))
-				.getStatus()).isEqualTo(200);
+		assertThat(change(theMarathon, ofALength("Maraton Avala", THE_MARATHONS_DAY.plusDays(1),
+				"42.195", 520, 310)).getStatus()).isEqualTo(200);
 
 		assertThat(rowOf(runnersFirst)).as("the runner's first run").isEqualTo(
 				countedAt("42.195", 520, 310, 12600, "long"));
@@ -338,10 +401,23 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowOf(lapsedRun)).as("the run of the member whose fee has lapsed")
 				.isEqualTo(countedAt("42.195", 520, 310, 15000, "long"));
 
-		assertThat(rowsOf(runAtTheHalf, runAtTheTen))
-				.as("a run at another race was counted again").isEqualTo(untouched);
+		assertThat(rowsOf(runAtTheHalf, runAtTheTen, alreadyThereRun))
+				.as("a run at another race, or one the correction did not move, was written over")
+				.isEqualTo(untouched);
 		assertThat(List.of(submitted(waitingSubmission), submitted(decidedSubmission)))
 				.as("a submission at the race was written over").isEqualTo(submissionsBefore);
+
+		assertThat(linesTo(runner)).as("the runner reads one line for each of his two runs")
+				.extracting(Line::subject).containsExactly(RECOUNTED, RECOUNTED);
+		assertThat(linesTo(runner).get(0).body()).contains(asItWasAndAsItIs(12600));
+		assertThat(linesTo(runner).get(1).body()).contains(asItWasAndAsItIs(13800));
+		assertThat(linesTo(lapsed)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(lapsed).get(0).body()).contains(asItWasAndAsItIs(15000));
+		assertThat(linesTo(alreadyThere)).as("a line about a run the correction did not move")
+				.isEmpty();
+		assertThat(linesTo(third)).as("a line about a run that is still waiting").isEmpty();
+		assertThat(newLines()).as("a line nobody but its own three members should have read")
+				.hasSize(3).allSatisfy(line -> assertThat(line.to()).isNotNull());
 	}
 
 	/**
@@ -367,11 +443,13 @@ class ARaceCorrectedRecountsItsRunsTest {
 
 		assertThat(rowOf(runnersSixHours)).isEqualTo(countedAt("61.3", 120, 130, 86400, "ultra"));
 		assertThat(rowOf(thirdsSixHours)).isEqualTo(countedAt("55", 90, 80, 86400, "ultra"));
+		assertThat(linesTo(runner)).extracting(Line::subject).containsExactly(RECOUNTED);
+		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
 	}
 
 	/**
 	 * THE SAME COURSE SENT AGAIN, AT ANOTHER SCALE AND UNDER ANOTHER NAME AND DAY, COUNTS
-	 * NOTHING AGAIN.
+	 * NOTHING AGAIN AND TELLS NOBODY.
 	 *
 	 * <p>The screen sends every race of an event each time the event is saved, so this is the
 	 * ordinary request and not a curiosity. The length goes out as {@code 42.20} against the
@@ -380,18 +458,20 @@ class ARaceCorrectedRecountsItsRunsTest {
 	 * recount over the same course would still leave a trace.
 	 */
 	@Test
-	void theSameCourseSentAgainCountsNothingAgain() throws Exception {
+	void theSameCourseSentAgainCountsNothingAgainAndTellsNobody() throws Exception {
 		db.sql("update result set points = ? where race_id = ?")
 				.params(NOT_WHAT_THE_FORMULA_GIVES, theMarathon).update();
-		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, runAtTheHalf,
-				runAtTheTen);
+		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun,
+				runAtTheHalf, runAtTheTen);
 
 		assertThat(change(theMarathon, ofALength("Maraton pod drugim imenom",
 				THE_MARATHONS_DAY.plusDays(1), "42.20", 300, 280)).getStatus()).isEqualTo(200);
 
-		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, runAtTheHalf, runAtTheTen))
+		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun, runAtTheHalf,
+				runAtTheTen))
 				.as("a save that moved nothing the race fixes counted a run again")
 				.isEqualTo(before);
+		assertThat(newLines()).as("a save that moved nothing told somebody something").isEmpty();
 	}
 
 	/**
@@ -412,27 +492,45 @@ class ARaceCorrectedRecountsItsRunsTest {
 		assertThat(rowsOf(runnersSixHours, thirdsSixHours, runAtTheFreeOne))
 				.as("a climb or a fall that is in no run's score counted a run again")
 				.isEqualTo(before);
+		assertThat(newLines()).isEmpty();
 	}
 
 	/**
-	 * INTERIM, PUT TO THE OWNER ON 09.10.2026: A CHANGE OF KIND WRITES THE RACE AND LEAVES ITS
-	 * RUNS AS THEY WERE.
+	 * PDL P4, THE OWNER'S ANSWER OF 10.10.2026: A RACE THAT CARRIES AN APPROVED RUN KEEPS ITS
+	 * KIND, AND NOTHING IS LOST.
 	 *
-	 * <p>Counted again as a race to a limit, the marathon's runs would all take the limit as
-	 * their time and keep the course as the distance they covered, which is a figure nobody
-	 * reported. When the owner answers, this case moves with his answer.
+	 * <p>In the journal's wording: „Promena VRSTE trke koja već ima odobrene rezultate se odbija
+	 * uz razlog (409), kao pomeranje trke preko 1. januara; ništa se ne gubi." The review of this
+	 * route measured what it closes: the marathon turned into six hours left its runs as they
+	 * were, and the NEXT save, correcting only the limit, took every runner's real time away for
+	 * good. So both saves are sent here, and both are refused.
+	 *
+	 * <p>The other side of the line: a race that carries only a WAITING run changes its kind,
+	 * because a waiting run is counted at its approval against the race as it stands then.
 	 */
 	@Test
-	void aChangeOfKindWritesTheRaceAndLeavesItsRunsAsTheyWere() throws Exception {
-		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun);
+	void aRaceWithACountedRunKeepsItsKindAndNothingIsLost() throws Exception {
+		Map<Long, Run> before = rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun);
 
-		assertThat(change(theMarathon, toALimit("Maraton", THE_MARATHONS_DAY, 21600, 300, 280))
-				.getStatus()).isEqualTo(200);
+		MockHttpServletResponse toSixHours = change(theMarathon,
+				toALimit("Maraton", THE_MARATHONS_DAY, 21600, 300, 280));
+		MockHttpServletResponse thenItsLimit = change(theMarathon,
+				toALimit("Maraton", THE_MARATHONS_DAY, 25200, 300, 280));
 
-		assertThat(db.sql("select kind from race where id = ?").param(theMarathon)
-				.query(String.class).single()).isEqualTo("time");
-		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun))
-				.as("a change of kind counted the runs again").isEqualTo(before);
+		assertThat(List.of(toSixHours.getStatus(), thenItsLimit.getStatus()))
+				.containsExactly(409, 409);
+		assertThat(List.of(reasonIn(toSixHours), reasonIn(thenItsLimit))).containsOnly(
+				RaceWriteApi.THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
+		assertThat(kindOf(theMarathon)).as("the race took the kind it was refused")
+				.isEqualTo("length");
+		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun, alreadyThereRun))
+				.as("a runner's own time was written over").isEqualTo(before);
+		assertThat(newLines()).isEmpty();
+
+		assertThat(change(aCrossCountry, toALimit("Kros", THE_MARATHONS_DAY, 3600, 50, 50))
+				.getStatus()).as("a race with only a waiting run at it kept its kind")
+				.isEqualTo(200);
+		assertThat(kindOf(aCrossCountry)).isEqualTo("time");
 	}
 
 	/**
@@ -450,10 +548,62 @@ class ARaceCorrectedRecountsItsRunsTest {
 				ofALength("Maraton", LocalDate.parse("2026-12-30"), "42.2", 520, 280));
 
 		assertThat(answer.getStatus()).isEqualTo(409);
-		assertThat(new ObjectMapper().readTree(answer.getContentAsString()).path("reason").asString())
-				.isEqualTo(RaceWriteApi.THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
+		assertThat(reasonIn(answer)).isEqualTo(RaceWriteApi.THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
 		assertThat(rowsOf(runnersFirst, runnersSecond, lapsedRun))
 				.as("a refused edit counted the runs again").isEqualTo(before);
+		assertThat(newLines()).isEmpty();
+	}
+
+	/**
+	 * A CORRECTION THAT CARRIES A MEMBER OVER THE BEGINNERS' THRESHOLD CLOSES HIS CATEGORY FOR
+	 * THE NEXT SEASON, AND HE IS TOLD.
+	 *
+	 * <p>PDL P4, the owner's answer of 10.10.2026, in the journal's wording: „poruku o
+	 * početničkoj kategoriji kad joj preračun zatvori ili ponovo otvori pravo, u oba smera". The
+	 * ten is corrected from 10 to 12 km: the rookie's one run of 2027 goes from under twelve
+	 * points to over it, so the beginners' category closes for 2028, the season after the
+	 * race's. The other member at the ten was over the threshold before and is over it after:
+	 * he reads the line about his run and nothing about his category.
+	 */
+	@Test
+	void aCorrectionThatCarriesAMemberOverTheThresholdClosesHisCategoryAndHeIsTold()
+			throws Exception {
+		assertThat(counted("10", 120, 110, 2700)).isLessThan(new BigDecimal("12"));
+		assertThat(counted("12", 120, 110, 2700)).isGreaterThanOrEqualTo(new BigDecimal("12"));
+
+		assertThat(change(anotherEventsTen, ofALength("Desetka", THE_TENS_DAY, "12", 120, 110))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(linesTo(rookie)).extracting(Line::subject).containsExactly(RECOUNTED,
+				"Početnička kategorija vam je zatvorena");
+		assertThat(linesTo(rookie).get(1).body())
+				.contains("Ispravljene su mere trke Desetka od 05.09.2027")
+				.contains("prešli prag od 12 bodova")
+				.contains("zatvorena za sezonu 2028.");
+		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
+	}
+
+	/**
+	 * AND A CORRECTION THAT TAKES HIM BACK UNDER IT OPENS THE CATEGORY AGAIN, AND HE IS TOLD
+	 * THAT TOO - the other direction of the same answer.
+	 */
+	@Test
+	void aCorrectionThatTakesAMemberBackUnderTheThresholdOpensHisCategoryAgainAndHeIsTold()
+			throws Exception {
+		db.sql("update result set seconds = 2400, points = ? where id = ?")
+				.params(counted("10", 120, 110, 2400), rookiesRun).update();
+		assertThat(counted("10", 120, 110, 2400)).isGreaterThanOrEqualTo(new BigDecimal("12"));
+		assertThat(counted("9.5", 120, 110, 2400)).isLessThan(new BigDecimal("12"));
+
+		assertThat(change(anotherEventsTen, ofALength("Desetka", THE_TENS_DAY, "9.5", 120, 110))
+				.getStatus()).isEqualTo(200);
+
+		assertThat(linesTo(rookie)).extracting(Line::subject).containsExactly(RECOUNTED,
+				"Početnička kategorija vam je ponovo otvorena");
+		assertThat(linesTo(rookie).get(1).body())
+				.contains("pali ispod praga od 12 bodova")
+				.contains("ponovo otvorena za sezonu 2028.");
+		assertThat(linesTo(third)).extracting(Line::subject).containsExactly(RECOUNTED);
 	}
 
 	/**
@@ -477,13 +627,13 @@ class ARaceCorrectedRecountsItsRunsTest {
 	}
 
 	/**
-	 * INTERIM, PUT TO THE OWNER ON 09.10.2026: AFTER THE FREEZE A RACE OF THE FROZEN SEASON
+	 * PDL P4, THE OWNER'S ANSWER OF 10.10.2026: AFTER THE FREEZE A RACE OF THE FROZEN SEASON
 	 * COUNTS NOTHING AGAIN, WHILE A RACE OF THE SEASON NOW RUNNING DOES, AT THE SAME INSTANT.
 	 *
-	 * <p>The journal's reading of the decision of 20.09.2026 is that the recount „mora da
-	 * proveri da li je sezona zamrznuta pre nego što išta promeni". The pair is what makes the
-	 * season asked the RACE'S: a route asking the clock's year would count the marathon of 2027
-	 * again, and one asking the year before the clock's would leave the race of 1 January 2028.
+	 * <p>In the journal's wording: „U zamrznutoj sezoni i u istoriji pre 2027 izmena mera trke ne
+	 * menja ništa, ni profil ni tabelu". The pair is what makes the season asked the RACE'S: a
+	 * route asking the clock's year would count the marathon of 2027 again, and one asking the
+	 * year before the clock's would leave the race of 1 January 2028.
 	 */
 	@Test
 	void afterTheFreezeARaceOfTheFrozenSeasonCountsNothingAgainWhileOneOfTheRunningSeasonDoes()
@@ -500,11 +650,13 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.as("a race of a frozen season counted its runs again").isEqualTo(frozen);
 		assertThat(rowOf(runOnNewYearsDay)).as("a race of the season now running")
 				.isEqualTo(countedAt("5.2", 60, 45, 1500, "short"));
+		assertThat(newLines()).as("only the run of the season now running is told about")
+				.extracting(Line::to).containsExactly(third);
 	}
 
 	/**
-	 * INTERIM, PUT TO THE OWNER ON 09.10.2026: A RACE FROM BEFORE THE FIRST SEASON COUNTS NOTHING
-	 * AGAIN.
+	 * PDL P4, THE OWNER'S ANSWER OF 10.10.2026: A RACE FROM BEFORE THE FIRST SEASON COUNTS
+	 * NOTHING AGAIN.
 	 *
 	 * <p>PDL P12: „Nigde na portalu nema sezone pre 2027." The clock stands in October 2026,
 	 * when {@link SeasonClock#isFrozen} does not yet hold 2026 frozen, so what keeps the run
@@ -519,6 +671,7 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.getStatus()).isEqualTo(200);
 
 		assertThat(rowsOf(runOfHistory)).as("a run of history was counted again").isEqualTo(before);
+		assertThat(newLines()).isEmpty();
 	}
 
 	/** What the formula gives for a marathon's three runs, before and after, and with the climb
@@ -533,9 +686,30 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.isNotEqualByComparingTo(BtlScoreCalculator.calculate(42.195, 310, 520, seconds));
 	}
 
+	/**
+	 * THE RUN AS IT WAS AND AS IT IS, in the order the line must carry them: the marathon on its
+	 * old day under its old name at the old course, and the race as renamed and moved at the
+	 * new one. Written by {@link WhatAResultChangeSays#inWords}, which is how the route writes a
+	 * run, so what this measures is WHICH run stands where and not how a run is spelt.
+	 */
+	private static String asItWasAndAsItIs(int seconds) {
+		WhatAResultChangeSays.Run was = new WhatAResultChangeSays.Run("Maraton", THE_MARATHONS_DAY,
+				new BigDecimal("42.2"), 300, 280, seconds, counted("42.2", 300, 280, seconds));
+		WhatAResultChangeSays.Run is = new WhatAResultChangeSays.Run("Maraton Avala",
+				THE_MARATHONS_DAY.plusDays(1), new BigDecimal("42.195"), 520, 310, seconds,
+				counted("42.195", 520, 310, seconds));
+
+		return "Stara vrednost:\n" + WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
+				+ WhatAResultChangeSays.inWords(is);
+	}
+
 	/** A run as the table holds it, in the four figures, the points and the category. */
 	private record Run(BigDecimal distanceKm, int ascentM, int descentM, int seconds,
 			BigDecimal points, String category) {
+	}
+
+	/** One line in an inbox, as the table holds it: whose, and what it says. */
+	private record Line(Long to, String subject, String body) {
 	}
 
 	/**
@@ -570,6 +744,20 @@ class ARaceCorrectedRecountsItsRunsTest {
 		return rows;
 	}
 
+	/** Every line written into any inbox since the fixture, addressed or not, in order. */
+	private List<Line> newLines() {
+		return db.sql("select to_id, subject, body from message where id > ? order by id")
+				.param(linesBefore)
+				.query((row, one) -> new Line(row.getObject(1, Long.class), row.getString(2),
+						row.getString(3)))
+				.list();
+	}
+
+	/** The lines written since the fixture into one member's inbox, in order. */
+	private List<Line> linesTo(long member) {
+		return newLines().stream().filter(line -> Long.valueOf(member).equals(line.to())).toList();
+	}
+
 	/** The four figures a submission carries, which no recount of a race may write over. */
 	private List<Object> submitted(long submission) {
 		return db.sql("select distance_km, ascent_m, descent_m, seconds from result_submission"
@@ -578,6 +766,14 @@ class ARaceCorrectedRecountsItsRunsTest {
 				.query((row, one) -> List.<Object>of(row.getBigDecimal(1), row.getInt(2),
 						row.getInt(3), row.getInt(4)))
 				.single();
+	}
+
+	private String kindOf(long race) {
+		return db.sql("select kind from race where id = ?").param(race).query(String.class).single();
+	}
+
+	private static String reasonIn(MockHttpServletResponse answer) throws Exception {
+		return new ObjectMapper().readTree(answer.getContentAsString()).path("reason").asString();
 	}
 
 	/** An instant read in the league's own time, which is how every season question is asked. */

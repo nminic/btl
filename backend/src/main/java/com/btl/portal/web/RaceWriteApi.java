@@ -1,9 +1,12 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.category.Category;
 import com.btl.portal.domain.event.EventAddress;
 import com.btl.portal.domain.event.WhatARaceCarries;
 import com.btl.portal.domain.event.WhatARaceCarries.Figures;
 import com.btl.portal.domain.event.WhatAnEventCarries;
+import com.btl.portal.domain.mail.WhatAResultChangeSays;
+import com.btl.portal.domain.mail.WhatAResultChangeSays.Run;
 import com.btl.portal.domain.scoring.BtlScoreCalculator;
 import com.btl.portal.domain.season.SeasonClock;
 import org.springframework.http.HttpStatus;
@@ -24,7 +27,9 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -168,6 +173,12 @@ class RaceWriteApi {
 	static final String THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR =
 			"theDateWouldMoveAResultToAnotherYear";
 
+	/** PDL P4, the owner's answers of 10.10.2026 on the recount: a race that carries an
+	 *  approved result keeps its kind, refused with this reason the way P10b refuses a move
+	 *  across 1 January. {@link #change} says why. */
+	static final String THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED =
+			"theKindCannotChangeOnceRunsAreCounted";
+
 	/** What a race that fixes no measure of that sort carries (V7, and PDL on 0/0). */
 	private static final BigDecimal NO_DISTANCE = BigDecimal.ZERO;
 
@@ -190,10 +201,19 @@ class RaceWriteApi {
 	 */
 	private final Clock clock;
 
-	RaceWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, Clock clock) {
+	/**
+	 * Whether the beginners' category is open to a member, asked before a recount and after it
+	 * so that a member it closes or opens again for the next season is told. The one home of the
+	 * half of that question the database answers; the threshold is {@link Category}'s.
+	 */
+	private final BestOfficialSeason bestOfficialSeason;
+
+	RaceWriteApi(JdbcClient db, TransactionTemplate inOneTransaction, Clock clock,
+			BestOfficialSeason bestOfficialSeason) {
 		this.db = db;
 		this.inOneTransaction = inOneTransaction;
 		this.clock = clock;
+		this.bestOfficialSeason = bestOfficialSeason;
 	}
 
 	/**
@@ -287,12 +307,14 @@ class RaceWriteApi {
 			int limitSeconds, BigDecimal distanceKm, int ascentM, int descentM) {
 	}
 
-	/** The race being changed, as it stood before the change: its own day and what it fixes. */
-	private record AsItStands(LocalDate day, WhatARaceCarries.ARace fixes) {
+	/** The race being changed, as it stood before the change: its name and its own day, which
+	 *  are how a run at it reads in the line about the run as it was, and what it fixes. */
+	private record AsItStands(String name, LocalDate day, WhatARaceCarries.ARace fixes) {
 	}
 
-	/** One row of {@code result} at the race, with the four figures it was counted at. */
-	private record CountedRun(long id, Figures figures) {
+	/** One row of {@code result} at the race: whose it is, the four figures it was counted at,
+	 *  and the points they were worth. */
+	private record CountedRun(long id, long member, Figures figures, BigDecimal points) {
 	}
 
 	@PostMapping("/api/races")
@@ -387,29 +409,45 @@ class RaceWriteApi {
 	 * of a run (ADL A36, in the journal's wording: the result and the rankings inside the
 	 * transaction); that a recount is the same kind of write is my reading.
 	 *
-	 * <p><b>WHAT IS NOT RECOUNTED, AND TWO OF THE THREE ARE INTERIM.</b> They were put to the owner
-	 * on 09.10.2026, and until he answers the code holds the answer that moves nothing:
+	 * <p><b>THE OWNER'S THREE ANSWERS OF 10.10.2026</b> (PDL P4, „Preračun bodova pri izmeni mera
+	 * trke: tri odgovora (PR 504)"), each chosen among outcomes put to him, in the journal's
+	 * wording:
 	 *
 	 * <ul>
-	 * <li><b>A race of a season that has frozen, or of a year before the first season.</b> The
-	 * journal's reading of his decision is that the recount „mora da proveri da li je sezona
-	 * zamrznuta pre nego što išta promeni", so after 1 January at 16:00 nothing at such a race
-	 * moves - not the tables, which are computed live off these very rows until something writes
-	 * the snapshot V17 provides for, and not the profile either. A year before
-	 * {@link SeasonClock#FIRST_SEASON} is no season at all (PDL P12) and is held the same way:
-	 * {@link SeasonClock#isFrozen} on its own would have held 2026 apart from 2025 until
-	 * 1 January 2027 at 16:00, which nothing decided.
-	 * <li><b>A race whose KIND changed.</b> The race is written and its runs stay as they were. A
-	 * run counted at a race of a length carries the course and not what the runner covered, so
-	 * counting it again as a race to a limit would invent the runner's figure.
-	 * <li><b>A run that is still waiting, and a submission already decided.</b> Neither is a row
-	 * of {@code result}: the approval counts a waiting run against the race as it stands at that
-	 * moment ({@code VerificationWriteApi}), and a decided submission records what was counted
-	 * when it was decided. This one is not interim.
+	 * <li><b>A change of KIND on a race that carries an approved result is refused:</b> „Promena
+	 * VRSTE trke koja već ima odobrene rezultate se odbija uz razlog (409), kao pomeranje trke
+	 * preko 1. januara; ništa se ne gubi." Asked with the other refusals, before the race is
+	 * written. Why a refusal and not a recount: a run counted at a race of a length carries the
+	 * course and not what the runner covered, so counting it again under another kind would
+	 * invent the runner's figure, and a later correction of what the new kind fixes would write
+	 * over his own - the review of this route found exactly that, a marathon turned into six
+	 * hours and its limit then corrected, which took every runner's real time away for good.
+	 * Only an APPROVED run stops it. A run still waiting is counted at its approval against the
+	 * race as it stands then, and the moderator may set the runner's figures himself
+	 * ({@code VerificationWriteApi}); that „odobrene rezultate" leaves the waiting ones out is
+	 * my reading.
+	 * <li><b>A race of a season that has frozen, or of a year before the first season, counts
+	 * nothing again:</b> „U zamrznutoj sezoni i u istoriji pre 2027 izmena mera trke ne menja
+	 * ništa, ni profil ni tabelu; pojedinačno se ispravlja zahtevom „Zatraži ispravku"." The
+	 * tables of a frozen season are computed live off these very rows until something writes
+	 * the snapshot V17 provides for, so this is also what keeps them still. A year before
+	 * {@link SeasonClock#FIRST_SEASON} is no season at all (PDL P12), which is why it is asked
+	 * beside {@link SeasonClock#isFrozen}: that alone would have held 2026 apart from 2025
+	 * until 1 January 2027 at 16:00.
+	 * <li><b>A member whose run it counted again is told, in his inbox and never by post:</b>
+	 * „Član kome izmena trke promeni rezultat dobija red u sandučetu sa starom i novom
+	 * vrednošću, i poruku o početničkoj kategoriji kad joj preračun zatvori ili ponovo otvori
+	 * pravo, u oba smera; mejl ne ide." One line per run that changed, to the member whose run
+	 * it is and to nobody else; a run the correction left exactly as it was is not a run it
+	 * changed. And one line per member whose beginners' category for the season after the
+	 * race's was open before the recount and is closed after it, or the other way round - the
+	 * line an approval writes when it closes one (27.09.2026), here in both directions.
 	 * </ul>
 	 *
-	 * <p><b>Nobody is told</b>, which is how a change to a race has always stood here; whether a
-	 * member hears that his points moved was put to the owner the same day.
+	 * <p><b>A run that is still waiting, and a submission already decided, are not rows of
+	 * {@code result} and are not touched:</b> the approval counts a waiting run against the race
+	 * as it stands at that moment, and a decided submission records what was counted when it was
+	 * decided.
 	 *
 	 * <p><b>This overturns a sentence that cannot be edited.</b> {@code V10__result_submission.sql},
 	 * lines 33 and 34, says that a race edited afterwards „must not silently rescore what was
@@ -544,6 +582,13 @@ class RaceWriteApi {
 				return no(HttpStatus.CONFLICT, THE_DATE_WOULD_MOVE_A_RESULT_TO_ANOTHER_YEAR);
 			}
 
+			/* PDL P4, the owner's answer of 10.10.2026: a race that carries an approved run keeps
+			   its kind, refused with a reason the way P10b just above refuses a move across
+			   1 January, and asked here for the same reason - before anything is written. */
+			if (!before.fixes().kind().equals(checked.kind()) && carriesACountedRun(id)) {
+				return no(HttpStatus.CONFLICT, THE_KIND_CANNOT_CHANGE_ONCE_RUNS_ARE_COUNTED);
+			}
+
 			LocalDate beginning = theDayItWillBeginOn(event.get(), id, checked.date());
 			String address = addressFor(event.get(), beginning);
 
@@ -560,36 +605,33 @@ class RaceWriteApi {
 
 			theEventNowBeginsOn(event.get(), beginning, address);
 
-			recountItsRunsIfWhatItFixesMoved(id, before, whatItFixes(checked));
+			recountItsRunsIfWhatItFixesMoved(id, before, checked);
 
 			return ResponseEntity.ok(new Written(id, beginning, address));
 		});
 	}
 
 	/**
-	 * THE RUNS AT THIS RACE COUNTED AGAIN, when the edit moved something the race fixes and
-	 * nothing below says otherwise. {@link #change} carries the decision and the reason for
-	 * each condition; this is the order they are asked in.
+	 * THE RUNS AT THIS RACE COUNTED AGAIN, AND EACH MEMBER WHOSE RUN MOVED TOLD IN HIS INBOX,
+	 * when the edit moved something the race fixes and nothing below says otherwise.
+	 * {@link #change} carries the decisions and the reason for each condition; this is the order
+	 * they are asked in.
 	 *
 	 * @param before the race as it stood before the write
-	 * @param after  the race as it has just been written
+	 * @param race   the race as it has just been written
 	 */
-	private void recountItsRunsIfWhatItFixesMoved(long race, AsItStands before,
-			WhatARaceCarries.ARace after) {
+	private void recountItsRunsIfWhatItFixesMoved(long id, AsItStands before, Checked race) {
+		WhatARaceCarries.ARace after = whatItFixes(race);
+
 		/* THE SEASON THE RUNS AT THIS RACE ARE IN, read off the race as it stood. P10b has just
 		   refused any move that would carry a run into another year, so wherever there is a run
 		   to count again, the year before this write and the year after it are one year - and
 		   where there is none, the two cannot be told apart and nothing here tries. */
 		int season = before.day().getYear();
 
-		/* INTERIM, put to the owner on 09.10.2026: a frozen season and a year before the
-		   first one are not counted again at all, profile included. */
+		/* PDL P4, the owner's answer of 10.10.2026: a frozen season and a year before the first
+		   one count nothing again, profile included. */
 		if (season < SeasonClock.FIRST_SEASON || SeasonClock.isFrozen(season, now())) {
-			return;
-		}
-
-		/* INTERIM, the same day: a change of kind leaves the runs as they were. */
-		if (!before.fixes().kind().equals(after.kind())) {
 			return;
 		}
 
@@ -598,12 +640,25 @@ class RaceWriteApi {
 		}
 
 		/* EVERY ROW OF `result` AT THIS RACE AND NO OTHER, whoever's it is. The index V7 gave
-		   `(race_id, race_date)` leads with the race. */
-		List<CountedRun> runs = db.sql("select id, distance_km, ascent_m, descent_m, seconds from result where race_id = ?")
-				.param(race)
-				.query((row, one) -> new CountedRun(row.getLong(1), new Figures(row.getBigDecimal(2),
-						row.getInt(3), row.getInt(4), row.getInt(5))))
+		   `(race_id, race_date)` leads with the race. A change of kind never reaches here with a
+		   row to read: {@link #change} refuses it on a race that carries one. */
+		List<CountedRun> runs = db.sql("select id, competitor_id, distance_km, ascent_m, descent_m, seconds, points from result where race_id = ? order by id")
+				.param(id)
+				.query((row, one) -> new CountedRun(row.getLong(1), row.getLong(2),
+						new Figures(row.getBigDecimal(3), row.getInt(4), row.getInt(5), row.getInt(6)),
+						row.getBigDecimal(7)))
 				.list();
+
+		/* WHETHER THE BEGINNERS' CATEGORY WAS OPEN TO EACH OF THEM FOR THE SEASON AFTER THE
+		   RACE'S, asked before a single row moves: the season after, never the race's own, which
+		   is the line `VerificationWriteApi` keeps for an approval and `BestOfficialSeason` says
+		   why. */
+		int theSeasonAfter = season + 1;
+		Map<Long, Boolean> wasOpen = new LinkedHashMap<>();
+
+		for (CountedRun run : runs) {
+			wasOpen.computeIfAbsent(run.member(), member -> beginnersCategoryIsOpenFor(member, theSeasonAfter));
+		}
 
 		for (CountedRun run : runs) {
 			/* What the race fixes comes off the race as written, what it leaves to the runner
@@ -612,10 +667,104 @@ class RaceWriteApi {
 			Figures counted = WhatARaceCarries.figuresOf(after, run.figures());
 			BigDecimal points = BtlScoreCalculator.calculate(counted.distanceKm().doubleValue(), counted.ascentM(), counted.descentM(), counted.seconds());
 
+			/* A RUN THE CORRECTION LEFT EXACTLY AS IT WAS IS NOT A RUN IT CHANGED, so nothing is
+			   written over it and its member is not told about it. */
+			if (isAsItWas(run, counted, points)) {
+				continue;
+			}
+
 			db.sql("update result set distance_km = ?, ascent_m = ?, descent_m = ?, seconds = ?, points = ? where id = ?")
 					.params(counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), points, run.id())
 					.update();
+
+			Run was = new Run(before.name(), before.day(), run.figures().distanceKm(), run.figures().ascentM(), run.figures().descentM(), run.figures().seconds(), run.points());
+			Run is = new Run(race.name(), race.date(), counted.distanceKm(), counted.ascentM(), counted.descentM(), counted.seconds(), points);
+
+			tellHimHisRunWasCountedAgain(run.member(), was, is);
 		}
+
+		for (Map.Entry<Long, Boolean> member : wasOpen.entrySet()) {
+			boolean isOpen = beginnersCategoryIsOpenFor(member.getKey(), theSeasonAfter);
+
+			if (isOpen != member.getValue()) {
+				tellHimHisCategoryMoved(member.getKey(), theSeasonAfter, isOpen, race);
+			}
+		}
+	}
+
+	/** The four figures and the points a run already carries, compared as values: a length is
+	 *  one number whatever scale it was written at. */
+	private static boolean isAsItWas(CountedRun run, Figures counted, BigDecimal points) {
+		return run.figures().distanceKm().compareTo(counted.distanceKm()) == 0
+				&& run.figures().ascentM().equals(counted.ascentM())
+				&& run.figures().descentM().equals(counted.descentM())
+				&& run.figures().seconds().equals(counted.seconds())
+				&& run.points().compareTo(points) == 0;
+	}
+
+	/**
+	 * WHETHER THE BEGINNERS' CATEGORY IS OPEN TO HIM FOR A GIVEN SEASON, asked of the two homes
+	 * that own the halves of that question: {@link BestOfficialSeason} for the points and
+	 * {@link Category} for the threshold. {@code VerificationWriteApi} asks it the same way for
+	 * an approval.
+	 */
+	private boolean beginnersCategoryIsOpenFor(long member, int season) {
+		return Category.firstSeasonAllowed(bestOfficialSeason.pointsFor(member, season));
+	}
+
+	/**
+	 * THE LINE IN HIS INBOX WHEN A CORRECTION OF A RACE COUNTED HIS RUN AGAIN, with the run as
+	 * it was and as it is now (PDL P4, 10.10.2026: „red u sandučetu sa starom i novom
+	 * vrednošću", and „mejl ne ide"). The run is written by
+	 * {@link WhatAResultChangeSays#inWords}, the one way a run reads in every letter about it.
+	 */
+	private void tellHimHisRunWasCountedAgain(long member, Run was, Run is) {
+		tell(member, "Vaš rezultat je preračunat",
+				"Ispravljene su mere trke " + is.raceName() + " od "
+						+ WhatAResultChangeSays.asADay(is.day())
+						+ ", pa je vaš rezultat sa nje ponovo bodovan.\n\nStara vrednost:\n"
+						+ WhatAResultChangeSays.inWords(was) + "\n\nNova vrednost:\n"
+						+ WhatAResultChangeSays.inWords(is)
+						+ "\n\nPortal ne čuva istoriju izmena, pa je ova poruka jedini zapis stare"
+						+ " vrednosti.");
+	}
+
+	/**
+	 * AND THE LINE WHEN THAT CLOSED HIS BEGINNERS' CATEGORY FOR THE NEXT SEASON, OR OPENED IT
+	 * AGAIN (PDL P4, 10.10.2026: „poruku o početničkoj kategoriji kad joj preračun zatvori ili
+	 * ponovo otvori pravo, u oba smera").
+	 *
+	 * <p>The line an approval writes when it closes one (PDL P7, 27.09.2026, the outcome that the
+	 * member is told, with the reason) is the model: what moved it, the threshold, and which
+	 * season. What moved it here is the correction of the race and not one run, because a member
+	 * may have more than one run at it; each of them has its own line above.
+	 */
+	private void tellHimHisCategoryMoved(long member, int season, boolean open, Checked race) {
+		tell(member, open ? "Početnička kategorija vam je ponovo otvorena"
+						: "Početnička kategorija vam je zatvorena",
+				"Ispravljene su mere trke " + race.name() + " od "
+						+ WhatAResultChangeSays.asADay(race.date())
+						+ ", pa su vaši bodovi sa nje preračunati. Time ste u zvaničnoj sezoni "
+						+ (open ? "pali ispod praga od " : "prešli prag od ")
+						+ Category.FIRST_SEASON_POINTS + " bodova, pa vam je početnička kategorija "
+						+ (open ? "ponovo otvorena" : "zatvorena") + " za sezonu " + season + ".");
+	}
+
+	/**
+	 * A LINE IN ONE MEMBER'S INBOX, under the name every notice about a result is sent under
+	 * ({@code ResultWriteApi}). Always addressed: {@code message.to_id} left empty means
+	 * EVERYBODY (V13), and every row of {@code result} names its member.
+	 */
+	private void tell(long member, String subject, String body) {
+		db.sql("insert into message (to_id, from_id, from_name, subject, body) values (?, null, 'Rezultati', ?, ?)")
+				.params(member, subject, body)
+				.update();
+	}
+
+	/** Whether an approved run stands at this race. A run still waiting is not one. */
+	private boolean carriesACountedRun(long race) {
+		return Boolean.TRUE.equals(db.sql("select exists(select 1 from result where race_id = ?)")
+				.param(race).query(Boolean.class).single());
 	}
 
 	/**
@@ -735,25 +884,27 @@ class RaceWriteApi {
 	}
 
 	/**
-	 * THIS RACE AS IT STANDS RIGHT NOW, BEFORE THE WRITE: its own day and what it fixes.
+	 * THIS RACE AS IT STANDS RIGHT NOW, BEFORE THE WRITE: its name, its own day and what it
+	 * fixes.
 	 *
 	 * <p><b>The day is asked fresh for PDL P10b</b> rather than read off {@link Standing},
 	 * which carries the EVENT'S day and not this one race's - the two agree only when the race
 	 * being edited happens to be the first of its event, and a race entered second or third on
 	 * the calendar is exactly the ordinary case.
 	 *
-	 * <p><b>And what it fixes is read in the same statement</b>, because the recount at the end
-	 * of {@link #change} compares it with what was written. Two reads of one row would be two
-	 * moments, and the day and the figures would then belong to two different races only in
-	 * the case nobody would think to measure.
+	 * <p><b>And its name and what it fixes are read in the same statement</b>: the refusal of a
+	 * change of kind and the recount at the end of {@link #change} compare what it fixes with
+	 * what was written, and the line about a run as it was names the race as it was. Two reads
+	 * of one row would be two moments, and the day and the figures would then belong to two
+	 * different races only in the case nobody would think to measure.
 	 */
 	private AsItStands theRaceAsItStands(long id) {
-		return db.sql("select date, kind, distance_km, ascent_m, descent_m, limit_seconds"
+		return db.sql("select name, date, kind, distance_km, ascent_m, descent_m, limit_seconds"
 						+ " from race where id = ?")
 				.param(id)
-				.query((row, one) -> new AsItStands(row.getDate(1).toLocalDate(),
-						new WhatARaceCarries.ARace(row.getString(2), row.getBigDecimal(3),
-								row.getInt(4), row.getInt(5), row.getInt(6))))
+				.query((row, one) -> new AsItStands(row.getString(1), row.getDate(2).toLocalDate(),
+						new WhatARaceCarries.ARace(row.getString(3), row.getBigDecimal(4),
+								row.getInt(5), row.getInt(6), row.getInt(7))))
 				.single();
 	}
 

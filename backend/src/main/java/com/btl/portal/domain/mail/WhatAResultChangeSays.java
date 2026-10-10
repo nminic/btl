@@ -266,8 +266,16 @@ public final class WhatAResultChangeSays {
 	 * dve ili manje decimala. Dakle 42.203 treba da zaokruzi na 42.2, ali da vodi kao
 	 * ultramaraton." This is a place where it is SHOWN, so two decimals; what decides the
 	 * category is the stored value and is not this class's business at all.
+	 *
+	 * <p><b>Public since 10.10.2026, for the one line about a run that is not a mail.</b> A
+	 * correction of a race tells every member whose run it counted again, in his inbox and never
+	 * by post (PDL P4, the owner's answers of 10.10.2026 on the recount, PR 504), with the run as
+	 * it was and as it is ({@code RaceWriteApi}). Those words are not an entry in this class's
+	 * dictionary, because every occasion that has words here is a mail
+	 * ({@code EveryMailIsAMandatoryOneTest}); the run in them is written by this method all the
+	 * same, so a run reads one way in a letter and in that line.
 	 */
-	static String inWords(Run run) {
+	public static String inWords(Run run) {
 		return run.raceName() + ", " + asADay(run.day()) + ", "
 				+ twoDecimals(run.distanceKm()) + " km, uspon " + run.ascentM()
 				+ " m, spust " + run.descentM() + " m, vreme " + asAClock(run.seconds())
