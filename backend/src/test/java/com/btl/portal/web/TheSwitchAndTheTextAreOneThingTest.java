@@ -48,12 +48,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  *
  * <p><b>HOW THE SECOND WRITE IS MADE TO FAIL, without a line of production code knowing
  * about this case.</b> The text is the one value that goes only into {@code verification},
- * so a text PostgreSQL cannot hold is a request whose first statement succeeds and whose
- * second does not. A string carrying {@code U+0000} is exactly that: {@code text} cannot
- * hold a zero byte, which is a property of the type and not of any constraint somebody
- * could drop. It is not blank and it is well under the length this route allows, so it
- * reaches the writing rather than being refused on the way in. Nothing is stubbed, no
- * trigger is created, and the route is asked the same way a member asks it.
+ * so a text that table refuses is a request whose first statement succeeds and whose second
+ * does not. The refusal is a trigger this case makes on {@code verification.body} and takes
+ * away again ({@link AFailureOnlyTheDatabaseCanCause}): a row whose body is the marker below
+ * is refused by the database and by nothing in the route, with a message that names that
+ * trigger. The marker is ordinary words, not blank and well under the length this route
+ * allows, so it reaches the writing rather than being refused on the way in. Nothing is
+ * stubbed, and the route is asked the same way a member asks it.
+ *
+ * <p><b>It used to be a zero character, and that road is closed on purpose.</b> {@code text}
+ * cannot hold {@code U+0000}, which made a text carrying one fail exactly here; but a zero is
+ * now refused where a body is read ({@code NoTextHoldsAZero}), before any statement is
+ * attempted, so the same request answers 400 and this case would have measured a route that
+ * never got started. The failure it asks for has to be the failure that ended the request,
+ * which is why the assertion reads the cause of what was thrown and not only that something
+ * was.
  *
  * <p><b>What the caller is told is deliberately NOT asserted.</b> The answer to a write
  * that failed halfway is a 500 however it is arranged, and a 500 is not what this case is
@@ -79,8 +88,11 @@ class TheSwitchAndTheTextAreOneThingTest {
 	/** What stands on the profile before anything below runs, and it is not empty. */
 	private static final String THE_TEXT_ON_MY_PROFILE = "Tekst koji je vec odobren.";
 
-	/** A text {@code text} cannot hold, which is what makes the SECOND write fail. */
-	private static final String A_TEXT_POSTGRES_CANNOT_HOLD = "pre posle";
+	/**
+	 * A text the database refuses and the route does not, which is what makes the SECOND write
+	 * fail. It carries nothing a check of the route looks at.
+	 */
+	private static final String A_TEXT_ONLY_THE_DATABASE_REFUSES = "Tekst koji baza odbija";
 
 	@Autowired
 	private MockMvc http;
@@ -140,47 +152,53 @@ class TheSwitchAndTheTextAreOneThingTest {
 						+ " case sends")
 				.isFalse();
 
-		/* THE SWITCH REALLY DOES MOVE ON ITS OWN, which is what makes the rollback below a
-		   claim about a rollback rather than about a request that never got started. */
-		assertThat(changing(plainly("Tekst koji prolazi."), true).getStatus()).isEqualTo(200);
-		assertThat(amIHidden())
-				.as("a request this route accepts did not hide the profile, so the comparison"
-						+ " below has no other side")
-				.isTrue();
+		try (AFailureOnlyTheDatabaseCanCause theText = AFailureOnlyTheDatabaseCanCause.on(db,
+				"verification", "body", A_TEXT_ONLY_THE_DATABASE_REFUSES)) {
 
-		assertThat(howManyTextsWait())
-				.as("the accepted request wrote no queue row either, so this file is measuring a"
-						+ " route that does nothing")
-				.isOne();
+			/* THE SWITCH REALLY DOES MOVE ON ITS OWN, which is what makes the rollback below a
+			   claim about a rollback rather than about a request that never got started. It is
+			   sent with the trigger already standing, so it also shows that the trigger refuses
+			   the marker and nothing else. */
+			assertThat(changing(plainly("Tekst koji prolazi."), true).getStatus()).isEqualTo(200);
+			assertThat(amIHidden())
+					.as("a request this route accepts did not hide the profile, so the comparison"
+							+ " below has no other side")
+					.isTrue();
 
-		/* AND BACK, so the second request below is one that would really change the column. */
-		assertThat(changing("null", false).getStatus()).isEqualTo(200);
-		assertThat(amIHidden()).isFalse();
+			assertThat(howManyTextsWait())
+					.as("the accepted request wrote no queue row either, so this file is measuring a"
+							+ " route that does nothing")
+					.isOne();
 
-		/* THE ONE TEXT ALREADY WAITING WOULD REFUSE A SECOND, so it goes before the request
-		   whose second statement must be the one that fails. Taken away here rather than
-		   never written, because the case above is what proves the route writes one. */
-		db.sql("delete from verification where competitor_id ="
-				+ " (select id from competitor where member_number = ?)").param(ME).update();
+			/* AND BACK, so the second request below is one that would really change the column. */
+			assertThat(changing("null", false).getStatus()).isEqualTo(200);
+			assertThat(amIHidden()).isFalse();
 
-		Throwable halfWay =
-				catchThrowable(() -> changing(withZeroBytes(A_TEXT_POSTGRES_CANNOT_HOLD), true));
+			/* THE ONE TEXT ALREADY WAITING WOULD REFUSE A SECOND, so it goes before the request
+			   whose second statement must be the one that fails. Taken away here rather than
+			   never written, because the case above is what proves the route writes one. */
+			db.sql("delete from verification where competitor_id ="
+					+ " (select id from competitor where member_number = ?)").param(ME).update();
 
-		assertThat(halfWay)
-				.as("a text PostgreSQL cannot hold was written down without complaint, so the"
-						+ " second statement of this route did not fail and nothing is being"
-						+ " measured")
-				.isNotNull();
+			Throwable halfWay = catchThrowable(
+					() -> changing(plainly(A_TEXT_ONLY_THE_DATABASE_REFUSES), true));
 
-		assertThat(amIHidden())
-				.as("the switch survived a request whose queue row failed, so the member is"
-						+ " hidden by a request he was told nothing about and his words never"
-						+ " left")
-				.isFalse();
+			assertThat(theText.wentOffIn(halfWay))
+					.as("the second statement of this route did not fail because of the trigger this"
+							+ " case made, so it did not fail, or it failed for a reason of its own,"
+							+ " and nothing is being measured. What was thrown: %s", halfWay)
+					.isTrue();
 
-		assertThat(howManyTextsWait())
-				.as("something of that request is standing in the queue")
-				.isZero();
+			assertThat(amIHidden())
+					.as("the switch survived a request whose queue row failed, so the member is"
+							+ " hidden by a request he was told nothing about and his words never"
+							+ " left")
+					.isFalse();
+
+			assertThat(howManyTextsWait())
+					.as("something of that request is standing in the queue")
+					.isZero();
+		}
 	}
 
 	private boolean amIHidden() {
@@ -194,11 +212,6 @@ class TheSwitchAndTheTextAreOneThingTest {
 				.param(ME).query(Long.class).single();
 	}
 
-	/** The text as a JSON value, quoted, with every space turned into a zero byte. */
-	private static String withZeroBytes(String text) {
-		return "\"" + text.replace(" ", "\\u0000") + "\"";
-	}
-
 	/** The same as a plain quoted string, which is what an ordinary request carries. */
 	private static String plainly(String text) {
 		return "\"" + text + "\"";
@@ -206,9 +219,8 @@ class TheSwitchAndTheTextAreOneThingTest {
 
 	/**
 	 * @param jsonBio the value for {@code bio} AS JSON, written out rather than built from
-	 *                {@code MeWriteApi.Change}: the zero byte has to reach the body as an
-	 *                escape a reader decodes, and a writer would escape it again. {@code
-	 *                "null"} is the member sending no text at all
+	 *                {@code MeWriteApi.Change}. {@code "null"} is the member sending no text
+	 *                at all
 	 */
 	private MockHttpServletResponse changing(String jsonBio, boolean hidden) throws Exception {
 		return http.perform(put("/api/me").with(csrf())
