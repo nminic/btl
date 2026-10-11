@@ -19,7 +19,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +43,9 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
  * WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, AGAINST A REAL DATABASE.
@@ -1073,6 +1077,132 @@ class PaymentsDueApiTest {
 	}
 
 	/**
+	 * THE PRICE IS WHAT THE MEMBERSHIP COSTS HIM, WITHOUT THE PROCESSING FEE, IN HIS OWN MONEY.
+	 *
+	 * <p>PDL, <b>[IZVEDENO 02.10.2026]</b> „Članarina plaćena iz balansa ne nosi taksu ... Server tako
+	 * i radi, a ekran se usklađuje sa serverom (zaseban PR sa bekend delom)." The owner's choice of
+	 * 10.10.2026 among the outcomes put to him (PDL, the entry „Odgovori na pitanja skupljena dok je
+	 * bio odsutan", item „Članstvo i uplate"): „prompt „Odobri iz balansa" pokazuje članarinu umesto
+	 * očekivanog iznosa". The screen can only name the fee if the row carries it.
+	 *
+	 * <p><b>Four members along three axes, and each answers a different mistake.</b> A member abroad
+	 * is told the fee and not the sum he sends, which is the whole difference between this field and
+	 * {@code expected}; a Serbian is told his in dinars and not the euro figure, reached through BOTH
+	 * homes the country can come from; and the junior abroad is told the junior price, which REPLACES
+	 * the period rather than reducing it.
+	 *
+	 * <p><b>The premises are asserted, because a case whose two readings are one number measures
+	 * nothing:</b> the tax is not nought, so on a euro row {@code price} and {@code expected} differ;
+	 * on a dinar row they are one number, since there is no intermediary to pay; and the junior, the
+	 * period and the dinar figure are three different numbers.
+	 */
+	@Test
+	void thePriceIsTheFeeWithoutTheTaxInHisOwnMoneyAndTheJuniorPriceReplacesThePeriod()
+			throws Exception {
+		BigDecimal periodEur = priceOf("early", "eur");
+		BigDecimal periodRsd = priceOf("early", "rsd");
+		BigDecimal tax = priceOf("processing", "eur");
+		BigDecimal juniorEur = priceOf("junior", "eur");
+
+		Map<Long, BigDecimal> prices = new HashMap<>();
+		Map<Long, BigDecimal> expected = new HashMap<>();
+
+		for (JsonNode row : read(booksCookie, null).get("accounts")) {
+			prices.put(row.get("competitorId").asLong(), row.get("price").decimalValue());
+			expected.put(row.get("competitorId").asLong(), row.get("expected").decimalValue());
+		}
+
+		assertThat(prices.get(neverPaid))
+				.as("abroad: the fee itself, and not the sum he sends with the tax in it")
+				.isEqualByComparingTo(periodEur);
+
+		assertThat(prices.get(billedInDinars))
+				.as("Serbia reached through the codebook: dinars, and not the euro figure")
+				.isEqualByComparingTo(periodRsd);
+
+		assertThat(prices.get(billedInDinarsTyped))
+				.as("Serbia reached through the typed address: dinars as well")
+				.isEqualByComparingTo(periodRsd);
+
+		assertThat(prices.get(aJuniorAbroad))
+				.as("the junior price REPLACES the period rather than reducing it")
+				.isEqualByComparingTo(juniorEur);
+
+		assertThat(tax)
+				.as("the tax is nought, so price and expected are one number on every row")
+				.isGreaterThan(BigDecimal.ZERO);
+
+		assertThat(expected.get(neverPaid))
+				.as("abroad the two differ by the tax, which is what makes them two fields")
+				.isNotEqualByComparingTo(prices.get(neverPaid));
+
+		assertThat(expected.get(billedInDinars))
+				.as("Serbia has no intermediary to pay, so there the two are one number")
+				.isEqualByComparingTo(prices.get(billedInDinars));
+
+		assertThat(List.of(periodEur, periodRsd, juniorEur))
+				.as("two of the three figures are one number, so a price taken from the wrong row or"
+						+ " the wrong money could pass")
+				.doesNotHaveDuplicates();
+	}
+
+	/**
+	 * THE PRICE ON THE ROW IS WHAT THE DOOR TAKES OFF HIS BOOK, AND NEVER WHAT HE SENDS.
+	 *
+	 * <p><b>This is the join, and the case above cannot see it.</b> That one holds the price on the
+	 * row against the price list; this one holds it against the OTHER reader of the same fact, the
+	 * route the second button of the prompt calls ({@code POST /api/memberships}, ground
+	 * {@code balance}), which works the amount out for itself from {@code MembershipInvoice} and
+	 * takes {@code min(balance, price)} off the book. The screen compares a balance with the number
+	 * on this row to decide which of the two labels the button carries, so a row that named any other
+	 * number than the one the door takes would have the screen promise a thing the server then does
+	 * differently, on an act that cannot be undone (it spends a member number).
+	 *
+	 * <p><b>Three books, each above the price, so the door takes exactly the price and the
+	 * subtraction names it.</b> The euro member's book stands BETWEEN the price and what he sends
+	 * (36 against 35 and 38), which is the band the owner's change exists for; the junior's stands
+	 * between the junior price and the period's (30 against 20 and 35), so a row naming the wrong
+	 * one of those two is caught by the book as well as by the price list; and the dinar member
+	 * holds more than the dinar price. The book is read through {@link BalanceBook#of}, the other
+	 * reading of the same sum, and not through this route.
+	 */
+	@Test
+	void thePriceOnTheRowIsWhatTheDoorTakesOffHisBookAndNeverWhatHeSends() throws Exception {
+		/* 5 EUR stand on the book already, so 31 more make 36. Each reward names a DIFFERENT member
+		   brought in, because a reward is one line per member (`balance_entry_one_a_referral`). */
+		earnedAReferral(neverPaid, withDiacritics, "31", "EUR");
+		earnedAReferral(aJuniorAbroad, namesake, "30", "EUR");
+
+		JsonNode rows = read(booksCookie, null).get("accounts");
+
+		for (long member : new long[] {neverPaid, aJuniorAbroad, billedInDinars}) {
+			JsonNode row = null;
+
+			for (JsonNode one : rows) {
+				if (one.get("competitorId").asLong() == member) {
+					row = one;
+				}
+			}
+
+			assertThat(row).as("member %d is not on the list", member).isNotNull();
+
+			BigDecimal price = row.get("price").decimalValue();
+			BigDecimal before = row.get("balance").decimalValue();
+			Currency his = Currency.valueOf(row.get("currency").asString());
+
+			MockHttpServletResponse pressed = pressOnTheBalance(member);
+
+			assertThat(pressed.getStatus())
+					.as("the second button of the prompt was refused for member %d", member)
+					.isEqualTo(201);
+
+			assertThat(before.subtract(book.of(member, his).amount()))
+					.as("what came off the book of member %d is not the price the row names", member)
+					.isEqualByComparingTo(price);
+		}
+	}
+
+	/**
 	 * THE BALANCE IS WHAT HIS BOOK ADDS UP TO TODAY, IN HIS OWN CURRENCY.
 	 *
 	 * <p>Owner, 27.09.2026: „Balans u labeli kucice stoji u valuti TOG clana", and the reason he was
@@ -1302,6 +1432,16 @@ class PaymentsDueApiTest {
 
 	private MockHttpServletRequestBuilder asking(String cookie, MockHttpServletRequestBuilder what) {
 		return what.cookie(new Cookie(SessionCookie.NAME, cookie));
+	}
+
+	/** The second button of the prompt for the balance, as the screen sends it: one member, the
+	 *  ground {@code balance}, and nothing about an amount. */
+	private MockHttpServletResponse pressOnTheBalance(long competitorId) throws Exception {
+		return http.perform(post("/api/memberships").with(csrf())
+						.cookie(new Cookie(SessionCookie.NAME, booksCookie))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"competitorId\":" + competitorId + ",\"ground\":\"balance\"}"))
+				.andReturn().getResponse();
 	}
 
 	private List<Long> keysIn(JsonNode answer) {

@@ -329,8 +329,10 @@ export const readAsLeague: League = aLeague
  * <p><b>The amounts are whole numbers here and the column is `numeric(10,2)`</b>, which is
  * the state the list really ships in (V4) rather than a simplification: every one of the
  * seven rows is whole today, and `PricingApi` writes down that the schema does not say it
- * has to stay that way. `pages/memberFlows.test.tsx` is where a price with para is served,
- * because that is a question about a SENTENCE and not about a shape.
+ * has to stay that way - what keeps it so is the rule that a price is TYPED whole (PDL, ODLUKA
+ * 02.10.2026, „Iznosi se unose kao celi brojevi"; the route refuses a fraction with
+ * `theAmountIsNotWhole` since 10.10.2026). `pages/memberFlows.test.tsx` is where a price with
+ * para is served, because that is a question about a SENTENCE and not about a shape.
  */
 export const aPricePeriod = {
   key: 'early',

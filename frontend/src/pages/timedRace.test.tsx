@@ -6,7 +6,6 @@ import { formatPoints } from '../i18n/format'
 import type { Race } from '../data/types'
 import { first, must } from '../test/at'
 import { renderAt } from '../test/render'
-import { Reported } from '../test/saved'
 import { setupUser } from '../test/user'
 
 /**
@@ -419,11 +418,22 @@ describe('a race that fixes no length', () => {
        about what it gives back. */
     const real = globalThis.fetch
     const user = setupUser()
+    const races = servingRaces(real, asTimed)
+    /* WHAT WENT TO `POST /api/results`, read off the request itself: since R2 of the results
+       flows nothing about a run sent is written into the browser, so the request is the one
+       place what this screen sends can be read. */
+    const sent: unknown[] = []
 
-    globalThis.fetch = servingRaces(real, asTimed)
+    globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/results' && init?.method === 'POST') {
+        sent.push(JSON.parse(String(init.body)))
+      }
+
+      return races(input, init)
+    }
 
     try {
-      renderAt(await reportAddress(), 'competitor', '000001', undefined, null, <Reported />)
+      renderAt(await reportAddress(), 'competitor', '000001')
 
       const note = await screen.findByText(/^Prijavljuješ rezultat sa trke/)
 
@@ -461,21 +471,20 @@ describe('a race that fixes no length', () => {
       /* And what is sent, which is the half the screen never shows the member.
          `reportedResult` is measured on its own, but nothing said that this screen
          hands its answers on: every one of these could be replaced by a figure off
-         the race and the member would still be told the right number of points,
-         because that is read separately.
+         the race and the member would still be told nothing wrong, because nothing is
+         told.
 
-         All six as one string (`test/saved.tsx`), and not the moderator's row: that
-         row draws five of them as cells whose text a case can only search, so „500"
-         found in it is as true of the fall as of the climb, and the sixth, the
-         category, it does not draw at all. */
-      expect(
-        must(
-          within(await screen.findByRole('list', { name: 'reported figures' })).getAllByRole(
-            'listitem',
-          )[0],
-          'the record that was just sent',
-        ).textContent,
-      ).toBe(`km=60 up=2000 down=500 sec=86400 pts=${earned} cat=ultra`)
+         The four figures as one record and the race by its id, off the request: the time
+         is the race's own limit and the three the member typed are his, climb and fall
+         kept apart because „500" found anywhere is as true of the one as of the other. The
+         points and the category are not sent at all, because the server works them out
+         (`ResultWriteApi`, „THE POINTS ARE COMPUTED HERE AND NEVER ACCEPTED FROM A
+         REQUEST"). */
+      expect(sent, 'not one run went to the route').toHaveLength(1)
+      expect(sent[0]).toMatchObject({ distanceKm: 60, ascentM: 2000, descentM: 500, seconds: 86_400 })
+      expect(Object.keys(Object(sent[0])), 'the request carries something the route does not take').not.toContain(
+        'points',
+      )
     } finally {
       globalThis.fetch = real
     }

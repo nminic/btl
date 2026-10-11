@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,6 +46,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code PricingWriteApiTest}, which is where a refusal belongs. The two files are halves of
  * one guard on purpose: this one says the numbers agree, that one says the route acts on
  * them.
+ *
+ * <p><b>THE SAME FILE IS READ FOR A SECOND JOIN SINCE 10.10.2026, and it is the same kind of
+ * one.</b> A price is typed as a whole number (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi
+ * brojevi", for what is typed confirmed on 10.10.2026): the route refuses a fraction in both
+ * amounts ({@code PricingWriteApiTest}) and the form refuses a separator as it is typed, which is
+ * what {@code integer} on a field of the definition says. The last test of this class holds the
+ * form's half to the route's.
  */
 class WhatAPriceMayCostTest {
 
@@ -136,5 +145,64 @@ class WhatAPriceMayCostTest {
 						+ " made the two a conversion - which is exactly what the owner refused on"
 						+ " 25.09.2026 (PDL P12d)")
 				.isNotEqualByComparingTo(asTheRateWouldHaveIt);
+	}
+
+	/**
+	 * Every field the form draws that says {@code integer}, by name: the boxes that refuse a
+	 * separator as it is typed.
+	 *
+	 * <p>Collected by walking the file for the reason {@link #ceilingsTheFormDraws} gives, so a
+	 * field given {@code integer} tomorrow arrives here on the day it is added.
+	 */
+	private static Set<String> fieldsTheFormTakesWhole() throws IOException {
+		assertThat(FORM)
+				.as("the price form is not where this expects it, so nothing is being compared")
+				.exists();
+
+		Set<String> found = new TreeSet<>();
+		collectWhole(new ObjectMapper().readTree(Files.readString(FORM, StandardCharsets.UTF_8)), found);
+
+		return found;
+	}
+
+	private static void collectWhole(JsonNode node, Set<String> into) {
+		if (node.isObject()) {
+			if (node.has("name") && node.path("integer").asBoolean(false)) {
+				into.add(node.get("name").asString());
+			}
+
+			node.propertyStream().forEach(one -> collectWhole(one.getValue(), into));
+		} else if (node.isArray()) {
+			node.forEach(one -> collectWhole(one, into));
+		}
+	}
+
+	/**
+	 * THE FORM TAKES NO SEPARATOR IN THE TWO AMOUNTS THE ROUTE REFUSES A FRACTION IN.
+	 *
+	 * <p><b>PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi"</b>, recorded as the owner's
+	 * own words - „Iznosi se unose bez tačaka i zareza!" - and, for what is typed, confirmed on
+	 * 10.10.2026. The incident behind it was „3.500" in the price list quietly becoming 3,5
+	 * dinars. The route is the floor ({@code PricingWriteApiTest}: {@code 3.500} in the dinar box
+	 * is refused with {@code theAmountIsNotWhole}), and the form is the place the administrator is
+	 * stopped before he sends anything.
+	 *
+	 * <p><b>Both directions, as one set.</b> The two amounts of {@code PricingWriteApi.TheForm} are
+	 * {@code eur} and {@code rsd}, and the name of the price row is the third field of that record
+	 * and is text. A form that dropped {@code integer} from one of the two lets the separator
+	 * through to a route that refuses it with a sentence the form could have spared him; a form that
+	 * gave it to the name would refuse a word. Neither is visible from either side alone.
+	 *
+	 * <p><b>The match with {@code frontend/src/forms/wholeNumbers.test.ts} is the other half of the
+	 * same fact</b>: that one reads the form and the type each route declares for every number field
+	 * on disk, and holds the two amounts here to a route that keeps them as {@code BigDecimal} and
+	 * refuses a fraction by a check instead of by a type.
+	 */
+	@Test
+	void theFormTakesNoSeparatorInTheTwoAmountsTheRouteRefusesAFractionIn() throws IOException {
+		assertThat(fieldsTheFormTakesWhole())
+				.as("the fields the price form takes whole are not the two amounts the route refuses"
+						+ " a fraction in, so one of the two homes has moved alone")
+				.containsExactly("eur", "rsd");
 	}
 }

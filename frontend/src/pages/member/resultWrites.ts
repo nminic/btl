@@ -18,31 +18,29 @@ import { askTheServer, type Answer } from '../account/askTheServer'
  * hold both the write and the caches it drops is a module on this side of that line.
  * `react/only-export-components` asks the same thing from the other direction.
  *
- * <p><b>WHICH THREE, BECAUSE TWO SCREEN ACTIONS THAT LOOK LIKE THESE ARE NOT THESE.</b>
- * Both `PUT` and `DELETE` go through `ResultWriteApi.his`, which reads
+ * <p><b>WHICH ADDRESS EACH ROAD TAKES, BECAUSE TWO KEYS ON THESE SCREENS LOOK ALIKE AND ARE
+ * NOT.</b> Both `PUT` and `DELETE` go through `ResultWriteApi.his`, which reads
  * `from result r ... where r.id = ? and r.competitor_id = ?`, so both take a
  * <b>`result.id`</b> - a run somebody has already counted. `GET /api/results` serves that
  * very id (`ResultApi`), so `Result.id` is the number these addresses take.
  *
  * <ul>
- * <li>`MyResults.tsx`'s „Obriši" in the table of COUNTED results, and
- * `NewResult.tsx`'s `?ispravka=` road, are about a `result`. They are these routes.
- * <li>`MyResults.tsx`'s „Obriši" in the list of what has been SENT, and
- * `NewResult.tsx`'s `?ponovo=` road, are about a `Submission` - a question the member
- * asked, whose key is a string the browser itself minted (`session/context.ts`). There is
- * no route for either, and that is deliberate rather than missing: `ResultWriteApi` writes
- * it out - „<i>Withdrawing a submission that is still waiting. That is a different row in
- * a different table and a different verb, and PDL keeps them apart</i>". Those two stay on
- * the overlay and this module must not be reached for them.
+ * <li>`MyResults.tsx`'s „Obriši" in the table of COUNTED results, and `NewResult.tsx`'s
+ * `?ispravka=` road, are about a `result`.
+ * <li>`NewResult.tsx`'s `?ponovo=` road is about a run a moderator SENT BACK, whose key is a
+ * submission's (`GET /api/me/result-submissions`, `SentRun.id`). No route takes that key, and
+ * none is needed: sending it again is sending a run, so a fresh run goes to `POST` and a sent-back
+ * correction goes to `PUT` on the result it corrects (`SentRun.amendsResultId`). The owner's
+ * choice of 10.10.2026, in the record's wording: „sada ponovno slanje odbijene prijave preko
+ * postojećih ruta".
+ * <li>A run that is still WAITING is not changed or taken back from these screens at all until a
+ * separate piece of work gives it routes of its own, which is the other half of the same choice:
+ * „„Izmeni" i „Obriši" na prijavi koja čeka se skrivaju do zasebnog posla".
  * </ul>
  *
- * <p><b>AND THE SENT LIST STAYS IN THE BROWSER, WHICH IS A BOUNDARY AND NOT AN
- * OVERSIGHT.</b> Measured the same day: no route serves a member his own submissions. The
- * only route that reads `result_submission` to serve anything is `GET /api/verification`,
- * the moderator's queue. So after a write lands, the row really stands on the server, and
- * what „Poslato" draws is still the overlay. Writing the overlay as well is therefore not
- * a second home for one fact but the only view there is; it is written <b>after</b> the
- * server agreed, never before, which is `member/teamWrites.ts`'s own rule.
+ * <p><b>The list of what was sent is the server's since R2 of the results flows</b>, read off
+ * `GET /api/me/result-submissions`. Until then it was the browser's own overlay, written after
+ * every one of these writes, and it was the only view of a waiting run there was.
  */
 
 /** Where a run is sent. One address for both doors, which is what makes them one act. */
@@ -194,41 +192,22 @@ export type ARunDescribed = Figures &
 export type ACorrection = Figures & Proof
 
 /**
- * A BOUNDARY, WRITTEN DOWN RATHER THAN LEFT TO BE FOUND: THE POINTS ARE WORKED OUT TWICE,
- * AND ON ONE ROAD THE TWO ANSWERS CAN DIFFER.
+ * THE POINTS ARE WORKED OUT ON THE SCREEN FROM THE FIGURES THE SERVER WOULD COUNT, which closed
+ * the one road on which the screen's number and the server's could differ.
  *
- * <p>The screen works them out for the row it goes on drawing until a moderator decides, and
- * the server works them out again because they are never accepted from a request. The two
- * agree everywhere but one place.
+ * <p>The screen works them out for the row it draws while a run waits (`MyResults.tsx`), and the
+ * server works them out again when the run is approved, because they are never accepted from a
+ * request. Until R2 of the results flows the row was the browser's own record of what the member
+ * TYPED, and on a race to a limit the server takes the time off the race (`WhatARaceCarries.
+ * figuresOf`): measured on 28.09.2026, a member who typed five hours against a six hour limit over
+ * 50 km with 1000 up and 1000 down was shown 41,19 where the server stores 27,90, 48 per cent high.
+ * The row is read off `GET /api/me/result-submissions` now, whose figures are `figuresOf`'s answer
+ * over the race as it stands today, so the screen and the server count the same four numbers.
  *
- * <p><b>Nothing announces them to the member any more.</b> PDL P9 asked the screen to say
- * what the run earned the moment it was sent („Član odmah po unosu vidi koliko je bodova
- * dobio", narrowed 18.09.2026 to the points alone); the owner ended it on 28.09.2026:
- * „bodovi ni na dužinskoj ni na vremenskoj trci ne ulaze u obračun pre verifikacije. Ne
- * vidim razlog da se ispisuju bilo kome prilikom unosa parametara prijave rezultata."
- *
- * <p><b>Where they can differ.</b> `WhatARaceCarries.figuresOf` (asked by `ResultWriteApi`, and
- * since R1 of the results flows by the moderator's approval too) takes the time off the RACE for
- * a race run to a limit („jer je zadato trkom", owner 29.08.2026), and the length, climb and
- * fall off the race for a race of a length. Every road but one hands the screen those same
- * figures: `pages/event/reportForm.ts` drops the time boxes on a timed race altogether, and
- * `member/racesToOffer.ts` fills and locks them with the race's own limit when a race is
- * picked out of the list. The form for correcting a COUNTED result does neither - it keeps
- * the three boxes open, seeded from the record - so a member correcting a result on a timed
- * race may type a time the server will then ignore.
- *
- * <p><b>What that costs, as arithmetic rather than a worry.</b> On a six hour limit over 50 km
- * with 1000 up and 1000 down, a member who types five hours works out to 41,19 while the
- * server stores 27,90: the browser is 48 per cent high. <b>That arithmetic is the reason the
- * number left the screen</b> - it is the measurement the owner was shown on 28.09.2026 before
- * he answered - so the difference now lives only in the row the browser draws for itself and
- * in the moderator's queue, never in a sentence a member is told.
- *
- * <p><b>Why this increment does not close it.</b> Which of the two answers a member should be
- * shown BEFORE verification is a decision nobody has made, and this increment carries none.
- * <b>It is also unreachable with today's data, measured rather than assumed:</b>
- * `test/mock/races.json` holds 1612 races and every one of them is of a length, so no counted
- * result stands on a timed race at all. The day one does, this is where it was written down.
+ * <p><b>Whether a number belongs beside a run that waits at all is still a question for the
+ * owner</b> (PENDING, 29.09.2026): his decision of 28.09.2026 took it off the two forms („Ne vidim
+ * razlog da se ispisuju bilo kome prilikom unosa parametara prijave rezultata") and said nothing
+ * about this list, so the list keeps it, with the sentence that says it is not final.
  */
 
 /**
@@ -244,19 +223,51 @@ export type ACorrection = Figures & Proof
  * points to 179 and 1.744,60 with no way back. Dropping `results` here would send every
  * board, every profile and every league table to re-read a list that has not moved.
  *
- * <p>What HAS moved is the member's own inbox, because the route writes him a line about
- * it inside the same transaction (`ResultWriteApi.tell`, and PDL P22 makes both of these
- * messages mandatory), and the moderator's queue, because the row that waits is a new item
- * in it. The queue is dropped for the same member who may be reading it: a moderator is a
+ * <p>What HAS moved: the member's own list of what he sent, which holds the new row; his
+ * inbox, because the route writes him a line about it inside the same transaction
+ * (`ResultWriteApi.tell`; a run sent in is told there and nowhere else since 09.10.2026, and a
+ * correction is posted as well); and the moderator's queue, because the row that waits is a new
+ * item in it. The queue is dropped for the same member who may be reading it: a moderator is a
  * member too and sends in his own runs.
  */
 function whatAWaitingRowChanges(): void {
+  clearResourceCache('me/result-submissions')
   clearResourceCache('verification')
   theInboxHasChanged()
 }
 
 /**
- * Sends one run, from either door, and says what came back.
+ * WHETHER THE SERVER HAS JUST SAID THAT A COUNTED RESULT IS NOT THERE, which is the one refusal
+ * of these routes that proves what the screen is drawing is out of date.
+ *
+ * <p>`ResultWriteApi.his` answers an empty 404 for a result that is not there and for one that is
+ * not his alike (ADL A8), and a result of his own that is not there is one taken back in another
+ * tab or by another hand since this visit read the list. The list goes on drawing it, and goes on
+ * drawing a correction of it that the server has already removed with it
+ * (`result_submission_amends_fk` cascades). So both answers are dropped here and the screen that
+ * stays reads them again: the class the review of T5 named on 10.10.2026, a list read once per
+ * visit that has to be read again when a refusal says it is stale and not only after the screen's
+ * own success (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež").
+ *
+ * <p><b>Nothing else is read that way</b>: a refusal by name is about what was typed, and an
+ * answer that never came, a 403 or a 5xx says nothing about what is on the server, so none of them
+ * moves a list.
+ */
+export function saysTheResultIsGone(answer: Answer): boolean {
+  return answer.got === 'wrong' && answer.status === 404
+}
+
+/** Drops what a 404 about a counted result has shown to be out of date (see
+ *  {@link saysTheResultIsGone}), and nothing on any other answer. */
+function whatAResultThatIsGoneChanges(answer: Answer): void {
+  if (saysTheResultIsGone(answer)) {
+    clearResourceCache('results')
+    clearResourceCache('me/result-submissions')
+  }
+}
+
+/**
+ * Sends one run, from either door or sent again, and says what came back.
  *
  * <p><b>The caches are dropped only where the server agreed</b>, which is the axis this
  * function cannot get wrong and is `member/teamWrites.ts`'s own rule in its own words: a
@@ -289,6 +300,8 @@ export async function theCorrectionWasSentIn(
     whatAWaitingRowChanges()
   }
 
+  whatAResultThatIsGoneChanges(answer)
+
   return answer
 }
 
@@ -304,9 +317,10 @@ export async function theCorrectionWasSentIn(
  * <p><b>So `results` is dropped here and only here</b>, and with it everything drawn from
  * it: the boards, the profile and the league tables all read that one resource
  * (`data/derive.ts`), so there is no second name to drop for them. `verification` goes too,
- * because `result_submission_amends_fk` cascades and any correction that was waiting on
- * this result went with it - a queue the member is also a moderator of would otherwise
- * draw a row pointing at a run nobody can see.
+ * and so does the member's own list of what he sent, because `result_submission_amends_fk`
+ * cascades and any correction that was waiting on this result or was sent back went with it:
+ * the queue a member who is also a moderator reads, and his own list, would otherwise each draw a
+ * row pointing at a run nobody can see.
  *
  * <p>The boundary the owner was shown before he chose, written here rather than left to be
  * found: „tabele se automatski ažuriraju" is about the RUNNING season. Past a freeze, a
@@ -319,6 +333,8 @@ export async function theResultWasTakenBack(result: number): Promise<Answer> {
     clearResourceCache('results')
     whatAWaitingRowChanges()
   }
+
+  whatAResultThatIsGoneChanges(answer)
 
   return answer
 }

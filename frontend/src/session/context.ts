@@ -3,147 +3,35 @@ import type {
   Crop,
   EventComment,
   MembershipBasis,
-  RaceCategory,
   PendingItem,
   RacingPair,
-  Result,
 } from '../data/types'
 
 /* What the prototype remembers between screens.
  *
  * It exists so the flows actually connect: a competitor enters a result, the
  * moderator finds it in the queue, approves it, and the competitor sees it
- * appear. (The moderator's half of that runs on the server since R1 of the
- * results flows; the competitor's half is still here until R2.) Reading that sequence on a screen is worth more than any description
- * of it, and it is the whole reason for building the front end first.
+ * appear. (Both halves of that run on the server since R1 and R2 of the results
+ * flows, so this store holds none of it any more.) Reading that sequence on a screen
+ * is worth more than any description of it, and it is the whole reason for building
+ * the front end first.
  *
  * All of it is in memory. When the backend arrives this provider reads the
  * session and calls the API; the screens ask the same questions either way.
  */
 
-/* A list rather than a union, so the words for the three can be walked
-   (keys.test). A union is gone by the time anything runs. */
-export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
+/* THE WORDS „MOJI REZULTATI" DRAWS A RUN'S STATE WITH, and the two it can draw since R2 of the
+   results flows (`member/MyResults.tsx`, `drawnAs`): what waits on a moderator and what a
+   moderator sent back. `approved` left the list with the session's own copy of what was sent,
+   because an approved run is a result and is drawn in the table of counted ones, never here.
+
+   A list rather than a union, so the words can be walked (`i18n/keys.test.ts`) and so can the
+   pills they style (`styles/hooks.test.ts`). A union is gone by the time anything runs. It stays
+   in this file, which keeps nothing else about a run any more, because those two floors read it
+   from here. */
+export const SUBMISSION_STATUSES = ['pending', 'rejected'] as const
 
 export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number]
-
-export type Submission = {
-  id: string
-  memberNumber: string
-  /**
-   * The name of the race, which is what the member typed or picked.
-   *
-   * The race and not the event since 23.08.2026 (owner): „sad je postalo logičnije
-   * da se pretražuje zapravo naziv trke sa datumom i dužinom". A member may also
-   * report a race the calendar does not hold, and then this is the only name there
-   * is, which is the other reason it is the race's: an event they did not pick has
-   * no name to lend.
-   */
-  raceName: string
-  /**
-   * The race in the calendar this result belongs to, where there is one.
-   *
-   * Absent on exactly one road: a member who typed a name the calendar does not
-   * hold. Every other way in knows it — the button in a row of the event page is
-   * that row's race, a name chosen from the list is the race chosen, and a
-   * correction of a counted result keeps the race the record already names.
-   *
-   * Since R1 of the results flows the moderator's queue reads that fact off the server
-   * and not off this record (`VerificationApi` answers `raceId`); this is the member's
-   * own copy of what he sent, read by his side until R2 moves it onto the server too.
-   */
-  raceId?: number
-  /**
-   * Which of the three kinds of race the member says it was, and where it was run.
-   *
-   * Both travel with the submission because both are the member's answer and both
-   * have to come back into the form when a refused result is sent again: the second
-   * of the three writers of a submission is `filledFrom`, and a field it leaves out
-   * comes back empty and required, so the member is refused for not answering a
-   * question the form never asked them again (measured 30.08.2026).
-   *
-   * The kind is what the member says, not what the race is. It is a hint until the
-   * administration settles it at verification (owner, 30.08.2026); a race the
-   * calendar already holds answers for itself and is not asked here.
-   */
-  raceKind: string
-  city: string
-  country: string
-  date: string
-  distanceKm: number
-  ascentM: number
-  descentM: number
-  seconds: number
-  points: number
-  /** File name of the picture attached as proof, or empty. Deleted from the
-   *  server once the result has been checked, so the disc does not fill with
-   *  photographs of watches (ADL A12). */
-  photo: string
-  category: RaceCategory
-  /**
-   * The official results, as an address and nothing else.
-   *
-   * The queue draws it as a link, so it has to be one: the form that asks for it
-   * requires the shape, and both forms do since 23.08.2026
-   * (`unos-rezultata.form.json`, `prijava-sa-trke.form.json`). Empty where the
-   * member attached a picture instead of an address, which Clan 37 allows.
-   */
-  link: string
-  /**
-   * What the member wrote in their own words: a start number, a screenshot they
-   * are sending on, a sentence about a watch that stopped.
-   *
-   * Its own field and not the link, which is where it went at first. The queue
-   * draws the link as `<a href>`, so "Startni broj 412" became an address on the
-   * moderator's screen: relative, opening the administration at a path made of
-   * the member's sentence. Anything a member types is text until something has
-   * checked it, and nothing had.
-   */
-  comment: string
-  status: SubmissionStatus
-  /** Why it was sent back, so the competitor is not left guessing. */
-  note: string
-  /**
-   * Whether the member has changed this since sending it, and nothing more than
-   * that.
-   *
-   * Owner, 27.08.2026, asked whether the queue should be told: „samo labela, ne
-   * šta je ispravljano." Which sits exactly on the older decision that the
-   * history of a result is not kept: a moderator sees that something moved, not
-   * what it was before.
-   *
-   * It matters because a corrected item goes to the back of the queue, so what a
-   * moderator meets is an item they may have read once already, with different
-   * numbers in it and nothing on it saying so.
-   */
-  corrected: boolean
-  /**
-   * The counted result this is a correction of, as it should read once somebody
-   * agrees with it.
-   *
-   * Owner, 28.08.2026, choosing between four outcomes: **the old result stays in
-   * the standing while the correction waits, and changes only when a moderator
-   * approves it.** That overturned what the portal did until then, which was to
-   * take the result out of the standing the moment the correction was sent: a
-   * refusal then lost the points for good, measured at 180 races and 1.752,86
-   * points falling to 179 and 1.744,60 with no way back. The portal's own rule is
-   * that the standing is brought up to date **after** verification (PDL P9, owner
-   * 27.08.2026), and that is the sentence this restores.
-   *
-   * The whole record and not the identity alone, because a `Submission` does not
-   * know what a `Result` needs: the event's name and address travel on the result
-   * and a correction may change everything except which race it is (owner,
-   * 27.08.2026, „sve osim trke"). Built where both are in hand, which is the
-   * member's own screen.
-   *
-   * It keeps the identity of the result it replaces, so approving a correction
-   * swaps what that record says rather than adding a second one beside it.
-   *
-   * Absent on every other submission: a result sent for the first time is counted
-   * by nobody yet, and there is nothing for it to replace.
-   */
-  corrects?: Result
-}
 
 export type Message = {
   id: string
@@ -704,51 +592,6 @@ export type SessionValue = {
    */
   signedIn: SignedIn | null
   signOut: () => void
-
-  submissions: Submission[]
-  submit: (submission: Omit<Submission, 'id' | 'status' | 'note' | 'corrected'>) => void
-  /**
-   * The counted results a moderator has agreed to change during this visit, by
-   * the identity of the record each one replaces. Filled by `decide` alone, so since
-   * R1 of the results flows only by the member's side of this session: a correction
-   * approved in the queue is written by the server, and the results are read again.
-   *
-   * Read by `useResults`, so every screen that counts a result sees the same
-   * thing: the standing, the profile, the boards and the league all read that one
-   * function (`data/useResource.ts`).
-   *
-   * A record and not a patch, because what is agreed to is the whole of what the
-   * member sent, and because the record it replaces may itself be replaced again
-   * the next time.
-   */
-  corrected: Record<string, Result>
-  /** The same result, corrected and sent in again (owner, 06.08.2026 for a
-   *  refusal, 27.08.2026 for one still waiting). One item and not a second
-   *  beside it: it is one race. */
-  resubmit: (
-    id: string,
-    corrected: Omit<Submission, 'id' | 'status' | 'note' | 'memberNumber' | 'corrected'>,
-  ) => void
-  /**
-   * Taking one's own result back, which a member may do (owner, 27.08.2026).
-   *
-   * Gone rather than marked withdrawn: the portal keeps no history of a result
-   * (P9), so a withdrawn one would be a record of something nobody may read.
-   */
-  withdraw: (id: string) => void
-  /**
-   * Deciding a submission held in this session. Called by nothing in the administration
-   * since R1 of the results flows, whose queue decides on the server; it stays for the
-   * member's side until R2, because his own list still reads a submission's state off this
-   * session and only this writes it (`SessionProvider.tsx` says what removing it would
-   * leave unreachable).
-   *
-   * What the administration could put right on a submission before deciding it, `amend`,
-   * left with R1: the figures a moderator sets travel inside the approval itself
-   * (`admin/verificationWrites.ts`, `anApprovalWith`), and the names and the kind of a
-   * race the calendar does not hold belong to the decision R3 builds on the server.
-   */
-  decide: (id: string, status: SubmissionStatus, note: string) => void
 
   /* WHO IS GOING TO AN EVENT IS NOT HELD HERE ANY MORE, SINCE 03.10.2026, and a reader who
      comes looking for `going` and `setGoing` should find this rather than silence. They held

@@ -7,28 +7,6 @@ import { SessionProvider } from '../../session/SessionProvider'
 import type { SessionValue } from '../../session/context'
 import { useSession } from '../../session/useSession'
 
-/** Everything the session is holding, one line each, so a case can read what was
- *  really sent rather than what the screen says about it. The same shape
- *  `pages/member/ownResult.test.tsx` uses. */
-function Sent() {
-  const { submissions } = useSession()
-
-  return (
-    <ul aria-label="store">
-      {submissions.map((one) => (
-        <li key={one.id}>
-          {`${one.id} | ${one.raceName} | ${one.date}`}
-          {/* The kind and the place, which nothing on the portal draws yet: they
-              are written for the parts that come after this one, and a value
-              nobody reads is a value nobody can see go wrong. */}
-          <span data-testid={`said-${one.id}`}>{`${one.raceKind} / ${one.city} / ${one.country}`}</span>
-          <span>{` | ${String(one.raceId)}`}</span>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 import { loadResource } from '../../data/client'
 import { btlPoints } from '../../data/scoring'
 import type { BtlEvent, Race } from '../../data/types'
@@ -48,13 +26,36 @@ async function eventAt(slug: string): Promise<BtlEvent> {
   )
 }
 import { renderAt } from '../../test/render'
-import { Reported } from '../../test/saved'
 import { refused, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
 import { ReportResult } from './ReportResult'
 
 /** Somebody signed in, since the form is only for members. */
 const ME = '000007'
+
+/**
+ * EVERYTHING THIS SCREEN SENT TO `POST /api/results`, read off the requests themselves.
+ *
+ * <p>Since R2 of the results flows nothing about a run sent is written into the browser: the
+ * screen used to keep a copy for „Moji rezultati", and that list reads the server now. So the
+ * request is the one place what was sent can be read. Everything is passed on to the floor
+ * (`test/setup.ts`), which answers `POST /api/results` with 201 as the route does.
+ */
+function recording(): { sent: () => Record<string, unknown>[]; stop: () => void } {
+  const server = serverThat(() => null)
+
+  return {
+    sent: () =>
+      server.asked
+        .filter((one) => one.path === '/api/results' && one.init?.method === 'POST')
+        .map((one) => {
+          const body: unknown = JSON.parse(String(one.init?.body ?? '{}'))
+
+          return typeof body === 'object' && body !== null ? { ...body } : {}
+        }),
+    stop: server.stop,
+  }
+}
 
 /* A result reported from the race it was run at (owner, 03.08.2026, and
  * 23.08.2026 for the race).
@@ -236,7 +237,7 @@ describe('a result reported this way', () => {
   /** What `fillIn` types, in seconds. */
   const TYPED_SECONDS = 3 * 3600 + 41 * 60 + 12
 
-  it('feeds the formula the race’s own figures, and sends the moderator all six', async () => {
+  it('sends the race’s own figures and the time typed, and nothing the server works out', async () => {
     /* Not the event the rest of this file uses: its races carry no climb and no
        fall, so a screen that read one of them for the other, or read neither and
        wrote nought, would have been measured as right. 195 of the file's 1612 races
@@ -249,53 +250,49 @@ describe('a result reported this way', () => {
       'a race whose climb and fall differ',
     )
     const user = setupUser()
+    const route = recording()
 
-    renderAt(reportAddress(uphill, mine), 'competitor', ME, undefined, null, <Reported />)
+    try {
+      renderAt(reportAddress(uphill, mine), 'competitor', ME)
 
-    await fillIn(user)
-    await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
+      await fillIn(user)
+      await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
 
-    expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
-    /* A race of a length answers for how far it is, so the formula is fed the race's
-       own figures and the time the member typed. A round on 30.08.2026 measured what
-       the other reading costs: with the length taken off the member's own boxes
-       instead, which a race of a length does not draw, the formula was handed nothing
-       at all and the run was worth nought, on 1612 races out of 1612, and the whole
-       package stayed green.
+      expect(await screen.findByRole('heading', { name: 'Rezultat je poslat' })).toBeVisible()
+      /* A race of a length answers for how far it is, so what goes is the race's own
+         figures and the time the member typed. A round on 30.08.2026 measured what the
+         other reading costs: with the length taken off the member's own boxes instead,
+         which a race of a length does not draw, the run was worth nought, on 1612 races out
+         of 1612, and the whole package stayed green.
 
-       **Read off what was sent and not off the screen, since 28.09.2026.** The
-       confirmation said the number until that day and this case read it there; the
-       owner took it off („Ne vidim razlog da se ispisuju bilo kome prilikom unosa
-       parametara prijave rezultata"), and the row the browser goes on drawing is the
-       only place the figure survives. So the whole of the measurement moved into the
-       record below, and the screen is asked the opposite question. */
-    const earned = btlPoints(mine.distanceKm, mine.ascentM, mine.descentM, TYPED_SECONDS)
+         **The number itself is not shown and not sent.** The owner took it off the screen on
+         28.09.2026 („Ne vidim razlog da se ispisuju bilo kome prilikom unosa parametara
+         prijave rezultata"), and the server works it out from what is sent („THE POINTS ARE
+         COMPUTED HERE AND NEVER ACCEPTED FROM A REQUEST", `ResultWriteApi`). The formula is
+         still asked here, so that „not shown" is said about a number that exists. */
+      const earned = btlPoints(mine.distanceKm, mine.ascentM, mine.descentM, TYPED_SECONDS)
 
-    expect(earned, 'the formula gave nothing, so the case would pass on anything').not.toBeNull()
-    expect(screen.queryByText(/BTL poena/)).toBeNull()
-    expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
+      expect(earned, 'the formula gave nothing, so the case would pass on anything').not.toBeNull()
+      expect(screen.queryByText(/BTL poena/)).toBeNull()
+      expect(screen.getByText(/Moderator je proverava/)).toBeVisible()
 
-    /* And the record that was sent, which is the half the member never sees: what
-       this screen says and what it sends are read twice over, so either could be
-       right while the other is not. Measured on 30.08.2026, when the seconds and the
-       points in the sent record could both be set to nought and every case in this
-       file went on passing.
-
-       All six, each under its own name and compared as one whole string. The
-       moderator's row draws five of them, but only as cells in a row whose text a
-       case can search: a number found there is a number found somewhere, and „500"
-       is as true of the fall as of the climb, so the two could be swapped and the
-       row would read the same. The sixth, the category, that row does not draw. */
-    expect(
-      must(
-        within(await screen.findByRole('list', { name: 'reported figures' })).getAllByRole(
-          'listitem',
-        )[0],
-        'the record that was just sent',
-      ).textContent,
-    ).toBe(
-      `km=${mine.distanceKm} up=${mine.ascentM} down=${mine.descentM} sec=${TYPED_SECONDS} pts=${earned ?? 0} cat=${mine.category}`,
-    )
+      /* And what was sent, which is the half the member never sees, read off the request:
+         the race by its id, and the four figures each under its own name, compared as one
+         record. „500" found anywhere is as true of the fall as of the climb, so the two could
+         be swapped and a search would read the same. */
+      expect(route.sent()).toHaveLength(1)
+      expect(route.sent()[0]).toMatchObject({
+        raceId: mine.id,
+        distanceKm: mine.distanceKm,
+        ascentM: mine.ascentM,
+        descentM: mine.descentM,
+        seconds: TYPED_SECONDS,
+      })
+      expect(Object.keys(route.sent()[0] ?? {})).not.toContain('points')
+      expect(Object.keys(route.sent()[0] ?? {})).not.toContain('category')
+    } finally {
+      route.stop()
+    }
   })
 
   /* THREE CASES STOOD HERE UNTIL R1 OF THE RESULTS FLOWS, and each walked a result from this
@@ -366,13 +363,12 @@ describe('a result reported this way', () => {
     expect(screen.getAllByText('Ovo polje je obavezno.')).toHaveLength(4)
   })
 
-  it('is not written into the store where the server refused it', async () => {
-    /* Until 28.09.2026 this screen wrote the overlay and confirmed on the spot, so a
-       member was told his run was in the queue when nothing had left the machine.
-       `keep(run, values)` in `send` runs only past the check that returns early where the
-       answer was not „done"; a version that ran it before `await theRunWasSentIn` would
-       draw this exact row on a refusal too (`resultToTheServer.test.tsx` measures the same
-       axis on the wire, this measures what is drawn from it). */
+  it('confirms nothing where the server refused it, and keeps the form as it was', async () => {
+    /* Until 28.09.2026 this screen wrote the run into the browser and confirmed on the spot,
+       so a member was told his run was in the queue when nothing had left the machine. Since
+       R2 of the results flows nothing is written into the browser at all, so what is left to
+       hold is the other half: a refusal confirms nothing and leaves every box as it was typed
+       (`resultToTheServer.test.tsx` measures the same axis on the wire). */
     const { races } = await racesOf(EVENT)
     const user = setupUser()
     const server = serverThat((path, init) =>
@@ -382,7 +378,7 @@ describe('a result reported this way', () => {
     )
 
     try {
-      renderAt(reportAddress(EVENT, first(races)), 'competitor', ME, undefined, null, <Sent />)
+      renderAt(reportAddress(EVENT, first(races)), 'competitor', ME)
 
       await fillIn(user)
       await user.click(screen.getByRole('button', { name: 'Pošalji rezultat' }))
@@ -391,9 +387,8 @@ describe('a result reported this way', () => {
          that happened to land first. */
       await screen.findByText('Rezultat ne može da se pošalje pre dana same trke.')
 
-      expect(
-        within(screen.getByRole('list', { name: 'store' })).queryAllByRole('listitem'),
-      ).toHaveLength(0)
+      expect(screen.queryByRole('heading', { name: 'Rezultat je poslat' })).toBeNull()
+      expect(screen.getByLabelText(/Minuta/)).toHaveValue('41')
     } finally {
       server.stop()
     }
@@ -875,33 +870,45 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
     )
   })
 
-  it('files the result on the day the race was run, not the day the event began', async () => {
+  it('sends the race of the morning it was run on, whose day the server files it on', async () => {
     /* An event may run over several mornings (PDL P10) and its own day is the
        first of them, so a result reported from the second morning of a two day
-       event was filed on the first. The race carries the day it is run on, and
-       that is the day somebody ran.
+       event was once filed on the first. The race carries the day it is run on,
+       and that is the day somebody ran.
 
-       On a race whose day really differs from its event's, because thirty of the
-       file's races do and the rest cannot tell the two apart. */
+       **Since R2 of the results flows no day is sent from this road at all**: the race
+       answers for its own day on the server (`ResultWriteApi.fromTheCalendar` reads it off the
+       race, and `result_submission_race_fk` would refuse any other). So what this screen can
+       get wrong is WHICH race it sends, and that is asked of a race whose day really differs
+       from its event's, because thirty of the file's races do and the rest cannot tell the
+       two apart. */
     const { race, event } = await secondMorning()
 
     expect(race.date, 'the walk is built on a race that begins its event').not.toBe(event.date)
 
     const user = setupUser()
+    const route = recording()
 
-    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+    try {
+      renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-    await screen.findByText(/Prijavljuješ rezultat/)
-    await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '30')
-    await user.type(screen.getByLabelText(/Sekundi/), '0')
-    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+      await screen.findByText(/Prijavljuješ rezultat/)
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuta/), '30')
+      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    const stored = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
-    expect(stored[0]?.textContent).toContain(race.date)
-    expect(stored[0]?.textContent).not.toContain(event.date)
+      expect(route.sent()).toHaveLength(1)
+      expect(route.sent()[0]?.raceId).toBe(race.id)
+      expect(Object.keys(route.sent()[0] ?? {}), 'a day went with a race that answers for its own').not.toContain(
+        'day',
+      )
+    } finally {
+      route.stop()
+    }
   })
 
   it('says what happens next and never what the run is worth', async () => {
@@ -946,30 +953,38 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        race run in no time anyway (measured in review, 31.08.2026).
 
        No single box can refuse it: each of the three is right to take nought on
-       its own, since a race of forty five minutes has nought hours. */
+       its own, since a race of forty five minutes has nought hours. Read off what went
+       to the route, since nothing about a run sent is written into the browser any more
+       (R2 of the results flows). */
     const { race, event } = await secondMorning()
     const user = setupUser()
+    const route = recording()
 
-    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+    try {
+      renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-    await screen.findByText(/Prijavljuješ rezultat/)
-    await user.type(await screen.findByLabelText(/Sati/), '0')
-    await user.type(screen.getByLabelText(/Minuta/), '0')
-    await user.type(screen.getByLabelText(/Sekundi/), '0')
-    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+      await screen.findByText(/Prijavljuješ rezultat/)
+      await user.type(await screen.findByLabelText(/Sati/), '0')
+      await user.type(screen.getByLabelText(/Minuta/), '0')
+      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(screen.getByText(/ne mogu svi biti nula/)).toBeVisible()
-    expect(within(screen.getByRole('list', { name: 'store' })).queryAllByRole('listitem')).toHaveLength(0)
+      expect(screen.getByText(/ne mogu svi biti nula/)).toBeVisible()
+      expect(route.sent()).toHaveLength(0)
 
-    /* And one of the three above nought is enough to send it. */
-    await user.clear(screen.getByLabelText(/Minuta/))
-    await user.type(screen.getByLabelText(/Minuta/), '45')
-    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+      /* And one of the three above nought is enough to send it. */
+      await user.clear(screen.getByLabelText(/Minuta/))
+      await user.type(screen.getByLabelText(/Minuta/), '45')
+      await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    expect(
-      within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem'),
-    ).toHaveLength(1)
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
+
+      expect(route.sent()).toHaveLength(1)
+      expect(route.sent()[0]?.seconds).toBe(45 * 60)
+    } finally {
+      route.stop()
+    }
   })
 
   it('says which race in the calendar it was run in', async () => {
@@ -977,50 +992,63 @@ describe('a race, which has a name of its own since 23.08.2026', () => {
        every result reported from a row of the calendar arrives marked „NOVO", the
        sweep steps over it, and approving one makes a second event and a second race
        for a race the calendar already holds (measured in review, 31.08.2026: the
-       line removed, the whole suite green). */
+       line removed, the whole suite green). Read off the request since R2 of the
+       results flows. */
     const { race, event } = await secondMorning()
     const user = setupUser()
+    const route = recording()
 
-    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+    try {
+      renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-    await screen.findByText(/Prijavljuješ rezultat/)
-    await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '30')
-    await user.type(screen.getByLabelText(/Sekundi/), '0')
-    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+      await screen.findByText(/Prijavljuješ rezultat/)
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuta/), '30')
+      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    const stored = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
-    expect(must(stored[0], 'the submission').textContent).toContain(race.id)
+      expect(route.sent()[0]?.raceId).toBe(race.id)
+    } finally {
+      route.stop()
+    }
   })
 
-  it('says which kind of race it was and where, read off the race and its event', async () => {
-    /* The form away from the calendar asks the member both, because there is no
-       race behind it to ask. This road starts from a row of the calendar, so it
-       asks neither and reads both: the kind off the race, through the one home
-       for that reading (`data/raceKind.ts`), and the town and country off the
-       event the race belongs to.
-     *
-       Measured because nothing else measures it: no screen draws either value
-       yet, they are written for the parts that come after this one, and with
-       „free / Nigde / ZZ" written here in place of the three the whole portal
-       stayed green (review, 30.08.2026). */
+  it('sends neither the kind nor the town, because the race answers for both', async () => {
+    /* The form away from the calendar asks the member both, because there is no race behind
+       it to ask. This road starts from a row of the calendar, so it asks neither, and since R2
+       of the results flows it sends neither either: the run goes as the race's id and nothing
+       else about it, and `ResultWriteApi.fromTheCalendar` refuses `theRaceIsNamedTwice` the
+       moment a kind, a town or a country arrives beside an id. Until then the browser's own
+       copy carried both, read off the race and its event, for the list „Moji rezultati" drew;
+       that list reads the server now, which knows them. */
     const { race, event } = await secondMorning()
     const user = setupUser()
+    const route = recording()
 
-    renderAt(reportAddress(event.slug, race), 'competitor', ME, undefined, null, <Sent />)
+    try {
+      renderAt(reportAddress(event.slug, race), 'competitor', ME)
 
-    await screen.findByText(/Prijavljuješ rezultat/)
-    await user.type(await screen.findByLabelText(/Sati/), '3')
-    await user.type(screen.getByLabelText(/Minuta/), '30')
-    await user.type(screen.getByLabelText(/Sekundi/), '0')
-    await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
-    await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
+      await screen.findByText(/Prijavljuješ rezultat/)
+      await user.type(await screen.findByLabelText(/Sati/), '3')
+      await user.type(screen.getByLabelText(/Minuta/), '30')
+      await user.type(screen.getByLabelText(/Sekundi/), '0')
+      await user.type(screen.getByLabelText(/Link ka zvaničnim/), 'https://primer.rs/rezultati')
+      await user.click(screen.getByRole('button', { name: /^Pošalji/ }))
 
-    const stored = within(await screen.findByRole('list', { name: 'store' })).getAllByRole('listitem')
-    const said = within(must(stored[0], 'the submission')).getByTestId(/^said-/)
+      await screen.findByRole('heading', { name: 'Rezultat je poslat' })
 
-    expect(said.textContent).toBe(`${race.kind} / ${event.city} / ${event.country}`)
+      const sent = Object.keys(route.sent()[0] ?? {})
+
+      expect(sent, 'nothing went at all, so the lines below say nothing').toContain('raceId')
+      expect(sent).not.toContain('raceKind')
+      expect(sent).not.toContain('city')
+      expect(sent).not.toContain('country')
+      expect(sent).not.toContain('raceName')
+    } finally {
+      route.stop()
+    }
   })
 })

@@ -1280,8 +1280,8 @@ export type WaitingRun = PendingItem & WaitingRunFields
  * ONE ACCOUNT WHOSE MEMBERSHIP FOR THE SEASON IS NOT ACTIVE, exactly as
  * `GET /api/payments` answers it and with nothing added.
  *
- * **Eight fields, and the route's own note says each one had to earn its place.** What is
- * NOT here is still the point of the type: no address, no postal address, no telephone, no
+ * **Nine fields (eight until 10.10.2026, when `price` was added), and the route's own note says
+ * each one had to earn its place.** What is NOT here is still the point of the type: no address, no postal address, no telephone, no
  * date of birth, no country, no basis of membership, and no method or day. The screen
  * therefore cannot draw any of them by accident - the compiler refuses it - which is what
  * the shape of a type is for. The screen it replaces drew two of them (`account.email` and
@@ -1360,6 +1360,31 @@ export type MembershipDue = {
    */
   expected: number
   /**
+   * WHAT THE MEMBERSHIP COSTS HIM, in {@link currency}, WITHOUT the processing charge: the
+   * fee itself, and the one number a balance is measured against.
+   *
+   * **Served since 10.10.2026, for two reasons that are one fact.** A fee paid out of a balance
+   * carries no processing charge (PDL, [IZVEDENO 02.10.2026] „Članarina plaćena iz balansa ne
+   * nosi taksu ... ekran se usklađuje sa serverom"), so `POST /api/memberships` takes
+   * `min(balance, price)` off the book and never `min(balance, expected)`. A member abroad whose
+   * balance stands between the fee and the fee plus the charge is therefore covered to the last
+   * para while `expected` is still larger, and the screen has to compare with THIS number to call
+   * that press „Odobri iz balansa" and not „Odobri umanjen iznos iz balansa". And the prompt for
+   * the balance names it, because the owner chose so on 10.10.2026 (PDL, the entry „Odgovori na
+   * pitanja skupljena dok je bio odsutan", item „Članstvo i uplate"): „prompt „Odobri iz balansa"
+   * pokazuje članarinu umesto očekivanog iznosa".
+   *
+   * **Never `expected` less a charge worked out here**: the charge is the server's, and so is the
+   * price list it comes from. The junior price replaces the period price rather than reducing it,
+   * and this is whichever of the two applies to him. On the dinar side the charge is nought, so
+   * there the two fields are one number.
+   *
+   * **Called `price` and not `fee`** because the server's own `Price.fee()` is the processing
+   * charge, and a name that means one thing on one side and another thing on the other is how the
+   * two get swapped.
+   */
+  price: number
+  /**
    * WHAT HIS BOOK ADDS UP TO TODAY, in the same {@link currency}, and it is the number the
    * tick box carries in its own label (PDL section 19, point 3).
    *
@@ -1368,6 +1393,13 @@ export type MembershipDue = {
    * `BalanceBook.forEveryOneOf` answers `NOTHING` for a member with no entry at all - which is
    * most of this list. So nought is the only empty state there is, and a screen asking whether
    * this is there is asking a question with one answer.
+   *
+   * **And it may have decimals, which `expected` and `price` may not.** Those two come out of a
+   * price list typed as whole numbers; a balance is worked out, and converting at the rate of 120
+   * gives it two decimals (650 RSD is 5.42 EUR). PDL, the entry „Odgovori na pitanja skupljena dok
+   * je bio odsutan", item „Članstvo i uplate", 10.10.2026: „celi brojevi važe za ono što se kuca,
+   * balans sme decimale". It is shown with `money()`, which writes two decimals where there are
+   * any and none where there are not.
    *
    * **ONE amount in ONE currency, which is what the SCREEN sees, and the server still decides
    * by the pair.** `PaymentsDueApi` picks the column his country names, so this is already the
@@ -1664,4 +1696,53 @@ export type WhatIsWaiting = {
    * „Prihvati" reads this and never that.
    */
   alreadyInATeam: boolean
+}
+
+/**
+ * ONE RUN OF THE ASKER'S THAT NOBODY HAS COUNTED, as `GET /api/me/result-submissions` answers
+ * it (`MyResultSubmissionsApi.Sent`, R2 of the results flows).
+ *
+ * <p><b>Two states and never a third.</b> The route serves what waits on a moderator and what a
+ * moderator sent back; an approved run is a result, read at `GET /api/results`, and serving it
+ * here as well would draw one counted run twice. The words are V9's own.
+ *
+ * <p><b>Newest first, by the moment it was SENT</b>, which is the route's order and the screen
+ * keeps it rather than sorting again (derived on 10.10.2026 with the owner's answers: „Najnovije
+ * prvo" in „Moji rezultati" is by the moment of sending).
+ *
+ * - `id` is the submission's own key, which is what `?ponovo=` carries, and NOT a result's.
+ * - `raceId`: the race in the calendar, or nothing for a race the calendar does not hold.
+ * - `raceName`: the race as it is called NOW, or the name typed for a described race.
+ * - `raceDate`: the day it was run, never the day it was sent.
+ * - `raceKind`: the race's kind, or the member's hint for a described race.
+ * - `city`, `country`: the event's town for a race in the calendar, the run's own for a
+ *   described one; the country by its code.
+ * - the four figures AS AN APPROVAL WOULD COUNT THEM TODAY, worked out by the server
+ *   (`WhatARaceCarries.figuresOf`), the same answer the moderator's queue is given.
+ * - `link`, `comment`: the run's own proof, empty where there is none.
+ * - `reason`: why a moderator sent it back, and nothing while it waits.
+ * - `amendsResultId`: the counted result a correction would replace (`result.id`), and nothing
+ *   for a fresh run.
+ *
+ * <p>Who decided and when are not answered, and the picture is not either: the first for the
+ * reason a payment's row carries no moderator's name (19.09.2026, „odalo bi ko je odbio
+ * uplatu"), the second because a picture is deleted once it has been decided (ADL A12).
+ */
+export type SentRun = {
+  id: number
+  state: 'waiting' | 'rejected'
+  raceId: number | null
+  raceName: string
+  raceDate: string
+  raceKind: string
+  city: string
+  country: string
+  distanceKm: number
+  ascentM: number
+  descentM: number
+  seconds: number
+  link: string
+  comment: string
+  reason: string | null
+  amendsResultId: number | null
 }

@@ -104,21 +104,24 @@ function amount(typed: string | boolean | undefined): number | null {
 }
 
 /**
- * THE SEVEN REFUSALS A PRICE BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
+ * THE EIGHT REFUSALS A PRICE BEING WRITTEN CAN MEET, each to a sentence in the dictionary.
+ * (Seven until 10.10.2026, when `theAmountIsNotWhole` was added.)
  *
  * <p><b>Written out by hand and held to the server in the same commit</b>, which is what
  * `CLAUDE.md` asks of any list a guard depends on: `pages/account/refusals.test.ts` reads
  * `PricingWriteApi.java`, takes every reason constant it declares, and fails when one is
- * not here or when one here is not there. A seventh reason added on the server is therefore
+ * not here or when one here is not there. A ninth reason added on the server is therefore
  * a red gate on the day it is written rather than a reader shown a code he cannot read.
  *
- * <p><b>Two of the seven cannot be reached from this screen TODAY, and both are answered
- * anyway.</b> `theAmountIsMoreThanARowMayCost` is the ceiling `admin-cena.form.json` already
- * carries as `max`, and `theNameIsLongerThanTheFormAllows` is the same shape on `maxLength`
- * (`WhatARowIsCalledTest` on the server holds the two numbers equal): the form turns both
- * back before a request is sent. Neither is a reason to leave a sentence out: the form is
- * the floor and the route decides (PDL P12c), and a request that goes round the screen or
- * loses a race meets the route with nothing in between.
+ * <p><b>Three of the eight cannot be reached from this screen TODAY, and all three are
+ * answered anyway.</b> `theAmountIsMoreThanARowMayCost` is the ceiling `admin-cena.form.json`
+ * already carries as `max`, `theNameIsLongerThanTheFormAllows` is the same shape on `maxLength`
+ * (`WhatARowIsCalledTest` on the server holds the two numbers equal), and `theAmountIsNotWhole`
+ * is `integer` on both amount boxes (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi
+ * brojevi"; `WhatAPriceMayCostTest` holds the form's two boxes to the route's two amounts): the
+ * form turns all three back before a request is sent. None is a reason to leave a sentence out:
+ * the form is the floor and the route decides (PDL P12c), and a request that goes round the
+ * screen or loses a race meets the route with nothing in between.
  *
  * <p><b>`theFeeHasNoDinarPrice` is reachable from this screen since the fee got its own
  * button (PDL P12b, 2).</b> The dinar box is no longer required on the form, which is what
@@ -138,11 +141,18 @@ export const WHEN_WRITING_A_PRICE: Record<string, string> = {
      below is - and answered for the same reason too, because the request can still lose a
      race against what the screen believes the box holds. */
   theNameIsLongerThanTheFormAllows: 'admin.priceRefused.theNameIsLongerThanTheFormAllows',
-  /* An amount with more para than `numeric(10,2)` keeps, or a negative one. Its own
-     sentence and not the ceiling's, because the two send an administrator to two different
-     places: this says „take a para off it" and that says „that is more than a membership
-     may cost". PostgreSQL would not refuse 41,125 at all - it ROUNDS it - so the route
-     refuses it rather than quietly charging a price nobody typed. */
+  /* A price with a fraction in it. PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi"
+     (recorded as the owner's own words: „Iznosi se unose bez tačaka i zareza!"), for what is typed
+     confirmed on 10.10.2026. The incident behind it: „3.500" in the price list was quietly
+     becoming 3,5 dinars. The form takes no separator in either amount box (`integer` in
+     `admin-cena.form.json`), so this is the route's own answer to a request that went round it. */
+  theAmountIsNotWhole: 'admin.priceRefused.theAmountIsNotWhole',
+  /* A negative amount, or one past what `numeric(10,2)` can hold. Its own sentence and not the
+     ceiling's, because the two send an administrator to two different places: this says „that
+     number cannot be kept" and that says „that is more than a membership may cost". (It said
+     „take a para off it" too until 10.10.2026, when a fraction became its own refusal above:
+     PostgreSQL does not refuse 41,125 at all, it ROUNDS it, and the route now refuses every
+     fraction before the column is asked.) */
   theAmountIsNotKeptExactly: 'admin.priceRefused.theAmountIsNotKeptExactly',
   theAmountIsMoreThanARowMayCost: 'admin.priceRefused.theAmountIsMoreThanARowMayCost',
   theFeeHasNoDinarPrice: 'admin.priceRefused.theFeeHasNoDinarPrice',

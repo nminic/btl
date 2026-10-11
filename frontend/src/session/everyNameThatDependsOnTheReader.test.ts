@@ -17,7 +17,7 @@ import { ANSWERED_TO_THE_READER } from './theCachesFollowTheReader'
  * <p><b>What is asked, and of what.</b> Every cached name has one route that answers a read at
  * `/api/<name>`. The ones whose handler takes the caller (`@AuthenticationPrincipal`) answer
  * different readers differently, and they must be EXACTLY the names this portal drops when the
- * reader changes, plus the two whose own hooks drop them (`data/useResource.ts`). Both
+ * reader changes, plus the three whose own hooks drop them (`data/useResource.ts`). Both
  * directions, because a name on the list that no route asks the caller about is a request more
  * for every screen of every visit, for nothing.
  *
@@ -25,18 +25,20 @@ import { ANSWERED_TO_THE_READER } from './theCachesFollowTheReader'
  * framework injects the caller through. A route that reached the caller another way (the
  * security context, a header it parsed itself) would not be seen, and there is none today: every
  * route behind a cached name was read for `SecurityContext`, `getUserPrincipal` and
- * `Authentication` on 02.10.2026, and only the four below take the principal at all. The
+ * `Authentication` on 02.10.2026, and only the four below took the principal at all; the fifth
+ * is `me/result-submissions`, which came with R2 of the results flows on 10.10.2026. The
  * authorisation of a whole route (administration only) is the chain's and is a refusal rather
  * than a different answer, so it is not asked here either.
  */
 
 /**
- * The two names that depend on the reader and are not dropped by the session, because their own
- * hooks are handed the member and drop them themselves (`useInbox`, `useWhatIsWaiting`). Written
+ * The three names that depend on the reader and are not dropped by the session, because their own
+ * hooks are handed the member and drop them themselves (`useInbox`, `useWhatIsWaiting`,
+ * `useMyResultSubmissions`). Written
  * down because it is a list of exceptions, and held by the case below that reads the hook's
  * source, so one of them losing its drop is a failure here and not a leak somebody finds.
  */
-const DROPPED_BY_THEIR_OWN_HOOK = ['inbox', 'me/applications']
+const DROPPED_BY_THEIR_OWN_HOOK = ['inbox', 'me/applications', 'me/result-submissions']
 
 const JAVA = join(process.cwd(), '..', 'backend', 'src', 'main', 'java')
 
@@ -78,7 +80,7 @@ describe('the names whose answer depends on who is asking', () => {
   const reads = readsDeclared()
   const askingTheCaller = RESOURCE_NAMES.filter((name) => reads.get(`/api/${name}`) === true)
 
-  it('are exactly the ones the portal drops when the reader changes, and the two its hooks drop', () => {
+  it('are exactly the ones the portal drops when the reader changes, and the ones its hooks drop', () => {
     expect([...askingTheCaller].sort()).toEqual([...ANSWERED_TO_THE_READER, ...DROPPED_BY_THEIR_OWN_HOOK].sort())
   })
 

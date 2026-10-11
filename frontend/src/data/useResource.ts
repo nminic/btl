@@ -23,6 +23,7 @@ import type {
   Race,
   RacingPair,
   Result,
+  SentRun,
   ServedMessage,
   StaticPage,
   Team,
@@ -642,38 +643,29 @@ export const useRaces = () => useLive(useResource<Race[]>('races'), 'races', 'id
 export const RESULTS = 'results'
 
 /**
- * The counted results, as they stand at this moment of this visit.
+ * The counted results, as they stand at this moment of this visit: the server's answer, with
+ * what this visit has taken back read past it (`useLive`).
  *
- * Two layers over the file, and both are the session's: what has been taken back
- * (`useLive`), and what a moderator has agreed to change.
+ * <p><b>One layer and not two since R2 of the results flows.</b> The second was what a moderator
+ * had agreed to change during the visit, written by the session's own `decide`. The moderator's
+ * queue decides on the server since R1, and the member's own list reads the server since R2, so
+ * nothing wrote that layer any more and it left with the rest of the session's results
+ * (`session/context.ts`). What it carried out is the server's to keep now: the owner chose on
+ * 28.08.2026 that the old result stays in the standing while its correction waits and changes
+ * when somebody agrees, and `ResultWriteApi.change` writes a submission and leaves `result` as
+ * it found it.
  *
- * The second arrived on 28.08.2026 with the owner's choice about a correction: the
- * old result stays in the standing while the correction waits, and changes when
- * somebody agrees with it (PDL, inkrement 132). Until then the result left the
- * standing the moment the correction was sent, so a refusal lost the points for
- * good.
+ * <p>Here rather than on the screen that draws it, for the reason `useLive` gives about
+ * deletions: the standing, the profile, the boards and the league all read this one function.
  *
- * Here rather than on the screen that draws it, for the reason `useLive` gives
- * about deletions: the standing, the profile, the boards and the league all read
- * this one function, and a correction that reached one of them and not the others
- * would be a portal disagreeing with itself about who ran what.
- *
- * By identity, so the corrected record takes the place of the one it replaces
- * rather than standing beside it, and so a result corrected twice in one visit is
- * still one result.
+ * @param revision bumped by a screen that has just learnt from a refusal that this answer is out
+ *   of date - a counted result taken back or corrected that the server answers 404 for
+ *   (`member/resultWrites.ts` drops the cache first, and `member/MyResults.tsx` and
+ *   `member/NewResult.tsx` bump this) - which is the pair `HowToRead.revision` was written for.
+ *   The callers that pass nothing read exactly as they did.
  */
-export const useResults = (): ResourceState<Result[]> => {
-  const live = useLive(useResource<Result[]>('results'), RESULTS, 'id')
-  const { corrected } = useSession()
-
-  return useMemo(() => {
-    if (live.status !== 'ready' || Object.keys(corrected).length === 0) {
-      return live
-    }
-
-    return { status: 'ready', data: live.data.map((one) => corrected[one.id] ?? one) }
-  }, [live, corrected])
-}
+export const useResults = (revision?: number): ResourceState<Result[]> =>
+  useLive(useResource<Result[]>('results', { revision }), RESULTS, 'id')
 export const usePairs = () => useResource<RacingPair[]>('pairs')
 export const useTeams = () => useResource<Team[]>('teams')
 
@@ -744,6 +736,24 @@ function theWaitingNowBelongsTo(whose: string): void {
   if (waitingAnsweredFor !== whose) {
     waitingAnsweredFor = whose
     clearResourceCache('me/applications')
+  }
+}
+
+/**
+ * THE SAME FACT FOR THE THIRD RESOURCE THAT DIFFERS PER CALLER, the asker's own runs that nobody
+ * has counted, and a name of its own for the reason written over {@link waitingAnsweredFor}: it
+ * is asked by „Moji rezultati" and by the form a run is sent again from, and by nothing else, so
+ * sharing a variable with either of the other two would throw away an answer nothing had said
+ * was stale. The limit written over {@link inboxAnsweredFor} holds here as well.
+ */
+let submissionsAnsweredFor: string | undefined
+
+/** Drops the answer the moment it stops being this caller's, during the render rather than
+ *  from an effect, for the reason written over {@link theInboxNowBelongsTo}. */
+function theSubmissionsNowBelongTo(whose: string): void {
+  if (submissionsAnsweredFor !== whose) {
+    submissionsAnsweredFor = whose
+    clearResourceCache('me/result-submissions')
   }
 }
 
@@ -967,6 +977,31 @@ export function useWhatIsWaiting(mine: string, revision?: number): ResourceState
   theWaitingNowBelongsTo(mine)
 
   return useResource<WhatIsWaiting>('me/applications', { owner: mine, revision })
+}
+
+/**
+ * THE ASKER'S OWN RUNS THAT NOBODY HAS COUNTED, straight off the route (R2 of the results flows):
+ * what waits on a moderator and what a moderator sent back, newest first by the moment it was
+ * sent.
+ *
+ * <p><b>No browser-side half to fold in.</b> The session held these until 10.10.2026, written
+ * by the screens that send a run once the server had agreed; the server serves them now, so the
+ * session's copy left rather than staying as a second answer to one question.
+ *
+ * <p><b>Whose they are is an argument</b>, as for {@link useWhatIsWaiting}: both callers reach
+ * this only through `who.memberNumber`, so a branch for „nobody" would be one nothing could take.
+ *
+ * <p><b>A `revision`, for the screen that stays.</b> „Moji rezultati" takes a counted result back
+ * and stays where it is, and a correction of that result that was waiting or sent back goes with
+ * it on the server (`result_submission_amends_fk` cascades); a refusal that says a counted result
+ * is no longer there says the same about this list. In both cases `member/resultWrites.ts` drops
+ * the cache and the screen bumps this number to ask again, the pair `HowToRead.revision` was
+ * written for.
+ */
+export function useMyResultSubmissions(mine: string, revision?: number): ResourceState<SentRun[]> {
+  theSubmissionsNowBelongTo(mine)
+
+  return useResource<SentRun[]>('me/result-submissions', { owner: mine, revision })
 }
 
 /** A record the browser is holding, as a line. Its read mark is the portal's own, because
