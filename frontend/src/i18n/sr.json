@@ -1040,6 +1040,8 @@
       "theCountryIsNotKnown": "Ta država ne stoji u šifarniku.",
       "theCountryBelongsToATypedTown": "Država se bira samo uz mesto koje je upisano rukom.",
       "aTypedTownNamesItsCountry": "Uz mesto upisano rukom mora da stoji i država.",
+      "theTownIsTooLong": "Predugačak naziv grada.",
+      "theTownHoldsAnInvisibleCharacter": "Naziv grada sadrži nedozvoljen znak.",
       "nothingShowsItHappened": "Nedostaje dokaz. Upiši link ka zvaničnim rezultatima.",
       "aPhotographNeverStandsAlone": "Uz sliku mora da ide komentar u kom piše šta se na njoj vidi.",
       "aLinkThatIsNotALink": "Link ka zvaničnim rezultatima nije ispravna veb adresa. Mora da počinje sa http:// ili https://."

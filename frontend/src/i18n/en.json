@@ -1040,6 +1040,8 @@
       "theCountryIsNotKnown": "That country is not in the codebook.",
       "theCountryBelongsToATypedTown": "A country is chosen only beside a town that was typed in by hand.",
       "aTypedTownNamesItsCountry": "A town typed in by hand must name its country as well.",
+      "theTownIsTooLong": "The name of the town is too long.",
+      "theTownHoldsAnInvisibleCharacter": "The name of the town contains a character that is not allowed.",
       "nothingShowsItHappened": "Proof is missing. Enter a link to the official results.",
       "aPhotographNeverStandsAlone": "A picture must come with a comment saying what can be seen in it.",
       "aLinkThatIsNotALink": "The link to the official results is not a valid web address. It must begin with http:// or https://."
