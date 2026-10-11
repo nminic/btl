@@ -155,6 +155,16 @@ describe('the record the server declares', () => {
       componentsOf('MyOwnRecord'),
     )
   })
+
+  it('is the record of somebody whose fee does not stand and who has a number', () => {
+    /* What makes the sample the member it is, said as two facts and not left to the shape of it:
+       the flag that parts him from a standing member (`MeApi.MyOwnRecord.active`, since
+       11.10.2026) and the number that parts him from somebody who registered and never paid. A
+       sample whose flag said `true` would be a standing member under the same name, and the
+       names above would not notice. */
+    expect(aLapsedMembersPage.active).toBe(false)
+    expect('memberNumber' in aLapsedMembersPage).toBe(true)
+  })
 })
 
 describe('a member whose fee has lapsed, on his own page', () => {

@@ -590,20 +590,28 @@ describe('the member number the screens read', () => {
    * (`session/theServer.ts`, `hasARecord`). A reader that asked for a country, or a season, would
    * take this for an account that races for nobody.
    */
-  it('is missing rather than invented when the record carries no number', async () => {
-    aServerAnswering({ role: 'competitor', account: 107, member: { membershipBasis: 'payment' } })
-    renderAt('/sr/moj-profil', 'visitor', null)
+  it(
+    'is missing rather than invented when the record carries no number',
+    async () => {
+      aServerAnswering({ role: 'competitor', account: 107, member: { membershipBasis: 'payment' } })
+      renderAt('/sr/moj-profil', 'visitor', null)
 
-    expect(
-      await screen.findByRole('heading', {
-        level: 1,
-        name: 'Ovaj deo se otvara kad članarina bude evidentirana',
-      }),
-    ).toBeVisible()
-    expect(
-      screen.queryByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
-    ).not.toBeInTheDocument()
-  })
+      /* The wait is given half of the time the case has, which is the arrangement of the cases
+         below this one in the file for the new states (`waitsForHalfOfACase`); this case is older
+         than that and was reworded, so it carries the half itself. */
+      expect(
+        await screen.findByRole(
+          'heading',
+          { level: 1, name: 'Ovaj deo se otvara kad članarina bude evidentirana' },
+          { timeout: SLOW / 2 },
+        ),
+      ).toBeVisible()
+      expect(
+        screen.queryByRole('heading', { level: 1, name: 'Ovaj deo je za takmičare' }),
+      ).not.toBeInTheDocument()
+    },
+    SLOW,
+  )
 
   it('is missing rather than guessed at when only the account is there', async () => {
     /* The same two facts with the member number taken away, which is the only difference
