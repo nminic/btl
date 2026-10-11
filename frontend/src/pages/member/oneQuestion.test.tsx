@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, within } from '@testing-library/react'
 import { join, relative, sep } from 'node:path'
 import { isValidElement } from 'react'
 import { matchRoutes } from 'react-router'
@@ -14,6 +14,7 @@ import {
   type Asked,
 } from '../../test/serverAnswers'
 import { aNeverPaidRecord } from '../../test/neverPaid'
+import { SLOW } from '../../test/slow'
 import { sources, WHOLE_PORTAL } from '../../test/sources'
 
 /**
@@ -616,7 +617,31 @@ describe('the member number the screens read', () => {
   })
 })
 
+/**
+ * EVERY WAIT OF THE CASES THAT FOLLOW IS GIVEN HALF OF THE TIME A CASE HAS, so that a wait which
+ * never succeeds ends the case with the assertion's own words and not with the case's clock
+ * (`pages/admin/saveWhileSaving.test.tsx` found the arrangement for itself).
+ *
+ * <p>Called from inside a `describe` and not once for the file, because the cases above are older
+ * than this and wait for the whole of a case, and halving their waits is not this change's to
+ * decide. The value the wait had is put back after each case, whatever it was.
+ */
+function waitsForHalfOfACase(): void {
+  let before = SLOW
+
+  beforeEach(() => {
+    before = getConfig().asyncUtilTimeout
+    configure({ asyncUtilTimeout: SLOW / 2 })
+  })
+
+  afterEach(() => {
+    configure({ asyncUtilTimeout: before })
+  })
+}
+
 describe('every screen of the member area, to somebody who has registered and has not paid', () => {
+  waitsForHalfOfACase()
+
   /**
    * THE TWO SCREENS THAT ARE DRAWN FOR HIM, and what each calls itself.
    *
@@ -652,6 +677,12 @@ describe('every screen of the member area, to somebody who has registered and ha
     expect(THE_OTHER_NINE).toHaveLength(9)
   })
 
+  it('ends a wait that never succeeds in an assertion and not in its own clock', () => {
+    /* The floor under `waitsForHalfOfACase`, asked of the number that decides: without it a wait
+       and the case that is waiting for it are both `SLOW`, and the clock of the case ends it. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
+  })
+
   it.each(THE_TWO)(
     'draws its own page at $at, and not a sentence about a part that is shut',
     async ({ at, heading }) => {
@@ -660,6 +691,7 @@ describe('every screen of the member area, to somebody who has registered and ha
 
       expect((await theHeadingOnceTheAnswerHasArrived()).textContent).toBe(heading)
     },
+    SLOW,
   )
 
   it.each(THE_OTHER_NINE)(
@@ -687,10 +719,13 @@ describe('every screen of the member area, to somebody who has registered and ha
       expect(mine.queryByRole('link', { name: 'Naslovna strana' })).not.toBeInTheDocument()
       expect(mine.queryByRole('link', { name: 'Prijava' })).not.toBeInTheDocument()
     },
+    SLOW,
   )
 })
 
 describe('every screen of the member area, to a member whose fee has lapsed', () => {
+  waitsForHalfOfACase()
+
   /**
    * HE HAS A NUMBER, SO HE IS A MEMBER, and the flag on the answer is what the settings read and
    * nothing else on the portal does (PDL P8, the addition of 11.10.2026).
@@ -701,14 +736,24 @@ describe('every screen of the member area, to a member whose fee has lapsed', ()
    * none. The answer carries the number and a plain no, and nothing else, because that is the
    * smallest answer that can tell the two apart.
    */
-  it.each(WALKED)('draws $at rather than one of the refusals', async ({ at }) => {
-    aServerAnswering({
-      role: 'competitor',
-      account: 107,
-      member: { memberNumber: '000032', active: false },
-    })
-    renderAt(at, 'visitor', null)
-
-    expect(REFUSALS).not.toContain((await theHeadingOnceTheAnswerHasArrived()).textContent)
+  it('ends a wait that never succeeds in an assertion and not in its own clock', () => {
+    /* The floor under `waitsForHalfOfACase`, asked here as well as above because the call is made
+       once in each `describe` and one of the two could be taken out alone. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
+
+  it.each(WALKED)(
+    'draws $at rather than one of the refusals',
+    async ({ at }) => {
+      aServerAnswering({
+        role: 'competitor',
+        account: 107,
+        member: { memberNumber: '000032', active: false },
+      })
+      renderAt(at, 'visitor', null)
+
+      expect(REFUSALS).not.toContain((await theHeadingOnceTheAnswerHasArrived()).textContent)
+    },
+    SLOW,
+  )
 })

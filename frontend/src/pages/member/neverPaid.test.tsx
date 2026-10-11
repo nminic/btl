@@ -1,4 +1,4 @@
-import { configure, screen, within } from '@testing-library/react'
+import { configure, getConfig, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   ipsPayload,
@@ -122,7 +122,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     expect(
       screen.queryByRole('heading', { name: 'Tvoji podaci o članstvu nisu stigli' }),
     ).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('is told the fee has not been recorded, and not that he is a member since a season', async () => {
     openHisPage()
@@ -135,7 +135,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     /* „Član od {season}. sezone." is said of somebody who is one, and it is the sentence this
        status line used to hold for everybody. */
     expect(screen.queryByText(/Član od \d{4}\. sezone/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('pays under a heading and two sentences of his own, and none of a renewal', async () => {
     openHisPage()
@@ -155,7 +155,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     expect(screen.queryByRole('heading', { name: /^Obnova članarine/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/Ne registruješ se ponovo/)).not.toBeInTheDocument()
     expect(screen.queryByText(/tvoje članstvo se produžava/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('draws the slip without a reference, in writing and in the code', async () => {
     openHisPage()
@@ -187,7 +187,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
       ),
     ).toBeVisible()
     expect(within(slip).queryByText(/poziv na broj su već upisani/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('says once that the payment is recognised by his name', async () => {
     openHisPage()
@@ -201,7 +201,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
       screen.getAllByText(/Prepoznaje se po imenu/),
       'the sentence stands once for the whole panel and not once per way of paying',
     ).toHaveLength(1)
-  })
+  }, SLOW)
 
   it('draws a code that carries no reference tag at all, and not the season alone', async () => {
     openHisPage()
@@ -228,7 +228,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
        carry as somebody's reference. */
     expect(must(drawn, 'the code says something')).not.toContain('RO:')
     expect(must(drawn, 'the code says something')).not.toMatch(/RO:\s*2027/)
-  })
+  }, SLOW)
 
   it('offers somebody abroad the PayPal data to copy, without the note, and says why', async () => {
     openHisPage({ country: 'MK' })
@@ -246,19 +246,20 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
        known, because he lacks the number for this way of paying as well. */
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
     expect(screen.getByText(/Prepoznaje se po imenu/)).toBeVisible()
-  })
+  }, SLOW)
 
   it('is not offered a team, because he may not have one yet', async () => {
     openHisPage()
 
     await screen.findByRole('heading', { level: 2, name: 'Uplata članarine za 2027.' })
 
-    /* The whole panel and not its sentences one by one (PDL P8, „Ne sme [...] timove"). */
+    /* The whole panel and not its sentences one by one (PDL P8, 10.10.2026, „Šta sme neplaćen
+       član": the list of what he may not do names the teams). */
     expect(screen.queryByRole('heading', { name: 'Prelazni rok' })).not.toBeInTheDocument()
     expect(screen.queryByText(/U tim ulaziš prijavom/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Trenutno nisi ni u jednom timu/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Izađi iz tima' })).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('chooses his category, which the same entry lets him do', async () => {
     stand(categoryAsServed(OPEN_TO_HIM))
@@ -266,14 +267,14 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
 
     expect(await screen.findByRole('radio', { name: 'U svojoj starosnoj kategoriji' })).toBeEnabled()
     expect(screen.getByRole('radio', { name: 'U početničkoj kategoriji' })).toBeEnabled()
-  })
+  }, SLOW)
 
   it('is drawn the referral link the record gave him, as it was before', async () => {
     openHisPage()
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Program preporuke' })).toBeVisible()
     expect(screen.getByText(/registracija\?preporuka=3d6b1f0a9c2e4478/)).toBeVisible()
-  })
+  }, SLOW)
 
   /* **WHERE THE PAYMENT PANEL STOPS, written down because it is not decided.** It is drawn inside
      the renewal window for him as for everybody (15 October to 31 December), and outside it he is
@@ -287,14 +288,15 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
     expect(await screen.findByText('Obnova se otvara 15. oktobra i traje do 31. decembra.')).toBeVisible()
     expect(screen.queryByRole('heading', { level: 3, name: 'Uplatnica' })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /QR/ })).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   /* **THE TWO SENTENCES THAT POINT AT THE SLIP ARE DRAWN ONLY WHERE A SLIP IS**, for him as for
-     everybody (PDL.md:1659: a sentence pointing at data that is not there is worse than none; the
-     guard `memberFlows.test.tsx` holds for a member with a number on three axes). His own sentence
-     about how the payment is known points at the same data, so it is held to the same gate on the
-     two axes that can be measured on him: a served price list with no period in force, in Serbia
-     and abroad, and a served list with no fee row, abroad. */
+     everybody (PDL P11, 15.08.2026, „Kontrola koja ništa ne radi je gora nego da je nema"; that a
+     sentence pointing at data that is not there is the same fault in words is this record's
+     reading, and it is the guard `memberFlows.test.tsx` holds for a member with a number on three
+     axes). His own sentence about how the payment is known points at the same data, so it is held
+     to the same gate on the two axes that can be measured on him: a served price list with no
+     period in force, in Serbia and abroad, and a served list with no fee row, abroad. */
   it.each([
     ['in Serbia, when the served price list has no period in force', 'RS', 'period'],
     ['abroad, when the served price list has no period in force', 'MK', 'period'],
@@ -318,7 +320,7 @@ describe('„Moja članarina", to somebody who has registered and has not paid',
 
     expect(screen.queryByText(/Podatke za uplatu vidiš u nastavku/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Prepoznaje se po imenu/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 })
 
 describe('a member who HAS a number, on the same page', () => {
@@ -349,7 +351,7 @@ describe('a member who HAS a number, on the same page', () => {
     expect(must(readQr(within(slip).getByRole('img', { name: /QR/ })), 'the code')).toContain(
       '|RO:202732',
     )
-  })
+  }, SLOW)
 
   it('is told what a renewal says, and nothing of a first payment', async () => {
     openAMembersPage()
@@ -364,12 +366,23 @@ describe('a member who HAS a number, on the same page', () => {
     expect(screen.queryByRole('heading', { name: /^Uplata članarine/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/Prepoznaje se po imenu/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Članarina ti još nije evidentirana/)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('is drawn the panel about a team', async () => {
     openAMembersPage()
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Prelazni rok' })).toBeVisible()
     expect(screen.getByText('Trenutno nisi ni u jednom timu.')).toBeVisible()
+  }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the `configure` at the head of the file, asked of the number that decides and
+       not of the text of the file. Every case above is given `SLOW`, and every wait half of it; take
+       the `configure` away and both are `SLOW` again (`test/setup.ts`), so a wait that never
+       succeeds is ended by the clock of the case that is waiting for it and the series of mutations
+       that reads the log has nothing but a timeout to count. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
 })

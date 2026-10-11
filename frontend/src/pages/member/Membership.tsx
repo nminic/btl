@@ -161,8 +161,9 @@ function inTheirCurrency(
  *   ponovo: članski broj, profil i istorija ostaju tvoji" and „tvoje članstvo se produžava" are
  *   said of a member renewing; he is none of that yet, so the status, the heading of the payment
  *   panel and its two sentences are his own words.
- * - **No panel about a team.** He may not join one (PDL P8, „Ne sme [...] timove"), and the
- *   panel's one sentence about getting into a team would promise him what the server refuses.
+ * - **No panel about a team.** He may not join one (PDL P8, 10.10.2026, „Šta sme neplaćen
+ *   član": the list of what he may not do names the teams), and the panel's one sentence about
+ *   getting into a team would promise him what the server refuses.
  *
  * What is NOT decided and is left as it stood, said rather than left to be found: the payment
  * panel is drawn only inside the renewal window, for him too (15 October to 31 December), and

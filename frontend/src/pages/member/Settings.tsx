@@ -56,9 +56,11 @@ const THEMES: Theme[] = ['dark', 'light']
  * </ul>
  *
  * <p><b>The server is the authority in all three and this is only what is worth offering.</b> A
- * control drawn to a reader whose every press is refused is worse than none (PDL.md:1659), so
- * what is refused is not drawn; a reader who ends up pressing something the door answers 404 is
- * told what every screen of this portal tells him then. */
+ * control drawn to a reader whose every press is refused does nothing for him, and the owner's
+ * word for that is that it is worse than none (PDL P11, 15.08.2026, „Kontrola koja ništa ne radi
+ * je gora nego da je nema"; that a refused press counts as doing nothing is this record's reading
+ * and not the entry's), so what is refused is not drawn; a reader who ends up pressing something
+ * the door answers 404 is told what every screen of this portal tells him then. */
 export function Settings() {
   const { t } = useI18n()
   const who = useScreenForTheUnpaidToo()

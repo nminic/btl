@@ -1,4 +1,4 @@
-import { act, configure, screen, within } from '@testing-library/react'
+import { act, configure, getConfig, screen, within } from '@testing-library/react'
 import { useSession } from '../../session/useSession'
 import { setupUser } from '../../test/user'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -107,7 +107,7 @@ describe('the settings of somebody who registered and has not paid', () => {
     expect(screen.queryByRole('heading', { name: PANELS.biography })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: PANELS.privacy })).not.toBeInTheDocument()
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('is told, once, that the three he does not see open with his fee', async () => {
     stand(neverPaidAsServed())
@@ -117,7 +117,7 @@ describe('the settings of somebody who registered and has not paid', () => {
 
     expect(await screen.findByText(WHAT_OPENS_LATER)).toBeVisible()
     expect(screen.getAllByText(WHAT_OPENS_LATER)).toHaveLength(1)
-  })
+  }, SLOW)
 
   it('draws his data from the answer that has a row for him, and not from the public list', async () => {
     /* The list the server serves is every member whose fee stands, and he is on no row of it, so a
@@ -131,7 +131,7 @@ describe('the settings of somebody who registered and has not paid', () => {
     await screen.findByRole('heading', { level: 2, name: PANELS.data })
 
     expect(asked.filter((one) => one.path === '/api/me')).toHaveLength(2)
-  })
+  }, SLOW)
 
   it('says his data could not be read, and offers to ask again, when the server will not give it', async () => {
     /* The shell's question is answered, and the one that follows is not: the second read of the
@@ -164,7 +164,7 @@ describe('the settings of somebody who registered and has not paid', () => {
     /* And the rest of the screen is there, because a failed read of his data is not a reason to
        take his password or the theme away from him. */
     expect(screen.getByRole('heading', { level: 2, name: PANELS.password })).toBeVisible()
-  })
+  }, SLOW)
 })
 
 /**
@@ -243,7 +243,7 @@ describe('the settings of somebody who has not paid, when somebody else signs in
 
     expect(await screen.findByDisplayValue('Ana')).toBeVisible()
     expect(screen.queryByDisplayValue('Tek')).not.toBeInTheDocument()
-  })
+  }, SLOW)
 })
 
 describe('the settings of a member whose fee has lapsed', () => {
@@ -269,7 +269,7 @@ describe('the settings of a member whose fee has lapsed', () => {
     /* And not the sentence that is for somebody who has not paid: he HAS a number, and „kad tvoja
        članarina bude evidentirana" is said to a person whose fee was never recorded. */
     expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 })
 
 describe('the settings of a member the list still carries and the answer about him says has lapsed', () => {
@@ -299,7 +299,7 @@ describe('the settings of a member the list still carries and the answer about h
     }
 
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  })
+  }, SLOW)
 })
 
 describe('the settings of a member whose fee stands', () => {
@@ -323,7 +323,7 @@ describe('the settings of a member whose fee stands', () => {
 
     expect(screen.getByRole('checkbox')).toBeVisible()
     expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
-  })
+  }, SLOW)
 
   it('draws them in the order of how much each is his own, with the password before the theme', async () => {
     renderAt('/sr/podesavanja', 'competitor', '000001')
@@ -344,5 +344,16 @@ describe('the settings of a member whose fee stands', () => {
       PANELS.appearance,
       PANELS.privacy,
     ])
+  }, SLOW)
+})
+
+describe('what a case of this file may end in', () => {
+  it('is an assertion and never its own clock: every wait is given less time than a case has', () => {
+    /* The floor under the `configure` at the head of the file, asked of the number that decides and
+       not of the text of the file. Every case above is given `SLOW`, and every wait half of it; take
+       the `configure` away and both are `SLOW` again (`test/setup.ts`), so a wait that never
+       succeeds is ended by the clock of the case that is waiting for it and the series of mutations
+       that reads the log has nothing but a timeout to count. */
+    expect(getConfig().asyncUtilTimeout).toBeLessThan(SLOW)
   })
 })
