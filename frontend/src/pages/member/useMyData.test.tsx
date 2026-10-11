@@ -143,6 +143,43 @@ describe('his own data', () => {
     })
   }, SLOW)
 
+  it('stops saying it is asking when the second asking fails as well', async () => {
+    const server = theServer()
+    const { result } = renderHook(() => useMyData(7))
+
+    await waitFor(() => {
+      expect(server.count()).toBe(1)
+    })
+    await act(async () => {
+      server.answer(0, new Response(null, { status: 500 }))
+      await Promise.resolve()
+    })
+    await waitFor(() => {
+      expect(result.current.status).toBe('error')
+    })
+
+    act(() => {
+      if (result.current.status === 'error') {
+        result.current.readAgain()
+      }
+    })
+    await waitFor(() => {
+      expect(result.current).toMatchObject({ status: 'error', reading: true })
+    })
+
+    await act(async () => {
+      server.answer(1, new Response(null, { status: 500 }))
+      await Promise.resolve()
+    })
+
+    /* Told off while the second asking was out, and asking again once it has failed too: a button
+       that stayed told off after the answer would be one nobody can press, and the reader would be
+       stuck on a screen that says it is trying and is not. */
+    await waitFor(() => {
+      expect(result.current).toMatchObject({ status: 'error', reading: false })
+    })
+  }, SLOW)
+
   it('reads another account as not here yet, and drops the answer of the one who has gone', async () => {
     const server = theServer()
     const { result, rerender } = renderHook(({ asked }) => useMyData(asked), {

@@ -1,5 +1,6 @@
 import { act, configure, screen, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
+import { hisPageAsServed } from '../../test/hisPage'
 import { aNeverPaidRecord, neverPaidAsServed } from '../../test/neverPaid'
 import { renderAt } from '../../test/render'
 import { serverThat } from '../../test/serverAnswers'
@@ -187,6 +188,36 @@ describe('the settings of a member whose fee has lapsed', () => {
     /* And not the sentence that is for somebody who has not paid: he HAS a number, and „kad tvoja
        članarina bude evidentirana" is said to a person whose fee was never recorded. */
     expect(screen.queryByText(WHAT_OPENS_LATER)).not.toBeInTheDocument()
+  })
+})
+
+describe('the settings of a member the list still carries and the answer about him says has lapsed', () => {
+  /* **THE FLAG IS THE SESSION'S AND THE LIST IS A CACHE OF THE VISIT**, so they can disagree for the
+     length of one: the list is read once and nothing drops it, and the answer about the caller is
+     the one the server gave a moment ago. 000001 stands in the generated data and is on the list the
+     disc serves; the answer about him says his fee does not stand. The panels are drawn from the list
+     for a member whose fee stands, so a screen that asked the LIST whether to draw them - and not the
+     flag - would draw all five here, and this is the only case that tells the two apart: for every
+     other lapsed member the list has no row to draw them from, which makes the gate look redundant
+     and is exactly why it needs a case. */
+  it('draws the theme and nothing else, whatever the list holds', async () => {
+    stand(hisPageAsServed({ memberNumber: '000001', active: false }))
+    renderAt('/sr/podesavanja', 'visitor', null)
+
+    await drawn()
+
+    for (const panel of [
+      PANELS.data,
+      PANELS.locked,
+      PANELS.picture,
+      PANELS.biography,
+      PANELS.password,
+      PANELS.privacy,
+    ]) {
+      expect(screen.queryByRole('heading', { name: panel }), panel).not.toBeInTheDocument()
+    }
+
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   })
 })
 
