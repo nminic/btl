@@ -102,7 +102,12 @@ class TheSwitchAndTheTextAreOneThingTest {
 
 	private SecretToken session;
 
-	/** One member, visible, with words already standing on his profile. */
+	/**
+	 * One member, visible, with words already standing on his profile, and his fee standing: since
+	 * P8U the biography and the switch from a member whose fee does not stand are refused before
+	 * anything is written ({@code MeWriteApiTest}), and what this case is about is a write that IS
+	 * made. The row is taken out after every case.
+	 */
 	@BeforeEach
 	void oneMemberWhoIsNotHidden() {
 		db.sql("insert into competitor (member_number, first_name, last_name, gender, birth_date,"
@@ -110,7 +115,7 @@ class TheSwitchAndTheTextAreOneThingTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, false, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
 						+ " 'b91b7c5d0e3f2402', ?, false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.params(ME, THE_TEXT_ON_MY_PROFILE).update();

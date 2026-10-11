@@ -317,6 +317,16 @@ import java.util.Optional;
  * {@code everyRouteTheControllersMapEitherNeedsARightOrIsNamedHere} reads every mapping out of
  * {@code RequestMappingHandlerMapping} and compares the two sets exactly, so a route added
  * without an entry fails the gate rather than going unnoticed.
+ *
+ * <p><b>SENDING A PICTURE AND TAKING ONE DOWN TURN AWAY A MEMBER WHOSE FEE DOES NOT STAND, AS
+ * THEY TURN AWAY AN ACCOUNT THAT NAMES NO MEMBER.</b> The picture is on the list PDL P8 gives of
+ * what a member who has not paid may not do (10.10.2026, „sliku"), so both writes open with
+ * {@link ActiveMemberOrAdministration#activeMember} where they used to ask only whether the
+ * account names a member, and a member who has never paid, or whose fee has lapsed, takes the
+ * same branch and the same {@code sendError}. Taking a picture down is on the list by its subject
+ * rather than by making anybody seen, and for the member whose fee has lapsed PDL P13 says the
+ * same of every page but the renewal one (19.09.2026). Reading his own waiting picture is a read
+ * and is left as it was. The decision is quoted in full on {@link ActiveMemberOrAdministration}.
  */
 @RestController
 class MePhotoApi {
@@ -419,6 +429,9 @@ class MePhotoApi {
 
 	private final MemberOfAccount memberOfAccount;
 
+	/** Who is asking, and whether his fee stands: what the two writes open with. */
+	private final ActiveMemberOrAdministration readers;
+
 	private final Path folder;
 
 	/**
@@ -426,11 +439,12 @@ class MePhotoApi {
 	 *               writes the file and the other opens it, so two settings would be two
 	 *               folders the day somebody set one of them
 	 */
-	MePhotoApi(JdbcClient db, MemberOfAccount memberOfAccount,
+	MePhotoApi(JdbcClient db, MemberOfAccount memberOfAccount, ActiveMemberOrAdministration readers,
 			@Value("${btl.photos.folder}") String folder) {
 
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.folder = Path.of(folder);
 	}
 
@@ -535,7 +549,9 @@ class MePhotoApi {
 			@RequestParam(name = "cropSize", required = false) String cropSize,
 			HttpServletResponse response) throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		/* AN ACCOUNT THAT NAMES NO MEMBER OR A MEMBER WHOSE FEE DOES NOT STAND (see the class
+		   note): neither takes a turn, and neither is told anything about a picture. */
+		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			return away(response);
@@ -908,7 +924,8 @@ class MePhotoApi {
 	ResponseEntity<?> remove(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			HttpServletResponse response) throws IOException {
 
-		Long me = memberOfAccount.competitorId(asking.account());
+		/* THE SAME QUESTION AS SENDING ONE, for the same reason (see the class note). */
+		Long me = readers.activeMember(asking).orElse(null);
 
 		if (me == null) {
 			return away(response);

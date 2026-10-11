@@ -60,9 +60,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  * new password). The message converter has to be reading with the mapper the module is on; a
  * converter built with its own would read the zero and the statement behind it would answer 500.
  * <li><b>A body bound as an argument, behind a right</b> (a league, a group of members).
- * <li><b>A body read by {@link WhatWasSent}</b> (a proposal for a team): it has to be handed the
- * same mapper, and a refusal has to become the route's own {@code theFormIsNotComplete} and not
- * a server fault.
+ * <li><b>A body read by {@link WhatWasSent}</b> (a proposal for a team, and since PDL P8 of
+ * 11.10.2026 the change of a password): it has to be handed the same mapper, and a refusal has to
+ * become the route's own {@code theFormIsNotComplete} and not a server fault.
  * <li><b>A body the route reads by hand</b> (the profile, the inbox, the decision on the queue).
  * Three controllers hold the mapper themselves and each could just as well have made its own:
  * that is the mutation, and each of the three is asked.
@@ -351,6 +351,13 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 	 * 09.10.2026). The control on each route is that the same request with ordinary words is not
 	 * turned away by the reader (the route has its own opinion of it: an old password nobody set, a
 	 * link nobody was sent).
+	 *
+	 * <p><b>The change of a password is refused in the route's own words, and the other two are not.</b>
+	 * Since PDL P8 of 11.10.2026 it asks, before its body is read, whether the member behind the account
+	 * has lapsed, so its body is read by {@link WhatWasSent} after that question and not bound as an
+	 * argument: a text with a zero in it is the route's {@code theFormIsNotComplete} and not the reader's
+	 * empty 400, with the same status. The control there is the route's own opinion of the ordinary words
+	 * (an old password nobody set), which is a different sentence.
 	 */
 	@Test
 	void aPasswordWithAZeroIsRefusedLikeEveryOtherText() throws Exception {
@@ -359,11 +366,17 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 				.as("a zero in the password of a sign-in was not refused where the body is read")
 				.isTrue();
 
-		assertThat(theReadersOwnRefusal(send(put("/api/me/password"), MEMBER, body("oldPassword",
-				"stara lozinka", "password", "nova lozinka 1", "passwordRepeat", "nova lozinka 1"))))
-				.as("the form with ordinary words was refused by the reader, so a zero is not the reason"
-						+ " in the cases below")
-				.isFalse();
+		MockHttpServletResponse ordinary = send(put("/api/me/password"), MEMBER, body("oldPassword",
+				"stara lozinka", "password", "nova lozinka 1", "passwordRepeat", "nova lozinka 1"));
+
+		assertThat(ordinary.getStatus())
+				.as("the form with ordinary words was not refused at all, so the cases below ask about a"
+						+ " route that answers something else")
+				.isEqualTo(400);
+		assertThat(reasonIn(ordinary))
+				.as("the form with ordinary words was refused as a form that is not complete, so a zero is"
+						+ " not the reason in the cases below")
+				.isEqualTo(MePasswordApi.THE_OLD_PASSWORD_IS_WRONG);
 
 		for (String field : List.of("oldPassword", "password", "passwordRepeat")) {
 			Map<String, Object> form = new LinkedHashMap<>(Map.of("oldPassword", "stara lozinka",
@@ -371,11 +384,17 @@ class ATextWithAZeroIsRefusedOnEveryKindOfRouteTest {
 
 			form.put(field, withAZero(String.valueOf(form.get(field))));
 
-			assertThat(theReadersOwnRefusal(send(put("/api/me/password"), MEMBER,
-					mapper.writeValueAsString(form))))
+			MockHttpServletResponse refused = send(put("/api/me/password"), MEMBER,
+					mapper.writeValueAsString(form));
+
+			assertThat(refused.getStatus())
 					.as("a zero in %s of the change of a password was not refused where the body is read",
 							field)
-					.isTrue();
+					.isEqualTo(400);
+			assertThat(reasonIn(refused))
+					.as("a zero in %s of the change of a password was refused, but not in the route's own"
+							+ " words", field)
+					.isEqualTo(MePasswordApi.THE_FORM_IS_NOT_COMPLETE);
 		}
 
 		for (String field : List.of("password", "passwordRepeat")) {

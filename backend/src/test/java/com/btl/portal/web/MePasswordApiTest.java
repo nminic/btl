@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -948,5 +950,244 @@ class MePasswordApiTest {
 				.as("an address that maps nothing no longer answers 404, so there is nothing"
 						+ " being compared here")
 				.isEqualTo(answer.getStatus());
+	}
+
+	// ------------------------------------------------------------------------------------
+	// P8U: A MEMBER BEHIND THE ACCOUNT (PDL P8, 10.10.2026 AND 11.10.2026)
+	// ------------------------------------------------------------------------------------
+
+	/**
+	 * The ways of standing behind an account that this route tells apart. A password belongs to the
+	 * account and not to a member, so every account above names no member at all and changes its
+	 * password; the route asks one thing of the member behind an account that has one, and it is
+	 * whether his fee has LAPSED (PDL P8, 11.10.2026).
+	 */
+	private enum Behind {
+
+		/** A member whose fee stands: a number, and active. */
+		A_FEE_THAT_STANDS,
+
+		/** Registered and never paid: no number (V16), not active, and no row of membership. */
+		NEVER_PAID,
+
+		/** A number, not active, and a row of membership for 2027 given free of the fee. */
+		LAPSED_WITH_A_ROW,
+
+		/**
+		 * A number, not active, and no row of membership at all: the one a rule that told a lapsed member
+		 * from somebody who never paid BY A ROW would take for somebody who never paid.
+		 */
+		LAPSED_WITHOUT_A_ROW
+	}
+
+	/**
+	 * An account of the kind {@link #account} makes, with a member of the given standing behind it, and
+	 * the address it signs in with. Its sessions are in {@link #sessions} under that address.
+	 *
+	 * @param howManySessions how many sessions the account holds, so a case that asks whether others
+	 *                        were ended is asked over more than one
+	 */
+	private String aMemberBehindAnAccount(Behind kind, int howManySessions) {
+		String email = kind.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-') + "@primer.rs";
+
+		account(email, MY_OLD_PASSWORD, howManySessions);
+
+		long id = db.sql("insert into competitor (member_number, first_name, last_name, gender,"
+						+ " birth_date, place_id, first_season, first_season_2027, active,"
+						+ " membership_basis, referral_code, bio, profile_hidden, birthday_shown,"
+						+ " father_name, address, shirt_size, health_statement_at)"
+						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
+						+ " (select id from place where rank = 1), 2027, false, ?, 'payment', ?,"
+						+ " '', false, 'none', 'Otac', 'Ulica 1', 'M',"
+						+ " timestamptz '2026-01-01 10:00:00+00') returning id")
+				.params(kind == Behind.NEVER_PAID ? null : String.format("0009%02d", kind.ordinal()),
+						kind == Behind.A_FEE_THAT_STANDS, String.format("%016x", 0xb257b000L + kind.ordinal()))
+				.query(Long.class).single();
+
+		if (kind == Behind.LAPSED_WITH_A_ROW) {
+			db.sql("insert into membership (competitor_id, season, basis, decided_by_name, decided_at)"
+							+ " values (?, 2027, 'feeExempt', 'Probni Probic',"
+							+ " timestamptz '2026-10-20 10:00:00+00')")
+					.param(id).update();
+		}
+
+		db.sql("update account set competitor_id = ? where email = ?").params(id, email).update();
+
+		return email;
+	}
+
+	/** The session a case asks FROM for a member made by {@link #aMemberBehindAnAccount}: the first. */
+	private String theSessionOf(String email) {
+		return sessions.get(email).get(0).secret();
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE STANDS CHANGES HIS PASSWORD, AND SO DOES ONE WHO HAS NEVER PAID.
+	 *
+	 * <p>PDL P8, 10.10.2026: „Sme: izbor kategorije i plaćanje, lozinku, adresu pošte ...", and PDL P8,
+	 * 11.10.2026: „Spisak „Sme" važi za člana koji nikad nije platio". The member whose fee stands is the
+	 * anchor for the rest: a member behind the account is not what turns the other away, since he is let
+	 * through, and a number is not either, since he holds one.
+	 */
+	@ParameterizedTest
+	@EnumSource(value = Behind.class, names = {"A_FEE_THAT_STANDS", "NEVER_PAID"})
+	void aMemberWhoseFeeStandsOrWhoHasNeverPaidChangesHisPassword(Behind kind) throws Exception {
+		String email = aMemberBehindAnAccount(kind, 1);
+
+		MockHttpServletResponse answer = asking(theSessionOf(email),
+				body(MY_OLD_PASSWORD, MY_NEW_PASSWORD, MY_NEW_PASSWORD));
+
+		assertThat(answer.getStatus())
+				.as("a member (%s) was turned away from changing his password, so PDL P8 of 10.10.2026"
+						+ " and 11.10.2026 is not carried out for him", kind)
+				.isEqualTo(204);
+		assertThat(new StoredPassword().matches(MY_NEW_PASSWORD, passwordHashOf(email)))
+				.as("the new password was not written")
+				.isTrue();
+	}
+
+	/**
+	 * A MEMBER WHOSE FEE HAS LAPSED IS TOLD THE ADDRESS IS NOT THERE, AND NOTHING HAPPENS.
+	 *
+	 * <p>PDL P8, 11.10.2026, the owner's choice between offered outcomes: „Istekao član po odluci od
+	 * 19.09.2026 dopire samo do obnove i svog profila: izmena podataka (`PUT /api/me`) i lozinke
+	 * (`PUT /api/me/password`) mu daje 404". It is ADL A8's 404, with nothing in it, for the RIGHT old
+	 * password and a new one that would be accepted, so the only thing that can be the reason is the lapse.
+	 *
+	 * <p><b>Both kinds of lapsed member</b>, the one who holds a row of {@code membership} and the one
+	 * who holds none: the rule tells him from somebody who never paid by the member number, and a rule
+	 * that read the row would let the second one through.
+	 *
+	 * <p><b>Nothing happens</b> is asked of the three things the route does: the password stays, no other
+	 * session of the account is ended (the account holds three, so „every other" and „every" differ), and
+	 * no notice is posted. The question comes first, so a request that is turned away has changed nothing
+	 * before it is.
+	 *
+	 * <p><b>And the question comes before the body is read</b>: a body that cannot be read, and one that is
+	 * not there, are told 404 exactly like the one that reads - a member who may use the route is told 400
+	 * for them ({@link #aBodyThatCannotBeReadIsTheFormNotBeingFilledIn}).
+	 */
+	@ParameterizedTest
+	@EnumSource(value = Behind.class, names = {"LAPSED_WITH_A_ROW", "LAPSED_WITHOUT_A_ROW"})
+	void aMemberWhoseFeeHasLapsedIsToldTheAddressIsNotThere(Behind kind) throws Exception {
+		String email = aMemberBehindAnAccount(kind, 3);
+		String askingFrom = sessions.get(email).get(1).secret();
+
+		Map<String, String> bodies = new LinkedHashMap<>();
+		bodies.put("the right old password and a new one", body(MY_OLD_PASSWORD, MY_NEW_PASSWORD,
+				MY_NEW_PASSWORD));
+		bodies.put("a body that cannot be read", "{");
+		bodies.put("no body at all", "");
+
+		for (Map.Entry<String, String> one : bodies.entrySet()) {
+			MockHttpServletResponse answer = asking(askingFrom, one.getValue());
+
+			assertThat(answer.getStatus())
+					.as("%s, from a member whose fee has lapsed (%s), was not answered as an address that"
+							+ " is not there", one.getKey(), kind)
+					.isEqualTo(404);
+			assertThat(answer.getContentAsString())
+					.as("%s: a refusal that says anything says that a write lives here", one.getKey())
+					.isEmpty();
+		}
+
+		assertThat(new StoredPassword().matches(MY_OLD_PASSWORD, passwordHashOf(email)))
+				.as("a request that was turned away changed the password of a member whose fee has lapsed")
+				.isTrue();
+		assertThat(howManySessionsOf(email))
+				.as("a request that was turned away ended other sessions of the account")
+				.isEqualTo(3);
+		assertThat(SMTP.getReceivedMessages())
+				.as("a request that was turned away posted a notice that the password has changed")
+				.isEmpty();
+	}
+
+	/**
+	 * A GUESS AT THE OLD PASSWORD BY A MEMBER WHOSE FEE HAS LAPSED IS NOT COUNTED, BECAUSE IT IS NEVER
+	 * JUDGED.
+	 *
+	 * <p>The old password is judged by {@code SignIn.decide} and a wrong one is a miss that counts toward
+	 * the lock (ADL A43.1), so a route that judged it BEFORE it turned the member away would tell him 400
+	 * and count the guess, and a lapsed member could shut his own account by being told 404. Asked
+	 * {@link SignIn#ENOUGH_MISSES_TO_LOCK} plus one times, so a count that moves at all would pass the
+	 * lock on the way.
+	 *
+	 * <p><b>The anchor is a member who never paid</b>, sent the same wrong password: he is told the old
+	 * password is wrong and his miss is counted, so the lapsed member's „0" is a count that moves on
+	 * this route and was not moved, and not one that never moves.
+	 */
+	@ParameterizedTest
+	@EnumSource(value = Behind.class, names = {"LAPSED_WITH_A_ROW", "LAPSED_WITHOUT_A_ROW"})
+	void aWrongOldPasswordFromAMemberWhoseFeeHasLapsedIsNotCountedAsAGuess(Behind kind)
+			throws Exception {
+
+		String email = aMemberBehindAnAccount(kind, 1);
+
+		for (int miss = 0; miss <= SignIn.ENOUGH_MISSES_TO_LOCK; miss++) {
+			assertThat(asking(theSessionOf(email),
+					body("pogresna.lozinka.broj." + miss, MY_NEW_PASSWORD, MY_NEW_PASSWORD)).getStatus())
+					.as("a wrong old password from a member whose fee has lapsed (%s) was not answered as an"
+							+ " address that is not there", kind)
+					.isEqualTo(404);
+		}
+
+		assertThat(missesAndLockOf(email))
+				.as("a guess at the old password of a member who is turned away was counted, or the account"
+						+ " was shut by it")
+				.isEqualTo("0 open");
+
+		String neverPaid = aMemberBehindAnAccount(Behind.NEVER_PAID, 1);
+		MockHttpServletResponse hers = asking(theSessionOf(neverPaid),
+				body("pogresna.lozinka.broj.0", MY_NEW_PASSWORD, MY_NEW_PASSWORD));
+
+		assertThat(reasonIn(hers))
+				.as("a member who has never paid was not told the old password is wrong, so he was turned"
+						+ " away too or the route is not judging it")
+				.isEqualTo(MePasswordApi.THE_OLD_PASSWORD_IS_WRONG);
+		assertThat(missesAndLockOf(neverPaid))
+				.as("a wrong old password from a member who has never paid was not counted, so the „0\""
+						+ " above is a count that never moves")
+				.isEqualTo("1 open");
+	}
+
+	/**
+	 * A BODY THAT CANNOT BE READ IS THE FORM NOT BEING FILLED IN, IN THE ROUTE'S OWN WORDS.
+	 *
+	 * <p>The body is read by {@code WhatWasSent} once the question about a lapsed fee is answered, and
+	 * not bound as an argument before it, so what a body this portal cannot read is told is the route's
+	 * own {@code theFormIsNotComplete} and not the container's empty 400 (the status is the same). Asked
+	 * of the three callers who may use the route - an account that names no member, a member whose fee
+	 * stands and one who has never paid - because the question about the lapse costs none of them
+	 * anything.
+	 *
+	 * <p><b>Nothing is written and no guess is counted</b>: the form is judged before the old password
+	 * is, so a request with no box filled in has guessed at nothing.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"{", "", "[]", "nije json", "null"})
+	void aBodyThatCannotBeReadIsTheFormNotBeingFilledIn(String unreadable) throws Exception {
+		String standing = aMemberBehindAnAccount(Behind.A_FEE_THAT_STANDS, 1);
+		String neverPaid = aMemberBehindAnAccount(Behind.NEVER_PAID, 1);
+
+		for (String cookie : List.of(theSessionIAskFrom(), theSessionOf(standing), theSessionOf(neverPaid))) {
+			MockHttpServletResponse answer = asking(cookie, unreadable);
+
+			assertThat(answer.getStatus())
+					.as("a body that cannot be read [%s] was not answered 400", unreadable)
+					.isEqualTo(400);
+			assertThat(answer.getContentAsString())
+					.as("a body that cannot be read [%s] was refused, but not in the route's own words",
+							unreadable)
+					.contains("\"reason\":\"" + MePasswordApi.THE_FORM_IS_NOT_COMPLETE + "\"");
+		}
+
+		assertThat(new StoredPassword().matches(MY_OLD_PASSWORD, passwordHashOf(ME)))
+				.as("a body that cannot be read changed a password")
+				.isTrue();
+		assertThat(missesAndLockOf(ME))
+				.as("a body that cannot be read was counted as a guess")
+				.isEqualTo("0 open");
+		assertThat(missesAndLockOf(standing)).isEqualTo("0 open");
+		assertThat(missesAndLockOf(neverPaid)).isEqualTo("0 open");
 	}
 }

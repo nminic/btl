@@ -59,6 +59,14 @@ import java.util.Optional;
  * chunked as 373. This address is not on {@link ApiSecurity#READ_BY_ANYBODY}, so the price the
  * owner accepted on 18.09.2026 for the three writes that are does not apply to it.
  *
+ * <p><b>AND A MEMBER WHOSE FEE DOES NOT STAND IS ANSWERED THE SAME, ON THE SAME LINE.</b>
+ * Comments are on the list PDL P8 gives of what a member who has not paid may not do
+ * (10.10.2026, „komentare"), so the question that opens this route is
+ * {@link ActiveMemberOrAdministration#activeMember} and not „does the account name a member": a
+ * member who has never paid, or whose fee has lapsed, is turned away by the branch that turns
+ * away an account naming no member, before his body is read. The decision is quoted in full on
+ * {@link ActiveMemberOrAdministration}.
+ *
  * <p><b>ALL THREE MARKS OR NONE, NEVER A SUBSET, AND THAT IS PDL P6'S OWN ARITHMETIC
  * RATHER THAN A TASTE FOR SYMMETRY.</b> PDL, 07.08.2026 („Ukupna ocena se pokazuje samo
  * kad su sve tri date"): the overall a card draws is the average of the three, worked
@@ -116,31 +124,6 @@ import java.util.Optional;
  * is {@code text} with no check - and neither does any other writing route on this
  * server, {@link TeamWriteApi} says so of its own {@code bio}/{@code link}/{@code note}
  * in as many words. Left out here rather than invented, for the day somebody decides one.
- * <li><b>Whether the member's fee is current, on EITHER of the two walls PDL keeps
- * apart.</b> PDL P21, „nigde nije vidljiv i ne može ništa" is about an account with NO
- * competitor behind it at all - the case {@link #nothingIsHere}
- * already answers - not about a member whose fee has since lapsed. The second wall, PDL
- * P8, 19.09.2026, „prvi jos nije usao, drugi je izasao" - a member whose fee has LAPSED
- * is meant to have only the renewal page, measured here and found to be a decision
- * with nowhere built yet to carry it out. No write on this server gates on
- * {@code competitor.active} - not {@link TeamWriteApi}, the literal precedent this class
- * copies, and not {@link MeWriteApi} either - and no route this class could find reads it
- * for anything but what a PUBLIC answer links back to ({@link CommentApi}'s own
- * {@code case when author.active}). Gating here alone would be this route enforcing a
- * portal-wide decision by itself, in one of many places it would need to be enforced;
- * flagged rather than built, since building it here and nowhere else would be a boundary
- * that looks decided and is not.
- *
- * <p><b>The paragraph above is stale about READING and not about writing.</b> Since
- * 03.10.2026 {@link CommentApi} reads {@code competitor.active}, through
- * {@link ActiveMemberOrAdministration}, to decide who is shown the list (PDL P6, 03.10.2026,
- * „Komentare vide aktivni članovi i administracija, isto kao najava dolaska"), as do the routes
- * that write who is going. WRITING a rating is as it was: the owner's choice speaks of who SEES
- * the comments and of nothing else, so this class still asks only for a member. What the journal
- * records beside it, that writing is the stronger act than reading, is the assistant's reasoning
- * for the {@code not null} of {@code comment_submission.competitor_id} and not a decision about
- * this route; a member whose fee has lapsed can therefore still send a rating he can no longer
- * read, and the moderator's queue is the gate that stands between it and the page.
  * </ul>
  *
  * <p><b>THE SUBJECT IS READ LIVE, IN THE SAME STATEMENT THAT WRITES IT, NEVER CAPTURED
@@ -195,7 +178,8 @@ class CommentWriteApi {
 
 	private final JdbcClient db;
 
-	private final MemberOfAccount memberOfAccount;
+	/** Who is asking, and whether his fee stands: the one question this route opens with. */
+	private final ActiveMemberOrAdministration readers;
 
 	private final Clock clock;
 
@@ -205,10 +189,10 @@ class CommentWriteApi {
 	 *  while the second statement silently never ran. */
 	private final TransactionTemplate inOneTransaction;
 
-	CommentWriteApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock,
+	CommentWriteApi(JdbcClient db, ActiveMemberOrAdministration readers, Clock clock,
 			TransactionTemplate inOneTransaction) {
 		this.db = db;
-		this.memberOfAccount = memberOfAccount;
+		this.readers = readers;
 		this.clock = clock;
 		this.inOneTransaction = inOneTransaction;
 	}
@@ -234,11 +218,12 @@ class CommentWriteApi {
 	@PostMapping(path = "/api/comments", consumes = MediaType.APPLICATION_JSON_VALUE)
 	ResponseEntity<?> rate(@AuthenticationPrincipal WhoIsAsking.Member asking,
 			WhatWasSent<Rated> sent) throws IOException {
-		Long me = memberOfAccount.competitorId(asking.account());
+		Long me = readers.activeMember(asking).orElse(null);
 
-		/* AN ACCOUNT THAT NAMES NO MEMBER: there is nobody to file this under, and his body is not
-		   read. It is read below, after this question, and not bound as an argument - see the class
-		   note for what that cost. */
+		/* AN ACCOUNT THAT NAMES NO MEMBER, OR A MEMBER WHOSE FEE DOES NOT STAND: there is nobody
+		   to file this under (PDL P8, 10.10.2026, „komentare"), and his body is not read. It is
+		   read below, after this question, and not bound as an argument - see the class note for
+		   what that cost. */
 		if (me == null) {
 			throw nothingIsHere();
 		}

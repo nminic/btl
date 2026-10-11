@@ -122,8 +122,11 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 	/**
 	 * One member, in no team, who may propose.
 	 *
-	 * <p>{@code active} is false because nothing this route reads looks at it and a row no
-	 * public list carries cannot disturb anything that runs beside this file.
+	 * <p>{@code active} is true, a member whose fee stands: since P8U proposing a team turns away
+	 * a member whose fee does not stand before anything is written
+	 * ({@code NoWriteTakesAMemberWhoHasNotPaidTest}), and what this case is about is a write that
+	 * IS made. The row is taken out after every case, so nothing that runs after this file meets
+	 * it on a public list.
 	 */
 	@BeforeEach
 	void oneMemberWhoMayPropose() {
@@ -132,7 +135,7 @@ class TeamProposalAndItsQueueRowAreOneThingTest {
 						+ " referral_code, bio, profile_hidden, birthday_shown, father_name, address,"
 						+ " shirt_size, health_statement_at)"
 						+ " values (?, 'Probni', 'Probic', 'M', date '1990-01-01',"
-						+ " (select id from place where rank = 1), 2027, false, false, 'payment',"
+						+ " (select id from place where rank = 1), 2027, false, true, 'payment',"
 						+ " 'a91b7c5d0e3f2401', '', false, 'none', 'Otac', 'Ulica 1', 'M',"
 						+ " timestamptz '2026-01-01 10:00:00+00')")
 				.param(ME).update();
