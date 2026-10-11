@@ -462,10 +462,15 @@ class ABodyIsReadAfterTheDoorOverRealHttpTest {
 					: patterns.getPatternValues()) {
 				for (String verb : one.getKey().getMethodsCondition().getMethods().stream()
 						.map(Enum::name).toList()) {
-					/* A ROUTE A MEMBER WHO HAS NEVER PAID MAY USE IS NOT ONE THAT TURNS AN ACCOUNT
-					   NAMING NO MEMBER AWAY, and every comparison made of these routes is about that
-					   account. It is left out by its name on the list of what he may do, which is
-					   kept in NoWriteTakesAMemberWhoHasNotPaidTest and is not a list kept here. */
+					/* A ROUTE A MEMBER WHO HAS NEVER PAID MAY USE IS LEFT OUT, by its name on the list of
+					   what he may do, which is kept in NoWriteTakesAMemberWhoHasNotPaidTest and is not a
+					   list kept here. Every comparison made of the routes found here is about a caller
+					   who is turned away like an account naming no member; a member who has never paid
+					   is not turned away from these, and PUT /api/me/password, the one this finds, turns
+					   away no account that names no member either, because a password belongs to the
+					   account. What a member whose fee has lapsed is told on the routes he alone is
+					   turned away from is asked by
+					   aMemberWhoseFeeHasLapsedIsToldWhatAnAddressThatMapsNothingIsTold. */
 					if (NoWriteTakesAMemberWhoHasNotPaidTest.MAY_BEFORE_PAYING
 							.containsKey(verb + " " + pattern)) {
 						continue;
