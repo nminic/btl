@@ -1,4 +1,6 @@
 import { act, configure, screen, within } from '@testing-library/react'
+import { useSession } from '../../session/useSession'
+import { setupUser } from '../../test/user'
 import { afterEach, describe, expect, it } from 'vitest'
 import { hisPageAsServed } from '../../test/hisPage'
 import { aNeverPaidRecord, neverPaidAsServed } from '../../test/neverPaid'
@@ -162,6 +164,85 @@ describe('the settings of somebody who registered and has not paid', () => {
     /* And the rest of the screen is there, because a failed read of his data is not a reason to
        take his password or the theme away from him. */
     expect(screen.getByRole('heading', { level: 2, name: PANELS.password })).toBeVisible()
+  })
+})
+
+/**
+ * SOMEBODY ELSE SIGNING IN WHILE THE SETTINGS ARE OPEN, through the portal's own live writer.
+ *
+ * <p>`theServerSignedMeIn` is the very call `member/SignIn.tsx` makes with the answer to `GET
+ * /api/me`, `SessionProvider` sits above the router so it never comes down, and the sign in screen
+ * can be walked to while somebody is signed in: a shared laptop at a race is the ordinary case. It
+ * moves what the server answers in the same click, so a case built on it measures whether the SCREEN
+ * reacts and not whether the stand-in server can.
+ */
+function SignInAsSomebodyWhoHasNotPaid({ account }: { account: number }) {
+  const { theServerSignedMeIn } = useSession()
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        theServerSignedMeIn({
+          account,
+          memberNumber: null,
+          country: 'RS',
+          firstSeason: 2027,
+          teamId: null,
+          membershipBasis: 'payment',
+          referralCode: '3d6b1f0a9c2e4478',
+          referredCount: 0,
+          hasARecord: true,
+          feeStands: false,
+        })
+      }}
+    >
+      prijavi drugog
+    </button>
+  )
+}
+
+describe('the settings of somebody who has not paid, when somebody else signs in beside them', () => {
+  /* **THE FAULT THIS EXISTS FOR IS THE SECOND MAN READING THE FIRST ONE'S NAME OUT OF THE BOX.**
+     His data is held by the account it was asked under (`useMyData`), and the screen is what hands
+     the hook that account. A screen that handed it a constant would hold the first answer for ever:
+     the effect asks again only when the account it is keyed by changes, so the second reader would
+     be drawn the first reader's name and could press „Sačuvaj" on it. The cheaper mutation - the
+     hook ignoring the account - is held by `useMyData.test.tsx`; this is the wire between the two. */
+  it('draws the second reader his own data, and not the first reader\'s', async () => {
+    const user = setupUser()
+    let whose: Record<string, unknown> = {}
+
+    stand(
+      serverThat((path) =>
+        path === '/api/me'
+          ? new Response(
+              JSON.stringify({
+                role: 'competitor',
+                account: 1,
+                member: { ...aNeverPaidRecord, ...whose },
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            )
+          : null,
+      ),
+    )
+    renderAt(
+      '/sr/podesavanja',
+      'visitor',
+      null,
+      undefined,
+      undefined,
+      <SignInAsSomebodyWhoHasNotPaid account={2} />,
+    )
+
+    expect(await screen.findByDisplayValue('Tek')).toBeVisible()
+
+    whose = { firstName: 'Ana', lastName: 'Anić' }
+    await user.click(screen.getByRole('button', { name: 'prijavi drugog' }))
+
+    expect(await screen.findByDisplayValue('Ana')).toBeVisible()
+    expect(screen.queryByDisplayValue('Tek')).not.toBeInTheDocument()
   })
 })
 

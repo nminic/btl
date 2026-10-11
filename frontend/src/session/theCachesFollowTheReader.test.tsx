@@ -400,6 +400,41 @@ describe('who the caches follow and who the header says is signed in', () => {
   })
 })
 
+describe('what one sign in leaves for the next, in one visit', () => {
+  /* **THE ROAD `theServerSignedMeIn` WRITES EVEN WHEN NULL FOR** (the note on that call): `SignIn` can
+     be walked to while somebody is signed in, so two people sign in during one visit. The two facts
+     the session keeps about the record are the newest of the eight, and the comfortable way to
+     write them - only when the answer really has one - is wrong on exactly this road. */
+  it('does not give a moderator who signs in behind somebody who has not paid his record', async () => {
+    const user = visit()
+
+    await user.click(screen.getByRole('button', { name: 'newcomer signs in' }))
+    expect(screen.getByLabelText('who is signed in')).toHaveTextContent('"as":"neverPaid"')
+
+    await user.click(screen.getByRole('button', { name: 'moderator signs in' }))
+
+    expect(screen.getByLabelText('who is signed in')).toHaveTextContent(
+      JSON.stringify({ signedIn: { as: 'account', account: 9 }, reader: 'account 9' }),
+    )
+  })
+
+  it('does not give a member who signs in behind one whose fee has lapsed his lapsed fee', async () => {
+    const user = visit()
+
+    await user.click(screen.getByRole('button', { name: 'lapsed member signs in' }))
+    expect(screen.getByLabelText('who is signed in')).toHaveTextContent('"feeStands":false')
+
+    await user.click(screen.getByRole('button', { name: 'another member signs in' }))
+
+    expect(screen.getByLabelText('who is signed in')).toHaveTextContent(
+      JSON.stringify({
+        signedIn: { as: 'member', memberNumber: '000102', feeStands: true },
+        reader: 'member 000102',
+      }),
+    )
+  })
+})
+
 describe('who is asking', () => {
   it('is the member number where there is one, and the account where there is not', () => {
     expect(readerOf('000101', null)).toBe('member 000101')
