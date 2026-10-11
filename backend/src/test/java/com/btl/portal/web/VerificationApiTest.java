@@ -1614,6 +1614,71 @@ class VerificationApiTest {
 		assertThat(hersButNotARun.path("link").asString()).isEmpty();
 	}
 
+	/**
+	 * A RUN ON A RACE THE CALENDAR DOES NOT HOLD ANSWERS WITH THE TOWN THE MEMBER GAVE FOR IT, BOTH
+	 * WAYS HE CAN GIVE ONE, AND A RUN FROM THE CALENDAR WITH NONE.
+	 *
+	 * <p>The owner's answer of 10.10.2026, in the record's wording: „moderator u redu vidi mesto
+	 * koje je član upisao". The town is the SUBMISSION's, and every other source of a town this
+	 * fixture holds is a different one, so a query reading any of them is a different answer:
+	 * <ul>
+	 * <li>Vera ran at a town out of the codebook and lives in one she typed (Mostar), so the town of
+	 * the sender is not the town of the run;
+	 * <li>Ana's second run was given a typed town in a country nobody here lives in, and she lives
+	 * in the codebook, so a query that read only {@code place} - or only the sender - is wrong about
+	 * it, and so is one that read the country off the sender;
+	 * <li>the runs from the calendar were run at an event that stands in a town, so a query that
+	 * gave a run the town of its race's event would not answer them blank.
+	 * </ul>
+	 */
+	@Test
+	void aRunOnARaceTheCalendarDoesNotHoldAnswersWithTheTownTheMemberGaveAndARunFromTheCalendarWithNone()
+			throws Exception {
+		runsWaitInTheResultsTab();
+
+		long typed = db.sql("insert into result_submission (competitor_id, race_id, race_date,"
+						+ " race_name, race_kind, city, country_id, distance_km, ascent_m, descent_m,"
+						+ " seconds, link, comment) values ((select id from competitor where"
+						+ " member_number = ?), null, date '2027-03-07', 'Trka uz jezero', 'length',"
+						+ " 'Struga', (select id from country where code = 'MK'), 8.0000, 40, 40, 2400,"
+						+ " '', '') returning id")
+				.param(MEMBER_ONE).query(Long.class).single();
+		queuedRun(MEMBER_ONE, "Trka uz jezero", "", "2027-03-12 09:00:00+00", typed);
+
+		JsonNode fromTheBook = itemIn(THE_SUPERADMIN, RESULTS, 2);
+		JsonNode typedByHand = itemIn(THE_SUPERADMIN, RESULTS, 4);
+
+		assertThat(fromTheBook.path("memberNumber").asString()).isEqualTo(LAPSED);
+		assertThat(fromTheBook.path("city").asString())
+				.as("a run at a codebook town did not answer with that town")
+				.isEqualTo(db.sql("select name from place where rank = 1").query(String.class).single())
+				.isNotEqualTo(HER_TYPED_TOWN);
+		assertThat(fromTheBook.path("country").asString())
+				.as("a codebook town did not answer with its own country's code")
+				.isEqualTo(db.sql("select c.code from country c join place p on p.country_id = c.id"
+						+ " where p.rank = 1").query(String.class).single())
+				.isNotEqualTo(HER_TYPED_COUNTRY);
+
+		assertThat(typedByHand.path("memberNumber").asString()).isEqualTo(MEMBER_ONE);
+		assertThat(typedByHand.path("city").asString())
+				.as("a run at a typed town did not answer with the town typed")
+				.isEqualTo("Struga");
+		assertThat(typedByHand.path("country").asString())
+				.as("a typed town did not answer with the country typed beside it")
+				.isEqualTo("MK");
+
+		for (int calendar : List.of(0, 1, 3)) {
+			JsonNode run = itemIn(THE_SUPERADMIN, RESULTS, calendar);
+
+			assertThat(run.path("raceId").isNull()).as("item %d is a run from the calendar", calendar)
+					.isFalse();
+			assertThat(run.path("city").asString())
+					.as("a run from the calendar answered with a town nobody gave for it")
+					.isEmpty();
+			assertThat(run.path("country").asString()).isEmpty();
+		}
+	}
+
 	/** The four figures of a served run as one value, the distance compared by its value. */
 	private static String figuresIn(JsonNode run) {
 		return run.path("distanceKm").decimalValue().stripTrailingZeros().toPlainString()

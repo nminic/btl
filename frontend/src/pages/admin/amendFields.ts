@@ -1,6 +1,9 @@
 import type { RaceKind } from '../../data/types'
+import { fromBoxes } from '../../forms/clock'
+import { storedNumber } from '../../forms/numberField'
 import type { FieldDef } from '../../forms/types'
 import { reportForm } from '../event/reportForm'
+import type { Amended } from './verificationWrites'
 
 /** The figures a run is counted on, by the names the member's own forms give them, in the
  *  order those forms ask them in: the length, the climb and the fall, and the time in its
@@ -30,16 +33,37 @@ export type Figure = (typeof FIGURES)[number]
  * kind does not ask for brings none and is simply not in the list.
  *
  * <p><b>Read off the race's kind and never off the member's hint</b>: the run the screen is
- * handed carries the calendar's kind for a race the calendar holds (`VerificationApi`), and a
- * race it does not hold offers no amendment at all until such a run can be approved here.
- *
- * <p>Until R1 of the results flows this file paired the event's name, the race's name and
- * the three boxes of a time with their definitions, for a panel that rewrote a submission
- * held in the browser. Those names belong to the decision over a race the calendar does not
- * hold, which is the road R3 of the same flows builds on the server.
+ * handed carries the calendar's kind for a race the calendar holds (`VerificationApi`). A race
+ * it does not hold is settled in the panel that names the race (`admin/placingTheRace.ts`), which
+ * asks this of the race the moderator chose, and asks all four of a race the approval makes,
+ * because that race is made of them.
  */
 export function figuresAsked(kind: RaceKind): { name: Figure; field: FieldDef }[] {
   const fields = reportForm(kind).fields
 
   return FIGURES.flatMap((name) => fields.filter((one) => one.name === name).map((field) => ({ name, field })))
+}
+
+/**
+ * THE FIGURES AS THEY TRAVEL, read off the boxes that were asked and no others.
+ *
+ * <p>Read the way a form leaves by (`forms/numberField.ts`, `storedNumber`): the one comma a
+ * box may hold is the separator of the decimals. The time is the sum of its three boxes
+ * (`forms/clock.ts`), because the route keeps seconds. Only what was asked travels, so a figure
+ * the race fixes is never sent at all.
+ *
+ * <p>One home for both panels that send figures, the one over a run from the calendar and the
+ * one that names the race of a run the calendar does not hold: two copies of how a box becomes
+ * a number are two answers to one question.
+ */
+export function amendedFrom(asked: readonly { name: Figure }[], written: Record<Figure, string>): Amended {
+  const has = (name: Figure): boolean => asked.some((one) => one.name === name)
+  const number = (name: Figure): number => Number(storedNumber(written[name].trim()))
+
+  return {
+    ...(has('distanceKm') ? { distanceKm: number('distanceKm') } : {}),
+    ...(has('ascentM') ? { ascentM: number('ascentM') } : {}),
+    ...(has('descentM') ? { descentM: number('descentM') } : {}),
+    ...(has('seconds') ? { seconds: fromBoxes(written) } : {}),
+  }
 }

@@ -1948,51 +1948,85 @@ class VerificationWriteApiTest {
 	}
 
 	/**
-	 * THE SAME NAME TWICE IN ONE YEAR GETS THE NEXT FREE NUMBER, AND IS NOT REFUSED.
+	 * AN EVENT THAT IS IN THE CALENDAR ALREADY REFUSES THE APPROVAL, AND NOTHING IS WRITTEN.
 	 *
-	 * <p>PDL, owner, 19.09.2026, choosing among four outcomes offered, in the record's wording:
-	 * „Adresa događaja je naziv i godina, a isti naziv dvaput u istoj godini dobija redni broj."
-	 * Two addresses of that name are taken already, so the next is the THIRD and not the second;
-	 * and a name spelt with letters the address does not keep is the same address, so „Trka
-	 * Čačak" meets „Trka Cacak" and is numbered rather than written over it or refused.
+	 * <p>PDL, the owner's answer of 10.10.2026: „ako događaj postoji a trke nema, odobrenje se
+	 * odbija, a moderator trku dodaje kroz Administraciju", the outcome worded „odbija se zbog
+	 * adrese događaja". So the event exists when its ADDRESS does, and two runs are refused here
+	 * along the two ways an address can be met: „Zimska trka" by the very name of an event of that
+	 * year, and „Trka Čačak" by a name spelt with letters the address does not keep, which is
+	 * „Trka Cacak"'s address. A numbered address of the same name stands beside the first, so a
+	 * check that asked whether the name had been NUMBERED would let it through.
+	 *
+	 * <p><b>Nothing is written, and the runs wait as they were sent</b>: no event, no race, no
+	 * result, the submissions still describing the race the members typed. The refusal comes
+	 * before the row is claimed, so the second case in the committing class
+	 * ({@code VerificationDecisionConcurrencyTest}) is the one about an address taken after it.
 	 */
 	@Test
-	void theSameNameTwiceInOneYearGetsTheNextFreeNumberRatherThanARefusal() throws Exception {
+	void anEventThatIsInTheCalendarAlreadyRefusesTheApprovalAndNothingIsWritten() throws Exception {
 		event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
 		event("zimska-trka-2027-2", "Zimska trka", LocalDate.of(2027, 2, 13));
 		event("trka-cacak-2027", "Trka Cacak", LocalDate.of(2027, 2, 20));
 
 		long one = describedRun(ANA, "Zimska", "length", THE_DAY_HE_RAN, "8.0000", 30, 30, 2000);
 		long other = describedRun(BOJAN, "Čačak", "length", THE_DAY_HE_RAN, "9.0000", 35, 25, 2300);
+		int events = howManyEvents();
+		int races = howManyRaces();
 
-		assertThat(decideWith(THE_SUPERADMIN, one, makingTheRace("Zimska trka", "Zimska trka",
-				"length", null)).getStatus()).isEqualTo(200);
-		assertThat(decideWith(THE_SUPERADMIN, other, makingTheRace("Trka Čačak", "Trka Čačak",
-				"length", null)).getStatus()).isEqualTo(200);
+		for (MockHttpServletResponse refused : List.of(
+				decideWith(THE_SUPERADMIN, one, makingTheRace("Zimska trka", "Zimska trka", "length",
+						null)),
+				decideWith(THE_SUPERADMIN, other, makingTheRace("Trka Čačak", "Trka Čačak", "length",
+						null)))) {
+			assertThat(refused.getStatus()).isEqualTo(409);
+			assertThat(reasonIn(refused)).startsWith("Događaj sa tim nazivom u toj godini već postoji.");
+		}
 
-		assertThat(eventAt("zimska-trka-2027-3"))
-				.as("the third event of that name that year was not given the next free number")
-				.isPresent();
-		assertThat(eventAt("trka-cacak-2027-2")).isPresent();
-		assertThat(theResultOf(ANA).raceId())
-				.isEqualTo(theOneRaceOf(theEventAt("zimska-trka-2027-3").id()).id());
+		assertThat(howManyEvents()).as("an event was made beside the one that was there")
+				.isEqualTo(events);
+		assertThat(howManyRaces()).isEqualTo(races);
+		assertThat(eventAt("zimska-trka-2027-3")).isEmpty();
+		assertThat(eventAt("trka-cacak-2027-2")).isEmpty();
+
+		for (String member : List.of(ANA, BOJAN)) {
+			assertThat(howManyResults(member)).isZero();
+		}
+
+		assertThat(stateOf(one)).isEqualTo("waiting");
+		assertThat(stateOf(other)).isEqualTo("waiting");
+		assertThat(whatTheSubmissionSays(one).raceId())
+				.as("the refused approval pointed the submission at a race anyway")
+				.isNull();
 	}
 
 	/**
-	 * AND THE SAME NAME IN ANOTHER YEAR IS NOT NUMBERED AT ALL, because the year is in the
-	 * address: „Prolećna trka" of 2026 and of 2027 are two addresses that never met.
+	 * AND THE SAME NAME IN ANOTHER YEAR IS ANOTHER EVENT, because the year is in the address, and
+	 * the year is the one the member ran in.
+	 *
+	 * <p>„Prolećna trka" of 2026 stands and a run of 2027 under that name is made, so a check that
+	 * asked about the NAME would refuse a run the owner's answer does not. And a run of December
+	 * 2026, approved in March 2027, is made under 2026 although „Zimska trka" of 2027 stands, so a
+	 * check that took the year from TODAY rather than from the day he ran would refuse it too.
 	 */
 	@Test
-	void theSameNameInAnotherYearIsNotNumbered() throws Exception {
+	void theSameNameInAnotherYearIsAnotherEventAndIsMade() throws Exception {
 		event("prolecna-trka-2026", "Prolećna trka", LocalDate.of(2026, 4, 4));
+		event("zimska-trka-2027", "Zimska trka", LocalDate.of(2027, 1, 16));
 
-		long run = describedRun(ANA, "Prolećna", "length", THE_DAY_HE_RAN, "7.0000", 20, 20, 1900);
+		long spring = describedRun(ANA, "Prolećna", "length", THE_DAY_HE_RAN, "7.0000", 20, 20, 1900);
+		long winter = describedRun(BOJAN, "Zimska", "length", LocalDate.of(2026, 12, 12), "8.0000",
+				30, 30, 2000);
 
-		assertThat(decideWith(THE_SUPERADMIN, run, makingTheRace("Prolećna trka", "Prolećna trka",
+		assertThat(decideWith(THE_SUPERADMIN, spring, makingTheRace("Prolećna trka",
+				"Prolećna trka", "length", null)).getStatus()).isEqualTo(200);
+		assertThat(decideWith(THE_SUPERADMIN, winter, makingTheRace("Zimska trka", "Zimska trka",
 				"length", null)).getStatus()).isEqualTo(200);
 
 		assertThat(eventAt("prolecna-trka-2027")).isPresent();
-		assertThat(eventAt("prolecna-trka-2027-2")).isEmpty();
+		assertThat(theResultOf(BOJAN).raceId())
+				.as("the run of December was not counted on an event of the year he ran in")
+				.isEqualTo(theOneRaceOf(theEventAt("zimska-trka-2026").id()).id());
 	}
 
 	/**

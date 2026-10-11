@@ -259,6 +259,9 @@ import java.util.List;
  * is shown the numbers his approval writes, and not numbers it would quietly replace.
  * <li><b>The link</b> to the official results. The member's own comment is {@code body},
  * as it always was.
+ * <li><b>The town the member gave</b> for a race the calendar does not hold, in {@code city}
+ * and {@code country} where the other tabs answer theirs (see {@link Waiting}), and blank for a
+ * run from the calendar, which names none.
  * <li><b>{@code kind} is {@code correction} for a run that corrects a counted result</b>
  * ({@code amends_result_id}, V32), which is the whole of what the owner asked the queue to
  * be told: „samo labela, ne šta je ispravljano" (PDL P9, 27.08.2026).
@@ -371,27 +374,34 @@ class VerificationApi {
 	 *                     ({@code teamEdit}), and a profiles row is a picture exactly when
 	 *                     it still holds one and a biography otherwise. The two words are
 	 *                     the portal's own ({@code ITEM_KINDS} in {@code data/types.ts})
-	 * @param city         THE TOWN, ON THE TWO TABS THAT HAVE ONE, and blank on the other
-	 *                     three. The portal says which two and why in as many words
-	 *                     ({@code PendingItem.city} in {@code data/types.ts}): „On the
-	 *                     payments, because how a member pays follows the country they live
-	 *                     in (PDL P8)... On the new teams, because approving a proposal is
-	 *                     what makes the team and these are two of the four things it is
-	 *                     made from (PDL P13). Empty on the other five." So the two tabs
-	 *                     read it from two different places and the SAME
+	 * @param city         THE TOWN, ON THE THREE TABS THAT HAVE ONE, and blank on the other
+	 *                     two. The portal says which and why in as many words
+	 *                     ({@code PendingItem.city} in {@code data/types.ts}): on the
+	 *                     payments, the town the sender lives in (PDL P8); on the new teams,
+	 *                     because approving a proposal is what makes the team and the town is
+	 *                     one of the things it is made from (PDL P13); and since R3b of the
+	 *                     results flows on a run on a race the calendar does not hold, the
+	 *                     town the member gave for it, because the moderator is to see it
+	 *                     (the owner's answer of 10.10.2026, „moderator u redu vidi mesto
+	 *                     koje je član upisao") and the event an approval makes stands there.
+	 *                     A run from the calendar names no town and answers blank. So the
+	 *                     three tabs read it from three different places and the SAME
 	 *                     {@code coalesce} {@link TeamApi} and {@link CompetitorApi} already
-	 *                     make is made twice: off {@code team_proposal} for a proposal, off
-	 *                     {@code competitor} for a registration. Each of those tables holds
-	 *                     a town the one way or the other and never both, by a constraint
-	 *                     of the same shape
+	 *                     make is made three times: off {@code team_proposal} for a proposal,
+	 *                     off {@code competitor} for a registration, off
+	 *                     {@code result_submission} for a run. Each of those tables holds a
+	 *                     town the one way or the other and never both, by a constraint of
+	 *                     the same shape
 	 *                     ({@code team_proposal_town_is_from_the_codebook_or_typed},
-	 *                     {@code competitor_town_is_from_the_codebook_or_typed}).
+	 *                     {@code competitor_town_is_from_the_codebook_or_typed},
+	 *                     {@code result_submission_town_is_from_the_codebook_or_typed}).
 	 *
-	 *                     <p>Which of the two is read is decided by the TAB and never by
+	 *                     <p>Which of the three is read is decided by the TAB and never by
 	 *                     which row happens to join: written as one long {@code coalesce}
-	 *                     falling through from the proposal to the sender, the three tabs the
-	 *                     portal says carry no town would carry the sender's, and a
-	 *                     moderator reading a comment would be shown where its author lives.
+	 *                     falling through from the proposal to the sender, the tabs the
+	 *                     portal says carry no town would carry the sender's, a moderator
+	 *                     reading a comment would be shown where its author lives, and a run
+	 *                     from the calendar would be given the town its runner lives in.
 	 *                     Until 22.09.2026 it was read off {@code team_proposal} alone, so
 	 *                     the payments tab drew its own „Mesto" column
 	 *                     ({@code pages/admin/Payments.tsx}) empty on every row
@@ -531,11 +541,23 @@ class VerificationApi {
 						   through to the sender, a comment would answer with its AUTHOR'S
 						   town - three tabs the portal says carry none, showing a moderator
 						   where a member lives beside a text he is deciding about. */
+						/* AND A THIRD TAB SINCE R3b OF THE RESULTS FLOWS: a run on a race the
+						   calendar does not hold answers with the town the member gave for it,
+						   which is where the event its approval makes will stand. The owner's
+						   answer of 10.10.2026, in the record's wording: „moderator u redu vidi
+						   mesto koje je član upisao". Off the SUBMISSION, never off the sender:
+						   where he lives is not where he ran. A run sent from the calendar has
+						   none, by V10 (the town is part of describing a race, „one way or the
+						   other, never both"), so it answers blank like the tabs that carry none. */
 						+ " case when v.queue = 'payments'"
 						+ "      then coalesce(his_town.name, c.city, '')"
+						+ "      when v.queue = 'results'"
+						+ "      then coalesce(run_town.name, rs.city, '')"
 						+ "      else coalesce(town.name, tp.city, '') end as city,"
 						+ " case when v.queue = 'payments'"
 						+ "      then coalesce(his_towns_country.code, his_typed_country.code, '')"
+						+ "      when v.queue = 'results'"
+						+ "      then coalesce(run_towns_country.code, run_typed_country.code, '')"
 						+ "      else coalesce(town_country.code, typed_country.code, '') end"
 						+ "      as country,"
 						+ " v.photo_id,"
@@ -627,6 +649,14 @@ class VerificationApi {
 						   the figures of his run. */
 						+ " left join result_submission rs on rs.id = v.result_submission_id"
 						+ " left join race ra on ra.id = rs.race_id"
+						/* AND THE TOWN SUCH A RUN WAS GIVEN, the same three columns in the same two
+						   ways as on `team_proposal` and `competitor`
+						   (`result_submission_town_is_from_the_codebook_or_typed`), all LEFT: a run
+						   from the calendar names none, and every other tab carries no run. */
+						+ " left join place run_town on run_town.id = rs.place_id"
+						+ " left join country run_towns_country"
+						+ "   on run_towns_country.id = run_town.country_id"
+						+ " left join country run_typed_country on run_typed_country.id = rs.country_id"
 						/* THE ONES HE MAY, decided by `WhatHeMayDo` and passed in. Written
 						   here as a condition over the ticks it would be a second home for
 						   „may he" and would answer the superadmin, who holds everything with
