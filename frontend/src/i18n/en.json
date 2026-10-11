@@ -1040,6 +1040,8 @@
       "theCountryIsNotKnown": "That country is not in the codebook.",
       "theCountryBelongsToATypedTown": "A country is chosen only beside a town that was typed in by hand.",
       "aTypedTownNamesItsCountry": "A town typed in by hand must name its country as well.",
+      "theTownIsTooLong": "The name of the town is too long.",
+      "theTownHoldsAnInvisibleCharacter": "The name of the town contains a character that is not allowed.",
       "nothingShowsItHappened": "Proof is missing. Enter a link to the official results.",
       "aPhotographNeverStandsAlone": "A picture must come with a comment saying what can be seen in it.",
       "aLinkThatIsNotALink": "The link to the official results is not a valid web address. It must begin with http:// or https://."
@@ -1130,11 +1132,11 @@
     "approve": "Approve",
     "sendBack": "Refuse",
     "newRace": "NEW",
-    "newRaceTitle": "This race is not in the calendar, so the report cannot be approved from here.",
+    "newRaceTitle": "This race is not in the calendar: the report is approved with a race entered or chosen for it.",
     "sweptLeft": {
-      "one": "{count} report is left from races that are not in the calendar. Such a report cannot be approved from here.",
-      "few": "{count} reports are left from races that are not in the calendar. Such reports cannot be approved from here.",
-      "other": "{count} reports are left from races that are not in the calendar. Such reports cannot be approved from here."
+      "one": "{count} report is left from races that are not in the calendar. Such a report is approved on its own, with a race entered or chosen for it.",
+      "few": "{count} reports are left from races that are not in the calendar. Such reports are approved one at a time, with a race entered or chosen for each.",
+      "other": "{count} reports are left from races that are not in the calendar. Such reports are approved one at a time, with a race entered or chosen for each."
     },
     "amend": "Correct",
     "amendTitle": "Correction before deciding",
@@ -1151,6 +1153,12 @@
     "decision": "Decision",
     "confirmSendBack": "Refuse with this reason",
     "cancel": "Cancel",
+    "placeRace": "Enter or choose the race",
+    "placeTitle": "The race for this report",
+    "placeNote": "The race is not in the calendar. Choose a race that is, or enter a new one, which goes into the calendar with its event when you approve. The day and the town stay as the member sent them.",
+    "chosenRace": "Chosen race: {race}",
+    "limitNote": "On a race by time, the time is the race's limit.",
+    "placeSave": "Approve with this race",
     "statement": {
       "title": "A bank statement",
       "choose": "Choose a statement PDF",
