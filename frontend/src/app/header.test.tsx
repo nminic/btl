@@ -448,7 +448,10 @@ describe('the icons', () => {
    because the envelope is drawn for EVERY signed in account (`app/Shell.tsx`) while the inbox
    belongs only to somebody the league has given a number, and the two states of that are what
    decides whether anything is asked for at all. */
-function renderInbox(inbox: Message[], who: SignedIn = { as: 'member', memberNumber: '000007' }) {
+function renderInbox(
+  inbox: Message[],
+  who: SignedIn = { as: 'member', memberNumber: '000007', feeStands: true },
+) {
   const session: SessionValue = {
     /* Kept in step with the arm above rather than written out, because „an account that races
        for nobody" is exactly a session with no member number, and a helper that set one anyway

@@ -16,7 +16,7 @@ import {
   PAYPAL_ADDRESS,
   paysInDinars,
   paymentPurpose,
-  paymentReference,
+  paymentReferenceOrNone,
   RECIPIENT_ACCOUNT,
   RECIPIENT_ADDRESS,
   RECIPIENT_NAME,
@@ -36,7 +36,7 @@ import { useI18n } from '../../i18n/useI18n'
 import { type Answer } from '../account/askTheServer'
 import { WHEN_LEAVING_A_TEAM } from '../account/refusals'
 import { ServerSaid } from '../account/ServerSaid'
-import { useMemberScreen } from './memberScreen'
+import { useScreenForTheUnpaidToo } from './memberScreen'
 import { useMyCategory } from './useMyCategory'
 import { theServerWasToldILeft } from './teamExit'
 import './Member.css'
@@ -140,9 +140,39 @@ function inTheirCurrency(
  * the results, the teams and the price list, and none of them is the list of members.
  */
 
+/* **THIS SCREEN IS DRAWN FOR SOMEBODY WHO HAS NOT PAID, AND SINCE 11.10.2026 IT ASKS THE HOOK
+ * THAT SAYS SO** (`useScreenForTheUnpaidToo`, `memberScreen.tsx`, which carries the reasoning for
+ * why there are four answers). He is the reason the page exists at all: a member registers, is
+ * given no number (30.07.2026), and the only way to the payment slip is this page. Until that
+ * day he met „Ovaj deo je za takmičare" here and nowhere found a slip.
+ *
+ * What changes for him, and ONLY for him - a member who has a number is drawn byte for byte as
+ * he was, standing or lapsed:
+ *
+ * - **No reference.** PDL P8, owner 10.10.2026 („Prvu članarinu nov član plaća bez poziva na
+ *   broj"): the slip and the QR code carry everything but the reference, and a sentence says the
+ *   payment is recognised by name; a moderator confirms it by hand, by name and town, from the
+ *   list of payments. The reference row, the `RO` tag of the code and the PayPal note are all
+ *   asked of ONE value (`paymentReferenceOrNone`), so they cannot disagree about whether there is
+ *   one. The PayPal half is the record's own derivation and not the owner's word (PDL P8,
+ *   „Član bez članskog broja plaća PayPalom bez broja u napomeni", marked as derived on
+ *   10.10.2026).
+ * - **No sentence that is false of him.** „Član od {season}. sezone.", „Ne registruješ se
+ *   ponovo: članski broj, profil i istorija ostaju tvoji" and „tvoje članstvo se produžava" are
+ *   said of a member renewing; he is none of that yet, so the status, the heading of the payment
+ *   panel and its two sentences are his own words.
+ * - **No panel about a team.** He may not join one (PDL P8, „Ne sme [...] timove"), and the
+ *   panel's one sentence about getting into a team would promise him what the server refuses.
+ *
+ * What is NOT decided and is left as it stood, said rather than left to be found: the payment
+ * panel is drawn only inside the renewal window, for him too (15 October to 31 December), and
+ * the season on it is the one being renewed. Nobody has said how somebody who registers in March
+ * pays, and a panel that opened for him then would be a rule invented here. The referral panel is
+ * drawn to him as to everybody: no entry says he may not have a link or a balance.
+ */
 export function Membership() {
   const { locale, t } = useI18n()
-  const who = useMemberScreen()
+  const who = useScreenForTheUnpaidToo()
   /* ALL SIX OFF THE ONE ANSWER THAT KNOWS WHO IS ASKING, and it was three until
      25.09.2026 and one until the day before that.
 
@@ -336,11 +366,16 @@ export function Membership() {
      it could say two different things; built once, both read the one variable. */
   const referralLink = `${addressOf(locale, 'registracija')}?preporuka=${myReferralCode ?? ''}`
 
-  if (who.memberNumber === null) {
+  if (who.standing === null) {
     return who.instead
   }
 
+  /* NULL IS SOMEBODY WHO HAS NOT PAID, and the number is the one fact everything below that is
+     different for him is asked of: the hook guarantees that a `neverPaid` has none and that
+     everybody else has one, so there is no second question about „is he a member yet" to
+     answer differently in two places of this file. */
   const { memberNumber } = who
+  const neverPaid = memberNumber === null
 
   /**
    * THE ANSWER NAMED A MEMBER AND DID NOT CARRY HIS RECORD, which after 25.09.2026 is
@@ -515,7 +550,9 @@ export function Membership() {
            is, which is the split a bank statement is reconciled by (owner,
            31.07.2026). */
         const purpose = paymentPurpose(nextSeason)
-        const reference = paymentReference(nextSeason, memberNumber)
+        /* THE EMPTY STRING FOR SOMEBODY WITH NO NUMBER, and it is the value the code, the slip and
+           PayPal are all asked of (see the note above `Membership`). */
+        const reference = paymentReferenceOrNone(nextSeason, memberNumber)
         /* WHAT A MEMBER ABROAD ACTUALLY SENDS THROUGH PAYPAL, fee included (owner,
            27.09.2026: „cena ostaje 35, clan salje 38, a taksa se vidi kao svoj red").
            The same `due` row the slip above already quotes, plus the same processing
@@ -564,7 +601,12 @@ export function Membership() {
                 {t('membership.status')}
               </h2>
               <p className="membership__state">
-                {feeExempt
+                {neverPaid
+                  ? /* NOT „Član od {season}. sezone.", which is said of somebody who is one. He has
+                       registered and the league has not recorded a fee, so he is told exactly that
+                       and what follows from it (`membership.notPaidYet`). */
+                    t('membership.notPaidYet')
+                  : feeExempt
                   ? /* **The season they are in, not the one being sold.** This line stands in
                        „Stanje", which says what is true of a member now, and the panel below it
                        is the one that talks about renewal. Handed the renewal season it named
@@ -746,7 +788,9 @@ export function Membership() {
 
             <section className="member__panel" aria-labelledby="membership-renewal">
               <h2 className="profile__section" id="membership-renewal">
-                {t('membership.renewal', { season: nextSeason })}
+                {t(neverPaid ? 'membership.firstPayment' : 'membership.renewal', {
+                  season: nextSeason,
+                })}
               </h2>
 
               {/* A member freed of the fee owes nothing, ever (Pravilnik član 15, PDL
@@ -760,7 +804,9 @@ export function Membership() {
                 <p className="member__note">{t('membership.feeExemptNoRenewal')}</p>
               ) : windowOpen ? (
                 <>
-                  <p className="member__note">{t('membership.renewalOpen')}</p>
+                  <p className="member__note">
+                    {t(neverPaid ? 'membership.firstPaymentOpen' : 'membership.renewalOpen')}
+                  </p>
 
                   {/* A SENTENCE WHERE A BUTTON USED TO BE, since 26.09.2026. The button had
                       no `onClick`, no enclosing `<form>` and no route to reach: renewing has
@@ -799,7 +845,21 @@ export function Membership() {
                       so the sentence cannot drift from what actually follows it on whatever
                       axis comes next either. */}
                   {(slipDrawn || paypalAmountDrawn) && (
-                    <p className="member__note">{t('membership.renew')}</p>
+                    <p className="member__note">
+                      {t(neverPaid ? 'membership.firstRenew' : 'membership.renew')}
+                    </p>
+                  )}
+
+                  {/* AND THE ONE SENTENCE HE IS OWED ABOUT HOW THE PAYMENT IS KNOWN (PDL P8, the
+                      entry of 10.10.2026 that the owner chose between offered outcomes; the
+                      record's words, not his own: „uz rečenicu da se uplata prepoznaje po
+                      imenu"), on the same condition as the sentence above it and for the same
+                      reason: it points at the slip or the PayPal data below, so it is drawn only
+                      where one of them is. Once for the whole panel and not once per way of
+                      paying, because he lacks the number for both. The words are mine and the
+                      owner changes them on QA. */}
+                  {neverPaid && (slipDrawn || paypalAmountDrawn) && (
+                    <p className="member__note">{t('membership.recognisedByName')}</p>
                   )}
 
                   {/* The slip belongs to renewing, not to a screen of its own: the
@@ -860,10 +920,16 @@ export function Membership() {
                           </dd>
                           <dt>{t('membership.account')}</dt>
                           <dd>{RECIPIENT_ACCOUNT}</dd>
-                          <dt>{t('membership.reference')}</dt>
-                          <dd>
-                            <strong>{reference}</strong>
-                          </dd>
+                          {/* NO ROW FOR SOMEBODY WITH NO REFERENCE: a „Poziv na broj" with
+                              nothing after it would be a field he is told to fill in and cannot. */}
+                          {!neverPaid && (
+                            <>
+                              <dt>{t('membership.reference')}</dt>
+                              <dd>
+                                <strong>{reference}</strong>
+                              </dd>
+                            </>
+                          )}
                           <dt>{t('membership.purposeLabel')}</dt>
                           <dd>{purpose}</dd>
                           {/* The amount, which this list did not have at all. It exists
@@ -879,7 +945,12 @@ export function Membership() {
                           </dd>
                         </dl>
 
-                        <p className="member__note">{t('membership.referenceNote')}</p>
+                        {/* „Bez njega članarina stiže, ali se ne zna čija je" is said of a
+                            reference, and he has none: the sentence about how HIS payment is
+                            known is the one above the slip. */}
+                        {!neverPaid && (
+                          <p className="member__note">{t('membership.referenceNote')}</p>
+                        )}
                       </div>
 
                       {/* THE AMOUNT INSIDE THE CODE IS THE ONE THE SERVER SENT, and this is
@@ -890,7 +961,9 @@ export function Membership() {
                           scanned a request for one sum and was recorded as owing another. */}
                       <div className="pay">
                         <h4>{t('membership.ips')}</h4>
-                        <p className="member__note">{t('membership.ipsNote')}</p>
+                        <p className="member__note">
+                          {t(neverPaid ? 'membership.ipsNoteNoReference' : 'membership.ipsNote')}
+                        </p>
                         <div className="pay__code">
                           <QrCode
                             text={ipsPayload({
@@ -966,14 +1039,23 @@ export function Membership() {
                               data/paymentQr.ts) and not a second computation of it: the
                               owner's own words for this decision were „isti oblik kao poziv
                               na broj za Srbiju", and reading the one variable both screens
-                              already hold is what keeps the two from drifting apart. */}
-                          <CopyField
-                            label={t('membership.paypalNoteLabel')}
-                            value={reference}
-                            copyButtonLabel={t('membership.paypalCopyNote')}
-                            copiedMessage={t('membership.paypalNoteCopied')}
-                            failedMessage={t('membership.paypalNoteCopyFailed')}
-                          />
+                              already hold is what keeps the two from drifting apart.
+
+                              AND NOT AT ALL FOR SOMEBODY WHO HAS NO REFERENCE (PDL P8, the entry
+                              derived on 10.10.2026: „Član bez članskog broja plaća PayPalom bez
+                              broja u napomeni, a uplata se prepoznaje po imenu"). The note is
+                              made of the reference and of nothing else, so with none there is
+                              nothing to copy, and a box offering to copy an empty note would be
+                              a control that does nothing. */}
+                          {!neverPaid && (
+                            <CopyField
+                              label={t('membership.paypalNoteLabel')}
+                              value={reference}
+                              copyButtonLabel={t('membership.paypalCopyNote')}
+                              copiedMessage={t('membership.paypalNoteCopied')}
+                              failedMessage={t('membership.paypalNoteCopyFailed')}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
@@ -985,6 +1067,14 @@ export function Membership() {
               )}
             </section>
 
+            {/* NOT DRAWN TO SOMEBODY WHO HAS NOT PAID, and the whole panel rather than its
+                sentences one by one. It is about getting into a team, getting out of one and
+                when either can be done, and he may do neither: PDL P8, „Šta sme neplaćen član"
+                (10.10.2026), „Ne sme [...] timove". Its „U tim ulaziš prijavom na strani tima"
+                would be a promise the server answers 404, and „Trenutno nisi ni u jednom timu"
+                under a heading about a window he cannot use is a sentence about nothing. Derived
+                from that entry rather than asked, and said so here and in the pull request. */}
+            {!neverPaid && (
             <section className="member__panel" aria-labelledby="membership-transfer">
               <h2 className="profile__section" id="membership-transfer">
                 {t('membership.transferWindow')}
@@ -1162,6 +1252,7 @@ export function Membership() {
                 <ServerSaid answer={refusedTheExit} refusals={WHEN_LEAVING_A_TEAM} />
               )}
             </section>
+            )}
 
             {/* The referral programme, and the balance it pays into.
              *

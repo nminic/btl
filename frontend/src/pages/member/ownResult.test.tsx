@@ -551,6 +551,8 @@ describe('the runs sent, when somebody else signs in without signing out first',
             membershipBasis: null,
             referralCode: null,
             referredCount: null,
+            hasARecord: true,
+            feeStands: null,
           })
         }}
       >

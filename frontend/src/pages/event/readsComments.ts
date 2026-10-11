@@ -23,9 +23,15 @@ import { useSession } from '../../session/useSession'
  * sentence in two files is two sentences the day one of them is changed. `GoingToEvent` and the
  * hidden profile ask the same thing, and the comments are the third subject of it.
  *
- * **A STATE, BECAUSE THE ANSWER NEEDS THE LIST OF MEMBERS.** Whether a fee is standing is not on
- * the session: `GET /api/me` does not carry the flag, and the list the server serves ends
- * `where c.active`, so „he is on it" is „he is active" (`isActiveMember`). That list is on its way
+ * **A STATE, BECAUSE THE ANSWER NEEDS THE LIST OF MEMBERS.** Whether a fee is standing is asked of
+ * the list and not of the session here: the list the server serves ends `where c.active`, so „he is
+ * on it" is „he is active" (`isActiveMember`). **This said, until 11.10.2026, that `GET /api/me`
+ * does not carry the flag, and it does now** (`MeApi.MyOwnRecord.active`, which the session keeps
+ * as `signedIn.feeStands` for the two screens a member pays and changes his data on). The two
+ * doors read one column and say one thing; the list stays the door of these subjects because the
+ * screens that ask this question are drawn from it - what a screen believes about the reader and
+ * what the list carries for him then come from one answer - and moving them is a change to five
+ * screens that nobody has asked for (my reasoning, not a decision). That list is on its way
  * for a moment, or does not come, and a boolean has no place for either: it would answer „no" to a
  * member for as long as it takes, and say so to him in a sentence meant for somebody else. So this
  * hands the list's own state on while it is not here, and the part that asks says what a part says
@@ -33,7 +39,8 @@ import { useSession } from '../../session/useSession'
  *
  * **AND THE LIST IS NOT WAITED FOR WHERE IT CANNOT CHANGE THE ANSWER.** The administration reads
  * whatever its own fee, and somebody with no number of his own (a visitor, an account that races
- * for nobody) is not on the list whatever it holds, so both are answered at once. A visitor was
+ * for nobody, somebody who registered and never paid) is not on the list whatever it holds, so
+ * they are answered at once. A visitor was
  * never made to wait for a list on this screen and still is not: that sentence is on the page in
  * the first paint.
  *

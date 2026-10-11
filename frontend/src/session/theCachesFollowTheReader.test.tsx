@@ -37,6 +37,8 @@ const A_MEMBER = {
   membershipBasis: null,
   referralCode: null,
   referredCount: null,
+  hasARecord: true,
+  feeStands: null,
 }
 
 /* Another PERSON and not another record of the same one: a different account AND a different
@@ -44,7 +46,22 @@ const A_MEMBER = {
 const ANOTHER_MEMBER = { ...A_MEMBER, account: 8, memberNumber: '000102' }
 
 /* No number, which is what a moderator and a superadmin are permanently (PDL P21). */
-const A_MODERATOR = { ...A_MEMBER, account: 9, memberNumber: null }
+const A_MODERATOR = { ...A_MEMBER, account: 9, memberNumber: null, hasARecord: false }
+
+/* Registered and not paid, which is the third way of being signed in without a number and the
+   first one with a record behind it (PDL P8, „Šta sme neplaćen član", 10.10.2026): the caches
+   follow an account for him exactly as they do for a moderator, and the header says he is a
+   different kind of account. */
+const A_NEWCOMER = { ...A_MEMBER, account: 10, memberNumber: null }
+
+/* A member whose fee has lapsed: the same number, and a plain no on the flag. The reader is the
+   same person as `A_MEMBER` and the answer says one thing more about him. */
+const A_LAPSED_MEMBER = { ...A_MEMBER, feeStands: false }
+
+/* A number and no record behind it, which no server sends and the provider has to answer all the
+   same: the number is what makes somebody a member, and a record that is not there cannot
+   unmake one. */
+const A_NUMBER_ALONE = { ...A_MEMBER, hasARecord: false }
 
 /* The same member told again, with something about him changed: what `Membership` does after
    he leaves a team. The reader is the same and what the answer says about him is not. */
@@ -110,6 +127,15 @@ function Probe() {
       </button>
       <button type="button" onClick={() => theServerSignedMeIn(THE_SAME_MEMBER_AGAIN)}>
         the same member is told again
+      </button>
+      <button type="button" onClick={() => theServerSignedMeIn(A_NEWCOMER)}>
+        newcomer signs in
+      </button>
+      <button type="button" onClick={() => theServerSignedMeIn(A_LAPSED_MEMBER)}>
+        lapsed member signs in
+      </button>
+      <button type="button" onClick={() => theServerSignedMeIn(A_NUMBER_ALONE)}>
+        a number alone signs in
       </button>
       <button type="button" onClick={signOut}>
         signs out
@@ -356,8 +382,15 @@ describe('who the caches follow and who the header says is signed in', () => {
      same wrong thing from both cannot pass. */
   it.each([
     ['nobody', 'server answered nobody', { signedIn: null, reader: null }],
-    ['a member, whose account is set as well', 'member signs in', { signedIn: { as: 'member', memberNumber: '000101' }, reader: 'member 000101' }],
+    ['a member, whose account is set as well', 'member signs in', { signedIn: { as: 'member', memberNumber: '000101', feeStands: true }, reader: 'member 000101' }],
     ['an account that races for nobody', 'moderator signs in', { signedIn: { as: 'account', account: 9 }, reader: 'account 9' }],
+    /* **THE THREE THAT ARE NEW SINCE 11.10.2026, and each is the wrong answer to one of the others.**
+       Somebody who registered and has not paid is neither a member nor an account that races for
+       nobody; a member whose fee has lapsed is a member and says so on the arm; and a number with no
+       record behind it is a member all the same, because the number is what decides it. */
+    ['somebody who registered and has not paid', 'newcomer signs in', { signedIn: { as: 'neverPaid', account: 10 }, reader: 'account 10' }],
+    ['a member whose fee has lapsed', 'lapsed member signs in', { signedIn: { as: 'member', memberNumber: '000101', feeStands: false }, reader: 'member 000101' }],
+    ['a number with no record behind it', 'a number alone signs in', { signedIn: { as: 'member', memberNumber: '000101', feeStands: true }, reader: 'member 000101' }],
   ])('name the same person for %s', async (_who, button, said) => {
     const user = visit()
 

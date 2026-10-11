@@ -28,9 +28,12 @@ import { ACCOUNT_ROUTES } from './routes'
  * <p><b>The reason given here for there being an account arm at all was „`MeApi`
  * deliberately carries none", and that was false: it has carried a member number since
  * 20.09.2026.</b> The arm is right and the reason was not. What really puts somebody in
- * it is that the league has given him no number - administration, which has no competitor
- * record at all (PDL P21), and anybody who has registered and is not a member yet (ADL
- * A44). Until 24.09.2026 every signed in MEMBER was in it too, because the portal read
+ * it is that the league keeps no record of him - administration, which has no competitor
+ * record at all (PDL P21). Anybody who has registered and is not a member yet (ADL A44) was
+ * in it as well until 11.10.2026 and has an arm of his own now (`neverPaid`), which this menu
+ * draws exactly as it draws an account: he is named by his account and given its mark until
+ * the league gives him a number and he has a row to take a name and a picture from. Until
+ * 24.09.2026 every signed in MEMBER was in the account arm too, because the portal read
  * past the number, and this menu named him „Nalog 41" while his own name sat one field
  * away in the same answer.
  */

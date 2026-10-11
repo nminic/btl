@@ -66,12 +66,18 @@ export const NAV: NavSection[] = [
   { id: 'admin', labelKey: 'nav.admin', staffOnly: true, path: 'administracija', seoKey: 'admin' },
 ]
 
+/* WHERE A MEMBER PAYS AND CHOOSES HIS CATEGORY, as a name and not only as a row of the list
+ * below. The part of the portal that tells somebody who cannot use his own screens yet where to
+ * go instead (`pages/member/NotAMemberYet.tsx`) has to point here, and a second spelling of an
+ * address is the first thing a rename leaves behind. */
+export const MEMBERSHIP_ADDRESS = 'moja-clanarina'
+
 /* The member area. It hangs off the picture and the cog in the header, not off
  * the navigation, because it belongs to one person rather than to the league. */
 export const ACCOUNT_ROUTES: RouteDef[] = [
   { path: 'moj-profil', labelKey: 'nav.myProfile', seoKey: 'myProfile' },
   { path: 'moji-rezultati', labelKey: 'nav.myResults', seoKey: 'myResults' },
-  { path: 'moja-clanarina', labelKey: 'nav.membership', seoKey: 'membership' },
+  { path: MEMBERSHIP_ADDRESS, labelKey: 'nav.membership', seoKey: 'membership' },
   /* Not drawn in the menu behind the picture (owner, 23.08.2026): the envelope
      in the header opens the inbox and „Sve poruke" stands at the foot of it,
      which is one press fewer than the menu. It stays in this list because the

@@ -1123,7 +1123,15 @@
     "balance": "on the balance",
     "balanceNote": "The balance pays for future fees. It is not paid out in money and is not transferred to another member.",
     "feeExemptNoRenewal": "You are exempt from paying the fee, so there is nothing to pay.",
-    "amountLabel": "Amount"
+    "amountLabel": "Amount",
+    "notYetTitle": "This part opens once your fee has been recorded",
+    "notYetText": "You have registered, but your fee has not been recorded yet, so this part is not open to you yet. You pay and choose your category on the My fee page.",
+    "notPaidYet": "Your fee has not been recorded yet, so you do not have a member number yet. You get one when a moderator records your payment.",
+    "firstPayment": "Paying the fee for {season}.",
+    "firstPaymentOpen": "Paying is open.",
+    "firstRenew": "The payment details are below. As soon as the payment arrives, the moderator confirms it and you get your member number.",
+    "recognisedByName": "As you do not have a member number yet, the payment has no reference number. It is recognised by your name, and a moderator confirms it by hand.",
+    "ipsNoteNoReference": "Scan the code in your bank's app. The amount and the payee are already filled in."
   },
   "review": {
     "title": "The queue for checking results",
@@ -1461,6 +1469,7 @@
     "privacy": "Privacy",
     "hideProfile": "Hide my profile from anyone who is neither an active member nor the administration",
     "hideProfileNote": "The name stays in the tables and on the boards, because without it ranking everybody together would lose its point. What is hidden is only your profile page, and only from visitors who are not signed in and from signed-in accounts without an active membership.",
+    "opensWithTheFee": "Your picture, your biography and the switch that hides your profile open once your fee has been recorded.",
     "themeLabel": "Theme",
     "themeDark": "Dark",
     "themeLight": "Light"  },

@@ -97,6 +97,8 @@ function SignInAs({
           membershipBasis: null,
           referralCode: null,
           referredCount: null,
+          hasARecord: memberNumber !== null,
+          feeStands: null,
         })
       }}
     >
