@@ -4,6 +4,7 @@ import { renderAt } from '../../test/render'
 import { did, refused, serverThat } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { thePictureArrives } from '../../test/waitingPicture'
 import { decisionPath } from './verificationWrites'
 import { QUEUE } from './queues'
 
@@ -42,6 +43,11 @@ import { QUEUE } from './queues'
  * <p>Every case serves the list itself (`serverThat`) and never the disc's, because the disc's
  * `verification.json` carries no `photoId` on any row (`moderatorSeesThePicture.test.tsx` says so)
  * and a card that draws no picture is exactly what these cases are not about.
+ *
+ * <p><b>Every case that presses says first that the picture arrived</b> (`thePictureArrives`),
+ * because since PDL, 11.10.2026 („Dok se slika učitava, oba dugmeta su neaktivna; kad se učita, oba
+ * rade.") neither button answers before it has, and jsdom fetches no picture. What a card does while it
+ * waits, and what it does for a picture that never comes, is `buttonsWaitForThePicture.test.tsx`'s.
  */
 
 /* EVERY WAIT OF THIS FILE IS GIVEN HALF OF THE TIME A CASE HAS, which is what `saveWhileSaving.test.tsx`
@@ -147,6 +153,7 @@ describe('what a decision about a picture names', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Mira Mirić'))
 
       await user.click(cardOf('Mira Mirić').getByRole('button', { name: 'Odobri' }))
 
@@ -178,6 +185,7 @@ describe('what a decision about a picture names', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Mira Mirić'))
 
       await user.click(cardOf('Mira Mirić').getByRole('button', { name: 'Odbij' }))
       await user.type(screen.getByLabelText('Razlog odbijanja'), 'Lice se ne vidi.')
@@ -212,6 +220,10 @@ describe('what a decision about a picture names', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      /* BOTH PICTURES HAVE ARRIVED, and that is what lets the sweep reach them: it leaves a card
+         whose picture has not (`buttonsWaitForThePicture.test.tsx`). */
+      thePictureArrives(cardOf('Neda Nedić'))
+      thePictureArrives(cardOf('Mira Mirić'))
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
@@ -219,7 +231,7 @@ describe('what a decision about a picture names', () => {
         expect(screen.getByText(/^Rešen/)).toBeVisible()
       })
 
-      const bodyOf = (path: string): unknown =>
+      const bodyOf =(path: string): unknown =>
         JSON.parse(String(asked.find((one) => one.path === path)?.init?.body))
 
       expect(bodyOf(decisionPath('21'))).toEqual({
@@ -334,6 +346,7 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       const theOldPixels = cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ })
 
+      thePictureArrives(cardOf('Neda Nedić'))
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 
       /* THE SENTENCE, ON THE CARD IT IS ABOUT, in the owner's words. */
@@ -363,6 +376,15 @@ describe('when the route says the picture is not the one the card drew', () => {
          and it tells the moderator why the picture under him is another one. */
       expect(cardOf('Neda Nedić').getByRole('alert')).toHaveTextContent(THE_PICTURE_WAS_CHANGED)
 
+      /* AND THE NEW PICTURE IS ONE NOBODY HAS LOOKED AT, so the card waits for it as it waited for the
+         first (PDL, 11.10.2026): the button that was live a moment ago is told off until the new element
+         reports for itself, and the press that would have named the new key over pixels not yet drawn
+         does nothing. */
+      expect(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+      thePictureArrives(cardOf('Neda Nedić'))
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 
       const bodies = asked
@@ -393,6 +415,7 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Neda Nedić'))
 
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odbij' }))
       await user.type(screen.getByLabelText('Razlog odbijanja'), 'Slika je mutna.')
@@ -410,6 +433,8 @@ describe('when the route says the picture is not the one the card drew', () => {
       })
       expect(reads()).toBe(2)
 
+      /* The new picture is waited for before the card's Odbij answers, as the first was. */
+      thePictureArrives(cardOf('Neda Nedić'))
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odbij' }))
       await user.type(screen.getByLabelText('Razlog odbijanja'), 'Slika je i dalje mutna.')
       await user.click(screen.getByRole('button', { name: 'Odbij uz ovaj razlog' }))
@@ -449,6 +474,7 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Neda Nedić'))
 
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 
@@ -462,6 +488,16 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       /* The key did not move, so nothing about the picture's address did either. */
       expect(pictureOf('Neda Nedić')).toBe('/api/verification/21/photo?photo=9')
+
+      /* AND NO SECOND REPORT IS AWAITED. The element is the same one and draws the same pixels, so
+         nothing would ever tell the page again that it arrived: a card that went back to waiting for
+         a picture because its circle moved would wait for ever. That is the price the owner accepted
+         for a moved circle, that the card read again looks the same to the moderator (PDL, 11.10.2026,
+         under „Pomeren krug odbija odluku i dok se isečak ne crta"). */
+      expect(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' })).toHaveAttribute(
+        'aria-disabled',
+        'false',
+      )
 
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 
@@ -506,6 +542,9 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Neda Nedić'))
+      thePictureArrives(cardOf('Mira Mirić'))
+      thePictureArrives(cardOf('Zora Zorić'))
 
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
@@ -534,6 +573,7 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Neda Nedić'))
 
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 
@@ -565,6 +605,7 @@ describe('when the route says the picture is not the one the card drew', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Neda Nedić'))
 
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 

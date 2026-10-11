@@ -8,6 +8,7 @@ import { renderAt } from '../../test/render'
 import { serverThat, type Asked } from '../../test/serverAnswers'
 import { SLOW } from '../../test/slow'
 import { setupUser } from '../../test/user'
+import { thePictureArrives } from '../../test/waitingPicture'
 import { useSession } from '../../session/useSession'
 
 /**
@@ -232,6 +233,9 @@ describe('a picture sent for a decision', () => {
 
       await router.navigate(THE_QUEUE)
       await screen.findByRole('list', { name: /Čeka/ })
+      /* The picture has to have arrived before either button answers (PDL, 11.10.2026), and jsdom
+         fetches nothing, so the browser's word for it is given here. */
+      thePictureArrives(cardOf('Strahinja Vukićević'))
 
       await user.click(cardOf('Strahinja Vukićević').getByRole('button', { name: 'Odbij' }))
       await user.type(await screen.findByLabelText(/^Razlog odbijanja/), 'Slika je mutna.')
@@ -261,6 +265,7 @@ describe('a picture sent for a decision', () => {
 
       await router.navigate(THE_QUEUE)
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Strahinja Vukićević'))
 
       await user.click(cardOf('Strahinja Vukićević').getByRole('button', { name: 'Odobri' }))
 
@@ -323,6 +328,7 @@ describe('a picture sent for a decision', () => {
          still in the document from the walk above, so a case that waited on it would read the
          queue as it stood before this navigation. */
       await screen.findByRole('heading', { name: 'Strahinja Vukićević' })
+      thePictureArrives(cardOf('Strahinja Vukićević'))
       await user.click(cardOf('Strahinja Vukićević').getByRole('button', { name: 'Odobri' }))
       await router.navigate('/sr/podesavanja')
 

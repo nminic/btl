@@ -3,6 +3,7 @@ import { must } from '../../test/at'
 import { renderAt } from '../../test/render'
 import { did, refused, serverThat } from '../../test/serverAnswers'
 import { setupUser } from '../../test/user'
+import { thePictureArrives } from '../../test/waitingPicture'
 import { decisionPath } from './verificationWrites'
 import { QUEUE } from './queues'
 
@@ -128,7 +129,11 @@ describe('the picture on a card the moderator is deciding about', () => {
          Asserted here and not only where loading fails, or a mutation that disabled
          Odobri unconditionally - or read the wrong fact, `photoId === null` instead
          of "this row's own load failed" - would pass every case below and be
-         invisible from the failing side alone. */
+         invisible from the failing side alone. It is said to have arrived first,
+         because since PDL, 11.10.2026 a card waits for its picture and jsdom
+         fetches none (`buttonsWaitForThePicture.test.tsx` holds the waiting). */
+      thePictureArrives(cardOf('Neda Nedić'))
+
       expect(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' })).toHaveAttribute(
         'aria-disabled',
         'false',
@@ -195,7 +200,7 @@ describe('the picture on a card the moderator is deciding about', () => {
 
        PDL.md "29. Slika koja ne moze da se ucita" (owner, 27.09.2026): the sentence
        replaces the picture, Odobri is disabled beside it, and both are read off the
-       identical fact - `PendingQueue`'s own `brokenPictures` - rather than guessed
+       identical fact - `PendingQueue`'s own `pictureOutcomes` - rather than guessed
        twice. */
     const { stop } = answering([aPhotoRow])
 
@@ -247,8 +252,8 @@ describe('the picture on a card the moderator is deciding about', () => {
 
        BOTH HALVES IN ONE CASE, and neither would be measured by the other:
        `aria-disabled` alone does not stop a press from reaching the handler
-       (PendingQueue.tsx says so of `why`/`decisionUnknown` already, and
-       `pictureUnavailable` is written the identical way), so a `!pictureUnavailable`
+       (PendingQueue.tsx says so of `why`/`decisionUnknown` already, and the
+       state of the picture is written the identical way), so a `mayApprove`
        quietly dropped from the `onClick` guard would leave this card's
        `aria-disabled="true"` and its Odobri fully working - measured, not assumed,
        by pressing it rather than only reading its attribute. And a fix that
@@ -340,13 +345,22 @@ describe('the picture on a card the moderator is deciding about', () => {
     }
   })
 
-  it('reads the freshest broken picture during a walk already under way, not the one the walk started with', async () => {
-    /* Review's own measurement, reproduced exactly: two rows, biography FIRST
-       and photograph second; the biography's decision held open so the walk is
-       PARKED on it; the photograph's picture fails DURING that wait, never
-       before the walk started and never after it finished. A closure over
-       `brokenPictures` taken when the walk began cannot see this - only a live
-       read can (`brokenPicturesRef`'s own doc in PendingQueue.tsx). */
+  it('reads the freshest outcome of a picture during a walk already under way, not the one the walk started with', async () => {
+    /* Review's own measurement, reproduced in the direction that is left: two rows,
+       biography FIRST and photograph second; the biography's decision held open so
+       the walk is PARKED on it; the photograph's picture ARRIVES during that wait,
+       never before the walk started and never after it finished. A closure over
+       `pictureOutcomes` taken when the walk began says the picture is still on its
+       way and leaves the card alone - only a live read sees it has arrived
+       (`pictureOutcomesRef`'s own doc in PendingQueue.tsx).
+
+       THE OTHER DIRECTION, a picture that FAILS during the wait, was this case's
+       measurement until PDL, 11.10.2026: a card whose picture had said nothing was
+       approved by the sweep, so a picture that broke while the walk was parked on an
+       earlier row was still approved. A picture nobody has heard from is waited for
+       now, which settles that direction by construction and leaves it nothing to
+       measure here (`buttonsWaitForThePicture.test.tsx` holds that a sweep leaves
+       such a card). */
     let releaseBio = (): void => {}
     const bioHeld = new Promise<Response>((resolve) => {
       releaseBio = () => resolve(did())
@@ -359,7 +373,7 @@ describe('the picture on a card the moderator is deciding about', () => {
         })
       }
 
-      return path === decisionPath('22') ? bioHeld : null
+      return path === decisionPath('22') ? bioHeld : path === decisionPath('21') ? did() : null
     })
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
 
@@ -374,15 +388,13 @@ describe('the picture on a card the moderator is deciding about', () => {
          photograph at all. */
       await user.click(screen.getByRole('button', { name: 'Odobri sve' }))
 
-      /* The picture fails WHILE the walk is parked there. Proven by the
-         sentence actually reaching the screen before the walk is let through,
-         not assumed from the order these two lines are written in. */
-      fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
+      /* The picture arrives WHILE the walk is parked there. Proven to have been
+         asked for before it arrived: the route has been asked about the biography
+         and about nothing else. */
       expect(
-        cardOf('Neda Nedić').getByText(
-          'Slika nije dostupna: fajl se ne može učitati, pa se ovaj red ne može odobriti dok se slika ne vidi. Odbijanje i dalje radi.',
-        ),
-      ).toBeVisible()
+        asked.filter((one) => one.path.endsWith('/decision')).map((one) => one.path),
+      ).toEqual([decisionPath('22')])
+      thePictureArrives(cardOf('Neda Nedić'))
 
       /* Only now does the walk move past the biography. */
       releaseBio()
@@ -391,10 +403,19 @@ describe('the picture on a card the moderator is deciding about', () => {
         expect(screen.getByText(/^Rešen/)).toBeVisible()
       })
 
+      const decided = asked.find((one) => one.path === decisionPath('21'))
+
       expect(
-        asked.find((one) => one.path === decisionPath('21')),
-        'the photograph must not be decided: its picture had already failed by the time the walk reached it',
-      ).toBeUndefined()
+        decided,
+        'the photograph must be decided: its picture had arrived by the time the walk reached it',
+      ).toBeDefined()
+      expect(JSON.parse(String(decided?.init?.body))).toEqual({
+        approved: true,
+        reason: '',
+        seenPhotoId: 9,
+        seenCrop: { x: 0.4, y: 0.6, size: 0.5 },
+      })
+      expect(screen.getByText(/^Rešen.* 2 stavk/)).toBeVisible()
     } finally {
       confirm.mockRestore()
       stop()
@@ -403,14 +424,14 @@ describe('the picture on a card the moderator is deciding about', () => {
 
   it("does not clear another card's refusal when Odobri is pressed on a row whose picture has failed to load", async () => {
     /* PDL.md "29." is answered by refusing to START a walk over this row at
-       all (`brokenPicturesRef` read in the button's own `onClick`), not by
+       all (`pictureOutcomesRef` read in the button's own `onClick`), not by
        starting one `approveAll` would then skip: `approveAll` reports what it
        settled through `sayIt` UNCONDITIONALLY, so a walk that settles NOTHING
        because its one row was skipped still calls `sayIt(null)` and clears
        whatever OTHER card's refusal was on screen. Measured in both
-       directions: with the `onClick` guard reading `pictureUnavailable` (a
-       render-time value) simply removed rather than replaced by the live ref,
-       this case fails; with the ref there, it passes. */
+       directions: with the `onClick` guard simply removed rather than
+       replaced by a read of the live ref, this case fails; with the ref
+       there, it passes. */
     const { stop } = serverThat((path) => {
       if (path === '/api/verification') {
         return new Response(JSON.stringify([aBioRow, aPhotoRow]), {
@@ -452,8 +473,8 @@ describe('the picture on a card the moderator is deciding about', () => {
        SAME row's own picture breaking while THIS SAME row's own single-card
        `approveAll([one], teams)` is awaiting THIS SAME row's own
        `askTheServer`. Written because the question deserved a measurement,
-       not my own reasoning about whether `onClick` reading `brokenPicturesRef`
-       instead of `pictureUnavailable` would still matter here.
+       not my own reasoning about whether `onClick` reading `pictureOutcomesRef`
+       instead of the state its render drew would still matter here.
 
        MEASURED, NOT ASSUMED: the request already stands in `asked` the instant
        `user.click` resolves, before this test's next line can even fire the
@@ -462,9 +483,10 @@ describe('the picture on a card the moderator is deciding about', () => {
        either is the only way `askTheServer` is never reached - so by the time
        a picture could fail "during" that one call, this row's request has
        already left for the server. The mutation below (`onClick` reading
-       `pictureUnavailable` instead of the ref) is measured to leave this
-       assertion standing, because the swap only touches a check that has
-       already run by the time there is anything left to race against. */
+       the picture's state as its render drew it instead of the ref) is
+       measured to leave this assertion standing, because the swap only
+       touches a check that has already run by the time there is anything
+       left to race against. */
     let releaseOwn = (): void => {}
     const ownHeld = new Promise<Response>((resolve) => {
       releaseOwn = () => resolve(did())
@@ -485,6 +507,7 @@ describe('the picture on a card the moderator is deciding about', () => {
 
       openQueue()
       await screen.findByRole('list', { name: /Čeka/ })
+      thePictureArrives(cardOf('Neda Nedić'))
 
       await user.click(cardOf('Neda Nedić').getByRole('button', { name: 'Odobri' }))
 
@@ -496,6 +519,10 @@ describe('the picture on a card the moderator is deciding about', () => {
         "this row's own decision, already asked for before its own picture could fail",
       ).toBeDefined()
 
+      /* A browser says one of the two about a picture and never both, so this order
+         is made up: it is the only way to take a picture that has arrived to one
+         that has not, and so to ask whether anything after the request has left asks
+         the picture again. Nothing does. */
       fireEvent.error(cardOf('Neda Nedić').getByRole('img', { name: /Slika koju je poslao/ }))
       releaseOwn()
 
