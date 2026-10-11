@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -2159,6 +2160,119 @@ class ModeratorWriteApiTest {
 		assertThat(SMTP.getReceivedMessages())
 				.as("the address was refused and a message went out anyway")
 				.isEmpty();
+	}
+
+	/**
+	 * AN ADDRESS LONGER THAN THE STANDARD ALLOWS IS THE SENTENCE FOR AN ADDRESS THAT IS NOT ONE,
+	 * AND NOTHING IS WRITTEN OR SENT.
+	 *
+	 * <p>The bound is 254 characters, RFC 5321's number for an address and not the index's.
+	 * {@code account_email_shape} has no upper bound, and past what {@code account_email_unique}
+	 * keeps an address that passed the shape would reach the {@code insert} and come back to the
+	 * superadmin as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the database where that
+	 * limit is). This route judges an address with {@code WhatAnAddressLooksLike.itDoes} and
+	 * answers a misshapen one with {@link ModeratorWriteApi#THE_ADDRESS_IS_NOT_SHAPED}, so that is
+	 * the sentence a long one gets and none is added.
+	 *
+	 * <p><b>The number is the one written in {@link WhatAnIndexHoldsTest}, not the constant under
+	 * test</b>: a case built from the number it tests follows it wherever it is moved, and a bound
+	 * put back to the index's two thousand would still pass.
+	 *
+	 * <p><b>One case for each of five texts</b>, told apart and explained in
+	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
+	 * accepted and leave the others unjudged.
+	 *
+	 * <p><b>The list of missing fields is read as empty</b>, as the case above reads it: an
+	 * address typed too long is not an address left out.
+	 */
+	@ParameterizedTest
+	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
+	void anAddressLongerThanTheStandardAllowsIsTheSentenceForAnAddressThatIsNotOne(
+			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
+
+		String tooLong = kind.forAMailAddress(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+		long before = howManyAccounts();
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(
+				() -> make("Nova", "Moderatorka", tooLong));
+
+		assertThat(answer.getStatus())
+				.as("%s was accepted as an address of electronic mail", kind)
+				.isEqualTo(400);
+		assertThat(reasonIn(answer))
+				.as("%s was refused with a sentence other than the one for an address that is not"
+						+ " one", kind)
+				.isEqualTo(ModeratorWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+		assertThat(missingIn(answer))
+				.as("the refusal named a missing field for a form in which every field is there")
+				.isEmpty();
+		assertThat(howManyAccounts())
+				.as("an account was written for an address the route had refused")
+				.isEqualTo(before);
+		assertThat(SMTP.getReceivedMessages())
+				.as("an address was refused and a message went out anyway")
+				.isEmpty();
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE STANDARD ALLOWS IS WRITTEN WHOLE.
+	 *
+	 * <p>This is the other half of the bound, and the one a bound set too low fails: the address
+	 * is exactly 254 characters, the number written in {@link WhatAnIndexHoldsTest} from the
+	 * standard, and it is noise, so that "stored whole" is a fact about this text and not about one
+	 * that compresses. A bound moved either way fails it or the case above, and a bound raised past
+	 * what the index keeps fails the floor in {@link WhatAnIndexHoldsTest} as well.
+	 *
+	 * <p>Nothing is asserted about the invitation. A relay is entitled to refuse an address of the
+	 * longest length, and what the portal does when a relay does not take a message is
+	 * {@code aRelayThatRefusesTheInvitationStillLeavesTheModeratorAndHisLink}'s subject, not this
+	 * bound's.
+	 */
+	@Test
+	void theLongestAddressTheStandardAllowsIsWrittenWhole() throws Exception {
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+
+		assertThat(longest).hasSize(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(
+				() -> make("Nova", "Moderatorka", longest));
+
+		assertThat(answer.getStatus())
+				.as("the longest address the route takes was refused: %s", answer.getContentAsString())
+				.isEqualTo(201);
+		assertThat(rowOf(longest).role())
+				.as("the account was not written whole, at the address it was made at, as a moderator")
+				.isEqualTo("moderator");
+	}
+
+	/**
+	 * AND IT IS MEASURED AFTER THE SPACES ARE TAKEN OFF, which is what the index sees.
+	 *
+	 * <p>The address is typed with two spaces on each side, so what the route is asked is longer
+	 * than the bound and what it keeps is not. {@code asItIsStored} takes the spaces off before the
+	 * shape is judged, and it is the stripped address that goes into the index, so it is the
+	 * stripped address that is measured: a bound read off what was typed would refuse an address
+	 * the index would have taken, and this is the case that says so. It is a case of its own and
+	 * not a second request in the case above, so the two cannot hide each other.
+	 */
+	@Test
+	void anAddressAsLongAsTheBoundTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff()
+			throws Exception {
+
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(
+				() -> make("Nova", "Moderatorka", "  " + longest + "  "));
+
+		assertThat(answer.getStatus())
+				.as("an address as long as the bound, typed with spaces around it, was refused: %s",
+						answer.getContentAsString())
+				.isEqualTo(201);
+		assertThat(rowOf(longest).role())
+				.as("the account was kept with the spaces it was typed with, or cut")
+				.isEqualTo("moderator");
 	}
 
 	/** Which fields a refusal names, which is a different place from its reason. */

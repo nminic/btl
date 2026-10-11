@@ -1,10 +1,16 @@
 package com.btl.portal.web;
 
+import com.btl.portal.domain.category.Category;
+import com.btl.portal.domain.season.SeasonClock;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.ZonedDateTime;
 
 /**
  * WHO THE PORTAL THINKS IS ASKING, AND WHAT IT HAS ON HIM, said back to whoever
@@ -55,10 +61,14 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><b>AND IT ANSWERS A MEMBER WHOSE FEE HAS LAPSED, which is the whole of why
  * this is a second resource and not four more fields on the first one.</b>
  * {@link CompetitorApi} leaves such a member off its list entirely - owner,
- * 13.09.2026, asked which shape PDL P11 takes on the server - and its own javadoc
- * names the consequence as owed rather than solved: „the profile and the
- * historical tables of a member whose fee has lapsed need a resource that knows
- * them, and it is not this one." It is this one.
+ * 13.09.2026, asked which shape PDL P11 takes on the server - and named the
+ * consequence as owed rather than solved: the profile and the historical tables
+ * of a member whose fee has lapsed need a resource that knows them. Two resources
+ * know him now, each for what is its own, and between them they are what that
+ * sentence asked for: this one answers him the page of his own profile (below,
+ * since 10.10.2026), and {@code GET /api/results} carries his name on the results
+ * of the seasons he was a member in. Neither is {@link CompetitorApi}, which stays
+ * the members whose fee is standing.
  *
  * <p><b>AND THREE FIELDS THAT ARE HIS OWN BUSINESS AND NOBODY ELSE'S, each here
  * because a decision or a measurement put it here.</b> Two of them were refused on
@@ -112,6 +122,42 @@ import org.springframework.web.bind.annotation.RestController;
  * {@code and brought.active} from this clause fails both, independently of the case
  * that compared the doors.
  *
+ * <p><b>AND SINCE 10.10.2026 IT CARRIES THE RECORD HIS OWN PROFILE IS DRAWN FROM, which is
+ * the half of the debt the paragraph about a lapsed fee names that is the member's own.</b>
+ * The other half, his name in the tables of the seasons he was a member in, rides on the
+ * results ({@code GET /api/results}); this route answers the page, and answers it to him
+ * alone. The owner said what that profile is for (PDL P8, 25.09.2026, „Treba da moze da
+ * otvori svoj profil dokle god postoji"), and a profile cannot be drawn from seven facts about
+ * a fee: it is headed by a name and stands on a town, a category, a biography and a portrait,
+ * none of which reached a member who is on no row of the public list.
+ *
+ * <p><b>The names are {@link CompetitorApi.Competitor}'s, for the same facts, on purpose</b>,
+ * so that the portal reads one vocabulary for a member whichever door answered him. What
+ * keeps the two from drifting is not a shared query - the precedent above is to write the
+ * clause where it is read - but a case that asks both doors about the same member and
+ * compares every name they share ({@code MeApiTest.theTwoDoorsAnswerTheSameMemberFieldForField}).
+ *
+ * <p><b>NOTHING IS WITHHELD FROM HIM, and that is the one place the two doors differ on
+ * purpose.</b> {@link CompetitorApi} holds a hidden profile's biography, portrait and link to
+ * its team back from a reader who is neither an active member nor the administration (PDL P23,
+ * 03.10.2026, „Skrivanje deluje prema svakome ko nije aktivan član ni administracija, nikad
+ * prema aktivnom članu"), and a member whose fee has lapsed is such a reader of everybody's
+ * page. He is not one of his own: the record of the decision gives the reason in as many
+ * words (the record's sentence, not the owner's) - when a member looks at himself nothing about
+ * himself is hidden from him. So there is no {@code THE_PROFILE_IS_OPEN_TO_THE_CALLER} in
+ * this query, and {@code MeApiTest.aMemberWhoseFeeHasLapsedAndHidesHisProfileIsHandedAllOfIt}
+ * refuses the one carried in.
+ *
+ * <p><b>A BOUNDARY THE OWNER LEFT WHERE IT IS: THE BYTES OF A HIDDEN PORTRAIT.</b>
+ * {@code photo} is the address of his own approved portrait, answered to him whatever his
+ * profile says. Whether the bytes behind that address are served to him is {@link PhotoApi}'s
+ * question, and it refuses them to a reader who is neither an active member nor the
+ * administration - his own included, when his fee has lapsed AND his profile is hidden. The
+ * owner was asked what that member should see of his own portrait and chose to leave it: the
+ * profile is drawn and the portrait does not load, which in Chrome is a circle of his colour
+ * with a small broken-picture mark in it. So this answers the address and leaves the bytes
+ * where they are; it is named here so that the next reader meets a boundary and not a fault.
+ *
  * <p><b>A BOUNDARY, WRITTEN DOWN BECAUSE IT IS REAL AND NOT BECAUSE IT IS
  * COMFORTABLE: no pattern over the English above measures anything.</b> What the
  * cases hold is the thing the prose is about - that the basis answered is the
@@ -124,13 +170,27 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class MeApi {
 
+	/**
+	 * WHERE A PICTURE IS ASKED FOR, and the name that follows is its digest.
+	 *
+	 * <p>The same text {@link PhotoApi} maps, kept as a literal here as {@link CompetitorApi},
+	 * {@link TeamApi} and {@link MePhotoApi} keep one each, for the reason they write out: a
+	 * constant copied is only ever as good as what proves it equal, and what proves it is
+	 * {@code MeApiTest.thePortraitIsTheAddressOfHisOwnPicture}, which hands the address this
+	 * builds back to the dispatcher and requires it to arrive at {@link PhotoApi}.
+	 */
+	private static final String A_PICTURE_IS_ASKED_FOR_AT = "/api/photos/";
+
 	private final JdbcClient db;
 
 	private final MemberOfAccount memberOfAccount;
 
-	MeApi(JdbcClient db, MemberOfAccount memberOfAccount) {
+	private final Clock clock;
+
+	MeApi(JdbcClient db, MemberOfAccount memberOfAccount, Clock clock) {
 		this.db = db;
 		this.memberOfAccount = memberOfAccount;
+		this.clock = clock;
 	}
 
 	/**
@@ -148,7 +208,7 @@ class MeApi {
 	/**
 	 * THE CALLER'S OWN RECORD, and only what is his own to see about himself.
 	 *
-	 * <p>Four of these seven are facts Article 73 makes public about everybody, so a
+	 * <p>Four of the first seven are facts Article 73 makes public about everybody, so a
 	 * member whose fee is standing can read them elsewhere. <b>THE OTHER THREE LEAVE THE
 	 * SERVER THROUGH THIS ROUTE AND NO OTHER</b>: the basis his membership is held on,
 	 * here since 20.09.2026 on the owner's word, and his referral link and his count of
@@ -231,11 +291,61 @@ class MeApi {
 	 *                     question one screen asks. So the count keeps its own meaning, which is
 	 *                     worth showing („you have brought in six people"), and the money has one
 	 *                     home and it is the book
+	 *
+	 * <p><b>THE TWELVE THAT FOLLOW ARE THE PROFILE, since 10.10.2026</b>, and each is the
+	 * fact {@link CompetitorApi.Competitor} answers under the same name, WITHOUT the withholding
+	 * that record applies to a hidden profile: this is his own page, and nothing about himself is
+	 * hidden from him (see the class). Every one is read off the row {@code recordOf} already
+	 * reads, so none of them can come from somebody else's.
+	 *
+	 * @param firstName    never absent: {@code competitor_first_name_not_blank} (V7)
+	 * @param lastName     never absent, for the same reason
+	 * @param gender       {@code M} or {@code F} and nothing else
+	 *                     ({@code competitor_gender_known}, V7), so there is no branch for a third
+	 * @param city         the town's name out of the codebook when the town came from it, and the
+	 *                     typed one otherwise: the same {@code coalesce} {@link CompetitorApi}
+	 *                     reads, written where it is read for the reason the country is
+	 * @param ageBand      the band the rulebook puts him in for the season that is RUNNING
+	 *                     ({@code 24-}, {@code 25-39}, {@code 40-54} or {@code 55+}), which is
+	 *                     the category Article 74 makes public and the page is headed by. Never
+	 *                     absent: {@code birth_date} is NOT NULL (V8) and
+	 *                     {@code Category.ageBandFor} is total. <b>The season is
+	 *                     {@code SeasonClock.seasonTheBandIsWorkedOutFor}'s and nobody's else</b>,
+	 *                     the one home of the question, so that the two doors cannot name two
+	 *                     seasons for one member; {@code MeApiTest} holds them together at the
+	 *                     moments the band moves on. <b>The year it is worked out from is read
+	 *                     and leaves nowhere</b>, to him as to anybody
+	 * @param firstSeason2027 whether he runs in the beginners' category (PDL P7). Never absent:
+	 *                     the column is NOT NULL
+	 * @param teamSince    the season the membership that has NOT ENDED began in, and ABSENT
+	 *                     exactly when {@code teamId} is: the two halves of the link to a team
+	 *                     come off one joined row, so a club is never named without its year
+	 * @param bio          what he has written about himself and a moderator has approved, which
+	 *                     is the column and never the text that waits in the queue. Empty for most
+	 *                     members and never absent: the column is NOT NULL and may be {@code ""}
+	 * @param profileHidden whether he has hidden his page from readers who may not read a hidden
+	 *                     one. Answered to HIM too: the setting is his, and the screen that lets
+	 *                     him change it has to know where it stands
+	 * @param birthdayShown what he chose about his birthday ({@code none}, {@code year} or
+	 *                     {@code full}), which the portal needs in order to draw the card at all.
+	 *                     The date itself never leaves, to him or to anybody
+	 * @param photo        where his approved portrait is asked for, as the whole address, and
+	 *                     ABSENT for a member who has none. The address is the DIGEST of the
+	 *                     content and never {@code photo.id}, which is countable (see
+	 *                     {@link PhotoApi})
+	 * @param crop         which circle of it is drawn, and ABSENT exactly when {@code photo} is:
+	 *                     the other half of the same fact, read off the same joined row
 	 */
 	record MyOwnRecord(@JsonInclude(JsonInclude.Include.NON_NULL) String memberNumber,
 			String country, int firstSeason,
 			@JsonInclude(JsonInclude.Include.NON_NULL) Long teamId,
-			String membershipBasis, String referralCode, int referredCount) {
+			String membershipBasis, String referralCode, int referredCount,
+			String firstName, String lastName, String gender, String city, String ageBand,
+			boolean firstSeason2027,
+			@JsonInclude(JsonInclude.Include.NON_NULL) Integer teamSince,
+			String bio, boolean profileHidden, String birthdayShown,
+			@JsonInclude(JsonInclude.Include.NON_NULL) String photo,
+			@JsonInclude(JsonInclude.Include.NON_NULL) CompetitorApi.Crop crop) {
 	}
 
 	/**
@@ -261,6 +371,11 @@ class MeApi {
 	 * case here for none.
 	 */
 	private MyOwnRecord recordOf(long me) {
+		/* THE SEASON HIS BAND IS WORKED OUT FOR, asked of the one home of that question and read
+		   once for the whole answer, as `CompetitorApi` reads it once for a whole list: a clock
+		   read inside the mapper could cross midnight on 1 January in the middle of one row,
+		   which is the one night of the year this field moves on. */
+		int season = SeasonClock.seasonTheBandIsWorkedOutFor(ZonedDateTime.now(clock));
 
 		return db.sql("select c.member_number,"
 						/* The town's country when the town came out of the codebook, and the
@@ -287,11 +402,43 @@ class MeApi {
 						   a whole number that fits the portal's own type. */
 						+ " cast((select count(*) from competitor brought"
 						+ "  where brought.referred_by = c.id and brought.active) as integer)"
-						+ "  as referred_count"
+						+ "  as referred_count,"
+						/* THE PROFILE, WHICH IS WHAT HIS OWN PAGE IS DRAWN FROM (class note). The
+						   names and the town are read the way `CompetitorApi` reads them, and
+						   NOTHING here is gated on whether the profile is hidden: it is his own,
+						   and this query has no `THE_PROFILE_IS_OPEN_TO_THE_CALLER` on purpose.
+						   `bio` is the column a moderator's approval wrote, never the queue's
+						   text, and the portrait comes off `c.photo_id` for the same reason
+						   (see the join below). */
+						+ " c.first_name, c.last_name, c.gender,"
+						+ " coalesce(town.name, c.city) as city,"
+						+ " c.first_season_2027, m.season_from as team_since,"
+						+ " c.bio, c.profile_hidden, c.birthday_shown,"
+						/* THE PORTRAIT AND ITS SQUARE, ONE FACT ASKED FOR IN ONE BREATH: all four
+						   come off the same joined row, every column of which is NOT NULL (V8), so
+						   they are present together or not at all. The digest is the address and
+						   `portrait.id` never is. */
+						+ " portrait.digest, portrait.crop_x, portrait.crop_y,"
+						+ " portrait.crop_diameter,"
+						/* AND THE YEAR, WHICH IS READ HERE AND LEAVES NOWHERE: the input the band is
+						   worked out from and the one field of this table the privacy policy is
+						   written about (Clan 74, „Datum rodjenja se nikada ne prikazuje, ni u punom
+						   ni u skracenom obliku"), taken LAST and turned into a band before anything
+						   is built out of the row, so it reaches a local and never a component. The
+						   year and not the date, for the reason `CompetitorApi` gives at the same
+						   place: the day is not part of the question. `noDateOfBirthLeavesHisOwnDoor`
+						   reads the whole answer as text, so it refuses the year however it is spelt. */
+						+ " c.birth_year"
 						+ " from competitor c"
 						+ " left join place town on town.id = c.place_id"
 						+ " left join country town_country on town_country.id = town.country_id"
 						+ " left join country typed_country on typed_country.id = c.country_id"
+						/* THE PORTRAIT A MODERATOR HAS APPROVED: `c.photo_id` and never
+						   `verification.photo_id`, which is what nobody has looked at yet and what
+						   ADL A60 does not make public. Nothing in this FROM reaches the queue, so
+						   a waiting picture cannot arrive here by any arrangement of the data. A
+						   `left join`, because a member with no portrait is an ordinary member. */
+						+ " left join photo portrait on portrait.id = c.photo_id"
 						/* The membership that has not ended. Without this clause a member who has
 						   changed clubs has two rows and `single()` refuses the answer outright,
 						   which is measured rather than argued.
@@ -304,9 +451,35 @@ class MeApi {
 						+ "  and m.season_to is null"
 						+ " where c.id = :me")
 				.param("me", me)
-				.query((row, one) -> new MyOwnRecord(row.getString(1), row.getString(2),
-						row.getInt(3), row.getObject(4) == null ? null : row.getLong(4),
-						row.getString(5), row.getString(6), row.getInt(7)))
+				.query((row, one) -> {
+					/* Exact decimal all the way out, never a double: `CompetitorApi` and `TeamApi`
+					   say why about the same three numbers (V21 chose `numeric(9, 8)`). Every
+					   column of `photo` is NOT NULL (V8), so each of these is null exactly when
+					   no row joined, and the two are read side by side rather than one from the
+					   other so that the answer says what the row says. */
+					String portrait = row.getString(17);
+					BigDecimal across = row.getBigDecimal(18);
+
+					return new MyOwnRecord(row.getString(1), row.getString(2), row.getInt(3),
+							row.getObject(4) == null ? null : row.getLong(4),
+							row.getString(5), row.getString(6), row.getInt(7),
+							row.getString(8), row.getString(9), row.getString(10),
+							row.getString(11),
+							/* THE RULE IS ASKED FOR, NEVER REPEATED HERE: `Category` is where the
+							   league's bands live and where the decision that age is settled on 1
+							   January rather than on the birthday is written down (PDL P7). */
+							Category.ageBandFor(row.getInt(21), season).code(),
+							row.getBoolean(12),
+							row.getObject(13) == null ? null : row.getInt(13),
+							row.getString(14), row.getBoolean(15), row.getString(16),
+							/* The digest and never the key, and never the empty path for a member
+							   who has no portrait: an empty path is an address a browser would ask
+							   for. */
+							portrait == null ? null : A_PICTURE_IS_ASKED_FOR_AT + portrait,
+							across == null ? null
+									: new CompetitorApi.Crop(across, row.getBigDecimal(19),
+											row.getBigDecimal(20)));
+				})
 				.single();
 	}
 }

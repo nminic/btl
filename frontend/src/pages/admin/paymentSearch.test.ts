@@ -31,6 +31,7 @@ describe('finding one man on the list', () => {
        would let a case pass by telling them apart on something the search must not read. */
     currency: 'RSD',
     expected: 4800,
+    price: 4800,
     balance: 0,
   })
 

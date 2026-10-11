@@ -22,7 +22,7 @@ import { WHEN_ACTIVATING, WHEN_BOOKING_A_PAYMENT } from '../admin/activation'
 import { WHEN_DELETING_A_TEAM } from '../admin/teamWrites'
 import { WHEN_SENDING_A_PICTURE } from '../member/photoWrites'
 import { WHEN_DELETING_A_MEMBER } from '../admin/memberWrites'
-import { WHEN_ANSWERING_A_PAIR_INVITE } from '../member/pairWrites'
+import { WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR } from '../member/pairWrites'
 import { WHEN_ANSWERING_A_TEAM_INVITE } from '../member/teamWrites'
 import {
   WHEN_APPLYING_TO_A_TEAM,
@@ -207,16 +207,11 @@ const NOT_YET_ON_ANY_SCREEN: Record<string, string[]> = {
     'theAddressIsNotShaped',
     'theAddressIsTaken',
   ],
-  /* `PairWriteApi` names two more this way, both `POST /api/pairs`'s: `aQuestionAlreadyStands`
-     and `aPairAlreadyHolds`. Measured rather than assumed: `grep -rn "api/pairs" frontend/src`
-     finds every occurrence of the address in the repo, and none of them is a caller of this
-     route - the tests that touch it stand up a fake `GET` for the public list, and
-     `profile/InviteToPair.tsx`, the screen `PairWriteApi`'s own javadoc names as „the portal's
-     own half of it", writes its question into `useSession().invitePair` rather than asking the
-     server at all. The day that screen calls the route for real, these two move into a
-     dictionary and this entry shrinks to nothing, the same way `CompetitorWriteApi`'s six above
-     are waiting to. */
-  'PairWriteApi.java': ['aQuestionAlreadyStands', 'aPairAlreadyHolds'],
+  /* `PairWriteApi` stood here until 10.10.2026 with two names, `aQuestionAlreadyStands` and
+     `aPairAlreadyHolds`, both `POST /api/pairs`'s, which no screen sent: „Pozovi u trkački par"
+     wrote its question into the session. Since P2 it sends the route (`profile/InviteToPair.tsx`,
+     through `member/pairWrites.ts`), so both names have a dictionary on the line for that file
+     below and the entry went, as the case at the bottom of this file requires. */
   /* `TeamJoiningWriteApi` stood here until 10.10.2026 with two names, `aQuestionAlreadyStands`
      and `heHasAlreadyBeenAsked`, one for each of the class's two POST routes, which no screen
      sent: „Prijavi se u tim" and „Pozovi u tim" wrote into the session. Since T5 the first is
@@ -305,8 +300,14 @@ describe('the reasons the server can name', () => {
        `theRowIsFreeInOneCurrencyOnly` is PDL 20b: a row is free in both currencies or
        priced in both. It is the one reason on this list the FORM cannot turn back, which
        is why it is worth saying twice - nought is a perfectly good number in both amount
-       boxes, so no `min` or `max` on either of them can ask whether the two agree. */
-    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 9],
+       boxes, so no `min` or `max` on either of them can ask whether the two agree.
+
+       TEN CONSTANTS AND EIGHT REASONS since 10.10.2026. `theAmountIsNotWhole` is a price with a
+       fraction in it (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", for what is typed
+       confirmed on 10.10.2026), and the form turns it back before a request is sent (`integer` on
+       both amount boxes), so it is the third reason on this list that is answered although the
+       screen cannot reach it. */
+    ['PricingWriteApi.java', [WHEN_WRITING_A_PRICE], 10],
     /* THE SEVENTH, ADDED WITH B106: making a moderator, ticking his boxes and taking his
        moderatorship away are one class and one screen (`admin/AdminModerators.tsx`), so
        one dictionary covers all four reasons the class declares. */
@@ -382,8 +383,14 @@ describe('the reasons the server can name', () => {
        is indifferent to and `activation.ts` gives the reason for: a refusal means the same thing
        whichever door refused it, and a second Serbian sentence for it would be a second place to
        change. What this gate asks is that every name be answered, not that every name have a
-       sentence of its own. */
-    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 10],
+       sentence of its own.
+
+       ELEVEN CONSTANTS AND ELEVEN REASONS since 10.10.2026, which is still a file where the two
+       numbers agree. `theAmountIsNotWhole` is an amount with a fraction in it (PDL, ODLUKA
+       02.10.2026, „Iznosi se unose kao celi brojevi", and POTVRĐENO 03.10.2026 for the amount of a
+       payment as well). The field takes digits only (`AN_AMOUNT`), so the screen cannot send one,
+       and it is answered anyway for the reason every unreachable name on this list is. */
+    ['PaymentApi.java', [WHEN_BOOKING_A_PAYMENT], 11],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A RACING PAIR.
        Seven constants, and the count splits three ways: three are not refusals at all
        (`NOT_A_REASON` above), two are real refusals of the act that ASKS rather than answers
@@ -403,8 +410,15 @@ describe('the reasons the server can name', () => {
        `THE_PAIR_IS_BROKEN` and filed beside it in `NOT_A_REASON` above for the same reason - a
        message the class WRITES, never one it REFUSES with. This route is still `answer` and
        `settle`, exactly as before; the new constant belongs to `ask`, and neither of the two
-       doors this route actually opens gained or lost a reason. */
-    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE], 8],
+       doors this route actually opens gained or lost a reason.
+
+       A SECOND DICTIONARY ON THIS FILE SINCE 10.10.2026 (P2), when „Pozovi u trkački par" began
+       to send `POST /api/pairs`: the two names that waited in `NOT_YET_ON_ANY_SCREEN` have a
+       screen, and `WHEN_INVITING_INTO_A_PAIR` answers all four that route names. Two of them are
+       also answered on the line's first dictionary, as on `TeamJoiningWriteApi`'s line below,
+       because the two doors refuse with the same two words; the count stays at eight, since no
+       constant was added or taken away. */
+    ['PairWriteApi.java', [WHEN_ANSWERING_A_PAIR_INVITE, WHEN_INVITING_INTO_A_PAIR], 8],
     /* ADDED 28.09.2026 WITH THE SCREEN THAT ANSWERS A SERVED INVITATION INTO A TEAM, and it
        is this list's twin of the line above it in every way but one. Six constants splitting
        three ways: one is not a refusal at all (a subject line, `NOT_A_REASON`), two are real

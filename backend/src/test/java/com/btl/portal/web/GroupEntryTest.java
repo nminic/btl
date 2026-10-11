@@ -12,6 +12,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -655,6 +657,134 @@ class GroupEntryTest {
 						+ " the same answer as a box that is not there")
 				.containsExactly(Map.of("row", 1, "reason", "theFormIsNotComplete",
 						"missing", List.of("email")));
+	}
+
+	/**
+	 * AN ADDRESS LONGER THAN THE STANDARD ALLOWS IS THE SENTENCE FOR AN ADDRESS THAT IS NOT ONE,
+	 * NAMES THE ROW, AND THE WHOLE GROUP IS REFUSED.
+	 *
+	 * <p>The bound is 254 characters, RFC 5321's number for an address and not the index's.
+	 * {@code account_email_shape} has no upper bound, and past what {@code account_email_unique}
+	 * keeps an address that passed the shape would reach the {@code insert} and come back to the
+	 * administration as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the database where that
+	 * limit is). This route judges a row's address with {@code WhatAnAddressLooksLike.itDoes},
+	 * after the same fold {@code RegistrationApi} uses, and answers a misshapen one with
+	 * {@code theAddressIsNotShaped} naming the row, so that is what a long one gets and no sentence
+	 * is added.
+	 *
+	 * <p><b>The number is the one written in {@link WhatAnIndexHoldsTest}, not the constant under
+	 * test</b>: a case built from the number it tests follows it wherever it is moved, and a bound
+	 * put back to the index's two thousand would still pass.
+	 *
+	 * <p><b>One case for each of five texts</b>, told apart and explained in
+	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
+	 * accepted and leave the others unjudged.
+	 *
+	 * <p><b>It is the SECOND row of three that carries it</b>, and everything else in the group
+	 * is fine, so "it stopped before the bad row", "it stopped after it" and "it refused the
+	 * wrong row" are three different answers. Nothing is written for the rows around it and no
+	 * invitation goes out: an invitation cannot be taken back.
+	 */
+	@ParameterizedTest
+	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
+	void anAddressLongerThanTheStandardAllowsNamesTheRowAndRefusesTheWholeGroup(
+			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
+
+		List<Map<String, Object>> group = aGroupOfThree();
+
+		group.get(1).put("email",
+				kind.forAMailAddress(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS));
+
+		MockHttpServletResponse answered = WhatAnIndexHoldsTest.answered(
+				() -> enter(group, EVERYTHING));
+
+		assertThat(answered.getStatus())
+				.as("%s was taken as an address of electronic mail", kind)
+				.isEqualTo(400);
+		assertThat(rowsRefusedIn(answered))
+				.as("%s was refused with a sentence other than the one for an address that is not"
+						+ " one, or the wrong row was named", kind)
+				.containsExactly(Map.of("row", 1, "reason", "theAddressIsNotShaped",
+						"missing", List.of()));
+		assertThat(howManyAccounts())
+				.as("a row was written although the group was refused")
+				.isEqualTo(6);
+		assertThat(howManyMembers()).isEqualTo(2);
+		assertThat(SMTP.getReceivedMessages())
+				.as("a letter went out for a group that was refused, and an invitation cannot be"
+						+ " taken back")
+				.isEmpty();
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE STANDARD ALLOWS IS ENTERED WHOLE.
+	 *
+	 * <p>This is the other half of the bound, and the one a bound set too low fails: the address
+	 * is exactly 254 characters, the number written in {@link WhatAnIndexHoldsTest} from the
+	 * standard, and it is noise, so that "stored whole" is a fact about this text and not about one
+	 * that compresses. A bound moved either way fails it or the case above, and a bound raised past
+	 * what the index keeps fails the floor in {@link WhatAnIndexHoldsTest} as well.
+	 *
+	 * <p>Nothing is asserted about the invitation to that address. A relay is entitled to refuse
+	 * an address of the longest length, and what the portal does when a relay does not take a
+	 * message is {@code CompetitorWriteApi#send}'s decision, not this bound's.
+	 */
+	@Test
+	void theLongestAddressTheStandardAllowsIsEnteredWhole() throws Exception {
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+		List<Map<String, Object>> group = aGroupOfThree();
+
+		assertThat(longest).hasSize(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+
+		group.get(1).put("email", longest);
+
+		MockHttpServletResponse answered = WhatAnIndexHoldsTest.answered(
+				() -> enter(group, EVERYTHING));
+
+		assertThat(answered.getStatus())
+				.as("the longest address the route takes was refused: %s",
+						answered.getContentAsString())
+				.isEqualTo(201);
+		assertThat(accountNamed(longest))
+				.as("no account carries the address the second row was entered under")
+				.isPresent();
+		assertThat(memberBehind(longest).get("first_name"))
+				.as("the account was written without the member it belongs to")
+				.isEqualTo("Druga");
+		assertThat(howManyAccounts()).isEqualTo(9);
+	}
+
+	/**
+	 * AND IT IS MEASURED AFTER THE SPACES ARE TAKEN OFF, which is what the index sees.
+	 *
+	 * <p>The address is typed with two spaces on each side, so what the route is asked is longer
+	 * than the bound and what it keeps is not. {@code asItIsStored} takes the spaces off before the
+	 * shape is judged, and it is the stripped address that goes into the index, so it is the
+	 * stripped address that is measured: a bound read off what was typed would refuse an address
+	 * the index would have taken, and this is the case that says so. It is a case of its own and
+	 * not a second request in the case above, so the two cannot hide each other.
+	 */
+	@Test
+	void anAddressAsLongAsTheBoundTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff()
+			throws Exception {
+
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+		List<Map<String, Object>> group = aGroupOfThree();
+
+		group.get(1).put("email", "  " + longest + "  ");
+
+		MockHttpServletResponse answered = WhatAnIndexHoldsTest.answered(
+				() -> enter(group, EVERYTHING));
+
+		assertThat(answered.getStatus())
+				.as("an address as long as the bound, typed with spaces around it, was refused: %s",
+						answered.getContentAsString())
+				.isEqualTo(201);
+		assertThat(accountNamed(longest))
+				.as("the account was kept with the spaces it was typed with, or cut")
+				.isPresent();
 	}
 
 	/** Every bad row is named, not only the first one the route met. */

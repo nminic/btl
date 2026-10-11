@@ -128,16 +128,38 @@ class PricingWriteApi {
 
 	static final String THE_FORM_IS_NOT_COMPLETE = "theFormIsNotComplete";
 
-	/** Negative, or with more para than the column keeps, or past what it can hold. */
+	/**
+	 * A price with a fraction in it: a price is typed as a whole number.
+	 *
+	 * <p>PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", recorded as the owner's own
+	 * words - „Iznosi se unose bez tačaka i zareza!" - and, for what is TYPED only, confirmed on
+	 * 10.10.2026 („celi brojevi važe za ono što se kuca, balans sme decimale"). The incident behind
+	 * it was a price: „3.500" in the price list was quietly becoming 3,5 dinars.
+	 *
+	 * <p><b>Its own word and not {@link #THE_AMOUNT_IS_NOT_KEPT_EXACTLY}</b>, because that name says
+	 * the column would not keep the number and this says the number is not whole, which are two
+	 * instructions: the first was „take a para off it" and is no longer a thing a price can need.
+	 */
+	static final String THE_AMOUNT_IS_NOT_WHOLE = "theAmountIsNotWhole";
+
+	/**
+	 * Negative, or past what the column can hold.
+	 *
+	 * <p><b>It used to carry a third half, „with more para than the column keeps", and that half is
+	 * answered by {@link #THE_AMOUNT_IS_NOT_WHOLE} now</b>: a fraction of any size is refused one
+	 * question earlier, so what is left to ask of {@code numeric(10,2)} here is the sign and the
+	 * ceiling. The method that asks it still asks the scale too, because the column's scale is a
+	 * fact about the column, and nothing can reach that clause through this route.
+	 */
 	static final String THE_AMOUNT_IS_NOT_KEPT_EXACTLY = "theAmountIsNotKeptExactly";
 
 	/**
 	 * Above 1.000 EUR or 200.000 RSD, which is PDL P12c said as a sentence.
 	 *
 	 * <p><b>Its own sentence and not {@link #THE_AMOUNT_IS_NOT_KEPT_EXACTLY}</b>, because
-	 * the two send an administrator to two different places: one says „that number does not
-	 * fit in this column, take a para off it" and this says „that is more than a membership
-	 * may cost". 1.500 EUR is a perfectly good {@code numeric(10,2)}.
+	 * the two send an administrator to two different places: one says „that number is negative or
+	 * does not fit in this column" and this says „that is more than a membership may cost".
+	 * 1.500 EUR is a perfectly good {@code numeric(10,2)}.
 	 */
 	static final String THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST = "theAmountIsMoreThanARowMayCost";
 
@@ -291,8 +313,9 @@ class PricingWriteApi {
 	 * The row as it now stands, read back out of the statement that wrote it.
 	 *
 	 * <p>Not the numbers that arrived: {@code returning} answers what {@code numeric(10,2)}
-	 * holds, so an amount that lost something on the way in says so in the answer rather than
-	 * in a member's invoice a month later.
+	 * holds, so 41 comes back as 41.00 and the answer is the row as it now stands and not an
+	 * echo of the request. (Before 10.10.2026 this paragraph also named an amount that lost
+	 * something on the way in; a price is a whole number now and nothing is lost.)
 	 *
 	 * <p><b>And the name for the same reason, which on the name is not hypothetical.</b> The
 	 * text is stripped before it is written, so „  Rano  " goes in as „Rano" and the answer
@@ -451,13 +474,38 @@ class PricingWriteApi {
 			return no(HttpStatus.BAD_REQUEST, THE_FEE_HAS_NO_DINAR_PRICE);
 		}
 
-		/* WHAT `price_row_eur_not_negative` WOULD SAY AS A 500, SAID AS A SENTENCE - and one
-		   thing besides, which no constraint can say at all. A price with more para than
-		   `numeric(10,2)` keeps is not refused by PostgreSQL, it is ROUNDED, so 41.125 would
-		   be stored as 41.13 and the portal would quietly have changed a price nobody typed.
-		   `RaceWriteApi` refuses a distance for that same reason and in those same words; the
-		   scale and the ceiling are the column's own and are rebuilt from the catalogue by
-		   `AnAmountMatchesTheSchemaTest`.
+		/* A PRICE IS TYPED AS A WHOLE NUMBER: PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi
+		   brojevi", recorded as the owner's own words - „Iznosi se unose bez tačaka i zareza!" - and,
+		   for what is typed, confirmed on 10.10.2026. `MembershipPrice.amountIsWhole` says why the
+		   VALUE is asked and not the writing, and why the field stays a `BigDecimal`.
+
+		   AFTER THE ABSENCE OF AN AMOUNT AND BEFORE THE COLUMN'S QUESTION, both chosen. After, for
+		   the reason this method gives about a null: `amountIsWhole` takes a number, so a form with
+		   no dinar price on it has to be turned away above or this becomes the same
+		   `NullPointerException`. Before, because a number that fails both questions, 41.125, is
+		   best told the first fact about it, which is the fraction: „take a para off it" would send
+		   the administrator to 41.12, a price the column keeps and this decision refuses.
+
+		   THAT DOES RESTATE AN OLD ANSWER, which the comment below says a change should not do
+		   without measuring: 41.125 and 4900.125 used to meet `THE_AMOUNT_IS_NOT_KEPT_EXACTLY` and
+		   meet this word now. It is the decision's doing and not a drift, and `PricingWriteApiTest`
+		   holds the new word on those very amounts.
+
+		   The dinar price is asked about only where there is one, which is the same six rows the
+		   sentence above is about and never the fee. */
+		if (!MembershipPrice.amountIsWhole(typed.eur())
+				|| (!theFee && !MembershipPrice.amountIsWhole(typed.rsd()))) {
+			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_NOT_WHOLE);
+		}
+
+		/* WHAT `price_row_eur_not_negative` WOULD SAY AS A 500, SAID AS A SENTENCE, and the column's
+		   ceiling, which PostgreSQL answers with `numeric field overflow`. The third thing the
+		   question asks - more para than `numeric(10,2)` keeps, which PostgreSQL does not refuse but
+		   ROUNDS, so 41.125 would be stored as 41.13 and the portal would quietly have changed a
+		   price nobody typed - cannot get this far any more: the question above has refused every
+		   fraction, and a whole number has no para to round. The clause stays in the method, because
+		   the column's scale is the column's fact (`AnAmountMatchesTheSchemaTest` rebuilds it from the
+		   catalogue) and `RaceWriteApi` asks the same of a distance for the same reason.
 
 		   The dinar price is asked about only where there is one, which is the same six rows
 		   the sentence above is about and never the fee. */
@@ -481,10 +529,11 @@ class PricingWriteApi {
 
 		   AFTER the question above and not before it, which is chosen. An amount is asked
 		   whether the column KEEPS it before it is asked whether it is too much, so a
-		   negative price and 41.125 keep the sentence they already had and 100.000.000 -
-		   which fails both - keeps it too. The alternative would have moved an existing
-		   answer while adding a new one, and a change that quietly restates old cases is a
-		   change nobody measured. */
+		   negative price keeps the sentence it already had and 100.000.000 - which fails both -
+		   keeps it too. The alternative would have moved an existing answer while adding a new
+		   one, and a change that quietly restates old cases is a change nobody measured. (41.125
+		   had that sentence too and has the whole-number one now, which is the decision's doing
+		   and is held in `PricingWriteApiTest`.) */
 		if (!MembershipPrice.euroIsWithinWhatARowMayCost(typed.eur())
 				|| (!theFee && !MembershipPrice.dinarsAreWithinWhatARowMayCost(typed.rsd()))) {
 			return no(HttpStatus.BAD_REQUEST, THE_AMOUNT_IS_MORE_THAN_A_ROW_MAY_COST);

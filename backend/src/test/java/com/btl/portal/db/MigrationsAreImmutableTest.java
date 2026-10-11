@@ -365,7 +365,26 @@ class MigrationsAreImmutableTest extends DatabaseTest {
 			   line breaks and a BOM left out), which reproduced V54 and V55 to the digit before it was
 			   trusted here, and this list is what confirms it on the gate. */
 			new Applied("56", "V56__a_membership_on_a_balance_carries_its_trail_whole_or_not_at_all.sql",
-					559365428));
+					559365428),
+
+			/* V57. The written pages follow what the owner decided on 10.10.2026: thirty-nine edits of the
+			   three legal documents, in Serbian and in English, each of which stops the migration unless its
+			   old text stands exactly once where it is written. No schema, no row; the file's own header says
+			   whose words each edit carries and what was left out on purpose. The last two edits (the count
+			   above the awards list, "Tri pravila" and "Three rules") were added to the file after the pull
+			   request was opened, on the owner's answer of the same day. V57 had not merged, so no database
+			   had run the file with thirty-seven edits, and the number below is the only one pinned for it.
+
+			   57 because it is the next free number, and that was MEASURED rather than taken: all 1402 refs,
+			   local and remote, every worktree and the eight open pull requests were searched on 10.10.2026
+			   and none held a migration at V57 or above, and origin/main stands at V56.
+
+			   Pinned LAST, when the file was final. The number is the one Flyway computes over the file,
+			   worked out with the copy of its algorithm the rows above describe (CRC32 over the lines, line
+			   breaks and a BOM left out), which reproduced V46, V49 and V56 to the digit before it was trusted
+			   here, and this list is what confirms it on the gate. */
+			new Applied("57", "V57__the_written_pages_follow_the_decisions_of_the_tenth_of_october.sql",
+					722394376));
 
 	@Test
 	void noMigrationHasChangedSinceItWasWritten() {

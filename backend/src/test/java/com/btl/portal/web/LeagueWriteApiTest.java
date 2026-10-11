@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -357,6 +358,131 @@ class LeagueWriteApiTest {
 		assertThat(answer.getStatus()).isEqualTo(400);
 		assertThat(answer.getContentAsString()).contains(LeagueWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
 		assertThat(howManyLeagues()).isEqualTo(4);
+	}
+
+	/**
+	 * AN ADDRESS LONGER THAN THE INDEX CAN HOLD IS REFUSED WITH THE SENTENCE FOR A MISSHAPEN
+	 * ONE BY THE ROUTE THAT MAKES A LEAGUE, AND NOTHING IS WRITTEN.
+	 *
+	 * <p>{@code league_slug_shape} has no upper bound and {@code league_slug_unique} has one:
+	 * an address of three thousand letters walks through {@code AN_ADDRESS}, reaches the
+	 * {@code insert} and comes back as a 500 (see {@link WhatAnIndexHoldsTest}, which asks the
+	 * database where the limit is). The refusal is the one this route already gives for an
+	 * address that is not the right shape, so no sentence is added and no dictionary moves.
+	 *
+	 * <p><b>One case for each of four texts</b>, and the four are told apart and explained in
+	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
+	 * accepted and leave the others unjudged.
+	 */
+	@ParameterizedTest
+	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
+	void anAddressLongerThanTheIndexCanHoldIsRefusedByTheRouteThatMakesALeague(
+			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
+
+		String tooLong = kind.forASlug(LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE);
+
+		MockHttpServletResponse made = WhatAnIndexHoldsTest.answered(() -> add(
+				new LeagueWriteApi.Upsert("Predugacka liga", tooLong, RUNNING, "", "")));
+
+		assertThat(made.getStatus())
+				.as("%s was taken as an address by the route that makes a league", kind)
+				.isEqualTo(400);
+		assertThat(made.getContentAsString())
+				.as("%s was refused with a sentence other than the one for a misshapen address", kind)
+				.contains(LeagueWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+		assertThat(howManyLeagues())
+				.as("a league was written for an address the route had refused")
+				.isEqualTo(4);
+	}
+
+	/**
+	 * AND THE ROUTE THAT CHANGES ONE REFUSES THE SAME FOUR TEXTS THE SAME WAY, and leaves the
+	 * league as it was.
+	 *
+	 * <p>It is a case of its own and not the second half of the one above, because the two routes
+	 * share one place that judges a form ({@code whatIsWrongWith}) and the day somebody splits it
+	 * is the day one of them stops being judged. The change is asked of {@link #acted}, a league
+	 * that is neither the first nor the only one of its season, and its row is read afterwards:
+	 * a route that answered 400 after it had written would leave the league renamed.
+	 */
+	@ParameterizedTest
+	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
+	void anAddressLongerThanTheIndexCanHoldIsRefusedByTheRouteThatChangesOneAndTheLeagueStays(
+			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
+
+		String tooLong = kind.forASlug(LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE);
+
+		MockHttpServletResponse changed = WhatAnIndexHoldsTest.answered(() -> change(acted,
+				new LeagueWriteApi.Upsert("Preimenovana", tooLong, RUNNING, "", "")));
+
+		assertThat(changed.getStatus())
+				.as("%s was taken as an address by the route that changes a league", kind)
+				.isEqualTo(400);
+		assertThat(changed.getContentAsString())
+				.as("%s was refused with a sentence other than the one for a misshapen address", kind)
+				.contains(LeagueWriteApi.THE_ADDRESS_IS_NOT_SHAPED);
+		assertThat(db.sql("select slug, name from league where id = ?").param(acted)
+				.query((row, one) -> List.of(row.getString(1), row.getString(2))).single())
+				.as("the league acted on was changed by a request the route had refused")
+				.containsExactly("druga-2028", "Druga liga 2028");
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE ROUTE THAT MAKES A LEAGUE TAKES IS WRITTEN WHOLE.
+	 *
+	 * <p>This is the other half of the bound and the one a bound set too high fails: the
+	 * address is noise (it does not compress), exactly as long as the bound allows, so if the
+	 * number were above what the index keeps this request would reach the {@code insert} and
+	 * come back as a fault instead of as a league. {@link WhatAnIndexHoldsTest} is the file
+	 * that says where the index stops; this one says that the route's own largest address is
+	 * on the right side of it, through the whole route and not through a bare table.
+	 *
+	 * <p>The row is read back and compared with what was sent, whole, and not measured by its
+	 * length.
+	 */
+	@Test
+	void theLongestAddressTheRouteThatMakesALeagueTakesIsWrittenWhole() throws Exception {
+		String longest = WhatAnIndexHoldsTest.aSlugOf(LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE);
+
+		assertThat(longest).hasSize(LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE);
+
+		MockHttpServletResponse made = WhatAnIndexHoldsTest.answered(() -> add(
+				new LeagueWriteApi.Upsert("Najduza liga", longest, RUNNING, "", "")));
+
+		assertThat(made.getStatus())
+				.as("the longest address the route takes was refused: %s", made.getContentAsString())
+				.isEqualTo(201);
+		assertThat(db.sql("select count(*) from league where slug = ?").param(longest)
+				.query(Long.class).single())
+				.as("the league was not written at the address it was made at")
+				.isEqualTo(1L);
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE ROUTE THAT CHANGES ONE TAKES IS WRITTEN WHOLE TOO.
+	 *
+	 * <p>A case of its own, for the reason the two refusing cases above are two: the routes share
+	 * one place that judges a form, and the day it is split is the day one of them stops being
+	 * judged. The address is not the one the case above uses, so the two never meet as "an address
+	 * somebody already answers at".
+	 */
+	@Test
+	void theLongestAddressTheRouteThatChangesOneTakesIsWrittenWhole() throws Exception {
+		String longest = "b" + WhatAnIndexHoldsTest.aSlugOf(LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE - 1);
+
+		assertThat(longest).hasSize(LeagueWriteApi.MOST_AN_ADDRESS_CAN_BE);
+
+		MockHttpServletResponse changed = WhatAnIndexHoldsTest.answered(() -> change(acted,
+				new LeagueWriteApi.Upsert("Druga liga 2028", longest, RUNNING, "", "")));
+
+		assertThat(changed.getStatus())
+				.as("the longest address the route takes was refused on a change: %s",
+						changed.getContentAsString())
+				.isEqualTo(200);
+		assertThat(db.sql("select slug from league where id = ?").param(acted)
+				.query(String.class).single())
+				.as("the league was not moved to the address it was changed to")
+				.isEqualTo(longest);
 	}
 
 	/**

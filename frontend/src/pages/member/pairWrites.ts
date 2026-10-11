@@ -3,13 +3,16 @@ import { theInboxHasChanged } from '../../data/useResource'
 import { askTheServer, type Answer } from '../account/askTheServer'
 
 /**
- * ANSWERING A SERVED INVITATION INTO A RACING PAIR, WHICH IS THE ONLY THING ON THIS PORTAL
- * THAT MAKES A PAIR ON THE SERVER.
+ * THE THREE WRITES OF A RACING PAIR, ALL ON THE SERVER: ASKING, ANSWERING AND „RASKINI".
  *
- * <p>Owner, PDL 27b, 27.09.2026, defining the outcome he chose by the question he asked it
- * with: „Pod 1 ako to podrazumeva da clan moze klikom na dugme da prihvati ili odbije poziv?"
- * The answer is yes, and `PUT /api/pairs/{id}` is the route that already existed to receive
- * it - what was missing was any screen that called it.
+ * <p>PDL P13: „Trkački par se formira obostranom potvrdom: svako sme da pošalje zahtev
+ * svakome, a par nastaje kad druga strana potvrdi." Asking is `POST /api/pairs` since P2
+ * (10.10.2026); until that day „Pozovi u trkački par" wrote the question and its message into
+ * `session/SessionProvider.tsx`, so the member asked never saw it and the pair could not be made
+ * (QA review of 09.10.2026, row 5). Answering is `PUT /api/pairs/{id}`, owner, PDL 27b,
+ * 27.09.2026, defining the outcome he chose by the question he asked it with: „Pod 1 ako to
+ * podrazumeva da clan moze klikom na dugme da prihvati ili odbije poziv?" The answer is yes, and
+ * the route already existed to receive it - what was missing was any screen that called it.
  *
  * <p><b>A module of its own rather than a function inside the screen, which is the shape
  * `member/inboxRead.ts` and `member/photoWrites.ts` already have and the reason they give:</b>
@@ -24,6 +27,115 @@ import { askTheServer, type Answer } from '../account/askTheServer'
  * take different keys - text against a number (`data/types.ts`,
  * `pairInviteOnTheServer`) - so neither can be handed the other's by accident.
  */
+
+/**
+ * WHERE A QUESTION IS ASKED: the collection, with no key, because the question has none until the
+ * server hands it back (`PairWriteApi.invite`, `Asking(id, memberNumber)`).
+ */
+export const THE_QUESTION_GOES_TO = '/api/pairs'
+
+/**
+ * THE FOUR REFUSALS `POST /api/pairs` NAMES, each to a sentence.
+ *
+ * <p><b>Read off the route.</b> `PairWriteApi.invite` and `ask` name `THE_FORM_IS_NOT_COMPLETE`
+ * (400, a body with no member number), `THE_PAIR_WOULD_NOT_BE_MIXED`, `A_QUESTION_ALREADY_STANDS`
+ * and `A_PAIR_ALREADY_HOLDS` (all 409). Everything else that route turns away is an empty 404 -
+ * nobody of that number, a member whose fee has lapsed, himself, his own fee lapsed, an account
+ * naming no member - so it carries no reason, and the screen hands `ServerSaid` the table
+ * {@link WHAT_THE_NUMBER_SAYS_WHEN_INVITING_INTO_A_PAIR} for it.
+ *
+ * <p><b>`aQuestionAlreadyStands` is the sentence that stands where the button would have been,
+ * and that is the decision rather than a saving.</b> PDL, 07.09.2026, of the button: it is seen
+ * only when „među njima ne stoji već poslat poziv, ni u jednom smeru". The route refusing a
+ * second question and the list saying one stands are one fact told on two doors, so they get one
+ * sentence (`pair.asked`), the arrangement `pages/joiningThisTeam.ts` gives its
+ * `heHasAlreadyBeenAsked` for a team.
+ *
+ * <p><b>The other three are only ever refusals, and filed under one</b>, each of them a race the
+ * screen cannot close: one of the two pairing up between the drawing and the press, a gender put
+ * right in between, and a request that went round this screen. The words are the agent's: the
+ * owner's answer of 10.10.2026 that they go so and are changed on QA (question V3) was about T5's
+ * four, not these, so the description of P2 names them for him.
+ */
+export const WHEN_INVITING_INTO_A_PAIR = {
+  theFormIsNotComplete: 'pair.inviteRefused.theFormIsNotComplete',
+  thePairWouldNotBeMixed: 'pair.inviteRefused.thePairWouldNotBeMixed',
+  aQuestionAlreadyStands: 'pair.asked',
+  aPairAlreadyHolds: 'pair.inviteRefused.aPairAlreadyHolds',
+}
+
+/**
+ * WHAT THE EMPTY 404 OF `POST /api/pairs` MEANS, said in the route's own terms.
+ *
+ * <p>Five callers at once, deliberately (`PairWriteApi.ask`, „FOUR PEOPLE GET THIS ONE ANSWER",
+ * and an account naming no member besides): told apart, the numbers would list who has not paid.
+ * None of them is answered by pressing again, so the portal's general sentence for a 404 - „try
+ * again in a minute" - is the wrong advice for every one, which is the reason
+ * `profile/RacingPairLine.tsx` keeps a table of its own for „Raskini" (PENDING stavka 316). The
+ * words are the agent's, as {@link WHEN_INVITING_INTO_A_PAIR} says of the other three.
+ */
+export const WHAT_THE_NUMBER_SAYS_WHEN_INVITING_INTO_A_PAIR: Record<number, string> = {
+  404: 'pair.inviteRefused.notThere',
+}
+
+/**
+ * WHETHER AN ANSWER IS THE SERVER SAYING THAT WHAT THE SCREEN WAS DRAWN FROM HAS GONE STALE.
+ *
+ * <p>A refusal the route NAMES, or its empty 404, is the server answering about rows the screen
+ * read earlier in the visit - a question standing, a pair holding, a member no longer one - so the
+ * lists those rows came from are no longer the server's answer. A 5xx, a 403 or no answer at all
+ * says nothing about any row, and pressing again is what helps there.
+ *
+ * <p><b>Derived 10.10.2026 and not the owner's word</b>, from the medium finding of the review of
+ * PR 516 (PENDING, „Odbijanje koje dokazuje da je ekran zastareo ostavlja zastareo crtež") and its
+ * remedy, „na odbijanje bilo koje od dve rute baciti `me/applications` i povećati `revision`",
+ * itself derived from the decisions of 06.09.2026 about a team. For a pair the decision it keeps
+ * within one visit is PDL, 07.09.2026: the button is drawn only when no question stands between
+ * the two „ni u jednom smeru" and neither of them holds a pair for the season being formed.
+ */
+export function theServerSaysTheScreenIsStale(answer: Answer): boolean {
+  return answer.got === 'refused' || (answer.got === 'wrong' && answer.status === 404)
+}
+
+/**
+ * ONE MEMBER ASKS ANOTHER INTO A RACING PAIR, and says what came back.
+ *
+ * <p>The question and the message that carries it into the inbox of the member asked are both
+ * the route's to write (`PairWriteApi.ask`, „AND IT ARRIVES AS A QUESTION IN HIS INBOX"), so
+ * nothing here writes a message, and nothing here works out a season: it is worked out on the
+ * day of the ANSWER (PDL, 07.09.2026, „Rok od 31. decembra visi o potvrdi, ne o pozivu").
+ *
+ * <p><b>What it makes stale, and when.</b>
+ *
+ * <ul>
+ * <li><b>Agreed</b>: the asker's own list of what he waits on (`me/applications`), which now holds
+ * the question. Nothing else moves - no pair is made by asking, and his own inbox is not written
+ * to. The screen asks for the list again itself, because it is still mounted.
+ * <li><b>Refused in a way that says the screen was stale</b> ({@link theServerSaysTheScreenIsStale}):
+ * the same list, which the screen asks for again so that a question standing takes the button's
+ * place, and `pairs` as well, for the next screen that reads it - a pair holding is one of the
+ * things the route refuses over, and the mounted profile is not told: re-read under it, the pair
+ * would take the button away together with the sentence that says why, the shape
+ * `member/ServedPairInvite.tsx` refuses for its own 404 („the member would be left with buttons
+ * gone and no word about why"). That boundary is recorded in the description of P2.
+ * <li><b>Anything else</b> drops nothing: the server said nothing about any row.
+ * </ul>
+ *
+ * @param memberNumber the number of the member whose profile the press was on, and never the
+ *                     reader's own
+ */
+export async function theServerWasAsked(memberNumber: string): Promise<Answer> {
+  const answer = await askTheServer(THE_QUESTION_GOES_TO, { memberNumber })
+
+  if (answer.got === 'done') {
+    clearResourceCache('me/applications')
+  } else if (theServerSaysTheScreenIsStale(answer)) {
+    clearResourceCache('me/applications')
+    clearResourceCache('pairs')
+  }
+
+  return answer
+}
 
 /**
  * WHERE ONE ANSWER GOES.
@@ -52,28 +164,12 @@ export function theAnswerGoesTo(invite: number): string {
  * `THE_PAIR_IS_BROKEN`, `THE_LEAGUE` and `MAN` are a subject line, the league's name and the
  * letter a man's row carries.
  *
- * <p><b>THE FLOOR UNDER THIS LIST IS NOT WRITTEN AND THAT IS A BOUNDARY, NOT AN OVERSIGHT.</b>
- * `pages/account/refusals.test.ts` is the gate that reads a Java class's constants and fails
- * when a screen answers fewer than the route can name. Twelve files are on its list and
- * `PairWriteApi.java` is NOT one of them, measured with the gate's own regular expression
- * rather than by grepping for a name - `grep` over the name also finds the class's own javadoc
- * prose and answers too many.
- *
- * <p>Putting it on that list is a change to the gate and not to this screen, and it is larger
- * than it looks: the gate counts EVERY constant a file declares, so all seven would have to be
- * accounted for - three named in its `NOT_A_REASON` (a subject line, a name and a letter are
- * not refusals) and two in its `NOT_YET_ON_ANY_SCREEN` (`POST /api/pairs` is sent by no screen
- * at all; `profile/InviteToPair.tsx` writes the question into the session, measured
- * 28.09.2026 - `grep -rn "api/pairs" frontend/src` finds no caller outside comments). That is
- * a decision about the gate, so it is written down here for whoever takes it rather than taken
- * quietly in passing.
- *
- * <p><b>What stands in its place until then:</b> the two names above are read off
- * `PairWriteApi.answer` and `settle`, which are eleven lines apart, and
- * `member/pairInviteAnswered.test.tsx` draws each of the two sentences from a refusal the fake
- * server names. A third refusal added to that route would reach a reader as a code he cannot
- * read, which is exactly what the gate exists to prevent and exactly what is not prevented
- * here.
+ * <p><b>THE FLOOR UNDER THIS LIST IS `pages/account/refusals.test.ts`</b>, which reads every
+ * constant `PairWriteApi.java` declares and fails when the screens that meet the class answer
+ * fewer refusals than it names. The class stands on it with two dictionaries, this one and
+ * {@link WHEN_INVITING_INTO_A_PAIR} for the route that asks; until P2 (10.10.2026) the two
+ * refusals of that route waited there for a screen, because `profile/InviteToPair.tsx` wrote its
+ * question into the session and sent nothing.
  */
 export const WHEN_ANSWERING_A_PAIR_INVITE: Record<string, string> = {
   theFormIsNotComplete: 'pair.answerRefused.theFormIsNotComplete',
@@ -83,10 +179,11 @@ export const WHEN_ANSWERING_A_PAIR_INVITE: Record<string, string> = {
 /**
  * Answers one invitation, and says what came back.
  *
- * <p><b>THE CACHES ARE DROPPED ONLY WHERE THE SERVER AGREED</b>, which is the axis this
- * function cannot get wrong and is `member/inboxRead.ts`'s own rule in its own words: a
- * portal that dropped them on the asking would draw a pair that was never made. A refusal
- * leaves everything exactly as the server last said it was.
+ * <p><b>THE PAIRS AND THE INBOX ARE DROPPED ONLY WHERE THE SERVER AGREED</b>, which is the axis
+ * this function cannot get wrong and is `member/inboxRead.ts`'s own rule in its own words: a
+ * portal that dropped them on the asking would draw a pair that was never made. A refusal leaves
+ * both exactly as the server last said they were; the one list a refusal does drop is named
+ * below, with the reason.
  *
  * <p><b>AND WHICH CACHES DEPENDS ON THE ANSWER, because the two answers change different
  * things.</b> Both close the question, so the inbox is stale either way - the served line
@@ -104,6 +201,14 @@ export const WHEN_ANSWERING_A_PAIR_INVITE: Record<string, string> = {
  * own shape, not an invention here: `admin/Payments.tsx` drops two and `admin/AdminMembers.tsx`
  * drops eight.
  *
+ * <p><b>AND WHAT HE WAITS ON (`me/applications`) EITHER WAY, since P2 (10.10.2026)</b>, because
+ * his own profile draws the questions still standing off it - „Sopstveni profil nosi stanje:
+ * tekući trkački par sa linkom, pozive koji čekaju (i poslate i primljene)" (PDL, 07.09.2026) -
+ * and both answers close this one. <b>It is dropped on a refusal that says the screen was stale
+ * as well</b> ({@link theServerSaysTheScreenIsStale}): the empty 404 is a question that is no
+ * longer there, which that list would otherwise go on naming until the next visit. Nothing else
+ * is dropped on a refusal: a refusal changes no pair and writes no message.
+ *
  * @param invite  `pair_invite.id`, as the served line carries it
  * @param accepted „Prihvati" or „Odbij", and never absent. `PairWriteApi.Answered` boxes this
  *                 on purpose - „a body that names no answer at all is a form that was not
@@ -120,7 +225,10 @@ export async function theServerWasAnswered(invite: number, accepted: boolean): P
       clearResourceCache('pairs')
     }
 
+    clearResourceCache('me/applications')
     theInboxHasChanged()
+  } else if (theServerSaysTheScreenIsStale(answer)) {
+    clearResourceCache('me/applications')
   }
 
   return answer

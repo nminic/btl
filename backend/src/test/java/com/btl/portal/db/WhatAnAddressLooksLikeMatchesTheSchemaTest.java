@@ -3,7 +3,10 @@ package com.btl.portal.db;
 import com.btl.portal.domain.account.WhatAnAddressLooksLike;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -47,6 +50,27 @@ class WhatAnAddressLooksLikeMatchesTheSchemaTest extends DatabaseTest {
 	 */
 	private static final String[] INVISIBLE =
 			{"\u00a0", "\u2007", "\u202f", "\u200b", "\ufeff", "\u00ad"};
+
+	/**
+	 * THE STANDARD'S LIMIT FOR AN ADDRESS OF ELECTRONIC MAIL, written here from RFC 5321 and read
+	 * from nothing in the portal.
+	 *
+	 * <p>Section 4.5.3.1.3 limits a path to 256 octets, punctuation included, and an address stands
+	 * in a path between two angle brackets, so the address is at most 254. It is not read from
+	 * {@code WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE}, because a case built from the number it
+	 * tests follows that number wherever it is moved. The route cases write the same number once
+	 * more, in {@code WhatAnIndexHoldsTest} in {@code com.btl.portal.web}, where this is not
+	 * visible.
+	 */
+	private static final int THE_STANDARDS_LIMIT = 254;
+
+	/**
+	 * A text of three thousand characters, which is what the fault was first met with and is past
+	 * what the index keeps (PostgreSQL 18.6, measured by {@code WhatAnIndexHoldsTest}), so that the
+	 * shape rule is asked about an address the INDEX would refuse as well as about the ones it
+	 * would keep.
+	 */
+	private static final int THREE_THOUSAND = 3000;
 
 	/** What the schema itself says an address looks like, in its own words. */
 	private String whatTheSchemaSays() {
@@ -147,6 +171,81 @@ class WhatAnAddressLooksLikeMatchesTheSchemaTest extends DatabaseTest {
 		assertThat(WhatAnAddressLooksLike.itDoes(null))
 				.as("a form that sent no address at all would have reached the INSERT")
 				.isFalse();
+	}
+
+	/**
+	 * THE BOUND THE CODE CARRIES IS THE STANDARD'S 254 AND NOT ANYTHING ELSE.
+	 *
+	 * <p>It is the plainest case of the lot and it is here on purpose: the number is a fact of RFC
+	 * 5321 and not of the schema, so no database can be asked for it, and what holds it is a literal
+	 * written from the standard. Every other case about the length reads the constant, and a
+	 * constant edited to two thousand (the number a text that goes into an index is bounded at in
+	 * the other two places that take one) moves them with it; this one does not move.
+	 */
+	@Test
+	void theBoundTheCodeCarriesIsTheStandardsAndNothingElse() {
+		assertThat(WhatAnAddressLooksLike.MOST_AN_ADDRESS_CAN_BE)
+				.as("the bound is not the 254 that RFC 5321 gives for an address, so it comes from"
+						+ " somewhere else, and nothing in the schema says where")
+				.isEqualTo(THE_STANDARDS_LIMIT);
+	}
+
+	/**
+	 * THE LENGTH IS THE ONE THING THE TWO COPIES DO NOT SHARE, and this is the side of it where
+	 * they still agree: the longest address the code takes is one the shape rule takes too.
+	 *
+	 * <p>Whether that address is also one the INDEX keeps is a different question with a
+	 * different answer, and it is asked of the database by {@code WhatAnIndexHoldsTest} in
+	 * {@code com.btl.portal.web}, for the reason that file gives. What is held here is only that
+	 * the bound did not cut into the shape: an address exactly as long as the standard allows, made
+	 * of nothing the shape refuses, is still an address.
+	 */
+	@Test
+	void theLongestAddressTheCodeTakesIsOneTheShapeRuleTakesToo() {
+		String longest = "a@" + "b".repeat(THE_STANDARDS_LIMIT - 2);
+
+		assertThat(longest).hasSize(THE_STANDARDS_LIMIT);
+
+		bothAgreeThatItIs(longest, true);
+	}
+
+	/**
+	 * AND PAST THE BOUND THE CODE REFUSES WHAT THE SHAPE RULE ALONE WOULD TAKE, which is the whole
+	 * reason the bound is in the code and not left to the schema.
+	 *
+	 * <p>{@code account_email_shape} says what an address is made of and nothing about how long it
+	 * is, so it takes an address of any length. Two things stand over a long one and neither is in
+	 * the shape: the standard's 254, which is the bound the code carries, and
+	 * {@code account_email_unique}, which refuses past a couple of thousand characters with an
+	 * error that on PostgreSQL aborts the transaction, the 500 the bound is far enough below to
+	 * close as well. The values are one character past the bound, twice the bound, and three
+	 * thousand (past the index, where the shape rule still says yes), so the rule is not merely
+	 * "equal or less", and each is a case of its own so that the first one wrongly accepted cannot
+	 * hide the others.
+	 *
+	 * <p><b>If the day comes that the shape rule carries a length of its own</b>, this case fails
+	 * and says so, and the right reading is not that the case is wrong: the bound then has a second
+	 * home in the schema, and the two are to be compared the way the shape is, by asking the
+	 * database.
+	 */
+	@ParameterizedTest
+	@MethodSource("lengthsPastTheBound")
+	void theShapeRuleAloneTakesAnAddressOfAnyLengthWhichIsWhyTheCodeCarriesTheBound(int length) {
+		String tooLong = "a@" + "b".repeat(length - 2);
+
+		assertThat(WhatAnAddressLooksLike.itDoes(tooLong))
+				.as("the code took an address of %d characters, past the bound it carries", length)
+				.isFalse();
+		assertThat(theSchemaTakes(tooLong))
+				.as("the shape rule refused an address of %d characters by itself, so the length"
+						+ " has a second home in the schema and the bound is no longer the only"
+						+ " thing that keeps it from the INSERT", length)
+				.isTrue();
+	}
+
+	/** One character past the standard's limit, twice it, and three thousand. */
+	static IntStream lengthsPastTheBound() {
+		return IntStream.of(THE_STANDARDS_LIMIT + 1, 2 * THE_STANDARDS_LIMIT, THREE_THOUSAND);
 	}
 
 	/**

@@ -1143,9 +1143,11 @@ class MeWriteApi {
 	 * <p><b>AND ASKED FIRST IT STILL ANSWERS SOMETHING THE INDEX DOES NOT, measured on the
 	 * branch that added V53.</b> The index refuses the same second text, but only when the row
 	 * is written, which is after everything else this request carries. A request that also
-	 * carries something only the database would refuse - a name with a NUL character in it,
-	 * which {@code text} cannot hold - is answered 409 with this question in place and a server
-	 * fault without it: the update meets the fault before the insert meets the index.
+	 * carries something only the database would refuse - a first name that a trigger refuses,
+	 * which is how the case below makes it; a name with a NUL character used to be that, and a
+	 * zero is now turned away where the body is read - is answered 409 with this question in
+	 * place and a server fault without it: the update meets the fault before the insert meets
+	 * the index.
 	 * {@code MeWriteApiTest.aTextThatWaitsIsToldBeforeAFieldOnlyTheDatabaseWouldRefuse} holds
 	 * that difference, and it is the reason this question was not folded into the index.
 	 *

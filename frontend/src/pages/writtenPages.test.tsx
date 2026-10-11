@@ -1835,8 +1835,10 @@ describe('the rulebook', () => {
   it('knows a member freed of the fee, and says the fee from abroad is not membership', () => {
     expect(rulebook).toMatch(/oslobodi plaćanja članarine/)
     /* Membership is measured by activation, and the deadline for the right to
-       be ranked is measured by the day of payment. Two questions, and they read
-       as a contradiction unless each says which one it answers. */
+       be ranked is measured by the day the league booked the payment (owner,
+       10.10.2026; the sentence said „po danu uplate, a ne po danu kada je liga
+       uplatu evidentirala" until then). Two questions, and they read as a
+       contradiction unless each says which one it answers. */
     /* The clause that used to close this sentence, spelling out that a member
        freed of the fee never has a payment and is a full member all the same,
        was struck by the owner on 21.08.2026. The sentence before it already says
@@ -1844,7 +1846,8 @@ describe('the rulebook', () => {
        two questions stay apart, so the next sentence is read along with it. */
     expect(rulebook).toMatch(/meri se aktiviranim statusom na portalu. Do kada se plaća/)
     expect(rulebook).not.toMatch(/nikad nema uplatu/)
-    expect(rulebook).toMatch(/Rok se meri po danu uplate, a ne po danu kada je liga uplatu/)
+    expect(rulebook).toMatch(/Rok se meri po danu kada je liga uplatu proknjižila\./)
+    expect(rulebook).not.toMatch(/Rok se meri po danu uplate/)
     expect(rulebook).toMatch(new RegExp(`taksa za obradu plaćanja od ${PROCESSING_FEE_EUR} EUR`))
     expect(rulebook).toMatch(/nije deo članarine/)
   })
@@ -2554,12 +2557,14 @@ describe('what the written pages say the fee buys', () => {
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
       /primljen u članstvo Udruženja i kome je aktiviran takmičarski status/,
     )
-    /* And activation is what carries it, since one member in the league has
-       never paid anything: one freed of the fee. Written as three conditions with
-       the fee among them, the definition gave rights in one article and took
-       them back in another (owner, 03.08.2026). */
+    /* And activation is what carries it, since a member in the league may never
+       have paid anything: one freed of the fee, or one whose virtual balance
+       covered it. Written as three conditions with the fee among them, the
+       definition gave rights in one article and took them back in another
+       (owner, 03.08.2026). The third way, the balance, is named in the same
+       sentence since 10.10.2026, in the words he approved. */
     expect(sectionOf('pravilnik', /Član lige je/)).toMatch(
-      /aktivira po evidentiranoj uplati članarine ili po odluci Upravnog odbora kojom je član oslobođen/,
+      /aktivira po evidentiranoj uplati članarine, po odluci Upravnog odbora kojom je član oslobođen plaćanja članarine, ili iz virtuelnog balansa člana\./,
     )
   })
 
@@ -2589,6 +2594,11 @@ describe('what the written pages say the fee buys', () => {
     )
     expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
       /oslobodio plaćanja članarine prolazi bez koraka 4; članski broj i sva prava dobija/,
+    )
+    /* And so does one whose virtual balance covers the whole fee, since the third
+       way a status is activated is the balance (owner, 10.10.2026). */
+    expect(sectionOf('uslovi-koriscenja', /Prijava za članstvo/)).toMatch(
+      /Član čiji virtuelni balans pokriva celu članarinu prolazi bez koraka 4\./,
     )
   })
 
@@ -2787,7 +2797,7 @@ describe('what the written pages say the fee buys', () => {
          are different: is it in the right shape, and is there one of it. */
       expect(last, `${slug} does not sign off the way the other two do`).toMatch(
         new RegExp(
-          ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 28.09.2026.']
+          ['', '---', '', 'Sportsko udruženje BTL', 'Poslednja izmena: 10.10.2026.']
             .join(NEWLINE)
             .replaceAll('.', String.fromCharCode(92) + '.') + String.fromCharCode(36),
         ),

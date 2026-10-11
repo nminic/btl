@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { clearResourceCache, loadResource, RESOURCE_NAMES } from './client'
 import { myOwnRecordFromMe, whoIAm } from '../test/theAnswer'
 import { countriesByName, plainly, type Place } from './places'
+import { componentsOf } from '../test/javaRecords'
 import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 
 /* Two rules that say something the code cannot say for itself, and that have
@@ -12,7 +13,7 @@ import { bare, sources, WHOLE_PORTAL } from '../test/sources'
 const SRC = join(process.cwd(), 'src')
 
 describe('the list of resources', () => {
-  it('is the eighteen names the backend has to answer for', () => {
+  it('is the nineteen names the backend has to answer for', () => {
     /* ADL A7 calls this a contract: whoever adds a twelfth resource adds it to
        the contract on the same day. Nothing was holding it, so the list could
        have grown or shrunk in silence, and the sentence in the log that says it
@@ -78,6 +79,12 @@ describe('the list of resources', () => {
          `theWaitingNowBelongsTo`); `competitors` and `teams` depend on the caller as well and
          are dropped by the session (`session/theCachesFollowTheReader.ts`). */
       'me/applications',
+      /* Nineteen since 10.10.2026, with „Moji rezultati" read off the server (R2 of the results
+         flows): the asker's own runs that nobody has counted, declared at
+         `/api/me/result-submissions` (`MyResultSubmissionsApi`). The FIRST name here with a
+         hyphen in it, which `test/setup.ts` had to be told about, and the THIRD a hook drops
+         when the caller changes (`theSubmissionsNowBelongTo`). */
+      'me/result-submissions',
       'moderators',
       'pages',
       'pairs',
@@ -256,11 +263,13 @@ function readRoutes(): Set<string> {
  * value has its own cases (`session/theServer.test.ts`, four states).
  */
 describe("the caller's own record", () => {
-  it('is the seven the backend declares, and not one name more or fewer', () => {
+  it('is the set the backend declares, and not one name more or fewer', () => {
     /* Both directions at once, because a set comparison is both: a name here the server
        has not got fails by name, and a name the server has that is missing here fails the
-       same way. */
-    expect(declaredBy('MyOwnRecord')).toEqual(Object.keys(myOwnRecordFromMe).sort())
+       same way. (It said „the seven" until 10.10.2026, when the record grew the twelve
+       names its owner's own page is drawn from; a number in a title is a sentence that
+       has to be changed with every field.) */
+    expect(componentsOf('MyOwnRecord')).toEqual(Object.keys(myOwnRecordFromMe).sort())
   })
 
   it('arrives inside the three names the answer itself has, and no more', () => {
@@ -270,7 +279,7 @@ describe("the caller's own record", () => {
        cases stayed green either way. The direction that matters is the harness answering
        MORE than the server, because that is how a field the server withholds went through
        a whole suite once already. */
-    expect(declaredBy('WhoIAm')).toEqual(Object.keys(whoIAm).sort())
+    expect(componentsOf('WhoIAm')).toEqual(Object.keys(whoIAm).sort())
   })
 
   it('is read off the backend, so the line above is looking at something', () => {
@@ -279,62 +288,18 @@ describe("the caller's own record", () => {
        annotations moved - collapses to a number under this one and says so, instead of
        passing over an empty set that would make the comparison above agree with a record
        nobody wrote. */
-    expect(declaredBy('MyOwnRecord').length).toBeGreaterThan(4)
-    expect(declaredBy('WhoIAm').length).toBeGreaterThan(2)
+    expect(componentsOf('MyOwnRecord').length).toBeGreaterThan(4)
+    expect(componentsOf('WhoIAm').length).toBeGreaterThan(2)
     /* And a name nothing declares comes back empty rather than agreeing with whatever is
        asked of it, which is what keeps the two comparisons above from passing over a
        reader that has quietly stopped finding anything. */
-    expect(declaredBy('NoSuchRecord')).toEqual([])
+    expect(componentsOf('NoSuchRecord')).toEqual([])
   })
 })
 
-/**
- * The component names of a record `MeApi` declares, off the backend's own source.
- *
- * Read between the opening bracket and the one that closes it, counted rather than
- * looked for, because the components carry annotations with brackets of their own
- * (`@JsonInclude(JsonInclude.Include.NON_NULL)`). Those are taken off before the list is
- * split, so what is left of each component is „type name" and the name is the last word
- * of it.
- *
- * One reader for both records rather than one apiece: they are the same question asked
- * one storey apart, and two copies of it would be free to stop agreeing.
- */
-function declaredBy(record: string): string[] {
-  const source = readFileSync(
-    join(process.cwd(), '..', 'backend', 'src', 'main', 'java', 'com', 'btl', 'portal', 'web', 'MeApi.java'),
-    'utf-8',
-  )
-  const opens = source.indexOf(`record ${record}(`)
-
-  if (opens === -1) {
-    return []
-  }
-
-  let depth = 0
-  let closes = opens
-
-  for (let at = opens + `record ${record}`.length; at < source.length; at += 1) {
-    if (source[at] === '(') {
-      depth += 1
-    } else if (source[at] === ')') {
-      depth -= 1
-
-      if (depth === 0) {
-        closes = at
-        break
-      }
-    }
-  }
-
-  return source
-    .slice(opens + `record ${record}(`.length, closes)
-    .replace(/@\w+\([^)]*\)/g, ' ')
-    .split(',')
-    .map((one) => one.trim().split(/\s+/).slice(-1)[0] ?? '')
-    .filter((one) => one !== '')
-    .sort()
-}
+/* The reader of the record names stood here until 10.10.2026 and is `test/javaRecords.ts`
+   since: the sample of the answer a profile is drawn from (`test/hisPage.ts`) is held to the
+   very same names, and one reader for both is the arrangement this file argued for. */
 
 describe('the screens that draw a section of a written page', () => {
   /* Three of them: the rulebook, the written pages, and the card on the front

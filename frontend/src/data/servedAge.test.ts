@@ -290,8 +290,20 @@ describe('which fields the portal serves', () => {
        DAY (`2027-03-06`, never a bare year), a word, kilometres, metres and seconds. The one
        that could ever land in the band below is the time - a run of thirty two to thirty four
        minutes is 1900 to 2040 seconds - and the day a served run carries one, the case after
-       this one asks for that path to be named rather than letting it through. */
-    expect(Object.keys(served)).toHaveLength(17)
+       this one asks for that path to be named rather than letting it through.
+
+       **Eighteen files since R2 of the results flows (10.10.2026): `me/result-submissions.json`,
+       one level down for the reason `me/applications.json` is, and the asker's own runs that
+       nobody has counted.** Sixteen more paths, none of them nested, and they ARE about a
+       person, which is exactly why the route answers them to that person alone: what he ran,
+       where, how far and in what time, the proof he gave and why a moderator sent it back. What
+       is NOT among them is the point of the route's own note - who decided and when, and the day
+       it was sent. Added to the snapshot by hand, as this file requires. None of the sixteen can
+       land in the band below on the served file: the days leave as DAYS, the keys are a
+       sequence's, and the four times it holds are all past 2040 seconds. On the server the time
+       can be anything a person runs, which is the same open question the line above names for
+       the queue's run, and the case after this one is what would name the path. */
+    expect(Object.keys(served)).toHaveLength(18)
     expect(Object.values(served).flat().length).toBeGreaterThan(100)
     expect(Object.values(served).flat().filter((one) => one.includes('.')).length).toBeGreaterThan(
       10,

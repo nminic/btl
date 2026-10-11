@@ -93,11 +93,15 @@ export function formatNumber(value: number, locale: string, fractionDigits = 0):
 /**
  * An amount of money as it stands, whole or not.
  *
- * `formatNumber` rounds to whole numbers unless told otherwise, and the price
- * list takes any number: an administrator who set 5,5 saw the price list say 5,5
- * and the membership screen promise „6 EUR", which is a different promise from
- * the one the terms point at. Two decimals where there are any, none where there
- * are not, so the common case stays „600 RSD" rather than „600,00 RSD".
+ * `formatNumber` rounds to whole numbers unless told otherwise, and an amount is
+ * not always whole: the price list took any number until 10.10.2026 (an administrator
+ * who set 5,5 saw the price list say 5,5 and the membership screen promise „6 EUR",
+ * which is a different promise from the one the terms point at), and since then what
+ * is TYPED is whole (PDL, ODLUKA 02.10.2026, „Iznosi se unose kao celi brojevi", for
+ * what is typed confirmed on 10.10.2026) but a balance is worked out, and converting
+ * at the rate of 120 gives it two decimals (650 RSD is 5,42 EUR). Two decimals where
+ * there are any, none where there are not, so the common case stays „600 RSD" rather
+ * than „600,00 RSD".
  *
  * Here rather than beside one of the screens that needs it, because both of them
  * do: the price list writes the amounts an administrator sets and the membership

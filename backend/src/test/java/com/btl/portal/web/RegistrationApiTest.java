@@ -15,6 +15,8 @@ import jakarta.mail.internet.MimeMessage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -566,6 +568,127 @@ class RegistrationApiTest {
 							+ " again either", typedBack)
 					.isEqualTo(204);
 		}
+	}
+
+	/**
+	 * AN ADDRESS LONGER THAN THE STANDARD ALLOWS IS A FORM THAT IS NOT COMPLETE, AND NOTHING IS
+	 * WRITTEN OR SENT.
+	 *
+	 * <p>The bound is 254 characters, RFC 5321's number for an address and not the index's.
+	 * {@code account_email_shape} has no upper bound, and past what {@code account_email_unique}
+	 * keeps an address that passed the shape would reach the {@code insert} and come back as a 500
+	 * (see {@link WhatAnIndexHoldsTest}, which asks the database where that limit is). This route
+	 * judges an address with {@code WhatAnAddressLooksLike.itDoes} and answers a misshapen one with
+	 * {@link RegistrationApi#THE_FORM_IS_NOT_COMPLETE}, so that is the sentence a long one gets and
+	 * no sentence is added.
+	 *
+	 * <p><b>The number is the one written in {@link WhatAnIndexHoldsTest}, not the constant under
+	 * test</b>: a case built from the number it tests follows it wherever it is moved, and a bound
+	 * put back to the index's two thousand would still pass.
+	 *
+	 * <p><b>One case for each of five texts</b>, told apart and explained in
+	 * {@link WhatAnIndexHoldsTest.TooLong}: a loop would end at the first text that is wrongly
+	 * accepted and leave the others unjudged.
+	 *
+	 * <p><b>Three places are read afterwards</b>: no account, no member, and no message. The
+	 * message is the one this route sends after the commit, and a refusal that had gone on to
+	 * mail somebody would be an invitation to an address that cannot exist.
+	 */
+	@ParameterizedTest
+	@EnumSource(WhatAnIndexHoldsTest.TooLong.class)
+	void anAddressLongerThanTheStandardAllowsIsRefusedAndNothingIsWrittenOrSent(
+			WhatAnIndexHoldsTest.TooLong kind) throws Exception {
+
+		Map<String, Object> form = aGrownUp();
+
+		form.put("email", kind.forAMailAddress(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS));
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> register(form));
+
+		assertThat(answer.getStatus())
+				.as("%s was taken as an address of electronic mail", kind)
+				.isEqualTo(400);
+		assertThat(answer.getContentAsString())
+				.as("%s was refused with a sentence other than the one for a form that is not"
+						+ " complete", kind)
+				.isEqualTo("{\"reason\":\"" + RegistrationApi.THE_FORM_IS_NOT_COMPLETE + "\"}");
+
+		assertThat(howMany("account")).as("an account was written for an address the route refused")
+				.isZero();
+		assertThat(howMany("competitor"))
+				.as("a member was written for an address the route refused")
+				.isZero();
+		assertThat(SMTP.getReceivedMessages())
+				.as("a message went out for a registration that was refused")
+				.isEmpty();
+	}
+
+	/**
+	 * AND THE LONGEST ADDRESS THE STANDARD ALLOWS IS WRITTEN WHOLE.
+	 *
+	 * <p>This is the other half of the bound, and the one a bound set too low fails: the address
+	 * is exactly 254 characters, the number written in {@link WhatAnIndexHoldsTest} from the
+	 * standard, and it is noise, so that "stored whole" is a fact about this text and not about one
+	 * that compresses. A bound moved either way fails it or the case above, and a bound raised past
+	 * what the index keeps fails the floor in {@link WhatAnIndexHoldsTest} as well.
+	 *
+	 * <p>Nothing is asserted about the message. A relay is entitled to refuse an address of the
+	 * longest length, and what the portal does when a relay does not take a message is
+	 * {@code RegistrationApi#send}'s decision and {@code RegistrationOverRealHttpTest}'s subject,
+	 * not this bound's.
+	 */
+	@Test
+	void theLongestAddressTheStandardAllowsIsWrittenWhole() throws Exception {
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+		Map<String, Object> form = aGrownUp();
+
+		assertThat(longest).hasSize(WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+
+		form.put("email", longest);
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> register(form));
+
+		assertThat(answer.getStatus())
+				.as("the longest address the route takes was refused: %s", answer.getContentAsString())
+				.isEqualTo(204);
+		assertThat(db.sql("select email from account").query(String.class).single())
+				.as("the address was not kept whole")
+				.isEqualTo(longest);
+		assertThat(theCompetitorBehind(longest).get("first_name"))
+				.as("the account was written without the member it belongs to")
+				.isEqualTo("Petar");
+	}
+
+	/**
+	 * AND IT IS MEASURED AFTER THE SPACES ARE TAKEN OFF, which is what the index sees.
+	 *
+	 * <p>The address is typed with two spaces on each side, so what the route is asked is longer
+	 * than the bound and what it keeps is not. {@code asItIsStored} takes the spaces off before the
+	 * shape is judged, and it is the stripped address that goes into the index, so it is the
+	 * stripped address that is measured: a bound read off what was typed would refuse an address
+	 * the index would have taken, and this is the case that says so. It is a case of its own and
+	 * not a second request in the case above, so the two cannot hide each other.
+	 */
+	@Test
+	void anAddressAsLongAsTheBoundTypedWithSpacesAroundItIsMeasuredAfterTheyAreOff()
+			throws Exception {
+
+		String longest = WhatAnIndexHoldsTest.aMailAddressOf(
+				WhatAnIndexHoldsTest.THE_STANDARDS_LIMIT_FOR_AN_ADDRESS);
+		Map<String, Object> form = aGrownUp();
+
+		form.put("email", "  " + longest + "  ");
+
+		MockHttpServletResponse answer = WhatAnIndexHoldsTest.answered(() -> register(form));
+
+		assertThat(answer.getStatus())
+				.as("an address as long as the bound, typed with spaces around it, was refused: %s",
+						answer.getContentAsString())
+				.isEqualTo(204);
+		assertThat(db.sql("select email from account").query(String.class).single())
+				.as("the address was kept with the spaces it was typed with, or cut")
+				.isEqualTo(longest);
 	}
 
 	/**

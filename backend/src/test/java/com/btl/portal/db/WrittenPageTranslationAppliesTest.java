@@ -127,7 +127,13 @@ class WrittenPageTranslationAppliesTest extends DatabaseTest {
 	@ParameterizedTest
 	@ValueSource(strings = { "rec-predsednika", "pravilnik", "politika-privatnosti", "uslovi-koriscenja" })
 	void aTranslatedSectionKeepsTheSameNumberOfMarkdownTableRowsAsTheSerbianOriginal(String slug) {
-		reapply();
+		/* NOT reapply(), AND THAT IS ON PURPOSE (V57, 10.10.2026). This case sets the Serbian text as it stands
+		   today against the English beside it. Run over V43's own English it compared today's Serbian with the
+		   English of 28.09.2026, which agreed only while every migration after V43 kept the number of table
+		   rows: V57 adds one row to the privacy policy's table of what a member enters, in both languages, and
+		   V43's English cannot have it. Asked of the rows as they stand, the question is the one this case is
+		   named for, and a later migration that adds a row to one language only fails here. What V43 itself
+		   wrote is still held by every other case of this class, which re-runs it. */
 
 		record Bodies(String serbian, String english) {
 		}

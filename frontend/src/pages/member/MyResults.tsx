@@ -2,15 +2,19 @@ import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Resource } from '../../components/Resource'
 import { resultsOf } from '../../data/derive'
-import { RESULTS, useResults } from '../../data/useResource'
+import { pointsOf } from '../../data/scoring'
+import type { SentRun } from '../../data/types'
+import { combinePair, RESULTS, useMyResultSubmissions, useResults } from '../../data/useResource'
 import { formatDuration, formatNumber, formatPoints, formatShortDate } from '../../i18n/format'
 import { useI18n } from '../../i18n/useI18n'
 import { DeleteRecord } from '../admin/EntityEditor'
+import type { SubmissionStatus } from '../../session/context'
 import { useSession } from '../../session/useSession'
 import { useMemberScreen } from './memberScreen'
 import type { Answer } from '../account/askTheServer'
 import { ServerSaid } from '../account/ServerSaid'
-import { theResultWasTakenBack, WHEN_A_RESULT_IS_WRITTEN } from './resultWrites'
+import { aCorrectionWaitsOn } from './correctionWaits'
+import { saysTheResultIsGone, theResultWasTakenBack, WHEN_A_RESULT_IS_WRITTEN } from './resultWrites'
 import './Member.css'
 
 /* Everything a member has sent in, in one place: what is still waiting, what
@@ -18,10 +22,43 @@ import './Member.css'
  * in any table until it is approved (PDL P9), so this screen is the only place
  * where a pending one is visible at all. */
 export function MyResults() {
-  const { locale, t } = useI18n()
-  const { submissions, withdraw, remove } = useSession()
   const who = useMemberScreen()
-  const state = useResults()
+
+  if (who.memberNumber === null) {
+    return who.instead
+  }
+
+  /* A screen of its own below, because the list of what was sent is asked for BY WHOM
+     (`useMyResultSubmissions` takes the member), and a hook cannot wait for the check above. */
+  return <Mine me={who.memberNumber} />
+}
+
+/**
+ * THE WORD A RUN'S STATE IS DRAWN WITH, which is the portal's word for it and not the server's.
+ *
+ * <p>The route answers V9's `waiting` and `rejected`, and the screen has said „Čeka proveru" and
+ * „Odbijeno" under `status.pending` and `status.rejected` since the list was the browser's own.
+ * One place turns the one into the other, so the pill, the class it is styled by and the words a
+ * reader hears cannot each read the state their own way.
+ */
+function drawnAs(run: SentRun): SubmissionStatus {
+  return run.state === 'rejected' ? 'rejected' : 'pending'
+}
+
+function Mine({ me }: { me: string }) {
+  const { locale, t } = useI18n()
+  const { remove } = useSession()
+  /* HOW MANY TIMES EACH LIST HAS BEEN SAID TO BE OUT OF DATE WHILE THIS SCREEN STOOD, which is
+     what makes a list that is already drawn ask again (`HowToRead.revision`). Two numbers and not
+     one, because the two go stale apart: taking a counted result back leaves the counted list to
+     the overlay below and makes only the list of what was sent stale (a correction of that result
+     goes with it on the server), while a refusal that says the result is not there makes both
+     stale. One number would send the largest file the portal serves to be read again after every
+     deletion for nothing. */
+  const [countedRevision, setCountedRevision] = useState(0)
+  const [sentRevision, setSentRevision] = useState(0)
+  const counted = useResults(countedRevision)
+  const sent = useMyResultSubmissions(me, sentRevision)
   /* What the server said about taking a counted result back, where it said anything but
      „done". One at a time, because the reader presses one button and waits for it: a second
      press while the first is out is refused below. */
@@ -44,6 +81,14 @@ export function MyResults() {
    * <p><b>The overlay is written after the route answered, never before.</b> Refused, the
    * row stays exactly where it is and a sentence appears above the table - which is the
    * honest thing, because the points really are still counted.
+   *
+   * <p><b>Unless the refusal is the server saying the result is not there</b>
+   * (`saysTheResultIsGone`): then the row the reader pressed on is one the visit has not caught
+   * up with, taken back in another tab or by another hand, and both lists are read again rather
+   * than left drawing it. The class the review of T5 named on 10.10.2026: a list read once per
+   * visit is read again when a refusal says it is stale, not only after the screen's own
+   * success. Accepted for R2 by the coordinator's scope of the same day, with a 403, a 5xx and
+   * an answer that never came moving nothing.
    */
   function takeBack(result: number): Promise<void> | undefined {
     if (outstanding.current) {
@@ -64,6 +109,11 @@ export function MyResults() {
       if (answer.got !== 'done') {
         setRefusal(answer)
 
+        if (saysTheResultIsGone(answer)) {
+          setCountedRevision((were) => were + 1)
+          setSentRevision((were) => were + 1)
+        }
+
         return
       }
 
@@ -71,16 +121,12 @@ export function MyResults() {
          served list really has lost it - `resultWrites.ts` drops that cache - and this is
          what covers the moment between the answer and the re-read. */
       remove(RESULTS, String(result))
+      /* And the list of what was sent is read again, because a correction of this result that
+         was waiting or was sent back is gone with it on the server, and nothing here would
+         otherwise know. */
+      setSentRevision((were) => were + 1)
     })
   }
-
-  if (who.memberNumber === null) {
-    return who.instead
-  }
-
-  const { memberNumber } = who
-
-  const mine = submissions.filter((one) => one.memberNumber === memberNumber)
 
   return (
     <div className="member">
@@ -91,236 +137,273 @@ export function MyResults() {
         </Link>
       </div>
 
-      <section aria-labelledby="my-pending">
-        <h2 className="profile__section" id="my-pending">
-          {t('myResults.sentIn')} <span className="profile__count">{mine.length}</span>
-        </h2>
-
-        {mine.length === 0 ? (
-          <p className="profile__empty">{t('myResults.noneSent')}</p>
-        ) : (
-          <ul className="submissions">
-            {mine.map((one) => (
-              <li key={one.id} className={`submissions__item submissions__item--${one.status}`}>
-                <div className="submissions__head">
-                  <strong>{one.raceName}</strong>
-                  <span className={`tag tag--${one.status}`}>{t(`status.${one.status}`)}</span>
-                </div>
-                <p className="submissions__meta">
-                  {formatShortDate(one.date, locale)}
-                  {' · '}
-                  {formatNumber(one.distanceKm, locale, 2)} km
-                  {' · '}
-                  {formatDuration(one.seconds)}
-                  {' · '}
-                  {t('units.btlPoints', { value: formatPoints(one.points, locale) })}
-                </p>
-                {/* And the caveat beside it: the count is settled at verification, and
-                    until then it is what their own entry worked out (PDL, 30.08.2026,
-                    point 8). Only while it waits: once it is decided, the number is the
-                    decided one and there is nothing left to warn about.
-
-                    **This is the last screen that says it, since 28.09.2026.** The two
-                    forms that send a result said it too, each beside a number of its
-                    own; the owner took the number off those („Ne vidim razlog da se
-                    ispisuju bilo kome prilikom unosa parametara prijave rezultata"), and
-                    the caveat went with it there because nothing was left for it to
-                    qualify. Here a number still stands, so it stays. */}
-                {one.status === 'pending' && (
-                  <p className="submissions__note">{t('newResult.pointsNotFinal')}</p>
-                )}
-                {one.note !== '' && <p className="submissions__note">{one.note}</p>}
-
-                {/* What a member may do with a result that is still theirs to
-                    act on, which is one that has not been decided or has been
-                    sent back.
-
-                    The way back in was here first, on the refused one alone: a
-                    refusal is not the end of a result, the member is told why,
-                    corrects it and sends the same race again (owner,
-                    06.08.2026). Owner, 27.08.2026, on the rest of it: „član ga
-                    ili briše (ima pravo na to) ili menja i dostavlja dokaz za tu
-                    izmenu", and asked what may be changed: „sve osim trke", so
-                    somebody who picked the wrong race deletes this and enters
-                    another.
-
-                    The words differ because the two moments do: one that was
-                    sent back is sent again, one that is still waiting is simply
-                    changed. The road is the same and so is the form.
-
-                    The name of the race is in the accessible name of every
-                    control here, because a list of six waiting results is six
-                    buttons a screen reader cannot otherwise tell apart. */}
-                {one.status !== 'approved' && (
-                  <p className="submissions__again">
-                    <Link
-                      className="button button--secondary"
-                      aria-label={t(
-                        one.status === 'rejected' ? 'myResults.sendAgainNamed' : 'myResults.changeNamed',
-                        { name: one.raceName },
-                      )}
-                      to={`/${locale}/rezultat/novi?ponovo=${one.id}`}
-                    >
-                      {t(one.status === 'rejected' ? 'myResults.sendAgain' : 'myResults.change')}
-                    </Link>
-                    {/* Asked twice before it happens, which is the portal's one
-                        way of asking about something nothing brings back
-                        (`DeleteRecord`). Dressed as the button beside it rather
-                        than as a row of a table, which is the only difference. */}
-                    <DeleteRecord
-                      name={one.raceName}
-                      look="button button--secondary"
-                      onDelete={() => {
-                        withdraw(one.id)
-                      }}
-                    />
-                  </p>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <h2 className="profile__section">{t('myResults.counted')}</h2>
-
-      {/* Above the table rather than inside the cell the button sits in, so nothing about
-          the row's own geometry moves: a `td` that grows a paragraph is a row whose rule
-          breaks off short of the rest, which is what this screen already paid for once at
-          360px (see the note on `my-results__own` below). Both sentences name no race,
-          because only one deletion can be out at a time - the press is refused while one
-          is. */}
-      {going && <p role="status">{t('results.withdrawing')}</p>}
-
-      {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />}
-
-      <Resource state={state}>
-        {(results) => {
-          const counted = resultsOf(results, memberNumber)
-
-          if (counted.length === 0) {
-            return <p className="profile__empty">{t('profile.noResults')}</p>
-          }
+      {/* BOTH LISTS AS ONE READ, because one of them decides what the other may offer: „Izmeni"
+          on a counted result is drawn only where no correction of it is waiting (below), and
+          that is a fact about the list of what was sent. Drawn before that list had arrived,
+          the link would be offered on exactly the result whose correction the reader cannot
+          see yet; drawn after it failed, the same. So a failure of either says so here with the
+          one button that asks again for whichever failed (`combinePair`), and neither list is
+          drawn as though it were the whole of what there is. */}
+      <Resource state={combinePair(counted, sent)}>
+        {([results, mine]) => {
+          const own = resultsOf(results, me)
 
           return (
-            <div className="table-scroll">
-              <table className="table">
-                <caption className="visually-hidden">{t('myResults.counted')}</caption>
-                <thead>
-                  <tr>
-                    <th scope="col">{t('profile.columns.date')}</th>
-                    {/* „Trka" and not „Događaj": what stands in this column is the name of
-                      the race (owner, 23.08.2026), and a heading that says otherwise
-                      is read out with every cell under it. */}
-                  <th scope="col">{t('profile.columns.race')}</th>
-                    {/* Away on a phone, so that what a member came here to do
-                        fits on the screen they are holding. Chosen rather than
-                        dropped at random: the category is worked out from the
-                        distance and nothing else (`categoryOf`), it is named in
-                        full on the profile and in every ranking, and the race in
-                        the cell beside it already says which race this was. The
-                        two controls are the only thing on this screen that
-                        exists nowhere else, so they are the last thing to go.
-                        The moderator's queue makes the same trade with four of
-                        its columns (`admin/ReviewQueue.tsx`). */}
-                    <th scope="col" className="table__hide-phone">
-                      {t('rankings.columns.category')}
-                    </th>
-                    <th scope="col" className="table__hide-phone">
-                      {t('profile.columns.time')}
-                    </th>
-                    <th scope="col">{t('profile.columns.points')}</th>
-                    {/* Named, because two controls in a cell with no heading are
-                        two buttons a screen reader meets with nothing saying what
-                        column they are in. */}
-                    <th scope="col">{t('myResults.own')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {counted.map((result) => (
-                    <tr key={result.id}>
-                      <td>{formatShortDate(result.date, locale)}</td>
-                      <td>
-                        {/* The race and not the event it belonged to (owner,
-                            23.08.2026): „u listi rezultata treba da se prikazuju
-                            nazivi trka na kojima je čovek učestvovao, a ne
-                            događaja." */}
-                        {result.raceName}
-                      </td>
-                      <td className="table__hide-phone">{t(`category.${result.category}`)}</td>
-                      <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
-                      <td className="table__points">{formatPoints(result.points, locale)}</td>
-                      {/* What a member may still do with a result that has been
-                          counted. Owner, 27.08.2026: „član ga ili briše (ima
-                          pravo na to, iako je verifikovan) ili menja i dostavlja
-                          dokaz za tu izmenu (ponovo)."
+            <>
+              <section aria-labelledby="my-pending">
+                <h2 className="profile__section" id="my-pending">
+                  {t('myResults.sentIn')} <span className="profile__count">{mine.length}</span>
+                </h2>
 
-                          That overturned an older decision, which said a member
-                          may delete their own result only while it is waiting.
-                          Verification is a check of what is true, not a transfer
-                          of ownership: the result is the member's own record and
-                          the right to withdraw it does not end because a
-                          moderator agreed with it.
+                {mine.length === 0 ? (
+                  <p className="profile__empty">{t('myResults.noneSent')}</p>
+                ) : (
+                  /* IN THE ORDER THE SERVER ANSWERS, which is newest first by the moment each was
+                     sent, and the screen does not sort again. Derived on 10.10.2026 alongside the
+                     owner's answers, said to him in one sentence: „Najnovije prvo" in „Moji
+                     rezultati" is by the moment of sending, so a run sent back keeps the place it
+                     was sent in when its decision is fresh. */
+                  <ul className="submissions">
+                    {mine.map((one) => (
+                      <li key={one.id} className={`submissions__item submissions__item--${drawnAs(one)}`}>
+                        <div className="submissions__head">
+                          <strong>{one.raceName}</strong>
+                          <span className={`tag tag--${drawnAs(one)}`}>{t(`status.${drawnAs(one)}`)}</span>
+                        </div>
+                        <p className="submissions__meta">
+                          {formatShortDate(one.raceDate, locale)}
+                          {' · '}
+                          {formatNumber(one.distanceKm, locale, 2)} km
+                          {' · '}
+                          {formatDuration(one.seconds)}
+                          {' · '}
+                          {/* Worked out from the figures the server answers, which are what an
+                              approval would count today (`WhatARaceCarries.figuresOf`), and not
+                              from what the member typed: on a race to a limit those two were 48
+                              per cent apart (`resultWrites.ts`). Whether a number belongs here at
+                              all before a moderator decides is a question still before the owner
+                              (PENDING, 29.09.2026), so the list keeps it as it was. */}
+                          {t('units.btlPoints', {
+                            value: formatPoints(
+                              pointsOf(one.distanceKm, one.ascentM, one.descentM, one.seconds),
+                              locale,
+                            ),
+                          })}
+                        </p>
+                        {/* And the caveat beside it: the count is settled at verification, and
+                            until then it is what the figures as they stand work out to (PDL,
+                            30.08.2026, point 8). Only while it waits: a run sent back is not
+                            going to be counted as it is.
 
-                          Changing it is not an edit in place. It leaves the
-                          standings, goes back to the queue carrying new proof,
-                          and returns only when somebody has agreed with it again;
-                          anything else would let a member move their own points
-                          after they were counted. */}
-                      <td>
-                        {/* The controls in a box inside the cell, never on the
-                            cell itself: a `td` laid out as a flex container
-                            leaves the table and stops lining up with the row.
-                            That is what the moderator's queue says where it does
-                            the same thing (`admin/ReviewQueue.tsx`), and this was
-                            written with the class on the `td` while claiming to
-                            follow it. Measured by a review on 28.08.2026 at
-                            360px: 36 of 180 rows, every one whose race name wraps
-                            to more lines than the controls do, drew this cell
-                            5,05 pixels shorter than its row, so the rule under
-                            the row broke off short of the rest of it. */}
-                        <div className="my-results__own">
-                          {/* And only where no correction of this result is
-                              already waiting on somebody.
-                           *
-                              Since 28.08.2026 the result stays in the standing
-                              while a correction waits (owner), so the row goes on
-                              looking exactly as it did and this link stayed live.
-                              Measured by a review the same day: one counted result
-                              then took as many corrections as somebody cared to
-                              send, the queue grew a row for each, and one press of
-                              „Odobri sve" walked them newest first, so what ended
-                              up counted was the **oldest** of them. That is the
-                              same fault the portal already refuses for a waiting
-                              result: „two rows for one race, and the moderator
-                              reading the same morning twice" (owner, 06.08.2026).
-                           *
-                              The way on is not lost: the correction is in the list
-                              above, and it carries its own „Izmeni". */}
-                          {mine.every((one) => one.corrects?.id !== result.id) && (
+                            **This is the last screen that says it, since 28.09.2026.** The two
+                            forms that send a result said it too, each beside a number of its
+                            own; the owner took the number off those („Ne vidim razlog da se
+                            ispisuju bilo kome prilikom unosa parametara prijave rezultata"), and
+                            the caveat went with it there because nothing was left for it to
+                            qualify. Here a number still stands, so it stays. */}
+                        {one.state === 'waiting' && (
+                          <p className="submissions__note">{t('newResult.pointsNotFinal')}</p>
+                        )}
+                        {/* Why it was sent back, in the moderator's own words, and nothing while
+                            it waits: the route answers no reason for a run nobody has decided. */}
+                        {one.reason !== null && <p className="submissions__note">{one.reason}</p>}
+
+                        {/* WHAT A MEMBER MAY DO WITH A RUN THAT IS STILL HIS TO ACT ON, which since
+                            R2 of the results flows is one thing on one kind of run.
+
+                            Sent back, it is sent again: a refusal is not the end of a result, the
+                            member is told why, corrects it and sends the same race again (owner,
+                            06.08.2026). It goes through the routes that already exist, and it
+                            stands on the list as a new run beside the one that was sent back. The
+                            owner's choice of 10.10.2026 among the outcomes offered, in the
+                            record's wording: „sada ponovno slanje odbijene prijave preko postojećih
+                            ruta" and „posle ponovnog slanja na spisku stoje oba reda".
+
+                            Still waiting, it has no control at all, by the same choice: „„Izmeni" i
+                            „Obriši" na prijavi koja čeka se skrivaju do zasebnog posla". No route
+                            changes or withdraws a submission yet, and a button that wrote into the
+                            browser alone would have a moderator deciding about what the member
+                            thinks he withdrew.
+
+                            And a run sent back is not deleted from here either: derived on
+                            10.10.2026 and said to the owner in one sentence, because a refused row
+                            stays with its state and its reason (his choice of 06.09.2026) and a
+                            row in verification stays for good (ADL).
+
+                            **Except a correction sent back while a correction of the same result
+                            waits.** Sent again it would be a second correction of one result in
+                            front of a moderator, which no way in sends (`aCorrectionWaitsOn`), so
+                            the control is not drawn, and it comes back by itself the moment nothing
+                            of that result waits (PDL, 04.09.2026: „Član sme da traži ispravku
+                            koliko puta hoće, i posle odbijanja."). A run sent back that corrected
+                            nothing is a fresh run and is not touched by it.
+
+                            The name of the race is in the accessible name of the control, because
+                            a list of six runs sent back is six links a screen reader cannot
+                            otherwise tell apart. */}
+                        {one.state === 'rejected' && !aCorrectionWaitsOn(mine, one.amendsResultId) && (
+                          <p className="submissions__again">
                             <Link
                               className="button button--secondary"
-                              aria-label={t('myResults.changeNamed', { name: result.raceName })}
-                              to={`/${locale}/rezultat/novi?ispravka=${result.id}`}
+                              aria-label={t('myResults.sendAgainNamed', { name: one.raceName })}
+                              to={`/${locale}/rezultat/novi?ponovo=${String(one.id)}`}
                             >
-                              {t('myResults.change')}
+                              {t('myResults.sendAgain')}
                             </Link>
-                          )}
-                          <DeleteRecord
-                            name={result.raceName}
-                            look="button button--secondary"
-                            /* HANDED BACK, so the question can wait for the answer: the
-                               promise of the deletion, or nothing where another one is
-                               already out and this press is refused (`takeBack`). */
-                            onDelete={() => takeBack(result.id)}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <h2 className="profile__section">{t('myResults.counted')}</h2>
+
+              {/* Above the table rather than inside the cell the button sits in, so nothing about
+                  the row's own geometry moves: a `td` that grows a paragraph is a row whose rule
+                  breaks off short of the rest, which is what this screen already paid for once at
+                  360px (see the note on `my-results__own` below). Both sentences name no race,
+                  because only one deletion can be out at a time - the press is refused while one
+                  is. */}
+              {going && <p role="status">{t('results.withdrawing')}</p>}
+
+              {refusal !== null && <ServerSaid answer={refusal} refusals={WHEN_A_RESULT_IS_WRITTEN} />}
+
+              {own.length === 0 ? (
+                <p className="profile__empty">{t('profile.noResults')}</p>
+              ) : (
+                <div className="table-scroll">
+                  <table className="table">
+                    <caption className="visually-hidden">{t('myResults.counted')}</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">{t('profile.columns.date')}</th>
+                        {/* „Trka" and not „Događaj": what stands in this column is the name of
+                            the race (owner, 23.08.2026), and a heading that says otherwise
+                            is read out with every cell under it. */}
+                        <th scope="col">{t('profile.columns.race')}</th>
+                        {/* Away on a phone, so that what a member came here to do
+                            fits on the screen they are holding. Chosen rather than
+                            dropped at random: the category is worked out from the
+                            distance and nothing else (`categoryOf`), it is named in
+                            full on the profile and in every ranking, and the race in
+                            the cell beside it already says which race this was. The
+                            two controls are the only thing on this screen that
+                            exists nowhere else, so they are the last thing to go.
+                            The moderator's queue makes the same trade with four of
+                            its columns (`admin/ReviewQueue.tsx`). */}
+                        <th scope="col" className="table__hide-phone">
+                          {t('rankings.columns.category')}
+                        </th>
+                        <th scope="col" className="table__hide-phone">
+                          {t('profile.columns.time')}
+                        </th>
+                        <th scope="col">{t('profile.columns.points')}</th>
+                        {/* Named, because two controls in a cell with no heading are
+                            two buttons a screen reader meets with nothing saying what
+                            column they are in. */}
+                        <th scope="col">{t('myResults.own')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {own.map((result) => (
+                        <tr key={result.id}>
+                          <td>{formatShortDate(result.date, locale)}</td>
+                          <td>
+                            {/* The race and not the event it belonged to (owner,
+                                23.08.2026): „u listi rezultata treba da se prikazuju
+                                nazivi trka na kojima je čovek učestvovao, a ne
+                                događaja." */}
+                            {result.raceName}
+                          </td>
+                          <td className="table__hide-phone">{t(`category.${result.category}`)}</td>
+                          <td className="table__hide-phone">{formatDuration(result.seconds)}</td>
+                          <td className="table__points">{formatPoints(result.points, locale)}</td>
+                          {/* What a member may still do with a result that has been
+                              counted. Owner, 27.08.2026: „član ga ili briše (ima
+                              pravo na to, iako je verifikovan) ili menja i dostavlja
+                              dokaz za tu izmenu (ponovo)."
+
+                              That overturned an older decision, which said a member
+                              may delete their own result only while it is waiting.
+                              Verification is a check of what is true, not a transfer
+                              of ownership: the result is the member's own record and
+                              the right to withdraw it does not end because a
+                              moderator agreed with it.
+
+                              Changing it is not an edit in place. It goes back to the
+                              queue carrying new proof and stays in the standing until
+                              somebody has agreed with it again (owner, 28.08.2026);
+                              anything else would let a member move their own points
+                              after they were counted. */}
+                          <td>
+                            {/* The controls in a box inside the cell, never on the
+                                cell itself: a `td` laid out as a flex container
+                                leaves the table and stops lining up with the row.
+                                That is what the moderator's queue says where it does
+                                the same thing (`admin/ReviewQueue.tsx`), and this was
+                                written with the class on the `td` while claiming to
+                                follow it. Measured by a review on 28.08.2026 at
+                                360px: 36 of 180 rows, every one whose race name wraps
+                                to more lines than the controls do, drew this cell
+                                5,05 pixels shorter than its row, so the rule under
+                                the row broke off short of the rest of it. */}
+                            <div className="my-results__own">
+                              {/* And only where no correction of this result is WAITING on
+                                  somebody.
+                               *
+                                  The result stays in the standing while a correction waits
+                                  (owner, 28.08.2026), so the row goes on looking exactly as it
+                                  did. Measured by a review the same day: one counted result then
+                                  took as many corrections as somebody cared to send, the queue
+                                  grew a row for each, and one press of „Odobri sve" walked them
+                                  newest first, so what ended up counted was the **oldest** of
+                                  them. That is the fault the portal already refuses for a
+                                  waiting result: „two rows for one race, and the moderator
+                                  reading the same morning twice" (owner, 06.08.2026).
+                               *
+                                  **Waiting and not sent back**, the owner's decision of 11.10.2026
+                                  among the outcomes offered, in the record's wording: „Pred
+                                  moderatorom je najviše jedna ispravka po rezultatu." A correction a
+                                  moderator sent back is in nobody's queue, so it does not stand in
+                                  the way of this link. That does not make it harmless, because sent
+                                  again it is a correction of this very result, and the control on
+                                  its own row in the list above asks the same question of the same
+                                  function and is gone while one of this result waits
+                                  (`aCorrectionWaitsOn`). Measured by the review of PR 521 on
+                                  10.10.2026: with only this link asking, the row of a correction
+                                  sent back went on offering a second one beside the one that
+                                  waited, and the address behind it sent.
+                               *
+                                  The way on is not lost while one waits: the correction is in the
+                                  list above, and the moderator is the one deciding it. */}
+                              {!aCorrectionWaitsOn(mine, result.id) && (
+                                <Link
+                                  className="button button--secondary"
+                                  aria-label={t('myResults.changeNamed', { name: result.raceName })}
+                                  to={`/${locale}/rezultat/novi?ispravka=${String(result.id)}`}
+                                >
+                                  {t('myResults.change')}
+                                </Link>
+                              )}
+                              <DeleteRecord
+                                name={result.raceName}
+                                look="button button--secondary"
+                                /* HANDED BACK, so the question can wait for the answer: the
+                                   promise of the deletion, or nothing where another one is
+                                   already out and this press is refused (`takeBack`). */
+                                onDelete={() => takeBack(result.id)}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )
         }}
       </Resource>

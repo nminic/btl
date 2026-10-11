@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -182,6 +183,13 @@ class MeWriteApiTest {
 	 * against rather than compared with a number written down.
 	 */
 	private static final String NOTHING_IS_THERE = "/api/nema-ovoga";
+
+	/**
+	 * A first name the database refuses and the route does not, which is the fault only the
+	 * database finds (see {@link AFailureOnlyTheDatabaseCanCause}). Ordinary words, so nothing
+	 * about it is a reason for the route to turn it away on its own.
+	 */
+	private static final String A_NAME_ONLY_THE_DATABASE_REFUSES = "Ime koje baza odbija";
 
 	@Autowired
 	private MockMvc http;
@@ -840,25 +848,78 @@ class MeWriteApiTest {
 	 * itself, so a reader may ask what the route's own question is still for. It is for the order:
 	 * asked first, the conflict is the answer before the name, the town or the switch is written;
 	 * left to the database, it would come after them, and a request that carries a second fault
-	 * only the database finds would be answered by that fault instead. Measured on this branch: a
-	 * name carrying a NUL character, which {@code text} cannot hold, is answered 409 with the question
-	 * asked first and as a server fault without it.
+	 * only the database finds would be answered by that fault instead.
+	 *
+	 * <p><b>The fault only the database finds is a trigger this case makes</b>
+	 * ({@link AFailureOnlyTheDatabaseCanCause}): a row of {@code competitor} whose first name is
+	 * {@link #A_NAME_ONLY_THE_DATABASE_REFUSES} is refused by PostgreSQL and by nothing in the route.
+	 * Until 10.10.2026 it was a name carrying a NUL character, which {@code text} cannot hold, and
+	 * that road is closed on purpose: a zero is now refused where a body is read
+	 * ({@code NoTextHoldsAZero}), so the same request would be answered 400 and this case would
+	 * measure the door and not the order.
+	 *
+	 * <p><b>That the lever is live is the next case's, and not this one's.</b> This one is green
+	 * exactly when the trigger does NOT go off, so a trigger that was never made, or never matched
+	 * (a marker mistyped, a column renamed), would satisfy it as well as a question asked first.
+	 * {@link #theNameThisCaseSendsIsOneTheDatabaseRefusesWhenNoTextIsSentWithIt} sends the same name
+	 * from the same member with the text left out, and requires the trigger's own message in what
+	 * the route threw.
 	 *
 	 * <p>What this does NOT say: that such a name is refused properly. Sent with no text waiting it
-	 * is a server fault today, with or without this question, and that is its own fault.
+	 * is a server fault, with or without this question, and that is its own fault.
 	 */
 	@Test
 	void aTextThatWaitsIsToldBeforeAFieldOnlyTheDatabaseWouldRefuse() throws Exception {
-		MockHttpServletResponse answer = changeAs(WHOSE_TEXT_WAITS,
-				changing("bio", "  Drugi pokusaj sa imenom.  ", "firstName", "Vera\u0000"));
+		try (AFailureOnlyTheDatabaseCanCause theName = AFailureOnlyTheDatabaseCanCause.on(db,
+				"competitor", "first_name", A_NAME_ONLY_THE_DATABASE_REFUSES)) {
 
-		assertThat(answer.getStatus()).isEqualTo(409);
-		assertThat(reasonIn(answer)).isEqualTo(MeWriteApi.A_TEXT_ALREADY_WAITS);
+			MockHttpServletResponse[] answered = new MockHttpServletResponse[1];
+			Throwable thrown = catchThrowable(() -> answered[0] = changeAs(WHOSE_TEXT_WAITS,
+					changing("bio", "  Drugi pokusaj sa imenom.  ", "firstName",
+							A_NAME_ONLY_THE_DATABASE_REFUSES)));
 
-		assertThat(db.sql("select first_name from competitor where member_number = ?")
-				.param(WHOSE_TEXT_WAITS).query(String.class).single())
-				.isEqualTo("Vera");
-		assertThat(textsWaitingFor(WHOSE_TEXT_WAITS)).containsExactly(THE_TEXT_ALREADY_WAITING);
+			assertThat(theName.wentOffIn(thrown))
+					.as("the name reached the database before the question about the waiting text was"
+							+ " asked, and the database refused it, so the conflict is no longer the answer."
+							+ " What was thrown: %s", thrown)
+					.isFalse();
+			assertThat(thrown)
+					.as("the request failed, and not because of the trigger this case made")
+					.isNull();
+
+			assertThat(answered[0].getStatus()).isEqualTo(409);
+			assertThat(reasonIn(answered[0])).isEqualTo(MeWriteApi.A_TEXT_ALREADY_WAITS);
+
+			assertThat(db.sql("select first_name from competitor where member_number = ?")
+					.param(WHOSE_TEXT_WAITS).query(String.class).single())
+					.isEqualTo("Vera");
+			assertThat(textsWaitingFor(WHOSE_TEXT_WAITS)).containsExactly(THE_TEXT_ALREADY_WAITING);
+		}
+	}
+
+	/**
+	 * THE LEVER OF THE CASE ABOVE REALLY GOES OFF, which is the whole of this case.
+	 *
+	 * <p>The same member, the same name and the same trigger, with the text left out of the request:
+	 * with no text to be told about first, the route writes the name, PostgreSQL refuses it, and what
+	 * the route throws carries the trigger's own message. The case above asks for the trigger NOT to
+	 * go off, which a trigger that was never made would give it for nothing; this is the one that
+	 * fails on such a trigger.
+	 */
+	@Test
+	void theNameThisCaseSendsIsOneTheDatabaseRefusesWhenNoTextIsSentWithIt() {
+		try (AFailureOnlyTheDatabaseCanCause theName = AFailureOnlyTheDatabaseCanCause.on(db,
+				"competitor", "first_name", A_NAME_ONLY_THE_DATABASE_REFUSES)) {
+
+			Throwable thrown = catchThrowable(() -> changeAs(WHOSE_TEXT_WAITS,
+					changing("firstName", A_NAME_ONLY_THE_DATABASE_REFUSES)));
+
+			assertThat(theName.wentOffIn(thrown))
+					.as("a name only the database refuses was written without complaint, or the request"
+							+ " failed for a reason of its own, so the trigger of the case above is a lever"
+							+ " that does not move. What was thrown: %s", thrown)
+					.isTrue();
+		}
 	}
 
 	/** Something waiting in ANOTHER tab is not this member's text waiting. */

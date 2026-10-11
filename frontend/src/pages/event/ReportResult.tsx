@@ -14,7 +14,6 @@ import { raceKind } from '../../data/raceKind'
 import type { FormValues } from '../../forms/types'
 import { useI18n } from '../../i18n/useI18n'
 import { useSend, useSent } from '../sent'
-import { useSession } from '../../session/useSession'
 import { NotRunYet } from './NotRunYet'
 import { useMemberScreen } from '../member/memberScreen'
 import type { Answer } from '../account/askTheServer'
@@ -63,7 +62,6 @@ export function ReportResult() {
      all this does; the address is written by the row that leads here. */
   const [params] = useFilterParams()
   const today = useToday()
-  const { submit } = useSession()
   const who = useMemberScreen()
   const state = combinePair(useEvents(), useRaces())
   /* THAT there has been an entry, and nothing about it. Held by the address rather than
@@ -93,10 +91,6 @@ export function ReportResult() {
   if (who.memberNumber === null) {
     return who.instead
   }
-
-  const { memberNumber } = who
-
-  const mine = memberNumber
 
   if (done) {
     return (
@@ -194,19 +188,19 @@ export function ReportResult() {
            * screen wrote the run into the browser's own overlay and confirmed it on the
            * spot, so a member was told his result was in the queue when nothing had left
            * the machine. `POST /api/results` is what really puts it there, together with
-           * the row a moderator reads, the line in his inbox and the message PDL P22 makes
-           * mandatory.
+           * the row a moderator reads and the line in his inbox; the letter waits for the
+           * approval (since 09.10.2026, `ResultWriteApi`).
            *
            * <p><b>Refused, nothing moves.</b> Every box stays exactly as it was and the
            * sentence appears beneath the form, so a member who mistyped a link corrects
            * that one field rather than typing the whole race again.
            *
-           * <p><b>The overlay is written after the server agreed, never before.</b> No
-           * route serves a member his own submissions - measured 28.09.2026, the only route
-           * that reads `result_submission` to serve anything is the moderator's queue - so
-           * „Poslato" on `MyResults` still draws this overlay, and it is the only view of a
-           * waiting run there is. Written on the asking instead, it would show him a run the
-           * server had turned away.
+           * <p><b>Nothing is written into the browser after it went through</b>, since R2 of
+           * the results flows. Until then the run was written into the session's own list,
+           * because no route served a member his own runs and „Poslato" on `MyResults` drew
+           * that copy; `GET /api/me/result-submissions` serves them now, and
+           * `resultWrites.ts` drops it after the server agreed, so the list reads the row the
+           * server holds.
            */
           async function send(run: ReturnType<typeof reportedResult>, values: FormValues) {
             outstanding.current = true
@@ -241,7 +235,6 @@ export function ReportResult() {
               return
             }
 
-            keep(run, values)
             /* That it went, and nothing about what it was worth. `true` rather than a
                figure since 28.09.2026, which is the shape `RateEvent.tsx` has always
                used for the same question. */
@@ -258,57 +251,6 @@ export function ReportResult() {
             }
 
             void send(run, values)
-          }
-
-          /** The run as the browser goes on drawing it until a moderator decides. */
-          function keep(run: ReturnType<typeof reportedResult>, values: FormValues) {
-            submit({
-              memberNumber: mine,
-              /* Read off the race and its event, never asked. This road starts
-                 from a row of the calendar, so the portal already knows which of
-                 the three kinds the race is and where it is run; the form away
-                 from the calendar asks the member exactly because there is no
-                 race behind it to ask. */
-              raceKind: kind,
-              /* And which race, since this road starts from its row. Verification
-                 reads the absence of this to know it has to make a race first
-                 (owner, 31.08.2026); present, there is nothing to make. */
-              raceId: race.id,
-              city: event.city,
-              country: event.country,
-              /* The race, not the event it is run at. The field was renamed and the
-                 value was left behind, so a race the administrator had called
-                 „Beogradski polumaraton" reached the moderator as „Beogradski
-                 maraton", on two of the three screens the owner named. Measured
-                 23.08.2026, and nothing in the package saw it because every race in
-                 the file carries its event's name. */
-              raceName: race.name,
-              /* The race's day and not the event's, for the same reason the name
-                 beside it is the race's. An event may run over several mornings
-                 (PDL P10) and the event's own day is the first of them, so a
-                 result reported from the second morning of a two day event was
-                 filed on the first: the race carries the day it is run on
-                 (`data/types.ts`), and that is the day somebody ran. */
-              date: race.date,
-              /* What was run, and which of those figures come from the race rather
-                 than from the member depends on what the race fixes
-                 (`reportedResult.ts`). */
-              distanceKm: run.distanceKm,
-              ascentM: run.ascentM,
-              descentM: run.descentM,
-              photo: String(values.photo),
-              seconds: run.seconds,
-              points: run.points,
-              category: run.category,
-              /* The address of the official results, asked for here since
-                 23.08.2026 exactly as the form outside the calendar asks for it:
-                 the owner had the foot of the two forms made the same, „Link ka
-                 zvanicnim rezultatima, slika, komentar (i da funkcionise sta je
-                 obavezno a sta ne kao do sada)". Until then this form asked for
-                 words alone and wrote nothing here. */
-              link: String(values.link),
-              comment: String(values.comment),
-            })
           }
 
           return (

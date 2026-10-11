@@ -29,8 +29,9 @@ import {
  *
  * <ul>
  * <li><b>It does not show what the postal address and the telephone are today.</b> Nothing
- * serves them: {@code GET /api/me} answers a role, an account and seven facts about
- * membership, and {@code /api/competitors} answers the PUBLIC record, which by ADL A8 is
+ * serves them: {@code GET /api/me} answers a role, an account and the member's own record
+ * (seven facts about his membership, and since 10.10.2026 the twelve his own page is drawn
+ * from), and {@code /api/competitors} answers the PUBLIC record, which by ADL A8 is
  * public to anybody who asks. So those two boxes open empty and say so beside themselves,
  * rather than opening empty and reading as „you have given none". They are sent only when
  * something is typed into them ({@code whatChanged}), so an untouched empty box changes

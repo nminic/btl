@@ -8,8 +8,9 @@ import type { Competitor } from '../data/types'
  * PDL P11 says a member whose fee has run out is hidden as though they did not
  * exist, and in the same breath that their name stays in the tables of the
  * seasons they raced. So the name is never taken away and the link always is.
- * `CompetitorProfile` refuses to draw such a profile, which makes every link to
- * one a door onto a wall.
+ * `CompetitorProfile` refuses to draw such a profile to anybody but the member
+ * himself (his own opens, since 25.09.2026 and in the code since 10.10.2026), which
+ * makes every link to one in a list a door onto a wall.
  *
  * Written once and used everywhere a name appears, because the rule was being
  * kept on two screens out of eight and there was nothing to say which. The seven
